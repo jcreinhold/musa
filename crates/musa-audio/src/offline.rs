@@ -1,7 +1,7 @@
 //! Deterministic offline rendering (roadmap §13.8: offline == live — this
 //! executes the same `RenderPlan::render` a live stream will).
 
-use musa_compiler::PerformanceEvent;
+use musa_score::PerformanceEvent;
 
 use crate::plan::{EventSlice, RenderPlan};
 

@@ -35,8 +35,8 @@ use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::super::items::{Declared, Definition, Item};
 use super::super::{Lowering, Sites};
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
 
 // ---- reading a written program back out of a parse ----
 

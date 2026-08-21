@@ -20,7 +20,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, CompileOptions, NameKind, ScoreSnapshot, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, NameKind, SourceDocument, compile};
+
+use musa_score::{Code, ScoreSnapshot, Severity};
 
 const STUDY: &str = include_str!("../../../../examples/module-functor-study.musa");
 

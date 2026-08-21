@@ -26,7 +26,7 @@ cannot write its own levels, so this is the prompt that has to solve them.
 - Prompt [129](129-dependent-core-spec.md)'s K paragraph and prompt 132's finding on it, as
   `docs/rules/language/02-core-calculus.md` §1.4 now records it. **The trial found K unnecessary, and found that no
   program unifies an index at all**; §1.4 binds this prompt to two consequences and the Design below discharges both.
-- `crates/musa-compiler/src/core.rs`'s existing finite-data machinery and
+- `crates/musa-compiler/src/core/mod.rs`'s existing finite-data machinery and
   `crates/musa-compiler/tests/suite/finite_data_laws.rs` — the current positivity rule and the laws that hold today. The
   new check is strictly stronger; the old laws should still pass when restated over the new declarations, and any that
   cannot is a finding worth recording.

@@ -46,7 +46,7 @@ A rather than an implementation.
   the adapter's meaning or the tests were coupled to internals — and which one it is has to be established, not assumed.
 - `docs/notes/research/language-design-closure/41-staff-on-the-repaired-interface.md` — the last time this file was
   rewritten and measured, and the method that measurement used.
-- **The open question this prompt closes**: `syntax_anchor`'s third argument. `crates/musa-compiler/src/core.rs`'s
+- **The open question this prompt closes**: `syntax_anchor`'s third argument. `crates/musa-compiler/src/core/mod.rs`'s
   `SyntaxOp::Anchor` still takes `(subject, path, here)`, and `stdlib/src/adapters/staff.musa`'s `anchored` supplies the
   place as `syntax_built(here, 33, 0)`. `docs/rules/language/11-quotation.md` §5 and
   `docs/notes/research/language-design-closure/45-phase-registry-survey.md`'s row both say the argument goes and both
@@ -58,7 +58,7 @@ A rather than an implementation.
   at one path and `check_expression`'s duplicate-path gate would refuse the expansion. An author writing quotes has no
   operation that mints a fresh place, because `syntax_built` is exactly what quotation removed. The Design section
   decides the shape; it is not a change to make quietly inside the rewrite.
-- `crates/musa-compiler/src/syntax.rs`'s `Derived` and `check_expression`, and `crates/musa-compiler/src/core.rs`'s
+- `crates/musa-compiler/src/syntax.rs`'s `Derived` and `check_expression`, and `crates/musa-compiler/src/core/mod.rs`'s
   `syntax_quote` — how a quote mints provenance without an author supplying a number, which is the mechanism the anchor
   either adopts or argues against.
 
@@ -109,15 +109,15 @@ special case. Making the builtin answer at `Expr` would put a parse inside a bui
 This prompt changes the arity and nothing else about the signature.
 
 **What moves with it, and each of these is a Target item, not a side effect.** The registry entry, declared type, doc
-comment, and evaluator arm in `crates/musa-compiler/src/core.rs`; `PhaseFamily::Builder`'s doc comment, which currently
-says every builder is "a function of its displayed arguments and nothing else — no counter, no clock, no compiler
-state", and is no longer true of the anchor — repair it the way `CheckedSyntaxQuote` is already argued, since which site
-wrote a node is a fact about the *program* and two runs of one program still agree exactly; the two `syntax_anchor` unit
-tests in `crates/musa-compiler/src/expand.rs` around lines 1628–1652, which hold the law that a derived path anchors to
-nothing; `stdlib/src/adapters/doubled.musa`'s one call site, which no other prompt owns and which is a mechanical
-two-line edit rather than a rewrite — `doubled` keeps its `syntax_built` calls, because it is the flat fixture and is
-not being moved onto quotation; `tests/fixtures/staff-construction.musa`'s `anchored` and its header note, whose
-recorded workaround is discharged here; and the two documents that name the wrong prompt,
+comment, and evaluator arm in `crates/musa-compiler/src/core/mod.rs`; `PhaseFamily::Builder`'s doc comment, which
+currently says every builder is "a function of its displayed arguments and nothing else — no counter, no clock, no
+compiler state", and is no longer true of the anchor — repair it the way `CheckedSyntaxQuote` is already argued, since
+which site wrote a node is a fact about the *program* and two runs of one program still agree exactly; the two
+`syntax_anchor` unit tests in `crates/musa-compiler/src/expand/mod.rs` around lines 1628–1652, which hold the law that a
+derived path anchors to nothing; `stdlib/src/adapters/doubled.musa`'s one call site, which no other prompt owns and
+which is a mechanical two-line edit rather than a rewrite — `doubled` keeps its `syntax_built` calls, because it is the
+flat fixture and is not being moved onto quotation; `tests/fixtures/staff-construction.musa`'s `anchored` and its header
+note, whose recorded workaround is discharged here; and the two documents that name the wrong prompt,
 `docs/rules/language/11-quotation.md` §5 and `45-phase-registry-survey.md`'s `syntax_anchor` row.
 
 **The compatibility oracle: check it, and expect it not to move.** An anchor *number* is a node's position in the
@@ -158,8 +158,8 @@ possible way to make the number look worse for a good reason and better for a ba
 - Mechanical checks in the Check section for the five eliminations.
 - The rendered corpus for every staff example byte-identical.
 - `syntax_anchor` at two arguments: the registry entry, declared type, doc comment, and evaluator arm in
-  `crates/musa-compiler/src/core.rs`, with the site index drawn from `Resolver::next_quotation`;
-  `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand.rs`'s two anchor unit tests
+  `crates/musa-compiler/src/core/mod.rs`, with the site index drawn from `Resolver::next_quotation`;
+  `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand/mod.rs`'s two anchor unit tests
   rewritten at the new arity with the law they hold unchanged.
 - `stdlib/src/adapters/doubled.musa`'s call site moved to the new arity, and nothing else in that file touched.
 - `tests/fixtures/staff-construction.musa`'s `anchored` written the way prompt 132's trial wrote it, and its header note

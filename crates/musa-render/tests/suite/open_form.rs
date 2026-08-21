@@ -12,8 +12,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, Realization, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, plan_notation, render_notation};
+use musa_score::{Realization, ScoreSnapshot};
 
 const TARGETS: [NotationTarget; 3] = [NotationTarget::Mei, NotationTarget::LilyPond, NotationTarget::MusicXml];
 

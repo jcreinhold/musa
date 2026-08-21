@@ -5,12 +5,12 @@
 use musa_language::ast::AstNode as _;
 
 use super::fact::{FactKind, ScoreFact, VoiceTrack};
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::{Origin, SourceSpan};
 use crate::resolve::{self, Resolver};
-use crate::scope::Scope;
-use crate::time::MusicalTime;
 use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime, empty, track};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::{Origin, SourceSpan};
+use musa_score::scope::Scope;
+use musa_score::time::MusicalTime;
 use num_rational::Ratio;
 
 /// The markers a score places by coordinate rather than by where a fold
@@ -25,10 +25,10 @@ use num_rational::Ratio;
 pub(super) fn placed(
     resolver: &mut Resolver,
     score: &musa_language::ast::ScoreDecl,
-    bars: &crate::BarLines,
+    bars: &musa_score::BarLines,
     extent: Duration<WrittenTime>,
 ) -> VoiceTrack {
-    let declaration = crate::origin::DeclarationId::default();
+    let declaration = musa_score::origin::DeclarationId::default();
     let at_span = |span: SourceSpan| Origin {
         source_span: span,
         definition_span: span,
@@ -80,7 +80,7 @@ pub(super) fn placed(
             continue;
         }
         let text = written.text();
-        let Some(symbol) = crate::harmony::ChordSymbol::parse(&text) else {
+        let Some(symbol) = musa_score::harmony::ChordSymbol::parse(&text) else {
             resolver.report(
                 Diagnostic::error(Code::NotAValue, format!("`{text}` is not a chord symbol musa reads"))
                     .at(span, "unknown chord")
@@ -119,7 +119,7 @@ fn resolve_position(
     resolver: &mut Resolver,
     position: Option<&musa_language::ast::Position>,
     span: SourceSpan,
-    bars: &crate::BarLines,
+    bars: &musa_score::BarLines,
     extent: MusicalTime,
 ) -> Option<MusicalTime> {
     let position = position?;

@@ -55,7 +55,7 @@ registration has a real decision in it rather than a transcription.
   held to D1; what is missing is the registration shape, not permission.
 - `crates/musa-calculus/src/eval.rs`'s `delta` and `canonical`, which is where "can never fire" is a fact rather than a
   worry.
-- `crates/musa-compiler/src/core.rs` — `MachineOp` and its `instantiate`, `Type::Machine`, `Type::Primitive`,
+- `crates/musa-compiler/src/core/mod.rs` — `MachineOp` and its `instantiate`, `Type::Machine`, `Type::Primitive`,
   `Type::Product`, `Type::Unit`, and `machine_type`. The rank-1 schemes there are the signatures being restated as
   ordinary Π types, and `instantiate`'s doc says which variables are `Kind::Data` and which are `Kind::Ordinary` — that
   distinction is §1.1's storable-data rule and has to survive the restatement.

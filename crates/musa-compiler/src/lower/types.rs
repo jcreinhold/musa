@@ -12,7 +12,7 @@ use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::{Lowering, applied, child, children, is_type_node, paired};
 use crate::core::Coordinate;
-use crate::diagnose::{Code, Diagnostic};
+use musa_score::diagnose::{Code, Diagnostic};
 
 impl Lowering<'_> {
     /// The raw type a written type node denotes, or [`None`] with a diagnostic

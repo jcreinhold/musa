@@ -86,8 +86,6 @@ pub struct MusicalDuration(Ratio<i64>);
 impl MusicalDuration {
     /// The identity duration.
     pub const ZERO: Self = Self(Ratio::ZERO);
-    /// One whole note.
-    pub const WHOLE: Self = Self(Ratio::new_raw(1, 1));
 
     /// Create a duration from a whole-note ratio, clamped to be nonnegative.
     pub fn new(value: Ratio<i64>) -> Self {
@@ -137,7 +135,7 @@ impl std::iter::Sum for MusicalDuration {
 /// representable rationals need not be representable, so the arithmetic is
 /// done wide, reduced, and only then asked whether it fits.
 #[deny(clippy::arithmetic_side_effects)]
-fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
+pub(crate) fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
     while right != 0 {
         let remainder = left.checked_rem(right).unwrap_or(0);
         left = right;
@@ -152,7 +150,7 @@ fn greatest_common_divisor(mut left: u128, mut right: u128) -> u128 {
 /// a stated failure rather than a stuck term: D2 forbids partiality anywhere
 /// but the result type.
 #[deny(clippy::arithmetic_side_effects)]
-pub(crate) fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
+pub fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i64>> {
     if denominator == 0 {
         return None;
     }
@@ -181,7 +179,7 @@ pub(crate) fn exact_ratio(numerator: i128, denominator: i128) -> Option<Ratio<i6
 /// the builtin at the call site would have to name every operation that is
 /// *not* one of these four.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum Exact {
+pub enum Exact {
     Add,
     Sub,
     Mul,
@@ -191,7 +189,7 @@ pub(crate) enum Exact {
 /// `left · right`, computed wide and reduced before it is asked whether it
 /// fits.
 #[deny(clippy::arithmetic_side_effects)]
-pub(crate) fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
+pub fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: Exact) -> Option<Ratio<i64>> {
     let (a, b) = (i128::from(*left.numer()), i128::from(*left.denom()));
     let (c, d) = (i128::from(*right.numer()), i128::from(*right.denom()));
     match operation {
@@ -209,7 +207,7 @@ pub(crate) fn exact_arithmetic(left: Ratio<i64>, right: Ratio<i64>, operation: E
 /// zero: the grammar has no negative numeric literal, so a `-7/6` spelled here
 /// would be text the reader would not read back, and this family's one law is
 /// that it does.
-pub(crate) fn written_rational(value: Ratio<i64>) -> Option<String> {
+pub fn written_rational(value: Ratio<i64>) -> Option<String> {
     if value < Ratio::ZERO {
         return None;
     }

@@ -10,10 +10,10 @@ phase: 3
 
 ## Task
 
-[`crate::lower::notation`](../../../crates/musa-compiler/src/lower/notation.rs) reads a block of statements and refuses
-seven of them. Four — `key`, `meter`, `tempo`, `clef` — are refused as *misplaced*, because "a `music` value is usable
-at several places, and 'from here onward' has no unique meaning there". Three — `bar`, `senza`, `assert` — are refused
-as having no core spelling yet, at a node whose label reads **"a voice to belong to" is written here**.
+[`crate::lower::notation`](../../../crates/musa-compiler/src/lower/notation/mod.rs) reads a block of statements and
+refuses seven of them. Four — `key`, `meter`, `tempo`, `clef` — are refused as *misplaced*, because "a `music` value is
+usable at several places, and 'from here onward' has no unique meaning there". Three — `bar`, `senza`, `assert` — are
+refused as having no core spelling yet, at a node whose label reads **"a voice to belong to" is written here**.
 
 Both refusals are about the same missing thing, and it is not a statement. It is the document structure that would give
 a statement a scope: the score, its parts, their voices, and the numbering every `ScoreFact` is constructed at.

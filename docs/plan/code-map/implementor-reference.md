@@ -18,7 +18,9 @@ musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine �
 | --- | --- | --- |
 | `musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
 | `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
-| `musa-compiler` | resolution, typing, elaboration into the kernel, score and performance snapshots | pass types, `Type`, the resolver |
+| `musa-calculus` | the dependently typed core calculus: terms, NbE, elaboration, inductive families | `Value`, the evaluator, quotation |
+| `musa-score` | the musical values: pitch, chords, scales, exact time, marks, score and performance snapshots, provenance, diagnostics, analysis | any way to *build* one from text |
+| `musa-compiler` | resolution, typing, expansion, elaboration into the kernel — the passes that compute those values | pass types, `Type`, the resolver |
 | `musa-render` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
 

@@ -54,15 +54,15 @@ use crate::time::{MusicalDuration, MusicalTime};
 /// points at — a claim that fails names the note the composer can go and look
 /// at, and never the whole passage.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Sounded {
+pub struct Sounded {
     /// The written pitch, spelled as the composer spelled it.
-    pub(crate) pitch: WrittenPitch,
+    pub pitch: WrittenPitch,
     /// When it starts, relative to the passage.
-    pub(crate) start: MusicalTime,
+    pub start: MusicalTime,
     /// When it stops.
-    pub(crate) end: MusicalTime,
+    pub end: MusicalTime,
     /// Where it is written.
-    pub(crate) at: SourceSpan,
+    pub at: SourceSpan,
 }
 
 /// The passage a claim is about: everything a claim may read, and nothing
@@ -75,22 +75,22 @@ pub(crate) struct Sounded {
 /// change. What is here is what the four claims below need and what a musician
 /// would say they are about: which notes sound, when, and where they are
 /// written.
-pub(crate) struct Passage {
+pub struct Passage {
     /// Where the claim is written — the assertion statement, or the bar.
-    pub(crate) span: SourceSpan,
+    pub span: SourceSpan,
     /// Where the passage begins in the piece. Absolute, because a bar's
     /// length is measured against the meter in force *there*.
-    pub(crate) at: MusicalTime,
+    pub at: MusicalTime,
     /// How long the passage is.
-    pub(crate) extent: MusicalDuration,
+    pub extent: MusicalDuration,
     /// Where an inserted rest would go: after the last thing written inside
     /// the braces. Absent when there is nothing written inside them.
-    pub(crate) content_end: Option<u32>,
+    pub content_end: Option<u32>,
     /// Every note sounded in the passage, in occurrence order.
-    pub(crate) notes: Vec<Sounded>,
+    pub notes: Vec<Sounded>,
     /// What the composer wrote, for the sentence that names it: a `bar`, or
     /// the passage an `assert` was written on.
-    pub(crate) noun: &'static str,
+    pub noun: &'static str,
 }
 
 /// What the piece turned out to be, which no passage can know on its own.
@@ -100,12 +100,12 @@ pub(crate) struct Passage {
 /// is recorded during elaboration and discharged after it. A claim is proved
 /// against what was written and against what the piece decided, and these are
 /// the second of those two.
-pub(crate) struct Settled<'a> {
+pub struct Settled<'a> {
     /// Where the barlines fall.
-    pub(crate) bars: &'a crate::BarLines,
+    pub bars: &'a crate::BarLines,
     /// Whether the piece states a `meter` at all. Only the measure claim
     /// reads it, and only for its closing note.
-    pub(crate) meter_written: bool,
+    pub meter_written: bool,
 }
 
 /// How exactly a passage must match the chord it claims to realize.
@@ -117,7 +117,7 @@ pub(crate) struct Settled<'a> {
 /// every one of these by construction — which is right, because OMT `019`
 /// makes doubling a matter of voicing and not of chord content.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Realization {
+pub enum Realization {
     /// The classes sounded are exactly the chord's members: nothing omitted,
     /// nothing added. Strict pitch-set equality.
     Exactly,
@@ -131,10 +131,10 @@ pub(crate) enum Realization {
 
 impl Realization {
     /// The three spellings, in the order a diagnostic lists them.
-    pub(crate) const ALL: [Self; 3] = [Self::Exactly, Self::MayOmit, Self::MayAdd];
+    pub const ALL: [Self; 3] = [Self::Exactly, Self::MayOmit, Self::MayAdd];
 
     /// How the source spells it.
-    pub(crate) const fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Exactly => "exactly",
             Self::MayOmit => "may_omit",
@@ -152,7 +152,7 @@ impl Realization {
     }
 
     /// Read one of the three words, or `None` for anything else.
-    pub(crate) fn named(word: &str) -> Option<Self> {
+    pub fn named(word: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|policy| policy.as_str() == word)
     }
 }
@@ -165,7 +165,7 @@ impl Realization {
 /// because a type no function can take or return would be language surface
 /// with no caller.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ParamType {
+pub enum ParamType {
     /// A `Scale`, written `scale c major` or named.
     Scale,
     /// A `ChordClass`, written `chord c major7` or computed.
@@ -182,7 +182,7 @@ pub(crate) enum ParamType {
 
 impl ParamType {
     /// How the type is written, for the sentence that says what was expected.
-    pub(crate) const fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Scale => "Scale",
             Self::Chord => "ChordClass",
@@ -213,7 +213,7 @@ impl ParamType {
 /// the claim reads them back out of a borrow rather than consuming the
 /// statement — see [`crate::lower::notation::Argued`].
 #[derive(Clone)]
-pub(crate) enum Argument {
+pub enum Argument {
     /// A scale.
     Scale(Scale),
     /// A chord class.
@@ -235,7 +235,7 @@ pub(crate) enum Argument {
 /// a wrong shape is a bug in the checker that filled the vector rather than a
 /// case to handle. `None` is the belt to that braces.
 impl Argument {
-    fn scale(self) -> Option<Scale> {
+    pub fn scale(self) -> Option<Scale> {
         if let Self::Scale(scale) = self {
             Some(scale)
         } else {
@@ -243,7 +243,7 @@ impl Argument {
         }
     }
 
-    fn chord(self) -> Option<ChordClass> {
+    pub fn chord(self) -> Option<ChordClass> {
         if let Self::Chord(chord) = self {
             Some(chord)
         } else {
@@ -251,7 +251,7 @@ impl Argument {
         }
     }
 
-    fn count(self) -> Option<u64> {
+    pub fn count(self) -> Option<u64> {
         if let Self::Count(count) = self {
             Some(count)
         } else {
@@ -259,7 +259,7 @@ impl Argument {
         }
     }
 
-    fn ranges(self) -> Option<Vec<(WrittenPitch, WrittenPitch)>> {
+    pub fn ranges(self) -> Option<Vec<(WrittenPitch, WrittenPitch)>> {
         if let Self::Ranges(ranges) = self {
             Some(ranges)
         } else {
@@ -267,11 +267,11 @@ impl Argument {
         }
     }
 
-    fn rule(self) -> Option<RuleName> {
+    pub fn rule(self) -> Option<RuleName> {
         if let Self::Rule(rule) = self { Some(rule) } else { None }
     }
 
-    fn policy(self) -> Option<Realization> {
+    pub fn policy(self) -> Option<Realization> {
         if let Self::Policy(policy) = self {
             Some(policy)
         } else {
@@ -288,13 +288,13 @@ impl Argument {
 /// back is a string the compiler carries around: each one is written on the
 /// function that implements the claim, where the next person to change the
 /// rule will be standing.
-pub(crate) struct Predicate {
+pub struct Predicate {
     /// How the claim is written.
-    pub(crate) name: &'static str,
+    pub name: &'static str,
     /// Its arguments, in order.
-    pub(crate) parameters: &'static [ParamType],
+    pub parameters: &'static [ParamType],
     /// What it checks, as one sentence.
-    pub(crate) checks: &'static str,
+    pub checks: &'static str,
 }
 
 /// Every claim a composer may write. This list *is* the family — there is no
@@ -338,7 +338,7 @@ pub(crate) const CLAIMS: [Predicate; 6] = [
 /// two readings of an `assert` write it: the checker `142` replaces and the
 /// lowering that replaces it. One spelling rather than two, so a claim that
 /// gains an argument cannot be described two ways.
-pub(crate) fn spell_arguments(count: usize) -> String {
+pub fn spell_arguments(count: usize) -> String {
     match count {
         0 => "no arguments".to_owned(),
         1 => "one argument".to_owned(),
@@ -347,7 +347,7 @@ pub(crate) fn spell_arguments(count: usize) -> String {
 }
 
 /// `none were`, `one was`, `three were` — what the source actually wrote.
-pub(crate) fn spell_written(count: usize) -> String {
+pub fn spell_written(count: usize) -> String {
     match count {
         0 => "none were".to_owned(),
         1 => "one was".to_owned(),
@@ -403,19 +403,19 @@ pub fn realization_policies() -> impl Iterator<Item = (&'static str, &'static st
 }
 
 /// The claim written under `name`, or `None` if nothing is.
-pub(crate) fn predicate(name: &str) -> Option<&'static Predicate> {
+pub fn predicate(name: &str) -> Option<&'static Predicate> {
     CLAIMS.iter().find(|claim| claim.name == name)
 }
 
 /// The claim names, for the "did you mean" of a name nobody wrote down.
-pub(crate) fn names() -> impl Iterator<Item = &'static str> {
+pub fn names() -> impl Iterator<Item = &'static str> {
     CLAIMS.iter().map(|claim| claim.name)
 }
 
 /// A claim with its arguments supplied: what an obligation carries and what
 /// [`check`] proves.
 #[derive(Clone)]
-pub(crate) enum Claim {
+pub enum Claim {
     /// One measure of the meter in force.
     FillsMeter,
     /// Every sounded pitch spelled in the collection.
@@ -437,8 +437,8 @@ pub(crate) enum Claim {
 
 impl Claim {
     /// The claim as the author wrote it, for a report that quotes it back.
-    #[cfg(test)]
-    pub(crate) fn describe(&self) -> String {
+    #[must_use]
+    pub fn describe(&self) -> String {
         match self {
             Self::FillsMeter => "fills_meter()".to_owned(),
             Self::PitchesIn(scale) => format!("pitches_in({scale})"),
@@ -454,7 +454,7 @@ impl Claim {
     /// Returns `None` only when the arguments do not have the shapes the
     /// registry declares — which the caller has already checked, so this is
     /// the belt to that braces rather than a diagnostic path.
-    pub(crate) fn build(name: &str, arguments: Vec<Argument>) -> Option<Self> {
+    pub fn build(name: &str, arguments: Vec<Argument>) -> Option<Self> {
         let mut arguments = arguments.into_iter();
         let claim = match name {
             "fills_meter" => Self::FillsMeter,
@@ -477,7 +477,7 @@ impl Claim {
     /// nothing else, so reading a bar's notes out would pay for a list every
     /// [`check`] arm that could see it ignores. Every other claim is about the
     /// pitches themselves.
-    pub(crate) const fn reads_notes(&self) -> bool {
+    pub const fn reads_notes(&self) -> bool {
         !matches!(*self, Self::FillsMeter)
     }
 }
@@ -489,7 +489,7 @@ impl Claim {
 /// claims are declared, and each arm reports at most one thing: the *smallest*
 /// witness, because a passage with four notes outside its scale is one mistake
 /// with four instances and a composer fixes the first one first.
-pub(crate) fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
+pub fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
     match claim {
         Claim::FillsMeter => fills_meter(passage, settled),
         Claim::PitchesIn(scale) => pitches_in(passage, *scale),
@@ -510,7 +510,7 @@ pub(crate) fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> 
 /// `bar` says "this bar", and an `assert fills_meter()` says "this passage",
 /// because it is not a bar and calling it one would be the diagnostic lying
 /// about what is on the page.
-fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
+pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
     let here = settled.bars.measure_at(passage.at);
     // Inside an unmeasured stretch there is no measure for the passage to be
     // one of. Refused rather than ignored: the claim cannot be checked, and a
@@ -586,7 +586,7 @@ fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
 /// is that a chromatic alteration is reported rather than respelled —
 /// which is the same rule as `AGENTS.md`'s "written pitch is not a MIDI
 /// number", said about a diagnostic.
-fn pitches_in(passage: &Passage, scale: Scale) -> Option<Diagnostic> {
+pub fn pitches_in(passage: &Passage, scale: Scale) -> Option<Diagnostic> {
     let members = members_of(scale);
     let stray = passage
         .notes
@@ -610,7 +610,7 @@ fn pitches_in(passage: &Passage, scale: Scale) -> Option<Diagnostic> {
 /// the lowest note sounding is what decides inversion, so a class inverted to
 /// put the third in the bass is a claim about which note is lowest and is
 /// proved by looking at the lowest note.
-fn realizes(passage: &Passage, chord: ChordClass, policy: Realization) -> Option<Diagnostic> {
+pub fn realizes(passage: &Passage, chord: ChordClass, policy: Realization) -> Option<Diagnostic> {
     let members: Vec<PitchClass> = (0..chord.size()).filter_map(|at| chord.member_class(at)).collect();
     let spelled: Vec<String> = members.iter().map(ToString::to_string).collect();
     let claimed = || format!("`{chord}` is {}", spelled.join(" "));
@@ -676,7 +676,7 @@ fn realizes(passage: &Passage, chord: ChordClass, policy: Realization) -> Option
 /// Those stretches are the maximal intervals between consecutive note
 /// boundaries, which is the finest division the passage can distinguish and so
 /// the only one that cannot miss a moment.
-fn voices(passage: &Passage, count: u64) -> Option<Diagnostic> {
+pub fn voices(passage: &Passage, count: u64) -> Option<Diagnostic> {
     let claimed = usize::try_from(count).unwrap_or(usize::MAX);
     let (at, sounding) = sonorities(passage)
         .into_iter()
@@ -706,7 +706,7 @@ fn voices(passage: &Passage, count: u64) -> Option<Diagnostic> {
 /// reported as that, and not silently paired off: the positional reading has
 /// nothing to say when the positions do not line up, and `voices(n)` is the
 /// claim that pins the count.
-fn within_ranges(passage: &Passage, ranges: &[(WrittenPitch, WrittenPitch)]) -> Option<Diagnostic> {
+pub fn within_ranges(passage: &Passage, ranges: &[(WrittenPitch, WrittenPitch)]) -> Option<Diagnostic> {
     if let Some((low, high)) = ranges
         .iter()
         .find(|(low, high)| low.chromatic_height() > high.chromatic_height())
@@ -773,7 +773,7 @@ fn within_ranges(passage: &Passage, ranges: &[(WrittenPitch, WrittenPitch)]) -> 
 /// [`within_ranges`] pairs them against ranges. Two consecutive sonorities with
 /// different numbers of notes are not compared: a voice resting changes which
 /// position is which, and a passage cannot say which voice the rest belongs to.
-fn follows(passage: &Passage, rule: RuleName) -> Option<Diagnostic> {
+pub fn follows(passage: &Passage, rule: RuleName) -> Option<Diagnostic> {
     let found = sonorities(passage);
     let departure = |note: &Sounded, said: String, why: String| {
         Diagnostic::error(Code::UnmetClaim, said)
@@ -837,7 +837,7 @@ fn follows(passage: &Passage, rule: RuleName) -> Option<Diagnostic> {
 /// Split out because the pairing differs by rule and the traversal does not:
 /// parallels are between any two voices, overlap is between neighbours, and
 /// motion size is within one voice.
-fn moves(
+pub fn moves(
     id: &str,
     was: &[&Sounded],
     is: &[&Sounded],
@@ -907,7 +907,7 @@ fn moves(
 }
 
 /// Two of a sonority's voices, by position from the bottom.
-fn pair_at(sounding: &[&Sounded], lower: usize, upper: usize) -> Option<(WrittenPitch, WrittenPitch)> {
+pub(crate) fn pair_at(sounding: &[&Sounded], lower: usize, upper: usize) -> Option<(WrittenPitch, WrittenPitch)> {
     Some((sounding.get(lower)?.pitch, sounding.get(upper)?.pitch))
 }
 
@@ -918,7 +918,7 @@ fn pair_at(sounding: &[&Sounded], lower: usize, upper: usize) -> Option<(Written
 /// moments at which the sounding notes can change. Stretches where nothing
 /// sounds are dropped, and a zero-length stretch cannot arise because
 /// consecutive distinct boundaries bound a positive interval.
-fn sonorities(passage: &Passage) -> Vec<(MusicalTime, Vec<&Sounded>)> {
+pub fn sonorities(passage: &Passage) -> Vec<(MusicalTime, Vec<&Sounded>)> {
     let mut boundaries: Vec<MusicalTime> = passage.notes.iter().flat_map(|note| [note.start, note.end]).collect();
     // By value, not by (numerator, denominator): 1/2 is before 1, and a sort
     // on the pair puts it after.
@@ -944,14 +944,14 @@ fn sonorities(passage: &Passage) -> Vec<(MusicalTime, Vec<&Sounded>)> {
 }
 
 /// The spelled members of a collection, one per degree of its period.
-fn members_of(scale: Scale) -> Vec<PitchClass> {
+pub(crate) fn members_of(scale: Scale) -> Vec<PitchClass> {
     (1..=scale.size())
         .filter_map(|ordinal| scale.class(Degree::new(i64::try_from(ordinal).ok()?)))
         .collect()
 }
 
 /// A musical amount, spelled the way the language spells it.
-fn fraction(value: num_rational::Ratio<i64>) -> String {
+pub fn fraction(value: num_rational::Ratio<i64>) -> String {
     if *value.denom() == 1 {
         value.numer().to_string()
     } else {
@@ -961,7 +961,7 @@ fn fraction(value: num_rational::Ratio<i64>) -> String {
 
 /// `one note sounds`, `three notes sound` — a count with the verb that agrees
 /// with it, because the sentence around it reads badly either way otherwise.
-fn spell_notes(count: usize) -> String {
+pub(crate) fn spell_notes(count: usize) -> String {
     match count {
         1 => "one note sounds".to_owned(),
         other => format!("{other} notes sound"),
@@ -969,7 +969,7 @@ fn spell_notes(count: usize) -> String {
 }
 
 /// `one range was`, `four ranges were`.
-fn spell_ranges(count: usize) -> String {
+pub(crate) fn spell_ranges(count: usize) -> String {
     match count {
         1 => "one range was".to_owned(),
         other => format!("{other} ranges were"),
@@ -978,7 +978,7 @@ fn spell_ranges(count: usize) -> String {
 
 /// `lowest`, `second`, `third` … — how a diagnostic names a voice it knows
 /// only by its height.
-fn nth(position: usize) -> &'static str {
+pub fn nth(position: usize) -> &'static str {
     const WORDS: [&str; 8] = [
         "lowest", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth",
     ];

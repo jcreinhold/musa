@@ -1,7 +1,7 @@
 //! One concern of the enclosing module; see its module docs.
 
-use crate::diagnose::Diagnostic;
-use crate::origin::SourceSpan;
+use musa_score::diagnose::Diagnostic;
+use musa_score::origin::SourceSpan;
 
 use super::said;
 

@@ -23,7 +23,9 @@
 // assertion message alone.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ImportSources, Severity, SourceDocument, compile, resolve_import};
+use musa_compiler::{CompileOptions, ImportSources, SourceDocument, compile, resolve_import};
+
+use musa_score::Severity;
 
 /// The trial's program.
 const DISPATCH: &str = include_str!("../../../../tests/fixtures/staff-dispatch.musa");

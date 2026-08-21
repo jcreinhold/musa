@@ -18,22 +18,22 @@ to write distinctions into messages because notes do not survive.
 
 ## Read
 
-- [`crates/musa-compiler/src/expand.rs`](../../../crates/musa-compiler/src/expand.rs) — `LevelFault` (the type with
-  three fields and a stated reason for having no span), `level_of`, and its three callers: the import check in `expand`,
-  `adapter_edit`, and `adapter_print`. The `ModuleFault::Broken` arm keeps `diagnostics.first().message` and substitutes
-  its own help; the rest of the first diagnostic and all of every later one are dropped there.
-- [`crates/musa-compiler/src/core.rs`](../../../crates/musa-compiler/src/core.rs) — `read_adapter_module` and its doc
-  comment, which is the constraint this prompt has to keep: "the diagnostics come back rather than being reported: they
-  are about the adapter package's own document, and publishing a span inside it as a span in the composer's file is
-  exactly what the source map exists to prevent." Also `read_adapter_module_metered`, which returns `resolver.
-  diagnostics` — a vector, routinely longer than one.
+- [`crates/musa-compiler/src/expand/mod.rs`](../../../crates/musa-compiler/src/expand/mod.rs) — `LevelFault` (the type
+  with three fields and a stated reason for having no span), `level_of`, and its three callers: the import check in
+  `expand`, `adapter_edit`, and `adapter_print`. The `ModuleFault::Broken` arm keeps `diagnostics.first().message` and
+  substitutes its own help; the rest of the first diagnostic and all of every later one are dropped there.
+- [`crates/musa-compiler/src/core/mod.rs`](../../../crates/musa-compiler/src/core/mod.rs) — `read_adapter_module` and
+  its doc comment, which is the constraint this prompt has to keep: "the diagnostics come back rather than being
+  reported: they are about the adapter package's own document, and publishing a span inside it as a span in the
+  composer's file is exactly what the source map exists to prevent." Also `read_adapter_module_metered`, which returns
+  `resolver. diagnostics` — a vector, routinely longer than one.
 - The six codes that can only be raised inside an adapter module, because `Syntax<Cat>`, `quote at here { … }`, and
   quote patterns appear nowhere else: `UnspreadSequence`, `AmbiguousSpread`, `PatternCategory`, `QuotedLiteralName`,
   `QuotedCapture`, `SpliceCategory`. Every one of them was written with a note and a help. Today no one has ever read
   them.
-- [`crates/musa-compiler/src/diagnose.rs`](../../../crates/musa-compiler/src/diagnose.rs) — `Diagnostic`, its seven
-  fields, and `remap_spans`. **There is no related-diagnostics channel**; `labels` is the only place a second span can
-  go, and every span in it is a span in the composer's file.
+- [`crates/musa-score/src/diagnose.rs`](../../../crates/musa-score/src/diagnose.rs) — `Diagnostic`, its seven fields,
+  and `remap_spans`. **There is no related-diagnostics channel**; `labels` is the only place a second span can go, and
+  every span in it is a span in the composer's file.
 - [`crates/musa-project/src/diagnostic.rs`](../../../crates/musa-project/src/diagnostic.rs) and
   [`position.rs`](../../../crates/musa-project/src/position.rs) — the restatement, and the layering rule this prompt
   keeps: the compiler measures bytes, the session counts lines, and a `Position` is "never derived by the frontend".
@@ -161,7 +161,7 @@ impossible.
 - `docs/rules/desktop/05-states.md` §5 — the rule for a diagnostic about another document.
 - `crates/musa-compiler/tests/suite/quotation_laws.rs` and `syntax_pattern_laws.rs`: both `errors` helpers read causes,
   both helper doc comments repaired, and one new law per suite on a two-diagnostic module.
-- `crates/musa-compiler/src/core.rs`: the `quote_splice` comment repaired.
+- `crates/musa-compiler/src/core/mod.rs`: the `quote_splice` comment repaired.
 - `docs/plan/code-map/` rows for `musa-compiler`, `musa-project`, `musa-lsp`, and the desktop.
 
 ## Check

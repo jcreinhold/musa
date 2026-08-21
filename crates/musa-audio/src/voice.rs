@@ -13,7 +13,7 @@
 //! Envelope and oscillator arithmetic per sample is total and bounded.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::VoiceInstanceId;
+use musa_score::VoiceInstanceId;
 
 use crate::envelope::{Adsr, AdsrSettings, AdsrSteps};
 

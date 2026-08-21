@@ -612,7 +612,7 @@ fn the_pressure_workloads_compile_and_denote_what_they_claim() {
         let errors: Vec<&str> = compilation
             .diagnostics()
             .iter()
-            .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+            .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
             .map(|diagnostic| diagnostic.message.as_str())
             .collect();
         assert!(errors.is_empty(), "{name} does not compile: {errors:?}");
@@ -663,7 +663,7 @@ fn the_sharing_shapes_compile_and_denote_what_they_claim() {
         let errors: Vec<&str> = compilation
             .diagnostics()
             .iter()
-            .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+            .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
             .map(|diagnostic| diagnostic.message.as_str())
             .collect();
         assert!(errors.is_empty(), "{shape:?} does not compile: {errors:?}");

@@ -14,6 +14,7 @@ indexmap = { version = "2", features = ["serde"] }
 musa-calculus = { workspace = true }
 musa-kernel = { workspace = true }
 musa-language = { workspace = true }
+musa-score = { workspace = true }
 num-rational = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 slotmap = "1"

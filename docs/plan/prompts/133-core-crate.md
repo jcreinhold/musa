@@ -23,9 +23,9 @@ musical types, no elaboration. The old checker keeps working; nothing calls this
   specification. A mechanism the trial marked for deletion is not built here.
 - `crates/musa-kernel/src/lib.rs` — the leaf crate this one is shaped after: a narrow facade, no dependency on anything
   above it, and a public surface small enough to read in one sitting.
-- `crates/musa-compiler/src/core.rs`'s `Value`, `Term`, and evaluator, and `core_budget.rs` — 15,017 lines that already
-  contain a total evaluator with a cost budget. What survives is the *budget discipline*, not the representation, and
-  this prompt should be explicit about which of the two it is borrowing.
+- `crates/musa-compiler/src/core/mod.rs`'s `Value`, `Term`, and evaluator, and `core_budget.rs` — 15,017 lines that
+  already contain a total evaluator with a cost budget. What survives is the *budget discipline*, not the
+  representation, and this prompt should be explicit about which of the two it is borrowing.
 - `docs/plan/roadmap.md` §15 as amended by prompt 128 — the crate's declared place and its dependency list. A dependency
   not listed there is a repair, not a `cargo add`.
 - Peyton Jones ch. 8–9 for the shape of a checker's data structures, and the `module-design` skill's rule that no public

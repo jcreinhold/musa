@@ -158,11 +158,11 @@ impl PerformanceProfile {
         self.dynamics.get(&mark).copied()
     }
 
-    pub(crate) fn set_mark(&mut self, mark: Mark, rule: ArticulationRealization) {
+    pub fn set_mark(&mut self, mark: Mark, rule: ArticulationRealization) {
         self.articulations.insert(mark, rule);
     }
 
-    pub(crate) fn set_dynamic(&mut self, mark: DynamicMark, amplitude: Ratio<i64>) {
+    pub fn set_dynamic(&mut self, mark: DynamicMark, amplitude: Ratio<i64>) {
         self.dynamics.insert(mark, amplitude);
     }
 
@@ -175,7 +175,7 @@ impl PerformanceProfile {
         self.groove
     }
 
-    pub(crate) fn set_groove(&mut self, groove: Groove) {
+    pub fn set_groove(&mut self, groove: Groove) {
         self.groove = groove;
     }
 
@@ -188,11 +188,11 @@ impl PerformanceProfile {
         self.grace
     }
 
-    pub(crate) fn set_grace(&mut self, grace: GracePolicy) {
+    pub fn set_grace(&mut self, grace: GracePolicy) {
         self.grace = grace;
     }
 
-    pub(crate) fn named(name: impl Into<String>) -> Self {
+    pub fn named(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             ..Self::default()
@@ -233,22 +233,22 @@ impl ProfileSet {
         self.profiles.keys().map(String::as_str)
     }
 
-    pub(crate) fn declares(&self, name: &str) -> bool {
+    pub fn declares(&self, name: &str) -> bool {
         self.profiles.contains_key(name)
     }
 
-    pub(crate) fn insert(&mut self, profile: PerformanceProfile) {
+    pub fn insert(&mut self, profile: PerformanceProfile) {
         self.profiles.insert(profile.name.clone(), profile);
     }
 
-    pub(crate) fn assign(&mut self, part: impl Into<String>, profile: impl Into<String>) {
+    pub fn assign(&mut self, part: impl Into<String>, profile: impl Into<String>) {
         self.parts.insert(part.into(), profile.into());
     }
 }
 
 /// Parse a written decimal or integer as an exact rational: `0.55` is
 /// `11/20`, not `0.55000000000000004`.
-pub(crate) fn parse_decimal(text: &str) -> Option<Ratio<i64>> {
+pub fn parse_decimal(text: &str) -> Option<Ratio<i64>> {
     let (sign, text) = text.strip_prefix('-').map_or((1i64, text), |rest| (-1, rest));
     let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
     let whole: i64 = if whole.is_empty() { 0 } else { whole.parse().ok()? };

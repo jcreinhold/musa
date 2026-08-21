@@ -23,9 +23,9 @@ use indexmap::IndexMap;
 use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, MakeStmt, PieceDecl, TemplateDecl, VoiceDecl};
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::{ExpansionStep, SourceSpan};
 use crate::resolve::{Resolver, trimmed_span};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::{ExpansionStep, SourceSpan};
 
 /// The digest version. Bumping it changes every generated identity on
 /// purpose, which is why it is written down rather than implied by the code

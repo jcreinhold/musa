@@ -322,7 +322,7 @@ pub enum MarkArgument {
 
 impl MarkArgument {
     /// Which [`Argument`] this value satisfies.
-    pub(crate) fn kind(&self) -> Argument {
+    pub fn kind(&self) -> Argument {
         match self {
             Self::Text(_) => Argument::Text,
             Self::Number(_) => Argument::Number,
@@ -346,7 +346,7 @@ pub fn lookup_mark(name: &str) -> Option<&'static MarkDef> {
 
 /// Every mark's name, for the diagnostic that lists them and the suggestion
 /// that guesses among them.
-pub(crate) fn names() -> Vec<&'static str> {
+pub fn names() -> Vec<&'static str> {
     VOCABULARY.iter().map(|def| def.name).collect()
 }
 
@@ -355,7 +355,7 @@ pub(crate) fn names() -> Vec<&'static str> {
 /// Separate from [`names`] because the two sites accept different halves of
 /// the table: offering `pedal` to someone who wrote `g4 1/4 pedale;` would
 /// send them to a mark they cannot write there.
-pub(crate) fn note_names() -> Vec<&'static str> {
+pub fn note_names() -> Vec<&'static str> {
     VOCABULARY
         .iter()
         .filter(|def| matches!(def.anchor, Anchor::Note(_)))
@@ -364,7 +364,7 @@ pub(crate) fn note_names() -> Vec<&'static str> {
 }
 
 /// The names the `mark` statement accepts.
-pub(crate) fn statement_names() -> Vec<&'static str> {
+pub fn statement_names() -> Vec<&'static str> {
     VOCABULARY
         .iter()
         .filter(|def| matches!(def.anchor, Anchor::Point | Anchor::Span))

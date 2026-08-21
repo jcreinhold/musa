@@ -30,7 +30,7 @@ and provenance minted by the elaborator rather than allocated by the author. Thi
   derived nodes at scale, so a bug here shows up as two nodes that should be distinct sharing an identity.
 - `stdlib/src/adapters/staff.musa`'s `// ---- writing` section — the code this replaces, and the measurement prompt 145
   makes.
-- `crates/musa-compiler/src/expand.rs` — where the phase runs, and where a quote's `at here` node comes from.
+- `crates/musa-compiler/src/expand/mod.rs` — where the phase runs, and where a quote's `at here` node comes from.
 
 ## Design
 

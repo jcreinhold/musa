@@ -28,7 +28,7 @@ This is the prompt that closes it.
   index is awkward here it will be awkward everywhere.
 - Prompt [136](136-records-and-enums.md)'s Design paragraph on where each half lands. Collections split the same way,
   for the same reason, and 142 closes the seam.
-- `crates/musa-compiler/src/core.rs`'s existing `list` type and its eliminators, and prompt
+- `crates/musa-compiler/src/core/mod.rs`'s existing `list` type and its eliminators, and prompt
   [127dcfaa](127dcfaa-list-fold-direction.md), which decided which end a fold runs from. That decision stands; this
   prompt adds the other direction of travel, not a second fold.
 

@@ -58,8 +58,8 @@ use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
 use super::{Lowering, child, children, is_expr_node, is_type_node, own_tokens, writes};
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::trimmed_span;
+use musa_score::diagnose::{Code, Diagnostic};
 
 /// One declaration, read.
 ///
@@ -514,7 +514,7 @@ impl Lowering<'_> {
     /// than of what any one of them builds out of it.
     pub(super) fn parameters(&mut self, node: &SyntaxNode) -> Option<Vec<SyntaxNode>> {
         let written = written_parameters(node);
-        let mut seen: Vec<(Name, crate::SourceSpan)> = Vec::with_capacity(written.len());
+        let mut seen: Vec<(Name, musa_score::SourceSpan)> = Vec::with_capacity(written.len());
         for parameter in &written {
             let name = declared_name(parameter)?;
             if let Some((_, previous)) = seen.iter().find(|(taken, _)| *taken == name) {

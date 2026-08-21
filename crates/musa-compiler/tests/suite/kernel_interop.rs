@@ -19,9 +19,10 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    Realization, SourceDocument, check_kernel_text, kernel_normal_form, kernel_normalized_text, kernel_text,
-    kernel_text_meaning,
+    SourceDocument, check_kernel_text, kernel_normal_form, kernel_normalized_text, kernel_text, kernel_text_meaning,
 };
+
+use musa_score::Realization;
 
 /// The realization every fixture is pinned to.
 ///

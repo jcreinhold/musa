@@ -5,7 +5,9 @@
 // total for musa's magnitudes (see `musa-compiler/src/time.rs`).
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{Compilation, CompileOptions, MusicalDuration, SourceDocument, compile};
+use musa_compiler::{Compilation, CompileOptions, SourceDocument, compile};
+
+use musa_score::MusicalDuration;
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -31,7 +33,7 @@ fn messages(compilation: &Compilation) -> Vec<String> {
 /// about *what was rejected*: a message is writing and gets rewritten, and a
 /// test that breaks when a sentence improves is a test that discourages the
 /// improvement.
-fn reports(compilation: &Compilation, code: musa_compiler::Code, needle: &str) -> bool {
+fn reports(compilation: &Compilation, code: musa_score::Code, needle: &str) -> bool {
     compilation
         .diagnostics()
         .iter()
@@ -124,8 +126,8 @@ fn transpose_spells_correctly() {
         .events()
         .iter()
         .filter_map(|event| match &event.kind {
-            musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
-            musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
+            musa_score::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
+            musa_score::ScoreEventKind::Rest | musa_score::ScoreEventKind::Chord { .. } => None,
         })
         .collect();
     assert_eq!(spellings, vec!["g4", "g#4", "b4", "c5"]);
@@ -157,7 +159,7 @@ fn repeat_expands_iterations_with_provenance() {
     for (index, event) in voice.events().iter().enumerate() {
         assert_eq!(
             event.origin.expansion_path,
-            vec![musa_compiler::ExpansionStep::RepeatIteration(
+            vec![musa_score::ExpansionStep::RepeatIteration(
                 u32::try_from(index).unwrap_or(0)
             )]
         );
@@ -169,7 +171,7 @@ fn unknown_motif_is_an_error() {
     let compilation = compile_source("piece \"x\" { score { part p { voice v { use missing(); } } } }");
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::UnknownName, "`missing`"),
+        reports(&compilation, musa_score::Code::UnknownName, "`missing`"),
         "{:?}",
         messages(&compilation)
     );
@@ -319,7 +321,7 @@ fn a_motif_use_that_omits_an_argument_is_an_error() {
     );
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::WrongArity, "root"),
+        reports(&compilation, musa_score::Code::WrongArity, "root"),
         "{:?}",
         messages(&compilation)
     );
@@ -330,7 +332,7 @@ fn unknown_clef_is_an_error() {
     let compilation = compile_source("piece \"x\" { score { part p { clef soprano; voice v { c5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::UnknownWord, "`soprano`"),
+        reports(&compilation, musa_score::Code::UnknownWord, "`soprano`"),
         "{:?}",
         messages(&compilation)
     );
@@ -343,7 +345,7 @@ fn duplicate_part_is_an_error() {
         compile_source("piece \"x\" { score { part p { voice v { c5/1 } } part p { voice w { d5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::DuplicateName, "`p`"),
+        reports(&compilation, musa_score::Code::DuplicateName, "`p`"),
         "{:?}",
         messages(&compilation)
     );
@@ -355,7 +357,7 @@ fn duplicate_motif_is_an_error() {
         compile_source("piece \"x\" { motif m() { c5/1 } motif m() { d5/1 } score { part p { voice v { c5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
-        reports(&compilation, musa_compiler::Code::DuplicateName, "`m`"),
+        reports(&compilation, musa_score::Code::DuplicateName, "`m`"),
         "{:?}",
         messages(&compilation)
     );
@@ -497,7 +499,7 @@ proptest! {
         a in interval_literal(),
         b in interval_literal()
     ) {
-        let combined = musa_compiler::Interval {
+        let combined = musa_score::Interval {
             diatonic_steps: a.diatonic_steps.saturating_add(b.diatonic_steps),
             semitones: a.semitones.saturating_add(b.semitones),
         };
@@ -511,7 +513,7 @@ proptest! {
     /// Octave transposition preserves letter and accidental exactly.
     #[test]
     fn octave_transposition_preserves_spelling(pitch in pitch_literal()) {
-        let up = musa_compiler::Interval { diatonic_steps: 7, semitones: 12 };
+        let up = musa_score::Interval { diatonic_steps: 7, semitones: 12 };
         let moved = pitch.transpose(up);
         assert!(moved.is_some());
         if let Some(moved) = moved {
@@ -522,15 +524,15 @@ proptest! {
     }
 }
 
-fn pitch_literal() -> impl Strategy<Value = musa_compiler::WrittenPitch> {
-    (0i8..7, -2i32..=2, 1i32..7).prop_map(|(steps, accidental, octave)| musa_compiler::WrittenPitch {
-        letter: musa_compiler::Letter::from_steps(steps).unwrap_or(musa_compiler::Letter::C),
-        accidental: musa_compiler::Accidental(accidental),
+fn pitch_literal() -> impl Strategy<Value = musa_score::WrittenPitch> {
+    (0i8..7, -2i32..=2, 1i32..7).prop_map(|(steps, accidental, octave)| musa_score::WrittenPitch {
+        letter: musa_score::Letter::from_steps(steps).unwrap_or(musa_score::Letter::C),
+        accidental: musa_score::Accidental(accidental),
         octave,
     })
 }
 
-fn interval_literal() -> impl Strategy<Value = musa_compiler::Interval> {
+fn interval_literal() -> impl Strategy<Value = musa_score::Interval> {
     prop::sample::select(vec![
         (1i64, 1i64),
         (1, 2),
@@ -545,7 +547,7 @@ fn interval_literal() -> impl Strategy<Value = musa_compiler::Interval> {
         (-3, -5),
         (-4, -7),
     ])
-    .prop_map(|(diatonic_steps, semitones)| musa_compiler::Interval {
+    .prop_map(|(diatonic_steps, semitones)| musa_score::Interval {
         diatonic_steps,
         semitones,
     })

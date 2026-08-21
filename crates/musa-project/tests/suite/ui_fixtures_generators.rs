@@ -144,7 +144,7 @@ fn analysis_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "pivot-ambiguity.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let request = musa_compiler::AnalysisRequest::new(musa_compiler::AnalysisKind::Tonal);
+    let request = musa_score::AnalysisRequest::new(musa_score::AnalysisKind::Tonal);
     let mut json = serde_json::to_string_pretty(&session.analyze_wire(&request)?)?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("pivot-ambiguity.analysis.json"), &json)
@@ -200,7 +200,7 @@ fn open_form_fixtures_are_current() -> Result {
     let source = std::fs::read_to_string(example("loop-lengths.musa"))?;
     for (name, performance) in [("open-form", 4_u64), ("open-form-again", 8)] {
         let mut session = ProjectSession::from_text(source.clone(), "loop-lengths.musa");
-        session.realize(musa_compiler::Realization::seeded(performance));
+        session.realize(musa_score::Realization::seeded(performance));
         assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
         let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;

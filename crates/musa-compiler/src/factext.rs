@@ -51,13 +51,13 @@ use musa_kernel::{Canonical as _, PayloadText, TextPayload};
 use num_rational::Ratio;
 
 use crate::elaborate::{FactKind, ScoreFact};
-use crate::harmony::ChordSymbol;
-use crate::marks::{Mark, MarkArgument};
-use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
-use crate::pitch::{PitchClass, WrittenPitch};
-use crate::scope::Scope;
-use crate::score::{DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
-use crate::time::MusicalDuration;
+use musa_score::harmony::ChordSymbol;
+use musa_score::marks::{Mark, MarkArgument};
+use musa_score::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
+use musa_score::pitch::{PitchClass, WrittenPitch};
+use musa_score::scope::Scope;
+use musa_score::score::{DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
+use musa_score::time::MusicalDuration;
 
 impl PayloadText for ScoreFact {
     fn to_text(&self) -> String {
@@ -904,7 +904,7 @@ fn take_kind(words: &mut Words) -> Option<FactKind> {
             Some(FactKind::Meter { numerator, denominator })
         }
         "clef" => Some(FactKind::Clef {
-            clef: crate::Clef::parse(&words.bare()?)?,
+            clef: musa_score::Clef::parse(&words.bare()?)?,
         }),
         "tempo" => take_tempo(words),
         "section" => Some(FactKind::Section { name: words.quoted()? }),
@@ -1012,8 +1012,8 @@ mod tests {
     #![allow(clippy::expect_used)]
 
     use super::*;
-    use crate::score::Mode;
-    use crate::time::MusicalDuration;
+    use musa_score::score::Mode;
+    use musa_score::time::MusicalDuration;
 
     fn origin() -> Origin {
         Origin {
@@ -1162,7 +1162,7 @@ mod tests {
                 ramp: None,
             },
             FactKind::Clef {
-                clef: crate::Clef::parse("treble")?,
+                clef: musa_score::Clef::parse("treble")?,
             },
             FactKind::Section { name: String::new() },
             FactKind::Harmony {

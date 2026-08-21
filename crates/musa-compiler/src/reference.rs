@@ -184,7 +184,7 @@ mod tests {
         let problems: Vec<&str> = compilation
             .diagnostics()
             .iter()
-            .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+            .filter(|diagnostic| diagnostic.severity == musa_score::diagnose::Severity::Error)
             .map(|diagnostic| diagnostic.message.as_str())
             .collect();
         assert!(problems.is_empty(), "{problems:?}");

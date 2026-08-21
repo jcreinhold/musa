@@ -1,8 +1,8 @@
 #![allow(clippy::arithmetic_side_effects)]
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::score::ScoreSnapshot;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::score::ScoreSnapshot;
 
 use super::Resolver;
 
@@ -19,7 +19,7 @@ pub(crate) fn check_groove_has_a_meter(resolver: &mut Resolver, snapshot: &Score
         return;
     }
     for (id, part) in snapshot.parts().iter() {
-        let bars = snapshot.bars(crate::Scope::Part { part: id.0 });
+        let bars = snapshot.bars(musa_score::Scope::Part { part: id.0 });
         let Some(profile) = snapshot.profiles().for_part(part.name()) else {
             continue;
         };
@@ -47,7 +47,7 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
         // Whose barlines: a part in 7/8 stops short of *its* barline, and
         // measuring it against the piece's 4/4 would complain about music
         // that is right (polymeter).
-        let bars = snapshot.bars(crate::Scope::Part { part: id.0 });
+        let bars = snapshot.bars(musa_score::Scope::Part { part: id.0 });
         for (voice_id, voice) in part.voices() {
             // A voice that holds a note as long as it likes is not measured
             // after that note: how far it reaches is the performance's
@@ -57,23 +57,23 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
                 continue;
             }
             let span = voice.span();
-            let end = crate::MusicalTime::ZERO + span;
+            let end = musa_score::MusicalTime::ZERO + span;
             // Unmeasured music stops where it stops. "Part-way through a
             // measure" is a complaint about barlines, and there are none.
             if !bars.meter_at(end).is_measured() {
                 continue;
             }
             let stops = bars.at(end);
-            if span.as_ratio() != Ratio::ZERO && stops.into != crate::MusicalDuration::ZERO {
+            if span.as_ratio() != Ratio::ZERO && stops.into != musa_score::MusicalDuration::ZERO {
                 let name = part.voice_name(voice_id).unwrap_or("?");
                 // No span: this is a fact about a whole voice, and pointing
                 // at its first note would send the reader somewhere the
                 // mistake probably is not.
                 // How far past the last barline the voice stops, said in the
                 // units the composer writes durations in.
-                let measure = bars.measure_at(crate::MusicalTime::ZERO + span);
+                let measure = bars.measure_at(musa_score::MusicalTime::ZERO + span);
                 let finished = stops.measure;
-                let short = (measure.end - (crate::MusicalTime::ZERO + span)).as_ratio();
+                let short = (measure.end - (musa_score::MusicalTime::ZERO + span)).as_ratio();
                 resolver.report(
                     Diagnostic::warning(
                         Code::DoesNotAddUp,

@@ -37,7 +37,7 @@
 
 use std::collections::HashMap;
 
-use musa_compiler::{ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, Slot, WrittenPitch};
+use musa_score::{ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, Slot, WrittenPitch};
 use num_rational::Ratio;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -313,13 +313,13 @@ fn clef_sign_line(clef: Clef) -> (&'static str, &'static str) {
 
 fn step_of(pitch: WrittenPitch) -> &'static str {
     match pitch.letter {
-        musa_compiler::Letter::C => "C",
-        musa_compiler::Letter::D => "D",
-        musa_compiler::Letter::E => "E",
-        musa_compiler::Letter::F => "F",
-        musa_compiler::Letter::G => "G",
-        musa_compiler::Letter::A => "A",
-        musa_compiler::Letter::B => "B",
+        musa_score::Letter::C => "C",
+        musa_score::Letter::D => "D",
+        musa_score::Letter::E => "E",
+        musa_score::Letter::F => "F",
+        musa_score::Letter::G => "G",
+        musa_score::Letter::A => "A",
+        musa_score::Letter::B => "B",
     }
 }
 
@@ -753,13 +753,13 @@ fn write_harmony(xml: &mut Xml, chord: &ChordSymbol, onset: Ratio<i64>, division
 
 fn chord_step(chord: &ChordSymbol) -> &'static str {
     match chord.root().letter {
-        musa_compiler::Letter::C => "C",
-        musa_compiler::Letter::D => "D",
-        musa_compiler::Letter::E => "E",
-        musa_compiler::Letter::F => "F",
-        musa_compiler::Letter::G => "G",
-        musa_compiler::Letter::A => "A",
-        musa_compiler::Letter::B => "B",
+        musa_score::Letter::C => "C",
+        musa_score::Letter::D => "D",
+        musa_score::Letter::E => "E",
+        musa_score::Letter::F => "F",
+        musa_score::Letter::G => "G",
+        musa_score::Letter::A => "A",
+        musa_score::Letter::B => "B",
     }
 }
 
@@ -843,12 +843,12 @@ fn write_span(xml: &mut Xml, span: &crate::plan::SpanMark, start: bool) -> Resul
     // An octave shift says how far in `@size`, where 8 is one octave; the
     // sign is already in `<direction>`'s own up/down type words.
     let size = match span.argument {
-        Some(musa_compiler::MarkArgument::Number(shift)) if shift.abs() >= 2 => "15",
+        Some(musa_score::MarkArgument::Number(shift)) if shift.abs() >= 2 => "15",
         _ => "8",
     };
     let kind = if name == "octave-shift" && start {
         match span.argument {
-            Some(musa_compiler::MarkArgument::Number(shift)) if shift < 0 => "up",
+            Some(musa_score::MarkArgument::Number(shift)) if shift < 0 => "up",
             _ => "down",
         }
     } else {

@@ -22,7 +22,7 @@ data StaffRead {
 ```
 
 is refused with "`StaffRead` occurs in `Body` where a recursive occurrence is not allowed", and
-[`family.rs`](../../../crates/musa-calculus/src/family.rs)'s module doc records the narrowing deliberately, offering
+[`family.rs`](../../../crates/musa-calculus/src/family/mod.rs)'s module doc records the narrowing deliberately, offering
 "written as a mutual declaration instead" as the repair.
 
 The repair does not hold up. Writing the mutual declaration means hand-rolling a second list family per containing type
@@ -65,8 +65,8 @@ by the same sentence that refused them before.
 
 Whether `List<X>` is positive in `X` is a question about `List`, not about the field. So [`Group`] gains one flag per
 parameter, computed in `declare_data` after the constructors are built and stored beside them — the same arrangement
-[`Constructor::recursive`](../../../crates/musa-calculus/src/family.rs) already has, and for its reason: the positivity
-check and every later reader must be the same list rather than two derivations that can disagree.
+[`Constructor::recursive`](../../../crates/musa-calculus/src/family/mod.rs) already has, and for its reason: the
+positivity check and every later reader must be the same list rather than two derivations that can disagree.
 
 A parameter is positive when, in every constructor field of every family in its group, each occurrence of it is either
 the field type itself, an argument at a positive parameter of an applied family, or an argument of a family *in this
@@ -79,7 +79,7 @@ pass — which is also why this is a lookup rather than an analysis rerun per fi
 
 ### A nested field is not a recursive field
 
-[`Constructor::recursive`](../../../crates/musa-calculus/src/family.rs) stays the direct occurrences only, so the
+[`Constructor::recursive`](../../../crates/musa-calculus/src/family/mod.rs) stays the direct occurrences only, so the
 generated recursor gives **no induction hypothesis** for a nested field. That is a real weakening and it is the
 decision, not an omission:
 

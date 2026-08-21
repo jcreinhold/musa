@@ -4,8 +4,8 @@ use musa_language::ast::{AstNode as _, ImportStmt};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::compile::{CompileOptions, SourceDocument};
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 use super::Charges;
 use super::ExpansionRecord;

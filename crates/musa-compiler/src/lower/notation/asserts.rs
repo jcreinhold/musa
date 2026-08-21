@@ -4,8 +4,8 @@ use musa_calculus::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, child, is_expr_node};
+use musa_score::diagnose::{Code, Diagnostic};
 
 use super::*;
 impl Lowering<'_> {
@@ -27,7 +27,7 @@ impl Lowering<'_> {
     /// [`crate::registry::argument`] reads it back.
     ///
     /// The one trace an assertion leaves in the music is
-    /// [`crate::origin::ExpansionStep::Assertion`] on the facts inside the
+    /// [`musa_score::origin::ExpansionStep::Assertion`] on the facts inside the
     /// braces, which is Origin and therefore invisible to `≈facts` — the
     /// identity `05-verification.md` asks for, that a claim which holds gives
     /// back exactly the passage it was written on. The step carries the claim
@@ -57,7 +57,7 @@ impl Lowering<'_> {
         Some(stamped(
             origin,
             span,
-            crate::origin::ExpansionStep::Assertion {
+            musa_score::origin::ExpansionStep::Assertion {
                 claim: spelled_claim(predicate, &statement),
             },
             passage,
@@ -73,17 +73,17 @@ impl Lowering<'_> {
         &mut self,
         statement: &musa_language::ast::AssertStmt,
         node: &SyntaxNode,
-    ) -> Option<&'static crate::assert::Predicate> {
+    ) -> Option<&'static musa_score::assert::Predicate> {
         let name = statement.claim().unwrap_or_default();
-        if let Some(predicate) = crate::assert::predicate(&name) {
+        if let Some(predicate) = musa_score::assert::predicate(&name) {
             return Some(predicate);
         }
-        let known: Vec<&str> = crate::assert::names().collect();
+        let known: Vec<&str> = musa_score::assert::names().collect();
         self.refuse(
             Diagnostic::error(Code::UnknownName, format!("nothing is claimed by `{name}`"))
                 .at(claim_span(statement, node), "not a claim musa can prove")
                 .maybe_help(
-                    crate::diagnose::nearest(&name, known.iter().copied())
+                    musa_score::diagnose::nearest(&name, known.iter().copied())
                         .map(|near| format!("did you mean `{near}`?")),
                 )
                 .note(format!("the claims are: {}", known.join(", "))),
@@ -99,11 +99,11 @@ impl Lowering<'_> {
     /// scale where a count was wanted.
     pub(crate) fn claim_arguments(
         &mut self,
-        predicate: &'static crate::assert::Predicate,
+        predicate: &'static musa_score::assert::Predicate,
         statement: &musa_language::ast::AssertStmt,
         node: &SyntaxNode,
     ) -> Option<Vec<Argued>> {
-        use crate::assert::{Argument, ParamType};
+        use musa_score::assert::{Argument, ParamType};
 
         let written = statement.args();
         if written.len() != predicate.parameters.len() {
@@ -118,8 +118,8 @@ impl Lowering<'_> {
                     Code::WrongArity,
                     format!(
                         "`{name}` takes {}, and {} written",
-                        crate::assert::spell_arguments(predicate.parameters.len()),
-                        crate::assert::spell_written(written.len())
+                        musa_score::assert::spell_arguments(predicate.parameters.len()),
+                        musa_score::assert::spell_written(written.len())
                     ),
                 )
                 .at(claim_span(statement, node), "this claim's arguments do not match it")
@@ -166,13 +166,13 @@ impl Lowering<'_> {
         Some(Argued::Value(Raw::annot(origin, term, ty)))
     }
 
-    /// One of [`crate::assert::Realization`]'s three words.
-    pub(crate) fn policy(&mut self, node: &SyntaxNode) -> Option<crate::assert::Realization> {
+    /// One of [`musa_score::assert::Realization`]'s three words.
+    pub(crate) fn policy(&mut self, node: &SyntaxNode) -> Option<musa_score::assert::Realization> {
         let word = word(node);
-        if let Some(policy) = crate::assert::Realization::named(&word) {
+        if let Some(policy) = musa_score::assert::Realization::named(&word) {
             return Some(policy);
         }
-        let spellings: Vec<&str> = crate::assert::Realization::ALL
+        let spellings: Vec<&str> = musa_score::assert::Realization::ALL
             .iter()
             .map(|policy| policy.as_str())
             .collect();
@@ -180,7 +180,7 @@ impl Lowering<'_> {
             Diagnostic::error(Code::UnknownWord, format!("`{word}` is not a realization policy"))
                 .at(crate::resolve::trimmed_span(node), "expected one of three words")
                 .maybe_help(
-                    crate::diagnose::nearest(&word, spellings.iter().copied())
+                    musa_score::diagnose::nearest(&word, spellings.iter().copied())
                         .map(|near| format!("did you mean `{near}`?")),
                 )
                 .note(
@@ -191,12 +191,12 @@ impl Lowering<'_> {
     }
 
     /// The id of a voice-leading rule an assertion may name.
-    pub(crate) fn rule_named(&mut self, node: &SyntaxNode) -> Option<crate::analysis::RuleName> {
+    pub(crate) fn rule_named(&mut self, node: &SyntaxNode) -> Option<musa_score::analysis::RuleName> {
         let word = word(node);
-        if let Some(rule) = crate::analysis::assertable().find(|rule| rule.id() == word) {
+        if let Some(rule) = musa_score::analysis::assertable().find(|rule| rule.id() == word) {
             return Some(rule);
         }
-        let assertable: Vec<&str> = crate::analysis::assertable().map(|rule| rule.id()).collect();
+        let assertable: Vec<&str> = musa_score::analysis::assertable().map(|rule| rule.id()).collect();
         self.refuse(
             Diagnostic::error(
                 Code::UnknownWord,
@@ -207,7 +207,7 @@ impl Lowering<'_> {
                 "expected the id of a voice-leading rule",
             )
             .maybe_help(
-                crate::diagnose::nearest(&word, assertable.iter().copied())
+                musa_score::diagnose::nearest(&word, assertable.iter().copied())
                     .map(|near| format!("did you mean `{near}`?")),
             )
             .help(format!("the rules a source may assert are: {}", assertable.join(", ")))

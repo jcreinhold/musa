@@ -31,9 +31,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severity, SourceDocument, WrittenPitch, compile,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity, WrittenPitch};
 
 const SCHEMAS: &str = include_str!("../../../../stdlib/src/tonal/schemas.musa");
 const RULE_EXAMPLE: &str = include_str!("../../../../examples/rule-of-the-octave.musa");
@@ -510,7 +510,7 @@ fn the_examples_compile_and_reach_the_libraries() {
             assert_eq!(
                 errors,
                 [(
-                    musa_compiler::Code::ResourceLimit,
+                    musa_score::Code::ResourceLimit,
                     "evaluation exceeded the budget for reduction steps at 200001 of 200000".to_owned()
                 )],
                 "{name} fails only the way it is known to fail"

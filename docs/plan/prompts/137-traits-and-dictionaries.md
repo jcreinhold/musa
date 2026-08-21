@@ -117,7 +117,7 @@ prompt adds.
   resolution with local-beats-global and postponement, and the generated `Storable` instances.
 - `Cx` carries a `PackageId` and the `Classes` in scope, the way it already carries a `ModuleId` and its declared
   groups; `Raw` gains `RawTrait`, `RawImpl`, `RawConstraint`, and the method and `where` forms they need.
-- The `Refusal` variants these checks report, and their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs`:
+- The `Refusal` variants these checks report, and their `musa explain` codes in `crates/musa-score/src/diagnose.rs`:
   duplicate instance, orphan impl, unresolved instance, non-terminating instance head, and hand-written `Storable`,
   beside the declaration-shape refusals (reserved or headless class, duplicate or missing or unknown method, a replaced
   derived method, wrong class arity, a blanket instance).

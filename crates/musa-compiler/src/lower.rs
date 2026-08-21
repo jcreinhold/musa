@@ -73,10 +73,10 @@ use num_rational::Ratio;
 use musa_calculus::{Origin, Raw};
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 
-use crate::diagnose::Diagnostic;
 use crate::module::{Modules, NameScope};
-use crate::origin::SourceSpan;
 use crate::resolve::Resolver;
+use musa_score::diagnose::Diagnostic;
+use musa_score::origin::SourceSpan;
 
 /// Every surface node a raw term was read from, numbered.
 ///
@@ -93,7 +93,7 @@ use crate::resolve::Resolver;
 /// two words and would have to cross into `musa-calculus`, which is a leaf that must
 /// not learn what a file is. So the span stays here and the core carries an
 /// index into here, which is the same arrangement
-/// [`crate::derivation`](crate::derivation) already uses for the same reason.
+/// [`musa_score::derivation`](musa_score::derivation) already uses for the same reason.
 #[derive(Debug, Default)]
 pub(crate) struct Sites {
     spans: Vec<SourceSpan>,
@@ -118,7 +118,7 @@ pub(crate) struct Sites {
     ///
     /// Beside the span table because it is the other thing a document numbers
     /// once and every walk of it shares: a [`Lowering`] lives for one
-    /// declaration, and a [`crate::origin::DeclarationId`] has to be unique
+    /// declaration, and a [`musa_score::origin::DeclarationId`] has to be unique
     /// across all of them. See [`Sites::declaring`].
     declarations: u32,
 }
@@ -133,7 +133,7 @@ pub(crate) struct Sites {
 /// scan in [`Sites::brought`] is over files, not over sites.
 #[derive(Debug)]
 struct Brought {
-    /// The file, by the key the import resolved to. [`crate::diagnose::Cause`]
+    /// The file, by the key the import resolved to. [`musa_score::diagnose::Cause`]
     /// names a document by this, which is how a consumer finds the text a
     /// foreign span is a span in.
     path: String,
@@ -243,7 +243,7 @@ impl Sites {
 
     /// The next block of notation this document reads, numbered.
     ///
-    /// A [`crate::origin::DeclarationId`] names the declaration a fact was
+    /// A [`musa_score::origin::DeclarationId`] names the declaration a fact was
     /// written in, and the two places a block of notation begins ask for one:
     /// [`notation::Lowering::music`], which every motif, fragment, named bar,
     /// and `music` value goes through, and [`piece::Lowering::piece`], which
@@ -253,9 +253,9 @@ impl Sites {
     /// Handed out in reading order rather than derived from the node, which is
     /// what makes it an *ordinal* and not a second name for the span: two
     /// blocks are two numbers however alike their text.
-    pub(crate) fn declaring(&mut self) -> crate::origin::DeclarationId {
+    pub(crate) fn declaring(&mut self) -> musa_score::origin::DeclarationId {
         self.declarations = self.declarations.saturating_add(1);
-        crate::origin::DeclarationId(self.declarations)
+        musa_score::origin::DeclarationId(self.declarations)
     }
 
     /// The file `origin` was read out of, when it was not this document's own
@@ -335,7 +335,7 @@ pub(crate) struct Lowering<'a> {
     /// carries is the names, and the empty path is a voice's own — which is
     /// deliberately the *same* place in every voice, because the k-th site in
     /// every voice is the k-th site.
-    choice: crate::ChoicePath,
+    choice: musa_score::ChoicePath,
     /// How many passes each ranged repeat this walk has read plays, by the span
     /// of the statement that wrote it.
     ///
@@ -346,7 +346,7 @@ pub(crate) struct Lowering<'a> {
     /// differently, so the answer is kept rather than re-derived — which is the
     /// same rule that puts a resolved meter in [`notation::Reading`] rather than
     /// re-reading the token.
-    counts: HashMap<crate::origin::SourceSpan, u32>,
+    counts: HashMap<musa_score::origin::SourceSpan, u32>,
     /// How long each freely-held note this walk has read actually sounds, by the
     /// span of the statement that wrote it.
     ///
@@ -354,7 +354,7 @@ pub(crate) struct Lowering<'a> {
     /// can carry: `c5/4 to 2/1` is drawn as a quarter and sounds whatever the
     /// realization chose, and the statement's *sounding* length is what the
     /// region enclosing it has to measure.
-    holds: HashMap<crate::origin::SourceSpan, Ratio<i64>>,
+    holds: HashMap<musa_score::origin::SourceSpan, Ratio<i64>>,
 }
 
 /// How a written name reads here, when something above ordinary scoping has a
@@ -476,7 +476,7 @@ impl<'a> Lowering<'a> {
             scrutinee_categories: Vec::new(),
             minted: 0,
             claims: Vec::new(),
-            choice: crate::ChoicePath::default(),
+            choice: musa_score::ChoicePath::default(),
             counts: HashMap::new(),
             holds: HashMap::new(),
         }
@@ -597,10 +597,10 @@ impl<'a> Lowering<'a> {
     /// Sites written among a voice's own items are numbered from zero in every
     /// voice, so the k-th of them is the *same* site in all of them — which is
     /// what makes a repeat the page can draw take one count rather than one per
-    /// voice. See [`crate::ChoicePath`], and
+    /// voice. See [`musa_score::ChoicePath`], and
     /// `docs/rules/kernel/11-realization.md` for why identity is the path.
     fn restart_sites(&mut self) {
-        self.resolver.sites.remove(&crate::ChoicePath::default());
+        self.resolver.sites.remove(&musa_score::ChoicePath::default());
     }
 }
 
@@ -678,11 +678,11 @@ fn paired<T>(mut members: Vec<T>, pair: impl Fn(T, T) -> T) -> Option<T> {
 /// other than where they were written: [`piece`] at an instance site, whose step
 /// is the site's structural address, and [`kernel`] at a `${…}`, whose step is
 /// the locus the hole stands at.
-pub(crate) fn expansion(at: SourceSpan, step: crate::origin::ExpansionStep) -> crate::origin::Origin {
-    crate::origin::Origin {
+pub(crate) fn expansion(at: SourceSpan, step: musa_score::origin::ExpansionStep) -> musa_score::origin::Origin {
+    musa_score::origin::Origin {
         source_span: at,
         definition_span: at,
-        declaration: crate::origin::DeclarationId(0),
+        declaration: musa_score::origin::DeclarationId(0),
         expansion_path: vec![step],
     }
 }

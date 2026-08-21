@@ -28,8 +28,8 @@ says what the implementation owes instead. This prompt discharges it.
   §"Gates and budgets" — the 10% relative gate, and the end-to-end authority in `docs/rules/desktop/06-performance.md`:
   B1 is ≤120 ms after debounce and B2 is ≤400 ms with the previous engraving visible. Those two are what a musician
   actually experiences, so they are the numbers that decide whether this prompt is done.
-- `crates/musa-compiler/src/diagnose.rs` and `crates/musa/src/main.rs`'s `cmd_explain` — the existing diagnostic
-  vocabulary and the rule that every code has an explainable rule behind it.
+- `crates/musa-score/src/diagnose.rs` and `crates/musa/src/main.rs`'s `cmd_explain` — the existing diagnostic vocabulary
+  and the rule that every code has an explainable rule behind it.
 - Every `Code` variant added by prompts 134, 135, 136a, 137, 137a, 139, and 140, and the message each currently
   produces. Those were written to be correct; this prompt makes them good.
 - The `rust-performance` skill's workflow in full — name the workload, reuse the nearest credible bench, find what
@@ -41,22 +41,22 @@ says what the implementation owes instead. This prompt discharges it.
   The first half is implemented and does not bound what it claims to; the second is not implemented on the new path at
   all. §4.1 also fixes what may move without a version bump — shrinking the frame ceiling is free, raising the limit is
   a cost-table version bump — which is the constraint every option below is scored against.
-- `crates/musa-compiler/src/core.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
+- `crates/musa-compiler/src/core/mod.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
   discharge of that obligation: a scoped thread of `NESTING × FRAME_CEILING`, derived rather than picked, with the wasm
   fallback beside it. `musa-calculus` has no equivalent, and the shape of the answer is probably this one moved.
 - `crates/musa-calculus/src/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above
   `eval.rs`'s `fn pi` — the ~2 KiB per level that note records, and, more to the point, **what it is a measurement of**:
   `eval` recursing into itself. The chain a real program drives is `infer → check → eval → apply → infer`, and it costs
   five times that.
-- `crates/musa-compiler/src/expand.rs`'s `nested_region` helper and the two laws beside it,
+- `crates/musa-compiler/src/expand/mod.rs`'s `nested_region` helper and the two laws beside it,
   `a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal` and
   `a_region_nested_deeper_than_anyone_writes_still_expands` — the second's doc comment records a measurement taken
   during 142 and explicitly declines to decide the number, because the number is this prompt's. Read it against
   `Budget::NESTING`'s own doc claim, "past anything a person writes and short of anything a host cannot hold", which was
   written about an evaluator that no longer exists.
-- `crates/musa-calculus/src/elab.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged nothing
-  for nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
-- `crates/musa-compiler/src/lower/notation.rs`'s `notated`, at the line that writes
+- `crates/musa-calculus/src/elab/mod.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged
+  nothing for nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
+- `crates/musa-compiler/src/lower/notation/mod.rs`'s `notated`, at the line that writes
   `built = applied(origin, follow, [built, next])` — the voice fold's left-nested `follow` spine. One statement, one
   level of function position, one frame of elaboration; the depth of a voice's term is the number of notes in it.
 - `apps/musa-desktop/src-tauri/src/session.rs`'s `spawn` — the session thread, created with a name and no `stack_size`,

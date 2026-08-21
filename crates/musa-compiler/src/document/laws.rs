@@ -318,7 +318,7 @@ fn a_refusal_about_a_name_is_restated_through_the_documents_own_sites() {
     let document = document("library { let held: Nat = 1; }");
     let error = document.value("absent").expect_err("`absent` is not bound");
     let restated = crate::lower::refusals::restate(document.sites(), &error);
-    assert_eq!(restated.code, crate::diagnose::Code::UnknownName);
+    assert_eq!(restated.code, musa_score::diagnose::Code::UnknownName);
     assert!(
         restated.labels.is_empty(),
         "a name the reading never numbered has nowhere to point: {:?}",
@@ -364,7 +364,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
                 crate::imports::Imported {
                     path: &path,
                     qualifier: None,
-                    at: crate::origin::SourceSpan::new(0, 0),
+                    at: musa_score::origin::SourceSpan::new(0, 0),
                 },
             )
         })
@@ -571,7 +571,7 @@ fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
     );
     assert_eq!(one.nodes().len(), 1, "`machine(p)` describes the unit inside it");
     assert_eq!(
-        one.nodes().first().and_then(crate::machine::SpecNode::id),
+        one.nodes().first().and_then(musa_score::machine::SpecNode::id),
         Some("scale")
     );
 
@@ -581,7 +581,7 @@ fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
     for child in chained
         .nodes()
         .get(root)
-        .map(crate::machine::SpecNode::children)
+        .map(musa_score::machine::SpecNode::children)
         .unwrap_or_default()
     {
         assert!(*child < root, "a node's children precede it");
@@ -618,7 +618,7 @@ fn an_open_machine_is_refused_until_its_ports_are_written() {
     assert_eq!(name, "decided");
     assert_eq!((described.input(), described.output()), ("Ratio", "Ratio"));
     assert_eq!(
-        described.nodes().first().map(crate::machine::SpecNode::form),
-        Some(crate::machine::SpecForm::Identity)
+        described.nodes().first().map(musa_score::machine::SpecNode::form),
+        Some(musa_score::machine::SpecForm::Identity)
     );
 }

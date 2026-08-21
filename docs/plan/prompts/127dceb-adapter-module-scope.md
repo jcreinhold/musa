@@ -24,9 +24,9 @@ on `Text`.
   catching up to it, not a new decision.
 - Prompt 127da's phase environment and `SYNTAX_OWNERSHIP`; prompt 127dcb's `expand : Syntax -> Result<Syntax, (Syntax,
   Text)>`; prompt 127dce's three levels and their `let level = …` declaration.
-- `crates/musa-compiler/src/expand.rs`: `declaration_of` and `declared_body`, which are the text slice, and every caller
-  of them — `level_of`, `editor_of`, and the `print` lookup.
-- `crates/musa-compiler/src/core.rs`: `run_transformer`, which is the splice; `check_and_evaluate_metered` and
+- `crates/musa-compiler/src/expand/mod.rs`: `declaration_of` and `declared_body`, which are the text slice, and every
+  caller of them — `level_of`, `editor_of`, and the `print` lookup.
+- `crates/musa-compiler/src/core/mod.rs`: `run_transformer`, which is the splice; `check_and_evaluate_metered` and
   `root_checker`, which are how an ordinary module is checked, and where `Reading::Source` is written in by hand;
   `Reading::Expansion`; `SyntaxOp::instantiate`; `BUILTIN_OWNERSHIP` and the δ-family entries around `ratio_equal`.
 - `crates/musa-language/src/syntax_kind.rs`: `Integer`, `Rational`, and `Float` — the lexer already keeps `3/8` whole,

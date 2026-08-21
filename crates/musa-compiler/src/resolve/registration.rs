@@ -2,10 +2,10 @@
 use musa_language::SyntaxKind;
 use musa_language::ast::{AstNode as _, FrontMatterRole, PieceDecl};
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
-use crate::profile::ProfileSet;
-use crate::score::ScoreSnapshot;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::profile::ProfileSet;
+use musa_score::score::ScoreSnapshot;
 
 use super::{NameKind, Resolver, parse_meter, parse_profiles, span_of, token_span, trimmed_span};
 
@@ -132,7 +132,7 @@ pub(crate) fn register_motifs(
         {
             resolver.references.declare(NameKind::Motif, &name, name_span);
         }
-        snapshot.push_motif(crate::score::MotifDeclaration {
+        snapshot.push_motif(musa_score::score::MotifDeclaration {
             name: name.clone(),
             span,
         });
@@ -163,7 +163,7 @@ pub(crate) fn register_fragments(
         {
             resolver.references.declare(NameKind::Fragment, &name, name_span);
         }
-        snapshot.push_motif(crate::score::MotifDeclaration {
+        snapshot.push_motif(musa_score::score::MotifDeclaration {
             name: name.clone(),
             span,
         });
@@ -193,7 +193,7 @@ pub(crate) fn register_bars(
         if let Some(name_span) = token_span(bar.syntax(), SyntaxKind::Identifier) {
             resolver.references.declare(NameKind::Bar, &name, name_span);
         }
-        snapshot.push_motif(crate::score::MotifDeclaration {
+        snapshot.push_motif(musa_score::score::MotifDeclaration {
             name: name.clone(),
             span,
         });

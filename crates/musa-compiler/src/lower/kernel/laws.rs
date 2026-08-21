@@ -23,8 +23,8 @@ use num_rational::Ratio;
 
 use crate::document::{Source, elaborate};
 use crate::elaborate::{FactKind, VoiceTrack};
-use crate::origin::ExpansionStep;
 use crate::resolve::Resolver;
+use musa_score::origin::ExpansionStep;
 
 /// A piece whose one voice uses a quote of `body`, assembled and read back.
 ///

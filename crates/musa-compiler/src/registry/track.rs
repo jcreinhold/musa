@@ -69,13 +69,13 @@ use num_rational::Ratio;
 
 use super::rules::{items, nat, read, reduced, refused};
 use super::{HERE, held, literal, plain_type, tagged_type};
-use crate::Interval;
 use crate::core::Coordinate;
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
-use crate::origin::{ExpansionStep, Origin};
-use crate::pitch::WrittenPitch;
-use crate::scope::Scope;
-use crate::score::NotatedDuration;
+use musa_score::Interval;
+use musa_score::origin::{ExpansionStep, Origin};
+use musa_score::pitch::WrittenPitch;
+use musa_score::scope::Scope;
+use musa_score::score::NotatedDuration;
 
 /// The eight source words of `BUILTIN_OWNERSHIP`'s track family, in the order
 /// the table writes them.
@@ -599,7 +599,7 @@ const PLAY: Rule = |arguments| {
     };
     let origin = &held::<Provenance>(written)?.0;
     let scope = scope_of(arguments.get(1)?)?;
-    let voicing = read::<crate::chord::Voicing>(arguments.get(2)?)?;
+    let voicing = read::<musa_score::chord::Voicing>(arguments.get(2)?)?;
     let sounding = read::<Ratio<i64>>(arguments.get(3)?)?;
     if sounding <= Ratio::ZERO {
         return Some(refused("a chord sounds for longer than no time at all"));

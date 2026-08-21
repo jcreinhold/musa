@@ -20,8 +20,10 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    AdapterEditError, AdapterPrintError, CompileOptions, ScoreEventKind, SourceDocument, adapter_edits, adapter_print,
+    AdapterEditError, AdapterPrintError, CompileOptions, SourceDocument, adapter_edits, adapter_print,
 };
+
+use musa_score::ScoreEventKind;
 
 /// The bridge from the package's data into music, as `staff_expansion_laws`
 /// draws it: one note per realized span, shifted to its onset and stretched to

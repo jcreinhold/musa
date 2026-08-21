@@ -20,7 +20,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use musa_compiler::{ChoicePath, Decision, Realization};
+use musa_score::{ChoicePath, Decision, Realization};
 use serde::{Deserialize, Serialize};
 
 /// The suffix a realization takes: `sonata.musa` → `sonata.musa.performance`.

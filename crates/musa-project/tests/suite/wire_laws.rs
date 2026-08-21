@@ -171,7 +171,7 @@ fn a_bundled_declaration_travels_as_a_uri_and_never_as_a_span() {
 #[test]
 fn a_reading_arrives_in_code_units_and_names_the_compile_it_read() {
     let mut session = musa_project::ProjectSession::from_text(ACCENTED, "accented.musa");
-    let request = musa_compiler::AnalysisRequest::new(musa_compiler::AnalysisKind::Facts);
+    let request = musa_score::AnalysisRequest::new(musa_score::AnalysisKind::Facts);
     let reading = session.analyze_wire(&request).expect("the piece compiles");
 
     let revision = reading.pointer("/revision").and_then(Value::as_u64);

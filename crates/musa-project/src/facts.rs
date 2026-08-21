@@ -10,11 +10,11 @@
 //! rational so the interface can typeset a real fraction
 //! (`01-visual-language.md` §3) rather than a decimal.
 
-use musa_compiler::{
+use musa_language::HeaderField;
+use musa_score::{
     ExpansionStep, IntegratedTempoMap, Interval, Mode, MusicalTime, Origin, PerformanceOptions, PitchClass, Scope,
     ScoreEventKind, ScoreSnapshot, WrittenPitch,
 };
-use musa_language::HeaderField;
 use serde::Serialize;
 use serde::ser::SerializeStruct;
 
@@ -407,8 +407,8 @@ impl ScoreFacts {
     pub(crate) fn derive(
         score: &ScoreSnapshot,
         source: &str,
-        taken: &[musa_compiler::DecisionRecord],
-        derivation: Option<&musa_compiler::Derivation>,
+        taken: &[musa_score::DecisionRecord],
+        derivation: Option<&musa_score::Derivation>,
     ) -> Self {
         let lines = LineIndex::new(source);
         let decisions: Vec<DecisionFact> = taken
@@ -494,7 +494,7 @@ impl ScoreFacts {
                     }
                     generated |= origin.generated;
                     let onset = event.onset.as_ratio();
-                    let position = bars.at(musa_compiler::MusicalTime::new(onset));
+                    let position = bars.at(musa_score::MusicalTime::new(onset));
                     let (bar, beat_in_bar) = (position.measure, position.beat);
                     let pitches = pitches_of(&event.kind);
                     // Exact rational arithmetic on musical time, which is not
@@ -515,12 +515,12 @@ impl ScoreFacts {
                         beat: Fraction::from_ratio(beat_in_bar),
                         key: score
                             .key_at(
-                                musa_compiler::Scope::Part { part: part.id().0 },
-                                musa_compiler::MusicalTime::new(onset),
+                                musa_score::Scope::Part { part: part.id().0 },
+                                musa_score::MusicalTime::new(onset),
                             )
                             .map(|key| format!("{} {}", pitch_class(key.tonic()), mode(key.mode()))),
                         clef: score
-                            .clef_at(part.id(), musa_compiler::MusicalTime::new(onset))
+                            .clef_at(part.id(), musa_score::MusicalTime::new(onset))
                             .map(|clef| clef.name().to_owned()),
                         onset_frames: tempo.frames(event.onset),
                         end_frames: tempo.frames(end),
@@ -581,7 +581,7 @@ fn outline_facts(
     score: &ScoreSnapshot,
     events: &[EventFacts],
     lines: &LineIndex,
-    bars: &musa_compiler::BarLines,
+    bars: &musa_score::BarLines,
     tempo: &IntegratedTempoMap,
 ) -> Vec<OutlineFacts> {
     let mut rows: Vec<(u64, OutlineFacts)> = Vec::new();
@@ -817,7 +817,7 @@ fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts
 /// `mobile` block; a freely-held note is its own site. Innermost wins, for the
 /// reason the expansion path reads outside-in: the nearest question is the one
 /// that produced this note.
-fn decided_under(taken: &[musa_compiler::DecisionRecord], span: musa_compiler::SourceSpan) -> Option<usize> {
+fn decided_under(taken: &[musa_score::DecisionRecord], span: musa_score::SourceSpan) -> Option<usize> {
     taken
         .iter()
         .enumerate()
@@ -840,7 +840,7 @@ fn decided_under(taken: &[musa_compiler::DecisionRecord], span: musa_compiler::S
 /// becomes `sigh()`. Reading it here rather than in the frontend keeps the
 /// rule that the interface renders what it is handed.
 fn step(step: &ExpansionStep, source: &str) -> StepFact {
-    let at = |span: musa_compiler::SourceSpan| {
+    let at = |span: musa_score::SourceSpan| {
         Some(crate::diagnostic::Span {
             start: span.start,
             end: span.end,
@@ -1027,7 +1027,7 @@ impl NameFact {
     /// Restate one compiler reference in this crate's own vocabulary.
     pub(crate) fn from_compiler(reference: &musa_compiler::NameReference) -> Self {
         let kind = NameKind::from_compiler(reference.kind);
-        let span = |span: musa_compiler::SourceSpan| crate::diagnostic::Span {
+        let span = |span: musa_score::SourceSpan| crate::diagnostic::Span {
             start: span.start,
             end: span.end,
         };

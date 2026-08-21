@@ -18,8 +18,8 @@ hover, when it arrives, reads the same words.
 ## Read
 
 - `crates/musa-language/src/lexer.rs` — the logos `#[token(...)]` table: the keyword spellings' single source.
-- `crates/musa-compiler/src/diagnose.rs` and `musa_project::explain` — the exhaustiveness discipline this table copies:
-  a `Code` without an explanation does not compile. A keyword without a doc must not compile either.
+- `crates/musa-score/src/diagnose.rs` and `musa_project::explain` — the exhaustiveness discipline this table copies: a
+  `Code` without an explanation does not compile. A keyword without a doc must not compile either.
 - Prompt 77 — the hover feature and its markdown `answer` shape; prompt 78 — `token_at_offset` on the CST, the way a
   position becomes a token.
 

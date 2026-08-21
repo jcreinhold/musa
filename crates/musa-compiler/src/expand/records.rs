@@ -1,6 +1,6 @@
 use crate::compile::SourceDocument;
-use crate::diagnose::Diagnostic;
-use crate::origin::{SourceMap, SourceSpan};
+use musa_score::diagnose::Diagnostic;
+use musa_score::origin::{SourceMap, SourceSpan};
 
 /// The phase-tagged logical charges of `26-language-design-decision.md` §3.5.
 ///
@@ -116,10 +116,10 @@ impl Expansion {
     }
 
     /// The regions, as the derivation graph anchors a generated event at them.
-    pub(crate) fn anchors(&self) -> Vec<crate::derivation::ExpansionAnchor> {
+    pub(crate) fn anchors(&self) -> Vec<musa_score::derivation::ExpansionAnchor> {
         self.records
             .iter()
-            .map(|record| crate::derivation::ExpansionAnchor {
+            .map(|record| musa_score::derivation::ExpansionAnchor {
                 site: record.use_site,
                 adapter: record.adapter.clone(),
             })

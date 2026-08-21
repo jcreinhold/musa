@@ -3,7 +3,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, RenderError, render_notation};
 
-fn score_with(pitch: &str) -> musa_compiler::ScoreSnapshot {
+fn score_with(pitch: &str) -> musa_score::ScoreSnapshot {
     let source = format!("piece \"Pitch\" {{ score {{ part p {{ voice v {{ {pitch}/1 }} }} }} }}");
     let compilation = compile(
         &SourceDocument::new(&source, "pitch-capability.musa"),

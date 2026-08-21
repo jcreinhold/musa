@@ -710,14 +710,14 @@ fn push_text(out: &mut Vec<u8>, text: &str) {
 /// reader can go — so root and site are the same anchor, and what the step adds
 /// over a leaf is the name of what produced it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ExpansionAnchor {
+pub struct ExpansionAnchor {
     /// The region, in the composer's own text.
-    pub(crate) site: SourceSpan,
+    pub site: SourceSpan,
     /// The module path that read it.
-    pub(crate) adapter: String,
+    pub adapter: String,
 }
 
-pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[ExpansionAnchor]) -> Derivation {
+pub fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[ExpansionAnchor]) -> Derivation {
     let mut graph = Derivation::new(ELABORATION);
     let mut names = Names::default();
     let mut parts = Vec::new();
@@ -754,7 +754,7 @@ pub(crate) fn of_score(score: &crate::score::ScoreSnapshot, expansions: &[Expans
 
 /// One event's derivation: the place it is written, then its expansion steps
 /// innermost first, because that is the order they were applied in.
-fn of_event(
+pub(crate) fn of_event(
     graph: &mut Derivation,
     names: &mut Names,
     origin: &crate::origin::Origin,
@@ -797,7 +797,7 @@ fn of_event(
 }
 
 /// Whether `span` lies inside `region`.
-const fn covers(region: SourceSpan, span: SourceSpan) -> bool {
+pub const fn covers(region: SourceSpan, span: SourceSpan) -> bool {
     span.start >= region.start && span.end <= region.end
 }
 
@@ -806,7 +806,10 @@ const fn covers(region: SourceSpan, span: SourceSpan) -> bool {
 /// §3's distinction, stated once: a use, a template instance, a specialized
 /// occurrence and a repeat iteration make new material at a place, and
 /// everything else transforms material that is already there.
-fn generation_site(step: &crate::origin::ExpansionStep, origin: &crate::origin::Origin) -> Option<SourceSpan> {
+pub(crate) fn generation_site(
+    step: &crate::origin::ExpansionStep,
+    origin: &crate::origin::Origin,
+) -> Option<SourceSpan> {
     use crate::origin::ExpansionStep;
     match *step {
         ExpansionStep::MotifApplication { call_site } => Some(call_site),
@@ -830,7 +833,7 @@ fn generation_site(step: &crate::origin::ExpansionStep, origin: &crate::origin::
 /// Injective in what distinguishes instances: the iteration number, the call
 /// site, the axis, the factor. Two events whose paths agree up to here share
 /// the node, which is the sharing that makes this a graph.
-fn step_key(step: &crate::origin::ExpansionStep) -> String {
+pub(crate) fn step_key(step: &crate::origin::ExpansionStep) -> String {
     use crate::origin::ExpansionStep;
     match *step {
         ExpansionStep::MotifApplication { call_site } => format!("use@{}:{}", call_site.start, call_site.end),
@@ -867,21 +870,21 @@ fn step_key(step: &crate::origin::ExpansionStep) -> String {
 /// names already given made assembling a derivation quadratic in the score.
 /// Nothing but the count is kept, because nothing but the count is read.
 #[derive(Default)]
-struct Names {
+pub(crate) struct Names {
     written: std::collections::HashMap<SourceSpan, u32>,
     produced: std::collections::HashMap<Vec<u8>, u32>,
 }
 
 impl Names {
     /// The anchor for a place in the composer's own text.
-    fn source(&mut self, span: SourceSpan) -> Anchor {
+    pub(crate) fn source(&mut self, span: SourceSpan) -> Anchor {
         let next = u32::try_from(self.written.len()).unwrap_or(u32::MAX);
         let id = *self.written.entry(span).or_insert(next);
         Anchor::at(PresentationRef::at(PresentationKind::Source, 1), id)
     }
 
     /// The anchor for an item of the score this assembly is explaining.
-    fn target(&mut self, key: &[u8]) -> Anchor {
+    pub(crate) fn target(&mut self, key: &[u8]) -> Anchor {
         let id = match self.produced.get(key) {
             Some(found) => *found,
             None => {

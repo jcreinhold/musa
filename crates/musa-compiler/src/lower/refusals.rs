@@ -29,8 +29,8 @@
 use musa_calculus::{ElabError, Origin, Refusal};
 
 use super::Sites;
-use crate::diagnose::{Cause, Code, Diagnostic};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Cause, Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// A refusal filed: which code, where it happened, and the earlier place that
 /// explains it when there is one.
@@ -189,7 +189,7 @@ fn file(refusal: &Refusal) -> Filed {
             // budget and tie rule — over the core's list: which names were in
             // scope is a fact of the context at the refusal, not something to
             // re-collect.
-            help: crate::diagnose::nearest(name, candidates.iter().map(|name| &**name))
+            help: musa_score::diagnose::nearest(name, candidates.iter().map(|name| &**name))
                 .map(|near| std::borrow::Cow::Owned(format!("did you mean `{near}`?"))),
             ..one(Code::UnknownName, *at)
         },

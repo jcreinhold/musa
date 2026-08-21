@@ -9,10 +9,9 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use musa_compiler::{
-    CompileOptions, PerformanceEvent, PerformanceOptions, SourceDocument, compile, kernel_normal_form,
-    lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form};
+
+use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 

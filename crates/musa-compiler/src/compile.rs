@@ -1,8 +1,8 @@
 //! The compiler facade (roadmap §10.6, §15.3): one deep operation. Passes
 //! (resolution, units, resolver) are private; callers see `Compilation`.
 
-use crate::diagnose::{Diagnostic, Severity};
-use crate::score::ScoreSnapshot;
+use musa_score::diagnose::{Diagnostic, Severity};
+use musa_score::score::ScoreSnapshot;
 
 /// A source document to compile.
 pub struct SourceDocument {
@@ -52,7 +52,7 @@ pub struct CompileOptions {
     /// A piece that leaves nothing open never consults this, so the default —
     /// `Realization::deterministic()` — is the absence of a question rather
     /// than a choice of answer (`docs/rules/kernel/11-realization.md`).
-    pub realization: crate::realize::Realization,
+    pub realization: musa_score::realize::Realization,
 }
 
 /// Which of the two things a musa file may be (roadmap §16).
@@ -86,12 +86,12 @@ pub struct Compilation {
     kind: DocumentKind,
     snapshot: Option<ScoreSnapshot>,
     studio: crate::studio::StudioSpec,
-    machines: Vec<(String, crate::MachineSpec)>,
+    machines: Vec<(String, musa_score::MachineSpec)>,
     diagnostics: Vec<Diagnostic>,
     identity: musa_kernel::SemanticHash,
-    decisions: Vec<crate::DecisionRecord>,
+    decisions: Vec<musa_score::DecisionRecord>,
     references: crate::resolve::ReferenceIndex,
-    derivation: Option<crate::derivation::Derivation>,
+    derivation: Option<musa_score::derivation::Derivation>,
 }
 
 impl Compilation {
@@ -101,7 +101,7 @@ impl Compilation {
         // cannot be built from two different pictures of the same piece.
         let derivation = snapshot
             .as_ref()
-            .map(|snapshot| crate::derivation::of_score(snapshot, &[]));
+            .map(|snapshot| musa_score::derivation::of_score(snapshot, &[]));
         Self {
             kind: DocumentKind::Piece,
             snapshot,
@@ -143,7 +143,7 @@ impl Compilation {
         self.derivation = self
             .snapshot
             .as_ref()
-            .map(|snapshot| crate::derivation::of_score(snapshot, &anchors));
+            .map(|snapshot| musa_score::derivation::of_score(snapshot, &anchors));
     }
 
     pub(crate) fn into_material(mut self) -> Self {
@@ -170,7 +170,7 @@ impl Compilation {
         self
     }
 
-    pub(crate) fn with_machines(mut self, machines: Vec<(String, crate::MachineSpec)>) -> Self {
+    pub(crate) fn with_machines(mut self, machines: Vec<(String, musa_score::MachineSpec)>) -> Self {
         self.machines = machines;
         self
     }
@@ -180,7 +180,7 @@ impl Compilation {
         self
     }
 
-    pub(crate) fn with_decisions(mut self, decisions: Vec<crate::DecisionRecord>) -> Self {
+    pub(crate) fn with_decisions(mut self, decisions: Vec<musa_score::DecisionRecord>) -> Self {
         self.decisions = decisions;
         self
     }
@@ -219,7 +219,7 @@ impl Compilation {
     /// piece actually asked and what it was answered, which is what a header
     /// line records and what the Origin view shows. A determinate piece
     /// returns nothing, under every seed.
-    pub fn decisions(&self) -> &[crate::DecisionRecord] {
+    pub fn decisions(&self) -> &[musa_score::DecisionRecord] {
         &self.decisions
     }
 
@@ -249,10 +249,10 @@ impl Compilation {
     /// The machine a name denotes, if this document names one
     /// (`docs/rules/across-stages/03-machine-calculus.md` §2).
     ///
-    /// A [`crate::MachineSpec`] is immutable, flat, and exact, and it is the
+    /// A [`musa_score::MachineSpec`] is immutable, flat, and exact, and it is the
     /// only form a machine leaves the compiler in. Its named consumer is
     /// `musa-audio`, which prepares one into something that can be stepped.
-    pub fn machine(&self, name: &str) -> Option<&crate::MachineSpec> {
+    pub fn machine(&self, name: &str) -> Option<&musa_score::MachineSpec> {
         self.machines
             .iter()
             .find(|(named, _)| named == name)
@@ -270,7 +270,7 @@ impl Compilation {
     ///
     /// Its named consumer is `musa-project`, which fills the Origin row's
     /// list of supporting places from it.
-    pub fn derivation(&self) -> Option<&crate::derivation::Derivation> {
+    pub fn derivation(&self) -> Option<&musa_score::derivation::Derivation> {
         self.derivation.as_ref()
     }
 

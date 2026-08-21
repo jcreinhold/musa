@@ -25,7 +25,7 @@ registry entry rather than a new induction, and cannot be added without one.
   contextual-music extensions, and the new §5.8 this prompt implements.
 - `docs/rules/language/03-musical-domains.md` for the domain definitions and the counterexamples each one rules out.
 - The existing law suites from prompts 95–98: they are the model for how a metatheoretic obligation is tested here, and
-  the registry-duration law in `crates/musa-compiler/src/core.rs` is the model for a checked premise.
+  the registry-duration law in `crates/musa-compiler/src/core/mod.rs` is the model for a checked premise.
 
 ## Design
 

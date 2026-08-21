@@ -689,8 +689,8 @@ different constructor. Add a targeted container trial only if duplication actual
   [26-language-design-decision.md](26-language-design-decision.md), [27-adapter-trials.md](27-adapter-trials.md),
   [33-metatheory.md](33-metatheory.md), and
   [38-abstraction-totality-and-substitution.md](38-abstraction-totality-and-substitution.md).
-- The implemented `Syntax` fold, evaluator, and closure representation in `crates/musa-compiler/src/core.rs`; the rank-1
-  occurs and storable-data checks in `crates/musa-compiler/src/infer.rs`; the staff reader in
+- The implemented `Syntax` fold, evaluator, and closure representation in `crates/musa-compiler/src/core/mod.rs`; the
+  rank-1 occurs and storable-data checks in `crates/musa-compiler/src/infer.rs`; the staff reader in
   `stdlib/src/adapters/staff.musa`; and prompts 127a, 127aa–127b, 127da, 127dcfa–127dd, 127e, 153, and 146.
 
 ### Music theory

@@ -1,4 +1,5 @@
-use musa_compiler::{Accidental, CompileOptions, Interval, Letter, SourceDocument, WrittenPitch, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_score::{Accidental, Interval, Letter, WrittenPitch};
 use proptest::prelude::*;
 
 fn pitch_strategy() -> impl Strategy<Value = WrittenPitch> {
@@ -144,8 +145,8 @@ piece "Computed notes" {
             .flat_map(|(_, part)| part.voices())
             .flat_map(|(_, voice)| voice.events())
             .filter_map(|event| match &event.kind {
-                musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
-                musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
+                musa_score::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
+                musa_score::ScoreEventKind::Rest | musa_score::ScoreEventKind::Chord { .. } => None,
             })
             .collect::<Vec<_>>()
     });

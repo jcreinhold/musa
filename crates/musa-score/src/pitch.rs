@@ -1,5 +1,6 @@
-//! Written pitch (roadmap §6.3, §8.1): the spelled identity of a note. D♯
-//! and E♭ are different values even though 12-TET maps them to one
+//! Written pitch (roadmap §6.3, §8.1): the spelled identity of a note.
+//!
+//! D♯ and E♭ are different values even though 12-TET maps them to one
 //! frequency. MIDI numbers and frequencies are derived at the
 //! performance/render edge, never stored here.
 
@@ -28,7 +29,7 @@ pub enum Letter {
 
 impl Letter {
     /// Parse a letter character (`c`..`g`, `a`, `b`).
-    pub fn from_char(ch: char) -> Option<Self> {
+    pub(crate) fn from_char(ch: char) -> Option<Self> {
         match ch {
             'c' => Some(Self::C),
             'd' => Some(Self::D),
@@ -82,7 +83,7 @@ impl Letter {
     }
 
     /// Semitones above C of the natural (unaltered) letter.
-    pub fn natural_semitone(self) -> i8 {
+    pub(crate) fn natural_semitone(self) -> i8 {
         match self {
             Self::C => 0,
             Self::D => 2,
@@ -105,15 +106,15 @@ pub struct Accidental(pub i32);
 
 impl Accidental {
     /// Double sharp (𝄪).
-    pub const DOUBLE_SHARP: Self = Self(2);
+    pub(crate) const DOUBLE_SHARP: Self = Self(2);
     /// Sharp (♯).
-    pub const SHARP: Self = Self(1);
+    pub(crate) const SHARP: Self = Self(1);
     /// Natural.
     pub const NATURAL: Self = Self(0);
     /// Flat (♭).
-    pub const FLAT: Self = Self(-1);
+    pub(crate) const FLAT: Self = Self(-1);
     /// Double flat (𝄫).
-    pub const DOUBLE_FLAT: Self = Self(-2);
+    pub(crate) const DOUBLE_FLAT: Self = Self(-2);
 }
 
 /// A written pitch: letter, accidental, octave (middle C = `c4`).
@@ -165,14 +166,14 @@ impl WrittenPitch {
     }
 
     /// Absolute staff coordinate above C0.
-    pub fn diatonic_height(self) -> i64 {
+    pub(crate) fn diatonic_height(self) -> i64 {
         i64::from(self.octave)
             .saturating_mul(7)
             .saturating_add(i64::from(self.letter.steps()))
     }
 
     /// Absolute twelve-semitone coordinate above C0.
-    pub fn chromatic_height(self) -> i64 {
+    pub(crate) fn chromatic_height(self) -> i64 {
         i64::from(self.octave)
             .saturating_mul(12)
             .saturating_add(self.semitone())
@@ -183,7 +184,7 @@ impl WrittenPitch {
     /// Every pair is compatible: the diatonic coordinate chooses a letter
     /// and octave, while the difference from that natural staff position is
     /// retained as an unbounded accidental.
-    pub fn from_heights(diatonic: i64, chromatic: i64) -> Option<Self> {
+    pub(crate) fn from_heights(diatonic: i64, chromatic: i64) -> Option<Self> {
         let letter = Letter::from_steps(i8::try_from(diatonic.rem_euclid(7)).ok()?)?;
         let octave = i32::try_from(diatonic.div_euclid(7)).ok()?;
         let natural = i64::from(octave)

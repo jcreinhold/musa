@@ -1,8 +1,8 @@
 //! One concern of the enclosing module; see its module docs.
 
-use crate::diagnose::{Code, Diagnostic};
 #[cfg(test)]
 use musa_language::ast::AstNode as _;
+use musa_score::diagnose::{Code, Diagnostic};
 
 #[cfg(test)]
 use crate::resolve::Resolver;

@@ -9,7 +9,9 @@
 //! argument its caller just supplied — by giving the surface the lambda the
 //! core already had. These are the laws of both halves.
 
-use musa_compiler::{Code, CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind};
 
 fn compile_core(declarations: &str) -> musa_compiler::Compilation {
     let source = SourceDocument::new(
@@ -26,7 +28,7 @@ fn errors(declarations: &str) -> Vec<(Code, String)> {
     compile_core(declarations)
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| (diagnostic.code, diagnostic.message.clone()))
         .collect()
 }

@@ -24,7 +24,7 @@ calculus where a value is charged.
   *about*.
 - Prompt 96, which introduced the counters, and its `preflight_construct` rule that a finite aggregate operation charges
   its result shape before allocating it. That rule stays.
-- `crates/musa-compiler/src/core.rs`: `eval`'s tail, which runs `value_shape` for every `ExprKind` including
+- `crates/musa-compiler/src/core/mod.rs`: `eval`'s tail, which runs `value_shape` for every `ExprKind` including
   `ExprKind::Name`; `value_shape` and `aggregate_shape`; the `Value::Closure` arm, which deep-counts captured values.
 - `crates/musa-compiler/src/core_budget.rs`: `CostTable::V1`, `Budget::LANGUAGE`, `WorkMeter::construct`,
   `WorkMeter::preflight_construct`, and the `a_narrowed_budget_*` tests that state budget independence.
@@ -80,7 +80,7 @@ fields. That sentence is what makes the implementation checkable against the doc
 
 ## Target
 
-- `crates/musa-compiler/src/core.rs` — `eval` charges by the three cases above; `value_shape`'s `Value::Closure` arm
+- `crates/musa-compiler/src/core/mod.rs` — `eval` charges by the three cases above; `value_shape`'s `Value::Closure` arm
   counts captures instead of deep-counting them. `value_shape` itself stays a deep measure, because fabrication and
   `preflight_construct` still need it.
 - `crates/musa-compiler/src/core_budget.rs` — `CostTable::V2`, weights unchanged, reason in its doc comment.

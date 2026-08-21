@@ -8,7 +8,9 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, MusicalTime, Scope, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalTime, Scope};
 use num_rational::Ratio;
 
 fn compiled(source: &str) -> musa_compiler::Compilation {
@@ -19,7 +21,7 @@ fn errors(source: &str) -> Vec<String> {
     compiled(source)
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect()
 }
@@ -34,7 +36,7 @@ fn a_second_meter_moves_the_barlines_after_it() {
     let compilation = compiled(TUNE);
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
     let score = compilation.snapshot().expect("it compiles");
-    let bars = score.bars(musa_compiler::Scope::Piece);
+    let bars = score.bars(musa_score::Scope::Piece);
     let whole = |n: i64| MusicalTime::new(Ratio::from_integer(n));
 
     // Measures 1 and 2 are whole notes; 3 and 4 are three quarters.

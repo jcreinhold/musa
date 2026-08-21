@@ -43,7 +43,7 @@ const fn M(diatonic_steps: i64, semitones: i64) -> Interval {
 }
 
 /// The written octave, used to lift a member into successive registers.
-const OCTAVE: Interval = Interval {
+pub(crate) const OCTAVE: Interval = Interval {
     diatonic_steps: 7,
     semitones: 12,
 };
@@ -56,7 +56,7 @@ const OCTAVE: Interval = Interval {
 /// here is a symbol; `cmaj7` is what a musician writes above the staff, and
 /// [`ChordType::Major7`] is what the notes of that chord are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ChordType {
+pub enum ChordType {
     /// A major triad (OMT `017-triads.md`).
     Major,
     /// A minor triad.
@@ -286,7 +286,7 @@ pub fn chord_types() -> impl Iterator<Item = (&'static str, &'static str)> {
 impl ChordType {
     /// The chord type a source word names, or `None` when no type is spelled
     /// that way.
-    pub(crate) fn named(word: &str) -> Option<Self> {
+    pub fn named(word: &str) -> Option<Self> {
         TYPES
             .iter()
             .find(|(_, spellings, _, _)| spellings.contains(&word))
@@ -336,7 +336,7 @@ impl ChordType {
 /// lowest disagrees with the class. Only a voicing sounds, so the class never
 /// has to answer which C.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct ChordClass {
+pub struct ChordClass {
     root: PitchClass,
     kind: ChordType,
     bass: Option<PitchClass>,
@@ -344,7 +344,7 @@ pub(crate) struct ChordClass {
 
 /// Why a chord class could not be inverted onto a member.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum InversionError {
+pub enum InversionError {
     /// The chord has fewer members than the requested position.
     NoSuchMember,
 }
@@ -352,12 +352,12 @@ pub(crate) enum InversionError {
 impl ChordClass {
     /// The chord type rooted on `root`, in no inversion. Total: every type is
     /// defined over every spelled root class.
-    pub(crate) fn new(root: PitchClass, kind: ChordType) -> Self {
+    pub fn new(root: PitchClass, kind: ChordType) -> Self {
         Self { root, kind, bass: None }
     }
 
     /// The spelled root class.
-    pub(crate) fn root(self) -> PitchClass {
+    pub fn root(self) -> PitchClass {
         self.root
     }
 
@@ -367,13 +367,14 @@ impl ChordClass {
     }
 
     /// The designated bass class, when one was chosen.
-    pub(crate) fn bass(self) -> Option<PitchClass> {
+    pub fn bass(self) -> Option<PitchClass> {
         self.bass
     }
 
     /// The same content rooted somewhere else, with any designated bass
     /// dropped — the bass of a C chord is not a fact about an F chord.
-    pub(crate) fn rooted_at(self, root: PitchClass) -> Self {
+    #[must_use]
+    pub fn rooted_at(self, root: PitchClass) -> Self {
         Self {
             root,
             kind: self.kind,
@@ -382,7 +383,7 @@ impl ChordClass {
     }
 
     /// The spelled members above the root, starting at the unison.
-    pub(crate) fn members(self) -> &'static [Interval] {
+    pub fn members(self) -> &'static [Interval] {
         self.kind.members()
     }
 
@@ -413,7 +414,11 @@ impl ChordClass {
     /// member, which is what the `position` argument guarantees. A bass the
     /// chord does not contain is [`Self::over`] instead, and the two are
     /// deliberately different constructions rather than one lenient one.
-    pub(crate) fn inverted(self, position: usize) -> Result<Self, InversionError> {
+    ///
+    /// # Errors
+    ///
+    /// [`InversionError::NoSuchMember`] when `position` names no member.
+    pub fn inverted(self, position: usize) -> Result<Self, InversionError> {
         let bass = self.member_class(position).ok_or(InversionError::NoSuchMember)?;
         Ok(Self {
             bass: Some(bass),
@@ -426,7 +431,8 @@ impl ChordClass {
     /// Total, and deliberately so. `c/d` is an ordinary chord with a bass
     /// outside its content, and refusing to write it would be the language
     /// having an opinion the notation does not.
-    pub(crate) fn over(self, bass: PitchClass) -> Self {
+    #[must_use]
+    pub fn over(self, bass: PitchClass) -> Self {
         Self {
             bass: Some(bass),
             ..self
@@ -434,7 +440,7 @@ impl ChordClass {
     }
 
     /// Whether the designated bass, if any, is a member of the content.
-    fn bass_is_member(self) -> bool {
+    pub(crate) fn bass_is_member(self) -> bool {
         self.bass.is_none_or(|bass| self.position_of(bass).is_some())
     }
 }
@@ -455,7 +461,7 @@ fn written(class: PitchClass) -> Option<WrittenPitch> {
 }
 
 /// The lowest pitch strictly above `floor` that spells `class`.
-fn next_above(class: PitchClass, floor: WrittenPitch) -> Option<WrittenPitch> {
+pub(crate) fn next_above(class: PitchClass, floor: WrittenPitch) -> Option<WrittenPitch> {
     let letter = i64::from(class.letter.steps());
     let octaves = floor.diatonic_height().checked_sub(letter)?.div_euclid(7);
     let base = WrittenPitch::from_heights(
@@ -489,16 +495,16 @@ impl std::fmt::Display for ChordClass {
 /// Three members is not enough — a suspended chord has three and no third —
 /// and neither is a triadic quality with a seventh stacked on top.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Triad(ChordClass);
+pub struct Triad(ChordClass);
 
 impl Triad {
     /// The triad this class is, when it is one.
-    pub(crate) fn of(class: ChordClass) -> Option<Self> {
+    pub fn of(class: ChordClass) -> Option<Self> {
         matches!(class.kind(), ChordType::Major | ChordType::Minor).then_some(Self(class))
     }
 
     /// The chord class, with the evidence forgotten.
-    pub(crate) fn class(self) -> ChordClass {
+    pub fn class(self) -> ChordClass {
         self.0
     }
 
@@ -506,7 +512,7 @@ impl Triad {
     ///
     /// A `bool` and not a partial answer: the refinement admitted exactly two
     /// chord classes, so "not major" is "minor" here and nowhere else.
-    pub(crate) fn is_major(self) -> bool {
+    pub fn is_major(self) -> bool {
         matches!(self.0.kind(), ChordType::Major)
     }
 }
@@ -524,7 +530,7 @@ impl std::fmt::Display for Triad {
 /// apart and is an ordinary voicing, while the same pitch written twice is
 /// not a chord and is refused.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Voicing {
+pub struct Voicing {
     class: ChordClass,
     /// The lowest sounding pitch, held apart from the rest so that "a voicing
     /// has a bass" is a fact of the type rather than of a length check.
@@ -535,7 +541,7 @@ pub(crate) struct Voicing {
 
 /// Why a list of pitches is not a voicing of a chord class.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VoicingError {
+pub enum VoicingError {
     /// A chord with no notes is a rest, not a voicing.
     Empty,
     /// The pitches were not written low to high, or one was written twice.
@@ -556,7 +562,11 @@ impl Voicing {
     /// the class designated. Omission is not checked, because omission is the
     /// point of a rootless voicing; spacing is not checked, because spacing is
     /// what a policy chooses.
-    pub(crate) fn new(class: ChordClass, pitches: Vec<WrittenPitch>) -> Result<Self, VoicingError> {
+    ///
+    /// # Errors
+    ///
+    /// A [`VoicingError`] naming which of those conditions the pitches fail.
+    pub fn new(class: ChordClass, pitches: Vec<WrittenPitch>) -> Result<Self, VoicingError> {
         let mut sounding = pitches.into_iter();
         let Some(bass) = sounding.next() else {
             return Err(VoicingError::Empty);
@@ -584,12 +594,12 @@ impl Voicing {
     }
 
     /// The chord class this voicing sounds.
-    pub(crate) fn class(&self) -> ChordClass {
+    pub fn class(&self) -> ChordClass {
         self.class
     }
 
     /// The pitches, low to high.
-    pub(crate) fn pitches(&self) -> impl Iterator<Item = WrittenPitch> + '_ {
+    pub fn pitches(&self) -> impl Iterator<Item = WrittenPitch> + '_ {
         std::iter::once(self.bass).chain(self.above.iter().copied())
     }
 
@@ -599,7 +609,7 @@ impl Voicing {
     }
 
     /// The lowest sounding pitch.
-    pub(crate) fn bass(&self) -> WrittenPitch {
+    pub fn bass(&self) -> WrittenPitch {
         self.bass
     }
 
@@ -608,7 +618,7 @@ impl Voicing {
     ///
     /// `None` for a slash bass: the chord sounds over a note it does not
     /// contain, which is a bass choice and not an inversion.
-    pub(crate) fn inversion(&self) -> Option<usize> {
+    pub fn inversion(&self) -> Option<usize> {
         self.class.position_of(self.bass.pitch_class())
     }
 
@@ -619,7 +629,11 @@ impl Voicing {
     /// `stack` sugar desugars to. It declines when `bass` does not spell a
     /// member — a close-position C major that starts on D is not a spacing
     /// choice, it is a different chord.
-    pub(crate) fn close_position(class: ChordClass, bass: WrittenPitch) -> Result<Self, VoicingError> {
+    ///
+    /// # Errors
+    ///
+    /// A [`VoicingError`] when `bass` spells no member of `class`.
+    pub fn close_position(class: ChordClass, bass: WrittenPitch) -> Result<Self, VoicingError> {
         if !class.bass_is_member() {
             // A designated slash bass is a member of the sound and not of the
             // content, so the ordinary member walk cannot place it.
@@ -644,7 +658,7 @@ impl Voicing {
 
     /// Close position under a bass the content does not contain: the stated
     /// bass, then the whole chord above it from its own root.
-    fn slash_close_position(class: ChordClass, bass: WrittenPitch) -> Result<Self, VoicingError> {
+    pub(crate) fn slash_close_position(class: ChordClass, bass: WrittenPitch) -> Result<Self, VoicingError> {
         if class.bass() != Some(bass.pitch_class()) {
             return Err(VoicingError::WrongBass);
         }
@@ -664,7 +678,12 @@ impl Voicing {
     /// counted from the top because that is how the name reads, and a drop
     /// that would reach past the top voice is refused rather than silently
     /// clamped to drop-1, which is not a voicing anyone means.
-    pub(crate) fn dropped(class: ChordClass, bass: WrittenPitch, n: usize) -> Result<Self, VoicingError> {
+    ///
+    /// # Errors
+    ///
+    /// A [`VoicingError`] when `bass` spells no member, or when `n` reaches
+    /// past the top voice.
+    pub fn dropped(class: ChordClass, bass: WrittenPitch, n: usize) -> Result<Self, VoicingError> {
         let close = Self::close_position(class, bass)?;
         let count = close.size();
         if n < 2 || n > count {
@@ -692,7 +711,12 @@ impl Voicing {
     /// The rootless voicings of `076-jazz-voicings.md` are this with
     /// `position` zero, and naming the omission is the point: a chord missing
     /// its root is a choice a player made, not a chord class that lost a note.
-    pub(crate) fn omitting(&self, position: usize) -> Result<Self, VoicingError> {
+    ///
+    /// # Errors
+    ///
+    /// A [`VoicingError`] when `position` names no member, or when leaving it
+    /// out would not spell a voicing.
+    pub fn omitting(&self, position: usize) -> Result<Self, VoicingError> {
         let Some(omitted) = self.class.member_class(position) else {
             return Err(VoicingError::NotAMember);
         };

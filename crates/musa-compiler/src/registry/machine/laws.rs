@@ -389,8 +389,8 @@ fn each_registered_unit_has_a_signature_of_its_own() {
     let registered = crate::registry::builtins(&cx).expect("both tables translate");
     let units = super::primitives(&cx).expect("the port shapes name declared families");
     assert!(!units.is_empty(), "this build registers at least one unit");
-    for id in crate::machine::registered_ids() {
-        for version in crate::machine::versions_of(id) {
+    for id in musa_score::machine::registered_ids() {
+        for version in musa_score::machine::versions_of(id) {
             let spelling = super::unit_spelling(id, version);
             let builtin = registered
                 .iter()

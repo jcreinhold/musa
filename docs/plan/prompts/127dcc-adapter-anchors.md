@@ -26,7 +26,7 @@ anchor: a number the adapter emits, and a compiler-owned table from that number 
 - `docs/rules/language/02-core-calculus.md` §5 — the closed source type grammar and its "no syntax value" sentence. An
   anchor that needed a new source type would be an amendment under `docs/rules/README.md` rather than a prompt.
 - `crates/musa-compiler/src/syntax.rs`: `SourceInfo`, `print`, and `Printed`, which is where a node becomes text.
-- `crates/musa-compiler/src/expand.rs`: `ExpansionRecord` and `SourceMap` — what one expansion already remembers.
+- `crates/musa-compiler/src/expand/mod.rs`: `ExpansionRecord` and `SourceMap` — what one expansion already remembers.
 - Prompt 127dcb's `Refused`, which is the other half of the same rule: pointing during expansion.
 
 ## Design

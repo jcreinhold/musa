@@ -27,7 +27,7 @@ of instantiation. That evidence is this prompt's Design.
   `build` is what this prompt must not write a second copy of, and `Derived::path` is why: a derived path is the anchor
   folded through `NodePath::built(quotation, step)` once per position, and the comma of a **separated** group is
   numbered past the template's own children so that a spread of any length cannot collide with a written sibling.
-- `crates/musa-compiler/src/core.rs`'s `Checker::syntax_quote`, `quote_template`, `quote_token`, `quote_splice`, and
+- `crates/musa-compiler/src/core/mod.rs`'s `Checker::syntax_quote`, `quote_template`, `quote_token`, `quote_splice`, and
   `pattern_splice`, and the free functions `binder_positions`, `spread_argument`, and `looks_generated`. The body walk
   is being *moved*, not redesigned: what leaves it is the four calls to `self.check`, which become
   `crates/musa-compiler/src/lower.rs`'s lowering of the splice's own expression — [`141g`](141g-raw-lowering.md) writes

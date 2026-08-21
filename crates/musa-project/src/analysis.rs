@@ -11,7 +11,7 @@
 //! typed form would be reaching past the facade for something the interface has
 //! no use for.
 
-use musa_compiler::{
+use musa_score::{
     AnalysisFinding, AnalysisReport, Evidence, NoteRef, Observation, PartId, Scope, ScoreSnapshot, VoiceId,
 };
 use serde::Serialize;
@@ -302,7 +302,7 @@ fn rule_of(observation: &Observation) -> Option<RuleFacts> {
 }
 
 /// A chord as a reader writes it: `C major`, `F♯ dominant7/A♯`.
-fn name(chord: musa_compiler::ChordName) -> String {
+fn name(chord: musa_score::ChordName) -> String {
     let base = format!("{} {}", crate::facts::pitch_class(chord.root()), chord.quality());
     match chord.bass() {
         Some(bass) => format!("{base}/{}", crate::facts::pitch_class(bass)),
@@ -311,7 +311,7 @@ fn name(chord: musa_compiler::ChordName) -> String {
 }
 
 /// A key as a reader writes it: `C major`.
-fn key_name(key: musa_compiler::Key) -> String {
+fn key_name(key: musa_score::Key) -> String {
     format!(
         "{} {}",
         crate::facts::pitch_class(key.tonic()),

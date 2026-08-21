@@ -5,8 +5,10 @@
 // musa's magnitudes; see musa-compiler/src/time.rs).
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationPlan, plan_notation};
+use musa_score::ScoreSnapshot;
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -160,7 +162,7 @@ proptest! {
         let planned = plan_notation(&score, &NotationOptions::default());
         assert!(planned.is_ok(), "planning failed: {planned:?}");
         let Some(planned) = planned.ok() else { return Ok(()) };
-        let measure_len = score.bars(musa_compiler::Scope::Piece).measure_at(musa_compiler::MusicalTime::ZERO).duration().as_ratio();
+        let measure_len = score.bars(musa_score::Scope::Piece).measure_at(musa_score::MusicalTime::ZERO).duration().as_ratio();
 
         let mut sums: std::collections::HashMap<u64, Ratio<i64>> = std::collections::HashMap::new();
         for staff in planned.staves() {
@@ -200,8 +202,8 @@ fn a_meter_change_after_a_repeat_is_numbered_twice() {
                   repeat 2 { bar { c4/1 } bar { d4/1 } } \
                   meter 3/4; bar { e4/2. } } } } }";
     let score = compile_score(source).expect("it compiles");
-    let played = score.bars(musa_compiler::Scope::Piece);
-    let at = musa_compiler::MusicalTime::new(Ratio::from_integer(4));
+    let played = score.bars(musa_score::Scope::Piece);
+    let at = musa_score::MusicalTime::new(Ratio::from_integer(4));
 
     // Performed: two passes of two measures, so the change opens measure 5.
     assert_eq!(played.at(at).measure, 5);

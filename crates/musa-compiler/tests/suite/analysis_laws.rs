@@ -38,9 +38,11 @@
 // places.
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use musa_compiler::{
+use musa_compiler::{SourceDocument, compile};
+
+use musa_score::{
     AnalysisError, AnalysisKind, AnalysisReport, AnalysisRequest, AnalysisScope, Evidence, MusicalTime, Observation,
-    ScoreSnapshot, Severity, SourceDocument, Standing, analyze, compile,
+    ScoreSnapshot, Severity, Standing, analyze,
 };
 
 const NAME: &str = "analysis.musa";

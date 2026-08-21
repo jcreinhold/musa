@@ -14,7 +14,7 @@
 //! signatures affect only `<scoreDef>`; pitch spelling passes through
 //! verbatim (§6.3).
 
-use musa_compiler::{Clef, EventId, Mark, Mode, Slot, WrittenPitch};
+use musa_score::{Clef, EventId, Mark, Mode, Slot, WrittenPitch};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
@@ -689,7 +689,7 @@ fn write_control_events(
         element.push_attribute(("endid", end_ref.as_str()));
         // `<octave>` says how far and in which direction; `@dis` is the
         // interval in steps and `@dis.place` the side.
-        if let Some(musa_compiler::MarkArgument::Number(shift)) = span.argument {
+        if let Some(musa_score::MarkArgument::Number(shift)) = span.argument {
             element.push_attribute(("dis", if shift.abs() >= 2 { "15" } else { "8" }));
             element.push_attribute(("dis.place", if shift < 0 { "below" } else { "above" }));
         }
@@ -1060,13 +1060,13 @@ fn push_note_pitch(
     event: EventId,
 ) -> Result<(), RenderError> {
     let letter = match pitch.letter {
-        musa_compiler::Letter::C => "c",
-        musa_compiler::Letter::D => "d",
-        musa_compiler::Letter::E => "e",
-        musa_compiler::Letter::F => "f",
-        musa_compiler::Letter::G => "g",
-        musa_compiler::Letter::A => "a",
-        musa_compiler::Letter::B => "b",
+        musa_score::Letter::C => "c",
+        musa_score::Letter::D => "d",
+        musa_score::Letter::E => "e",
+        musa_score::Letter::F => "f",
+        musa_score::Letter::G => "g",
+        musa_score::Letter::A => "a",
+        musa_score::Letter::B => "b",
     };
     elem.push_attribute(("oct", octave));
     elem.push_attribute(("pname", letter));
@@ -1098,7 +1098,7 @@ fn push_note_pitch(
 /// what the source says too. `grace="unknown"` on each note is deliberate:
 /// MEI's other two values, `acc` and `unacc`, are *performance* answers —
 /// on the beat or ahead of it — and that question belongs to the profile
-/// (`musa_compiler::GracePolicy`), not to the page. Writing either one here
+/// (`musa_score::GracePolicy`), not to the page. Writing either one here
 /// would put one reading of the piece into a file that is meant to carry the
 /// piece. A consumer with a house style applies it, exactly as a performer
 /// does.

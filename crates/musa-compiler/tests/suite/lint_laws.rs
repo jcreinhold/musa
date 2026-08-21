@@ -13,7 +13,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, CompileOptions, Diagnostic, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, Diagnostic, Severity};
 
 /// A piece with the parts every lint fixture needs, with `body` for the
 /// voice's items and `extra` for declarations ahead of the score.

@@ -3,11 +3,11 @@
 //!
 //! One concern of the `elaborate` module; see its docs for the semantic path.
 
-use crate::origin::Origin;
-use crate::pitch::{PitchClass, WrittenPitch};
-use crate::scope::Scope;
-use crate::score::{DynamicMark, Mode, NotatedDuration};
 use musa_kernel::{EventTrack, WrittenTime};
+use musa_score::origin::Origin;
+use musa_score::pitch::{PitchClass, WrittenPitch};
+use musa_score::scope::Scope;
+use musa_score::score::{DynamicMark, Mode, NotatedDuration};
 use num_rational::Ratio;
 
 /// What a fact *states*. Where it is in time is the span; where it is in the
@@ -26,16 +26,16 @@ pub(crate) enum FactKind {
     Note {
         pitch: WrittenPitch,
         duration: NotatedDuration,
-        articulations: Vec<crate::Mark>,
+        articulations: Vec<musa_score::Mark>,
         /// The freedom written on this note, when it was given one.
-        free: Option<crate::score::FreeDuration>,
+        free: Option<musa_score::score::FreeDuration>,
     },
     /// A written rest — notation intent, not a silence object (§2).
     Rest {
         duration: NotatedDuration,
-        articulations: Vec<crate::Mark>,
+        articulations: Vec<musa_score::Mark>,
         /// As [`FactKind::Note`]'s: a rest can be held too.
-        free: Option<crate::score::FreeDuration>,
+        free: Option<musa_score::score::FreeDuration>,
     },
     /// A notation mark that is not written on a note: a point at the instant
     /// it is written, or a span over the music its block covers. Which of the
@@ -45,8 +45,8 @@ pub(crate) enum FactKind {
     /// identity of its own, so it stays a field of the note (see this enum's
     /// own doc). A pedal has both.
     Mark {
-        mark: crate::Mark,
-        argument: Option<crate::marks::MarkArgument>,
+        mark: musa_score::Mark,
+        argument: Option<musa_score::marks::MarkArgument>,
     },
     /// One grace note, as a **point** occurrence at the principal note's
     /// onset: a written pitch with no written duration.
@@ -61,7 +61,7 @@ pub(crate) enum FactKind {
     /// belong to the profile (§2 — notated duration ≠ performed duration).
     Grace {
         pitch: WrittenPitch,
-        articulations: Vec<crate::Mark>,
+        articulations: Vec<musa_score::Mark>,
         /// Where this grace note stands among the ones written with it.
         ///
         /// Load-bearing rather than decorative. N2 orders occurrences by
@@ -96,7 +96,7 @@ pub(crate) enum FactKind {
     /// The meter, over the region it governs — likewise the whole piece.
     Meter { numerator: u32, denominator: u32 },
     /// The clef a staff is read in, over the region it governs.
-    Clef { clef: crate::Clef },
+    Clef { clef: musa_score::Clef },
     /// The tempo *marking*, over the region it governs.
     ///
     /// The marking, not the map. `♩ = 92` is notation written at a place —
@@ -111,17 +111,17 @@ pub(crate) enum FactKind {
     /// is the common modern case.
     Tempo {
         /// The metronome mark, when the marking states one.
-        metronome: Option<crate::score::Metronome>,
+        metronome: Option<musa_score::score::Metronome>,
         /// The word printed with it, when the marking states one.
         text: Option<String>,
         /// How it gets somewhere else, when the change is gradual.
-        ramp: Option<crate::score::Ramp>,
+        ramp: Option<musa_score::score::Ramp>,
     },
     /// A form marker at the place it names.
     Section { name: String },
     /// A chord symbol at the place it is written; a region once a chord's
     /// duration can be written.
-    Harmony { symbol: crate::harmony::ChordSymbol },
+    Harmony { symbol: musa_score::harmony::ChordSymbol },
     /// A repeat over every pass it plays. The page prints the body once
     /// between repeat barlines; the timeline holds all `times` of it, which is
     /// the layer table's own example (roadmap §2).
@@ -157,7 +157,7 @@ impl FactKind {
     }
 
     /// The articulations written on this fact, if any.
-    pub(crate) fn articulations_of(&self) -> &[crate::Mark] {
+    pub(crate) fn articulations_of(&self) -> &[musa_score::Mark] {
         match self {
             Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
             Self::Mark { .. }
@@ -205,7 +205,7 @@ impl FactKind {
     }
 
     /// The bounds of a freely-held note, for the facts that have them.
-    pub(crate) fn free_of(&self) -> Option<&crate::score::FreeDuration> {
+    pub(crate) fn free_of(&self) -> Option<&musa_score::score::FreeDuration> {
         match self {
             Self::Note { free, .. } | Self::Rest { free, .. } => free.as_ref(),
             Self::Mark { .. }
@@ -292,7 +292,7 @@ impl ScoreFact {
     /// rebase: it holds facts that already have written pitches. A non-note
     /// fact transposes to itself, which is the one thing both readings agree on
     /// and is why this is a method rather than a match at each caller.
-    pub(crate) fn transposed(&self, interval: crate::Interval) -> Option<Self> {
+    pub(crate) fn transposed(&self, interval: musa_score::Interval) -> Option<Self> {
         let FactKind::Note { pitch, .. } = &self.kind else {
             return Some(self.clone());
         };

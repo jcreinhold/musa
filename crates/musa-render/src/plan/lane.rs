@@ -2,7 +2,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{Meter, MusicalDuration, MusicalTime, NotatedDuration, ScoreEvent, ScoreEventKind};
+use musa_score::{Meter, MusicalDuration, MusicalTime, NotatedDuration, ScoreEvent, ScoreEventKind};
 use num_rational::Ratio;
 
 use super::collect::Marks;

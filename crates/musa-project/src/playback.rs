@@ -5,10 +5,10 @@
 //! single preparation; [`prepare`] hands it to the engine and [`to_wav`]
 //! runs it offline.
 
-use musa_compiler::{
-    PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, StudioSpec, lower_performance,
-};
+use musa_compiler::StudioSpec;
+
 use musa_engine::PreparedPlaybackPlan;
+use musa_score::{PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, lower_performance};
 
 use crate::error::ProjectError;
 
@@ -81,7 +81,7 @@ pub(crate) fn to_midi(
     score: &ScoreSnapshot,
     mode: musa_render::MidiMode,
 ) -> Result<(Vec<u8>, Vec<String>), ProjectError> {
-    let performance = musa_compiler::lower_performance(score, &PerformanceOptions::default())
+    let performance = musa_score::lower_performance(score, &PerformanceOptions::default())
         .map_err(|error| ProjectError::Performance(error.to_string()))?;
     let options = musa_render::MidiOptions {
         mode,
@@ -114,13 +114,11 @@ pub(crate) fn to_midi(
 
 /// Whether any part is barred differently from the piece.
 fn polymetric(score: &ScoreSnapshot) -> bool {
-    let piece = score.meter_at(musa_compiler::Scope::Piece, musa_compiler::MusicalTime::ZERO);
-    score.parts().iter().any(|(id, _)| {
-        score.meter_at(
-            musa_compiler::Scope::Part { part: id.0 },
-            musa_compiler::MusicalTime::ZERO,
-        ) != piece
-    })
+    let piece = score.meter_at(musa_score::Scope::Piece, musa_score::MusicalTime::ZERO);
+    score
+        .parts()
+        .iter()
+        .any(|(id, _)| score.meter_at(musa_score::Scope::Part { part: id.0 }, musa_score::MusicalTime::ZERO) != piece)
 }
 
 /// All lanes' events merged into one frame-sorted slice.

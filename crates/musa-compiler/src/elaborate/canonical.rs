@@ -2,8 +2,8 @@
 //! (docs/rules/kernel/05 N3, 12).
 
 use super::fact::{FactKind, ScoreFact};
-use crate::scope::Scope;
-use crate::score::Mode;
+use musa_score::scope::Scope;
+use musa_score::score::Mode;
 use std::fmt::Write as _;
 
 impl musa_kernel::Canonical for ScoreFact {
@@ -19,7 +19,7 @@ impl musa_kernel::Canonical for ScoreFact {
     /// before facts were heterogeneous, so a piece of plain notes has the
     /// normal form it has always had.
     fn canonical_key(&self) -> String {
-        let articulations = |marks: &[crate::Mark]| {
+        let articulations = |marks: &[musa_score::Mark]| {
             if marks.is_empty() {
                 String::new()
             } else {
@@ -27,7 +27,7 @@ impl musa_kernel::Canonical for ScoreFact {
                 format!("|artic:{}", names.join(","))
             }
         };
-        let held = |free: Option<&crate::score::FreeDuration>| {
+        let held = |free: Option<&musa_score::score::FreeDuration>| {
             free.map_or_else(String::new, |free| format!("|to:{}", free.most.as_ratio()))
         };
         let kind = match &self.kind {

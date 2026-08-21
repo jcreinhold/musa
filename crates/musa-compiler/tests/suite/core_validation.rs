@@ -1,4 +1,5 @@
-use musa_compiler::{Code, CompileOptions, ImportSources, SourceDocument, compile};
+use musa_compiler::{CompileOptions, ImportSources, SourceDocument, compile};
+use musa_score::Code;
 
 fn diagnostics(declarations: &str) -> Vec<Code> {
     let source = SourceDocument::new(

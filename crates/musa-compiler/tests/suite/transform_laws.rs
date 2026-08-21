@@ -31,9 +31,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    CompileOptions, ExpansionStep, MusicalTime, NotatedDuration, ScoreEvent, ScoreEventKind, ScoreSnapshot, Severity,
-    SourceDocument, WrittenPitch, compile,
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{
+    ExpansionStep, MusicalTime, NotatedDuration, ScoreEvent, ScoreEventKind, ScoreSnapshot, Severity, WrittenPitch,
 };
 use proptest::prelude::*;
 

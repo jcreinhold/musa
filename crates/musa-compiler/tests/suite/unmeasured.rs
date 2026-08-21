@@ -16,9 +16,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    CompileOptions, MusicalTime, PerformanceOptions, ScoreSnapshot, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalTime, PerformanceOptions, ScoreSnapshot, lower_performance};
 use num_rational::Ratio;
 
 const CADENZA: &str = include_str!("../../../../examples/cadenza.musa");
@@ -64,7 +64,7 @@ fn piece(header: &str, voice: &str) -> String {
 #[test]
 fn a_cadenza_inside_a_measure_is_that_measure() {
     let score = score_of(CADENZA);
-    let bars = score.bars(musa_compiler::Scope::Piece);
+    let bars = score.bars(musa_score::Scope::Piece);
     let whole = |n: i64| MusicalTime::new(Ratio::from_integer(n));
     // Bars 1–4 are 4/4, so the fifth whole note is where measure 5 opens.
     assert_eq!(bars.at(whole(4)).measure, 5);
@@ -84,7 +84,7 @@ fn a_chant_is_one_measure_and_no_complaint() {
     let compilation = compile(&SourceDocument::new(CHANT, "chant.musa"), &CompileOptions::default());
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
     let score = compilation.into_snapshot().expect("compiles");
-    let bars = score.bars(musa_compiler::Scope::Piece);
+    let bars = score.bars(musa_score::Scope::Piece);
     assert!(!bars.meter_at(MusicalTime::ZERO).is_measured());
     assert_eq!(bars.at(MusicalTime::new(Ratio::from_integer(3))).measure, 1);
 }
@@ -103,7 +103,7 @@ fn unmeasured_music_is_performed_exactly() {
             .expect("schedules")
             .lanes()
             .iter()
-            .flat_map(|lane| lane.events().iter().map(musa_compiler::PerformanceEvent::frame))
+            .flat_map(|lane| lane.events().iter().map(musa_score::PerformanceEvent::frame))
             .collect::<Vec<_>>()
     };
     assert_eq!(frames(&free), frames(&measured));
@@ -158,7 +158,7 @@ fn senza_is_the_meter_changes_written_out() {
         let score = score_of(&piece("meter 4/4;", voice));
         let meters: Vec<(MusicalTime, bool)> = score
             .meters()
-            .changes(musa_compiler::Scope::Piece)
+            .changes(musa_score::Scope::Piece)
             .map(|(at, meter)| (at, meter.is_measured()))
             .collect();
         let onsets: Vec<MusicalTime> = score

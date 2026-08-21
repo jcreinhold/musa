@@ -1,6 +1,6 @@
 #![allow(clippy::arithmetic_side_effects)]
 
-use crate::diagnose::nearest;
+use musa_score::diagnose::nearest;
 
 /// "did you mean", or the list, or nothing.
 ///

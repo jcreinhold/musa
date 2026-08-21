@@ -19,10 +19,10 @@
 use musa_language::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDecl, TraitDecl, VoiceItem};
 use musa_language::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::resolve::{NameKind, ReferenceIndex};
 use crate::studio::StudioSpec;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// Lint a compiled piece: the reference index and the resolved studio are
 /// the semantic evidence, the parse tree is the rest.
@@ -515,7 +515,7 @@ fn delete_lines(source: &str, node: &SyntaxNode) -> SourceSpan {
 #[cfg(test)]
 mod tests {
     use super::{duplicate_constraint, redundant_name_prefix};
-    use crate::diagnose::{Code, Diagnostic};
+    use musa_score::diagnose::{Code, Diagnostic};
 
     /// The two rules that read only the parse tree, exercised here rather than
     /// through `compile`.

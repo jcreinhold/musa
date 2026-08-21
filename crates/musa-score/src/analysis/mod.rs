@@ -357,7 +357,7 @@ pub fn rule_names() -> impl Iterator<Item = RuleName> {
 /// the elaboration language, and the language's own checker is its only
 /// caller. What is public is [`rule_names`], because a reader of a report
 /// needs every rule and not only the assertable ones.
-pub(crate) fn assertable() -> impl Iterator<Item = RuleName> {
+pub fn assertable() -> impl Iterator<Item = RuleName> {
     rules::ASSERTABLE.iter().map(|rule| rule.name())
 }
 

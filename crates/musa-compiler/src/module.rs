@@ -28,10 +28,10 @@ use musa_language::ast::{
 };
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::resolve::{NameKind, Resolver, trimmed_span};
 use crate::template::{DIGEST_VERSION, UNIT};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// The separator between a module and one of its members.
 ///

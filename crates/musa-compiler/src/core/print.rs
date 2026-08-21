@@ -3,8 +3,8 @@
 use indexmap::IndexSet;
 use musa_language::ast::AstNode as _;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
 
 use super::ModuleFault;
 use super::PhaseImports;

@@ -25,8 +25,8 @@ that prompt 142 has something to wire the compiler to.
   family*. §2's sentence that only compiler-owned builtins may construct an `EventTrack` or a `Machine` says what a
   track builtin is for.
 - [`127ca`](127ca-builtin-ownership-registry.md), which named the registry and merged the compiler's two ownership
-  tables into `BUILTIN_OWNERSHIP`, and `crates/musa-compiler/src/core.rs`'s `BuiltinOwnership`, `Family`, `Builtin`, and
-  its ownership law suite. That table is what prompt 142 hands to the core; this prompt does not move it.
+  tables into `BUILTIN_OWNERSHIP`, and `crates/musa-compiler/src/core/mod.rs`'s `BuiltinOwnership`, `Family`, `Builtin`,
+  and its ownership law suite. That table is what prompt 142 hands to the core; this prompt does not move it.
 - `crates/musa-calculus/src/{term.rs, raw.rs, value.rs, eval.rs, unify.rs, quote.rs, case.rs, context.rs, elab.rs,
   recheck.rs, storable.rs}` — the eleven files the extension touches, and in particular prompt 136b's
   `Neutral { head, spine }`, which is where a builtin stuck on a non-literal argument belongs.
@@ -36,8 +36,8 @@ that prompt 142 has something to wire the compiler to.
   them; the built-in functions are a parameter of the reduction machine, not part of its syntax.
 - Peyton Jones ch. 4 §4.1 and ch. 5 §5.1 on what a pattern *is*: a constructor pattern is the elimination form of an
   algebraic type, so a type with no constructors and no eliminator has no pattern but a variable. That is why the
-  literal pattern in `crates/musa-compiler/src/core.rs`'s `Pattern::Literal` desugars here rather than crossing into the
-  core, and it is the derivation behind this prompt's Design clause on decidable equality.
+  literal pattern in `crates/musa-compiler/src/core/mod.rs`'s `Pattern::Literal` desugars here rather than crossing into
+  the core, and it is the derivation behind this prompt's Design clause on decidable equality.
 
 ## Design
 
@@ -132,7 +132,7 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
 - `case.rs`: the refusal for a destructuring pattern at a base-typed column, which is all of D1 the core can enforce.
 - `Cx` carrying an optional `Arc<Registry>`, supplied by the caller the way `Classes` is; a context with no registry
   names no base type, which is what keeps every existing test unchanged.
-- New `Refusal` variants and their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs` — the compiler's
+- New `Refusal` variants and their `musa explain` codes in `crates/musa-score/src/diagnose.rs` — the compiler's
   diagnostic registry is the one file this prompt touches there, and its checker is untouched: unknown base type,
   destructuring pattern at a base type, a δ-builtin signature containing an arrow, and a builtin classified twice. A
   δ-rule that answers nothing at arguments it declared it accepts is **not** among them: it is a host defect rather than

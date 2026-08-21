@@ -32,10 +32,10 @@ use musa_calculus::{Cx, Origin, Raw, Term};
 use musa_language::SyntaxKind;
 
 use super::super::{Lowering, Sites};
-use crate::diagnose::Diagnostic;
 use crate::registry::{held, literal, owned, plain_type, syntax_type};
 use crate::resolve::Resolver;
 use crate::syntax::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
+use musa_score::diagnose::Diagnostic;
 
 /// Where a law's own terms are written, which is nowhere a composer can see.
 const HERE: Origin = Origin::UNKNOWN;

@@ -6,14 +6,14 @@ use super::bars::{check_keys, part_bars, resolve_meters};
 use super::fact::{FactKind, VoiceTrack};
 use super::place::placed;
 use crate::compile::Compilation;
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::resolve::{self, Resolver};
-use crate::scope::Scope;
-use crate::score::{Meter, Part, PartId, ScoreSnapshot, Voice, VoiceId};
-use crate::time::MusicalTime;
 use musa_language::ast::AstNode as _;
 use musa_language::ast::PieceDecl;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::scope::Scope;
+use musa_score::score::{Meter, Part, PartId, ScoreSnapshot, Voice, VoiceId};
+use musa_score::time::MusicalTime;
 
 /// The piece, read and evaluated: everything it claims proved, everything it
 /// sounds projected into `snapshot`, and the identity of the whole.
@@ -173,7 +173,7 @@ pub(super) fn evaluated(
 /// counts by.
 ///
 /// Per part rather than per piece because `Meter` inherits by `Override`
-/// (`crate::scope`): a part in 7/8 does not hear the piece's changes at all, so
+/// (`musa_score::scope`): a part in 7/8 does not hear the piece's changes at all, so
 /// a bar written in it is a measure nothing else in the score agrees about.
 ///
 /// The claims are placed by [`crate::document::Document::passage`] rather than
@@ -184,7 +184,7 @@ fn prove(
     resolver: &mut Resolver,
     elaborated: &crate::document::Document,
     read: &crate::lower::piece::Piece,
-    bars: &crate::BarLines,
+    bars: &musa_score::BarLines,
 ) {
     for part in &read.parts {
         let here = part_bars(resolver, Scope::Part { part: part.id });
@@ -196,11 +196,11 @@ fn prove(
                     continue;
                 }
             };
-            let settled = crate::assert::Settled {
+            let settled = musa_score::assert::Settled {
                 bars: here.as_ref().unwrap_or(bars),
                 meter_written: resolver.meter_written,
             };
-            if let Some(diagnostic) = crate::assert::check(&claim, &passage, &settled) {
+            if let Some(diagnostic) = musa_score::assert::check(&claim, &passage, &settled) {
                 resolver.report(diagnostic);
             }
         }
@@ -252,9 +252,9 @@ pub(super) fn meter_of(kind: &FactKind) -> Option<Meter> {
 }
 
 /// The key a fact states, when it states one.
-fn key_of(kind: &FactKind) -> Option<crate::Key> {
+fn key_of(kind: &FactKind) -> Option<musa_score::Key> {
     if let FactKind::Key { tonic, mode } = *kind {
-        return Some(crate::Key::new(tonic, mode));
+        return Some(musa_score::Key::new(tonic, mode));
     }
     None
 }
@@ -296,7 +296,7 @@ pub(super) fn elaborate_material(
     if resolver
         .diagnostics
         .iter()
-        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .any(|diagnostic| diagnostic.severity == musa_score::diagnose::Severity::Error)
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_material();
     }

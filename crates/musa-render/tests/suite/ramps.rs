@@ -15,8 +15,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_score::ScoreSnapshot;
 
 const RUBATO: &str = include_str!("../../../../examples/rubato.musa");
 const RISER: &str = include_str!("../../../../examples/riser.musa");

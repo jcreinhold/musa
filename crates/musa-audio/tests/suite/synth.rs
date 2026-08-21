@@ -12,9 +12,8 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_audio::{GraphOptions, VoiceAllocator, compile_graph, poly_sine_spec, render_offline};
-use musa_compiler::{
-    PerformanceEvent, PerformanceOptions, ScoreSnapshot, SourceDocument, VoiceInstanceId, compile, lower_performance,
-};
+use musa_compiler::{SourceDocument, compile};
+use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, VoiceInstanceId, lower_performance};
 
 const RATE: u32 = 48_000;
 

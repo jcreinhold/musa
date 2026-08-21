@@ -26,9 +26,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severity, SourceDocument, WrittenPitch, compile,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity, WrittenPitch};
 
 const TONAL_CONSTRUCTION: &str = include_str!("../../../../examples/tonal-construction.musa");
 

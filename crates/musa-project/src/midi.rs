@@ -22,7 +22,7 @@
 
 use std::time::{Duration, Instant};
 
-use musa_compiler::{Key, Letter};
+use musa_score::{Key, Letter};
 
 /// How close two presses must be to be one chord.
 ///
@@ -204,7 +204,7 @@ fn accidental(alter: i32) -> &'static str {
 #[cfg(test)]
 mod midi_laws {
     use super::{EntryBuffer, MidiEntry, spell};
-    use musa_compiler::{Accidental, Key, Letter, Mode, PitchClass};
+    use musa_score::{Accidental, Key, Letter, Mode, PitchClass};
     use std::time::{Duration, Instant};
 
     fn key(letter: Letter, accidental: i8, mode: Mode) -> Option<Key> {

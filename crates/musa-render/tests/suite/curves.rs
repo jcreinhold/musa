@@ -11,8 +11,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ImportSources, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, ImportSources, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_score::ScoreSnapshot;
 
 const MOTIFS: &str = include_str!("../../../../examples/album/library/motifs.musa");
 const PATCHES: &str = include_str!("../../../../examples/album/library/patches.musa");

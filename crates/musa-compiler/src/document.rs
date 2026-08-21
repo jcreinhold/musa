@@ -55,13 +55,13 @@ use musa_calculus::{Cx, ElabError, Name, Origin, Program, Raw, RawData, RawProgr
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Declared, Definition, Item};
 use crate::lower::notation::{Argued, Claimed};
 use crate::lower::{Lowering, Naming, Sites, refusals};
 use crate::module::{MemberItem, Modules};
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
 
 /// One node whose children are declarations.
 ///
@@ -106,7 +106,7 @@ pub(crate) struct Import {
     pub(crate) alias: Option<String>,
     /// The statement itself, which is the one span in this document that is
     /// about that library.
-    pub(crate) at: crate::origin::SourceSpan,
+    pub(crate) at: musa_score::origin::SourceSpan,
 }
 
 impl Source {
@@ -190,7 +190,7 @@ pub(crate) struct Document {
     /// [`Document::piece`], because it is the same answer for every reading this
     /// document can be asked for: the file is the template's body, so everything
     /// in it was produced by the one site that made it.
-    standing: Option<crate::origin::Origin>,
+    standing: Option<musa_score::origin::Origin>,
     /// What elaborating the declarations charged.
     ///
     /// Kept because one caller has a budget of its own to answer for: the
@@ -296,7 +296,7 @@ impl Document {
     /// a written `assert` records the *terms* of its arguments, and a term has
     /// no value until this document is elaborated. Building the claim in the
     /// same call is what lets the notes be gathered only for the claims that
-    /// read them ([`crate::assert::Claim::reads_notes`]), so a bar pays for its
+    /// read them ([`musa_score::assert::Claim::reads_notes`]), so a bar pays for its
     /// duration and nothing else. They are relative to the passage, because
     /// that is what a claim is about: `assert voices(4)` counts what sounds
     /// together inside the braces, and where the braces stand is the measure
@@ -312,7 +312,7 @@ impl Document {
     pub(crate) fn passage(
         &self,
         claimed: &Claimed,
-    ) -> Result<(crate::assert::Claim, crate::assert::Passage), ElabError> {
+    ) -> Result<(musa_score::assert::Claim, musa_score::assert::Passage), ElabError> {
         let claim = self.claim(claimed)?;
         let before = self.track(&claimed.before)?;
         let sounding = self.track(&claimed.passage)?;
@@ -321,10 +321,10 @@ impl Document {
                 .occurrences()
                 .iter()
                 .filter_map(|occurrence| {
-                    Some(crate::assert::Sounded {
+                    Some(musa_score::assert::Sounded {
                         pitch: occurrence.payload().pitch_of()?,
-                        start: crate::MusicalTime::new(occurrence.span().start().as_ratio()),
-                        end: crate::MusicalTime::new(occurrence.span().end().as_ratio()),
+                        start: musa_score::MusicalTime::new(occurrence.span().start().as_ratio()),
+                        end: musa_score::MusicalTime::new(occurrence.span().end().as_ratio()),
                         // The span of the note itself and not of whatever played
                         // it: a note generated from a motif is written in the
                         // motif, and that is where a composer goes to change it.
@@ -337,10 +337,10 @@ impl Document {
         };
         Ok((
             claim,
-            crate::assert::Passage {
+            musa_score::assert::Passage {
                 span: claimed.span,
-                at: crate::MusicalTime::new(before.duration().as_ratio()),
-                extent: crate::MusicalDuration::new(sounding.duration().as_ratio()),
+                at: musa_score::MusicalTime::new(before.duration().as_ratio()),
+                extent: musa_score::MusicalDuration::new(sounding.duration().as_ratio()),
                 content_end: claimed.content_end,
                 notes,
                 noun: claimed.noun,
@@ -359,7 +359,7 @@ impl Document {
     /// # Errors
     ///
     /// As [`Self::passage`].
-    fn claim(&self, claimed: &Claimed) -> Result<crate::assert::Claim, ElabError> {
+    fn claim(&self, claimed: &Claimed) -> Result<musa_score::assert::Claim, ElabError> {
         // One sentence for both failures below, because they are one defect:
         // an argument that was checked at its shape's type and does not read
         // back as that shape means this crate's registration and its reading
@@ -375,7 +375,7 @@ impl Document {
                 }
             });
         }
-        crate::assert::Claim::build(claimed.predicate.name, arguments).ok_or_else(broken)
+        musa_score::assert::Claim::build(claimed.predicate.name, arguments).ok_or_else(broken)
     }
 
     /// Every machine this document's declarations describe, by the name each
@@ -394,7 +394,7 @@ impl Document {
     /// refuses an undetermined implicit argument at the declaration, so
     /// `let m = identity;` is a complaint about the ports and never a machine
     /// with none.
-    pub(crate) fn machines(&self) -> Vec<(String, crate::MachineSpec)> {
+    pub(crate) fn machines(&self) -> Vec<(String, musa_score::MachineSpec)> {
         self.names
             .iter()
             .filter_map(|name| {
@@ -402,7 +402,10 @@ impl Document {
                 let (step, input, output) = crate::registry::machine_ports(&ty)?;
                 let normal = musa_calculus::normalize(&self.cx, &ty, &term).ok()?;
                 let nodes = crate::registry::machine_nodes(&normal)?;
-                Some((name.to_string(), crate::MachineSpec::new(step, input, output, nodes)))
+                Some((
+                    name.to_string(),
+                    musa_score::MachineSpec::new(step, input, output, nodes),
+                ))
             })
             .collect()
     }

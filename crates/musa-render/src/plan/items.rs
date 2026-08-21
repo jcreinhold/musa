@@ -3,7 +3,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{DynamicMark, EventId, Mark, MusicalDuration, NotatedDuration, WrittenPitch};
+use musa_score::{DynamicMark, EventId, Mark, MusicalDuration, NotatedDuration, WrittenPitch};
 
 use super::marks::{BeamGroup, HairpinMark, PhraseMark, SpanMark, TupletMark};
 
@@ -48,7 +48,7 @@ pub struct NotatedItem {
     pub(super) articulations: Vec<Mark>,
     pub(super) graces: Vec<PlannedGrace>,
     pub(super) spans: Vec<SpanMark>,
-    pub(super) free: Option<musa_compiler::FreeDuration>,
+    pub(super) free: Option<musa_score::FreeDuration>,
 }
 
 /// One grace note leaning on a notated item, ready to print.
@@ -61,7 +61,7 @@ pub struct NotatedItem {
 /// would have to invent onsets no backend would use.
 ///
 /// No duration field, and that is the point: how long a grace lasts is the
-/// profile's answer (`musa_compiler::GracePolicy`), and the page is silent on
+/// profile's answer (`musa_score::GracePolicy`), and the page is silent on
 /// it. What the page *does* say — which pitches, in what order, with what
 /// marks — is exactly what is here.
 #[derive(Clone, Debug)]
@@ -140,7 +140,7 @@ impl NotatedItem {
 
     /// The bounds of a freely-held note: what is drawn, and how far the
     /// bracket reaches. `None` on a note that sounds what it says.
-    pub fn free(&self) -> Option<&musa_compiler::FreeDuration> {
+    pub fn free(&self) -> Option<&musa_score::FreeDuration> {
         self.free.as_ref()
     }
 

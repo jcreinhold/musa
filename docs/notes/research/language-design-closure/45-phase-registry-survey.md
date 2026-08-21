@@ -3,7 +3,7 @@
 ## Purpose
 
 Prompt 138 gave `Syntax` a category and gave the phase's kind and delimiter arguments real types. Retyping an operation
-does not merely change its signature: an entry in [`SYNTAX_OWNERSHIP`](../../../../crates/musa-compiler/src/core.rs)
+does not merely change its signature: an entry in [`SYNTAX_OWNERSHIP`](../../../../crates/musa-compiler/src/core/mod.rs)
 exists because it *hides* something an adapter has no other way to reach, and an argument that stops being text can take
 that reason with it. So this note is the survey the prompt asked for — every entry, its signature as of this prompt,
 what it still hides, and which of the three fates ahead of it it is headed for.

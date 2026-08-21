@@ -97,7 +97,7 @@ pub(crate) fn is_step_tag(written: &str) -> bool {
 ///
 /// `primitive(name, version, configuration)` is typed by a registry rather than
 /// by a signature: the written name and version select a descriptor from
-/// [`crate::machine`], and *that* supplies the step, the two ports, **and the
+/// [`musa_score::machine`], and *that* supplies the step, the two ports, **and the
 /// type of the configuration argument** — which differs per unit, so it is not
 /// one Π short of writable, it is a different type per registered pair.
 ///
@@ -137,7 +137,7 @@ pub(super) fn step_tags() -> Vec<musa_calculus::Base> {
 /// type its descriptor decides.
 ///
 /// `configuration → Primitive step input output`, with every one of the four
-/// read from [`crate::machine`]. No binder, implicit or otherwise: a unit's
+/// read from [`musa_score::machine`]. No binder, implicit or otherwise: a unit's
 /// ports are decided by which unit it is, so there is nothing for a use site to
 /// supply and nothing for the elaborator to solve.
 ///
@@ -171,13 +171,13 @@ pub(super) fn primitives(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 }
 
 /// Every descriptor this build registers, in registration order.
-fn units() -> Vec<&'static crate::machine::PrimitiveDescriptor> {
-    crate::machine::registered_ids()
+fn units() -> Vec<&'static musa_score::machine::PrimitiveDescriptor> {
+    musa_score::machine::registered_ids()
         .into_iter()
         .flat_map(|id| {
-            crate::machine::versions_of(id)
+            musa_score::machine::versions_of(id)
                 .into_iter()
-                .filter_map(move |version| crate::machine::descriptor(id, version))
+                .filter_map(move |version| musa_score::machine::descriptor(id, version))
         })
         .collect()
 }
@@ -187,17 +187,17 @@ fn units() -> Vec<&'static crate::machine::PrimitiveDescriptor> {
 /// A product is `Pair` folded from the right, which is what `beside`'s own
 /// signature already writes: §2 pairs two ports and says nothing about three,
 /// so three is two of them.
-fn port(cx: &Cx, shape: crate::machine::PortShape) -> Result<Term, ElabError> {
+fn port(cx: &Cx, shape: musa_score::machine::PortShape) -> Result<Term, ElabError> {
     match shape {
         // The storable spelling: §1.2's constraint on a port is discharged by
         // computing over this base, and a `Ratio` port is storable data —
         // which the owner says at the registration, per the one shape this
         // crate cannot look inside.
-        crate::machine::PortShape::Ratio => Ok(super::storable("Ratio").term(HERE)),
-        crate::machine::PortShape::Unit => crate::prelude::constant(cx, "Unit"),
-        crate::machine::PortShape::Bool => crate::prelude::constant(cx, "Bool"),
-        crate::machine::PortShape::Nat => crate::prelude::constant(cx, "Nat"),
-        crate::machine::PortShape::Product(members) => {
+        musa_score::machine::PortShape::Ratio => Ok(super::storable("Ratio").term(HERE)),
+        musa_score::machine::PortShape::Unit => crate::prelude::constant(cx, "Unit"),
+        musa_score::machine::PortShape::Bool => crate::prelude::constant(cx, "Bool"),
+        musa_score::machine::PortShape::Nat => crate::prelude::constant(cx, "Nat"),
+        musa_score::machine::PortShape::Product(members) => {
             let pair = crate::prelude::constant(cx, "Pair")?;
             let mut built = Vec::with_capacity(members.len());
             for member in members {
@@ -226,7 +226,7 @@ fn port(cx: &Cx, shape: crate::machine::PortShape) -> Result<Term, ElabError> {
 /// program a source file can write: §2's forms are polymorphic in their ports,
 /// and a declaration that leaves them undetermined is refused for that before it
 /// is ever read back.
-pub(crate) fn ports(ty: &Term) -> Option<(crate::machine::StepTag, String, String)> {
+pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, String)> {
     let (head, arguments) = spine(ty);
     let musa_calculus::Shape::Base(ref base) = *head.shape() else {
         return None;
@@ -238,7 +238,7 @@ pub(crate) fn ports(ty: &Term) -> Option<(crate::machine::StepTag, String, Strin
         return None;
     };
     Some((
-        crate::machine::StepTag::named(&spelled(step)?)?,
+        musa_score::machine::StepTag::named(&spelled(step)?)?,
         spelled(input)?,
         spelled(output)?,
     ))
@@ -254,16 +254,16 @@ pub(crate) fn ports(ty: &Term) -> Option<(crate::machine::StepTag, String, Strin
 /// [`None`] when the spine is not one of those forms saturated — which, after
 /// [`ports`] has answered, means a compiler defect rather than a program's,
 /// since the term was checked at the machine type it is being read at.
-pub(crate) fn nodes(normal: &Term) -> Option<Vec<crate::machine::SpecNode>> {
+pub(crate) fn nodes(normal: &Term) -> Option<Vec<musa_score::machine::SpecNode>> {
     let mut nodes = Vec::new();
     node(normal, &mut nodes)?;
     Some(nodes)
 }
 
 /// Append one form's nodes to `nodes`, children first, and answer where its own
-/// node landed — [`crate::MachineSpec`]'s promised order.
-fn node(term: &Term, nodes: &mut Vec<crate::machine::SpecNode>) -> Option<usize> {
-    use crate::machine::{SpecForm, SpecNode};
+/// node landed — [`musa_score::MachineSpec`]'s promised order.
+fn node(term: &Term, nodes: &mut Vec<musa_score::machine::SpecNode>) -> Option<usize> {
+    use musa_score::machine::{SpecForm, SpecNode};
 
     let (head, arguments) = spine(term);
     let musa_calculus::Shape::Builtin(ref builtin) = *head.shape() else {
@@ -303,16 +303,16 @@ fn node(term: &Term, nodes: &mut Vec<crate::machine::SpecNode>) -> Option<usize>
 
 /// `connect` and `beside`, which differ only in which form they are.
 fn joined(
-    form: crate::machine::SpecForm,
+    form: musa_score::machine::SpecForm,
     arguments: &[&Term],
-    nodes: &mut Vec<crate::machine::SpecNode>,
-) -> Option<crate::machine::SpecNode> {
+    nodes: &mut Vec<musa_score::machine::SpecNode>,
+) -> Option<musa_score::machine::SpecNode> {
     let written = written(arguments, 2)?;
     let children = vec![
         node(written.first().copied()?, nodes)?,
         node(written.get(1).copied()?, nodes)?,
     ];
-    Some(crate::machine::SpecNode::wiring(form, children))
+    Some(musa_score::machine::SpecNode::wiring(form, children))
 }
 
 /// The last `count` arguments of a spine: the ones a source program wrote.
@@ -331,7 +331,7 @@ fn written<'a, 'b>(arguments: &'b [&'a Term], count: usize) -> Option<&'b [&'a T
 /// Matched against [`unit_spelling`] rather than parsed out of it: the spelling
 /// is this module's own construction, and a reader that took it apart would be
 /// a second place that decides what a unit's registration is called.
-fn unit_named(spelling: &str) -> Option<&'static crate::machine::PrimitiveDescriptor> {
+fn unit_named(spelling: &str) -> Option<&'static musa_score::machine::PrimitiveDescriptor> {
     units()
         .into_iter()
         .find(|descriptor| unit_spelling(descriptor.id(), descriptor.version()) == spelling)
@@ -382,7 +382,7 @@ fn write_stored(datum: &musa_calculus::Datum, bytes: &mut Vec<u8>) -> Option<()>
 }
 
 /// How this build spells the type `ty`, in the vocabulary
-/// [`crate::MachineSpec`] reports ports in.
+/// [`musa_score::MachineSpec`] reports ports in.
 ///
 /// Base types and the prelude's own nullary families print their names, and a
 /// product prints as source writes it. [`None`] for anything else, which is

@@ -24,7 +24,7 @@ use std::collections::HashMap;
 
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, Track, TrackEvent, TrackEventKind};
-use musa_compiler::{PerformanceEvent, PerformancePlan, VoiceInstanceId, WrittenPitch};
+use musa_score::{PerformanceEvent, PerformancePlan, VoiceInstanceId, WrittenPitch};
 
 use crate::error::RenderError;
 
@@ -219,7 +219,7 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
 /// all. Dropping it leaves the previous signature standing, which is wrong in
 /// exactly the way MIDI is always wrong about notation; the page says the
 /// truth.
-fn time_signature(meter: musa_compiler::Meter) -> Option<MetaMessage<'static>> {
+fn time_signature(meter: musa_score::Meter) -> Option<MetaMessage<'static>> {
     // Unmeasured music has nothing to say here, and SMF has no way to say
     // "the barlines stop" — so the events simply stop, which is the honest
     // silence rather than a signature of no beats.
@@ -242,13 +242,13 @@ fn time_signature(meter: musa_compiler::Meter) -> Option<MetaMessage<'static>> {
 /// Unlike the meter this is total — SMF's key signature is exactly musa's
 /// (fifths on the circle, major or minor), which is the one place the two
 /// formats agree completely.
-fn key_signature(key: musa_compiler::Key) -> MetaMessage<'static> {
-    MetaMessage::KeySignature(key.fifths(), key.mode() == musa_compiler::Mode::Minor)
+fn key_signature(key: musa_score::Key) -> MetaMessage<'static> {
+    MetaMessage::KeySignature(key.fifths(), key.mode() == musa_score::Mode::Minor)
 }
 
 /// One track per part, named, with its notes on one channel.
 fn lane_track<'a>(
-    lane: &musa_compiler::PerformanceLane,
+    lane: &musa_score::PerformanceLane,
     channel: u4,
     ticks: &Ticks,
     options: MidiOptions,

@@ -38,10 +38,10 @@ Write that walk, and use it to say what the corpus still needs.
   builtins is a *translation* with an oracle to check it against, and burying it inside a diff that also moves 11,304
   lines of `.musa` would have made a wrong signature indistinguishable from a wrong migration". A walk that has never
   been run on a real file is the same wager one level up.
-- `crates/musa-compiler/src/core.rs`'s `check_piece`, `check_arguments`, `check_template_voice`, and `check_material`,
-  and the `data_owners` and `module_owners` helpers beside them. They are the shape of the argument this walk takes — a
-  document is its imports, its own root, and the piece or voice being checked — and they are what 142 replaces. Read
-  them for the *argument*, not for the checker.
+- `crates/musa-compiler/src/core/mod.rs`'s `check_piece`, `check_arguments`, `check_template_voice`, and
+  `check_material`, and the `data_owners` and `module_owners` helpers beside them. They are the shape of the argument
+  this walk takes — a document is its imports, its own root, and the piece or voice being checked — and they are what
+  142 replaces. Read them for the *argument*, not for the checker.
 - Peyton Jones **ch. 6 §6.2.8** again, for the half 141n did not need. Dependency analysis is not only about
   definitions: a `data Chord { root: NoteName; }` written above the `data NoteName` it names is the same problem with
   the same answer, and the core cannot solve it because its own mutual-recursion door is one group with shared

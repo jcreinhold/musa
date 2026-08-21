@@ -21,10 +21,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    ChordQuality, ChordSymbol, CompileOptions, IntegratedTempoMap, PerformanceOptions, ScoreSnapshot, Severity,
-    SourceDocument, compile,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{ChordQuality, ChordSymbol, IntegratedTempoMap, PerformanceOptions, ScoreSnapshot, Severity};
 
 const ANNOTATED: &str = include_str!("../../../../examples/annotated.musa");
 
@@ -276,7 +275,7 @@ fn a_form_marker_lands_at_a_time_the_performance_agrees_with() {
     let [_, development] = snapshot.annotations().sections() else {
         panic!("expected two sections");
     };
-    let tempo = IntegratedTempoMap::new(&snapshot, musa_compiler::Scope::Piece, &PerformanceOptions::default());
+    let tempo = IntegratedTempoMap::new(&snapshot, musa_score::Scope::Piece, &PerformanceOptions::default());
     // 1/4 = 96 and two 4/4 measures before it: five seconds in.
     let seconds = tempo.frames(development.at) / u64::from(tempo.sample_rate());
     assert_eq!(seconds, 5);
@@ -284,13 +283,13 @@ fn a_form_marker_lands_at_a_time_the_performance_agrees_with() {
 
 fn letter_of(chord: &ChordSymbol) -> &'static str {
     match chord.root().letter {
-        musa_compiler::Letter::C => "c",
-        musa_compiler::Letter::D => "d",
-        musa_compiler::Letter::E => "e",
-        musa_compiler::Letter::F => "f",
-        musa_compiler::Letter::G => "g",
-        musa_compiler::Letter::A => "a",
-        musa_compiler::Letter::B => "b",
+        musa_score::Letter::C => "c",
+        musa_score::Letter::D => "d",
+        musa_score::Letter::E => "e",
+        musa_score::Letter::F => "f",
+        musa_score::Letter::G => "g",
+        musa_score::Letter::A => "a",
+        musa_score::Letter::B => "b",
     }
 }
 
@@ -304,10 +303,10 @@ fn accidental_of(chord: &ChordSymbol) -> &'static str {
     }
 }
 
-fn seventh_name(seventh: musa_compiler::Seventh) -> &'static str {
+fn seventh_name(seventh: musa_score::Seventh) -> &'static str {
     match seventh {
-        musa_compiler::Seventh::Minor => "minor",
-        musa_compiler::Seventh::Major => "major",
-        musa_compiler::Seventh::Diminished => "diminished",
+        musa_score::Seventh::Minor => "minor",
+        musa_score::Seventh::Major => "major",
+        musa_score::Seventh::Diminished => "diminished",
     }
 }

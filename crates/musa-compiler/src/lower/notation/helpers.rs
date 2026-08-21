@@ -2,9 +2,9 @@
 
 use musa_calculus::{Origin, Raw};
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::Lowering;
-use crate::origin::{DeclarationId, SourceSpan};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::{DeclarationId, SourceSpan};
 
 impl Lowering<'_> {
     /// The `Origin` argument a constructed fact carries (§5.7).
@@ -22,7 +22,7 @@ impl Lowering<'_> {
         reason = "reads as a sibling of `provenance_at`, which needs the table"
     )]
     pub(crate) fn provenance(&self, origin: Origin, span: SourceSpan, placed: bool, declaration: DeclarationId) -> Raw {
-        let written = crate::origin::Origin {
+        let written = musa_score::origin::Origin {
             source_span: if placed { span } else { crate::elaborate::SHARED_ORIGIN },
             definition_span: span,
             declaration,
@@ -63,7 +63,7 @@ impl Lowering<'_> {
             .at(span, "unknown marking")
             .help(crate::resolve::suggest(
                 text,
-                crate::score::DynamicMark::NAMES,
+                musa_score::score::DynamicMark::NAMES,
                 "markings",
             ))
     }

@@ -13,7 +13,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
 /// Compile `source` and hand back the score and its derivation.
-fn compiled(source: &str) -> (musa_compiler::ScoreSnapshot, musa_compiler::Derivation) {
+fn compiled(source: &str) -> (musa_score::ScoreSnapshot, musa_score::Derivation) {
     let compilation = compile(
         &SourceDocument::new(source, "derivation-laws.musa"),
         &CompileOptions::default(),

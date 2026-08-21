@@ -12,9 +12,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Compilation, CompileOptions, ImportSources, ScoreSnapshot, SourceDocument, compile, resolve_import,
-};
+use musa_compiler::{Compilation, CompileOptions, ImportSources, SourceDocument, compile, resolve_import};
+
+use musa_score::ScoreSnapshot;
 
 /// Compile `source` as `name`, with `files` available to import.
 fn compile_with(name: &str, source: &str, files: &[(&str, &str)]) -> Compilation {
@@ -38,7 +38,7 @@ fn errors(compilation: &Compilation) -> Vec<String> {
     compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| {
             let mut lines = vec![diagnostic.message.clone()];
             if let Some(note) = diagnostic.note.as_deref() {

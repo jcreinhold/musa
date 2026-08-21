@@ -1,5 +1,5 @@
-use crate::diagnose::Code;
-use crate::origin::SourceSpan;
+use musa_score::diagnose::Code;
+use musa_score::origin::SourceSpan;
 
 /// One syntax import from the fixed module header.
 pub(crate) struct SyntaxImport {
@@ -81,7 +81,7 @@ pub(crate) struct LevelFault {
     /// expansion does; everything else here is the module's own fault.
     pub(crate) code: Code,
     /// What the module's own checker said, when it said anything.
-    pub(crate) causes: Vec<crate::diagnose::Cause>,
+    pub(crate) causes: Vec<musa_score::diagnose::Cause>,
 }
 
 /// The level `adapter_source` declares, checked against what it offers.
@@ -132,7 +132,7 @@ pub(crate) fn level_of(
                 code: Code::Expansion,
                 causes: diagnostics
                     .into_iter()
-                    .map(|diagnostic| crate::diagnose::Cause::of(document, diagnostic))
+                    .map(|diagnostic| musa_score::diagnose::Cause::of(document, diagnostic))
                     .collect(),
             },
         })?;

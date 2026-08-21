@@ -267,7 +267,7 @@ fn a_nested_bar_is_placed_through_every_block_it_is_in() {
 ///
 /// The law the `assert` reading exists for, and it is stated through
 /// [`Document::passage`] for [`claimed`]'s reason. Every one of
-/// `crate::assert::ParamType`'s six shapes is here, because the six are read
+/// `musa_score::assert::ParamType`'s six shapes is here, because the six are read
 /// three different ways and a law that exercised one would prove the least
 /// interesting of them: a scale and a chord are base literals, a count is the
 /// prelude's unary `Nat`, a list of ranges is `List.Cons` over `Pair.Both`, and
@@ -386,7 +386,7 @@ fn a_value_argument_is_checked_at_the_shape_the_claim_declares() {
     let restated = crate::lower::refusals::restate(document.sites(), &error);
     assert_eq!(
         restated.code,
-        crate::diagnose::Code::ConversionMismatch,
+        musa_score::diagnose::Code::ConversionMismatch,
         "the count's own type is what refuses a scale: {}",
         restated.message
     );

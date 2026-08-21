@@ -11,8 +11,10 @@
 // reports it better than threading a Result through the readers below.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_score::ScoreSnapshot;
 use proptest::prelude::*;
 
 const EXAMPLES: [(&str, &str); 11] = [
@@ -226,7 +228,7 @@ fn dynamic_names_are_musicxml_elements() {
         "sfp", "sfpp", "fp", "rf", "sfz",
     ];
     for text in ["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "sfz", "fp"] {
-        let mark = musa_compiler::DynamicMark::parse(text).expect("a marking the language spells");
+        let mark = musa_score::DynamicMark::parse(text).expect("a marking the language spells");
         assert!(
             MUSICXML_DYNAMICS.contains(&mark.name()),
             "{} is not a MusicXML dynamics element",

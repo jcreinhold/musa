@@ -1,6 +1,6 @@
 //! Notation errors: explicit, never raw backend escapes (roadmap §7.2).
 
-use musa_compiler::EventId;
+use musa_score::EventId;
 
 /// A failure to plan notation for a score.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]

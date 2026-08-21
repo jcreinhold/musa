@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::compile::{CompileOptions, SourceDocument};
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 use super::Cached;
 use super::Expansion;
 use super::Level;
 use super::{expand_one, level_of, names_written, region_body, region_name, syntax_imports};
-use crate::origin::Replacement;
+use musa_score::origin::Replacement;
 
 /// Run step 4 of the fixed order over `source`.
 pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expansion {
@@ -394,7 +394,7 @@ pub fn adapter_print(
     // Spanless, and every fault below with it: there is no region to point at
     // yet, and a caret over the file's first byte would be a place the reader
     // would go and find nothing.
-    let broken_by = |message: String, help: &'static str, causes: Vec<crate::diagnose::Cause>| {
+    let broken_by = |message: String, help: &'static str, causes: Vec<musa_score::diagnose::Cause>| {
         AdapterPrintError::Broken(Box::new(
             Diagnostic::error(Code::Expansion, message).help(help).caused_by(causes),
         ))
@@ -460,16 +460,16 @@ pub fn adapter_print(
 /// One complaint about a reading, filed against `adapter` and stripped of its
 /// coordinates.
 ///
-/// [`crate::diagnose::Cause::of`] everywhere else keeps the labels, because
+/// [`musa_score::diagnose::Cause::of`] everywhere else keeps the labels, because
 /// everywhere else the offsets are offsets into a file the reader can open. Here
 /// they are offsets into the piece [`crate::core::print_value`] wrote to read the
 /// printer and the value together, and `adapter` is a real file: kept, they would
 /// resolve against text they did not come from and point somewhere plausible and
 /// wrong. The sentence is what an adapter author acts on, and it survives.
-fn said_by(adapter: &str, diagnostic: Diagnostic) -> crate::diagnose::Cause {
-    crate::diagnose::Cause {
+fn said_by(adapter: &str, diagnostic: Diagnostic) -> musa_score::diagnose::Cause {
+    musa_score::diagnose::Cause {
         labels: Vec::new(),
-        ..crate::diagnose::Cause::of(adapter, diagnostic)
+        ..musa_score::diagnose::Cause::of(adapter, diagnostic)
     }
 }
 

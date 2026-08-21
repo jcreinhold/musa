@@ -10,7 +10,9 @@
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{Anchor, CompileOptions, Mark, SourceDocument, VOCABULARY, compile, lookup_mark};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Anchor, Mark, VOCABULARY, lookup_mark};
 
 fn diagnostics_of(voice: &str) -> Vec<String> {
     let source = format!("piece \"p\" {{ meter 4/4; score {{ part a {{ voice b {{ {voice} }} }} }} }}");

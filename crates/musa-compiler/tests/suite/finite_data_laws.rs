@@ -31,7 +31,7 @@ fn errors(compilation: &musa_compiler::Compilation) -> String {
     for diagnostic in compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
     {
         let _ = writeln!(out, "{}", diagnostic.message);
         for label in &diagnostic.labels {
@@ -120,9 +120,9 @@ fn folding_with_the_music_cases_is_the_music_the_plan_denotes() {
     let score = compilation.snapshot().expect("a score");
     let voices: Vec<
         Vec<(
-            musa_compiler::MusicalTime,
-            musa_compiler::NotatedDuration,
-            musa_compiler::ScoreEventKind,
+            musa_score::MusicalTime,
+            musa_score::NotatedDuration,
+            musa_score::ScoreEventKind,
         )>,
     > = score
         .parts()

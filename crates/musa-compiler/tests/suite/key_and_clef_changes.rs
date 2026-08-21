@@ -8,7 +8,9 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{Clef, CompileOptions, Mode, MusicalTime, PartId, Scope, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Clef, Mode, MusicalTime, PartId, Scope};
 use num_rational::Ratio;
 
 fn compiled(source: &str) -> musa_compiler::Compilation {
@@ -19,7 +21,7 @@ fn errors(source: &str) -> Vec<String> {
     compiled(source)
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect()
 }

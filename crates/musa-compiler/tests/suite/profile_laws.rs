@@ -21,10 +21,9 @@
 // Frame arithmetic over small integers.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, PerformanceEvent, PerformanceLane, PerformanceOptions, ScoreSnapshot, Severity, SourceDocument,
-    compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{PerformanceEvent, PerformanceLane, PerformanceOptions, ScoreSnapshot, Severity, lower_performance};
 use proptest::prelude::*;
 
 const PROFILE_FIXTURE: &str = include_str!("../../../../examples/profile-fixture.musa");

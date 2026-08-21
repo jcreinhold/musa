@@ -11,7 +11,7 @@
 //! per member, so `pcset12_vector` and `pcset12_members` can be read off a
 //! score snapshot. The algebra itself — the exhaustive `T`/`I` reference,
 //! the brute-force prime-form model over all 4096 sets, the interval-class
-//! accounting — is checked where it is computed, in `crate::pc12`'s own unit
+//! accounting — is checked where it is computed, in `musa_score::pc12`'s own unit
 //! tests, because the domain is crate-private and nothing outside can see a
 //! `Pc12` at all.
 
@@ -21,7 +21,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity};
 
 /// The counting apparatus every fixture below is written against.
 ///

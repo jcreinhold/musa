@@ -26,7 +26,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity};
 
 const NEO_RIEMANNIAN: &str = include_str!("../../../../examples/neo-riemannian.musa");
 

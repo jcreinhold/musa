@@ -26,10 +26,10 @@ use std::collections::HashMap;
 
 use musa_language::ast::{AstNode as _, LibraryDecl};
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::package::Package;
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// The text of every file a compilation may import, by resolved path.
 ///

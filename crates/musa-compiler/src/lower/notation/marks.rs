@@ -5,9 +5,9 @@ use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, listed};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 use super::*;
 impl Lowering<'_> {
@@ -20,7 +20,7 @@ impl Lowering<'_> {
     ///
     /// # Why the row's shape is checked while reading
     ///
-    /// `crate::marks`'s table says three things about each row — where it is
+    /// `musa_score::marks`'s table says three things about each row — where it is
     /// anchored, what argument it takes, and which note slot it fills — and all
     /// three are claims about *how the statement was written*, which is the same
     /// rule [`Lowering::specialized`] states at length: a property of the text is
@@ -34,18 +34,18 @@ impl Lowering<'_> {
     /// and each names the row rather than the grammar: a vocabulary whose
     /// diagnostics were about braces would be a vocabulary with no shape.
     pub(crate) fn marked(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
-        use crate::marks::Anchor;
+        use musa_score::marks::Anchor;
 
         let statement = musa_language::ast::MarkStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let text = statement.name().unwrap_or_default();
-        let Some(mark) = crate::Mark::parse(&text) else {
+        let Some(mark) = musa_score::Mark::parse(&text) else {
             return self.refuse(
                 Diagnostic::error(Code::UnknownWord, format!("`{text}` is not a mark"))
                     .at(span, "unknown mark")
                     .help(crate::resolve::suggest(
                         &text,
-                        &crate::marks::statement_names(),
+                        &musa_score::marks::statement_names(),
                         "marks",
                     )),
             );
@@ -95,12 +95,12 @@ impl Lowering<'_> {
     /// argument" is advice and `mark rehearsal "A";` is a repair.
     pub(crate) fn mark_argument(
         &mut self,
-        mark: crate::Mark,
+        mark: musa_score::Mark,
         statement: &musa_language::ast::MarkStmt,
         origin: Origin,
         span: SourceSpan,
     ) -> Option<Raw> {
-        use crate::marks::{Argument, MarkArgument};
+        use musa_score::marks::{Argument, MarkArgument};
 
         let written = match (statement.text(), statement.number()) {
             (Some(text), _) => Some(MarkArgument::Text(text)),
@@ -135,7 +135,7 @@ impl Lowering<'_> {
     /// The articulation names written after a duration, as a `List Mark`.
     ///
     /// Half of "the anchor decides where a mark is written"; [`Lowering::marked`]
-    /// is the other half. A row whose anchor is [`crate::marks::Anchor::Note`]
+    /// is the other half. A row whose anchor is [`musa_score::marks::Anchor::Note`]
     /// may be written here and no other row may, because a staccato dot has no
     /// extent and a pedal has both an extent and an identity —
     /// [`crate::elaborate::FactKind::Mark`]'s own documentation draws that line.
@@ -152,7 +152,7 @@ impl Lowering<'_> {
     pub(crate) fn articulations(&mut self, origin: Origin, names: &[String], span: SourceSpan) -> Raw {
         let mut marks = Vec::new();
         for name in names {
-            match crate::Mark::parse(name) {
+            match musa_score::Mark::parse(name) {
                 Some(mark) if mark.slot().is_some() => marks.push(plain(origin, "Mark", mark)),
                 Some(mark) => {
                     let statement = format!("mark {mark}{}{}", written_argument(mark), written_tail(mark));
@@ -166,7 +166,7 @@ impl Lowering<'_> {
                     self.resolver.report(
                         Diagnostic::error(Code::UnknownWord, format!("`{name}` is not a mark"))
                             .at(span, "unknown mark")
-                            .help(crate::resolve::suggest(name, &crate::marks::note_names(), "marks")),
+                            .help(crate::resolve::suggest(name, &musa_score::marks::note_names(), "marks")),
                     );
                 }
             }

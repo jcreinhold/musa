@@ -19,9 +19,8 @@ use musa_audio::{
     Combination, EventSlice, FilterKind, GraphOptions, ProcessorSpec, StudioGraphSpec, Unit, Waveform, compile_graph,
     lower_studio, render_offline,
 };
-use musa_compiler::{
-    CompileOptions, PerformanceEvent, PerformanceOptions, Processor, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, Processor, SourceDocument, compile};
+use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
 
 const RATE: u32 = 48_000;
 const OPTIONS: GraphOptions = GraphOptions {

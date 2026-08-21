@@ -6,7 +6,7 @@
 use super::category::Delimiter;
 use super::path::{NodePath, PathStep, Scope};
 use super::print::print;
-use crate::origin::SourceSpan;
+use musa_score::origin::SourceSpan;
 
 /// A syntax value, shown as the text it prints to.
 ///

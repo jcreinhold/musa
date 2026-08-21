@@ -18,11 +18,11 @@ use musa_kernel::{Canonical as _, EventTrack, Occurrence, Position, WrittenTime}
 
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::resolve::Resolver;
-use crate::score::{
+use musa_score::score::{
     ArticulationMarking, DynamicMarking, EventId, HairpinSpan, HarmonyMark, Key, Meter, PhraseSpan, ScoreEvent,
     ScoreEventKind, SectionMark, SlurSpan, TupletSpan, Voice,
 };
-use crate::time::MusicalTime;
+use musa_score::time::MusicalTime;
 
 /// The projected voices, keyed the way the snapshot's parts are.
 pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
@@ -38,7 +38,7 @@ pub(crate) struct Projection {
     /// The voices, keyed by (part, voice).
     pub(crate) voices: Voices,
     /// What is in force where: key, meter and clef, each with its scope.
-    pub(crate) contexts: crate::score::Contexts,
+    pub(crate) contexts: musa_score::score::Contexts,
 }
 
 /// Project the piece's track into voices and annotations.
@@ -81,7 +81,7 @@ pub(crate) fn project(resolver: &mut Resolver, track: &EventTrack<WrittenTime, S
     }
     piece.sort_by_key(|occurrence| sounding(occurrence));
     let mut voices = Voices::with_capacity(buckets.len());
-    let mut stated: Vec<Vec<crate::score::RepeatRegion>> = Vec::with_capacity(buckets.len());
+    let mut stated: Vec<Vec<musa_score::score::RepeatRegion>> = Vec::with_capacity(buckets.len());
     for (key, mut occurrences) in buckets {
         occurrences.sort_by_key(|occurrence| sounding(occurrence));
         let (voice, repeats) = project_voice(resolver, &occurrences);
@@ -115,12 +115,12 @@ fn sounding(occurrence: &Occurrence<WrittenTime, ScoreFact>) -> (Position<Writte
 fn agreed_repeats(
     resolver: &mut Resolver,
     voices: &Voices,
-    stated: &[Vec<crate::score::RepeatRegion>],
-) -> Vec<crate::score::RepeatRegion> {
-    let same = |left: &crate::score::RepeatRegion, right: &crate::score::RepeatRegion| {
+    stated: &[Vec<musa_score::score::RepeatRegion>],
+) -> Vec<musa_score::score::RepeatRegion> {
+    let same = |left: &musa_score::score::RepeatRegion, right: &musa_score::score::RepeatRegion| {
         left.start == right.start && left.end == right.end && left.times == right.times && left.endings == right.endings
     };
-    let mut agreed: Vec<crate::score::RepeatRegion> = Vec::new();
+    let mut agreed: Vec<musa_score::score::RepeatRegion> = Vec::new();
     for repeat in stated.iter().flatten() {
         if agreed.iter().any(|existing| same(existing, repeat)) {
             continue;
@@ -146,13 +146,13 @@ fn agreed_repeats(
                 .origin
                 .expansion_path
                 .iter()
-                .any(|step| matches!(step, crate::origin::ExpansionStep::MotifApplication { .. }))
+                .any(|step| matches!(step, musa_score::origin::ExpansionStep::MotifApplication { .. }))
             {
                 continue;
             }
             resolver.report(
-                crate::diagnose::Diagnostic::warning(
-                    crate::diagnose::Code::Ignored,
+                musa_score::diagnose::Diagnostic::warning(
+                    musa_score::diagnose::Code::Ignored,
                     "this repeat is written out on the page",
                 )
                 .at(repeat.origin.definition_span, "not every voice repeats here")
@@ -188,7 +188,7 @@ fn agreed_repeats(
 fn project_piece(
     resolver: &mut Resolver,
     occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
-) -> crate::score::Contexts {
+) -> musa_score::score::Contexts {
     let mut ordered: Vec<&&Occurrence<WrittenTime, ScoreFact>> = occurrences.iter().collect();
     ordered.sort_by_cached_key(|occurrence| {
         (
@@ -197,7 +197,7 @@ fn project_piece(
             occurrence.payload().canonical_key(),
         )
     });
-    let mut contexts = crate::score::Contexts::default();
+    let mut contexts = musa_score::score::Contexts::default();
     for occurrence in ordered {
         let fact = occurrence.payload();
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
@@ -217,7 +217,7 @@ fn project_piece(
                 contexts.tempos.state(
                     fact.scope,
                     at,
-                    crate::score::TempoMarking {
+                    musa_score::score::TempoMarking {
                         metronome: *metronome,
                         text: text.clone(),
                         ramp: ramp.clone(),
@@ -258,7 +258,7 @@ fn project_piece(
 fn project_voice(
     resolver: &mut Resolver,
     occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
-) -> (Voice, Vec<crate::score::RepeatRegion>) {
+) -> (Voice, Vec<musa_score::score::RepeatRegion>) {
     let mut repeats: Vec<&Occurrence<WrittenTime, ScoreFact>> = Vec::new();
     let mut events: Vec<ScoreEvent> = Vec::with_capacity(occurrences.len());
     // Where each event sits, so a region can be resolved to the ids at its
@@ -299,7 +299,7 @@ fn project_voice(
                         else {
                             continue;
                         };
-                        resolver.annotations.push_grace(crate::score::GraceNote {
+                        resolver.annotations.push_grace(musa_score::score::GraceNote {
                             at: event.id,
                             pitch: *pitch,
                             index: *index,
@@ -327,14 +327,14 @@ fn project_voice(
             // mark names a time, because there may be no note where it stands.
             FactKind::Mark { mark, argument } => {
                 match mark.anchor() {
-                    crate::marks::Anchor::Span => regions.push(occurrence),
-                    crate::marks::Anchor::Point | crate::marks::Anchor::Note(_) => {
+                    musa_score::marks::Anchor::Span => regions.push(occurrence),
+                    musa_score::marks::Anchor::Point | musa_score::marks::Anchor::Note(_) => {
                         let (part, voice) = fact.scope.voice().unwrap_or_default();
-                        resolver.annotations.push_point(crate::score::PointMark {
+                        resolver.annotations.push_point(musa_score::score::PointMark {
                             mark: *mark,
                             argument: argument.clone(),
-                            part: crate::score::PartId(part),
-                            voice: crate::score::VoiceId(voice),
+                            part: musa_score::score::PartId(part),
+                            voice: musa_score::score::VoiceId(voice),
                             at: MusicalTime::new(occurrence.span().start().as_ratio()),
                             origin: fact.origin.clone(),
                         });
@@ -350,10 +350,10 @@ fn project_voice(
             // covers was chosen by the performance, so there is no event id
             // either end that survives a different reading of the piece.
             FactKind::Mobile { fragments, order } => {
-                resolver.annotations.push_open(crate::score::OpenRegion {
+                resolver.annotations.push_open(musa_score::score::OpenRegion {
                     start: MusicalTime::new(occurrence.span().start().as_ratio()),
                     end: MusicalTime::new(occurrence.span().end().as_ratio()),
-                    kind: crate::score::OpenKind::Mobile {
+                    kind: musa_score::score::OpenKind::Mobile {
                         fragments: fragments.clone(),
                         order: order.clone(),
                     },
@@ -362,10 +362,10 @@ fn project_voice(
                 index = index.saturating_add(1);
             }
             FactKind::Improvise { over } => {
-                resolver.annotations.push_open(crate::score::OpenRegion {
+                resolver.annotations.push_open(musa_score::score::OpenRegion {
                     start: MusicalTime::new(occurrence.span().start().as_ratio()),
                     end: MusicalTime::new(occurrence.span().end().as_ratio()),
-                    kind: crate::score::OpenKind::Improvise { over: over.clone() },
+                    kind: musa_score::score::OpenKind::Improvise { over: over.clone() },
                     origin: fact.origin.clone(),
                 });
                 index = index.saturating_add(1);
@@ -388,8 +388,8 @@ fn project_voice(
     // the pitches are in the source and would vanish from the page.
     for grace in pending_graces {
         resolver.report(
-            crate::diagnose::Diagnostic::error(
-                crate::diagnose::Code::Misplaced,
+            musa_score::diagnose::Diagnostic::error(
+                musa_score::diagnose::Code::Misplaced,
                 "this grace note has no note to lean on",
             )
             .at(grace.payload().origin.source_span, "nothing follows it")
@@ -407,9 +407,9 @@ fn project_voice(
 /// The elaboration nests the ending regions inside the repeat region, so
 /// containment is the whole rule; a `pass` appears once per time through, and
 /// the bracket that prints is the first of its number.
-fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<crate::score::RepeatRegion> {
+fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<musa_score::score::RepeatRegion> {
     let time = |at: Position<WrittenTime>| MusicalTime::new(at.as_ratio());
-    let mut repeats: Vec<crate::score::RepeatRegion> = occurrences
+    let mut repeats: Vec<musa_score::score::RepeatRegion> = occurrences
         .iter()
         .filter_map(|occurrence| {
             let FactKind::Repeat { times, range } = occurrence.payload().kind else {
@@ -417,7 +417,7 @@ fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<crate:
             };
             let start = time(occurrence.span().start());
             let end = time(occurrence.span().end());
-            Some(crate::score::RepeatRegion {
+            Some(musa_score::score::RepeatRegion {
                 start,
                 body_end: end,
                 end,
@@ -444,7 +444,7 @@ fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<crate:
         let index = (bracket as usize).saturating_sub(1);
         match repeat.endings.get_mut(index) {
             Some(existing) => existing.passes.push(pass),
-            None => repeat.endings.push(crate::score::EndingRegion {
+            None => repeat.endings.push(musa_score::score::EndingRegion {
                 passes: vec![pass],
                 start,
                 end,
@@ -467,7 +467,7 @@ fn repeats_of(occurrences: &[&Occurrence<WrittenTime, ScoreFact>]) -> Vec<crate:
 }
 
 /// Where a plain repeat's body ends: one pass in.
-fn body_end(repeat: &crate::score::RepeatRegion) -> MusicalTime {
+fn body_end(repeat: &musa_score::score::RepeatRegion) -> MusicalTime {
     let times = i64::from(repeat.times.max(1));
     let whole = repeat.end.as_ratio() - repeat.start.as_ratio();
     MusicalTime::new(repeat.start.as_ratio() + whole / num_rational::Ratio::from_integer(times))
@@ -507,7 +507,7 @@ fn event_from(
     let first = occurrences.get(index).copied()?;
     let fact = first.payload();
     let duration = fact.kind.duration_of()?.clone();
-    let pitches: Vec<crate::pitch::WrittenPitch> = occurrences
+    let pitches: Vec<musa_score::pitch::WrittenPitch> = occurrences
         .get(index..index.saturating_add(consumed))
         .unwrap_or_default()
         .iter()
@@ -530,7 +530,7 @@ fn event_from(
 
 /// The articulations of the statement at `index` — a chord writes them once,
 /// on every pitch, so the first occurrence is the one that carries them.
-fn articulations(occurrences: &[&Occurrence<WrittenTime, ScoreFact>], index: usize) -> Vec<crate::Mark> {
+fn articulations(occurrences: &[&Occurrence<WrittenTime, ScoreFact>], index: usize) -> Vec<musa_score::Mark> {
     occurrences
         .get(index)
         .map(|occurrence| occurrence.payload().kind.articulations_of().to_vec())
@@ -553,7 +553,7 @@ fn project_points(
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
         let Some((_, _, id)) = extents.iter().find(|(onset, _, _)| *onset >= at) else {
             resolver.error(
-                crate::diagnose::Code::Misplaced,
+                musa_score::diagnose::Code::Misplaced,
                 "this dynamic marking has nothing to mark",
                 fact.origin.definition_span,
                 "no note follows it",
@@ -623,7 +623,7 @@ fn project_regions(
         };
         let origin = fact.origin.clone();
         match &fact.kind {
-            FactKind::Mark { mark, argument } => resolver.annotations.push_mark(crate::score::MarkSpan {
+            FactKind::Mark { mark, argument } => resolver.annotations.push_mark(musa_score::score::MarkSpan {
                 mark: *mark,
                 argument: argument.clone(),
                 from,

@@ -2,8 +2,8 @@ use musa_language::SyntaxKind;
 use musa_language::ast::{AstNode as _, ImportStmt};
 
 use crate::compile::{CompileOptions, SourceDocument};
-use crate::diagnose::Code;
-use crate::origin::SourceSpan;
+use musa_score::diagnose::Code;
+use musa_score::origin::SourceSpan;
 
 use super::*;
 

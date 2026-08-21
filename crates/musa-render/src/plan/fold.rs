@@ -2,7 +2,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{BarLines, MusicalTime, ScoreEvent, ScoreSnapshot, Voice};
+use musa_score::{BarLines, MusicalTime, ScoreEvent, ScoreSnapshot, Voice};
 use num_rational::Ratio;
 
 use super::marks::{RepeatMark, VoltaMark};

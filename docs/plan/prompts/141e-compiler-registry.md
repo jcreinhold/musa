@@ -11,9 +11,9 @@ phase: 3
 ## Task
 
 Prompts 141b, 141c, and 141d built the mechanism `02-core-calculus.md` §5.8 describes: base types, δ-builtins over
-finite data, and structural eliminators. Nothing fills it. `crates/musa-compiler/src/core.rs`'s `BUILTIN_OWNERSHIP` is
-still a table of 117 entries written against the *old* checker's `Type`, and its 900-line evaluator is written against
-the old checker's `Value`.
+finite data, and structural eliminators. Nothing fills it. `crates/musa-compiler/src/core/mod.rs`'s `BUILTIN_OWNERSHIP`
+is still a table of 117 entries written against the *old* checker's `Type`, and its 900-line evaluator is written
+against the old checker's `Value`.
 
 Fill the mechanism's δ half. Declare the families the compiler's own signatures mention, register the inert musical
 domains as base types, and re-express every δ entry of both tables — 92 of `BUILTIN_OWNERSHIP`'s 117 and 14 of
@@ -27,7 +27,7 @@ exactly as 141b–141d were the mechanism proved by theirs. Prompt 142 is still 
   [`141d`](141d-finite-constructor-builtins.md) — the three halves of the mechanism this prompt fills. `Base` and its
   `Payload`, `Builtin::new` with a `Rule` over `Datum`, `Builtin::structural` with a `Rewrite` over `Term`, and
   `Registry::new`'s registration checks.
-- `crates/musa-compiler/src/core.rs`: `Base`, `Shape`, `Family`, `Eliminator`, `SyntaxOp`, `PhaseFamily`, the
+- `crates/musa-compiler/src/core/mod.rs`: `Base`, `Shape`, `Family`, `Eliminator`, `SyntaxOp`, `PhaseFamily`, the
   `BUILTIN_OWNERSHIP` and `SYNTAX_OWNERSHIP` tables, and `eval_builtin` — the 117 signatures and the 900 lines of
   reduction that have to be said again in the core's terms. The signatures are already declarative and are reused rather
   than retyped; only the value plumbing changes.

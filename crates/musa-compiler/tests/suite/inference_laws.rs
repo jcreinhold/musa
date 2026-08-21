@@ -31,9 +31,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
 
-use musa_compiler::{
-    CompileOptions, MusicalDuration, MusicalTime, ScoreEvent, ScoreEventKind, ScoreSnapshot, SourceDocument, compile,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalDuration, MusicalTime, ScoreEvent, ScoreEventKind, ScoreSnapshot};
 
 fn compile_text(source: &str) -> musa_compiler::Compilation {
     compile(

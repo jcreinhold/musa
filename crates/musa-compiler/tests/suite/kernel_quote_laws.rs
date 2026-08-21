@@ -31,7 +31,9 @@
 // The failure messages name which fixture broke, which a bare `expect` cannot.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 use num_rational::Ratio;
 
 /// A piece whose one voice uses `body` as its only material.
@@ -51,7 +53,7 @@ fn compiled(source: &str) -> musa_compiler::Compilation {
     let errors: Vec<String> = compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect();
     assert!(errors.is_empty(), "unexpected errors: {errors:?}");
@@ -86,20 +88,20 @@ fn notes(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, String)> {
 /// Spelled out rather than wildcarded: a step added later is a step this
 /// reader has to be taught about, and the compiler saying so is the point of
 /// the workspace's lint.
-fn splice_locus(origin: &musa_compiler::Origin) -> Option<Ratio<i64>> {
+fn splice_locus(origin: &musa_score::Origin) -> Option<Ratio<i64>> {
     origin.expansion_path.iter().find_map(|step| match step {
-        musa_compiler::ExpansionStep::KernelSplice { at } => Some(*at),
-        musa_compiler::ExpansionStep::MotifApplication { .. }
-        | musa_compiler::ExpansionStep::RepeatIteration(_)
-        | musa_compiler::ExpansionStep::Transposition(_)
-        | musa_compiler::ExpansionStep::Stretch(_)
-        | musa_compiler::ExpansionStep::Retrograde
-        | musa_compiler::ExpansionStep::Inversion { .. }
-        | musa_compiler::ExpansionStep::MapNotePitches
-        | musa_compiler::ExpansionStep::ScaleContext { .. }
-        | musa_compiler::ExpansionStep::TemplateInstance { .. }
-        | musa_compiler::ExpansionStep::Assertion { .. }
-        | musa_compiler::ExpansionStep::Specialization { .. } => None,
+        musa_score::ExpansionStep::KernelSplice { at } => Some(*at),
+        musa_score::ExpansionStep::MotifApplication { .. }
+        | musa_score::ExpansionStep::RepeatIteration(_)
+        | musa_score::ExpansionStep::Transposition(_)
+        | musa_score::ExpansionStep::Stretch(_)
+        | musa_score::ExpansionStep::Retrograde
+        | musa_score::ExpansionStep::Inversion { .. }
+        | musa_score::ExpansionStep::MapNotePitches
+        | musa_score::ExpansionStep::ScaleContext { .. }
+        | musa_score::ExpansionStep::TemplateInstance { .. }
+        | musa_score::ExpansionStep::Assertion { .. }
+        | musa_score::ExpansionStep::Specialization { .. } => None,
     })
 }
 
@@ -108,7 +110,7 @@ fn errors(source: &str) -> Vec<String> {
     compile(&SourceDocument::new(source, "quote.musa"), &CompileOptions::default())
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect()
 }

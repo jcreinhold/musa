@@ -4,12 +4,12 @@
 //! One concern of the `elaborate` module; see its docs for the semantic path.
 #![allow(clippy::arithmetic_side_effects)]
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::resolve::Resolver;
-use crate::scope::Scope;
-use crate::score::{Meter, ScoreSnapshot};
-use crate::time::MusicalTime;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::scope::Scope;
+use musa_score::score::{Meter, ScoreSnapshot};
+use musa_score::time::MusicalTime;
 use num_rational::Ratio;
 
 /// The score facts one voicing sounds, as one simultaneous segment.
@@ -22,14 +22,14 @@ pub(super) fn reported_an_error(resolver: &Resolver) -> bool {
     resolver
         .diagnostics
         .iter()
-        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .any(|diagnostic| diagnostic.severity == musa_score::diagnose::Severity::Error)
 }
 
 /// The barlines a scope counts against, when they are not the piece's.
 ///
 /// `None` is not "no barlines" — it is "the piece's", which every scope in a
 /// piece that is not polymetric answers.
-pub(super) fn part_bars(resolver: &Resolver, scope: Scope) -> Option<crate::BarLines> {
+pub(super) fn part_bars(resolver: &Resolver, scope: Scope) -> Option<musa_score::BarLines> {
     if resolver.part_meters.is_empty() {
         return None;
     }
@@ -40,7 +40,11 @@ pub(super) fn part_bars(resolver: &Resolver, scope: Scope) -> Option<crate::BarL
     // Uniform, and that is the whole of it: `Meter` inherits by `Override`
     // (`scope.rs`), so a part that states its own meter does not hear the
     // piece's changes at all, and the grammar gives a part exactly one.
-    resolver.part_meters.get(&part).copied().map(crate::BarLines::uniform)
+    resolver
+        .part_meters
+        .get(&part)
+        .copied()
+        .map(musa_score::BarLines::uniform)
 }
 
 /// Fold the meters the piece states into barlines, refusing any change that
@@ -53,8 +57,8 @@ pub(super) fn part_bars(resolver: &Resolver, scope: Scope) -> Option<crate::BarL
 pub(super) fn resolve_meters(
     resolver: &mut Resolver,
     changes: Vec<(MusicalTime, Meter, SourceSpan)>,
-) -> crate::BarLines {
-    let mut bars = crate::BarLines::uniform(resolver.meter);
+) -> musa_score::BarLines {
+    let mut bars = musa_score::BarLines::uniform(resolver.meter);
     let mut stated: Vec<(MusicalTime, Meter, SourceSpan)> = Vec::new();
     for (at, meter, span) in changes {
         if let Some((_, already, first)) = stated.iter().find(|(other, _, _)| *other == at) {
@@ -83,10 +87,10 @@ pub(super) fn resolve_meters(
 /// the barlines it is measured against are what the meters decided.
 pub(super) fn check_keys(
     resolver: &mut Resolver,
-    bars: &crate::BarLines,
-    changes: Vec<(MusicalTime, crate::Key, SourceSpan)>,
+    bars: &musa_score::BarLines,
+    changes: Vec<(MusicalTime, musa_score::Key, SourceSpan)>,
 ) {
-    let mut stated: Vec<(MusicalTime, crate::Key, SourceSpan)> = Vec::new();
+    let mut stated: Vec<(MusicalTime, musa_score::Key, SourceSpan)> = Vec::new();
     for (at, key, span) in changes {
         if let Some((_, already, first)) = stated.iter().find(|(other, _, _)| *other == at) {
             if *already != key {
@@ -94,7 +98,7 @@ pub(super) fn check_keys(
             }
             continue;
         }
-        if bars.meter_at(at).is_measured() && bars.at(at).into != crate::MusicalDuration::ZERO {
+        if bars.meter_at(at).is_measured() && bars.at(at).into != musa_score::MusicalDuration::ZERO {
             resolver.report(off_barline("key", bars, at, span));
             continue;
         }
@@ -105,7 +109,7 @@ pub(super) fn check_keys(
 /// "You wrote it here, and here is not a barline" — the same sentence for a
 /// meter and for a key, because it is the same mistake and the composer's fix
 /// is the same either way.
-fn off_barline(what: &str, bars: &crate::BarLines, at: MusicalTime, span: SourceSpan) -> Diagnostic {
+fn off_barline(what: &str, bars: &musa_score::BarLines, at: MusicalTime, span: SourceSpan) -> Diagnostic {
     let here = bars.at(at);
     Diagnostic::error(Code::DoesNotAddUp, format!("a {what} change must land on a barline"))
         .at(
@@ -146,7 +150,7 @@ pub(super) fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
     // Which part each event belongs to, so a tuplet in a 7/8 part is measured
     // against the 7/8 barlines. Built once: a tuplet names its first event,
     // and there is no other way from an event back to its staff.
-    let mut owner: std::collections::BTreeMap<crate::EventId, u32> = std::collections::BTreeMap::new();
+    let mut owner: std::collections::BTreeMap<musa_score::EventId, u32> = std::collections::BTreeMap::new();
     for (id, part) in snapshot.parts().iter() {
         for (_, voice) in part.voices() {
             for event in voice.events() {

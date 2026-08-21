@@ -6,7 +6,8 @@
 #![allow(clippy::expect_used)]
 
 use musa_audio::{GraphOptions, RenderPlan, compile_graph, lower_studio, render_offline};
-use musa_compiler::{CompileOptions, PerformanceEvent, PerformanceOptions, SourceDocument, compile, lower_performance};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
 
 #[global_allocator]
 static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();

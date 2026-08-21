@@ -35,7 +35,9 @@
 //! side-by-side programs that say which form is for which job.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ImportSources, Severity, SourceDocument, compile, resolve_import};
+use musa_compiler::{CompileOptions, ImportSources, SourceDocument, compile, resolve_import};
+
+use musa_score::Severity;
 
 const PROBE: &str = "probe::adapter";
 

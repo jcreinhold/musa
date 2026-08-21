@@ -21,7 +21,7 @@
 //! numeral against the parallel collection, which is what the word means.
 
 /// The lowest ordinal a numeral can name.
-const FIRST: u64 = 1;
+pub const FIRST: u64 = 1;
 
 /// The highest ordinal a numeral can name.
 ///
@@ -30,14 +30,14 @@ const FIRST: u64 = 1;
 /// octatonic collection's eighth degree is not something the notation has ever
 /// been asked to spell. Realization against a collection of another size is a
 /// separate partiality, and stays one.
-const LAST: u64 = 7;
+pub const LAST: u64 = 7;
 
 /// The fewest members a numeral can stack: a triad.
-const SMALLEST: u64 = 3;
+pub(crate) const SMALLEST: u64 = 3;
 
 /// The most members a numeral can stack: a thirteenth chord, which is the
 /// largest stack of thirds the chord vocabulary names.
-const LARGEST: u64 = 13_u64.div_ceil(2);
+pub(crate) const LARGEST: u64 = 13_u64.div_ceil(2);
 
 /// A Roman numeral against an unnamed tonal context.
 ///
@@ -46,7 +46,7 @@ const LARGEST: u64 = 13_u64.div_ceil(2);
 /// describes anything. [`Roman::new`] is the only way in, so a value of this
 /// type is evidence that the numeral can be written down.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Roman {
+pub struct Roman {
     /// Which numeral, from one.
     ordinal: u64,
     /// How many members the stack of thirds holds.
@@ -63,7 +63,7 @@ impl Roman {
     /// member the stack does not have. The last of these is what makes the
     /// realization in source total once the chord itself is named: a third
     /// inversion of a triad is unsayable rather than merely unrealizable.
-    pub(crate) fn new(ordinal: u64, members: u64, inversion: u64) -> Option<Self> {
+    pub fn new(ordinal: u64, members: u64, inversion: u64) -> Option<Self> {
         ((FIRST..=LAST).contains(&ordinal) && (SMALLEST..=LARGEST).contains(&members) && inversion < members).then_some(
             Self {
                 ordinal,
@@ -79,18 +79,18 @@ impl Roman {
     /// diatonic stack is indexed by the plain ordinal, and source that wants
     /// the altered degree a chromatic constructor spells builds it with
     /// `degree_of` and `lower`.
-    pub(crate) fn ordinal(self) -> u64 {
+    pub fn ordinal(self) -> u64 {
         self.ordinal
     }
 
     /// How many members the numeral stacks: three is a triad, four a seventh.
-    pub(crate) fn members(self) -> u64 {
+    pub fn members(self) -> u64 {
         self.members
     }
 
     /// Which member the numeral puts in the bass, counted from zero, so that
     /// zero is root position and one is first inversion.
-    pub(crate) fn inversion(self) -> u64 {
+    pub fn inversion(self) -> u64 {
         self.inversion
     }
 }

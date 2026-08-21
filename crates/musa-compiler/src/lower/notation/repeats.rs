@@ -5,9 +5,9 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, whole};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 use super::*;
 impl Lowering<'_> {
@@ -18,7 +18,7 @@ impl Lowering<'_> {
     ///
     /// `../../../rules/kernel/06-surface-elaboration.md` §2 makes `repeat n { … }`
     /// "an HIR-level `follow` of `n` evaluations", each iteration's occurrences
-    /// carrying a [`crate::origin::ExpansionStep::RepeatIteration`] step. That is
+    /// carrying a [`musa_score::origin::ExpansionStep::RepeatIteration`] step. That is
     /// not a convenience: a timeline holding one pass is a *different piece of
     /// music* — it is half a bar long where the piece is a bar and a half — and
     /// every consumer that measures rather than draws would read the short one.
@@ -232,7 +232,7 @@ impl Lowering<'_> {
         stamped(
             origin,
             span,
-            crate::origin::ExpansionStep::RepeatIteration(iteration),
+            musa_score::origin::ExpansionStep::RepeatIteration(iteration),
             track,
         )
     }
@@ -264,7 +264,7 @@ impl Lowering<'_> {
     ///
     /// The braces erase. A bar contributes no occurrence, no payload, and no
     /// time of its own — the kernel's ontology has no bar in it, and where the
-    /// barlines fall is [`crate::BarLines`]'s answer over the meters — so the
+    /// barlines fall is [`musa_score::BarLines`]'s answer over the meters — so the
     /// term a bar denotes is exactly the fold of what is inside it. What the
     /// braces contribute is the claim that the music between them fills one
     /// measure of the meter in force where they stand, and that is a
@@ -278,7 +278,7 @@ impl Lowering<'_> {
         let statement = musa_language::ast::BarStmt::cast(node.clone())?;
         let passage = self.notated(node, reading)?;
         self.claims.push(Claimed {
-            predicate: crate::assert::predicate("fills_meter")?,
+            predicate: musa_score::assert::predicate("fills_meter")?,
             arguments: Vec::new(),
             span: crate::resolve::trimmed_span(node),
             content_end: statement.content_end(),

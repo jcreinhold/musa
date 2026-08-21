@@ -66,7 +66,7 @@ use musa_language::ast::AstNode as _;
 
 use super::notation::{Context, Reading};
 use super::{Lowering, applied, expansion};
-use crate::diagnose::{Code, Diagnostic};
+use musa_score::diagnose::{Code, Diagnostic};
 
 /// A piece, read.
 ///
@@ -91,16 +91,16 @@ pub(crate) struct Part {
     ///
     /// The reference index and the lint pass are about *text*, and a name
     /// without a place in it is a name neither can say anything about.
-    pub(crate) name_span: Option<crate::origin::SourceSpan>,
+    pub(crate) name_span: Option<musa_score::origin::SourceSpan>,
     /// The meter this part counts its own barlines in, when it states one.
     ///
     /// Carried rather than re-read, because `Meter` inherits by `Override`
-    /// (`crate::scope`): a part that states 7/8 does not hear the piece's
+    /// (`musa_score::scope`): a part that states 7/8 does not hear the piece's
     /// changes, so a claim written in it is proved against bars nothing else
     /// in the score knows about. [`crate::resolve::part_facts`] answered this
     /// while the part was being read, and asking the CST a second time would
     /// be the re-derivation `AGENTS.md` names.
-    pub(crate) meter: Option<crate::Meter>,
+    pub(crate) meter: Option<musa_score::Meter>,
     /// The performance profile the part names, and where it names it.
     ///
     /// Read here and *checked* by the caller, because the two questions have
@@ -112,7 +112,7 @@ pub(crate) struct Part {
     /// once. It is not a fact either: a clef and a polymeter enter the piece's
     /// context track, and a profile is metadata about how the notation is
     /// played (roadmap §2 — a dynamic marking is not a number of decibels).
-    pub(crate) profile: Option<(String, crate::origin::SourceSpan)>,
+    pub(crate) profile: Option<(String, musa_score::origin::SourceSpan)>,
     /// Its voices, in written order.
     pub(crate) voices: Vec<Voice>,
 }
@@ -125,7 +125,7 @@ pub(crate) struct Voice {
     pub(crate) name: String,
     /// Where the name is written — a voice's own identifier, or the `as` name
     /// at the site that made it. See [`Part::name_span`].
-    pub(crate) name_span: Option<crate::origin::SourceSpan>,
+    pub(crate) name_span: Option<musa_score::origin::SourceSpan>,
     /// What this voice alone sounds, as a term.
     ///
     /// Beside [`Piece::track`] rather than instead of it, because the two answer
@@ -162,7 +162,7 @@ impl Lowering<'_> {
         &mut self,
         node: &SyntaxNode,
         namespace: &str,
-        standing: Option<&crate::origin::Origin>,
+        standing: Option<&musa_score::origin::Origin>,
     ) -> Option<Piece> {
         let declaration = musa_language::ast::PieceDecl::cast(node.clone())?;
         let origin = self.origin(node);
@@ -233,7 +233,7 @@ impl Lowering<'_> {
                 // nested in them — carries the voice as the declaration that
                 // wrote it, which is what `#n` in a printed fact names.
                 let entered = self.sites.declaring();
-                let read_under = Reading::at(crate::Scope::Voice { part: id, voice }, entered).metered(opening);
+                let read_under = Reading::at(musa_score::Scope::Voice { part: id, voice }, entered).metered(opening);
                 let held_at = match suggested {
                     Some(key) => read_under.keyed(key),
                     None => read_under,
@@ -307,7 +307,7 @@ impl Lowering<'_> {
                     said,
                     scope,
                     true,
-                    crate::origin::DeclarationId::default(),
+                    musa_score::origin::DeclarationId::default(),
                     fact,
                     extent.clone(),
                 )
@@ -334,7 +334,7 @@ impl Lowering<'_> {
     /// `crate::resolve` gives for motifs: musa has no shadowing. What is
     /// specific to a part and a voice is that the name is also how a projection
     /// is read back, so a repeat would make two lanes indistinguishable.
-    fn repeated(&mut self, whole: &mut bool, said: String, span: crate::origin::SourceSpan) {
+    fn repeated(&mut self, whole: &mut bool, said: String, span: musa_score::origin::SourceSpan) {
         *whole = false;
         self.refuse::<()>(
             Diagnostic::error(Code::DuplicateName, said)
@@ -359,17 +359,17 @@ impl Lowering<'_> {
         &mut self,
         declaration: &musa_language::ast::PieceDecl,
         whole: &mut bool,
-    ) -> Vec<(crate::Scope, Origin, Raw)> {
+    ) -> Vec<(musa_score::Scope, Origin, Raw)> {
         let mut said = Vec::new();
         match declaration.meter() {
             Some(statement) => match self.stated(statement.syntax(), Context::Meter) {
-                Some((origin, fact)) => said.push((crate::Scope::Piece, origin, fact)),
+                Some((origin, fact)) => said.push((musa_score::Scope::Piece, origin, fact)),
                 None => *whole = false,
             },
             // Unwritten, so [`Origin::UNKNOWN`]: the table hands out no number
             // for it and `Sites::span` answers [`None`], which is what
             // `provenance_at` already reads as "nowhere of its own to point".
-            None => said.push((crate::Scope::Piece, Origin::UNKNOWN, unmeasured(Origin::UNKNOWN))),
+            None => said.push((musa_score::Scope::Piece, Origin::UNKNOWN, unmeasured(Origin::UNKNOWN))),
         }
         for (statement, which) in [
             declaration.tempo().map(|held| (held.syntax().clone(), Context::Tempo)),
@@ -379,14 +379,14 @@ impl Lowering<'_> {
         .flatten()
         {
             match self.stated(&statement, which) {
-                Some((origin, fact)) => said.push((crate::Scope::Piece, origin, fact)),
+                Some((origin, fact)) => said.push((musa_score::Scope::Piece, origin, fact)),
                 None => *whole = false,
             }
         }
         said
     }
 
-    /// The facts a part's own header states, at [`crate::Scope::Part`].
+    /// The facts a part's own header states, at [`musa_score::Scope::Part`].
     ///
     /// Read through [`crate::resolve::part_facts`] rather than off the nodes,
     /// because that reading already exists and already carries the two refusals
@@ -403,13 +403,13 @@ impl Lowering<'_> {
         part: &musa_language::ast::PartDecl,
         id: u32,
         whole: &mut bool,
-    ) -> (Vec<(crate::Scope, Origin, Raw)>, Option<crate::Meter>) {
+    ) -> (Vec<(musa_score::Scope, Origin, Raw)>, Option<musa_score::Meter>) {
         let Some(facts) = self.heard(|resolver| crate::resolve::part_facts(resolver, part)) else {
             *whole = false;
             return (Vec::new(), None);
         };
         let counted = facts.meter.map(|(meter, _)| meter);
-        let scope = crate::Scope::Part { part: id };
+        let scope = musa_score::Scope::Part { part: id };
         let mut said = Vec::new();
         if let Some((clef, span)) = facts.clef {
             let origin = self.sites.at(span);
@@ -444,7 +444,7 @@ impl Lowering<'_> {
         held: &musa_language::ast::VoiceDecl,
         voice: u32,
         name: String,
-        name_span: Option<crate::origin::SourceSpan>,
+        name_span: Option<musa_score::origin::SourceSpan>,
         reading: Reading,
     ) -> Option<Voice> {
         if held.is_template() {
@@ -497,7 +497,7 @@ impl Lowering<'_> {
         site: &musa_language::ast::MakeStmt,
         path: &str,
         voice: u32,
-        name_span: Option<crate::origin::SourceSpan>,
+        name_span: Option<musa_score::origin::SourceSpan>,
         reading: Reading,
     ) -> Option<Voice> {
         let instance = instances.templates.instance(
@@ -622,7 +622,7 @@ impl Lowering<'_> {}
 
 /// `Fact.Meter 4 4`, for a piece that wrote none.
 fn unmeasured(origin: Origin) -> Raw {
-    let meter = crate::score::Meter::default();
+    let meter = musa_score::score::Meter::default();
     applied(
         origin,
         Raw::hosted(origin, "Fact.Meter"),

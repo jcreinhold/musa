@@ -461,7 +461,7 @@ impl Cause {
     ///
     /// The fixes are dropped here rather than at the renderers, so no consumer
     /// has to know they were ever there.
-    pub(crate) fn of(document: impl Into<String>, diagnostic: Diagnostic) -> Self {
+    pub fn of(document: impl Into<String>, diagnostic: Diagnostic) -> Self {
         Self {
             document: document.into(),
             code: diagnostic.code,
@@ -524,7 +524,7 @@ impl Diagnostic {
     /// [`Self::causes`] is left alone, and that is the rule rather than an
     /// omission: a cause's spans are already in the document it names, and
     /// this map describes only the composer's own text.
-    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
+    pub fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for label in &mut self.labels {
             label.span = map.span(label.span);
         }
@@ -536,16 +536,16 @@ impl Diagnostic {
     }
 
     /// A diagnostic that stops compilation of its construct.
-    pub(crate) fn error(code: Code, message: impl Into<String>) -> Self {
+    pub fn error(code: Code, message: impl Into<String>) -> Self {
         Self::new(Severity::Error, code, message)
     }
 
     /// A diagnostic that does not.
-    pub(crate) fn warning(code: Code, message: impl Into<String>) -> Self {
+    pub fn warning(code: Code, message: impl Into<String>) -> Self {
         Self::new(Severity::Warning, code, message)
     }
 
-    fn new(severity: Severity, code: Code, message: impl Into<String>) -> Self {
+    pub fn new(severity: Severity, code: Code, message: impl Into<String>) -> Self {
         Self {
             severity,
             code,
@@ -560,7 +560,7 @@ impl Diagnostic {
 
     /// Set the place to look first.
     #[must_use]
-    pub(crate) fn at(mut self, span: SourceSpan, text: impl Into<String>) -> Self {
+    pub fn at(mut self, span: SourceSpan, text: impl Into<String>) -> Self {
         self.labels.insert(
             0,
             Label {
@@ -578,7 +578,7 @@ impl Diagnostic {
     /// graph is checked after it is built and some of what is checked has no
     /// single node behind it.
     #[must_use]
-    pub(crate) fn maybe_at(self, span: Option<SourceSpan>, text: impl Into<String>) -> Self {
+    pub fn maybe_at(self, span: Option<SourceSpan>, text: impl Into<String>) -> Self {
         match span {
             Some(span) => self.at(span, text),
             None => self,
@@ -587,7 +587,7 @@ impl Diagnostic {
 
     /// Add another place that explains the first.
     #[must_use]
-    pub(crate) fn also(mut self, span: SourceSpan, text: impl Into<String>) -> Self {
+    pub fn also(mut self, span: SourceSpan, text: impl Into<String>) -> Self {
         self.labels.push(Label {
             span,
             text: text.into(),
@@ -602,7 +602,7 @@ impl Diagnostic {
     /// from a lookup that may have missed, and `if let` around a builder chain
     /// reads worse than the thing it guards.
     #[must_use]
-    pub(crate) fn maybe_also(self, span: Option<SourceSpan>, text: impl Into<String>) -> Self {
+    pub fn maybe_also(self, span: Option<SourceSpan>, text: impl Into<String>) -> Self {
         match span {
             Some(span) => self.also(span, text),
             None => self,
@@ -611,7 +611,7 @@ impl Diagnostic {
 
     /// Say what to do about it.
     #[must_use]
-    pub(crate) fn help(mut self, help: impl Into<String>) -> Self {
+    pub fn help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self
     }
@@ -623,7 +623,7 @@ impl Diagnostic {
     /// nothing, and a diagnostic with no suggestion is better than one that
     /// suggests the wrong word.
     #[must_use]
-    pub(crate) fn maybe_help(self, help: Option<impl Into<String>>) -> Self {
+    pub fn maybe_help(self, help: Option<impl Into<String>>) -> Self {
         match help {
             Some(help) => self.help(help),
             None => self,
@@ -632,14 +632,14 @@ impl Diagnostic {
 
     /// State the rule.
     #[must_use]
-    pub(crate) fn note(mut self, note: impl Into<String>) -> Self {
+    pub fn note(mut self, note: impl Into<String>) -> Self {
         self.note = Some(note.into());
         self
     }
 
     /// Offer an edit. Only when it is certain — see [`Fix`].
     #[must_use]
-    pub(crate) fn fix(mut self, title: impl Into<String>, span: SourceSpan, replacement: impl Into<String>) -> Self {
+    pub fn fix(mut self, title: impl Into<String>, span: SourceSpan, replacement: impl Into<String>) -> Self {
         self.fixes.push(Fix {
             title: title.into(),
             edits: vec![FixEdit {
@@ -658,7 +658,7 @@ impl Diagnostic {
     /// and a summarized first diagnostic is the same mistake with the other
     /// diagnostics missing as well.
     #[must_use]
-    pub(crate) fn caused_by(mut self, causes: impl IntoIterator<Item = Cause>) -> Self {
+    pub fn caused_by(mut self, causes: impl IntoIterator<Item = Cause>) -> Self {
         self.causes.extend(causes);
         self
     }
@@ -683,7 +683,7 @@ impl Diagnostic {
 /// short names are held to a stricter standard than long ones, and a tie
 /// between two candidates suggests neither, because a coin flip printed as
 /// help is worse than silence.
-pub(crate) fn nearest<'a>(written: &str, candidates: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+pub fn nearest<'a>(written: &str, candidates: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
     let budget = (written.chars().count() / 3).clamp(1, 3);
     let mut best: Option<(usize, &str)> = None;
     let mut tied = false;
@@ -709,7 +709,7 @@ pub(crate) fn nearest<'a>(written: &str, candidates: impl IntoIterator<Item = &'
 ///
 /// Three rolling rows rather than a full table: the restricted variant looks
 /// back exactly two rows, so that is all there is to keep.
-fn edit_distance(left: &str, right: &str) -> usize {
+pub(crate) fn edit_distance(left: &str, right: &str) -> usize {
     let left: Vec<char> = left.chars().collect();
     let right: Vec<char> = right.chars().collect();
     if left.is_empty() {

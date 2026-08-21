@@ -9,10 +9,10 @@ use super::place::{instantiate, placed, track_or_empty};
 use super::score::{meter_of, stated};
 use crate::compile::SourceDocument;
 use crate::resolve::{self, Resolver};
-use crate::score::ScoreSnapshot;
 use musa_kernel::WrittenTime;
 use musa_language::ast::AstNode as _;
 use musa_language::ast::PieceDecl;
+use musa_score::score::ScoreSnapshot;
 
 /// The normalized human-display text of a source's piece timeline, for golden
 /// snapshots (docs/rules/kernel/05 N5). Semantic hashing uses separate framed N6
@@ -25,7 +25,7 @@ use musa_language::ast::PieceDecl;
 #[doc(hidden)]
 pub fn kernel_normal_form(
     source: &SourceDocument,
-    realization: &crate::Realization,
+    realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<String> {
     let (_, term, _) = piece_term(source, realization, imports)?;
@@ -44,12 +44,12 @@ pub fn kernel_normal_form(
 /// is shared where documents share things rather than in the kernel text.
 pub(crate) fn piece_term(
     source: &SourceDocument,
-    realization: &crate::Realization,
+    realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<(
     String,
     musa_kernel::Term<WrittenTime, ScoreFact>,
-    Vec<crate::DecisionRecord>,
+    Vec<musa_score::DecisionRecord>,
 )> {
     let document = musa_language::parse(source.text());
     if !document.errors().is_empty() {

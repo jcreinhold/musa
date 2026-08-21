@@ -27,8 +27,8 @@ in Musa's history that talk about a normal form the author never wrote.
   need something the facade cannot express, that is a repair of 133's facade, not a reason to make `Value` public.
 - `crates/musa-compiler/src/infer.rs` — the rank-1 HM unifier this eventually replaces, and specifically how it reports
   a mismatch today. The new checker's messages have to be at least as good, and it is easy for them to be much worse.
-- `crates/musa-compiler/src/diagnose.rs`'s `Code` enum and `crates/musa/src/main.rs`'s `cmd_explain` — diagnostics here
-  are named variants with an explainable rule behind them, not numbers.
+- `crates/musa-score/src/diagnose.rs`'s `Code` enum and `crates/musa/src/main.rs`'s `cmd_explain` — diagnostics here are
+  named variants with an explainable rule behind them, not numbers.
 - `docs/rules/language/05-verification.md` for what an implementation gate is, and `07-analysis.md` §"admission rule"
   for the standard a new kind of finding must meet.
 - Peyton Jones ch. 9 (a type checker written out) for the algorithmic shape, read for the analysis rather than the

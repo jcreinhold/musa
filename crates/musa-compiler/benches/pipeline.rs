@@ -34,7 +34,9 @@
 // fixtures: a failure is a bug in the benchmark, and panicking is correct.
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{AnalysisKind, AnalysisRequest, CompileOptions, SourceDocument, analyze, bench, compile};
+use musa_compiler::{CompileOptions, SourceDocument, bench, compile};
+
+use musa_score::{AnalysisKind, AnalysisRequest, analyze};
 
 /// Divan's allocation profiler; the counts are the point of choosing it.
 #[global_allocator]
@@ -389,7 +391,7 @@ fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
 fn duplication(source: &SourceDocument) -> Option<(usize, usize)> {
     musa_compiler::kernel_text(
         source,
-        &musa_compiler::Realization::default(),
+        &musa_score::Realization::default(),
         &musa_compiler::ImportSources::default(),
     )
     .map(|text| (text.matches("let shared").count(), text.len()))

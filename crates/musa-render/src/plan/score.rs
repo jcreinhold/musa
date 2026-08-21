@@ -3,7 +3,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{ChordSymbol, Clef, Meter, MusicalDuration, VoiceId};
+use musa_score::{ChordSymbol, Clef, Meter, MusicalDuration, VoiceId};
 
 use super::items::NotatedItem;
 use super::marks::{
@@ -26,7 +26,7 @@ pub struct NotationPlan {
     pub(super) harmony: Vec<PositionedMark<ChordSymbol>>,
     pub(super) repeats: Vec<RepeatMark>,
     pub(super) open: Vec<OpenMark>,
-    pub(super) holds: Vec<PositionedMark<musa_compiler::FreeDuration>>,
+    pub(super) holds: Vec<PositionedMark<musa_score::FreeDuration>>,
 }
 
 impl NotationPlan {
@@ -75,7 +75,7 @@ impl NotationPlan {
     /// backend with no bracket prints a word into the measure, so it reads
     /// this. Neither can be derived from the other without walking the score
     /// the other way round.
-    pub fn holds(&self) -> &[PositionedMark<musa_compiler::FreeDuration>] {
+    pub fn holds(&self) -> &[PositionedMark<musa_score::FreeDuration>] {
         &self.holds
     }
 }

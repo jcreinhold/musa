@@ -155,7 +155,7 @@ fn result_data() -> RawData {
 /// `data Scope { Piece; Part(part : Nat); Voice(part : Nat, voice : Nat) }`.
 ///
 /// Where a constructed fact sits in the score's *structure* — the same three
-/// places [`crate::scope::Scope`] names, and never a position in time.
+/// places [`musa_score::scope::Scope`] names, and never a position in time.
 ///
 /// # Why this is declared and `Origin` is registered
 ///

@@ -24,7 +24,7 @@ agree with. Route it so that an edit reaches a musician rather than only a test.
 - `crates/musa-project/src/edit.rs`: `EditCommand`, `CandidateEdit`, and how a structured score edit already becomes
   text a composer can see before it is committed. An adapter edit arrives through this door or it has no user.
 - `crates/musa-lsp/src/`: how a command reaches an editor.
-- `crates/musa-compiler/src/expand.rs` and `core.rs`: `expand_syntax`, the phase environment, and `Refused` — the
+- `crates/musa-compiler/src/expand/mod.rs` and `core.rs`: `expand_syntax`, the phase environment, and `Refused` — the
   machinery a second entry point reuses rather than duplicates.
 - Prompt 127dcc's anchors: a command names the item it is about by anchor, which is the only name an adapter and an
   editor both have.

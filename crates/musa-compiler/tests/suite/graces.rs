@@ -27,9 +27,9 @@
 // Exact rational comparisons throughout; see `time.rs`.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, PerformanceEvent, PerformanceOptions, ScoreSnapshot, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
 
 /// A piece whose only variable is what the profile says about grace notes.
 ///
@@ -162,7 +162,7 @@ fn order_survives_normalization() {
     let kernel = |graces: &str| {
         musa_compiler::kernel_text(
             &SourceDocument::new(piece(graces), "order.musa"),
-            &musa_compiler::Realization::default(),
+            &musa_score::Realization::default(),
             &musa_compiler::ImportSources::default(),
         )
         .expect("projects")

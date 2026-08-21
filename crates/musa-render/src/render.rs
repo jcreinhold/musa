@@ -2,7 +2,7 @@
 //! notation backend. Backends consume the shared `NotationPlan`; they never
 //! re-derive measures themselves (§12.1).
 
-use musa_compiler::ScoreSnapshot;
+use musa_score::ScoreSnapshot;
 
 use crate::RenderError;
 use crate::plan::{NotationOptions, plan_notation};
@@ -92,7 +92,7 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
     // One line per mark rather than one per occurrence: the fact is about the
     // format, and a page of pedal marks would otherwise report itself once per
     // measure (`docs/rules/kernel/07-backend-contract.md`).
-    let spelled = |mark: musa_compiler::Mark| match target {
+    let spelled = |mark: musa_score::Mark| match target {
         NotationTarget::Mei => mark.def().mei,
         NotationTarget::LilyPond => mark.def().lilypond,
         NotationTarget::MusicXml => mark.def().musicxml,

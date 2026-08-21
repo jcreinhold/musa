@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 musa-compiler = { workspace = true }
+musa-score = { workspace = true }
 thiserror = "2"
 tracing = "0.1"
 

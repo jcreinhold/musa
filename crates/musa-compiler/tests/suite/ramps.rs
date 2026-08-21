@@ -18,9 +18,9 @@
 #![allow(clippy::panic)]
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, lower_performance};
 use num_rational::Ratio;
 use proptest::prelude::*;
 

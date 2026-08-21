@@ -15,7 +15,7 @@ Prompt 141b implemented the first half: a [`Rule`] is `fn(&[&Literal]) -> Option
 value of a *base* type. The second half has no mechanism at all, and the table that needs it is the one prompt 142
 registers on its first step.
 
-Counted from `crates/musa-compiler/src/core.rs`'s `BUILTIN_OWNERSHIP`: of 92 δ-builtins, **54 answer a base type, 17
+Counted from `crates/musa-compiler/src/core/mod.rs`'s `BUILTIN_OWNERSHIP`: of 92 δ-builtins, **54 answer a base type, 17
 answer an `Option`, 12 a `Result`, and 9 a `List`** — 38 of them, 41%, answer a value of a *declared family*. Six more
 take a `List` as an argument. Prompt 141 proved `Option`, `Result`, and `List` are ordinary declarations with ordinary
 constructors, which is exactly why their values are not literals: `Some(scale)` is a constructor applied to a field, and
@@ -39,13 +39,13 @@ can register the table it has.
 - [`141`](141-collections.md), which proved `List`, `Option`, and `Vec A n` are writable as declarations. That proof is
   what makes this a gap rather than a design choice: their values are constructor applications *because* prompt 141 was
   right.
-- `crates/musa-compiler/src/core.rs`'s `Shape`, the `delta` registration function, and `BUILTIN_OWNERSHIP` — the shape
-  language the host already writes its signatures in (`Base`, `Option`, `List`, `Product`, `Result`), and the 92 entries
-  the counts above come from. `Shape::Product` is spelled and used by nothing, which this prompt's Design answers
-  explicitly rather than building for.
-- `crates/musa-calculus/src/family.rs`'s `Constant`, `Group`, `Declared`, `Constructor`, and `Found::named` — every one
-  of them public as a *type* and none of them constructible or readable from outside the crate. That is the wall, and
-  whether to open it is this prompt's central decision. Then `element`, which reads a family application off a value
+- `crates/musa-compiler/src/core/mod.rs`'s `Shape`, the `delta` registration function, and `BUILTIN_OWNERSHIP` — the
+  shape language the host already writes its signatures in (`Base`, `Option`, `List`, `Product`, `Result`), and the 92
+  entries the counts above come from. `Shape::Product` is spelled and used by nothing, which this prompt's Design
+  answers explicitly rather than building for.
+- `crates/musa-calculus/src/family/mod.rs`'s `Constant`, `Group`, `Declared`, `Constructor`, and `Found::named` — every
+  one of them public as a *type* and none of them constructible or readable from outside the crate. That is the wall,
+  and whether to open it is this prompt's central decision. Then `element`, which reads a family application off a value
   type, and `iota`'s `ready`, which is where "a constructor's parameters come before its fields" is load-bearing.
 - `crates/musa-calculus/src/case.rs`'s split, around `built` — the declaration context, then the parameters, then each
   field as it is assumed, which is the environment a stored field type is read in. Realization walks the same telescope
@@ -145,10 +145,11 @@ over it, so the mechanism is exercised without `musa-compiler` changing. Prompt 
   implementation.
 - `crates/musa-calculus/src/eval.rs`: the firing condition generalized from *literal* to *canonical data*, the `Datum`
   built from the argument values, and the answer realized at the builtin's own result type.
-- `crates/musa-calculus/src/family.rs`: the constructor a saturated spine is built by, and realization at a family type.
+- `crates/musa-calculus/src/family/mod.rs`: the constructor a saturated spine is built by, and realization at a family
+  type.
 - `Registry::new`: D1 stated positively, replacing the arrow-only check for δ-builtins.
-- One new `Refusal` variant with its `musa explain` code in `crates/musa-compiler/src/diagnose.rs`, and one new
-  `Malformed` variant for an answer that does not fit the type it answers at.
+- One new `Refusal` variant with its `musa explain` code in `crates/musa-score/src/diagnose.rs`, and one new `Malformed`
+  variant for an answer that does not fit the type it answers at.
 - `crates/musa-calculus/tests/suite/base_laws.rs`: a declared family in the worked registry, and the laws — a rule reads
   a constructed argument, a rule answers a constructed value, a partially applied constructor leaves the spine blocked,
   the degenerate case still behaves exactly as 141b's laws say, and the registration refusal.

@@ -29,9 +29,11 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    CompileOptions, DocumentKind, Realization, SourceDocument, check_kernel_text, compile, format_document,
-    kernel_text, kernel_text_meaning,
+    CompileOptions, DocumentKind, SourceDocument, check_kernel_text, compile, format_document, kernel_text,
+    kernel_text_meaning,
 };
+
+use musa_score::Realization;
 
 /// The realization `examples/kernel/` was printed under, the same seed
 /// `kernel_interop` pins.
@@ -185,8 +187,8 @@ fn a_whole_score_document_projects_a_whole_score() {
     let (part_id, part) = score.parts().iter().next().expect("a part");
     let notes: usize = part.voices().map(|(_, voice)| voice.events().len()).sum();
     assert!(notes > 0, "a part with no music in it");
-    let start = musa_compiler::MusicalTime::default();
-    let scope = musa_compiler::Scope::Part { part: part_id.0 };
+    let start = musa_score::MusicalTime::default();
+    let scope = musa_score::Scope::Part { part: part_id.0 };
     assert!(score.tempo_at(scope, start).is_some(), "the tempo fact was lost");
     assert!(score.key_at(scope, start).is_some(), "the key fact was lost");
     assert!(score.meter_at(scope, start).is_measured(), "the meter fact was lost");
@@ -251,13 +253,13 @@ fn a_payload_the_compiler_does_not_know_is_refused() {
     assert!(compilation.snapshot().is_none(), "an unknown payload produced a score");
     let codes: Vec<_> = compilation.diagnostics().iter().map(|d| d.code).collect();
     assert!(
-        codes.contains(&musa_compiler::Code::UnsupportedPayload),
+        codes.contains(&musa_score::Code::UnsupportedPayload),
         "expected an unsupported-payload diagnostic, found {codes:?}",
     );
     let diagnostic = compilation
         .diagnostics()
         .iter()
-        .find(|d| d.code == musa_compiler::Code::UnsupportedPayload)
+        .find(|d| d.code == musa_score::Code::UnsupportedPayload)
         .expect("the diagnostic");
     assert!(
         diagnostic.message.contains("Waveform"),

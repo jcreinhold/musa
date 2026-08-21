@@ -40,7 +40,7 @@ registered.
   lowers to. `00-semantics.md` §3 says the function and block spellings "invoke the same semantic action, so their
   equality is an implementation theorem rather than a duplicated convention"; here that theorem is one law, because both
   spellings produce the same call.
-- `crates/musa-compiler/src/core.rs` — the notation arms this replaces, and in particular `PitchTerm` and its three
+- `crates/musa-compiler/src/core/mod.rs` — the notation arms this replaces, and in particular `PitchTerm` and its three
   errors. A written pitch is resolved "as far as a scale-free evaluator can", and `in scale` supplies what is missing;
   read why that staging exists before deciding where scale resolution goes here.
 - `crates/musa-compiler/src/scale.rs`, `chord.rs`, `pitch.rs`, `harmony.rs` — the theory algorithms a statement's
@@ -165,8 +165,8 @@ raw term out, so a reader can check the desugaring by reading it.
 
 ## Target
 
-- `crates/musa-compiler/src/lower/notation.rs`: the fold, the statement table, the reading context, and the pitch and
-  chord reading, with the module doc stating the fold and the refusal list.
+- `crates/musa-compiler/src/lower/notation/mod.rs`: the fold, the statement table, the reading context, and the pitch
+  and chord reading, with the module doc stating the fold and the refusal list.
 - `Lowering::item` answering for `MotifDecl` and `FragmentDecl` with the desugaring §2 fixes, and `Lowering::expr`
   answering for `MusicExpr` — the `not_yet` refusal for it deleted.
 - The refusals `00-semantics.md` §3 asks for, each naming the statement and the sentence, under the diagnostic code that

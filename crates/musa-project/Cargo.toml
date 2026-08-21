@@ -16,6 +16,7 @@ musa-compiler = { workspace = true }
 musa-engine = { workspace = true }
 musa-language = { workspace = true }
 musa-render = { workspace = true }
+musa-score = { workspace = true }
 num-rational = "0.4"
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` so the wire snapshot keeps the field order `SnapshotWire`

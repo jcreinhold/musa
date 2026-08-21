@@ -16,7 +16,9 @@
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
-use musa_compiler::{CompileOptions, Processor, Severity, SourceDocument, StudioSpec, Unit, compile};
+use musa_compiler::{CompileOptions, Processor, SourceDocument, StudioSpec, Unit, compile};
+
+use musa_score::Severity;
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
 

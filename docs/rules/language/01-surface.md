@@ -409,8 +409,8 @@ under the same rule as every other constructor.
 
 That rule is not cosmetic, and the evidence is a bug the compiler is still carrying. The staff adapter declares
 `Untied`, the staff *package* declares `Untied`, and because constructor names were flat within a module the two
-collided; `names_a_phase_type` in `crates/musa-compiler/src/core.rs` exists to work around what that collision did to
-the printer splice. Namespaced constructors delete the collision at its source, so the workaround goes when the last
+collided; `names_a_phase_type` in `crates/musa-compiler/src/core/mod.rs` exists to work around what that collision did
+to the printer splice. Namespaced constructors delete the collision at its source, so the workaround goes when the last
 flat-constructor program does. It also changes what an import can do: a module brings the *type* into scope and the
 constructors arrive with it, so two imported enums with a case of the same name cannot conflict at all.
 

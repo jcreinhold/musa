@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use musa_audio::{EventSlice, RenderPlan};
-use musa_compiler::PerformanceEvent;
+use musa_score::PerformanceEvent;
 
 /// A playback plan prepared entirely on the control side: compiled graph,
 /// scheduled events, total duration. The callback only executes it.

@@ -5,8 +5,8 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, child, is_type_node, listed, whole, writes};
+use musa_score::diagnose::{Code, Diagnostic};
 
 use super::*;
 impl Lowering<'_> {
@@ -292,7 +292,7 @@ impl Lowering<'_> {
                 let text = musa_language::ast::TransposeStmt::cast(node.clone())
                     .and_then(|stmt| stmt.interval())
                     .unwrap_or_default();
-                let Some(interval) = crate::Interval::parse(&text, writes(node, SyntaxKind::DownKw)) else {
+                let Some(interval) = musa_score::Interval::parse(&text, writes(node, SyntaxKind::DownKw)) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, format!("`{text}` is not an interval"))
                             .at(span, "unknown interval")
@@ -335,7 +335,7 @@ impl Lowering<'_> {
                 let text = musa_language::ast::InvertStmt::cast(node.clone())
                     .and_then(|stmt| stmt.axis())
                     .unwrap_or_default();
-                let Some(axis) = crate::WrittenPitch::parse(&text) else {
+                let Some(axis) = musa_score::WrittenPitch::parse(&text) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
                             .at(span, "inversion needs a pitch to mirror about"),
@@ -405,7 +405,7 @@ impl Lowering<'_> {
             SyntaxKind::HairpinStmt => {
                 let statement = musa_language::ast::HairpinStmt::cast(node.clone())?;
                 let text = statement.target().unwrap_or_default();
-                let Some(target) = crate::score::DynamicMark::parse(&text) else {
+                let Some(target) = musa_score::score::DynamicMark::parse(&text) else {
                     return self.refuse(Self::not_a_dynamic(&text, span));
                 };
                 let grows = if statement.grows() { "Bool.True" } else { "Bool.False" };
@@ -434,7 +434,7 @@ impl Lowering<'_> {
                 let text = musa_language::ast::DynamicStmt::cast(node.clone())
                     .and_then(|stmt| stmt.mark())
                     .unwrap_or_default();
-                let Some(mark) = crate::score::DynamicMark::parse(&text) else {
+                let Some(mark) = musa_score::score::DynamicMark::parse(&text) else {
                     return self.refuse(Self::not_a_dynamic(&text, span));
                 };
                 let fact = Raw::app(
@@ -456,7 +456,7 @@ impl Lowering<'_> {
                     .and_then(|stmt| stmt.symbol())
                     .map(|symbol| symbol.text())
                     .unwrap_or_default();
-                let Some(symbol) = crate::harmony::ChordSymbol::parse(&text) else {
+                let Some(symbol) = musa_score::harmony::ChordSymbol::parse(&text) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, format!("`{text}` is not a chord symbol"))
                             .at(span, "expected something like `Cmaj7` or `F#m7b5`"),
@@ -538,7 +538,7 @@ impl Lowering<'_> {
         }
         let mut sounding = None;
         for text in written {
-            let Some(pitch) = crate::WrittenPitch::parse(&text) else {
+            let Some(pitch) = musa_score::WrittenPitch::parse(&text) else {
                 return self.refuse(Self::not_a_pitch(&text, span));
             };
             let fact = applied(
@@ -572,7 +572,7 @@ impl Lowering<'_> {
         let statement = musa_language::ast::StackStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
         let text = statement.root().unwrap_or_default();
-        let Some(bass) = crate::WrittenPitch::parse(&text) else {
+        let Some(bass) = musa_score::WrittenPitch::parse(&text) else {
             // A pitch class is refused with its own sentence rather than the
             // generic one. `stack c major7` is not a typo for a pitch: it names
             // a class, and the answer is that stacking sounds notes and a class
@@ -588,7 +588,7 @@ impl Lowering<'_> {
             return self.refuse(Self::not_a_pitch(&text, span));
         };
         let word = statement.chord_type().unwrap_or_default();
-        let Some(kind) = crate::chord::ChordType::named(&word) else {
+        let Some(kind) = musa_score::chord::ChordType::named(&word) else {
             return self.refuse(
                 Diagnostic::error(Code::UnknownName, format!("unknown chord type `{word}`"))
                     .at(span, "not a named chord type")
@@ -596,8 +596,8 @@ impl Lowering<'_> {
             );
         };
         let (_, held, _) = self.notated_duration(node, span, reading)?;
-        let class = crate::chord::ChordClass::new(bass.pitch_class(), kind);
-        let Ok(voicing) = crate::chord::Voicing::close_position(class, bass) else {
+        let class = musa_score::chord::ChordClass::new(bass.pitch_class(), kind);
+        let Ok(voicing) = musa_score::chord::Voicing::close_position(class, bass) else {
             return self.refuse(
                 Diagnostic::error(Code::OutOfRange, "this chord does not stack above that bass")
                     .at(span, "the written coordinates leave Musa's exact range"),
@@ -635,7 +635,7 @@ impl Lowering<'_> {
             .enumerate()
         {
             let text = note.pitch().unwrap_or_default();
-            let Some(pitch) = crate::WrittenPitch::parse(&text) else {
+            let Some(pitch) = musa_score::WrittenPitch::parse(&text) else {
                 return self.refuse(Self::not_a_pitch(&text, span));
             };
             let at = self.origin(note.syntax());

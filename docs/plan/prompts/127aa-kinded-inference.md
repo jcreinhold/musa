@@ -22,7 +22,7 @@ one of two kinds: ordinary, ranging over any value type, or data, ranging over s
 - `docs/rules/language/02-core-calculus.md` §1 and §1.1, as repaired before this prompt — the type grammar, the storable
   data rule, and the inference discipline.
 - Research `05-selected-calculus.md` §2 and §2.1, which both the rule and this prompt derive from.
-- `crates/musa-compiler/src/core.rs` — `Type` (`enum Type`), `declared_type`, `signature_type`, `function_type`, the
+- `crates/musa-compiler/src/core/mod.rs` — `Type` (`enum Type`), `declared_type`, `signature_type`, `function_type`, the
   `Shape`/`Base`/`Family` primitive registry, and the seven hand-checked `Eliminator` arms.
 - Prompts 94–96 and 108, and the higher-order call tests they installed.
 - Peyton Jones, *The Implementation of Functional Programming Languages*, chapters 3 and 6, as cited by the research.

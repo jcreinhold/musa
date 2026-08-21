@@ -6,8 +6,10 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, EventId, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_score::{EventId, ScoreSnapshot};
 
 const EXAMPLES: [(&str, &str); 11] = [
     (

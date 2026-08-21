@@ -24,11 +24,11 @@ This is not a new feature. The **value** side of the same boundary has done it s
   constructor checks against its family at known parameters and indices. A projection, a variable, and a literal infer."
   Then §1.1 on why a parameter is fixed across the declaration and an index is chosen per constructor — that is what
   makes reading a parameter off the expected type well defined and reading an index off it not.
-- `crates/musa-calculus/src/elab.rs` — `Elaborator::check`, `bare`, and `abstracted`. `bare` is §1.3's rule, and it is
-  the measurement below: it qualifies the written word and re-checks, and that re-check cannot succeed for a family with
-  parameters, which is all three of `Option`, `List`, and `Result`.
-- `crates/musa-calculus/src/family.rs` — `realize`, `realize_case`, and `element`. `realize` is this prompt's rule one
-  level down and is the design to follow rather than to duplicate: it takes canonical data whose fields carry no
+- `crates/musa-calculus/src/elab/mod.rs` — `Elaborator::check`, `bare`, and `abstracted`. `bare` is §1.3's rule, and it
+  is the measurement below: it qualifies the written word and re-checks, and that re-check cannot succeed for a family
+  with parameters, which is all three of `Option`, `List`, and `Result`.
+- `crates/musa-calculus/src/family/mod.rs` — `realize`, `realize_case`, and `element`. `realize` is this prompt's rule
+  one level down and is the design to follow rather than to duplicate: it takes canonical data whose fields carry no
   parameters, plus the type it stands at, and supplies the parameters from the type. Its doc comment — "the parameters
   come before the fields, ι reads them by position, and nothing in the name or the fields says what they are" — is the
   argument.
@@ -78,9 +78,9 @@ coverage exists to check. A constructor whose indices do not match is refused wh
 
 ## Target
 
-- `crates/musa-calculus/src/elab.rs`: §2's constructor rule in `check`, doc-commented with the sentence it implements
-  and the reason it reads parameters and not indices. `bare` becomes reachable — folded into the new rule if that is the
-  narrower interface, kept beside it if it is not, but not left as a case that cannot fire.
+- `crates/musa-calculus/src/elab/mod.rs`: §2's constructor rule in `check`, doc-commented with the sentence it
+  implements and the reason it reads parameters and not indices. `bare` becomes reachable — folded into the new rule if
+  that is the narrower interface, kept beside it if it is not, but not left as a case that cannot fire.
 - The term the rule builds is the term the explicit spelling builds. One answer, stated as a law rather than asserted.
 - Laws in `crates/musa-calculus/tests/suite/`: a bare constructor, a qualified constructor, and an applied constructor
   each check against a parameterized family; the explicitly parameterized spelling still checks and yields the same

@@ -6,7 +6,7 @@ use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use crate::lower::{applied, whole};
-use crate::origin::SourceSpan;
+use musa_score::origin::SourceSpan;
 
 use super::*;
 
@@ -161,15 +161,15 @@ pub(crate) fn continuing(origin: Origin, tied: bool, track: Raw) -> Raw {
 }
 
 /// `Scope.Piece`, `Scope.Part n`, `Scope.Voice p v`.
-pub(crate) fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
+pub(crate) fn scope_of(origin: Origin, scope: musa_score::Scope) -> Raw {
     match scope {
-        crate::Scope::Piece => Raw::hosted(origin, "Scope.Piece"),
-        crate::Scope::Part { part } => Raw::app(
+        musa_score::Scope::Piece => Raw::hosted(origin, "Scope.Piece"),
+        musa_score::Scope::Part { part } => Raw::app(
             origin,
             Raw::hosted(origin, "Scope.Part"),
             whole(origin, u64::from(part)),
         ),
-        crate::Scope::Voice { part, voice } => applied(
+        musa_score::Scope::Voice { part, voice } => applied(
             origin,
             Raw::hosted(origin, "Scope.Voice"),
             [whole(origin, u64::from(part)), whole(origin, u64::from(voice))],
@@ -191,7 +191,7 @@ pub(crate) fn scope_of(origin: Origin, scope: crate::Scope) -> Raw {
 /// [`crate::registry::track`]'s `INSTANCED` makes the argument in full, and is
 /// also where the step lands in *front* of whatever the body already recorded,
 /// which is what makes a path read outside-in.
-pub(crate) fn stamped(origin: Origin, at: SourceSpan, step: crate::origin::ExpansionStep, body: Raw) -> Raw {
+pub(crate) fn stamped(origin: Origin, at: SourceSpan, step: musa_score::origin::ExpansionStep, body: Raw) -> Raw {
     applied(
         origin,
         Raw::hosted(origin, "instanced"),
@@ -263,12 +263,12 @@ where
 // compiler rather than two.
 
 /// `Fact.Key(key)`, from a key the source spelled out.
-pub(crate) fn keyed(origin: Origin, key: crate::score::Key) -> Raw {
+pub(crate) fn keyed(origin: Origin, key: musa_score::score::Key) -> Raw {
     Raw::app(origin, Raw::hosted(origin, "Fact.Key"), plain(origin, "Key", key))
 }
 
 /// `Fact.Meter(numerator, denominator)`.
-pub(crate) fn metered(origin: Origin, meter: crate::score::Meter) -> Raw {
+pub(crate) fn metered(origin: Origin, meter: musa_score::score::Meter) -> Raw {
     applied(
         origin,
         Raw::hosted(origin, "Fact.Meter"),
@@ -280,7 +280,7 @@ pub(crate) fn metered(origin: Origin, meter: crate::score::Meter) -> Raw {
 }
 
 /// `Fact.Clef(clef)`.
-pub(crate) fn clefed(origin: Origin, clef: crate::score::Clef) -> Raw {
+pub(crate) fn clefed(origin: Origin, clef: musa_score::score::Clef) -> Raw {
     Raw::app(origin, Raw::hosted(origin, "Fact.Clef"), payload(origin, "Clef", clef))
 }
 
@@ -307,19 +307,19 @@ pub(crate) fn tempo(origin: Origin, marking: &crate::resolve::Marking) -> Raw {
 /// A placeholder rather than a value, because this is what goes in a help: the
 /// reader is being shown the shape of the statement they meant to write, and a
 /// made-up rehearsal letter would be a suggestion to write that letter.
-pub(crate) fn written_argument(mark: crate::Mark) -> &'static str {
+pub(crate) fn written_argument(mark: musa_score::Mark) -> &'static str {
     match mark.takes() {
-        crate::marks::Argument::None => "",
-        crate::marks::Argument::Text => " \"…\"",
-        crate::marks::Argument::Number => " 1",
+        musa_score::marks::Argument::None => "",
+        musa_score::marks::Argument::Text => " \"…\"",
+        musa_score::marks::Argument::Number => " 1",
     }
 }
 
 /// How `mark`'s row ends: a block for a span, a semicolon for anything else.
-pub(crate) fn written_tail(mark: crate::Mark) -> &'static str {
+pub(crate) fn written_tail(mark: musa_score::Mark) -> &'static str {
     match mark.anchor() {
-        crate::marks::Anchor::Span => " { … }",
-        crate::marks::Anchor::Point | crate::marks::Anchor::Note(_) => ";",
+        musa_score::marks::Anchor::Span => " { … }",
+        musa_score::marks::Anchor::Point | musa_score::marks::Anchor::Note(_) => ";",
     }
 }
 

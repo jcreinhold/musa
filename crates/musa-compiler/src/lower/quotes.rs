@@ -59,9 +59,9 @@ use musa_language::ast::AstNode;
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use super::{Lowering, applied, child, is_expr_node, listed, significant_tokens, whole};
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::syntax::{Hygiene, Template};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// One quote body being read, and what it has found so far.
 ///

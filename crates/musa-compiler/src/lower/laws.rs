@@ -31,8 +31,8 @@ use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
 use super::{Lowering, Sites, is_type_node};
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
 
 // ---- reading a written program back out of a parse ----
 
@@ -816,7 +816,7 @@ fn a_core_refusal_is_restated_at_the_span_that_caused_it() {
     let complaint = super::refusals::restate(&sites, &failure);
     assert_eq!(
         complaint.code,
-        crate::diagnose::Code::UnknownName,
+        musa_score::diagnose::Code::UnknownName,
         "filed under the refusal's own family"
     );
     let span = complaint.labels.first().expect("pointed somewhere").span;
@@ -855,10 +855,10 @@ fn a_refusal_carrying_no_written_origin_points_nowhere() {
 #[test]
 fn a_site_answers_the_span_it_was_numbered_for() {
     let mut sites = Sites::default();
-    let first = sites.at(crate::origin::SourceSpan::new(3, 9));
-    let second = sites.at(crate::origin::SourceSpan::new(11, 14));
-    assert_eq!(sites.span(first), Some(crate::origin::SourceSpan::new(3, 9)));
-    assert_eq!(sites.span(second), Some(crate::origin::SourceSpan::new(11, 14)));
+    let first = sites.at(musa_score::origin::SourceSpan::new(3, 9));
+    let second = sites.at(musa_score::origin::SourceSpan::new(11, 14));
+    assert_eq!(sites.span(first), Some(musa_score::origin::SourceSpan::new(3, 9)));
+    assert_eq!(sites.span(second), Some(musa_score::origin::SourceSpan::new(11, 14)));
     assert_eq!(
         sites.span(musa_calculus::Origin::UNKNOWN),
         None,

@@ -44,8 +44,8 @@ and complete calls.
 - `stdlib/src/tonal/sequences.musa`, `stdlib/src/tonal/schemas.musa`, and `stdlib/src/post_tonal/serial.musa` — the nine
   sites that specialize a higher-order call with a value known only at run time, which is the whole of what partial
   application was carrying.
-- `crates/musa-compiler/src/core.rs` — `BuiltinValue`, its `bound: Vec<Option<Value>>` field, `Builtin::parameters`, and
-  every construction site of a partially bound builtin.
+- `crates/musa-compiler/src/core/mod.rs` — `BuiltinValue`, its `bound: Vec<Option<Value>>` field, `Builtin::parameters`,
+  and every construction site of a partially bound builtin.
 - `docs/plan/clean-break-ledger.md` §1, which lists these forms as deleted rather than aliased.
 - The stdlib, `examples/`, the compiler test suite, and the generated documentation that spell an under-applied call.
 

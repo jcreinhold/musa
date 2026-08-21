@@ -64,9 +64,9 @@ use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use super::{Lowering, applied, expansion, listed};
-use crate::diagnose::{Code, Diagnostic};
 use crate::elaborate::ScoreFact;
-use crate::origin::{ExpansionStep, SourceSpan};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::{ExpansionStep, SourceSpan};
 
 /// The term a quote's body denotes, at the one instantiation this build has.
 type Quoted = Term<WrittenTime, ScoreFact>;
@@ -130,7 +130,7 @@ impl Lowering<'_> {
         // all written in the same place.
         let written = expansion(span, ExpansionStep::KernelSplice { at: Ratio::new(0, 1) });
         term.map_payloads(&mut |fact| {
-            fact.scope = crate::Scope::Piece;
+            fact.scope = musa_score::Scope::Piece;
             fact.origin = written.clone();
         });
         Some(applied(

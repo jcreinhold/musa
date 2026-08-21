@@ -2,10 +2,10 @@
 use musa_language::ast::{AstNode as _, DynamicRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
-use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
-use crate::score::DynamicMark;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
+use musa_score::score::DynamicMark;
 
 use super::{Resolver, parse_ratio, suggest, trimmed_span};
 
@@ -27,11 +27,11 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         let mut profile = PerformanceProfile::named(&name);
         for rule in declaration.marks() {
             let written = rule.name().unwrap_or_default();
-            let Some(mark) = crate::Mark::parse(&written) else {
+            let Some(mark) = musa_score::Mark::parse(&written) else {
                 resolver.report(
                     Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a mark"))
                         .at(trimmed_span(rule.syntax()), "unknown mark")
-                        .help(suggest(&written, &crate::marks::names(), "marks")),
+                        .help(suggest(&written, &musa_score::marks::names(), "marks")),
                 );
                 continue;
             };
@@ -70,7 +70,7 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
 /// More than one is refused for the same reason two grooves are: a reading of
 /// a grace note is a single decision, and two of them composed in written
 /// order would mean nothing a performer could act on.
-fn grace_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate::GracePolicy> {
+fn grace_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<musa_score::GracePolicy> {
     let rules = declaration.graces();
     let (first, rest) = rules.split_first()?;
     for extra in rest {
@@ -81,7 +81,7 @@ fn grace_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate:
             "a reading plays a grace note one way",
         );
     }
-    let mut policy = crate::GracePolicy::DEFAULT;
+    let mut policy = musa_score::GracePolicy::DEFAULT;
     for setting in first.settings() {
         let name = setting.name().unwrap_or_default();
         match name.as_str() {
@@ -118,11 +118,11 @@ fn grace_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate:
 }
 
 /// `from = principal;` or `from = previous;`.
-fn steal_from(resolver: &mut Resolver, setting: &SettingStmt) -> Option<crate::StealFrom> {
+fn steal_from(resolver: &mut Resolver, setting: &SettingStmt) -> Option<musa_score::StealFrom> {
     let written = setting.word().or_else(|| setting.value())?;
     match written.as_str() {
-        "principal" => Some(crate::StealFrom::Principal),
-        "previous" => Some(crate::StealFrom::Previous),
+        "principal" => Some(musa_score::StealFrom::Principal),
+        "previous" => Some(musa_score::StealFrom::Previous),
         other => {
             resolver.report(
                 Diagnostic::error(Code::UnknownWord, format!("`{other}` is not a note to steal from"))
@@ -140,7 +140,7 @@ fn steal_from(resolver: &mut Resolver, setting: &SettingStmt) -> Option<crate::S
 /// More than one is refused rather than merged: a part has one beat, and two
 /// grooves composed in written order would mean something no musician asked
 /// for.
-fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<(crate::Groove, SourceSpan)> {
+fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<(musa_score::Groove, SourceSpan)> {
     let rules = declaration.grooves();
     let (first, rest) = rules.split_first()?;
     for extra in rest {
@@ -152,11 +152,11 @@ fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<(crat
         );
     }
     let written = first.name().unwrap_or_default();
-    let Some(def) = crate::groove::lookup(&written) else {
+    let Some(def) = musa_score::groove::lookup(&written) else {
         resolver.report(
             Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a groove"))
                 .at(trimmed_span(first.syntax()), "unknown groove")
-                .help(suggest(&written, &crate::groove::names(), "grooves")),
+                .help(suggest(&written, &musa_score::groove::names(), "grooves")),
         );
         return None;
     };
@@ -190,9 +190,9 @@ fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<(crat
         }
     };
     let groove = match def.name {
-        "straight" => Some(crate::Groove::STRAIGHT),
-        "swing" => crate::Groove::swing(required("ratio")?),
-        "push" => crate::Groove::push(required("grid")?, required("by")?),
+        "straight" => Some(musa_score::Groove::STRAIGHT),
+        "swing" => musa_score::Groove::swing(required("ratio")?),
+        "push" => musa_score::Groove::push(required("grid")?, required("by")?),
         other => {
             // `VOCABULARY` and this match are the same list. A row added to
             // one and not the other would be a groove the parser accepts and
@@ -250,7 +250,7 @@ fn beat_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
     let (sign, magnitude) = written
         .strip_prefix('-')
         .map_or((Ratio::ONE, written.as_str()), |rest| (-Ratio::ONE, rest));
-    let value = parse_ratio(magnitude).or_else(|| crate::profile::parse_decimal(magnitude));
+    let value = parse_ratio(magnitude).or_else(|| musa_score::profile::parse_decimal(magnitude));
     match value {
         Some(value) => Some(value * sign),
         None => {
@@ -346,7 +346,7 @@ fn hold_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
     // A word reaches here too, so a setting given the wrong kind of value
     // is refused by name rather than dropped without a word (see `word`).
     let written = setting.value().or_else(|| setting.word())?;
-    let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
+    let Some(value) = parse_ratio(&written).or_else(|| musa_score::profile::parse_decimal(&written)) else {
         resolver.error(
             Code::NotAValue,
             format!("`{written}` is not a hold"),
@@ -387,7 +387,7 @@ fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio
     // A word reaches here too, so a setting given the wrong kind of value
     // is refused by name rather than dropped without a word (see `word`).
     let written = setting.value().or_else(|| setting.word())?;
-    let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
+    let Some(value) = parse_ratio(&written).or_else(|| musa_score::profile::parse_decimal(&written)) else {
         resolver.error(
             Code::NotAValue,
             format!("`{written}` is not a fraction of the written value"),
@@ -413,7 +413,7 @@ fn time_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
     let name = setting.name().unwrap_or_default();
     let span = trimmed_span(setting.syntax());
     let written = setting.value().or_else(|| setting.word())?;
-    let Some(value) = crate::profile::parse_decimal(&written) else {
+    let Some(value) = musa_score::profile::parse_decimal(&written) else {
         resolver.error(
             Code::NotAValue,
             format!("`{written}` is not a length of time"),

@@ -32,7 +32,7 @@ pub enum Scope {
 impl Scope {
     /// The (part, voice) pair, for bucketing during projection, or `None`
     /// when the fact belongs to something wider than a voice.
-    pub(crate) fn voice(self) -> Option<(u32, u32)> {
+    pub fn voice(self) -> Option<(u32, u32)> {
         match self {
             Self::Piece | Self::Part { .. } => None,
             Self::Voice { part, voice } => Some((part, voice)),

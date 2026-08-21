@@ -11,9 +11,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Compilation, CompileOptions, Decision, OpenKind, Realization, ScoreSnapshot, SourceDocument, compile,
-};
+use musa_compiler::{Compilation, CompileOptions, SourceDocument, compile};
+
+use musa_score::{Decision, OpenKind, Realization, ScoreSnapshot};
 
 const IN_C: &str = include_str!("../../../../examples/in-c.musa");
 

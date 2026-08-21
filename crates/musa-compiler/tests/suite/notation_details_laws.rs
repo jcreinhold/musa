@@ -19,9 +19,9 @@
 // Rational sums over exact musical time (see musa-compiler/src/time.rs).
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, DynamicMark, Mark, MusicalDuration, ScoreEvent, ScoreSnapshot, SourceDocument, compile,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{DynamicMark, Mark, MusicalDuration, ScoreEvent, ScoreSnapshot};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -43,7 +43,7 @@ fn errors_of(text: &str) -> Vec<String> {
     compile(&SourceDocument::new(text, "test.musa"), &CompileOptions::default())
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect()
 }

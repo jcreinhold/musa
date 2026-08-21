@@ -27,10 +27,9 @@
 // arithmetic lint has nothing to protect here.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, MusicalTime, Realization, Scope, ScoreSnapshot, Severity, SourceDocument, compile,
-    kernel_normal_form,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form};
+
+use musa_score::{MusicalTime, Realization, Scope, ScoreSnapshot, Severity};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -233,8 +232,8 @@ fn endings_play_once_each_and_print_once_each() {
         .events()
         .iter()
         .map(|event| match &event.kind {
-            musa_compiler::ScoreEventKind::Note { pitch } => pitch.to_string(),
-            other @ (musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. }) => {
+            musa_score::ScoreEventKind::Note { pitch } => pitch.to_string(),
+            other @ (musa_score::ScoreEventKind::Rest | musa_score::ScoreEventKind::Chord { .. }) => {
                 format!("{other:?}")
             }
         })
@@ -270,8 +269,8 @@ fn an_ending_outside_a_repeat_is_read_where_it_stands() {
         .events()
         .iter()
         .filter_map(|event| match &event.kind {
-            musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
-            musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
+            musa_score::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
+            musa_score::ScoreEventKind::Rest | musa_score::ScoreEventKind::Chord { .. } => None,
         })
         .collect();
     assert_eq!(sounded, ["c4", "d4"], "the ending's note plays once");

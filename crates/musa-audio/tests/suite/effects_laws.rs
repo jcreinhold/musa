@@ -17,7 +17,8 @@
 use musa_audio::{
     EventSlice, GraphError, GraphOptions, ProcessorSpec, StudioGraphSpec, compile_graph, lower_studio, render_offline,
 };
-use musa_compiler::{CompileOptions, PerformanceOptions, SourceDocument, StudioSpec, compile, lower_performance};
+use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
+use musa_score::{PerformanceOptions, lower_performance};
 
 const RATE: u32 = 48_000;
 const OPTIONS: GraphOptions = GraphOptions {
@@ -58,19 +59,19 @@ fn piece(studio: &str) -> String {
 
 /// The scheduled events of a piece whose one note lasts a quarter of a
 /// second — short enough that what is heard a second later is a tail.
-fn one_note() -> Vec<musa_compiler::PerformanceEvent> {
+fn one_note() -> Vec<musa_score::PerformanceEvent> {
     let source = "piece \"x\" { tempo 1/4 = 240; meter 4/4; \
                   score { part violin { voice v { c4/4 rest/2 } } } }"
         .to_owned();
     let compilation = compile(&SourceDocument::new(&source, "test.musa"), &CompileOptions::default());
     let score = compilation.into_snapshot().expect("the piece compiles");
     let plan = lower_performance(&score, &PerformanceOptions::default()).expect("the piece performs");
-    let mut events: Vec<musa_compiler::PerformanceEvent> = plan
+    let mut events: Vec<musa_score::PerformanceEvent> = plan
         .lanes()
         .iter()
         .flat_map(|lane| lane.events().iter().cloned())
         .collect();
-    events.sort_by_key(musa_compiler::PerformanceEvent::frame);
+    events.sort_by_key(musa_score::PerformanceEvent::frame);
     events
 }
 
@@ -271,12 +272,12 @@ fn an_effected_render_is_deterministic() {
     let (score, studio) = compilation.into_parts();
     let score = score.expect("the piece compiles");
     let plan = lower_performance(&score, &PerformanceOptions::default()).expect("the piece performs");
-    let mut performance: Vec<musa_compiler::PerformanceEvent> = plan
+    let mut performance: Vec<musa_score::PerformanceEvent> = plan
         .lanes()
         .iter()
         .flat_map(|lane| lane.events().iter().cloned())
         .collect();
-    performance.sort_by_key(musa_compiler::PerformanceEvent::frame);
+    performance.sort_by_key(musa_score::PerformanceEvent::frame);
     let (graph, _) = lower_studio(&studio, &OPTIONS);
     let once = render_offline(
         &mut compile_graph(&graph, &OPTIONS).expect("the graph is valid"),

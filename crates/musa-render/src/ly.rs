@@ -19,7 +19,7 @@
 // module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{ChordQuality, ChordSymbol, Clef, EventId, Mark, Mode, Seventh, WrittenPitch};
+use musa_score::{ChordQuality, ChordSymbol, Clef, EventId, Mark, Mode, Seventh, WrittenPitch};
 
 use crate::RenderError;
 use crate::plan::{
@@ -469,13 +469,13 @@ fn score_marks(plan: &NotationPlan) -> Vec<PositionedMark<ScoreMark>> {
     for region in plan.open() {
         marks.push(PositionedMark {
             measure: region.from,
-            onset_in_measure: musa_compiler::MusicalDuration::ZERO,
+            onset_in_measure: musa_score::MusicalDuration::ZERO,
             what: ScoreMark::Instruction(region.text.clone()),
         });
         if region.to != region.from {
             marks.push(PositionedMark {
                 measure: region.to,
-                onset_in_measure: musa_compiler::MusicalDuration::ZERO,
+                onset_in_measure: musa_score::MusicalDuration::ZERO,
                 what: ScoreMark::Instruction("end".to_owned()),
             });
         }
@@ -684,7 +684,7 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     // LilyPond's names for the two *performances* — crushed ahead of the beat,
     // or leaning on it — and picking one here would put a reading of the piece
     // into the engraving. That question is the profile's
-    // (`musa_compiler::GracePolicy`), and the notation backends are given no
+    // (`musa_score::GracePolicy`), and the notation backends are given no
     // way to ask it: the plan carries the written pitches and nothing else.
     // `8` is a stem flag, not a length; a grace has no written duration.
     let mut body = if item.graces().is_empty() {
@@ -754,7 +754,7 @@ fn span_script(span: &crate::plan::SpanMark, start: bool) -> Option<String> {
     let spelling = span.mark.def().lilypond?;
     if spelling == "\\ottava" {
         let shift = match span.argument {
-            Some(musa_compiler::MarkArgument::Number(shift)) if start => shift,
+            Some(musa_score::MarkArgument::Number(shift)) if start => shift,
             _ => 0,
         };
         return Some(format!("{spelling} #{shift}"));
@@ -794,14 +794,14 @@ fn articulation_script(mark: Mark) -> String {
         return String::new();
     };
     match mark.slot() {
-        Some(musa_compiler::Slot::Articulation) => {
+        Some(musa_score::Slot::Articulation) => {
             let side = match ARTICULATION_PLACEMENT {
                 Placement::Above => '^',
                 Placement::Below => '_',
             };
             format!("{side}{spelling}")
         }
-        Some(musa_compiler::Slot::Ornament | musa_compiler::Slot::Technical | musa_compiler::Slot::Fermata) | None => {
+        Some(musa_score::Slot::Ornament | musa_score::Slot::Technical | musa_score::Slot::Fermata) | None => {
             spelling.to_owned()
         }
     }
@@ -810,13 +810,13 @@ fn articulation_script(mark: Mark) -> String {
 /// Absolute-octave English note name (`cs'`, `eff,`).
 fn pitch_name(pitch: WrittenPitch) -> String {
     let letter = match pitch.letter {
-        musa_compiler::Letter::C => "c",
-        musa_compiler::Letter::D => "d",
-        musa_compiler::Letter::E => "e",
-        musa_compiler::Letter::F => "f",
-        musa_compiler::Letter::G => "g",
-        musa_compiler::Letter::A => "a",
-        musa_compiler::Letter::B => "b",
+        musa_score::Letter::C => "c",
+        musa_score::Letter::D => "d",
+        musa_score::Letter::E => "e",
+        musa_score::Letter::F => "f",
+        musa_score::Letter::G => "g",
+        musa_score::Letter::A => "a",
+        musa_score::Letter::B => "b",
     };
     let accidental = match pitch.accidental.0.cmp(&0) {
         std::cmp::Ordering::Greater => "s".repeat(usize::try_from(pitch.accidental.0).unwrap_or(usize::MAX)),

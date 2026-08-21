@@ -41,10 +41,10 @@ be read under — "a trait's own context under its parameters, an instance's und
 - `crates/musa-calculus/src/term.rs` — `Shape::Pi`'s `plicity` field and its doc: "**no core rule reads this** — it is
   here because a type reached by projection or by substitution has been through the semantic domain, and elaboration
   still has to be able to ask whether the binder it found was implicit". That sentence is the design.
-- `crates/musa-calculus/src/elab.rs` — `inserted`, `lambda`, `abstracted`, and `function_type`. `inserted` is the loop
-  that fills an implicit binder with a metavariable; it is where a constraint binder is filled by `10-traits.md` §4
+- `crates/musa-calculus/src/elab/mod.rs` — `inserted`, `lambda`, `abstracted`, and `function_type`. `inserted` is the
+  loop that fills an implicit binder with a metavariable; it is where a constraint binder is filled by `10-traits.md` §4
   instead.
-- `crates/musa-calculus/src/family.rs` — `Binder`, `Group::params`, `Constant::ty`, and the `split_off(params)`
+- `crates/musa-calculus/src/family/mod.rs` — `Binder`, `Group::params`, `Constant::ty`, and the `split_off(params)`
   arithmetic that a family's parameters are counted by. This is where `enum` costs more than `fn` and `record`, and the
   cost is named in the Design below rather than discovered.
 - `crates/musa-compiler/src/lower/items.rs` — `unconstrained`, whose doc argues for the refusal on exactly the ground
@@ -163,10 +163,10 @@ changes are 142's.
 - `crates/musa-calculus/src/class.rs`: `Constraint` public, fields still `pub(crate)`.
 - `crates/musa-calculus/src/raw.rs`: `Raw::constrained_pi(origin, constraint: RawConstraint, codomain: Self)`, and
   `RawData::context: Vec<RawConstraint>`. No `constrained_lam` — the core writes that λ.
-- `crates/musa-calculus/src/elab.rs`: the filling arm in `inserted` and the abstracting arm beside `lambda`, the second
-  discharging as well as assuming. `function_type` takes the constraint's dictionary type as the domain and levels it
-  the way it levels any other.
-- `crates/musa-calculus/src/family.rs`: `Binder::plicity`, and `declare` appending one constraint binder per
+- `crates/musa-calculus/src/elab/mod.rs`: the filling arm in `inserted` and the abstracting arm beside `lambda`, the
+  second discharging as well as assuming. `function_type` takes the constraint's dictionary type as the domain and
+  levels it the way it levels any other.
+- `crates/musa-calculus/src/family/mod.rs`: `Binder::plicity`, and `declare` appending one constraint binder per
   `RawData::context` entry after the written parameters.
 - `crates/musa-compiler/src/lower/items.rs`: `unconstrained` deleted; `function`, `structural`, and `enumeration`
   reading their `where` through the existing `written_constraints`; `instance` refusing a constraint on an impl method

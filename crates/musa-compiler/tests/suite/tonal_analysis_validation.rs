@@ -34,10 +34,11 @@
 // of these are numerals" is not one of those places.
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use musa_compiler::{
-    AnalysisKind, AnalysisProfile, AnalysisReport, AnalysisRequest, Approach, Cadence, CompileOptions, Evidence, Fit,
-    Key, Mode, Observation, PitchClass, ScoreSnapshot, Segmentation, Severity, SourceDocument, Standing, analyze,
-    compile,
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{
+    AnalysisKind, AnalysisProfile, AnalysisReport, AnalysisRequest, Approach, Cadence, Evidence, Fit, Key, Mode,
+    Observation, PitchClass, ScoreSnapshot, Segmentation, Severity, Standing, analyze,
 };
 
 const PIVOT: &str = include_str!("../../../../examples/analysis/pivot-ambiguity.musa");
@@ -101,7 +102,7 @@ fn a_pivot_chord_is_read_in_both_keys() {
     let at_the_pivot: Vec<(String, String)> = report
         .findings()
         .iter()
-        .filter(|finding| finding.observation().at() == musa_compiler::MusicalTime::new((2, 1).into()))
+        .filter(|finding| finding.observation().at() == musa_score::MusicalTime::new((2, 1).into()))
         .filter_map(|finding| match *finding.observation() {
             Observation::Numeral { ref numeral, key, .. } => Some((numeral.clone(), spell(key))),
             _ => None,
@@ -174,7 +175,7 @@ fn two_exact_fits_are_two_candidates() {
     let first: Vec<(String, Standing)> = report
         .findings()
         .iter()
-        .filter(|finding| finding.observation().at() == musa_compiler::MusicalTime::ZERO)
+        .filter(|finding| finding.observation().at() == musa_score::MusicalTime::ZERO)
         .filter_map(|finding| match *finding.observation() {
             Observation::ChordFit {
                 chord, fit: Fit::Exact, ..
@@ -310,7 +311,7 @@ fn a_progression_that_is_no_cadence_is_not_reported() {
     let report = read(PIVOT, "pivot.musa", AnalysisKind::Cadences);
     let at_the_first_phrase = report.findings().iter().any(|finding| {
         matches!(*finding.observation(), Observation::Cadence { .. })
-            && finding.observation().at() < musa_compiler::MusicalTime::new((3, 1).into())
+            && finding.observation().at() < musa_score::MusicalTime::new((3, 1).into())
     });
     assert!(
         !at_the_first_phrase,
@@ -510,7 +511,7 @@ fn a_borrowed_chord_ends_the_region_it_was_borrowed_into() {
         })
         .expect("a C major region");
     assert!(
-        home < musa_compiler::MusicalTime::new((8, 1).into()),
+        home < musa_score::MusicalTime::new((8, 1).into()),
         "the borrowed chord was absorbed into the written key: the region ran to {home}"
     );
 }

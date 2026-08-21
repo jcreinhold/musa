@@ -2,9 +2,11 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_compiler::{CompileOptions, MusicalTime, Scope, SourceDocument};
+use musa_compiler::{CompileOptions, SourceDocument};
+
 use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 use musa_language::BarSpacing;
+use musa_score::{MusicalTime, Scope};
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
@@ -62,7 +64,7 @@ pub struct ProjectSession {
     /// (`docs/rules/kernel/11-realization.md`). A piece that leaves nothing open
     /// never consults it, which is why it is a plain field with a default
     /// rather than something an opener has to supply.
-    realization: musa_compiler::Realization,
+    realization: musa_score::Realization,
     /// Diagnostics for the *current* source.
     diagnostics: Vec<Diagnostic>,
     /// Which of the two things this document is. Material has no
@@ -128,7 +130,7 @@ struct InstalledPlan {
 /// edit does, and there is one undo stack rather than two.
 struct HistoryEntry {
     source: String,
-    realization: musa_compiler::Realization,
+    realization: musa_score::Realization,
     revision: Revision,
 }
 
@@ -300,7 +302,7 @@ impl ProjectSession {
                 Ok(self.set_realization(next))
             }
             ProjectCommand::Pin(path) => {
-                let path = musa_compiler::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("keep"))?;
+                let path = musa_score::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("keep"))?;
                 // What is pinned is what this compile decided *there*: pinning
                 // is "keep this one", and the only thing that could be kept is
                 // the answer the composer is looking at.
@@ -317,7 +319,7 @@ impl ProjectSession {
                 Ok(self.set_realization(next))
             }
             ProjectCommand::Unpin(path) => {
-                let path = musa_compiler::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("release"))?;
+                let path = musa_score::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("release"))?;
                 let mut next = self.realization.clone();
                 next.unpin(&path);
                 Ok(self.set_realization(next))
@@ -502,12 +504,12 @@ impl ProjectSession {
     /// [`ProjectError::NoValidScore`] if the piece has never compiled, or
     /// [`ProjectError::Analysis`] when the request names a part or voice this
     /// score does not have, or a window with no music in it.
-    pub fn analyze(&self, request: &musa_compiler::AnalysisRequest) -> Result<crate::AnalysisFacts, ProjectError> {
+    pub fn analyze(&self, request: &musa_score::AnalysisRequest) -> Result<crate::AnalysisFacts, ProjectError> {
         let span = tracing::info_span!("analyze");
         let _entered = span.enter();
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
         let report =
-            musa_compiler::analyze(&valid.score, request).map_err(|error| ProjectError::Analysis(error.to_string()))?;
+            musa_score::analyze(&valid.score, request).map_err(|error| ProjectError::Analysis(error.to_string()))?;
         // The kind is read off the report rather than the request: the report
         // already answers it, and adding an accessor to `AnalysisRequest` for
         // a log line would be a public item with one caller.
@@ -533,7 +535,7 @@ impl ProjectSession {
     ///
     /// # Errors
     /// Whatever [`Self::analyze`] refuses for.
-    pub fn analyze_wire(&self, request: &musa_compiler::AnalysisRequest) -> Result<serde_json::Value, ProjectError> {
+    pub fn analyze_wire(&self, request: &musa_score::AnalysisRequest) -> Result<serde_json::Value, ProjectError> {
         /// The report, plus the compile it is a reading of.
         #[derive(serde::Serialize)]
         struct Reading<'a> {
@@ -606,7 +608,7 @@ impl ProjectSession {
     /// page and the inspector use; the note being entered goes *before* it,
     /// so its own onset is the position to ask about. Scoped to the caret's
     /// part, so a part in its own key spells in that one.
-    fn key_at_caret(&self, caret: Option<&str>) -> Option<musa_compiler::Key> {
+    fn key_at_caret(&self, caret: Option<&str>) -> Option<musa_score::Key> {
         let valid = self.valid.as_ref()?;
         let Some(caret) = caret else {
             return valid.score.key_at(Scope::Piece, MusicalTime::ZERO);
@@ -649,11 +651,11 @@ impl ProjectSession {
             project: None,
             imports: musa_compiler::ImportSources::default(),
             import_paths: Vec::new(),
-            realization: musa_compiler::Realization::deterministic(),
+            realization: musa_score::Realization::deterministic(),
             name,
             history: vec![HistoryEntry {
                 source: source.clone(),
-                realization: musa_compiler::Realization::deterministic(),
+                realization: musa_score::Realization::deterministic(),
                 revision,
             }],
             source,
@@ -822,12 +824,12 @@ impl ProjectSession {
     /// (`docs/rules/kernel/11-realization.md`), so a new realization takes a
     /// revision and lands in the history, and undo goes back to the reading
     /// that was on screen before.
-    pub fn realize(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {
+    pub fn realize(&mut self, realization: musa_score::Realization) -> ProjectUpdate {
         self.set_realization(realization)
     }
 
     /// Move to `realization`, recording the move so it can be undone.
-    fn set_realization(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {
+    fn set_realization(&mut self, realization: musa_score::Realization) -> ProjectUpdate {
         if realization == self.realization {
             return ProjectUpdate::unchanged(self.revision, self.validity());
         }
@@ -863,7 +865,7 @@ impl ProjectSession {
     }
 
     /// Which reading of the work this session is compiling.
-    pub fn realization(&self) -> &musa_compiler::Realization {
+    pub fn realization(&self) -> &musa_score::Realization {
         &self.realization
     }
 
@@ -988,7 +990,7 @@ impl ProjectSession {
         } else {
             compilation.items().to_vec()
         };
-        let decisions: Vec<musa_compiler::DecisionRecord> = if compilation.has_errors() {
+        let decisions: Vec<musa_score::DecisionRecord> = if compilation.has_errors() {
             Vec::new()
         } else {
             compilation.decisions().to_vec()
@@ -996,7 +998,7 @@ impl ProjectSession {
         // Where the score came from, borrowed for the same reason the
         // references are: `into_parts` consumes, and the Origin row needs the
         // record after it.
-        let derivation: Option<musa_compiler::Derivation> = if compilation.has_errors() {
+        let derivation: Option<musa_score::Derivation> = if compilation.has_errors() {
             None
         } else {
             compilation.derivation().cloned()
@@ -1216,7 +1218,7 @@ impl ProjectSession {
 }
 
 fn render_notation(
-    score: &musa_compiler::ScoreSnapshot,
+    score: &musa_score::ScoreSnapshot,
     target: musa_render::NotationTarget,
 ) -> Result<ExportArtifact, ProjectError> {
     musa_render::render_notation(score, target, &musa_render::NotationOptions::default())

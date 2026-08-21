@@ -383,7 +383,7 @@ What exists instead is an environment machine with explicit capture lists:
 fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<Value>
 ```
 
-[`core.rs:7801`](../../../../crates/musa-compiler/src/core.rs). Variables are source-level strings
+[`core.rs:7801`](../../../../crates/musa-compiler/src/core/mod.rs). Variables are source-level strings
 (`ExprKind::Name(name) => environment.get(name).cloned()`). A `Closure` (:3538) holds `parameters`, `result`, `body`,
 and `captures: IndexMap<String, Value>`. The capture set is computed during elaboration and resolved against the
 enclosing environment when the lambda is evaluated (:7818). Application extends rather than substitutes (:8188):

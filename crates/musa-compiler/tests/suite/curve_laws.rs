@@ -15,10 +15,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    CompileOptions, MusicalTime, PerformanceEvent, PerformanceOptions, ScoreSnapshot, SourceDocument, compile,
-    lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalTime, PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
 
 const RATE: u32 = 48_000;
 
@@ -67,7 +66,7 @@ fn onsets(score: &ScoreSnapshot) -> Vec<u64> {
     let mut frames: Vec<u64> = plan
         .lanes()
         .iter()
-        .flat_map(musa_compiler::PerformanceLane::events)
+        .flat_map(musa_score::PerformanceLane::events)
         .filter_map(|event| match event {
             PerformanceEvent::NoteOn { frame, .. } => Some(*frame),
             PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
@@ -83,7 +82,7 @@ fn amplitudes(score: &ScoreSnapshot) -> Vec<f32> {
     let mut notes: Vec<(u64, f32)> = plan
         .lanes()
         .iter()
-        .flat_map(musa_compiler::PerformanceLane::events)
+        .flat_map(musa_score::PerformanceLane::events)
         .filter_map(|event| match event {
             PerformanceEvent::NoteOn { frame, note, .. } => Some((*frame, note.amplitude)),
             PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,

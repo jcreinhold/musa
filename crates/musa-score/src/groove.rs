@@ -55,11 +55,11 @@ use crate::time::MusicalTime;
 /// The same shape as `marks.rs`, for the same reason — a vocabulary is a
 /// table, and a row is added by the change that has a piece needing it.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct GrooveDef {
+pub struct GrooveDef {
     /// The name the composer writes.
-    pub(crate) name: &'static str,
+    pub name: &'static str,
     /// The settings this groove reads, in the order a diagnostic lists them.
-    pub(crate) params: &'static [&'static str],
+    pub params: &'static [&'static str],
 }
 
 /// Every groove musa reads.
@@ -79,12 +79,12 @@ pub(crate) const VOCABULARY: &[GrooveDef] = &[
 ];
 
 /// Every groove's name, for the diagnostic that lists them.
-pub(crate) fn names() -> Vec<&'static str> {
+pub fn names() -> Vec<&'static str> {
     VOCABULARY.iter().map(|def| def.name).collect()
 }
 
 /// Look a groove up by the name the composer wrote.
-pub(crate) fn lookup(name: &str) -> Option<&'static GrooveDef> {
+pub fn lookup(name: &str) -> Option<&'static GrooveDef> {
     VOCABULARY.iter().find(|def| def.name == name)
 }
 

@@ -7,7 +7,7 @@ use super::build::delimited;
 use super::path::{ExpansionPath, NodePath};
 use super::print::print;
 use super::tree::{SourceInfo, Syntax};
-use crate::origin::SourceSpan;
+use musa_score::origin::SourceSpan;
 
 /// Read a parsed region into a syntax value.
 ///

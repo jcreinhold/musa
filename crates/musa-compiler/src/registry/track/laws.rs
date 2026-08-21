@@ -38,14 +38,14 @@ use super::{
     INVERT, PLAY, RETROGRADE, SET_NOTE_PITCHES, SHIFT, SPELLINGS, STRETCH, TOGETHER, TRACK_BEYOND, TRANSPOSE, built,
     track_type,
 };
-use crate::Interval;
 use crate::core::{BUILTIN_OWNERSHIP, Family};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
-use crate::origin::{DeclarationId, ExpansionStep, Origin, SourceSpan};
-use crate::pitch::WrittenPitch;
 use crate::registry::{HERE, held, literal, origin_literal, owned, plain_type, tagged_type};
-use crate::scope::Scope;
-use crate::score::NotatedDuration;
+use musa_score::Interval;
+use musa_score::origin::{DeclarationId, ExpansionStep, Origin, SourceSpan};
+use musa_score::pitch::WrittenPitch;
+use musa_score::scope::Scope;
+use musa_score::score::NotatedDuration;
 
 // ---- the subject ----
 
@@ -427,11 +427,11 @@ fn whole(value: u32) -> Datum {
 }
 
 /// A three-note voicing, spelled by hand.
-fn voicing() -> crate::chord::Voicing {
-    crate::chord::Voicing::new(
-        crate::chord::ChordClass::new(
-            crate::pitch::PitchClass::parse("c").expect("`c` is a pitch class"),
-            crate::chord::ChordType::Major,
+fn voicing() -> musa_score::chord::Voicing {
+    musa_score::chord::Voicing::new(
+        musa_score::chord::ChordClass::new(
+            musa_score::pitch::PitchClass::parse("c").expect("`c` is a pitch class"),
+            musa_score::chord::ChordType::Major,
         ),
         vec![pitch("c4"), pitch("e4"), pitch("g4")],
     )

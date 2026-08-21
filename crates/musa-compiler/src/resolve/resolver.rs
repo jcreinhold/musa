@@ -3,9 +3,9 @@ use indexmap::IndexSet;
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
-use crate::score::{AnnotationStore, EventId, Meter};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::score::{AnnotationStore, EventId, Meter};
 
 use super::ReferenceIndex;
 
@@ -57,9 +57,9 @@ pub(crate) struct Resolver {
     pub(crate) groove_rules: Vec<(String, SourceSpan)>,
     /// How many decision sites have been seen inside each named place, so the
     /// next one there knows its ordinal.
-    pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
+    pub(crate) sites: std::collections::BTreeMap<musa_score::ChoicePath, u32>,
     /// Every decision this compile took, in the order the sites were reached.
-    pub(crate) decisions: Vec<crate::DecisionRecord>,
+    pub(crate) decisions: Vec<musa_score::DecisionRecord>,
     /// Where each voice's kernel track goes on its way to the adapter.
     ///
     /// `None` on every production path — nothing keeps a track after the
@@ -74,7 +74,7 @@ pub(crate) struct Resolver {
     /// It lives here rather than being threaded through elaboration because a
     /// decision site can be anywhere a note can be, and every function on the
     /// way already carries the resolver.
-    pub(crate) realization: crate::Realization,
+    pub(crate) realization: musa_score::Realization,
 }
 
 impl Resolver {
@@ -93,7 +93,7 @@ impl Resolver {
             references: ReferenceIndex::new(),
             decisions: Vec::new(),
             track_sink: None,
-            realization: crate::Realization::deterministic(),
+            realization: musa_score::Realization::deterministic(),
         }
     }
 
@@ -106,17 +106,17 @@ impl Resolver {
     /// `docs/rules/kernel/11-realization.md`'s path identity.
     pub(crate) fn decide_count(
         &mut self,
-        place: &crate::ChoicePath,
+        place: &musa_score::ChoicePath,
         least: u32,
         most: u32,
         site: SourceSpan,
-    ) -> (crate::ChoicePath, u32) {
+    ) -> (musa_score::ChoicePath, u32) {
         let path = self.site(place);
         let count = self.realization.count(&path, least, most);
         let passes = if count == 1 { "pass" } else { "passes" };
         self.decided(
             path.clone(),
-            crate::Decision::Count(count),
+            musa_score::Decision::Count(count),
             site,
             format!("{count} {passes}"),
         );
@@ -127,7 +127,7 @@ impl Resolver {
     /// `0..fragments.len()`.
     pub(crate) fn decide_order(
         &mut self,
-        place: &crate::ChoicePath,
+        place: &musa_score::ChoicePath,
         fragments: &[String],
         site: SourceSpan,
     ) -> Vec<u32> {
@@ -140,7 +140,12 @@ impl Resolver {
             .iter()
             .filter_map(|index| fragments.get(*index as usize).map(String::as_str))
             .collect();
-        self.decided(path, crate::Decision::Order(order.clone()), site, played.join(", "));
+        self.decided(
+            path,
+            musa_score::Decision::Order(order.clone()),
+            site,
+            played.join(", "),
+        );
         order
     }
 
@@ -148,7 +153,7 @@ impl Resolver {
     /// and the longest it may be held.
     pub(crate) fn decide_duration(
         &mut self,
-        place: &crate::ChoicePath,
+        place: &musa_score::ChoicePath,
         least: Ratio<i64>,
         most: Ratio<i64>,
         site: SourceSpan,
@@ -156,14 +161,14 @@ impl Resolver {
         let path = self.site(place);
         let held = self.realization.duration(&path, least, most);
         let answered = format!("held {}/{}", held.numer(), held.denom());
-        self.decided(path, crate::Decision::Duration(held), site, answered);
+        self.decided(path, musa_score::Decision::Duration(held), site, answered);
         held
     }
 
     /// The path of the next decision site inside `place`.
-    fn site(&mut self, place: &crate::ChoicePath) -> crate::ChoicePath {
+    fn site(&mut self, place: &musa_score::ChoicePath) -> musa_score::ChoicePath {
         let ordinal = self.sites.entry(place.clone()).or_insert(0);
-        let path = place.then(crate::ChoiceStep::Ordinal(*ordinal));
+        let path = place.then(musa_score::ChoiceStep::Ordinal(*ordinal));
         *ordinal = ordinal.saturating_add(1);
         path
     }
@@ -173,7 +178,13 @@ impl Resolver {
     /// One site, one decision, however many voices reach it: the k-th site in
     /// every voice *is* the k-th site, which is the point of numbering them
     /// per voice rather than per path down from the part.
-    fn decided(&mut self, path: crate::ChoicePath, decision: crate::Decision, site: SourceSpan, answered: String) {
+    fn decided(
+        &mut self,
+        path: musa_score::ChoicePath,
+        decision: musa_score::Decision,
+        site: SourceSpan,
+        answered: String,
+    ) {
         if let Some(already) = self.decisions.iter_mut().find(|record| record.path == path) {
             if !already.sites.contains(&site) {
                 already.sites.push(site);
@@ -181,7 +192,7 @@ impl Resolver {
             return;
         }
         let pinned = self.realization.is_pinned(&path);
-        self.decisions.push(crate::DecisionRecord {
+        self.decisions.push(musa_score::DecisionRecord {
             path,
             decision,
             sites: vec![site],

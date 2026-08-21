@@ -25,7 +25,7 @@
 /// refuse anything: without a second tag, every "unlike steps do not connect"
 /// test would pass vacuously.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) enum StepTag {
+pub enum StepTag {
     /// One step is one sample frame at the prepared rate
     /// (`docs/rules/constitution.md` §4).
     AudioFrameStep,
@@ -36,7 +36,7 @@ pub(crate) enum StepTag {
 
 impl StepTag {
     /// The tag this type name spells, if it spells one.
-    pub(crate) fn named(name: &str) -> Option<Self> {
+    pub fn named(name: &str) -> Option<Self> {
         match name {
             "AudioFrameStep" => Some(Self::AudioFrameStep),
             #[cfg(test)]
@@ -60,7 +60,7 @@ impl StepTag {
     }
 
     /// How this tag is written, in source and in a projection.
-    pub(crate) const fn spelling(self) -> &'static str {
+    pub const fn spelling(self) -> &'static str {
         match self {
             Self::AudioFrameStep => "AudioFrameStep",
             #[cfg(test)]
@@ -86,7 +86,7 @@ impl std::fmt::Display for StepTag {
 /// declares would be a vocabulary this build cannot check anything against, so
 /// the enum grows with the units that need it rather than ahead of them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum PortShape {
+pub enum PortShape {
     Unit,
     Bool,
     Nat,
@@ -164,7 +164,7 @@ const fn all_same(ours: &[PortShape], theirs: &[PortShape]) -> bool {
 /// identity: the same name at the same version is one unit within one build,
 /// and says nothing about another build's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct PrimitiveDescriptor {
+pub struct PrimitiveDescriptor {
     id: &'static str,
     version: u32,
     step: StepTag,
@@ -175,27 +175,27 @@ pub(crate) struct PrimitiveDescriptor {
 
 impl PrimitiveDescriptor {
     /// The registered name, which with [`Self::version`] selects this entry.
-    pub(crate) const fn id(&self) -> &'static str {
+    pub const fn id(&self) -> &'static str {
         self.id
     }
 
-    pub(crate) const fn version(&self) -> u32 {
+    pub const fn version(&self) -> u32 {
         self.version
     }
 
-    pub(crate) const fn step(&self) -> StepTag {
+    pub const fn step(&self) -> StepTag {
         self.step
     }
 
-    pub(crate) const fn input(&self) -> PortShape {
+    pub const fn input(&self) -> PortShape {
         self.input
     }
 
-    pub(crate) const fn output(&self) -> PortShape {
+    pub const fn output(&self) -> PortShape {
         self.output
     }
 
-    pub(crate) const fn configuration(&self) -> PortShape {
+    pub const fn configuration(&self) -> PortShape {
         self.configuration
     }
 }
@@ -364,7 +364,7 @@ const fn equal_bytes(ours: &[u8], theirs: &[u8]) -> bool {
 }
 
 /// The unit this id and version select, if this build registers one.
-pub(crate) fn descriptor(id: &str, version: u32) -> Option<&'static PrimitiveDescriptor> {
+pub fn descriptor(id: &str, version: u32) -> Option<&'static PrimitiveDescriptor> {
     REGISTERED
         .iter()
         .find(|entry| entry.id == id && entry.version == version)
@@ -375,7 +375,7 @@ pub(crate) fn descriptor(id: &str, version: u32) -> Option<&'static PrimitiveDes
 /// Read only to say what a misspelled or mis-versioned name *could* have
 /// meant, which is the difference between a diagnostic that helps and one that
 /// only refuses.
-pub(crate) fn versions_of(id: &str) -> Vec<u32> {
+pub fn versions_of(id: &str) -> Vec<u32> {
     REGISTERED
         .iter()
         .filter(|entry| entry.id == id)
@@ -384,7 +384,7 @@ pub(crate) fn versions_of(id: &str) -> Vec<u32> {
 }
 
 /// Every registered name, without repetition, in registration order.
-pub(crate) fn registered_ids() -> Vec<&'static str> {
+pub fn registered_ids() -> Vec<&'static str> {
     let mut names: Vec<&'static str> = Vec::new();
     for entry in REGISTERED {
         if !names.contains(&entry.id) {
@@ -427,7 +427,7 @@ pub struct SpecNode {
 }
 
 impl SpecNode {
-    pub(crate) fn wiring(form: SpecForm, children: Vec<usize>) -> Self {
+    pub fn wiring(form: SpecForm, children: Vec<usize>) -> Self {
         Self {
             form,
             children,
@@ -437,7 +437,7 @@ impl SpecNode {
         }
     }
 
-    pub(crate) fn primitive(descriptor: &'static PrimitiveDescriptor, configuration: Vec<u8>) -> Self {
+    pub fn primitive(descriptor: &'static PrimitiveDescriptor, configuration: Vec<u8>) -> Self {
         Self {
             form: SpecForm::Primitive,
             children: Vec::new(),
@@ -447,7 +447,7 @@ impl SpecNode {
         }
     }
 
-    pub(crate) fn initialized(form: SpecForm, children: Vec<usize>, initial: Vec<u8>) -> Self {
+    pub fn initialized(form: SpecForm, children: Vec<usize>, initial: Vec<u8>) -> Self {
         Self {
             form,
             children,
@@ -526,7 +526,7 @@ impl MachineSpec {
     ///
     /// The root is the last node, which is what building bottom-up gives and
     /// what a consumer walking children needs.
-    pub(crate) fn new(step: StepTag, input: String, output: String, nodes: Vec<SpecNode>) -> Self {
+    pub fn new(step: StepTag, input: String, output: String, nodes: Vec<SpecNode>) -> Self {
         let digest = digest_of(step, &input, &output, &nodes);
         Self {
             step: step.spelling(),
@@ -587,7 +587,7 @@ impl MachineSpec {
 ///
 /// Every variable-length part is preceded by its length, so no two different
 /// projections can produce one byte string by running together.
-fn digest_of(step: StepTag, input: &str, output: &str, nodes: &[SpecNode]) -> u128 {
+pub(crate) fn digest_of(step: StepTag, input: &str, output: &str, nodes: &[SpecNode]) -> u128 {
     let mut bytes = Vec::new();
     bytes.extend_from_slice(b"musa-machine");
     bytes.extend_from_slice(&MACHINE_SPEC_VERSION.to_be_bytes());
@@ -618,7 +618,7 @@ fn digest_of(step: StepTag, input: &str, output: &str, nodes: &[SpecNode]) -> u1
 }
 
 /// Write `part` preceded by its length.
-fn framed(bytes: &mut Vec<u8>, part: &[u8]) {
+pub fn framed(bytes: &mut Vec<u8>, part: &[u8]) {
     bytes.extend_from_slice(&(part.len() as u64).to_be_bytes());
     bytes.extend_from_slice(part);
 }

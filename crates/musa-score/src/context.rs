@@ -64,7 +64,7 @@ impl<V: Clone> ContextTrack<V> {
     ///
     /// Called in canonical order (N2: start, then end, then payload key), so
     /// the stretches arrive sorted and stay that way.
-    pub(crate) fn state(&mut self, scope: Scope, start: MusicalTime, value: V) {
+    pub fn state(&mut self, scope: Scope, start: MusicalTime, value: V) {
         self.stretches.push(Stretch { scope, start, value });
     }
 

@@ -48,7 +48,7 @@ pub(crate) struct ValidArtifacts {
     /// report the same losses as the one that produced this text.
     pub(crate) mei_warnings: Vec<String>,
     /// The compiled score, kept for exports and playback preparation.
-    pub(crate) score: musa_compiler::ScoreSnapshot,
+    pub(crate) score: musa_score::ScoreSnapshot,
     /// The source that produced it.
     ///
     /// Kept because one export — kernel text — is a projection of the
@@ -68,7 +68,7 @@ pub(crate) struct ValidArtifacts {
     /// Every decision this compile took, for the pin command and for the
     /// Origin view's fourth step. Empty for a determinate piece,
     /// which is nearly every piece.
-    pub(crate) decisions: Vec<musa_compiler::DecisionRecord>,
+    pub(crate) decisions: Vec<musa_score::DecisionRecord>,
     /// Every name the resolver resolved, for an editor's references and
     /// rename.
     pub(crate) names: Vec<crate::facts::NameFact>,

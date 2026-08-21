@@ -4,7 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use musa_compiler::{DynamicMark, EventId, Mark, ScoreSnapshot};
+use musa_score::{DynamicMark, EventId, Mark, ScoreSnapshot};
 use num_rational::Ratio;
 
 use super::items::PlannedGrace;

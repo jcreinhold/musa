@@ -243,16 +243,18 @@ where
 /// `None` for a `shape` that is a **word** rather than a value, and for a normal
 /// form that does not hold what the shape declares. Both are defects in this
 /// crate rather than in a program, for [`read_back`]'s reason and
-/// [`crate::assert::Claim::build`]'s: the two words are read where the `assert`
+/// [`musa_score::assert::Claim::build`]'s: the two words are read where the `assert`
 /// is written and never reach here, and every other argument was checked at the
 /// type this shape declares before it was normalized. `None` is the belt to
 /// those braces.
-pub(crate) fn argument(shape: crate::assert::ParamType, normal: &Term) -> Option<crate::assert::Argument> {
-    use crate::assert::{Argument, ParamType};
+pub(crate) fn argument(shape: musa_score::assert::ParamType, normal: &Term) -> Option<musa_score::assert::Argument> {
+    use musa_score::assert::{Argument, ParamType};
 
     match shape {
-        ParamType::Scale => Some(Argument::Scale(*read_back::<crate::scale::Scale>(normal).ok()?)),
-        ParamType::Chord => Some(Argument::Chord(*read_back::<crate::chord::ChordClass>(normal).ok()?)),
+        ParamType::Scale => Some(Argument::Scale(*read_back::<musa_score::scale::Scale>(normal).ok()?)),
+        ParamType::Chord => Some(Argument::Chord(
+            *read_back::<musa_score::chord::ChordClass>(normal).ok()?,
+        )),
         ParamType::Count => Some(Argument::Count(rules::nat(&musa_calculus::canonical(normal)?)?)),
         ParamType::Ranges => {
             let written = musa_calculus::canonical(normal)?;
@@ -261,8 +263,8 @@ pub(crate) fn argument(shape: crate::assert::ParamType, normal: &Term) -> Option
                 .map(|range| {
                     let (low, high) = rules::halves(range)?;
                     Some((
-                        rules::read::<crate::pitch::WrittenPitch>(low)?,
-                        rules::read::<crate::pitch::WrittenPitch>(high)?,
+                        rules::read::<musa_score::pitch::WrittenPitch>(low)?,
+                        rules::read::<musa_score::pitch::WrittenPitch>(high)?,
                     ))
                 })
                 .collect::<Option<Vec<_>>>()?;
@@ -598,11 +600,11 @@ pub(crate) fn category_literal(cat: crate::syntax::Cat) -> Literal {
 ///
 /// The payload is [`track::Provenance`] and cannot be anything else, for
 /// [`token_kind_literal`]'s reason: `play` reads its argument back at that type,
-/// so a literal built from a bare [`crate::origin::Origin`] would be an origin
+/// so a literal built from a bare [`musa_score::origin::Origin`] would be an origin
 /// no rule can read. The wrapper is reachable only through this function —
 /// beside [`opaque_literal`] rather than through it, because a `Provenance` has
 /// a `Display` of its own showing the span it points at.
-pub(crate) fn origin_literal(origin: crate::origin::Origin) -> Literal {
+pub(crate) fn origin_literal(origin: musa_score::origin::Origin) -> Literal {
     literal(plain_type("Origin"), track::Provenance(origin))
 }
 

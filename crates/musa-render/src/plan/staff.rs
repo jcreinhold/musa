@@ -2,7 +2,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{BarLines, Clef, Meter, MusicalDuration, MusicalTime, Part, ScoreEvent, ScoreSnapshot, VoiceId};
+use musa_score::{BarLines, Clef, Meter, MusicalDuration, MusicalTime, Part, ScoreEvent, ScoreSnapshot, VoiceId};
 use num_rational::Ratio;
 
 use super::collect::Marks;
@@ -46,7 +46,7 @@ pub(super) fn plan_staff(
     // Point marks are placed by time, so they go through the fold like clef
     // changes do: a mark inside a repeated passage stands in the measure the
     // page prints, not the one the timeline plays it in.
-    let points: Vec<(VoiceId, MusicalTime, &musa_compiler::PointMark)> = score
+    let points: Vec<(VoiceId, MusicalTime, &musa_score::PointMark)> = score
         .annotations()
         .points()
         .iter()
@@ -142,7 +142,7 @@ pub(super) fn plan_staff(
 pub(super) fn beat_group_at(meter: Meter, onset: Ratio<i64>) -> Option<(usize, Ratio<i64>)> {
     let unit = Ratio::new(1, i64::from(meter.denominator()));
     let mut end = Ratio::from_integer(0);
-    for (index, group) in musa_compiler::beat_groups(meter.numerator(), meter.denominator())
+    for (index, group) in musa_score::beat_groups(meter.numerator(), meter.denominator())
         .into_iter()
         .enumerate()
     {

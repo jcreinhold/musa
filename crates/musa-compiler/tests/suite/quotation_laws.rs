@@ -38,7 +38,9 @@
 // happened, which is more useful than an assertion message alone.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ImportSources, Severity, SourceDocument, compile, resolve_import};
+use musa_compiler::{CompileOptions, ImportSources, SourceDocument, compile, resolve_import};
+
+use musa_score::Severity;
 
 /// Where the probe adapter is imported from, as the piece writes it.
 const PROBE: &str = "probe::adapter";

@@ -41,7 +41,9 @@
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
-use musa_compiler::{CompileOptions, ExpansionStep, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ExpansionStep;
 
 /// A piece whose one voice holds `body`, with `declarations` above the score.
 fn piece(declarations: &str, body: &str) -> String {

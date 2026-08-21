@@ -27,8 +27,8 @@ use super::{
     Lowering, Question, applied, child, children, is_expr_node, listed, own_tokens, paired, significant_tokens, whole,
     writes,
 };
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 impl Lowering<'_> {
     /// A position whose value is an answer, lowered.
@@ -286,13 +286,13 @@ impl Lowering<'_> {
             SyntaxKind::Rational => plain_literal(origin, "Ratio", self.exact(&token)?),
             SyntaxKind::String => plain_literal(origin, "Text", musa_language::ast::unquote(token.text())),
             SyntaxKind::PitchLiteral => {
-                let Some(pitch) = crate::WrittenPitch::parse(token.text()) else {
+                let Some(pitch) = musa_score::WrittenPitch::parse(token.text()) else {
                     return self.not_a(&token, "pitch");
                 };
                 plain_literal(origin, "Pitch", pitch)
             }
             SyntaxKind::IntervalLiteral => {
-                let Some(interval) = crate::Interval::parse(token.text(), false) else {
+                let Some(interval) = musa_score::Interval::parse(token.text(), false) else {
                     return self.not_a(&token, "interval");
                 };
                 plain_literal(origin, "Interval", interval)
@@ -447,12 +447,12 @@ impl Lowering<'_> {
                 // declaration by the same argument — this is a call in a
                 // function and not a block of notation, so there is no motif,
                 // bar, or voice to name.
-                self.provenance_at(origin, false, crate::origin::DeclarationId::default()),
+                self.provenance_at(origin, false, musa_score::origin::DeclarationId::default()),
                 // The scope a `music` block starts at, because a `fn` body is
                 // inside no voice and no part. `stdlib/src/voicing.musa:57`'s
                 // `sound_for` is the caller this is written for, and the voice
                 // that eventually sounds it is the fold's to say.
-                super::notation::scope_of(origin, crate::Scope::Piece),
+                super::notation::scope_of(origin, musa_score::Scope::Piece),
             ];
             return Some(applied(
                 origin,
@@ -528,7 +528,7 @@ impl Lowering<'_> {
                     .note("the name and the version decide the ports and the configuration, so this compiler reads them before it checks anything"),
             );
         };
-        let Some(descriptor) = crate::machine::descriptor(&id, number) else {
+        let Some(descriptor) = musa_score::machine::descriptor(&id, number) else {
             return self.refuse(unknown_unit(&id, number, span));
         };
         Some(Raw::var(
@@ -667,7 +667,7 @@ impl Lowering<'_> {
     ///
     /// One method and not two, because `down` is a fact about the *interval*.
     /// `p down M2` is `p` moved by the interval that undoes an `M2`, which is
-    /// what [`crate::Interval::inverse`] answers and what
+    /// what [`musa_score::Interval::inverse`] answers and what
     /// [`super::notation::Lowering::interval_of`] already writes for the same
     /// two words inside a `music` block. A `transpose_down` beside a
     /// `transpose_up` would be a second method every implementor had to write
@@ -708,7 +708,7 @@ impl Lowering<'_> {
     fn chord(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let root = self.written_class(node)?;
         let word = trailing_word(node);
-        let Some(kind) = crate::chord::ChordType::named(&word) else {
+        let Some(kind) = musa_score::chord::ChordType::named(&word) else {
             return self.refuse(
                 Diagnostic::error(Code::UnknownName, format!("unknown chord type `{word}`"))
                     .at(crate::resolve::trimmed_span(node), "not a named chord type")
@@ -718,7 +718,7 @@ impl Lowering<'_> {
         Some(plain_literal(
             origin,
             "ChordClass",
-            crate::chord::ChordClass::new(root, kind),
+            musa_score::chord::ChordClass::new(root, kind),
         ))
     }
 
@@ -726,7 +726,7 @@ impl Lowering<'_> {
     fn scale(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let tonic = self.written_class(node)?;
         let word = trailing_word(node);
-        let Some(collection) = crate::scale::Collection::named(&word) else {
+        let Some(collection) = musa_score::scale::Collection::named(&word) else {
             return self.refuse(
                 Diagnostic::error(Code::UnknownName, format!("unknown collection `{word}`"))
                     .at(crate::resolve::trimmed_span(node), "not a named scale collection")
@@ -736,7 +736,7 @@ impl Lowering<'_> {
         Some(plain_literal(
             origin,
             "Scale",
-            crate::scale::Scale::new(tonic, collection),
+            musa_score::scale::Scale::new(tonic, collection),
         ))
     }
 
@@ -744,8 +744,8 @@ impl Lowering<'_> {
     fn key(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let tonic = self.written_class(node)?;
         let mode = match trailing_word(node).as_str() {
-            "major" => crate::Mode::Major,
-            "minor" => crate::Mode::Minor,
+            "major" => musa_score::Mode::Major,
+            "minor" => musa_score::Mode::Minor,
             _ => {
                 return self.refuse(
                     Diagnostic::error(Code::NotAValue, "this key cannot be read")
@@ -757,13 +757,16 @@ impl Lowering<'_> {
                 );
             }
         };
-        Some(plain_literal(origin, "Key", crate::Key::new(tonic, mode)))
+        Some(plain_literal(origin, "Key", musa_score::Key::new(tonic, mode)))
     }
 
     /// The single `PitchClass` node a `chord`, `scale`, or `key` literal spells.
-    fn written_class(&mut self, node: &SyntaxNode) -> Option<crate::PitchClass> {
+    fn written_class(&mut self, node: &SyntaxNode) -> Option<musa_score::PitchClass> {
         let written = child(node, |kind| kind == SyntaxKind::PitchClass).map(|child| child.text().to_string());
-        let read = written.as_deref().map(str::trim).and_then(crate::PitchClass::parse);
+        let read = written
+            .as_deref()
+            .map(str::trim)
+            .and_then(musa_score::PitchClass::parse);
         match read {
             Some(class) => Some(class),
             None => self.refuse(Diagnostic::error(Code::NotAValue, "this tonic cannot be read").at(
@@ -1267,11 +1270,15 @@ fn written_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
 
 /// "this build registers no such unit", with what it does register.
 fn unknown_unit(id: &str, version: u32, span: SourceSpan) -> Diagnostic {
-    let versions = crate::machine::versions_of(id);
+    let versions = musa_score::machine::versions_of(id);
     if versions.is_empty() {
         return Diagnostic::error(Code::UnknownWord, format!("`{id}` is not a unit this build registers"))
             .at(span, "unknown unit")
-            .help(crate::resolve::suggest(id, &crate::machine::registered_ids(), "units"));
+            .help(crate::resolve::suggest(
+                id,
+                &musa_score::machine::registered_ids(),
+                "units",
+            ));
     }
     let spelled: Vec<String> = versions.iter().map(u32::to_string).collect();
     Diagnostic::error(

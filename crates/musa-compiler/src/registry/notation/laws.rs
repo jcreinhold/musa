@@ -36,15 +36,15 @@ use num_rational::Ratio;
 
 use super::{BEYOND, FOLLOW, SOUNDED, nothing, opaque};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
-use crate::harmony::ChordSymbol;
-use crate::marks::MarkArgument;
-use crate::origin::{DeclarationId, Origin, SourceSpan};
-use crate::pitch::{PitchClass, WrittenPitch};
 use crate::registry::track::{built, track_type};
 use crate::registry::{HERE, held, literal, origin_literal, owned, plain_type, tagged_type};
-use crate::scope::Scope;
-use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
-use crate::time::MusicalDuration;
+use musa_score::harmony::ChordSymbol;
+use musa_score::marks::MarkArgument;
+use musa_score::origin::{DeclarationId, Origin, SourceSpan};
+use musa_score::pitch::{PitchClass, WrittenPitch};
+use musa_score::scope::Scope;
+use musa_score::score::{Clef, DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
+use musa_score::time::MusicalDuration;
 
 // ---- spelling the arguments ----
 
@@ -139,9 +139,9 @@ fn none() -> Datum {
 /// Read off the table rather than spelled, because `notation_marks.rs` holds
 /// this crate to selecting a mark by its row rather than by its name — and a law
 /// about facts has no reason to care which mark one carries.
-fn any_mark() -> crate::Mark {
-    let def = crate::marks::VOCABULARY.first().expect("the vocabulary has rows");
-    crate::Mark::parse(def.name).expect("a row of the vocabulary is a mark")
+fn any_mark() -> musa_score::Mark {
+    let def = musa_score::marks::VOCABULARY.first().expect("the vocabulary has rows");
+    musa_score::Mark::parse(def.name).expect("a row of the vocabulary is a mark")
 }
 
 /// A quarter note's worth of notation.
@@ -276,7 +276,7 @@ fn samples() -> Vec<(&'static str, Datum, FactKind)> {
                 "Fact.Key",
                 vec![plain(
                     "Key",
-                    crate::Key::new(PitchClass::parse("e").expect("`e` is a pitch class"), Mode::Minor),
+                    musa_score::Key::new(PitchClass::parse("e").expect("`e` is a pitch class"), Mode::Minor),
                 )],
             ),
             FactKind::Key {

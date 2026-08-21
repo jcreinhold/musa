@@ -11,7 +11,7 @@
 //! bounds are a compile-time invariant (port lists are fixed at compile).
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::PerformanceEvent;
+use musa_score::PerformanceEvent;
 
 use crate::effects::{Chorus, Delay, Limiter, Reverb};
 use crate::error::GraphError;

@@ -3,7 +3,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{Clef, DynamicMark, EventId, Mark, MarkArgument, Metronome, Mode, MusicalDuration};
+use musa_score::{Clef, DynamicMark, EventId, Mark, MarkArgument, Metronome, Mode, MusicalDuration};
 use num_rational::Ratio;
 
 /// A stretch of the page whose contents or order the performance decides: a

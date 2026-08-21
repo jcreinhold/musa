@@ -9,9 +9,8 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use musa_audio::{GraphOptions, compile_graph, lower_studio, render_offline};
-use musa_compiler::{
-    CompileOptions, ParameterId, PerformanceEvent, PerformanceOptions, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_score::{ParameterId, PerformanceEvent, PerformanceOptions, lower_performance};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 

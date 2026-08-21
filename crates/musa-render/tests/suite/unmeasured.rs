@@ -14,8 +14,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, PerformanceOptions, ScoreSnapshot, SourceDocument, compile, lower_performance};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{MidiOptions, NotationOptions, NotationTarget, render_midi, render_notation};
+use musa_score::{PerformanceOptions, ScoreSnapshot, lower_performance};
 
 const CADENZA: &str = include_str!("../../../../examples/cadenza.musa");
 const CHANT: &str = include_str!("../../../../examples/chant.musa");

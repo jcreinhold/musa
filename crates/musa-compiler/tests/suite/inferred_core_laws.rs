@@ -29,7 +29,9 @@
 //! fixing, at the place the language now puts it, and
 //! `a_written_binder_admits_every_instance_a_caller_asks_for` is where it moved.
 
-use musa_compiler::{Code, CompileOptions, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::Code;
 
 fn compile_core(declarations: &str) -> musa_compiler::Compilation {
     let source = SourceDocument::new(
@@ -46,7 +48,7 @@ fn errors(compilation: &musa_compiler::Compilation) -> Vec<Code> {
     compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.code)
         .collect()
 }

@@ -21,8 +21,9 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use midly::{MidiMessage, Smf, Timing, TrackEventKind};
-use musa_compiler::{CompileOptions, PerformanceOptions, SourceDocument, compile, lower_performance};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_render::{MidiMode, MidiOptions, render_midi};
+use musa_score::{PerformanceOptions, lower_performance};
 
 const PROFILE_FIXTURE: &str = include_str!("../../../../examples/profile-fixture.musa");
 const TUPLET_FIXTURE: &str = include_str!("../../../../examples/tuplet-fixture.musa");

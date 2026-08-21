@@ -3,10 +3,9 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{
-    Code, CompileOptions, MusicalDuration, MusicalTime, Realization, ScoreEvent, ScoreSnapshot, SourceDocument,
-    check_kernel_text, compile, kernel_text,
-};
+use musa_compiler::{CompileOptions, SourceDocument, check_kernel_text, compile, kernel_text};
+
+use musa_score::{Code, MusicalDuration, MusicalTime, Realization, ScoreEvent, ScoreSnapshot};
 use num_rational::Ratio;
 
 fn compiled(source: &str) -> musa_compiler::Compilation {

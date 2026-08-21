@@ -16,7 +16,9 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 /// Every sounding event of a compiled piece, in order, spelled as written.
 /// A chord is one entry, its tones joined by spaces.

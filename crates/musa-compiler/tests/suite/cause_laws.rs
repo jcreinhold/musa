@@ -26,10 +26,9 @@
 // happened, which is more useful than an assertion message alone.
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Cause, Compilation, CompileOptions, Diagnostic, ImportSources, Severity, SourceDocument, SourceSpan, compile,
-    resolve_import,
-};
+use musa_compiler::{Compilation, CompileOptions, ImportSources, SourceDocument, compile, resolve_import};
+
+use musa_score::{Cause, Diagnostic, Severity, SourceSpan};
 
 /// The module with the fault in it, as the piece writes the import.
 const BROKEN: &str = "probe::broken";

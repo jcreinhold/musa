@@ -117,8 +117,8 @@ be the class's name — so it goes on prompt 142's second-path audit rather than
   with §1.5's rule before it is implemented; the same reading reached from `pattern`; `phase_literal` asked from both
   spellings; `operator` and `indexing` emitting the qualified path rather than `Raw::method`; `operator_method`'s table
   carrying the trait §5 names for each row.
-- `Code::QualifiedPath` in `crates/musa-compiler/src/diagnose.rs`, with its arm in `musa-project`'s explain mapping, for
-  a path with more than one segment after its first capitalized segment.
+- `Code::QualifiedPath` in `crates/musa-score/src/diagnose.rs`, with its arm in `musa-project`'s explain mapping, for a
+  path with more than one segment after its first capitalized segment.
 - `crates/musa-compiler/src/lower/refusals.rs`: `MethodOnVariable` carrying the refusal table's own fix as a `help` —
   the `where` clause, or `Trait::m(x, y)`. This prompt is what makes the second half of that sentence true, so it is the
   prompt that may say it. The core's own message still spells `Trait.method`; 144 owns that wording.

@@ -27,13 +27,13 @@ here rather than two prompts from now. Nothing an adapter writes should still be
   what `as_expression` is for.
 - `docs/rules/language/00-semantics.md` §2 — the phase environment `Σφ`, the phase-local types, and the two-descent
   rule. Its sentence naming the index's cases is repaired by this prompt's own repair commit, so read the repaired text.
-- `crates/musa-compiler/src/core.rs`'s `SYNTAX_OWNERSHIP` — 14 phase operations, and the ones that take a kind or a
+- `crates/musa-compiler/src/core/mod.rs`'s `SYNTAX_OWNERSHIP` — 14 phase operations, and the ones that take a kind or a
   delimiter as `Text`: `syntax_token`, `syntax_group`, and `checked_expression`. Read what each hides, because the
   ownership entry is the argument for the operation existing at all and a retyped operation still owes one.
-- `crates/musa-compiler/src/core.rs`'s `reconcile` — "the only place the checker compares two types". §1's forgetting
-  rule is directional and unification is not, so it lands there and nowhere else.
-- `crates/musa-compiler/src/core.rs`'s `qualified_name` — the checker already joins `A.b` into one flat name. That is
-  why `TokenKind.PitchLiteral` needs no namespacing feature in a checker that has none.
+- `crates/musa-compiler/src/core/mod.rs`'s `reconcile` — "the only place the checker compares two types". §1's
+  forgetting rule is directional and unification is not, so it lands there and nowhere else.
+- `crates/musa-compiler/src/core/mod.rs`'s `qualified_name` — the checker already joins `A.b` into one flat name. That
+  is why `TokenKind.PitchLiteral` needs no namespacing feature in a checker that has none.
 - `stdlib/src/adapters/staff.musa`'s `text_equal(kind, "…")` and `text_equal(delimiter, "…")` call sites — the ones this
   prompt makes ill-typed rather than merely discouraged. There are about ten, and they move mechanically.
 - `crates/musa-compiler/src/syntax.rs` — `SourceInfo`, `NodePath`, `PathStep::Built { role, child }`, and `DELIMITERS`.

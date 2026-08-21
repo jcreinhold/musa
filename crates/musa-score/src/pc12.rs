@@ -40,13 +40,13 @@ use crate::pitch::{PitchClass, WrittenPitch};
 use crate::scale::Scale;
 
 /// The size of the chromatic quotient.
-const CHROMA: u8 = 12;
+pub(crate) const CHROMA: u8 = 12;
 
 /// The number of interval classes: `1` through `6`, since `ic 7` is `ic 5`.
-const INTERVAL_CLASSES: usize = 6;
+pub(crate) const INTERVAL_CLASSES: usize = 6;
 
 /// The number of labelled row forms: 24 affine operations times reversal.
-const LABELLED_FORMS: u32 = 48;
+pub(crate) const LABELLED_FORMS: u32 = 48;
 
 /// One element of `ℤ/12ℤ`: a pitch class with its spelling forgotten.
 ///
@@ -54,7 +54,7 @@ const LABELLED_FORMS: u32 = 48;
 /// derived equality is the equality of the quotient and no comparison has to
 /// reduce first.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Pc12(u8);
+pub struct Pc12(u8);
 
 impl std::fmt::Display for Pc12 {
     /// The canonical representative, written as a number.
@@ -71,12 +71,12 @@ impl Pc12 {
     ///
     /// Total: every natural number names one, which is what makes `pc12`
     /// arithmetic writable in a language whose `nat` has no subtraction.
-    pub(crate) fn from_number(number: u64) -> Self {
+    pub fn from_number(number: u64) -> Self {
         Self(u8::try_from(number % u64::from(CHROMA)).unwrap_or(0))
     }
 
     /// The canonical representative, `0` through `11`.
-    pub(crate) const fn number(self) -> u8 {
+    pub const fn number(self) -> u8 {
         self.0
     }
 
@@ -85,7 +85,7 @@ impl Pc12 {
     /// Well defined because respelling changes the chromatic coordinate by a
     /// multiple of twelve, and not injective because `c#` and `db` both land
     /// on `1`. This is the only total direction between the two domains.
-    pub(crate) fn forgetting(spelled: PitchClass) -> Self {
+    pub fn forgetting(spelled: PitchClass) -> Self {
         let chromatic = i64::from(spelled.letter.natural_semitone()).saturating_add(i64::from(spelled.accidental.0));
         Self(u8::try_from(chromatic.rem_euclid(i64::from(CHROMA))).unwrap_or(0))
     }
@@ -94,7 +94,8 @@ impl Pc12 {
     ///
     /// The index is reduced before it is added, so that an index near the
     /// top of `nat` transposes by its residue rather than saturating.
-    pub(crate) fn transposed(self, index: u64) -> Self {
+    #[must_use]
+    pub fn transposed(self, index: u64) -> Self {
         Self::from_number(u64::from(self.0) + index % u64::from(CHROMA))
     }
 
@@ -103,7 +104,8 @@ impl Pc12 {
     /// The addition of twelve keeps the subtraction inside the unsigned
     /// arithmetic the rest of the compiler uses; the result is the same
     /// element either way.
-    pub(crate) fn inverted(self, index: u64) -> Self {
+    #[must_use]
+    pub fn inverted(self, index: u64) -> Self {
         Self::from_number(index % u64::from(CHROMA) + u64::from(CHROMA) - u64::from(self.0))
     }
 
@@ -114,7 +116,7 @@ impl Pc12 {
     /// A caller that wants a spelling must therefore say in which collection
     /// it wants it, which is the whole reason this direction is not a
     /// coercion.
-    pub(crate) fn spelled(self, scale: Scale) -> Option<PitchClass> {
+    pub fn spelled(self, scale: Scale) -> Option<PitchClass> {
         let tonic = WrittenPitch {
             letter: scale.tonic().letter,
             accidental: scale.tonic().accidental,
@@ -141,7 +143,7 @@ impl Pc12 {
 /// state this type can be in and membership order is not a choice it can
 /// make. Both are why the checked constructor below cannot fail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct PcSet12(u16);
+pub struct PcSet12(u16);
 
 impl std::fmt::Display for PcSet12 {
     /// Ascending from zero, comma-separated, in braces.
@@ -163,12 +165,12 @@ impl PcSet12 {
     /// Total: a repeated member is a set with that member in it, not an
     /// error, because a set is what was asked for. A *row* is where a
     /// repetition is a mistake, and [`Row12::checked`] is where it is caught.
-    pub(crate) fn of(members: impl IntoIterator<Item = Pc12>) -> Self {
+    pub fn of(members: impl IntoIterator<Item = Pc12>) -> Self {
         Self(members.into_iter().fold(0, |word, member| word | 1 << member.0))
     }
 
     /// The members, ascending from zero.
-    pub(crate) fn members(self) -> impl Iterator<Item = Pc12> {
+    pub fn members(self) -> impl Iterator<Item = Pc12> {
         Pc12::every().filter(move |member| self.0 & 1 << member.0 != 0)
     }
 
@@ -187,12 +189,14 @@ impl PcSet12 {
     /// Set transposition is written in `std::post_tonal::pcset` as `map_pc` over the
     /// members, which is where an author can see what it does; this is the
     /// same map, and `pcset12_transposed` is the builtin it answers.
-    pub(crate) fn transposed(self, index: u64) -> Self {
+    #[must_use]
+    pub fn transposed(self, index: u64) -> Self {
         Self::of(self.members().map(|member| member.transposed(index)))
     }
 
     /// `Iₙ` applied to every member.
-    pub(crate) fn inverted(self, index: u64) -> Self {
+    #[must_use]
+    pub fn inverted(self, index: u64) -> Self {
         Self::of(self.members().map(|member| member.inverted(index)))
     }
 
@@ -206,7 +210,7 @@ impl PcSet12 {
     /// before last, and so on inward; on a tie throughout, the rotation
     /// beginning on the lowest-numbered pitch class. The empty set has no
     /// rotation, so it normalizes to nothing.
-    pub(crate) fn normal_order(self) -> Vec<Pc12> {
+    pub fn normal_order(self) -> Vec<Pc12> {
         let ascending: Vec<Pc12> = self.members().collect();
         let rotations = (0..ascending.len()).map(|start| {
             let mut rotation: Vec<Pc12> = ascending.iter().copied().skip(start).collect();
@@ -225,7 +229,8 @@ impl PcSet12 {
     /// so that it begins on zero, and keep whichever reads lower. The result
     /// is a set rather than an ordering because a set class is a set: the
     /// ordering was only ever the means of choosing it.
-    pub(crate) fn prime_form(self) -> Self {
+    #[must_use]
+    pub fn prime_form(self) -> Self {
         let zeroed = |candidate: Self| {
             let normal = candidate.normal_order();
             let first = normal.first().map_or(0, |member| u64::from(member.number()));
@@ -249,7 +254,7 @@ impl PcSet12 {
     ///
     /// Interval class `7` is interval class `5` heard the other way round,
     /// so there are six entries and never twelve.
-    pub(crate) fn interval_class_vector(self) -> [u32; INTERVAL_CLASSES] {
+    pub fn interval_class_vector(self) -> [u32; INTERVAL_CLASSES] {
         let members: Vec<Pc12> = self.members().collect();
         let mut vector = [0; INTERVAL_CLASSES];
         for (index, lower) in members.iter().enumerate() {
@@ -271,7 +276,7 @@ impl PcSet12 {
 /// and so on inward, followed by the first member itself as the final tie
 /// break. Comparing these lexicographically is exactly the convention
 /// documented on [`PcSet12::normal_order`].
-fn compactness(rotation: &[Pc12]) -> (Vec<u8>, u8) {
+pub fn compactness(rotation: &[Pc12]) -> (Vec<u8>, u8) {
     let Some(first) = rotation.first() else {
         return (Vec::new(), 0);
     };
@@ -294,7 +299,7 @@ fn compactness(rotation: &[Pc12]) -> (Vec<u8>, u8) {
 /// *cannot* fail, and making them return `Option` would ask every caller to
 /// handle a case that does not exist.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct Row12([Pc12; CHROMA as usize]);
+pub struct Row12([Pc12; CHROMA as usize]);
 
 impl std::fmt::Display for Row12 {
     /// The twelve pitch classes in order, separated by spaces.
@@ -317,7 +322,7 @@ impl Row12 {
     /// separate questions with exact answers — [`repeated_positions`] and
     /// [`missing_classes`] — because a language whose failures are `option`
     /// cannot carry that detail inside the absence.
-    pub(crate) fn checked(pcs: &[Pc12]) -> Option<Self> {
+    pub fn checked(pcs: &[Pc12]) -> Option<Self> {
         if pcs.len() != CHROMA as usize || !repeated_positions(pcs).is_empty() {
             return None;
         }
@@ -329,22 +334,24 @@ impl Row12 {
     }
 
     /// The twelve pitch classes, in order position order.
-    pub(crate) fn pcs(&self) -> impl Iterator<Item = Pc12> + '_ {
+    pub fn pcs(&self) -> impl Iterator<Item = Pc12> + '_ {
         self.0.iter().copied()
     }
 
     /// The pitch class this row begins on.
-    pub(crate) fn head(&self) -> Pc12 {
+    pub fn head(&self) -> Pc12 {
         self.0.first().copied().unwrap_or(Pc12(0))
     }
 
     /// `Tₙ` applied to every pitch class, order positions untouched.
-    pub(crate) fn transposed(&self, index: u64) -> Self {
+    #[must_use]
+    pub fn transposed(&self, index: u64) -> Self {
         self.mapped(|member| member.transposed(index))
     }
 
     /// `Iₙ` applied to every pitch class, order positions untouched.
-    pub(crate) fn inverted(&self, index: u64) -> Self {
+    #[must_use]
+    pub fn inverted(&self, index: u64) -> Self {
         self.mapped(|member| member.inverted(index))
     }
 
@@ -353,7 +360,8 @@ impl Row12 {
     /// An involution, and it commutes with elementwise `T` and `I` because it
     /// acts on the other side: one permutes positions, the others permute
     /// pitch classes.
-    pub(crate) fn retrograde(&self) -> Self {
+    #[must_use]
+    pub fn retrograde(&self) -> Self {
         let mut reversed = self.0;
         reversed.reverse();
         Self(reversed)
@@ -379,7 +387,7 @@ impl Row12 {
     /// one: the rows are rows, not labels. Which transposition is called
     /// `P0` is a separate question, and `std::post_tonal::serial` answers it with two
     /// differently named functions rather than one that quietly picks.
-    pub(crate) fn matrix(&self) -> Vec<Self> {
+    pub fn matrix(&self) -> Vec<Self> {
         let leftmost = self.inverted(u64::from(self.head().number()).saturating_mul(2));
         leftmost.pcs().map(|start| self.starting_on(start)).collect()
     }
@@ -389,7 +397,7 @@ impl Row12 {
     /// Forty-eight of them, always: twenty-four affine operations on pitch
     /// classes, each read forward and backward. How many *rows* that is
     /// depends on the row.
-    fn labelled_forms(&self) -> Vec<Self> {
+    pub(crate) fn labelled_forms(&self) -> Vec<Self> {
         (0..u64::from(CHROMA))
             .flat_map(|index| [self.transposed(index), self.inverted(index)])
             .flat_map(|form| [form, form.retrograde()])
@@ -401,7 +409,7 @@ impl Row12 {
     /// Forty-eight for a generic row. A row with an internal symmetry —
     /// one whose stabilizer is nontrivial — has fewer, which is why this is
     /// counted rather than asserted (OMT `110-row-properties.md`).
-    pub(crate) fn forms(&self) -> u32 {
+    pub fn forms(&self) -> u32 {
         let mut distinct: Vec<Self> = self.labelled_forms();
         distinct.sort_unstable();
         distinct.dedup();
@@ -414,7 +422,7 @@ impl Row12 {
     /// By the orbit–stabilizer theorem this times [`Row12::forms`] is always
     /// forty-eight, which is the accounting the language documentation asks
     /// to be kept honest.
-    pub(crate) fn symmetries(&self) -> u32 {
+    pub fn symmetries(&self) -> u32 {
         u32::try_from(self.labelled_forms().iter().filter(|form| *form == self).count()).unwrap_or(1)
     }
 
@@ -423,7 +431,8 @@ impl Row12 {
     /// Private because it is only sound for a bijection of `pc12`: applying
     /// an arbitrary function would produce twelve pitch classes that are not
     /// a permutation, and the type would then be lying.
-    fn mapped(&self, transform: impl Fn(Pc12) -> Pc12) -> Self {
+    #[must_use]
+    pub fn mapped(&self, transform: impl Fn(Pc12) -> Pc12) -> Self {
         let mut mapped = self.0;
         for member in &mut mapped {
             *member = transform(*member);
@@ -437,7 +446,7 @@ impl Row12 {
 /// Exact, and the first occurrence is not among them: in `0 1 0 …` it is
 /// position two that repeats, because position zero is where that pitch
 /// class belongs.
-pub(crate) fn repeated_positions(pcs: &[Pc12]) -> Vec<u64> {
+pub fn repeated_positions(pcs: &[Pc12]) -> Vec<u64> {
     let mut seen = PcSet12(0);
     let mut repeats = Vec::new();
     for (position, pc) in pcs.iter().enumerate() {
@@ -450,7 +459,7 @@ pub(crate) fn repeated_positions(pcs: &[Pc12]) -> Vec<u64> {
 }
 
 /// The pitch classes a sequence never names, ascending.
-pub(crate) fn missing_classes(pcs: &[Pc12]) -> Vec<Pc12> {
+pub fn missing_classes(pcs: &[Pc12]) -> Vec<Pc12> {
     let present = PcSet12::of(pcs.iter().copied());
     Pc12::every().filter(|member| !present.contains(*member)).collect()
 }

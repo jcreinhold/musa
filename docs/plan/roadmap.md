@@ -1947,29 +1947,32 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-musa-language   musa-calculus   musa-kernel
-      │             │            │
-      └─────────────┼────────────┘
-                    ▼
-              musa-compiler
-               │       │
-               ▼       ▼
-            render    audio
-             │           │
-             ▼           ▼
-           wasm        engine
-                   \      │      /
-                    \     ▼     /
-                      project
-                      │   │   │
-                      ▼   ▼   ▼
-                     cli desktop lsp
+leaves    musa-language        musa-calculus        musa-kernel
+
+values                      musa-score
+                            ← language, kernel
+
+passes                     musa-compiler
+                     ← calculus, kernel, language, score
+
+outputs         musa-render                  musa-audio
+                 ← score                  ← score, compiler
+                                                 │
+                                             musa-engine
+                                          ← score, audio
+
+shells    musa-wasm ← compiler, render, score
+          musa-project ← score, compiler, render, audio, engine, language
+          musa ← project      musa-lsp ← project, language      desktop ← project
 ```
 
 No dependency points upward.
 
 In particular:
 
+- the musical values sit below the pipeline that computes them (§15.15): `musa-score` holds written pitch, chords,
+  scales, exact time, marks, the score snapshot, the performance plan, provenance, diagnostics, and analysis, and names
+  no pass at all — which is why `musa-render` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
 - the core does not depend on the compiler, on `musa-language`, or on anything musical (§15.12);
@@ -2446,6 +2449,51 @@ The basis is six operations and stays six. A surface convenience that cannot be 
 elaboration specification, never a seventh constructor here — `docs/rules/kernel/00-purpose.md` §26 owns the facade, and
 the code-map's implementor reference §2 states the same rule from the compiler's side.
 
+
+## 15.15 `musa-score`
+
+The musical values a compilation produces, and the vocabulary they are written in. It sits below `musa-compiler` for the
+reason the other two lower crates do — the part that has to be *right* is smaller than the part that has to be
+convenient — but on a different axis: `musa-calculus` and `musa-kernel` are below the compiler because they are
+*formal*, and this crate is below it because it holds the **answers** rather than the work of reaching them.
+
+The layering was true before the boundary existed. A closure over every `crate::` reference in `musa-compiler` found
+these modules naming no pass module at all, once `SourceMap` moved beside the `SourceSpan` it translates — 22 modules
+and roughly 18,000 lines with no escape. The crate is what makes that a fact the compiler checks.
+
+Owns:
+
+- written pitch and its spelling, pitch classes, chords, scales, Roman numerals, and chord symbols;
+- exact rational musical time, meters, bar lines, and grooves;
+- marks and their vocabulary;
+- `ScoreSnapshot` and everything on it — parts, voices, events, spans, annotations;
+- `PerformancePlan`, performance profiles, and realization decisions;
+- provenance (`Origin`, `ExpansionStep`, `SourceSpan`, `SourceMap`) and the derivation graph;
+- diagnostics;
+- analysis and assertion checking, which read a finished score and report what they saw.
+
+Must never contain: name resolution, expansion, elaboration, lowering, imports, or any other stage that *computes* one
+of the above. No module here may name one, and none does.
+
+Dependencies:
+
+```text
+indexmap
+musa-kernel
+musa-language
+num-rational
+serde
+thiserror
+```
+
+`musa-language` is here for two things only: the assertion reporter spells a duration with the formatter's speller, and
+`beat_groups` is re-exported so that a caller asking how a bar divides need not know which crate holds the table.
+
+Public interface: wide, and deliberately. This is a vocabulary, not an algorithm behind a facade, and §2's separations —
+written pitch is not a MIDI number, notated duration is not performed duration — are enforced by *which type* a value
+has, which only works if the types can be named. What stays narrow is the other direction: nothing here is a way in.
+There is no constructor that builds a score from text, because building one is the pipeline's job and this crate cannot
+see it.
 
 ## 15.14 `musa-wasm`
 

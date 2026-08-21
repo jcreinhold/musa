@@ -5,9 +5,9 @@ use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, child, is_expr_node, listed, whole};
-use crate::origin::{DeclarationId, SourceSpan};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::{DeclarationId, SourceSpan};
 
 use super::*;
 impl Lowering<'_> {
@@ -36,19 +36,19 @@ impl Lowering<'_> {
         }
         let opened = self.sounded_at(
             origin,
-            crate::Scope::Piece,
+            musa_score::Scope::Piece,
             reading.placed,
             reading.declaration,
-            metered(origin, crate::score::Meter::NONE),
+            metered(origin, musa_score::score::Meter::NONE),
             Ratio::ZERO,
         );
         // Under `meter none` for its whole length, so the body is read with the
         // unmeasured meter in force: a `senza` inside a `senza` restores the one
         // its own braces opened, which is the one that was in force there.
-        let body = self.notated(node, reading.metered(crate::score::Meter::NONE))?;
+        let body = self.notated(node, reading.metered(musa_score::score::Meter::NONE))?;
         let closed = self.sounded_at(
             origin,
-            crate::Scope::Piece,
+            musa_score::Scope::Piece,
             reading.placed,
             reading.declaration,
             metered(origin, reading.meter),
@@ -247,7 +247,7 @@ impl Lowering<'_> {
     /// was written somewhere else.
     ///
     /// `scoped` is what makes reusable material reusable. `e` was read at
-    /// [`crate::Scope::Piece`] — a fragment is "usable at several places" and so
+    /// [`musa_score::Scope::Piece`] — a fragment is "usable at several places" and so
     /// has none of its own — and this is the place, so its facts take the scope
     /// of the block that played them. Here rather than around the whole voice,
     /// because a voice may itself write `key g major;`, which is a piece-scoped
@@ -257,7 +257,7 @@ impl Lowering<'_> {
     /// reduction step, which is the price of the rule having no exception.
     ///
     /// `instanced` is what makes it *this* playing of it.
-    /// [`crate::origin::ExpansionStep::MotifApplication`] is the step Origin view reads to tell
+    /// [`musa_score::origin::ExpansionStep::MotifApplication`] is the step Origin view reads to tell
     /// a composer's own notes from material spoken by name, and every consumer of
     /// it — the derivation graph's key, the fact-text spelling, and the
     /// repeat-agreement rule in [`crate::project`], which writes a repeat out
@@ -322,7 +322,7 @@ impl Lowering<'_> {
                         .note("the first note of the occurrence is `note 1`"),
                 );
             };
-            let Some(pitch) = each.pitch().as_deref().and_then(crate::pitch::WrittenPitch::parse) else {
+            let Some(pitch) = each.pitch().as_deref().and_then(musa_score::pitch::WrittenPitch::parse) else {
                 return self.refuse(
                     Diagnostic::error(Code::NotAValue, "this override names no pitch")
                         .at(at, "expected a pitch")
@@ -337,7 +337,10 @@ impl Lowering<'_> {
                 );
             }
             named.push(position);
-            let step = crate::lower::expansion(at, crate::origin::ExpansionStep::Specialization { override_site: at });
+            let step = crate::lower::expansion(
+                at,
+                musa_score::origin::ExpansionStep::Specialization { override_site: at },
+            );
             specialized = applied(
                 origin,
                 Raw::hosted(origin, "respelled"),
@@ -362,7 +365,7 @@ impl Lowering<'_> {
         let played = stamped(
             origin,
             at,
-            crate::origin::ExpansionStep::MotifApplication { call_site: at },
+            musa_score::origin::ExpansionStep::MotifApplication { call_site: at },
             material,
         );
         applied(
@@ -404,7 +407,7 @@ impl Lowering<'_> {
     pub(crate) fn sounded_at(
         &self,
         origin: Origin,
-        scope: crate::Scope,
+        scope: musa_score::Scope,
         placed: bool,
         declaration: DeclarationId,
         fact: Raw,
@@ -421,7 +424,7 @@ impl Lowering<'_> {
     pub(crate) fn sounded_in(
         &self,
         origin: Origin,
-        scope: crate::Scope,
+        scope: musa_score::Scope,
         placed: bool,
         declaration: DeclarationId,
         fact: Raw,

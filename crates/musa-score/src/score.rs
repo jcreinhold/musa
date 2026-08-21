@@ -79,7 +79,8 @@ impl FreeDuration {
     /// triplet quarter the performer may hold to two thirds of a double whole,
     /// and a bracket with only one end scaled would name a range the notation
     /// does not.
-    pub(crate) fn scaled(self, factor: Ratio<i64>) -> Self {
+    #[must_use]
+    pub fn scaled(self, factor: Ratio<i64>) -> Self {
         Self {
             least: MusicalDuration::new(self.least.as_ratio() * factor),
             most: MusicalDuration::new(self.most.as_ratio() * factor),
@@ -88,7 +89,7 @@ impl FreeDuration {
 }
 
 /// How the language writes a duration value: `1`, `1/4`, `3/8`.
-fn spell_value(value: Ratio<i64>) -> String {
+pub(crate) fn spell_value(value: Ratio<i64>) -> String {
     if *value.denom() == 1 {
         value.numer().to_string()
     } else {
@@ -143,7 +144,7 @@ impl NotatedDuration {
     /// A ratio that reached the score through a function has no written form
     /// of its own, so one is derived here rather than at each caller — three
     /// callers deriving it three ways is three spellings of one duration.
-    pub(crate) fn spelled(value: Ratio<i64>) -> Self {
+    pub fn spelled(value: Ratio<i64>) -> Self {
         let spelling = if *value.denom() == 1 {
             value.numer().to_string()
         } else {
@@ -154,7 +155,8 @@ impl NotatedDuration {
 
     /// The same duration sounding `factor` times as long — how a tuplet
     /// scales the values written inside it.
-    pub(crate) fn scaled(&self, factor: Ratio<i64>) -> Self {
+    #[must_use]
+    pub fn scaled(&self, factor: Ratio<i64>) -> Self {
         Self {
             value: MusicalDuration::new(self.value.as_ratio() * factor),
             spelling: self.spelling.clone(),
@@ -172,7 +174,8 @@ impl NotatedDuration {
     /// Unlike [`Self::scaled`], which is a tuplet and keeps the written
     /// symbol while changing what it sounds for, this respells: a quarter
     /// stretched by two *is* a half note, and the inspector must say so.
-    pub(crate) fn stretched(&self, factor: Ratio<i64>) -> Self {
+    #[must_use]
+    pub fn stretched(&self, factor: Ratio<i64>) -> Self {
         let pieces: Vec<MusicalDuration> = self
             .pieces
             .iter()
@@ -191,7 +194,8 @@ impl NotatedDuration {
     }
 
     /// This duration tied to `next`: one sounding event, two written pieces.
-    pub(crate) fn tied_to(&self, next: &Self) -> Self {
+    #[must_use]
+    pub fn tied_to(&self, next: &Self) -> Self {
         let mut pieces = self.pieces.clone();
         pieces.extend(next.pieces.iter().copied());
         Self {
@@ -226,7 +230,7 @@ impl Voice {
         })
     }
 
-    pub(crate) fn new(events: Vec<ScoreEvent>) -> Self {
+    pub fn new(events: Vec<ScoreEvent>) -> Self {
         Self { events }
     }
 }
@@ -320,7 +324,7 @@ impl Part {
         self.voices.values().map(Voice::span).max().unwrap_or_default()
     }
 
-    pub(crate) fn new(
+    pub fn new(
         id: PartId,
         name: String,
         voices: IndexMap<VoiceId, Voice>,
@@ -340,7 +344,7 @@ impl Part {
     /// The two maps are written together because they are one fact: a lane
     /// with no name would be a lane nothing can address, and the assembly
     /// order is the order the voices appear in the score.
-    pub(crate) fn add_voice(&mut self, id: VoiceId, name: String, voice: Voice) {
+    pub fn add_voice(&mut self, id: VoiceId, name: String, voice: Voice) {
         self.voices.insert(id, voice);
         self.voice_names.insert(id, name);
     }
@@ -373,7 +377,7 @@ impl PartMap {
         self.parts.is_empty()
     }
 
-    pub(crate) fn insert(&mut self, id: PartId, part: Part) {
+    pub fn insert(&mut self, id: PartId, part: Part) {
         self.parts.insert(id, part);
     }
 }
@@ -504,7 +508,7 @@ impl Meter {
         MusicalDuration::new(Ratio::new(i64::from(self.numerator), i64::from(self.denominator)))
     }
 
-    pub(crate) fn new(numerator: u32, denominator: u32) -> Self {
+    pub fn new(numerator: u32, denominator: u32) -> Self {
         Self { numerator, denominator }
     }
 }
@@ -1121,61 +1125,61 @@ impl AnnotationStore {
 
     /// Record a point mark, keeping the lane sorted by position: like a form
     /// marker, it is read where it is reached rather than where it was typed.
-    pub(crate) fn push_point(&mut self, point: PointMark) {
+    pub fn push_point(&mut self, point: PointMark) {
         let at = self.points.partition_point(|existing| existing.at <= point.at);
         self.points.insert(at, point);
     }
 
-    pub(crate) fn push_mark(&mut self, mark: MarkSpan) {
+    pub fn push_mark(&mut self, mark: MarkSpan) {
         self.marks.push(mark);
     }
 
-    pub(crate) fn push_phrase(&mut self, phrase: PhraseSpan) {
+    pub fn push_phrase(&mut self, phrase: PhraseSpan) {
         self.phrases.push(phrase);
     }
 
-    pub(crate) fn push_hairpin(&mut self, hairpin: HairpinSpan) {
+    pub fn push_hairpin(&mut self, hairpin: HairpinSpan) {
         self.hairpins.push(hairpin);
     }
 
     /// Record a form marker, keeping the lane sorted by position: markers are
     /// read in the order they are reached, not the order they were typed.
-    pub(crate) fn push_section(&mut self, section: SectionMark) {
+    pub fn push_section(&mut self, section: SectionMark) {
         let at = self.sections.partition_point(|existing| existing.at <= section.at);
         self.sections.insert(at, section);
     }
 
     /// Record a chord symbol, keeping the lane sorted by position.
-    pub(crate) fn push_harmony(&mut self, harmony: HarmonyMark) {
+    pub fn push_harmony(&mut self, harmony: HarmonyMark) {
         let at = self.harmony.partition_point(|existing| existing.at <= harmony.at);
         self.harmony.insert(at, harmony);
     }
 
-    pub(crate) fn push_slur(&mut self, slur: SlurSpan) {
+    pub fn push_slur(&mut self, slur: SlurSpan) {
         self.slurs.push(slur);
     }
 
-    pub(crate) fn push_tuplet(&mut self, tuplet: TupletSpan) {
+    pub fn push_tuplet(&mut self, tuplet: TupletSpan) {
         self.tuplets.push(tuplet);
     }
 
-    pub(crate) fn push_dynamic(&mut self, dynamic: DynamicMarking) {
+    pub fn push_dynamic(&mut self, dynamic: DynamicMarking) {
         self.dynamics.push(dynamic);
     }
 
-    pub(crate) fn push_articulation(&mut self, articulation: ArticulationMarking) {
+    pub fn push_articulation(&mut self, articulation: ArticulationMarking) {
         self.articulations.push(articulation);
     }
 
-    pub(crate) fn push_grace(&mut self, grace: GraceNote) {
+    pub fn push_grace(&mut self, grace: GraceNote) {
         self.graces.push(grace);
     }
 
-    pub(crate) fn set_repeats(&mut self, repeats: Vec<RepeatRegion>) {
+    pub fn set_repeats(&mut self, repeats: Vec<RepeatRegion>) {
         self.repeats = repeats;
     }
 
-    pub(crate) fn push_open(&mut self, region: OpenRegion) {
+    pub fn push_open(&mut self, region: OpenRegion) {
         self.open.push(region);
     }
 }
@@ -1234,11 +1238,11 @@ pub struct ScoreSnapshot {
 /// because they are built together, in one pass over the track, and a
 /// consumer that reads one usually reads the others.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct Contexts {
-    pub(crate) keys: ContextTrack<Key>,
-    pub(crate) meters: ContextTrack<Meter>,
-    pub(crate) clefs: ContextTrack<Clef>,
-    pub(crate) tempos: ContextTrack<TempoMarking>,
+pub struct Contexts {
+    pub keys: ContextTrack<Key>,
+    pub meters: ContextTrack<Meter>,
+    pub clefs: ContextTrack<Clef>,
+    pub tempos: ContextTrack<TempoMarking>,
 }
 
 impl Default for Contexts {
@@ -1261,7 +1265,7 @@ impl ScoreSnapshot {
     /// What this crosses is the one boundary the phase creates — the compiler
     /// read a second text, and everything it says has to be said about the
     /// first.
-    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
+    pub fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for part in self.parts.parts.values_mut() {
             for voice in part.voices.values_mut() {
                 for event in &mut voice.events {
@@ -1292,7 +1296,7 @@ impl ScoreSnapshot {
         self.performance
     }
 
-    pub(crate) fn set_performance(&mut self, seed: u64) {
+    pub fn set_performance(&mut self, seed: u64) {
         self.performance = Some(seed);
     }
 
@@ -1442,31 +1446,31 @@ impl ScoreSnapshot {
         &[]
     }
 
-    pub(crate) fn set_title(&mut self, title: String) {
+    pub fn set_title(&mut self, title: String) {
         self.title = title;
     }
 
-    pub(crate) fn front_matter_mut(&mut self) -> &mut FrontMatter {
+    pub fn front_matter_mut(&mut self) -> &mut FrontMatter {
         &mut self.front_matter
     }
 
-    pub(crate) fn parts_mut(&mut self) -> &mut PartMap {
+    pub fn parts_mut(&mut self) -> &mut PartMap {
         &mut self.parts
     }
 
-    pub(crate) fn set_contexts(&mut self, contexts: Contexts) {
+    pub fn set_contexts(&mut self, contexts: Contexts) {
         self.contexts = contexts;
     }
 
-    pub(crate) fn set_annotations(&mut self, annotations: AnnotationStore) {
+    pub fn set_annotations(&mut self, annotations: AnnotationStore) {
         self.annotations = annotations;
     }
 
-    pub(crate) fn push_motif(&mut self, motif: MotifDeclaration) {
+    pub fn push_motif(&mut self, motif: MotifDeclaration) {
         self.motifs.push(motif);
     }
 
-    pub(crate) fn profiles_mut(&mut self) -> &mut crate::profile::ProfileSet {
+    pub fn profiles_mut(&mut self) -> &mut crate::profile::ProfileSet {
         &mut self.profiles
     }
 }

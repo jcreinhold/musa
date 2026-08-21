@@ -65,9 +65,9 @@ use super::rules::{halves, items, nat, read, reduced, refused};
 use super::track::{Provenance, built, scope_of, track_of, track_type};
 use super::{literal, plain_type};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
-use crate::harmony::ChordSymbol;
-use crate::marks::MarkArgument;
-use crate::score::{Clef, DynamicMark, FreeDuration, Metronome, NotatedDuration, Ramp};
+use musa_score::harmony::ChordSymbol;
+use musa_score::marks::MarkArgument;
+use musa_score::score::{Clef, DynamicMark, FreeDuration, Metronome, NotatedDuration, Ramp};
 
 /// The four operations this module registers, in the order [`builtins`] writes
 /// them.
@@ -171,7 +171,10 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 /// form is exactly what a parameter does not have.
 const NOTATED: Rule = |arguments| {
     let value = read::<Ratio<i64>>(arguments.first()?)?;
-    reduced(opaque("NotatedDuration", crate::score::NotatedDuration::spelled(value)))
+    reduced(opaque(
+        "NotatedDuration",
+        musa_score::score::NotatedDuration::spelled(value),
+    ))
 };
 
 /// `nothing` — the track of no duration and no occurrences.
@@ -416,7 +419,7 @@ fn fact_of(datum: &Datum) -> Option<FactKind> {
     let marks = |index: usize| {
         items(at(index)?)?
             .into_iter()
-            .map(read::<crate::Mark>)
+            .map(read::<musa_score::Mark>)
             .collect::<Option<Vec<_>>>()
     };
     let free = |index: usize| Some(optional(at(index)?, unwrapped::<FreeDuration>)?.value());
@@ -457,7 +460,7 @@ fn fact_of(datum: &Datum) -> Option<FactKind> {
             shape: unwrapped::<musa_kernel::Progress>(at(2)?)?,
         },
         "Fact.Key" => {
-            let key = read::<crate::Key>(at(0)?)?;
+            let key = read::<musa_score::Key>(at(0)?)?;
             FactKind::Key {
                 tonic: key.tonic(),
                 mode: key.mode(),

@@ -5,7 +5,9 @@
 //! elaborates to. That is also the only statement that matters — a law about
 //! a private struct that the surface language does not honour is not a law.
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 /// Every sounding pitch of a compiled piece, in order, as written.
 fn pitches(source: &str) -> Vec<String> {
@@ -333,7 +335,7 @@ fn a_scale_emits_no_key_signature() {
     assert!(!compilation.has_errors(), "{:#?}", compilation.diagnostics());
     let stated = compilation
         .snapshot()
-        .and_then(|snapshot| snapshot.key_at(musa_compiler::Scope::Piece, musa_compiler::MusicalTime::ZERO));
+        .and_then(|snapshot| snapshot.key_at(musa_score::Scope::Piece, musa_score::MusicalTime::ZERO));
     assert!(
         stated.is_none(),
         "`in scale` must not write a key signature: {stated:?}"

@@ -18,9 +18,9 @@
 use musa_kernel::TextPayload as _;
 
 use crate::compile::{Compilation, SourceDocument};
-use crate::diagnose::{Code, Diagnostic};
 use crate::elaborate::{ScoreFact, piece_term};
-use crate::origin::SourceSpan;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
 
 /// What `--check` learned about a kernel file.
 ///
@@ -49,7 +49,7 @@ pub struct KernelCheck {
 #[doc(hidden)]
 pub fn kernel_text(
     source: &SourceDocument,
-    realization: &crate::Realization,
+    realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<String> {
     let (name, term, decisions) = piece_term(source, realization, imports)?;
@@ -64,7 +64,7 @@ pub fn kernel_text(
 /// the seed — because a file that leaves a decision open and does not name its
 /// realization cannot be reproduced — and every decision taken
 /// (`docs/rules/kernel/11-realization.md`, consumer obligation 1).
-fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) -> Vec<String> {
+fn notes(realization: &musa_score::Realization, decisions: &[musa_score::DecisionRecord]) -> Vec<String> {
     if decisions.is_empty() {
         return Vec::new();
     }
@@ -99,7 +99,7 @@ fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) 
 #[doc(hidden)]
 pub fn kernel_normalized_text(
     source: &SourceDocument,
-    realization: &crate::Realization,
+    realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<String> {
     let (name, term, decisions) = piece_term(source, realization, imports)?;
@@ -205,7 +205,7 @@ pub(crate) fn compile_kernel(source: &SourceDocument) -> Compilation {
     let identity = value.semantic_hash();
     let mut resolver = crate::resolve::Resolver::new();
     let projection = crate::project::project(&mut resolver, &value);
-    let mut snapshot = crate::score::ScoreSnapshot::default();
+    let mut snapshot = musa_score::score::ScoreSnapshot::default();
     snapshot.set_title(name);
     snapshot.set_contexts(projection.contexts);
     gather_parts(&mut snapshot, projection.voices);
@@ -227,19 +227,19 @@ pub(crate) fn compile_kernel(source: &SourceDocument) -> Compilation {
 ///
 /// Ordering is by identity rather than by first appearance, so a file whose
 /// second part happens to start first still scores as parts 1, 2.
-fn gather_parts(snapshot: &mut crate::score::ScoreSnapshot, voices: crate::project::Voices) {
-    let mut lanes: Vec<((u32, u32), crate::score::Voice)> = voices.into_iter().collect();
+fn gather_parts(snapshot: &mut musa_score::score::ScoreSnapshot, voices: crate::project::Voices) {
+    let mut lanes: Vec<((u32, u32), musa_score::score::Voice)> = voices.into_iter().collect();
     lanes.sort_by_key(|(key, _)| *key);
-    let mut current: Option<(crate::score::PartId, crate::score::Part)> = None;
+    let mut current: Option<(musa_score::score::PartId, musa_score::score::Part)> = None;
     for ((part, voice), lane) in lanes {
-        let (part, voice) = (crate::score::PartId(part), crate::score::VoiceId(voice));
+        let (part, voice) = (musa_score::score::PartId(part), musa_score::score::VoiceId(voice));
         if current.as_ref().is_none_or(|(open, _)| *open != part) {
             if let Some((open, built)) = current.take() {
                 snapshot.parts_mut().insert(open, built);
             }
             current = Some((
                 part,
-                crate::score::Part::new(
+                musa_score::score::Part::new(
                     part,
                     format!("part {}", part.0.saturating_add(1)),
                     indexmap::IndexMap::new(),

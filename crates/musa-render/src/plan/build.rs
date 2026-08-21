@@ -3,7 +3,7 @@
 //!
 //! One concern of the `plan` module; see its docs for what a plan is.
 
-use musa_compiler::{BarLines, Clef, Key, Meter, Metronome, MusicalTime, Scope, ScoreSnapshot};
+use musa_score::{BarLines, Clef, Key, Meter, Metronome, MusicalTime, Scope, ScoreSnapshot};
 
 use super::collect::Marks;
 use super::fold::Fold;
@@ -112,7 +112,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
             // its own in it, which is where a reader expects the bracket to
             // close.
             let closes = positioned(&bars, fold.at(region.end)?, ());
-            let to = if closes.onset_in_measure == musa_compiler::MusicalDuration::ZERO {
+            let to = if closes.onset_in_measure == musa_score::MusicalDuration::ZERO {
                 closes.measure.saturating_sub(1)
             } else {
                 closes.measure
@@ -122,8 +122,8 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
                 to: to.max(from),
                 text: open_text(&region.kind),
                 kind: match region.kind {
-                    musa_compiler::OpenKind::Mobile { .. } => OpenShape::Mobile,
-                    musa_compiler::OpenKind::Improvise { .. } => OpenShape::Improvise,
+                    musa_score::OpenKind::Mobile { .. } => OpenShape::Mobile,
+                    musa_score::OpenKind::Improvise { .. } => OpenShape::Improvise,
                 },
             })
         })
@@ -177,9 +177,9 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
 }
 
 /// What a reader is told, in the words a printed part uses.
-fn open_text(kind: &musa_compiler::OpenKind) -> String {
+fn open_text(kind: &musa_score::OpenKind) -> String {
     match kind {
-        musa_compiler::OpenKind::Mobile { fragments, order } => {
+        musa_score::OpenKind::Mobile { fragments, order } => {
             let played: Vec<&str> = order
                 .iter()
                 .filter_map(|index| fragments.get(*index as usize))
@@ -187,7 +187,7 @@ fn open_text(kind: &musa_compiler::OpenKind) -> String {
                 .collect();
             format!("any order — this reading: {}", played.join(", "))
         }
-        musa_compiler::OpenKind::Improvise { over } => match over {
+        musa_score::OpenKind::Improvise { over } => match over {
             Some(changes) => format!("improvise over {changes}"),
             None => "improvise".to_owned(),
         },

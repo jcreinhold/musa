@@ -46,9 +46,11 @@
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
-use musa_compiler::{
-    AnalysisKind, AnalysisProfile, AnalysisReport, AnalysisRequest, CompileOptions, Evidence, Observation,
-    ScoreSnapshot, Severity, SourceDocument, Standing, Strength, analyze, compile, rule_names,
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{
+    AnalysisKind, AnalysisProfile, AnalysisReport, AnalysisRequest, Evidence, Observation, ScoreSnapshot, Severity,
+    Standing, Strength, analyze, rule_names,
 };
 
 const SATB: &str = include_str!("../../../../examples/analysis/satb.musa");
@@ -883,9 +885,9 @@ fn the_rules_that_need_a_key_say_so() {
 
     let request = AnalysisRequest::new(AnalysisKind::VoiceLeading)
         .under(AnalysisProfile::Satb)
-        .in_key(musa_compiler::Key::new(
-            musa_compiler::PitchClass::parse("c").expect("c is a pitch class"),
-            musa_compiler::Mode::Major,
+        .in_key(musa_score::Key::new(
+            musa_score::PitchClass::parse("c").expect("c is a pitch class"),
+            musa_score::Mode::Major,
         ));
     let report = analyze(&score(&bare, "keyless.musa"), &request).expect("a well-formed request");
     let assumed: Vec<Standing> = report
@@ -895,7 +897,7 @@ fn the_rules_that_need_a_key_say_so() {
             Observation::Departure { rule, .. } => keyed.contains(&rule.id()),
             _ => false,
         })
-        .map(musa_compiler::AnalysisFinding::standing)
+        .map(musa_score::AnalysisFinding::standing)
         .collect();
     assert!(!assumed.is_empty(), "the assumed key should let both rules speak");
     assert!(

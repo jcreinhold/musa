@@ -5,10 +5,10 @@ use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::lower::{Lowering, applied, child, children, is_expr_node, writes};
-use crate::origin::SourceSpan;
-use crate::score::NotatedDuration;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::score::NotatedDuration;
 
 use super::*;
 impl Lowering<'_> {
@@ -19,7 +19,7 @@ impl Lowering<'_> {
     /// replaced path made of a context statement written among a voice's items
     /// too. A point rather than a region because a left fold cannot see what
     /// comes after the statement it is reading, and because "from here onward"
-    /// is answered by the context rules in [`crate::scope`] reading the
+    /// is answered by the context rules in [`musa_score::scope`] reading the
     /// occurrences in order rather than by the extent written on any one of them.
     pub(crate) fn context(
         &mut self,
@@ -36,10 +36,12 @@ impl Lowering<'_> {
         // a meter, and a tempo are things the piece does, and a clef is one
         // player's staff. Both rules are `elaborate.rs`'s, unchanged.
         let scope = match which {
-            Context::Key | Context::Meter | Context::Tempo => crate::Scope::Piece,
+            Context::Key | Context::Meter | Context::Tempo => musa_score::Scope::Piece,
             Context::Clef => match reading.scope {
-                crate::Scope::Part { part } | crate::Scope::Voice { part, .. } => crate::Scope::Part { part },
-                crate::Scope::Piece => {
+                musa_score::Scope::Part { part } | musa_score::Scope::Voice { part, .. } => {
+                    musa_score::Scope::Part { part }
+                }
+                musa_score::Scope::Piece => {
                     return self.refuse(
                         Diagnostic::error(Code::Misplaced, "a clef change belongs to a part")
                             .at(span, "written outside any part")
@@ -98,11 +100,15 @@ impl Lowering<'_> {
                 let written = musa_language::ast::ClefStmt::cast(node.clone())
                     .and_then(|statement| statement.name())
                     .unwrap_or_default();
-                let Some(clef) = crate::score::Clef::parse(&written) else {
+                let Some(clef) = musa_score::score::Clef::parse(&written) else {
                     return self.refuse(
                         Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a clef"))
                             .at(span, "not a clef musa reads")
-                            .help(crate::resolve::suggest(&written, crate::score::Clef::NAMES, "clefs")),
+                            .help(crate::resolve::suggest(
+                                &written,
+                                musa_score::score::Clef::NAMES,
+                                "clefs",
+                            )),
                     );
                 };
                 Some(clefed(origin, clef))
@@ -165,7 +171,7 @@ impl Lowering<'_> {
         node: &SyntaxNode,
         span: SourceSpan,
         reading: Reading,
-    ) -> Option<(Raw, Raw, Option<crate::score::FreeDuration>)> {
+    ) -> Option<(Raw, Raw, Option<musa_score::score::FreeDuration>)> {
         let origin = self.origin(node);
         let Some(duration) = crate::resolve::parse_duration(node) else {
             if let Some(parameter) = musa_language::ast::Duration::of(node).and_then(|written| written.parameter()) {
@@ -200,7 +206,7 @@ impl Lowering<'_> {
     /// Roadmap §2's row with both values kept rather than one standing in for
     /// the other: what comes back as the duration is what the note *sounds*, so
     /// everything after it lands where it should, and the
-    /// [`crate::score::FreeDuration`] beside it is what recovers the symbol the
+    /// [`musa_score::score::FreeDuration`] beside it is what recovers the symbol the
     /// engraver draws.
     ///
     /// The decided length is remembered under `span` for the same reason
@@ -212,7 +218,7 @@ impl Lowering<'_> {
         duration: NotatedDuration,
         most: &str,
         span: SourceSpan,
-    ) -> Option<(NotatedDuration, Option<crate::score::FreeDuration>)> {
+    ) -> Option<(NotatedDuration, Option<musa_score::score::FreeDuration>)> {
         let Some(written) = crate::resolve::parse_ratio(most) else {
             return self.refuse(
                 Diagnostic::error(Code::NotAValue, format!("`{most}` is not a duration"))
@@ -220,7 +226,7 @@ impl Lowering<'_> {
                     .help("write a duration such as `2/1`"),
             );
         };
-        let written = crate::MusicalDuration::new(written);
+        let written = musa_score::MusicalDuration::new(written);
         if written.as_ratio() < duration.value.as_ratio() {
             return self.refuse(
                 Diagnostic::error(Code::NotAValue, "a held note counts upwards")
@@ -235,11 +241,11 @@ impl Lowering<'_> {
         self.holds.insert(span, sounds);
         Some((
             NotatedDuration {
-                value: crate::MusicalDuration::new(sounds),
+                value: musa_score::MusicalDuration::new(sounds),
                 spelling: duration.spelling,
-                pieces: vec![crate::MusicalDuration::new(sounds)],
+                pieces: vec![musa_score::MusicalDuration::new(sounds)],
             },
-            Some(crate::score::FreeDuration { least, most: written }),
+            Some(musa_score::score::FreeDuration { least, most: written }),
         ))
     }
 
@@ -270,7 +276,7 @@ impl Lowering<'_> {
         if writes(node, SyntaxKind::Identifier) {
             return Some(Raw::var(origin, text.as_str()));
         }
-        let Some(pitch) = crate::WrittenPitch::parse(&text) else {
+        let Some(pitch) = musa_score::WrittenPitch::parse(&text) else {
             return self.refuse(Self::not_a_pitch(&text, crate::resolve::trimmed_span(node)));
         };
         Some(plain(origin, "Pitch", pitch))
@@ -325,7 +331,7 @@ impl Lowering<'_> {
             });
         }
         let text = node.to_string().trim().to_owned();
-        let Some(interval) = crate::Interval::parse(&text, down) else {
+        let Some(interval) = musa_score::Interval::parse(&text, down) else {
             return self.refuse(
                 Diagnostic::error(Code::NotAValue, format!("`{text}` is not an interval"))
                     .at(crate::resolve::trimmed_span(node), "unknown interval"),
@@ -338,7 +344,7 @@ impl Lowering<'_> {
     ///
     /// The one place `in scale` is read. `p step n` needs a scale and says so
     /// when there is none; `p up M3` does not and never asks.
-    pub(crate) fn written_pitch(&mut self, node: &SyntaxNode, reading: Reading) -> Option<crate::WrittenPitch> {
+    pub(crate) fn written_pitch(&mut self, node: &SyntaxNode, reading: Reading) -> Option<musa_score::WrittenPitch> {
         let span = crate::resolve::trimmed_span(node);
         match node.kind() {
             SyntaxKind::ParenExpr | SyntaxKind::BlockExpr => {
@@ -347,13 +353,13 @@ impl Lowering<'_> {
             }
             SyntaxKind::LiteralExpr | SyntaxKind::NameExpr => {
                 let text = node.to_string().trim().to_owned();
-                crate::WrittenPitch::parse(&text).or_else(|| self.refuse(Self::not_a_pitch(&text, span)))
+                musa_score::WrittenPitch::parse(&text).or_else(|| self.refuse(Self::not_a_pitch(&text, span)))
             }
             SyntaxKind::PitchExpr => {
                 let parts = children(node, is_expr_node);
                 let base = self.written_pitch(parts.first()?, reading)?;
                 let text = parts.get(1)?.to_string().trim().to_owned();
-                let Some(interval) = crate::Interval::parse(&text, writes(node, SyntaxKind::DownKw)) else {
+                let Some(interval) = musa_score::Interval::parse(&text, writes(node, SyntaxKind::DownKw)) else {
                     return self.refuse(
                         Diagnostic::error(Code::NotAValue, format!("`{text}` is not an interval"))
                             .at(span, "unknown interval"),
@@ -410,17 +416,17 @@ impl Lowering<'_> {
     /// `base`, moved `steps` degrees through `scale`.
     ///
     /// The old checker's arithmetic, called where the old checker called it. It
-    /// is `crate::scale`'s and none of it moves — what changes is only that the
+    /// is `musa_score::scale`'s and none of it moves — what changes is only that the
     /// answer becomes a literal here rather than being deferred to a stage that
     /// no longer exists.
     pub(crate) fn stepped(
         &mut self,
-        base: crate::WrittenPitch,
-        scale: crate::scale::Scale,
+        base: musa_score::WrittenPitch,
+        scale: musa_score::scale::Scale,
         steps: i64,
         span: SourceSpan,
-    ) -> Option<crate::WrittenPitch> {
-        let Some(frame) = crate::scale::Frame::around(scale, base) else {
+    ) -> Option<musa_score::WrittenPitch> {
+        let Some(frame) = musa_score::scale::Frame::around(scale, base) else {
             return self.out_of_range(span);
         };
         let Some(degree) = frame.locate(base) else {
@@ -451,7 +457,7 @@ impl Lowering<'_> {
         self.written_scale(node).map(Counting::Written)
     }
 
-    /// `body`, with one [`crate::origin::ExpansionStep::ScaleContext`] step on
+    /// `body`, with one [`musa_score::origin::ExpansionStep::ScaleContext`] step on
     /// every fact it made.
     ///
     /// [`stamped`] is the operation, and it is [`Lowering::used`]'s and
@@ -466,7 +472,7 @@ impl Lowering<'_> {
         stamped(
             origin,
             crate::resolve::trimmed_span(node),
-            crate::origin::ExpansionStep::ScaleContext {
+            musa_score::origin::ExpansionStep::ScaleContext {
                 scale: format!(
                     "scale {}",
                     written.to_string().trim().trim_start_matches("scale").trim()
@@ -477,25 +483,25 @@ impl Lowering<'_> {
     }
 
     /// `scale c dorian`, as the collection it names.
-    pub(crate) fn written_scale(&mut self, node: &SyntaxNode) -> Option<crate::scale::Scale> {
+    pub(crate) fn written_scale(&mut self, node: &SyntaxNode) -> Option<musa_score::scale::Scale> {
         let span = crate::resolve::trimmed_span(node);
         let written = node.to_string();
         let mut words = written.split_whitespace().skip_while(|word| *word == "scale");
         let tonic = words.next().unwrap_or_default();
-        let Some(tonic) = crate::PitchClass::parse(tonic) else {
+        let Some(tonic) = musa_score::PitchClass::parse(tonic) else {
             return self.refuse(
                 Diagnostic::error(Code::NotAValue, format!("`{tonic}` is not a pitch class"))
                     .at(span, "expected a spelled tonic, such as `c` or `f#`"),
             );
         };
         let word = words.next().unwrap_or_default();
-        let Some(collection) = crate::scale::Collection::named(word) else {
+        let Some(collection) = musa_score::scale::Collection::named(word) else {
             return self.refuse(
                 Diagnostic::error(Code::UnknownName, format!("unknown collection `{word}`"))
                     .at(span, "not a named scale collection")
                     .note("a mode is a rotation of the diatonic collection; other collections are their own values"),
             );
         };
-        Some(crate::scale::Scale::new(tonic, collection))
+        Some(musa_score::scale::Scale::new(tonic, collection))
     }
 }

@@ -4,8 +4,8 @@ use musa_calculus::Raw;
 use musa_language::SyntaxKind;
 use musa_language::ast::AstNode as _;
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::Resolver;
+use musa_score::diagnose::{Code, Diagnostic};
 
 use super::Printer;
 use super::printer_source;
@@ -241,7 +241,7 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
     if resolver
         .diagnostics
         .iter()
-        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .any(|diagnostic| diagnostic.severity == musa_score::diagnose::Severity::Error)
     {
         return Err(ModuleFault::Broken(resolver.diagnostics));
     }
@@ -267,7 +267,7 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
     let refusals: Vec<Diagnostic> = resolver
         .diagnostics
         .into_iter()
-        .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::diagnose::Severity::Error)
         .collect();
     if !refusals.is_empty() {
         return Err(module_fault(refusals));

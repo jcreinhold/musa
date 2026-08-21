@@ -24,7 +24,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, Compilation, CompileOptions, SourceDocument, compile};
+use musa_compiler::{Compilation, CompileOptions, SourceDocument, compile};
+
+use musa_score::Code;
 
 fn compile_machines(declarations: &str) -> Compilation {
     let source = SourceDocument::new(
@@ -38,7 +40,7 @@ fn errors(compilation: &Compilation) -> Vec<Code> {
     compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.code)
         .collect()
 }
@@ -49,13 +51,13 @@ fn complaint(compilation: &Compilation) -> String {
     compilation
         .diagnostics()
         .iter()
-        .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
         .map(|diagnostic| diagnostic.message.clone())
         .collect::<Vec<_>>()
         .join("; ")
 }
 
-fn machine<'a>(compilation: &'a Compilation, name: &str) -> &'a musa_compiler::MachineSpec {
+fn machine<'a>(compilation: &'a Compilation, name: &str) -> &'a musa_score::MachineSpec {
     match compilation.machine(name) {
         Some(machine) => machine,
         None => panic!("`{name}` did not project a machine: {:?}", compilation.diagnostics()),
@@ -77,11 +79,11 @@ fn a_registered_unit_becomes_a_machine_at_the_ports_it_declares() {
     assert_eq!(projected.output(), "Ratio");
     assert_eq!(projected.nodes().len(), 1);
     assert_eq!(
-        projected.nodes().first().map(musa_compiler::SpecNode::form),
-        Some(musa_compiler::SpecForm::Primitive)
+        projected.nodes().first().map(musa_score::SpecNode::form),
+        Some(musa_score::SpecForm::Primitive)
     );
     assert_eq!(
-        projected.nodes().first().and_then(musa_compiler::SpecNode::id),
+        projected.nodes().first().and_then(musa_score::SpecNode::id),
         Some("scale")
     );
 }
@@ -103,13 +105,13 @@ fn a_chain_types_at_the_ends_and_keeps_the_middle_private() {
     assert_eq!(projected.nodes().len(), 3, "two units and the chain that joins them");
     let root = projected.root().expect("a projection has a root");
     assert_eq!(
-        projected.nodes().get(root).map(musa_compiler::SpecNode::form),
-        Some(musa_compiler::SpecForm::Connect)
+        projected.nodes().get(root).map(musa_score::SpecNode::form),
+        Some(musa_score::SpecForm::Connect)
     );
     for child in projected
         .nodes()
         .get(root)
-        .map(musa_compiler::SpecNode::children)
+        .map(musa_score::SpecNode::children)
         .unwrap_or_default()
     {
         assert!(
@@ -179,7 +181,7 @@ fn initialized_feedback_hides_the_stored_port_from_the_outside() {
     );
     let root = projected.root().expect("a projection has a root");
     let node = projected.nodes().get(root).expect("the root is a node");
-    assert_eq!(node.form(), musa_compiler::SpecForm::Feedback);
+    assert_eq!(node.form(), musa_score::SpecForm::Feedback);
     assert!(
         !node.stored().is_empty(),
         "the initial value is stored exactly, so the first step has something to read"

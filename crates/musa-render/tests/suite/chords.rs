@@ -15,8 +15,10 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, PerformanceOptions, ScoreSnapshot, SourceDocument, compile, lower_performance};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{MidiMode, MidiOptions, NotationOptions, NotationTarget, render_midi, render_notation};
+use musa_score::{PerformanceOptions, ScoreSnapshot, lower_performance};
 
 /// A lead sheet whose symbol and whose notes deliberately disagree.
 ///

@@ -16,7 +16,9 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 /// The one note a piece built by [`answer`] sounds, as it is spelled.
 ///

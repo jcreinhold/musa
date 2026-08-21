@@ -14,9 +14,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    CompileOptions, MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, lower_performance};
 use num_rational::Ratio;
 
 const BULGARIAN: &str = include_str!("../../../../examples/bulgarian.musa");
@@ -59,12 +59,7 @@ fn frames(score: &ScoreSnapshot) -> Vec<Vec<u64>> {
         .expect("schedules")
         .lanes()
         .iter()
-        .map(|lane| {
-            lane.events()
-                .iter()
-                .map(musa_compiler::PerformanceEvent::frame)
-                .collect()
-        })
+        .map(|lane| lane.events().iter().map(musa_score::PerformanceEvent::frame).collect())
         .collect()
 }
 
@@ -86,10 +81,7 @@ fn each_part_counts_in_its_own_meter() {
     assert_eq!(score.bars(tupan).at(whole(7)).measure, 8);
     // And they do agree there — 8 × 7/8 = 7 × 1 — which is the only place
     // in the piece they do.
-    assert_eq!(
-        score.bars(kaval).at(whole(7)).into,
-        musa_compiler::MusicalDuration::ZERO
-    );
+    assert_eq!(score.bars(kaval).at(whole(7)).into, musa_score::MusicalDuration::ZERO);
 }
 
 /// The cheap shape: the same bar length beamed two ways. Both staves have the
@@ -157,7 +149,7 @@ fn a_part_at_its_own_tempo_is_played_at_it() {
             .expect("a lane")
             .events()
             .iter()
-            .map(musa_compiler::PerformanceEvent::frame)
+            .map(musa_score::PerformanceEvent::frame)
             .find(|frame| *frame > 0)
             .expect("a second event")
     };
@@ -165,7 +157,7 @@ fn a_part_at_its_own_tempo_is_played_at_it() {
     assert_eq!(
         plan.lanes()
             .iter()
-            .filter_map(|lane| lane.events().first().map(musa_compiler::PerformanceEvent::frame))
+            .filter_map(|lane| lane.events().first().map(musa_score::PerformanceEvent::frame))
             .collect::<Vec<_>>(),
         vec![0, 0]
     );

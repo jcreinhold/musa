@@ -17,6 +17,7 @@ musa-kernel = { path = "crates/musa-kernel", version = "0.1.0" }
 musa-language = { path = "crates/musa-language", version = "0.1.0" }
 musa-project = { path = "crates/musa-project", version = "0.1.0" }
 musa-render = { path = "crates/musa-render", version = "0.1.0" }
+musa-score = { path = "crates/musa-score", version = "0.1.0" }
 
 [workspace.lints.rust]
 future-incompatible = "warn"

@@ -165,7 +165,7 @@ Two words of §2's worked example, both outside this prompt's boundary and both 
   it into a `Refusal` at the application's origin, and leaving `Malformed::BuiltinStuck` for the arguments-not-admitted
   case it already reports.
 - The new `Refusal` variant filed under a `Code` in `crates/musa-compiler/src/lower/refusals.rs`, with the code declared
-  in `crates/musa-compiler/src/diagnose.rs` and explained in `crates/musa-project/src/diagnostic.rs`.
+  in `crates/musa-score/src/diagnose.rs` and explained in `crates/musa-project/src/diagnostic.rs`.
 - Every `refused` call site surveyed against the criterion, the ones it classifies as refusals moved, and each site it
   leaves as a value recorded in this file with the caller that branches on it.
 - `sounded`, `play`, `stretch`, and `shift` registered total: `EventTrack ⟨written⟩` rather than

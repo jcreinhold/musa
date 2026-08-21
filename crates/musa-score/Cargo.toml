@@ -1,0 +1,21 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "musa-score"
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+indexmap = { version = "2", features = ["serde"] }
+musa-kernel = { workspace = true }
+musa-language = { workspace = true }
+num-rational = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+insta = "1"
+proptest = "1"
+
+[lints]
+workspace = true

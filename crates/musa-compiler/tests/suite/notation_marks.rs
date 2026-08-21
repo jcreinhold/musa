@@ -16,7 +16,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Anchor, Argument, CompileOptions, SourceDocument, VOCABULARY, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Anchor, Argument, VOCABULARY};
 
 /// A piece whose only variable is what is written inside the voice.
 fn piece(body: &str) -> String {
@@ -90,7 +92,7 @@ fn the_table_is_a_vocabulary() {
     assert_eq!(names.len(), count, "two rows share a name");
     for def in VOCABULARY {
         assert!(
-            musa_compiler::lookup_mark(def.name).is_some(),
+            musa_score::lookup_mark(def.name).is_some(),
             "`{}` is not found by its own name",
             def.name
         );

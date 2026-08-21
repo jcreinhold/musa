@@ -60,7 +60,7 @@ const fn O(diatonic_steps: i64, semitones: i64) -> Interval {
 /// and natural minor — are one value under two spellings, because no theory
 /// distinguishes them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Collection {
+pub enum Collection {
     /// Major, and its modal spelling ionian (OMT `013`, `105`).
     Major,
     /// Dorian.
@@ -235,7 +235,7 @@ pub fn scale_collections() -> impl Iterator<Item = (&'static str, &'static str)>
 impl Collection {
     /// The collection a source word names, or `None` when no collection is
     /// spelled that way.
-    pub(crate) fn named(word: &str) -> Option<Self> {
+    pub fn named(word: &str) -> Option<Self> {
         COLLECTIONS
             .iter()
             .find(|(_, spellings, _, _)| spellings.contains(&word))
@@ -265,7 +265,7 @@ impl Collection {
 /// A scale has no register. It answers "which notes", never "which C", which
 /// is why turning a degree into a pitch needs a [`Frame`] and not this.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Scale {
+pub struct Scale {
     tonic: PitchClass,
     collection: Collection,
 }
@@ -273,12 +273,12 @@ pub(crate) struct Scale {
 impl Scale {
     /// The scale rooted on `tonic`. Total: every collection is defined over
     /// every spelled tonic class.
-    pub(crate) fn new(tonic: PitchClass, collection: Collection) -> Self {
+    pub fn new(tonic: PitchClass, collection: Collection) -> Self {
         Self { tonic, collection }
     }
 
     /// The spelled tonic class.
-    pub(crate) fn tonic(self) -> PitchClass {
+    pub fn tonic(self) -> PitchClass {
         self.tonic
     }
 
@@ -288,7 +288,8 @@ impl Scale {
     }
 
     /// The same collection rooted somewhere else.
-    pub(crate) fn rooted_at(self, tonic: PitchClass) -> Self {
+    #[must_use]
+    pub fn rooted_at(self, tonic: PitchClass) -> Self {
         Self { tonic, ..self }
     }
 
@@ -310,7 +311,7 @@ impl Scale {
     ///
     /// Absent only on machine-integer overflow, which no ordinal a score can
     /// write comes near.
-    pub(crate) fn class(self, degree: Degree) -> Option<PitchClass> {
+    pub fn class(self, degree: Degree) -> Option<PitchClass> {
         self.tonic.transpose(self.offset(degree)?)
     }
 
@@ -360,7 +361,7 @@ impl Scale {
     /// Absent, too, when the collection stacks to a sonority the chord
     /// vocabulary has no name for: a whole-tone collection stacks to no
     /// triad, and saying so is better than inventing a word for it.
-    pub(crate) fn stacked(self, degree: Degree, members: usize) -> Option<ChordClass> {
+    pub fn stacked(self, degree: Degree, members: usize) -> Option<ChordClass> {
         if degree.alteration() != 0 {
             return None;
         }
@@ -382,7 +383,7 @@ impl Scale {
     }
 
     /// How many degrees the pattern has before it repeats.
-    pub(crate) fn size(self) -> usize {
+    pub fn size(self) -> usize {
         self.collection.offsets().len()
     }
 
@@ -427,7 +428,7 @@ impl std::fmt::Display for Frame {
 /// those notes are outside the key. Choosing harmonic or melodic minor for a
 /// passage is what `in scale` is for (OMT
 /// `014-minor-scales-scale-degrees-and-key-signatures.md`).
-pub(crate) fn signature_scale(key: Key) -> Scale {
+pub fn signature_scale(key: Key) -> Scale {
     Scale::new(
         key.tonic(),
         match key.mode() {
@@ -446,14 +447,14 @@ pub(crate) fn signature_scale(key: Key) -> Scale {
 /// is the seventh below — which is what makes stepping additive rather than
 /// wrapping.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Degree {
+pub struct Degree {
     ordinal: i64,
     alteration: i64,
 }
 
 impl Degree {
     /// The unaltered degree at `ordinal`; `1` is the tonic.
-    pub(crate) fn new(ordinal: i64) -> Self {
+    pub fn new(ordinal: i64) -> Self {
         Self { ordinal, alteration: 0 }
     }
 
@@ -474,7 +475,7 @@ impl Degree {
     /// `d.step(a).step(b) = d.step(a + b)`. A raised fourth stepped up is a
     /// raised fifth; write the unaltered degree when that is not what is
     /// meant.
-    pub(crate) fn step(self, by: i64) -> Option<Self> {
+    pub fn step(self, by: i64) -> Option<Self> {
         Some(Self {
             ordinal: self.ordinal.checked_add(by)?,
             alteration: self.alteration,
@@ -482,7 +483,7 @@ impl Degree {
     }
 
     /// Raise by a chromatic semitone.
-    pub(crate) fn raised(self) -> Option<Self> {
+    pub fn raised(self) -> Option<Self> {
         Some(Self {
             alteration: self.alteration.checked_add(1)?,
             ..self
@@ -490,7 +491,7 @@ impl Degree {
     }
 
     /// Lower by a chromatic semitone.
-    pub(crate) fn lowered(self) -> Option<Self> {
+    pub fn lowered(self) -> Option<Self> {
         Some(Self {
             alteration: self.alteration.checked_sub(1)?,
             ..self
@@ -522,7 +523,7 @@ impl std::fmt::Display for Degree {
 /// compiler assumes. `degree 5` of C major is a coordinate; `g4` is a note,
 /// and nothing but a stated tonic register turns the one into the other.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Frame {
+pub struct Frame {
     scale: Scale,
     tonic: WrittenPitch,
 }
@@ -533,7 +534,7 @@ impl Frame {
     /// `None` when `tonic` does not spell the scale's tonic class: a C major
     /// frame rooted on `g4` is not a transposition, it is a mistake, and
     /// answering it with a G major scale would be the compiler guessing.
-    pub(crate) fn new(scale: Scale, tonic: WrittenPitch) -> Option<Self> {
+    pub fn new(scale: Scale, tonic: WrittenPitch) -> Option<Self> {
         (tonic.pitch_class() == scale.tonic()).then_some(Self { scale, tonic })
     }
 
@@ -543,7 +544,7 @@ impl Frame {
     /// around a note contains that note's own octave rather than the one
     /// below it. Used where the register is implied by a note already written
     /// — stepping away from it — and never where a degree arrives without one.
-    pub(crate) fn around(scale: Scale, near: WrittenPitch) -> Option<Self> {
+    pub fn around(scale: Scale, near: WrittenPitch) -> Option<Self> {
         let tonic_letter = i64::from(scale.tonic().letter.steps());
         let octaves = near.diatonic_height().checked_sub(tonic_letter)?.div_euclid(7);
         let tonic = WrittenPitch::from_heights(
@@ -557,12 +558,12 @@ impl Frame {
     }
 
     /// The scale this frame registers.
-    pub(crate) fn scale(self) -> Scale {
+    pub fn scale(self) -> Scale {
         self.scale
     }
 
     /// The pitch of the first degree.
-    pub(crate) fn tonic(self) -> WrittenPitch {
+    pub fn tonic(self) -> WrittenPitch {
         self.tonic
     }
 
@@ -572,7 +573,7 @@ impl Frame {
     /// size into a period count and a position, so every signed ordinal names
     /// a pitch, and the alteration moves the semitone coordinate without
     /// touching the letter.
-    pub(crate) fn pitch(self, degree: Degree) -> Option<WrittenPitch> {
+    pub fn pitch(self, degree: Degree) -> Option<WrittenPitch> {
         let size = i64::try_from(self.scale.size()).ok()?;
         let position = degree.ordinal().checked_sub(1)?;
         let periods = position.div_euclid(size);
@@ -598,7 +599,7 @@ impl Frame {
     /// collection, and the caller has to say what it meant. The answer is
     /// always unaltered, which is what makes it the canonical representative
     /// the round trip returns.
-    pub(crate) fn locate(self, pitch: WrittenPitch) -> Option<Degree> {
+    pub fn locate(self, pitch: WrittenPitch) -> Option<Degree> {
         let diatonic = pitch.diatonic_height().checked_sub(self.tonic.diatonic_height())?;
         let chromatic = pitch.chromatic_height().checked_sub(self.tonic.chromatic_height())?;
         let period = self.scale.period();

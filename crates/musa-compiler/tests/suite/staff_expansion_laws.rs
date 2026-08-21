@@ -28,7 +28,9 @@
 // law failing; panicking with what it actually said is the report.
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 /// The bridge from the package's own data into music, and nothing else.
 ///
@@ -77,7 +79,7 @@ fn source(region: &str, sounded: &str) -> String {
 }
 
 /// The score a region and a bridge compile to, or a panic naming the refusal.
-fn events(region: &str, sounded: &str) -> Vec<musa_compiler::ScoreEvent> {
+fn events(region: &str, sounded: &str) -> Vec<musa_score::ScoreEvent> {
     let compilation = compile(
         &SourceDocument::new(source(region, sounded), "staff-expansion-laws.musa"),
         &CompileOptions::default(),

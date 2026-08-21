@@ -15,8 +15,10 @@
 //! score ever" is not a failure; spans are byte offsets — line/column is the
 //! display layer's job, computed from source the page already holds.
 
-use musa_compiler::{CompileOptions, Diagnostic, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_score::{Diagnostic, Severity};
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::wasm_bindgen;

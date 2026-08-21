@@ -16,8 +16,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, ScoreSnapshot, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
 use musa_render::{NotationOptions, NotationTarget, RenderedNotation, render_notation};
+use musa_score::ScoreSnapshot;
 
 const BULGARIAN: &str = include_str!("../../../../examples/bulgarian.musa");
 const HEMIOLA: &str = include_str!("../../../../examples/hemiola.musa");

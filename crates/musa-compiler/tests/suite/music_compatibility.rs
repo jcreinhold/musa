@@ -3,7 +3,9 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 fn sounding_facts(declaration: &str, uses: &str) -> Vec<String> {
     let source = format!("piece \"compatibility\" {{ {declaration} score {{ part p {{ voice v {{ {uses} }} }} }} }}");

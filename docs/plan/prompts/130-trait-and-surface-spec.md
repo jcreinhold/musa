@@ -25,9 +25,9 @@ methods and type namespaces under exact-receiver lookup, and the surface forms f
   level. This prompt widens it, so read what it deliberately did *not* do and why.
 - `stdlib/src/adapters/staff.musa`: `data Pending`'s eight-field destructure, the `text_equal(kind, "PitchLiteral")`
   dispatch table, and — the sharpest piece of evidence — the `Untied` constructor that collides with the staff package's
-  own `Tie`. `crates/musa-compiler/src/core.rs`'s `names_a_phase_type` exists only because constructor names are
+  own `Tie`. `crates/musa-compiler/src/core/mod.rs`'s `names_a_phase_type` exists only because constructor names are
   currently flat within a module.
-- `crates/musa-compiler/src/core.rs`'s builtin registry — the 131 entries are the exact set the operator and method
+- `crates/musa-compiler/src/core/mod.rs`'s builtin registry — the 131 entries are the exact set the operator and method
   design has to cover, and prompt 143 is the prompt that deletes them.
 - Peyton Jones ch. 3 (translating a high-level language into the core) and ch. 4–5 (structured types, the semantics of
   pattern matching) — the desugarings in this document are the same kind of translation, and ch. 3's argument that a

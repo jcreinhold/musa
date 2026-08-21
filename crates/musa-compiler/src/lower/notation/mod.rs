@@ -55,7 +55,7 @@
 //!
 //! - **A pitch is resolved here, and the core never sees a scale.** `in scale`
 //!   supplies [`Reading::scale`], `p step n` is finished against it by
-//!   [`crate::scale::Frame`] — the same arithmetic the old checker ran — and
+//!   [`musa_score::scale::Frame`] — the same arithmetic the old checker ran — and
 //!   what lands in the raw term is a `Pitch` literal. `01-surface.md` §2 says
 //!   `in scale` "is lexical rather than captured" and that "an absent scale
 //!   makes `step` a type-context diagnostic, not an implicit C-major choice";
@@ -63,7 +63,7 @@
 //!   key signature and not a claim of modulation.
 //! - **Scope is given, not discovered.** A `music { … }` value is "usable at
 //!   several places" (§3), so it has no voice of its own and reads at
-//!   [`crate::Scope::Piece`]. [`super::piece`] lowers a *voice's* body by passing
+//!   [`musa_score::Scope::Piece`]. [`super::piece`] lowers a *voice's* body by passing
 //!   the voice's scope down the same way, and nothing here changed to let it —
 //!   which was prompt 141k's prediction and is now prompt 141p's evidence.
 //!
@@ -109,8 +109,8 @@ use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use super::significant_tokens;
-use crate::origin::{DeclarationId, SourceSpan};
-use crate::score::NotatedDuration;
+use musa_score::origin::{DeclarationId, SourceSpan};
+use musa_score::score::NotatedDuration;
 
 /// What a block reads and never writes.
 ///
@@ -120,7 +120,7 @@ use crate::score::NotatedDuration;
 #[derive(Clone, Copy)]
 pub(crate) struct Reading {
     /// The scope every fact built here is constructed at (§5.7 requires one).
-    scope: crate::Scope,
+    scope: musa_score::Scope,
     /// The collection `step` counts in, when an `in scale` lexically encloses.
     scale: Option<Counting>,
     /// Whether this block stands at one place in the piece.
@@ -129,7 +129,7 @@ pub(crate) struct Reading {
     /// usable at several places came from every one of them, so an unplaced
     /// reading writes [`crate::elaborate::SHARED_ORIGIN`] and each use fills it
     /// in. Not derivable from [`Reading::scope`]: a free `music { … }` value
-    /// reads at [`crate::Scope::Piece`] and so does a piece's own header, and
+    /// reads at [`musa_score::Scope::Piece`] and so does a piece's own header, and
     /// the difference between them is not what the fact is *about* but whether
     /// the text is spoken in one place.
     placed: bool,
@@ -139,7 +139,7 @@ pub(crate) struct Reading {
     /// because the two questions come apart at exactly one construct and answer
     /// different callers. A repeat body *is* written at one place, so its
     /// events keep their own span and each pass is told apart by
-    /// [`crate::origin::ExpansionStep::RepeatIteration`] — but it is played `n`
+    /// [`musa_score::origin::ExpansionStep::RepeatIteration`] — but it is played `n`
     /// times, so a statement meaning "from here onward" has `n` heres. Folding
     /// the two together would either hand every note in a repeat
     /// [`crate::elaborate::SHARED_ORIGIN`] forever or admit a meter change that
@@ -165,7 +165,7 @@ pub(crate) struct Reading {
     /// reason: `senza { … }` restores the meter that was already in force, and a
     /// fold has no cursor to ask. One statement reads it and one writes it, so
     /// what it costs is a copy of two `u32`s per nesting.
-    meter: crate::score::Meter,
+    meter: musa_score::score::Meter,
     /// How much an enclosing tuplet scales the durations written here.
     ///
     /// Read lexically like [`Reading::scale`] and [`Reading::meter`], and
@@ -196,30 +196,30 @@ pub(super) type Declarations = std::collections::HashMap<String, Reach>;
 impl Reading {
     /// The reading a free-standing `music { … }` value is read under.
     ///
-    /// [`crate::Scope::Piece`] because a fragment is "usable at several places"
+    /// [`musa_score::Scope::Piece`] because a fragment is "usable at several places"
     /// and so has no voice of its own, and no scale because `01-surface.md` §2
     /// refuses an implicit C major.
     pub(super) fn free(declaration: DeclarationId) -> Self {
         Self {
-            scope: crate::Scope::Piece,
+            scope: musa_score::Scope::Piece,
             scale: None,
             placed: false,
             repeated: false,
             declaration,
-            meter: crate::score::Meter::default(),
+            meter: musa_score::score::Meter::default(),
             tuplet: Ratio::ONE,
         }
     }
 
     /// The reading a body written at one place in the piece is read under.
-    pub(super) fn at(scope: crate::Scope, declaration: DeclarationId) -> Self {
+    pub(super) fn at(scope: musa_score::Scope, declaration: DeclarationId) -> Self {
         Self {
             scope,
             scale: None,
             placed: true,
             repeated: false,
             declaration,
-            meter: crate::score::Meter::default(),
+            meter: musa_score::score::Meter::default(),
             tuplet: Ratio::ONE,
         }
     }
@@ -259,7 +259,7 @@ impl Reading {
     /// How long a duration written under this reading lasts, and the freedom on
     /// it.
     ///
-    /// [`crate::score::NotatedDuration::scaled`] and not `stretched`: a tuplet
+    /// [`musa_score::score::NotatedDuration::scaled`] and not `stretched`: a tuplet
     /// keeps the symbol the engraver draws and moves only what it sounds for, so
     /// a triplet eighth stays spelled `1/8` and carries the value `1/12`. The
     /// freedom moves with it because it is measured in the same time — `c5/4 to
@@ -267,8 +267,8 @@ impl Reading {
     /// a double whole.
     fn lasting(
         self,
-        written: (NotatedDuration, Option<crate::score::FreeDuration>),
-    ) -> (NotatedDuration, Option<crate::score::FreeDuration>) {
+        written: (NotatedDuration, Option<musa_score::score::FreeDuration>),
+    ) -> (NotatedDuration, Option<musa_score::score::FreeDuration>) {
         let (duration, free) = written;
         if self.tuplet == Ratio::ONE {
             return (duration, free);
@@ -289,15 +289,15 @@ impl Reading {
     /// The other half of "an absent scale is never an implicit C major": an
     /// absent scale under a *written* key is not absent and not implicit — the
     /// author wrote `key c minor`, and C natural minor is the collection that
-    /// says. [`crate::scale::signature_scale`] is the same reading `key_scale`
+    /// says. [`musa_score::scale::signature_scale`] is the same reading `key_scale`
     /// gives a program that asks for it as a value, so the default a step takes
     /// and the default a composer can name are one collection.
     ///
     /// A default and not a fact: an `in scale` inside overrides it by the
     /// ordinary nesting, because [`Self::stepping`] is applied to the reading
     /// this produced.
-    pub(super) fn keyed(self, key: crate::score::Key) -> Self {
-        self.stepping(Counting::Written(crate::scale::signature_scale(key)))
+    pub(super) fn keyed(self, key: musa_score::score::Key) -> Self {
+        self.stepping(Counting::Written(musa_score::scale::signature_scale(key)))
     }
 
     /// The same reading, under `meter`.
@@ -305,7 +305,7 @@ impl Reading {
     /// Called once by [`super::piece`] with the meter the piece's header states,
     /// and again by [`Lowering::notated`] at each `meter` a block writes — the
     /// two places a meter can come into force, and the only two.
-    pub(super) const fn metered(self, meter: crate::score::Meter) -> Self {
+    pub(super) const fn metered(self, meter: musa_score::score::Meter) -> Self {
         Self { meter, ..self }
     }
 }
@@ -328,7 +328,7 @@ impl Reading {
 pub(crate) struct Claimed {
     /// Which claim is made. The registry's own row, so the name and the shapes
     /// its arguments must have are one fact rather than two that could disagree.
-    pub(crate) predicate: &'static crate::assert::Predicate,
+    pub(crate) predicate: &'static musa_score::assert::Predicate,
     /// Its arguments, in written order, as long as `predicate.parameters`.
     pub(crate) arguments: Vec<Argued>,
     /// Where the claim is written — the `assert`, or the `bar`.
@@ -349,7 +349,7 @@ pub(crate) struct Claimed {
 
 /// One argument of a written claim, in the state the reading leaves it in.
 ///
-/// Two cases because [`crate::assert::ParamType`] has two kinds in it. Four of
+/// Two cases because [`musa_score::assert::ParamType`] has two kinds in it. Four of
 /// the six shapes are *values* — a scale, a chord, a count, a list of ranges —
 /// and a value has no value until the document that wrote it is elaborated, so
 /// what a block can record is the raw term and no more. The other two are
@@ -362,7 +362,7 @@ pub(crate) struct Claimed {
 /// never hands it a word.
 pub(crate) enum Argued {
     /// A word this reading already resolved.
-    Word(crate::assert::Argument),
+    Word(musa_score::assert::Argument),
     /// An expression, annotated with the type its shape declares so that the
     /// core checks it rather than a second table beside the core.
     Value(Raw),
@@ -379,7 +379,7 @@ pub(crate) enum Argued {
 pub(crate) enum Counting {
     /// A scale the source spelled, whose degrees this reading can count
     /// through at the note that asks.
-    Written(crate::scale::Scale),
+    Written(musa_score::scale::Scale),
     /// A scale a binder supplies.
     Bound,
 }
@@ -470,7 +470,7 @@ pub(super) fn word(node: &SyntaxNode) -> String {
 ///
 /// What Origin view prints for an `assert` and what `crate::factext` parses
 /// back, so it is written from the source rather than from
-/// [`crate::assert::Claim`]: the arguments are terms here, and a term has no
+/// [`musa_score::assert::Claim`]: the arguments are terms here, and a term has no
 /// value until the document it stands in is elaborated. The name comes from the
 /// registry row instead of the token, because the row was found by matching that
 /// token exactly and a `&'static str` cannot be a spelling nothing claims.
@@ -478,7 +478,7 @@ pub(super) fn word(node: &SyntaxNode) -> String {
 /// Runs of whitespace close up so that a claim written across two lines reads as
 /// one, which is the only difference this allows itself from the bytes.
 pub(super) fn spelled_claim(
-    predicate: &crate::assert::Predicate,
+    predicate: &musa_score::assert::Predicate,
     statement: &musa_language::ast::AssertStmt,
 ) -> String {
     let arguments: Vec<String> = statement

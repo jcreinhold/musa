@@ -8,9 +8,9 @@
 // Frame/count arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{
-    CompileOptions, PerformanceEvent, PerformanceOptions, ScoreSnapshot, SourceDocument, compile, lower_performance,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
 use proptest::prelude::*;
 
 const COUNTERPOINT: &str = include_str!("../../../../examples/counterpoint.musa");
@@ -21,7 +21,7 @@ fn score_of(text: &str) -> ScoreSnapshot {
         .expect("compiles")
 }
 
-fn plan_of(text: &str) -> musa_compiler::PerformancePlan {
+fn plan_of(text: &str) -> musa_score::PerformancePlan {
     lower_performance(&score_of(text), &PerformanceOptions::default()).expect("lowers")
 }
 

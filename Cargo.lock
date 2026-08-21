@@ -2339,6 +2339,7 @@ dependencies = [
  "hound",
  "insta",
  "musa-compiler",
+ "musa-score",
  "thiserror 2.0.20",
  "tracing",
 ]
@@ -2360,6 +2361,7 @@ dependencies = [
  "musa-calculus",
  "musa-kernel",
  "musa-language",
+ "musa-score",
  "num-rational",
  "proptest",
  "serde",
@@ -2392,6 +2394,7 @@ dependencies = [
  "midir",
  "musa-audio",
  "musa-compiler",
+ "musa-score",
  "rtrb",
  "thiserror 2.0.20",
  "tracing",
@@ -2442,6 +2445,7 @@ dependencies = [
  "musa-engine",
  "musa-language",
  "musa-render",
+ "musa-score",
  "num-rational",
  "serde",
  "serde_json",
@@ -2460,11 +2464,26 @@ dependencies = [
  "insta",
  "midly",
  "musa-compiler",
+ "musa-score",
  "num-rational",
  "proptest",
  "quick-xml",
  "thiserror 2.0.20",
  "tracing",
+]
+
+[[package]]
+name = "musa-score"
+version = "0.1.0"
+dependencies = [
+ "indexmap 2.14.0",
+ "insta",
+ "musa-kernel",
+ "musa-language",
+ "num-rational",
+ "proptest",
+ "serde",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -2474,6 +2493,7 @@ dependencies = [
  "console_error_panic_hook",
  "musa-compiler",
  "musa-render",
+ "musa-score",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",

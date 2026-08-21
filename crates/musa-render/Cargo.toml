@@ -10,7 +10,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-musa-compiler = { workspace = true }
+musa-score = { workspace = true }
 num-rational = "0.4"
 quick-xml = "0.41"
 thiserror = "2"
@@ -20,4 +20,5 @@ midly = { version = "0.5", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 insta = "1"
+musa-compiler = { workspace = true }
 proptest = "1"

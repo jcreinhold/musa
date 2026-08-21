@@ -25,7 +25,7 @@
 
 use indexmap::IndexMap;
 
-use crate::origin::SourceSpan;
+use musa_score::origin::SourceSpan;
 
 /// A parameter's physical unit (§7.2: units are part of the syntax).
 ///
@@ -391,7 +391,7 @@ pub struct StudioSpec {
 impl StudioSpec {
     /// Move every place this spec points at back into the composer's own text
     /// (`crate::expand`).
-    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &musa_score::origin::SourceMap) {
         self.span = map.maybe(self.span);
         for patch in self
             .patches
@@ -555,8 +555,8 @@ use musa_language::ast::{
     Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
 };
 
-use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::{span_of, trimmed_span};
+use musa_score::diagnose::{Code, Diagnostic};
 
 /// What a library's `studio` may not write.
 fn complain(node: &musa_language::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {
@@ -791,7 +791,7 @@ fn resolve_target(
     source: &str,
     path: &[String],
     spec: &StudioSpec,
-    span: Option<crate::origin::SourceSpan>,
+    span: Option<musa_score::origin::SourceSpan>,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<Modulation> {
     let written = path.join(".");

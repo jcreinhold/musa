@@ -1,6 +1,7 @@
-//! Provenance (roadmap §9): why an expanded event exists. Every
-//! `ScoreEvent` traces to a source span and a declaration, plus the path of
-//! expansion steps that produced it (empty for directly authored notes).
+//! Provenance (roadmap §9): why an expanded event exists.
+//!
+//! Every `ScoreEvent` traces to a source span and a declaration, plus the path
+//! of expansion steps that produced it (empty for directly authored notes).
 
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
@@ -71,7 +72,7 @@ impl Origin {
     /// after the motif application did, and the path still has to say
     /// `stretch 2 ▸ motif` — so the one thing a caller must not have to know is
     /// which end of the vector that is.
-    pub(crate) fn enclosed_by(&mut self, step: ExpansionStep) {
+    pub fn enclosed_by(&mut self, step: ExpansionStep) {
         self.expansion_path.insert(0, step);
     }
 
@@ -274,7 +275,7 @@ impl Interval {
     /// whose size and quality the written grid does not name, and a descending
     /// one, which [`Display`](std::fmt::Display) spells with a `down` the
     /// literal grammar has no token for.
-    pub(crate) fn literal(self) -> Option<String> {
+    pub fn literal(self) -> Option<String> {
         let spelling = self.to_string();
         (Self::parse(&spelling, false) == Some(self)).then_some(spelling)
     }
@@ -523,12 +524,12 @@ impl std::fmt::Display for ChoicePath {
 
 /// Where one stretch of the expanded text came from in the composer's text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Replacement {
+pub struct Replacement {
     /// The stretch, in expanded coordinates.
-    pub(crate) from: u32,
-    pub(crate) to: u32,
+    pub from: u32,
+    pub to: u32,
     /// The region it replaced, in original coordinates.
-    pub(crate) original: SourceSpan,
+    pub original: SourceSpan,
 }
 
 /// The translation from the text the compiler read to the text the composer
@@ -541,19 +542,19 @@ pub(crate) struct Replacement {
 /// composer's file at all, and pointing at the region is pointing at the only
 /// text they can edit to change it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct SourceMap {
-    pub(crate) replacements: Vec<Replacement>,
+pub struct SourceMap {
+    pub replacements: Vec<Replacement>,
 }
 
 impl SourceMap {
     /// Whether this map changes anything, which it does not for the enormous
     /// majority of files: no region, no translation, no walk over a snapshot.
-    pub(crate) fn is_identity(&self) -> bool {
+    pub fn is_identity(&self) -> bool {
         self.replacements.is_empty()
     }
 
     /// Where `offset` in the expanded text stands in the original.
-    fn offset(&self, offset: u32) -> u32 {
+    pub fn offset(&self, offset: u32) -> u32 {
         let mut shift: i64 = 0;
         for replacement in &self.replacements {
             if offset < replacement.from {
@@ -574,7 +575,7 @@ impl SourceMap {
     /// A span that lies inside one expansion becomes that expansion's region,
     /// whole: half of a generated call is not a place, and a caret under it
     /// would be a caret under nothing.
-    pub(crate) fn span(&self, span: SourceSpan) -> SourceSpan {
+    pub fn span(&self, span: SourceSpan) -> SourceSpan {
         for replacement in &self.replacements {
             if span.start >= replacement.from && span.end <= replacement.to {
                 return replacement.original;
@@ -584,7 +585,7 @@ impl SourceMap {
     }
 
     /// The same, for a span a caller may not have.
-    pub(crate) fn maybe(&self, span: Option<SourceSpan>) -> Option<SourceSpan> {
+    pub fn maybe(&self, span: Option<SourceSpan>) -> Option<SourceSpan> {
         span.map(|span| self.span(span))
     }
 }

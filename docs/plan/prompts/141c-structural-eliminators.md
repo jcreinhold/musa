@@ -30,12 +30,12 @@ migrate `stdlib/src/adapters/staff.musa` onto.
   §1.4's ι-rule, which is the shape this prompt copies.
 - [`141b`](141b-base-types-and-builtins.md) in full — `Base`, `Literal`, `Builtin`, `Family`, `Registry`, and
   `eval.rs`'s `delta`, which is where the new rule fires beside the old one.
-- `crates/musa-calculus/src/family.rs`'s `iota` — the existing structural eliminator, and the proof that a rule which
-  answers a *term* built from its arguments is enough. A recursor reduces to `method(fields…, hypotheses…)`; nothing in
-  it inspects a value that quotation could not have produced.
-- `crates/musa-compiler/src/core.rs`'s `Eliminator` (eight entries), `SyntaxOp` (three `PhaseFamily::Fold` entries), and
-  `eval_syntax` — the eleven operations, what each is applied to, and which of them prompt 142 must keep working because
-  `stdlib/` calls it.
+- `crates/musa-calculus/src/family/mod.rs`'s `iota` — the existing structural eliminator, and the proof that a rule
+  which answers a *term* built from its arguments is enough. A recursor reduces to `method(fields…, hypotheses…)`;
+  nothing in it inspects a value that quotation could not have produced.
+- `crates/musa-compiler/src/core/mod.rs`'s `Eliminator` (eight entries), `SyntaxOp` (three `PhaseFamily::Fold` entries),
+  and `eval_syntax` — the eleven operations, what each is applied to, and which of them prompt 142 must keep working
+  because `stdlib/` calls it.
 - `stdlib/src/adapters/staff.musa:1932`, `:1957`, `:2234`, and `stdlib/src/adapters/doubled.musa:107` — the calls, with
   their `fn (kid, later) { … }` arguments written out. These are the programs this prompt exists to keep compiling.
 - Peyton Jones ch. 6 on the enriched lambda calculus: the enrichment is a set of constants *with their reduction rules*,
@@ -103,7 +103,7 @@ change, and prompt 142 is still the one cutover.
   other argument through as the term it was.
 - Registration checks: a target index within arity, and a target type headed by a registered [`Base`]; D1's arrow-free
   check narrowed to δ-builtins so that a structural signature is not refused for having the arrow it must have.
-- Two new `Refusal` variants with their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs`: a target index
+- Two new `Refusal` variants with their `musa explain` codes in `crates/musa-score/src/diagnose.rs`: a target index
   outside the signature, and a structural eliminator whose target is not a base type.
 - `crates/musa-calculus/tests/suite/base_laws.rs`: the worked structural eliminator and its laws — it fires when its
   target is a literal and not before, a function argument is passed through unevaluated, the rewrite's result is

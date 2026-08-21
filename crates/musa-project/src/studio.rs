@@ -247,7 +247,7 @@ fn modulator(studio: &StudioSpec, container: &str, node: NodeIndex, param: &'sta
         .map(|modulation| modulation.source.clone())
 }
 
-fn span(source: musa_compiler::SourceSpan) -> Span {
+fn span(source: musa_score::SourceSpan) -> Span {
     Span {
         start: source.start,
         end: source.end,

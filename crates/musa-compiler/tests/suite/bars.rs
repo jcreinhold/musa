@@ -8,7 +8,7 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{BarLines, MusicalDuration, MusicalTime};
+use musa_score::{BarLines, MusicalDuration, MusicalTime};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -33,7 +33,7 @@ fn bars_of(numerator: u32, denominator: u32) -> BarLines {
     compiled
         .snapshot()
         .expect("a piece with a meter compiles")
-        .bars(musa_compiler::Scope::Piece)
+        .bars(musa_score::Scope::Piece)
 }
 
 proptest! {

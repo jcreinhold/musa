@@ -2,7 +2,7 @@
 
 use musa_calculus::Raw;
 
-use crate::diagnose::Diagnostic;
+use musa_score::diagnose::Diagnostic;
 
 use super::ModuleFault;
 use super::PhaseImports;

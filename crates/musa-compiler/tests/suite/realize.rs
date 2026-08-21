@@ -16,10 +16,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    ChoicePath, ChoiceStep, CompileOptions, Decision, Realization, SourceDocument, compile, kernel_normal_form,
-    kernel_text,
-};
+use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form, kernel_text};
+
+use musa_score::{ChoicePath, ChoiceStep, Decision, Realization};
 
 const LOOP_LENGTHS: &str = include_str!("../../../../examples/loop-lengths.musa");
 

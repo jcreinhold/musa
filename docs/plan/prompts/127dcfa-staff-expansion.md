@@ -26,9 +26,9 @@ compile and render the trial block.
   in scope, `Syntax` has a spelling there, `syntax_number` answers with the rational the lexer already read, and
   `text_equal` compares two spellings. Write the adapter as ordinary Musa; if some part of it still wants an encoding no
   reader would recognise, that is a finding to report and not a puzzle to solve.
-- `crates/musa-compiler/src/expand.rs`, the region grouper: `raw_group` makes one node per matched delimiter pair and no
-  other rule, and `Whitespace` is one undifferentiated trivia kind. An adapter cannot see lines, and the staff spelling
-  has to be readable without them.
+- `crates/musa-compiler/src/expand/mod.rs`, the region grouper: `raw_group` makes one node per matched delimiter pair
+  and no other rule, and `Whitespace` is one undifferentiated trivia kind. An adapter cannot see lines, and the staff
+  spelling has to be readable without them.
 
 ## Design
 

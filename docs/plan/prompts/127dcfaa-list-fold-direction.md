@@ -31,9 +31,9 @@ primitive has evidence.
   change a page below `constitution.md` and `obligations.md`.
 - `docs/rules/language/01-surface.md`, the paragraph beginning "Structural folds do not add syntax", which names the
   three folds a source author writes.
-- `crates/musa-compiler/src/core.rs`: the `Eliminator` enum and its doc comment ("The seven structural eliminators"),
-  `Eliminator::instantiate`, `Eliminator::arity`, the `BUILTIN_OWNERSHIP` array, the `Builtin::ListFold` arm of `eval`,
-  and the law asserting the eliminator list by name.
+- `crates/musa-compiler/src/core/mod.rs`: the `Eliminator` enum and its doc comment ("The seven structural
+  eliminators"), `Eliminator::instantiate`, `Eliminator::arity`, the `BUILTIN_OWNERSHIP` array, the `Builtin::ListFold`
+  arm of `eval`, and the law asserting the eliminator list by name.
 - `crates/musa-compiler/src/data.rs`, `fold_name`'s doc comment: "The shape is `nat_fold`, `list_fold`, `option_fold` —
   the eliminators the language already had — because a generated fold *is* one of those." A generated fold is one of
   those in shape but not in direction, which is the sentence this prompt makes true.
@@ -177,12 +177,12 @@ eliminator and deletes its wrapper.
   §5.8's structural-eliminator row becomes eight names.
 - `docs/rules/language/01-surface.md` — the "Structural folds do not add syntax" paragraph names four folds and says the
   direction is in the name.
-- `crates/musa-compiler/src/core.rs` — `Builtin` and `Eliminator` gain `ListFoldFromStart` and `ListFoldFromEnd` and
+- `crates/musa-compiler/src/core/mod.rs` — `Builtin` and `Eliminator` gain `ListFoldFromStart` and `ListFoldFromEnd` and
   lose `ListFold`; `arity` and `instantiate` cover both with the one type; `BUILTIN_OWNERSHIP` carries both entries with
   their hidden information; `eval` iterates forward for one and in reverse for the other; the "seven structural
   eliminators" doc comment and the law that asserts the eliminator names by hand say eight.
-- `crates/musa-compiler/src/core.rs` resolution — the bare `list_fold` is an unresolved name carrying an applicable fix
-  that names `list_fold_from_start` as the one preserving the old meaning, in the shape prompt 109 used for
+- `crates/musa-compiler/src/core/mod.rs` resolution — the bare `list_fold` is an unresolved name carrying an applicable
+  fix that names `list_fold_from_start` as the one preserving the old meaning, in the shape prompt 109 used for
   `use std::…`.
 - `crates/musa-compiler/src/data.rs` — `fold_name`'s doc comment says a generated fold is a catamorphism and names the
   three it shares that shape with.

@@ -19,7 +19,9 @@
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, ScoreEventKind, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::ScoreEventKind;
 
 /// The bridge from the package's own data into music, and nothing else.
 ///

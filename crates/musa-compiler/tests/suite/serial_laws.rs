@@ -16,7 +16,7 @@
 //! Values become visible the way they do in `pc12_laws`: a `nat` sounds as
 //! that many overlaid notes and a `list` as one note per member. Row equality
 //! and the group laws behind these counts are checked where they are
-//! computed, in `crate::pc12`'s own unit tests, because nothing outside the
+//! computed, in `musa_score::pc12`'s own unit tests, because nothing outside the
 //! crate can hold a `Row12`.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
@@ -25,7 +25,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severity, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity};
 
 const SERIAL_FORMS: &str = include_str!("../../../../examples/serial-forms.musa");
 

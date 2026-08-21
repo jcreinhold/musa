@@ -16,7 +16,7 @@ families, then traits through `declare_trait`, then the definitions as one group
 `musa_calculus::declare_impl`.
 
 Because that loop is last, **no definition in a document can resolve a method by receiver against an instance the same
-document declares.** [`elab.rs::method`](../../../crates/musa-calculus/src/elab.rs) filters the traits declaring a
+document declares.** [`elab.rs::method`](../../../crates/musa-calculus/src/elab/mod.rs) filters the traits declaring a
 spelling by the ones with a dictionary at the receiver's head —
 
 ```rust

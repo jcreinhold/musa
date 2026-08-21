@@ -179,7 +179,7 @@ impl Realization {
     /// the number that killed `choose`, and here they cost nineteen `u32`s.
     /// A pin of the wrong length is ignored rather than trusted: the piece
     /// says how many fragments there are.
-    pub(crate) fn order(&self, path: &ChoicePath, count: u32) -> Vec<u32> {
+    pub fn order(&self, path: &ChoicePath, count: u32) -> Vec<u32> {
         let mut order: Vec<u32> = (0..count).collect();
         if let Some(Decision::Order(pinned)) = self.overrides.get(path)
             && is_permutation(pinned, count)
@@ -211,7 +211,7 @@ impl Realization {
     /// On a sixteenth-note grid offset from `least`, so what the performance
     /// picks is a duration the engraver can spell. A continuum is what the
     /// *instruction* means; a page is what musa has to draw.
-    pub(crate) fn duration(&self, path: &ChoicePath, least: Ratio<i64>, most: Ratio<i64>) -> Ratio<i64> {
+    pub fn duration(&self, path: &ChoicePath, least: Ratio<i64>, most: Ratio<i64>) -> Ratio<i64> {
         if let Some(Decision::Duration(pinned)) = self.overrides.get(path) {
             return (*pinned).clamp(least, most);
         }
@@ -229,7 +229,7 @@ impl Realization {
     /// A pin wins; otherwise the count is derived from the seed and the path
     /// and from nothing else — not from how many decisions came before, which
     /// is the property that makes an edit above a site leave that site alone.
-    pub(crate) fn count(&self, path: &ChoicePath, least: u32, most: u32) -> u32 {
+    pub fn count(&self, path: &ChoicePath, least: u32, most: u32) -> u32 {
         if let Some(Decision::Count(pinned)) = self.overrides.get(path) {
             return (*pinned).clamp(least, most);
         }
@@ -255,17 +255,17 @@ impl Realization {
 /// *why* the two pages differ.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DecisionRecord {
-    pub(crate) path: ChoicePath,
-    pub(crate) decision: Decision,
-    pub(crate) sites: Vec<crate::origin::SourceSpan>,
-    pub(crate) answered: String,
-    pub(crate) pinned: bool,
+    pub path: ChoicePath,
+    pub decision: Decision,
+    pub sites: Vec<crate::origin::SourceSpan>,
+    pub answered: String,
+    pub pinned: bool,
 }
 
 impl DecisionRecord {
     /// Move every place this record points at back into the composer's own
     /// text (`crate::expand`).
-    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
+    pub fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for site in &mut self.sites {
             *site = map.span(*site);
         }
@@ -322,7 +322,7 @@ impl DecisionRecord {
 /// same seed and the same path give the same answer in every process and on
 /// every platform — which is what makes a realization something a composer can
 /// write down and send to somebody else.
-fn draw(seed: u64, path: &ChoicePath) -> u128 {
+pub fn draw(seed: u64, path: &ChoicePath) -> u128 {
     let mut bytes = seed.to_be_bytes().to_vec();
     bytes.extend_from_slice(path.canonical().as_bytes());
     musa_kernel::stable_digest(&bytes)
@@ -334,14 +334,14 @@ fn draw(seed: u64, path: &ChoicePath) -> u128 {
 /// path* — the stream is seeded by the site and by nothing before it, so the
 /// property that makes an edit elsewhere harmless is unaffected. `SplitMix64`'s
 /// mixing function, which is four lines and needs no dependency.
-struct Stream(u64);
+pub(crate) struct Stream(u64);
 
 impl Stream {
-    fn from(digest: u128) -> Self {
+    pub(crate) fn from(digest: u128) -> Self {
         Self((digest as u64) ^ ((digest >> 64) as u64))
     }
 
-    fn next(&mut self) -> u128 {
+    pub(crate) fn next(&mut self) -> u128 {
         self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
         let mut mixed = self.0;
         mixed = (mixed ^ (mixed >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
@@ -351,7 +351,7 @@ impl Stream {
 }
 
 /// Whether `pinned` is a permutation of `0 .. count`.
-fn is_permutation(pinned: &[u32], count: u32) -> bool {
+pub(crate) fn is_permutation(pinned: &[u32], count: u32) -> bool {
     let mut seen: Vec<bool> = vec![false; count as usize];
     if pinned.len() != seen.len() {
         return false;

@@ -80,13 +80,14 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
+pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
-pub use musa_compiler::{
-    AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation,
-};
-pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
-pub use musa_compiler::{ClaimDoc, assertion_claims, realization_policies, rule_names};
 pub use musa_compiler::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
-pub use musa_compiler::{chord_types, scale_collections};
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};
 pub use musa_render::MidiMode;
+pub use musa_score::{
+    AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation,
+};
+pub use musa_score::{ChoicePath, ChoiceStep, Decision, DecisionRecord, Realization};
+pub use musa_score::{ClaimDoc, assertion_claims, realization_policies, rule_names};
+pub use musa_score::{chord_types, scale_collections};

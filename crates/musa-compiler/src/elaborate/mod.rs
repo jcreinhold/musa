@@ -36,12 +36,12 @@
 //! - [`normal`] — the piece term and its normal form, for golden snapshots.
 
 use crate::compile::{Compilation, SourceDocument};
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
 use crate::resolve::{self, Resolver};
-use crate::score::ScoreSnapshot;
 use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl};
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::score::ScoreSnapshot;
 
 mod bars;
 mod canonical;
@@ -98,7 +98,7 @@ pub(crate) fn elaborate_parsed(
     if resolver
         .diagnostics
         .iter()
-        .any(|d| d.severity == crate::diagnose::Severity::Error)
+        .any(|d| d.severity == musa_score::diagnose::Severity::Error)
     {
         tracing::debug!(
             phase = "syntax",
@@ -181,7 +181,7 @@ pub(crate) fn elaborate_parsed(
     if resolver
         .diagnostics
         .iter()
-        .any(|d| d.severity == crate::diagnose::Severity::Error)
+        .any(|d| d.severity == musa_score::diagnose::Severity::Error)
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }

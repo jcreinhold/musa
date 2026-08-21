@@ -38,9 +38,10 @@
 // these are assertions" is not one of those places.
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use musa_compiler::{
-    Compilation, CompileOptions, Diagnostic, ExpansionStep, MusicalDuration, MusicalTime, NotatedDuration, ScoreEvent,
-    ScoreEventKind, Severity, SourceDocument, compile,
+use musa_compiler::{Compilation, CompileOptions, SourceDocument, compile};
+
+use musa_score::{
+    Diagnostic, ExpansionStep, MusicalDuration, MusicalTime, NotatedDuration, ScoreEvent, ScoreEventKind, Severity,
 };
 
 const NAME: &str = "assertion.musa";

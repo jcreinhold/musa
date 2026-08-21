@@ -24,8 +24,8 @@
 
 use musa_language::SyntaxNode;
 
-use crate::origin::SourceSpan;
 use crate::resolve::NameKind;
+use musa_score::origin::SourceSpan;
 
 /// Where a documented declaration is written, and whether it may be edited.
 ///

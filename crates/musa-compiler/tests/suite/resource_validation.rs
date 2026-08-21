@@ -52,7 +52,8 @@
 // A failure is more useful reported with what actually happened than with an
 // assertion message alone.
 #![allow(clippy::panic)]
-use musa_compiler::{Code, CompileOptions, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_score::Code;
 
 fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
     compile(

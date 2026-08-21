@@ -1,5 +1,7 @@
-//! Performance resolver (roadmap §6.4, §15.3; docs/rules/kernel/06-surface-elaboration.md): the
-//! neutral core that integrates the tempo map and schedules a
+//! Performance resolver (roadmap §6.4, §15.3;
+//! docs/rules/kernel/06-surface-elaboration.md).
+//!
+//! The neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
 //! Tempo is a monotone map written-time → second applied to symbolic positions

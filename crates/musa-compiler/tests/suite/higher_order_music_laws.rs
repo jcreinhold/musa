@@ -4,9 +4,10 @@
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{
-    Code, CompileOptions, ExpansionStep, MusicalDuration, MusicalTime, ScoreEvent, ScoreEventKind, ScoreSnapshot,
-    SourceDocument, WrittenPitch, compile,
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+
+use musa_score::{
+    Code, ExpansionStep, MusicalDuration, MusicalTime, ScoreEvent, ScoreEventKind, ScoreSnapshot, WrittenPitch,
 };
 use num_rational::Ratio;
 

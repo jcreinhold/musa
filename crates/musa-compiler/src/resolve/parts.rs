@@ -3,11 +3,11 @@ use musa_language::ast::{AstNode as _, KeyStmt, TempoStmt};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
-use crate::diagnose::{Code, Diagnostic};
-use crate::origin::SourceSpan;
-use crate::pitch::PitchClass;
-use crate::score::{Clef, Key, Meter, Mode, NotatedDuration};
-use crate::time::MusicalDuration;
+use musa_score::diagnose::{Code, Diagnostic};
+use musa_score::origin::SourceSpan;
+use musa_score::pitch::PitchClass;
+use musa_score::score::{Clef, Key, Meter, Mode, NotatedDuration};
+use musa_score::time::MusicalDuration;
 
 use super::{Resolver, suggest, token_span, token_text, trimmed_span};
 
@@ -94,11 +94,11 @@ pub(crate) fn part_facts(resolver: &mut Resolver, part: &musa_language::ast::Par
 /// back into its parts would be a second reading of what this already knows.
 pub(crate) struct Marking {
     /// The metronome mark, when the statement carries one.
-    pub(crate) metronome: Option<crate::score::Metronome>,
+    pub(crate) metronome: Option<musa_score::score::Metronome>,
     /// The printed words, when the statement carries any.
     pub(crate) text: Option<String>,
     /// How the marking arrives, when it is gradual.
-    pub(crate) ramp: Option<crate::score::Ramp>,
+    pub(crate) ramp: Option<musa_score::score::Ramp>,
 }
 
 impl Marking {}
@@ -124,7 +124,7 @@ pub(crate) fn tempo_marking(resolver: &mut Resolver, tempo: &TempoStmt) -> Marki
                 );
                 120
             });
-        crate::score::Metronome { beat, bpm }
+        musa_score::score::Metronome { beat, bpm }
     });
     // No check that the marking says *something*: the grammar refuses
     // `tempo;` outright, and a file with a syntax error never reaches
@@ -143,7 +143,7 @@ pub(crate) fn tempo_marking(resolver: &mut Resolver, tempo: &TempoStmt) -> Marki
 /// rather than guessed at, because both guesses would be wrong — a reach with
 /// no destination is not a change, and a destination with no reach is a jump
 /// already written more simply without the word `to`.
-fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Option<crate::score::Ramp> {
+fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Option<musa_score::score::Ramp> {
     let syntax = tempo.syntax();
     let arrives = tempo.ramp_to().and_then(|text| text.parse::<u32>().ok());
     let Some(over) = tempo.over().and_then(|text| parse_ratio(&text)) else {
@@ -165,9 +165,9 @@ fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Opti
         );
         return None;
     }
-    Some(crate::score::Ramp {
+    Some(musa_score::score::Ramp {
         to: arrives,
-        over: crate::time::MusicalDuration::new(over),
+        over: musa_score::time::MusicalDuration::new(over),
         // The grammar writes no shape, so every ramp is a straight line — in
         // seconds per beat, which is where the evenness a listener hears
         // lives. The value is in the track rather than invented during
