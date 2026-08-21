@@ -363,6 +363,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 153a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
 | 153b | studio-spec-ownership | 3 | The studio spec moves to musa-dsp; the audio crate stops depending on the compiler |
+| 153c | dependency-law | 3 | The crate layering written down once and enforced by a manifest check |
 | 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
 | 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
