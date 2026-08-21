@@ -203,3 +203,29 @@ named per-unit seeds, but that split is part of the finite machine description.
 This forbids a hidden root seed, and it forbids regrouping a machine tree from reseeding a unit:
 `connect(connect(m,n),p)` and `connect(m,connect(n,p))` contain the same leaves with the same configurations, so they
 run the same.
+
+## 17. Acceptance is decided by one relation
+
+Two types are the same type when both evaluate, read back, and compare equal. That relation is the whole of type
+equality, and every acceptance decision that turns on "these types agree" is made by calling it.
+
+Three tests follow, and a proposal fails this rule by failing any one of them.
+
+**Nothing accepts beside it.** There is no subsumption rule, no cumulativity, no implicit coercion, and no separate
+solver whose verdict the checker takes on trust. A rule that lets a term of one type stand where another is written —
+however narrow, however convenient at the call site — is a second acceptance relation, and the checker cannot see it. If
+a conversion is wanted, it is a named total function in the source, per rule 1.
+
+**Nothing is hidden from it.** Whatever distinguishes two types must survive read-back. Erasing part of a type before
+quotation and then comparing the unerased forms somewhere else is the same defect wearing different clothes: it makes
+the stated conversion rule false about the implementation, which is how the erased index stratum failed.
+
+**It terminates.** Conversion runs the user's own definitions — dependent elimination means large elimination during
+checking — so decidability is a property the language has to keep rather than assume: every definition is total, every
+recursive call descends structurally, and the case tree shows why. A resource budget may stop an evaluation and report
+that it did; it may never make an accepted program mean something else, and a budget exhaustion is a refusal to answer,
+not an answer.
+
+This forbids a fast path in the elaborator that accepts what the kernel would reject, and it forbids the reverse: a
+kernel that admits a term only because elaboration vouched for it. A checked term re-checked from scratch is accepted
+again, and that is a testable claim, not a convention.

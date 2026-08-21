@@ -1,7 +1,7 @@
 ---
 id: 143
 slug: one-theory-amendment
-status: pending
+status: done
 depends_on: [142f]
 phase: 3
 ---
@@ -69,9 +69,9 @@ so. Musa has exactly one coercive rule today, `Accepts` in `base.rs`; prompt 159
 
 **What is admitted that was not.** A universe *hierarchy* with level variables, replacing the two fixed points of
 `level.rs`. Prompt 152 owns the design; the amendment's part is to say the ceiling is gone. Non-cumulative, which is the
-sound and conventional choice and is argued at 151.
+sound and conventional choice and is argued at 152.
 
-**Traits are not narrowed — they are removed.** `10-traits.md` is retired outright by prompt 145 and gets no successor
+**Traits are not narrowed — they are removed.** `10-traits.md` is retired outright by prompt 146 and gets no successor
 document. The evidence is prompt 146's, restated here because the amendment must carry it: 6 traits, 82 call sites, **0
 trait-constrained signatures**, and `Eq`'s five instance bodies are literally the five δ-builtins.
 

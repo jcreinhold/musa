@@ -42,8 +42,47 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
 
-The most recent such amendment is prompt 142c's, which admits a **stratified index** to §9 and answers the six
+The most recent such amendment is prompt 143's, which commits the language to **one type theory** — a dependently typed
+core with inductive families — and reverses the stratified index admitted immediately before it. It answers the six
 requirements here rather than by reference.
+
+1. **The reason.** It is an engineering one, and it is that the core is currently three partial mechanisms where one
+   would do. The eliminator is **non-dependent**: `family/assemble.rs`'s motive answers a type rather than a family, so
+   a `match` refines nothing about the value matched, and the core has dependent Π formation sitting over simply-typed
+   elimination. The index stratum is a **second sort of type** with its own solver, admitted on a count that a family
+   discharges without it, and its one unique capability — index arithmetic — is used by **zero** committed `.musa`
+   files. And instantiation is **first-order**: §2.1 takes Idris2's `checkRtoL` without the fallback that makes it a
+   unifier, so implicit arguments, index unification in `match`, and any metavariable that outlives one call are not
+   unavailable by decision but unavailable by omission. Each of the three was admitted to avoid a dependent core, and
+   each now approximates one badly. The record is
+   [`../notes/research/language-design-closure/53-one-theory.md`](../notes/research/language-design-closure/53-one-theory.md).
+2. **Which current examples no longer work.** None, in `examples/` or `stdlib/`: the theory is a superset of what the
+   index stratum accepted, minus the arithmetic nothing uses. What stops working is *compiler* code, and deliberately —
+   the index solver, the generated recursors, and the trait tables are deleted rather than ported, under
+   [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md).
+3. **The replacement rule in plain language.** There is one theory and the core is it: Π types, inductive families with
+   parameters and indices, case trees, metavariables solved by pattern unification, and a universe hierarchy. Two types
+   are the same type when both read back to the same term, and nothing accepts beside that relation — no subtyping in
+   any form, which is the one refusal this amendment *adds*. What stays refused is the proof assistant's apparatus, not
+   its typing power: no tactics, no proof search, no hint database, no opt-out from totality.
+4. **The formal specification and the code map.** [`language/02-core-calculus.md`](language/02-core-calculus.md) §§1–3
+   are rewritten by prompt 144, which exists so that this decision can be reviewed as a decision rather than as a
+   specification diff; §1.5's index stratum and §1.1's non-dependent eliminator are retired there, and §1.4's refusal of
+   the identity type is repaired to say it refused the apparatus. [`language/10-traits.md`](language/10-traits.md) is
+   retired outright by prompt 146 and gets no successor.
+   [`../plan/code-map/spec-to-implementation-map.md`](../plan/code-map/spec-to-implementation-map.md) is rewritten
+   against the new core as each prompt lands, not in advance of them.
+5. **How stored files and public APIs migrate.** No stored format changes: indices were erased at quotation, so nothing
+   an index said was ever in a compiled term, an event track, the `% musa-events-3` interchange format, or a pinned
+   digest. The public API changes are the seventeen `Pc12`/`Row12` builtins collapsing at prompt 164 and the trait
+   declarations disappearing at prompt 146 — both clean breaks under the ledger, and neither touches a file a user has
+   written.
+6. **The record.** Note 53 above. Notes 42, 50 and 51 stand unedited beside it: the admission, the deletion, and the
+   audit that found the deletion had taken one step too many. This amendment is what note 51 asked for and one step
+   further than it proposed, because the stratum it proposed is the third of the three partial mechanisms.
+
+Before it, prompt 142c's, which admitted a **stratified index** to §9. It is reversed by 143 above; its own six answers
+stand for the record.
 
 1. **The reason.** It is an engineering one, and it is counted. `stdlib/src/post_tonal/` needs pitch classes and
    twelve-tone rows; with no way to index a type by a number, the modulus is baked into **seventeen of the compiler's

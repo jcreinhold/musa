@@ -200,11 +200,12 @@ Five properties are load-bearing, and each of them is a refusal:
   keyword and no escape hatch; a definition whose termination the checker cannot see is rejected rather than trusted. A
   resource budget may stop an evaluation, but it may not change the value an accepted program produces.
 - **Checked bidirectionally.** Types are checked by **bidirectional elaboration**: a term is checked against a known
-  type or its type is inferred, and a type parameter the call omits is solved **once, at that call**, by first-order
-  matching against the written arguments. There is no constraint queue and nothing that waits. Annotations are written
-  where a public signature or separate checking needs one, not to teach the compiler what the program already
+  type or its type is inferred, and what a call leaves out is solved by a **metavariable under pattern unification**. A
+  constraint the elaborator cannot yet decide is **postponed**, not guessed: a solution is committed only where it is
+  unique, and elaboration that ends with a constraint still unsolved is an error rather than a default. Annotations are
+  written where a public signature or separate checking needs one, not to teach the compiler what the program already
   determines. A signature may mention a value, so there are no principal types and no global inference: what a program
-  means is fixed by what it says, and what it does not say is solved locally or reported.
+  means is fixed by what it says, and what it does not say is solved or reported.
 - **Complete.** A call names every parameter. Either it supplies an argument or it writes `_`, and a call that does
   neither is a type error rather than a function-valued result. Default parameters and named hole filling stay refused
   for the same reason: they are ambiguity about what a call means. A written `_` is not that ambiguity — it is the
@@ -224,40 +225,62 @@ one of the two standards in the obligations: remove a real side condition in at 
 close a safety boundary the current rules cannot state, or carry measured engineering evidence from a committed Musa
 program the language made unwritable.
 
-Two of those refusals were narrowed rather than kept, and the narrowing is stated here so nobody has to reconstruct it
-from a diff.
+Two of those refusals were narrowed rather than kept, one refusal was added, and each is stated here so nobody has to
+reconstruct it from a diff.
 
 **Typed quotation is admitted** as the one form of metaprogramming: a quotation produces syntax of a stated category,
 its provenance is derived rather than written, and it runs during elaboration. What stays refused is the type-directed
 macro proper — expansion that inspects an inferred type to decide what code to produce, which makes a program's meaning
 depend on the order in which the checker solved it.
 
-**Dependency is admitted in two forms and no others.** A result type may mention an earlier argument, and a type may
-carry **index arguments** drawn from a fixed decidable arithmetic domain — ℕ, exact ℚ, and finite literal enums, under
-variables, literals, addition, subtraction, multiplication by a literal, and comparison. `Row(n)`, `Pc(n)`, and `Bar(m)`
-are types in that sense; the index says how many, or how much, and the checker settles two of them by arithmetic.
-Indices are **erased before evaluation**, so nothing an index says survives into a value, a stored file, or a rendered
-sound: what changes is which programs are accepted, and nothing else at all.
+**There is one type theory, and the core is it.** Musa's core is an intensional dependently typed λ-calculus: Π types,
+inductive families with parameters and **indices**, case trees, metavariables solved by pattern unification, and a
+universe hierarchy — and nothing beside it. A result type may mention an earlier argument because that is what Π means,
+and `Row(n)`, `Pc(n)`, and `Bar(m)` are ordinary indexed families rather than a second sort of thing.
 
-The three properties that make this an index and not a dependent type are the ones that hold the refusals below in
-place. An index is drawn from a **separate language** that cannot mention a term variable, evaluate, or diverge. It is
-decided by a **solver, never by the conversion checker** — the checker asks whether two indices are equal and takes the
-answer, exactly as it takes any opaque payload's. And it is **never matched on**: no constructor chooses an index, no
-eliminator's motive mentions one, and nothing is constructed or eliminated to witness one.
+This reverses the **stratified index** admitted before it, and the reversal rests on what the stratum turned out to be
+rather than on a change of taste. The stratum was a separate index language, erased before evaluation, decided by a
+solver the conversion checker consulted rather than implemented. Three findings retire it. Its own admission was counted
+— seventeen compiler builtins spent on modulus 12 — and a family discharges that count without a second sort, because a
+base type already carries a term-level kind and `Syntax` is already a type applied to an index. What the stratum
+uniquely bought is index *arithmetic*, and no committed `.musa` file uses it. And erasure at read-back made §3 false:
+read-back equality says `Pc(12) ≡ Pc(24)` once indices are erased, so the implementation had to compare indexed forms
+structurally *before* quoting — an acceptance rule read-back cannot decide, which is the one thing this section exists
+to forbid.
 
-So the proof-assistant machinery stays refused, and this narrowing does not touch it: **no identity type**, no `refl`,
-`J`, or K; **no universe levels** beyond the two the language has, and no polymorphism over them; **no termination
-measures**; **no dependent motive and no index unification**; **no proof terms, no existential indices, and no
-index-level functions**; and **no constraint-solving traits** — a trait is a flat table read in one step. Each of those
-was implemented, audited against every committed Musa program, found to have no user, and deleted. Re-opening one is an
-ordinary amendment under [`README.md`](README.md) with a committed program as its evidence.
+**What stays refused is apparatus, not typing power.** Musa is a language for music, not a proof assistant, and the
+distinction is between what may be *declared* and what the system will *search for on the author's behalf*. There is no
+tactic language, no hint database, no proof search, no `auto` implicit, no interactive hole as a workflow, no
+`assert_total` or other opt-out from totality, and no `Type : Type`. `Equal` and `Refl` become ordinary declarations —
+not because a proof assistant was admitted, but because a family is declarable and refusing one particular family would
+be a special case with nothing behind it. What §1.4 refused was the *apparatus*, and it stays refused.
 
-Three records stand, and they were written in this order and stay unedited beside each other:
+**Subtyping is refused, in every form** — not cumulativity, not subsumption, not coercive subtyping. The property this
+section buys is that two types are the same type by **one** mechanism: evaluate both, read them back, compare. A
+subsumption rule is not decided that way, so admitting one would put an acceptance decision outside the relation the
+whole design rests on. The musical argument is the same argument one layer down: rule 1 of
+[`obligations.md`](obligations.md) exists to keep a written pitch and a MIDI note number from being interchangeable, and
+an implicit conversion is exactly the mechanism that would make them so. Where a value of one type is wanted where
+another is written, a **named total function** converts it, at the site, in the source.
+
+**The universe ceiling is lifted.** The two fixed levels are replaced by a hierarchy with level variables, so a record
+may hold a type without the language running out of room. The hierarchy is **non-cumulative**, which is the ordinary and
+the safer choice: a non-cumulative theory accepts strictly fewer terms than its cumulative counterpart, so it cannot be
+unsound where that one is sound, and it keeps conversion symmetric.
+
+**Traits are removed rather than narrowed.** A trait was a flat table read in one step, and the audit says what it was
+carrying: six traits, 82 call sites, **zero** trait-constrained signatures, and an `Eq` whose five instance bodies are
+literally the five compiler builtins. A record holding functions says all of that in the core the language already has,
+so the mechanism goes rather than shrinking.
+
+Four records stand, and they were written in this order and stay unedited beside each other:
 [`../notes/research/language-design-closure/42-dependent-core-decision.md`](../notes/research/language-design-closure/42-dependent-core-decision.md)
 admitted the dependent foundation on the evidence of `stdlib/src/adapters/staff.musa`;
 [`../notes/research/language-design-closure/50-the-course-correction-audit.md`](../notes/research/language-design-closure/50-the-course-correction-audit.md)
-deleted the machinery none of it used; and
+deleted the machinery none of it used;
 [`../notes/research/language-design-closure/51-the-terseness-audit.md`](../notes/research/language-design-closure/51-the-terseness-audit.md)
 found that the deletion took one step too many and exhibited what the corpus writes instead — seventeen compiler
 builtins spent on one modulus, a `fallback` parameter in a public signature, and a bar whose contents cannot be summed
-before it is played.
+before it is played; and
+[`../notes/research/language-design-closure/53-one-theory.md`](../notes/research/language-design-closure/53-one-theory.md)
+found that what replaced it was three partial mechanisms where one theory would do, and measured each of the three.

@@ -8,6 +8,18 @@ phase: 3
 
 # Amend the Constitution for a Stratified Index, and Write the Specification Before the Code
 
+> **Reversed by [prompt 143](143-one-theory-amendment.md), *Commit to One Theory, and Amend the Constitution to Say
+> So*.** The count this amendment rested on is real and still stands — seventeen `Builtin` variants spent on one modulus
+> — but a stratified index is not what discharges it, and an inductive family is. Two findings retire the stratum: its
+> one unique capability, index arithmetic, has no user in any committed `.musa` file, and erasing indices at read-back
+> made `02-core-calculus.md` §3's conversion rule false about the implementation, which compares indexed forms
+> structurally on values instead. The record is
+> [`../../notes/research/language-design-closure/53-one-theory.md`](../../notes/research/language-design-closure/53-one-theory.md).
+>
+> This prompt was executed and its work is in the tree. It stays because the amendment ledger in
+> [`../../rules/README.md`](../../rules/README.md) links to it and because 143's Read section cites it for the argument
+> it is answering.
+
 ## Task
 
 `constitution.md` §9 refuses refinement types, narrowed by prompt 128 and again by the course correction to "a result

@@ -8,6 +8,15 @@ phase: 3
 
 # Implement the Index Stratum: a Separate Language, a Separate Decider
 
+> **Reversed by [prompt 143](143-one-theory-amendment.md), *Commit to One Theory, and Amend the Constitution to Say
+> So*.** What this prompt built is deleted by [prompt 151](151-delete-the-index-stratum.md): the index expression
+> language, its decision procedure, and the conversion checker's hook into it all go, and an indexed type becomes an
+> ordinary applied type constructor. The one hook is the reason — a solver the checker consults rather than implements
+> is an acceptance rule read-back cannot see, and 143 refuses that class outright.
+>
+> This prompt was executed and its work is in the tree until 151 removes it. It stays because the ledger links to it and
+> because 151's Read section cites it for what has to come out.
+
 ## Task
 
 Build what 142c specified: an index expression language over `Nat`, exact `Ratio`, and finite literal enums; a decision
