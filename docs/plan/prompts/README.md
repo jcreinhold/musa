@@ -361,6 +361,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
 | 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
+| 153a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
 | 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
 | 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
