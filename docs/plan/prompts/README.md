@@ -348,6 +348,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
+| 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
 | 146 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
 | 147 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
 | 148 | core-conformance | 3 | Discharge the core's obligation matrix |
