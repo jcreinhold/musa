@@ -131,263 +131,263 @@ python3 scripts/renumber-prompts.py audit             # the whole stack, in depe
 A `done` prompt's file stays here after it lands. It is the record of what that commit was asked to do, and later
 prompts cite it by number, so it is history rather than clutter — most of this directory is finished work.
 
-| #        | Prompt                           | Phase | Delivers                                                                                              |
-| -------- | -------------------------------- | ----- | ----------------------------------------------------------------------------------------------------- |
-| 01       | workspace-skeleton               | 0     | Seven crates, facades, CLI stub                                                                       |
-| 02       | lexer                            | 1     | Trivia-preserving tokens                                                                              |
-| 03       | parser-cst                       | 1     | Lossless CST, recovery, typed wrappers                                                                |
-| 04       | formatter                        | 1     | `musa format`                                                                                         |
-| 05       | compiler-core                    | 1     | `musa check`; ScoreSnapshot + provenance                                                              |
-| 06       | motifs-and-transforms            | 1     | Motifs, repeat, transpose, expansion laws                                                             |
-| 07       | notation-plan                    | 1     | Measures, beaming, tie decomposition                                                                  |
-| 08       | events-spec                      | 1     | `docs/rules/events/` event-track specification (candidate)                                            |
-| 09       | event-track                      | 1     | `musa-events`: timeline/sequence/overlay/restrict/scale/normalize                                     |
-| 10       | events-laws                      | 1     | Algebraic law proofs incl. non-laws                                                                   |
-| 11       | events-elaboration               | 1     | Surface → event-track elaboration + differential parity                                               |
-| 12       | events-switch                    | 1     | The event track becomes the canonical semantics                                                       |
-| 13       | mei-export                       | 1     | `musa render --to mei`                                                                                |
-| 14       | lilypond-export                  | 1     | `musa render --to lilypond`                                                                           |
-| 15       | performance-plan                 | 1     | Tempo as `Beat → Second`; frame scheduling                                                            |
-| 16       | audio-core                       | 1     | Graph→RenderPlan compiler, offline blocks                                                             |
-| 17       | polysynth-wav                    | 1     | `musa render --to wav`                                                                                |
-| 18       | engine-transport                 | 1     | `musa play`; CPAL + transport                                                                         |
-| 19       | project-session                  | 1.5   | ProjectSession, undo, exports                                                                         |
-| 20       | interface-prototype              | 1.5   | Design system, bundled fonts, worker engraver, static Compose screen, screenshot goldens              |
-| 21       | desktop-shell                    | 1.5   | Tauri command boundary, live snapshots, stale-revision behavior                                       |
-| 22       | score-engraving                  | 1.5   | Anchored re-render, zoom re-layout, virtualization, raster goldens                                    |
-| 23       | score-interaction                | 1.5   | Selection + caret, keyboard map, palette, playhead, a11y floor                                        |
-| 24       | origin-view                      | 1.5   | Provenance lens, occurrence selection, diagnostics into the score                                     |
-| 25       | score-editing                    | 1.5   | Semantic edit commands → text edits; keyboard entry                                                   |
-| 26       | source-workspace                 | 1.5   | CodeMirror 6 + musa language, two-way linking; graduates `docs/rules/desktop/`                        |
-| 27       | notation-details                 | 2     | Ties, slurs, dynamics, articulations, tuplets                                                         |
-| 28       | performance-profiles             | 2     | Interpretation profiles; MIDI export                                                                  |
-| 29       | studio-language                  | 2     | Studio DSL → StudioSpec                                                                               |
-| 30       | dsp-modulation                   | 2     | ADSR, LFO, filters, typed parameters                                                                  |
-| 31       | dsp-effects-mix                  | 2     | Delay, chorus, reverb, buses, sends                                                                   |
-| 32       | musicxml-export                  | 2     | `musa render --to musicxml`                                                                           |
-| 33       | midi-entry-autosave              | 2     | Live MIDI input, step entry, autosave                                                                 |
-| 34       | transforms-variation             | 3     | stretch/retrograde/invert as elaboration-time functions, specialization                               |
-| 35       | annotations-harmony              | 3     | Phrase/form and harmony as typed interval payloads                                                    |
-| 36       | imports-and-curves               | 3     | Relative imports, tempo/expression curves                                                             |
-| 37       | event-track-observation          | 3     | Composable observation; ambient extension deleted; events spec repairs                                |
-| 38       | semantic-benchmarks              | 3     | Measured baseline for the semantic pipeline                                                           |
-| 39       | score-facts                      | 3     | Every notated fact is an occurrence; snapshot becomes a projection                                    |
-| 40       | context-facts                    | 3     | Key, meter, sections, harmony as occurrences; one timeline per piece                                  |
-| 41       | retire-the-oracle                | 3     | The direct lowerer and the `Elaboration` switch deleted                                               |
-| 42       | snapshot-projection              | 3     | `ScoreSnapshot` closed behind its interface                                                           |
-| 43       | semantic-identity                | 3     | Semantic hash; playback keyed on meaning, not revisions                                               |
-| 44       | events-queries                   | 3     | `covering` and `prevailing`: the event track answers questions, not just states facts                 |
-| 45       | events-progress                  | 3     | `Progress` — continuous shape in the denotation; **Q4 resolved**                                      |
-| 46       | events-term-spec                 | 3     | `docs/rules/events/10-term-calculus.md` (candidate)                                                   |
-| 47       | events-terms                     | 3     | `Term`, evaluator, soundness laws                                                                     |
-| 48       | events-interop                   | 3     | `musa events`; `.event track` round-trip; graduates the calculus                                      |
-| 49       | elaboration-emits-terms          | 3     | Sharing: `repeat` and motifs become `let`                                                             |
-| 50       | windowed-observation             | 3     | Deferred observation, if measurement justifies it                                                     |
-| 51       | engraved-edition                 | 2     | Front matter, instrument labels, measure numbers: the page as a real edition                          |
-| 52       | linked-reading                   | 2     | One shared focus: which note is which, in both directions                                             |
-| 53       | pointer-editing                  | 2     | The score writes the source: token-scoped pointer edits                                               |
-| 54       | editable-facts                   | 2     | The piece's own facts, editable where they are printed                                                |
-| 55       | reading-preferences              | 2     | Text size and vim mode: how the composer reads and types                                              |
-| 56       | diagnostics-that-teach           | 2     | Codes, labelled spans, help, and applicable fixes, in both frontends                                  |
-| 57       | bars                             | 2     | `bar { … }`: the unit musicians think in, checked and nameable                                        |
-| 58       | repeats-and-endings              | 2     | `repeat` becomes notation; first and second endings                                                   |
-| 59       | menus-and-settings               | 2     | Grouped menus, an Export submenu, and Settings behind `⌘,`                                            |
-| 60       | a-wider-source-column            | 2     | The seam becomes a separator: drag the source column wider                                            |
-| 61       | bar-lines                        | 3     | Measure numbering as a function of the meters in force                                                |
-| 62       | mark-vocabulary                  | 3     | The notation vocabulary becomes a table, not a closed enum                                            |
-| 63       | one-context                      | 3     | Key, meter, clef and tempo unified as scoped facts with real spans                                    |
-| 64       | meter-changes                    | 3     | Mid-piece meter, written where the music changes                                                      |
-| 65       | key-and-clef-changes             | 3     | Modulation, and a clef that changes mid-measure                                                       |
-| 66       | indeterminacy-spec               | 3     | Where indeterminacy lives; **Q2 resolved**                                                            |
-| 67       | realization                      | 3     | `Realization`, `ChoicePath`, `--seed`; reproducible performances                                      |
-| 68       | open-form                        | 3     | Mobile form, free duration, improvisation; _In C_ and Klavierstück XI                                 |
-| 69       | groove                           | 3     | Swing, shuffle, push: a `Beat → Beat` warp in the profile layer                                       |
-| 70       | notation-marks                   | 3     | Fermata, pedal, ottava, ornaments, text, sample, cue                                                  |
-| 71       | grace-notes                      | 3     | Point occurrences with an ordering index; the profile decides the steal                               |
-| 72       | tempo-facts                      | 3     | The tempo marking becomes a fact, separated from the `Beat → Second` map                              |
-| 73       | tempo-ramps                      | 3     | _rit._ and _accel._ via `Progress`, exact in seconds-per-beat                                         |
-| 74       | unmeasured                       | 3     | `meter none`: cadenzas, chant, proportional spacing                                                   |
-| 75       | polymeter-and-polytempo          | 3     | Per-scope barline grids and tempo maps; the gate passed on Nancarrow                                  |
-| 76       | realization-in-the-page          | 2     | The freedom printed, the decision shown, the seed in Settings                                         |
-| 77       | language-server                  | 3     | `musa-lsp` over stdio: diagnostics, formatting, hover, definition, symbols, fixes, tokens, completion |
-| 78       | references-and-rename            | 3     | The resolver records use-sites; references and rename rewrite recorded spans only                     |
-| 79       | folding                          | 3     | Folding ranges from the CST, valid source or not                                                      |
-| 80       | tree-sitter-grammar              | 3     | tree-sitter-musa, corpus pinned token-for-token to the real lexer                                     |
-| 81       | vscode-extension                 | 3     | vscode-musa: generated TextMate grammar plus the language client                                      |
-| 82       | zed-extension                    | 3     | zed-musa: WASM extension, grammar queries, server wiring                                              |
-| 83       | lint-pass                        | 3     | Style-guide warnings as ordinary diagnostics; suppression lives in the source                         |
-| 84       | keyword-documentation            | 3     | Every keyword's plain-English doc, exhaustive by construction, over hover                             |
-| 84a      | the-project-is-the-unit          | 3     | `Project` above `ProjectSession`: a running order, a piece each, material that opens                  |
-| 85       | the-contents-page                | 2     | The volume's front matter on the leaf, and the running order in the margin                            |
-| 86       | the-events-file-reads            | 3     | The interchange payload as named, quoted words; the corpus becomes `.musa.events`                     |
-| 87       | the-note-is-one-word             | 2     | `c4/4` and the augmentation dot; the `Duration` node the shorthand needs                              |
-| 88       | sharps-and-flats                 | 2     | `f#3` and `eb4`, the spelling every DAW and chord chart uses                                          |
-| 89       | the-bar-is-the-line              | 2     | `\|` for the anonymous bar, events without `;`, `[c3 g3]/2`, `>` and `^`                              |
-| 90       | the-formatter-draws-the-bar      | 2     | One bar per line, beat groups in the whitespace — a beam, written in text                             |
-| 91       | bars-drawn-to-scale              | 2     | One optional setting: horizontal position proportional to time                                        |
-| 92       | elaboration-language-spec        | 3     | Normative candidate spec, formal judgments, decisions, proof obligations                              |
-| 93       | elaboration-baseline             | 3     | Frozen compatibility oracle and end-to-end performance baseline                                       |
-| 94       | expression-syntax                | 3     | Lossless typed-expression grammar, formatting, editor grammar parity                                  |
-| 95       | total-functional-core            | 3     | Private total typed evaluator/checker and metatheory law suite                                        |
-| 96       | finite-data-and-budgets          | 3     | Finite values, structural folds, deterministic resource budgets                                       |
-| 97       | contextual-music                 | 3     | Context-neutral `Music`, one elaboration path, compatibility migration                                |
-| 98       | higher-order-music               | 3     | Music-producing functions, structural folds, controlled pitch mapping                                 |
-| 99       | bundled-standard-library         | 3     | Source-defined, inspectable, versioned standard library                                               |
-| 100      | written-pitch-algebra            | 3     | Spelled pitch/interval action and distinct pitch-class quotient                                       |
-| 101      | scales-degrees-and-context       | 3     | Keys, scales, degree resolution, register frames, modal collections                                   |
-| 102      | chord-classes-and-voicings       | 3     | Chord symbols/classes/voicings with explicit realization                                              |
-| 103      | structural-templates             | 3     | Typed piece/voice templates with stable generative identity                                           |
-| 104      | library-modules-and-functors     | 3     | Static signatures/modules/functors for coherent theory contexts                                       |
-| 105      | pc12-sets-and-rows               | 3     | Explicit post-tonal pitch-class, set, and row domain                                                  |
-| 106      | transformational-harmony-library | 3     | Source-defined, domain-correct neo-Riemannian operations                                              |
-| 107      | tonal-harmony-construction       | 3     | Typed Roman and chromatic harmony constructors, not analyses                                          |
-| 108      | domain-metatheory                | 3     | The musical domains proved a conservative extension, with a checked registry                          |
-| 109      | the-import-keyword               | 3     | `import` for imports, `use` for material; the old spelling errors with a fix                          |
-| 110      | packages-and-module-trees        | 3     | `musa.toml`, `lib.musa`, `mod`, nested paths, one derived source of truth                             |
-| 111      | the-structure-keyword            | 3     | ML's `structure` for the static layer, so `module` means a package node                               |
-| 112      | braced-function-bodies           | 3     | `fn f() -> τ { e }`: a block expression holding exactly one expression                                |
-| 113      | capitalized-type-names           | 3     | `Pitch`, `Music`, `Some`: the type layer gets a spelling of its own                                   |
-| 114      | angle-bracketed-type-parameters  | 3     | `Option<τ>` and `List<τ>`, so `[` means a list and nothing else                                       |
-| 115      | schemas-and-harmonization        | 3     | Finite source-defined schemas, sequences, Rule of the Octave                                          |
-| 116      | explicit-theory-assertions       | 3     | Identity-preserving opt-in musical constraints                                                        |
-| 117      | analysis-service                 | 3     | Narrow evidence-bearing advisory-analysis boundary                                                    |
-| 118      | tonal-analysis                   | 3     | Ambiguity-preserving Roman, cadence, tonicization, modulation findings                                |
-| 119      | voice-leading-and-counterpoint   | 3     | Explicit style profiles with rule strengths and evidence                                              |
-| 120      | events-source-inclusion          | 3     | Valid `.musa.events` documents and typed whole-document inclusion                                     |
-| 121      | typed-events-quotation           | 3     | Hygienic local quote/antiquote at the context-neutral boundary                                        |
-| 122      | elaboration-language-tooling     | 3     | One compiler-backed semantic tooling model across editors                                             |
-| 123      | observable-pipeline              | 3     | `tracing` spans on the facades, `MUSA_LOG`, and a subscriber in every shell                           |
-| 124      | elaboration-workbench            | 3     | Musician-first desktop interaction for types, origin, assertions, analysis                            |
-| 125      | language-and-theory-handbook     | 3     | Tested musician and implementor paths with theory citations                                           |
-| 126      | core-boundary-decision           | 3     | What the core is a calculus of, decided and costed before the sound block                             |
-| 127      | elaboration-performance-closure  | 3     | Profiled latency, allocation, memory, caching, and budget closure                                     |
-| 127a     | core-calculus-governance         | 3     | Amend the rules for one inferred language of event tracks and machines                                |
-| 127aa    | kinded-inference                 | 3     | Infer source types, with ordinary and storable-data type variables                                    |
-| 127ab    | text-and-sums                    | 3     | Add text, binary sums, and one structural `Result`                                                    |
-| 127ac    | nominal-data                     | 3     | Let a library declare finite strictly positive data with one generated fold                           |
-| 127ad    | complete-calls                   | 3     | Delete partial calls and default parameters; add the anonymous function; migrate the corpus           |
-| 127b     | inferred-source-core             | 3     | Close the core: typed evaluator configurations, versioned costs, privacy audit                        |
-| 127c     | event-track-cutover              | 3     | Replace timelines with coordinate-typed finite event tracks                                           |
-| 127ca    | builtin-ownership-registry       | 3     | One name for compiler-owned operations, freeing `primitive` for registered units                      |
-| 127d     | machine-values                   | 3     | Add finite typed machine descriptions as source values                                                |
-| 127da    | path-aware-syntax                | 3     | Give syntax values derivable paths, a path-aware fold, and pure builders                              |
-| 127db    | derivation-graph                 | 3     | Record origins as a grafted finite graph that keeps reuse and combined ancestry                       |
-| 127dc    | adapter-expansion                | 3     | Expand named delimited adapter regions at one fixed place in the compiler order                       |
-| 127dca   | text-patterns-match              | 3     | Make a text literal pattern match the text it spells, instead of falling through                      |
-| 127dcb   | adapter-refusal                  | 3     | Let an adapter refuse a region and point at the node its complaint is about                           |
-| 127dcc   | adapter-anchors                  | 3     | Let an adapter carry a source anchor into the value it produces                                       |
-| 127dcd   | adapter-edit                     | 3     | Give an adapter the edit operation and prove its locality, agreement, and preservation                |
-| 127dce   | adapter-print                    | 3     | Give an adapter the print operation and name the three conformance levels                             |
-| 127dcea  | exact-time-arithmetic            | 3     | Give the source language exact time and the arithmetic to compute with it                             |
-| 127dceb  | adapter-module-scope             | 3     | Give an adapter module the phase environment it was promised                                          |
-| 127dcec  | construction-charges             | 3     | Charge a value where it is constructed, not where it is named                                         |
-| 127dcf   | staff-package                    | 3     | Write the staff package as ordinary unprivileged Musa                                                 |
-| 127dcfa  | staff-expansion                  | 3     | Expand a staff region into the staff package, item by item                                            |
-| 127dcfaa | list-fold-direction              | 3     | Say which end a list fold runs from                                                                   |
-| 127dcfab | expression-if                    | 3     | Give the surface the conditional the core already claims                                              |
-| 127dcfac | record-update                    | 3     | Let a record be rebuilt by naming only what changed                                                   |
-| 127dcfad | result-question                  | 3     | Let a failure propagate without a staircase                                                           |
-| 127dcfae | recursor-trial                   | 3     | Paper-trial the sealed-step recursor before any code implements it                                    |
-| 127dcfaf | syntax-step-recursor             | 3     | Replace the syntax catamorphism with an inherited-context recursor                                    |
-| 127dcfag | staff-retrial                    | 3     | Rewrite staff expansion on the repaired API and measure what changed                                  |
-| 127dcfah | printed-literals                 | 3     | Give the language the two operations a printer needs                                                  |
-| 127dcfb  | staff-edit-print                 | 3     | Make the staff adapter generative                                                                     |
-| 127dcg   | studio-trial                     | 3     | _superseded by 146_ — write the studio adapter as an unprivileged package                             |
-| 127dd    | adapter-trials                   | 3     | _superseded by 147_ — freeze the adapter rules and carry them through hostile review                  |
-| 127e     | source-language-clean-break      | 3     | _superseded by 142_ — delete contextual `Music` and migrate notation                                  |
-| 128      | core-amendment                   | 3     | Amend the core to admit a dependent foundation                                                        |
-| 129      | dependent-core-spec              | 3     | Specify the dependent core                                                                            |
-| 130      | trait-and-surface-spec           | 3     | Specify records, enums, traits, and their surface                                                     |
-| 131      | quotation-spec                   | 3     | Specify typed quotation and syntax patterns                                                           |
-| 132      | paper-trial                      | 3     | Paper-trial the dependent language before any code implements it                                      |
-| 133      | core-crate                       | 3     | Build the dependent core as a leaf crate                                                              |
-| 133a     | core-provenance                  | 3     | Let a core term say where it came from                                                                |
-| 134      | bidirectional-elaboration        | 3     | Elaborate bidirectionally, with metavariables                                                         |
-| 135      | inductive-families               | 3     | Add inductive families, dependent match, and termination checking                                     |
-| 136      | records-and-enums                | 3     | Give the language records and namespaced enums                                                        |
-| 136a     | module-visibility                | 3     | Let a package hide what it maintains                                                                  |
-| 136b     | core-divergence-repair           | 3     | Remove the ad hoc divergences from the dependent core                                                 |
-| 137      | traits-and-dictionaries          | 3     | Add traits, dictionaries, and coherence                                                               |
-| 137a     | operators-and-methods            | 3     | Route operators and methods through traits                                                            |
-| 138      | typed-syntax                     | 3     | Give syntax a category, and the phase API its types                                                   |
-| 139      | quotation                        | 3     | Implement quotation, splicing, and automatic provenance                                               |
-| 140      | syntax-patterns                  | 3     | Match syntax by quoting the shape you mean                                                            |
-| 141      | collections                      | 3     | Let a list be built                                                                                   |
-| 141a     | adapter-module-diagnostics       | 3     | Carry an adapter module's own diagnostics to its author                                               |
-| 141b     | base-types-and-builtins          | 3     | Give the core its base types and builtins                                                             |
-| 141c     | structural-eliminators           | 3     | Give the core its structural eliminators                                                              |
-| 141d     | finite-constructor-builtins      | 3     | Let a δ-rule speak the finite constructors                                                            |
-| 141e     | compiler-registry                | 3     | Say what the compiler owns, in the core's own terms                                                   |
-| 141f     | phase-traversals                 | 3     | Let a traversal name what it builds                                                                   |
-| 141fa    | constructor-checking             | 3     | Check a constructor against its family                                                                |
-| 141g     | raw-lowering                     | 3     | Read the surface as a raw term                                                                        |
-| 141ga    | quotation-core                   | 3     | Give a quotation a core shape                                                                         |
-| 141h     | track-core                       | 3     | Give the track a core shape                                                                           |
-| 141ha    | machine-core                     | 3     | Give the machine a core shape                                                                         |
-| 141i     | constrained-definitions          | 3     | Give a free definition its dictionary                                                                 |
-| 141j     | notation-vocabulary              | 3     | Give notation its core words                                                                          |
-| 141k     | notation-lowering                | 3     | Read a notated block as a track term                                                                  |
-| 141l     | qualified-path                   | 3     | Read the qualified path                                                                               |
-| 141m     | rule-refusal                     | 3     | Let a δ-rule refuse the program                                                                       |
-| 141n     | top-level-program                | 3     | Collect the signatures before the bodies                                                              |
-| 141o     | document-elaboration             | 3     | Elaborate a whole document                                                                            |
-| 141p     | piece-structure                  | 3     | Give the fold a voice to belong to                                                                    |
-| 141q     | canonical-readback               | 3     | Read canonical data back out of a term                                                                |
-| 141r     | instances-in-the-program         | 3     | Declare a document's instances with its definitions                                                   |
-| 141s     | numeral-representation           | 3     | A numeral is one node, not a tower                                                                    |
-| 141t     | nested-occurrences               | 3     | A family may hold a list of itself                                                                    |
-| 141u     | glued-evaluation                 | 3     | A definition stays folded until something needs it open                                               |
-| 142      | surface-cutover                  | 3     | Move the whole language over, once                                                                    |
-| 142a     | argument-order-and-sections      | 3     | Reorder the argument spine; let a section be written                                                  |
-| 142b     | finish-the-excision              | 3     | Finish note 50's phase 2 and repair the prose it falsified                                            |
-| 142c     | index-amendment                  | 3     | Amend for a stratified index, and specify it before any code                                          |
-| 142d     | index-stratum                    | 3     | A separate index language with a separate decider                                                     |
-| 142da    | index-reflexivity                | 3     | Refuse an unreadable index at the type, not at the comparison                                         |
-| 142db    | one-conversion-relation          | 3     | One relation modulo the index theory, and the strategy that keeps it cheap                            |
-| 142e     | algebra-and-laws                 | 3     | Torsor, group, and action, named at the domains that already have them                                |
-| 142f     | writable-index                   | 3     | An indexed type spelled in source, checked at the sort its head declares                              |
-| 142g     | errors-below-refusals            | 3     | One error type per question: the kernel's below the elaborator's                                      |
-| 142h     | kernel-and-elaboration           | 3     | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law                          |
-| 142i     | core-re-checker                  | 3     | An independent kernel re-checker for elaborated terms, with negative controls                         |
-| 143      | builtin-collapse                 | 3     | Collapse the builtin registry behind traits and namespaces                                            |
-| 144      | diagnostics-and-performance      | 3     | Make the new failures legible and the new checker fast enough                                         |
-| 145      | staff-rewrite                    | 3     | Rewrite the staff adapter on the new language                                                         |
-| 145a     | equality-for-declared-types      | 3     | Whether a declared type gets an equality, and by which route                                          |
-| 146      | studio-rewrite                   | 3     | Write the studio adapter as an unprivileged package                                                   |
-| 147      | adapter-freeze                   | 3     | Freeze the adapter rules and carry them through hostile review                                        |
-| 148      | core-conformance                 | 3     | Discharge the core's obligation matrix                                                                |
-| 149      | language-pass-closure            | 3     | Close the language pass                                                                               |
-| 150      | machine-runtime                  | 3     | Give each prepared machine one deterministic next step                                                |
-| 151      | track-scheduling                 | 3     | Connect exact event tracks to frame machines with checked decisions                                   |
-| 152      | one-frame-audio                  | 3     | Make one audio frame the reference meaning for every DSP unit                                         |
-| 153      | core-calculus-conformance        | 3     | Prove and audit the clean cutover before sound-language work resumes                                  |
-| 154      | studio-vocabulary                | 3     | One generated processor/parameter vocabulary, hover, terminology                                      |
-| 155      | exact-studio-values              | 3     | Exact written quantities through audio preparation                                                    |
-| 155a     | payload-admission-rule           | 3     | What an event-track payload owes, and the rendering law, before the first second payload              |
-| 156      | performance-gestures             | 3     | Instrument-independent note gestures and musical control curves                                       |
-| 157      | instrument-contracts             | 3     | Typed exposed controls over private native/sample implementations                                     |
-| 158      | part-instrument-routing          | 3     | Per-part instrument instances and routing isolation                                                   |
-| 159      | expressive-control-realization   | 3     | Marks and automation reach exposed controls, then private parameters                                  |
-| 160      | ergonomic-sound-bindings         | 3     | Musician-facing sound/profile choice and stable defaults                                              |
-| 161      | reproducible-assets              | 4     | Content-addressed project/package audio assets and invalidation                                       |
-| 162      | pinned-package-imports           | 4     | Exact remote source/asset packages, lockfile, offline builds, no solver                               |
-| 163      | sampler-runtime                  | 4     | Deterministic native sample-map instrument implementation                                             |
-| 164      | sfz-instruments                  | 4     | Checked SFZ v1-core adapter and compatibility matrix                                                  |
-| 165      | soundfont-instruments            | 4     | Checked SoundFont 2.04 adapter and compatibility matrix                                               |
-| 166      | media-cue-semantics              | 4     | Musical clips versus fixed-physical-duration cues                                                     |
-| 167      | audio-clips                      | 4     | Prepared clip/cue playback, routing, seek, offline/live laws                                          |
-| 168      | sound-mix-workbench              | 4     | Progressive musician/developer Sound and Mix interaction                                              |
-| 169      | audio-language-tooling           | 4     | LSP/editor/handbook coverage for sound, assets, packages, formats                                     |
-| 170      | audio-performance-closure        | 4     | Measured preparation/render/asset/UI performance and RT closure                                       |
-| 171      | audio-conformance                | 4     | Complete performance/sound/assets conformance audit                                                   |
-| 172      | language-conformance             | 4     | Whole-language audit and conditional language-spec graduation                                         |
-| 173      | wasm-shell                       | 5     | `musa-wasm`: the whole pipeline as one small WebAssembly module                                       |
-| 174      | shared-engrave-package           | 5     | `packages/musa-engrave`: the worker engraver shared by desktop and web                                |
-| 175      | web-package-scaffold             | 5     | `@musa/web` ESM package: low-level `parse`/`render`                                                   |
-| 176      | dom-typesetting                  | 5     | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver                                      |
-| 177      | provenance-interaction           | 5     | Event-id callbacks and highlight via the MEI `xml:id` contract                                        |
-| 178      | web-distribution-and-examples    | 5     | CDN iife build, example pages, build-time typesetting recipe                                          |
-| 179      | snippet-playback                 | 5     | **Deferred**: in-page PCM playback with playhead provenance                                           |
+| # | Prompt | Phase | Delivers |
+| --- | --- | --- | --- |
+| 01 | workspace-skeleton | 0 | Seven crates, facades, CLI stub |
+| 02 | lexer | 1 | Trivia-preserving tokens |
+| 03 | parser-cst | 1 | Lossless CST, recovery, typed wrappers |
+| 04 | formatter | 1 | `musa format` |
+| 05 | compiler-core | 1 | `musa check`; ScoreSnapshot + provenance |
+| 06 | motifs-and-transforms | 1 | Motifs, repeat, transpose, expansion laws |
+| 07 | notation-plan | 1 | Measures, beaming, tie decomposition |
+| 08 | events-spec | 1 | `docs/rules/events/` event-track specification (candidate) |
+| 09 | event-track | 1 | `musa-events`: timeline/sequence/overlay/restrict/scale/normalize |
+| 10 | events-laws | 1 | Algebraic law proofs incl. non-laws |
+| 11 | events-elaboration | 1 | Surface → event-track elaboration + differential parity |
+| 12 | events-switch | 1 | The event track becomes the canonical semantics |
+| 13 | mei-export | 1 | `musa render --to mei` |
+| 14 | lilypond-export | 1 | `musa render --to lilypond` |
+| 15 | performance-plan | 1 | Tempo as `Beat → Second`; frame scheduling |
+| 16 | audio-core | 1 | Graph→RenderPlan compiler, offline blocks |
+| 17 | polysynth-wav | 1 | `musa render --to wav` |
+| 18 | engine-transport | 1 | `musa play`; CPAL + transport |
+| 19 | project-session | 1.5 | ProjectSession, undo, exports |
+| 20 | interface-prototype | 1.5 | Design system, bundled fonts, worker engraver, static Compose screen, screenshot goldens |
+| 21 | desktop-shell | 1.5 | Tauri command boundary, live snapshots, stale-revision behavior |
+| 22 | score-engraving | 1.5 | Anchored re-render, zoom re-layout, virtualization, raster goldens |
+| 23 | score-interaction | 1.5 | Selection + caret, keyboard map, palette, playhead, a11y floor |
+| 24 | origin-view | 1.5 | Provenance lens, occurrence selection, diagnostics into the score |
+| 25 | score-editing | 1.5 | Semantic edit commands → text edits; keyboard entry |
+| 26 | source-workspace | 1.5 | CodeMirror 6 + musa language, two-way linking; graduates `docs/rules/desktop/` |
+| 27 | notation-details | 2 | Ties, slurs, dynamics, articulations, tuplets |
+| 28 | performance-profiles | 2 | Interpretation profiles; MIDI export |
+| 29 | studio-language | 2 | Studio DSL → StudioSpec |
+| 30 | dsp-modulation | 2 | ADSR, LFO, filters, typed parameters |
+| 31 | dsp-effects-mix | 2 | Delay, chorus, reverb, buses, sends |
+| 32 | musicxml-export | 2 | `musa render --to musicxml` |
+| 33 | midi-entry-autosave | 2 | Live MIDI input, step entry, autosave |
+| 34 | transforms-variation | 3 | stretch/retrograde/invert as elaboration-time functions, specialization |
+| 35 | annotations-harmony | 3 | Phrase/form and harmony as typed interval payloads |
+| 36 | imports-and-curves | 3 | Relative imports, tempo/expression curves |
+| 37 | event-track-observation | 3 | Composable observation; ambient extension deleted; events spec repairs |
+| 38 | semantic-benchmarks | 3 | Measured baseline for the semantic pipeline |
+| 39 | score-facts | 3 | Every notated fact is an occurrence; snapshot becomes a projection |
+| 40 | context-facts | 3 | Key, meter, sections, harmony as occurrences; one timeline per piece |
+| 41 | retire-the-oracle | 3 | The direct lowerer and the `Elaboration` switch deleted |
+| 42 | snapshot-projection | 3 | `ScoreSnapshot` closed behind its interface |
+| 43 | semantic-identity | 3 | Semantic hash; playback keyed on meaning, not revisions |
+| 44 | events-queries | 3 | `covering` and `prevailing`: the event track answers questions, not just states facts |
+| 45 | events-progress | 3 | `Progress` — continuous shape in the denotation; **Q4 resolved** |
+| 46 | events-term-spec | 3 | `docs/rules/events/10-term-calculus.md` (candidate) |
+| 47 | events-terms | 3 | `Term`, evaluator, soundness laws |
+| 48 | events-interop | 3 | `musa events`; `.event track` round-trip; graduates the calculus |
+| 49 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
+| 50 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
+| 51 | engraved-edition | 2 | Front matter, instrument labels, measure numbers: the page as a real edition |
+| 52 | linked-reading | 2 | One shared focus: which note is which, in both directions |
+| 53 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
+| 54 | editable-facts | 2 | The piece's own facts, editable where they are printed |
+| 55 | reading-preferences | 2 | Text size and vim mode: how the composer reads and types |
+| 56 | diagnostics-that-teach | 2 | Codes, labelled spans, help, and applicable fixes, in both frontends |
+| 57 | bars | 2 | `bar { … }`: the unit musicians think in, checked and nameable |
+| 58 | repeats-and-endings | 2 | `repeat` becomes notation; first and second endings |
+| 59 | menus-and-settings | 2 | Grouped menus, an Export submenu, and Settings behind `⌘,` |
+| 60 | a-wider-source-column | 2 | The seam becomes a separator: drag the source column wider |
+| 61 | bar-lines | 3 | Measure numbering as a function of the meters in force |
+| 62 | mark-vocabulary | 3 | The notation vocabulary becomes a table, not a closed enum |
+| 63 | one-context | 3 | Key, meter, clef and tempo unified as scoped facts with real spans |
+| 64 | meter-changes | 3 | Mid-piece meter, written where the music changes |
+| 65 | key-and-clef-changes | 3 | Modulation, and a clef that changes mid-measure |
+| 66 | indeterminacy-spec | 3 | Where indeterminacy lives; **Q2 resolved** |
+| 67 | realization | 3 | `Realization`, `ChoicePath`, `--seed`; reproducible performances |
+| 68 | open-form | 3 | Mobile form, free duration, improvisation; _In C_ and Klavierstück XI |
+| 69 | groove | 3 | Swing, shuffle, push: a `Beat → Beat` warp in the profile layer |
+| 70 | notation-marks | 3 | Fermata, pedal, ottava, ornaments, text, sample, cue |
+| 71 | grace-notes | 3 | Point occurrences with an ordering index; the profile decides the steal |
+| 72 | tempo-facts | 3 | The tempo marking becomes a fact, separated from the `Beat → Second` map |
+| 73 | tempo-ramps | 3 | _rit._ and _accel._ via `Progress`, exact in seconds-per-beat |
+| 74 | unmeasured | 3 | `meter none`: cadenzas, chant, proportional spacing |
+| 75 | polymeter-and-polytempo | 3 | Per-scope barline grids and tempo maps; the gate passed on Nancarrow |
+| 76 | realization-in-the-page | 2 | The freedom printed, the decision shown, the seed in Settings |
+| 77 | language-server | 3 | `musa-lsp` over stdio: diagnostics, formatting, hover, definition, symbols, fixes, tokens, completion |
+| 78 | references-and-rename | 3 | The resolver records use-sites; references and rename rewrite recorded spans only |
+| 79 | folding | 3 | Folding ranges from the CST, valid source or not |
+| 80 | tree-sitter-grammar | 3 | tree-sitter-musa, corpus pinned token-for-token to the real lexer |
+| 81 | vscode-extension | 3 | vscode-musa: generated TextMate grammar plus the language client |
+| 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
+| 83 | lint-pass | 3 | Style-guide warnings as ordinary diagnostics; suppression lives in the source |
+| 84 | keyword-documentation | 3 | Every keyword's plain-English doc, exhaustive by construction, over hover |
+| 84a | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
+| 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
+| 86 | the-events-file-reads | 3 | The interchange payload as named, quoted words; the corpus becomes `.musa.events` |
+| 87 | the-note-is-one-word | 2 | `c4/4` and the augmentation dot; the `Duration` node the shorthand needs |
+| 88 | sharps-and-flats | 2 | `f#3` and `eb4`, the spelling every DAW and chord chart uses |
+| 89 | the-bar-is-the-line | 2 | `\|` for the anonymous bar, events without `;`, `[c3 g3]/2`, `>` and `^` |
+| 90 | the-formatter-draws-the-bar | 2 | One bar per line, beat groups in the whitespace — a beam, written in text |
+| 91 | bars-drawn-to-scale | 2 | One optional setting: horizontal position proportional to time |
+| 92 | elaboration-language-spec | 3 | Normative candidate spec, formal judgments, decisions, proof obligations |
+| 93 | elaboration-baseline | 3 | Frozen compatibility oracle and end-to-end performance baseline |
+| 94 | expression-syntax | 3 | Lossless typed-expression grammar, formatting, editor grammar parity |
+| 95 | total-functional-core | 3 | Private total typed evaluator/checker and metatheory law suite |
+| 96 | finite-data-and-budgets | 3 | Finite values, structural folds, deterministic resource budgets |
+| 97 | contextual-music | 3 | Context-neutral `Music`, one elaboration path, compatibility migration |
+| 98 | higher-order-music | 3 | Music-producing functions, structural folds, controlled pitch mapping |
+| 99 | bundled-standard-library | 3 | Source-defined, inspectable, versioned standard library |
+| 100 | written-pitch-algebra | 3 | Spelled pitch/interval action and distinct pitch-class quotient |
+| 101 | scales-degrees-and-context | 3 | Keys, scales, degree resolution, register frames, modal collections |
+| 102 | chord-classes-and-voicings | 3 | Chord symbols/classes/voicings with explicit realization |
+| 103 | structural-templates | 3 | Typed piece/voice templates with stable generative identity |
+| 104 | library-modules-and-functors | 3 | Static signatures/modules/functors for coherent theory contexts |
+| 105 | pc12-sets-and-rows | 3 | Explicit post-tonal pitch-class, set, and row domain |
+| 106 | transformational-harmony-library | 3 | Source-defined, domain-correct neo-Riemannian operations |
+| 107 | tonal-harmony-construction | 3 | Typed Roman and chromatic harmony constructors, not analyses |
+| 108 | domain-metatheory | 3 | The musical domains proved a conservative extension, with a checked registry |
+| 109 | the-import-keyword | 3 | `import` for imports, `use` for material; the old spelling errors with a fix |
+| 110 | packages-and-module-trees | 3 | `musa.toml`, `lib.musa`, `mod`, nested paths, one derived source of truth |
+| 111 | the-structure-keyword | 3 | ML's `structure` for the static layer, so `module` means a package node |
+| 112 | braced-function-bodies | 3 | `fn f() -> τ { e }`: a block expression holding exactly one expression |
+| 113 | capitalized-type-names | 3 | `Pitch`, `Music`, `Some`: the type layer gets a spelling of its own |
+| 114 | angle-bracketed-type-parameters | 3 | `Option<τ>` and `List<τ>`, so `[` means a list and nothing else |
+| 115 | schemas-and-harmonization | 3 | Finite source-defined schemas, sequences, Rule of the Octave |
+| 116 | explicit-theory-assertions | 3 | Identity-preserving opt-in musical constraints |
+| 117 | analysis-service | 3 | Narrow evidence-bearing advisory-analysis boundary |
+| 118 | tonal-analysis | 3 | Ambiguity-preserving Roman, cadence, tonicization, modulation findings |
+| 119 | voice-leading-and-counterpoint | 3 | Explicit style profiles with rule strengths and evidence |
+| 120 | events-source-inclusion | 3 | Valid `.musa.events` documents and typed whole-document inclusion |
+| 121 | typed-events-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
+| 122 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
+| 123 | observable-pipeline | 3 | `tracing` spans on the facades, `MUSA_LOG`, and a subscriber in every shell |
+| 124 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
+| 125 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
+| 126 | core-boundary-decision | 3 | What the core is a calculus of, decided and costed before the sound block |
+| 127 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
+| 127a | core-calculus-governance | 3 | Amend the rules for one inferred language of event tracks and machines |
+| 127aa | kinded-inference | 3 | Infer source types, with ordinary and storable-data type variables |
+| 127ab | text-and-sums | 3 | Add text, binary sums, and one structural `Result` |
+| 127ac | nominal-data | 3 | Let a library declare finite strictly positive data with one generated fold |
+| 127ad | complete-calls | 3 | Delete partial calls and default parameters; add the anonymous function; migrate the corpus |
+| 127b | inferred-source-core | 3 | Close the core: typed evaluator configurations, versioned costs, privacy audit |
+| 127c | event-track-cutover | 3 | Replace timelines with coordinate-typed finite event tracks |
+| 127ca | builtin-ownership-registry | 3 | One name for compiler-owned operations, freeing `primitive` for registered units |
+| 127d | machine-values | 3 | Add finite typed machine descriptions as source values |
+| 127da | path-aware-syntax | 3 | Give syntax values derivable paths, a path-aware fold, and pure builders |
+| 127db | derivation-graph | 3 | Record origins as a grafted finite graph that keeps reuse and combined ancestry |
+| 127dc | adapter-expansion | 3 | Expand named delimited adapter regions at one fixed place in the compiler order |
+| 127dca | text-patterns-match | 3 | Make a text literal pattern match the text it spells, instead of falling through |
+| 127dcb | adapter-refusal | 3 | Let an adapter refuse a region and point at the node its complaint is about |
+| 127dcc | adapter-anchors | 3 | Let an adapter carry a source anchor into the value it produces |
+| 127dcd | adapter-edit | 3 | Give an adapter the edit operation and prove its locality, agreement, and preservation |
+| 127dce | adapter-print | 3 | Give an adapter the print operation and name the three conformance levels |
+| 127dcea | exact-time-arithmetic | 3 | Give the source language exact time and the arithmetic to compute with it |
+| 127dceb | adapter-module-scope | 3 | Give an adapter module the phase environment it was promised |
+| 127dcec | construction-charges | 3 | Charge a value where it is constructed, not where it is named |
+| 127dcf | staff-package | 3 | Write the staff package as ordinary unprivileged Musa |
+| 127dcfa | staff-expansion | 3 | Expand a staff region into the staff package, item by item |
+| 127dcfaa | list-fold-direction | 3 | Say which end a list fold runs from |
+| 127dcfab | expression-if | 3 | Give the surface the conditional the core already claims |
+| 127dcfac | record-update | 3 | Let a record be rebuilt by naming only what changed |
+| 127dcfad | result-question | 3 | Let a failure propagate without a staircase |
+| 127dcfae | recursor-trial | 3 | Paper-trial the sealed-step recursor before any code implements it |
+| 127dcfaf | syntax-step-recursor | 3 | Replace the syntax catamorphism with an inherited-context recursor |
+| 127dcfag | staff-retrial | 3 | Rewrite staff expansion on the repaired API and measure what changed |
+| 127dcfah | printed-literals | 3 | Give the language the two operations a printer needs |
+| 127dcfb | staff-edit-print | 3 | Make the staff adapter generative |
+| 127dcg | studio-trial | 3 | _superseded by 146_ — write the studio adapter as an unprivileged package |
+| 127dd | adapter-trials | 3 | _superseded by 147_ — freeze the adapter rules and carry them through hostile review |
+| 127e | source-language-clean-break | 3 | _superseded by 142_ — delete contextual `Music` and migrate notation |
+| 128 | core-amendment | 3 | Amend the core to admit a dependent foundation |
+| 129 | dependent-core-spec | 3 | Specify the dependent core |
+| 130 | trait-and-surface-spec | 3 | Specify records, enums, traits, and their surface |
+| 131 | quotation-spec | 3 | Specify typed quotation and syntax patterns |
+| 132 | paper-trial | 3 | Paper-trial the dependent language before any code implements it |
+| 133 | core-crate | 3 | Build the dependent core as a leaf crate |
+| 133a | core-provenance | 3 | Let a core term say where it came from |
+| 134 | bidirectional-elaboration | 3 | Elaborate bidirectionally, with metavariables |
+| 135 | inductive-families | 3 | Add inductive families, dependent match, and termination checking |
+| 136 | records-and-enums | 3 | Give the language records and namespaced enums |
+| 136a | module-visibility | 3 | Let a package hide what it maintains |
+| 136b | core-divergence-repair | 3 | Remove the ad hoc divergences from the dependent core |
+| 137 | traits-and-dictionaries | 3 | Add traits, dictionaries, and coherence |
+| 137a | operators-and-methods | 3 | Route operators and methods through traits |
+| 138 | typed-syntax | 3 | Give syntax a category, and the phase API its types |
+| 139 | quotation | 3 | Implement quotation, splicing, and automatic provenance |
+| 140 | syntax-patterns | 3 | Match syntax by quoting the shape you mean |
+| 141 | collections | 3 | Let a list be built |
+| 141a | adapter-module-diagnostics | 3 | Carry an adapter module's own diagnostics to its author |
+| 141b | base-types-and-builtins | 3 | Give the core its base types and builtins |
+| 141c | structural-eliminators | 3 | Give the core its structural eliminators |
+| 141d | finite-constructor-builtins | 3 | Let a δ-rule speak the finite constructors |
+| 141e | compiler-registry | 3 | Say what the compiler owns, in the core's own terms |
+| 141f | phase-traversals | 3 | Let a traversal name what it builds |
+| 141fa | constructor-checking | 3 | Check a constructor against its family |
+| 141g | raw-lowering | 3 | Read the surface as a raw term |
+| 141ga | quotation-core | 3 | Give a quotation a core shape |
+| 141h | track-core | 3 | Give the track a core shape |
+| 141ha | machine-core | 3 | Give the machine a core shape |
+| 141i | constrained-definitions | 3 | Give a free definition its dictionary |
+| 141j | notation-vocabulary | 3 | Give notation its core words |
+| 141k | notation-lowering | 3 | Read a notated block as a track term |
+| 141l | qualified-path | 3 | Read the qualified path |
+| 141m | rule-refusal | 3 | Let a δ-rule refuse the program |
+| 141n | top-level-program | 3 | Collect the signatures before the bodies |
+| 141o | document-elaboration | 3 | Elaborate a whole document |
+| 141p | piece-structure | 3 | Give the fold a voice to belong to |
+| 141q | canonical-readback | 3 | Read canonical data back out of a term |
+| 141r | instances-in-the-program | 3 | Declare a document's instances with its definitions |
+| 141s | numeral-representation | 3 | A numeral is one node, not a tower |
+| 141t | nested-occurrences | 3 | A family may hold a list of itself |
+| 141u | glued-evaluation | 3 | A definition stays folded until something needs it open |
+| 142 | surface-cutover | 3 | Move the whole language over, once |
+| 142a | argument-order-and-sections | 3 | Reorder the argument spine; let a section be written |
+| 142b | finish-the-excision | 3 | Finish note 50's phase 2 and repair the prose it falsified |
+| 142c | index-amendment | 3 | Amend for a stratified index, and specify it before any code |
+| 142d | index-stratum | 3 | A separate index language with a separate decider |
+| 142da | index-reflexivity | 3 | Refuse an unreadable index at the type, not at the comparison |
+| 142db | one-conversion-relation | 3 | One relation modulo the index theory, and the strategy that keeps it cheap |
+| 142e | algebra-and-laws | 3 | Torsor, group, and action, named at the domains that already have them |
+| 142f | writable-index | 3 | An indexed type spelled in source, checked at the sort its head declares |
+| 142g | errors-below-refusals | 3 | One error type per question: the kernel's below the elaborator's |
+| 142h | kernel-and-elaboration | 3 | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law |
+| 142i | core-re-checker | 3 | An independent kernel re-checker for elaborated terms, with negative controls |
+| 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
+| 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
+| 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
+| 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
+| 146 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
+| 147 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
+| 148 | core-conformance | 3 | Discharge the core's obligation matrix |
+| 149 | language-pass-closure | 3 | Close the language pass |
+| 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
+| 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
+| 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
+| 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
+| 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
+| 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
+| 156 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
+| 157 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
+| 158 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
+| 159 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
+| 160 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
+| 161 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
+| 162 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
+| 163 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
+| 164 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
+| 165 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
+| 166 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
+| 167 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
+| 168 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
+| 169 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
+| 170 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
+| 171 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
+| 172 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
+| 173 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
+| 174 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
+| 175 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
+| 176 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
+| 177 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
+| 178 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
+| 179 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the event-track insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as the
 regression oracle** when prompt 11 landed: the new event-track elaboration had to reproduce its snapshots exactly

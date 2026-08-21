@@ -11,9 +11,9 @@ phase: 3
 ## Task
 
 `musa-calculus` is 19,389 lines in thirty flat files, and two different programs live in them. One decides typing and
-definitional equality on finished terms; the other turns what an author wrote into such a term. `convert.rs` sits
-beside `declare.rs`, `eval.rs` beside `refuse.rs`, and nothing in the crate says which is which — every item is
-`pub(crate)`, so every file may reach every other, and the direction that matters is maintained by memory.
+definitional equality on finished terms; the other turns what an author wrote into such a term. `convert.rs` sits beside
+`declare.rs`, `eval.rs` beside `refuse.rs`, and nothing in the crate says which is which — every item is `pub(crate)`,
+so every file may reach every other, and the direction that matters is maintained by memory.
 
 [`lib.rs`](../../../crates/musa-calculus/src/lib.rs) already argues why the elaborator belongs in _this crate_: `Value`
 stays private, and an elaborator that must check against value types would otherwise force it into the facade. That
@@ -38,9 +38,9 @@ The crate's public paths do not move. `musa-compiler` must not change by one lin
   judgment.
 - `editors/tree-sitter-musa`'s drift law and `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` — the precedent
   for enforcing a structural rule Rust's type system cannot state, with a law suite that reads the source.
-- _Philosophy of Software Design_ ch. 7 on layers that add an abstraction, and ch. 8 on where complexity should be
-  paid. The kernel is the part that has to be provably right; every line that does not have to be is a line paying no
-  rent there.
+- _Philosophy of Software Design_ ch. 7 on layers that add an abstraction, and ch. 8 on where complexity should be paid.
+  The kernel is the part that has to be provably right; every line that does not have to be is a line paying no rent
+  there.
 
 ## Design
 
@@ -51,24 +51,23 @@ The crate's public paths do not move. `musa-compiler` must not change by one lin
 _data_. Everything here works on `Term` and `Value` and raises `CoreError`.
 
 `elaboration/` — `raw`, `elab/`, `declare`, `program`, `class`, `dictionary`, `case`, `refuse`, `show`, `meta`,
-`storable`, and the registry's admission checks. Everything here reads a `Raw`, produces a `Term`, and raises
-`Refusal`.
+`storable`, and the registry's admission checks. Everything here reads a `Raw`, produces a `Term`, and raises `Refusal`.
 
 **Two files split rather than move.** `rec.rs` splits: generating and applying a recursor is kernel, elaborating a
 written `rec` expression is elaboration. `base.rs` splits: the base and builtin _data_ is kernel, `Registry::new`'s
 structural validation is elaboration. Both splits are the same distinction the whole prompt is about, met twice.
 
 **The boundary is a law suite, not a `mod` keyword.** Rust cannot express "a child module may not see its sibling" — a
-descendant can always name `crate::`. So the rule is checked the way the tree-sitter grammar is: a test reads every
-file under `kernel/` and fails if it names an item defined under `elaboration/`. Stating it as a test rather than a
+descendant can always name `crate::`. So the rule is checked the way the tree-sitter grammar is: a test reads every file
+under `kernel/` and fails if it names an item defined under `elaboration/`. Stating it as a test rather than a
 convention is the entire deliverable; a directory rename with no check is filing, not architecture.
 
 **The facade does not move.** `musa_calculus::Term`, `musa_calculus::check`, `musa_calculus::Refusal` and every other
-public path stay exactly where they are — `lib.rs` re-exports across both modules. This keeps the prompt a pure
-internal move, and makes "`musa-compiler` is untouched" a checkable property rather than a hope.
+public path stay exactly where they are — `lib.rs` re-exports across both modules. This keeps the prompt a pure internal
+move, and makes "`musa-compiler` is untouched" a checkable property rather than a hope.
 
-**The direction, stated once, in `lib.rs`.** `elaboration` may name everything in `kernel`. `kernel` may name nothing
-in `elaboration`. That sentence is the crate's invariant list's new entry, and the law suite is its evidence.
+**The direction, stated once, in `lib.rs`.** `elaboration` may name everything in `kernel`. `kernel` may name nothing in
+`elaboration`. That sentence is the crate's invariant list's new entry, and the law suite is its evidence.
 
 ## Target
 
@@ -102,8 +101,8 @@ And the two checks that say this was a move and not a rewrite:
 - **No renamed public item, and no changed signature.** A consumer that compiled before compiles unchanged.
 - **No behaviour change of any kind** — not a verdict, not a diagnostic, not a normal form.
 - **No re-checker.** 142i, which this boundary exists to make meaningful.
-- No new module beyond the two, and no third "shared" module. A file that seems to belong to both belongs to the
-  kernel, and if it cannot, that is a finding to report rather than a `common/` to create.
+- No new module beyond the two, and no third "shared" module. A file that seems to belong to both belongs to the kernel,
+  and if it cannot, that is a finding to report rather than a `common/` to create.
 - No change to the budget, the meter, or exhaustion accounting.
 - Do not fold `musa-events` in, and do not move anything between crates. The workspace graph is 153a–153c.
 
