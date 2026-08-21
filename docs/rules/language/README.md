@@ -50,7 +50,7 @@ form, and `01-surface.md`'s type grammar has a multi-parameter function type.
 | `03-musical-domains.md` | typed theory domains, definitions, sources, and counterexamples |
 | `04-templates-and-modules.md` | declaration templates, stable identity, signatures, static functors |
 | `05-verification.md` | invariants, assertions, analyses, laws, and implementation gates |
-| `06-performance.md` | the pre-migration performance and compatibility baseline this candidate is measured against |
+| `06-elaboration-baseline.md` | the pre-migration performance and compatibility baseline this candidate is measured against |
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-audio semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |

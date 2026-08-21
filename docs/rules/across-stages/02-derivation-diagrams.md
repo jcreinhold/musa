@@ -1,5 +1,8 @@
 # Tracking where derived results came from
 
+**Status: governing.** How a derived result records where it came from, so any stage's output can be traced back to the
+source that produced it.
+
 When Musa turns source into a score track, a score track into gestures, or gestures into MIDI or a prepared machine,
 users need to know where each result came from. This chapter defines that origin record.
 

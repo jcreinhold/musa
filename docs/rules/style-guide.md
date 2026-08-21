@@ -1,5 +1,8 @@
 # The musa Style Guide
 
+**Status: governing.** `.musa` naming and spelling. The lint pass enforces its machine-checkable subset and cites this
+file by section.
+
 Layout is the formatter's (roadmap §11): indentation, statement-per-line, blank lines, and comment attachment are
 decided by `musa format`, and a hand that adjusts them is wasting itself. This guide owns everything layout cannot say —
 the choices that are *spelled* correctly and still mislead the player who reads them.

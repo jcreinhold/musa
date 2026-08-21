@@ -1,5 +1,7 @@
 # 02 — Static Semantics
 
+**Status: governing.** When an event-track composition and an events file are well-formed.
+
 Well-formedness rules for event-track compositions and events files. Everything here is checkable without evaluating
 anything musical — the event track never inspects payload *meaning*; it checks shapes and bounds.
 

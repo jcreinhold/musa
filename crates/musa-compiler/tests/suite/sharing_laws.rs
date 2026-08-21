@@ -27,7 +27,7 @@
 //! is never accepted for being written in a way the compiler happens to like.
 //! It is gone because the meter is: nothing in the new lowering calls
 //! `WorkMeter::output`, so the million-occurrence limit
-//! `docs/rules/language/06-performance.md` fixes is not charged, and a nullary
+//! `docs/rules/language/06-elaboration-baseline.md` fixes is not charged, and a nullary
 //! motif called four hundred times costs about what one call costs. That is a
 //! hole, it is recorded as one, and it is not this file's to close — the meter
 //! is `resource_validation.rs`'s subject and prompt 144 re-measures it. A law

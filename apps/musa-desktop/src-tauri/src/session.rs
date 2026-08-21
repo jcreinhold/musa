@@ -28,7 +28,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::dto::{ErrorDto, ErrorKindDto, ExportedDto};
 
-/// How often the position is reported while playing (`06-performance.md` §3).
+/// How often the position is reported while playing (`06-frame-budgets.md` §3).
 /// At rest the thread blocks: there is no timer anywhere in the application.
 const POSITION_INTERVAL: Duration = Duration::from_millis(100);
 

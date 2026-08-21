@@ -21,7 +21,7 @@ event track.
   workspace, not a panel), §10.7 (debouncing), §11 (the source is canonical).
 - `docs/rules/desktop/01-visual-language.md` §3 (Recursive Mono Linear; the source is set, not dumped),
   `03-interaction.md` §1 (one selection model — the source participates in it), `05-states.md` §5 (diagnostics),
-  `06-performance.md` B1.
+  `06-frame-budgets.md` B1.
 - Prompt 02's token kinds, prompt 04's formatter and `TextEdit`, prompt 25's edit pipeline.
 
 ## Design
@@ -88,8 +88,8 @@ event track.
 - **Revealing a span does not always take the keyboard.** A diagnostic is somewhere the composer is going to type, so
   the caret arrives focused; choosing a note on the page is not, so the text follows without the hands leaving the
   score. That distinction is now part of the request (`src/lib/state/reveal.ts`).
-- **The budgets run alone.** `06-performance.md`'s numbers are measured on an unloaded machine, so `perf.spec.ts` is its
-  own Playwright project that runs after the rest rather than beside it.
+- **The budgets run alone.** `06-frame-budgets.md`'s numbers are measured on an unloaded machine, so `perf.spec.ts` is
+  its own Playwright project that runs after the rest rather than beside it.
 
 ## Check
 

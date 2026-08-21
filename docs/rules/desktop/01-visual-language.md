@@ -167,7 +167,7 @@ Motion exists for exactly three reasons. Anything else is removed.
 
 | Moment | Spec |
 | --- | --- |
-| **Score re-engraving** | The new SVG cross-fades over the old at **90 ms, `ease-out`**, with scroll anchored to a stable element id. The page appears to correct itself, like ink settling. It must never blank, flash white, or jump. This is a correctness requirement, not a flourish — see `06-performance.md`. |
+| **Score re-engraving** | The new SVG cross-fades over the old at **90 ms, `ease-out`**, with scroll anchored to a stable element id. The page appears to correct itself, like ink settling. It must never blank, flash white, or jump. This is a correctness requirement, not a flourish — see `06-frame-budgets.md`. |
 | **Playhead** | Interpolated on `requestAnimationFrame` between the engine's ~10 Hz position events, `linear`, no easing. A playhead that steps is worse than no playhead. |
 | **Origin view** | 120 ms cross-fade in and out. The trace line draws instantly; it does not animate along its path. |
 

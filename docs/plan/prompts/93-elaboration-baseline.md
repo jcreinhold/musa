@@ -19,10 +19,10 @@ one named repairing prompt.
 
 ## Read
 
-- Prompt 38 and `docs/rules/events/09-performance.md`: reuse P1–P5, the three existing fixtures, `divan`, and the rule
-  that a benchmark seam stays private.
+- Prompt 38 and `docs/rules/events/09-pipeline-baseline.md`: reuse P1–P5, the three existing fixtures, `divan`, and the
+  rule that a benchmark seam stays private.
 - Prompt 49's sharing workload and provenance-byte-identity requirement.
-- `docs/rules/language/05-verification.md` and `docs/rules/desktop/06-performance.md` B1/B2.
+- `docs/rules/language/05-verification.md` and `docs/rules/desktop/06-frame-budgets.md` B1/B2.
 - `crates/musa-compiler/src/bench.rs`, `benches/pipeline.rs`, and every caller of `musa_compiler::compile`.
 - `crates/musa-compiler/src/{profile,performance,studio}.rs`, `crates/musa-dsp/src/{studio,plan,offline}.rs`, and
   `crates/musa-playback`'s prepared-plan handoff. Read the actual code paths: do not copy claims about exact studio
@@ -63,8 +63,8 @@ known-wrong audio merely because it was baselined.
 - `tests/fixtures/{open-shape,higher-order-shape,declaration-heavy,audio-bridge}.musa` and their deterministic
   generator.
 - `crates/musa-compiler/benches/pipeline.rs` and private benchmark seams only as needed.
-- `docs/rules/language/06-performance.md`: workloads, baseline table, measurement protocol, relative gate, B1/B2
-  relation, and the rule for resource-exhaustion benchmarks added at prompt 96.
+- `docs/rules/language/06-elaboration-baseline.md`: workloads, baseline table, measurement protocol, relative gate,
+  B1/B2 relation, and the rule for resource-exhaustion benchmarks added at prompt 96.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`: manifest generation/checking with an explicit update
   flag.
 - An audio compatibility/benchmark test at the narrowest existing owner; do not publish graph or DSP internals merely so
@@ -78,7 +78,7 @@ cargo bench -p musa-compiler
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-test -s docs/rules/language/06-performance.md
+test -s docs/rules/language/06-elaboration-baseline.md
 git diff --check
 ```
 

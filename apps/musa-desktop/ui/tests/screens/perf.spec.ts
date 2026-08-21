@@ -1,6 +1,6 @@
 /**
  * The performance budgets, asserted as measurements
- * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10, B11, B12.
+ * (`06-frame-budgets.md` §1–§2): B1, B2, B6, B7, B8, B10, B11, B12.
  *
  * The harness drives the Vite dev server with the stubbed shell, which §2
  * sanctions where a window is impractical. That means these numbers are the
@@ -17,7 +17,7 @@ import { engraved } from "./engraved";
 import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
-/** The debounce the budget is stated relative to (`06-performance.md` §1). */
+/** The debounce the budget is stated relative to (`06-frame-budgets.md` §1). */
 const SETTLE_MS = 180;
 
 const TRIALS = 20;
@@ -144,7 +144,7 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
 
 /**
  * Selection: the most frequent action in the application, and the one budget
- * that forbids a round trip outright (`06-performance.md` §3.2).
+ * that forbids a round trip outright (`06-frame-budgets.md` §3.2).
  */
 test.describe("selection", () => {
   /**

@@ -1,5 +1,8 @@
 # The one total source language
 
+**Status: candidate.** The one total source language every surface construct elaborates into. This directory's hub —
+most other pages here refine it.
+
 The source language is a pure, strict, **total** calculus with lightweight dependency: two universes, one function type
 whose result may mention its argument, records with named fields, parameterized enumerations, types refined by an
 **index** from a decidable arithmetic domain (§1.5), pattern matching, structural recursion, definitional equality

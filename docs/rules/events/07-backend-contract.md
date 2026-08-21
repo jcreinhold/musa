@@ -1,5 +1,7 @@
 # 07 — Backend Contract
 
+**Status: governing.** What a consumer of the event-track core may assume, and what it owes in return.
+
 What downstream consumers of the event-track core may assume, and what they must never do. Backends today consume
 `ScoreSnapshot` and `NotationPlan` rather than tracks directly; this contract applies to those projections as well,
 because the projections preserve the core's guarantees.

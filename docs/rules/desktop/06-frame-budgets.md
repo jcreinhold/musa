@@ -1,4 +1,4 @@
-# 06 — Performance Budgets
+# 06 — Frame Budgets
 
 Status: **governing**.
 
@@ -64,7 +64,8 @@ These are design constraints, not tuning, and they are the reason the budgets ar
 ## 4. What the compiler contributes (prompt 127)
 
 B1 and B2 are end-to-end numbers, and the compile inside them is measured separately in
-`docs/rules/language/06-performance.md`. Recorded here so a missed budget can be attributed rather than guessed at:
+`docs/rules/language/06-elaboration-baseline.md`. Recorded here so a missed budget can be attributed rather than guessed
+at:
 
 | workload | compile (P1) | share of B1's 120 ms |
 | --- | ---: | ---: |

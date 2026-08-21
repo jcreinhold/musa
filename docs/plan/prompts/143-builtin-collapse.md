@@ -45,9 +45,9 @@ step-budget measurement said the rewrite could not wait for the cost table. That
 - `docs/rules/language/02-core-calculus.md` §5.8's four builtin families — collapsing entries must not change how many
   families there are, and an operation that moves from the compiler to `stdlib/` leaves the registry rather than moving
   between families.
-- The `rust-performance` skill's workflow, and `docs/rules/language/06-performance.md`'s P1/P2 baseline. A dictionary
-  indirection where there used to be a direct call is exactly the kind of change that is invisible in a microbenchmark
-  and visible in a pipeline.
+- The `rust-performance` skill's workflow, and `docs/rules/language/06-elaboration-baseline.md`'s P1/P2 baseline. A
+  dictionary indirection where there used to be a direct call is exactly the kind of change that is invisible in a
+  microbenchmark and visible in a pipeline.
 
 ## Design
 
@@ -69,9 +69,9 @@ covered by the same laws the builtin was.
 
 **Measure the ones that get slower.** Replacing a direct builtin call with a dictionary projection is the standard cost
 of this design, and the standard mitigation — resolving a known-concrete instance at elaboration time to a direct call —
-is worth doing where the measurement says so and not before. Report P1 and P2 against `06-performance.md`'s baseline
-under its 10% gate; a regression that this prompt causes is this prompt's to fix or to argue, not prompt 144's to
-inherit.
+is worth doing where the measurement says so and not before. Report P1 and P2 against `06-elaboration-baseline.md`'s
+baseline under its 10% gate; a regression that this prompt causes is this prompt's to fix or to argue, not prompt 144's
+to inherit.
 
 **Say what did not shrink.** A survey that reports only the wins is not evidence. The entries that survived, and the
 reason each survived, are the more useful half of the output, because they are the list a future reader will check
@@ -88,7 +88,7 @@ decision, or a budget?
   recording for each of the 131 entries whether it was kept, replaced, or moved to `stdlib/`, and the hidden information
   that decided it.
 - `stdlib/` gaining the operations that left the compiler, with their laws.
-- P1/P2 measurements against `06-performance.md`'s baseline, and any mitigation applied, measured.
+- P1/P2 measurements against `06-elaboration-baseline.md`'s baseline, and any mitigation applied, measured.
 - The privacy audit, recorded.
 - `docs/rules/language/` repaired wherever it named an operation that no longer exists.
 

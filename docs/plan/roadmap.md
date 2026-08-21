@@ -2686,10 +2686,10 @@ The examples are executable specifications, not merely demos.
 
 ## 17.7 Benchmarks
 
-Benchmarks measure the semantic pipeline on the two reference workloads named in `docs/rules/desktop/06-performance.md`
-(one small piece, one large one) and report allocations as well as time. They exist to make a regression visible, not to
-justify speculative optimization (§4 of that document): a benchmark is added before a migration that could slow
-something down, and its baseline is recorded in a checked-in table.
+Benchmarks measure the semantic pipeline on the two reference workloads named in
+`docs/rules/desktop/06-frame-budgets.md` (one small piece, one large one) and report allocations as well as time. They
+exist to make a regression visible, not to justify speculative optimization (§4 of that document): a benchmark is added
+before a migration that could slow something down, and its baseline is recorded in a checked-in table.
 
 Benchmarks never widen a crate's public interface. Where a phase must be measured on its own, it is reached through a
 `#[doc(hidden)]` entry point documented as existing for measurement only — an interface that grew because a benchmark

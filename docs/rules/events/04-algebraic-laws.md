@@ -1,5 +1,7 @@
 # 04 — Algebraic Laws
 
+**Status: governing.** The laws the core operations obey, stated against the denotation rather than the syntax.
+
 The laws of the event-track core, stated formally against the definitions of `03-denotational-semantics.md`. Every law
 names the property test that must implement it in `crates/musa-events/tests/suite/laws.rs` (prompt 10); every non-law
 names its counterexample test. Equality (`=`) throughout is **semantic equality**: equality of canonical normal forms

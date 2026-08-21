@@ -1,5 +1,8 @@
 # Rules that follow from the core design
 
+**Status: governing.** What follows from the constitution's decisions, written as tests a new feature has to pass. Bound
+only by `constitution.md`.
+
 These rules turn [constitution.md](constitution.md) into tests for new designs. Each rule gives a concrete mistake to
 avoid.
 

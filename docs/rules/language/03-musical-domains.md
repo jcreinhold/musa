@@ -1,5 +1,7 @@
 # Musical domains
 
+**Status: candidate.** Where musical practice preserves a distinction, the language gives it a separate type.
+
 Musa uses separate types where musical practice preserves separate choices. The cited Open Music Theory files live in
 `~/Code/papers/music-theory/open-music-theory/`; citations name exact files so the definitions remain auditable. Where
 OMT supplies practice rather than a mathematical object, the definition is explicitly Musa's and its elementary laws are

@@ -1,5 +1,8 @@
 # Equality, hashes, audio preparation, and caches
 
+**Status: governing.** When two stored results are equal, and when Musa may reuse a prepared one instead of recomputing
+it.
+
 This chapter answers one question: when may Musa safely reuse a result?
 
 The short answer is that each type defines exact equality, a hash only finds candidates, and a cache checks the full

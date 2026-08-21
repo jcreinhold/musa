@@ -1,4 +1,6 @@
-# The semantic pipeline's measured baseline
+# 09 — The Semantic Pipeline's Measured Baseline
+
+**Status: descriptive.** The measured cost of the core path, prompt by prompt. It records numbers; it decides nothing.
 
 The prompt 39–43 migration moves every notated fact into one event track per piece and turns `ScoreSnapshot` into a
 projection of it. That is the largest change the semantic core will take, and the risk it carries is *allocation and
@@ -18,7 +20,7 @@ cargo bench -p musa-compiler
 
 ## Workloads
 
-The two reference workloads of `docs/rules/desktop/06-performance.md` §1:
+The two reference workloads of `docs/rules/desktop/06-frame-budgets.md` §1:
 
 | id | file | size |
 | --- | --- | --- |
@@ -53,7 +55,7 @@ new workload adds a column; it does not invalidate one.
 ## Baseline
 
 Machine class: Apple M4 Pro laptop, macOS 26.5, `cargo bench` (release). Time is divan's **median** over 100 samples;
-`docs/rules/desktop/06-performance.md` states its budgets as p95 over 20 trials, which is the *end-to-end* harness's
+`docs/rules/desktop/06-frame-budgets.md` states its budgets as p95 over 20 trials, which is the *end-to-end* harness's
 statistic — divan reports median, mean, fastest and slowest, and the median is what this table carries. Allocations are
 per iteration and are exact rather than sampled.
 
@@ -187,7 +189,7 @@ Read the row in two halves.
 and P2 large 1.32 ms → 1.75 ms (**+33%**), because `compile` now hashes the piece track before projecting it. The trade
 is stated rather than hidden: the whole point of the prompt is that the session can ask "did the meaning change" instead
 of "did the counter move", and nothing can answer that without reading the meaning once. In budget terms it is not close
-to a problem — `docs/rules/desktop/06-performance.md` B1 allows 120 ms from keystroke to diagnostics, and 1.95 ms is
+to a problem — `docs/rules/desktop/06-frame-budgets.md` B1 allows 120 ms from keystroke to diagnostics, and 1.95 ms is
 1.6% of it.
 
 **Canonicalization got much cheaper, and that is where the prompt's optimization went.** `canonical_occurrences` sorted
@@ -333,7 +335,7 @@ does. Step 3 asks which stage costs, and this prompt added the split that answer
 
 | B2, decomposed | p95 |
 | --- | --- |
-| debounce (fixed, `06-performance.md` §3.4) | 180 ms |
+| debounce (fixed, `06-frame-budgets.md` §3.4) | 180 ms |
 | edit → snapshot, the round trip | 2 ms |
 | snapshot → score, the engraver | **191 ms** |
 

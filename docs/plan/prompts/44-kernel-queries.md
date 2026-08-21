@@ -143,7 +143,7 @@ lives.
   `origin.definition_span`; `project_regions` uses the containment convention.
 - `crates/musa-compiler/src/performance.rs`: the per-voice dynamic scan replaced.
 - `crates/musa-notation/src/plan.rs`: `Marks::collect`'s membership rebuild replaced by prompt 42's accessor.
-- `docs/rules/events/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's row.
 
 ## Repairs made while implementing
 
@@ -188,7 +188,7 @@ third rule, so the two questions should be reopened together.
 **The measurement.** P3 large 227 µs → 232 µs (+2%), allocations unchanged; P1 large +3.3%, P2 large +1.8%, all noise
 and all inside the block's gate. The one real cost is five allocations, from `project_piece` building a canonical key
 per piece-scoped fact. Full numbers and a correction to prompt 43's byte column are in
-`docs/rules/events/09-performance.md`.
+`docs/rules/events/09-pipeline-baseline.md`.
 
 ## Check
 

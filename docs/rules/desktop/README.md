@@ -21,7 +21,7 @@ to improve on. The desktop app is the product for most users; its quality is not
 | [`03-interaction.md`](03-interaction.md) | Selection model, pointer, keyboard map, transport and playhead, accessibility floor |
 | [`04-provenance.md`](04-provenance.md) | Origin view — the signature — and the editing choice it makes legible |
 | [`05-states.md`](05-states.md) | Empty, loading, stale-revision, diagnostics, failure; the interface's voice |
-| [`06-performance.md`](06-performance.md) | Eleven named budgets, how they are measured, the structure they imply |
+| [`06-frame-budgets.md`](06-frame-budgets.md) | Eleven named budgets, how they are measured, the structure they imply |
 | [`07-the-volume.md`](07-the-volume.md) | The project as a bound volume: the contents page, the running order, and what a project of one shows |
 | [`08-elaboration.md`](08-elaboration.md) | Terms, library documents, the Origin steps the elaboration language adds, advisory findings, raw events |
 

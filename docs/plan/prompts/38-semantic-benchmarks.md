@@ -13,12 +13,12 @@ phase: 3
 Before the migration of prompts 39–43 moves every temporal fact into one timeline, establish what the semantic pipeline
 costs today on a real workload, so every later prompt in this block can prove it did not regress. Add a benchmark
 harness, name the workloads, record the baseline numbers in a checked-in table, and wire the two budgets that
-compilation sits behind (`docs/rules/desktop/06-performance.md` B1, B2) to a Rust-level measurement instead of only an
+compilation sits behind (`docs/rules/desktop/06-frame-budgets.md` B1, B2) to a Rust-level measurement instead of only an
 end-to-end one.
 
 ## Read
 
-- `docs/rules/desktop/06-performance.md` — the ten budgets, the reference workloads (`examples/glass-mountain.musa`
+- `docs/rules/desktop/06-frame-budgets.md` — the ten budgets, the reference workloads (`examples/glass-mountain.musa`
   small, `tests/fixtures/large-score.musa` large), p95 over 20 trials, and §4: no speculative optimization; an
   incremental compiler is considered "only when B1 or B2 is measured to fail on a real piece, and it becomes its own
   prompt with the measurement as its justification". This prompt supplies the instrument that would justify it.
@@ -59,9 +59,10 @@ heterogeneous multiset per piece plus projections; if that costs, it will cost i
 
 ### The baseline table
 
-`docs/rules/events/09-performance.md` (new) records: the harness, the exact command, the machine class, and a table of
-P1–P4 × {small, large} with median and p95. Every prompt from 39 on re-runs the same command and appends its row, so the
-block carries its own regression history in one file. A prompt in this block is not done while its row is missing.
+`docs/rules/events/09-pipeline-baseline.md` (new) records: the harness, the exact command, the machine class, and a
+table of P1–P4 × {small, large} with median and p95. Every prompt from 39 on re-runs the same command and appends its
+row, so the block carries its own regression history in one file. A prompt in this block is not done while its row is
+missing.
 
 The table is a record, not a gate — machines differ. The gate is the **relative** rule stated here: no prompt in this
 block may regress P1 or P2 on the large fixture by more than 10% against the row before it without saying so in its
@@ -79,7 +80,7 @@ same commit.
 - `docs/plan/roadmap.md` §15: benchmark harness added to the development-dependency list (separate commit, first).
 - `crates/musa-compiler/benches/pipeline.rs`: P1–P4.
 - `crates/musa-compiler/Cargo.toml`: `[[bench]]`, dev-dependency.
-- `docs/rules/events/09-performance.md`: harness, command, machine class, baseline table, the 10% rule.
+- `docs/rules/events/09-pipeline-baseline.md`: harness, command, machine class, baseline table, the 10% rule.
 - `tests/fixtures/large-score.musa`: extended only if it lacks phase-2 constructs.
 
 ## Check
@@ -89,7 +90,7 @@ cargo bench -p musa-compiler
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-test -s docs/rules/events/09-performance.md
+test -s docs/rules/events/09-pipeline-baseline.md
 ```
 
 Commit the roadmap repair as `Add a benchmark harness to the dependency list`, then the rest as
@@ -110,7 +111,7 @@ Commit the roadmap repair as `Add a benchmark harness to the dependency list`, t
   benchmark is for, and that it never widens a public interface), so the rule the prompt cites now exists to be cited.
 - The prompt asks for median and p95; `divan` reports fastest, median, mean, and slowest, not p95. The table carries the
   **median**, and says so — p95 over 20 trials is the end-to-end harness's statistic in
-  `docs/rules/desktop/06-performance.md`, and restating it here would have meant a second harness for one number.
+  `docs/rules/desktop/06-frame-budgets.md`, and restating it here would have meant a second harness for one number.
 - P2 needed parsing separable from elaboration, so `elaborate` was split into `elaborate` (parse, then) and
   `elaborate_parsed`. P3 and P4 needed the voice timelines the adapter consumes, which nothing keeps: `Lowering` gained
   a `timeline_sink: Option<Vec<_>>`, `None` on every production path. Both are internal; the public surface is unchanged

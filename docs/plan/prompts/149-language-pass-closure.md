@@ -47,9 +47,9 @@ because the next reader cannot tell which parts were checked.
 
 **The contradiction audit is between documents, not only against code.** The most likely surviving contradictions are:
 `docs/rules/across-stages/05-metatheory.md`'s principal-type claim; `docs/rules/events/`'s payload-admission wording
-against the `Storable` constraint; `docs/rules/language/06-performance.md`'s baseline against prompt 144's re-measured
-numbers; `docs/rules/desktop/`'s error-and-states voice against the diagnostics prompts 134–140 added; and the
-style-guide rules against what prompt 143 moved out of the compiler. Check each explicitly rather than trusting a
+against the `Storable` constraint; `docs/rules/language/06-elaboration-baseline.md`'s baseline against prompt 144's
+re-measured numbers; `docs/rules/desktop/`'s error-and-states voice against the diagnostics prompts 134–140 added; and
+the style-guide rules against what prompt 143 moved out of the compiler. Check each explicitly rather than trusting a
 link-checker to notice, because a document can be internally consistent, well-linked, and wrong.
 
 **One contradiction is already found and is this prompt's to repair.** `docs/rules/language/01-surface.md` §2 introduces

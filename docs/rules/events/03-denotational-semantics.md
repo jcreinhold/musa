@@ -1,5 +1,7 @@
 # 03 — Denotational Semantics
 
+**Status: governing.** What every finite event-track composition denotes.
+
 The denotation of every finite event-track composition, and the definition of every operation. Laws these definitions
 satisfy are in `04-algebraic-laws.md`; how they are normalized and compared is in `05-normalization.md`.
 

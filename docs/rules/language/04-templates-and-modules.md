@@ -1,5 +1,7 @@
 # Declaration templates and structures
 
+**Status: candidate.** Declaration templates, structures, and the module tree.
+
 Value functions construct values, including event tracks. Declaration templates construct declarations before score
 contexts are built. Keeping those stages separate permits reusable pieces and voices without making source syntax or
 identity-bearing structures first-class.

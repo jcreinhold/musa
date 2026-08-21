@@ -91,7 +91,7 @@ re-record them in this commit and say so, since every other golden in the repo m
 - `docs/rules/events/06-surface-elaboration.md`: the `key`/`meter`/`tempo` row rewritten; the "future shape" section
   becomes the present shape, with tempo's exclusion stated.
 - `docs/rules/events/08-open-questions.md`: **Q8 resolved** — state the resolution and delete the open question.
-- `docs/rules/events/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's row.
 
 ## Check
 
@@ -144,4 +144,4 @@ Commit as `Elaborate key, meter, and score annotations as occurrences`.
 - **`Canonical::canonical_key` was repaired while it was open.** It built its scope prefix with one `format!` and the
   whole key with another; it now writes into a single `String` sized up front. Allocation count is unchanged and `grow`
   per iteration fell from 24 478 to 310 — P4 on the large workload is **27% faster** than prompt 39's row. See
-  `docs/rules/events/09-performance.md`; no phase regressed.
+  `docs/rules/events/09-pipeline-baseline.md`; no phase regressed.

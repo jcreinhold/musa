@@ -18,7 +18,7 @@ program can, and it is the precondition for prompt 25's editing choice being com
 ## Read
 
 - `docs/rules/desktop/04-provenance.md` in full — this prompt's specification.
-- `05-states.md` §5 (diagnostics), `06-performance.md` B9.
+- `05-states.md` §5 (diagnostics), `06-frame-budgets.md` B9.
 - Roadmap §9 (editing transformed music: why the choice must be visible before it is offered).
 - Prompt 06's `Origin` and expansion paths; prompt 13's id mapping; prompt 19's `ProjectSnapshot`.
 

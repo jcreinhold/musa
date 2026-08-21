@@ -29,7 +29,7 @@ like.
 - §20 (provenance lives above the event track) — the hard part below.
 - `crates/musa-compiler/src/elaborate.rs` as prompts 39–41 left it: `elaborate_items`, `elaborate_item`'s `Repeat` and
   `Use` arms, `elaborate_use`.
-- `docs/rules/events/09-performance.md` P2 (elaboration) — the number this prompt moves.
+- `docs/rules/events/09-pipeline-baseline.md` P2 (elaboration) — the number this prompt moves.
 
 ## Design
 
@@ -91,7 +91,8 @@ the `musa events` path. Nothing downstream of the compiler learns that terms exi
 - `examples/events/*.event track`: goldens re-recorded (these change; nothing else may).
 - `docs/rules/events/06-surface-elaboration.md`: the elaboration table gains the term column and the provenance
   resolution.
-- `docs/rules/events/09-performance.md`: before/after rows, plus the fixture note if the large fixture was extended.
+- `docs/rules/events/09-pipeline-baseline.md`: before/after rows, plus the fixture note if the large fixture was
+  extended.
 
 ## Check
 
@@ -136,7 +137,7 @@ the events still only knows it is an opaque string it hands to `instantiate` (T6
 **Two event track accessors were needed, and both are about ownership, not inspection.** `Term::into_literal` and taking
 the term **by value** in `evaluate`/`evaluate_marked`. Both were added after measuring: the first draft cloned every
 occurrence twice on the way to a value and cost **+29% allocations on the `large` workload**, which has no sharing to
-offset it. `docs/rules/events/09-performance.md` records the two corrections and the rule they illustrate. The
+offset it. `docs/rules/events/09-pipeline-baseline.md` records the two corrections and the rule they illustrate. The
 `evaluate` signature change is a repair to prompt 45's; callers that still need the term say `evaluate(term.clone())`.
 
 **A third bench workload, not a bigger second one.** `tests/fixtures/large-score.musa` has no `repeat` and no `use`, so

@@ -16,7 +16,7 @@ is the only new concept: a narrow, typed command surface with no semantics in it
 
 ## Read
 
-- `docs/rules/desktop/05-states.md` (empty, loading, **stale revision** — the headline behavior), `06-performance.md`
+- `docs/rules/desktop/05-states.md` (empty, loading, **stale revision** — the headline behavior), `06-frame-budgets.md`
   (B1, B6, B7, B10 land here).
 - Roadmap §14.2 (state ownership), §14.7 (invalid edits), §15.9 (the shell is thin: command adaptation, window
   lifecycle, file dialogs, event delivery — nothing else), §14.8 (bundled, zero setup).
@@ -47,13 +47,13 @@ is the only new concept: a narrow, typed command surface with no semantics in it
   `ProjectSnapshot` directly, `musa-project` gains no Tauri dependency and no webview-only serde attribute, and the
   frontend's hand-written mirror of it stays honest because every fixture-driven test fails the moment a field is
   renamed.
-- **Events, not polling** (`06-performance.md` §3): `musa://snapshot` after every successful `apply`, `musa://position`
-  from the engine at ~10 Hz **only while playing**, `musa://transport` on state change. The frontend has no timers at
-  rest; B10 is asserted.
+- **Events, not polling** (`06-frame-budgets.md` §3): `musa://snapshot` after every successful `apply`,
+  `musa://position` from the engine at ~10 Hz **only while playing**, `musa://transport` on state change. The frontend
+  has no timers at rest; B10 is asserted.
 - **Frontend**: prompt 20's fixture loader is replaced by a single `session` store that owns the snapshot and is the
   only thing that talks to `invoke`. Components read the store; nothing else imports Tauri APIs.
 - **Source editing**: the drawer gets a plain `<textarea>` styled per the token system, debounced at 180 ms → one
-  `apply(SetSource)`, superseding any compile in flight (`06-performance.md` §3, rule 4). CodeMirror is prompt 26.
+  `apply(SetSource)`, superseding any compile in flight (`06-frame-budgets.md` §3, rule 4). CodeMirror is prompt 26.
 - **Stale revision** per `05-states.md` §4 in full: the score does not change, the leaf edge goes `--chalk`, the top
   margin states the revision and problem count, playback continues from the last valid plan, and the drawer opens itself
   the first time in a session. Test this directly — it is the behavior that decides whether the app is pleasant to edit
@@ -75,7 +75,7 @@ is the only new concept: a narrow, typed command surface with no semantics in it
   issues transport); perf assertions for B1, B6, B7, B10.
 
   The smoke test runs against the Vite dev server with a stubbed IPC layer, not against `tauri dev`: `tauri-driver` has
-  no macOS support, so a real webview cannot be automated on the development platform. `06-performance.md` §2 already
+  no macOS support, so a real webview cannot be automated on the development platform. `06-frame-budgets.md` §2 already
   names this substitution. What the stub answers is the *shape* the core guarantees — a new revision, the same score,
   diagnostics when the source is invalid — and that the real core keeps those guarantees is asserted in Rust. Driving a
   real window belongs to a CI prompt on a platform that supports it.

@@ -20,11 +20,11 @@ assume the first.
 
 ## Read
 
-- `docs/rules/desktop/06-performance.md` — B2 (keystroke → re-engraved score visible, large case, ≤ 400 ms p95, previous
-  engraving continuously visible) and §4: no speculative optimization; work like this "is considered only when B1 or B2
-  is measured to fail on a real piece, and it becomes its own prompt with the measurement as its justification". This is
-  that prompt; the measurement is its entry condition, not its conclusion.
-- `docs/rules/events/09-performance.md` — every row from prompts 38–47.
+- `docs/rules/desktop/06-frame-budgets.md` — B2 (keystroke → re-engraved score visible, large case, ≤ 400 ms p95,
+  previous engraving continuously visible) and §4: no speculative optimization; work like this "is considered only when
+  B1 or B2 is measured to fail on a real piece, and it becomes its own prompt with the measurement as its
+  justification". This is that prompt; the measurement is its entry condition, not its conclusion.
+- `docs/rules/events/09-pipeline-baseline.md` — every row from prompts 38–47.
 - `docs/rules/events/10-term-calculus.md` T5, and prompt 47's `evaluate`.
 - `apps/musa-desktop/ui/src/lib/score/Score.svelte` — the resident-page window the UI already maintains, and
   `docs/rules/desktop/02-engraving.md` §7 (page virtualization). If a window is going to be pushed down, this is where
@@ -38,9 +38,9 @@ assume the first.
 
 1. Measure B1 and B2 p95 on `tests/fixtures/large-score.musa` through the existing Playwright harness, and P1–P4 through
    `cargo bench`. Twenty trials, current `main`.
-2. **If B1 and B2 pass with ≥ 20% headroom**, stop. Write the numbers into `09-performance.md`, mark this prompt `done`
-   with a one-paragraph statement that deferred observation was not built and what would reopen it (a fixture that fails
-   the budget). Delete nothing, add nothing. That is a complete outcome.
+2. **If B1 and B2 pass with ≥ 20% headroom**, stop. Write the numbers into `09-pipeline-baseline.md`, mark this prompt
+   `done` with a one-paragraph statement that deferred observation was not built and what would reopen it (a fixture
+   that fails the budget). Delete nothing, add nothing. That is a complete outcome.
 3. **If either fails or is within 20%**, identify from the profile *which stage* costs: parse, elaborate, evaluate,
    project, engrave, or the IPC/worker round trip. Only if the answer is evaluate-or-project does this prompt's design
    apply. If it is engraving or the worker round trip, the finding belongs to prompt 22's surface, and this prompt
@@ -83,7 +83,7 @@ including any regression accepted and why.
 
 Outcome 2 (gate closed):
 
-- `docs/rules/events/09-performance.md`: the measurements and the decision.
+- `docs/rules/events/09-pipeline-baseline.md`: the measurements and the decision.
 - This prompt's frontmatter flipped to `done`, with the statement above in the body.
 
 Outcome 1 (gate open):
@@ -92,7 +92,7 @@ Outcome 1 (gate open):
 - `docs/rules/events/10-term-calculus.md`: the equivalence stated as a theorem with its test named.
 - `crates/musa-compiler/src/project.rs`: windowed projection and its partial-answer invariant.
 - `crates/musa-project`, `apps/musa-desktop`: the window plumbed from the resident page set.
-- `docs/rules/events/09-performance.md`: before/after for B1, B2, P1–P4, and the full-export check.
+- `docs/rules/events/09-pipeline-baseline.md`: before/after for B1, B2, P1–P4, and the full-export check.
 
 ## Check
 
@@ -118,7 +118,8 @@ produced.
 
 ## Outcome: the gate closed — no deferred observation was built
 
-The measurement is in `docs/rules/events/09-performance.md`, "Prompt 50 — the gate, measured, and closed". In short:
+The measurement is in `docs/rules/events/09-pipeline-baseline.md`, "Prompt 50 — the gate, measured, and closed". In
+short:
 
 **B1 passes with 98% headroom (2 ms of 120 ms). B2 does not clear the 20% bar — 373 ms of 400 ms, 6.8% headroom — so
 step 3 applied, and step 3 is decisive.** Splitting B2 into its stages shows 180 ms of debounce (fixed by design), 2 ms
@@ -136,7 +137,7 @@ evaluated eagerly, which T5 says is the same answer.
 
 One thing, and it is a measurement rather than a feature: `perf.spec.ts` now prints each budget's measured p95 on
 stdout, and splits B2 into round trip and engraving. Before this, a green run said "within budget" and nothing else, so
-the headroom a decision like this turns on could only be read by breaking an assertion. `06-performance.md` §2 already
+the headroom a decision like this turns on could only be read by breaking an assertion. `06-frame-budgets.md` §2 already
 asks for measurements rather than verdicts; this makes a passing run obey it too.
 
 ### What would reopen it

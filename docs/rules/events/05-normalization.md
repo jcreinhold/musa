@@ -1,5 +1,8 @@
 # 05 — Normalization, Semantic Equality, Serialization
 
+**Status: governing.** That every composition normalizes to one flat track, what semantic equality is, and how a track
+is serialized.
+
 Every finite event-track composition normalizes to one flat event track. This document fixes the normal form, canonical
 occurrence order, semantic equality, human canonical display, and separately framed semantic identity.
 

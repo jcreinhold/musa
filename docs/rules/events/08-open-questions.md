@@ -1,5 +1,8 @@
 # 08 — Open Questions
 
+**Status: governing — as questions.** What is deliberately undecided, and the evidence that would settle each. Nothing
+here is closed because closing it is convenient.
+
 Deliberately undecided. Each entry states the question, the current working stance, and the evidence that would settle
 it. Nothing here may be settled by convenience: no open question is closed because closing it is convenient.
 

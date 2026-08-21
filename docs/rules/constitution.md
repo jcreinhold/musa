@@ -1,5 +1,8 @@
 # What Musa must preserve
 
+**Status: governing; nothing overrides it.** The nine decisions every part of musa follows. Amendable only through
+[`README.md`](README.md)'s six-requirement procedure.
+
 This document states the project’s basic design choices. A **representation** is any form in which Musa holds part of a
 project: source text, an event track, an engraved score, an analysis, a MIDI file, a machine description, or recorded
 sound.

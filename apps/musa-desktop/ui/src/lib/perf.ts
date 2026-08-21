@@ -1,6 +1,6 @@
 /**
  * The marks the performance budgets are measured from
- * (`docs/rules/desktop/06-performance.md` §2).
+ * (`docs/rules/desktop/06-frame-budgets.md` §2).
  *
  * `performance.mark` is cheap, but it is not free and it is not needed in a
  * release build, so the marks are behind a flag: `?perf=1`, which the headless

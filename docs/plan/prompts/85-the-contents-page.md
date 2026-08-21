@@ -93,7 +93,7 @@ spends its budget on.
 - `Screen` gains `"contents"`; `Workspaces.svelte`'s list and `App.svelte`'s render chain follow.
 - `Compose.svelte`'s missing `{:else}`; `Launch.svelte`'s third way in; `commands/map.ts` following `registry.rs`.
 - `apps/musa-desktop/ui/tests/screens/shell.ts`: the second album piece as a seed, `show_piece`, `saveAll`.
-- `docs/rules/desktop/06-performance.md` gains **B12**, and `tests/screens/perf.spec.ts` asserts it.
+- `docs/rules/desktop/06-frame-budgets.md` gains **B12**, and `tests/screens/perf.spec.ts` asserts it.
 - `apps/musa-desktop/ui/tests/screens/contents.spec.ts`.
 
 ## Check

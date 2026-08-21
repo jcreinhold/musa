@@ -27,9 +27,10 @@ and complete calls.
   named hole filling — as ambiguity about what a call means rather than features. That is the authority for deleting a
   default rather than keeping it: an inserted default is a complete call, so §1 alone would not reach it.
 - `docs/rules/language/02-core-calculus.md` §5, which had described defaults as a surface elaboration and closure
-  environments as carrying preceding defaults, and `docs/rules/language/06-performance.md`'s `core-pressure` row, which
-  had named partial application as the pressure it applies. Both were candidate-spec restatements the constitution had
-  already overruled, and both were repaired in the commit that repaired this prompt, before any code moved.
+  environments as carrying preceding defaults, and `docs/rules/language/06-elaboration-baseline.md`'s `core-pressure`
+  row, which had named partial application as the pressure it applies. Both were candidate-spec restatements the
+  constitution had already overruled, and both were repaired in the commit that repaired this prompt, before any code
+  moved.
 - `docs/rules/language/00-semantics.md` §3, "Higher-order construction and the pitch traversal" — `transpose(i)` is
   written as a function that takes its track argument, not as a closure produced by an under-applied call.
 - `docs/rules/language/02-core-calculus.md` §5's term grammar, where `λ(x₁:τ₁,…,xₙ:τₙ).e` is already both a term and a

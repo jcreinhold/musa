@@ -19,7 +19,7 @@ phase: 3
 A dependent checker fails in ways Musa has never failed before — a conversion mismatch between two normal forms, an
 incomplete match, a recursion the termination checker cannot see, an unsolved metavariable, an ambiguous instance — and
 it does work Musa has never done before, because conversion evaluates. Bring the diagnostics up to the standard the rest
-of the compiler holds, and bring P1 and P2 back inside `06-performance.md`'s 10% gate.
+of the compiler holds, and bring P1 and P2 back inside `06-elaboration-baseline.md`'s 10% gate.
 
 And make one more failure legible, because today it is not a failure at all: the checker exhausts the host stack and
 aborts the process before any budget refuses it. `02-core-calculus.md` §4.1 already forbids that outcome and already
@@ -27,10 +27,11 @@ says what the implementation owes instead. This prompt discharges it.
 
 ## Read
 
-- `docs/rules/language/06-performance.md` §"Measurements and honest seams", the P1–P5 table, the recorded baselines, and
-  §"Gates and budgets" — the 10% relative gate, and the end-to-end authority in `docs/rules/desktop/06-performance.md`:
-  B1 is ≤120 ms after debounce and B2 is ≤400 ms with the previous engraving visible. Those two are what a musician
-  actually experiences, so they are the numbers that decide whether this prompt is done.
+- `docs/rules/language/06-elaboration-baseline.md` §"Measurements and honest seams", the P1–P5 table, the recorded
+  baselines, and §"Gates and budgets" — the 10% relative gate, and the end-to-end authority in
+  `docs/rules/desktop/06-frame-budgets.md`: B1 is ≤120 ms after debounce and B2 is ≤400 ms with the previous engraving
+  visible. Those two are what a musician actually experiences, so they are the numbers that decide whether this prompt
+  is done.
 - `crates/musa-score/src/diagnose.rs` and `crates/musa/src/main.rs`'s `cmd_explain` — the existing diagnostic vocabulary
   and the rule that every code has an explainable rule behind it.
 - Every `Code` variant added by prompts 134, 135, 136a, 137, 137a, 139, and 140, and the message each currently
@@ -108,8 +109,8 @@ than a default if it says what the two possibilities were and how to pick one.
 
 **Then measure, in that order.** Diagnostics first because a fast compiler with unreadable errors is worse than a slow
 one with good errors, and because improving messages sometimes changes what code runs. The workloads are
-`06-performance.md`'s existing four — open-shape, higher-order-shape, declaration-heavy, audio-bridge — so the numbers
-are comparable to the recorded baseline rather than to a benchmark invented to make this prompt look good.
+`06-elaboration-baseline.md`'s existing four — open-shape, higher-order-shape, declaration-heavy, audio-bridge — so the
+numbers are comparable to the recorded baseline rather than to a benchmark invented to make this prompt look good.
 
 **Where a dependent checker actually costs, and where it does not.** Conversion evaluates, so the suspects are
 normalization during checking, metavariable solving, and instance resolution — not parsing and not term construction.
@@ -293,19 +294,19 @@ What neither may do is stay unnamed.
   exponential this was urgent for, so what is left is a linear constant factor on the leaves a non-first-row arm
   reaches: measure it on 142's output before building any of the above, and record the number either way.
 
-**Update the recorded baseline, honestly.** `06-performance.md` records both the pre-migration baseline and the current
-numbers. If something is genuinely slower and the 10% gate is exceeded, the prompt's output is either a mitigation or an
-argued amendment to the budget — with the musician-facing B1/B2 numbers as the check that the argument is acceptable —
-and never a quietly raised threshold.
+**Update the recorded baseline, honestly.** `06-elaboration-baseline.md` records both the pre-migration baseline and the
+current numbers. If something is genuinely slower and the 10% gate is exceeded, the prompt's output is either a
+mitigation or an argued amendment to the budget — with the musician-facing B1/B2 numbers as the check that the argument
+is acceptable — and never a quietly raised threshold.
 
 ## Target
 
 - Every diagnostic from prompts 134, 135, 137, 137a, 139, and 140 rewritten to the standard above, each with
   `musa explain` text and a test that pins the message on a realistic program rather than a minimal one.
 - Profiles of the new checker on the four recorded workloads, the interventions chosen, and the re-measured numbers.
-- `docs/rules/language/06-performance.md` updated with post-migration P1/P2 rows and, if the gate was exceeded, the
-  argument and its resolution.
-- `docs/rules/desktop/06-performance.md`'s B1/B2 confirmed still met, measured rather than assumed.
+- `docs/rules/language/06-elaboration-baseline.md` updated with post-migration P1/P2 rows and, if the gate was exceeded,
+  the argument and its resolution.
+- `docs/rules/desktop/06-frame-budgets.md`'s B1/B2 confirmed still met, measured rather than assumed.
 - A verdict on each of note 44's four remaining items, measured on 142's output rather than argued: approximate
   conversion, the flexible quotation mode, the per-metavariable occurs cache, and the hoisting of `match` arm bodies.
   Glued evaluation and `Head::Def` are [141u](141u-glued-evaluation.md)'s and arrive already built; this prompt measures
@@ -318,15 +319,15 @@ and never a quietly raised threshold.
   is 145's either way, and the memo's job is the wall clock and the step count, not the rewrite.
 - The tonal class closed: `diatonic-sequences` and `rule-of-the-octave` elaborating at the language budget, by a
   measured `std::tonal` fix or an argued cost-table version bump, with the measurement recorded in
-  `docs/rules/language/06-performance.md` either way.
+  `docs/rules/language/06-elaboration-baseline.md` either way.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - The room obligation discharged at the `musa-calculus` seam, with a `FRAME_CEILING` constant in `musa-calculus`
   carrying the measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command
   that produced the number in the doc comment beside it, as `core_budget.rs`'s already does. **Delivered at prompt
   141s**; what remains is re-measuring the ceiling after the spine walk below changes what a level costs.
 - The elaborator's recursion charged for nesting, and the spine walk that lets 256 stay 256. If either forces a
-  cost-table version bump, the bump lands in `02-core-calculus.md` §4 with its reason, and `06-performance.md` records
-  what the change cost.
+  cost-table version bump, the bump lands in `02-core-calculus.md` §4 with its reason, and `06-elaboration-baseline.md`
+  records what the change cost.
 - The region depth law restated: `expand.rs`'s `a_region_nested_deeper_than_anyone_writes_still_expands` at a depth the
   finished checker's measured frames-per-level supports rather than at 142's provisional 16, the first-refusal depth
   recorded beside it with what measured it, and `Budget::NESTING`'s doc comment either re-earned for the adapter path or

@@ -1,7 +1,7 @@
 /**
  * A stubbed shell, for driving the interface in a headless browser.
  *
- * `06-performance.md` §2 sanctions this: the harness runs against the Vite
+ * `06-frame-budgets.md` §2 sanctions this: the harness runs against the Vite
  * dev server with a stubbed IPC layer where a window is impractical, and it is
  * impractical here — `tauri-driver` has no macOS support, so a real webview
  * cannot be automated on the machine this is developed on.
@@ -41,7 +41,7 @@ function fixtureFile(name: string): string {
 /**
  * Install the stub. Call before the page navigates.
  *
- * The piece is the workload: Glass Mountain is `06-performance.md`'s small
+ * The piece is the workload: Glass Mountain is `06-frame-budgets.md`'s small
  * case, `large-score` its 100-bar, 4-part large case. `opens` is the piece a
  * File → Open answers with — a *second* document, which is the only way to
  * exercise what happens when one piece replaces another.

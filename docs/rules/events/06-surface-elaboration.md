@@ -1,5 +1,7 @@
 # 06 — Surface Elaboration
 
+**Status: governing.** How `.musa` source elaborates into event tracks.
+
 How the `.musa` surface language elaborates into event tracks. This document describes elaboration of the grammar **as
 it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11
 (`docs/plan/prompts/11-kernel-elaboration.md`), and prompt 127a renames what it produces.

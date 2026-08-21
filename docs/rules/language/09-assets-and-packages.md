@@ -1,5 +1,7 @@
 # Assets, packages, and recorded media
 
+**Status: candidate.** External sound, reproducible assets, and pinned packages, without weakening source authority.
+
 External sound does not weaken source authority. A reproducible Musa project is the source plus an immutable, locked
 build closure. Filesystem paths are authoring addresses; content identities are compilation facts.
 

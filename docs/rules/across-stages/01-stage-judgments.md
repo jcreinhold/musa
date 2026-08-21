@@ -1,5 +1,8 @@
 # What exists at each compiler stage
 
+**Status: governing.** What exists at each compiler stage: the representations, the operations between them, and when
+each is valid.
+
 This chapter lists Musa’s main representations and the operations that connect them. The list is not one chain that
 every project must follow. An analysis can branch from a score, a gesture-based practice may reach performance without
 first producing Western notation, and a project may begin at a microphone and never produce a score at all.

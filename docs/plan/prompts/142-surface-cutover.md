@@ -504,7 +504,7 @@ rules never authorized.
     appears on a ledger of deleted concepts and both belong on this list.
   - **A dead item is not automatically a deletion, and `core_budget.rs`'s row is the proof.** `WorkMeter::output` and
     `preflight_output` are unused because nothing in the new lowering charges the million-occurrence limit
-    `06-performance.md` fixes: a capability not yet called, not a capability replaced. It stays, and prompt 144
+    `06-elaboration-baseline.md` fixes: a capability not yet called, not a capability replaced. It stays, and prompt 144
     re-measures it. Every row is sorted into *replaced* or *not yet called* before anything is removed, and that sorting
     is what the second-path audit records — an unsorted deletion silently converts a hole into an intention.
   - **The check is the crate's own warning count, because the ledger cannot be.** `clean-break-ledger.md` names concepts

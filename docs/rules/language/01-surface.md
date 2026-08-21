@@ -1,5 +1,7 @@
 # Surface language candidate
 
+**Status: candidate.** The punctuation and spellings of the source language.
+
 This file settles the punctuation and spellings introduced by the candidate. Existing syntax remains unless a rule below
 explicitly desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`; commas
 separate arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain

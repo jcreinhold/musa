@@ -1,4 +1,4 @@
-# 06 — Elaboration Performance and Compatibility Baseline
+# 06 — Elaboration Baseline and Compatibility
 
 Status: **governing for the prompt 93–171 migration**.
 
@@ -8,8 +8,8 @@ that these numbers are universal: the compatibility manifests are exact, while t
 
 ## Workloads
 
-The historical `small`, `large`, and `shared` columns remain defined by `docs/rules/events/09-performance.md`; adding a
-scenario never edits them. Prompt 93 adds four generated, committed fixtures:
+The historical `small`, `large`, and `shared` columns remain defined by `docs/rules/events/09-pipeline-baseline.md`;
+adding a scenario never edits them. Prompt 93 adds four generated, committed fixtures:
 
 | workload | pressure | evaluated occurrences |
 | --- | --- | ---: |
@@ -110,8 +110,8 @@ digest.
 
 The migration gate is relative: P1 or P2 moving more than 10% on any comparable workload requires a recorded rerun,
 allocation comparison, and explicit justification in the implementing prompt. One machine's median is not an absolute CI
-threshold. The end-to-end authority remains `docs/rules/desktop/06-performance.md`: B1 is ≤120 ms after debounce and B2
-is ≤400 ms with the previous engraving visible. Even the declaration-heavy P1 is below 0.5 ms here, so these rows
+threshold. The end-to-end authority remains `docs/rules/desktop/06-frame-budgets.md`: B1 is ≤120 ms after debounce and
+B2 is ≤400 ms with the previous engraving visible. Even the declaration-heavy P1 is below 0.5 ms here, so these rows
 diagnose the compiler; they do not replace B1/B2.
 
 Prompt 96's resource-exhaustion cases are a separate suite. They must use generated bounded inputs, report the bound,

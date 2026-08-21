@@ -143,7 +143,7 @@ leave it and say so.
   grammar).
 - `crates/musa-compiler/src/performance.rs`: `Curve` deleted; `hairpin_curves` reads the shape and keeps its sampling.
 - `docs/rules/events/07-backend-contract.md`: shape is normative, sampling is the consumer's.
-- `docs/rules/events/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's row.
 
 ## Repairs made while implementing
 
@@ -186,8 +186,8 @@ identical to the digit — because **neither benchmark workload contains a hairp
 `large-score.musa`'s coda is point dynamics, articulations, ties, slurs and tuplets. The table therefore confirms the
 change costs nothing where there are no hairpins and says nothing else; the real cost is one two-element `Vec` per
 hairpin at elaboration, one clone at projection, and one `at()` per event under a hairpin replacing a multiply. Growing
-the fixture would invalidate forty existing rows, so `docs/rules/events/09-performance.md` records the gap and leaves
-the repair to the prompt that next needs the fixture to change.
+the fixture would invalidate forty existing rows, so `docs/rules/events/09-pipeline-baseline.md` records the gap and
+leaves the repair to the prompt that next needs the fixture to change.
 
 ## Check
 

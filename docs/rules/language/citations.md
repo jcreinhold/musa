@@ -1,5 +1,7 @@
 # Where the theory comes from
 
+**Status: candidate — reference.** Where every theoretical construction Musa implements comes from.
+
 Musa implements a bounded set of theoretical constructions. Every one of them either comes from a named source — a
 chapter of [Open Music Theory](https://viva.pressbooks.pub/openmusictheory/) for the music, a chapter or paper for the
 calculus — or is proved locally, and this chapter says which, for each. Sections 1–12 are the music. **Section 13 is the

@@ -188,7 +188,7 @@ pub enum TransportRequest {
 /// What a command changed.
 ///
 /// This exists so a frontend can decide what to redo without diffing
-/// snapshots: re-engraving a score is expensive (`docs/rules/desktop/06-performance.md`
+/// snapshots: re-engraving a score is expensive (`docs/rules/desktop/06-frame-budgets.md`
 /// B2), and most commands do not change it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProjectUpdate {

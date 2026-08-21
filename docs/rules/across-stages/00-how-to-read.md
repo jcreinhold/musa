@@ -1,5 +1,8 @@
 # Terms and notation used in this specification
 
+**Status: governing — definitions.** The vocabulary and notation every other page in this directory is written in. Read
+it first.
+
 This chapter gives the minimum background needed to read the later rules.
 
 ## What this specification covers

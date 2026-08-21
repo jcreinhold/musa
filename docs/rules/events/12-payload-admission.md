@@ -1,5 +1,7 @@
 # 12 — Payload Admission
 
+**Status: governing.** Which types may be an occurrence payload, and which coordinates a track may carry.
+
 The event-track core is parametric in a coordinate `C` and a payload `A`. This document fixes the evidence a payload
 type must supply before it is used with normalization, equality, or semantic identity. Admission does not add a temporal
 operation and does not teach the core the payload's musical meaning.

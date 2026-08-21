@@ -21,7 +21,7 @@ no-allocation/no-lock/no-I/O contract.
 ## Read
 
 - The revised audio constitution and `R1` in the revised backend contract.
-- Prompt 93 baseline/expected-change ledger, prompt 153 core-calculus report, `docs/rules/desktop/06-performance.md`,
+- Prompt 93 baseline/expected-change ledger, prompt 153 core-calculus report, `docs/rules/desktop/06-frame-budgets.md`,
   roadmap §§13.2/17.5, and all completion notes from prompts 156–169.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.

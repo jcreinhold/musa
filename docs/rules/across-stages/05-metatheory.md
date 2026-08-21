@@ -1,5 +1,7 @@
 # What is proved, implemented, and still open
 
+**Status: governing.** What is proved, what the code implements, and what is still open — three claims kept apart.
+
 This chapter keeps three claims separate:
 
 - a mathematical rule may be correct;

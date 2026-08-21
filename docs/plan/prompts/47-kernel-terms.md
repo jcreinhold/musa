@@ -96,7 +96,7 @@ fails, the calculus and the algebra disagree and the *specification* is wrong �
 - `crates/musa-events/src/error.rs`: whatever well-formedness cases survived the sorting above, and no more.
 - `crates/musa-events/tests/suite/terms.rs`: T1–T5 and the transported laws.
 - `docs/rules/events/10-term-calculus.md`: each theorem's `Test:` line pointed at the real test name.
-- `docs/rules/events/09-performance.md`: no row — nothing on the measured path changed.
+- `docs/rules/events/09-pipeline-baseline.md`: no row — nothing on the measured path changed.
 
 ## Repairs made while implementing
 

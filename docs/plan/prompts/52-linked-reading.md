@@ -21,7 +21,7 @@ links attention, which is what reading a score actually is.
   the *unheld* one, and the two must not look alike or the lens stops meaning anything.
 - `docs/rules/desktop/01-visual-language.md` §2 (two hues, each with one meaning) and §6 (three animations, and this is
   not one of them); `03-interaction.md` §1–§2 (selection is not hover), §6 (the accessibility floor).
-- `docs/rules/desktop/06-performance.md` — hover is a pointer-rate event and must be frame-local.
+- `docs/rules/desktop/06-frame-budgets.md` — hover is a pointer-rate event and must be frame-local.
 - Prompt 24's `originSpans`/`sourceSpans` and occurrence model; prompt 26's `SourcePane`, marks, and `eventsForSpan`;
   the snapshot's `OriginFacts.definitionSpan`, which already carries the statement that *spells* an event as distinct
   from the one that *places* it.

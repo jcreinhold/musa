@@ -1,5 +1,7 @@
 # Verification contract
 
+**Status: candidate.** What a value *is*, what a composer *asserts*, and which of the two Musa checks.
+
 Musa distinguishes what a value *is*, what a composer explicitly *requires*, and what an analyst *interprets*.
 Verification preserves those distinctions and makes the candidate falsifiable.
 

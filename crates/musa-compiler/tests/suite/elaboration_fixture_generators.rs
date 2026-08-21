@@ -636,7 +636,7 @@ fn the_pressure_workloads_compile_and_denote_what_they_claim() {
 /// fifty-three commits after the language dropped defaults, so the benchmark
 /// binary panicked in its own preamble and every P0–S2 measurement was
 /// unreachable — including the two that had regressed past the 10% gate in
-/// `docs/rules/language/06-performance.md`. A benchmark nobody can run is a
+/// `docs/rules/language/06-elaboration-baseline.md`. A benchmark nobody can run is a
 /// gate nobody is holding.
 ///
 /// One representative call count is enough: what this protects is that the

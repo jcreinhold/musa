@@ -96,7 +96,7 @@ deleted. List them in "Repairs made while implementing".
 - `crates/musa-compiler/tests/suite/elaboration.rs` deleted; `studio_laws.rs` updated; any coverage gap closed first.
 - `crates/musa-project`, `crates/musa`: call-site updates.
 - `docs/rules/events/06-surface-elaboration.md`, `docs/plan/prompts/README.md`, `musa-compiler` module docs.
-- `docs/rules/events/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's row.
 
 ## Check
 

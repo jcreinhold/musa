@@ -18,7 +18,7 @@ generated.
 ## Read
 
 - `docs/rules/desktop/02-engraving.md` in full — it is this prompt's specification, section by section.
-- `06-performance.md` B2, B7, B8 and the structural rules of §3.
+- `06-frame-budgets.md` B2, B7, B8 and the structural rules of §3.
 - Prompt 20's `Engraver` interface and sanitizer; prompt 13's `xml:id` contract.
 
 ## Design
@@ -45,7 +45,7 @@ generated.
   (`--sp`) exposed by the layout result. Selection and hover move here from prompt 20; playhead and Origin traces attach
   in prompts 23 and 24 without touching Verovio's output.
 - **Fixture**: add `tests/fixtures/large-score.musa` — a generated 100-bar, 4-part piece — as the large-case workload
-  for `06-performance.md`. It is a fixture, not an example; it does not go in `examples/`. Both the generator and its
+  for `06-frame-budgets.md`. It is a fixture, not an example; it does not go in `examples/`. Both the generator and its
   output are committed: the generator (`crates/musa-project/tests/suite/large_score_generators.rs`) because it is the
   only readable description of what the fixture is, the output because the UI imports it and the suites run offline. The
   generator fails when the committed copy is stale, so the two cannot drift.

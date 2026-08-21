@@ -1,5 +1,7 @@
 # Rules for machines
 
+**Status: governing.** What a machine is, what one step means, how machines compose, and what feedback may read.
+
 This chapter defines four things: what a machine is, what one step means, when a machine may be prepared for audio, and
 how a finite event track becomes a running source of events. A machine is a source value; the state it carries and the
 flattened layout an implementation may choose are private.

@@ -46,7 +46,7 @@ something on the screen.
 
 - **App launch → first paint**: the shell frame (margins, title, transport in a disabled state) paints immediately; the
   leaf shows a blank sheet with the correct page dimensions. No spinner. The score arrives when the worker has laid it
-  out (budget: `06-performance.md`).
+  out (budget: `06-frame-budgets.md`).
 - **Never a full-screen loading state after launch.** Every subsequent wait happens with the previous content still on
   screen.
 - If a layout exceeds 1 s (a very large score), a thin `--plate` progress hairline appears at the top edge of the leaf.

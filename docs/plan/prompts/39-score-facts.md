@@ -126,7 +126,7 @@ observable output of `compile` is byte-identical, and the only thing that change
 - `crates/musa-compiler/src/lower.rs`: unchanged (the oracle is frozen).
 - `docs/rules/events/06-surface-elaboration.md`: elaboration table and adapter contract rewritten for `ScoreFact`.
 - `docs/rules/events/08-open-questions.md`: Q3 and Q7 evidence; the §34 note that heterogeneity needed no constructor.
-- `docs/rules/events/09-performance.md`: this prompt's P1–P4 row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's P1–P4 row.
 
 ## Check
 
@@ -136,7 +136,7 @@ cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test -p musa-compiler -p musa-notation --unreferenced=reject   # no golden may change
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
-cargo bench -p musa-compiler   # append the row to docs/rules/events/09-performance.md
+cargo bench -p musa-compiler   # append the row to docs/rules/events/09-pipeline-baseline.md
 grep -rn "struct Marks\|fn retie" crates/ | wc -l   # 0
 ```
 
@@ -177,6 +177,6 @@ Commit as `Elaborate every notated fact as an event-track occurrence`.
   sharing a span; once a `slur` inside a motif body is an occurrence of its own, that numbering had to skip non-event
   facts, or bracketing a motif would have silently renumbered its notes.
 - **P2 on the large workload is +13% against prompt 38's row**, over the block's 10% gate and declared here as the rule
-  requires, with the reasoning in `docs/rules/events/09-performance.md`: the timeline holds more occurrences because
-  regions are occurrences now, and elaboration groups statements to merge ties. The trade is that a slur is stored once
-  instead of once per note it covers, and the `Vec<u32>` every note used to carry is gone.
+  requires, with the reasoning in `docs/rules/events/09-pipeline-baseline.md`: the timeline holds more occurrences
+  because regions are occurrences now, and elaboration groups statements to merge ties. The trade is that a slur is
+  stored once instead of once per note it covers, and the `Vec<u32>` every note used to carry is gone.

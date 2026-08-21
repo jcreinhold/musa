@@ -1,5 +1,7 @@
 # Performance and sound
 
+**Status: candidate.** Performance gestures and the sound side, as event tracks at a gesture payload.
+
 > **`docs/rules/constitution.md` §8 governs where this document differs.** The gesture track named below is the one
 > event-track structure at a gesture payload — `EventTrack[PerformedTime, Gesture]` — not a structure with its own
 > ordering, equality, or hash.

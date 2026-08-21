@@ -64,7 +64,7 @@ export const FIXTURES: readonly Fixture[] = [
   },
   { key: "counterpoint", title: "Counterpoint Study", mei: counterpointMei },
   { key: "twinkle", title: "Twinkle", mei: twinkleMei },
-  // The large-case workload of `06-performance.md` §1 — 100 bars in four
+  // The large-case workload of `06-frame-budgets.md` §1 — 100 bars in four
   // parts. It is here so the budgets can be measured through the real screen
   // rather than through a harness that skips it.
   { key: "large-score", title: "Large Score", mei: largeScoreMei },

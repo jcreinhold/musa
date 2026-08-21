@@ -1,5 +1,7 @@
 # Traits, methods, and namespaces
 
+**Status: candidate.** Traits, methods, and namespaces — an operation whose body depends on the type it is used at.
+
 A trait is how Musa writes an operation whose body depends on the type it acts on: `==`, `<`, `+`, the collection folds,
 and the one domain trait the standard library declares (`Transposable`, in `std::pitch`). The design rule, stated before
 any mechanism because every mechanism answers to it:

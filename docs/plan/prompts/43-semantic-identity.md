@@ -27,8 +27,8 @@ Then make canonicalization fast enough to be asked on every keystroke, using pro
 - `crates/musa-events/src/occurrence.rs` — `Canonical::canonical_key(&self) -> String`, allocating one `String` per
   occurrence, called by `sort_by_key` (which may call it more than once per element) and twice per comparison in
   `semantic_eq`.
-- `docs/rules/events/09-performance.md` — P4 is exactly this cost, measured at prompt 38 and re-measured since.
-- `docs/rules/desktop/06-performance.md` B1 (keystroke → diagnostics ≤ 120 ms) and §4 (no speculative optimization).
+- `docs/rules/events/09-pipeline-baseline.md` — P4 is exactly this cost, measured at prompt 38 and re-measured since.
+- `docs/rules/desktop/06-frame-budgets.md` B1 (keystroke → diagnostics ≤ 120 ms) and §4 (no speculative optimization).
 - PoSD ch. 20: prefer the design change that removes work.
 
 ## Design
@@ -98,7 +98,7 @@ Do not reach for parallelism, arena allocation, interning, or a faster hash func
 - `crates/musa-compiler`: the compilation exposes its semantic hash (one accessor, one caller).
 - `crates/musa-project/src/session.rs`: plan installation and any other consumer moved off the counter; new tests.
 - `docs/rules/events/05-normalization.md`: N6 made concrete — algorithm named, invariants stated, the provenance caveat.
-- `docs/rules/events/09-performance.md`: P1/P4 rows before and after any intervention.
+- `docs/rules/events/09-pipeline-baseline.md`: P1/P4 rows before and after any intervention.
 
 ## Repairs made while implementing
 
@@ -141,7 +141,7 @@ call. Testing it from outside would have meant a new public accessor whose only 
 forbids. Three tests: a comment does not change it, a note does, and a studio-only edit does.
 
 **The measurement, and the one intervention it justified.** Full numbers and reasoning are in
-`docs/rules/events/09-performance.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the
+`docs/rules/events/09-pipeline-baseline.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the
 session asks for.
 
 - P1 large **1.41 ms → 1.95 ms (+38%)** and P2 large **+33%** — over the block's 10% gate, declared here. Hashing the
@@ -167,7 +167,7 @@ Commit as `Key playback installation on semantic identity`.
 
 ## Stop
 
-- No incremental or query-based compiler (Salsa). `06-performance.md` §4 makes that its own prompt with its own
+- No incremental or query-based compiler (Salsa). `06-frame-budgets.md` §4 makes that its own prompt with its own
   measurement; a hash is not a cache.
 - No content-addressed store, no on-disk cache keyed by the hash, no export memoization. One caller, this prompt.
 - No second "musical" hash that ignores provenance until something needs it.

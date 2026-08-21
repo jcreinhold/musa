@@ -20,7 +20,7 @@ boundaries. Preserve the audio-bridge baseline unchanged except for explicitly c
 ## Read
 
 - Prompt 38 and prompt 93's benchmark protocol, artifacts, compatibility corpus, and frozen baseline.
-- `docs/rules/desktop/06-performance.md` and all existing B-budget definitions.
+- `docs/rules/desktop/06-frame-budgets.md` and all existing B-budget definitions.
 - `docs/rules/language/02-core.md`, `03-music.md`, `04-templates-and-modules.md`, `06-event-track-escape.md`, and
   `07-analysis.md`.
 - Cache, semantic-hash, last-valid-artifact, realization, and provenance invariants from prompts 43, 50, 67, and 77.
@@ -107,8 +107,8 @@ source construct; “faster” is not permission to make accepted programs machi
 - Profiles for each failed or materially regressed workload, with the chosen fix linked to the observed hotspot.
 - Focused internal optimizations and cached/uncached differential law tests where measurement justifies them.
 - Both sharing gaps decided by their measured numbers, each either closed or recorded as immaterial.
-- Updated `docs/rules/desktop/06-performance.md` and language resource-budget documentation with measured thresholds and
-  scaling variables.
+- Updated `docs/rules/desktop/06-frame-budgets.md` and language resource-budget documentation with measured thresholds
+  and scaling variables.
 - A public-surface and dependency audit confirming performance work did not leak compiler internals or add a new crate.
 
 ## Check

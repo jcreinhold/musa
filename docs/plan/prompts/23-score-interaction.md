@@ -17,7 +17,7 @@ accessibility floor. After this prompt the app is a usable score reader and play
 ## Read
 
 - `docs/rules/desktop/03-interaction.md` in full — this prompt's specification.
-- `05-states.md` §6 (results and confirmations), `06-performance.md` B3, B4, B5, B9, B10.
+- `05-states.md` §6 (results and confirmations), `06-frame-budgets.md` B3, B4, B5, B9, B10.
 - Prompt 18's transport facade and position events; prompt 21's event channel and command registry.
 
 ## Design

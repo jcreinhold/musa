@@ -108,9 +108,9 @@ the prompt that introduces it.
 | Floor | Where it is specified |
 | --- | --- |
 | The score is genuinely well engraved at every zoom, in both themes, on high-DPI displays | `02-engraving.md` |
-| An edit never blanks, flashes, or scroll-jumps the score | `02-engraving.md` §6, `06-performance.md` |
+| An edit never blanks, flashes, or scroll-jumps the score | `02-engraving.md` §6, `06-frame-budgets.md` |
 | Every action is reachable from the keyboard; every note is focusable and announced | `03-interaction.md` §5 |
 | Contrast ≥ 4.5:1 for all text and ≥ 3:1 for all meaningful marks, in both themes | `01-visual-language.md` §2 |
 | `prefers-reduced-motion` is honored everywhere | `01-visual-language.md` §6 |
 | The app is fully usable offline with zero setup (all fonts, Verovio, and DSP bundled) | `01-visual-language.md` §3 |
-| Named performance budgets, measured, not estimated | `06-performance.md` |
+| Named performance budgets, measured, not estimated | `06-frame-budgets.md` |

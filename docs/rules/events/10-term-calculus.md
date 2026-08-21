@@ -1,4 +1,4 @@
-# 10 — The Kernel Term Calculus
+# 10 — The Event-Track Term Calculus
 
 **Status: governing** (graduated at prompt 48). Prompt 47 built the `Term` type and its evaluator, prompt 48 gave it a
 text form (`01-grammar.md`) and a second producer/consumer; prompt 49 makes elaboration emit terms. Nothing in this

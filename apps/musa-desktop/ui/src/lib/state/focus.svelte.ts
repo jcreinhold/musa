@@ -73,7 +73,7 @@ interface Interval {
  * The two directions, resolved.
  *
  * Built once per score rather than once per pointer move: hover is a
- * pointer-rate event and has to be frame-local (`06-performance.md`).
+ * pointer-rate event and has to be frame-local (`06-frame-budgets.md`).
  */
 class Index {
   /** Events grouped by the statement that spells them: one line's plural answer. */

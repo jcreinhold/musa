@@ -114,7 +114,7 @@ what Q6 was waiting for.
 - `examples/events/*.event track`: goldens for every `examples/*.musa`.
 - `docs/rules/events/01-grammar.md`: the implemented grammar, candidate banner lifted from `10-term-calculus.md`;
   `08-open-questions.md`: **Q6 resolved**.
-- `docs/rules/events/09-performance.md`: a row only if printing lands on a measured path (it should not).
+- `docs/rules/events/09-pipeline-baseline.md`: a row only if printing lands on a measured path (it should not).
 
 ## Check
 

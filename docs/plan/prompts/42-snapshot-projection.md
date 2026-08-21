@@ -82,7 +82,7 @@ workspace is the proof.
 - `crates/musa-notation`, `crates/musa-project`, `apps/musa-desktop` (Rust side): call sites migrated.
 - `docs/rules/events/07-backend-contract.md`: a short section stating that the guarantees are now carried by the
   snapshot's interface, naming the accessors that carry each one.
-- `docs/rules/events/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-pipeline-baseline.md`: this prompt's row.
 
 ## Repairs made while implementing
 
@@ -125,8 +125,8 @@ changes — that `plan.rs` and `performance.rs` read field-wise. Closing it woul
 behind it.
 
 **No snapshot changed and no allocation count moved.** 429 tests, every golden byte-identical, and P1–P4 allocation
-counts identical to prompts 40 and 41 — see `docs/rules/events/09-performance.md` for why this prompt's timings are not
-read as a regression.
+counts identical to prompts 40 and 41 — see `docs/rules/events/09-pipeline-baseline.md` for why this prompt's timings
+are not read as a regression.
 
 ## Check
 

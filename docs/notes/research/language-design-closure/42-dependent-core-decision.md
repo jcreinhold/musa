@@ -105,7 +105,7 @@ The specification is rewritten by the prompts that follow this one, not by this 
 | `docs/rules/language/02-core-calculus.md` | [129](../../../plan/prompts/129-dependent-core-spec.md) | Universes, Π, Σ and dependent records, inductive families with strict positivity, dependent match with coverage, the identity type, NbE conversion, bidirectional elaboration, metavariables, the well-founded termination rule, and §5's metatheory obligations restated against all of it. |
 | `docs/rules/language/01-surface.md`, new `10-traits.md` | [130](../../../plan/prompts/130-trait-and-surface-spec.md) | Records, enums, traits and coherence, operators through traits, inherent methods with exact receiver lookup, collections. |
 | new `docs/rules/language/11-quotation.md` | [131](../../../plan/prompts/131-quotation-spec.md) | `Syntax<Cat>`, quotation and splicing, derived provenance, syntax patterns, and what survives of the sealed-step recursor. |
-| `docs/rules/language/06-performance.md` | [144](../../../plan/prompts/144-diagnostics-and-performance.md) | The P1/P2 baselines re-measured against a checker that normalizes during conversion, under the existing 10% gate. |
+| `docs/rules/language/06-elaboration-baseline.md` | [144](../../../plan/prompts/144-diagnostics-and-performance.md) | The P1/P2 baselines re-measured against a checker that normalizes during conversion, under the existing 10% gate. |
 | `docs/plan/code-map/` | [149](../../../plan/prompts/149-language-pass-closure.md) | Every crate the pass touched, including `musa-calculus`. |
 
 The code map cannot be updated in this commit for the honest reason that no code exists yet: `musa-calculus` is a crate
@@ -290,8 +290,8 @@ corpus. Three gates decide whether it was worth it, and all three are measuremen
    kinds, and `Pending` as a record. Prompt 132 predicts the number before any code exists. If it does not move
    dramatically, this amendment was wrong and 145 is a repair of Phase A rather than an implementation.
 2. **The performance gate** ([144](../../../plan/prompts/144-diagnostics-and-performance.md)). P1 and P2 against the
-   recorded baselines in `docs/rules/language/06-performance.md`, under the existing 10% relative gate. A checker that
-   normalizes during conversion is exactly where this regresses silently.
+   recorded baselines in `docs/rules/language/06-elaboration-baseline.md`, under the existing 10% relative gate. A
+   checker that normalizes during conversion is exactly where this regresses silently.
 3. **The generality claim** ([146](../../../plan/prompts/146-studio-rewrite.md)). The studio adapter was chosen before
    any of these mechanisms existed. If it gains nothing, that is a real result about adapters and it is recorded as
    asymmetry rather than averaged away.

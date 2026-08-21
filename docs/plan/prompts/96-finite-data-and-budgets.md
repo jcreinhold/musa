@@ -33,9 +33,10 @@ tests against small reference folds, including empty, singleton, large-but-accep
 
 Mathematical termination is not permission to allocate `10^12` events. Instrument the evaluator with one private work
 meter covering reduction steps, constructed nodes/bytes, monomorphized instances, and eventual music-output estimates.
-Derive defaults from measured real/synthetic curves and document them in `docs/rules/language/06-performance.md`;
-CLI/project options may expose one coarse compilation budget only if a current caller needs it. Exhaustion is
-deterministic for a given source/options pair, carries the operation and limit, and leaves last-valid artifacts intact.
+Derive defaults from measured real/synthetic curves and document them in
+`docs/rules/language/06-elaboration-baseline.md`; CLI/project options may expose one coarse compilation budget only if a
+current caller needs it. Exhaustion is deterministic for a given source/options pair, carries the operation and limit,
+and leaves last-valid artifacts intact.
 
 ## Target
 
@@ -43,7 +44,8 @@ deterministic for a given source/options pair, carries the operation and limit, 
   `repeat` in the prelude.
 - Work/value/output accounting with boundary tests and structured diagnostics.
 - `docs/rules/language/02-core-calculus.md`: data rules and strong-normalization extension.
-- `docs/rules/language/06-performance.md`: size curves, chosen defaults, command, uncertainty, and failure behavior.
+- `docs/rules/language/06-elaboration-baseline.md`: size curves, chosen defaults, command, uncertainty, and failure
+  behavior.
 - `crates/musa-compiler/tests/{finite_data_laws,resource_validation}.rs` and focused evaluator benchmarks.
 
 ## Check

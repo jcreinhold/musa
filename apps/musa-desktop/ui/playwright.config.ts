@@ -20,7 +20,7 @@ export default defineConfig({
     toHaveScreenshot: { maxDiffPixelRatio: 0.01 },
   },
   /*
-   * Budgets are measured on their own. `06-performance.md`'s numbers are what
+   * Budgets are measured on their own. `06-frame-budgets.md`'s numbers are what
    * one composer's machine does for one composer; measured while five other
    * browsers fight for the same cores, they measure the harness instead. So
    * the screens run in parallel, and the budgets run after them, alone.

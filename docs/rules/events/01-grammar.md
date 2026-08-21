@@ -1,4 +1,6 @@
-# 01 — Kernel Interchange Grammar
+# 01 — Interchange Grammar
+
+**Status: governing.** The concrete syntax of an events interchange file.
 
 This document defines the **events interchange syntax**: the concrete notation for the terms of `10-term-calculus.md`.
 It is a semantic/interchange language for golden tests, semantic comparison, and cross-tool exchange. Parsing and
