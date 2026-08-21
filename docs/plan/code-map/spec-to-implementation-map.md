@@ -530,11 +530,11 @@ voice: a tie at the end of a `repeat` body continues into what follows the block
 report a dangling tie at every nesting level, and "this tie has nothing to tie to" is only answerable where there is
 nothing after.
 
-Its fact argument is `prelude.rs`'s `Fact`, a *declared* family mirroring `elaborate.rs`'s nineteen `FactKind` cases one
-for one — declared and not registered because the cases are the score's own vocabulary and `07-analysis.md` wants to
-`match` on one, while the eleven payload domains it names (`Mode`, `Clef`, `NotatedDuration`, `FreeDuration`, `Mark`,
-`MarkArgument`, `DynamicMark`, `Progress`, `Metronome`, `Ramp`, `ChordSymbol`) go the other way, since a case that
-spelled a `NotatedDuration` out of a `Ratio` and a `Text` would let a program build one whose spelling and value
+Its fact argument is `prelude.rs`'s `Fact`, a *declared* family mirroring `elaborate/fact.rs`'s nineteen `FactKind`
+cases one for one — declared and not registered because the cases are the score's own vocabulary and `07-analysis.md`
+wants to `match` on one, while the eleven payload domains it names (`Mode`, `Clef`, `NotatedDuration`, `FreeDuration`,
+`Mark`, `MarkArgument`, `DynamicMark`, `Progress`, `Metronome`, `Ramp`, `ChordSymbol`) go the other way, since a case
+that spelled a `NotatedDuration` out of a `Ratio` and a `Text` would let a program build one whose spelling and value
 disagree.
 
 `sounded`, `follow`, `tied`, and `joined` are registered in neither ownership table for `set_note_pitches`'s reason — a
@@ -556,21 +556,30 @@ are literals rather than declared families, because a `fn` rule cannot capture a
 ### The machine forms, and the two checks deliberately not made
 
 `registry/machine.rs` registers `03-machine-calculus.md` §2's eight grammatical forms as `Builtin::constructor`s over
-`Machine` and `Primitive`, two base types at `Type 0 → Type 0 → Type 0 → Type 0`, with every type argument an *implicit*
-binder, because §2 names four of the eight rather than applying them and `identity` is a machine rather than a function
-to one. Its ports are `Pair` and `Unit`, declared in `prelude.rs` as families rather than spelled as prompt 136 record
-types, because §2's pairs are positional wiring and field names for them would make the surface read a wiring diagram as
-a record.
+`Machine` and `Primitive`, two base types at `Type 0 → Type 0 → Type 0 → Type 0`, with every type argument a
+`Filling::Parameter` binder written by `Term::parameter_pi`, because §2 names four of the eight rather than applying
+them and `identity` is a machine rather than a function to one — a parameter is what a use site does not write, so a
+nullary form's ports are solved from the position it stands in. Its ports are `Pair` and `Unit`, declared in
+`prelude.rs` as families rather than spelled as prompt 136 record types, because §2's pairs are positional wiring and
+field names for them would make the surface read a wiring diagram as a record.
+
+Storability *is* enforced, and by the signature rather than by a pass looking for arrows. `scheme` writes
+`02-core-calculus.md` §1.2's `Storable` constraint with `requiring_storable` over exactly the binders §2's rules write
+`data A` above — `machine`'s two ports, `identity`'s one, `feedback`'s stored value — and elaboration discharges it.
+There is no instance for an arrow, so `Machine ⟨step⟩ (Nat → Nat) Nat` is refused where it is written. `connect` and
+`beside` carry no constraint, because their rules carry no `data` premise and inventing one would refuse a program §2
+admits.
 
 Two things §2 asks are deliberately **not** checked there, and are named where the omission is visible:
 
 - `primitive` is registered nowhere, because its type is read out of the build-local registry — the written name and
   version select a descriptor supplying the step, both ports, and the configuration argument's type, so it is a
   different type per registered pair rather than one Π short of writable.
-- Storability is not enforced, because `02-core-calculus.md` §1.2 states it as a constraint and a `Builtin`'s type is a
-  `Term` with no constraint binder, so `Machine ⟨step⟩ (Nat → Nat) Nat` is writable in the core today.
+- The step position is not checked to hold a step *tag*: `Machine Nat A B` type-checks here, because a tag is a host
+  notion and this crate's registry is the only thing that knows the list. `lower/types.rs` refuses it where the position
+  is, against `machine.rs`'s own `is_step_tag`.
 
-Both belong to prompt 142, which has the registry and the constraint solver; §5's preparation refuses what survives.
+§5's preparation refuses what survives both ("a well-typed machine may still fail preparation").
 
 ### The accounting, and why nothing calls it
 
@@ -592,7 +601,8 @@ agreement laws need the old evaluator and `eval_builtin`, `expand_region`, and `
 - `registry/notation/laws.rs` states the `Fact`/`FactKind` mirroring from both ends at once — an exhaustive `match` over
   `FactKind`, so a twentieth kind stops the crate compiling, and the constructors read off `prelude.rs`'s own
   declaration, so a twentieth case with no kind behind it fails too — and runs all nineteen through `sounded` against
-  hand-built expected kinds, which is what checks the field data the two ends cannot
+  hand-built expected kinds, which is what checks the field data the two ends cannot see: a field read at the wrong
+  offset, out of the wrong domain, or in the wrong order answers a kind the comparison names.
 
 **Owes.** Prompt 142 elaborates the surface into this registry and deletes the old checker and evaluator; prompt 143
 collapses the table behind traits.
