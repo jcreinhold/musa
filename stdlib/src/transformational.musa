@@ -1,7 +1,8 @@
 library {
     import std::list;
-    // For `Transposable`: every transformation below moves a root by a written
-    // interval, and `up`/`down` is that trait's one method.
+    // For `Action<NoteName, Interval>`: every transformation below moves a root
+    // by a written interval, and `up`/`down` is that action written as an
+    // operator.
     import std::pitch;
 
     // Neo-Riemannian transformations on the triad refinement (OMT

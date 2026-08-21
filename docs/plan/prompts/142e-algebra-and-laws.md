@@ -1,7 +1,7 @@
 ---
 id: 142e
 slug: algebra-and-laws
-status: pending
+status: done
 depends_on: [142a, 142db]
 phase: 3
 ---

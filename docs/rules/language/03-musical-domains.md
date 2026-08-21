@@ -43,6 +43,37 @@ representative adds `12k`; it is not injective because enharmonic spellings can 
 `100-intervals-in-integer-notation.md` and `101-pitch-class-sets-normal-order-and-transformations.md` use mod-12
 intervals and transformations. Musa never uses `pc12` where notation must retain spelling.
 
+### 1.1 The algebra these lemmas name
+
+The two lemmas above are not facts about pitch alone. They are the definitions of three structures that recur across
+every domain in this document, and `std::algebra` declares them so that a reader meets each one once:
+
+| Trait | Method | What it asserts |
+| --- | --- | --- |
+| `Group<G>` | `unit`, `compose`, `inverse` | the movers compose associatively, and every move can be undone |
+| `Action<X, G>` | `act` | the movers move a carrier, and composing then moving agrees with moving twice |
+| `Torsor<P, V>` | `difference` | *exactly one* mover joins any ordered pair of points |
+
+`Interval` is the group; `Pitch` and `SpelledPC` are two carriers of it; `Pitch` alone is a torsor over it, because the
+faithful-action lemma's cancellation step is precisely the uniqueness a torsor asserts. `SpelledPC` is **not** one, and
+the reason is the quotient lemma directly above: `P8` fixes every spelled class, so two classes are joined by infinitely
+many intervals rather than by one. A specification that gave both carriers a torsor would be claiming the octave
+quotient does not exist.
+
+**The carrier is the first parameter.** `10-traits.md` §2 keys an instance on its first parameter and one mover moves
+several carriers, so `Action<Interval, Pitch>` and `Action<Interval, SpelledPC>` would be two instances at one head and
+the second an error. Writing the carrier first also puts the head where §6's method syntax looks: `p up M3` is
+`p.act(M3)`, resolved on `p`.
+
+**Time is an action and not a torsor**, for a reason that is about time rather than about the traits. A `Duration` is a
+length and not a displacement — it is nonnegative, and the operation answering the length between two positions refuses
+a second position standing before the first — so the movers have no inverses and `Position` carries `Action<Position,
+Duration>` alone. §4's row and §5's indexed domains carry the same three traits at the moduli they are stated over.
+
+**The laws are prose here and law suites in `05-verification.md` §4.** A trait declaration in this language carries
+methods and never obligations; `10-traits.md` §9 gives the reason, and §4's law 7 is where the pitch action's identity,
+composition, and cancellation are actually checked.
+
 ## 2. Scale, key, degree, and register
 
 A `Scale` is a named root plus a nonempty cyclic ordered vector of distinct `SpelledPC` offsets within its period. Its

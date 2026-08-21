@@ -9,6 +9,7 @@ The modules:
 
 | Module | Contents |
 | --- | --- |
+| `std::algebra` | `Group`, `Action`, and `Torsor`: the three structures the musical domains share |
 | `std::collections` | Scale collections: the modes, harmonic and melodic minor, pentatonic, whole-tone, octatonic |
 | `std::context` | The `TonalContext` signature and its `CMajor` / `ANaturalMinor` modules |
 | `std::core` | Identity and composition combinators |

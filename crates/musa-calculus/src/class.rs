@@ -384,8 +384,8 @@ pub(crate) fn head_of(term: &Term, depth: u32) -> Option<Head> {
     use crate::term::Shape;
     match term.shape() {
         Shape::Const(constant) => Some(Head::Rigid(constant.name())),
-        // An indexed type keys on the type it refines: `impl Transposable<Pc(12)>`
-        // and `impl Transposable<Pc(24)>` are one instance of one head, because
+        // An indexed type keys on the type it indexes: `impl Action<Pc(12), Ti>`
+        // and `impl Action<Pc(24), Ti>` are one instance of one head, because
         // the index is erased and an instance table read after erasure could
         // not tell them apart. `10-traits.md` §4's one-instance-per-head rule
         // is therefore unchanged rather than quietly refined.

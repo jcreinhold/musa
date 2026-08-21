@@ -1,0 +1,90 @@
+// The three structures `std::algebra` names, at the domain that has all of
+// them.
+//
+// Written intervals are a group: they compose, they have a unit, and every one
+// of them has an inverse (Open Music Theory, `016-intervals.md`, whose generic
+// and specific naming is what the two coordinates record). That group acts on
+// written pitches and on spelled pitch classes, which is what `up` and `down`
+// have always meant. And on pitches alone the action is *simply transitive* —
+// exactly one interval carries any pitch to any other — which is what makes
+// pitch and interval a torsor and what `difference` below asks.
+//
+// The distinction the file exists to show is between the two carriers. A pitch
+// and a pitch differ by one interval; a spelled pitch class and a spelled pitch
+// class differ by infinitely many, because `P8` moves every class to itself
+// (Open Music Theory, `005-half-steps-whole-steps-and-accidentals.md`, for the
+// spelling both carriers keep). So `Torsor` is at `Pitch` and not at
+// `NoteName`, and the missing instance is a fact about the quotient rather than
+// an omission.
+piece "Pitch Algebra" {
+    import std::algebra;
+    import std::pitch;
+
+    // The group, written as its three operations rather than as three
+    // unrelated functions.
+    let nothing: Interval = P5.unit();
+    let two_octaves: Interval = nothing.compose(P8).compose(P8);
+    let down_a_fifth: Interval = P5.inverse();
+
+    // The action, at both carriers. The same interval, two answers, and the
+    // receiver is what chose between them.
+    let a_pitch: Pitch = c4.act(M3);
+    let a_class: NoteName = (pitchclass_of(c4)).act(M3);
+
+    // The torsor law, executable: the difference of two pitches is the
+    // interval that carries the first to the second, so acting by it lands on
+    // the second exactly.
+    fn round_trip(start: Pitch, finish: Pitch) -> Pitch { start.act(start.difference(finish)) }
+
+    // Written and not sounding. `c4` to `e4` is a major third and `c4` to
+    // `fb4` is a diminished fourth, and the two agree in semitones — which is
+    // the whole reason this language keeps a spelling.
+    let major_third: Interval = c4.difference(e4);
+    let diminished_fourth: Interval = c4.difference(fb4);
+
+    // What the round trip lands on, so the law is a value in the file rather
+    // than a sentence about one — and a *sounded* value, so the fixture checks
+    // it. The two notes of `law` are `arrived` and `e4`, and a `difference`
+    // that answered the wrong interval would render them as two pitches.
+    let arrived: Pitch = round_trip(c4, e4);
+
+    fn law() -> EventTrack<WrittenTime> {
+        music {
+            arrived/4
+            e4/4
+        }
+    }
+
+    // `up` and `down` are `act` written as an operator, so this line makes the
+    // same moves the bindings above make. That equivalence is the point of
+    // naming the action: nothing in the notation changed.
+    fn line(root: Pitch) -> EventTrack<WrittenTime> {
+        music {
+            root/4
+            (root up major_third)/4
+            (root up two_octaves)/4
+            (root down P5)/4
+        }
+    }
+
+    // The two carriers, side by side. A major third and a diminished fourth
+    // span the same number of semitones and are different intervals, so `e4`
+    // and `fb4` are two notes here and would be one in any language that read
+    // an interval off a semitone count.
+    fn spelling() -> EventTrack<WrittenTime> {
+        music {
+            (c4 up major_third)/4
+            (c4 up diminished_fourth)/4
+        }
+    }
+
+    score {
+        part keyboard {
+            voice right_hand {
+                use line(c4);
+                use law();
+                use spelling();
+            }
+        }
+    }
+}

@@ -49,6 +49,55 @@ proptest! {
         prop_assert_eq!(translated.map(WrittenPitch::pitch_class), Some(pitch.pitch_class()));
     }
 
+    // ---- the torsor law, and the carrier that does not satisfy it ----------
+    //
+    // `05-verification.md` §4's law 7 asks for cancellation, and cancellation is
+    // what `Torsor<Pitch, Interval>` asserts: exactly one interval joins any
+    // ordered pair of written pitches. The two tests below are its two halves —
+    // that the difference lands, and that nothing else does — and the third is
+    // why `NoteName` carries `Action` and no torsor.
+
+    /// The difference of two pitches carries the first to the second exactly.
+    #[test]
+    fn a_difference_carries_the_first_pitch_to_the_second(
+        from in pitch_strategy(),
+        to in pitch_strategy(),
+    ) {
+        let arrived = from.between(to).and_then(|span| from.transpose(span));
+        prop_assert_eq!(arrived, Some(to));
+    }
+
+    /// And it is the *only* interval that does, which is the half that makes
+    /// this a torsor rather than a transitive action. Stated from the other
+    /// direction — every interval that lands is the difference — because that
+    /// is the form a counterexample would take.
+    #[test]
+    fn no_second_interval_carries_one_pitch_to_another(
+        from in pitch_strategy(),
+        interval in interval_strategy(),
+    ) {
+        if let Some(to) = from.transpose(interval) {
+            prop_assert_eq!(from.between(to), Some(interval));
+        }
+    }
+
+    /// Why `NoteName` has no torsor: the octave fixes every spelled class, so
+    /// two classes are joined by infinitely many intervals rather than by one.
+    /// `03-musical-domains.md` §1.1 states the absence as part of law 7, and
+    /// this is the counterexample it rests on.
+    #[test]
+    fn an_octave_fixes_every_spelled_class_so_the_difference_is_not_unique(
+        pitch in pitch_strategy(),
+        octaves in -1_000_i64..=1_000,
+    ) {
+        let interval = Interval {
+            diatonic_steps: octaves.saturating_mul(7),
+            semitones: octaves.saturating_mul(12),
+        };
+        let moved = pitch.pitch_class().transpose(interval);
+        prop_assert_eq!(moved, Some(pitch.pitch_class()));
+    }
+
     #[test]
     fn arbitrary_alterations_round_trip(
         letter in 0_i8..7,

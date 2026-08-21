@@ -1,10 +1,12 @@
 // The standard library's module tree.
 //
 // Order is reading order, not dependency order: `core` first because
-// everything assumes it, then the finite-data modules, then pitch and the
-// collections built on it, then the two theory subtrees.
+// everything assumes it, then the shared algebraic vocabulary, then the
+// finite-data modules, then pitch and the collections built on it, then the
+// two theory subtrees.
 
 mod core;
+mod algebra;
 mod list;
 mod pitch;
 mod scale;

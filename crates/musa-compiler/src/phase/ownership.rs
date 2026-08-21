@@ -438,7 +438,7 @@ pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17]
     },
 ];
 
-pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 121] = [
+pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 122] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -683,6 +683,13 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 121] = [
         spelling: "pitch_transposed",
         hidden_information: "the two coordinates a written pitch moves on at once, and the range either may leave",
         family: delta(&[PITCH, INTERVAL], PITCH),
+    },
+    BuiltinOwnership {
+        operation: Builtin::PitchBetween,
+        spelling: "pitch_between",
+        hidden_information: "the two coordinates a written pitch is stored on, and the fixed width their difference \
+                             may exceed",
+        family: delta(&[PITCH, PITCH], INTERVAL),
     },
     BuiltinOwnership {
         operation: Builtin::PitchEqual,

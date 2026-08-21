@@ -703,15 +703,18 @@ impl Lowering<'_> {
 
     /// `p up M2` and `p down M2`.
     ///
-    /// A method, because the receiver decides: a `Pitch` and a `PitchClass` are
-    /// transposed by different operations answering different types, and
-    /// `10-traits.md` §6's exact-receiver lookup is what tells them apart. The
-    /// old checker asked the type itself, which is the same question one pass
-    /// earlier and in the pass that no longer decides types.
+    /// `std::algebra`'s `Action::act`, which is what these two words have always
+    /// meant: a written interval acting on a carrier. A method, because the
+    /// receiver decides — a `Pitch` and a `PitchClass` are moved by different
+    /// operations answering different types, and `10-traits.md` §6's
+    /// exact-receiver lookup is what tells them apart. The old checker asked the
+    /// type itself, which is the same question one pass earlier and in the pass
+    /// that no longer decides types.
     ///
     /// One method and not two, because `down` is a fact about the *interval*.
-    /// `p down M2` is `p` moved by the interval that undoes an `M2`, which is
-    /// what [`musa_score::Interval::inverse`] answers and what
+    /// `p down M2` is `p` moved by the interval that undoes an `M2` — the
+    /// `inverse` of `Group<Interval>`, which is what
+    /// [`musa_score::Interval::inverse`] answers and what
     /// [`super::notation::Lowering::interval_of`] already writes for the same
     /// two words inside a `music` block. A `transpose_down` beside a
     /// `transpose_up` would be a second method every implementor had to write
@@ -725,7 +728,7 @@ impl Lowering<'_> {
         } else {
             interval
         };
-        Some(Raw::app(origin, Raw::method(origin, pitch, "transposed"), interval))
+        Some(Raw::app(origin, Raw::method(origin, pitch, "act"), interval))
     }
 
     /// `p step n` and `p step down n`.

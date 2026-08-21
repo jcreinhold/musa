@@ -239,6 +239,7 @@ pub(crate) enum Builtin {
     IntervalInverse,
     IntervalEqual,
     PitchTransposed,
+    PitchBetween,
     PitchEqual,
     PitchClassTransposed,
     PitchClassOf,

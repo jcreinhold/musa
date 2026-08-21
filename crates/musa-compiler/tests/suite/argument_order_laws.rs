@@ -77,13 +77,13 @@ const APPLIED: &str = "fn applied<A, B>(by: A -> B, value: A) -> B { by(value) }
 /// The whole point: the lambda stands before the argument that says what its
 /// parameter is, and `p` is a `Pitch` anyway.
 ///
-/// `p.transposed(P8)` is the observation that makes this a real law rather
+/// `p.act(P8)` is the observation that makes this a real law rather
 /// than a compile check — `10-traits.md` §6 resolves a method by its *exact*
 /// receiver, so a `p` still standing at a hole has no method at all.
 #[test]
 fn an_un_annotated_lambda_is_typed_by_an_argument_written_after_it() {
     let compilation = compile_core(&format!(
-        "{APPLIED} let raised: Pitch = applied(fn (p) {{ p.transposed(P8) }}, c4);"
+        "{APPLIED} let raised: Pitch = applied(fn (p) {{ p.act(P8) }}, c4);"
     ));
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -94,7 +94,7 @@ fn an_un_annotated_lambda_is_typed_by_an_argument_written_after_it() {
 fn the_same_lambda_types_in_either_slot() {
     let compilation = compile_core(
         "fn onto<A, B>(value: A, by: A -> B) -> B { by(value) } \
-         let raised: Pitch = onto(c4, fn (p) { p.transposed(P8) });",
+         let raised: Pitch = onto(c4, fn (p) { p.act(P8) });",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -107,9 +107,9 @@ fn a_lambda_types_in_every_slot_of_a_three_argument_call() {
     let middle = "fn middle<A, B>(first: A, by: A -> B, second: A) -> B { by(second) }";
     let last = "fn last<A, B>(first: A, second: A, by: A -> B) -> B { by(second) }";
     for (declaration, call) in [
-        (both, "both(fn (p) { p.transposed(P8) }, c4, e4)"),
-        (middle, "middle(c4, fn (p) { p.transposed(P8) }, e4)"),
-        (last, "last(c4, e4, fn (p) { p.transposed(P8) })"),
+        (both, "both(fn (p) { p.act(P8) }, c4, e4)"),
+        (middle, "middle(c4, fn (p) { p.act(P8) }, e4)"),
+        (last, "last(c4, e4, fn (p) { p.act(P8) })"),
     ] {
         let compilation = compile_core(&format!("{declaration} let raised: Pitch = {call};"));
         assert!(!compilation.has_errors(), "{call}: {:?}", compilation.diagnostics());
@@ -121,7 +121,7 @@ fn a_lambda_types_in_every_slot_of_a_three_argument_call() {
 fn two_deferred_arguments_are_both_typed_by_the_one_that_is_not() {
     let compilation = compile_core(
         "fn twice<A>(first: A -> A, second: A -> A, value: A) -> A { second(first(value)) } \
-         let raised: Pitch = twice(fn (p) { p.transposed(P8) }, fn (q) { q.transposed(P8) }, c4);",
+         let raised: Pitch = twice(fn (p) { p.act(P8) }, fn (q) { q.act(P8) }, c4);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -133,7 +133,7 @@ fn two_deferred_arguments_are_both_typed_by_the_one_that_is_not() {
 fn the_position_a_call_stands_in_types_a_lambda_no_argument_could() {
     let compilation = compile_core(
         "fn kept<A>(by: A -> A) -> A -> A { by } \
-         let raised: Pitch -> Pitch = kept(fn (p) { p.transposed(P8) });",
+         let raised: Pitch -> Pitch = kept(fn (p) { p.act(P8) });",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -211,11 +211,10 @@ fn compose_types_an_un_annotated_lambda_from_the_argument_after_it() {
 /// annotation on either lambda.
 #[test]
 fn a_middle_type_no_argument_names_is_refused_rather_than_guessed() {
-    let reported =
-        errors("let higher: Pitch -> Pitch = compose(fn (p) { p.transposed(P8) }, fn (q) { q.transposed(P8) });");
+    let reported = errors("let higher: Pitch -> Pitch = compose(fn (p) { p.act(P8) }, fn (q) { q.act(P8) });");
     assert!(!reported.is_empty(), "nothing was refused");
     let repaired = compile_core(
-        "let higher: Pitch -> Pitch = compose(fn (p) { p.transposed(P8) }, fn (q: Pitch) -> Pitch { q.transposed(P8) });",
+        "let higher: Pitch -> Pitch = compose(fn (p) { p.act(P8) }, fn (q: Pitch) -> Pitch { q.act(P8) });",
     );
     assert!(!repaired.has_errors(), "{:?}", repaired.diagnostics());
 }

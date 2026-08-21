@@ -3,11 +3,11 @@
 **Status: candidate.** Traits, methods, and namespaces — an operation whose body depends on the type it is used at.
 
 A trait is how Musa writes an operation whose body depends on the type it acts on: `==`, `<`, `+`, the collection folds,
-and the one domain trait the standard library declares (`Transposable`, in `std::pitch`). The design rule, stated before
-any mechanism because every mechanism answers to it:
+and the three domain traits the standard library declares (`Group`, `Action`, and `Torsor`, in `std::algebra`). The
+design rule, stated before any mechanism because every mechanism answers to it:
 
 > **Resolution is a lookup, not a search.** The complete algorithm is §4's three steps, and they fit in a paragraph
-> because the corpus asked for exactly that much: one user trait with two concrete instances, four compiler-owned
+> because the corpus asked for exactly that much: three user traits with five concrete instances, four compiler-owned
 > traits, and no instance anywhere that carries a constraint of its own. The previous calculus implemented recursive
 > constraint discharge, postponement on unknown heads, and a termination measure for the recursion — a typeclass solver,
 > in everything but name, with no committed program behind a single one of its features. The course correction

@@ -545,7 +545,7 @@ than left to a search:
   refusal names the qualified path to write instead. Nothing is postponed: postponement was deleted with the rest of the
   constraint machinery, and `02-core-calculus.md` §2.1's two-pass spine is what now makes a receiver's type known in the
   cases that used to need it — an argument the walk defers is checked after the arguments that decide it, so
-  `applied(fn (p) { p.transposed(P8) }, c4)` resolves `.transposed` at `Pitch`.
+  `applied(fn (p) { p.act(P8) }, c4)` resolves `.act` at `Pitch`.
 
 `T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
 `Trait::method(x)`. Explicit qualification is always available and always resolves, which is the escape hatch that makes

@@ -208,6 +208,30 @@ impl WrittenPitch {
         )
     }
 
+    /// The written interval that carries this pitch to `other`.
+    ///
+    /// The inverse of [`Self::transpose`] in the sense that matters: for any two
+    /// written pitches, `a.transpose(a.between(b)) == Some(b)`. That is the
+    /// cancellation half of `docs/rules/language/03-musical-domains.md` §1 —
+    /// intervals act on pitches simply and transitively, so the interval between
+    /// two of them exists and is unique — and it is what makes `Pitch` and
+    /// `Interval` a torsor rather than merely a carrier with an action.
+    ///
+    /// Written, not sounding: `c4` to `e4` is `M3` and `c4` to `fb4` is `d4`,
+    /// because the two answers differ in the letter they count to even where
+    /// they agree in semitones. An implementation that subtracted only
+    /// [`Self::semitone`] would return one interval for both and lose the
+    /// spelling this type exists to keep.
+    ///
+    /// Failure means only that the fixed machine integer was exceeded, as in
+    /// [`Self::transpose`].
+    pub fn between(self, other: Self) -> Option<Interval> {
+        Some(Interval {
+            diatonic_steps: other.diatonic_height().checked_sub(self.diatonic_height())?,
+            semitones: other.chromatic_height().checked_sub(self.chromatic_height())?,
+        })
+    }
+
     /// Mirror this pitch about `axis` (roadmap §5.4).
     ///
     /// Diatonic, not chromatic: the letter reflects through the axis's

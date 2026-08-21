@@ -59,6 +59,7 @@
     { "file": "named-answer.musa", "events": false },
     { "file": "neo-riemannian.musa", "events": false },
     { "file": "ornaments.musa", "events": false },
+    { "file": "pitch-algebra.musa", "events": false },
     { "file": "pitch-arithmetic.musa", "events": false },
     { "file": "profile-fixture.musa", "events": false },
     { "file": "refrain.musa", "events": false },

@@ -190,3 +190,10 @@ such note — see `examples/serial-forms.musa`, and
 
 The remaining bundled modules are the plumbing: `std::core` for exact rationals and the small total operations,
 `std::list` for finite lists, and `std::pitch` for the named written intervals.
+
+One of them is worth naming for what it is rather than for what it holds. `std::algebra` declares three traits —
+`Group`, `Action`, and `Torsor` — and every domain above is written over them. Written intervals are the group; a pitch
+and a spelled pitch class are two carriers it acts on, which is what `up` and `down` mean; and pitch alone is a torsor,
+because exactly one interval carries any pitch to any other. A spelled pitch class is not, and that is not an omission:
+`P8` moves every class to itself, so two classes are joined by infinitely many intervals. `examples/pitch-algebra.musa`
+writes all three out and sounds the difference.

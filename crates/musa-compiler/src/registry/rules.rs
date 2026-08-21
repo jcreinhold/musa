@@ -72,7 +72,7 @@ use musa_score::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 128;
+pub(super) const REGISTERED: usize = 129;
 
 /// The operations the core has that neither ownership table names.
 ///
@@ -548,6 +548,26 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             Some(pitch.transpose(interval).map_or_else(
                 || refused("this transposition leaves the range of written pitches"),
                 |moved| Answer::Reduced(plain("Pitch", moved)),
+            ))
+        },
+        // The other direction of [`Builtin::PitchTransposed`], and the operation
+        // that makes `Pitch` and `Interval` a torsor rather than a carrier with
+        // an action: `03-musical-domains.md` §1 proves the interval between two
+        // written pitches exists and is unique — "if `p+i=p+j`, integer
+        // cancellation gives `i=j`" — and until this row the registry had the
+        // action and not the difference.
+        //
+        // Written and not sounding, for [`Builtin::IntervalEqual`]'s reason: the
+        // answer from `c4` to `fb4` is `d4` and never `M3`, because the two
+        // count to different letters.
+        Builtin::PitchBetween => |arguments| {
+            let (from, to) = (
+                read::<WrittenPitch>(arguments.first()?)?,
+                read::<WrittenPitch>(arguments.get(1)?)?,
+            );
+            Some(from.between(to).map_or_else(
+                || refused("the interval between these pitches leaves the range of written intervals"),
+                |span| Answer::Reduced(plain("Interval", span)),
             ))
         },
         // [`Builtin::IntervalEqual`]'s argument at the other written coordinate:

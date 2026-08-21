@@ -379,6 +379,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
 /// missing at all.
 const STANDARD_LIBRARY: &[(&str, &str)] = &[
     ("core", include_str!("../../../../stdlib/src/core.musa")),
+    ("algebra", include_str!("../../../../stdlib/src/algebra.musa")),
     ("collections", include_str!("../../../../stdlib/src/collections.musa")),
     ("list", include_str!("../../../../stdlib/src/list.musa")),
     ("pitch", include_str!("../../../../stdlib/src/pitch.musa")),

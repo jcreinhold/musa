@@ -82,7 +82,13 @@ Implementations must test the following at the equality named in `00-semantics.m
    only scale, so no additional surface operation is inferred from this law.
 6. **Chosen composition:** `follow` and `together` obey the equations in `00-semantics.md`; no nested-track flatten law
    exists.
-7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`.
+7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`, stated over the traits §1.1
+   names. `Group<Interval>`: `compose` is associative, `unit` is neutral on both sides, and `compose(g, inverse(g))` is
+   `unit`. `Action<Pitch, Interval>` and `Action<NoteName, Interval>`: `act(x, unit(g))` is `x`, and `act(x, compose(g,
+   h))` is `act(act(x, h), g)`. `Torsor<Pitch, Interval>`: `act(a, difference(a, b))` is `b` — the cancellation step,
+   and the one law that separates a torsor from a carrier with an action. The absent `Torsor<NoteName, Interval>` is
+   part of the law rather than a gap in it: `P8` fixes every spelled class, so the difference is not unique and the
+   suite checks that no instance claims it is.
 8. **Scale round trip:** `locate(realize(...))` on members returns the canonical degree/register.
 9. **Chord/voicing projection:** every voiced pitch projects to a licensed member; projection is intentionally many-to-
    one.

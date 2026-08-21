@@ -1,4 +1,6 @@
 library {
+    import std::algebra;
+
     // Open Music Theory `016-intervals.md` supplies the conventional generic/specific
     // interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies
     // the spelling distinction retained by these values. The written unison
@@ -19,6 +21,22 @@ library {
 
     // The written octave, which changes both coordinates by (7, 12).
     let octave: Interval = P8;
+
+    // Written intervals are a group, and this is that statement.
+    //
+    // `03-musical-domains.md` §1 defines `Interval = Z x Z` and says the
+    // intervals form an abelian group componentwise; the three methods below
+    // are the three operations that sentence names, and nothing else changes.
+    // `compose_intervals` and `inverse_interval` kept their spellings as
+    // ordinary functions, so a piece that reads better naming the operation
+    // than naming the structure still can.
+    impl Group<Interval> {
+        fn unit(element: Interval) -> Interval { P1 }
+
+        fn compose(first: Interval, second: Interval) -> Interval { interval_add(first, second) }
+
+        fn inverse(element: Interval) -> Interval { interval_inverse(element) }
+    }
 
     // Apply two spelling-preserving written intervals in sequence.
     fn compose_intervals(first: Interval, second: Interval) -> Interval {
@@ -42,25 +60,43 @@ library {
     // decides which operation runs, which is what a trait is for.
     //
     // `down` is not a second method. It is the interval that undoes this one,
-    // and `inverse_interval` above already names it.
-    trait Transposable<A> {
-        fn transposed(subject: A, by: Interval) -> A;
-    }
-
+    // and `Group<Interval>`'s `inverse` above already names it.
+    //
     // A written pitch moved by a written interval. Partial: the pitch grid is
     // finite in both coordinates, so a transposition can leave it, and what
     // leaves it is refused rather than wrapped.
-    impl Transposable<Pitch> {
-        fn transposed(subject: Pitch, by: Interval) -> Pitch { pitch_transposed(subject, by) }
+    impl Action<Pitch, Interval> {
+        fn act(subject: Pitch, operation: Interval) -> Pitch {
+            pitch_transposed(subject, operation)
+        }
     }
 
     // The same move with the octave forgotten. Partial for the other
     // coordinate: the spelled classes run out of accidentals before they run
     // out of letters.
-    impl Transposable<NoteName> {
-        fn transposed(subject: NoteName, by: Interval) -> NoteName {
-            pitchclass_transposed(subject, by)
+    //
+    // An action and not a torsor, and the reason is the quotient itself: `P8`
+    // moves every spelled class to itself, so two classes are joined by
+    // infinitely many intervals rather than by one. `03-musical-domains.md` §1
+    // proves that as the lemma that the action descends; the missing
+    // `Torsor<NoteName, Interval>` is that lemma read as a structure.
+    impl Action<NoteName, Interval> {
+        fn act(subject: NoteName, operation: Interval) -> NoteName {
+            pitchclass_transposed(subject, operation)
         }
     }
 
+    // The written interval carrying one pitch to another, and the operation
+    // that makes written pitch a torsor rather than a carrier with an action.
+    //
+    // `03-musical-domains.md` §1 proves it exists and is unique — "if `p+i=p+j`,
+    // integer cancellation gives `i=j`" — and until now the library had the
+    // action and not the difference, so the lemma was a paragraph rather than
+    // something a piece could ask.
+    //
+    // Written and not sounding: `c4` to `fb4` is `d4` and never `M3`, because
+    // the two count to different letters.
+    impl Torsor<Pitch, Interval> {
+        fn difference(start: Pitch, finish: Pitch) -> Interval { pitch_between(start, finish) }
+    }
 }

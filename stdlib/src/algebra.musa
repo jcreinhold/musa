@@ -1,0 +1,101 @@
+library {
+    // The three structures the musical domains share, named once.
+    //
+    // Every one of them was already in the library, written by hand under a
+    // different name: `interval_add` and `interval_inverse` are a group, and
+    // the `Transposable` trait was an action. Naming them is not abstraction
+    // for its own sake — it is what lets a reader recognize in one module the
+    // structure they already read in another, and what stops the same
+    // operation acquiring a third spelling in a fourth place.
+    //
+    // The laws each one is expected to satisfy are prose here and law suites in
+    // `docs/rules/language/05-verification.md` §4. A trait declaration in this
+    // language carries methods and never obligations, for the reason
+    // `docs/rules/language/10-traits.md` §9 states: an obligation needs
+    // evidence, and evidence needs a term witnessing an equality.
+
+    // A set with an associative composition, a unit, and inverses.
+    //
+    // Laws: `compose(unit(g), g)` and `compose(g, unit(g))` are `g`; composition
+    // is associative; `compose(g, inverse(g))` is `unit(g)`.
+    //
+    // Not every set of movers is one. A duration composes and has a zero and
+    // has no inverse, because a duration is a length and not a displacement,
+    // and `Action` below is stated so that such a mover is still admitted.
+    trait Group<G> {
+        // The element that changes nothing.
+        //
+        // It takes one, which looks redundant and is not. A method with no
+        // argument of the trait's own type gives resolution nothing to key on:
+        // `10-traits.md` §4 finds an instance from a written type, and §6
+        // refuses to choose one from a return type nobody supplied. So the
+        // element is read for its *type* and never for its value —
+        // `P5.unit()` is `P1`, and so is `m2.unit()`.
+        fn unit(element: G) -> G;
+
+        // Apply `second`, then `first`. The order is the one `std::core`'s
+        // `compose` already uses, so a reader who knows that knows this.
+        fn compose(first: G, second: G) -> G;
+
+        // The element that undoes this one.
+        fn inverse(element: G) -> G;
+    }
+
+    // A carrier moved by a set of movers.
+    //
+    // Laws: `act(x, unit(g))` is `x`, and `act(x, compose(g, h))` is `act(act(x,
+    // h), g)`. Both are stated over whatever unit and composition the mover
+    // has, so a monoid acting is an action here and not an approximation of
+    // one; where the mover is also a `Group`, the action is invertible and the
+    // second law reads backwards as well as forwards.
+    //
+    // The second law is what makes a transformation an object rather than a
+    // call: if composing two movers and acting once agrees with acting twice,
+    // a chain can be built before anything is applied.
+    //
+    // **The carrier comes first**, because `10-traits.md` §2 keys an instance
+    // on the first parameter and one mover moves several carriers — an interval
+    // moves both a pitch and a spelled pitch class, which is the two impls
+    // `Transposable` had. Writing the mover first would make those one head and
+    // one of them an error. It also puts the head where §6's method syntax
+    // looks, since `x.act(g)` resolves on `x`.
+    trait Action<X, G> {
+        // Move one member of the carrier by one mover.
+        fn act(subject: X, operation: G) -> X;
+    }
+
+    // A carrier on which the movers act *simply transitively*: every ordered
+    // pair of points is joined by exactly one mover.
+    //
+    // That uniqueness is the whole content, so `difference` is the whole trait.
+    // The movement itself is `Action::act` and is not declared twice; the law
+    // joining them is `act(a, difference(a, b))` is `b`, for every `a` and `b`.
+    //
+    // **Two points never add.** `a + b` for two pitches or two positions is the
+    // single arithmetic error the point/mover split exists to catch, so there
+    // is no method here that could spell it.
+    trait Torsor<P, V> {
+        // The mover carrying `start` to `finish`. Unique — that is the claim.
+        fn difference(start: P, finish: P) -> V;
+    }
+
+    // Written musical time, moved by a written length.
+    //
+    // An action and deliberately **not** a torsor: `position_between` refuses a
+    // second position that stands before the first, because a duration is a
+    // length rather than a displacement, so the movers have no inverses and two
+    // positions in the wrong order are joined by nothing. The difference
+    // between a position and a later one is asked for by name —
+    // `position_between` — where the caller can see the order it must supply.
+    //
+    // At written time, and not at clock time. `Position<PhysicalTime>` is a
+    // performance coordinate and the two do not unify, which is roadmap §2's
+    // layer table; an instance at both would be one word claiming the pair is
+    // one structure.
+    impl Action<Position<WrittenTime>, Duration<WrittenTime>> {
+        fn act(
+            subject: Position<WrittenTime>,
+            operation: Duration<WrittenTime>,
+        ) -> Position<WrittenTime> { position_shift(subject, operation) }
+    }
+}
