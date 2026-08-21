@@ -16,16 +16,20 @@ A function takes values and returns one. `EventTrack<WrittenTime>` — a track o
 }` builds — is an ordinary value, so a function can take music and return music. From `examples/canon-functions.musa`:
 
 ```musa
-fn canon(subject: EventTrack<WrittenTime>, answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, gap: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
-    together(subject, shift(gap, answer(subject)))
-}
+fn canon(
+    subject: EventTrack<WrittenTime>,
+    answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
+    gap: Duration<WrittenTime>,
+) -> EventTrack<WrittenTime> { together(subject, shift(gap, answer(subject))) }
 ```
 
 `EventTrack<WrittenTime> -> EventTrack<WrittenTime>` is a function type, so `answer` is a transformation the caller
 supplies rather than one this function picked:
 
 ```musa
-let octave_answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };
+let octave_answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (
+    line: EventTrack<WrittenTime>,
+) -> EventTrack<WrittenTime> { transpose(P8, line) };
 ```
 
 That right-hand side is an **anonymous function**: a declaration's own words without its name. It is here because
@@ -36,7 +40,7 @@ wherever a declaration may omit them.
 and the site reads:
 
 ```musa
-use canon(subject, octave_answer, 1/2);
+use canon(subject, octave_answer, duration_of(1/2));
 ```
 
 `together` sounds two pieces of music at once; `shift` starts one later; `transpose` moves one by a written interval.
@@ -55,9 +59,10 @@ name what each note's pitch becomes:
 ```musa
 fn pedal(_: Pitch) -> Pitch { c3 }
 
-fn harmonize(subject: EventTrack<WrittenTime>, answer_pitch: Pitch -> Pitch) -> EventTrack<WrittenTime> {
-    together(subject, map_note_pitches(answer_pitch, subject))
-}
+fn harmonize(
+    subject: EventTrack<WrittenTime>,
+    answer_pitch: Pitch -> Pitch,
+) -> EventTrack<WrittenTime> { together(subject, map_note_pitches(answer_pitch, subject)) }
 ```
 
 The restriction is what keeps a function from becoming a second score model. A harmonizer written this way cannot see
@@ -72,7 +77,10 @@ thing can be made more than once. From `examples/template-study.musa`:
 ```musa
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same body, two instances, two identities.
-template voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {
+template voice answer(
+    subject: EventTrack<WrittenTime>,
+    transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
+) {
     use transform(subject);
 }
 ```
@@ -90,8 +98,18 @@ template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Stu
 A template is instantiated with `make ... as ...`:
 
 ```musa
-make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) }) as upper;
-make answer(subject, fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P15, line) }) as higher;
+make answer(
+    subject,
+    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+        transpose(P8, line)
+    },
+) as upper;
+make answer(
+    subject,
+    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+        transpose(P15, line)
+    },
+) as higher;
 ```
 
 Two rules make instances predictable.
@@ -144,8 +162,8 @@ template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMate
 // Two instances, two structures. Identity is generative and comes from the
 // *site*: making the same functor twice with equal arguments would still be
 // two declarations, and here the arguments differ as well.
-make Canon(CMajor, 1/1) as MajorCanon;
-make Canon(ANaturalMinor, 2/1) as MinorCanon;
+make Canon(CMajor, duration_of(1/1)) as MajorCanon;
+make Canon(ANaturalMinor, duration_of(2/1)) as MinorCanon;
 ```
 
 Two properties are worth knowing.
@@ -156,7 +174,10 @@ happens to define is private to `CMajor`. The same rule runs the other way:
 ```musa
 // Private. `CanonMaterial` does not list it, so nothing outside this
 // structure may name `MajorCanon.stretto` — which is what sealing means.
-let stretto: EventTrack<WrittenTime> = together(subject, shift(duration_of(1/2), answer(subject)));
+let stretto: EventTrack<WrittenTime> = together(
+    subject,
+    shift(duration_of(1/2), answer(subject)),
+);
 ```
 
 This is also why the generated reference lists a structure's signature members and not the rest: a private member is not

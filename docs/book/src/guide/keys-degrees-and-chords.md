@@ -34,30 +34,39 @@ modes, the three minors, both octatonics, whole-tone, hexatonic, acoustic, and t
 
 ## 2. Steps and degrees
 
-Inside a scale, `step` counts through the collection rather than through semitones:
+Inside a scale, `step` counts through the collection rather than through semitones. Where a step is *written* is what
+fixes its meaning, so the steps go inside the `in scale` block. From `examples/scale-context.musa`:
 
 ```musa
-fn figure() -> EventTrack<WrittenTime> {
-    music {
-        c5/8
-        (c5 step 1)/8
-        (c5 step 2)/4
-    }
+in scale c major {
+    use opening();
+    (c5 step 1)/8
+    (c5 step 2)/4
 }
 ```
 
-That figure means something different under each collection it is placed in, which is the point:
+`opening()` is a saved phrase that spells its pitches and steps in no collection, so it means the same thing wherever it
+is used. The steps beside it do not — write them under two collections and you have two passages, which is the point:
 
 ```musa
-// One phrase, two coordinate systems. Under C major the thirds
-// are `e5` and `g5`; under C dorian the third is `eb5`.
+// The same three notes, two coordinate systems. Under C major
+// the steps are `e5` and `g5`; under C dorian the first is
+// `eb5`. Both are written here, because that is where the
+// collection is.
 in scale c major {
-    use subject;
+    use opening();
+    (c5 step 1)/8
+    (c5 step 2)/4
 }
 in scale c dorian {
-    use subject;
+    use opening();
+    (c5 step 1)/8
+    (c5 step 2)/4
 }
 ```
+
+A step is finished where it is written, and a phrase saved in a binding is already finished: no later `in scale` reaches
+back into it. That is why the steps above sit in the score rather than inside `opening()`.
 
 The two minors are two collections and stepping through them differs, which is exactly how the leading tone shows up:
 
@@ -113,14 +122,15 @@ Sounding one takes `play`, and an absent voicing becomes silence rather than a g
 // sounds a rest, so an absent answer is silence rather than a guess.
 fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
 fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
-    option_fold(music {
+    chosen.fold_from_end(music {
         rest/1
-    }, held, chosen)
+    }, fn (found, otherwise) { held(found) })
 }
 ```
 
-`option_fold` is `std::option`: it takes what to do when there is nothing, what to do when there is something, and the
-option itself. A total language has no way to "just unwrap" — you name the silence.
+`fold_from_end` is `Iterable`'s, not a function belonging to `Option`: it takes what to do when there is nothing and
+what to do with what is there, and every container that can be walked answers to the same word. A total language has no
+way to "just unwrap" — you name the silence.
 
 For the common case there is sugar. In a voice, `stack c4 major7/1` is close position with the written root fixing the
 register, which is the same thing `close` names above:
