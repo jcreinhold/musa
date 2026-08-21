@@ -71,11 +71,11 @@ rule to ignore. A generic function's type parameters are ordinary leading parame
 
 **Dependency where programs use it, in two forms.** A result type may mention an earlier explicit parameter, and a type
 may carry **index arguments** from the decidable domain of §1.5 — `Pc(12)`, `Row(n)`, `Bar(p + q)`. `Duration C`,
-`Position C`, and `Syntax<Cat>` are the same mechanism in the special-cased form that predates it: a compiler-owned base
-type at a closed literal of a finite enum. Records are named products: a field's type may mention the type parameters in
-scope at the declaration, and no field's type mentions a sibling field's *value*, because no committed program has one
-that does. That last restriction is the difference between records and a telescope, and it is what keeps projection a
-lookup rather than an instantiation.
+`Position C`, and `Syntax<Cat>` are neither: their argument is an ordinary parameter, kept in the term and compared by
+conversion, which is what §1.5's closing paragraph separates them on. Records are named products: a field's type may
+mention the type parameters in scope at the declaration, and no field's type mentions a sibling field's *value*, because
+no committed program has one that does. That last restriction is the difference between records and a telescope, and it
+is what keeps projection a lookup rather than an instantiation.
 
 ### 1.1 Enumerations
 
@@ -281,11 +281,12 @@ i ::= n                 % a literal of the sort
 That is Presburger arithmetic, so equality and entailment in it are decidable, and the fragment the corpus generates —
 equality of two linear forms — is decidable by normalizing both and comparing. **Nothing else enters.** An expression
 outside the grammar is a refusal that names the expression, not a constraint that is postponed, approximated, or
-assumed. Multiplication of two variables, division, an arbitrary function call, and any mention of a term variable are
-each that refusal.
+assumed. Multiplication of two variables, division, an arbitrary function call, a `match`, a projection, and a variable
+of any other sort are each that refusal.
 
-An **index variable** is introduced by appearing in a signature and is solved at the call by §2.1's first-order
-matching, from the written arguments' types:
+An **index variable** is an ordinary parameter of index sort. It is introduced by appearing in a signature and solved at
+the call by §2.1's first-order matching, from the written arguments' types — the same binder and the same rule a type
+parameter gets, because an index that needed its own binder form would be the second Π §1 just finished deleting:
 
 ```text
 fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>
@@ -304,10 +305,18 @@ never chooses an index; there is no index unification, no dependent motive, no f
 `J`. `family/` does not grow by one line. An indexed type is a **declared or base type applied to index expressions**,
 and its refinements are the constructor judgments §2.2 already describes, now with a type to say what they enforced.
 
-**It is not a dependent type.** A dependent type may mention a *term*, which is why deciding one needs the evaluator,
-and why an ill-typed mention could diverge. An index cannot mention a term variable at all. The two strata do not meet:
-`index.rs` is specified in prompt 142d as a module that does not import `value.rs`, and if it ever needs a `Value` the
-stratification has been broken.
+**It is not a dependent type**, and the difference is what an index may *say*, not where it is written down. A dependent
+type may mention any term: a call, a `match`, a projection, a value the program computed. An index may mention only the
+grammar above — literals, the four operators, and **variables of index sort that the signature binds**. `n` in
+`fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` is such a variable, bound the way §2.1 binds a type parameter and
+solved the way §2.1 solves one, which is why an index needs no second binder form and gets none. An index position
+holding anything else — `Row(f(x))`, `Row(match … )` — is the refusal below, named at the expression.
+
+That restriction is what keeps the two deciders apart, and the code says so structurally: `index.rs` holds the
+expression, its normal form, and `decide`, and **does not import `value.rs`**. It is handed an index expression and
+answers; it never evaluates, never forces, and never sees a term. Reading an index position into that expression — or
+refusing it — happens at the one place conversion meets one, which is also the only place that needs to know the
+grammar. If `index.rs` ever needs a `Value`, the stratification has been broken.
 
 **It is not a constraint, and not a trait.** There is no instance table, no dictionary, nothing to resolve, and nothing
 an author can hand-write an instance for. §1.2 makes the same argument about storability, for the same reason.
@@ -362,7 +371,10 @@ dependent type.
 Each of these is a refusal that names what it refused, and each is re-opened only by a committed program that needs it,
 under `../README.md`:
 
-- **An index expression outside the grammar above** — two variables multiplied, a division, a call.
+- **An index expression outside the grammar above** — two variables multiplied, a division, a call, a `match`, a
+  projection, or a variable of any sort but `Nat`, `Ratio`, and a finite literal enum. The refusal names the expression,
+  and it is a refusal rather than an approximation: an index the solver cannot read is not assumed, not postponed, and
+  not compared syntactically as a fallback.
 - **Matching on an index.** There is no pattern that inspects one, because there is no value to inspect: it is erased.
 - **An index in an eliminator's motive.** §1.1's eliminator is non-dependent and stays so.
 - **An existential index** — a value carrying an index the type does not name. `Row(n)` for *some* `n` is not a type.
@@ -371,10 +383,17 @@ under `../README.md`:
   program could hold. The identity type stays deleted (§1.4).
 - **An index over a type**, which would be a universe by another name (§1.3).
 
-`EventTrack C δ`, `Duration C`, `Position C`, `Primitive K δ δ`, `Machine K δ δ`, and `Syntax<Cat>` are this mechanism
-in special-cased form and predate it: a compiler-owned base type applied to a closed literal from a finite enum. Prompt
-142d reworks them onto the general mechanism or records why one cannot move, since a feature the compiler gave itself
-and withheld from the source language is the exact shape root `AGENTS.md` names as a mistake.
+**The compiler-owned indexed types are a different mechanism, and this section does not absorb them.** `Duration C`,
+`Position C`, `EventTrack C δ`, `Syntax<Cat>`, `Primitive K δ δ`, and `Machine K δ δ` look indexed and are not: their
+arguments are **parameters**, present in the elaborated term and compared by §3's ordinary conversion. That is what
+makes `Duration WrittenTime` and `Duration PhysicalTime` inconvertible, what lets `Syntax<Cat>` carry a directional
+forgetting rule (`11-quotation.md` §1) that a symmetric conversion could not state, and what puts two of `Machine`'s
+three arguments at *types* rather than at any arithmetic domain. An erased index could do none of the three, because
+erasure is exactly the promise that the argument stops mattering after elaboration.
+
+So the two live side by side and the distinction is which question the argument answers. A parameter says *what this is
+a type of*, and survives. An index says *how many* or *how much*, is decided by arithmetic, and is erased. Prompt 142d
+records this at the registration rather than leaving a reader to infer it from a kind.
 
 ## 2. Static semantics: bidirectional checking
 
