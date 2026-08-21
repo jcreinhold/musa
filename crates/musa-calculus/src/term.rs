@@ -38,7 +38,7 @@ use crate::origin::Origin;
 /// one by name.
 pub type Name = Arc<str>;
 
-/// Whether an argument is written at a use site, or inserted by the elaborator.
+/// How a use site fills a binder.
 ///
 /// A property of a *binder*. It rides on [`Shape::Pi`] and **no core rule reads
 /// it** (§1, amended at prompt 134): there is one function type, conversion
@@ -46,28 +46,38 @@ pub type Name = Arc<str>;
 /// here rather than beside the type because a Π reached through a record
 /// projection, through δ, or through substituting a type variable has been
 /// through the semantic domain, and elaboration still has to be able to ask the
-/// binder it found whether a use site writes that argument.
-/// A third kind was added at prompt 141i, for `01-surface.md` §1.4's `where`.
-/// It is not a third *function type* — §1's "exactly one Π" is untouched, and a
-/// constraint binder is a Π whose argument the elaborator answers by
-/// `10-traits.md` §4 instead of by unification. The constraint travels **on the
-/// binder** rather than in a table beside the definition, because a definition
-/// is a value: `same` may be passed, stored, or returned, and at that use site
-/// there is no name to look up and only the type is in hand. It cannot be
-/// recovered from the domain either — [`crate::Trait`]'s dictionary is a closed
-/// `λp⃗. { … }`, so `Eq A` β-reduces to a record type and the trait's name is
-/// gone by the time anything asks.
+/// binder it found how a use site fills it.
+///
+/// Three arms because there are three answers, and none of them is the
+/// implicit-argument insertion this type was once named for: an author writes
+/// the argument, or §2.1's first-order matching solves it, or `10-traits.md`
+/// §4's lookup answers it. The elaborator's own walk spells the same three —
+/// see `elab::spine`'s `Slot`.
 #[derive(Clone, Debug)]
-pub enum Plicity {
+pub enum Filling {
     /// Written at every use.
-    Explicit,
-    /// Inserted at every use, as a metavariable, unless written in braces.
-    Implicit,
+    Written,
+    /// A type parameter, solved at every use by §2.1's first-order matching of
+    /// the written arguments' inferred types against the parameter types.
+    ///
+    /// Not a metavariable that survives its call: a parameter the match does
+    /// not determine is [`crate::Refusal::Unsolved`] at the call, naming the
+    /// parameter, and the author writes the argument. A use site may write it
+    /// too, which is the one place a filling appears on an application.
+    Parameter,
     /// Answered at every use by `10-traits.md` §4's lookup, and never written.
     ///
     /// Never appears in a [`Raw`](crate::Raw): a surface `where` clause is
     /// [`RawShape::ConstrainedPi`](crate::RawShape), whose constraint is
     /// unelaborated, and elaboration is what turns one into the other.
+    ///
+    /// The constraint travels **on the binder** rather than in a table beside
+    /// the definition, because a definition is a value: `same` may be passed,
+    /// stored, or returned, and at that use site there is no name to look up
+    /// and only the type is in hand. It cannot be recovered from the domain
+    /// either — [`crate::Trait`]'s dictionary is a closed `λp⃗. { … }`, so
+    /// `Eq A` β-reduces to a record type and the trait's name is gone by the
+    /// time anything asks.
     Constraint(Arc<Constraint>),
 }
 
@@ -76,10 +86,10 @@ pub enum Plicity {
 /// Written rather than derived for [`Term`]'s reason one level down: two
 /// constraint binders that demand the same instance are the same binder
 /// wherever they were written, so the origin is excluded here as it is there.
-impl PartialEq for Plicity {
+impl PartialEq for Filling {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Explicit, Self::Explicit) | (Self::Implicit, Self::Implicit) => true,
+            (Self::Written, Self::Written) | (Self::Parameter, Self::Parameter) => true,
             (Self::Constraint(left), Self::Constraint(right)) => {
                 Arc::ptr_eq(left, right) || (left.class == right.class && left.args == right.args)
             }
@@ -88,7 +98,7 @@ impl PartialEq for Plicity {
     }
 }
 
-impl Eq for Plicity {}
+impl Eq for Filling {}
 
 /// A de Bruijn index: how many binders out from its use site a variable's
 /// binder is. `Index(0)` is the nearest enclosing binder.
@@ -168,8 +178,8 @@ impl Eq for Term {}
 /// preservation clause checkable node by node.
 #[derive(Clone, Debug)]
 pub enum Shape {
-    /// A placeholder for an implicit argument the instantiation walk has not
-    /// yet solved — see [`crate::meta::Hole`].
+    /// A placeholder for an argument the instantiation walk has not yet
+    /// solved — see [`crate::meta::Hole`].
     Hole(crate::meta::Hole),
     /// A variable, named by how many binders out its binder is.
     Var(Index),
@@ -214,12 +224,12 @@ pub enum Shape {
     Universe(Level),
     /// `(x : A) → B`, the one function type.
     Pi {
-        /// Whether a use site writes this argument, or the elaborator inserts
-        /// one. §1: exactly one Π, and **no core rule reads this** — it is here
-        /// because a type reached by projection or by substitution has been
-        /// through the semantic domain, and elaboration still has to be able to
-        /// ask whether the binder it found was implicit.
-        plicity: Plicity,
+        /// How a use site fills this argument. §1: exactly one Π, and **no
+        /// core rule reads this** — it is here because a type reached by
+        /// projection or by substitution has been through the semantic domain,
+        /// and elaboration still has to be able to ask how the binder it found
+        /// is filled.
+        filling: Filling,
         /// The binder's written name.
         name: Name,
         /// `A`.
@@ -278,7 +288,7 @@ pub enum Shape {
 /// look at.
 ///
 /// §7 states them as one rule rather than three exceptions — an [`Origin`], a
-/// binder's written name, and a binder's [`Plicity`]. Each is carried so that a
+/// binder's written name, and a binder's [`Filling`]. Each is carried so that a
 /// diagnostic, a formatter, or the elaborator can read it, and each would make
 /// conversion answer `false` for two spellings of one type if equality looked at
 /// it. Written out rather than derived because a derive would look at all three:
@@ -312,13 +322,13 @@ impl PartialEq for Shape {
             (Self::Universe(left), Self::Universe(right)) => left == right,
             (
                 Self::Pi {
-                    plicity: _,
+                    filling: _,
                     name: _,
                     domain: left_domain,
                     codomain: left_codomain,
                 },
                 Self::Pi {
-                    plicity: _,
+                    filling: _,
                     name: _,
                     domain: right_domain,
                     codomain: right_codomain,
@@ -435,7 +445,7 @@ impl Term {
         }
     }
 
-    /// A placeholder for an implicit argument — see [`crate::meta::Hole`].
+    /// A placeholder for an unwritten argument — see [`crate::meta::Hole`].
     #[must_use]
     pub(crate) fn hole(origin: Origin, hole: crate::meta::Hole) -> Self {
         Self::new(origin, Shape::Hole(hole))
@@ -509,14 +519,14 @@ impl Term {
     /// `(name : domain) → codomain`.
     #[must_use]
     pub fn pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
-        Self::function(origin, Plicity::Explicit, name, domain, codomain)
+        Self::function(origin, Filling::Written, name, domain, codomain)
     }
 
     /// `{name : domain} → codomain` — the same type, whose argument a use site
     /// does not write.
     #[must_use]
-    pub fn implicit_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
-        Self::function(origin, Plicity::Implicit, name, domain, codomain)
+    pub fn parameter_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
+        Self::function(origin, Filling::Parameter, name, domain, codomain)
     }
 
     /// `[Class a⃗] → codomain` — the binder `01-surface.md` §1.4's `where`
@@ -534,14 +544,14 @@ impl Term {
         domain: Self,
         codomain: Self,
     ) -> Self {
-        Self::function(origin, Plicity::Constraint(constraint), name, domain, codomain)
+        Self::function(origin, Filling::Constraint(constraint), name, domain, codomain)
     }
 
-    /// `(name : domain) → codomain` at a plicity a caller already has in hand —
+    /// `(name : domain) → codomain` at a filling a caller already has in hand —
     /// quotation, which must write back the Π it read.
     pub(crate) fn function(
         origin: Origin,
-        plicity: Plicity,
+        filling: Filling,
         name: impl Into<Name>,
         domain: Self,
         codomain: Self,
@@ -549,7 +559,7 @@ impl Term {
         Self::new(
             origin,
             Shape::Pi {
-                plicity,
+                filling,
                 name: name.into(),
                 domain,
                 codomain,

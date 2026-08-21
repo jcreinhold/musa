@@ -11,7 +11,7 @@ use crate::eval::eval;
 use crate::level::Level;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote_type};
-use crate::term::{DbLevel, Index, Name, Plicity, Term};
+use crate::term::{DbLevel, Filling, Index, Name, Term};
 use crate::value::{Env, Value};
 use std::sync::Arc;
 
@@ -53,7 +53,7 @@ pub(super) struct Telescope<'a> {
     /// and the next position.
     depth: u32,
     /// The binders, in order, to be folded into Π's by [`Self::close`].
-    binders: Vec<(Plicity, Name, Term)>,
+    binders: Vec<(Filling, Name, Term)>,
 }
 
 impl<'a> Telescope<'a> {
@@ -72,9 +72,9 @@ impl<'a> Telescope<'a> {
     /// A telescope continuing this one: its environments and depth, its own
     /// binders.
     ///
-    /// What makes a method's or a motive's Π chain nest inside the recursor's
-    /// without either one's indices being wrong — both are quoted at the depth
-    /// they actually stand at.
+    /// What makes a method's Π chain nest inside the recursor's without either
+    /// one's de Bruijn indices being wrong — both are quoted at the depth they
+    /// actually stand at.
     pub(super) fn nested(&self) -> Self {
         Telescope {
             group: self.group,
@@ -94,7 +94,7 @@ impl<'a> Telescope<'a> {
             .env
             .push(Value::var(self.origin, DbLevel(self.depth), Arc::new(value)));
         self.depth = self.depth.saturating_add(1);
-        self.binders.push((Plicity::Explicit, Arc::from(name), ty));
+        self.binders.push((Filling::Written, Arc::from(name), ty));
         Ok(at)
     }
 
@@ -110,70 +110,57 @@ impl<'a> Telescope<'a> {
             // eval-then-quote this line already does for the type. Re-indexing
             // one and not the other is how a recursor's parameters would end up
             // naming a motive.
-            let plicity = self.reindexed(meter, &binder.plicity)?;
+            let filling = self.reindexed(meter, &binder.filling)?;
             let variable = Value::var(self.origin, DbLevel(self.depth), Arc::new(value.clone()));
             self.env = self.env.push(variable.clone());
             self.reading = self.reading.push(variable);
             let at = At(self.depth);
             self.depth = self.depth.saturating_add(1);
-            self.binders.push((plicity, Arc::clone(&binder.name), ty));
+            self.binders.push((filling, Arc::clone(&binder.name), ty));
             introduced.push((at, value));
         }
         Ok(introduced)
     }
 
-    /// A stored binder's plicity, with a constraint's arguments read at the
+    /// A stored binder's filling, with a constraint's arguments read at the
     /// depth this telescope has reached.
-    fn reindexed(&self, meter: &mut Meter, plicity: &Plicity) -> Result<Plicity, CoreError> {
-        let Plicity::Constraint(constraint) = plicity else {
-            return Ok(plicity.clone());
+    fn reindexed(&self, meter: &mut Meter, filling: &Filling) -> Result<Filling, CoreError> {
+        let Filling::Constraint(constraint) = filling else {
+            return Ok(filling.clone());
         };
         let mut args = Vec::with_capacity(constraint.args.len());
         for argument in constraint.args.iter() {
             let value = eval(meter, &self.reading, argument)?;
             args.push(quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?);
         }
-        Ok(Plicity::Constraint(Arc::new(constraint.at(Arc::from(args)))))
+        Ok(Filling::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
 
-    /// One motive per family in the group: `P_j : N_j p⃗ → Type ℓ`.
-    pub(super) fn motives(
-        &mut self,
-        meter: &mut Meter,
-        params: &[Introduced],
-        level: Level,
-    ) -> Result<Vec<At>, CoreError> {
+    /// One result type per family in the group: `R_j : Type ℓ`.
+    ///
+    /// A *type*, not a family of them. §1.1's eliminator is non-dependent: a
+    /// method's result and an induction hypothesis are both the plain `R_j`,
+    /// and nothing is applied to the value being eliminated. One per family
+    /// rather than one overall because a mutual recursor eliminates into a
+    /// different answer per family, which is what makes it statable at all.
+    pub(super) fn motives(&mut self, meter: &mut Meter, level: Level) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
-            let ty = self.motive_type(meter, params, which, level)?;
-            introduced.push(self.assume(meter, "P", ty)?);
+            let ty = self.motive_type(which, level);
+            introduced.push(self.assume(meter, "R", ty)?);
         }
         Ok(introduced)
     }
 
-    fn motive_type(
-        &self,
-        meter: &mut Meter,
-        params: &[Introduced],
-        which: u32,
-        level: Level,
-    ) -> Result<Term, CoreError> {
+    fn motive_type(&self, which: u32, level: Level) -> Term {
         if self.group.family_at(which).is_none() {
-            return Ok(Term::universe(self.origin, Level::ZERO));
+            return Term::universe(self.origin, Level::ZERO);
         }
-        let mut inner = self.nested();
-        let subject = inner.applied_family(which, [params, &[]]);
-        inner.assume(meter, "t", subject)?;
-        Ok(inner.close(Term::universe(self.origin, level)))
+        Term::universe(self.origin, level)
     }
 
     /// One method per constructor of every family in the group.
-    pub(super) fn methods(
-        &mut self,
-        meter: &mut Meter,
-        params: &[Introduced],
-        motives: &[At],
-    ) -> Result<(), CoreError> {
+    pub(super) fn methods(&mut self, meter: &mut Meter, motives: &[At]) -> Result<(), CoreError> {
         for family in 0..self.group.arity() {
             let names: Vec<Name> = self.group.family_at(family).map_or_else(Vec::new, |declared| {
                 declared
@@ -184,22 +171,15 @@ impl<'a> Telescope<'a> {
             });
             for (which, name) in names.into_iter().enumerate() {
                 let which = u32::try_from(which).unwrap_or(u32::MAX);
-                let ty = self.method_type(meter, params, motives, family, which)?;
+                let ty = self.method_type(meter, motives, family, which)?;
                 self.assume(meter, &name, ty)?;
             }
         }
         Ok(())
     }
 
-    /// `(a⃗ : Fields) → (ih⃗) → P_j (c p⃗ a⃗)`.
-    fn method_type(
-        &self,
-        meter: &mut Meter,
-        params: &[Introduced],
-        motives: &[At],
-        family: u32,
-        which: u32,
-    ) -> Result<Term, CoreError> {
+    /// `(a⃗ : Fields) → (ih⃗) → R_j`.
+    fn method_type(&self, meter: &mut Meter, motives: &[At], family: u32, which: u32) -> Result<Term, CoreError> {
         let Some(constructor) = self
             .group
             .family_at(family)
@@ -212,23 +192,27 @@ impl<'a> Telescope<'a> {
         let mut inner = self.nested();
         let fields = inner.extend(meter, &fields_of)?;
         for (field, of_family) in recursive.iter() {
-            let Some((at, _)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)).cloned() else {
+            // A recursive position past the fields would be a defect in the
+            // declaration rather than a hypothesis to invent, and skipping it
+            // keeps this arity and [`super::iota`]'s in agreement.
+            if fields.get(usize::try_from(*field).unwrap_or(usize::MAX)).is_none() {
                 continue;
-            };
-            let hypothesis = inner.hypothesis(motives, *of_family, at);
+            }
+            let hypothesis = inner.hypothesis(motives, *of_family);
             inner.assume(meter, "ih", hypothesis)?;
         }
-        let arguments = inner.references(params).into_iter().chain(inner.references(&fields));
-        let built = applied(self.origin, inner.constructor(family, which), arguments);
-        let motive = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        let result = Term::app(self.origin, motive, built);
+        let result = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
         Ok(inner.close(result))
     }
 
-    /// `P_j a`, the induction hypothesis for a recursive field.
-    fn hypothesis(&self, motives: &[At], family: u32, field: At) -> Term {
-        let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        Term::app(self.origin, motive, self.reference(Some(field)))
+    /// `R_j`, the induction hypothesis for a recursive field.
+    ///
+    /// The field itself does not appear in it, which is what non-dependent
+    /// means: the hypothesis is the answer the recursion produced, not a
+    /// statement about the field. The field is still what [`super::iota`]
+    /// applies the recursor to when the hypothesis is forced.
+    fn hypothesis(&self, motives: &[At], family: u32) -> Term {
+        self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied())
     }
 
     /// The variable naming the binder at `at`, seen from here.
@@ -262,23 +246,13 @@ impl<'a> Telescope<'a> {
         applied(self.origin, self.family(which), arguments)
     }
 
-    /// A constructor, as a constant.
-    pub(super) fn constructor(&self, family: u32, which: u32) -> Term {
-        Constant {
-            group: Arc::clone(self.group),
-            family,
-            role: Role::Constructor(which),
-        }
-        .term(self.origin)
-    }
-
     /// Fold the binders back into Π's around `result`.
     pub(super) fn close(self, result: Term) -> Term {
         self.binders
             .into_iter()
             .rev()
-            .fold(result, |codomain, (plicity, name, domain)| {
-                Term::function(self.origin, plicity, name, domain, codomain)
+            .fold(result, |codomain, (filling, name, domain)| {
+                Term::function(self.origin, filling, name, domain, codomain)
             })
     }
 
@@ -287,8 +261,8 @@ impl<'a> Telescope<'a> {
         std::mem::take(&mut self.binders)
             .into_iter()
             .rev()
-            .fold(result, |codomain, (plicity, name, domain)| {
-                Term::function(self.origin, plicity, name, domain, codomain)
+            .fold(result, |codomain, (filling, name, domain)| {
+                Term::function(self.origin, filling, name, domain, codomain)
             })
     }
 }

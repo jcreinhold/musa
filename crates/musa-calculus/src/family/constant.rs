@@ -452,14 +452,14 @@ impl Constant {
         let Some(_declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Level::ZERO));
         };
-        let here = self.group.origin;
         let params = builder.extend(meter, &self.group.params)?;
-        let motives = builder.motives(meter, &params, level)?;
-        builder.methods(meter, &params, &motives)?;
+        let motives = builder.motives(meter, level)?;
+        builder.methods(meter, &motives)?;
         let subject = builder.applied_family(self.family, [&params, &[]]);
-        let target = builder.assume(meter, "t", subject)?;
-        let motive = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
-        let result = Term::app(here, motive, builder.reference(Some(target)));
+        builder.assume(meter, "t", subject)?;
+        // Non-dependent: the result is the answer type itself, with nothing
+        // applied to the value being eliminated.
+        let result = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
         Ok(builder.close(result))
     }
 }

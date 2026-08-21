@@ -60,7 +60,7 @@ impl Elaborator {
             | Shape::Builtin(_)
             | Shape::Universe(_) => return Ok(term.clone()),
             Shape::Pi {
-                plicity,
+                filling,
                 name,
                 domain,
                 codomain,
@@ -68,7 +68,7 @@ impl Elaborator {
                 let domain = self.zonking(domain, depth)?;
                 let codomain = self.zonking(codomain, depth.saturating_add(1))?;
                 Shape::Pi {
-                    plicity: plicity.clone(),
+                    filling: filling.clone(),
                     name: Arc::clone(name),
                     domain,
                     codomain,

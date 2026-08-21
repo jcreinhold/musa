@@ -10,7 +10,7 @@ use crate::origin::Origin;
 use crate::raw::{Raw, RawField, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Field, Name, Plicity, Shape, Term};
+use crate::term::{Field, Filling, Name, Shape, Term};
 use crate::value::{Form, Telescope, Value};
 
 use super::{Bound, Elaborator, Typed};
@@ -43,7 +43,7 @@ impl Elaborator {
                 // type can determine — a bare constructor, a generic's name —
                 // is matched against `ty` before conversion is asked.
                 let inferred = self.apply_spine(scope, raw.origin(), inferred, &[], Some(ty))?;
-                self.unifier
+                self.conversion
                     .unify_types(&mut self.meter, scope.depth(), raw.origin(), ty, &inferred.ty)?;
                 Ok(inferred.term)
             }
@@ -58,7 +58,7 @@ impl Elaborator {
     /// core's: see [`Accepts`]. Two things about *where* it stands are the whole
     /// of why it is sound.
     ///
-    /// **It is here and not in [`Unifier`].** Conversion is symmetric, so a rule
+    /// **It is here and not in [`Conversion`].** Conversion is symmetric, so a rule
     /// living there would let a value stand at either index and the index would
     /// certify nothing. `check`'s `Switch` is the only place in the elaborator
     /// where one type is *expected* and another *found*, which is exactly the
@@ -121,7 +121,7 @@ impl Elaborator {
     ) -> Result<Option<(crate::base::Base, crate::base::Literal)>, ElabError> {
         // Forced first, and not only at the index. `check` forces the type it
         // was handed, but the *inferred* type reaching this arrives straight out
-        // of `infer` — and for a call whose result is an implicit parameter that
+        // of `infer` — and for a call whose result is a type parameter that
         // is a metavariable, solved by the first argument that mentions it. A
         // solved metavariable is a neutral with no spine, so reading the head
         // without forcing sees `Head::Meta` and answers that this is not a type
@@ -152,11 +152,11 @@ impl Elaborator {
         let here = raw.origin();
         match raw.shape() {
             RawShape::Lam {
-                plicity,
+                filling,
                 name,
                 domain,
                 body,
-            } => self.lambda(scope, raw, plicity, name, domain.as_ref(), body, ty),
+            } => self.lambda(scope, raw, filling, name, domain.as_ref(), body, ty),
             RawShape::Record(fields) => {
                 let Form::RecordType(telescope) = &ty.form else {
                     return self.abstracted(scope, raw, ty);
@@ -182,10 +182,9 @@ impl Elaborator {
                 )))
             }
             // §6.2: a `match` checks and never infers. The motive a split
-            // builds is the goal abstracted over the subject, so there is
-            // nothing to abstract without one — and reading the type off the
-            // first arm would make a program's type depend on the order its
-            // arms are written in.
+            // builds is the goal itself, so there is no motive without one —
+            // and reading the type off the first arm would make a program's
+            // type depend on the order its arms are written in.
             RawShape::Match { subjects, arms } => crate::case::compile(self, scope, here, subjects, arms, ty).map(Some),
             RawShape::Rec {
                 name,
@@ -231,15 +230,15 @@ impl Elaborator {
         }
     }
 
-    /// Wrap `raw` in an implicit λ when the type it is checked against wants
-    /// one, or answer `None` so that `Switch` runs.
+    /// Wrap `raw` in a λ for an unwritten binder when the type it is checked
+    /// against wants one, or answer `None` so that `Switch` runs.
     ///
-    /// The second half of implicit insertion, and the reason `Switch` never
-    /// meets an implicit Π: a term whose own form does not abstract the binder
+    /// The second half of parameter filling, and the reason `Switch` never
+    /// meets a parameter Π: a term whose own form does not abstract the binder
     /// has one abstracted for it here.
     fn abstracted(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Term>, ElabError> {
         let Form::Pi {
-            plicity,
+            filling,
             name,
             domain,
             codomain,
@@ -247,25 +246,25 @@ impl Elaborator {
         else {
             return Ok(None);
         };
-        if *plicity == Plicity::Explicit {
+        if *filling == Filling::Written {
             return Ok(None);
         }
-        let (plicity, name, domain, codomain) =
-            (plicity.clone(), Arc::clone(name), Arc::clone(domain), codomain.clone());
+        let (filling, name, domain, codomain) =
+            (filling.clone(), Arc::clone(name), Arc::clone(domain), codomain.clone());
         let here = raw.origin();
         let variable = scope.fresh_var(here, Arc::clone(&domain));
         let body_ty = apply_closure(&mut self.meter, &codomain, variable)?;
-        let discharged = self.discharging(scope, &plicity, &codomain.env)?;
+        let discharged = self.discharging(scope, &filling, &codomain.env)?;
         let inner = discharged.assume(Some(Arc::clone(&name)), here, domain);
         Ok(Some(Term::lam(here, name, self.check(&inner, raw, &body_ty)?)))
     }
 
-    /// `λx. e ⇐ (x : A) → B`, and the plicity rules that go with it.
+    /// `λx. e ⇐ (x : A) → B`, and the filling rules that go with it.
     fn lambda(
         &mut self,
         scope: &Scope,
         raw: &Raw,
-        plicity: &Plicity,
+        filling: &Filling,
         name: &Name,
         domain: Option<&Raw>,
         body: &Raw,
@@ -273,7 +272,7 @@ impl Elaborator {
     ) -> Result<Option<Term>, ElabError> {
         let here = raw.origin();
         let Form::Pi {
-            plicity: expected,
+            filling: expected,
             name: _,
             domain: expected_domain,
             codomain,
@@ -281,12 +280,12 @@ impl Elaborator {
         else {
             return self.abstracted(scope, raw, ty);
         };
-        if *plicity != *expected {
-            // An implicit λ at an explicit binder is a mistake rather than a
+        if *filling != *expected {
+            // A parameter λ at a written binder is a mistake rather than a
             // term to abstract around: the author wrote the binder, at the
-            // plicity the type does not have.
-            if *plicity == Plicity::Implicit {
-                return Err(Refusal::PlicityMismatch { at: here }.into());
+            // filling the type does not have.
+            if *filling == Filling::Parameter {
+                return Err(Refusal::FillingMismatch { at: here }.into());
             }
             return self.abstracted(scope, raw, ty);
         }
@@ -297,7 +296,7 @@ impl Elaborator {
         if let Some(written) = domain {
             let (term, _) = self.check_type(scope, written)?;
             let written_domain = scope.eval(&mut self.meter, &term)?;
-            self.unifier.unify_types(
+            self.conversion.unify_types(
                 &mut self.meter,
                 scope.depth(),
                 written.origin(),

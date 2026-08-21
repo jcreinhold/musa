@@ -9,7 +9,7 @@ use crate::origin::Origin;
 use crate::raw::Raw;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Plicity, Shape, Term};
+use crate::term::{Filling, Shape, Term};
 use crate::value::{Form, Neutral, Value};
 
 use super::{Elaborator, Typed};
@@ -189,7 +189,7 @@ impl Elaborator {
             };
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
             let at = argument.origin();
-            let (slot, value) = if !crate::unify::mentions_unsolved(&domain)
+            let (slot, value) = if !crate::convert::mentions_unsolved(&domain)
                 || (argument.checks_only() && argument.annotates_its_binder())
             {
                 // Checked: the argument is read against the domain, either
@@ -244,7 +244,7 @@ impl Elaborator {
             // where `fold(combine, seed, xs)`'s result type comes from when the
             // seed is the lambda. Idris2 checks the rest of the spine including
             // its target for the same reason.
-            self.unifier
+            self.conversion
                 .unify_types(&mut self.meter, scope.depth(), here, expected, &ty)?;
         }
         // The second pass, in written order. `domain` is the same value the
@@ -263,8 +263,8 @@ impl Elaborator {
             let stood = Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole)));
             // Assignment when the placeholder is still free, conversion when
             // the walk already decided what stood there — one call, because
-            // those are the same procedure (see [`crate::unify`]).
-            self.unifier
+            // those are the same procedure (see [`crate::convert`]).
+            self.conversion
                 .unify(&mut self.meter, scope.depth(), at, &domain, &stood, &value)?;
             deferred.push(term);
         }
@@ -280,7 +280,7 @@ impl Elaborator {
             let unfolded = opened(&mut self.meter, ty)?;
             let current = unfolded.as_ref().unwrap_or(ty);
             let Form::Pi {
-                plicity,
+                filling,
                 domain,
                 codomain,
                 ..
@@ -288,15 +288,15 @@ impl Elaborator {
             else {
                 return Ok(());
             };
-            match plicity {
-                Plicity::Explicit => return Ok(()),
-                Plicity::Implicit => {
+            match filling {
+                Filling::Written => return Ok(()),
+                Filling::Parameter => {
                     let hole = self.fresh_hole(current.origin, domain);
                     walk.slots.push(Slot::Parameter(hole.clone()));
                     let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
                     *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
-                Plicity::Constraint(constraint) => {
+                Filling::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
                     // The codomain reads the dictionary off its binder; a hole
                     // stands for it, and [`Self::settled`] writes the resolved

@@ -8,8 +8,9 @@
 //! - **δ** is [`eval`] on a [`Shape::Let`] and on a variable a context *defined*
 //!   rather than assumed: both put the definition's value in the environment,
 //!   so unfolding is what lookup already does.
-//! - **ι** is [`jay`] on a [`Form::Refl`], which discards the motive and
-//!   answers the base case.
+//! - **ι** is [`crate::family::iota`] on a recursor whose target is a
+//!   constructor, which selects that constructor's method and applies it to the
+//!   fields and one induction hypothesis per recursive field.
 //! - **η** is *not* here. It is performed by [`crate::quote`], which is why
 //!   quotation is type-directed and why two records with the same projections
 //!   are convertible without a rule that inspects both at once — the property
@@ -21,7 +22,7 @@
 //! the occurrences of `x` become `a`, and they carry `a`'s origins. The same
 //! rule makes β answer the body's origins and δ answer the definition's. What
 //! an elimination's own origin is for is the case where it stays blocked, and
-//! that is why [`apply`], [`project`], and [`jay`] each take one.
+//! that is why [`apply`] and [`project`] each take one.
 //!
 //! Every descent is charged and every level of it is metered (§4.1): `NbE` gives
 //! the machine a second way to stand inside itself, and a total language may
@@ -33,7 +34,7 @@ use crate::base::{Answer, Builtin, Datum};
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
-use crate::term::{Field, Name, Plicity, Shape, Term};
+use crate::term::{Field, Filling, Name, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
@@ -90,11 +91,11 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             Shape::Builtin(builtin) => Ok(Value::neutral(Neutral::head(here, Head::Builtin(builtin.clone())))),
             Shape::Lit(literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
             Shape::Pi {
-                plicity,
+                filling,
                 name,
                 domain,
                 codomain,
-            } => pi(meter, env, here, plicity.clone(), name, domain, codomain),
+            } => pi(meter, env, here, filling.clone(), name, domain, codomain),
             Shape::Lam { name: _, body } => Ok(Value::new(
                 here,
                 Form::Lam(Closure {
@@ -143,7 +144,7 @@ fn pi(
     meter: &mut Meter,
     env: &Env,
     here: Origin,
-    plicity: Plicity,
+    filling: Filling,
     name: &Name,
     domain: &Term,
     codomain: &Term,
@@ -151,7 +152,7 @@ fn pi(
     Ok(Value::new(
         here,
         Form::Pi {
-            plicity,
+            filling,
             name: Arc::clone(name),
             domain: Arc::new(eval(meter, env, domain)?),
             codomain: Closure {
@@ -207,13 +208,13 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
 /// stores the value `?β` *had at that moment*, which is a neutral blocked on
 /// `?β`. Solve `?β` afterwards and unfolding `?α` once answers a value that is
 /// blocked again. A caller that trusted a single step would then read a solved
-/// metavariable as an unsolved one; in [`crate::unify`] that is not a missed
+/// metavariable as an unsolved one; in [`crate::convert`] that is not a missed
 /// The value with a solved hole at its head seen through, or `None` when the
 /// head is not one.
 ///
 /// A loop rather than a step: a solution can itself be headed by a hole that
 /// has since been solved, and a caller that trusted one step would read a
-/// solved hole as an unsolved one — in [`crate::unify`] that is not a missed
+/// solved hole as an unsolved one — in [`crate::convert`] that is not a missed
 /// reduction but a wrong answer. Each pass is charged, so a chain is bounded
 /// by the budget rather than by a claim that chains are short.
 ///

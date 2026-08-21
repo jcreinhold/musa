@@ -81,11 +81,11 @@ fn apply(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw {
 /// Written out here and nowhere else. A source program lets elaboration solve
 /// them from the branches; these laws state what the *registration* is, so they
 /// say which types they mean — and an implicit binder is still applied, which is
-/// what `Raw::implicit_app` is for.
+/// what `Raw::parameter_app` is for.
 fn at_types(head: Raw, types: impl IntoIterator<Item = Raw>) -> Raw {
     types
         .into_iter()
-        .fold(head, |function, argument| Raw::implicit_app(HERE, function, argument))
+        .fold(head, |function, argument| Raw::parameter_app(HERE, function, argument))
 }
 
 fn lambda(names: &[&str], body: Raw) -> Raw {
@@ -200,7 +200,7 @@ fn recursing_descends_the_leftmost_spine_the_way_the_old_evaluator_does() {
         var("List.elim"),
         [
             step,
-            lambda(&["_"], tree()),
+            tree(),
             leaf(),
             lambda(
                 &["first", "rest", "done"],

@@ -21,51 +21,41 @@
 //! telescope — and neither of those is a principal type. `{ ty = {}, val = {} }`
 //! inhabits `{ ty : Type 0, val : ty }` just as well as `{ ty : Type 0,
 //! val : {} }`, so choosing the second is deciding what the program means on
-//! evidence the author did not give. It is the same move the unifier is
+//! evidence the author did not give. It is the same move conversion is
 //! forbidden from making one layer down, and it is refused here for the same
 //! reason: [`Refusal::Uninferable`], not a guess. The λ is the one exception,
-//! and only because its guess is confined to a metavariable that must still be
+//! and only because its guess is confined to a hole that must still be
 //! *solved* by something the author wrote.
 //!
-//! # Where implicits are inserted, and where insertion stops
+//! # Where a type parameter is filled, and where filling stops
 //!
-//! A binder marked [`Plicity::Implicit`] is filled by a metavariable at every
-//! use ([`MetaSource::ImplicitArgument`]). Insertion happens in two places and
-//! stops on two conditions, and the stopping conditions are the whole subtlety:
+//! A binder marked [`Filling::Parameter`] is filled at every use by a hole the
+//! written arguments then solve ([`MetaSource::TypeParameter`] names it when
+//! they do not). Filling happens in two places and stops on two conditions, and
+//! the stopping conditions are the whole subtlety:
 //!
-//! - **At a use site**, [`Elaborator::inserted`] fills implicit binders until
-//!   the type is no longer an implicit Π. It is *not* run when the author wrote
-//!   the argument implicitly (`f {a}`), because that argument is the one the
-//!   binder wanted.
-//! - **In checking mode**, a term checked against `{x : A} → B` is wrapped in an
-//!   implicit λ rather than switched to inference. Switching instead would infer
-//!   a type, insert implicits into it, and unify against a type that is still an
-//!   implicit Π — which inserts forever.
+//! - **At a use site**, [`spine`]'s walk fills parameter binders until the type
+//!   is no longer one. It is *not* run when the author wrote the argument
+//!   themselves, because that argument is the one the binder wanted.
+//! - **In checking mode**, a term checked against a parameter Π is wrapped in a
+//!   λ for it rather than switched to inference. Switching instead would infer
+//!   a type, fill its parameters, and unify against a type that is still a
+//!   parameter Π — which fills forever.
 //!
 //! # What the output contains
 //!
-//! No metavariables. One that is still unsolved when elaboration ends is
+//! No holes. One that is still unsolved when elaboration ends is
 //! [`Refusal::Unsolved`] (§2.1 never defaults and never generalizes), and one
-//! that is solved is substituted away by [`zonk`]. That is what lets
-//! [`crate::check`] promise a term the re-checker accepts.
+//! that is solved is substituted away by [`Elaborator::zonk`]. That is what
+//! lets [`crate::check`] promise a term whose every argument is written.
 //!
-//! # Levels are unknowns too
+//! # Levels are not unknowns
 //!
-//! §2.1's third creation site is a level, and prompt 135 opened it: a bare
-//! `Type` gets a [`LevelMeta`] rather than a number chosen here, solved by the
-//! same discipline as a term metavariable and refused by the same rule — one
-//! still undetermined when elaboration ends is [`Refusal::Unsolved`], never
-//! defaulted to zero.
-//!
-//! Read that site precisely. It is "a level position **the surface did not
-//! write**", which the universe a *hole's own type* stands in is not: no
-//! universe stands there at all, and [`Elaborator::infer_lambda`] says why a
-//! metavariable there would refuse every unannotated binder instead of
-//! describing one.
-//!
-//! The solver is [`Level::determine`] and it is narrower than the term unifier
-//! on purpose — its bound is documented there rather than here, because it is a
-//! property of the level sort and not of this module.
+//! §2.1's third creation site was a level, and it is gone with universe
+//! polymorphism: there are two levels, `Type 0` and `Type 1`, and a bare
+//! `Type` elaborates at the one its use demands rather than at a level
+//! something has to solve. Nothing here creates a level unknown, and there is
+//! no level sort to unify in.
 //!
 //! # The rules, by file
 //!
@@ -81,7 +71,7 @@
 //! - [`construct`] — a constructor applied, with or without an expected type
 //!   naming its family.
 //! - [`record`] — record types, projection, and update.
-//! - [`spine`] — one instantiation walk: implicits filled, constraints noted,
+//! - [`spine`] — one instantiation walk: parameters filled, constraints noted,
 //!   arguments placed.
 //! - [`holes`] — an unknown's lifecycle: created, constrained, and audited at
 //!   the one finish point.
@@ -92,6 +82,7 @@ use std::sync::Arc;
 use crate::budget::Meter;
 use crate::context::Cx;
 
+use crate::convert::Conversion;
 use crate::eval::opened;
 use crate::level::Level;
 use crate::origin::Origin;
@@ -100,7 +91,6 @@ use crate::raw::Raw;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::term::Term;
-use crate::unify::Unifier;
 use crate::value::{Env, Form, Value};
 
 mod check;
@@ -145,7 +135,7 @@ pub(crate) struct Elaborator {
     /// What makes sharing sound is that assignment is the *only* thing a pass
     /// can do to the table, and an assignment is justified by the match that
     /// made it wherever the variable was created.
-    unifier: Unifier,
+    conversion: Conversion,
     /// The constraints the walks have met, each with the hole its dictionary
     /// will fill — resolved once, at [`Self::settled`], when matching has said
     /// everything it can.
@@ -169,7 +159,7 @@ impl Elaborator {
     pub(crate) fn new(cx: &Cx) -> Self {
         Self {
             meter: cx.meter(),
-            unifier: Unifier::default(),
+            conversion: Conversion::solving(),
             constraints: Vec::new(),
             created: Vec::new(),
             next_hole: 0,
@@ -263,7 +253,7 @@ impl Elaborator {
         left: &Value,
         right: &Value,
     ) -> Result<(), ElabError> {
-        self.unifier
+        self.conversion
             .unify_types(&mut self.meter, scope.depth(), at, left, right)
     }
 }

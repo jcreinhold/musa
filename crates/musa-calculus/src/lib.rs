@@ -2,15 +2,14 @@
 //! (`docs/rules/language/02-core-calculus.md`), and a **leaf**: it depends on
 //! no other Musa crate and knows nothing about pitch, time, notation, or audio.
 //!
-//! Owns: core terms, typing contexts, universes with their levels, dependent
-//! function types, primitive dependent records with η, the identity type with
-//! `refl` and `J`, non-recursive `let`, and definitional equality decided by
-//! normalization by evaluation under a deterministic budget (prompt 133);
-//! bidirectional elaboration with contextual metavariables, pattern-fragment
-//! unification, and implicit arguments (prompt 134); and parameterized and
-//! indexed inductive families with strict positivity, generated dependent
-//! recursors, dependent `match` compiled to them through case trees with
-//! coverage, and the checked termination rule (prompt 135).
+//! Owns: core terms, typing contexts, two fixed universes, dependent function
+//! types, primitive dependent records with η, non-recursive `let`, and
+//! definitional equality decided by normalization by evaluation under a
+//! deterministic budget (prompt 133); bidirectional elaboration with
+//! first-order holes and type parameters (prompt 134); and parameterized
+//! inductive families with strict positivity, generated non-dependent
+//! recursors, `match` compiled to them through case trees with coverage, and
+//! the checked structural termination rule (prompt 135).
 //!
 //! **The core is complete: everything above it is library code.** Records,
 //! enums, traits, `Syntax<Cat>`, and the collections are elaborated *into* this
@@ -75,7 +74,7 @@
 //! # What this crate does not do
 //!
 //! [`normalize`] and [`convertible`] do not type-check what they are given.
-//! Typing is [`check`], [`infer`], and [`well_typed`]; a term that reaches the
+//! Typing is [`check`] and [`infer`]; a term that reaches the
 //! evaluator having projected a field from a function is not refused, it is
 //! [`CoreError::Malformed`] — a caller defect, reported rather than panicked
 //! on, because a total language that aborts has replaced a diagnostic with a
@@ -86,6 +85,7 @@ mod budget;
 mod case;
 mod class;
 mod context;
+mod convert;
 mod declare;
 mod dictionary;
 mod elab;
@@ -106,7 +106,6 @@ mod scope;
 mod show;
 mod storable;
 mod term;
-mod unify;
 mod value;
 mod visibility;
 
@@ -128,17 +127,17 @@ pub use crate::raw::{
 };
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::storable::requiring_storable;
-pub use crate::term::{DbLevel, Field, Index, Name, Plicity, Shape, Term};
+pub use crate::term::{DbLevel, Field, Filling, Index, Name, Shape, Term};
 pub use crate::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
 
+use crate::convert::Conversion;
 use crate::elab::Elaborator;
 use crate::eval::eval;
 use crate::quote::{Mode, quote, quote_type};
 use crate::room::with_room;
 use crate::scope::Scope;
-use crate::unify::Unifier;
 
 /// Elaborate a `data` declaration group, in context `cx`.
 ///
@@ -250,8 +249,8 @@ pub fn declare_trait_metered(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, Spe
 /// # Errors
 ///
 /// [`Refusal::DuplicateInstance`] naming both declarations,
-/// [`Refusal::OrphanInstance`], [`Refusal::UnboundedInstance`],
-/// [`Refusal::BlanketInstance`], [`Refusal::HandWrittenStorable`], the method
+/// [`Refusal::OrphanInstance`], [`Refusal::BlanketInstance`],
+/// [`Refusal::HandWrittenStorable`], the method
 /// mismatches [`Refusal::DerivedMethod`], [`Refusal::NoSuchMethod`] and
 /// [`Refusal::MissingMethod`], and otherwise as [`check`].
 pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> {
@@ -262,9 +261,9 @@ pub fn declare_impl(cx: &Cx, raw: &RawImpl) -> Result<Arc<Instance>, ElabError> 
 ///
 /// The output is a core term with **no metavariables left in it**: §2.1 never
 /// defaults and never generalizes, so one still undetermined here is
-/// [`Refusal::Unsolved`] rather than a hole the next stage inherits. It is
-/// independently re-checkable, which is what [`well_typed`] is for and the
-/// single most valuable invariant in this crate.
+/// [`Refusal::Unsolved`] rather than a hole the next stage inherits. Every
+/// argument the term applies is written in it, which is the single most
+/// valuable invariant in this crate.
 ///
 /// `ty` is a [`Term`] rather than the semantic type elaboration actually works
 /// against, and that is roadmap §15.12's boundary holding: the caller has a type
@@ -378,7 +377,7 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 /// stops at the first node they disagree on, with every metavariable treated as
 /// an opaque head rather than an unknown to solve for. Normalizing both sides
 /// and comparing was the same answer computed the most expensive way available,
-/// and it was a second implementation of a question the unifier already
+/// and it was a second implementation of a question the conversion checker already
 /// answers; `conversion_laws.rs` keeps that version as the oracle this one is
 /// checked against.
 ///
@@ -410,7 +409,8 @@ pub fn convertible_metered(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Res
         let ty = eval(&mut meter, cx.env(), ty)?;
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        let answer = decided(Unifier::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))?;
+        let answer =
+            decided(Conversion::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))?;
         Ok((answer, meter.spent()))
     })
 }
@@ -425,11 +425,11 @@ pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, Cor
         let mut meter = cx.meter();
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        decided(Unifier::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
+        decided(Conversion::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
     })
 }
 
-/// A conversion question's answer, read off what the unifier did.
+/// A conversion question's answer, read off what the conversion checker did.
 ///
 /// The one place §4's three outcomes are folded back into two: a refusal *is*
 /// the negative answer, so it becomes `Ok(false)`, while exhaustion stays an

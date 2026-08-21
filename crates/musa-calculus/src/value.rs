@@ -44,7 +44,7 @@ use std::sync::Arc;
 use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::term::{DbLevel, Field, Name, Plicity, Term};
+use crate::term::{DbLevel, Field, Filling, Name, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
 /// first.
@@ -84,7 +84,7 @@ pub(crate) enum Form {
         /// Carried so that elaboration can read it off a *type it computed*
         /// rather than off the syntax it was written as — the point of §1's
         /// amendment. No operation in this crate branches on it.
-        plicity: Plicity,
+        filling: Filling,
         name: Name,
         domain: Arc<Value>,
         codomain: Closure,
@@ -168,7 +168,7 @@ pub(crate) enum Head {
     /// that fires ι for a recursor, so a spine still headed by one here is
     /// genuinely blocked.
     Builtin(crate::base::Builtin),
-    /// An unsolved placeholder for an implicit argument. The one *flexible*
+    /// An unsolved placeholder for an unwritten argument. The one *flexible*
     /// head: a neutral headed by a variable can never compute, while this one
     /// computes the moment the hole is solved — which is exactly the
     /// distinction the matching pass turns on. See [`crate::meta::Hole`].
@@ -235,9 +235,8 @@ impl Neutral {
     /// This neutral with one more elimination on the end.
     ///
     /// Takes the shared neutral rather than an owned one because every caller
-    /// has one: eliminating a blocked value is what [`crate::eval::apply`],
-    /// [`crate::eval::project`], and [`crate::eval::jay`] each do to a value
-    /// they were handed.
+    /// has one: eliminating a blocked value is what [`crate::eval::apply`] and
+    /// [`crate::eval::project`] each do to a value they were handed.
     pub(crate) fn eliminated(neutral: &Self, elimination: Elim) -> Self {
         let mut spine = Vec::with_capacity(neutral.spine.len().saturating_add(1));
         spine.extend(neutral.spine.iter().cloned());

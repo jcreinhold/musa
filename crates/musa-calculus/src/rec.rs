@@ -1,10 +1,10 @@
-//! `rec f : A = e`, and §2.4's measure.
+//! `rec f : A = e`, and §2.4's structural rule.
 //!
 //! # The check is the compilation
 //!
-//! §2.4 asks for a measure the checker can see, with structural decrease as the
-//! case the elaborator supplies for free. Here that case is not *checked* and
-//! then compiled — it is the compilation. A `match` on an argument already binds
+//! §2.4 asks that every recursive call descend structurally, and structural
+//! descent is the case the elaborator supplies for free. Here it is not
+//! *checked* and then compiled — it is the compilation. A `match` on an argument already binds
 //! one induction hypothesis per recursive field (`case.rs`), and the hypothesis
 //! is exactly "the answer for a structurally smaller argument". So a recursive
 //! call becomes a reference to that hypothesis, and a call with no hypothesis to
@@ -68,8 +68,8 @@
 //!   there is no hypothesis. `λn. loop n` is the whole of this case.
 //! - A top-level `match` on two of the definition's arguments: the hypothesis
 //!   from one column holds the other column's subject *fixed*, so a call that
-//!   descends in both is a lexicographic measure. §2.4 admits one and this
-//!   checker supplies none.
+//!   descends in both descends lexicographically. §2.4 admits no order but the
+//!   structural one, and this checker supplies none.
 //! - An argument in the recursive position that is not a binder of that
 //!   column's pattern: `f (Succ (Succ k))` is a call on something no match made
 //!   smaller.
@@ -82,8 +82,8 @@
 //!   point has nothing to hand over.
 //!
 //! A `match` nested inside an arm is not consulted, and that is not an
-//! oversight: its motive is *its own* goal abstracted over *its own* subject, so
-//! its hypotheses answer that match rather than this definition. Reading them as
+//! oversight: its hypotheses are the recursion *it* generated, over its own
+//! subject, and answer that match rather than this definition. Reading them as
 //! the definition's would be the one way this rewrite could be unsound.
 
 use std::sync::Arc;
@@ -94,15 +94,15 @@ use crate::origin::Origin;
 use crate::raw::{Raw, RawArm, RawField, RawPattern, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Name, Plicity, Term};
+use crate::term::{Filling, Name, Term};
 use crate::value::Value;
 
 /// Elaborate `rec name : ty = body` against `goal`.
 ///
 /// # Errors
 ///
-/// [`Refusal::UncheckedRecursion`] for a call §2.4's structural measure cannot
-/// see decrease, and otherwise as [`crate::check`].
+/// [`Refusal::UncheckedRecursion`] for a call §2.4's structural rule cannot see
+/// descend, and otherwise as [`crate::check`].
 pub(crate) fn define(
     elaborator: &mut Elaborator,
     scope: &Scope,
@@ -205,13 +205,13 @@ impl Plan {
         let mut lambdas = Vec::new();
         let mut at = body;
         while let RawShape::Lam {
-            plicity,
+            filling,
             name,
             domain,
             body: inner,
         } = at.shape()
         {
-            lambdas.push((at.origin(), plicity.clone(), Arc::clone(name), domain.clone()));
+            lambdas.push((at.origin(), filling.clone(), Arc::clone(name), domain.clone()));
             at = inner;
         }
         let RawShape::Match { subjects, arms } = at.shape() else {
@@ -234,9 +234,9 @@ impl Plan {
             // has no hypothesis available and is refused like any other.
             rebuilt.push(outside.term(subject, &mut Vec::new())?);
         }
-        // Everything abstracted after the recursive argument is generalized into
-        // the motive by moving it inside the arms, so that the hypothesis is a
-        // function of it rather than a value at this branch's own copy of it.
+        // Everything abstracted after the recursive argument is generalized by
+        // moving it inside the arms, so that the hypothesis is a function of it
+        // rather than a value at this branch's own copy of it.
         let after = recursion.position.saturating_add(1).min(lambdas.len());
         let hoisted = lambdas.split_off(after);
         let mut built = Vec::with_capacity(arms.len());
@@ -257,7 +257,7 @@ impl Plan {
                 position: recursion.position,
             };
             let mut body = inside.term(&arm.body, &mut Vec::new())?;
-            for (origin, plicity, name, domain) in hoisted.iter().rev() {
+            for (origin, filling, name, domain) in hoisted.iter().rev() {
                 // An arm whose pattern binds this name already answers to it,
                 // and did so before the move; the mangled binder takes the
                 // argument without taking those occurrences with it.
@@ -269,7 +269,7 @@ impl Plan {
                 body = Raw::new(
                     *origin,
                     RawShape::Lam {
-                        plicity: plicity.clone(),
+                        filling: filling.clone(),
                         name,
                         domain: domain.clone(),
                         body,
@@ -288,11 +288,11 @@ impl Plan {
                 arms: Arc::from(built),
             },
         );
-        for (origin, plicity, name, domain) in lambdas.into_iter().rev() {
+        for (origin, filling, name, domain) in lambdas.into_iter().rev() {
             rewritten = Raw::new(
                 origin,
                 RawShape::Lam {
-                    plicity,
+                    filling,
                     name,
                     domain,
                     body: rewritten,
@@ -385,23 +385,23 @@ impl Rewrite<'_> {
                 codomain: self.under(&constraint.name, codomain, bound)?,
             },
             RawShape::Pi {
-                plicity,
+                filling,
                 name,
                 domain,
                 codomain,
             } => RawShape::Pi {
-                plicity: plicity.clone(),
+                filling: filling.clone(),
                 name: Arc::clone(name),
                 domain: self.term(domain, bound)?,
                 codomain: self.under(name, codomain, bound)?,
             },
             RawShape::Lam {
-                plicity,
+                filling,
                 name,
                 domain,
                 body,
             } => RawShape::Lam {
-                plicity: plicity.clone(),
+                filling: filling.clone(),
                 name: Arc::clone(name),
                 domain: domain.as_ref().map(|ty| self.term(ty, bound)).transpose()?,
                 body: self.under(name, body, bound)?,
@@ -411,11 +411,11 @@ impl Rewrite<'_> {
                 method: Arc::clone(method),
             },
             RawShape::App {
-                plicity,
+                filling,
                 function,
                 argument,
             } => RawShape::App {
-                plicity: plicity.clone(),
+                filling: filling.clone(),
                 function: self.term(function, bound)?,
                 argument: self.term(argument, bound)?,
             },
@@ -571,7 +571,7 @@ impl Rewrite<'_> {
                 return Err(refuse());
             }
         }
-        // The arguments after it are what the motive generalized, so they are
+        // The arguments after it are what the hoist generalized, so they are
         // applied rather than dropped — `t#ih` is a function of exactly them.
         let mut rewritten = Raw::var(here, hypothesis_name(passed));
         for argument in arguments.iter().skip(self.position.saturating_add(1)) {
@@ -598,9 +598,9 @@ fn binders(pattern: &RawPattern, into: &mut Vec<Name>) {
     }
 }
 
-/// The head of an explicit application spine, and what is applied to it.
+/// The head of a written application spine, and what is applied to it.
 ///
-/// Implicit arguments are not counted: they are inserted by elaboration, and a
+/// Type arguments are not counted: they are filled by elaboration, and a
 /// recursive call that wrote one has written the same thing the definition's own
 /// binder did.
 fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
@@ -613,7 +613,7 @@ fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
     let mut arguments = Vec::new();
     let mut head = raw;
     while let RawShape::App {
-        plicity: Plicity::Explicit,
+        filling: Filling::Written,
         function,
         argument,
     } = head.shape()

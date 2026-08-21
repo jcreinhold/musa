@@ -231,7 +231,7 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         // surface writes as a parameter list, and a parameter list belongs to a
         // declaration rather than to a type.
         musa_calculus::Shape::Pi {
-            plicity: musa_calculus::Plicity::Explicit,
+            filling: musa_calculus::Filling::Written,
             ref name,
             ref domain,
             ref codomain,

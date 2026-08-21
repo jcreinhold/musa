@@ -296,23 +296,76 @@ fn a_declaration_brings_its_names_into_scope_at_their_types() {
 ///
 /// Written by hand rather than read back from the group, because the assembled
 /// type is the one thing in this crate no author writes and no other test would
-/// notice being subtly wrong — a motive quantified over the wrong telescope
-/// still type-checks and proves nothing useful.
+/// notice being subtly wrong — a motive at the wrong telescope still
+/// type-checks and eliminates into nothing useful.
+///
+/// **Non-dependent.** §1.1's eliminator takes a motive that is a *type*, not a
+/// family of them: the `Succ` method answers `R` and its induction hypothesis
+/// is `R`, with the field appearing in neither. The negative below is the
+/// dependent shape, which must now be refused.
 ///
 /// Asked as a *checking* question, not an inference: §1.3 admits no universe
 /// polymorphism, so a recursor's motive level is chosen per use site and a bare
-/// `Nat.elim` has nothing to choose it. That is the level metavariable working,
-/// and naming a level is what the question does.
+/// `Nat.elim` has nothing to choose it.
 #[test]
 fn the_generated_recursor_eliminates_into_the_motive() {
     let (cx, _) = nat_context();
+    let motive = |out: u32| Term::var(WRITTEN, musa_calculus::Index(out));
     let at = |function: u32, argument: Term| {
         Term::app(WRITTEN, Term::var(WRITTEN, musa_calculus::Index(function)), argument)
     };
     let succ = |argument: Term| Term::app(WRITTEN, core_constant(&cx, "Nat.Succ"), argument);
 
-    // (P : Nat → Type 0) → P Zero → ((n : Nat) → P n → P (Succ n)) → (t : Nat) → P t
+    // (R : Type 0) → R → ((n : Nat) → R → R) → (t : Nat) → R
     let expected = Term::pi(
+        WRITTEN,
+        "R",
+        Term::universe(WRITTEN, Level::ZERO),
+        Term::pi(
+            WRITTEN,
+            "Zero",
+            motive(0),
+            Term::pi(
+                WRITTEN,
+                "Succ",
+                Term::pi(
+                    WRITTEN,
+                    "n",
+                    core_nat(&cx),
+                    Term::pi(WRITTEN, "_", motive(2), motive(3)),
+                ),
+                Term::pi(WRITTEN, "t", core_nat(&cx), motive(3)),
+            ),
+        ),
+    );
+    musa_calculus::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
+
+    // The same telescope with the induction hypothesis dropped: a *recursion*
+    // rule rather than an induction one, which is the mistake worth catching.
+    let without_hypothesis = Term::pi(
+        WRITTEN,
+        "R",
+        Term::universe(WRITTEN, Level::ZERO),
+        Term::pi(
+            WRITTEN,
+            "Zero",
+            motive(0),
+            Term::pi(
+                WRITTEN,
+                "Succ",
+                Term::pi(WRITTEN, "n", core_nat(&cx), motive(2)),
+                Term::pi(WRITTEN, "t", core_nat(&cx), motive(3)),
+            ),
+        ),
+    );
+    assert!(
+        musa_calculus::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
+        "a recursor with no induction hypothesis was accepted as this one"
+    );
+
+    // And the dependent shape §1.1 no longer generates: a motive over the
+    // subject, which is what the excision removed.
+    let dependent = Term::pi(
         WRITTEN,
         "P",
         Term::pi(WRITTEN, "_", core_nat(&cx), Term::universe(WRITTEN, Level::ZERO)),
@@ -343,39 +396,9 @@ fn the_generated_recursor_eliminates_into_the_motive() {
             ),
         ),
     );
-    musa_calculus::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
-
-    // The same telescope with the induction hypothesis dropped: a *recursion*
-    // rule rather than an induction one, which is the mistake worth catching.
-    let without_hypothesis = Term::pi(
-        WRITTEN,
-        "P",
-        Term::pi(WRITTEN, "_", core_nat(&cx), Term::universe(WRITTEN, Level::ZERO)),
-        Term::pi(
-            WRITTEN,
-            "Zero",
-            at(0, core_constant(&cx, "Nat.Zero")),
-            Term::pi(
-                WRITTEN,
-                "Succ",
-                Term::pi(
-                    WRITTEN,
-                    "n",
-                    core_nat(&cx),
-                    at(2, succ(Term::var(WRITTEN, musa_calculus::Index(0)))),
-                ),
-                Term::pi(
-                    WRITTEN,
-                    "t",
-                    core_nat(&cx),
-                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
-                ),
-            ),
-        ),
-    );
     assert!(
-        musa_calculus::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
-        "a recursor with no induction hypothesis was accepted as this one"
+        musa_calculus::check(&cx, &dependent, &var("Nat.elim")).is_err(),
+        "a dependent motive was accepted, and §1.1 generates none"
     );
 }
 
@@ -384,14 +407,14 @@ fn the_generated_recursor_eliminates_into_the_motive() {
 #[test]
 fn iota_fires_when_the_target_becomes_a_constructor() {
     let (cx, _) = nat_context();
-    // `Nat.elim (λ_. Nat) Zero (λn. λih. n)` — the predecessor, whose Succ method
+    // `Nat.elim Nat Zero (λn. λih. n)` — the predecessor, whose Succ method
     // answers the *field* rather than the hypothesis, so a run that confused the
     // two would answer a different number.
     let predecessor = |target: Raw| {
         apply(
             var("Nat.elim"),
             [
-                Raw::lam(WRITTEN, "_", var("Nat")),
+                var("Nat"),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
                 target,
@@ -428,7 +451,7 @@ fn a_recursor_blocked_on_a_variable_does_not_fire() {
         apply(
             var("Nat.elim"),
             [
-                Raw::lam(WRITTEN, "_", var("Nat")),
+                var("Nat"),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
                 var("m"),
@@ -532,8 +555,8 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
     let to_nat = apply(
         var("Even.elim"),
         [
-            Raw::lam(WRITTEN, "_", var("Nat")),
-            Raw::lam(WRITTEN, "_", var("Nat")),
+            var("Nat"),
+            var("Nat"),
             var("Nat.Zero"),
             Raw::lam(
                 WRITTEN,

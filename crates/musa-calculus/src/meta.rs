@@ -1,11 +1,15 @@
-//! Which inference site an unsolved unknown came from.
+//! The unknown a use site leaves behind: what a [`Hole`] is, and which
+//! inference site it came from.
 //!
-//! This module is what remains of the metavariable machinery after the course
-//! correction: the calculus creates no metavariables, so there is nothing here
-//! to solve. The enumeration survives because the two failures it names survive
-//! — a type parameter nothing in the call determined, and a constraint no
-//! dictionary answers — and a diagnostic is better where the failure is
-//! described as what the *program* left unsaid.
+//! This is what remains of the metavariable machinery after the course
+//! correction, and it is smaller than the word suggests. A hole is created by
+//! one instantiation walk, for one binder the author did not write, and it is
+//! solved by that same walk or by the expected type at its end. Nothing here
+//! postpones, retries, or generalizes. [`MetaSource`] survives beside it
+//! because the two failures it names survive — a type parameter nothing in the
+//! call determined, and a constraint no dictionary answers — and a diagnostic
+//! is better where the failure is described as what the *program* left
+//! unsaid.
 use crate::origin::Origin;
 
 /// Which of `02-core-calculus.md` §2.1's sites an unsolved unknown came from.
@@ -38,8 +42,8 @@ use std::sync::{Arc, OnceLock};
 use crate::error::Malformed;
 use crate::value::Value;
 
-/// A placeholder for an implicit argument the instantiation walk has not yet
-/// solved.
+/// A placeholder for an argument the instantiation walk has not yet solved:
+/// a type parameter, or a constraint's dictionary.
 ///
 /// This is what remains of the metavariable after the course correction, and
 /// the list of what it is *not* is the point: not contextual (it is closed —
@@ -77,7 +81,7 @@ impl Hole {
         }))
     }
 
-    /// Where the implicit argument was used.
+    /// Where the argument it stands for was used.
     pub(crate) fn origin(&self) -> Origin {
         self.0.origin
     }

@@ -122,7 +122,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                             Ok::<_, ElabError>(crate::family::Binder {
                                 name: Arc::clone(&field.name),
                                 ty: elaborator.zonk(&field.ty)?,
-                                plicity: field.plicity.clone(),
+                                filling: field.filling.clone(),
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -229,7 +229,7 @@ fn telescope(
             .into());
         }
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &ty)?;
-        binders.push(Binder::explicit(Arc::clone(&binder.name), ty));
+        binders.push(Binder::written(Arc::clone(&binder.name), ty));
     }
     Ok((binders, inner))
 }
@@ -238,7 +238,7 @@ fn telescope(
 fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Binder]) -> Result<Scope, ElabError> {
     let mut inner = scope.clone();
     for binder in binders {
-        inner = elaborator.discharging(&inner, &binder.plicity, inner.env())?;
+        inner = elaborator.discharging(&inner, &binder.filling, inner.env())?;
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &binder.ty)?;
     }
     Ok(inner)
@@ -266,12 +266,12 @@ fn signatures(
         .collect()
 }
 
-/// `(b₀ : B₀) → … → body`, each binder at the plicity it was declared with.
+/// `(b₀ : B₀) → … → body`, each binder at the filling it was declared with.
 fn closed_over(here: Origin, binders: &[Binder], body: Term) -> Term {
     binders.iter().rev().fold(body, |codomain, binder| {
         Term::function(
             here,
-            binder.plicity.clone(),
+            binder.filling.clone(),
             Arc::clone(&binder.name),
             binder.ty.clone(),
             codomain,
@@ -389,7 +389,7 @@ fn telescope_fields(
     for field in &constructor.fields {
         let (ty, level) = elaborator.check_type(&inner, &field.ty)?;
         inner = assume(elaborator, &inner, field.ty.origin(), &field.name, &ty)?;
-        binders.push(Binder::explicit(Arc::clone(&field.name), ty));
+        binders.push(Binder::written(Arc::clone(&field.name), ty));
         levels.push(level);
     }
     Ok((binders, levels, inner))

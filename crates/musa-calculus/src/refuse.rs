@@ -194,8 +194,7 @@ pub enum Refusal {
     /// to go and look at `lifted` to find out which one they left out; a reader
     /// told that nothing is given for `by` is already at the edit. The names
     /// are the declaration's own, which is also the only place a parameter is
-    /// declared at all — see
-    /// [`declared_parameters`](crate::elab::infer::declared_parameters).
+    /// declared at all — see `elab::infer`'s `declared_parameters`.
     #[error(
         "`{function}` takes {wanted} argument{}, and {written} {} written: nothing is given for {}",
         if *.wanted == 1 { "" } else { "s" },
@@ -218,7 +217,7 @@ pub enum Refusal {
     /// An implicit argument was written in braces at an explicit binder, or an
     /// explicit binder was abstracted where the type wanted an implicit one.
     #[error("this argument is written implicitly, but the binder it fills is not")]
-    PlicityMismatch {
+    FillingMismatch {
         /// The argument or binder.
         at: Origin,
     },
@@ -387,12 +386,12 @@ pub enum Refusal {
     },
     /// Top-level definitions that name each other (§2.4).
     ///
-    /// §2.4 admits recursion "through the measure rather than through the
-    /// graph", and [`crate::rec`]'s measure is minted by a `match` inside one
-    /// body: a mutually recursive pair has no induction hypothesis to become.
-    /// So the graph rule is not a leftover from the old checker — it is exactly
-    /// what the measure does not reach, and this is where a program lands that
-    /// needs what neither has.
+    /// §2.4 admits recursion through the structural rule rather than through
+    /// the graph, and [`crate::rec`]'s hypothesis is minted by a `match` inside
+    /// one body: a mutually recursive pair has no induction hypothesis to
+    /// become. So the graph rule is not a leftover from the old checker — it is
+    /// exactly what the structural rule does not reach, and this is where a
+    /// program lands that needs what neither has.
     #[error("these definitions name each other: {}", names.join(" → "))]
     DefinitionCycle {
         /// The definitions in the cycle, in the order they name each other.
@@ -402,7 +401,7 @@ pub enum Refusal {
     },
     /// A top-level definition that names itself and wrote no type (§2.4).
     ///
-    /// The measure is checked against the type the definition presents, and a
+    /// The descent is checked against the type the definition presents, and a
     /// definition that presents none has nothing to check it against — there is
     /// no type to infer it from either, because inferring the body is what
     /// needs the type. Writing the signature is the whole of the repair.
@@ -413,7 +412,7 @@ pub enum Refusal {
         /// Where it was written.
         at: Origin,
     },
-    /// A recursive call the structural measure could not see decrease (§2.4).
+    /// A recursive call the structural rule could not see descend (§2.4).
     #[error("`{name}` calls itself on something this checker cannot see decrease")]
     UncheckedRecursion {
         /// The call.
@@ -928,14 +927,6 @@ pub enum PathStep {
     Field(Name),
     /// The record a projection is taken from.
     Projected,
-    /// The type an identity is at.
-    IdType,
-    /// An identity's left endpoint.
-    IdLeft,
-    /// An identity's right endpoint.
-    IdRight,
-    /// The value `refl` witnesses.
-    Witness,
 }
 
 impl fmt::Display for PathStep {
@@ -948,10 +939,6 @@ impl fmt::Display for PathStep {
             Self::Argument => out.write_str("the argument"),
             Self::Field(field) => write!(out, "field `{field}`"),
             Self::Projected => out.write_str("the projected record"),
-            Self::IdType => out.write_str("the type the identity is at"),
-            Self::IdLeft => out.write_str("the identity's left side"),
-            Self::IdRight => out.write_str("the identity's right side"),
-            Self::Witness => out.write_str("the witnessed value"),
         }
     }
 }

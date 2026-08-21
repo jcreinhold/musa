@@ -359,7 +359,7 @@ fn iterable_list() -> RawImpl {
 
     // `λ{B}. λsource. λzero. λstep. walk source zero`, accumulating forwards.
     let walk_ty = arrow(list_a.clone(), arrow(var("B"), var("B")));
-    let from_start = Raw::implicit_lam(
+    let from_start = Raw::parameter_lam(
         WRITTEN,
         "B",
         lam(
@@ -405,7 +405,7 @@ fn iterable_list() -> RawImpl {
 
     // `λ{B}. λsource. λzero. λstep. walk source`, the catamorphism.
     let fold_ty = arrow(list_a, var("B"));
-    let from_end = Raw::implicit_lam(
+    let from_end = Raw::parameter_lam(
         WRITTEN,
         "B",
         lam(

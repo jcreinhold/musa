@@ -27,22 +27,14 @@
 //! an assumption. `coverage_laws.rs` holds the program that shows the
 //! difference, and prompt 144 owns the change.
 //!
-//! Two things ch. 5 does not have, because its language is not dependent:
-//!
-//! # The goal type changes as the tree descends
+//! # The goal does not change as the tree descends
 //!
 //! A split emits `N.elim`, and a recursor's methods are typed at a **motive**.
-//! The motive is the goal with the subject and the subject's index arguments
-//! abstracted, so the method for `Cons` is typed at the goal with `n := succ k`
-//! without anyone unifying anything — the abstraction *is* the refinement, and it
-//! is §1.4's solution rule and nothing wider. A subject whose index argument is
-//! not a variable is [`Refusal::ForcedIndex`]; the prompt's Design argues that
-//! narrowing from §1.4's finding that no program unifies an index at all.
-//!
-//! Abstraction is performed the way everything in this crate weakens: the goal is
-//! read back as a term, evaluated again in an environment where the abstracted
-//! variables stand for the motive's binders, and read back at the deeper depth.
-//! There is no substitution function here either (§1).
+//! §1.1's motive is a *type* and not a family of them, so the motive here is
+//! the goal itself: every method answers the same `G` the `match` was checked
+//! against, and nothing is abstracted over the subject. That is §1.3's
+//! elimination rule and the reason this file has no substitution — there is
+//! nothing to refine.
 //!
 //! # Coverage is decided while the tree is built
 //!
@@ -55,7 +47,7 @@
 //! # Mutual families
 //!
 //! `N.elim` takes a motive and methods for **every** family of its group, not
-//! just the one being matched. The siblings get the motive `λ i⃗ x. G → G`, whose
+//! just the one being matched. The siblings get the motive `G → G`, whose
 //! methods are the identity — trivially inhabited at the goal's universe, which
 //! `{}` would not be, since §1 makes universes non-cumulative. The cost is that a
 //! `match` on one family of a mutual group cannot recurse into another: the
@@ -70,23 +62,21 @@ use crate::error::CoreError;
 use crate::eval::{apply, eval, field_type, opened, project};
 use crate::family::{Constant, Element, element};
 use crate::level::Level;
-use crate::list::List;
 use crate::origin::Origin;
 use crate::quote::{Depth, quote, quote_type};
 use crate::raw::{Raw, RawArm, RawPattern};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{DbLevel, Index, Name, Shape, Term};
-use crate::value::{Env, Form, Head, Value};
+use crate::term::{Index, Name, Shape, Term};
+use crate::value::{Form, Head, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
 /// # Errors
 ///
-/// [`Refusal::NoSuchConstructor`], [`Refusal::IncompleteMatch`],
-/// [`Refusal::UnreachableBranch`], and [`Refusal::ForcedIndex`] for the ways a
-/// match is wrong, and otherwise as [`crate::check`] — an arm's body is ordinary
-/// elaboration.
+/// [`Refusal::NoSuchConstructor`], [`Refusal::IncompleteMatch`], and
+/// [`Refusal::UnreachableBranch`] for the ways a match is wrong, and otherwise
+/// as [`crate::check`] — an arm's body is ordinary elaboration.
 pub(crate) fn compile(
     elaborator: &mut Elaborator,
     scope: &Scope,
@@ -552,7 +542,7 @@ impl Tree<'_, '_> {
         }
         self.belong(scope, problem, column, &found)?;
         let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
-        let motives = self.motives(scope, problem, &split, column)?;
+        let motives = self.motives(scope, problem, &split)?;
 
         let mut applied = Constant::recursor(&found.group, found.family, split.level).term(self.here);
         for param in &split.params {
@@ -670,79 +660,41 @@ impl Tree<'_, '_> {
 
     /// One motive per family of the group.
     ///
-    /// The family being split gets the goal, abstracted over the subject; every
-    /// other family gets `G → G`, which is inhabited at the goal's universe by
-    /// the identity and says nothing.
-    fn motives(
-        &mut self,
-        scope: &Scope,
-        problem: &Problem<'_>,
-        split: &Split,
-        column: usize,
-    ) -> Result<Vec<Motive>, ElabError> {
+    /// The family being split gets the goal itself; every other family gets
+    /// `G → G`, which is inhabited at the goal's universe by the identity and
+    /// says nothing.
+    fn motives(&mut self, scope: &Scope, problem: &Problem<'_>, split: &Split) -> Result<Vec<Motive>, ElabError> {
         let depth = scope.depth();
         let mut built = Vec::new();
         for family in 0..split.element.group.arity() {
-            let body = if family == split.element.family {
-                self.abstracted(scope, problem, column, depth)?
+            let term = if family == split.element.family {
+                quote_type(
+                    self.elaborator.meter(),
+                    Depth(depth),
+                    crate::quote::Mode::Keep,
+                    &problem.goal,
+                )?
             } else {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
-                let under = depth.saturating_add(1);
                 let domain = quote_type(
                     self.elaborator.meter(),
-                    Depth(under),
+                    Depth(depth),
                     crate::quote::Mode::Keep,
                     &problem.goal,
                 )?;
                 let codomain = quote_type(
                     self.elaborator.meter(),
-                    Depth(under.saturating_add(1)),
+                    Depth(depth.saturating_add(1)),
                     crate::quote::Mode::Keep,
                     &problem.goal,
                 )?;
                 Term::pi(self.here, "impossible", domain, codomain)
             };
-            let term = Term::lam(self.here, "target", body);
             let value = scope.eval(self.elaborator.meter(), &term)?;
             built.push(Motive { term, value });
         }
         Ok(built)
-    }
-
-    /// The goal, read again with the subject standing for the motive's binder.
-    ///
-    /// `under` is the depth the target binder stands at. Performed by evaluation
-    /// rather than by substitution, which is what §1's "reduction is never
-    /// performed on syntax" leaves available.
-    fn abstracted(
-        &mut self,
-        scope: &Scope,
-        problem: &Problem<'_>,
-        column: usize,
-        under: u32,
-    ) -> Result<Term, ElabError> {
-        let depth = scope.depth();
-        let goal = quote_type(
-            self.elaborator.meter(),
-            Depth(depth),
-            crate::quote::Mode::Keep,
-            &problem.goal,
-        )?;
-        let mut replacements: Vec<(u32, Value)> = Vec::new();
-        if let Some(subject) = problem.columns.get(column)
-            && let Some(level) = variable(&subject.value)
-        {
-            replacements.push((level, Value::var(self.here, DbLevel(under), Arc::clone(&subject.ty))));
-        }
-        let env = rebound(scope.env(), depth, &replacements);
-        let value = eval(self.elaborator.meter(), &env, &goal)?;
-        Ok(quote_type(
-            self.elaborator.meter(),
-            Depth(under.saturating_add(1)),
-            crate::quote::Mode::Keep,
-            &value,
-        )?)
     }
 
     /// One method: the sub-matrix for a constructor, under its fields and
@@ -829,7 +781,7 @@ impl Tree<'_, '_> {
         let built = self.built(&group, family, which, &split.element.params, &fields)?;
 
         let body = if family == split.element.family {
-            let goal = self.method_goal(motives, family, &built)?;
+            let goal = self.method_goal(motives, family)?;
             let rows = Self::narrowed(problem, column, family, which, &group, &fields, &hypotheses, &built)?;
             if rows.is_empty() {
                 return Err(Refusal::IncompleteMatch {
@@ -900,20 +852,15 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        Ok(Arc::new(apply(
-            self.elaborator.meter(),
-            self.here,
-            motive.value.clone(),
-            field.value.clone(),
-        )?))
+        Ok(Arc::new(motive.value.clone()))
     }
 
-    /// The subject a method is the method *for*: `c p⃗ a⃗`, at the type that
-    /// constructor chose, with the index arguments it chose.
+    /// The subject a method is the method *for*: `c p⃗ a⃗`, at the parameters
+    /// the split read off the subject's type.
     ///
-    /// Assembled once and used twice — for the method's goal and for whatever a
-    /// variable pattern in the split column binds — because two assemblies of
-    /// "what this branch knows its subject to be" could disagree and one cannot.
+    /// What a variable pattern in the split column binds. §6.2's variable rule
+    /// expands rather than defers, so such a pattern has to name something, and
+    /// this is what it names.
     fn built(
         &mut self,
         group: &Arc<crate::family::Group>,
@@ -947,12 +894,12 @@ impl Tree<'_, '_> {
         })
     }
 
-    /// The goal a constructor's method answers: the motive at the constructor.
+    /// The goal a constructor's method answers: the family's answer type.
     ///
-    /// Computed rather than derived: this is `P (c p⃗ a⃗)` evaluated, which is
-    /// exactly the type [`crate::family`] assembled the method at. Two
-    /// computations of it could disagree; one cannot.
-    fn method_goal(&mut self, motives: &[Motive], family: u32, built: &Built) -> Result<Value, ElabError> {
+    /// Read off the motive rather than off `problem.goal`, which is the same
+    /// value: this is exactly the type [`crate::family`] assembled the method
+    /// at, and two computations of it could disagree where one cannot.
+    fn method_goal(&self, motives: &[Motive], family: u32) -> Result<Value, ElabError> {
         let Some(motive) = motives.get(usize::try_from(family).unwrap_or(usize::MAX)) else {
             return Err(Refusal::IncompleteMatch {
                 at: self.here,
@@ -960,13 +907,7 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        apply(
-            self.elaborator.meter(),
-            self.here,
-            motive.value.clone(),
-            built.value.clone(),
-        )
-        .map_err(ElabError::from)
+        Ok(motive.value.clone())
     }
 
     /// The rows that survive a split, with the split column replaced by the
@@ -1232,31 +1173,6 @@ fn variable(value: &Value) -> Option<u32> {
         | crate::value::Form::Lit(_)
         | crate::value::Form::Numeral(_) => None,
     }
-}
-
-/// `env` with the entries naming these levels replaced.
-///
-/// The environment is innermost-first and a level counts from the outside, which
-/// is the one subtraction this file performs and the reason it is performed
-/// here rather than at four call sites.
-fn rebound(env: &Env, depth: u32, replacements: &[(u32, Value)]) -> Env {
-    let mut entries: Vec<Value> = env.iter().cloned().collect();
-    for (level, value) in replacements {
-        let Some(position) = depth
-            .checked_sub(1)
-            .and_then(|last| last.checked_sub(*level))
-            .and_then(|steps| usize::try_from(steps).ok())
-        else {
-            continue;
-        };
-        if let Some(entry) = entries.get_mut(position) {
-            *entry = value.clone();
-        }
-    }
-    entries
-        .iter()
-        .rev()
-        .fold(List::EMPTY, |built, entry| built.push(entry.clone()))
 }
 
 /// The head of an application spine, and what is applied to it.

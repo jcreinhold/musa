@@ -89,7 +89,7 @@ fn core_scheme(arity: usize, result: Term) -> Term {
 /// `{v₁ … vₙ : Type 0} → body`, where `body` is already written at depth `n`.
 fn implicits(arity: usize, body: Term) -> Term {
     (0..arity).fold(body, |built, _| {
-        Term::implicit_pi(WRITTEN, "argument", core_type0(), built)
+        Term::parameter_pi(WRITTEN, "argument", core_type0(), built)
     })
 }
 
@@ -132,8 +132,8 @@ fn an_inserted_implicit_is_solved_to_the_argument_that_determines_it() {
     let program = Raw::annotated_bind(
         WRITTEN,
         "id",
-        Raw::implicit_pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X"))),
-        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
+        Raw::parameter_pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X"))),
+        Raw::parameter_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
         Raw::app(WRITTEN, var("id"), annotated_unit()),
     );
     let term = elaborate("an inserted implicit", &program);
@@ -165,13 +165,13 @@ fn a_metavariable_determined_twice_must_be_determined_the_same_way() {
     let program = Raw::annotated_bind(
         WRITTEN,
         "f",
-        Raw::implicit_pi(
+        Raw::parameter_pi(
             WRITTEN,
             "X",
             type0(),
             Raw::pi(WRITTEN, "_", var("X"), Raw::pi(WRITTEN, "_", var("X"), var("X"))),
         ),
-        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "a", Raw::lam(WRITTEN, "b", var("a")))),
+        Raw::parameter_lam(WRITTEN, "X", Raw::lam(WRITTEN, "a", Raw::lam(WRITTEN, "b", var("a")))),
         Raw::app(WRITTEN, Raw::app(WRITTEN, var("f"), annotated_unit()), type0()),
     );
     let refusal = refuse("a metavariable determined twice", &program, None);
@@ -318,13 +318,13 @@ fn a_solution_that_would_escape_its_scope_is_refused_rather_than_captured() {
     let program = Raw::annotated_bind(
         WRITTEN,
         "f",
-        Raw::implicit_pi(
+        Raw::parameter_pi(
             WRITTEN,
             "X",
             type0(),
             Raw::pi(WRITTEN, "_", Raw::pi(WRITTEN, "y", unit_type(), var("X")), unit_type()),
         ),
-        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "g", unit())),
+        Raw::parameter_lam(WRITTEN, "X", Raw::lam(WRITTEN, "g", unit())),
         Raw::app(
             WRITTEN,
             var("f"),

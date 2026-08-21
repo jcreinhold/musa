@@ -2,23 +2,22 @@
 //! generates.
 //!
 //! `docs/rules/language/02-core-calculus.md` §1.1 declares families with
-//! **parameters**, fixed across the whole declaration, and **indices**, which a
-//! constructor chooses:
+//! **parameters**, fixed across the whole declaration, and with nothing else:
 //!
 //! ```text
-//! data Vec (A : Type l) : (n : Nat) → Type l {
-//!     Nil  : Vec A zero,
-//!     Cons : (n : Nat) → A → Vec A n → Vec A (succ n),
+//! data List (A : Type l) {
+//!     Nil,
+//!     Cons(head : A, tail : List A),
 //! }
 //! ```
 //!
-//! The difference is load-bearing rather than cosmetic: the generated recursor's
-//! motive quantifies over the *indices* and not over the parameters, so blurring
-//! them produces an eliminator that type-checks and proves nothing useful. The
-//! rule is enforced by the representation instead of by a check — a constructor
-//! does not write its result type at all, only the index arguments it chooses, so
-//! "parameters appear uniformly in every constructor's result" cannot be violated
-//! by anything a caller writes.
+//! There are **no indices**. A constructor does not write its result type at
+//! all — the declaration supplies it — so "parameters appear uniformly in every
+//! constructor's result" is a property of the representation rather than a
+//! check that could be forgotten, and there is no position a constructor could
+//! choose a value at. What §1.1 refuses with it is index unification inside the
+//! conversion checker, which is where the complexity of a general indexed
+//! family lives.
 //!
 //! # The declaration context, and why terms are read under it
 //!
@@ -44,24 +43,33 @@
 //!
 //! ```text
 //! elim_i : (p⃗ : Params)
-//!        → (P_1 : (i⃗ : Indices_1) → N_1 p⃗ i⃗ → Type ℓ) → … → (P_k : …)
+//!        → (R_1 : Type ℓ) → … → (R_k : Type ℓ)
 //!        → (methods, one per constructor of every family in the group)
-//!        → (i⃗ : Indices_i) → (t : N_i p⃗ i⃗) → P_i i⃗ t
+//!        → (t : N_i p⃗) → R_i
 //! ```
 //!
 //! and the method for a constructor `c` of family `N_j` is
 //!
 //! ```text
-//! m_c : (a⃗ : Fields_c) → (ih⃗) → P_j idx_c (c p⃗ a⃗)
+//! m_c : (a⃗ : Fields_c) → (ih⃗) → R_j
 //! ```
 //!
-//! with one induction hypothesis `P_{j'} i⃗' a_ℓ` per recursive field. Motives and
-//! methods sit *between* the parameters and the fields, so a field type stored at
-//! one depth appears in the method at another — and this crate has no
-//! substitution function to shift it with (§3: "reduction is never performed on
-//! syntax"). The types are therefore **assembled semantically**: each stored term
-//! is evaluated in the environment it was written in and quoted at the depth it
-//! now stands at, which is what weakening *is* in a levelled semantic domain.
+//! with one induction hypothesis `R_{j'}` per recursive field.
+//!
+//! **The eliminator is non-dependent.** A motive is a type, not a family of
+//! them, and neither a method's result nor an induction hypothesis mentions the
+//! value being eliminated. That is what `match` needs and all it needs: §2's
+//! `match` checks against the expected type, so every arm answers the one goal
+//! the expression was checked at, and a dependent motive would have nothing to
+//! refine.
+//!
+//! Motives and methods sit *between* the parameters and the fields, so a field
+//! type stored at one depth appears in the method at another — and this crate
+//! has no substitution function to shift it with (§3: "reduction is never
+//! performed on syntax"). The types are therefore **assembled semantically**:
+//! each stored term is evaluated in the environment it was written in and
+//! quoted at the depth it now stands at, which is what weakening *is* in a
+//! levelled semantic domain.
 //!
 //! That is also why assembly is handed the motive's universe: `ℓ` is chosen per
 //! use site rather than fixed at declaration time, so one family supports both

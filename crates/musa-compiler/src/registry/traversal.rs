@@ -188,7 +188,7 @@ fn parameterized(names: &[&'static str], body: Term) -> Term {
     names
         .iter()
         .rev()
-        .fold(body, |built, name| Term::implicit_pi(HERE, *name, type0(), built))
+        .fold(body, |built, name| Term::parameter_pi(HERE, *name, type0(), built))
 }
 
 /// One branch of a traversal: `arguments`, then the traversal's answer.

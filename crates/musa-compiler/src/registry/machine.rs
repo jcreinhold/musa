@@ -673,7 +673,7 @@ fn scheme(binders: &[&'static str], storable: &[usize], arguments: Vec<Term>, re
             musa_calculus::requiring_storable(HERE, at(bound.saturating_add(which), *position), built)
         });
     binders.iter().rev().fold(constrained, |built, name| {
-        Term::implicit_pi(HERE, *name, type0(), built)
+        Term::parameter_pi(HERE, *name, type0(), built)
     })
 }
 

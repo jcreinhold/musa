@@ -175,7 +175,7 @@ impl Elaborator {
                 None => {
                     let term = Term::project(here, subject.clone(), Arc::clone(&declared.name));
                     let found = field_type(&mut self.meter, telescope, value, &declared.name)?;
-                    self.unifier
+                    self.conversion
                         .unify_types(&mut self.meter, scope.depth(), here, &expected, &found)?;
                     term
                 }

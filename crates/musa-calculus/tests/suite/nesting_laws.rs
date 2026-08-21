@@ -217,7 +217,7 @@ fn a_family_may_hold_a_list_of_itself() {
 ///
 /// Stated by applying the generated recursor with a `Body` method that takes the
 /// field and nothing else: if a hypothesis had been generated the method would
-/// need a second binder, and this would be a plicity or conversion failure
+/// need a second binder, and this would be a filling or conversion failure
 /// instead of the answer `1`. `family.rs`'s standing invariant — an induction
 /// hypothesis is an application rather than a synthesized closure — is what that
 /// buys, and `a_fold_into_a_nested_field_is_refused` below is what it costs.
@@ -233,7 +233,7 @@ fn the_recursor_hands_a_nested_field_no_hypothesis() {
         &apply(
             var("StaffRead.elim"),
             [
-                lam("_", var("Nat")),
+                var("Nat"),
                 var("Nat.Zero"),
                 lam("items", apply(var("Nat.Succ"), [var("Nat.Zero")])),
                 apply(var("StaffRead.Body"), [two_sung()]),

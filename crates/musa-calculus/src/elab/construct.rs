@@ -7,7 +7,7 @@ use std::sync::Arc;
 use crate::raw::{Raw, RawShape};
 use crate::refuse::ElabError;
 use crate::scope::Scope;
-use crate::term::{Name, Plicity};
+use crate::term::{Filling, Name};
 use crate::value::Value;
 
 use super::{Elaborator, Typed};
@@ -229,12 +229,12 @@ fn written_spine(raw: &Raw) -> Option<(&Raw, Vec<&Raw>)> {
     let mut head = raw;
     loop {
         if let RawShape::App {
-            plicity,
+            filling,
             function,
             argument,
         } = head.shape()
         {
-            if *plicity != Plicity::Explicit {
+            if *filling != Filling::Written {
                 return None;
             }
             arguments.push(argument);

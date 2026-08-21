@@ -39,10 +39,12 @@
 //!
 //! # What is checked where
 //!
-//! At the **declaration**, and never at a use site: coherence ([`Refusal::DuplicateInstance`]),
-//! the orphan rule ([`Refusal::OrphanInstance`]), the termination measure
-//! ([`Refusal::UnboundedInstance`]), a trait parameter its head cannot determine,
+//! At the **declaration**, and never at a use site: coherence
+//! ([`Refusal::DuplicateInstance`]), the orphan rule
+//! ([`Refusal::OrphanInstance`]), a trait parameter its head cannot determine,
 //! a missing method, a replaced derived method, and a hand-written `Storable`.
+//! Resolution itself has nothing to check — an `impl` carries no context, so
+//! §4 is a table read that cannot recur.
 //! §4 gives the reason and it is the same one every time: a use site is the
 //! wrong place to learn that a library cannot answer, because the author reading
 //! the message is not the author who can fix it.
@@ -56,7 +58,7 @@ use crate::term::{DbLevel, Name, Term};
 
 /// The package a declaration was written in, as the caller numbers it.
 ///
-/// `Origin`'s bargain a third time, after [`ModuleId`]: a number the caller
+/// `Origin`'s bargain a third time, after [`ModuleId`](crate::visibility::ModuleId): a number the caller
 /// assigns, compared only for equality and never interpreted. §3's orphan rule
 /// is the one question in this crate that needs a boundary *wider* than a
 /// module — an impl belongs with its trait or with its head type, and those live
@@ -64,7 +66,7 @@ use crate::term::{DbLevel, Name, Term};
 /// least this crate can learn in order to ask it.
 ///
 /// `None` on a context is inside every package, which is what leaves every
-/// caller that has no packages unchanged, exactly as [`ModuleId`]'s absence
+/// caller that has no packages unchanged, exactly as that type's absence
 /// does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PackageId(u32);

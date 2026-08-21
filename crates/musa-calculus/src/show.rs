@@ -23,7 +23,7 @@
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::term::{Name, Plicity, Shape, Term};
+use crate::term::{Filling, Name, Shape, Term};
 
 /// How `term` is spelled, closed or not.
 pub(crate) fn spelled(term: &Term) -> String {
@@ -122,26 +122,26 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
             }
         }),
         Shape::Pi {
-            plicity,
+            filling,
             name,
             domain,
             codomain,
         } => parenthesized(out, level, Level::Outer, |out| {
-            match plicity {
+            match filling {
                 // An arrow, because nothing after it names the binder. Told by
                 // the *name* rather than by an occurs check: every reading that
                 // writes an unnamed Π says so here, and a binder a reader can
                 // see mentioned is one they would rather see written out.
-                Plicity::Explicit if !mentioned(codomain) => {
+                Filling::Written if !mentioned(codomain) => {
                     write(out, domain, Level::Applied, names);
                     out.push_str(" → ");
                 }
-                Plicity::Explicit => {
+                Filling::Written => {
                     let _ = write!(out, "({name} : ");
                     write(out, domain, Level::Outer, names);
                     out.push_str(") → ");
                 }
-                Plicity::Implicit => {
+                Filling::Parameter => {
                     let _ = write!(out, "{{{name} : ");
                     write(out, domain, Level::Outer, names);
                     out.push_str("} → ");
@@ -149,7 +149,7 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
                 // The constraint and not the dictionary type, because `{}` is
                 // what every one of them reduces to and the trait is the whole
                 // of what the binder means.
-                Plicity::Constraint(constraint) => {
+                Filling::Constraint(constraint) => {
                     let _ = write!(out, "[{}", constraint.class);
                     for argument in constraint.args.iter() {
                         out.push(' ');
@@ -241,14 +241,14 @@ fn occurs(term: &Term, depth: u32) -> bool {
         Shape::Var(index) => index.0 == depth,
         Shape::App { function, argument } => occurs(function, depth) || occurs(argument, depth),
         Shape::Pi {
-            plicity,
+            filling,
             domain,
             codomain,
             ..
         } => {
-            let constrains = match plicity {
-                Plicity::Constraint(constraint) => constraint.args.iter().any(|argument| occurs(argument, depth)),
-                Plicity::Explicit | Plicity::Implicit => false,
+            let constrains = match filling {
+                Filling::Constraint(constraint) => constraint.args.iter().any(|argument| occurs(argument, depth)),
+                Filling::Written | Filling::Parameter => false,
             };
             constrains || occurs(domain, depth) || occurs(codomain, depth.saturating_add(1))
         }

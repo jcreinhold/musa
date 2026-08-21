@@ -113,7 +113,7 @@ fn a_match_is_the_recursor_it_compiles_to() {
         apply(
             var("Nat.elim"),
             [
-                Raw::lam(WRITTEN, "_", var("Nat")),
+                var("Nat"),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "k", Raw::lam(WRITTEN, "ih", var("k"))),
                 var("n"),
@@ -188,7 +188,7 @@ fn a_variable_pattern_is_expanded_rather_than_deferred() {
         apply(
             var("Nat.elim"),
             [
-                Raw::lam(WRITTEN, "_", var("Nat")),
+                var("Nat"),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "k", Raw::lam(WRITTEN, "ih", var("k"))),
                 var("n"),
@@ -447,7 +447,7 @@ fn an_interleaved_match_grows_polynomially_in_its_columns() {
 fn a_match_whose_goal_is_a_metavariable_elaborates() {
     let cx = nat_vec_context();
     let ty = core(&cx, "Nat", &var("Nat"));
-    let identity = Raw::implicit_pi(WRITTEN, "X", type0(), arrow(var("X"), var("X")));
+    let identity = Raw::parameter_pi(WRITTEN, "X", type0(), arrow(var("X"), var("X")));
     let predecessor = matching(
         [number(3)],
         vec![
@@ -462,7 +462,7 @@ fn a_match_whose_goal_is_a_metavariable_elaborates() {
         WRITTEN,
         "identity",
         identity,
-        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
+        Raw::parameter_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
         apply(var("identity"), [predecessor]),
     );
     same(

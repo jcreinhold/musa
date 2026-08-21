@@ -30,7 +30,7 @@
 //! - **`let` and `fn`** become a [`Definition`]: a name, the type the
 //!   declaration wrote, and a value.
 //!
-//! # Type parameters, and why their plicity differs
+//! # Type parameters, and why their filling differs
 //!
 //! A declaration's `<A>` is an explicit binder when the surface writes the
 //! argument and an implicit one when it does not, which is one rule and two
@@ -485,7 +485,7 @@ impl Lowering<'_> {
             ty = Raw::constrained_pi(origin, constraint, ty);
         }
         for parameter in self.type_parameters(node).iter().rev() {
-            ty = Raw::implicit_pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
+            ty = Raw::parameter_pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
         }
         Some(Definition {
             origin,
@@ -562,8 +562,8 @@ impl Lowering<'_> {
 
     /// `<A, B>` — the parameters a declaration abstracts over, each at `Type 0`.
     ///
-    /// The plicity is not decided here, because a [`RawBinder`] does not carry
-    /// one: the caller writes them into a Π at the plicity its own declaration
+    /// The filling is not decided here, because a [`RawBinder`] does not carry
+    /// one: the caller writes them into a Π at the filling its own declaration
     /// wants, and [`RawTrait`], [`RawImpl`], and [`RawMethod`] leave the choice
     /// to `musa-calculus`.
     fn type_parameters(&mut self, node: &SyntaxNode) -> Vec<RawBinder> {

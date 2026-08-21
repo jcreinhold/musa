@@ -1,7 +1,7 @@
 ---
 id: 142b
 slug: finish-the-excision
-status: in-progress
+status: done
 depends_on: [142]
 phase: 3
 ---
@@ -79,9 +79,9 @@ change that caused it; there is no second sweep.
 
 - `crates/musa-calculus/`: the five verdicts above, `unify.rs` → `convert.rs`, and every doc comment listed.
 - `docs/rules/language/citations.md`: the Miller row.
-- No change of *behaviour* outside the crate. The two renames are public — `Plicity` and `Unifier` are both exported —
-  so `musa-compiler` moves with them: `lower/laws.rs:731` asserts a function's type parameter is `Plicity::Implicit`,
-  and `lower/documented.rs:234` writes `Plicity::Explicit`.
+- No change of *behaviour* outside the crate. Only one of the two renames is public: `Plicity` is exported and `Unifier`
+  is `pub(crate)`, so `musa-compiler` moves with the first alone — `lower/laws.rs:731` asserts a function's type
+  parameter is `Plicity::Implicit`, and `lower/documented.rs:234` writes `Plicity::Explicit`.
 - A recorded line count, before and after, in the commit message — the number note 50 owes and never took.
 
 ## Check

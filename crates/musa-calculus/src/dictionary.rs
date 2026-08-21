@@ -44,7 +44,7 @@
 //! crate is: a metavariable per instance parameter, the instance's *written*
 //! arguments evaluated in an environment of those metas, and unification against
 //! the arguments actually asked for. Writing a first-order matcher here instead
-//! would be a second unifier beside 134's, free to disagree with it about
+//! would be a second conversion checker beside 134's, free to disagree with it about
 //! exactly the cases — η, δ, a solved meta — where agreement is what coherence
 //! rests on.
 
@@ -170,15 +170,15 @@ pub(crate) fn declare_trait(cx: &Cx, raw: &RawTrait) -> Result<(Arc<Trait>, crat
 
 /// `{q⃗} → τ`: a required method's own parameters, folded onto its type.
 ///
-/// Implicit, because a required method is reached by projecting it out of the
-/// dictionary and applying it — `xs.fold_from_start(zero, step)` writes no `B`.
-/// So the field's type is an ordinary implicit Π and §2's insertion rule fills
+/// Type parameters, because a required method is reached by projecting it out
+/// of the dictionary and applying it — `xs.fold_from_start(zero, step)` writes
+/// no `B`. So the field's type is an ordinary parameter Π and §2's walk fills
 /// it, with nothing here to know about. A **derived** method's parameters are
 /// not folded in this way: [`method_at`] fills those itself, because the
 /// constraints that follow them have to be resolved rather than unified.
 fn quantified(method: &RawMethod) -> Raw {
     method.params.iter().rev().fold(method.ty.clone(), |body, binder| {
-        Raw::implicit_pi(binder.ty.origin(), Arc::clone(&binder.name), binder.ty.clone(), body)
+        Raw::parameter_pi(binder.ty.origin(), Arc::clone(&binder.name), binder.ty.clone(), body)
     })
 }
 
@@ -840,7 +840,7 @@ fn requirements(
         }
         let name: Name = Arc::clone(&elaborated.class);
         inner = assumed(elaborator, &inner, constraint.origin, &name, &ty)?;
-        binders.push(Binder::explicit(name, ty));
+        binders.push(Binder::written(name, ty));
         context.push(elaborated);
     }
     Ok((context, binders, inner))
@@ -1009,7 +1009,7 @@ fn telescope(elaborator: &mut Elaborator, scope: &Scope, raw: &[RawBinder]) -> R
     for binder in raw {
         let (ty, _) = elaborator.check_type(&inner, &binder.ty)?;
         inner = assumed(elaborator, &inner, binder.ty.origin(), &binder.name, &ty)?;
-        binders.push(Binder::explicit(Arc::clone(&binder.name), ty));
+        binders.push(Binder::written(Arc::clone(&binder.name), ty));
     }
     Ok((binders, inner))
 }

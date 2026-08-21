@@ -196,9 +196,9 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
         let here = value.origin;
         match &ty.form {
             // η at Π: a lambda, whether or not the value is one. A λ has no
-            // plicity to write — it is the Π that says how the argument arrives.
+            // filling to write — it is the Π that says how the argument arrives.
             Form::Pi {
-                plicity: _,
+                filling: _,
                 name,
                 domain,
                 codomain,
@@ -265,7 +265,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
         match &value.form {
             Form::Universe(level) => Ok(Term::universe(here, *level)),
             Form::Pi {
-                plicity,
+                filling,
                 name,
                 domain,
                 codomain,
@@ -274,7 +274,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
                 let opened = apply_closure(meter, codomain, variable)?;
                 Ok(Term::function(
                     here,
-                    plicity.clone(),
+                    filling.clone(),
                     Arc::clone(name),
                     read_type(meter, reading, domain)?,
                     read_type(meter, reading.under_binder(), &opened)?,

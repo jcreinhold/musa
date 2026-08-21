@@ -11,7 +11,7 @@ use crate::error::CoreError;
 use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::term::{Name, Plicity, Term};
+use crate::term::{Filling, Name, Term};
 use crate::value::{Env, Form, Value};
 use crate::visibility::{ModuleId, Visibility};
 use std::sync::Arc;
@@ -26,23 +26,23 @@ pub struct Binder {
     pub ty: Term,
     /// How a use site supplies its argument.
     ///
-    /// [`Plicity::Explicit`] for everything a declaration writes — §1.1's
-    /// parameters and indices are written at every use, which is what
-    /// `List<Nat>` is. A group's `where` clause appends
-    /// [`Plicity::Constraint`] parameters after the written ones, and those are
+    /// [`Filling::Written`] for everything a declaration writes — §1.1's
+    /// parameters are written at every use, which is what `List<Nat>` is. A
+    /// group's `where` clause appends
+    /// [`Filling::Constraint`] parameters after the written ones, and those are
     /// answered by `10-traits.md` §4 instead of written; see
     /// [`RawData::context`](crate::RawData).
-    pub plicity: Plicity,
+    pub filling: Filling,
 }
 
 impl Binder {
     /// A binder a use site writes: `(name : ty)`.
     #[must_use]
-    pub fn explicit(name: Name, ty: Term) -> Self {
+    pub fn written(name: Name, ty: Term) -> Self {
         Self {
             name,
             ty,
-            plicity: Plicity::Explicit,
+            filling: Filling::Written,
         }
     }
 }
@@ -128,8 +128,8 @@ pub struct Declared {
 /// declaration.
 ///
 /// The parameters belong to the group rather than to each family, which is what
-/// makes the mutual recursor statable at all: a motive for `N_j` quantifies over
-/// `N_j`'s indices at the *same* parameters the eliminated `N_i` was taken at.
+/// makes the mutual recursor statable at all: it carries one motive per family
+/// at the *same* parameters the eliminated `N_i` was taken at.
 #[derive(Debug)]
 pub struct Group {
     /// Where the declaration was written. Every term generated from it says so,
@@ -163,7 +163,7 @@ pub struct Group {
 /// A type that turned out to be a family applied to its arguments.
 ///
 /// What splitting a `match` subject needs and nothing more: which family, at
-/// which parameters. A family with no indices (§1.1 admits none) is completely
+/// which parameters. §1.1 admits no indices, so a family is completely
 /// described by that answer.
 pub(crate) struct Element {
     pub(crate) group: Arc<Group>,
@@ -255,9 +255,8 @@ impl Group {
     /// Whether a later declaration may put itself at parameter `which`.
     ///
     /// [`Self::positive`], read defensively: a position past the parameters is
-    /// an *index*, and an index is not a place a family may hold itself — what
-    /// a constructor chooses there is data the type is indexed by, and a
-    /// recursive occurrence in one is inductive-induction rather than nesting.
+    /// no position at all, since §1.1 admits none, and `false` is the answer
+    /// that refuses a declaration rather than admitting one on a guess.
     pub(crate) fn positive_at(&self, which: usize) -> bool {
         self.positive.get(which).copied().unwrap_or(false)
     }

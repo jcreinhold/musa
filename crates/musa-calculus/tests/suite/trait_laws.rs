@@ -665,7 +665,7 @@ fn a_family_holding_a_function_at_depth_is_not_storable() {
 /// `Eq`'s only method has type `A` rather than a function type, so a body that
 /// answers this signature is exactly a use of the dictionary and nothing else.
 fn constrained_scheme() -> Raw {
-    Raw::implicit_pi(
+    Raw::parameter_pi(
         WRITTEN,
         "A",
         type0(),
@@ -750,7 +750,7 @@ fn an_inner_where_clause_shadows_an_outer_one() {
     let cx = context();
     let ty = musa_calculus::infer(
         &cx,
-        &Raw::implicit_pi(
+        &Raw::parameter_pi(
             WRITTEN,
             "A",
             type0(),

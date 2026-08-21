@@ -1,36 +1,39 @@
-//! Unification: making two types equal by solving metavariables.
+//! Conversion: whether two values are the same, and — in the one mode that
+//! solves — what an unwritten argument has to be for them to be.
 //!
-//! `docs/rules/language/02-core-calculus.md` §2.1 fixes the algorithm, and the
-//! whole of it is one restriction:
+//! `docs/rules/language/02-core-calculus.md` §3 decides definitional equality
+//! by α-equality of η-long normal forms, computed by `NbE` over the small core.
+//! This module is that decision, written as a type-directed walk with early
+//! exit rather than as normalize-and-compare, so that two values that differ
+//! at their heads cost one comparison instead of two normal forms.
 //!
-//! > a constraint `?α x₁ … xₙ ≡ t` is solved immediately when `x₁ … xₙ` are
-//! > *distinct bound variables* and every free variable of `t` is among them and
-//! > the context of `?α` […] outside it, higher-order unification is undecidable
-//! > and a solver that guessed would make a program's meaning depend on the
-//! > order in which the checker reached its constraints.
+//! # One walk, two modes
 //!
-//! So this module has no heuristic, no fallback, and no "try the obvious
-//! solution". A constraint it cannot solve is **postponed**, retried whenever a
-//! metavariable is solved, and — if it is still blocked when the declaration
-//! ends — reported as the metavariable it left undetermined.
+//! §2.1's other question — the type parameters of a callee, which the written
+//! arguments determine — is the *same* walk with the holes made assignable.
+//! There is no second procedure and no heuristic: a hole standing alone takes
+//! the value it is compared with, once, and a hole under a spine is an opaque
+//! head like any other. [`Conversion::deciding`] is the rigid mode and
+//! [`Conversion::solving`] the assigning one, and the only line that reads the
+//! difference is the assignment rule.
 //!
-//! # Why the pattern check is nearly free here
-//!
-//! Every metavariable is written applied to the *identity spine* of its creation
-//! context: `?α x₀ x₁ … xₙ₋₁`, in order, with no repeats. That is the pattern
-//! condition, established by construction rather than tested for. What is left
-//! is the other half — that the right-hand side mentions no variable bound
-//! *after* the metavariable was created — and [`crate::quote::quote_solution`]
-//! decides it while writing the solution, in the same walk that performs the
-//! occurs check and the index shift.
+//! Nothing here postpones, retries, or reaches a fixpoint. A comparison that
+//! cannot be decided is a [`Refusal::Mismatch`] at the site that asked, and a
+//! hole nothing determined is [`Refusal::Unsolved`] when the declaration ends.
 //!
 //! # Why solving quotes at a type
 //!
 //! A solution is a term, so the right-hand *value* has to be read back, and
 //! quotation in this crate is type-directed (§3, η). The type is not invented:
-//! unification already knows what the two sides are at, because it descended to
+//! the walk already knows what the two sides are at, because it descended to
 //! them from a pair of types it knew. That is why nothing here needs a second,
 //! untyped quotation function, and why a solution comes out η-long for free.
+//!
+//! # The third question this file answers
+//!
+//! Which of two folded definitions to unfold first. It lives here because it
+//! is only ever asked in the middle of a comparison, and answering it anywhere
+//! else would mean a second place that knows what a glued definition is.
 
 use std::sync::Arc;
 
@@ -64,7 +67,6 @@ impl At<'_> {
     }
 }
 
-/// A constraint that could not be decided yet.
 /// The conversion checker's state: which variables a matching pass may solve,
 /// and what it has solved them to.
 ///
@@ -75,9 +77,8 @@ impl At<'_> {
 /// matching, and it is this same engine with the parameter variables listed as
 /// assignable — one algorithm with two modes, which is what keeps "the
 /// conversion checker" one thing rather than two to keep in agreement.
-#[derive(Default)]
-pub(crate) struct Unifier {
-    /// Whether this unifier answers a question rather than making one true.
+pub(crate) struct Conversion {
+    /// Whether this checker answers a question rather than making one true.
     ///
     /// Set by [`Self::deciding`], and read in exactly one place: the
     /// assignment rule, which a deciding pass never fires — a hole is an
@@ -85,8 +86,8 @@ pub(crate) struct Unifier {
     deciding: bool,
 }
 
-impl Unifier {
-    /// A unifier that decides §3's conversion instead of solving for it.
+impl Conversion {
+    /// A checker that decides §3's conversion instead of solving for it.
     ///
     /// Definitional equality *is* the rigid fragment of the one algorithm —
     /// the same type-directed walk with η and early exit, over values whose
@@ -96,6 +97,15 @@ impl Unifier {
     /// agreement.
     pub(crate) fn deciding() -> Self {
         Self { deciding: true }
+    }
+
+    /// A checker that may solve a hole it meets alone on one side.
+    ///
+    /// The elaborator's mode, and the only one that assigns. Named rather than
+    /// left to [`Default`] so that the two modes read as a pair at every
+    /// construction site.
+    pub(crate) fn solving() -> Self {
+        Self { deciding: false }
     }
 
     /// Make `left` and `right` the same type.
@@ -715,7 +725,7 @@ fn folded_def(value: &Value) -> Option<FoldedDef<'_>> {
 }
 
 /// Which of two different folded definitions opens first: the one that can
-/// mention the other. See [`Unifier::folded`].
+/// mention the other. See [`Conversion::folded`].
 fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
     match (one, other) {
         (DefHead::Local(_), DefHead::Global(_)) => true,
@@ -727,7 +737,7 @@ fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
 
 /// Does `value` mention this hole, unsolved, transitively?
 ///
-/// The occurs check of [`Unifier::assignment`]: the unknown may not occur in
+/// The occurs check of [`Conversion::assignment`]: the unknown may not occur in
 /// its own answer, and "transitively" is through other holes' solutions. A
 /// closure or telescope's *terms* are not walked: the value this asks about is
 /// one the walk created, and a term can reach one only through the environment

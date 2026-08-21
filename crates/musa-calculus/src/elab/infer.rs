@@ -11,7 +11,7 @@ use crate::origin::Origin;
 use crate::raw::{Raw, RawConstraint, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Name, Plicity, Shape, Term};
+use crate::term::{Filling, Name, Shape, Term};
 use crate::value::{Env, Form, Value};
 
 use super::spine::{Slot, Walk};
@@ -62,27 +62,27 @@ impl Elaborator {
                 })
             }
             RawShape::Pi {
-                plicity,
+                filling,
                 name,
                 domain,
                 codomain,
-            } => self.function_type(scope, here, plicity.clone(), name, domain, codomain),
+            } => self.function_type(scope, here, filling.clone(), name, domain, codomain),
             RawShape::ConstrainedPi { constraint, codomain } => {
                 self.constrained_function_type(scope, here, constraint, codomain)
             }
             RawShape::Lam {
-                plicity,
+                filling,
                 name,
                 domain,
                 body,
-            } => self.infer_lambda(scope, here, plicity.clone(), name, domain.as_ref(), body),
+            } => self.infer_lambda(scope, here, filling.clone(), name, domain.as_ref(), body),
             RawShape::App {
-                plicity,
+                filling,
                 function,
                 argument,
             } => match self.constructed_open(scope, raw)? {
                 Some(built) => Ok(built),
-                None => self.application(scope, here, plicity, function, argument),
+                None => self.application(scope, here, filling, function, argument),
             },
             // The same two steps the arm above takes, because a constructor
             // written with its fields is the form an author actually writes and
@@ -97,7 +97,7 @@ impl Elaborator {
             // type it "obviously" has is a guess rather than a principal type —
             // `{ ty = {}, val = {} }` inhabits both `{ ty : Type 0, val : ty }`
             // and `{ ty : Type 0, val : {} }` — and picking one would be the
-            // unifier's forbidden habit of trying the solution that comes to
+            // conversion checker's forbidden habit of trying the solution that comes to
             // hand. So there is no inference rule, and an author who wants to
             // project out of a literal writes the type it should have.
             RawShape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
@@ -140,7 +140,7 @@ impl Elaborator {
         &mut self,
         scope: &Scope,
         here: Origin,
-        plicity: Plicity,
+        filling: Filling,
         name: &Name,
         domain: &Raw,
         codomain: &Raw,
@@ -150,7 +150,7 @@ impl Elaborator {
         let inner = scope.assume(Some(Arc::clone(name)), here, Arc::new(domain_value));
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
-            term: Term::function(here, plicity, Arc::clone(name), domain_term, codomain_term),
+            term: Term::function(here, filling, Arc::clone(name), domain_term, codomain_term),
             ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
         })
     }
@@ -183,7 +183,7 @@ impl Elaborator {
         // Discharged as well as assumed, for [`Self::discharging`]'s reason: a
         // codomain that mentions the trait's own methods is answered by the
         // binder standing right there.
-        let inner = self.discharging(scope, &Plicity::Constraint(Arc::clone(&constraint)), scope.env())?;
+        let inner = self.discharging(scope, &Filling::Constraint(Arc::clone(&constraint)), scope.env())?;
         let inner = inner.assume(Some(Arc::clone(&name)), here, Arc::new(domain_value));
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
@@ -197,7 +197,7 @@ impl Elaborator {
         &mut self,
         scope: &Scope,
         here: Origin,
-        plicity: Plicity,
+        filling: Filling,
         name: &Name,
         domain: Option<&Raw>,
         body: &Raw,
@@ -223,7 +223,7 @@ impl Elaborator {
         let domain_term = scope.quote_type(&mut self.meter, &domain_value)?;
         let ty = scope.eval(
             &mut self.meter,
-            &Term::function(here, plicity, Arc::clone(name), domain_term, codomain),
+            &Term::function(here, filling, Arc::clone(name), domain_term, codomain),
         )?;
         Ok(Typed {
             term: Term::lam(here, Arc::clone(name), inferred.term),
@@ -282,12 +282,12 @@ impl Elaborator {
         &mut self,
         scope: &Scope,
         here: Origin,
-        plicity: &Plicity,
+        filling: &Filling,
         function: &Raw,
         argument: &Raw,
     ) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, function)?;
-        if *plicity == Plicity::Implicit {
+        if *filling == Filling::Parameter {
             // The one written-implicit rule: the argument fills the next
             // binder when that binder is the implicit one — the spelling the
             // host's schemes and the suite's fixtures use for a type argument
@@ -296,13 +296,13 @@ impl Elaborator {
             let unfolded = crate::eval::opened(&mut self.meter, &inferred.ty)?;
             let ty = unfolded.as_ref().unwrap_or(&inferred.ty);
             let Form::Pi {
-                plicity: Plicity::Implicit,
+                filling: Filling::Parameter,
                 domain,
                 codomain,
                 ..
             } = &ty.form
             else {
-                return Err(Refusal::PlicityMismatch { at: argument.origin() }.into());
+                return Err(Refusal::FillingMismatch { at: argument.origin() }.into());
             };
             let argument_term = self.check(scope, argument, &Arc::clone(domain))?;
             let value = scope.eval(&mut self.meter, &argument_term)?;
@@ -416,7 +416,7 @@ impl Elaborator {
         let (domain, codomain) = (Arc::clone(domain), codomain.clone());
         // Matching mode: the receiver is where the method's parameters are
         // learned — `xs.fold_from_end` reads `A` off `xs`.
-        self.unifier
+        self.conversion
             .unify_types(&mut self.meter, scope.depth(), here, &domain, &receiver.ty)?;
         walk.slots.push(Slot::Argument(receiver.term.clone()));
         let value = scope.eval(&mut self.meter, &receiver.term)?;
@@ -459,13 +459,13 @@ fn declared_parameters(head: &Term, ty: &Term) -> Vec<Name> {
     let mut declared = Vec::new();
     let mut rest = ty;
     while let Shape::Pi {
-        plicity,
+        filling,
         name,
         codomain,
         ..
     } = rest.shape()
     {
-        if *plicity == Plicity::Explicit {
+        if *filling == Filling::Written {
             if !registered && &**name == crate::raw::ARROW_BINDER {
                 break;
             }

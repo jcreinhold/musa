@@ -805,7 +805,7 @@ fn iterable_list() -> RawImpl {
 
     // `λ{B}. λsource. λzero. λstep. walk source zero`, accumulating forwards.
     let walk_ty = arrow(list_a.clone(), arrow(var("B"), var("B")));
-    let from_start = Raw::implicit_lam(
+    let from_start = Raw::parameter_lam(
         HERE,
         "B",
         lam(
@@ -851,7 +851,7 @@ fn iterable_list() -> RawImpl {
 
     // `λ{B}. λsource. λzero. λstep. walk source`, the catamorphism.
     let fold_ty = arrow(list_a, var("B"));
-    let from_end = Raw::implicit_lam(
+    let from_end = Raw::parameter_lam(
         HERE,
         "B",
         lam(
@@ -913,7 +913,7 @@ fn iterable_list() -> RawImpl {
 /// for.
 fn iterable_option() -> RawImpl {
     let fold = |step: Raw| {
-        Raw::implicit_lam(
+        Raw::parameter_lam(
             HERE,
             "B",
             lam(
@@ -1080,11 +1080,11 @@ pub(crate) fn expansion(cx: &Cx) -> Result<Cx, ElabError> {
 /// `run_syntax_step`, written out. See [`expansion`].
 fn run_syntax_step() -> RawTopLevel {
     let sealed = calling(var("SyntaxStep"), [var("Context"), var("Answer")]);
-    let ty = Raw::implicit_pi(
+    let ty = Raw::parameter_pi(
         HERE,
         "Context",
         type0(),
-        Raw::implicit_pi(
+        Raw::parameter_pi(
             HERE,
             "Answer",
             type0(),
@@ -1107,10 +1107,10 @@ fn run_syntax_step() -> RawTopLevel {
     // The implicit binders are written rather than left to insertion: a λ is
     // checked against the Π it stands at, and the two type parameters are the
     // ones the body's `SyntaxStep Context Answer` names.
-    let value = Raw::implicit_lam(
+    let value = Raw::parameter_lam(
         HERE,
         "Context",
-        Raw::implicit_lam(
+        Raw::parameter_lam(
             HERE,
             "Answer",
             lam("context", lam("step", matching(var("step"), vec![ran]))),

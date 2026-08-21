@@ -343,17 +343,17 @@ pub(crate) mod programs {
 
     /// `{X : Type 0} → X → X`, the polymorphic identity's type.
     fn implicit_identity_type() -> Raw {
-        Raw::implicit_pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X")))
+        Raw::parameter_pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X")))
     }
 
     /// `λ{X}. λx. x`.
     fn implicit_identity() -> Raw {
-        Raw::implicit_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x")))
+        Raw::parameter_lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x")))
     }
 
     /// `{X : Type 0} → X → X` as a core term, for a checking question.
     fn core_implicit_identity_type() -> Term {
-        Term::implicit_pi(
+        Term::parameter_pi(
             WRITTEN,
             "X",
             Term::universe(WRITTEN, Level::ZERO),
@@ -412,7 +412,7 @@ pub(crate) mod programs {
             Program {
                 name: "a term checked against an implicit Pi is abstracted, not switched",
                 raw: Raw::lam(WRITTEN, "x", var("x")),
-                ty: Some(Term::implicit_pi(
+                ty: Some(Term::parameter_pi(
                     WRITTEN,
                     "X",
                     Term::universe(WRITTEN, Level::ZERO),
@@ -479,7 +479,7 @@ pub(crate) mod programs {
                     "id",
                     implicit_identity_type(),
                     implicit_identity(),
-                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
+                    Raw::app(WRITTEN, Raw::parameter_app(WRITTEN, var("id"), unit_type()), unit()),
                 ),
                 ty: Some(core_unit_type()),
             },
@@ -504,10 +504,10 @@ pub(crate) mod programs {
                     "id",
                     Raw::pi(WRITTEN, "X", type0(), Raw::pi(WRITTEN, "_", var("X"), var("X"))),
                     Raw::lam(WRITTEN, "X", Raw::lam(WRITTEN, "x", var("x"))),
-                    Raw::app(WRITTEN, Raw::implicit_app(WRITTEN, var("id"), unit_type()), unit()),
+                    Raw::app(WRITTEN, Raw::parameter_app(WRITTEN, var("id"), unit_type()), unit()),
                 ),
                 ty: None,
-                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
+                expected: |refusal| matches!(refusal, Refusal::FillingMismatch { .. }),
             },
             Refused {
                 name: "a universe checked one level too low",
@@ -541,15 +541,15 @@ pub(crate) mod programs {
             },
             Refused {
                 name: "an implicit argument at an explicit binder",
-                raw: Raw::implicit_app(WRITTEN, Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")), unit()),
+                raw: Raw::parameter_app(WRITTEN, Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")), unit()),
                 ty: None,
-                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
+                expected: |refusal| matches!(refusal, Refusal::FillingMismatch { .. }),
             },
             Refused {
                 name: "an implicit abstraction at an explicit Pi",
-                raw: Raw::implicit_lam(WRITTEN, "x", unit()),
+                raw: Raw::parameter_lam(WRITTEN, "x", unit()),
                 ty: Some(Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type())),
-                expected: |refusal| matches!(refusal, Refusal::PlicityMismatch { .. }),
+                expected: |refusal| matches!(refusal, Refusal::FillingMismatch { .. }),
             },
             Refused {
                 name: "projecting something that is not a record",

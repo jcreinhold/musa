@@ -304,12 +304,12 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
         Shape::Universe(level) => Shape::Universe(*level),
         Shape::Pi {
-            plicity,
+            filling,
             name,
             domain,
             codomain,
         } => Shape::Pi {
-            plicity: plicity.clone(),
+            filling: filling.clone(),
             name: Arc::clone(name),
             domain: restamp(domain, origin),
             codomain: restamp(codomain, origin),

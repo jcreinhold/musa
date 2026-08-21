@@ -26,7 +26,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_calculus::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
+use musa_calculus::{Cx, Filling, Level, Raw, RawData, RawPattern, RawShape, Term};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
@@ -725,10 +725,10 @@ fn a_constraint_on_a_free_definition_is_admitted_where_it_is_written() {
     let written = "fn alike<A>(x: A, y: A) -> Bool where Same<A> { true }";
     let defined = definition(written, SyntaxKind::FnDecl);
     let ty = defined.ty.as_ref().expect("the declaration wrote its type");
-    let RawShape::Pi { plicity, codomain, .. } = ty.shape() else {
+    let RawShape::Pi { filling, codomain, .. } = ty.shape() else {
         panic!("the type parameter is the outermost binder");
     };
-    assert_eq!(*plicity, Plicity::Implicit, "a function's type parameter is implicit");
+    assert_eq!(*filling, Filling::Parameter, "a function's type parameter is implicit");
     assert!(
         matches!(codomain.shape(), RawShape::ConstrainedPi { .. }),
         "and the `where` clause is the binder just inside it"

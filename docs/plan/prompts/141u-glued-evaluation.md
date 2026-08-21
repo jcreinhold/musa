@@ -73,8 +73,9 @@ on it**. This prompt does not make nineteen million calls cheaper by two orders 
 - [`value.rs`](../../../crates/musa-calculus/src/value.rs)'s `Head` and `Neutral` — head plus `Vec<Elim>` since prompt
   136b's Finding F, which is what makes adding one head a variant rather than a restructuring.
 - [`eval.rs`](../../../crates/musa-calculus/src/eval.rs)'s `apply`,
-  [`quote.rs`](../../../crates/musa-calculus/src/quote.rs), and [`unify.rs`](../../../crates/musa-calculus/src/unify.rs)
-  — the three places that ask "is this canonical yet", which are the three places that will have to force δ.
+  [`quote.rs`](../../../crates/musa-calculus/src/quote.rs), and
+  [`convert.rs`](../../../crates/musa-calculus/src/convert.rs) — the three places that ask "is this canonical yet",
+  which are the three places that will have to force δ.
 - Peyton Jones **ch. 12 §12.1** — tree reduction against graph reduction, which is this same observation one machine
   down: an expression evaluated once and shared costs a sum where an expression rebuilt at each use costs a product.
   Take the analysis; musa has no graph reducer and this prompt does not build one.

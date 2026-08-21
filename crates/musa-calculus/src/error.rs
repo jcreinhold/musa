@@ -73,7 +73,7 @@ pub enum Malformed {
     #[error("quotation reached a variable outside the scope it was quoting in")]
     EscapedVariable,
     /// A metavariable was solved twice. Solutions are write-once (§2.1), so the
-    /// second attempt is a unifier defect rather than a program's fault.
+    /// second attempt is a conversion checker defect rather than a program's fault.
     #[error("metavariable ?{0} was solved twice")]
     AlreadySolved(u32),
     /// A δ-rule answered nothing at closed literal arguments of its declared

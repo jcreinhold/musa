@@ -8,7 +8,7 @@ use crate::meta::MetaSource;
 use crate::origin::Origin;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::Plicity;
+use crate::term::Filling;
 use crate::value::{Env, Value};
 
 use super::Elaborator;
@@ -92,8 +92,8 @@ impl Elaborator {
     /// A constraint whose head is not yet known discharges nothing, which is
     /// §4's postponement rather than a failure: the key does not exist yet, and
     /// a use inside the body is postponed until it does.
-    pub(crate) fn discharging(&mut self, scope: &Scope, plicity: &Plicity, at: &Env) -> Result<Scope, ElabError> {
-        let Plicity::Constraint(constraint) = plicity else {
+    pub(crate) fn discharging(&mut self, scope: &Scope, filling: &Filling, at: &Env) -> Result<Scope, ElabError> {
+        let Filling::Constraint(constraint) = filling else {
             return Ok(scope.clone());
         };
         let needed = crate::dictionary::instantiated(self, scope, constraint, at)?;

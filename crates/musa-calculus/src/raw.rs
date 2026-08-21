@@ -3,7 +3,7 @@
 //!
 //! `docs/rules/language/02-core-calculus.md` §2 elaborates a *surface* term into
 //! a core term. This type is what stands in for "surface" here, and it is
-//! deliberately **surface-independent**: it knows about names, plicity, and
+//! deliberately **surface-independent**: it knows about names, filling, and
 //! annotations, and it knows nothing about pitches, bars, or `.musa` grammar.
 //! That is what lets `musa-calculus` stay a leaf, and what lets the elaborator's
 //! tests be written without a parser.
@@ -15,9 +15,10 @@
 //! - **Variables are names, not indices.** Resolving a name to a de Bruijn index
 //!   is elaboration's, so a raw term never has to be written under a mental
 //!   model of how deep it is.
-//! - **Binders may be implicit.** §1: "plicity is not in the core". A raw binder
-//!   marked [`Plicity::Implicit`] produces a metavariable at each use, and what
-//!   reaches the core is an ordinary `(x : A) → B`.
+//! - **A binder says how a use site fills it.** §1: "the filling is not in the
+//!   core". A raw binder marked [`Filling::Parameter`] is a type parameter §2.1
+//!   solves at each use, and what reaches the core is an ordinary
+//!   `(x : A) → B`.
 //! - **A lambda's binder type is optional**, and a `let`'s type is too. §2's
 //!   whole point is that a checked term does not repeat what its type already
 //!   says.
@@ -41,7 +42,7 @@ use std::sync::Arc;
 
 use crate::level::Level;
 use crate::origin::Origin;
-use crate::term::{Name, Plicity};
+use crate::term::{Filling, Name};
 use crate::visibility::{ModuleId, Visibility};
 
 /// What a written arrow's binder is called.
@@ -221,7 +222,7 @@ pub struct RawMethod {
     pub name: Name,
     /// The type parameters it quantifies over, read under the trait's own.
     ///
-    /// Implicit at every use: `xs.map(f)` writes neither `D` nor `B`.
+    /// Solved at every use: `xs.map(f)` writes neither `D` nor `B`.
     pub params: Vec<RawBinder>,
     /// Its own constraints, read under the trait's parameters and then its own.
     ///
@@ -254,8 +255,14 @@ pub struct RawTrait {
     /// refuses a trait none of whose parameters its head determines.
     pub params: Vec<RawBinder>,
     /// Its own constraints — `trait Ord<A> where Eq<A>` — read under the
-    /// parameters. Each becomes a field of the dictionary, so reaching `Eq`
-    /// from `Ord` is one projection and never a second lookup.
+    /// parameters.
+    ///
+    /// Read in order to be **refused**: a supertrait is a dictionary obligation
+    /// synthesized at every use, which is the search `10-traits.md` §9 refuses,
+    /// and the flat `(trait, head)` table has nowhere to put one. The field
+    /// survives the refusal because a diagnostic needs the constraint's own
+    /// origin to point at — see
+    /// [`Refusal::SuperClass`](crate::Refusal::SuperClass).
     pub context: Vec<RawConstraint>,
     /// Its methods, in declaration order.
     pub methods: Vec<RawMethod>,
@@ -272,8 +279,10 @@ pub struct RawImpl {
     pub params: Vec<RawBinder>,
     /// The head arguments, read under those parameters.
     pub args: Vec<Raw>,
-    /// Its `where` clause, read under the same parameters. §4's measure is
-    /// checked here, at the declaration, and never at a use site.
+    /// Its `where` clause, read under the same parameters, and refused there:
+    /// an `impl` that carried one would make resolution recursive, and §4 is a
+    /// single table read. Kept for the refusal's origin, as
+    /// [`RawTrait::context`] is.
     pub context: Vec<RawConstraint>,
     /// The required methods it supplies, in any order: they are matched to the
     /// trait's fields by name, since an impl that had to repeat the
@@ -390,9 +399,9 @@ pub enum RawShape {
     /// `[Class a⃗] → B` — the binder `01-surface.md` §1.4's `where` clause
     /// elaborates to.
     ///
-    /// Its own shape rather than a [`Plicity`] on [`Self::Pi`], because what a
+    /// Its own shape rather than a [`Filling`] on [`Self::Pi`], because what a
     /// `where` writes is a *raw* constraint: a trait name and raw arguments,
-    /// which nothing has resolved yet. [`Plicity::Constraint`] carries an
+    /// which nothing has resolved yet. [`Filling::Constraint`] carries an
     /// elaborated [`Constraint`](crate::Trait), and turning one into the other
     /// is what elaboration does here. There is no domain to write either — the
     /// dictionary's type is the trait applied to those arguments, so writing it
@@ -403,10 +412,10 @@ pub enum RawShape {
         /// `B`, under the dictionary binder.
         codomain: Raw,
     },
-    /// `(x : A) → B`, or `{x : A} → B` when the binder is implicit.
+    /// `(x : A) → B`, at whichever [`Filling`] the binder has.
     Pi {
         /// Whether uses of the function must write this argument.
-        plicity: Plicity,
+        filling: Filling,
         /// The binder's name.
         name: Name,
         /// `A`.
@@ -418,7 +427,7 @@ pub enum RawShape {
     /// known.
     Lam {
         /// Which kind of binder this abstracts.
-        plicity: Plicity,
+        filling: Filling,
         /// The binder's name.
         name: Name,
         /// `A`, when the author wrote one. Checking supplies it from the Π;
@@ -427,10 +436,10 @@ pub enum RawShape {
         /// The body, under the binder.
         body: Raw,
     },
-    /// `f a`, or `f {a}` when the argument fills an implicit binder.
+    /// `f a`, at whichever [`Filling`] of binder the argument fills.
     App {
         /// Which kind of binder this argument fills.
-        plicity: Plicity,
+        filling: Filling,
         /// `f`.
         function: Raw,
         /// `a`.
@@ -447,8 +456,8 @@ pub enum RawShape {
     /// Π there is a parameter nobody wrote.
     ///
     /// Everything else about it is [`Self::App`]'s: the arguments are applied
-    /// left to right, implicits are inserted before each one, and the plicity
-    /// rules are the ones already written. Only the last step is new.
+    /// left to right, type parameters are filled before each one, and the
+    /// filling rules are the ones already written. Only the last step is new.
     ///
     /// A function is still first class. §1.3 refuses partial *application*, not
     /// higher-order values — a bare name passed to a higher-order argument is a
@@ -474,8 +483,8 @@ pub enum RawShape {
     /// `x.m(…)` before its arguments — `10-traits.md` §6's method syntax.
     ///
     /// **Infers**, and holds no arguments: `x.m(y, z)` is this applied to `y`
-    /// and then to `z` through the ordinary [`Self::App`] rule, so plicity,
-    /// implicit insertion, and argument checking are the ones that were already
+    /// and then to `z` through the ordinary [`Self::App`] rule, so filling,
+    /// parameter solving, and argument checking are the ones that were already
     /// written. What is new here is only *which name* the call is to, and that
     /// question needs the receiver's type, which is why the surface cannot
     /// answer it and this shape exists.
@@ -528,10 +537,9 @@ pub enum RawShape {
     /// `match e₁, …, eₘ { p⃗ → b, … }`, compiled to a case tree and then to the
     /// generated recursors (§6.2).
     ///
-    /// **Checks only.** The motive a split builds is the goal type abstracted
-    /// over the subject, so a `match` with no goal has nothing to abstract —
-    /// and inferring one from the first arm would make a program's type depend
-    /// on the order its arms are written in.
+    /// **Checks only.** The motive a split builds *is* the goal, so a `match`
+    /// with no goal has no motive — and inferring one from the first arm would
+    /// make a program's type depend on the order its arms are written in.
     Match {
         /// The terms being scrutinized, left to right.
         subjects: Arc<[Raw]>,
@@ -544,7 +552,7 @@ pub enum RawShape {
     /// `rec f : A = e`, a definition that may call itself.
     ///
     /// The whole form elaborates to a term of type `A`, with `f` in scope inside
-    /// `e`. §2.4's measure is structural and the elaborator supplies it: a
+    /// `e`. §2.4's rule is structural and the elaborator supplies it: a
     /// recursive call becomes the induction hypothesis the split that reached it
     /// already provides, and a call that has no hypothesis to become is
     /// [`Refusal::UncheckedRecursion`](crate::Refusal::UncheckedRecursion).
@@ -703,7 +711,7 @@ impl Raw {
     /// `(name : domain) → codomain`.
     #[must_use]
     pub fn pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
-        Self::binder(origin, Plicity::Explicit, name, domain, codomain)
+        Self::binder(origin, Filling::Written, name, domain, codomain)
     }
 
     /// `domain → codomain`, the arrow with nothing bound.
@@ -718,13 +726,13 @@ impl Raw {
     /// name in it.
     #[must_use]
     pub fn arrow(origin: Origin, domain: Self, codomain: Self) -> Self {
-        Self::binder(origin, Plicity::Explicit, ARROW_BINDER, domain, codomain)
+        Self::binder(origin, Filling::Written, ARROW_BINDER, domain, codomain)
     }
 
-    /// `{name : domain} → codomain`.
+    /// `(name : domain) → codomain`, binding a type parameter §2.1 solves.
     #[must_use]
-    pub fn implicit_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
-        Self::binder(origin, Plicity::Implicit, name, domain, codomain)
+    pub fn parameter_pi(origin: Origin, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
+        Self::binder(origin, Filling::Parameter, name, domain, codomain)
     }
 
     /// `[constraint] → codomain` — a `where` clause's binder.
@@ -739,11 +747,11 @@ impl Raw {
         Self::new(origin, RawShape::ConstrainedPi { constraint, codomain })
     }
 
-    fn binder(origin: Origin, plicity: Plicity, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
+    fn binder(origin: Origin, filling: Filling, name: impl Into<Name>, domain: Self, codomain: Self) -> Self {
         Self::new(
             origin,
             RawShape::Pi {
-                plicity,
+                filling,
                 name: name.into(),
                 domain,
                 codomain,
@@ -757,7 +765,7 @@ impl Raw {
         Self::new(
             origin,
             RawShape::Lam {
-                plicity: Plicity::Explicit,
+                filling: Filling::Written,
                 name: name.into(),
                 domain: None,
                 body,
@@ -771,7 +779,7 @@ impl Raw {
         Self::new(
             origin,
             RawShape::Lam {
-                plicity: Plicity::Explicit,
+                filling: Filling::Written,
                 name: name.into(),
                 domain: Some(domain),
                 body,
@@ -779,13 +787,13 @@ impl Raw {
         )
     }
 
-    /// `λ{name}. body`, abstracting an implicit binder.
+    /// `λname. body`, abstracting a type parameter.
     #[must_use]
-    pub fn implicit_lam(origin: Origin, name: impl Into<Name>, body: Self) -> Self {
+    pub fn parameter_lam(origin: Origin, name: impl Into<Name>, body: Self) -> Self {
         Self::new(
             origin,
             RawShape::Lam {
-                plicity: Plicity::Implicit,
+                filling: Filling::Parameter,
                 name: name.into(),
                 domain: None,
                 body,
@@ -830,7 +838,7 @@ impl Raw {
         Self::new(
             origin,
             RawShape::App {
-                plicity: Plicity::Explicit,
+                filling: Filling::Written,
                 function,
                 argument,
             },
@@ -853,14 +861,14 @@ impl Raw {
         )
     }
 
-    /// `function {argument}` — an implicit supplied at the use site rather than
-    /// inserted.
+    /// `function argument`, where the argument is a type parameter the use
+    /// site writes rather than one §2.1 solves.
     #[must_use]
-    pub fn implicit_app(origin: Origin, function: Self, argument: Self) -> Self {
+    pub fn parameter_app(origin: Origin, function: Self, argument: Self) -> Self {
         Self::new(
             origin,
             RawShape::App {
-                plicity: Plicity::Implicit,
+                filling: Filling::Parameter,
                 function,
                 argument,
             },

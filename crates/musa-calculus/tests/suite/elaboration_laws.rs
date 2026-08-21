@@ -347,7 +347,7 @@ const ALL_REFUSALS: [&str; 56] = [
     "unsolved",
     "not-a-function",
     "underapplied",
-    "plicity-mismatch",
+    "filling-mismatch",
     "not-a-record",
     "no-such-field",
     "record-shape",
@@ -411,7 +411,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::Unsolved { .. } => "unsolved",
         Refusal::NotAFunction { .. } => "not-a-function",
         Refusal::Underapplied { .. } => "underapplied",
-        Refusal::PlicityMismatch { .. } => "plicity-mismatch",
+        Refusal::FillingMismatch { .. } => "filling-mismatch",
         Refusal::NotARecord { .. } => "not-a-record",
         Refusal::NoSuchField { .. } => "no-such-field",
         Refusal::RecordShape { .. } => "record-shape",
@@ -510,22 +510,22 @@ fn a_narrow_budget_exhausts_rather_than_refusing() {
     }
 }
 
-/// §1 as amended at prompt 134: plicity rides on the core Π and no rule reads
+/// §1 as amended at prompt 134: filling rides on the core Π and no rule reads
 /// it, so the two spellings of one function type are convertible.
 ///
-/// Conversion, not elaboration. Elaboration *does* read plicity — that is what
+/// Conversion, not elaboration. Elaboration *does* read filling — that is what
 /// the field is for, and a term checked against an implicit Π is wrapped in an
 /// implicit λ rather than switched. What the amendment claims is narrower and is
 /// what this asserts: no rule in the *core* reads the field, so the two spellings
 /// are one type to equality and one type to normalization.
 #[test]
-fn plicity_is_not_part_of_conversion() {
+fn filling_is_not_part_of_conversion() {
     let cx = Cx::new();
     let explicit = Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type());
-    let implicit = Term::implicit_pi(WRITTEN, "y", core_unit_type(), core_unit_type());
+    let implicit = Term::parameter_pi(WRITTEN, "y", core_unit_type(), core_unit_type());
     assert_eq!(
         explicit, implicit,
-        "conversion looks at neither plicity nor binder name"
+        "conversion looks at neither filling nor binder name"
     );
     assert_eq!(
         musa_calculus::convertible_types(&cx, &explicit, &implicit),
