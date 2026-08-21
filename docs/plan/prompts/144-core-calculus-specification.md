@@ -1,7 +1,7 @@
 ---
 id: 144
 slug: core-calculus-specification
-status: pending
+status: in-progress
 depends_on: [143]
 phase: 3
 ---
@@ -40,7 +40,7 @@ part of the judgment rather than as an implementation note.
 **Conversion, and the one equation.** `A ≡ B` iff `quote(eval A) = quote(eval B)`, α-syntactically, with η at `quote`
 for Π and for one-constructor data. **This is now true as written**, because there is no erasing wrapper and no
 acceptance rule outside conversion. The specification states it as an `iff` and states the obligation it puts on every
-later prompt: *no rule may accept a program that conversion would reject.* `Accepts` violates it today; 158 removes it.
+later prompt: *no rule may accept a program that conversion would reject.* `Accepts` violates it today; 159 removes it.
 
 **Erasure, closed rather than replaced.** §1.5's erasure protected byte-identity of stored artifacts.
 `04-identity-and-realization.md` digests `EventTrack<PerformedTime, Gesture>` projections, bindings, seed and options —
@@ -53,7 +53,7 @@ to. `05-metatheory.md` gains the row that says so.
 
 **Sections retired.** §1.4 (identity type as core machinery) becomes "declarable as a family, and not built in"; §1.5
 (index refinement) is deleted with a pointer to 143's amendment; §2.1's first-order matching becomes §2.1 *Unification*,
-specified but implemented at 152.
+specified but implemented at 153.
 
 ## Target
 

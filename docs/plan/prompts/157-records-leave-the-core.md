@@ -66,4 +66,4 @@ Commit as `Move records out of the core`.
 ## Stop
 
 - No change to `record` at the surface. It reads and writes exactly as it does today; only what it means changes.
-- No collapse of `enum` into `data` — 160.
+- No collapse of `enum` into `data` — 161.

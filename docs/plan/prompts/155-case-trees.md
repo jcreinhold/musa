@@ -85,6 +85,6 @@ Commit as `Replace generated recursors with case trees`.
 
 ## Stop
 
-- No indexed *families* yet — constructors still may not choose an index. 155.
+- No indexed *families* yet — constructors still may not choose an index. 156.
 - No size-change termination, no `assert_total`, no partiality.
 - No new surface syntax for `match`.

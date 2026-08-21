@@ -17,7 +17,7 @@ its provenance preserved.
 
 ## Read
 
-- `docs/rules/language/11-quotation.md` after 145 and 158.
+- `docs/rules/language/11-quotation.md` after 145 and 159.
 - `/Users/jcreinhold/Code/Idris2/src/TTImp/Reflect.idr` and `Core/Reflect.idr` — roughly 3,200 lines of Reify/Reflect,
   which is the thing musa is *not* building. Read it to see the size of what one evaluator saves.
 - `docs/rules/across-stages/` — the `Original` provenance a macro must not lose.
@@ -31,7 +31,7 @@ the one that already normalizes everything else. **This is the one place musa en
 comes directly from having committed to a single theory.**
 
 **Typed quotation, and what the type buys.** `` `{ ... } `` at category `c` has type `Syntax c`. Splicing `$x` demands
-`Syntax c'` for the category the hole sits at; `$..xs` splices a `List (Syntax c')`. After 158, `c` is an index a
+`Syntax c'` for the category the hole sits at; `$..xs` splices a `List (Syntax c')`. After 159, `c` is an index a
 `match` can refine, so a macro that inspects what it was handed learns the category rather than asserting it.
 
 **Hygiene, stated as a property rather than a mechanism.** A name introduced inside a quotation is distinct from any
@@ -48,7 +48,7 @@ This is the property the Origin view depends on and it is not negotiable for the
 ## Target
 
 - `stdlib/`: the quotation vocabulary as library functions over the `Syntax` family.
-- `crates/musa-compiler/src/expand/`: expansion as evaluation, with the builtins 158 removed no longer needed.
+- `crates/musa-compiler/src/expand/`: expansion as evaluation, with the builtins 159 removed no longer needed.
 - `crates/musa-calculus/tests/suite/`, `crates/musa-compiler/tests/suite/`: the hygiene laws, the category-refinement
   law, and a provenance law over an expanded region.
 - `docs/book/`: the macro chapter rewritten against the family.

@@ -36,7 +36,7 @@ a template structure is a function, and `make` is a call. **Seven declaration si
 **The abstract-type question, answered here rather than assumed.** A signature's `data Hidden;` withholds a constructor.
 A record field of type `Type` carries the same information — and it is exactly the construct that puts a record at
 `Type 1`, which is why prompt 152 comes first and why this prompt is the one that *measures* whether the hierarchy was
-needed. If the stdlib after this rewrite never needs a third level, say so in the commit; if it does, that is 151 paying
+needed. If the stdlib after this rewrite never needs a third level, say so in the commit; if it does, that is 152 paying
 for itself.
 
 **Sealing is module privacy, not a second mechanism.** What `signature` bought that a record does not is that a

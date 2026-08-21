@@ -81,4 +81,4 @@ Commit as `Let a structure carry its laws`.
 ## Stop
 
 - No tactic language, no `auto`, no proof search, no hint database. If a law needs one, it does not get a field.
-- No new equality reasoning in the core. `Equal` and `rewrite` as 155 left them.
+- No new equality reasoning in the core. `Equal` and `rewrite` as 156 left them.

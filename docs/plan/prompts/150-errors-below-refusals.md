@@ -46,7 +46,7 @@ down whole and `Refusal` names the lifted `CoreError` rather than a second copy.
 
 **One variant class is new and belongs at the bottom.** Prompt 153's unification failures — *these two terms have no
 solution*, *this constraint is still blocked* — are kernel facts with no program in hand, and this prompt's rule assigns
-them without a special case. Say so, so 152 does not invent a third enum.
+them without a special case. Say so, so 153 does not invent a third enum.
 
 ## Target
 

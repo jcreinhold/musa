@@ -83,6 +83,6 @@ Commit as `Give the core real metavariables and pattern unification`.
 
 ## Stop
 
-- No implicit *insertion* — that is 153, and separating them is what makes this prompt reviewable against `Unify.idr`.
-- No case trees, no index unification in patterns. 154 and 155.
-- No elaborator reflection, no `Elab` monad, no reification. Musa has one macro system and it is 159's.
+- No implicit *insertion* — that is 154, and separating them is what makes this prompt reviewable against `Unify.idr`.
+- No case trees, no index unification in patterns. 155 and 156.
+- No elaborator reflection, no `Elab` monad, no reification. Musa has one macro system and it is 160's.

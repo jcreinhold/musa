@@ -40,7 +40,7 @@ that check now has to look through index expressions as well as through argument
 **Large elimination arrives with this prompt, and it moves the budget.** A dependent motive may compute a *type* from a
 value, so a user's own definition can run while a type is being checked. §3 already names this and the meter is already
 the backstop, but the numbers move here. Prompt 165's pressure class must be re-measured **after** this prompt, not
-before, and 164's Check says so.
+before, and 165's Check says so.
 
 **Eliminators are still generated, and now they are the folds.** Prompt 146 deleted `Iterable` on the argument that a
 family's fold *is* its eliminator. This is the prompt that makes that true for indexed families as well, which is why
@@ -78,5 +78,5 @@ Commit as `Let a constructor choose its index`.
 
 - No tactics, no proof search, no hint database, no interactive holes as a workflow. `Equal` being declarable does not
   make this a proof assistant and prompt 143 drew that line.
-- No builtin collapse (163), no `Syntax` rework (158), no records-as-data (156).
+- No builtin collapse (164), no `Syntax` rework (159), no records-as-data (157).
 - No budget change. Measuring is 164's; this prompt only records the numbers it moved.

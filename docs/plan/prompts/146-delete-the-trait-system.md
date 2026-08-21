@@ -88,5 +88,5 @@ Commit as `Delete the trait system`.
 ## Stop
 
 - No change to the term language. The collapse is 147 and mixing them makes both diffs unreadable.
-- No new record features. Records stay exactly what they are today until 156 turns them into data.
+- No new record features. Records stay exactly what they are today until 157 turns them into data.
 - No proof search, no instance arguments, no "one small dispatch case". That is the appendage this prompt removes.

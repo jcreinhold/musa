@@ -40,7 +40,7 @@ inductive-family machinery under `family/`, and the `Base`/`Builtin`/`Datum` *da
 admission checks. Everything here reads a `Raw`, produces a `Term`, and raises `Refusal`.
 
 **Three differences from 142h's list, each caused by an earlier prompt.** `class` and `dictionary` are absent — 146
-deleted them. `index` is absent — 150 deletes it, and this prompt runs after. `level` is `sort`, per 147's naming.
+deleted them. `index` is absent — 151 deletes it, and this prompt runs after. `level` is `sort`, per 147's naming.
 
 **Two files split rather than move.** `rec.rs` splits: generating and applying an eliminator is kernel, elaborating a
 written `rec` expression is elaboration. `base.rs` splits: the base and builtin *data* is kernel, `Registry::new`'s

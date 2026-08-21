@@ -52,8 +52,8 @@ enum CaseTree   { Split { on, alternatives }, Answer(Term), Impossible }
 lets `Definition` be written once.
 
 **Where each of the seventeen goes.** `Lam`/`Pi`/`Let` → `Bind` + `Binder`. `Const`/`Def`/`Base`/`Builtin` → `Named` +
-`Definition`. `Lit`/`Numeral` → `Lit(Constant)`. `RecordType`/`Record`/`Project` stay for now — 156 moves them, and
-moving them here would need families, which do not exist yet. `Indexed` stays for now — 150 deletes it, separately,
+`Definition`. `Lit`/`Numeral` → `Lit(Constant)`. `RecordType`/`Record`/`Project` stay for now — 157 moves them, and
+moving them here would need families, which do not exist yet. `Indexed` stays for now — 151 deletes it, separately,
 because that deletion has an argument attached and this one must not. `Hole` → `Meta`. `Var`/`App`/`Universe` unchanged.
 
 **Why `Bind` saves nothing and is still right.** Three constructors become one plus a three-way tag: no net saving in
@@ -66,7 +66,7 @@ surface; `MetaSource` already exists in the crate, so the codebase had agreed an
 name; `DbIndex` is rejected — the `Db` reads as *database*, and the pair `Index`/`Level` already says which side of the
 index/level duality each is on. `DbLevel` and `Depth` merge into one `Level`: they are a position and a count into the
 same environment, and carrying both invites using one where the other is meant. `Sort` takes the universe word so
-`Level` means one thing; 151 gives `Sort` its contents.
+`Level` means one thing; 152 gives `Sort` its contents.
 
 **`Constant` keeps its two arms and the reason is a rule, not taste.** Two rules depend on the split: §3 compares a
 numeral *as a number*, and ι decrements on a numeral, which is what lets `Nat`'s eliminator fire without unfolding a
@@ -75,7 +75,7 @@ tower of `Succ`.
 ## Target
 
 - `crates/musa-calculus/src/term.rs`: the seven, the three binders, `Filling`, `Role`, `Constant`, `Index`, `Level`,
-  `Sort` (two-point, unchanged in behaviour until 151), and `Definition`/`CaseTree`.
+  `Sort` (two-point, unchanged in behaviour until 152), and `Definition`/`CaseTree`.
 - `crates/musa-calculus/src/{value,eval,quote,convert,elab/}`: the traversals, rewritten against the new shape.
 - `crates/musa-calculus/src/base.rs`: `BaseDeclaration` becomes a `Definition::Base`, reached through the context.
 - No change to `crates/musa-compiler` beyond what `raw.rs` lowering requires; the facade does not move.
@@ -101,6 +101,6 @@ Commit as `Collapse the term language to seven constructors`.
 
 ## Stop
 
-- No `Indexed` deletion (150), no records-as-data (156), no case trees beyond the stub (154), no metavariable solving
-  (152), no universe change (151).
+- No `Indexed` deletion (151), no records-as-data (157), no case trees beyond the stub (155), no metavariable solving
+  (153), no universe change (152).
 - No new diagnostics. Wording repairs only where a renamed type appears in a message.

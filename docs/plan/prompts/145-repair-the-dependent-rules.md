@@ -37,7 +37,7 @@ word is required and why — an acceptance rule conversion cannot see is the thi
 
 **`01-surface.md` gains three things and loses one.** Gains: index syntax in `data`, writable implicit binders, and the
 statement that `record` and `enum` are sugar. Loses: `signature`/`structure`/`template structure`/`make`, which prompt
-162 deletes — marked *deprecated, owned by 161* here rather than removed, so the corpus still validates against this
+162 deletes — marked *deprecated, owned by 162* here rather than removed, so the corpus still validates against this
 document until that prompt runs.
 
 **`10-traits.md` is retired, not succeeded.** The counter-argument to answer is that retiring it loses the coherence
@@ -47,14 +47,14 @@ comes first — and that becomes a style-guide line about record field order, no
 
 **Record η loses its only client.** `10-traits.md` stated coherence as "unique up to conversion… decided by η at
 `quote`". That sentence is the sole reason record η is required by anything. Note its removal explicitly, because prompt
-157 depends on it and a reader who does not know this will think 156 is unsound.
+157 depends on it and a reader who does not know this will think 157 is unsound.
 
 ## Target
 
 - `docs/rules/language/11-quotation.md`: §1 rewritten around `Syntax : Cat -> Type`; the forgetting rule restated as a
   function; the refusal paragraph removed with a pointer to 143.
 - `docs/rules/language/01-surface.md`: indices, implicit binders, `record`/`enum` as sugar, module layer marked
-  deprecated-and-owned-by-161.
+  deprecated-and-owned-by-162.
 - `docs/rules/language/10-traits.md`: replaced by a short banner naming 143 and 146, kept so the links resolve.
 - `docs/rules/language/README.md` and `docs/README.md`: the precedence ladder and the document list, minus traits.
 - `docs/rules/style-guide.md`: the carrier-first line, as a naming rule.

@@ -40,7 +40,7 @@ that system on measured evidence. `Filling` has two arms and gains no third.
 
 **The stdlib is the measurement.** After this prompt, the level parameters prompt 152 generalizes are *inferred* at
 every use site rather than written. If they are not, inference is not working and the prompt is not done — that is a
-sharper check than any synthetic test, and it is why 151 comes first.
+sharper check than any synthetic test, and it is why 152 comes first.
 
 ## Target
 

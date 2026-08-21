@@ -80,4 +80,4 @@ Commit as `Make Syntax a family and delete the coercion rule`.
 
 - No general coercion mechanism, declared or otherwise. Prompt 143 refused it and this prompt is the reason it can be
   refused without cost.
-- No macro rework — 159.
+- No macro rework — 160.
