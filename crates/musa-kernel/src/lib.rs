@@ -36,7 +36,7 @@ mod text;
 mod time;
 mod track;
 
-pub use crate::editor::{TokenClass, bindings, classify, keyword_doc};
+pub use crate::editor::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
 pub use crate::error::KernelError;
 pub use crate::hash::{SemanticHash, stable_digest};
 pub use crate::occurrence::{Canonical, Occurrence};

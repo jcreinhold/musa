@@ -86,8 +86,7 @@ pub use musa_compiler::{KernelTokenClass, kernel_bindings, kernel_classify, kern
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};
 pub use musa_render::MidiMode;
 pub use musa_score::{
-    AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation,
+    AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, ChoicePath, ChoiceStep, ClaimDoc, Decision,
+    DecisionRecord, Key, Mode, MusicalTime, Realization, Segmentation, assertion_claims, chord_types,
+    realization_policies, rule_names, scale_collections,
 };
-pub use musa_score::{ChoicePath, ChoiceStep, Decision, DecisionRecord, Realization};
-pub use musa_score::{ClaimDoc, assertion_claims, realization_policies, rule_names};
-pub use musa_score::{chord_types, scale_collections};

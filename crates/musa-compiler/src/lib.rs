@@ -94,14 +94,13 @@ pub use crate::kernel_text::{
 };
 /// Kernel text as an editor sees it, re-exported so a language server can
 /// colour and outline a kernel document without a second copy of the grammar
-/// and without depending on `musa-kernel` itself. Renamed on the way through
-/// because a shell holds this beside `musa-language`'s classification of
-/// surface text, and two things called `TokenClass` in one file is one too
-/// many.
-pub use musa_kernel::{
-    TokenClass as KernelTokenClass, bindings as kernel_bindings, classify as kernel_classify,
-    keyword_doc as kernel_keyword_doc,
-};
+/// and without depending on `musa-kernel` itself.
+///
+/// The names carry `kernel` because a shell holds these beside
+/// `musa-language`'s classification of *surface* text. Two classifiers over
+/// two grammars are two things, and the unqualified word belongs to the
+/// language a composer actually writes.
+pub use musa_kernel::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
 
 pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};

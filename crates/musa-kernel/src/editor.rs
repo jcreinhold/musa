@@ -46,7 +46,7 @@ const KEYWORDS: [&str; 14] = [
 /// distinguish, no lifetimes, no attributes, and one comment form. A class
 /// per *visual* decision is what an editor can actually use.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TokenClass {
+pub enum KernelTokenClass {
     /// A `%` line — the header, and every note under it.
     Comment,
     /// A word the grammar reserves.
@@ -65,11 +65,11 @@ pub enum TokenClass {
 
 /// Classify every non-whitespace span of `text`, in order.
 ///
-/// Total: unrecognized bytes come back as [`TokenClass::Punctuation`] one at a
+/// Total: unrecognized bytes come back as [`KernelTokenClass::Punctuation`] one at a
 /// time rather than being skipped, so the spans a caller receives tile the
 /// document apart from its whitespace. Whitespace itself is not reported —
 /// nobody colours it, and reporting it would double the traffic to say so.
-pub fn classify(text: &str) -> Vec<(Range<usize>, TokenClass)> {
+pub fn kernel_classify(text: &str) -> Vec<(Range<usize>, KernelTokenClass)> {
     let mut out = Vec::new();
     let mut at = 0;
     // The coordinate and payload type follow `EventTrack` and `[`, and are the
@@ -87,16 +87,19 @@ pub fn classify(text: &str) -> Vec<(Range<usize>, TokenClass)> {
             continue;
         }
         let (length, class) = match character {
-            '%' => (rest.find('\n').unwrap_or(rest.len()), TokenClass::Comment),
-            '"' => (string_length(rest), TokenClass::Text),
-            '0'..='9' => (span_of(rest, |c| c.is_ascii_digit() || c == '/'), TokenClass::Number),
+            '%' => (rest.find('\n').unwrap_or(rest.len()), KernelTokenClass::Comment),
+            '"' => (string_length(rest), KernelTokenClass::Text),
+            '0'..='9' => (
+                span_of(rest, |c| c.is_ascii_digit() || c == '/'),
+                KernelTokenClass::Number,
+            ),
             '-' if rest
                 .get(1..2)
                 .is_some_and(|next| next.starts_with(|c: char| c.is_ascii_digit())) =>
             {
                 (
                     span_of(rest, |c| c.is_ascii_digit() || c == '/' || c == '-'),
-                    TokenClass::Number,
+                    KernelTokenClass::Number,
                 )
             }
             c if c.is_alphabetic() || c == '_' => {
@@ -107,21 +110,21 @@ pub fn classify(text: &str) -> Vec<(Range<usize>, TokenClass)> {
                 // three words, and the last one is whatever the payload calls
                 // itself.
                 let class = if word == "EventTrack" || after_event_track {
-                    TokenClass::Type
+                    KernelTokenClass::Type
                 } else if KEYWORDS.contains(&word) {
-                    TokenClass::Keyword
+                    KernelTokenClass::Keyword
                 } else {
-                    TokenClass::Name
+                    KernelTokenClass::Name
                 };
                 after_event_track = word == "EventTrack";
                 (length, class)
             }
-            _ => (character.len_utf8(), TokenClass::Punctuation),
+            _ => (character.len_utf8(), KernelTokenClass::Punctuation),
         };
         // `[` and the `,` between the two arguments keep the flag alive;
         // anything else ends it, so a stray `EventTrack` on its own line does
         // not retype the next word in the file.
-        if !matches!(class, TokenClass::Type) && character != '[' && character != ',' {
+        if !matches!(class, KernelTokenClass::Type) && character != '[' && character != ',' {
             after_event_track = false;
         }
         let length = length.max(1);
@@ -164,14 +167,14 @@ fn string_length(rest: &str) -> usize {
 /// *to*. `follow` and `together` blocks are structure too, but anonymous
 /// structure, and an outline entry with no name is a row that says nothing.
 ///
-/// Built on [`classify`] rather than on the parser, for the reason the module
+/// Built on [`kernel_classify`] rather than on the parser, for the reason the module
 /// gives: an outline that vanished while a file was mid-edit would be an
 /// outline nobody could use to navigate the edit.
-pub fn bindings(text: &str) -> Vec<(Range<usize>, String)> {
-    let tokens = classify(text);
+pub fn kernel_bindings(text: &str) -> Vec<(Range<usize>, String)> {
+    let tokens = kernel_classify(text);
     let mut out = Vec::new();
     for pair in tokens.windows(2) {
-        let [(keyword, TokenClass::Keyword), (name, TokenClass::Name)] = pair else {
+        let [(keyword, KernelTokenClass::Keyword), (name, KernelTokenClass::Name)] = pair else {
             continue;
         };
         if text.get(keyword.clone()) == Some("let")
@@ -190,7 +193,7 @@ pub fn bindings(text: &str) -> Vec<(Range<usize>, String)> {
 /// tried to be the reference would be a hover nobody finishes reading. The
 /// sentences say what the construct *denotes*, because that is the question a
 /// reader of interchange text actually has.
-pub fn keyword_doc(word: &str) -> Option<&'static str> {
+pub fn kernel_keyword_doc(word: &str) -> Option<&'static str> {
     Some(match word {
         "kernel" => "Opens the file and names the work it projects.",
         "composition" => "The file's one composition, and the type of event track it denotes.",
