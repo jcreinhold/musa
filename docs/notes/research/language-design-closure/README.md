@@ -209,6 +209,32 @@ ship.
     diagnostics are reported rather than handed back — two decisions that belong to a prompt whose Task is the import
     contract.
 
+49. [49-simplifying-the-core-and-elaborator.md](49-simplifying-the-core-and-elaborator.md) is the removal inventory
+    written on the directive that the core and elaborator had grown past what Musa needs. It is note 50's raw material.
+
+50. [50-the-course-correction-audit.md](50-the-course-correction-audit.md) is the course correction itself: every
+    mechanism of the core named against the committed Musa program that requires it, a seven-phase plan, and the record
+    that superseded prompts 143–149. Its deletions of the identity type, universe polymorphism, postponed constraints,
+    general measures, constraint-based traits, and the old `core.rs` checker stand. Phases 0, 1, and 3 landed; the
+    compiler shed 32,482 lines.
+
+51. [51-the-terseness-audit.md](51-the-terseness-audit.md) audits note 50 against the goal note 50 was serving. Note
+    50's rule tested *smallest* and nothing tested *practical*, *ergonomic*, or *useful*, and the number the
+    constitution named as the falsifier has not moved — the staff adapter is 2,515 lines against the 2,404 the amendment
+    was granted on. Three decisions are named as missteps: deleting indices, whose cost the corpus is paying as 17
+    builtins hardcoded to one modulus and a `fallback` parameter in a public signature; deleting the elaboration order
+    that makes un-annotated lambdas work, where Idris2's `checkRtoL` is the bounded fix and Musa already holds both of
+    its predicates; and refusing partial application, which forbids naming T₃. The replacement for indexed families is a
+    stratified Dependent ML index domain where index equality is decided by arithmetic and never by unification — the
+    decomplecting move deletion was not. §8 answers `docs/rules/README.md`'s six requirements.
+
+52. [52-the-musical-algebra.md](52-the-musical-algebra.md) is the other half: the five structures a Musa author should
+    be able to name — torsor, group action, orbit and stabilizer, quotient with a chosen section, and the free
+    construction — each exhibited with the workaround the standard library writes instead. It records that a pitch-class
+    set and a bell pattern are one object, so an indexed `Cyclic(n)` serves twelve-tone theory, 24-EDO, and West African
+    rhythm at once; and that laws over a finite indexed carrier are decidable **by enumeration**, which is how Musa gets
+    rigorously checked algebraic structure with no proof machinery and no identity type.
+
 The proof gate failed for the design notes 19–41 pursued, and nothing in *those* notes moved to `docs/rules/` or into
 implementation prompts. Note 42 is the exception and says why: it is an amendment taken under
 [`docs/rules/README.md`](../../../rules/README.md)'s procedure, on engineering evidence those notes did not weigh, and

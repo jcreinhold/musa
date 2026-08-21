@@ -1,13 +1,16 @@
 ---
 id: 144
 slug: diagnostics-and-performance
-status: superseded
+status: pending
 depends_on: [143]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> Its budgets are re-derived after the excision; the tonal and pressure classes belong to the simplified core.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** The budgets are re-derived after the
+> excision of 142b and the index of 142d, and the diagnostics now include two failures this prompt did not know about:
+> an index the solver refuses, and a law enumeration that crosses the budget. Neither may be reported in the solver's
+> vocabulary.
 
 # Make the New Failures Legible and the New Checker Fast Enough
 

@@ -1,13 +1,17 @@
 ---
 id: 145
 slug: staff-rewrite
-status: superseded
-depends_on: [142]
+status: pending
+depends_on: [143]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> Its staff rewrite is phase 5, run as the benchmark of the simplified language rather than as a defense of the old one.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** This is still the acceptance gate,
+> and it is now the gate for the correction *and* its correction: the constitution's amendment record says the pass is
+> answerable to this number, and the number has moved the wrong way — 2,404 lines when the amendment was granted, 2,515
+> today. The rewrite runs on the language of 142a–142e, and if it is not dramatically shorter, note 51's diagnosis is
+> wrong.
 
 # Rewrite the Staff Adapter, and Find Out Whether Any of This Worked
 

@@ -1,13 +1,16 @@
 ---
 id: 149
 slug: language-pass-closure
-status: superseded
+status: pending
 depends_on: [148]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> The pass this prompt closed has been replaced; closure is the correction's final report.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** Closure now covers both the pass and
+> its correction, and owes the report note 50's phase 6 asked for: before/after line counts, deleted and surviving
+> mechanisms, both algorithms in full, staff.musa's size, staff-page's compile cost, and every mechanism that could
+> **not** be removed named with the committed program that proves it necessary.
 
 # Close the Language Pass and Repair What It Left Behind
 

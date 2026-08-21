@@ -1,13 +1,16 @@
 ---
 id: 148
 slug: core-conformance
-status: superseded
+status: pending
 depends_on: [147]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> Conformance is stated against the surviving calculus, not the dependent one.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** Conformance is stated against the
+> surviving calculus — the small core of note 50 plus the index stratum of 142d — and not against the dependent core
+> prompt 129 specified. Rows of the old matrix whose mechanism is deleted are struck with the note that deleted them,
+> not marked green.
 
 # Discharge the Core's Obligation Matrix
 

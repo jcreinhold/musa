@@ -1,13 +1,15 @@
 ---
 id: 147
 slug: adapter-freeze
-status: superseded
+status: pending
 depends_on: [146]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> The adapter freeze lands on the simplified phase interface instead.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** The freeze lands on the phase
+> interface as 142a–142e leave it. Sections and the two-pass spine are part of what is frozen; the index is not, because
+> no adapter indexes anything.
 
 # Freeze the Adapter Rules and Carry Them Through Hostile Review
 

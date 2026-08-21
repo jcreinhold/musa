@@ -1,13 +1,16 @@
 ---
 id: 143
 slug: builtin-collapse
-status: superseded
-depends_on: [145]
+status: pending
+depends_on: [142e]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> Its builtin collapse is phase 3's retarget of the registry onto the surviving core.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** Note 50 superseded this prompt on
+> the reasoning that the collapse was its phase 3. The collapse survives, with a larger target: the seventeen builtins
+> hardcoded to the modulus 12 (`pc12_*`, `row12_*`) collapse onto the index of 142d, and the operations onto the traits
+> of 142e. That is 12% of a 139-entry registry, and it is the count note 51 §3 uses as the evidence for the index.
 
 # Collapse the Builtin Registry Behind Traits and Namespaces
 

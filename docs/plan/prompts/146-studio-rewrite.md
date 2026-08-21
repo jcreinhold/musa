@@ -1,13 +1,15 @@
 ---
 id: 146
 slug: studio-rewrite
-status: superseded
+status: pending
 depends_on: [145]
 phase: 3
 ---
 
-> Superseded by the course correction: `docs/notes/research/language-design-closure/50-the-course-correction-audit.md`.
-> The studio rewrite follows the staff adapter's, on the simplified language.
+> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** The second adapter, on the language
+> of 142a–142e. Its generality claim is now sharper: the two adapters must differ in every musical row and in no
+> compiler-facing row, and neither may need a builtin the other does not.
 
 # Write the Studio Adapter as an Unprivileged Package on the New Language
 

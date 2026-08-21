@@ -325,6 +325,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 141t | nested-occurrences | 3 | A family may hold a list of itself |
 | 141u | glued-evaluation | 3 | A definition stays folded until something needs it open |
 | 142 | surface-cutover | 3 | Move the whole language over, once |
+| 142a | argument-order-and-sections | 3 | Reorder the argument spine; let a section be written |
+| 142b | finish-the-excision | 3 | Finish note 50's phase 2 and repair the prose it falsified |
+| 142c | index-amendment | 3 | Amend for a stratified index, and specify it before any code |
+| 142d | index-stratum | 3 | A separate index language with a separate decider |
+| 142e | algebra-and-laws | 3 | Torsor, group, action, and laws checked by exhaustion |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
@@ -620,13 +625,13 @@ machine one exact next step. 151 makes the time-to-frame policy explicit. 152 ma
 meaning of audio and treats host blocks only as checked batching. 153 proves and audits the complete path before any
 later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
-**128–149 rebuild the surface language on a dependent core, and 150–153 wait for them.** The staff adapter is the
-evidence: 2,404 lines of Musa for a notation reader, most of it compensating for a language that cannot build a list,
-name a field, or say what a piece of syntax is. 128 amends the constitution and obligations to admit that evidence,
-keeping totality and widening it to a checked well-founded measure — Musa is almost entirely a compile-time language, so
-divergence is a compiler hang, and a dependent checker is an evaluator. 129 specifies the core: universes, Π, dependent
-records, inductive families, an identity type, conversion by normalization-by-evaluation, and bidirectional elaboration
-with metavariables. 130 says what an author types — records with nested update, namespaced enums, coherent
+**128–142 rebuilt the surface language on a dependent core, and 150–153 wait for what follows.** The staff adapter is
+the evidence: 2,404 lines of Musa for a notation reader, most of it compensating for a language that cannot build a
+list, name a field, or say what a piece of syntax is. 128 amends the constitution and obligations to admit that
+evidence, keeping totality and widening it to a checked well-founded measure — Musa is almost entirely a compile-time
+language, so divergence is a compiler hang, and a dependent checker is an evaluator. 129 specifies the core: universes,
+Π, dependent records, inductive families, an identity type, conversion by normalization-by-evaluation, and bidirectional
+elaboration with metavariables. 130 says what an author types — records with nested update, namespaced enums, coherent
 dictionary-elaborated traits with no search, operators and methods under exact-receiver lookup. 131 adds `Syntax<Cat>`,
 `quote at here { … }` with splicing, provenance the elaborator computes rather than the author allocating by hand, and
 the inverse pattern form. 132 then trials all of it on paper against ten complete programs before a line is implemented.
@@ -635,10 +640,23 @@ unifies an index, that seven of the fourteen phase operations go rather than onl
 dispatch table has a third half no type system removes. It predicts the staff rewrite at 2,050 ± 100 lines, argues that
 the line count measures the file rather than the language, and proposes a table of counts in its place. It also finds
 the one gap the pass did not cover — a package cannot hide a constructor, so an invariant maintained by a smart
-constructor is decoration — which is 136a. Ranks 133–149 carry the implementation — the core crate, elaboration,
-families, records and enums, visibility, traits, typed syntax, quotation and patterns, collections, one surface cutover
-rather than two, the builtin collapse, the staff and studio rewrites, and the conformance audit — and each is written
-when the prompt before it has made its design real.
+constructor is decoration — which is 136a. Ranks 133–142 carried the implementation — the core crate, elaboration,
+families, records and enums, visibility, traits, typed syntax, quotation and patterns, collections, and one surface
+cutover rather than two.
+
+**Then the course correction, and its own correction, changed what 143–149 are for.** Note 50 audited every mechanism of
+that core against the committed Musa program requiring it, found no user of the identity type, universe polymorphism,
+indexed families, postponed constraints, general measures, or constraint-based traits, and deleted them; the compiler
+shed 32,482 lines and the old `core.rs` checker with them. Notes 51 and 52 then audited *that*, because the rule tested
+only *smallest* and the number the constitution named as the falsifier had moved the wrong way — the staff adapter is
+2,515 lines against the 2,404 the amendment was granted on. Three decisions are named as missteps: deleting indices,
+which the corpus pays for as seventeen builtins hardcoded to one modulus and a `fallback` parameter in a public
+signature; deleting the elaboration order that makes un-annotated lambdas work; and refusing partial application, which
+forbids naming T₃, the first object of post-tonal theory. **142a–142e are that correction** — the two-pass spine and
+written sections, the finished excision, and a stratified Dependent ML index whose equality is decided by arithmetic and
+never by unification, with torsors, group actions, and laws checked by enumeration over the finite carriers an index
+makes knowable. 143–149 survive with their tasks intact and their targets enlarged: the builtin collapse now has the
+seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
 **154–160 build musical sound on that core.** 154 makes the primitive vocabulary discoverable from one catalogue; 155
 keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 156 defines
