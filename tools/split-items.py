@@ -130,8 +130,21 @@ def main() -> None:
         if cls is not None:
             kind, name = cls
             s = i
-            while s > 0 and (re.match(r"^\s*///|^\s*//!|^#\[", lines[s - 1])):
-                s -= 1
+            # Walk back over doc comments and attributes. A multi-line
+            # attribute (`#[expect(\n    lint,\n    reason = "…",\n)]`) ends
+            # at `)]`, so from that line keep walking to the `#[` that opened
+            # it — otherwise the attribute is left behind and dropped.
+            while s > 0:
+                above = lines[s - 1]
+                if re.match(r"^\s*///|^\s*//!|^#\[", above):
+                    s -= 1
+                elif above.rstrip().endswith(")]"):
+                    s -= 1
+                    while s > 0 and not lines[s - 1].startswith("#["):
+                        s -= 1
+                    s -= 1
+                else:
+                    break
             # balanced end: brace depth for struct/enum/fn/impl bodies, plus
             # square-bracket depth for `const NAME: [..] = [ ... ];` table
             # items, whose rows return to brace depth 0 at every entry's `},`.
