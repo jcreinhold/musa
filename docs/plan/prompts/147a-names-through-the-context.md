@@ -48,24 +48,39 @@ enum Role { Function, Constructor, TypeConstructor, Recursor(Sort) }
 /// What the *context* answers about a name.
 enum Definition {
     Undeclared,
-    Defined { ty: Value, value: Value },   // 155 replaces this with Compiled(CaseTree)
-    Constructor { group: Arc<Group>, family: u32, which: u32 },
-    TypeConstructor { group: Arc<Group>, family: u32 },
-    Base(Arc<BaseDeclaration>),
-    Builtin(Builtin),
+    Defined(program::Def),        // 155 replaces this with Compiled(CaseTree)
+    Declared(family::Constant),   // a family, a constructor, or a recursor
+    Base(base::Base),
+    Builtin(base::Builtin),
 }
 ```
 
+`Role::Function` covers a top-level definition and a builtin, `TypeConstructor` covers a declared family and a
+registered base type, and which of the two a name is is the context's answer rather than the term's. That is the split
+this prompt is for: a term says *what kind of thing the elaborator resolved this name to*, which is what a reader of the
+term needs; the context says *what it reduces to*, which is what only a reducer needs.
+
 **`Role` has four arms and the fourth is not optional.** §1.3 has no universe polymorphism, so a recursor takes its
 motive universe per use site: `case.rs`'s `motive_level` mints `Nat.elim` at `Type 1` whenever a `match` computes a
-type, and `family::Constant`'s equality already says two eliminations into different universes are two terms. A three-
-arm `Role` would make them one term and move acceptance. Prompt 152 makes recursors level-polymorphic and the level an
-argument; when it lands, this arm loses its payload. Until then the universe is part of *which name this is*, which is a
-term fact and not a context fact — so carrying it here is the boundary holding, not leaking.
+type, and `family::Constant`'s equality already says two eliminations into different universes are two terms. A
+three-arm `Role` would make them one term and move acceptance. Prompt 152 makes recursors level-polymorphic and the
+level an argument; when it lands, this arm loses its payload. Until then the universe is part of *which name this is*,
+which is a term fact and not a context fact — so carrying it here is the boundary holding, not leaking.
 
-**`Definition::Defined` is a placeholder with a date on it.** A definition today is an elaborated value and its type
-(`crate::program::Defined`), not a compiled case tree; case trees are prompt 155's and are not stubbed into existence
-here. 155 replaces this arm with `Compiled(CaseTree)` and nothing else in the enum moves.
+**`Definition` has five arms, not the six the split-out sketch named.** Two corrections, both from the code:
+
+- `Compiled(CaseTree)` cannot hold what a definition holds today, which is an elaborated value and its type
+  (`crate::program::Defined`). Case trees are prompt 155's and are not stubbed into existence here, so the arm is
+  `Defined(program::Def)` and 155 replaces it.
+- `Constructor`, `TypeConstructor`, and the recursor the sketch forgot are one arm, because one lookup already answers
+  all three: `Cx::declared` returns a `family::Found`, and `Found::at(sort)` turns it into the `family::Constant` that
+  every reduction rule in `family/` already takes. Three arms re-spelling that constant's three roles would be a second
+  copy of `Role` free to disagree with the first.
+
+`Globals::definition(name, role)` is the one lookup, and the three `Cx` already has — `declared`, `definition`,
+`extern_named` — are its three cases, in that order. The order is the shadowing rule `elab/name.rs` states today: a
+declaration always shadows a base type or a builtin of the same spelling, because a registry that won would let the host
+silently redefine a name in a program it never read.
 
 **How the table reaches reduction, and why it is the environment.** Resolving a name at reduction time needs a table at
 `eval`, and therefore at `apply`, and therefore at every closure `quote` and `convert` force. Threading a parameter
@@ -74,25 +89,47 @@ under a table other than the one it was built under.
 
 The environment is where it goes. `Env` is already handed to `eval` beside the term and is already captured by every
 `Closure`, so a closure applied later resolves against the table it was *built* under, which is the only table that can
-be right. `eval`, `apply_closure`, `quote`, and `convert` keep their signatures; `Cx` hands its declarations,
-definitions, and registry to the `Env` it evaluates in, and `Env::EMPTY` is the empty table — the context that declares
-nothing, which is what every test written before this rule existed already had.
+be right. `eval`, `apply_closure`, `quote`, and `convert` keep their signatures.
+
+```rust
+struct Env { locals: List<Value>, globals: Globals }
+struct Globals(Option<Arc<Tables>>);   // declared groups, definitions, host registry
+```
+
+`Env` stops being an alias for `List<Value>` and becomes the pair. `Globals` is one `Arc` behind an `Option` so that a
+clone is one refcount bump and the empty table is a null check rather than an allocation — a context is cloned per
+binder and an environment per closure, while the table changes once per declaration. `Cx` holds one `Globals` in place
+of its three fields and hands it to the environment it evaluates in.
 
 This is the answer to `family::Constant`'s doc comment, which argues the opposite: it says holding the group in the term
 is what avoids "a parameter on `eval`, `quote`, `apply`, and `Cx` alike". That was true and it is not the trade here —
 the table rides in a parameter all four already take.
 
+**The rigid heads carry the globals their own types are written in.** `crate::eval::neutral_type` answers a head's type
+with no context to ask, and it answers three of them by *evaluating a declaration term*: a base's kind, a builtin's
+signature, a constant's telescope. Those terms are closed in locals and not in names, so `Env::EMPTY` stops being an
+environment they can be read in. `Head::Const`, `Head::Base`, and `Head::Builtin` therefore carry the `Globals` they
+were resolved under, exactly as `Head::Var` and `Head::Def` already carry the types *they* would otherwise have to
+recompute. Globals are not part of a head's identity and conversion does not compare them. `Head::Var`, `Head::Def`, and
+`Head::Meta` are unchanged.
+
+Storing the evaluated type instead was rejected: a constant's type is built and evaluated per occurrence today only
+because `neutral_type` is rarely asked, and making it eager at every name in every term would pay for a question almost
+no occurrence asks.
+
 **A name that the context does not declare.** Today a term is self-contained and evaluates anywhere; after this, a term
-evaluated under a context that does not declare its name has no definition to find. That is `Definition:: Undeclared`,
-and it is a refusal at the point of use with the name in it — never a silent resolution to a different declaration of
-the same spelling, which is the one way this change could move acceptance without a test noticing.
+evaluated under a context that does not declare its name has no definition to find. That is `Definition::Undeclared`,
+and it is a `Malformed` refusal carrying the name — the kernel's "this term was built wrong", which it is, since the
+elaborator resolved the name once already. Never a silent resolution to a different declaration of the same spelling,
+which is the one way this change could move acceptance without a test noticing.
 
 ## Target
 
 - `crates/musa-calculus/src/term.rs`: `Named`, `Role`, and `Definition`; `Const`, `Def`, `Base`, and `Builtin` gone.
-- `crates/musa-calculus/src/value.rs`: `Env` carries the definition table; `Head` keeps the resolved declaration, which
-  is a value fact and was never the problem.
-- `crates/musa-calculus/src/context.rs`: `Cx` builds the table it evaluates under; one lookup, `Definition` by `Name`.
+- `crates/musa-calculus/src/value.rs`: `Env` becomes locals plus `Globals`; `Head` keeps the resolved declaration, which
+  is a value fact and was never the problem, and the three rigid heads carry the table their types are read in.
+- `crates/musa-calculus/src/context.rs`: `Globals`, and `Cx` holding one in place of its three fields; one lookup,
+  `Definition` by `Name` and `Role`.
 - `crates/musa-calculus/src/{eval,quote,convert,show,elab/,family/,base.rs,program.rs}`: read the definition through the
   context instead of out of the term.
 - `crates/musa-compiler`: only what the removed variants require. The facade does not move.
