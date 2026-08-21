@@ -98,7 +98,7 @@ pub struct OriginFacts {
 /// motif application or a transform block and the row's only control was
 /// "select what this produced". The elaboration language made steps into
 /// *places*: a template instance is written at a `make`, an assertion at its
-/// `assert`, a kernel quotation at the splice that put the material there,
+/// `assert`, an event track quotation at the splice that put the material there,
 /// and a composer following provenance wants to open each one. A segment
 /// therefore carries where it is written, and what kind of thing it is, so
 /// the interface can word and style it without reading the label back.
@@ -140,7 +140,7 @@ pub enum StepKind {
     /// assertion produces no music, which is exactly why it is worth saying
     /// that it covered this passage.
     Assertion,
-    /// The material entered through a kernel quotation, at this locus in the
+    /// The material entered through an event track quotation, at this locus in the
     /// quoted term's own time.
     Splice,
     /// A `with` clause respelled this note of its occurrence.
@@ -679,7 +679,7 @@ fn occurrence_facts(
         | ExpansionStep::TemplateInstance { .. }
         | ExpansionStep::Assertion { .. }
         | ExpansionStep::Specialization { .. }
-        | ExpansionStep::KernelSplice { .. } => None,
+        | ExpansionStep::EventsSplice { .. } => None,
     });
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
     let declaration = motif.as_ref().and_then(|name| {
@@ -886,7 +886,7 @@ fn step(step: &ExpansionStep, source: &str) -> StepFact {
         // The locus, not the quote: a reader following a spliced note back
         // wants to know where in the assembled term it was put. The locus is
         // a *time*, not a place in the text, so there is nothing to open.
-        ExpansionStep::KernelSplice { at: locus } => StepFact {
+        ExpansionStep::EventsSplice { at: locus } => StepFact {
             label: format!("splice at {}/{}", locus.numer(), locus.denom()),
             kind: StepKind::Splice,
             span: None,

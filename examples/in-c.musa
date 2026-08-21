@@ -8,7 +8,7 @@
 // Each figure is `repeat n to m { … }`, so its path is `figure_seven ▸ #0` —
 // named by the fragment it sits in, not by its position in the voice. Adding a
 // fifty-fourth figure therefore re-rolls nothing
-// (`docs/rules/kernel/11-realization.md`).
+// (`docs/rules/events/11-realization.md`).
 //
 //     musa check examples/in-c.musa --seed 42
 //

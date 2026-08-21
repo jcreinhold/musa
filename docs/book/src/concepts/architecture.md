@@ -11,8 +11,8 @@ Dependencies point one way only. No dependency points upward.
 | Crate | What it owns |
 | --- | --- |
 | `musa-syntax` | Tokens, parser, a lossless syntax tree, formatting, text edits |
-| `musa-kernel` | The temporal kernel: exact rational time, typed occurrences, track/follow/together |
-| `musa-compiler` | Name resolution, units, elaboration through the kernel, score and performance snapshots |
+| `musa-events` | The event-track: exact rational time, typed occurrences, track/follow/together |
+| `musa-compiler` | Name resolution, units, elaboration through the event track, score and performance snapshots |
 | `musa-notation` | The engraving plan; MEI, LilyPond, MusicXML, and MIDI export |
 | `musa-dsp` | The studio graph, DSP processors, offline rendering |
 | `musa-playback` | The audio device, transport, real-time queues, MIDI input |
@@ -39,5 +39,5 @@ The audio callback never allocates, locks, does I/O, logs, or destroys large obj
 the control side and cross the boundary on lock-free queues. This is why the studio can compile a new graph while the
 old one keeps playing.
 
-The design documents in the repository — `docs/plan/roadmap.md`, `docs/rules/kernel/`, and `docs/rules/` — give the
+The design documents in the repository — `docs/plan/roadmap.md`, `docs/rules/events/`, and `docs/rules/` — give the
 reasoning behind each boundary.

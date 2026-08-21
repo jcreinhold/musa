@@ -23,7 +23,7 @@ Polymeter has evidence: Balkan and Bulgarian folk ensembles play 7/8 against 4/4
 pieces are built on it, and Afro-Cuban and West African ensemble music is layered by construction. It also has consumers
 — MEI, MusicXML and LilyPond all express it.
 
-**Polytempo does not.** It is not in `docs/rules/kernel/08-open-questions.md`'s falsification corpus, no fixture needs
+**Polytempo does not.** It is not in `docs/rules/events/08-open-questions.md`'s falsification corpus, no fixture needs
 it, and its export story is bad. Under §34 the burden is semantic necessity, so before any code:
 
 1. Name a real piece in this prompt's Task section that musa should be able to write and cannot without it — Nancarrow's
@@ -43,7 +43,7 @@ applying.
 begins fast and decelerates, and they cross in the middle. It is the shape the study is named after, and it is not
 writable with one clock — a *rit.* over everything is a different piece, and there is no tuplet, no metric modulation
 and no meter that produces it. Ives's *Fourth Symphony* II is the ensemble version of the same fact: it is scored for
-two conductors because one is not enough. Added to `docs/rules/kernel/08-open-questions.md` as item 11, and written as
+two conductors because one is not enough. Added to `docs/rules/events/08-open-questions.md` as item 11, and written as
 `examples/canon-x.musa`.
 
 **2. The consumers, and what each does differently.** Three, of which two are outside musa:
@@ -56,7 +56,7 @@ two conductors because one is not enough. Added to `docs/rules/kernel/08-open-qu
 
 **3. What it cost, which is the honest part.** SMF has one tempo track and no scope, so the MIDI export resolves every
 lane against its own map, writes every note at the frame it actually sounds, and states the piece's tempo. Sonically
-exact and notationally wrong, reported as an export warning and written into `docs/rules/kernel/07-backend-contract.md`
+exact and notationally wrong, reported as an export warning and written into `docs/rules/events/07-backend-contract.md`
 rather than left to be discovered.
 
 The gate passed on the strength of the second criterion more than the first. A capability with a real piece behind it
@@ -72,7 +72,7 @@ hand to another program rather than something only musa knows.
 - `crates/musa-notation/src/plan.rs::plan_staff` (:820) — the measure walk, which assumes one barline grid.
 - `crates/musa-playback/src/playback.rs` (:90) — the frame merge. Read it before worrying about polytempo's engine cost;
   the news is good (see below).
-- `docs/rules/kernel/08-open-questions.md` and §34.
+- `docs/rules/events/08-open-questions.md` and §34.
 
 ## Design
 
@@ -122,7 +122,7 @@ is the exact move the gate exists to prevent.
 - `crates/musa-notation/src/plan.rs`: per-staff barline grids; per-staff beaming.
 - `crates/musa-project/src/midi.rs`: the single-tempo-track resolution and its warning.
 - `docs/rules/desktop/`: non-aligned barlines within a system.
-- `docs/rules/kernel/08-open-questions.md`: the polymeter rows proven; the polytempo row added or the decline recorded.
+- `docs/rules/events/08-open-questions.md`: the polymeter rows proven; the polytempo row added or the decline recorded.
 - `examples/`: `bulgarian.musa` (7/8 against 4/4), `hemiola.musa` (6/8 against 3/4 — see repair 9). Polytempo's fixture
   only if the gate passes: `canon-x.musa`.
 

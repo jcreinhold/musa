@@ -1,7 +1,7 @@
 # Candidate F — fibred over metrical context
 
 **Source.** `~/Code/papers/category-theory/grothendieck-method/process.md` for the test;
-`docs/rules/kernel/04-algebraic-laws.md` L18 and X-laws for the symptom; OMT `117-hypermeter.md`,
+`docs/rules/events/04-algebraic-laws.md` L18 and X-laws for the symptom; OMT `117-hypermeter.md`,
 `118-metrical-dissonance.md`, `098-twentieth-century-rhythmic-techniques.md` §Polymeter for the content;
 `docs/notes/research/kernel-hypothesis/01-atoms.md` §4 for the atom this argues for.
 
@@ -17,7 +17,7 @@ named, and naming them is the same move as admitting metrical layers.
 >
 > — `~/Code/papers/category-theory/grothendieck-method/process.md` §3
 
-`docs/rules/kernel/04-algebraic-laws.md` L18:
+`docs/rules/events/04-algebraic-laws.md` L18:
 
 ```text
 If duration(M) = duration(N) and duration(P) = duration(Q), then
@@ -47,7 +47,7 @@ have not been written down.
 
 ## 3. Where the side condition came from
 
-It was bought, deliberately, and the receipt is in the repo. `docs/rules/kernel/03-denotational-semantics.md`:
+It was bought, deliberately, and the receipt is in the repo. `docs/rules/events/03-denotational-semantics.md`:
 
 > …of unequal extents takes the maximum without padding the shorter argument. What went is the operation that only ever
 > [padded]
@@ -95,7 +95,7 @@ realization table (engraving may re-bar freely; analysis reads layers). F reache
 presentation of the base is not. Two independent routes to one verdict.
 
 **D-3. Polymeter becomes representable without a new operation.** A polymetric passage is one fibre whose base carries
-two incommensurable layers. No constructor is added, so `docs/rules/kernel/10-term-calculus.md`'s scope rule is not
+two incommensurable layers. No constructor is added, so `docs/rules/events/10-term-calculus.md`'s scope rule is not
 touched and T4's totality argument is untouched — the change is to what an object is, not to what terms exist.
 
 ## 6. Gaps — stated, not patched

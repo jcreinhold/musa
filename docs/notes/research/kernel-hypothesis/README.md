@@ -3,12 +3,12 @@
 > **Read [06-evidence-log.md](06-evidence-log.md) first.** Two gates have been run. Gate 0 refuted Atom 3 and materially
 > weakened Atom 2 — the two atoms `01`–`02` lead with. Gate 2 then withdrew Atom 2 outright: prompt 119 built seven
 > voice-leading profiles on the existing per-note voice tag without adding a line relation, which closes
-> `docs/rules/kernel/08-open-questions.md` Q3. Those documents are left as written, with corrections marked in place,
+> `docs/rules/events/08-open-questions.md` Q3. Those documents are left as written, with corrections marked in place,
 > because the log is only evidence if the claims it corrects are still visible.
 > [07-adoption-plan.md](07-adoption-plan.md) is the resulting plan; what remains live there is Track A (Atoms 5 and 6)
 > and Track B (Atom 4).
 
-**Status: research. Governs nothing.** `docs/rules/kernel/` remains the governing temporal-kernel specification and
+**Status: research. Governs nothing.** `docs/rules/events/` remains the governing temporal-kernel specification and
 `docs/course-correction.md` remains the governing ontology. Nothing here changes what the compiler must do. This
 directory exists to state a hypothesis precisely enough that it can be *refuted*, and to record the evidence for and
 against it while that is still cheap.
@@ -16,7 +16,7 @@ against it while that is still cheap.
 ## The hypothesis in one sentence
 
 > Musa's kernel forgot three things the theory it serves treats as primary — **succession**, **alternative**, and
-> **metrical layering** — and every open question in `docs/rules/kernel/08-open-questions.md` is a symptom of one of
+> **metrical layering** — and every open question in `docs/rules/events/08-open-questions.md` is a symptom of one of
 > those three omissions.
 
 The proposed repair is that a piece of music denotes a **labelled event structure over exact rational time**, of which
@@ -25,7 +25,7 @@ consistent run with its causal order forgotten.
 
 ## What this is not
 
-It is not a proposal to make the kernel bigger because bigger is more expressive. `docs/rules/kernel/00-purpose.md`
+It is not a proposal to make the kernel bigger because bigger is more expressive. `docs/rules/events/00-purpose.md`
 quotes course correction §34 as the acceptance test, and this directory accepts that test unchanged:
 
 > A construct belongs in the kernel only if removing it makes an important class of musical meanings impossible or

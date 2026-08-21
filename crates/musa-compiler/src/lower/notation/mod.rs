@@ -13,7 +13,7 @@
 //! track it denotes. There is no cursor here to delete, because a fold has none:
 //! `follow` adds the durations and places the second track after the first, and
 //! that *is* what putting one statement after another means (§3's first
-//! composition equation, in the kernel's own word).
+//! composition equation, in the event track's own word).
 //!
 //! # What a statement contributes
 //!

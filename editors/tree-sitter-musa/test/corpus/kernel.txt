@@ -1,9 +1,9 @@
 ================================================================================
-kernel: the marker makes the file the other alternative
+events: the marker makes the file the other alternative
 ================================================================================
 
-% musa-kernel-2
-kernel "twinkle" {
+% musa-events-3
+events "twinkle" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
     track 1/4 {
       occurrence "voice 0 0 note c4 1/4 [0:0 #4]" from 0 to 1/4;
@@ -13,27 +13,27 @@ kernel "twinkle" {
 --------------------------------------------------------------------------------
 
 (source_file
-  (kernel_document
-    (kernel_marker)
-    (kernel_body)))
+  (events_document
+    (events_marker)
+    (events_body)))
 
 ================================================================================
-kernel: the marker is the whole document
+events: the marker is the whole document
 ================================================================================
 
-% musa-kernel-2
+% musa-events-3
 
 --------------------------------------------------------------------------------
 
 (source_file
-  (kernel_document
-    (kernel_marker)))
+  (events_document
+    (events_marker)))
 
 ================================================================================
-kernel: the marker is a first line, not a word
+events: the marker is a first line, not a word
 ================================================================================
 
-// % musa-kernel-2 names the other alternative only as the whole first line
+// % musa-events-3 names the other alternative only as the whole first line
 piece "P" {
     tempo = 60;
 }
@@ -48,11 +48,11 @@ piece "P" {
       (integer))))
 
 ======================================================================================================================================================
-a kernel quote is an expression, and `${...}` is the way back out
+an event track quote is an expression, and `${...}` is the way back out
 ================================================================================
 
 piece "q" {
-    let a: Music = kernel EventTrack[WrittenTime, ScoreFact] {
+    let a: Music = events EventTrack[WrittenTime, ScoreFact] {
         let x = ${subject} in
         together {
             x;
@@ -75,18 +75,18 @@ piece "q" {
         (type_name
           (identifier)))
       value: (expression
-        (kernel_quote
+        (events_quote
           constructor: (identifier)
           coordinate: (identifier)
           payload: (identifier)
-          (kernel_quote_body
+          (events_quote_body
             (identifier)
-            (kernel_hole
+            (events_hole
               (expression
                 (name_expression
                   (identifier))))
             (identifier)
-            (kernel_quote_body
+            (events_quote_body
               (identifier)
               (identifier)
               (identifier)
@@ -94,7 +94,7 @@ piece "q" {
               (identifier)
               (identifier)
               (integer)
-              (kernel_quote_body
+              (events_quote_body
                 (identifier)
                 (string)
                 (identifier)

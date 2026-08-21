@@ -12,7 +12,7 @@ break=116:`assert` is a statement keyword, so it is no longer available as a nam
 
 [fixture open-shape]
 identity=d02b0ca348280f5d97a82c50eba67749
-kernel-normal-form=79f7789e7a322671989bcc54c975e3c1
+events-normal-form=79f7789e7a322671989bcc54c975e3c1
 origin=part:0:flute:voice:0:upper:event:0:1009-1022:241-245:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
 origin=part:0:flute:voice:0:upper:event:1:1009-1022:246-250:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
 origin=part:0:flute:voice:0:upper:event:2:1009-1022:251-255:[MotifApplication { call_site: SourceSpan { start: 1009, end: 1022 } }]
@@ -146,7 +146,7 @@ lane=1:cello:128:cdec157cbc055da9a2b4feb1734d95f2
 
 [fixture higher-order-shape]
 identity=7916d9f2ea98fb99c8de1dfc3b4e5b2c
-kernel-normal-form=4e0d5eb1e4cb26a2b03baad222ab6a32
+events-normal-form=4e0d5eb1e4cb26a2b03baad222ab6a32
 origin=part:0:flute:voice:0:upper:event:0:373-384:252-256:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
 origin=part:0:flute:voice:0:upper:event:1:373-384:257-261:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
 origin=part:0:flute:voice:0:upper:event:2:373-384:262-266:[RepeatIteration(0), Stretch(Ratio { numer: 1, denom: 1 }), Retrograde, Retrograde, MotifApplication { call_site: SourceSpan { start: 373, end: 384 } }]
@@ -280,7 +280,7 @@ lane=1:cello:128:d7afa00828b4100bd47697d1e0d7546d
 
 [fixture declaration-heavy]
 identity=2d218ab8d3ce6d82a87fc2583f1f7ded
-kernel-normal-form=7c1438bb2167e2fc9b3fc049fc06d615
+events-normal-form=7c1438bb2167e2fc9b3fc049fc06d615
 diagnostic=1:unused-material:500-507:true:declared here
 diagnostic=1:unused-material:544-551:true:declared here
 diagnostic=1:unused-material:588-595:true:declared here
@@ -362,7 +362,7 @@ lane=0:ensemble:32:e2e057e59023265d42132dbfa882ddc1
 
 [fixture audio-bridge]
 identity=9f670408d1267e94642131d9c0b777b1
-kernel-normal-form=a8cc801649f05b13fc84f88455840e24
+events-normal-form=a8cc801649f05b13fc84f88455840e24
 origin=part:0:oboe:voice:0:melody:event:0:673-686:673-686:[]
 origin=part:0:oboe:voice:0:melody:event:1:687-691:687-691:[]
 origin=part:0:oboe:voice:0:melody:event:2:692-698:692-698:[]

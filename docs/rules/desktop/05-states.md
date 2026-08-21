@@ -153,7 +153,7 @@ opening the same piece on another machine gives that machine's reading and this 
 A realization is neither of the two things above it. It is not the application's — it belongs to this piece and means
 nothing for the next one — and it is not the file's: two composers holding the same `.musa` must be able to disagree
 about a performance, which is what open form is for. So it is the **project's**, and it lives beside the piece as a
-sibling file the composer can find, read, and delete (`docs/rules/kernel/11-realization.md`).
+sibling file the composer can find, read, and delete (`docs/rules/events/11-realization.md`).
 
 Four consequences.
 

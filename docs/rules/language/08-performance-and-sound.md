@@ -74,13 +74,13 @@ ReleaseGesture { instance: GestureId, at: Beat }
 ```
 
 The witness is specification notation for a track plus a checked conformance judgment `G ⊨ S`; it is not a second type
-index. The core carries exactly one type index, the coordinate (`../kernel/02-static-semantics.md` K2), so conformance
+index. The core carries exactly one type index, the coordinate (`../events/02-static-semantics.md` K2), so conformance
 is a pass result rather than a dependent type in the source calculus or a public Rust generic over user declarations.
 
 The exact support is still notated time; profiles may produce a distinct exact release beat and connection intent. A
-note's sounding tail remains an instrument behavior and may extend after release. Continuous curves use the kernel's
-exact piecewise-linear `Progress`; discontinuities are ordered point changes. Exponential frequency/gain laws belong to
-an instrument's physical mapping, not to normalized gesture arithmetic.
+note's sounding tail remains an instrument behavior and may extend after release. Continuous curves use the event
+track's exact piecewise-linear `Progress`; discontinuities are ordered point changes. Exponential frequency/gain laws
+belong to an instrument's physical mapping, not to normalized gesture arithmetic.
 
 A profile is a named interpretation `R(P,S,−)`. It reads symbolic dynamics, hairpins, accents, staccato, tenuto, fermata
 policy, grace policy, slurs, phrase marks, and groove and emits only controls/gestures admitted by `S`. A hairpin may

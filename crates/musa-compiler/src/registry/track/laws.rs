@@ -10,7 +10,7 @@
 //! Seven of the eight are δ-rules, so a law can call the [`musa_calculus::Rule`]
 //! directly and compare its answer with the pure operation it was written from —
 //! [`WrittenPitch::transpose`], [`ScoreFact::stretched`],
-//! [`musa_kernel::together`]. That is the agreement half, and it is the sharper
+//! [`musa_events::together`]. That is the agreement half, and it is the sharper
 //! test of arithmetic because it names the expected value rather than a property
 //! of it.
 //!
@@ -31,7 +31,7 @@
 use std::sync::Arc;
 
 use musa_calculus::{Answer, Cx, Datum, Refusal, Term};
-use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
+use musa_events::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
 use super::{
@@ -117,7 +117,7 @@ fn slur(start: Ratio<i64>, length: Ratio<i64>) -> Occurrence<WrittenTime, ScoreF
 /// a bar of one whole note.
 fn subject() -> VoiceTrack {
     let whole = ratio(1, 1);
-    musa_kernel::track(
+    musa_events::track(
         Duration::new(whole).expect("a whole note is a duration"),
         vec![
             note(ratio(0, 1), ratio(1, 2), "c4"),
@@ -327,7 +327,7 @@ fn inverting_mirrors_every_written_pitch_about_the_axis() {
 /// `shift` moves the music later and lengthens the track by exactly as much.
 ///
 /// Both halves matter. Moving the occurrences without lengthening the track
-/// would push the last one outside it, which is the kernel's own bound and the
+/// would push the last one outside it, which is the event track's own bound and the
 /// error this rule would otherwise hit.
 #[test]
 fn shifting_moves_the_music_and_lengthens_the_track_to_hold_it() {
@@ -351,10 +351,10 @@ fn shifting_moves_the_music_and_lengthens_the_track_to_hold_it() {
     );
 }
 
-/// `together` is the kernel's own stacking and not a second one.
+/// `together` is the event track's own stacking and not a second one.
 #[test]
-fn together_is_the_kernels_stacking() {
-    let half = musa_kernel::track(
+fn together_is_the_events_stacking() {
+    let half = musa_events::track(
         Duration::new(ratio(1, 2)).expect("half a bar is a duration"),
         vec![note(ratio(0, 1), ratio(1, 2), "g4")],
     )
@@ -362,7 +362,7 @@ fn together_is_the_kernels_stacking() {
     let stacked = plainly(TOGETHER(&[given(), built(half.clone())]).as_ref(), "`together`");
     assert_eq!(
         stacked,
-        musa_kernel::together(vec![subject(), half]),
+        musa_events::together(vec![subject(), half]),
         "the rule calls the operation §5.7's composition clause is about"
     );
     assert_eq!(
@@ -485,10 +485,10 @@ fn play_gives_every_fact_it_makes_the_scope_placement_and_origin_it_was_given() 
         vec![pitch("c4"), pitch("e4"), pitch("g4")],
         "the voicing's pitches, in the order it voices them"
     );
-    // The kernel accepting it is not incidental: `musa_kernel::track` refuses an
+    // The event track accepting it is not incidental: `musa_events::track` refuses an
     // occurrence past the duration, so answering at all is the bound check.
-    musa_kernel::track(sounded.duration(), sounded.occurrences().to_vec())
-        .expect("what `play` answers is a track the kernel accepts");
+    musa_events::track(sounded.duration(), sounded.occurrences().to_vec())
+        .expect("what `play` answers is a track the event track accepts");
 }
 
 // ---- D2, at the family that is not δ ----

@@ -31,8 +31,8 @@ second-path audits the old core carried run against the new one. This prompt add
 - `docs/rules/language/02-core-calculus.md` §5.7 (track-construction safety) and §5.9 (the expansion phase, including
   law 11) — prompt 129 carried these forward as obligations to re-derive, and this is the prompt that owes the
   derivation over the dependent core.
-- `docs/rules/kernel/12-payload-admission.md` and the `Storable` constraint from prompt 137 — the storable-data boundary
-  is a kernel-facing claim, so its proof is about what can cross, not about what the constraint solver accepts.
+- `docs/rules/events/12-payload-admission.md` and the `Storable` constraint from prompt 137 — the storable-data boundary
+  is an event-track-facing claim, so its proof is about what can cross, not about what the constraint solver accepts.
 - `docs/rules/across-stages/05-metatheory.md` — the across-stage claims that named principal types and now name
   something else. A claim there that this pass falsified is a governing-document repair, and whether to make it is stop
   condition 4, not a decision inside this prompt.
@@ -60,7 +60,7 @@ variable class — say so, because a simplification is evidence that the new fou
 **The privacy audit and the second-path audit.** Does anything reachable from source now reveal a private
 representation, a registry decision, a normal form the author was not meant to see, or a budget? Can two code paths
 answer the same question — the elaborator's conversion and the re-checker's, the case-tree compiler and the recursor,
-`musa-calculus`'s `Storable` and the kernel's payload admission? A second path is not automatically wrong, but an
+`musa-calculus`'s `Storable` and the event track's payload admission? A second path is not automatically wrong, but an
 undocumented one always is.
 
 **The boundary with prompt 153, stated.** This prompt owns the *language*: the core calculus, its elaboration, the

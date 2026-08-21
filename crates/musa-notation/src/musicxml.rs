@@ -679,7 +679,7 @@ fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions:
     // An open region has no `MusicXML` element, so it is a word direction at
     // each end: the instruction where it opens, and where it closes so a
     // reader knows how far it reaches. Lossy, and said to be lossy in
-    // `docs/rules/kernel/07-backend-contract.md`.
+    // `docs/rules/events/07-backend-contract.md`.
     for hold in plan.holds().iter().filter(|mark| mark.measure == measure) {
         let text = format!("hold to {}", hold.what.most.as_ratio());
         write_words(xml, &text, hold.onset_in_measure.as_ratio(), divisions)?;

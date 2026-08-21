@@ -101,7 +101,7 @@ against P1.
      The second operation, not source evaluation alone, is the K₃ᴱ→K₃ᵀ pass.
 
 2. **Hash equality cannot decide the admitted semantic equality.**
-   - **Location**: [34 Theorem T2](34-candidate-k3-stratified-kernels.md), `docs/rules/kernel/05-normalization.md`
+   - **Location**: [34 Theorem T2](34-candidate-k3-stratified-kernels.md), `docs/rules/events/05-normalization.md`
      N4–N6, and `crates/musa-kernel/src/hash.rs`.
    - **Type**: false converse if read as a decision procedure / equality conflation.
    - **Problem**: the flat canonical form decides N4 equality exactly. The 128-bit FNV-1a semantic hash does not. There

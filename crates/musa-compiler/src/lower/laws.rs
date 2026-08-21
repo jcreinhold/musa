@@ -638,8 +638,8 @@ fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies(
 
 // ---- refusals ----
 
-/// The subject used to be `music { … }`, and then the kernel quote. Prompt 141k
-/// gave the notated block a core shape and [`crate::lower::kernel`] gave the
+/// The subject used to be `music { … }`, and then the event track quote. Prompt 141k
+/// gave the notated block a core shape and [`crate::lower::events`] gave the
 /// quote one, so the form left standing here is the **quote pattern** — the
 /// inverse of `quote at here { … }`, which `11-quotation.md` §5 gives a
 /// `match_quote` and `quote_hole` to read with and which prompt 142's Target

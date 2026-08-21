@@ -2,8 +2,8 @@
 //!
 //! A piece may leave decisions to the performance: how many times to repeat a
 //! figure, in what order to play a set of fragments, how long to hold a free
-//! duration. `docs/rules/kernel/11-realization.md` puts those decisions **here** —
-//! above the kernel, before a term exists — rather than inside the kernel as a
+//! duration. `docs/rules/events/11-realization.md` puts those decisions **here** —
+//! above the event track, before a term exists — rather than inside the event track as a
 //! `choose` form. The four reasons that form was refused are in that document;
 //! the consequence for this module is the whole of its design:
 //!
@@ -45,7 +45,7 @@ pub enum Decision {
 }
 
 impl std::fmt::Display for Decision {
-    /// How a decision is written in a `.musa.kernel` header and shown to a person.
+    /// How a decision is written in a `.musa.events` header and shown to a person.
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Count(count) => write!(formatter, "count={count}"),
@@ -318,14 +318,14 @@ impl DecisionRecord {
 
 /// The randomness for one site: `fnv1a_128(seed ‖ path)`.
 ///
-/// The workspace's one stable digest (`musa_kernel::stable_digest`), so the
+/// The workspace's one stable digest (`musa_events::stable_digest`), so the
 /// same seed and the same path give the same answer in every process and on
 /// every platform — which is what makes a realization something a composer can
 /// write down and send to somebody else.
 pub fn draw(seed: u64, path: &ChoicePath) -> u128 {
     let mut bytes = seed.to_be_bytes().to_vec();
     bytes.extend_from_slice(path.canonical().as_bytes());
-    musa_kernel::stable_digest(&bytes)
+    musa_events::stable_digest(&bytes)
 }
 
 /// A site's randomness, when one number is not enough.

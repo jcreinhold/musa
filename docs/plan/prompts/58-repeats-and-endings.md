@@ -19,8 +19,8 @@ What the composer writes once, the page prints once, and the performance plays t
 - Roadmap §2's layer table — *motif definition ≠ its expansions*, *notated duration ≠ performed duration*. A notated
   repeat and its performance are two representations of one statement, and this prompt is the case that proves the table
   is load-bearing.
-- Prompt 06 (`repeat n { … }` as it exists), prompt 49 (it is already a kernel `let` referenced n times — the sharing
-  this prompt needs is already in the term).
+- Prompt 06 (`repeat n { … }` as it exists), prompt 49 (it is already an event track `let` referenced n times — the
+  sharing this prompt needs is already in the term).
 - Prompt 07 / `crates/musa-notation/src/plan.rs` — where barlines are decided.
 - Prompt 57 — bars. An ending is a run of bars, and repeat barlines fall on barlines.
 - `docs/rules/desktop/02-engraving.md` — repeat barlines and volta brackets are Verovio's `<ending>` and
@@ -82,7 +82,7 @@ that it is one*, as a `FactKind::Repeat { times }` over all its passes and a `Fa
 each ending's region, and the notation plan reads those statements and prints the bound material once.
 
 Reading the `let` prompt 49 emits would not have been enough. The plan sees a `ScoreSnapshot`, which is already the
-kernel evaluated — the sharing is gone by then, and the alternative was to thread terms into a layer whose whole job is
+events evaluated — the sharing is gone by then, and the alternative was to thread terms into a layer whose whole job is
 that it does not have them. A fact survives evaluation, which is what facts are for.
 
 ### Notated position ≠ performed position

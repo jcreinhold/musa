@@ -113,7 +113,7 @@ pub enum SyntaxKind {
     Caret,
     /// `#` — the sharp.
     Hash,
-    /// `$` — the head of `${…}`, an antiquotation inside a kernel quote.
+    /// `$` — the head of `${…}`, an antiquotation inside an event track quote.
     Dollar,
     /// `?` — postfix, carrying a `Result`'s failure out of the function.
     Question,
@@ -251,8 +251,8 @@ pub enum SyntaxKind {
     FnKw,
     /// `music`
     MusicKw,
-    /// `kernel`
-    KernelKw,
+    /// `events`
+    EventsKw,
     /// `quote`
     QuoteKw,
     /// `option`
@@ -590,21 +590,21 @@ pub enum SyntaxKind {
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.
     MusicExpr,
-    /// `kernel EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted kernel composition
+    /// `events EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted event-track composition
     /// expression, with `${…}` holes.
     ///
     /// Its interior is *recognized, not read*: the tokens between the braces
-    /// are the kernel's grammar, which `musa-kernel` owns
+    /// are the event track's grammar, which `musa-events` owns
     /// (`docs/rules/language/01-surface.md` §7). This crate finds the holes and the
     /// closing brace and hands the rest along as text.
-    KernelQuote,
+    EventsQuote,
     /// `${ expr }` — one typed antiquotation. Its child expression is
     /// ordinary host syntax.
-    KernelHole,
+    EventsHole,
     /// `quote at here { … }` — a syntax quotation
     /// (`docs/rules/language/11-quotation.md` §2).
     ///
-    /// Unlike [`Self::KernelQuote`], its interior is *read*: the body is one
+    /// Unlike [`Self::EventsQuote`], its interior is *read*: the body is one
     /// ordinary expression of this grammar, so it formats, highlights, and
     /// reports parse errors exactly as the file around it does. What the
     /// quote adds inside its body is the two splice forms and nothing else.

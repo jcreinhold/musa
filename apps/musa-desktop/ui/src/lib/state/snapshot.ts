@@ -445,11 +445,11 @@ export interface ProjectSnapshot {
   /**
    * Which of the three things this file is. Material has no score and never
    * will (roadmap §16), which is a different fact from "no score yet"; a
-   * kernel document is a term in the interchange format
+   * events document is a term in the interchange format
    * (`docs/rules/language/01-surface.md` §7) and engraves like a piece, having
    * arrived at the same timeline by a shorter road.
    */
-  kind: "piece" | "material" | "kernel";
+  kind: "piece" | "material" | "events";
   source: string;
   revision: number;
   compiles: boolean;

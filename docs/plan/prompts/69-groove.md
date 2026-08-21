@@ -15,12 +15,12 @@ house pattern's pushed offbeat. This is how most of the world's recorded music i
 express any of it: the notated duration *is* the performed duration, exactly, forever.
 
 Add a **groove** to the profile layer: a `Beat → Beat` warp applied before the tempo map. Notation does not change, the
-timeline does not change, the kernel does not change. Only the performance moves — which is precisely §2's
+timeline does not change, the event track does not change. Only the performance moves — which is precisely §2's
 notated-duration ≠ performed-duration row, and the first time musa has used it.
 
 ## Read
 
-- `docs/rules/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first,
+- `docs/rules/events/06-surface-elaboration.md` — tempo is `Beat → Second`. A groove is `Beat → Beat`, applied first,
   and the document must say why the two compose in that order and not the other.
 - `crates/musa-compiler/src/performance.rs` — `IntegratedTempoMap` (:76), `lower_performance` (:326), and where written
   time becomes frames. The warp goes strictly before the integration.

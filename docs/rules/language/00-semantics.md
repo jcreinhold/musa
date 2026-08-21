@@ -38,7 +38,7 @@ values ─────────────┬──────────�
 
 Four things this diagram is asserting:
 
-- There is no implicit `EventTrack<C, EventTrack<C,A>> → EventTrack<C,A>` (`../kernel/03-denotational-semantics.md`
+- There is no implicit `EventTrack<C, EventTrack<C,A>> → EventTrack<C,A>` (`../events/03-denotational-semantics.md`
   D12). A `music` block chooses `follow` or `together` and elaborates to the corresponding core term.
 - `EventTrack<WrittenTime, ScoreFact>` is the result of evaluating a closed term, not a universal intermediate type.
 - **There is no contextual `Music` stage.** Earlier drafts had one between the typed expression and the closed term;
@@ -152,7 +152,7 @@ simultaneous `Note` facts at this layer. In particular it does not map the tonic
 distinction is music-theoretic, not merely representational: a key signature and a Roman-numeral/chord analysis state a
 tonal reading, while a written note states a sounded pitch. Rewriting the latter does not prove the former has changed.
 
-The temporal-support law follows directly from `map_payloads` (`../kernel/03-denotational-semantics.md` D7, L9–L12): the
+The temporal-support law follows directly from `map_payloads` (`../events/03-denotational-semantics.md` D7, L9–L12): the
 traversal changes no occurrence span and no term constructor, hence the multiset of pairs `(onset, span)` and the
 enclosing track duration are identical before and after mapping. Identity and composition follow by cases on the
 exhaustive `FactKind` table: on pitch-bearing facts they reduce to the corresponding function equations; on all other
@@ -169,7 +169,7 @@ means seven diatonic steps and twelve semitones, preserving spelling rather than
 | --- | --- | --- |
 | `musa-syntax` | tokens, lossless CST, recovery, formatting | musical types, closures, core evaluation |
 | private `musa-compiler` elaboration subsystem | `Type`, `Value`, `Closure`, modules, theory algorithms, quotation | public backend or DSP types |
-| `musa-kernel` | exact time, coordinates, typed occurrences, term binding, `follow`, `together`, scaling | notes, scales, functions, profiles, samples, seconds, machines |
+| `musa-events` | exact time, coordinates, typed occurrences, term binding, `follow`, `together`, scaling | notes, scales, functions, profiles, samples, seconds, machines |
 | compiler score projection | `ScoreFact`, context tracks, Origin, `ScoreSnapshot` | machine topology and audio buffers |
 | compiler performance preparation | profiles, gestures, tempo, tuning, part lanes | a primitive's private state |
 | `musa-dsp` | registered primitives, machine construction and validation, scheduling, prepared buffers | notation semantics and source CST |

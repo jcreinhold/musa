@@ -20,9 +20,9 @@ They are **not** marks, and the prompt exists partly to say why.
 - `crates/musa-compiler/src/elaborate.rs` — the doc comment above `FactKind` (:70), which states the rule that decides
   this: *does it have an extent and an identity?* An articulation has neither; a slur has both. Apply the rule to a
   grace note before designing.
-- `docs/rules/kernel/03-denotational-semantics.md` — a **point occurrence** is `s == e`, already legal and already
+- `docs/rules/events/03-denotational-semantics.md` — a **point occurrence** is `s == e`, already legal and already
   normalized.
-- `docs/rules/kernel/05-normalization.md` **N2** — the ordering: `(start, end, payload key)`. This is the constraint
+- `docs/rules/events/05-normalization.md` **N2** — the ordering: `(start, end, payload key)`. This is the constraint
   that forces the design.
 - Prompt 28 and prompt 70 — profile settings, which is where the time a grace note steals is decided.
 - `docs/plan/roadmap.md` §2 — notated duration ≠ performed duration.
@@ -125,8 +125,8 @@ cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa -- check examples/graces.musa
 # order matters — the two must differ:
-diff <(cargo run -q -p musa -- kernel examples/graces.musa) \
-     <(cargo run -q -p musa -- kernel examples/graces-reordered.musa) && exit 1
+diff <(cargo run -q -p musa -- event track examples/graces.musa) \
+     <(cargo run -q -p musa -- event track examples/graces-reordered.musa) && exit 1
 # notation is profile-independent, performance is not — the pair of tests
 # that say so, in the two crates that own the two halves:
 cargo nextest run -p musa-notation -p musa-compiler -E 'test(graces)'
@@ -165,7 +165,7 @@ Commit as `Add grace notes`.
    beaming is untouched by construction, and the slur is a house-style flourish that each of the three neutral grace
    forms deliberately omits.
 9. **The example pair is byte-aligned.** `graces-reordered.musa` is `graces.musa` with two groups reversed and its
-   explanatory comment at the *bottom* of the file, so every byte above is identical and the kernel diff shows the
+   explanatory comment at the *bottom* of the file, so every byte above is identical and the event track diff shows the
    reordering and nothing else. Occurrence payloads carry source spans; a comment at the top would have moved every span
    and buried the finding.
 
@@ -176,4 +176,4 @@ Commit as `Add grace notes`.
 - No grace notes after a note (nachschlag) unless a fixture needs one; it is a different attachment and a different
   span.
 - No grace note on a rest.
-- No new kernel operation. A point occurrence is D0 as written.
+- No new event-track operation. A point occurrence is D0 as written.

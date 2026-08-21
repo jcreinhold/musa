@@ -1,14 +1,14 @@
-//! Quotes, splices, and kernel holes.
+//! Quotes, splices, and events holes.
 
 use super::engine::Parser;
 use crate::SyntaxKind;
 
 impl Parser<'_> {
-    /// `kernel EventTrack[WrittenTime, ScoreFact] { … }` — a quoted composition
+    /// `events EventTrack[WrittenTime, ScoreFact] { … }` — a quoted composition
     /// expression (`docs/rules/language/01-surface.md` §7).
     ///
     /// **Recognized, not read.** The tokens between the braces spell the
-    /// kernel's own grammar, and `musa-kernel` owns that grammar: a second
+    /// event track's own grammar, and `musa-events` owns that grammar: a second
     /// reading of it here would be a second thing to keep in step with the
     /// first. What this crate must find is the shape — where the quote ends,
     /// and where the holes are — because those are the two questions a
@@ -23,9 +23,9 @@ impl Parser<'_> {
     /// The head takes two type arguments because an event track is indexed by
     /// both its coordinate and its payload: a quote must say which time it is
     /// written in, since nothing converts one coordinate into another.
-    pub(super) fn kernel_quote(&mut self) {
-        self.start(SyntaxKind::KernelQuote);
-        self.bump(); // kernel
+    pub(super) fn events_quote(&mut self) {
+        self.start(SyntaxKind::EventsQuote);
+        self.bump(); // events
         self.expect(SyntaxKind::Identifier, "`EventTrack`");
         self.expect(SyntaxKind::LBracket, "`[`");
         self.expect(SyntaxKind::Identifier, "a coordinate");
@@ -46,11 +46,11 @@ impl Parser<'_> {
                     depth = depth.saturating_add(1);
                     self.bump();
                 }
-                // Every `$` in a quote is a hole attempted: the kernel's
+                // Every `$` in a quote is a hole attempted: the event track's
                 // grammar has no other use for the character, so reading it
                 // as one and complaining about what follows says more than
                 // "unexpected token" would.
-                Some(SyntaxKind::Dollar) => self.kernel_hole(),
+                Some(SyntaxKind::Dollar) => self.events_hole(),
                 Some(_) => self.bump(),
             }
         }
@@ -59,8 +59,8 @@ impl Parser<'_> {
     }
 
     /// `${ expr }` — one typed antiquotation, whose interior is host syntax.
-    pub(super) fn kernel_hole(&mut self) {
-        self.start(SyntaxKind::KernelHole);
+    pub(super) fn events_hole(&mut self) {
+        self.start(SyntaxKind::EventsHole);
         self.bump(); // $
         self.expect(SyntaxKind::LBrace, "`{`");
         self.expr();
@@ -71,7 +71,7 @@ impl Parser<'_> {
     /// `quote at here { … }` — the other quotation, whose body this parser
     /// reads (`docs/rules/language/11-quotation.md` §2).
     ///
-    /// The whole of the difference from [`Self::kernel_quote`] is right here:
+    /// The whole of the difference from [`Self::events_quote`] is right here:
     /// that one counts braces and hands the interior along as text, because
     /// the interior is another crate's grammar. This one calls
     /// [`Self::expr`], because the interior is *this* grammar. A quote that

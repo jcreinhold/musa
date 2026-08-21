@@ -121,7 +121,7 @@ Five of these are decisions rather than conveniences:
   seconds is a type error rather than a number. Its constructors are where nonnegativity is checked, which is why they
   return `Result`.
 - **`Position C` separate from `Duration C`.** *When* something happens and *how much time* it takes are different
-  quantities with different algebras: `../kernel/00-purpose.md` states positions as the abelian group `(ℚ, +, 0)` and
+  quantities with different algebras: `../events/00-purpose.md` states positions as the abelian group `(ℚ, +, 0)` and
   durations as the ordered monoid `(ℚ≥0, +, 0)`. A position plus a duration is a position; two durations add; two
   positions do not add at all, and their difference is a duration only when it is nonnegative, so that difference
   returns `Result`. One type for both would let beat 3 and three beats be added, which is the one arithmetic error a
@@ -143,7 +143,7 @@ this language does not own — a `Primitive K δ δ` supplying its own `State`, 
 supplied by a host. A **builtin** is an operation the compiler owns and can reason about: the four families of §5.8,
 which is where their conditions are checked. The boundary is information, not privilege — the compiler proves things
 about builtins because it can see inside them, and states contracts for primitives because it cannot. Base types are
-called *base types*, never primitives; `../kernel/` uses "primitive" in its ordinary English sense of *irreducible*,
+called *base types*, never primitives; `../events/` uses "primitive" in its ordinary English sense of *irreducible*,
 where no registered unit is in scope.
 
 ### 1.2 Storable data, as a structural check
@@ -285,8 +285,8 @@ assertion layer can report.
 ### 2.3 Track and machine construction
 
 Only compiler-owned builtins may construct an `EventTrack` or a `Machine`. `map_note_pitches` accepts a total
-`Pitch → Pitch` and visits a documented subset of musical payload positions; it does not reveal them as a list. A kernel
-quote has a dedicated typing rule and cannot be encoded by string operations.
+`Pitch → Pitch` and visits a documented subset of musical payload positions; it does not reveal them as a list. An event
+track quote has a dedicated typing rule and cannot be encoded by string operations.
 
 Machine construction is typed by the seven rules of `../across-stages/03-machine-calculus.md` §2 — `machine(p)`,
 `identity`, `connect`, `beside`, `feedback`, `copy`, `drop`, `swap` — and every port type in them must pass §1.2's
@@ -608,27 +608,27 @@ The classical arrangement for a functional compiler is surface → *enriched* ca
 enriched layer is the ordinary one plus constructs whose semantics *is* their transformation away (Peyton Jones 1987,
 §3.1). Musa is deliberately not that arrangement:
 
-- This language has functions, records, enumerations, and eliminators. `../kernel/10-term-calculus.md` has none of them
+- This language has functions, records, enumerations, and eliminators. `../events/10-term-calculus.md` has none of them
   — six forms, a reference, and no abstraction at all.
 - So the term calculus is not this language with the sugar removed. There is no simplifying transformation between them.
 
 What connects them is **evaluation, applied twice**:
 
 ```text
-source ──check──▶ core term ──evaluate (this document)──▶ Term[ScoreFact] ──evaluate (kernel)──▶ EventTrack WrittenTime ScoreFact
+source ──check──▶ core term ──evaluate (this document)──▶ Term[ScoreFact] ──evaluate (events)──▶ EventTrack WrittenTime ScoreFact
                     functions      eliminates functions      let + constructors     eliminates sharing
 ```
 
 Three consequences:
 
-1. **`Term[ScoreFact]` is a stage boundary, not an internal representation.** It is the reason `.musa.kernel` can be an
+1. **`Term[ScoreFact]` is a stage boundary, not an internal representation.** It is the reason `.musa.events` can be an
    interchange format at all: a residual program in a language with no functions is checkable, normalizable, and
    hashable by a consumer that knows nothing about this calculus.
 2. **Totality is proved twice, separately.** §5's normalization obligation is about *this* language; T4 is about the
    term calculus. Neither implies the other. A machine's M1 is a third, independent totality claim — one *step*, not one
    evaluation — and it shares no lemma with either.
 3. **Nothing may leak backwards.** A core term cannot mention a closure, and this language cannot observe a track's
-   occurrence list. Where that discipline is enforced is §5.7, §1.2's storability check, and the kernel's
+   occurrence list. Where that discipline is enforced is §5.7, §1.2's storability check, and the event track's
    payload-opacity rule; this section is the statement of *why* they exist.
 
 ### 6.2 Patterns are compiled to case trees

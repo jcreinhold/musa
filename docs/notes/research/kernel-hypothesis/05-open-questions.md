@@ -75,7 +75,7 @@ probability over branches), or should enabling become disjunctive (general rathe
 so this is not a free choice.
 
 **Answers.** (i) Two events. Then `repeat` is `seq x x`, sharing is a *term-level* saving only (which is exactly what
-`docs/rules/kernel/10-term-calculus.md`'s mark mechanism already assumes, since the third iteration must carry
+`docs/rules/events/10-term-calculus.md`'s mark mechanism already assumes, since the third iteration must carry
 `RepeatIteration(2)`), and T2 holds as stated. (ii) One event in two configurations. Then a repeat is closer to a cycle
 than a sequence, and the finiteness of `E` stops matching the finiteness of the performance.
 
@@ -149,7 +149,7 @@ exactly the kind of detail that breaks a proof quietly. Prove it or find the cou
 **Question.** `04-operational-semantics.md` T3 notes that semantic equality is now isomorphism of labelled event
 structures rather than equality of sorted multisets, which is graph-isomorphism-shaped in the worst case.
 
-**What settles it.** Measurement, against the budgets in `docs/rules/kernel/09-performance.md`, on the largest fixture
+**What settles it.** Measurement, against the budgets in `docs/rules/events/09-performance.md`, on the largest fixture
 in `examples/`. The refinement algorithm should terminate immediately on real music; if it does not, the hypothesis has
 an engineering problem serious enough to reconsider.
 
@@ -180,7 +180,7 @@ Ordered so that the earliest step is the most likely to refute the hypothesis, w
 5. **Narrow Amendment III per Q-B** before writing any layer code, since the narrow reading is much cheaper and probably
    right.
 6. **Only then** consider prompts. Adopting the hypothesis would mean a repair to `docs/course-correction.md` and
-   `docs/rules/kernel/`, and a block of new prompts inserted into `docs/plan/prompts/` with the rest renumbered — which
+   `docs/rules/events/`, and a block of new prompts inserted into `docs/plan/prompts/` with the rest renumbered — which
    is a large, irreversible-feeling change and should not happen on the strength of a document.
 
 ---

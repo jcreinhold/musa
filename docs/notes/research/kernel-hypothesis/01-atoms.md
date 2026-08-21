@@ -7,7 +7,7 @@ parts, and an atom missing any of them is not an atom:
 - **Evidence** — a citation into `~/Code/papers/music-theory/open-music-theory/`, by filename. Claims about what
   musicians mean are checked against the theory this repo already treats as authoritative, not asserted.
 - **Falsifier** — a concrete musical object that cannot be represented faithfully without this atom. This is the §34
-  test from `docs/rules/kernel/00-purpose.md`: *a construct belongs in the kernel only if removing it makes an important
+  test from `docs/rules/events/00-purpose.md`: *a construct belongs in the kernel only if removing it makes an important
   class of musical meanings impossible or unnatural across multiple independent consumers.* An atom whose falsifier is
   hypothetical is an atom that should be cut.
 - **Cost** — what the atom makes harder, because every one of them makes something harder.
@@ -56,7 +56,7 @@ relation of one line's motion to another's (OMT `023-introduction-to-species-cou
 This is the load-bearing claim of the whole document, so it gets a proof rather than a paragraph.
 
 > **Proposition A.** There exist two musical objects that differ in a way musicians routinely name, and whose
-> denotations under `docs/rules/kernel/03-denotational-semantics.md` are equal.
+> denotations under `docs/rules/events/03-denotational-semantics.md` are equal.
 
 *Proof.* Take four occurrences: C4 and A3 on `[0,1)`, D4 and B3 on `[1,2)`. Reading one is two voices in parallel motion
 — the upper line C4→D4, the lower A3→B3. Reading two is a voice exchange — C4→B3 descending, A3→D4 ascending. The two
@@ -66,7 +66,7 @@ crossing, a descending semitone, and an ascending fourth. First-species analysis
 and an engraver beams and stems them differently. ∎
 
 The existing kernel does distinguish these — through HIR structure and payload metadata, that is, *outside* the
-denotation. `docs/rules/kernel/08-open-questions.md` Q3 records this as an open question and gives that arrangement as
+denotation. `docs/rules/events/08-open-questions.md` Q3 records this as an open question and gives that arrangement as
 the working stance. Proposition A is the argument that it cannot be closed any other way: whatever carries voice
 identity is carrying semantic content, so either it is in the denotation or the denotation is incomplete.
 
@@ -109,7 +109,7 @@ statement about which events continue which, across an overlap where the soundin
 > **Corrected by Gate 0 (`06-evidence-log.md` G0.3). This atom is refuted as proposed.** The falsifier below is wrong:
 > first and second endings are *deterministic* — one hearing, both endings sounding at different times — and
 > `musa-compiler` already implements them by pass expansion, which is correct there.
-> `docs/rules/kernel/11-realization.md` is governing and independently refuses this constructor for reasons that still
+> `docs/rules/events/11-realization.md` is governing and independently refuses this constructor for reasons that still
 > stand. The section is left in place as the record of what was claimed.
 
 **What it is.** An irreflexive symmetric relation `#` on events, hereditary along succession: if `e # e′` and `e′ ≤ e″`
@@ -122,7 +122,7 @@ exclusivity the point rather than a notational convenience.
 **Falsifier.** A first/second-ending pair. Without conflict there are exactly two representations available and both are
 wrong: assert both endings, and the piece contains music that is never heard together; expand into one linear
 realization, and the *piece* has been replaced by *a performance of it* — which is precisely the layering violation
-`docs/course-correction.md` exists to prevent. `docs/rules/kernel/11-realization.md` pushed aleatory above the kernel
+`docs/course-correction.md` exists to prevent. `docs/rules/events/11-realization.md` pushed aleatory above the kernel
 for this reason; the push was forced by a missing atom, not by a judgment that aleatory is peripheral.
 
 ### 3.1 Why conflict and succession are one amendment
@@ -214,7 +214,7 @@ forty-eight forms are forty-eight unrelated objects, or the kernel needs general
 
 ### 5.1 Why an action and not a function
 
-`docs/rules/kernel/10-term-calculus.md` T4 proves every closed kernel term evaluates, and it holds because the kernel
+`docs/rules/events/10-term-calculus.md` T4 proves every closed kernel term evaluates, and it holds because the kernel
 has no abstraction and no `fix`. `map f M` would require a function space and reopen that proof. A group action is total
 by construction, so `act g M` extends the calculus without touching T4. That is the entire reason for the phrasing, and
 it is worth stating plainly: this atom was chosen for what it *refuses* as much as for what it provides.
@@ -285,7 +285,7 @@ the kernel. A prolongation is a claim about a piece, and the kernel's job is to 
 and how often is a performance directive carried in payload. Revisit only if a consumer needs to *compute* with the
 weights — Q-C.
 
-**Infinite and live streams.** `docs/rules/kernel/08-open-questions.md` Q1. Rejected for now, because T4 totality is
+**Infinite and live streams.** `docs/rules/events/08-open-questions.md` Q1. Rejected for now, because T4 totality is
 worth more than the class of pieces it excludes, and because an event structure with infinite events still has finite
 configurations, which softens the loss.
 

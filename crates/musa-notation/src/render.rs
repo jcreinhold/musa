@@ -44,7 +44,7 @@ impl RenderedNotation {
     /// realized music plus a text direction, which is a reading of the piece
     /// rather than the piece. That is a fact about the format, so it is
     /// reported here rather than discovered by whoever opens the file
-    /// (`docs/rules/kernel/07-backend-contract.md`).
+    /// (`docs/rules/events/07-backend-contract.md`).
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
@@ -91,7 +91,7 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
     // A mark whose column is empty is a mark this format has no way to say.
     // One line per mark rather than one per occurrence: the fact is about the
     // format, and a page of pedal marks would otherwise report itself once per
-    // measure (`docs/rules/kernel/07-backend-contract.md`).
+    // measure (`docs/rules/events/07-backend-contract.md`).
     let spelled = |mark: musa_score::Mark| match target {
         NotationTarget::Mei => mark.def().mei,
         NotationTarget::LilyPond => mark.def().lilypond,

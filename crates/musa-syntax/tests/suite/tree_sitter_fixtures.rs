@@ -200,7 +200,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::LetKw => "let",
         SyntaxKind::FnKw => "fn",
         SyntaxKind::MusicKw => "music",
-        SyntaxKind::KernelKw => "kernel",
+        SyntaxKind::EventsKw => "events",
         SyntaxKind::QuoteKw => "quote",
         SyntaxKind::OptionKw => "Option",
         SyntaxKind::ListKw => "List",
@@ -362,8 +362,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::AppliedType
         | SyntaxKind::DataMember
         | SyntaxKind::PitchExpr
-        | SyntaxKind::KernelQuote
-        | SyntaxKind::KernelHole
+        | SyntaxKind::EventsQuote
+        | SyntaxKind::EventsHole
         | SyntaxKind::QuoteExpr
         | SyntaxKind::QuotePattern
         | SyntaxKind::Splice
@@ -413,24 +413,24 @@ fn token_manifest(relative: &Path, source: &str) -> String {
     json
 }
 
-/// Which files are the *kernel* alternative, by `musa-syntax`'s reckoning.
+/// Which files are the *events* alternative, by `musa-syntax`'s reckoning.
 ///
 /// The drift law for `docs/rules/language/01-surface.md` §7. The grammar has its own
 /// rule for the top-level alternative and this crate has [`alternative`], and
 /// the one way they can disagree is the one way that matters: a file read as
-/// kernel by one and surface by the other opens as a page of red in an editor
+/// events by one and surface by the other opens as a page of red in an editor
 /// and compiles fine on the command line.
 ///
 /// Both verdicts are committed, not just the positive one. A rule that
 /// recognized *too much* — every file starting with `%`, say — would pass a
 /// one-sided law and break every `.musa` file in the repository.
-fn kernel_manifest(files: &[(String, String)]) -> String {
+fn events_manifest(files: &[(String, String)]) -> String {
     let mut json = format!(
         "{{\n  \"marker\": \"{}\",\n  \"files\": [\n",
-        escape(musa_syntax::KERNEL_MARKER)
+        escape(musa_syntax::EVENTS_MARKER)
     );
     for (index, (relative, source)) in files.iter().enumerate() {
-        let kernel = musa_syntax::alternative(source) == musa_syntax::DocumentAlternative::Kernel;
+        let events = musa_syntax::alternative(source) == musa_syntax::DocumentAlternative::Events;
         let comma = if index.saturating_add(1) == files.len() {
             ""
         } else {
@@ -438,7 +438,7 @@ fn kernel_manifest(files: &[(String, String)]) -> String {
         };
         writeln!(
             json,
-            "    {{ \"file\": \"{}\", \"kernel\": {kernel} }}{comma}",
+            "    {{ \"file\": \"{}\", \"events\": {events} }}{comma}",
             escape(relative),
         )
         .expect("write to a string");
@@ -447,12 +447,12 @@ fn kernel_manifest(files: &[(String, String)]) -> String {
     json
 }
 
-/// Every `.musa.kernel` directly under `dir`, sorted.
-fn kernel_files(dir: &Path) -> Vec<PathBuf> {
+/// Every `.musa.events` directly under `dir`, sorted.
+fn events_files(dir: &Path) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap_or_else(|_| panic!("read {}", dir.display()))
         .map(|entry| entry.expect("directory entry").path())
-        .filter(|path| path.to_string_lossy().ends_with(".musa.kernel"))
+        .filter(|path| path.to_string_lossy().ends_with(".musa.events"))
         .collect();
     files.sort();
     files
@@ -527,9 +527,9 @@ fn the_lexers_tokens_are_the_grammars_test_data() {
         .collect();
     write_or_compare(&data.join("broken.json"), &broken_manifest(&broken));
 
-    // The two alternatives, from this crate's side: every kernel file is one,
+    // The two alternatives, from this crate's side: every event track file is one,
     // and every surface file is not.
-    let mut alternatives: Vec<(String, String)> = kernel_files(&examples.join("kernel"))
+    let mut alternatives: Vec<(String, String)> = events_files(&examples.join("events"))
         .into_iter()
         .map(|path| {
             (
@@ -547,5 +547,5 @@ fn the_lexers_tokens_are_the_grammars_test_data() {
             std::fs::read_to_string(path).expect("fixture text"),
         )
     }));
-    write_or_compare(&data.join("kernel.json"), &kernel_manifest(&alternatives));
+    write_or_compare(&data.join("events.json"), &events_manifest(&alternatives));
 }

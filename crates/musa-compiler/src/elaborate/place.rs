@@ -6,7 +6,7 @@ use musa_syntax::ast::AstNode as _;
 
 use super::fact::{FactKind, ScoreFact, VoiceTrack};
 use crate::resolve::{self, Resolver};
-use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime, empty, track};
+use musa_events::{Duration, Occurrence, Position, Span, WrittenTime, empty, track};
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::{Origin, SourceSpan};
 use musa_score::scope::Scope;

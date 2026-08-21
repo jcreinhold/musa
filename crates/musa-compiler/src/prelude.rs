@@ -285,7 +285,7 @@ fn row_fault_data() -> RawData {
 /// Its *payloads* go the other way and are registered base types, because each
 /// is a value this compiler owns a representation and a reading of: a
 /// `NotatedDuration` records which noteheads spell a span, a `ChordSymbol` is a
-/// parsed analysis, a `Progress` is a kernel curve. A case that spelled one out
+/// parsed analysis, a `Progress` is an event track curve. A case that spelled one out
 /// of its parts would let a program build a duration whose value and spelling
 /// disagree, which is a fact no notation can be.
 fn fact_data() -> RawData {

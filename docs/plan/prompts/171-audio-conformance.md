@@ -24,8 +24,8 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 - The revised machine, scheduling, identity, and audio-step specifications and architecture map.
 - Prompt 153's core conformance matrix and every completion/repair note from prompts 127a–127e and 150–153.
 - Prompt 93 baseline and expected-change ledger; all prompt 154–168 completion/repair notes and benchmark artifacts.
-- The candidate sound/assets specs, roadmap/kernel boundaries, interface specification, handbook, SFZ support matrix,
-  SoundFont support matrix, package/asset schemas, and public crate facades.
+- The candidate sound/assets specs, roadmap/event track boundaries, interface specification, handbook, SFZ support
+  matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
 
 ## Design
@@ -44,7 +44,7 @@ and observed result. At minimum cover:
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 170
   budgets;
 - **the core boundary itself** — executable evidence for every integration risk:
-  - no type outside `musa-kernel` pairs a finite rational duration with positioned events and defines its own ordering
+  - no type outside `musa-events` pairs a finite rational duration with positioned events and defines its own ordering
     or equality;
   - every event payload and machine port/configuration is storable data with versioned injective encoding; no source
     closure appears at any depth and no hash-only comparison is exact equality;
@@ -57,7 +57,7 @@ and observed result. At minimum cover:
     including feedback, modulation, envelopes, media, and seek;
   - notation, gestures, event tracks, machine descriptions, private machine state, and audio history remain distinct;
   - part, voice, meter, tuning, and transposition remain payload data rather than dependent core indices; and
-  - `musa-kernel` still depends on no musical or audio type.
+  - `musa-events` still depends on no musical or audio type.
 
 The clean-break and prompt-93 expected-change ledgers must be empty. Test unsupported SFZ/SoundFont behavior rather than
 counting rows in a support table. Run fault injection for missing/corrupt assets, digest drift, offline package cache,

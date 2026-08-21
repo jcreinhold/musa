@@ -532,11 +532,11 @@ static MUSIC: KeywordDoc = doc!(
     "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
      ```musa\nlet call: EventTrack<WrittenTime> = music { c5/4 d5/4 };\n```"
 );
-static KERNEL: KeywordDoc = doc!(
-    "kernel",
-    "a quoted kernel composition expression",
-    "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `EventTrack<WrittenTime>` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
-     ```musa\nlet doubled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
+static EVENTS: KeywordDoc = doc!(
+    "events",
+    "a quoted event-track composition expression",
+    "A `events` quote writes a composition term directly, with `${...}` splicing typed `EventTrack<WrittenTime>` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
+     ```musa\nlet doubled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
 );
 static QUOTE: KeywordDoc = doc!(
     "quote",
@@ -914,7 +914,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::LetKw => &LET,
         SyntaxKind::FnKw => &FN,
         SyntaxKind::MusicKw => &MUSIC,
-        SyntaxKind::KernelKw => &KERNEL,
+        SyntaxKind::EventsKw => &EVENTS,
         SyntaxKind::QuoteKw => &QUOTE,
         SyntaxKind::OptionKw => &OPTION,
         SyntaxKind::ListKw => &LIST,
@@ -1086,8 +1086,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::QuestionExpr
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr
-        | SyntaxKind::KernelQuote
-        | SyntaxKind::KernelHole
+        | SyntaxKind::EventsQuote
+        | SyntaxKind::EventsHole
         | SyntaxKind::QuoteExpr
         | SyntaxKind::QuotePattern
         | SyntaxKind::Splice

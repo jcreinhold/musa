@@ -107,7 +107,7 @@ undestructurable, and evaluation over a documented sample returning a value of t
 reporting a Rust-level absence at a non-`option` result.
 
 **Migrating today's untagged `Duration`.** It becomes `Duration<WrittenTime>` at every existing use — note literals,
-`stretch`, `shift`, the elaborator, the kernel text. This is the part with reach, and it is why the trials do not do it
+`stretch`, `shift`, the elaborator, the events text. This is the part with reach, and it is why the trials do not do it
 in passing. A written duration that turns out to be physical is a bug this tagging exists to find; if the migration
 surfaces one, fix it and say so in the commit rather than widening a type to make it go away.
 
@@ -139,8 +139,8 @@ different meaning. Registering operations for a coordinate nothing can make woul
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-kernel -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-compiler -p musa-kernel -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-compiler -p musa-events -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-compiler -p musa-events -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

@@ -17,8 +17,8 @@ publishing compiler passes or raw fact traversal.
 
 ## Read
 
-- `docs/rules/language/00-semantics.md` and `05-verification.md`; prompt 42's snapshot interface and prompt 44's kernel
-  queries.
+- `docs/rules/language/00-semantics.md` and `05-verification.md`; prompt 42's snapshot interface and prompt 44's event
+  track queries.
 - Current compiler/project/CLI/LSP facades and all callers of `ScoreSnapshot` facts.
 - OMT `104-analyzing-with-set-theory-or-not.md` and `107-analyzing-with-modes-scales-and-collections.md`: analysis
   choices and musical meaning are contextual, not merely a computation over labels.

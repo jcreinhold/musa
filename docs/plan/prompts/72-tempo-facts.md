@@ -23,7 +23,7 @@ breached.
 - `crates/musa-notation/src/plan.rs` (:524) and `crates/musa-compiler/src/performance.rs` (:107) — **both read the same
   `TempoMap`**. One is drawing a printed symbol; the other is computing seconds. That collapse is what §2 forbids, and
   it is the thing this prompt separates.
-- `docs/rules/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`.
+- `docs/rules/events/06-surface-elaboration.md` — tempo is `Beat → Second`.
 - `crates/musa-project/src/session.rs::install_current_plan` (:670) and prompt 43's semantic hash — the bug.
 - Prompt 63 §"The bug this fixes on the way past".
 
@@ -93,7 +93,7 @@ The text-only form emits the words and no `<sound>`, which is what makes the exp
 - `crates/musa-notation`: the four exporters; `plan.rs` prints the marking and no longer computes seconds.
 - `crates/musa-project/src/session.rs`: the reinstall regression test.
 - `examples/`: `tempo-changes.musa` — a piece in three tempos with one text-only marking.
-- `docs/rules/kernel/06-surface-elaboration.md`: a note that the marking/map split is where the implementation now
+- `docs/rules/events/06-surface-elaboration.md`: a note that the marking/map split is where the implementation now
   stands.
 
 ## Check

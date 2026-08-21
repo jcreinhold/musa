@@ -6,7 +6,7 @@
 //
 // Eight bars of 4/4 is eight whole notes, so `over 8/1` is the whole build.
 // The MIDI export writes this as a run of set-tempo events — thirty-two per
-// whole note, chosen by the exporter and not by the score (docs/rules/kernel/07) —
+// whole note, chosen by the exporter and not by the score (docs/rules/events/07) —
 // because SMF has no continuous tempo. The page gets a marking at each end,
 // for the same reason: no notation format can draw a ramp as a function, so
 // every one of them prints where it starts and where it arrives.

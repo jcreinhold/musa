@@ -12,8 +12,8 @@ phase: 3
 
 Create the bundled `.musa` standard-library mechanism that later theory prompts populate. Standard functions must be
 ordinary Musa source compiled through the same type checker and evaluator as user libraries; only operations that need
-hidden `music` representation, provenance, or kernel construction remain registered primitives. Give imports one stable,
-installation-independent spelling and preserve source locations into bundled files.
+hidden `music` representation, provenance, or event track construction remain registered primitives. Give imports one
+stable, installation-independent spelling and preserve source locations into bundled files.
 
 ## Read
 

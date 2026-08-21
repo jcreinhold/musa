@@ -145,14 +145,14 @@ with nothing in it is a window with nothing in it.
 The kinds that ship, what each one's abstract domain is, and the admission rule a new kind must pass are in
 [`docs/rules/language/07-analysis.md`](../../../rules/language/07-analysis.md).
 
-## 3. The kernel quote
+## 3. The events quote
 
-Under the surface language is a small temporal kernel: exact rational time, typed occurrences, and three combinators.
-Musa normally writes kernel terms for you. `kernel { ... }` is the one place you write them yourself, for placements no
-surface constructor spells. From `examples/kernel-splice.musa`:
+Under the surface language is a small event-track: exact rational time, typed occurrences, and three combinators. Musa
+normally writes event-track terms for you. `events { ... }` is the one place you write them yourself, for placements no
+surface constructor spells. From `examples/events-splice.musa`:
 
 ```musa
-let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
+let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
     let subj = ${subject} in
     together {
         subj;

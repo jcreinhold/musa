@@ -10,24 +10,24 @@ phase: 3
 
 ## Task
 
-The kernel computes canonical forms and semantic equality (`05-normalization.md` N4–N6) and nothing in the application
-asks. `ProjectSession` decides whether to reinstall the playback plan by comparing a revision counter (`session.rs`:
-`if self.installed_revision != current`), so editing a comment, reformatting, or touching an unrelated part reinstalls
-the plan mid-playback. Give the kernel a semantic hash, make the session key on it, and — because prompts 39–40 made the
-timeline total — make that hash mean *the whole piece*, not just its notes.
+The event track computes canonical forms and semantic equality (`05-normalization.md` N4–N6) and nothing in the
+application asks. `ProjectSession` decides whether to reinstall the playback plan by comparing a revision counter
+(`session.rs`: `if self.installed_revision != current`), so editing a comment, reformatting, or touching an unrelated
+part reinstalls the plan mid-playback. Give the event track a semantic hash, make the session key on it, and — because
+prompts 39–40 made the timeline total — make that hash mean *the whole piece*, not just its notes.
 
 Then make canonicalization fast enough to be asked on every keystroke, using prompt 38's measurements and nothing else.
 
 ## Read
 
-- `docs/rules/kernel/05-normalization.md` N1–N6 (normal form, payload keys, semantic equality, canonical serialization,
+- `docs/rules/events/05-normalization.md` N1–N6 (normal form, payload keys, semantic equality, canonical serialization,
   and the semantic hash N6 describes but nothing computes).
 - `crates/musa-project/src/session.rs` — `installed_revision`, `recompile`, `set_source`, `install_current_plan`, and
   the `ProjectUpdate::unchanged` paths.
-- `crates/musa-kernel/src/occurrence.rs` — `Canonical::canonical_key(&self) -> String`, allocating one `String` per
+- `crates/musa-events/src/occurrence.rs` — `Canonical::canonical_key(&self) -> String`, allocating one `String` per
   occurrence, called by `sort_by_key` (which may call it more than once per element) and twice per comparison in
   `semantic_eq`.
-- `docs/rules/kernel/09-performance.md` — P4 is exactly this cost, measured at prompt 38 and re-measured since.
+- `docs/rules/events/09-performance.md` — P4 is exactly this cost, measured at prompt 38 and re-measured since.
 - `docs/rules/desktop/06-performance.md` B1 (keystroke → diagnostics ≤ 120 ms) and §4 (no speculative optimization).
 - PoSD ch. 20: prefer the design change that removes work.
 
@@ -92,20 +92,20 @@ Do not reach for parallelism, arena allocation, interning, or a faster hash func
 
 ## Target
 
-- `crates/musa-kernel/src/timeline.rs`, `occurrence.rs`: `SemanticHash`, `semantic_hash`, and whatever the measurement
+- `crates/musa-events/src/timeline.rs`, `occurrence.rs`: `SemanticHash`, `semantic_hash`, and whatever the measurement
   justifies in `Canonical`.
-- `crates/musa-kernel/tests/suite/laws.rs`: hash/equality agreement property.
+- `crates/musa-events/tests/suite/laws.rs`: hash/equality agreement property.
 - `crates/musa-compiler`: the compilation exposes its semantic hash (one accessor, one caller).
 - `crates/musa-project/src/session.rs`: plan installation and any other consumer moved off the counter; new tests.
-- `docs/rules/kernel/05-normalization.md`: N6 made concrete — algorithm named, invariants stated, the provenance caveat.
-- `docs/rules/kernel/09-performance.md`: P1/P4 rows before and after any intervention.
+- `docs/rules/events/05-normalization.md`: N6 made concrete — algorithm named, invariants stated, the provenance caveat.
+- `docs/rules/events/09-performance.md`: P1/P4 rows before and after any intervention.
 
 ## Repairs made while implementing
 
 **The algorithm is FNV-1a 128, and the doc comment's "cryptographic-collision probability" is wrong.** The dependency
 lists in roadmap §15 are closed and contain no hash crate, so adding `blake3` or `sha2` for this would have been a
 dependency the roadmap did not sanction, for a property nothing needs: the caller is an editor deciding whether to
-reinstall a playback plan, not a signature scheme. FNV-1a 128 is written out in `musa-kernel/src/hash.rs` (~30 lines),
+reinstall a playback plan, not a signature scheme. FNV-1a 128 is written out in `musa-events/src/hash.rs` (~30 lines),
 is stable by construction, and is named in `05-normalization.md`. The claim recorded there is the honest one —
 accident-resistant, not adversary-resistant — and the test asserts a fixed digest so a change of algorithm, basis, or
 byte order fails loudly instead of silently invalidating every stored identity.
@@ -141,7 +141,7 @@ call. Testing it from outside would have meant a new public accessor whose only 
 forbids. Three tests: a comment does not change it, a note does, and a studio-only edit does.
 
 **The measurement, and the one intervention it justified.** Full numbers and reasoning are in
-`docs/rules/kernel/09-performance.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the
+`docs/rules/events/09-performance.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the
 session asks for.
 
 - P1 large **1.41 ms → 1.95 ms (+38%)** and P2 large **+33%** — over the block's 10% gate, declared here. Hashing the
@@ -156,7 +156,7 @@ session asks for.
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-compiler -p musa-project
+cargo nextest run -p musa-events -p musa-compiler -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo bench -p musa-compiler

@@ -1,7 +1,7 @@
 // Grace notes, and the question the page refuses to answer (docs/plan/prompts/71).
 //
 // A grace note has no written duration. That is not an omission musa has to
-// patch over — it is the fact about grace notes, and the temporal kernel says
+// patch over — it is the fact about grace notes, and the temporal events says
 // it exactly: a grace is a *point* occurrence, start equal to end, standing at
 // the onset of the note it leans on.
 //
@@ -14,7 +14,7 @@
 // profiles read the same page two ways, and the page is unchanged.
 //
 // Compare with `graces-reordered.musa`, which is this piece with one grace
-// group written backwards. The two must not compile to the same kernel term:
+// group written backwards. The two must not compile to the same event-track term:
 // normalization orders occurrences by span and then by payload, every grace in
 // a group shares a span, so the order is carried in the payload or it is lost.
 piece "Graces" {

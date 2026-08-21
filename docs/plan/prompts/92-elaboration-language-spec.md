@@ -11,12 +11,12 @@ phase: 3
 ## Task
 
 Turn the elaboration-language design essay from a revised proposal into a precise candidate specification before any new
-syntax or compiler path is implemented. Reconcile the roadmap, the kernel elaboration documents, the style guide, and
-prompt stack around one staged design: a total value calculus; contextual, context-neutral `music`; closed kernel terms;
-declaration templates; a typed kernel escape; and an explicit score→performance-gesture→instrument→signal→mix pipeline.
-Settle the remaining surface spellings with a corpus that a musician can read and a language implementor can type-check
-without hidden rules. The candidate is the implementation contract for prompts 93–171 but does not outrank the existing
-governing documents until prompt 172's audit graduates it.
+syntax or compiler path is implemented. Reconcile the roadmap, the event track elaboration documents, the style guide,
+and prompt stack around one staged design: a total value calculus; contextual, context-neutral `music`; closed
+event-track terms; declaration templates; a typed event track escape; and an explicit
+score→performance-gesture→instrument→signal→mix pipeline. Settle the remaining surface spellings with a corpus that a
+musician can read and a language implementor can type-check without hidden rules. The candidate is the implementation
+contract for prompts 93–171 but does not outrank the existing governing documents until prompt 172's audit graduates it.
 
 ## Read
 
@@ -24,8 +24,8 @@ governing documents until prompt 172's audit graduates it.
   `docs/notes/research/60-language-decision-record.md`). Its rejection of timeline flattening, distinction between open
   `music` and a closed term, theory-domain separations, equality relations, and private compiler boundary are the
   decisions this prompt makes precise rather than re-litigates.
-- Every file in `docs/rules/kernel/`, especially `06-surface-elaboration.md` and `10-term-calculus.md`. The kernel still
-  has no join, lambda, scale, chord, or musical payload knowledge.
+- Every file in `docs/rules/events/`, especially `06-surface-elaboration.md` and `10-term-calculus.md`. The event track
+  still has no join, lambda, scale, chord, or musical payload knowledge.
 - Roadmap §§2–10, 15, 17–19; `docs/rules/desktop/03-interaction.md` and `04-provenance.md`.
 - Open Music Theory (OMT) `005`, `013`–`021`, `023`–`028`, `033`–`036`, `049`–`051`, `061`–`076`, and `099`–`110` under
   `~/Code/papers/music-theory/open-music-theory/`. Cite the exact chapter file for every imported music-theory
@@ -34,7 +34,7 @@ governing documents until prompt 172's audit graduates it.
   `114-core-principles-of-orchestration.md`, and `116-transcription-from-piano.md` for dynamics, articulation,
   instrument-dependent realization, sampled/percussive timbre, fixed-time notation, and orchestration. Do not infer a
   DSP mapping from a notation term merely because both affect perceived sound.
-- Roadmap §§6.4–6.5, 13, 14.4, 16, and 18 Phase 4; `docs/rules/kernel/07-backend-contract.md`; the current
+- Roadmap §§6.4–6.5, 13, 14.4, 16, and 18 Phase 4; `docs/rules/events/07-backend-contract.md`; the current
   `musa-compiler` performance/profile/studio code and `musa-dsp` graph/plan code. Treat the shared-note-stream warning,
   ignored `PerformanceEvent::Parameter`, graph-addressing surface, and eager `f64` studio values as named design debts,
   not architectural precedents.
@@ -46,7 +46,7 @@ Create `docs/rules/language/` as a small normative candidate specification, not 
 1. `00-semantics.md` — the four representations and two staging judgments; ownership boundaries; contextual
    `instantiate`; context-neutrality; closure to `Term<ScoreFact>`; equality and provenance.
 2. `01-surface.md` — grammar additions and desugarings, including `fn`, `let`, types, calls, `music`, `in scale`,
-   assertions, structural templates, module parameters, and kernel quotation. Every example must be both readable aloud
+   assertions, structural templates, module parameters, and events quotation. Every example must be both readable aloud
    and unambiguous to the lossless parser.
 3. `02-core-calculus.md` — monomorphic STLC after elaboration, finite inductive data, structural eliminators,
    call-by-value evaluation, static judgments, resource rejection, and the proof obligations later prompts discharge.
@@ -90,7 +90,7 @@ error/warning/fallback policy and are never silently ignored.
 
 The surface corpus includes the root-dependent turn, major/dorian rebinding, a higher-order canon, a harmonizer using a
 controlled pitch traversal, a key-parameterized piece, a parameterized voice, a chord class in two voicings, a generic
-and symmetric twelve-tone row, a successful and failing assertion, a standalone `.musa.kernel` document, and a local
+and symmetric twelve-tone row, a successful and failing assertion, a standalone `.musa.events` document, and a local
 quote with antiquotation. It also includes two parts with swappable instruments and different profiles; one hairpin
 driving an exposed `expression` control rather than a DSP address; an instrument with normalized and physical custom
 controls; a shared room send; a sampled instrument; a beat-fitted loop; and a fixed-duration field-recording cue. For
@@ -104,7 +104,7 @@ new public API is justified by a specification document.
 
 - `docs/rules/language/{00-semantics,01-surface,02-core-calculus,03-musical-domains,04-templates-and-modules,
   05-verification,08-performance-and-sound,09-assets-and-packages}.md`.
-- Deliberate repairs to `docs/{roadmap,style-guide}.md` and `docs/rules/kernel/06-surface-elaboration.md`; remove or
+- Deliberate repairs to `docs/{roadmap,style-guide}.md` and `docs/rules/events/06-surface-elaboration.md`; remove or
   mark every contradiction while keeping existing governing precedence until prompt 172.
 - `docs/rules/language/README.md`: candidate status, precedence, scope, document map, and prompt-165 graduation
   condition.
@@ -124,7 +124,7 @@ test -s docs/rules/language/05-verification.md
 test -s docs/rules/language/08-performance-and-sound.md
 test -s docs/rules/language/09-assets-and-packages.md
 rg -n "Timeline\x5bTimeline|context-neutral|pc12|declaration template|antiquotation" \
-  docs/rules/language docs/rules/kernel/06-surface-elaboration.md
+  docs/rules/language docs/rules/events/06-surface-elaboration.md
 rg -n "GestureTimeline|instrument signature|ControlKey|fixed-media|offline" docs/rules/language
 git diff --check
 cargo fmt --check
@@ -135,8 +135,8 @@ Commit as `Specify the elaboration language candidate`.
 ## Stop
 
 - No Rust, Svelte, tree-sitter, or example-source changes.
-- Do not add a kernel constructor or weaken the `.musa.kernel` calculus.
-- Do not put signals, samples, instruments, buses, physical seconds, or DSP parameters in the kernel.
+- Do not add an event-track constructor or weaken the `.musa.events` calculus.
+- Do not put signals, samples, instruments, buses, physical seconds, or DSP parameters in the event track.
 - Do not make a profile target a raw graph node or make a patch's private topology part of its public contract.
 - Do not leave syntax alternatives in a normative candidate rule. Open punctuation is decided here from the corpus.
 - Do not claim a music-theory law from terminology alone; cite OMT or give Musa's definition and proof.

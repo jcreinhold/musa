@@ -1,6 +1,6 @@
 ---
 id: 44
-slug: kernel-queries
+slug: events-queries
 status: done
 depends_on: [43]
 phase: 3
@@ -10,13 +10,13 @@ phase: 3
 
 ## Task
 
-The kernel can *state* every temporal fact and *answer* nothing about them. Its public surface is constructors
+The event track can *state* every temporal fact and *answer* nothing about them. Its public surface is constructors
 (`timeline`, `sequence`, `overlay`, `scale`, `map_payload`), one observation (`restrict`), and canonicalization — so
 every consumer that needs "what is in force here" or "what covers this" writes the scan itself, and they do not agree.
 Add the two queries the codebase already contains by hand, define them denotationally, prove them, and delete the
 hand-rolled versions.
 
-This is the prompt that answers "is the kernel actually useful, or is it ceremony?" A representation nobody can
+This is the prompt that answers "is the event track actually useful, or is it ceremony?" A representation nobody can
 interrogate is ceremony. The fix is an interface, not an ontology: **no new constructor, no new stored state.**
 
 ## Read
@@ -36,12 +36,12 @@ The four rebuilds, read them before designing anything:
 
 Then:
 
-- `docs/rules/kernel/03-denotational-semantics.md` D6 and prompt 37's `Observation` — the existing observation
+- `docs/rules/events/03-denotational-semantics.md` D6 and prompt 37's `Observation` — the existing observation
   operation, and the shape a new one should follow.
-- `docs/rules/kernel/04-algebraic-laws.md` — the law style the new operations must be stated in.
+- `docs/rules/events/04-algebraic-laws.md` — the law style the new operations must be stated in.
 - Prompt 42 (in progress) — its Set B accessors *regions covering an event* and *marks attached to an event* are the
   snapshot-level consumers of this prompt's `covering`. Do not duplicate prompt 42; re-implement its accessor on top of
-  the kernel query and delete the hand-rolled scan underneath it.
+  the event track query and delete the hand-rolled scan underneath it.
 - The module-design pressures this clears: *information loss* (callers rebuild what the module had), *repetition* (the
   same scan four times), and PoSD ch. 8 (pull complexity downward).
 
@@ -58,7 +58,7 @@ Then:
 **Take Design 1.** Design 2 buys a vocabulary and costs a trait with one implementor per rule, closures at every call
 site, and a sampling protocol (`sample_over(window, step)`) that no current caller wants. The module-design rules are
 explicit: generalize the interface, not unused functionality; a one-implementor trait is a concrete type. Record Design
-2 in `docs/rules/kernel/08-open-questions.md` as the shape to revisit **if** a third rule appears with two callers —
+2 in `docs/rules/events/08-open-questions.md` as the shape to revisit **if** a third rule appears with two callers —
 that is the evidence that would justify it, and until then it is speculative generality.
 
 ### The two operations
@@ -74,7 +74,7 @@ impl<A> Timeline<A> {
     /// The value in force at `at`: the last occurrence starting at or before
     /// `at` for which `select` yields a value, in canonical order (D9).
     ///
-    /// `select` is how the caller says which facts participate; the kernel
+    /// `select` is how the caller says which facts participate; the event track
     /// does not know which payloads are context-bearing (§12).
     pub fn prevailing<'a, V>(&'a self, at: Beat, select: impl Fn(&'a A) -> Option<V>) -> Option<V>;
 }
@@ -82,12 +82,12 @@ impl<A> Timeline<A> {
 
 Two things this design is careful about:
 
-- **`prevailing` takes a selector rather than a payload trait.** A trait would make the kernel ask payloads "are you
-  context?", which is musical knowledge (§12). A closure lets the *caller* say "the `Key` facts" without the kernel
-  learning what a key is. It also means one timeline supports many independent prevailing values — key, meter, clef,
-  dynamic — without a new type per kind.
+- **`prevailing` takes a selector rather than a payload trait.** A trait would make the event track ask payloads "are
+  you context?", which is musical knowledge (§12). A closure lets the *caller* say "the `Key` facts" without the event
+  track learning what a key is. It also means one timeline supports many independent prevailing values — key, meter,
+  clef, dynamic — without a new type per kind.
 - **`covering` returns occurrences, not spans or ids.** Event identity is the score layer's invention (prompt 39 assigns
-  `EventId` during projection); the kernel must not learn it.
+  `EventId` during projection); the event track must not learn it.
 
 ### The boundary conventions, decided once
 
@@ -119,31 +119,31 @@ In `04-algebraic-laws.md`, with property tests in `tests/laws.rs`:
 Both queries are linear scans. That is correct for a one-off ask (the interface's "what covers the selection") and wrong
 for bulk derivation: calling `covering` once per event is O(events × facts), and benchmark P3 will say so.
 
-The rule, in the projection's module docs and in this prompt's Check: **the kernel defines what the answer is; bulk
+The rule, in the projection's module docs and in this prompt's Check: **the event track defines what the answer is; bulk
 derivation does one ordered pass.** The projection keeps its single sweep and uses the queries' *definitions* — the
 conventions above — rather than calling them per event. If P3 regresses, the migration turned a sweep into n queries and
 must be reverted, not tuned.
 
-Do not add a bulk API to the kernel for this. No caller wants one, and the sweep belongs where the score's ordering
+Do not add a bulk API to the event track for this. No caller wants one, and the sweep belongs where the score's ordering
 lives.
 
 ## Target
 
-- `crates/musa-kernel/src/timeline.rs`: `covering`, `prevailing`.
-- `crates/musa-kernel/tests/suite/laws.rs`: L20–L23.
-- `docs/rules/kernel/03-denotational-semantics.md`: D8, D9, and the convention table.
-- `docs/rules/kernel/04-algebraic-laws.md`: L20–L23 with test names.
-- `docs/rules/kernel/07-backend-contract.md`: a section stating that consumers ask the kernel these questions rather
-  than answering them privately — the guarantee is that two consumers get the same answer.
-- `docs/rules/kernel/00-purpose.md`: the "what the kernel is" statement gains its second half — it is a representation
-  *and* the interface for interrogating it. This is the framing repair; the document currently reads as if stating facts
-  were the whole job.
-- `docs/rules/kernel/08-open-questions.md`: Design 2 recorded as the revisit-with-evidence shape.
+- `crates/musa-events/src/timeline.rs`: `covering`, `prevailing`.
+- `crates/musa-events/tests/suite/laws.rs`: L20–L23.
+- `docs/rules/events/03-denotational-semantics.md`: D8, D9, and the convention table.
+- `docs/rules/events/04-algebraic-laws.md`: L20–L23 with test names.
+- `docs/rules/events/07-backend-contract.md`: a section stating that consumers ask the event track these questions
+  rather than answering them privately — the guarantee is that two consumers get the same answer.
+- `docs/rules/events/00-purpose.md`: the "what the event track is" statement gains its second half — it is a
+  representation *and* the interface for interrogating it. This is the framing repair; the document currently reads as
+  if stating facts were the whole job.
+- `docs/rules/events/08-open-questions.md`: Design 2 recorded as the revisit-with-evidence shape.
 - `crates/musa-compiler/src/project.rs`: `project_piece` uses time order and the prevailing rule, not
   `origin.definition_span`; `project_regions` uses the containment convention.
 - `crates/musa-compiler/src/performance.rs`: the per-voice dynamic scan replaced.
 - `crates/musa-notation/src/plan.rs`: `Marks::collect`'s membership rebuild replaced by prompt 42's accessor.
-- `docs/rules/kernel/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-performance.md`: this prompt's row.
 
 ## Repairs made while implementing
 
@@ -188,7 +188,7 @@ third rule, so the two questions should be reopened together.
 **The measurement.** P3 large 227 µs → 232 µs (+2%), allocations unchanged; P1 large +3.3%, P2 large +1.8%, all noise
 and all inside the block's gate. The one real cost is five allocations, from `project_piece` building a canonical key
 per piece-scoped fact. Full numbers and a correction to prompt 43's byte column are in
-`docs/rules/kernel/09-performance.md`.
+`docs/rules/events/09-performance.md`.
 
 ## Check
 
@@ -202,12 +202,12 @@ cargo bench -p musa-compiler                          # P3 must not regress; see
 grep -n "definition_span" crates/musa-compiler/src/project.rs | wc -l   # 0 in project_piece
 ```
 
-Commit as `Add coverage and prevailing-value queries to the kernel`.
+Commit as `Add coverage and prevailing-value queries to the event track`.
 
 ## Stop
 
 - No new constructor, no new stored state, no new payload requirement. Queries only.
 - No `Behavior` type, no sampling protocol, no rule trait. That is Design 2, and it is recorded, not built.
 - No bulk/indexed query API — no interval tree, no acceleration structure. If a measurement demands one it is its own
-  prompt, and the first fix is the caller's sweep, not the kernel's storage.
+  prompt, and the first fix is the caller's sweep, not the event track's storage.
 - No behaviour change anywhere. Every golden holds; this prompt replaces four answers with one.

@@ -60,7 +60,7 @@ pub(crate) struct Resolver {
     pub(crate) sites: std::collections::BTreeMap<musa_score::ChoicePath, u32>,
     /// Every decision this compile took, in the order the sites were reached.
     pub(crate) decisions: Vec<musa_score::DecisionRecord>,
-    /// Where each voice's kernel track goes on its way to the adapter.
+    /// Where each voice's events track goes on its way to the adapter.
     ///
     /// `None` on every production path — nothing keeps a track after the
     /// snapshot is built. It is `Some` only under `crate::bench`, which needs
@@ -69,7 +69,7 @@ pub(crate) struct Resolver {
     pub(crate) track_sink: Option<Vec<crate::elaborate::VoiceTrack>>,
     /// Every name reference resolved, kept for editors.
     pub(crate) references: ReferenceIndex,
-    /// Which performance is being compiled (`docs/rules/kernel/11-realization.md`).
+    /// Which performance is being compiled (`docs/rules/events/11-realization.md`).
     ///
     /// It lives here rather than being threaded through elaboration because a
     /// decision site can be anywhere a note can be, and every function on the
@@ -103,7 +103,7 @@ impl Resolver {
     /// The ordinal is per named place, so a site in one voice is unaffected by
     /// sites added in another — and inside a place, a site added *below*
     /// leaves the ones above it alone. Both are the point of
-    /// `docs/rules/kernel/11-realization.md`'s path identity.
+    /// `docs/rules/events/11-realization.md`'s path identity.
     pub(crate) fn decide_count(
         &mut self,
         place: &musa_score::ChoicePath,

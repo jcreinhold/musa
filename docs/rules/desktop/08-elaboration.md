@@ -3,10 +3,10 @@
 Status: **governing**.
 
 The language grew a middle. A piece no longer only spells notes and expands motifs: it calls functions, instantiates
-templates, imports modules, asserts theory, and quotes the kernel, and `docs/rules/language/02-core-calculus.md` §5.8
-says those are a proved conservative extension rather than a bolt-on. This document fixes what that means for a screen —
-what a composer is shown about a term, where generated music says it came from, how an advisory reading appears without
-being mistaken for a mistake, and what a raw kernel document looks like.
+templates, imports modules, asserts theory, and quotes the event track, and `docs/rules/language/02-core-calculus.md`
+§5.8 says those are a proved conservative extension rather than a bolt-on. This document fixes what that means for a
+screen — what a composer is shown about a term, where generated music says it came from, how an advisory reading appears
+without being mistaken for a mistake, and what a raw events document looks like.
 
 One rule stands above the rest and is the reason this file exists: **the interface has no theory of the language.**
 Every sentence on this page is one the core wrote. The frontend chooses where it goes.
@@ -74,7 +74,7 @@ what kind of step it is and — when it is a place in the source — where it is
 | **transform** | `transpose down P5` | nothing on its own; the block it modifies is the step beside it |
 | **specialization** | `with note 3 = a4` | the `with` clause that respelled this note |
 | **assertion** | `assert authentic cadence` | the claim, where it is written |
-| **splice** | `kernel quote` | the splice that put the material here |
+| **splice** | `events quote` | the splice that put the material here |
 
 Four rules:
 
@@ -87,7 +87,7 @@ Four rules:
 - **Plural origins stay plural.** Music that two expansions produced — a note inside a template inside a repeat, a
   passage a `use` and an `assert` both cover — lists every step. The interface never picks the most convenient one to
   show, and never collapses two into a summary.
-- **Quoted kernel material is navigable and not editable.** A score gesture may follow a splice step to the quotation
+- **Quoted events material is navigable and not editable.** A score gesture may follow a splice step to the quotation
   that produced it; it may not synthesize an edit inside the quoted term. The offer is simply not made — see §6.
 
 ## 5. Assertions and advisory readings
@@ -120,11 +120,11 @@ first.
 A report with no findings says so as an answer — *Nothing found* — and not as an empty pane. Absence is the message only
 when nobody asked a question (`05-states.md` §2); here somebody did.
 
-## 6. Raw kernel documents and quoted regions
+## 6. Raw events documents and quoted regions
 
-A kernel document is an interchange format, not a piece. It is shown as itself: the text, plainly labelled *Kernel term
-— interchange format*, with no engraving, no transport, and no entry. A quoted region inside a piece carries the same
-label where it is quoted.
+An events document is an interchange format, not a piece. It is shown as itself: the text, plainly labelled *Event-track
+term — interchange format*, with no engraving, no transport, and no entry. A quoted region inside a piece carries the
+same label where it is quoted.
 
 The rule underneath both: **the application never writes into material it did not spell.** Included, quoted, generated,
 and analysis-derived facts are navigable and not editable, and the way that is expressed is that the edit is not

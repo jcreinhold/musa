@@ -23,12 +23,12 @@
 - [Set up an editor](how-to/editor-setup.md)
 - [Run the desktop app](how-to/desktop.md)
 - [Write for the studio](how-to/studio.md)
-- [Work with kernel files](how-to/kernel-files.md)
+- [Work with events files](how-to/events-files.md)
 
 # Explanation
 
 - [Architecture](concepts/architecture.md)
-- [The temporal kernel](concepts/temporal-kernel.md)
+- [The event-track](concepts/event-track.md)
 - [Exact time](concepts/exact-time.md)
 - [Layer separation](concepts/layer-separation.md)
 - [Source and provenance](concepts/provenance.md)
@@ -42,4 +42,4 @@
 - [Standard library](reference/stdlib.md)
 - [CLI](reference/cli.md)
 - [Lint codes](reference/lints.md)
-- [Kernel interchange format](reference/kernel-format.md)
+- [Events interchange format](reference/events-format.md)

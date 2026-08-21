@@ -39,7 +39,7 @@ unreasonable declared sizes with actionable diagnostics. Compilation/checking ma
 the audio thread. All I/O, validation, decode/preload, replacement, and retirement happen on the control side.
 
 Record optional license/source metadata and surface it to users, but do not pretend the compiler can determine legal
-permission. Define invalidation: a changed asset digest invalidates prepared audio and audio exports, not kernel or
+permission. Define invalidation: a changed asset digest invalidates prepared audio and audio exports, not event track or
 notation artifacts.
 
 ## Target
@@ -64,5 +64,5 @@ Commit as `Make assets reproducible build inputs`.
 ## Stop
 
 - No implicit download, embedded credentials, license adjudication, sample playback, or waveform editor.
-- No raw asset bytes in `ScoreSnapshot`, kernel terms, compiler diagnostics, or desktop IPC.
+- No raw asset bytes in `ScoreSnapshot`, event-track terms, compiler diagnostics, or desktop IPC.
 - No cache key based only on path or modification time.

@@ -27,8 +27,8 @@ recorded as superseded with a reason.
   document is the contract; a disagreement is a defect in one of them.
 - `docs/rules/constitution.md` §9 as amended, and `docs/rules/across-stages/05-metatheory.md` §1 — the principal-type
   claim §1.1 cites is one of the claims that changes.
-- `docs/rules/kernel/12-payload-admission.md` — storable data is a kernel-facing predicate, not a language-internal
-  convenience, so whatever replaces the `d` variable class still has to answer the kernel.
+- `docs/rules/events/12-payload-admission.md` — storable data is an event-track-facing predicate, not a
+  language-internal convenience, so whatever replaces the `d` variable class still has to answer the event track.
 - Peyton Jones ch. 8 and ch. 9 for what a type checker is obliged to do and how it is written down, and ch. 5 for the
   semantics of pattern matching — §6.2's flat-pattern rule is the one this prompt overturns, and ch. 5 is where the
   case-tree compilation that replaces it comes from.

@@ -823,7 +823,7 @@ pub(crate) fn generation_site(
         | ExpansionStep::MapNotePitches
         | ExpansionStep::ScaleContext { .. }
         | ExpansionStep::Assertion { .. }
-        | ExpansionStep::KernelSplice { .. } => None,
+        | ExpansionStep::EventsSplice { .. } => None,
     }
 }
 
@@ -853,7 +853,7 @@ pub(crate) fn step_key(step: &crate::origin::ExpansionStep) -> String {
             ..
         } => format!("make {template} as {alias}@{}:{}", site.start, site.end),
         ExpansionStep::Assertion { ref claim } => format!("assert({claim})"),
-        ExpansionStep::KernelSplice { at } => format!("splice({}/{})", at.numer(), at.denom()),
+        ExpansionStep::EventsSplice { at } => format!("splice({}/{})", at.numer(), at.denom()),
         ExpansionStep::Specialization { override_site } => {
             format!("with@{}:{}", override_site.start, override_site.end)
         }

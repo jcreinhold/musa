@@ -52,7 +52,7 @@ so `musa_syntax::PRIMITIVE_TYPES` and its four consumers become `BASE_TYPES`. Th
 text, which covers operations; it is in scope because a prompt whose purpose is to leave the word one meaning cannot
 leave a second one exported from a public facade.
 
-**What keeps the word.** `docs/rules/kernel/` and `crates/musa-kernel` use *primitive* in its ordinary English sense of
+**What keeps the word.** `docs/rules/events/` and `crates/musa-events` use *primitive* in its ordinary English sense of
 *irreducible*, which `02-core-calculus.md` explicitly permits where no registered unit is in scope; leave those. Leave
 `num_enum::IntoPrimitive` and `num_enum::FromPrimitive` in `syntax_kind.rs`, which are a dependency's derive names and
 not ours to spell. Correct the two `syntax_kind.rs` doc comments that call a base type a primitive.
@@ -93,5 +93,5 @@ Commit as `Repair prompt 127b: rename compiler-owned operations to builtins`.
   is prompt 127d's, and adding a placeholder here would put the name back into two meanings from the other side.
 - No new builtin, no removed builtin, no changed signature, and no changed evaluation. The 79 entries after this prompt
   are the 71 and the 8 before it.
-- No rename inside `musa-kernel` or `docs/rules/kernel/`, where the word carries its ordinary sense.
+- No rename inside `musa-events` or `docs/rules/events/`, where the word carries its ordinary sense.
 - No alias, no deprecated re-export, and no `#[doc(hidden)]` bridge for either old name.

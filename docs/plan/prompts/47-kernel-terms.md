@@ -1,6 +1,6 @@
 ---
 id: 47
-slug: kernel-terms
+slug: events-terms
 status: done
 depends_on: [45, 46]
 phase: 3
@@ -10,17 +10,17 @@ phase: 3
 
 ## Task
 
-Implement prompt 46's calculus inside `musa-kernel`: the `Term` type, the evaluator, well-formedness checking, and
+Implement prompt 46's calculus inside `musa-events`: the `Term` type, the evaluator, well-formedness checking, and
 property tests for T1–T5. The public surface added here is small and has exactly two callers, both named: prompt 48's
 text form and prompt 49's elaboration. Nothing in the compiler changes.
 
 ## Read
 
-- `docs/rules/kernel/10-term-calculus.md` (grammar, evaluation relation, theorems T1–T5, the absent list),
-  `docs/rules/kernel/02-static-semantics.md` (well-formedness).
-- `crates/musa-kernel/src/timeline.rs` and `tests/laws.rs` — the value algebra the evaluator produces and the style the
+- `docs/rules/events/10-term-calculus.md` (grammar, evaluation relation, theorems T1–T5, the absent list),
+  `docs/rules/events/02-static-semantics.md` (well-formedness).
+- `crates/musa-events/src/timeline.rs` and `tests/laws.rs` — the value algebra the evaluator produces and the style the
   new property tests follow.
-- `docs/rules/kernel/00-purpose.md` and `docs/rules/kernel/00-purpose.md` — the calculus is structure, not computation.
+- `docs/rules/events/00-purpose.md` and `docs/rules/events/00-purpose.md` — the calculus is structure, not computation.
 - PoSD ch. 10 (define errors out of existence) for the well-formedness question below; the module-design rule "do not
   add an error case unless a caller can recover from it".
 
@@ -60,7 +60,7 @@ pub enum Term<A> { /* literal, seq, over, shift, scale, restrict, let, var */ }
 
 impl<A> Term<A> {
     /// The first well-formedness violation, or `Ok(())` (02-static-semantics).
-    pub fn check(&self) -> Result<(), KernelError>;
+    pub fn check(&self) -> Result<(), EventsError>;
 }
 
 /// Evaluate a checked term to its denotation (10-term-calculus, T3–T4).
@@ -78,7 +78,7 @@ is a public layout.
 
 ### The tests
 
-One property test per theorem, in `crates/musa-kernel/tests/suite/terms.rs`, using generators that build *terms* (a
+One property test per theorem, in `crates/musa-events/tests/suite/terms.rs`, using generators that build *terms* (a
 recursive `proptest` strategy with a depth bound — terms are finite and so are the generators):
 
 - T1 homomorphism, for `seq`, `over`, `scale`, `restrict`;
@@ -92,11 +92,11 @@ fails, the calculus and the algebra disagree and the *specification* is wrong �
 
 ## Target
 
-- `crates/musa-kernel/src/term.rs` (new), `lib.rs` facade updated with `Term`, `evaluate`.
-- `crates/musa-kernel/src/error.rs`: whatever well-formedness cases survived the sorting above, and no more.
-- `crates/musa-kernel/tests/suite/terms.rs`: T1–T5 and the transported laws.
-- `docs/rules/kernel/10-term-calculus.md`: each theorem's `Test:` line pointed at the real test name.
-- `docs/rules/kernel/09-performance.md`: no row — nothing on the measured path changed.
+- `crates/musa-events/src/term.rs` (new), `lib.rs` facade updated with `Term`, `evaluate`.
+- `crates/musa-events/src/error.rs`: whatever well-formedness cases survived the sorting above, and no more.
+- `crates/musa-events/tests/suite/terms.rs`: T1–T5 and the transported laws.
+- `docs/rules/events/10-term-calculus.md`: each theorem's `Test:` line pointed at the real test name.
+- `docs/rules/events/09-performance.md`: no row — nothing on the measured path changed.
 
 ## Repairs made while implementing
 
@@ -147,13 +147,13 @@ cases).
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel
-cargo clippy --all-targets -p musa-kernel -- -D warnings
+cargo nextest run -p musa-events
+cargo clippy --all-targets -p musa-events -- -D warnings
 cargo fmt --check
-cargo build --workspace   # the kernel's new surface breaks nothing
+cargo build --workspace   # the event track's new surface breaks nothing
 ```
 
-Commit as `Implement the kernel term calculus`.
+Commit as `Implement the event-track term calculus`.
 
 ## Stop
 

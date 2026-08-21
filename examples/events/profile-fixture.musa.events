@@ -1,0 +1,33 @@
+% musa-events-3
+% generated from examples/profile-fixture.musa by musa-compiler
+events "Profile Fixture" {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 2 {
+        occurrence "voice 0 0 dynamic p [1308:1318 #1]" from 0 to 0;
+        occurrence "voice 0 0 note c5 1/4 staccato [1335:1348 #1]" from 0 to 1/4;
+        occurrence "voice 0 0 note d5 1/4 staccato [1365:1378 #1]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note e5 1/2 [1395:1399 #1]" from 1/2 to 1;
+        occurrence "voice 0 0 dynamic f [1416:1426 #1]" from 1 to 1;
+        occurrence "voice 0 0 note g5 1/4 staccato [1443:1456 #1]" from 1 to 5/4;
+        occurrence "voice 0 0 note a5 1/4 [1473:1477 #1]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note b5 1/2 [1494:1498 #1]" from 3/2 to 2;
+      };
+      track 2 {
+        occurrence "voice 1 0 dynamic mf [1639:1650 #2]" from 0 to 0;
+        occurrence "voice 1 0 note c3 1/4 staccato [1667:1680 #2]" from 0 to 1/4;
+        occurrence "voice 1 0 note e3 1/4 tenuto [1697:1708 #2]" from 1/4 to 1/2;
+        occurrence "voice 1 0 note g3 1/2 accent [1725:1730 #2]" from 1/2 to 1;
+        occurrence "voice 1 0 dynamic p [1747:1757 #2]" from 1 to 1;
+        occurrence "voice 1 0 note c3 1/2 [1774:1778 #2]" from 1 to 3/2;
+        occurrence "voice 1 0 note g2 1/2 [1795:1799 #2]" from 3/2 to 2;
+      };
+      track 2 {
+        occurrence "piece meter 4/4 [328:338]" from 0 to 2;
+        occurrence "piece tempo 1/4=100 [307:323]" from 0 to 2;
+        occurrence "piece key c major [343:355]" from 0 to 2;
+        occurrence "part 0 clef treble [1226:1238]" from 0 to 2;
+        occurrence "part 1 clef bass [1557:1567]" from 0 to 2;
+      }
+    };
+}

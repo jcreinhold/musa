@@ -73,7 +73,7 @@ B1 and B2 are end-to-end numbers, and the compile inside them is measured separa
 | an edit in the first bar of the large case | 4.5 ms | 3.8% |
 | an edit in the last bar of the large case | 4.5 ms | 3.8% |
 | a 16.5 KB document mid-keystroke, recovering | 171 µs | 0.1% |
-| the heaviest committed workload (`kernel-pressure`) | 9.6 ms | 8.0% |
+| the heaviest committed workload (`events-pressure`) | 9.6 ms | 8.0% |
 
 Compilation is therefore not what B1 and B2 spend their time on; engraving is, and the structural rules in §3 are what
 keep that true. Two consequences are worth stating because they are what a future miss should be checked against first:

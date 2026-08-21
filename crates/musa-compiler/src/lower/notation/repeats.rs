@@ -16,7 +16,7 @@ impl Lowering<'_> {
     ///
     /// # Why the passes are folded rather than left to a reading
     ///
-    /// `../../../rules/kernel/06-surface-elaboration.md` §2 makes `repeat n { … }`
+    /// `../../../rules/events/06-surface-elaboration.md` §2 makes `repeat n { … }`
     /// "an HIR-level `follow` of `n` evaluations", each iteration's occurrences
     /// carrying a [`musa_score::origin::ExpansionStep::RepeatIteration`] step. That is
     /// not a convenience: a timeline holding one pass is a *different piece of
@@ -44,7 +44,7 @@ impl Lowering<'_> {
     /// `repeat 4 to 16` is the piece leaving the count to the performance, and it
     /// is decided *here*, before a term exists. Everything below this line is the
     /// ordinary exact repeat, which is the whole of
-    /// `../../../rules/kernel/11-realization.md`'s design in one place.
+    /// `../../../rules/events/11-realization.md`'s design in one place.
     pub(crate) fn repeat(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_syntax::ast::RepeatStmt::cast(node.clone())?;
         let span = crate::resolve::trimmed_span(node);
@@ -263,7 +263,7 @@ impl Lowering<'_> {
     /// `bar { … }` and `bar refrain { … }` — a measure, and what it claims.
     ///
     /// The braces erase. A bar contributes no occurrence, no payload, and no
-    /// time of its own — the kernel's ontology has no bar in it, and where the
+    /// time of its own — the event track's ontology has no bar in it, and where the
     /// barlines fall is [`musa_score::BarLines`]'s answer over the meters — so the
     /// term a bar denotes is exactly the fold of what is inside it. What the
     /// braces contribute is the claim that the music between them fills one

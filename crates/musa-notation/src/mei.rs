@@ -869,7 +869,7 @@ fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: us
     // are `<dir>`: the reach of a held note above its notehead, and the
     // instruction over the region it governs, spanning with `tstamp2` where
     // it covers more than one measure. Lossy, and stated as lossy in
-    // `docs/rules/kernel/07-backend-contract.md`.
+    // `docs/rules/events/07-backend-contract.md`.
     for hold in plan.holds().iter().filter(|mark| mark.measure == measure) {
         let stamp = timestamp(hold.beat(unit));
         write_dir(writer, &stamp, None, &format!("hold to {}", hold.what.most.as_ratio()))?;

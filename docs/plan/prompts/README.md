@@ -4,7 +4,7 @@
 implemented, per execution rule 5.
 
 This directory is the executable work plan for building musa according to [`../roadmap.md`](../roadmap.md), with the
-temporal kernel governed by [`../../rules/kernel/`](../../rules/kernel/00-purpose.md) and the desktop interface by
+event-track governed by [`../../rules/events/`](../../rules/events/00-purpose.md) and the desktop interface by
 [`../../rules/desktop/`](../../rules/desktop/README.md). Each numbered prompt delivers one feature and builds on the
 prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
@@ -13,15 +13,15 @@ prompts it depends on. Work them in dependency order; when in doubt, work them i
 split between the temporal core and a separate studio calculus. Prompt 127a amends the rules first; no code prompt may
 implement the new design against stale rules.
 
-**Where the roadmap and the kernel specification disagree** — most importantly, on the rule that the surface grammar
+**Where the roadmap and the events specification disagree** — most importantly, on the rule that the surface grammar
 does not define the ontology and that a small event-track core (`empty`, `event`, `follow`, `together`, `map_payloads`,
-`duration` over exact rational ambient time) is the semantic core — the kernel wins. Prompts 08–12 specify, implement,
-prove, and install it; prompts 13+ proceed exactly as before on top of it.
+`duration` over exact rational ambient time) is the semantic core — the event track wins. Prompts 08–12 specify,
+implement, prove, and install it; prompts 13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
 states, and performance budgets — `docs/rules/desktop/` is the authority. Roadmap §14 still fixes the architecture.
 Prompts 20–26 implement `docs/rules/desktop/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for
-the kernel.
+the event track.
 
 **The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 wrote the first candidate.
 Prompts 127a–127e and 150–153 replace its contextual `Music` core with the reviewed event-track and machine calculus in
@@ -127,11 +127,11 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 05 | compiler-core | 1 | `musa check`; ScoreSnapshot + provenance |
 | 06 | motifs-and-transforms | 1 | Motifs, repeat, transpose, expansion laws |
 | 07 | notation-plan | 1 | Measures, beaming, tie decomposition |
-| 08 | kernel-spec | 1 | `docs/rules/kernel/` temporal-kernel specification (candidate) |
-| 09 | temporal-kernel | 1 | `musa-kernel`: timeline/sequence/overlay/restrict/scale/normalize |
-| 10 | kernel-laws | 1 | Algebraic law proofs incl. non-laws |
-| 11 | kernel-elaboration | 1 | Surface → kernel elaboration + differential parity |
-| 12 | kernel-switch | 1 | Kernel becomes the canonical semantics |
+| 08 | events-spec | 1 | `docs/rules/events/` event-track specification (candidate) |
+| 09 | event-track | 1 | `musa-events`: timeline/sequence/overlay/restrict/scale/normalize |
+| 10 | events-laws | 1 | Algebraic law proofs incl. non-laws |
+| 11 | events-elaboration | 1 | Surface → event-track elaboration + differential parity |
+| 12 | events-switch | 1 | Kernel becomes the canonical semantics |
 | 13 | mei-export | 1 | `musa render --to mei` |
 | 14 | lilypond-export | 1 | `musa render --to lilypond` |
 | 15 | performance-plan | 1 | Tempo as `Beat → Second`; frame scheduling |
@@ -156,18 +156,18 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 34 | transforms-variation | 3 | stretch/retrograde/invert as elaboration-time functions, specialization |
 | 35 | annotations-harmony | 3 | Phrase/form and harmony as typed interval payloads |
 | 36 | imports-and-curves | 3 | Relative imports, tempo/expression curves |
-| 37 | kernel-observation | 3 | Composable observation; ambient extension deleted; kernel spec repairs |
+| 37 | event-track-observation | 3 | Composable observation; ambient extension deleted; events spec repairs |
 | 38 | semantic-benchmarks | 3 | Measured baseline for the semantic pipeline |
 | 39 | score-facts | 3 | Every notated fact is an occurrence; snapshot becomes a projection |
 | 40 | context-facts | 3 | Key, meter, sections, harmony as occurrences; one timeline per piece |
 | 41 | retire-the-oracle | 3 | The direct lowerer and the `Elaboration` switch deleted |
 | 42 | snapshot-projection | 3 | `ScoreSnapshot` closed behind its interface |
 | 43 | semantic-identity | 3 | Semantic hash; playback keyed on meaning, not revisions |
-| 44 | kernel-queries | 3 | `covering` and `prevailing`: the kernel answers questions, not just states facts |
-| 45 | kernel-progress | 3 | `Progress` — continuous shape in the denotation; **Q4 resolved** |
-| 46 | kernel-term-spec | 3 | `docs/rules/kernel/10-term-calculus.md` (candidate) |
-| 47 | kernel-terms | 3 | `Term`, evaluator, soundness laws |
-| 48 | kernel-interop | 3 | `musa kernel`; `.kernel` round-trip; graduates the calculus |
+| 44 | events-queries | 3 | `covering` and `prevailing`: the event track answers questions, not just states facts |
+| 45 | events-progress | 3 | `Progress` — continuous shape in the denotation; **Q4 resolved** |
+| 46 | events-term-spec | 3 | `docs/rules/events/10-term-calculus.md` (candidate) |
+| 47 | events-terms | 3 | `Term`, evaluator, soundness laws |
+| 48 | events-interop | 3 | `musa events`; `.event track` round-trip; graduates the calculus |
 | 49 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
 | 50 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
 | 51 | engraved-edition | 2 | Front matter, instrument labels, measure numbers: the page as a real edition |
@@ -206,7 +206,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 84 | keyword-documentation | 3 | Every keyword's plain-English doc, exhaustive by construction, over hover |
 | 84a | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
 | 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
-| 86 | the-kernel-file-reads | 3 | The interchange payload as named, quoted words; the corpus becomes `.musa.kernel` |
+| 86 | the-events-file-reads | 3 | The interchange payload as named, quoted words; the corpus becomes `.musa.events` |
 | 87 | the-note-is-one-word | 2 | `c4/4` and the augmentation dot; the `Duration` node the shorthand needs |
 | 88 | sharps-and-flats | 2 | `f#3` and `eb4`, the spelling every DAW and chord chart uses |
 | 89 | the-bar-is-the-line | 2 | `\|` for the anonymous bar, events without `;`, `[c3 g3]/2`, `>` and `^` |
@@ -240,8 +240,8 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 117 | analysis-service | 3 | Narrow evidence-bearing advisory-analysis boundary |
 | 118 | tonal-analysis | 3 | Ambiguity-preserving Roman, cadence, tonicization, modulation findings |
 | 119 | voice-leading-and-counterpoint | 3 | Explicit style profiles with rule strengths and evidence |
-| 120 | kernel-source-inclusion | 3 | Valid `.musa.kernel` documents and typed whole-document inclusion |
-| 121 | typed-kernel-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
+| 120 | events-source-inclusion | 3 | Valid `.musa.events` documents and typed whole-document inclusion |
+| 121 | typed-events-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
 | 122 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
 | 123 | observable-pipeline | 3 | `tracing` spans on the facades, `MUSA_LOG`, and a subscriber in every shell |
 | 124 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
@@ -338,7 +338,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
-| 155a | payload-admission-rule | 3 | What a kernel payload owes, and the rendering law, before the first second payload |
+| 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
 | 156 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
 | 157 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
 | 158 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
@@ -364,13 +364,13 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 178 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
 | 179 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
-Prompts 08–12 are the temporal-kernel insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
-the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
-(differential parity), and prompt 12 made the kernel path canonical. The oracle was retained through prompt 40 and
+Prompts 08–12 are the event-track insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as the
+regression oracle** when prompt 11 landed: the new event-track elaboration had to reproduce its snapshots exactly
+(differential parity), and prompt 12 made the event-track path canonical. The oracle was retained through prompt 40 and
 **deleted at prompt 41**, once the migration it guarded was finished; what replaced it is the `examples/` corpus with
-goldens at every backend, the law suites, the kernel's property tests, and the kernel normal forms. Nothing built before
-prompt 08 is discarded — lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and
-`NotationPlan` were explicitly preserved while the kernel was built beside them.
+goldens at every backend, the law suites, the event track's property tests, and the events normal forms. Nothing built
+before prompt 08 is discarded — lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and
+`NotationPlan` were explicitly preserved while the event track was built beside them.
 
 Prompts 20–26 are the interface block. They replace a single "Tauri + Svelte + Verovio" prompt that treated the desktop
 app as plumbing and left its design, engraving quality, interaction model, and performance entirely unspecified — which
@@ -423,11 +423,11 @@ on its own.
 a clef change, a modulation, a meter change, a fermata, a grace note, a *rit.*, a swung eighth, a cadenza, or any music
 that leaves a decision to its performer — which is most of what is played anywhere. The natural reading is that the
 temporal model is too small. It is not: the event track is generic in its payload, and a clef change is a `FactKind`
-with a span costing zero kernel lines. What blocked all of it was above the kernel — four separate mechanisms for "what
-is in force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap` singleton), a measure number
-computed by dividing by one of them, and a closed five-variant enum standing in for the whole vocabulary of notation.
-**Every prompt in this block adds nothing to the kernel** — no operation, no term form, no constructor. That is the
-block's own falsification test, and §34's, applied sixteen times.
+with a span costing zero event track lines. What blocked all of it was above the event track — four separate mechanisms
+for "what is in force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap` singleton), a measure
+number computed by dividing by one of them, and a closed five-variant enum standing in for the whole vocabulary of
+notation. **Every prompt in this block adds nothing to the event track** — no operation, no term form, no constructor.
+That is the block's own falsification test, and §34's, applied sixteen times.
 
 **61–63 are three refactors that ship no feature**, and they run first because each is provable by the strongest check
 available: the rendered output — MEI, LilyPond, MusicXML, MIDI, audio — stays byte-identical, and any golden that does
@@ -441,7 +441,7 @@ unmeasured music (74) and polymeter (75) each reach a different kind of musician
 
 Read 66 as the block's second falsification. Indeterminacy looks like it needs a `choose` form in the term calculus, on
 exactly the argument that justified `Progress` at prompt 45 — and it does not: `choose` cannot express *In C*'s
-unbounded repeats or Klavierstück XI's 19! orderings, it makes T2 ambiguous, and it leaves a `.kernel` file with no
+unbounded repeats or Klavierstück XI's 19! orderings, it makes T2 ambiguous, and it leaves a `.event track` file with no
 normal form and no hash, which destroys the corpus that motivated it. So a realization becomes a **compile parameter**,
 the freedom becomes a **payload value**, and Q2 closes on its own stated trigger in favour of its own working stance. 75
 carries the same discipline forward as a gate rather than a conclusion: polymeter has repertoire and consumers,
@@ -450,27 +450,27 @@ It opened — Nancarrow's *Canon X* is the piece, and `MusicXML` and MEI attach 
 format*, which is what made polytempo something musa can hand to another program — and the prompt records the reasoning
 where the decline would have gone.
 
-Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
-migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
-compiler had left it. The consequence, five prompts later, was a system with one semantic core and two temporal
-representations — notes in the timeline, and slurs, dynamics, key, meter, sections, and harmony in parallel side tables
-keyed by ids the adapter assigned. **37–43 finish the migration and delete what it was keeping**: every temporal fact
-becomes an occurrence, the snapshot becomes a projection behind an interface, the oracle goes, and semantic identity
-replaces the revision counters that stood in for it. **44–45 make the kernel useful rather than merely correct**: a
-representation that can state everything and answer nothing is ceremony, so the kernel gains the two queries its
-consumers were each writing privately and differently (`covering`, `prevailing`), and `Progress` puts a crescendo's
-*shape* in the denotation instead of inside `performance.rs` — closing Q4, and closing it with a payload value that
-needs no new operation and breaks no law. **46–50 add the term calculus** — `docs/rules/kernel/01-grammar.md`'s
-long-promised syntax, with `let` for sharing, an evaluator, soundness theorems, and the interchange format that Q6 said
-would justify a parser. The block follows the 08–12 shape: specify (46), implement and prove (47), install (48–49), and
-measure before optimizing (38, 50).
+Prompts 37–50 are the event track consolidation block. Prompt 12 made the event track canonical but deliberately kept
+what the migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the
+pre-event track compiler had left it. The consequence, five prompts later, was a system with one semantic core and two
+temporal representations — notes in the timeline, and slurs, dynamics, key, meter, sections, and harmony in parallel
+side tables keyed by ids the adapter assigned. **37–43 finish the migration and delete what it was keeping**: every
+temporal fact becomes an occurrence, the snapshot becomes a projection behind an interface, the oracle goes, and
+semantic identity replaces the revision counters that stood in for it. **44–45 make the event track useful rather than
+merely correct**: a representation that can state everything and answer nothing is ceremony, so the event track gains
+the two queries its consumers were each writing privately and differently (`covering`, `prevailing`), and `Progress`
+puts a crescendo's *shape* in the denotation instead of inside `performance.rs` — closing Q4, and closing it with a
+payload value that needs no new operation and breaks no law. **46–50 add the term calculus** —
+`docs/rules/events/01-grammar.md`'s long-promised syntax, with `let` for sharing, an evaluator, soundness theorems, and
+the interchange format that Q6 said would justify a parser. The block follows the 08–12 shape: specify (46), implement
+and prove (47), install (48–49), and measure before optimizing (38, 50).
 
-Read 44 and 45 together as the answer to a fair objection: the kernel was supposed to be a simpler interop target than
-the surface language, but no backend consumed it and no consumer asked it anything. 39–43 made it *total* — the snapshot
-is now a projection of one timeline. 44 gives it an interface, 45 gives it the one thing it genuinely could not say, and
-48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That 44 and 45 need
-**zero** new constructors is the standing evidence for `../../rules/kernel/00-purpose.md`'s governing design rule: the
-operation set was right; the *surface* was not.
+Read 44 and 45 together as the answer to a fair objection: the event track was supposed to be a simpler interop target
+than the surface language, but no backend consumed it and no consumer asked it anything. 39–43 made it *total* — the
+snapshot is now a projection of one timeline. 44 gives it an interface, 45 gives it the one thing it genuinely could not
+say, and 48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That 44 and
+45 need **zero** new constructors is the standing evidence for `../../rules/events/00-purpose.md`'s governing design
+rule: the operation set was right; the *surface* was not.
 
 **84–85 make the project the unit of work.** Roadmap §16 has described directory projects since the beginning and prompt
 36 built the half of it a compiler needs — relative imports, and a `musa.toml` read for two keys — but nothing above the
@@ -494,7 +494,7 @@ hides. The diagnosis is that musa took `**kern`'s one-event-per-line shape, whic
 "designed to facilitate analytic applications rather than music printing" — an analysis database's layout for a
 composition language. **86** takes the interchange file, and goes first because 88 and 89 each regenerate all 24 goldens
 and a diff is only reviewable against a format that can be read; it also settles the extension on the rule
-`docs/rules/kernel/01-grammar.md` already states about unexplained shorthand. **87** makes a duration cost one
+`docs/rules/events/01-grammar.md` already states about unexplained shorthand. **87** makes a duration cost one
 character, which is the whole constraint: musa keeps scientific pitch, so the octave digit is spoken for and a separator
 is the only way out — every other system freed that digit by making octave non-numeric. **88** spells accidentals as
 musicians do. **89** is the substance: a `|` where notation uses a separator, no `;` where the next pitch already says
@@ -506,13 +506,13 @@ Read 87 and 90 together as the pair: 87 argues that notation gets away with stat
 *free*, so text must make it cheap; 90 argues that notation groups beats with a beam, so text must group them with
 space. Neither prompt invents a device. Both take one notation already has and ask what it costs in characters.
 
-**92–99 build the elaboration-language foundation without weakening the kernel boundary.** 92 specifies the static and
-dynamic judgments before syntax is accepted, including the score→gesture→instrument→signal→mix factorization and
+**92–99 build the elaboration-language foundation without weakening the event track boundary.** 92 specifies the static
+and dynamic judgments before syntax is accepted, including the score→gesture→instrument→signal→mix factorization and
 asset/package closure; 93 freezes both observable compatibility and cost before the implementation can move either;
 94–96 add syntax, a total typed functional core, finite data, and deterministic limits; 97–98 make `Music` a
 context-neutral elaboration result and allow higher-order construction only through structure-preserving operations; 99
-makes the standard library ordinary inspectable Musa source. This order makes the kernel the score denotation, not the
-programming language or audio engine, and keeps evaluator/type-checker types private to `musa-compiler`.
+makes the standard library ordinary inspectable Musa source. This order makes the event track the score denotation, not
+the programming language or audio engine, and keeps evaluator/type-checker types private to `musa-compiler`.
 
 **100–119 are a bounded theory block, not a universal “music theory engine.”** 100–105 establish distinct domains for
 spelled pitches, intervals, scales, keys, degrees, chord classes, voicings, `pc12`, pitch-class sets, and rows before an
@@ -563,7 +563,7 @@ They run in that order because 108 gates everything the theory block does next a
 and every type annotation in `stdlib/`, which grows with every prompt after them. 113 precedes 114 because it decides
 what the words are and 114 only decides what surrounds them.
 
-**120–124 pay the interchange and usability costs.** A `.musa.kernel` file becomes a valid typed Musa document before
+**120–124 pay the interchange and usability costs.** A `.musa.events` file becomes a valid typed Musa document before
 local quote/antiquote is admitted; quotation crosses only the context-neutral `ScoreFact` boundary and preserves hygiene
 and provenance. The language server, editor extensions, and desktop consume the same compiler/project facts. They may
 explain types, origins, assertions, and competing analyses, but may not grow a second checker, editable expanded AST, or
@@ -573,7 +573,7 @@ gives each public facade one span, fixes `MUSA_LOG` as the filter, keeps every l
 line out of the audio callback.
 
 **125–127 close the first score-elaboration attempt without graduating it.** 125 tests the musician and implementor
-documentation paths. 126 records the earlier boundary decision: finite temporal values belong in the kernel while
+documentation paths. 126 records the earlier boundary decision: finite temporal values belong in the event track while
 running signals do not. 127 measures that implementation. Later research found the missing distinction. An audio history
 is open-ended, but the typed machine that produces its next frame is finite data. Treating the two as the same thing had
 pushed the machine description out of the language for the wrong reason.
@@ -659,7 +659,7 @@ machines under the same prepared offline/live step semantics.
 exposed controls, part outputs, assets, and media without creating GUI-owned state. 169 extends generated editor facts
 and the two-path handbook. 170 measures preparation, rendering, decoded memory, callback deadlines, and UI updates. 171
 audits every performance/sound/asset/package law and format support claim. Only 172 combines that green matrix with the
-score/theory/kernel/tooling matrix and conditionally graduates `docs/rules/language/`.
+score/theory/events/tooling matrix and conditionally graduates `docs/rules/language/`.
 
 **Prompts 173–179 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
 proved — Rust compiles source to MEI, a worker engraver turns MEI into SVG, `xml:id`s carry provenance — is packaged,

@@ -1,6 +1,6 @@
 ---
 id: 48
-slug: kernel-interop
+slug: events-interop
 status: done
 depends_on: [47]
 phase: 3
@@ -11,23 +11,23 @@ phase: 3
 ## Task
 
 Give the term calculus its text form and a second producer and consumer, which is the condition Q6 set for building a
-parser at all: `musa kernel <file.musa>` prints a piece as kernel text, `musa kernel --check <file.kernel>` reads it
-back, and a corpus of `.kernel` fixtures becomes an executable specification that a future second implementation could
-be tested against. Round-tripping is the acceptance test: print, parse, evaluate, and get the same canonical form and
-the same semantic hash.
+parser at all: `musa events <file.musa>` prints a piece as events text, `musa events --check <file.events>` reads it
+back, and a corpus of `.event track` fixtures becomes an executable specification that a future second implementation
+could be tested against. Round-tripping is the acceptance test: print, parse, evaluate, and get the same canonical form
+and the same semantic hash.
 
-This graduates `docs/rules/kernel/10-term-calculus.md` from candidate to governing.
+This graduates `docs/rules/events/10-term-calculus.md` from candidate to governing.
 
 ## Read
 
-- `docs/rules/kernel/01-grammar.md` (the text form, repaired at prompt 46), `10-term-calculus.md`, `05-normalization.md`
+- `docs/rules/events/01-grammar.md` (the text form, repaired at prompt 46), `10-term-calculus.md`, `05-normalization.md`
   N5–N6 (canonical serialization and hash — the printer's output for a *normalized* term must remain exactly N5's, which
   is what today's goldens contain).
-- `docs/rules/kernel/08-open-questions.md` Q6 — quote its condition in the prompt's commit message: the second
+- `docs/rules/events/08-open-questions.md` Q6 — quote its condition in the prompt's commit message: the second
   producer/consumer now exists.
 - `crates/musa/src/main.rs` (command dispatch and help text), `crates/musa-project/src/export.rs` (how exports are
-  routed today — kernel text is an export, and should not grow a parallel path).
-- `crates/musa-syntax/src/lexer.rs` — read it before writing a lexer. Kernel text is *not* musa source and must not
+  routed today — events text is an export, and should not grow a parallel path).
+- `crates/musa-syntax/src/lexer.rs` — read it before writing a lexer. Events text is *not* musa source and must not
   share its lexer; the question to answer explicitly is whether anything is genuinely shared (rational literal parsing,
   probably) or whether sharing would couple two languages that change independently.
 
@@ -35,7 +35,7 @@ This graduates `docs/rules/kernel/10-term-calculus.md` from candidate to governi
 
 ### Two properties, and the layer each belongs to
 
-- **Printing a normalized term is N5**, byte-identical to what `kernel_normal_form` emits today. Existing goldens do not
+- **Printing a normalized term is N5**, byte-identical to what `events_normal_form` emits today. Existing goldens do not
   change.
 - **Printing an un-normalized term** preserves `let`, `seq`, `over`, `shift`, and `scale` structure. This is the new
   capability, and it is what makes the format worth having: a canon prints as a `let` and two `shift`s rather than as a
@@ -46,15 +46,18 @@ while printing" flag — that complects two decisions the caller can make in seq
 
 ### Payloads at the boundary
 
-The kernel is generic in `A`; a file is not. The format needs a payload syntax, and the honest options are:
+The event track is generic in `A`; a file is not. The format needs a payload syntax, and the honest options are:
 
-- **A** — the format is generic over a payload *text* the kernel neither writes nor reads, with the compiler supplying a
-  `ScoreFact` printer/parser. The kernel stays payload-opaque (§12), which is the invariant this crate exists to hold.
-- **B** — the kernel defines a payload grammar. Simpler files, but the kernel now knows what a note is, and §12 dies.
+- **A** — the format is generic over a payload *text* the event track neither writes nor reads, with the compiler
+  supplying a `ScoreFact` printer/parser. The event track stays payload-opaque (§12), which is the invariant this crate
+  exists to hold.
+- **B** — the event track defines a payload grammar. Simpler files, but the event track now knows what a note is, and
+  §12 dies.
 
 Take **A**. It means one trait pair — a payload writer and a payload reader — parameterizing the printer and parser, and
-it means `ScoreFact`'s text form is specified in `docs/rules/kernel/06-surface-elaboration.md` where the payload is
-defined, not in the grammar document. The cost is one indirection; the alternative is the kernel learning music theory.
+it means `ScoreFact`'s text form is specified in `docs/rules/events/06-surface-elaboration.md` where the payload is
+defined, not in the grammar document. The cost is one indirection; the alternative is the event track learning music
+theory.
 
 **`Progress` is the payload text form's hardest case, and the reason prompt 45 exists.** A hairpin's shape must survive
 the round trip exactly — rational breakpoints, no float anywhere — because a second implementation that reads this file
@@ -86,9 +89,9 @@ the one that catches payload-escaping bugs, because real payloads contain the ch
 ### The CLI
 
 ```sh
-musa kernel <file.musa>                  # print the piece as kernel text
-musa kernel <file.musa> --normalized     # print its normal form (N5)
-musa kernel --check <file.kernel>        # parse, check, evaluate; report violations
+musa events <file.musa>                  # print the piece as events text
+musa events <file.musa> --normalized     # print its normal form (N5)
+musa events --check <file.events>        # parse, check, evaluate; report violations
 ```
 
 Route it through `musa-project`'s export path like every other target rather than reaching into the compiler from the
@@ -96,36 +99,36 @@ CLI. Update the help text; `musa render --to plan` and friends are unchanged.
 
 ### The fixture corpus
 
-`examples/kernel/` holds the printed form of each `examples/*.musa`, committed as goldens, regenerated by the same
+`examples/events/` holds the printed form of each `examples/*.musa`, committed as goldens, regenerated by the same
 `insta` mechanism as the other backends. These are the artifacts a second implementation would be validated against, so
-each gets a one-line header comment naming the source fixture and the kernel spec version. That corpus, not the CLI, is
+each gets a one-line header comment naming the source fixture and the events spec version. That corpus, not the CLI, is
 what Q6 was waiting for.
 
 ## Target
 
-- `crates/musa-kernel/src/text.rs` (new): printer and parser over the payload trait pair; `KernelError` gains parse
+- `crates/musa-events/src/text.rs` (new): printer and parser over the payload trait pair; `EventsError` gains parse
   positions.
 - `crates/musa-compiler`: `ScoreFact`'s payload text form; the piece-to-term entry point (still `#[doc(hidden)]` until
   prompt 49 makes terms the elaboration output).
-- `crates/musa-project/src/export.rs`, `crates/musa/src/main.rs`: the `kernel` target and help text.
-- `examples/kernel/*.kernel`: goldens for every `examples/*.musa`.
-- `docs/rules/kernel/01-grammar.md`: the implemented grammar, candidate banner lifted from `10-term-calculus.md`;
+- `crates/musa-project/src/export.rs`, `crates/musa/src/main.rs`: the `events` target and help text.
+- `examples/events/*.event track`: goldens for every `examples/*.musa`.
+- `docs/rules/events/01-grammar.md`: the implemented grammar, candidate banner lifted from `10-term-calculus.md`;
   `08-open-questions.md`: **Q6 resolved**.
-- `docs/rules/kernel/09-performance.md`: a row only if printing lands on a measured path (it should not).
+- `docs/rules/events/09-performance.md`: a row only if printing lands on a measured path (it should not).
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-compiler -p musa-project
+cargo nextest run -p musa-events -p musa-compiler -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-for f in examples/*.musa; do cargo run -p musa -- kernel "$f" > /tmp/k.kernel && cargo run -p musa -- kernel --check /tmp/k.kernel; done
-diff <(cargo run -p musa -- kernel examples/canon.musa --normalized) examples/kernel/canon.normal.kernel
-grep -L "Status: candidate" docs/rules/kernel/10-term-calculus.md
+for f in examples/*.musa; do cargo run -p musa -- events "$f" > /tmp/k.event track && cargo run -p musa -- event track --check /tmp/k.event track; done
+diff <(cargo run -p musa -- event track examples/canon.musa --normalized) examples/events/canon.normal.event track
+grep -L "Status: candidate" docs/rules/events/10-term-calculus.md
 ```
 
-Commit as `Add the kernel interchange format`.
+Commit as `Add the events interchange format`.
 
 ## Repairs made while implementing
 
@@ -140,27 +143,27 @@ the two coincide and one function serves, which is the case the prompt predicted
 
 **"N5 is a strict subset of the grammar" was false, and `--normalized` prints interchange text.** N5 writes the N3 key
 bare (unquoted, unparseable) and has no version header; it is not a file. Both `01-grammar.md` and `05-normalization.md`
-claimed otherwise and are repaired. `musa kernel --normalized` therefore prints the *interchange* spelling of the normal
-form — a single flat `timeline` inside a kernel file — which `--check` accepts, where N5 bytes never could.
-`kernel_normal_form` and its snapshots are byte-identical to before, which is the sense in which the prompt's "existing
+claimed otherwise and are repaired. `musa events --normalized` therefore prints the *interchange* spelling of the normal
+form — a single flat `timeline` inside an events file — which `--check` accepts, where N5 bytes never could.
+`events_normal_form` and its snapshots are byte-identical to before, which is the sense in which the prompt's "existing
 goldens do not change" held.
 
 **`01-grammar.md`'s payload declaration was struck.** The document specified `payload Note { letter: text; … }` and
-record-shaped payload values. That contradicts the prompt's own choice of option A: a kernel that reads a payload record
-knows what a note is, and §12 dies. A payload is now an opaque quoted string, the type name in `Timeline[<T>]` exists
-only so a reader can *refuse* a file it does not own, and `ScoreFact`'s form is specified in `06-surface-elaboration.md`
-where the payload lives.
+record-shaped payload values. That contradicts the prompt's own choice of option A: an event track that reads a payload
+record knows what a note is, and §12 dies. A payload is now an opaque quoted string, the type name in `Timeline[<T>]`
+exists only so a reader can *refuse* a file it does not own, and `ScoreFact`'s form is specified in
+`06-surface-elaboration.md` where the payload lives.
 
 **The corpus is plain files, not insta snapshots.** The prompt asked for "the same insta mechanism as the other
-backends". A `.snap` wraps its payload in a YAML preamble, and `examples/kernel/*.kernel` exists to be read *as kernel
-text* by a second implementation. The test owns the corpus and regenerates it under `UPDATE_KERNEL_GOLDENS=1`, which
-gives the same staleness guarantee without making the artifact unreadable.
+backends". A `.snap` wraps its payload in a YAML preamble, and `examples/events/*.event track` exists to be read *as
+event track text* by a second implementation. The test owns the corpus and regenerates it under
+`UPDATE_EVENTS_GOLDENS=1`, which gives the same staleness guarantee without making the artifact unreadable.
 
 **The version header is required, not decorative.** `%` begins a comment, so a file missing its header would have parsed
 as a valid file of unknown vintage. `parse` checks the first line before the lexer sees it. This is what makes "refuse a
 version you do not know" a rule a consumer can actually follow.
 
-**Nothing is shared with the surface lexer.** The prompt asked for the question to be answered explicitly. Kernel text
+**Nothing is shared with the surface lexer.** The prompt asked for the question to be answered explicitly. Events text
 has a different comment syntax, different keywords, no pitch or duration literals, and payloads that are opaque strings;
 the only overlap is reading `p/q`, which is four lines of `split_once` and `parse`. Sharing it would couple two
 languages that change independently for no saving.
@@ -172,7 +175,7 @@ testable now rather than after the structure lands.
 ## Stop
 
 - No binary format, no compression, no schema version negotiation. A version *string* in the header is enough.
-- No `.kernel` → `.musa` direction, ever. The source is canonical (AGENTS.md); a kernel file is a projection, and
+- No `.event track` → `.musa` direction, ever. The source is canonical (AGENTS.md); an events file is a projection, and
   reconstructing source from it would create the second editable representation this project forbids.
-- No import of kernel files into pieces. That is not interop, it is a second surface language.
-- No editor support, syntax highlighting, or formatter for `.kernel`.
+- No import of events files into pieces. That is not interop, it is a second surface language.
+- No editor support, syntax highlighting, or formatter for `.event track`.

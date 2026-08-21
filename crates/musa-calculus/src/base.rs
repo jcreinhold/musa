@@ -498,7 +498,7 @@ pub enum Answer {
     /// The program is wrong, and this is what to say about it.
     ///
     /// Owned rather than `&'static str` because a rule may be restating a
-    /// failure a library it called reported — `musa_kernel`'s, in several of the
+    /// failure a library it called reported — `musa_events`'s, in several of the
     /// track rules — and a borrowed sentence could not carry one.
     Refused(String),
 }

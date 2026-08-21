@@ -19,11 +19,11 @@ not fit here, its generality was never earned and the prompt should say so.
 
 ## Read
 
-- `docs/rules/kernel/` `Progress` and prompt 45 — the span-alone theorem (L24), the shape-is-normative/sampling-is-the-
+- `docs/rules/events/` `Progress` and prompt 45 — the span-alone theorem (L24), the shape-is-normative/sampling-is-the-
   consumer's rule, and the rational-breakpoint requirement.
 - `crates/musa-compiler/src/performance.rs` — `IntegratedTempoMap` (:76), `frames()` (:162), `hairpin_curves` (:480),
   which samples a `Progress` at `u = index/(count-1)`.
-- `docs/rules/kernel/03-denotational-semantics.md` (exact rationals) and §22.
+- `docs/rules/events/03-denotational-semantics.md` (exact rationals) and §22.
 - Prompt 72 — `FactKind::Tempo`, the marking/map split.
 
 ## Design
@@ -96,7 +96,7 @@ observation total, and this inherits it rather than adding a diagnostic.
   `IntegratedTempoMap`'s piecewise-linear integration and its cross-check property.
 - `crates/musa-notation` and `crates/musa-project/src/midi.rs`: the four exporters above.
 - `examples/`: `rubato.musa` — a phrase with a rit. and an a tempo; `riser.musa` — an eight-bar accelerando into a drop.
-- `docs/rules/kernel/07-backend-contract.md`: the MIDI sampling rate, stated as the consumer's choice.
+- `docs/rules/events/07-backend-contract.md`: the MIDI sampling rate, stated as the consumer's choice.
 
 ## Check
 
@@ -121,10 +121,10 @@ Commit as `Add gradual tempo change`.
    against this language in parallel. Two fewer keywords is two fewer things for it to drift from.
 2. **The word may lead or trail.** `tempo "Andante";` and `tempo 1/4 = 132 "Allegro";` are both read aloud in the order
    they are written, so the parser accepts either and never both.
-3. **`curve exponential` is not implemented.** `docs/rules/kernel/03` states there is no easing catalogue — "No
-   `ease_in`, no exponential, no Bézier. Any of those is approximated by breakpoints" — and the kernel doc governs over
-   a prompt. The surface therefore writes only `Progress::linear()`, while `integral()` is written and unit-tested for
-   arbitrary piecewise-linear shapes (`ramp_shape_laws`), so a breakpoint list on the surface later needs no change
+3. **`curve exponential` is not implemented.** `docs/rules/events/03` states there is no easing catalogue — "No
+   `ease_in`, no exponential, no Bézier. Any of those is approximated by breakpoints" — and the event track doc governs
+   over a prompt. The surface therefore writes only `Progress::linear()`, while `integral()` is written and unit-tested
+   for arbitrary piecewise-linear shapes (`ramp_shape_laws`), so a breakpoint list on the surface later needs no change
    below it.
 4. **The ramp is a point fact carrying its reach, not a span occurrence.** Every other context change is a point and
    `ContextTrack` is the thing that turns points into stretches; a span here would be a second mechanism for the same

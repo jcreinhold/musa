@@ -1,0 +1,54 @@
+% musa-events-3
+% generated from examples/canon-x.musa by musa-compiler
+events "Canon X" {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 4 {
+        occurrence "voice 0 0 dynamic p [1667:1677 #1]" from 0 to 0;
+        occurrence "voice 0 0 note c5 1/4 [1695:1699 #1]" from 0 to 1/4;
+        occurrence "voice 0 0 note d5 1/4 [1716:1720 #1]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note e5 1/4 [1737:1741 #1]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note f5 1/4 [1758:1762 #1]" from 3/4 to 1;
+        occurrence "voice 0 0 note g5 1/4 [1780:1784 #1]" from 1 to 5/4;
+        occurrence "voice 0 0 note a5 1/4 [1801:1805 #1]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note b5 1/4 [1822:1826 #1]" from 3/2 to 7/4;
+        occurrence "voice 0 0 note c6 1/4 [1843:1847 #1]" from 7/4 to 2;
+        occurrence "voice 0 0 note b5 1/4 [1865:1869 #1]" from 2 to 9/4;
+        occurrence "voice 0 0 note a5 1/4 [1886:1890 #1]" from 9/4 to 5/2;
+        occurrence "voice 0 0 note g5 1/4 [1907:1911 #1]" from 5/2 to 11/4;
+        occurrence "voice 0 0 note f5 1/4 [1928:1932 #1]" from 11/4 to 3;
+        occurrence "voice 0 0 note e5 1/4 [1950:1954 #1]" from 3 to 13/4;
+        occurrence "voice 0 0 note d5 1/4 [1971:1975 #1]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note c5 1/4 [1992:1996 #1]" from 7/2 to 15/4;
+        occurrence "voice 0 0 note c5 1/4 [2013:2017 #1]" from 15/4 to 4;
+      };
+      track 4 {
+        occurrence "voice 1 0 dynamic f [2183:2193 #2]" from 0 to 0;
+        occurrence "voice 1 0 note c4 1/4 [2211:2215 #2]" from 0 to 1/4;
+        occurrence "voice 1 0 note b3 1/4 [2232:2236 #2]" from 1/4 to 1/2;
+        occurrence "voice 1 0 note a3 1/4 [2253:2257 #2]" from 1/2 to 3/4;
+        occurrence "voice 1 0 note g3 1/4 [2274:2278 #2]" from 3/4 to 1;
+        occurrence "voice 1 0 note f3 1/4 [2296:2300 #2]" from 1 to 5/4;
+        occurrence "voice 1 0 note e3 1/4 [2317:2321 #2]" from 5/4 to 3/2;
+        occurrence "voice 1 0 note d3 1/4 [2338:2342 #2]" from 3/2 to 7/4;
+        occurrence "voice 1 0 note c3 1/4 [2359:2363 #2]" from 7/4 to 2;
+        occurrence "voice 1 0 note d3 1/4 [2381:2385 #2]" from 2 to 9/4;
+        occurrence "voice 1 0 note e3 1/4 [2402:2406 #2]" from 9/4 to 5/2;
+        occurrence "voice 1 0 note f3 1/4 [2423:2427 #2]" from 5/2 to 11/4;
+        occurrence "voice 1 0 note g3 1/4 [2444:2448 #2]" from 11/4 to 3;
+        occurrence "voice 1 0 note a3 1/4 [2466:2470 #2]" from 3 to 13/4;
+        occurrence "voice 1 0 note b3 1/4 [2487:2491 #2]" from 13/4 to 7/2;
+        occurrence "voice 1 0 note c4 1/4 [2508:2512 #2]" from 7/2 to 15/4;
+        occurrence "voice 1 0 note c4 1/4 [2529:2533 #2]" from 15/4 to 4;
+      };
+      track 4 {
+        occurrence "piece meter 4/4 [1377:1387]" from 0 to 4;
+        occurrence "piece tempo 1/4=120 [1356:1372]" from 0 to 4;
+        occurrence "piece key c major [1392:1404]" from 0 to 4;
+        occurrence "part 0 clef treble [1452:1464]" from 0 to 4;
+        occurrence "part 0 tempo 1/4=60 'accel.' to 180 over 4 0/1:0/1,1/1:1/1 [1583:1623]" from 0 to 4;
+        occurrence "part 1 clef bass [2078:2088]" from 0 to 4;
+        occurrence "part 1 tempo 1/4=180 'rit.' to 60 over 4 0/1:0/1,1/1:1/1 [2101:2139]" from 0 to 4;
+      }
+    };
+}

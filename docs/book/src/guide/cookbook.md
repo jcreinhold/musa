@@ -119,7 +119,7 @@ date to one chord, `cadence-evidence.musa` for four phrase endings and the evide
 for chords that fit more than one label, `unknown-passage.musa` for a passage that fits none, and `species-1.musa`
 through `species-5.musa` and `satb.musa` for style readings.
 
-**Write a kernel term by hand.** `examples/kernel-splice.musa`, and read the bottom of that file before you do.
+**Write an event-track term by hand.** `examples/events-splice.musa`, and read the bottom of that file before you do.
 
 ## Open form
 

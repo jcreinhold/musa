@@ -103,8 +103,8 @@ reader to discover it — see **Target**.
 
 §1.2 asks whether a field's type is storable, which is a question about `List<StaffRead>` as a type and not about where
 `StaffRead` appears in it. A container of storable data is storable; a container of arrows is not, and the arrow rule is
-untouched. Nothing about the machine ports, the kernel boundary, or the δ readback changes, because none of them asks
-about positivity.
+untouched. Nothing about the machine ports, the event track boundary, or the δ readback changes, because none of them
+asks about positivity.
 
 ### The refusal keeps its name and gains its reason
 
@@ -163,5 +163,5 @@ Commit as `A family may hold a list of itself`.
   move, the design is wrong and this is a repair.
 - **No corpus migration.** Not one `.musa` file or snapshot moves. The staff fixtures compile because the core widened,
   and if either still needs an edit, that edit is 142's.
-- **No change to §1.2's storability rule** and no change to what may cross the machine or kernel boundary.
+- **No change to §1.2's storability rule** and no change to what may cross the machine or event track boundary.
 - **No relaxation of the arrow rule.** An occurrence left of an arrow stays refused at any depth, under any container.

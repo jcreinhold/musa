@@ -118,7 +118,7 @@ function leaves(cst, source) {
 
 /**
  * Compare one fixture's leaves against its committed lexer stream. Returns
- * the fixture path it covered, so the kernel law below knows what the token
+ * the fixture path it covered, so the event track law below knows what the token
  * law already holds.
  */
 function checkTokens(manifestPath) {
@@ -153,25 +153,25 @@ function checkTokens(manifestPath) {
 
 /**
  * Hold the grammar to `musa-syntax` on the top-level alternative: which
- * files are kernel documents, and by what marker.
+ * files are events documents, and by what marker.
  *
  * `docs/rules/language/01-surface.md` §7 gives one language two surfaces, and the
  * one way for two readers of it to disagree is the one way that matters — a
- * file read as kernel by the grammar and surface by the compiler opens as a
+ * file read as events by the grammar and surface by the compiler opens as a
  * page of red in an editor and checks clean on the command line. So both the
  * verdict and the marker text are held: the marker in `grammar.js` is a
  * literal, and a literal drifts.
  *
  * The negative half rides on the token law rather than reparsing every
- * surface fixture: a `.musa` file misread as a kernel document has two
+ * surface fixture: a `.musa` file misread as an event track document has two
  * opaque leaves where the lexer wrote hundreds of tokens, which
  * `checkTokens` reports first and loudest. What that argument needs is
  * coverage, so coverage is what is checked here.
  */
-function checkKernel(covered) {
-  const manifest = JSON.parse(readFileSync(join(GRAMMAR, 'test', 'kernel.json'), 'utf8'));
+function checkEvents(covered) {
+  const manifest = JSON.parse(readFileSync(join(GRAMMAR, 'test', 'events.json'), 'utf8'));
   for (const entry of manifest.files) {
-    if (!entry.kernel) {
+    if (!entry.events) {
       if (!covered.has(entry.file)) {
         fail(`${entry.file}: a surface fixture no token manifest covers — nothing holds it to the surface grammar`);
       }
@@ -181,14 +181,14 @@ function checkKernel(covered) {
     const parsed = parse(path);
     if (!parsed) continue;
     if (parsed.hadErrors) {
-      fail(`${entry.file}: a kernel document parsed with errors — the grammar is behind the interchange format`);
+      fail(`${entry.file}: an event track document parsed with errors — the grammar is behind the interchange format`);
       continue;
     }
     const found = nodes(parsed.cst);
-    const marker = found.find((node) => node.kind === 'kernel_marker');
+    const marker = found.find((node) => node.kind === 'events_marker');
     if (!marker) {
       const kinds = found.map((node) => node.kind).filter(Boolean).slice(0, 8).join(', ');
-      fail(`${entry.file}: the grammar read [${kinds}] where musa-syntax read a kernel document`);
+      fail(`${entry.file}: the grammar read [${kinds}] where musa-syntax read an event track document`);
       continue;
     }
     const text = sliceText(readFileSync(path, 'utf8'))(marker).trim();
@@ -219,7 +219,7 @@ for (const file of readdirSync(TOKENS).filter((file) => file.endsWith('.json')).
   const fixture = checkTokens(join(TOKENS, file));
   if (fixture) covered.add(fixture);
 }
-checkKernel(covered);
+checkEvents(covered);
 checkBroken();
 
 if (failures > 0) {

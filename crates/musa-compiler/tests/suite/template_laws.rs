@@ -19,7 +19,7 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{CompileOptions, SourceDocument, compile, events_normal_form};
 
 use musa_score::{Code, ExpansionStep, ScoreSnapshot, Severity};
 
@@ -249,12 +249,12 @@ fn expansion_is_deterministic() {
     assert_eq!(music(&first), music(&second));
     assert_eq!(instances(&first), instances(&second));
     assert_eq!(
-        kernel_normal_form(
+        events_normal_form(
             &SourceDocument::new(MADE, "test.musa"),
             &musa_score::Realization::default(),
             &musa_compiler::ImportSources::default()
         ),
-        kernel_normal_form(
+        events_normal_form(
             &SourceDocument::new(MADE, "test.musa"),
             &musa_score::Realization::default(),
             &musa_compiler::ImportSources::default()
@@ -263,10 +263,10 @@ fn expansion_is_deterministic() {
 }
 
 /// A made piece is the document's piece all the way down, including on the
-/// kernel interchange path.
+/// events interchange path.
 #[test]
-fn a_made_piece_has_a_kernel_term() {
-    let text = kernel_normal_form(
+fn a_made_piece_has_a_events_term() {
+    let text = events_normal_form(
         &SourceDocument::new(MADE, "test.musa"),
         &musa_score::Realization::default(),
         &musa_compiler::ImportSources::default(),

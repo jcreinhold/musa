@@ -1,6 +1,6 @@
 ---
 id: 10
-slug: kernel-laws
+slug: events-laws
 status: done
 depends_on: [09]
 phase: 1
@@ -11,17 +11,17 @@ phase: 1
 ## Task
 
 Prove the algebra is the one specified: implement the complete property-test suite of
-`docs/rules/kernel/04-algebraic-laws.md` (the kernel specification Step 3) against `musa-kernel`, including the explicit
-non-laws. This is the mathematical acceptance gate for the kernel; the "Status: candidate" banner does not come off
+`docs/rules/events/04-algebraic-laws.md` (the events specification Step 3) against `musa-events`, including the explicit
+non-laws. This is the mathematical acceptance gate for the event track; the "Status: candidate" banner does not come off
 until this and prompt 11 pass.
 
 ## Read
 
-- `docs/rules/kernel/04-algebraic-laws.md` — the normative law list with formal statements; each law names its property
+- `docs/rules/events/04-algebraic-laws.md` — the normative law list with formal statements; each law names its property
   test there, and this prompt must make that cross-reference real.
-- `docs/rules/kernel/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized
+- `docs/rules/events/04-algebraic-laws.md` in full — the laws, the non-distributivity non-law, the synchronized
   interchange with its duration-equality preconditions), §30 Step 3 (the checklist).
-- Prompt 09's `musa-kernel` public surface; the proptest conventions already used in `musa-syntax`/`musa-compiler`
+- Prompt 09's `musa-events` public surface; the proptest conventions already used in `musa-syntax`/`musa-compiler`
   (module-level `arithmetic_side_effects` allowance with justification, small case counts).
 
 ## Design
@@ -48,22 +48,22 @@ until this and prompt 11 pass.
 
 ## Target
 
-- `crates/musa-kernel/tests/suite/laws.rs`: the suite above.
+- `crates/musa-events/tests/suite/laws.rs`: the suite above.
 - Any spec corrections discovered while encoding the laws, committed with the prompt-repair note in the message.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel
-cargo clippy --all-targets -p musa-kernel -- -D warnings
+cargo nextest run -p musa-events
+cargo clippy --all-targets -p musa-events -- -D warnings
 cargo fmt --check
-grep -c "#\[test\]" crates/musa-kernel/tests/suite/laws.rs   # >= the law count in 04-algebraic-laws.md
+grep -c "#\[test\]" crates/musa-events/tests/suite/laws.rs   # >= the law count in 04-algebraic-laws.md
 ```
 
-Commit as `Prove the temporal-kernel laws`.
+Commit as `Prove the event-track laws`.
 
 ## Stop
 
-- No new kernel operations discovered "while testing" — a gap is a spec repair, not a feature.
+- No new event track operations discovered "while testing" — a gap is a spec repair, not a feature.
 - No elaboration or compiler tests (prompt 11).
 - No performance assertions; correctness only (small case counts are fine).

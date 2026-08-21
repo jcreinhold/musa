@@ -31,21 +31,21 @@ small prompt instead of each a redesign.
 - `crates/musa-compiler/src/score.rs` — `KeyMap` (:404), `MeterMap` (:358), `Part::clef` (:216, :233), `TempoMap` (:336)
   and its `changes` field, which nothing ever populates (`resolve.rs::parse_tempo` :761 writes `Vec::new()`
   unconditionally).
-- `crates/musa-kernel/src/timeline.rs` — `covering` (:302) and `prevailing` (:323), prompt 44's queries. Read
+- `crates/musa-events/src/timeline.rs` — `covering` (:302) and `prevailing` (:323), prompt 44's queries. Read
   `prevailing`'s documentation before assuming it answers this prompt's question; the Design section says what it does
   and does not give you.
 - `crates/musa-compiler/src/resolve.rs::part_metadata` (:701) — clef is read here and last-wins **silently**.
 - `crates/musa-project/src/session.rs` (:387) — the MIDI speller spells against the *piece's* key.
-- `docs/rules/kernel/00-purpose.md` (ambient time), §22 (tempo is `Beat → Second`), §34 (semantic necessity).
+- `docs/rules/events/00-purpose.md` (ambient time), §22 (tempo is `Beat → Second`), §34 (semantic necessity).
 
 ## Design
 
 ### The one idea
 
 A context is not a property of a piece. It is a fact that holds **from somewhere, in some scope, until something
-replaces it** — which is precisely an occurrence with a span, in the kernel musa already has. Prompt 40 saw this and
-made them occurrences; what it did not do was let the span mean anything, because every consumer downstream still wanted
-a scalar and there was nowhere to put the answer.
+replaces it** — which is precisely an occurrence with a span, in the event track musa already has. Prompt 40 saw this
+and made them occurrences; what it did not do was let the span mean anything, because every consumer downstream still
+wanted a scalar and there was nowhere to put the answer.
 
 This prompt builds the somewhere to put it.
 
@@ -115,11 +115,12 @@ tidiness.
 
 A context occurrence currently spans `[0, extent)` regardless of where it was written. Change it to span **from where it
 is written until the next occurrence of the same kind in the same scope**, or to the extent if there is none. Today that
-is the same span, because there is always exactly one — so the kernel goldens do not move, and the `.kernel` corpus
-keeps saying what it said. When prompt 64 lets a composer write a second one, the file is already correct.
+is the same span, because there is always exactly one — so the event track goldens do not move, and the `.event track`
+corpus keeps saying what it said. When prompt 64 lets a composer write a second one, the file is already correct.
 
-The one exception is `clef`: a part that declares one gains an occurrence it did not have, so `examples/kernel/*.kernel`
-moves for those pieces. That diff is reviewed by hand and is the only golden movement this prompt is allowed.
+The one exception is `clef`: a part that declares one gains an occurrence it did not have, so
+`examples/events/*.event track` moves for those pieces. That diff is reviewed by hand and is the only golden movement
+this prompt is allowed.
 
 ### `prevailing` gets real work, and the honest accounting
 
@@ -175,7 +176,7 @@ cd apps/musa-desktop/ui && npm test
 for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 grep -rn "KeyMap\|MeterMap" crates apps --include="*.rs" | wc -l    # 0
 git diff --stat -- crates/*/tests/snapshots apps/musa-desktop/ui/fixtures   # empty
-git diff --stat -- examples/kernel/                                  # only pieces declaring a clef
+git diff --stat -- examples/events/                                  # only pieces declaring a clef
 cargo bench -p musa-compiler                                         # P1-P5, no regression
 ```
 
@@ -230,10 +231,11 @@ builds three tracks and pushes a stretch per context fact instead of assigning t
 absorbed into "no regression", because it is a real cost and it is where a later prompt would look. It buys nothing back
 yet and buys a great deal at prompt 64. Against B1's 120 ms budget for a whole compile, P1 `large` is 1.87 ms.
 
-**The golden movement is exactly what the prompt allowed, and no more.** Seven `examples/kernel/*.kernel` files gained
-one `clef` occurrence per part that declares a clef — additions only, no line changed. Four compiler debug snapshots
-moved, because `ScoreSnapshot`'s shape is what they print. **MEI, LilyPond, MusicXML, MIDI, WAV, every notation-plan
-snapshot, every CLI golden and every UI fixture are byte-identical**, which is the claim that was about behaviour.
+**The golden movement is exactly what the prompt allowed, and no more.** Seven `examples/events/*.event track` files
+gained one `clef` occurrence per part that declares a clef — additions only, no line changed. Four compiler debug
+snapshots moved, because `ScoreSnapshot`'s shape is what they print. **MEI, LilyPond, MusicXML, MIDI, WAV, every
+notation-plan snapshot, every CLI golden and every UI fixture are byte-identical**, which is the claim that was about
+behaviour.
 
 Commit as `Unify key, meter, and clef as scoped context`.
 
@@ -243,6 +245,6 @@ Commit as `Unify key, meter, and clef as scoped context`.
 - No tempo fact. The shape is built here; `TempoMap` keeps its scalar until prompt 72.
 - No polymeter, no polytempo. `Scope::Voice` can *hold* a meter; nothing produces one.
 - No `senza misura` (prompt 74) and no proportional notation. `ContextTrack` must not gain an "unmeasured" variant here.
-- Do not make `ContextTrack` public from `musa-kernel`. It is a projection of a timeline, not an operation on one; the
-  kernel gains nothing in this prompt.
+- Do not make `ContextTrack` public from `musa-events`. It is a projection of a timeline, not an operation on one; the
+  event track gains nothing in this prompt.
 - No interface work. The inspector keeps showing the piece's key until prompt 64 gives it a second one to show.

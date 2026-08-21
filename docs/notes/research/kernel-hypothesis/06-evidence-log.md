@@ -48,7 +48,7 @@ after all.
    These are real, but they are "the design leaks and under-expresses," not "the design loses the music." That is a
    materially weaker claim and the hypothesis must be argued at that strength.
 
-### G0.3 — `docs/rules/kernel/11-realization.md` already refuted most of the `alt` constructor ❌ fires
+### G0.3 — `docs/rules/events/11-realization.md` already refuted most of the `alt` constructor ❌ fires
 
 Prompt 66 wrote, and prompt 67 implemented, a governing decision against exactly the constructor
 `02-denotational-semantics.md` E4 proposes. It gives four reasons. Scored honestly:
@@ -105,7 +105,7 @@ invent one.** A kernel partial order would have had nothing to do in either case
 
 ### What this does and does not settle
 
-It closes Q3 (`docs/rules/kernel/08-open-questions.md`), which is the outcome §2 named as good: an open question closed
+It closes Q3 (`docs/rules/events/08-open-questions.md`), which is the outcome §2 named as good: an open question closed
 by a consumer's evidence rather than left open forever.
 
 It does *not* refute the two things G0.2 left standing — partial ordering (OMT `110`) and divisi are still

@@ -84,7 +84,7 @@ const SYNTAX_WORDS = [
   'stretch', 'retrograde', 'invert', 'around', 'with', 'note', 'phrase', 'section',
   'harmony', 'library', 'crescendo', 'diminuendo', 'to', 'bar', 'assert', 'senza',
   'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
-  'kernel', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
+  'events', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
   'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
   'chord', 'stack', 'private', 'trait', 'impl', 'where',
 ];
@@ -137,7 +137,7 @@ module.exports = grammar({
     // no piece and no library (Parser::root_preamble).
     source_file: ($) =>
       choice(
-        $.kernel_document,
+        $.events_document,
         seq(
           repeat(
             choice(
@@ -160,23 +160,23 @@ module.exports = grammar({
         repeat1($.mod_declaration),
       ),
 
-    // The kernel alternative (`docs/rules/language/01-surface.md` §7): a file whose
+    // The event track alternative (`docs/rules/language/01-surface.md` §7): a file whose
     // first line is the interchange version marker.
     //
-    // **Recognized, not parsed.** `musa-kernel` owns the term grammar, and a
+    // **Recognized, not parsed.** `musa-events` owns the term grammar, and a
     // second copy of it here would be exactly the drifting duplicate this
     // grammar's own README says it must not become — with the added problem
-    // that no lexer exists to hold it to, since the kernel's reader is a
+    // that no lexer exists to hold it to, since the event track's reader is a
     // hand-written cursor rather than a token stream. So the marker is a node
     // an editor can query and the rest is one opaque span. What colours inside
-    // it is `musa-kernel`'s own classification, delivered as LSP semantic
-    // tokens; what this rule buys is that a `.musa.kernel` file opened in a
+    // it is `musa-events`'s own classification, delivered as LSP semantic
+    // tokens; what this rule buys is that a `.musa.events` file opened in a
     // tree-sitter editor is a document rather than a page of red.
-    kernel_document: ($) => seq($.kernel_marker, optional($.kernel_body)),
+    events_document: ($) => seq($.events_marker, optional($.events_body)),
 
-    kernel_marker: (_) => token(prec(2, seq('%', /[ \t]*/, 'musa-kernel-2', /[ \t]*/, /\r?\n/))),
+    events_marker: (_) => token(prec(2, seq('%', /[ \t]*/, 'musa-events-3', /[ \t]*/, /\r?\n/))),
 
-    kernel_body: (_) => token(prec(-1, /[\s\S]+/)),
+    events_body: (_) => token(prec(-1, /[\s\S]+/)),
 
     // Parser::mod_decl — one child of the package's module tree. A name and
     // nothing else: what the name reaches is a fact about the package's
@@ -537,7 +537,7 @@ module.exports = grammar({
     fragment_declaration: ($) => seq('fragment', field('name', $.identifier), field('body', $.block)),
 
     // Parser::let_decl / fn_decl — declarations evaluate only at the
-    // elaboration stage; the temporal kernel never sees these nodes.
+    // elaboration stage; the temporal event track never sees these nodes.
     // The `: type` is optional, as in the hand parser: it is written when it
     // says something the expression does not, and omitted when inference
     // determines it.
@@ -619,7 +619,7 @@ module.exports = grammar({
         $.record_update_expression,
         $.question_expression,
         $.music_expression,
-        $.kernel_quote,
+        $.events_quote,
         $.quote_expression,
         $.application_expression,
         $.method_call_expression,
@@ -995,13 +995,13 @@ module.exports = grammar({
 
     music_expression: ($) => seq('music', '{', repeat(choice(...VOICE_ITEMS($))), '}'),
 
-    // Parser::kernel_quote — `kernel EventTrack[WrittenTime, ScoreFact] { … }`.
+    // Parser::events_quote — `events EventTrack[WrittenTime, ScoreFact] { … }`.
     //
-    // The body is the *kernel's* grammar, and the kernel owns it: musa-syntax
+    // The body is the *event track's* grammar, and the event track owns it: musa-syntax
     // recognises the shape (matched braces, and `${...}` holes) and hands the
-    // text to musa-kernel's reader. This rule says the same thing, for the same
+    // text to musa-events's reader. This rule says the same thing, for the same
     // reason — a second term grammar here would be a second thing to keep in
-    // step with the one in `crates/musa-kernel`.
+    // step with the one in `crates/musa-events`.
     //
     // What it does have to agree with is the *lexer*, token for token: the
     // drift law compares these leaves against musa-syntax's token stream, and
@@ -1010,7 +1010,7 @@ module.exports = grammar({
     // `quote at here { … }` — the other quotation
     // (`docs/rules/language/11-quotation.md` §2). Its body is `$.expression`
     // and not a token run, because the body *is* this grammar: that is the
-    // whole difference from `kernel_quote`, whose interior belongs to another
+    // whole difference from `events_quote`, whose interior belongs to another
     // crate.
     quote_expression: ($) =>
       seq('quote', 'at', field('anchor', $._primary_expression), '{', field('body', $.expression), '}'),
@@ -1032,26 +1032,26 @@ module.exports = grammar({
     // `$..xs` — a list of values where a sequence stands.
     sequence_splice: ($) => seq('$', '.', '.', field('name', $.name_expression)),
 
-    kernel_quote: ($) =>
+    events_quote: ($) =>
       seq(
-        'kernel',
+        'events',
         field('constructor', $.identifier),
         '[',
         field('coordinate', $.identifier),
         ',',
         field('payload', $.identifier),
         ']',
-        $.kernel_quote_body,
+        $.events_quote_body,
       ),
 
-    kernel_quote_body: ($) =>
-      seq('{', repeat(choice($.kernel_hole, $.kernel_quote_body, $._kernel_token)), '}'),
+    events_quote_body: ($) =>
+      seq('{', repeat(choice($.events_hole, $.events_quote_body, $._events_token)), '}'),
 
     // A typed hole: the one place a host expression may stand inside the raw
     // grammar.
-    kernel_hole: ($) => seq('$', '{', $.expression, '}'),
+    events_hole: ($) => seq('$', '{', $.expression, '}'),
 
-    _kernel_token: ($) =>
+    _events_token: ($) =>
       choice(
         $.identifier,
         $.string,

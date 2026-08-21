@@ -189,8 +189,8 @@ Precedence Taxonomy. If you do add one, follow **external-scanner-reference.md**
 1. **Anonymous nodes omit text in test output.** Write `operator:` not `operator: "+"`. Use `tree-sitter test -u` to
    auto-generate correct expectations, then verify field names are present.
 
-1. **The drift law is the binding check.** `crates/musa-syntax/tests/tree_sitter_fixtures.rs` commits the *real*
-   lexer's token stream for every compilable fixture and the *real* parser's verdict on every broken one;
+1. **The drift law is the binding check.** `crates/musa-syntax/tests/tree_sitter_fixtures.rs` commits the *real* lexer's
+   token stream for every compilable fixture and the *real* parser's verdict on every broken one;
    `test/compare-tokens.js` parses each fixture through the CLI's `--cst` and compares token for token. A grammar that
    disagrees with the lexer about a single token fails in CI. Run `npm test` before committing grammar changes.
 

@@ -18,7 +18,7 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 | ~~Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline~~ — **superseded** by the constitution's prompt-128 amendment, which replaced principal inference with bidirectional elaboration | the outline proof in `06-proof-outline.md` §2 stands for the discipline it was about; it is no longer a result about Musa | replaced; prompt 148 owes decidability of conversion, and soundness and completeness of normalization by evaluation, in its place |
 | Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
-| `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/kernel/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
+| `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/events/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
 | Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 155a with delimiter and structured-payload tests |
 | Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
 | Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
@@ -29,8 +29,8 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 | Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed as part of K₃.3; the graft rule is stated by prompt 127a | only partial provenance exists today |
 | Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed as part of K₃.3 | full preparation API and cache are not yet implemented |
 
-The proof-review record for the earlier kernel and identity results is in `docs/notes/research/25`, `30`, `35`, `39`,
-`42`, and `45`. The record for the current core calculus is
+The proof-review record for the earlier event-track and identity results is in `docs/notes/research/25`, `30`, `35`,
+`39`, `42`, and `45`. The record for the current core calculus is
 [`docs/notes/research/core-calculus/`](../../notes/research/core-calculus/README.md), in order, ending at its final
 review. Both include failed drafts. The failures matter because they exposed missing assumptions now stated in this
 specification — most sharply the two feedback counterexamples that killed the single-`Flow` and port-scheduled designs.
@@ -57,7 +57,7 @@ Nothing here proves:
 The core-calculus review audited the repository at the time it was written and found three things worth repeating,
 because they set the size of prompts 127b–127e and 150–153:
 
-- `crates/musa-kernel` already implements the untagged heart of the event track — exact rational duration, finite
+- `crates/musa-events` already implements the untagged heart of the event track — exact rational duration, finite
   occurrences, succession by shifting, simultaneity by maximum and multiset union, payload mapping. What it lacks is the
   coordinate tag and the renamed surface.
 - `crates/musa-dsp`'s per-sample DSP units are close to registered primitives already; the gap is the registry and the

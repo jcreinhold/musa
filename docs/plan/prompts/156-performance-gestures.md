@@ -21,11 +21,11 @@ primitive, processor, MIDI controller, or render-plan parameter index.
 ## Read
 
 - `docs/rules/constitution.md` §8 (the decision and what it forbids, in particular: no bespoke temporal structure above
-  the core). `docs/rules/kernel/12-payload-admission.md` from prompt 155a — the rule this prompt's payload must satisfy,
+  the core). `docs/rules/events/12-payload-admission.md` from prompt 155a — the rule this prompt's payload must satisfy,
   written before the payload existed so that it could not be fitted to it.
-- `crates/musa-kernel/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
+- `crates/musa-events/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
   that is not `ScoreFact`.
-- `docs/rules/language/08-performance-and-sound.md`; kernel `Progress` semantics and backend contract; roadmap
+- `docs/rules/language/08-performance-and-sound.md`; event track `Progress` semantics and backend contract; roadmap
   §§6.4–6.5.
 - OMT `007-other-aspects-of-notation.md` for dynamics/articulation and `114-core-principles-of-orchestration.md` for why
   loudness change is not one DSP operation.
@@ -40,7 +40,7 @@ the revised storable-data contract for it, and add its payload-admission row. St
 what any separate musical comparison deliberately ignores. Writing a private `Vec<(Ratio,Ratio,Gesture)>` with its own
 ordering or equality is a defect, and prompt 171 audits for it.
 
-Nothing is added to `musa-kernel`: no term form, operation, or public-surface change. `follow`, `together`, and retained
+Nothing is added to `musa-events`: no term form, operation, or public-surface change. `follow`, `together`, and retained
 observations on a gesture track keep their existing laws. A control curve remains payload data; frame sampling stays in
 the scheduler or instrument machine.
 
@@ -51,7 +51,7 @@ expression, emphasis, separation, brightness, sustain, and legato; namespaced cu
 declaration in prompt 157.
 
 For a hairpin on `[s,e]`, specify and test `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and
-kernel `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic
+events `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic
 technique/group identity even when a numeric fallback is also available, so a sample instrument may select legato or
 staccato regions rather than receiving only a gate multiplier.
 
@@ -85,8 +85,8 @@ Commit as `Interpret notation as performance gestures`.
 ## Stop
 
 - No instrument implementation, sample selection, part routing, or DSP parameter resolution.
-- No kernel operation, new term form, or physical-time value in any score or gesture occurrence. Exact physical time and
-  frames appear in scheduling decisions, not in the event payload.
+- No event-track operation, new term form, or physical-time value in any score or gesture occurrence. Exact physical
+  time and frames appear in scheduling decisions, not in the event payload.
 - No second temporal structure. If `EventTrack<PerformedTime,Gesture>` will not carry something, that is a finding to
   report against `docs/rules/constitution.md` §8, not a licence to write a parallel container.
 - No universal ontology of expression; standard controls have documented Musa meanings and custom controls remain

@@ -48,8 +48,8 @@ named after a musical culture as adequate without review by a qualified practiti
 
 Create `docs/notes/research/language-design-closure/` and state the following starting decisions.
 
-- Keep the finite temporal kernel: exact rational time, typed occurrences, sequence, and unequal-duration overlay.
-- Keep running signals outside that kernel. Audio process graphs have step semantics, not musical extent.
+- Keep the finite event-track: exact rational time, typed occurrences, sequence, and unequal-duration overlay.
+- Keep running signals outside that event track. Audio process graphs have step semantics, not musical extent.
 - Treat the derivation diagram as the link between representations. Do not seek one value that is at once source, score,
   analysis, gesture, and sound.
 - Assume one finite, resolved import graph per build and fresh nominal type identities within that build.
@@ -183,6 +183,6 @@ Repair the pinned-package prompt so package dependencies and module imports are 
 equality, hashes only locate candidates, repeated imports of one resolved package share a build node, and no stable
 compiled interface or persistent value cache is promised.
 
-Finish with documentation checks, focused language/kernel/compiler/project suites, the full repository gates required by
+Finish with documentation checks, focused language/events/compiler/project suites, the full repository gates required by
 `AGENTS.md`, and a contradiction audit across rules, plans, book material, and research. Commit the evidence and
 candidates, proofs and review, governing documents, and prompt stack as separate stable milestones on `main`.

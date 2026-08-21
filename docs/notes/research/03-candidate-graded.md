@@ -2,7 +2,7 @@
 
 **Source.**
 `~/Code/papers/logic-and-computation/type-theory/quantitative-program-reasoning-with-graded-modal-types/text.md`
-(Granule), for grading by a resource algebra; `docs/rules/kernel/03-denotational-semantics.md` and
+(Granule), for grading by a resource algebra; `docs/rules/events/03-denotational-semantics.md` and
 `04-algebraic-laws.md` for what is being graded.
 
 **One-line claim.** A timeline's extent is a *grade*, the two temporal operations are the two operations of the grade
@@ -13,7 +13,7 @@ are about.
 
 ## 1. The observation
 
-From `docs/rules/kernel/03-denotational-semantics.md` line 52 and `04-algebraic-laws.md` L3:
+From `docs/rules/events/03-denotational-semantics.md` line 52 and `04-algebraic-laws.md` L3:
 
 ```text
 M ; N = (d + e, ...)         duration(M ; N)  = duration(M) + duration(N)      (L3)
@@ -45,7 +45,7 @@ and multiplicative identities coincide at `0`. This matters twice over:
    or a weaker indexing structure. *This is a side condition, and per
    `~/Code/papers/category-theory/grothendieck-method/process.md`'s test it is evidence the level is not yet right.*
 2. **The missing element is musically meaningful, not a technicality.** An annihilator would be a timeline `⊥` with
-   `⊥ ; M = ⊥` — music after which nothing can follow. `docs/rules/kernel/03-denotational-semantics.md` is explicit that
+   `⊥ ; M = ⊥` — music after which nothing can follow. `docs/rules/events/03-denotational-semantics.md` is explicit that
    `(0, ∅)` is *not* this: "empty timelines have extent, and extent is real." There is no musical object that swallows
    its continuation. So the structure is not a semiring **because music has no annihilator**, which is a better reason
    than a missing axiom.

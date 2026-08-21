@@ -14,7 +14,7 @@
 //!   performances.
 //!
 //! The third one that matters is `order_survives_normalization`. Every grace
-//! in a group stands at one instant, and docs/rules/kernel/05 N2 orders occurrences
+//! in a group stands at one instant, and docs/rules/events/05 N2 orders occurrences
 //! by span and then by payload key — so a span they all share settles nothing,
 //! and two different pieces of music would compile to one term unless the
 //! written order rides in the payload.
@@ -159,15 +159,15 @@ fn order_survives_normalization() {
                 score {{ part p {{ voice v {{ grace {{ {graces} }} c5/1 }} }} }} }}"
         )
     };
-    let kernel = |graces: &str| {
-        musa_compiler::kernel_text(
+    let events = |graces: &str| {
+        musa_compiler::events_text(
             &SourceDocument::new(piece(graces), "order.musa"),
             &musa_score::Realization::default(),
             &musa_compiler::ImportSources::default(),
         )
         .expect("projects")
     };
-    assert_ne!(kernel("d5 e5"), kernel("e5 d5"));
+    assert_ne!(events("d5 e5"), events("e5 d5"));
 }
 
 #[test]

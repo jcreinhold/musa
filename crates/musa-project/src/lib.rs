@@ -61,7 +61,7 @@ pub use crate::contents::{ContentsFacts, EntryFacts};
 pub use crate::diagnostic::{Cause, CauseLabel, Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;
-pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
+pub use crate::export::{EventsReport, ExportArtifact, ExportRequest, check_events};
 pub use crate::facts::{
     DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, NameFact, NameKind, OccurrenceFacts,
     OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, StepFact, StepKind,
@@ -82,7 +82,7 @@ pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
 pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
-pub use musa_compiler::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
+pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};
 pub use musa_notation::MidiMode;
 pub use musa_score::{
     AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, ChoicePath, ChoiceStep, ClaimDoc, Decision,

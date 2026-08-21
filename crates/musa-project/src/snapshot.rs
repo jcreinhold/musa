@@ -51,7 +51,7 @@ pub(crate) struct ValidArtifacts {
     pub(crate) score: musa_score::ScoreSnapshot,
     /// The source that produced it.
     ///
-    /// Kept because one export — kernel text — is a projection of the
+    /// Kept because one export — events text — is a projection of the
     /// *document*, not of the score snapshot: a term carries provenance the
     /// snapshot has already spent. One string per successful compile, beside
     /// a history that already holds one per edit.
@@ -76,7 +76,7 @@ pub(crate) struct ValidArtifacts {
     /// completion, signature help, and outline.
     pub(crate) items: Vec<crate::facts::ItemFact>,
     pub(crate) revision: Revision,
-    /// What this score *means* (docs/rules/kernel/05 N6), so a consumer can ask
+    /// What this score *means* (docs/rules/events/05 N6), so a consumer can ask
     /// whether an edit changed the music rather than only the text.
     pub(crate) identity: musa_compiler::SemanticHash,
 }
@@ -351,7 +351,7 @@ impl ProjectSnapshot<'_> {
             kind: match self.kind {
                 musa_compiler::DocumentKind::Piece => "piece",
                 musa_compiler::DocumentKind::Material => "material",
-                musa_compiler::DocumentKind::Kernel => "kernel",
+                musa_compiler::DocumentKind::Events => "events",
             },
             source: self.source,
             revision: self.revision.0,

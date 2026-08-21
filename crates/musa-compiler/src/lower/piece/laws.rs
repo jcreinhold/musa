@@ -931,9 +931,9 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// rather than after them, so `10-traits.md` §6's exact-receiver lookup finds
 /// the instance at the head where the reading always said it should.
 ///
-/// Five classes were here and are gone. The **kernel quote** —
-/// `kernel EventTrack[WrittenTime, ScoreFact] { … }`, which
-/// [`crate::lower::kernel`] reads: the reading answers everything the quote can
+/// Five classes were here and are gone. The **events quote** —
+/// `events EventTrack[WrittenTime, ScoreFact] { … }`, which
+/// [`crate::lower::events`] reads: the reading answers everything the quote can
 /// be wrong about, the term rides in a literal, and one builtin binds the holes
 /// and evaluates. The **instance site** — a `make` among
 /// a part's items — went with the whole of what a `make` is: the template's
@@ -1054,8 +1054,8 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("in-c", include_str!("../../../../../examples/in-c.musa")),
     ("invention", include_str!("../../../../../examples/invention.musa")),
     (
-        "kernel-splice",
-        include_str!("../../../../../examples/kernel-splice.musa"),
+        "events-splice",
+        include_str!("../../../../../examples/events-splice.musa"),
     ),
     (
         "loop-lengths",

@@ -15,7 +15,7 @@ Musical time is an ambient exact-rational coordinate. It is not a value the lang
 event, and not something a term can read.
 
 **This amendment is retained, not proposed.** It is `docs/course-correction.md`'s central claim and
-`docs/rules/kernel/01-time.md`'s law, and everything in this directory is built on top of it unchanged. It is listed
+`docs/rules/events/01-time.md`'s law, and everything in this directory is built on top of it unchanged. It is listed
 here because the later amendments only make sense against it, and because it is the one amendment that has already
 survived a full implementation.
 
@@ -25,7 +25,7 @@ survived a full implementation.
   without either term naming the shift.
 - Floating point is a rendering artifact. It appears at the performance and DSP edge and nowhere earlier.
 - Two pieces that place the same material at the same rational offsets are the same piece, whatever route the surface
-  syntax took to say so. This is what makes `docs/rules/kernel/04-algebraic-laws.md` provable rather than aspirational.
+  syntax took to say so. This is what makes `docs/rules/events/04-algebraic-laws.md` provable rather than aspirational.
 
 ### What this leaves open
 
@@ -52,11 +52,11 @@ keep domains separate unless merging eliminates coherence theorems. Here it elim
 
 - **A piece has runs.** A *configuration* is a conflict-free, succession-closed subset of the events: one coherent
   hearing. A piece with no conflict has exactly one maximal configuration and behaves exactly as today's kernel does.
-- **Voice is not payload metadata.** A voice is a chain in `≤`. `docs/rules/kernel/08-open-questions.md` Q3 asks how
+- **Voice is not payload metadata.** A voice is a chain in `≤`. `docs/rules/events/08-open-questions.md` Q3 asks how
   voice identity is represented and currently answers "payload metadata plus HIR structure," which is an admission that
   the kernel cannot say it. Under this amendment the kernel says it directly, and two elaborations that disagree about
   which notes are in the same line are distinguishable objects rather than the same object with different comments.
-- **Repeats, endings, ossias, and open form become kernel objects.** `docs/rules/kernel/11-realization.md` had to push
+- **Repeats, endings, ossias, and open form become kernel objects.** `docs/rules/events/11-realization.md` had to push
   aleatory above the kernel because the kernel had no way to hold two alternatives without asserting both. Conflict is
   precisely that way.
 - **Succession refines time without being determined by it, and time constrains succession.** Both directions are laws,
@@ -114,7 +114,7 @@ payloads and on time. They are not user-written functions that the kernel calls.
 
 ### What follows
 
-- **Totality survives.** `docs/rules/kernel/10-term-calculus.md` T4 says every closed kernel term evaluates to a value.
+- **Totality survives.** `docs/rules/events/10-term-calculus.md` T4 says every closed kernel term evaluates to a value.
   It holds today because the kernel has no `fix` and no abstraction. A group action is total by definition, so `act g M`
   can be a kernel term without reopening T4. This is the reason the amendment is phrased in terms of actions rather than
   the obvious `map f`: `map` needs functions, functions need a function space, and a function space in the kernel is the
@@ -127,7 +127,7 @@ payloads and on time. They are not user-written functions that the kernel calls.
   consonant triads, so the triads are a torsor over it and the Tonnetz is that torsor drawn. "Geometry" in this domain
   means the geometry of a group action; it is not a metaphor and it does not need to be built separately.
 - **Transformational analysis becomes a kernel-level claim.** "This passage is `L` then `P` applied to that one" is a
-  statement about group elements, checkable, and preserved by every law in `docs/rules/kernel/04-algebraic-laws.md` that
+  statement about group elements, checkable, and preserved by every law in `docs/rules/events/04-algebraic-laws.md` that
   commutes with the action.
 
 ### What this leaves open

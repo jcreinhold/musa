@@ -56,7 +56,7 @@ and lets the adapter answer with its own sentence. One root cause, two places.
   lambda's closure, whose charge is its own node plus one per captured name. This is §4's "wiring depth" read literally
   and ch. 10's cell with pointer fields.
 - *Fabrication.* An expression whose value is new all the way down is charged all the way down, exactly as today:
-  literals, pitch actions and scale steps, music and kernel quotations, and builtin results. `range` and `repeat`
+  literals, pitch actions and scale steps, music and event track quotations, and builtin results. `range` and `repeat`
   fabricate, and keep their preflight charge.
 
 The byte counter follows the node counter, case for case, and for the same reason: naming a value creates no bytes

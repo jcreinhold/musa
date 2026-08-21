@@ -93,7 +93,7 @@ pub enum Code {
     /// own: something has to have been claimed, in writing, for the compiler
     /// to have anything to disprove.
     UnmetClaim,
-    /// A well-formed kernel document whose payload type this build has no
+    /// A well-formed events document whose payload type this build has no
     /// implementation for. The file is right; the reader is short.
     UnsupportedPayload,
     /// An adapter region that cannot be resolved, expanded, or whose answer is

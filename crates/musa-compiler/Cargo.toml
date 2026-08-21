@@ -12,7 +12,7 @@ workspace = true
 [dependencies]
 indexmap = { version = "2", features = ["serde"] }
 musa-calculus = { workspace = true }
-musa-kernel = { workspace = true }
+musa-events = { workspace = true }
 musa-score = { workspace = true }
 musa-syntax = { workspace = true }
 num-rational = { version = "0.4", features = ["serde"] }

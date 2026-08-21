@@ -213,7 +213,7 @@ impl Templates {
     /// Record a generated identity, refusing a digest that has already stood
     /// for a different key.
     fn claim(&mut self, resolver: &mut Resolver, key: String, span: SourceSpan) -> Option<u128> {
-        let digest = musa_kernel::stable_digest(key.as_bytes());
+        let digest = musa_events::stable_digest(key.as_bytes());
         if let Some(first) = self.assigned.get(&digest)
             && *first != key
         {

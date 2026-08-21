@@ -18,7 +18,7 @@ This prompt adds no feature.
 
 - All prompt-127a–127e and 150–152 completion and repair notes, including prompts 127da–127dd.
 - Research `06-proof-outline.md`, every audit in `docs/notes/research/core-calculus/`, and `17-final-review.md`.
-- Revised governing specifications, code map, source/compiler/kernel/audio facades, stdlib, examples, and book.
+- Revised governing specifications, code map, source/compiler/events/audio facades, stdlib, examples, and book.
 - Earlier K1/K2/K3 and source-language counterexamples named by the final review.
 
 ## Design

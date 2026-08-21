@@ -30,7 +30,7 @@ use crate::workspace::Document;
 /// word the writer is typing. On top of it sits whatever the *site* knows:
 /// the parameter names of the call being written, the three realization
 /// policies where a policy is the argument, the voice-leading rule ids where
-/// a rule is, and the music-typed names a kernel hole may splice. Site items
+/// a rule is, and the music-typed names an event track hole may splice. Site items
 /// sort first, and nothing is taken away.
 pub(crate) fn completions(document: &Document, position: Position) -> CompletionResponse {
     let mut items: BTreeMap<String, CompletionItem> = BTreeMap::new();
@@ -152,7 +152,7 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
     let byte = document.lines().byte(position);
     let snapshot = document.snapshot();
     let parsed = musa_syntax::parse(snapshot.source());
-    if in_kernel_hole(&parsed.syntax(), byte) {
+    if in_events_hole(&parsed.syntax(), byte) {
         // A hole splices music and nothing else, so the names that fit are
         // exactly the ones whose declared result is `EventTrack<WrittenTime>`.
         for item in snapshot.items().iter().filter(|item| {
@@ -206,10 +206,10 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
     }
 }
 
-/// Whether the caret sits inside a `${ … }` kernel hole.
-fn in_kernel_hole(tree: &musa_syntax::SyntaxNode, byte: u32) -> bool {
+/// Whether the caret sits inside a `${ … }` events hole.
+fn in_events_hole(tree: &musa_syntax::SyntaxNode, byte: u32) -> bool {
     tree.descendants().any(|node| {
-        node.kind() == SyntaxKind::KernelHole && {
+        node.kind() == SyntaxKind::EventsHole && {
             let range = node.text_range();
             byte > u32::from(range.start()) && byte <= u32::from(range.end())
         }

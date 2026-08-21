@@ -83,7 +83,7 @@ pub enum Argument {
 ///
 /// A backend column is `None` when the format has no way to say this mark.
 /// That is a fact about the format, so it becomes an export warning rather
-/// than a silent omission (`docs/rules/kernel/07-backend-contract.md`). What a column
+/// than a silent omission (`docs/rules/events/07-backend-contract.md`). What a column
 /// *means* follows the anchor: for [`Anchor::Note`] it is the slot's spelling
 /// (MEI `@artic` or ornament element, the `MusicXML` child, the `LilyPond`
 /// script), and for a point or a span it is the control element MEI writes,
@@ -310,7 +310,7 @@ pub const VOCABULARY: &[MarkDef] = &[
 /// The value written after a mark's name.
 ///
 /// Ordered and hashed, because it is part of a fact's canonical payload key
-/// (`docs/rules/kernel/05` N3): two `mark text` occurrences over the same span are
+/// (`docs/rules/events/05` N3): two `mark text` occurrences over the same span are
 /// the same fact only when they say the same thing.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MarkArgument {
@@ -432,7 +432,7 @@ impl std::fmt::Display for Mark {
 }
 
 // Identity is the name. Two rows never share one, and the name is what the
-// canonical payload key (docs/rules/kernel/05 N3) is built from — so ordering marks
+// canonical payload key (docs/rules/events/05 N3) is built from — so ordering marks
 // by anything else would make the semantic hash depend on table order.
 impl PartialEq for Mark {
     fn eq(&self, other: &Self) -> bool {

@@ -100,7 +100,7 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
 /// whole note of its reach.
 ///
 /// SMF has no continuous tempo — a *rit.* is a run of set-tempo events or it
-/// is nothing — so a density has to be chosen, and per docs/rules/kernel/07 it is
+/// is nothing — so a density has to be chosen, and per docs/rules/events/07 it is
 /// chosen **here**, by the consumer, rather than by the map that holds the
 /// normative shape. Thirty-two per whole note is a set-tempo every
 /// thirty-second note: below the threshold at which a listener hears steps,

@@ -84,7 +84,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("let", SyntaxKind::LetKw),
     ("fn", SyntaxKind::FnKw),
     ("music", SyntaxKind::MusicKw),
-    ("kernel", SyntaxKind::KernelKw),
+    ("events", SyntaxKind::EventsKw),
     ("quote", SyntaxKind::QuoteKw),
     ("Option", SyntaxKind::OptionKw),
     ("List", SyntaxKind::ListKw),
@@ -331,7 +331,7 @@ impl TokenClass {
             | SyntaxKind::LetKw
             | SyntaxKind::FnKw
             | SyntaxKind::MusicKw
-            | SyntaxKind::KernelKw
+            | SyntaxKind::EventsKw
             | SyntaxKind::QuoteKw
             | SyntaxKind::OptionKw
             | SyntaxKind::ListKw
@@ -468,8 +468,8 @@ impl TokenClass {
             | SyntaxKind::QuestionExpr
             | SyntaxKind::Pattern
             | SyntaxKind::MusicExpr
-            | SyntaxKind::KernelQuote
-            | SyntaxKind::KernelHole
+            | SyntaxKind::EventsQuote
+            | SyntaxKind::EventsHole
             | SyntaxKind::QuoteExpr
             | SyntaxKind::QuotePattern
             | SyntaxKind::Splice

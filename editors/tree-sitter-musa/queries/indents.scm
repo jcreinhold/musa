@@ -29,7 +29,7 @@
   (argument_list)
   (expression_argument_list)
   (music_expression)
-  (kernel_quote_body)
+  (events_quote_body)
   (match_expression)
   (block_expression)
   (record_literal_expression)

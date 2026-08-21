@@ -74,5 +74,5 @@ Commit as `Bind musical controls to instrument sound`.
 ## Stop
 
 - No rule that crescendo means filter cutoff, slur means ADSR, or dynamic means decibels.
-- No frame/control-rate sampling in the kernel and no raw graph address in a performance profile.
+- No frame/control-rate sampling in the event track and no raw graph address in a performance profile.
 - No GUI automation editor, sample format, or plug-in hosting.

@@ -13,7 +13,7 @@
 (trait_declaration) @local.scope
 (impl_declaration) @local.scope
 (music_expression) @local.scope
-(kernel_quote) @local.scope
+(events_quote) @local.scope
 (match_expression) @local.scope
 (lambda_expression) @local.scope
 

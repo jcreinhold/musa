@@ -27,7 +27,7 @@ A correction memo is written in diff voice. It says "do not continue in that dir
 drifting" — sentences that only mean something against the state of the tree on the day they were written. Two years of
 prompts later the direction it warns against is gone, and the memo's thirty-six sections had been transcribed,
 sharpened, and in one case *struck* by the specifications it created. Keeping it meant keeping a second, staler copy of
-the kernel specification with governing force, which is how `docs/rules/kernel/08-open-questions.md`'s falsification
+the kernel specification with governing force, which is how `docs/rules/events/08-open-questions.md`'s falsification
 table came to be six prompts behind §33.
 
 The correction is not withdrawn. It is now stated once, in the present tense, by the documents below.

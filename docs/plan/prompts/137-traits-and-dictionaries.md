@@ -25,7 +25,7 @@ Prompt 137a spells all of this on the surface; this prompt is the mechanism it s
   program is a design; that note is the evidence.
 - `docs/rules/language/02-core-calculus.md` §1.1 as rewritten by 129 — the `Storable` constraint, and the rule that its
   instances are generated from the declaration group and never written by hand. That is the single most important
-  coherence property in the system: a user-writable `Storable` instance is a hole in the kernel payload boundary.
+  coherence property in the system: a user-writable `Storable` instance is a hole in the event-track payload boundary.
 - `crates/musa-calculus/src/{family.rs, declare.rs}` — the precedent this follows exactly. A `data` declaration is
   elaborated in `cx.closed()`, its telescope is read binder by binder in the scope the previous binders built, and the
   group it produces is carried on a `Cx`. A trait is the same shape with a record where the constructors were, and

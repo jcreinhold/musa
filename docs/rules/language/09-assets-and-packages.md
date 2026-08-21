@@ -112,8 +112,8 @@ remains fitted to the beat interval and pitch follows resampling rate. `by loop`
 as needed, and truncates at the beat end. `by crop` plays once at natural rate, truncating whichever of asset or beat
 support outlasts the other and leaving any remaining support silent. There is no pitch-preserving warp promise. Loop
 count is explicit: `cue pulse at 9:1 repeat 4;`. The cue elaborates to an interval `ScoreFact::MusicalClip` with exact
-beat support and an opaque `AssetRef`; it is not a note. The kernel applies only its ordinary temporal laws and remains
-opaque to the media reference and fit policy.
+beat support and an opaque `AssetRef`; it is not a note. The event track applies only its ordinary temporal laws and
+remains opaque to the media reference and fit policy.
 
 ### Fixed-media cue
 

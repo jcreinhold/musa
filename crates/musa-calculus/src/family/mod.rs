@@ -74,7 +74,7 @@
 //! permits the infinitary constructor, so this is a real narrowing, and §1.2 is
 //! what makes it free: "an arrow type is never storable, and neither is any
 //! container holding one", so a family with an infinitary constructor could never
-//! carry a payload, be a machine port, or cross the kernel boundary. What it buys
+//! carry a payload, be a machine port, or cross the event track boundary. What it buys
 //! is that an induction hypothesis is an application rather than a synthesized
 //! closure, so ι never builds syntax.
 //!

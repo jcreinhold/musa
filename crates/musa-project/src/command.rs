@@ -117,7 +117,7 @@ pub enum ProjectCommand {
     /// *is* a state of the session, so it lands in the history and can be
     /// undone — a composer who draws a performance they liked less must be
     /// able to get the last one back, and that is what undo is
-    /// (`docs/rules/kernel/11-realization.md`).
+    /// (`docs/rules/events/11-realization.md`).
     NewPerformance {
         /// The performance to draw. A number, because that is what a composer
         /// writes down and sends to somebody else.

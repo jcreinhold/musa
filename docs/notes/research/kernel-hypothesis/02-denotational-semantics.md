@@ -1,7 +1,7 @@
 # Denotational semantics
 
 What a kernel object denotes under the hypothesis, what the constructors do to it, which existing laws survive, and the
-theorem that relates all of this back to `docs/rules/kernel/03-denotational-semantics.md`.
+theorem that relates all of this back to `docs/rules/events/03-denotational-semantics.md`.
 
 The claim to check first is §4: **the existing term language already writes down voice identity, and the existing
 denotation throws it away.** If that is right, this proposal costs no new syntax.
@@ -89,7 +89,7 @@ d(x) = max( d(x ∩ E), e(x ∩ F) )
 Nothing crosses. This is the whole content of the proposal in one line: `;` relates, `⊕` does not, and a piece written
 as an overlay of sequences carries its voices in `≤` for free.
 
-Overlay remains non-idempotent, for the reason `docs/rules/kernel/03-denotational-semantics.md` D3 already gives — two
+Overlay remains non-idempotent, for the reason `docs/rules/events/03-denotational-semantics.md` D3 already gives — two
 performers playing the same note are two events — and now for a second reason: they are two *distinct* events, so a set
 is the right structure and the multiset was a way of keeping distinctness without keeping identity.
 
@@ -123,7 +123,7 @@ the current kernel would catch it.
 
 ### E6 — observation
 
-`restrict`, `covering`, and `prevailing` (`docs/rules/kernel/03-denotational-semantics.md` D6, D10, D11) are unchanged
+`restrict`, `covering`, and `prevailing` (`docs/rules/events/03-denotational-semantics.md` D6, D10, D11) are unchanged
 in substance. They are observations: they remove nothing from `E`, so downward-closure cannot break. They now take a
 configuration argument, defaulting to the greatest configuration when `𝔈` is conflict-free — which is every existing
 call site.
@@ -154,7 +154,7 @@ Three corollaries, and they are the reason the hypothesis is cheap to try:
 1. **Nothing is lost.** The existing denotation is recoverable from the proposed one by a total function.
 2. **Every existing law that only mentions the old denotation still holds after `U`.** In particular L1–L17 and L19–L24
    survive verbatim under `U`, and most of them survive *unchanged* at the finer level — see §5.
-3. **Realization is `U`.** `docs/rules/kernel/11-realization.md` had to define a separate mechanism to turn open form
+3. **Realization is `U`.** `docs/rules/events/11-realization.md` had to define a separate mechanism to turn open form
    into performances. Under the hypothesis, realization is the forgetful map already needed for the recovery theorem,
    and the set it returns is the set of performances. One construct, not two.
 
@@ -207,7 +207,7 @@ differ in structure as well as multiplicity.
 > voice exchange is erased. The two tests named in §5.3 are not asserting anything false today. §5.3's migration claim
 > is therefore about a change that has no current motivation.
 
-`docs/rules/kernel/04-algebraic-laws.md` L18 — synchronized interchange — says that for equal durations,
+`docs/rules/events/04-algebraic-laws.md` L18 — synchronized interchange — says that for equal durations,
 
 ```text
 (M ⊕ N) ; (P ⊕ Q)  =  (M ; P) ⊕ (N ; Q)

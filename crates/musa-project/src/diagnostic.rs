@@ -465,9 +465,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
              mistake and has said so since bars existed."
         }
         musa_score::Code::UnsupportedPayload => {
-            "A kernel interchange file is well formed, and its occurrences \
+            "An event track interchange file is well formed, and its occurrences \
              carry a payload type this build has no reader for.\n\n\
-             The file is not wrong. `% musa-kernel-2` fixes the grammar of \
+             The file is not wrong. `% musa-events-3` fixes the grammar of \
              terms — `let`, `follow`, `together`, `shift`, `scale`, \
              `restrict` — and leaves what an occurrence *is* to the producer, \
              which is what lets one format carry a score, a sketch, and \
@@ -690,7 +690,7 @@ pub fn explain(code: &str) -> Option<&'static str> {
              removed."
         }
         musa_score::Code::ReservedClass => {
-            "A `trait` was declared with the name `Storable`.\n\nStorability is a structural fact about a type, not a claim anyone may assert: `Storable` holds exactly when a type contains no function at any depth and has a versioned exact encoding, and the elaborator generates the instance or the type simply does not have one. The *word* is reserved and not only the instances, because a second trait spelled `Storable` would shadow the generated ones with hand-written ones, and the kernel payload boundary would have a hole in it.\n\nA signature may require the constraint; nothing may supply it."
+            "A `trait` was declared with the name `Storable`.\n\nStorability is a structural fact about a type, not a claim anyone may assert: `Storable` holds exactly when a type contains no function at any depth and has a versioned exact encoding, and the elaborator generates the instance or the type simply does not have one. The *word* is reserved and not only the instances, because a second trait spelled `Storable` would shadow the generated ones with hand-written ones, and the event track payload boundary would have a hole in it.\n\nA signature may require the constraint; nothing may supply it."
         }
         musa_score::Code::HeadlessClass => {
             "A `trait` was declared with no parameters.\n\nInstance lookup is keyed on the trait and the head constructor of its first argument, so a trait with no parameters has nothing to key on. What such a declaration describes is a record of global values, and `record` is the word for that.\n\nAdd the parameter the methods are about: `trait Eq<A>` rather than `trait Eq`."

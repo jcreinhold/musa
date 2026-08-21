@@ -20,7 +20,7 @@ Three things must be true before an atom is built, and "the design is elegant" i
 | --- | --- | --- |
 | **Demand** | A consumer that is worse off without it, named by crate and function | §34's "multiple independent consumers," and the defense against a shallow module |
 | **Falsifier** | A test that fails today and passes after | Distinguishes a real gap from an aesthetic preference |
-| **Cost** | A measurement against `docs/rules/kernel/09-performance.md`'s budgets | A semantics that cannot be computed is not a semantics for this project |
+| **Cost** | A measurement against `docs/rules/events/09-performance.md`'s budgets | A semantics that cannot be computed is not a semantics for this project |
 
 ---
 
@@ -50,7 +50,7 @@ Implement prompt 119 against the *existing* per-note `VoiceId`. Then answer, wit
   structure to get there?
 - Did anything need a partial order (OMT `110`) or a splitting line?
 
-**If prompt 119 lands cleanly on tags, Atom 2 is withdrawn** — to a note in `docs/rules/kernel/08-open-questions.md`
+**If prompt 119 lands cleanly on tags, Atom 2 is withdrawn** — to a note in `docs/rules/events/08-open-questions.md`
 saying Q3 was tested by a real consumer and the working stance held. That is a good outcome, not a failure: it closes an
 open question with evidence instead of leaving it open forever.
 
@@ -60,7 +60,7 @@ three, discovered by a consumer rather than proposed by a document.
 **It landed cleanly.** Prompt 119 shipped in commit `90db0b1` with seven profiles and twenty-four rules over a `Strand`
 that is nothing but the lane's own `(PartId, VoiceId)` and its tones in time order. No relation was added, and neither a
 partial order nor a splitting line appeared. Gate 2 records the reading in full; Q3 is closed in
-`docs/rules/kernel/08-open-questions.md`; Track C below is closed with it.
+`docs/rules/events/08-open-questions.md`; Track C below is closed with it.
 
 ---
 
@@ -112,7 +112,7 @@ starting point and Gate 2 is the thing it has to beat.
 
 ### Track D — Atom 3, parked
 
-`docs/rules/kernel/11-realization.md` is governing and its reasons 1 and 2 stand. Revive only if a real user needs
+`docs/rules/events/11-realization.md` is governing and its reasons 1 and 2 stand. Revive only if a real user needs
 **ossia** — notated, bounded, performer-chosen alternatives — and even then, the first design to try is a payload one
 under the existing realization mechanism, not a kernel constructor. If a kernel constructor is ever proposed again, it
 must answer prompt 66's reason 2 (does `let`-sharing share the decision?) *first*, because
@@ -126,7 +126,7 @@ Nothing yet. Concretely:
 
 - **Tracks A and B change no governing document.** Atom 4's narrow form is a `musa-compiler` change; Atoms 5 and 6 are
   library and type discipline. This is why they go first — they are reversible.
-- **Only Track C would touch `docs/course-correction.md` and `docs/rules/kernel/`**, and only after prompt 119 supplies
+- **Only Track C would touch `docs/course-correction.md` and `docs/rules/events/`**, and only after prompt 119 supplies
   evidence. A kernel-shape change is the one irreversible-feeling move here and it should be the last one made.
 - **Renumbering.** Per the standing convention, new work becomes numbered prompts with the rest renumbered. Track A and
   B prompts belong in the phase-3 block (115–127). A Track C prompt belongs *after*
@@ -147,7 +147,7 @@ three landed as edits elsewhere and are recorded here so the plan stays the sing
    → enriched → ordinary arrangement (§3.1 of the book) is *not* musa's: the core calculus has functions and the kernel
    has none, so no simplifying transformation connects them and the relationship is evaluation applied twice. This
    retires the "two cores no document names" problem noted earlier in this project without changing any code. **Done.**
-2. **Full laziness is a real, measured-later gap.** `docs/rules/kernel/10-term-calculus.md` §"Provenance of the sharing
+2. **Full laziness is a real, measured-later gap.** `docs/rules/events/10-term-calculus.md` §"Provenance of the sharing
    discipline" and prompt 127's Design. Musa shares whole motif bodies keyed on arguments; Chapter 15 shares a body's
    argument-independent subexpressions across *different* arguments. Chapter 23's warnings against the technique are
    about lazy evaluation and do not transfer to a strict total calculus, so musa is unusually free to take the win — but

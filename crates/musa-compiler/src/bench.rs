@@ -8,7 +8,7 @@
 //! themselves. An interface that grew because a benchmark wanted a seam
 //! would be a benchmark leaking into a design.
 
-use musa_kernel::{EventTrack, Occurrence, WrittenTime, together};
+use musa_events::{EventTrack, Occurrence, WrittenTime, together};
 
 use crate::compile::{Compilation, CompileOptions, SourceDocument};
 use crate::elaborate::VoiceTrack;
@@ -115,7 +115,7 @@ pub fn parse(source: &SourceDocument) -> Parsed {
     }
 }
 
-/// Everything after parsing: elaboration through the kernel and the snapshot
+/// Everything after parsing: elaboration through the event track and the snapshot
 /// adapter (P2).
 pub fn elaborate(parsed: &Parsed, options: &CompileOptions) -> Compilation {
     let mut resolver = Resolver::new();
@@ -128,7 +128,7 @@ pub struct Tracks {
     voices: Vec<VoiceTrack>,
 }
 
-/// Elaborate, and keep the kernel tracks the adapter would have consumed.
+/// Elaborate, and keep the event track tracks the adapter would have consumed.
 pub fn tracks(parsed: &Parsed, options: &CompileOptions) -> Tracks {
     let mut resolver = Resolver::new();
     resolver.track_sink = Some(Vec::new());
@@ -182,11 +182,11 @@ impl Tracks {
                         .iter()
                         .map(|occurrence| Occurrence::new(occurrence.span(), occurrence.payload().clone()))
                         .collect();
-                    musa_kernel::track(track.duration(), occurrences).unwrap_or_else(|_| {
+                    musa_events::track(track.duration(), occurrences).unwrap_or_else(|_| {
                         // The occurrences came from a valid track, so this
                         // is unreachable; an empty track is the harmless
                         // answer rather than a panic in a benchmark.
-                        musa_kernel::empty(musa_kernel::Duration::ZERO)
+                        musa_events::empty(musa_events::Duration::ZERO)
                     })
                 })
                 .collect(),

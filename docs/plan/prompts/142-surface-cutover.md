@@ -130,9 +130,9 @@ in the middle. It absorbs prompt 127e, whose file stays as a superseded record r
   `crate::infer` too, and `registry::builtins` is live code that types the phase builders through the old `Unifier`.
 - `crates/musa-compiler/tests/suite/elaboration_compatibility.rs`, especially
   `existing_language_behavior_matches_the_migration_oracle`, and `tests/fixtures/elaboration-expected-changes.json` —
-  the oracle fixes semantic hashes, kernel digests, diagnostic codes, Origin paths, and the MEI/LilyPond/MusicXML/MIDI
-  corpora. This is the only prompt permitted to move an entry in it, and every moved entry is argued in the JSON, by
-  slug.
+  the oracle fixes semantic hashes, event track digests, diagnostic codes, Origin paths, and the
+  MEI/LilyPond/MusicXML/MIDI corpora. This is the only prompt permitted to move an entry in it, and every moved entry is
+  argued in the JSON, by slug.
 - `docs/rules/language/00-semantics.md` §3 — reusable material as an ordinary value, which is the shape notation takes
   after contextual `Music` is gone. Also its paragraph on the expansion phase, beside
   [`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.9 and
@@ -192,12 +192,12 @@ ambient context. `00-semantics.md` §3 already says this; this prompt makes the 
     earlier cut of this change inlined the music twice, and the doubled charge moved the staff page's budget crossing
     from the evaluation site to an application site (`every_example_elaborates`' pin tracks it).
 
-**The oracle moves once, and every move is argued.** A changed semantic hash, kernel digest, diagnostic code, Origin
-path, or rendered corpus file is an entry in `elaboration-expected-changes.json` with a defect and an observation,
-naming the prompt by slug. An unargued move is indistinguishable from a regression, and after this prompt there is no
-second chance to tell them apart. **A rendered-notation change is a defect until proven otherwise**: the MEI, LilyPond,
-MusicXML, and MIDI corpora describe what a musician sees, and a type-checker replacement has no business changing any of
-them.
+**The oracle moves once, and every move is argued.** A changed semantic hash, event track digest, diagnostic code,
+Origin path, or rendered corpus file is an entry in `elaboration-expected-changes.json` with a defect and an
+observation, naming the prompt by slug. An unargued move is indistinguishable from a regression, and after this prompt
+there is no second chance to tell them apart. **A rendered-notation change is a defect until proven otherwise**: the
+MEI, LilyPond, MusicXML, and MIDI corpora describe what a musician sees, and a type-checker replacement has no business
+changing any of them.
 
 **Delete the second path, and audit for a third.** `infer.rs`'s unifier, the superseded checking arms in `core.rs`,
 `names_a_phase_type` and the collision it worked around, and every function that only existed to keep the old
@@ -211,8 +211,8 @@ own binders are.
 of one. The checker's departure is the moment to see what is left and whether it is one thing. Do not restructure
 speculatively — the `module-design` rule is that a boundary hides a volatile decision — but do not put the remains back
 in one file out of momentum either. `elaborate.rs` asks the same question and gets a different answer: what is left
-there after the walk goes is the fact representation and the kernel projection, which are two things and are read by
-different callers, so the file has a split in it that `core.rs` may turn out not to.
+there after the walk goes is the fact representation and the event track projection, which are two things and are read
+by different callers, so the file has a split in it that `core.rs` may turn out not to.
 
 **Everything downstream moves in this commit**: `stdlib/`, `examples/`, `docs/book/` fixtures, LSP fixtures, desktop
 fixtures via their generators, and `editors/tree-sitter-musa`'s corpus. The book's teaching pages quote fixtures and
@@ -269,15 +269,15 @@ rules never authorized.
 - `musa-compiler` elaborating through `musa-calculus`: `check_piece`, `check_arguments`, `check_template_voice`, and
   `check_material` calling 141g's and 141k's lowering and `musa_calculus::check`, with the old checking path deleted.
   The declaration reading is 141g's, the notation reading is 141k's, and the structure around them is 141p's; what this
-  delivers is the rest — bar lines, the instance sites templates make, the kernel quote, the tie, the passes that call
+  delivers is the rest — bar lines, the instance sites templates make, the events quote, the tie, the passes that call
   the whole of it, and the readback that turns a normal form into the musical value a consumer receives. A track is a
   literal at `EventTrack ⟨written⟩`, so the readback is a normal form, a literal, and the payload it holds; what costs
   something is `Program`'s shape, which exists to defer contextual instantiation and has nothing left to defer. Seven
-  things bar structure, the instance sites, the kernel quote, and the tie forced, recorded here rather than left as
+  things bar structure, the instance sites, the events quote, and the tie forced, recorded here rather than left as
   drift:
   - **A bar's core spelling is its body, and its claim is placed by two terms.** `bar { … }` contributes no occurrence,
-    no payload, and no time — `elaborate.rs`'s own `elaborate_bar` already said the kernel's ontology has no bar in it —
-    so the braces erase and the term is exactly the fold of what is inside them. What the braces contribute is the
+    no payload, and no time — `elaborate.rs`'s own `elaborate_bar` already said the event track's ontology has no bar in
+    it — so the braces erase and the term is exactly the fold of what is inside them. What the braces contribute is the
     measure claim, and a fold has no cursor to place it with. So a claim records *the music before it* and *the passage
     itself*, and the readback turns those two terms into a position and a duration. Each enclosing fold prepends what
     stands before the statement the claim came out of, so a bar inside a `repeat` is placed absolutely without any block
@@ -419,28 +419,30 @@ rules never authorized.
     duplication. The instance site needed a caller for one of them and found two, so `provenance_literal` is deleted and
     its argument merged into `origin_literal`, whose name matches the base type the way `template_literal` and
     `token_kind_literal` match theirs.
-  - **A kernel quote's core spelling is a literal held whole and one builtin.** `kernel EventTrack[WrittenTime,
-    ScoreFact] { … }` is read by `crate::lower::kernel`: the reading answers everything the quote can be wrong about —
-    the three type words, the body's syntax, a payload that would settle its use's key, meter, or voice, and a name the
-    quote does not bind — and hands the checked `musa_kernel::Term` on in a literal at a new base type `KernelTerm`,
-    beside `Template` and for `Template`'s reason. Translating the term into core terms instead would mean registering
-    raw `scale` and `restrict`, which are the two formers the quote *exists* for (`examples/kernel-splice.musa` writes
-    `${stretch(1/2, subject)}` because raw `scale` moves occurrences without renotating payloads), α-renaming the
-    quote's binders so a spliced expression cannot be captured, and re-deriving `musa_kernel::evaluate` as core
-    reduction — three costs whose only caller would be this one reading. Three consequences:
-    - **`spliced : KernelTerm → List (EventTrack ⟨written⟩) → EventTrack ⟨written⟩` is a tenth track builtin, in neither
+  - **An events quote's core spelling is a literal held whole and one builtin.** `events EventTrack[WrittenTime,
+    ScoreFact] { … }` is read by `crate::lower::event track`: the reading answers everything the quote can be wrong
+    about — the three type words, the body's syntax, a payload that would settle its use's key, meter, or voice, and a
+    name the quote does not bind — and hands the checked `musa_events::Term` on in a literal at a new base type
+    `EventsTerm`, beside `Template` and for `Template`'s reason. Translating the term into core terms instead would mean
+    registering raw `scale` and `restrict`, which are the two formers the quote *exists* for
+    (`examples/events-splice.musa` writes `${stretch(1/2, subject)}` because raw `scale` moves occurrences without
+    renotating payloads), α-renaming the quote's binders so a spliced expression cannot be captured, and re-deriving
+    `musa_events::evaluate` as core reduction — three costs whose only caller would be this one reading. Three
+    consequences:
+    - **`spliced : EventsTerm → List (EventTrack ⟨written⟩) → EventTrack ⟨written⟩` is a tenth track builtin, in neither
       ownership table.** Past both for `instantiate_quote`'s reason one stage up: the source already spells the whole
       operation, so a row would invent a second, *called* spelling taking a term no expression can build and a list
       whose order only the reading knows. It binds the *i*th material to the *i*th hole name — `Term::bind`, first hole
-      outermost, which is the kernel's own call-by-value sharing — and evaluates. `evaluate` is total on a checked term,
-      so the replaced path's "this kernel quote has no extent" diagnostic was unreachable and is not carried forward.
+      outermost, which is the event track's own call-by-value sharing — and evaluates. `evaluate` is total on a checked
+      term, so the replaced path's "this events quote has no extent" diagnostic was unreachable and is not carried
+      forward.
     - **The builtin needs neither an `Origin` nor a `Scope` argument**, because 141k fixed both at *read* time: a free
-      `music { … }` reads at `Scope::Piece`, and a kernel quote is an expression. The reading stamps the payloads the
+      `music { … }` reads at `Scope::Piece`, and an events quote is an expression. The reading stamps the payloads the
       quote wrote raw, which is also what makes refusing a context-authoritative payload a refusal rather than a silent
       overwrite.
     - **A hole's provenance is `instanced`, not a second builtin.** "These facts were produced inside this expansion" is
       one claim with two sites: an instance site hands it `[TemplateInstance{…}]`, a `${…}` hands it
-      `[KernelSplice{at: locus}]`, and prepending is right for both because everything the hole's own expression did
+      `[EventsSplice{at: locus}]`, and prepending is right for both because everything the hole's own expression did
       happened inside the splice. `TRACK_BEYOND`'s doc widens from "minted by `crate::template`" to "minted by the
       reading that resolved the site".
   - **A tie takes two words, and 141j had neither.** `~` is the one surface mark that says something about *two*
@@ -495,8 +497,8 @@ rules never authorized.
     until it is done the deletion is not available whatever the warning count says.
   - **`elaborate.rs` and `resolve.rs` are carved, not deleted.** `elaborate_parsed` is still the entry point and now
     orchestrates `crate::document::elaborate`; `FactKind`, `ScoreFact`, and `VoiceTrack` are the fact representation
-    `registry/track.rs`, `factext.rs`, `lower/kernel/laws.rs`, and `kernel_text.rs` read; `piece_term` and
-    `kernel_normal_form` are the kernel projection `06-surface-elaboration.md` §Sharing was repaired around.
+    `registry/track.rs`, `factext.rs`, `lower/events/laws.rs`, and `events_text.rs` read; `piece_term` and
+    `events_normal_form` are the event track projection `06-surface-elaboration.md` §Sharing was repaired around.
     `resolve.rs` keeps the `Resolver`, the reference index, `lower_header`, `lower_studio`, and the measure and groove
     checks. What goes from both is the middle — the walk that built tracks from a cursor — which is why neither file
     appears on a ledger of deleted concepts and both belong on this list.
@@ -572,7 +574,7 @@ rules never authorized.
   reading says "a block is a left fold over `follow`", and a left fold is a spine as deep as the block is long. The
   evaluator descends it, so `02-core-calculus.md` §4.1's 256 nested levels were reached at some sixty statements:
   `examples/in-c.musa`'s fifty-three-figure voice was refused for nesting, and so was a voice of a hundred plain notes.
-  `follow` is associative — `musa_kernel::follow` places each track after the one before and where the brackets fall
+  `follow` is associative — `musa_events::follow` places each track after the one before and where the brackets fall
   moves no occurrence — so `lower/notation.rs` accumulates into a stack of balanced subtrees whose sizes are powers of
   two, merging equal neighbours the way incrementing a binary counter carries. Depth becomes log₂ n, nothing is rebuilt,
   and every subtree is shared. It also removes a quadratic: each `Claimed` records *the music before it*, and a prefix

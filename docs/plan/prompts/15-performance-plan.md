@@ -16,8 +16,8 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
 
 ## Read
 
-- `docs/rules/kernel/06-surface-elaboration.md` (tempo is a monotone map `Beat → Second` supplied by the performance
-  layer; symbolic kernel positions stay in beats; "stretch the material" and "perform it more slowly" are different
+- `docs/rules/events/06-surface-elaboration.md` (tempo is a monotone map `Beat → Second` supplied by the performance
+  layer; symbolic event track positions stay in beats; "stretch the material" and "perform it more slowly" are different
   operations — this prompt implements the second, never the first), §23 (audio is a separate semantic layer; this prompt
   ends at physical musical events).
 - Roadmap §6.4 (`PerformancePlan`/`PerformanceEvent` shapes and what the layer is responsible for), §8.1 (`Tuning` trait

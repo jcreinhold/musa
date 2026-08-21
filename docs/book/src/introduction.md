@@ -29,15 +29,15 @@ The book follows [Diátaxis](https://diataxis.fr). Each section serves one kind 
 
 - **Tutorials** — lessons for a newcomer. Start with [Getting started](tutorials/getting-started.md).
 - **How-to guides** — directions for a task you already know you want: exporting, playback, editor setup, the studio.
-- **Explanation** — the ideas the system is built on: the temporal kernel, exact time, layer separation, provenance.
-- **Reference** — dry, complete description: the language, the standard library, the CLI, the kernel format.
+- **Explanation** — the ideas the system is built on: the event-track, exact time, layer separation, provenance.
+- **Reference** — dry, complete description: the language, the standard library, the CLI, the event track format.
 
 ## Where the design lives
 
 This book describes how to use musa. The documents that govern how it is built stay in the repository:
 
 - `docs/rules/` — the constitutional commitments everything else answers to;
-- `docs/rules/kernel/` — the temporal kernel the surface language elaborates into;
+- `docs/rules/events/` — the event-track the surface language elaborates into;
 - `docs/plan/roadmap.md` — the architecture;
 - `docs/rules/desktop/` — the desktop interface specification;
 - `docs/plan/prompts/` — the numbered implementation plan.

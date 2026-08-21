@@ -6,18 +6,18 @@ use super::wrapper;
 use crate::SyntaxKind;
 use crate::language::{SyntaxElement, SyntaxNode};
 
-/// `kernel EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted composition
+/// `events EventTrack[WrittenTime, ScoreFact] { ... }` — a quoted composition
 /// expression.
 ///
-/// The interior is the kernel's grammar and this crate does not read it
+/// The interior is the event track's grammar and this crate does not read it
 /// (`docs/rules/language/01-surface.md` §7). What it offers is what a *host* needs:
 /// which coordinate and payload type the quote claims, where its body is, and
 /// where the holes are — so the compiler can cut the body into text and typed
 /// antiquotations and hand the text to the one crate that owns the grammar.
-pub struct KernelQuote(SyntaxNode);
-wrapper!(KernelQuote, SyntaxKind::KernelQuote);
+pub struct EventsQuote(SyntaxNode);
+wrapper!(EventsQuote, SyntaxKind::EventsQuote);
 
-impl KernelQuote {
+impl EventsQuote {
     /// The type constructor as written, with its span. `EventTrack`, or the
     /// mistake in its place.
     pub fn constructor(&self) -> Option<(String, (u32, u32))> {
@@ -55,8 +55,8 @@ impl KernelQuote {
     }
 
     /// The antiquotations, in source order.
-    pub fn holes(&self) -> Vec<KernelHole> {
-        self.0.children().filter_map(KernelHole::cast).collect()
+    pub fn holes(&self) -> Vec<EventsHole> {
+        self.0.children().filter_map(EventsHole::cast).collect()
     }
 
     fn identifiers(&self) -> impl Iterator<Item = (String, (u32, u32))> + '_ {
@@ -69,13 +69,13 @@ impl KernelQuote {
 }
 
 /// `${ expr }` — one typed antiquotation.
-pub struct KernelHole(SyntaxNode);
-wrapper!(KernelHole, SyntaxKind::KernelHole);
+pub struct EventsHole(SyntaxNode);
+wrapper!(EventsHole, SyntaxKind::EventsHole);
 
-impl KernelHole {
+impl EventsHole {
     /// The host expression spliced here.
     pub fn expr(&self) -> Option<SyntaxNode> {
-        self.0.children().find(|child| child.kind() != SyntaxKind::KernelHole)
+        self.0.children().find(|child| child.kind() != SyntaxKind::EventsHole)
     }
 
     /// The hole's own byte range, `$` through `}`.
@@ -90,7 +90,7 @@ impl KernelHole {
 ///
 /// Two parts and no third: the anchor a caller evaluates, and the body a
 /// caller *reads as a tree*. There is deliberately no accessor for "the
-/// splices", the way [`KernelQuote::holes`] has one — a splice's meaning
+/// splices", the way [`EventsQuote::holes`] has one — a splice's meaning
 /// depends on where in the body it stands, so a flat list of them would be a
 /// list with the one fact about each of them removed.
 pub struct QuoteExpr(SyntaxNode);

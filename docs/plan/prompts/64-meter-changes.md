@@ -163,7 +163,7 @@ governs this measure) and `time_signature` (what this measure *prints*, `None` w
 without the first, `plan_lane` beams and `musicxml` counts divisions against the wrong duration; without the second,
 each of three backends would have to compare with the previous measure itself, which is the drift the plan exists to
 prevent. The snapshots are `Debug` renderings of that struct, so all seven moved by two lines per measure. **MEI,
-LilyPond, MusicXML, MIDI, WAV and every kernel golden but the new one are byte-identical.**
+LilyPond, MusicXML, MIDI, WAV and every events golden but the new one are byte-identical.**
 
 **`cargo insta test --workspace --unreferenced=reject` is not in the Check.** `cargo-insta` is not installed in this
 environment; the same repair was recorded at prompts 61 and 62. `cargo nextest run --workspace` runs the same

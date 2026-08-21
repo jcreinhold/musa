@@ -71,7 +71,7 @@ reveals its declaration in the source column. The line number opens the source a
 to "where did this come from" is available without holding a key.
 
 *Extended (prompt 124).* A step is no longer a bare word. The elaboration language made steps into *places* — a template
-instance is written at a `make`, an assertion at its `assert`, a kernel quotation at the splice that put the material
+instance is written at a `make`, an assertion at its `assert`, an events quotation at the splice that put the material
 there — so each step carries what kind of step it is and, when it is a place, where it is written.
 [`08-elaboration.md`](08-elaboration.md) §4 fixes the kinds, what each one opens, and the rule that a step which is not
 a place gets no invented span.

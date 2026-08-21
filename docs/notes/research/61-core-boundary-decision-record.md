@@ -1,9 +1,9 @@
 # How the core boundary was decided
 
 **Status: research record. Governs nothing.** The decision it reached is `docs/rules/constitution.md` §7 and its §4
-extension; the rules that implement it are `docs/rules/kernel/12-payload-admission.md`,
-`docs/rules/kernel/07-backend-contract.md`, `docs/rules/kernel/10-term-calculus.md`, and
-`docs/rules/kernel/04-algebraic-laws.md` X3. This file keeps the evidence and the argument, because the argument is what
+extension; the rules that implement it are `docs/rules/events/12-payload-admission.md`,
+`docs/rules/events/07-backend-contract.md`, `docs/rules/events/10-term-calculus.md`, and
+`docs/rules/events/04-algebraic-laws.md` X3. This file keeps the evidence and the argument, because the argument is what
 makes the decision hard to re-open by accident.
 
 The question, from prompt 126: Musa's core is a calculus — but a calculus *of what*? Peyton Jones (1987) §3 states the
@@ -19,7 +19,7 @@ table omits is a compile error. At the time of the decision both sides held 88 s
 
 The census is not reproduced here. It was evidence with an expiry date: its "elaborates to" column was pinned to line
 numbers in `elaborate.rs` and `term.rs` and said of itself that those were "orientation, not a contract". What it
-*found* is what mattered, and that is below. `docs/rules/kernel/06-surface-elaboration.md` is the maintained version of
+*found* is what mattered, and that is below. `docs/rules/events/06-surface-elaboration.md` is the maintained version of
 the same information.
 
 The finding: the keywords fell into three groups. Group 1 (notation) and group 2 (values and modules) each elaborated
@@ -75,7 +75,7 @@ and obeying the existing laws without a new line of proof.
 
 One thing was withdrawn rather than confirmed: the old identity wording claimed both that a key was injective on values
 and that it quotiented fields away, which is contradictory, and the display-text hashing then in use was not uniquely
-framed. `docs/rules/kernel/12-payload-admission.md` is the repair.
+framed. `docs/rules/events/12-payload-admission.md` is the repair.
 
 The decision also turned out to be one the code had already half-made. The kernel's term, timeline, and occurrence types
 were already generic in their payload, and the laws were already proved at a non-musical payload type. What was missing

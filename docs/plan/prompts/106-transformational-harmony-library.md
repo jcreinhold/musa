@@ -77,7 +77,7 @@ Commit as `Add the transformational harmony library`.
 
 ## Stop
 
-- No PLR keyword, kernel form, Rust public trait, or partial `chord_class -> chord_class` disguised as total.
+- No PLR keyword, event-track form, Rust public trait, or partial `chord_class -> chord_class` disguised as total.
 - No automatic voice leading or voicing; prompt 119 owns explicit voice-leading checks.
 - No finite-group claim before the enharmonic/spelling quotient is named.
 - No augmented-triad Cube Dance unless a separate refinement and the cited OMT definition make every operation total.

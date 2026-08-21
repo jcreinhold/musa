@@ -60,7 +60,7 @@ music-oriented HIR                <- diagnostics that talk about voices and moti
     |
     | evaluate total expressions
     v
-closed Term<ScoreFact>            <- kernel documents and typed quotation read this
+closed Term<ScoreFact>            <- events documents and typed quotation read this
     |
     | evaluate exact musical time
     v
@@ -81,7 +81,7 @@ track and a machine meet only at `schedule`.
 | --- | --- | --- |
 | Tokens, concrete syntax tree, formatting, and text edits | `musa-syntax` | parsing and edit operations |
 | Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
-| Exact finite event tracks and their laws | `musa-kernel` | `Term`, the track type, construction, queries, equality, and hash |
+| Exact finite event tracks and their laws | `musa-events` | `Term`, the track type, construction, queries, equality, and hash |
 | Engraving plan and file export | `musa-notation` | `render_notation` and export results |
 | Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-dsp` | `prepare_execution` and an opaque prepared machine |
 | Audio-device negotiation, transport, and callback | `musa-playback` | `AudioEngine` and transport commands |

@@ -67,5 +67,5 @@ Commit as `Add the deterministic sampler runtime`.
 ## Stop
 
 - No SFZ/SoundFont parser yet, no disk streaming, convolution, time stretching, or waveform editing.
-- No sampler types in the kernel or score snapshot and no file access in the callback.
+- No sampler types in the event track or score snapshot and no file access in the callback.
 - No consumer-time aleatory choice detached from the declared realization seed and event identity.

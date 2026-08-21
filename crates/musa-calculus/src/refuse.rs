@@ -437,7 +437,7 @@ pub enum Refusal {
     /// `Storable` is the one trait `02-core-calculus.md` §1.2 reserves, and
     /// reserving the *word* rather than only the declaration is what closes the
     /// spelling: an author who declares their own `Storable` would otherwise
-    /// shadow the generated instances with hand-written ones and the kernel
+    /// shadow the generated instances with hand-written ones and the event track
     /// payload boundary would have a hole in it.
     #[error("`{class}` is generated for every storable type and cannot be declared")]
     ReservedClass {

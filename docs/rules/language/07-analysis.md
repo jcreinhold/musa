@@ -69,8 +69,8 @@ A candidate is never reported alone: the readings it competes with are in the sa
 "73% likely a half cadence" is a claim about a corpus nobody named.
 
 There is no privileged "the analysis". Two kinds may return different well-typed readings of one passage; that is data,
-not malformed music. Analysis results enter kernel payloads only when an author explicitly writes an annotation derived
-from one, and the provenance records that it was their choice.
+not malformed music. Analysis results enter event-track payloads only when an author explicitly writes an annotation
+derived from one, and the provenance records that it was their choice.
 
 ## 4. Evidence
 

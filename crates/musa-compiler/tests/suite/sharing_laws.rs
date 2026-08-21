@@ -1,8 +1,8 @@
 //! What makes two calls one body.
 //!
 //! Prompt 142 moved the surface onto a core program, and
-//! `docs/rules/kernel/06-surface-elaboration.md` §Sharing was repaired with it:
-//! a motif is one core definition applied at each call site, and the kernel
+//! `docs/rules/events/06-surface-elaboration.md` §Sharing was repaired with it:
+//! a motif is one core definition applied at each call site, and the event track
 //! term the compiler prints is a *projection* of the evaluated result rather
 //! than the shape elaboration was carried in. Counting `let shared` bindings in
 //! that text is therefore no longer a measurement of anything, and these laws
@@ -104,7 +104,7 @@ fn call_sites(source: &str) -> BTreeSet<String> {
             | ExpansionStep::ScaleContext { .. }
             | ExpansionStep::TemplateInstance { .. }
             | ExpansionStep::Assertion { .. }
-            | ExpansionStep::KernelSplice { .. }
+            | ExpansionStep::EventsSplice { .. }
             | ExpansionStep::Specialization { .. } => None,
         })
         .collect()

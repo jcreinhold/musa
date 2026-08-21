@@ -8,7 +8,7 @@ that these numbers are universal: the compatibility manifests are exact, while t
 
 ## Workloads
 
-The historical `small`, `large`, and `shared` columns remain defined by `docs/rules/kernel/09-performance.md`; adding a
+The historical `small`, `large`, and `shared` columns remain defined by `docs/rules/events/09-performance.md`; adding a
 scenario never edits them. Prompt 93 adds four generated, committed fixtures:
 
 | workload | pressure | evaluated occurrences |
@@ -92,7 +92,7 @@ part of the prepared plan's observable behavior.
 
 ## Compatibility oracle
 
-`tests/fixtures/elaboration-compatibility.txt` fixes semantic hashes, normalized-kernel digests, diagnostic codes and
+`tests/fixtures/elaboration-compatibility.txt` fixes semantic hashes, normalized-events digests, diagnostic codes and
 labels, Origin paths, `PartId`-bearing performance lanes, studio intent, and the existing MEI/LilyPond/MusicXML snapshot
 corpora. `tests/fixtures/audio-bridge-backends.compat` additionally fixes the complete MEI, LilyPond, MusicXML, score
 MIDI, performance MIDI, and WAV export bytes through `ProjectSession`. `tests/fixtures/audio-bridge-audio.compat` fixes
@@ -191,11 +191,11 @@ forever.
 | `core-pressure` | a 64-deep call chain, a 512-element fold, a named function value, and `compose_music` | 8 | 8 |
 | `template-pressure` | a functor made eight times, read by a voice template that repeats each instance under two scales, plus one source import | 272 | 281 |
 | `analysis-pressure` | 64 bars of four-part harmony over a constructed tonal vocabulary | 448 | 448 |
-| `kernel-pressure` | 32 typed quote holes bound in one term, each placed three ways | 352 | 352 |
-| `kernel-pressure.musa.kernel` | a kernel document of 16 phrases × 32 occurrences, each placed three ways | 1,280 | 1,280 |
+| `events-pressure` | 32 typed quote holes bound in one term, each placed three ways | 352 | 352 |
+| `events-pressure.musa.events` | an events document of 16 phrases × 32 occurrences, each placed three ways | 1,280 | 1,280 |
 
 The two columns are counted at different layers — denoted events are what the score snapshot publishes, evaluated
-occurrences are what the kernel timeline holds — and they agree everywhere except `template-pressure`, where the
+occurrences are what the event track timeline holds — and they agree everywhere except `template-pressure`, where the
 timeline carries nine more. Both are printed by `cargo bench -p musa-compiler` before the tables, so no timing row can
 be read without the size of the workload behind it. `core-pressure` denotes eight notes on purpose: everything expensive
 in it is the expression layer, so an evaluator regression cannot hide behind note production. `analysis-pressure` trips
@@ -208,7 +208,7 @@ Five more measurements join the table for them:
 | --- | --- |
 | P6 | the tonal reading of a whole piece |
 | P7 | every analysis kind at once — what a reader opening the analysis panel pays |
-| K0 | a `.musa.kernel` document compiled as itself |
+| K0 | a `.musa.events` document compiled as itself |
 | E0–E4 | format, parser recovery, an edit in the first bar, an edit in the last bar, the name under the cursor |
 | S0–S2 | identical calls, distinct arguments, and the same music hand-hoisted |
 
@@ -285,7 +285,7 @@ Three things a shared body would otherwise stop doing once per call had to be ac
 each to be shown unchanged or re-charged at the reference:
 
 **Provenance** is re-charged at the reference. The body prints once with a placeholder where the call would be, and
-every reference states its own site, scope, and expansion steps in its mark (`docs/rules/kernel/10-term-calculus.md`
+every reference states its own site, scope, and expansion steps in its mark (`docs/rules/events/10-term-calculus.md`
 T6). `shared_instantiations_are_closed_and_keep_definition_and_call_provenance` already fixed this shape for two uses of
 one binding; it now covers every call of every motif. The compatibility oracle's Origin paths are byte-identical.
 
@@ -313,7 +313,7 @@ acquires machinery it cannot justify.
 
 What *does* transfer is §23.2.1's observation that whether the sharing is found depends on how the source was written.
 That is why the sharing is a `let` in the printed term rather than an invisible memo: a performance property that turns
-on a syntactic accident must be inspectable. `musa kernel` prints it, and the benchmark counts it.
+on a syntactic accident must be inspectable. `musa events` prints it, and the benchmark counts it.
 
 ## The decision
 
@@ -358,7 +358,7 @@ term table predicts: sixteen fewer bodies, 11.6% fewer allocations, and about 9%
 
 Every other movement in that table is noise, and the allocation column is how one can tell. Medians on this machine
 swing by ±10% between runs at fixed allocation counts — `declaration-heavy` P2's −10.4% comes with four *more*
-allocations, and the largest raw swings in the full run (`template-pressure` P1 at −38%, `kernel-pressure` P2 at −39%)
+allocations, and the largest raw swings in the full run (`template-pressure` P1 at −38%, `events-pressure` P2 at −39%)
 come with allocation counts identical to within 20 parts per million and fastest-sample deltas under 5%. Prompt 93's
 migration gate asks for a recorded rerun and an allocation comparison whenever P1 or P2 moves more than 10%; this is
 that comparison, and it says the compiler did not change on those workloads. **No retained regression.** No workload's
@@ -404,7 +404,7 @@ grows.
 | L3 elaborate (P2) | distinct motif bodies × occurrences per body | 10.7 ms for 8,192 occurrences from one shared body | linear in occurrences, no longer in call sites |
 | L4 analysis (P6) | sounding slices × chord vocabulary × surviving keys | 13–47 µs per occurrence; 8.1 ms for 448 events of four-part harmony | the one stage whose constant is not a property of the note count |
 | L5 every analysis (P7) | L4, plus voice pairs for counterpoint | 9.9 ms on the same piece | opening the analysis panel is one B4 |
-| L6 kernel document (K0) | occurrences in the file | 1.2 ms for a 38 KB, 1,280-occurrence document | interchange is not a slow path |
+| L6 events document (K0) | occurrences in the file | 1.2 ms for a 38 KB, 1,280-occurrence document | interchange is not a slow path |
 | L7 format (E0) | source bytes | 1.2 ms for 16.5 KB | format-on-save is not a wait |
 | L8 recovery (E1) | source bytes, to first diagnostic | 171 µs on a 16.5 KB document with an unclosed brace | a half-typed document costs less than a valid one |
 | L9 point query (E4) | references, not occurrences | 4.6 ns | hover and completion do not compile |
@@ -451,7 +451,7 @@ cargo bench -p musa-compiler
 
 | stage | workload | before | after | Δ median | allocations before → after |
 | --- | --- | ---: | ---: | ---: | ---: |
-| P1 | kernel-pressure | 10.34 ms | 2.116 ms | −79.5% | 372,287 → 45,712 |
+| P1 | events-pressure | 10.34 ms | 2.116 ms | −79.5% | 372,287 → 45,712 |
 | P1 | shared | 6.027 ms | 2.604 ms | −56.8% | 35,685 → 35,139 |
 | P1 | large | 5.788 ms | 4.853 ms | −16.2% | 147,686 → 135,574 |
 | P1 | audio-bridge | 161.4 µs | 138.4 µs | −14.3% | 4,773 → 4,013 |
@@ -462,7 +462,7 @@ cargo bench -p musa-compiler
 | P1 | higher-order-shape | 355.3 µs | 366.5 µs | +3.2% | 5,593 → 5,222 |
 | P1 | analysis-pressure | 3.106 ms | 3.320 ms | +6.9% | 86,803 → 81,947 |
 | P1 | core-pressure | 3.518 ms | 3.801 ms | +8.0% | 105,960 → 102,699 |
-| P2 | kernel-pressure | 10.10 ms | 1.897 ms | −81.2% | 369,923 → 43,346 |
+| P2 | events-pressure | 10.10 ms | 1.897 ms | −81.2% | 369,923 → 43,346 |
 | P2 | shared | 5.905 ms | 2.568 ms | −56.5% | 35,197 → 34,649 |
 | P2 | audio-bridge | 117.8 µs | 93.30 µs | −20.8% | 4,043 → 3,281 |
 | P2 | large | 5.100 ms | 4.168 ms | −18.3% | 139,580 → 127,466 |
@@ -482,8 +482,8 @@ which is why no claim in the repair commits rests on a median under 10% without 
 
 The three rows that are not noise say what each repair bought and where:
 
-- **kernel-pressure, −80% and 88% fewer allocations.** Both the derivation index and the context split land here, and
-  the split is the larger half: this is the one workload that builds nested contextual values and kernel quotes, so it
+- **events-pressure, −80% and 88% fewer allocations.** Both the derivation index and the context split land here, and
+  the split is the larger half: this is the one workload that builds nested contextual values and events quotes, so it
   entered new material at every level, and every entry copied a `Music` tree and an `IndexMap` of the document's named
   values.
 - **shared, −57% at an unchanged allocation count.** Purely the derivation index. Each of this workload's occurrences

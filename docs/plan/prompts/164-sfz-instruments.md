@@ -68,5 +68,5 @@ Commit as `Import SFZ instruments through the sampler`.
 ## Stop
 
 - No claim of complete SFZ v2/ARIA/LinuxSampler compatibility and no execution of SFZ scripts.
-- No SFZ opcode or MIDI CC leaks into the kernel, standard gesture signature, or general Musa type system.
+- No SFZ opcode or MIDI CC leaks into the event track, standard gesture signature, or general Musa type system.
 - No implicit fetching of samples referenced by an SFZ file.

@@ -104,7 +104,7 @@ pub struct FrontMatter {
     /// A catalogue fact rather than a printed line: a file that leaves a
     /// decision open and does not say which reading it holds cannot be
     /// reproduced, and the formats with somewhere to put a note say so
-    /// (`docs/rules/kernel/11-realization.md`, consumer obligation 1).
+    /// (`docs/rules/events/11-realization.md`, consumer obligation 1).
     pub performance: Option<u64>,
 }
 

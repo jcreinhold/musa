@@ -1,22 +1,22 @@
-//! Elaboration of the surface language through the temporal kernel
-//! (docs/rules/kernel/06-surface-elaboration.md, docs/rules/kernel/05-normalization.md).
+//! Elaboration of the surface language through the event-track
+//! (docs/rules/events/06-surface-elaboration.md, docs/rules/events/05-normalization.md).
 //!
 //! This is *the* semantic path: name resolution, motif registration and unit
 //! checks come from `resolve.rs`, voice content elaborates into
-//! `VoiceTrack` values built from kernel `follow`/`together`, and
+//! `VoiceTrack` values built from events `follow`/`together`, and
 //! `project.rs` reads a `ScoreSnapshot` back out of the result (§27).
 //!
-//! Design decisions recorded in docs/rules/kernel/06 and 08:
+//! Design decisions recorded in docs/rules/events/06 and 08:
 //! - a `rest` statement elaborates to a `Rest` payload occurrence — notation
-//!   intent, a typed fact; the kernel has no silence object (§2);
+//!   intent, a typed fact; the event track has no silence object (§2);
 //! - transposition applies eagerly during elaboration via the shared
 //!   interval stack (§19 evaluation strategy); semantically it is a payload
 //!   map (§13) and composition is commutative, so eager application is
 //!   observably equal by the composition law);
 //! - voice/part identity rides in the payload (§32 Q3 working stance);
-//! - provenance (`Origin`) rides in the payload, above the kernel (§20).
+//! - provenance (`Origin`) rides in the payload, above the event track (§20).
 //!
-//! In the score adapter the kernel's unit is the whole note (1 = semibreve),
+//! In the score adapter the event track's unit is the whole note (1 = semibreve),
 //! matching `MusicalTime`.
 //!
 //! Rational arithmetic here is exact and total for musa's magnitudes (see
@@ -53,15 +53,15 @@ mod score;
 #[cfg(test)]
 pub(crate) use fact::map_note_pitch_fact;
 pub(crate) use fact::{FactKind, ScoreFact, VoiceTrack};
-pub use normal::kernel_normal_form;
+pub use normal::events_normal_form;
 pub(crate) use normal::piece_term;
 pub(crate) use place::{SHARED_ORIGIN, SHARED_SCOPE, instantiate};
 
 use bars::{check_tuplets, reported_an_error};
 use score::{elaborate_libraries, elaborate_material, elaborate_score};
 
-/// Elaborate `source` through the temporal kernel and adapt the result into
-/// a `ScoreSnapshot` (docs/rules/kernel/06).
+/// Elaborate `source` through the event-track and adapt the result into
+/// a `ScoreSnapshot` (docs/rules/events/06).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_syntax::parse(source.text());
     // Parsing is the one phase with its own timing question — a large file
@@ -72,7 +72,7 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
     elaborate_parsed(&document, source.name(), options, &mut resolver)
 }
 
-/// Everything after parsing (docs/rules/kernel/06): elaborate, adapt, check.
+/// Everything after parsing (docs/rules/events/06): elaborate, adapt, check.
 ///
 /// Split out of [`elaborate`] so the parse and the semantic work can be
 /// measured apart; `resolver` arrives from the caller for the same reason

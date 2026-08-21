@@ -477,7 +477,7 @@ impl From<&ProjectError> for ErrorDto {
             ProjectError::Performance(_)
             | ProjectError::Notation(_)
             | ProjectError::Engine(_)
-            | ProjectError::Kernel(_) => ErrorKindDto::Backend,
+            | ProjectError::Events(_) => ErrorKindDto::Backend,
         };
         Self {
             kind,

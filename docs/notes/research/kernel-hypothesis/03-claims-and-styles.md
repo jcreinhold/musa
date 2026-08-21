@@ -129,7 +129,7 @@ as a direction, not a commitment.
 **Encoding style rules in types.** §1. Non-negotiable under Amendment VI.
 
 **Making the kernel dependently typed.** The kernel calculus is a six-form language with no abstraction and a totality
-theorem (`docs/rules/kernel/10-term-calculus.md` T4). Making it dependent buys nothing, because it has no functions to
+theorem (`docs/rules/events/10-term-calculus.md` T4). Making it dependent buys nothing, because it has no functions to
 index and no computation to normalize at the type level, and costs T4's simplicity. The dependency belongs one layer up,
 in the elaboration language and the library, where functions exist. This is Amendment IV's `act`-not-`map` decision seen
 from the type side.

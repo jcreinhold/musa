@@ -1,4 +1,4 @@
-//! R1 and the identity that makes it usable (`docs/rules/kernel/11-realization.md`).
+//! R1 and the identity that makes it usable (`docs/rules/events/11-realization.md`).
 //!
 //! ```text
 //! R1.  Same source and same realization ⇒ same term, same normal form,
@@ -16,7 +16,7 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form, kernel_text};
+use musa_compiler::{CompileOptions, SourceDocument, compile, events_normal_form, events_text};
 
 use musa_score::{ChoicePath, ChoiceStep, Decision, Realization};
 
@@ -53,12 +53,12 @@ fn the_same_seed_is_the_same_performance() {
     // reproducing the file is promised.
     let document = SourceDocument::new(LOOP_LENGTHS, "loop-lengths");
     assert_eq!(
-        kernel_text(
+        events_text(
             &document,
             &Realization::seeded(42),
             &musa_compiler::ImportSources::default()
         ),
-        kernel_text(
+        events_text(
             &document,
             &Realization::seeded(42),
             &musa_compiler::ImportSources::default()
@@ -92,13 +92,13 @@ fn a_different_seed_is_a_different_performance() {
 /// A piece that asks no question never consults the realization, so the seed
 /// is not a hidden input to any existing fixture.
 ///
-/// This is what lets the corpus pin a seed (`kernel_interop.rs`) without
+/// This is what lets the corpus pin a seed (`events_interop.rs`) without
 /// pinning anything for the pieces that do not need it.
 #[test]
 fn a_determinate_piece_is_the_same_under_every_seed() {
     for &(name, source) in DETERMINATE {
         let document = SourceDocument::new(source, name);
-        let quiet = kernel_normal_form(
+        let quiet = events_normal_form(
             &document,
             &Realization::deterministic(),
             &musa_compiler::ImportSources::default(),
@@ -107,14 +107,14 @@ fn a_determinate_piece_is_the_same_under_every_seed() {
         for seed in [1u64, 42, 999, u64::MAX] {
             let realization = Realization::seeded(seed);
             assert_eq!(
-                kernel_normal_form(&document, &realization, &musa_compiler::ImportSources::default())
+                events_normal_form(&document, &realization, &musa_compiler::ImportSources::default())
                     .expect("elaborates"),
                 quiet,
                 "{name}: seed {seed} changed a piece that decides nothing"
             );
             assert_eq!(
-                kernel_text(&document, &realization, &musa_compiler::ImportSources::default()),
-                kernel_text(
+                events_text(&document, &realization, &musa_compiler::ImportSources::default()),
+                events_text(
                     &document,
                     &Realization::deterministic(),
                     &musa_compiler::ImportSources::default()
@@ -237,26 +237,26 @@ fn a_backwards_range_is_refused() {
 /// nothing when there is nothing to say.
 #[test]
 fn the_file_names_the_realization_that_produced_it() {
-    let text = kernel_text(
+    let text = events_text(
         &SourceDocument::new(LOOP_LENGTHS, "loop-lengths"),
         &Realization::seeded(42),
         &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
-    let notes: Vec<&str> = musa_kernel::notes(&text).collect();
+    let notes: Vec<&str> = musa_events::notes(&text).collect();
     assert!(notes.contains(&"realization seed=42 pins=0"), "{notes:?}");
     assert!(
         notes.iter().any(|note| note.starts_with("decision ")),
         "no decision recorded: {notes:?}"
     );
-    let report = musa_compiler::check_kernel_text(&text).expect("reads back");
+    let report = musa_compiler::check_events_text(&text).expect("reads back");
     assert_eq!(report.realization.as_deref(), Some("seed=42 pins=0"));
 
-    let determinate = kernel_text(
+    let determinate = events_text(
         &SourceDocument::new(include_str!("../../../../examples/canon.musa"), "canon"),
         &Realization::seeded(42),
         &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
-    assert_eq!(musa_kernel::notes(&determinate).count(), 0);
+    assert_eq!(musa_events::notes(&determinate).count(), 0);
 }

@@ -182,10 +182,10 @@ convention.
 | voicing forgetfulness | a voicing has one chord class; a chord class has many voicings |
 | finite closure | row transformations are total after construction |
 
-Everything below the musical layer — the core calculus, the temporal kernel, elaboration, and normalization — is
-specified in [`02-core-calculus.md`](02-core-calculus.md) and `../kernel/`. No music theory is cited there, because none
-is used: the kernel knows about exact time and typed occurrences and nothing about notes. That layer is **not** all
-Musa's own, and §13 and §14 below say which parts are borrowed and from where. What is Musa's own there is short: the
+Everything below the musical layer — the core calculus, the event-track, elaboration, and normalization — is specified
+in [`02-core-calculus.md`](02-core-calculus.md) and `../events/`. No music theory is cited there, because none is used:
+the event track knows about exact time and typed occurrences and nothing about notes. That layer is **not** all Musa's
+own, and §13 and §14 below say which parts are borrowed and from where. What is Musa's own there is short: the
 `Storable` constraint, the three-outcome budget law, the phase environment, the refusals, and derived identity as a
 computed triple.
 
@@ -256,7 +256,7 @@ rather than asserted here:
 
 | Construction | Where it is argued |
 | --- | --- |
-| the `Storable` constraint, with generated-only instances | [`02-core-calculus.md`](02-core-calculus.md) §1.2; the kernel's side is `../kernel/12-payload-admission.md` |
+| the `Storable` constraint, with generated-only instances | [`02-core-calculus.md`](02-core-calculus.md) §1.2; the event track's side is `../events/12-payload-admission.md` |
 | the three-outcome budget law, with exhaustion named as its own outcome | [`02-core-calculus.md`](02-core-calculus.md) §4 |
 | the expansion phase environment and its law 11 | [`02-core-calculus.md`](02-core-calculus.md) §5.9 |
 | the refusals — no cumulativity, no `partial`, no CBPV, no signed integer | [`02-core-calculus.md`](02-core-calculus.md) §1.3 and §1.4, note 42 §9 |

@@ -9,7 +9,7 @@
 //! Consumers need **boundaries**, not points. "Where does the meter change"
 //! is what every exporter asks, and neither `covering` (D10) nor `prevailing`
 //! (D11) answers it — they answer about an instant. So the projection is a
-//! track, not a query, and the per-instant queries stay the kernel's.
+//! track, not a query, and the per-instant queries stay the event track's.
 //!
 //! Two invariants live here rather than in the callers:
 //!

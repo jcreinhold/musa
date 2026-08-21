@@ -69,4 +69,10 @@ enough.
     the discharge point is the answer's *tail* in a language with no `return` and why that is not an annotation
     requirement, and refuses `Try`/`Monad`, a general `do`, error-type coercion, and `?` on `Option`.
 
+24. [The events vocabulary amendment](23-events-vocabulary.md) records retiring the word *kernel*, which had come to
+    name the crate, the governing directory, the quotation keyword, the interchange format, the CLI subcommand, and the
+    value itself — six referents for a word the constitution never used, since it says **event track** throughout. It
+    states the replacement rule, weighs `events` against `time`, `track`, and `core`, and answers the migration with a
+    clean break: no deprecated spelling, because an accepted alias would be the defect the amendment removes.
+
 Each rejected claim stays beside its refutation. No file here authorizes a compiler change or a change to `docs/rules/`.

@@ -619,7 +619,7 @@ fn analyze_refuses_a_bad_request_and_accepts_an_empty_one() -> std::io::Result<(
 /// Logs never touch stdout, however loud they are asked to be.
 ///
 /// `musa render -o -` writes a score to stdout for a pipe to read, and
-/// `musa kernel` writes interchange text there. A single log line on that
+/// `musa events` writes interchange text there. A single log line on that
 /// stream is a corrupted file that nothing downstream can diagnose — so the
 /// destination is stderr, with no flag to change it, and this is the law that
 /// says so. `-vvv` and `MUSA_LOG=trace` are asked for together deliberately:

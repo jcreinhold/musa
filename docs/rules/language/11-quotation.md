@@ -115,7 +115,7 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
   (`01-surface.md` §1), so a splice argument that is *computed* — `${ dot_count(here, dots) }`,
   `${ stated_field(region, here, read.head.beats, "…")? } ` — has nowhere else to be written. Fifteen of the twenty
   construction sites in the staff adapter splice a computed value, and a helper function per site would be `call7` with
-  better parameter names. `${ e }` is also the spelling `01-surface.md` §7 already fixed for the kernel quote's holes,
+  better parameter names. `${ e }` is also the spelling `01-surface.md` §7 already fixed for the events quote's holes,
   so the two quotations agree here rather than differing (§6).
 - `?` inside a splice leaves the enclosing *function*, exactly as `01-surface.md` §1 says: a quote is not a function
   boundary and a splice is not an argument to one.
@@ -130,7 +130,7 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
 
 **Hygiene.** An identifier written literally in a quote and an identifier that arrives through a splice are different
 names even when they are spelled the same, and neither captures the other. This is the same rule `01-surface.md` §7
-already states for kernel quotes — kernel identifiers never capture host identifiers, and alpha-renaming prevents
+already states for events quotes — events identifiers never capture host identifiers, and alpha-renaming prevents
 capture among inserted terms — applied one stage up, where the values being inserted are syntax rather than terms. The
 scopes a syntax value carries are opaque (127da): package code may compare two names and must preserve the scopes it
 received, and has no operation that constructs one.
@@ -291,7 +291,7 @@ adapter does.
 
 Musa has two quotation forms and they stay two:
 
-|  | `kernel T { … }` (`01-surface.md` §7) | `quote at p { … }` (this document) |
+|  | `events T { … }` (`01-surface.md` §7) | `quote at p { … }` (this document) |
 | --- | --- | --- |
 | Stage | elaboration | the expansion phase |
 | Builds | a closed event-track term | `Syntax<Cat>` |
@@ -306,7 +306,7 @@ Four rules are shared, and this is the one place they are stated together:
 4. **The locus is where a hole is instantiated, not where its result lands.** The two differ under `let`, and a hole in
    a `let` value is instantiated once at the `let`'s own locus.
 
-Two rules are not shared, and belong to the kernel quote alone, because they are about payloads and time rather than
+Two rules are not shared, and belong to the events quote alone, because they are about payloads and time rather than
 about quotation: a raw payload says what the material is and nothing about where it goes, and raw `shift`, `scale`, and
 `restrict` move occurrences rather than rewriting payloads. `01-surface.md` §7 keeps both.
 

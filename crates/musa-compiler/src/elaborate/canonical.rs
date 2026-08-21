@@ -1,17 +1,17 @@
 //! The admitted equality: the deterministic key a score fact normalizes by
-//! (docs/rules/kernel/05 N3, 12).
+//! (docs/rules/events/05 N3, 12).
 
 use super::fact::{FactKind, ScoreFact};
 use musa_score::scope::Scope;
 use musa_score::score::Mode;
 use std::fmt::Write as _;
 
-impl musa_kernel::Canonical for ScoreFact {
+impl musa_events::Canonical for ScoreFact {
     const OWNER_TYPE_ID: &'static str = "musa.compiler.ScoreFact";
     const QUOTIENT_VERSION: u32 = 1;
 
     /// Deterministic key for canonical ordering and the admitted score-fact
-    /// equality (docs/rules/kernel/05 N3, 12): scope, kind, source span, and
+    /// equality (docs/rules/events/05 N3, 12): scope, kind, source span, and
     /// expansion path. Other stored compilation details are deliberately not
     /// part of this quotient.
     ///

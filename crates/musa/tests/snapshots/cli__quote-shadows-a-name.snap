@@ -4,10 +4,10 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 unknown-name
 
-  × this kernel quote does not stand on its own
+  × this events quote does not stand on its own
     ╭─[examples/broken/quote-shadows-a-name.musa:11:46]
  10 │     
- 11 │ ╭─▶     let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
+ 11 │ ╭─▶     let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
  12 │ │           let material = ${theme} in
  13 │ │           let material = track 1/2 {
  14 │ │               occurrence "note g4 1/2" from 0 to 1/2;

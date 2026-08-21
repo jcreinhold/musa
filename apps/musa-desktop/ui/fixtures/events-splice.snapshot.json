@@ -1,0 +1,1092 @@
+{
+  "document": 0,
+  "name": "events-splice.musa",
+  "kind": "piece",
+  "source": "// An event track quote is the one place Musa lets a composer write the assembly the\n// compiler normally writes for them. `events EventTrack[WrittenTime, ScoreFact] { ... }` is a\n// composition expression of the temporal events — the same grammar a\n// `.musa.events` file is written in — and `${...}` splices ordinary Musa music\n// into it. What it buys is placement no surface constructor spells; what it\n// costs is stated at the bottom of this file.\npiece \"Events Splice\" {\n    meter 4/4;\n\n    // Ordinary music, checked the ordinary way. Nothing about it knows it is\n    // going to be quoted.\n    let subject: EventTrack<WrittenTime> = music {\n        c4/4\n        d4/4\n        e4/4\n        f4/4\n    };\n\n    // One term, assembled by hand. `${subject}` is a hole: it is instantiated\n    // once, here, under this piece's context, and bound to a fresh name the\n    // compiler chooses — so nothing written inside the quote can capture it,\n    // whatever the quote happens to call its own bindings.\n    //\n    // `subj` is referenced three times and elaborated once. That is sharing, and\n    // it is why the three references below are three placements of the *same*\n    // facts rather than three re-readings of `subject`.\n    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n        let subj = ${subject} in\n        together {\n            subj;\n            // Diminution, a measure later. The halving is written in the\n            // host, not as a raw `scale by`: renotating is a payload\n            // operation and the event track never touches payloads, so raw scaling\n            // would move these notes without changing what is written on\n            // them. A second hole is a second instantiation, and gets a locus\n            // of its own.\n            shift by 1 ${stretch(1/2, subject)};\n            // Observation: the fourth note alone, read out of the material\n            // through a window and placed at the start of the last measure.\n            // Restricting keeps the extent, so this branch still runs to 2.\n            shift by 1 restrict from 3/4 to 1 subj;\n            // Raw material, written as facts. A payload states what the\n            // material *is*; it states no scope and no origin, because the\n            // use decides which voice this lands in and the quote is where it\n            // came from. Writing either is refused.\n            track 2 {\n                occurrence \"note c2 1\" from 0 to 1;\n                occurrence \"note g2 1\" from 1 to 2;\n            };\n        }\n    };\n\n    score {\n        part ensemble {\n            voice line {\n                // The guarantees the quote keeps are exact time and payload\n                // typing: the term's extent is 2 whole notes, computed from\n                // its structure, and every payload in it is a `ScoreFact`.\n                //\n                // The guarantees it does *not* keep are the theory ones, and\n                // an assertion around the completed quote is how they come\n                // back. This claim is checked against the assembled facts, so\n                // it sees the raw notes and the spliced ones alike.\n                assert pitches_in(scale c major) {\n                    use assembled;\n                }\n            }\n        }\n    }\n\n    // What a quote gives up, precisely:\n    //\n    // A hole is instantiated once and the facts it produced are frozen from\n    // then on. A raw `shift`, `scale` or `restrict` around a reference moves\n    // facts that already exist; it does not re-elaborate the hole under the\n    // context the reference sits in. So an assertion that passed *inside*\n    // `subject` — that it fills a measure, say — says nothing about the\n    // diminished copy above, which fills half of one. Bar alignment, scale\n    // membership and chord realization are properties of where facts land,\n    // and raw placement is exactly the freedom to land them elsewhere.\n    //\n    // Raw `shift`, `scale` and `restrict` are operations on *time*. `shift`\n    // and `restrict` want nothing of the payloads and are safe to write here;\n    // `scale` halves every span and leaves every written value alone, which\n    // is why the diminution above is spelled `${stretch(1/2, subject)}` and\n    // not `scale by 1/2`. Raw scaling is for material whose written values\n    // already say what was meant.\n    //\n    // Every fact that leaves a quote records a `splice` step in its expansion\n    // path, at the locus it was assembled at, so Origin can say that a note\n    // with no surface statement behind it came from here.\n}\n",
+  "revision": 0,
+  "compiles": true,
+  "unsaved": true,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Events Splice</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Events Splice</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\">\n                <label>ensemble</label>\n                <labelAbbr>ens.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"c\"/>\n                  <note xml:id=\"event-1\" dur=\"1\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"4\" pname=\"d\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-4\" dur=\"4\" oct=\"4\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"2\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <beam>\n                    <note xml:id=\"event-5\" dur=\"8\" oct=\"4\" pname=\"c\"/>\n                  </beam>\n                  <note xml:id=\"event-6\" dur=\"1\" oct=\"2\" pname=\"g\"/>\n                  <beam>\n                    <note xml:id=\"event-7\" dur=\"8\" oct=\"4\" pname=\"d\"/>\n                  </beam>\n                  <beam>\n                    <note xml:id=\"event-8\" dur=\"8\" oct=\"4\" pname=\"e\"/>\n                    <note xml:id=\"event-9\" dur=\"8\" oct=\"4\" pname=\"f\"/>\n                  </beam>\n                  <note xml:id=\"event-a\" dur=\"4\" oct=\"4\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Events Splice",
+    "tempoBpm": 120,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": null,
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "ensemble",
+        "voices": [
+          {
+            "name": "line",
+            "generated": true
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C4",
+        "pitches": [
+          "C4"
+        ],
+        "pitchSpellings": [
+          "c4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 24000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 658,
+            "end": 662
+          },
+          "supportedBy": [
+            {
+              "start": 658,
+              "end": 662
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-1",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 96000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 1274,
+            "end": 2564
+          },
+          "supportedBy": [
+            {
+              "start": 1274,
+              "end": 2564
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-2",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "D4",
+        "pitches": [
+          "D4"
+        ],
+        "pitchSpellings": [
+          "d4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 24000,
+        "endFrames": 48000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 671,
+            "end": 675
+          },
+          "supportedBy": [
+            {
+              "start": 671,
+              "end": 675
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E4",
+        "pitches": [
+          "E4"
+        ],
+        "pitchSpellings": [
+          "e4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 48000,
+        "endFrames": 72000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 684,
+            "end": 688
+          },
+          "supportedBy": [
+            {
+              "start": 684,
+              "end": 688
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "F4",
+        "pitches": [
+          "F4"
+        ],
+        "pitchSpellings": [
+          "f4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 72000,
+        "endFrames": 96000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 697,
+            "end": 701
+          },
+          "supportedBy": [
+            {
+              "start": 697,
+              "end": 701
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-5",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C4",
+        "pitches": [
+          "C4"
+        ],
+        "pitchSpellings": [
+          "c4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 96000,
+        "endFrames": 108000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 1/1",
+              "kind": "splice",
+              "span": null
+            },
+            {
+              "label": "stretch 1/2",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-1",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 658,
+            "end": 662
+          },
+          "supportedBy": [
+            {
+              "start": 658,
+              "end": 662
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-6",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "G2",
+        "pitches": [
+          "G2"
+        ],
+        "pitchSpellings": [
+          "g2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 96000,
+        "endFrames": 192000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 1274,
+            "end": 2564
+          },
+          "supportedBy": [
+            {
+              "start": 1274,
+              "end": 2564
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-7",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "D4",
+        "pitches": [
+          "D4"
+        ],
+        "pitchSpellings": [
+          "d4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 108000,
+        "endFrames": 120000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 1/1",
+              "kind": "splice",
+              "span": null
+            },
+            {
+              "label": "stretch 1/2",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-1",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 671,
+            "end": 675
+          },
+          "supportedBy": [
+            {
+              "start": 671,
+              "end": 675
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-8",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E4",
+        "pitches": [
+          "E4"
+        ],
+        "pitchSpellings": [
+          "e4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 120000,
+        "endFrames": 132000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 1/1",
+              "kind": "splice",
+              "span": null
+            },
+            {
+              "label": "stretch 1/2",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-1",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 684,
+            "end": 688
+          },
+          "supportedBy": [
+            {
+              "start": 684,
+              "end": 688
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-9",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "F4",
+        "pitches": [
+          "F4"
+        ],
+        "pitchSpellings": [
+          "f4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 132000,
+        "endFrames": 144000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 1/1",
+              "kind": "splice",
+              "span": null
+            },
+            {
+              "label": "stretch 1/2",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-1",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 697,
+            "end": 701
+          },
+          "supportedBy": [
+            {
+              "start": 697,
+              "end": 701
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      },
+      {
+        "id": "event-a",
+        "part": "ensemble",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "F4",
+        "pitches": [
+          "F4"
+        ],
+        "pitchSpellings": [
+          "f4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 168000,
+        "endFrames": 192000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "assert pitches_in(scale c major)",
+              "kind": "assertion",
+              "span": null
+            },
+            {
+              "label": "assembled",
+              "kind": "occurrence",
+              "span": {
+                "start": 3250,
+                "end": 3264
+              }
+            },
+            {
+              "label": "splice at 0/1",
+              "kind": "splice",
+              "span": null
+            }
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-0",
+          "line": 27,
+          "span": {
+            "start": 1274,
+            "end": 2564
+          },
+          "definitionSpan": {
+            "start": 697,
+            "end": 701
+          },
+          "supportedBy": [
+            {
+              "start": 697,
+              "end": 701
+            },
+            {
+              "start": 3250,
+              "end": 3264
+            }
+          ],
+          "decision": null
+        }
+      }
+    ],
+    "occurrences": [
+      {
+        "id": "occurrence-0",
+        "path": [
+          {
+            "label": "assert pitches_in(scale c major)",
+            "kind": "assertion",
+            "span": null
+          },
+          {
+            "label": "assembled",
+            "kind": "occurrence",
+            "span": {
+              "start": 3250,
+              "end": 3264
+            }
+          },
+          {
+            "label": "splice at 0/1",
+            "kind": "splice",
+            "span": null
+          }
+        ],
+        "label": "assert pitches_in(scale c major) ▸ assembled ▸ splice at 0/1",
+        "motif": "assembled",
+        "declaration": null,
+        "useSite": {
+          "start": 3250,
+          "end": 3264
+        },
+        "line": 65,
+        "events": [
+          "event-0",
+          "event-1",
+          "event-2",
+          "event-3",
+          "event-4",
+          "event-6",
+          "event-a"
+        ]
+      },
+      {
+        "id": "occurrence-1",
+        "path": [
+          {
+            "label": "assert pitches_in(scale c major)",
+            "kind": "assertion",
+            "span": null
+          },
+          {
+            "label": "assembled",
+            "kind": "occurrence",
+            "span": {
+              "start": 3250,
+              "end": 3264
+            }
+          },
+          {
+            "label": "splice at 1/1",
+            "kind": "splice",
+            "span": null
+          },
+          {
+            "label": "stretch 1/2",
+            "kind": "transform",
+            "span": null
+          }
+        ],
+        "label": "assert pitches_in(scale c major) ▸ assembled ▸ splice at 1/1 ▸ stretch 1/2",
+        "motif": "assembled",
+        "declaration": null,
+        "useSite": {
+          "start": 3250,
+          "end": 3264
+        },
+        "line": 65,
+        "events": [
+          "event-5",
+          "event-7",
+          "event-8",
+          "event-9"
+        ]
+      }
+    ],
+    "outline": [],
+    "header": [
+      {
+        "field": "title",
+        "value": "Events Splice"
+      },
+      {
+        "field": "subtitle",
+        "value": null
+      },
+      {
+        "field": "composer",
+        "value": null
+      },
+      {
+        "field": "arranger",
+        "value": null
+      },
+      {
+        "field": "copyright",
+        "value": null
+      },
+      {
+        "field": "tempo",
+        "value": null
+      },
+      {
+        "field": "meter",
+        "value": "4/4"
+      },
+      {
+        "field": "key",
+        "value": null
+      }
+    ],
+    "performance": null,
+    "decisions": []
+  },
+  "studio": {
+    "declared": false,
+    "patches": [],
+    "buses": [],
+    "signals": [],
+    "assignments": [
+      {
+        "part": "ensemble",
+        "patch": null
+      }
+    ],
+    "sends": [],
+    "routes": []
+  },
+  "scoreRevision": 0,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  },
+  "contents": null,
+  "terms": [
+    {
+      "name": "subject",
+      "kind": "value",
+      "signature": "let subject: EventTrack<WrittenTime>",
+      "summary": "Ordinary music, checked the ordinary way. Nothing about it knows it is going to be quoted.",
+      "result": {
+        "name": "EventTrack<WrittenTime>",
+        "distinction": null
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 607,
+          "end": 614
+        }
+      }
+    },
+    {
+      "name": "assembled",
+      "kind": "value",
+      "signature": "let assembled: EventTrack<WrittenTime>",
+      "summary": "One term, assembled by hand. `${subject}` is a hole: it is instantiated once, here, under this piece's context, and bound to a fresh name the compiler chooses — so nothing written inside the quote can capture it, whatever the quote happens to call its own bindings.  `subj` is referenced three times and elaborated once. That is sharing, and it is why the three references below are three placements of the *same* facts rather than three re-readings of `subject`.",
+      "result": {
+        "name": "EventTrack<WrittenTime>",
+        "distinction": null
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 1237,
+          "end": 1246
+        }
+      }
+    }
+  ],
+  "names": [
+    {
+      "name": "subject",
+      "kind": "value",
+      "declaration": {
+        "start": 607,
+        "end": 614
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 1339,
+          "end": 1346
+        },
+        {
+          "start": 1834,
+          "end": 1841
+        }
+      ]
+    },
+    {
+      "name": "assembled",
+      "kind": "value",
+      "declaration": {
+        "start": 1237,
+        "end": 1246
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 3254,
+          "end": 3263
+        }
+      ]
+    },
+    {
+      "name": "ensemble",
+      "kind": "part",
+      "declaration": {
+        "start": 2592,
+        "end": 2600
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "line",
+      "kind": "voice",
+      "declaration": {
+        "start": 2621,
+        "end": 2625
+      },
+      "external": null,
+      "uses": []
+    }
+  ]
+}

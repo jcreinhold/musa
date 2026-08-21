@@ -1,0 +1,32 @@
+% musa-events-3
+% generated from examples/annotated.musa by musa-compiler
+events "Annotated" {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 4 {
+        occurrence "voice 0 0 phrase 'antecedent' [836:1000 #1]" from 0 to 2;
+        occurrence "voice 0 0 note a4 1/4 [878:882 #1]" from 0 to 1/4;
+        occurrence "voice 0 0 note c5 1/4 [903:907 #1]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note e5 1/2 [928:932 #1]" from 1/2 to 1;
+        occurrence "voice 0 0 note f5 1/2 [953:957 #1]" from 1 to 3/2;
+        occurrence "voice 0 0 note e5 1/2 [978:982 #1]" from 3/2 to 2;
+        occurrence "voice 0 0 phrase 'consequent' [1017:1157 #1]" from 2 to 4;
+        occurrence "voice 0 0 note b4 1/4 [1059:1063 #1]" from 2 to 9/4;
+        occurrence "voice 0 0 note e5 1/4 [1084:1088 #1]" from 9/4 to 5/2;
+        occurrence "voice 0 0 note g#5 1/2 [1109:1114 #1]" from 5/2 to 3;
+        occurrence "voice 0 0 note a5 1 [1135:1139 #1]" from 3 to 4;
+      };
+      track 4 {
+        occurrence "piece meter 4/4 [507:517]" from 0 to 4;
+        occurrence "piece tempo 1/4=96 [487:502]" from 0 to 4;
+        occurrence "piece key a minor [522:534]" from 0 to 4;
+        occurrence "part 0 clef treble [781:793]" from 0 to 4;
+        occurrence "piece section 'Exposition' [556:584]" from 0 to 0;
+        occurrence "piece section 'Development' [593:622]" from 2 to 2;
+        occurrence "piece harmony 'am' [654:664]" from 0 to 0;
+        occurrence "piece harmony 'fmaj7' [677:690]" from 1 to 1;
+        occurrence "piece harmony 'e7' [703:713]" from 2 to 2;
+        occurrence "piece harmony 'am' [726:736]" from 3 to 3;
+      }
+    };
+}

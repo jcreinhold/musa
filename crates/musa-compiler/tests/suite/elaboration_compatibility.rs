@@ -9,7 +9,7 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{CompileOptions, SourceDocument, compile, events_normal_form};
 
 use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
 
@@ -56,7 +56,7 @@ fn options(name: &str) -> CompileOptions {
 }
 
 fn digest(bytes: &[u8]) -> String {
-    format!("{:032x}", musa_kernel::stable_digest(bytes))
+    format!("{:032x}", musa_events::stable_digest(bytes))
 }
 
 fn event_digest(events: &[PerformanceEvent]) -> String {
@@ -163,9 +163,9 @@ fn manifest() -> Result<String> {
         let compilation = compile(&document, &options);
         let _ = writeln!(out, "\n[fixture {name}]");
         let _ = writeln!(out, "identity={}", compilation.identity());
-        let normal = kernel_normal_form(&document, &options.realization, &options.imports)
-            .ok_or_else(|| format!("fixture `{name}` has no kernel normal form"))?;
-        let _ = writeln!(out, "kernel-normal-form={}", digest(normal.as_bytes()));
+        let normal = events_normal_form(&document, &options.realization, &options.imports)
+            .ok_or_else(|| format!("fixture `{name}` has no events normal form"))?;
+        let _ = writeln!(out, "events-normal-form={}", digest(normal.as_bytes()));
 
         for diagnostic in compilation.diagnostics() {
             let _ = write!(out, "diagnostic={}:{}", diagnostic.severity as u8, diagnostic.code);

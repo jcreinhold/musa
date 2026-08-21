@@ -6,15 +6,15 @@
 //! without a location is a guess — they are left out rather than invented.
 
 use lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, SymbolTag, Uri};
-use musa_project::{NameKind, OutlineKind, Span, kernel_bindings};
+use musa_project::{NameKind, OutlineKind, Span, events_bindings};
 use musa_syntax::DocumentAlternative;
 
 use crate::workspace::Document;
 
 /// The outline of the document's last valid compile.
 pub(crate) fn symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolResponse> {
-    if document.alternative() == DocumentAlternative::Kernel {
-        return kernel_symbols(document, uri);
+    if document.alternative() == DocumentAlternative::Events {
+        return events_symbols(document, uri);
     }
     let snapshot = document.snapshot();
     let score = snapshot.score()?;
@@ -65,18 +65,18 @@ pub(crate) fn symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolRe
     Some(DocumentSymbolResponse::Flat(symbols))
 }
 
-/// The outline of a kernel document: the material its `let`s name.
+/// The outline of an event track document: the material its `let`s name.
 ///
 /// Read off the *text*, not off the compiled score, and that is the whole
-/// point. A kernel document's facts carry the source spans of the piece that
+/// point. An event track document's facts carry the source spans of the piece that
 /// produced them — offsets into a `.musa` file that may not even be on this
 /// machine — so an outline built from the score would send every jump to a
 /// position in the wrong document. The bindings are in this file, at these
 /// offsets, and they are what a reader navigates a term by.
-fn kernel_symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolResponse> {
+fn events_symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolResponse> {
     let snapshot = document.snapshot();
     let lines = document.lines();
-    let symbols = kernel_bindings(snapshot.source())
+    let symbols = events_bindings(snapshot.source())
         .into_iter()
         .map(|(range, name)| {
             let span = Span {

@@ -46,7 +46,7 @@ Build that structure, and use it to say what `examples/` still needs.
 - `../../rules/language/00-semantics.md` §3's composition equations. `follow` is what putting one statement after
   another means and `together` is what putting one voice beside another means; a piece is the second equation over its
   voices exactly as a block is the first over its statements. Nothing here is a new combinator.
-- `../../rules/kernel/03-denotational-semantics.md`'s **D3**, which is where the extent rule actually comes from:
+- `../../rules/events/03-denotational-semantics.md`'s **D3**, which is where the extent rule actually comes from:
   `together(M, N) = (max(d, e), E ⊎ F)`, and "nothing is inserted into the uncovered portion of the shorter track". Read
   `crates/musa-compiler/src/scope.rs` beside it for what `Scope` already promises about inheritance — a part's 7/8 does
   not rejoin the piece's 4/4, and that is `Override` rather than anything this prompt writes.
@@ -58,7 +58,7 @@ Build that structure, and use it to say what `examples/` still needs.
 
 **A piece is a term, and it is the same two equations.** A voice is `follow` over its statements; a part is its voices;
 a piece is `together` over its parts and one more track carrying the context. That is what `elaborate_score` already
-builds by hand, and writing it as a raw term rather than a kernel one is the whole of the change.
+builds by hand, and writing it as a raw term rather than an event track one is the whole of the change.
 
 **What the structure is *for* is scope.** The seven refused statements are refused for one reason between them, and this
 prompt removes it by widening `Reading` rather than by widening the statement table: reading a voice's body is

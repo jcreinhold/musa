@@ -20,5 +20,5 @@ it.
 ## Where floats are allowed
 
 Floats appear only at the performance and DSP edge: sample positions, control voltages, audio buffers. They are the
-realization of exact values, computed once at the boundary, and they never flow back into the score. The kernel, the
-snapshots, and the exports stay rational end to end.
+realization of exact values, computed once at the boundary, and they never flow back into the score. The event track,
+the snapshots, and the exports stay rational end to end.

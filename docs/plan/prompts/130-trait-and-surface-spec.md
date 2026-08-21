@@ -122,7 +122,7 @@ Commit as `Specify records, enums, traits, and their surface`.
 ## Stop
 
 - No code, no grammar file, no fixture, no `stdlib/` change.
-- `01-surface.md` §7 (kernel documents and quotation) is not rewritten here. Prompt 131 generalizes it, and rewriting it
+- `01-surface.md` §7 (events documents and quotation) is not rewritten here. Prompt 131 generalizes it, and rewriting it
   twice would leave two accounts of the same construct in one release.
 - No style-guide rule. Every rule in `docs/rules/style-guide.md` names its diagnostic, and none of these diagnostics
   exist yet; prompt 137 adds the rules with the code that reports them.

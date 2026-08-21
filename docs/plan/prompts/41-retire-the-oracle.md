@@ -11,17 +11,18 @@ phase: 3
 ## Task
 
 Delete the prompt-05/06 CST→snapshot lowerer, the `Elaboration` switch that selects it, and the differential suite that
-compared the two paths. It was retained at prompt 12 as the regression oracle for the kernel migration; that migration
-finished at prompt 40, and the oracle has been unable to compile most of the language since prompt 27 — it rejects ties,
-slurs, dynamics, tuplets, phrases, sections, and harmony by name. A frozen second implementation of a shrinking subset
-is no longer a safety net; it is a second answer to "what does this piece mean" that has to be kept compiling.
+compared the two paths. It was retained at prompt 12 as the regression oracle for the event track migration; that
+migration finished at prompt 40, and the oracle has been unable to compile most of the language since prompt 27 — it
+rejects ties, slurs, dynamics, tuplets, phrases, sections, and harmony by name. A frozen second implementation of a
+shrinking subset is no longer a safety net; it is a second answer to "what does this piece mean" that has to be kept
+compiling.
 
 Separate the shared resolution helpers out of `lower.rs` first, so the deletion removes an implementation and not the
 parts of it the live path depends on.
 
 ## Read
 
-- the kernel specification ("do not grow the direct CST-to-score lowering architecture into the permanent semantic
+- the events specification ("do not grow the direct CST-to-score lowering architecture into the permanent semantic
   model"), §30 Step 6 (the switch, which prompt 12 performed).
 - Prompt 12's Design section — it states the retention policy this prompt ends, and the reason (parity), which no longer
   applies.
@@ -74,14 +75,14 @@ accordingly. If prompt 36's work has put a real option in it, keep it and say so
 
 Nothing needs to. The regression net is now what it should have been: the `examples/*.musa` corpus with `insta` goldens
 at every backend, the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`, `profile_laws`), the
-kernel's own property tests, and the kernel normal form of every fixture. Confirm before deleting, by checking that each
-behaviour the differential suite asserted has a home in that set — positions, durations, spelling, part/voice identity,
-multiplicity, ordering, provenance. Anything that does not, gets a test in this commit **before** the suite is deleted.
-List them in "Repairs made while implementing".
+event track's own property tests, and the events normal form of every fixture. Confirm before deleting, by checking that
+each behaviour the differential suite asserted has a home in that set — positions, durations, spelling, part/voice
+identity, multiplicity, ordering, provenance. Anything that does not, gets a test in this commit **before** the suite is
+deleted. List them in "Repairs made while implementing".
 
 ### The documents
 
-- `docs/rules/kernel/06-surface-elaboration.md`: the parity requirement and the "old lowerer is the regression oracle
+- `docs/rules/events/06-surface-elaboration.md`: the parity requirement and the "old lowerer is the regression oracle
   until prompt 12 and remains runnable permanently" sentence are now false. Repair them; state what the regression net
   is.
 - `docs/plan/prompts/README.md`: the paragraph under the sequence table says the direct lowering is "frozen as the
@@ -94,8 +95,8 @@ List them in "Repairs made while implementing".
 - `crates/musa-compiler/src/compile.rs`: `Elaboration` gone; `CompileOptions` gone if empty.
 - `crates/musa-compiler/tests/suite/elaboration.rs` deleted; `studio_laws.rs` updated; any coverage gap closed first.
 - `crates/musa-project`, `crates/musa`: call-site updates.
-- `docs/rules/kernel/06-surface-elaboration.md`, `docs/plan/prompts/README.md`, `musa-compiler` module docs.
-- `docs/rules/kernel/09-performance.md`: this prompt's row.
+- `docs/rules/events/06-surface-elaboration.md`, `docs/plan/prompts/README.md`, `musa-compiler` module docs.
+- `docs/rules/events/09-performance.md`: this prompt's row.
 
 ## Check
 
@@ -105,7 +106,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # no golden changes
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
-grep -rn "Elaboration\|regression oracle\|lower_score\|lower_items" crates/ docs/rules/kernel/ | wc -l   # 0
+grep -rn "Elaboration\|regression oracle\|lower_score\|lower_items" crates/ docs/rules/events/ | wc -l   # 0
 cargo bench -p musa-compiler
 ```
 
@@ -138,7 +139,7 @@ Commit the split as `Separate resolution from the frozen lowerer`, then the dele
 - **`CompileOptions` survives.** Prompt 36 put `imports` in it, so it is not empty and `compile(source, &options)` keeps
   its shape; three call sites lost a now-pointless `..CompileOptions::default()`.
 - **`tests/elaboration.rs` was rewritten, not deleted.** Deleting the file would have taken
-  `kernel_normal_forms_snapshot` and `repeat_unrolls_to_the_same_kernel` with it — the very goldens the prompt names as
+  `events_normal_forms_snapshot` and `repeat_unrolls_to_the_same_events` with it — the very goldens the prompt names as
   part of the replacement net — and renaming the file would have churned every `elaboration__*.snap`. The differential
   tests are gone; the rest stayed and the module doc now says what the file is.
 - **Coverage checked before deleting, and two of the three "error fixtures" turned out to assert nothing.**
@@ -148,7 +149,7 @@ Commit the split as `Separate resolution from the frozen lowerer`, then the dele
   perfectly spellable — the real coverage is `transform_laws.rs::a_mirror_image_the_language_cannot_write_is_reported`).
   All three are now stated as what they actually are. Everything else the suite asserted — positions, durations,
   spelling, identity, multiplicity, ordering, provenance — is pinned absolutely by the backend goldens, the law suites,
-  and the kernel normal forms.
+  and the events normal forms.
 - **The generated corpus now checks itself against its own text**, since there is no second path to compare to: the
   strategies carry how many statements they wrote and how long those statements last, and the property is that the piece
   elaborates to exactly that. This immediately found a bug the differential suite had been hiding: its chord arm
@@ -156,8 +157,8 @@ Commit the split as `Separate resolution from the frozen lowerer`, then the dele
   generated corpus had been exercising the parser's error recovery rather than chords, and the comparison never noticed
   because both paths rejected it identically. That is the argument for the whole prompt in one line: two implementations
   agreeing proves nothing about either.
-- **`phase_two_constructs_are_kernel_only` is gone with the boundary it pinned.** The kernel half of what it asserted —
-  that slurs, dynamics and tuplets compile — is covered by `annotation_laws` and `notation_details_laws`.
+- **`phase_two_constructs_are_kernel_only` is gone with the boundary it pinned.** The event track half of what it
+  asserted — that slurs, dynamics and tuplets compile — is covered by `annotation_laws` and `notation_details_laws`.
 - **The performance row is a non-measurement, deliberately recorded.** Every allocation count is identical to prompt
   40's in all four phases; the timings sit 5–8% higher because the machine was contended during the run. Recorded with
   that reasoning rather than silently, since the alternative is a table that looks like a regression nobody explained.

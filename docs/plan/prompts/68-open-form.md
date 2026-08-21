@@ -13,18 +13,18 @@ phase: 3
 The three remaining kinds of written freedom, on prompt 67's mechanism: a **mobile form** whose sections may be played
 in any order, a **free duration** the performer chooses from a range, and an **improvisation region** with a notated
 frame and unnotated contents. Each is a `Decision` variant that already exists, a `FactKind` the page can print, and no
-kernel change.
+events change.
 
 The acceptance test is repertoire, not syntax: *In C*, Klavierstück XI, and a jazz chart's solo section must each be
 writable, and the corpus is where they are.
 
 ## Read
 
-- `docs/rules/kernel/11-realization.md` — the repertoire it names is what this prompt must deliver.
+- `docs/rules/events/11-realization.md` — the repertoire it names is what this prompt must deliver.
 - Prompt 67 — `Decision::{Order, Duration}` exist and have no producer. This prompt is the producer.
 - Prompt 58 §"the timeline holds every pass; the page prints the instruction once" — the rule for how a freedom appears
   on the page.
-- `docs/rules/kernel/08-open-questions.md` rows 7–10 — the falsification corpus. Adding pieces to it is part of this
+- `docs/rules/events/08-open-questions.md` rows 7–10 — the falsification corpus. Adding pieces to it is part of this
   prompt.
 
 ## Design
@@ -107,8 +107,8 @@ realization and nothing else; that is exact for what MIDI is.
 - `crates/musa-notation`: the three lossy emissions above, each warning once; `plan.rs` draws the bracket and the box.
 - `examples/`: `in-c.musa` (Riley — the fifty-three-figure test), `mobile.musa` (Klavierstück XI's shape),
   `changes.musa` (a chart with an improvised chorus).
-- `docs/rules/kernel/08-open-questions.md`: rows 7–10 marked proven, or the reason they are not.
-- `docs/rules/kernel/11-realization.md`: graduated from candidate to governing.
+- `docs/rules/events/08-open-questions.md`: rows 7–10 marked proven, or the reason they are not.
+- `docs/rules/events/11-realization.md`: graduated from candidate to governing.
 
 ## Repairs made while implementing
 
@@ -160,10 +160,10 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa -- check examples/in-c.musa
-diff <(cargo run -q -p musa -- kernel examples/mobile.musa --seed 7) \
-     <(cargo run -q -p musa -- kernel examples/mobile.musa --seed 7)     # stable
+diff <(cargo run -q -p musa -- event track examples/mobile.musa --seed 7) \
+     <(cargo run -q -p musa -- event track examples/mobile.musa --seed 7)     # stable
 cargo run -p musa -- render examples/changes.musa --to musicxml 2>&1 | grep -i "improvis"  # the warning
-grep -L "Status: candidate" docs/rules/kernel/11-realization.md
+grep -L "Status: candidate" docs/rules/events/11-realization.md
 ```
 
 Commit as `Add open form`.
@@ -175,4 +175,4 @@ Commit as `Add open form`.
 - No generated improvisation. Silence and a frame.
 - No graphic or text-only scores. A page musa cannot engrave is not a page musa should accept.
 - No probability weights on a mobile's orderings.
-- No new kernel operation, still.
+- No new event-track operation, still.

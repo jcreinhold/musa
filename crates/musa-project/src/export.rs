@@ -24,13 +24,13 @@ pub enum ExportRequest {
     PerformanceDump,
     /// The notation plan, as a debug dump.
     NotationPlanDump,
-    /// The piece as kernel interchange text (docs/rules/kernel/01).
+    /// The piece as events interchange text (docs/rules/events/01).
     ///
     /// Unlike every other target this is a projection of the *document*, not
     /// of the score snapshot: a term carries the provenance the snapshot has
     /// already spent. It is still an export — one direction, never read back
     /// into a piece.
-    Kernel {
+    Events {
         /// Print the term evaluated to a value rather than as written.
         /// Two decisions, taken in sequence: the printer never normalizes.
         normalized: bool,
@@ -47,12 +47,12 @@ impl ExportRequest {
             Self::Wav => "wav",
             Self::Midi(_) => "mid",
             Self::PerformanceDump | Self::NotationPlanDump => "txt",
-            // `sonata.musa.kernel`, the way `autosave` writes
+            // `sonata.musa.events`, the way `autosave` writes
             // `sonata.musa.recovery` and `realization` writes
             // `sonata.musa.performance`: a suffix musa adds beside a piece
-            // says whose file it is. `.kernel` alone says nothing, and every
+            // says whose file it is. `.events` alone says nothing, and every
             // operating system and compiler already owns the word.
-            Self::Kernel { .. } => "musa.kernel",
+            Self::Events { .. } => "musa.events",
         }
     }
 }
@@ -120,16 +120,16 @@ impl ExportArtifact {
     /// A format with no element for a written freedom carries the realized
     /// music and a text direction instead — a reading of the work rather than
     /// the work — and whoever asked for the file is told so here rather than
-    /// finding out from a reader (`docs/rules/kernel/07-backend-contract.md`).
+    /// finding out from a reader (`docs/rules/events/07-backend-contract.md`).
     pub fn warnings(&self) -> &[String] {
         &self.warnings
     }
 }
 
-/// What reading a kernel file established: the piece it names, and what its
+/// What reading an events file established: the piece it names, and what its
 /// term denotes.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct KernelReport {
+pub struct EventsReport {
     /// The piece name the file declares.
     pub name: String,
     /// How many occurrences the term evaluates to.
@@ -137,29 +137,29 @@ pub struct KernelReport {
     /// The evaluated track's duration, as an exact rational.
     pub duration: String,
     /// Which reading of the work the file projects, verbatim from its header
-    /// (`docs/rules/kernel/11-realization.md`). `None` when the file does not say —
+    /// (`docs/rules/events/11-realization.md`). `None` when the file does not say —
     /// which a reader reports rather than guesses at, because a realization it
     /// cannot reproduce is the one thing that design exists to make visible.
     pub realization: Option<String>,
 }
 
-/// Read kernel interchange text: parse, check well-formedness (K7), evaluate.
+/// Read events interchange text: parse, check well-formedness (K7), evaluate.
 ///
-/// The other direction from [`ExportRequest::Kernel`], and deliberately not a
+/// The other direction from [`ExportRequest::Events`], and deliberately not a
 /// session method — checking a file is not an operation on a project, and a
-/// `.musa.kernel` file never becomes a document (AGENTS.md: the source is
+/// `.musa.events` file never becomes a document (AGENTS.md: the source is
 /// canonical).
 ///
 /// # Errors
 ///
 /// The parse error positioned in the input, or the well-formedness violation.
-pub fn check_kernel(text: &str) -> Result<KernelReport, crate::error::ProjectError> {
-    musa_compiler::check_kernel_text(text)
-        .map(|check| KernelReport {
+pub fn check_events(text: &str) -> Result<EventsReport, crate::error::ProjectError> {
+    musa_compiler::check_events_text(text)
+        .map(|check| EventsReport {
             name: check.name,
             occurrences: check.occurrences,
             duration: check.duration,
             realization: check.realization,
         })
-        .map_err(crate::error::ProjectError::Kernel)
+        .map_err(crate::error::ProjectError::Events)
 }

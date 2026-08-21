@@ -198,5 +198,5 @@ Commit as `Carry an adapter module's own diagnostics to its author`.
   benefit, but a library is resolved on a different path with a different failure type, and folding both into one prompt
   would make the adapter contract wait on the import contract. Name it in `docs/notes/` as the obvious next application
   and leave it.
-- No constitution, obligations, kernel, or `docs/rules/language/` change. This changes how a compiler failure is
+- No constitution, obligations, event track, or `docs/rules/language/` change. This changes how a compiler failure is
   delivered, not what the language admits.

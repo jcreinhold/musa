@@ -80,7 +80,7 @@ impl Document {
     /// unsaved buffer, a renamed file, or a scratch pane, and what a document
     /// *is* has to survive all three. Every feature that reads a surface
     /// syntax tree or maps a compiled fact back to a span in *this* file has
-    /// to ask: a kernel document's facts carry provenance into the source that
+    /// to ask: an event track document's facts carry provenance into the source that
     /// produced them, which is a different file, so a hover or a definition
     /// resolved that way would point somewhere the user is not.
     pub(crate) fn alternative(&self) -> DocumentAlternative {

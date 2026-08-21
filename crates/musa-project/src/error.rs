@@ -35,10 +35,10 @@ pub enum ProjectError {
         reason: String,
     },
 
-    /// Kernel interchange text could not be read: a parse error positioned
-    /// in the input, or a well-formedness violation (docs/rules/kernel/02 K7).
-    #[error("not valid kernel text: {0}")]
-    Kernel(String),
+    /// Events interchange text could not be read: a parse error positioned
+    /// in the input, or a well-formedness violation (docs/rules/events/02 K7).
+    #[error("not valid events text: {0}")]
+    Events(String),
 
     /// A score edit named an event this revision does not contain — a stale
     /// selection, almost always.

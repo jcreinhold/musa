@@ -30,22 +30,22 @@ best-effort translation.
 | the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 142 |
 | `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 142 |
 | `overlay(a, b)` | `together(a, b)` | 127c |
-| `sequence(a, b)` / the `;` sequencing spelling in kernel documents | `follow(a, b)` | 127c |
-| `timeline d { … }` in kernel documents | `track d { … }` | 127c |
+| `sequence(a, b)` / the `;` sequencing spelling in events documents | `follow(a, b)` | 127c |
+| `timeline d { … }` in events documents | `track d { … }` | 127c |
 | the `extent` keyword and the `extent` spelling in diagnostics | `duration` | 127c |
 | partial application, default parameters, and named hole filling | complete calls, and `fn (…) -> τ { e }` where a specialization has to be written down | 127ad |
 | a public `lift` from a source function into a machine | registered primitives only | 127d |
 
-`instantiate`, `close`, and `KernelFragment` are private compiler concepts rather than source syntax; they are listed in
+`instantiate`, `close`, and `EventsFragment` are private compiler concepts rather than source syntax; they are listed in
 §2 because that is where they are spelled.
 
 ## 2. Rust APIs
 
 | Deleted item | Replacement | Deleted by |
 | --- | --- | --- |
-| `musa_kernel::Timeline<A>` | the event-track type at `EventTrack<C, A>` | 127c |
-| `musa_kernel::sequence` | `follow` | 127c |
-| `musa_kernel::overlay` | `together` | 127c |
+| `musa_events::Timeline<A>` | the event-track type at `EventTrack<C, A>` | 127c |
+| `musa_events::sequence` | `follow` | 127c |
+| `musa_events::overlay` | `together` | 127c |
 | `Timeline::extent`, `Term::extent` | `duration` | 127c |
 | `Timeline::map_payload`, `Term::map_payloads` | `map_payloads` | 127c |
 | `Beat` as an untagged position type | `Position<C>`; a track's extent is the separate `Duration<C>` | 127c |
@@ -60,14 +60,14 @@ best-effort translation.
 | `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
 | a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
 
-The kernel stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-kernel`.
+The event track stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-events`.
 
 ## 3. Serialized and interchange forms
 
 | Deleted form | Behaviour after the break | Deleted by |
 | --- | --- | --- |
-| the `% musa-kernel-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c |
-| event-track encoding versions 1 and 2 (`../rules/kernel/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c |
+| the `% musa-events-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c |
+| event-track encoding versions 1 and 2 (`../rules/events/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c |
 | unframed `Display`-derived digests | already invalid; they remain invalid and are not read as track identity | (already broken) |
 | any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 127c, 152 |
 
@@ -78,9 +78,9 @@ document's version says so.
 
 | Deleted or rewritten fixture set | Deleted by |
 | --- | --- |
-| all 24 files in `examples/kernel/*.musa.kernel` — regenerated at `% musa-kernel-2` with `track`, `follow`, `together`, and durations | 127c |
+| all 24 files in `examples/events/*.musa.events` — regenerated at `% musa-events-3` with `track`, `follow`, `together`, and durations | 127c |
 | every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 142 |
-| the insta snapshots under `crates/musa-kernel` and `crates/musa-compiler` that pin the old kernel text | 127c, 142 |
+| the insta snapshots under `crates/musa-events` and `crates/musa-compiler` that pin the old events text | 127c, 142 |
 | studio fixtures whose expected output depends on host-block-defined feedback or modulation | 152 |
 
 Goldens are rewritten in the same prompt that breaks them, never left failing across a prompt boundary
@@ -88,10 +88,10 @@ Goldens are rewritten in the same prompt that breaks them, never left failing ac
 
 ## 5. Test names
 
-The kernel law suite is renamed with the operations it tests. The old names must not survive as aliases, because a test
-named for a deleted operation is how a deleted operation comes back.
+The event-track law suite is renamed with the operations it tests. The old names must not survive as aliases, because a
+test named for a deleted operation is how a deleted operation comes back.
 
-| Old test name | New name (`../rules/kernel/04-algebraic-laws.md`) |
+| Old test name | New name (`../rules/events/04-algebraic-laws.md`) |
 | --- | --- |
 | `seq_associativity` | `follow_associativity` |
 | `seq_zero_identity` | `follow_zero_identity` |
@@ -120,7 +120,7 @@ These survive the break unchanged, and a prompt that removes one is wrong:
 - unequal-duration `together`, which takes the longer duration and inserts no rests;
 - the real-time rules: the audio callback allocates, locks, does I/O, logs, and destroys nothing;
 - `scale`, `restrict`, `covering`, `prevailing`, and normalization/encoding, which are beyond the six-operation basis
-  but have real callers (`../rules/kernel/00-purpose.md`).
+  but have real callers (`../rules/events/00-purpose.md`).
 
 ## 7. How a prompt discharges its rows
 

@@ -27,7 +27,7 @@ homoiconic in practice or only in principle.
 - `docs/rules/language/01-surface.md` §7 — the typed-antiquotation precedent, and specifically its four writer's rules:
   a quote is commented like the file around it, a raw payload says what the material is and not where it goes, the
   quotation locus is where a hole is *instantiated*, and time operations move occurrences rather than rewriting
-  payloads. The first and third generalize; the second and fourth are kernel-specific.
+  payloads. The first and third generalize; the second and fourth are event-track-specific.
 - Prompt [127da](127da-path-aware-syntax.md) (derivable paths and pure builders), [127db](127db-derivation-graph.md)
   (origins as a grafted finite graph), and [127dcfaf](127dcfaf-syntax-step-recursor.md) (the inherited-context
   recursor). This prompt keeps the recursor and deletes the builders' hand-written call sites, so it has to say exactly
@@ -72,7 +72,7 @@ hand-written `syntax_group`/`syntax_token` assembly, the role-integer argument t
 dispatch on token kinds and delimiters. Prompt 138 replaces the last of those with typed `TokenKind` and `Delimiter`;
 this document says the surface no longer has a reason to look at either.
 
-**Two quotations, one discipline, and they are not merged.** `kernel T { … }` builds an event-track term in the
+**Two quotations, one discipline, and they are not merged.** `events T { … }` builds an event-track term in the
 elaboration stage; `quote at here { … }` builds `Syntax<Cat>` in the expansion phase. `02-core-calculus.md` §6.1 keeps
 those two stages apart, so this document states the shared rules once — typed holes, no capture between quoted and host
 identifiers, the completed quote must close and check before it is used, the locus is where a hole is instantiated — and
@@ -89,12 +89,12 @@ cannot observe provenance.
 
 - `docs/rules/language/11-quotation.md`, new: `Syntax<Cat>` and its index; the construction form and its category rules;
   value and sequence splicing; the derived-identity law and its uniqueness argument; the pattern form and its two rules;
-  the surviving-recursor list and the deleted-mechanism list; the shared-discipline section that keeps kernel quotes and
+  the surviving-recursor list and the deleted-mechanism list; the shared-discipline section that keeps events quotes and
   syntax quotes distinct; and the diagnostics each failure mode owes.
 - `docs/rules/language/00-semantics.md` §2: the single-descent sentence amended as above, with the phase-local type
   `Syntax` restated as `Syntax<Cat>`.
 - `docs/rules/language/01-surface.md` §7: a forward reference to `11-quotation.md` for the shared rules, and nothing
-  else — §7's kernel-specific rules stay where they are.
+  else — §7's event-track-specific rules stay where they are.
 - `docs/rules/language/README.md`'s document map, and `citations.md` for the new claims (typed quotation, hygiene,
   splicing categories).
 
@@ -113,7 +113,7 @@ Commit as `Specify typed quotation and syntax patterns`.
 ## Stop
 
 - No code, no grammar, no fixture, no `stdlib/` change.
-- No merging of `kernel T { … }` with `quote at here { … }`, and no third quotation form.
+- No merging of `events T { … }` with `quote at here { … }`, and no third quotation form.
 - No unquoted-string macro, no procedural macro over token streams, no runtime `eval`, and no way to observe provenance
   from a pattern. Each of those is a hole in the phase boundary `00-semantics.md` §2 exists to hold.
 - No typed `TokenKind` or `Delimiter` definition. Prompt 138 owns the phase API's types; this document may name them.

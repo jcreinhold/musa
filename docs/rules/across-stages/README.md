@@ -9,7 +9,7 @@ prepared machine, and sound. This directory defines the rules at the boundaries 
 It does not replace the detailed specifications for each stage:
 
 - `docs/rules/language/` defines the one source language;
-- `docs/rules/kernel/` defines finite event tracks;
+- `docs/rules/events/` defines finite event tracks;
 - `docs/rules/desktop/` defines the desktop interface; and
 - [03-machine-calculus.md](03-machine-calculus.md) defines machines, their step, their preparation, and the checked
   scheduler that connects a track to a running source.

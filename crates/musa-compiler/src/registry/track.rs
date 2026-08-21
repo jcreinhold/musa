@@ -20,7 +20,7 @@
 //! a placement, a scope, and an origin — so there was nothing to translate. What
 //! is carried over is one layer down and already pure:
 //! [`ScoreFact::transposed`], [`ScoreFact::stretched`], [`ScoreFact::inverted`],
-//! [`musa_kernel::EventTrack::scale`], and [`musa_kernel::together`]. The
+//! [`musa_events::EventTrack::scale`], and [`musa_events::together`]. The
 //! contextual path is untouched, and prompt 142 owns its deletion.
 //!
 //! Two things that path does are therefore *absent* here, and both are absences
@@ -55,8 +55,8 @@
 //! for the same reason and reads only its path: an expansion's identity is
 //! minted where the reading resolved it, and nothing here could derive it.
 //!
-//! `spliced` needs none, because a kernel quote's raw payloads were stamped
-//! where they were read (see [`crate::lower::kernel`]): a quote is a written
+//! `spliced` needs none, because an event track quote's raw payloads were stamped
+//! where they were read (see [`crate::lower::events`]): a quote is a written
 //! form, so its span, its scope, and its splice step are all fixed before any
 //! material arrives.
 
@@ -64,7 +64,7 @@
 mod laws;
 
 use musa_calculus::{Builtin, Cx, Datum, ElabError, Family, Index, Literal, Rule, Term};
-use musa_kernel::{Duration, Occurrence, Position, Span};
+use musa_events::{Duration, Occurrence, Position, Span};
 use num_rational::Ratio;
 
 use super::rules::{items, nat, read, reduced, refused};
@@ -111,12 +111,12 @@ pub(super) const SPELLINGS: [&str; 8] = [
 /// `instanced` is the same argument about provenance rather than about pitch.
 /// The expansion path it stamps is minted by the reading that resolved the site
 /// — a `make`'s structural address in [`crate::template`], or a `${…}`'s locus
-/// in [`crate::lower::kernel`] — and Origin view reads that path to tell a
+/// in [`crate::lower::events`] — and Origin view reads that path to tell a
 /// composer's notes from generated ones. A source word for it would let a
 /// program claim its notes were made by an expansion that never made them.
 ///
 /// `spliced` is the third because the source already spells the whole operation,
-/// as `kernel EventTrack[WrittenTime, ScoreFact] { … }`. A row in either table
+/// as `events EventTrack[WrittenTime, ScoreFact] { … }`. A row in either table
 /// would invent a second spelling for it — a *called* word, taking a term no
 /// expression can build and a list of material in an order only the reading
 /// knows. `instantiate_quote` is out of both tables for exactly this reason one
@@ -159,14 +159,14 @@ pub(super) fn track_type() -> Term {
     tagged_type("EventTrack", Coordinate::WrittenTime)
 }
 
-/// A kernel quote's term, at the one instantiation this compiler has.
-pub(super) type Quoted = musa_kernel::Term<musa_kernel::WrittenTime, ScoreFact>;
+/// An event track quote's term, at the one instantiation this compiler has.
+pub(super) type Quoted = musa_events::Term<musa_events::WrittenTime, ScoreFact>;
 
-/// A kernel quote's body as a literal's payload: the term, and the name each of
+/// An event track quote's body as a literal's payload: the term, and the name each of
 /// its holes was given.
 ///
 /// The two are one value because they are one fact. The names are minted by
-/// [`crate::lower::kernel`] while it substitutes the holes out of the text, and
+/// [`crate::lower::events`] while it substitutes the holes out of the text, and
 /// the *i*th of them is what the *i*th member of `spliced`'s list is bound to;
 /// a term carrying the names and a caller carrying them separately would be two
 /// copies of an order that has to agree.
@@ -180,7 +180,7 @@ pub(super) struct Assembly {
 
 impl std::fmt::Display for Assembly {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(out, "kernel term with {} holes", self.holes.len())
+        write!(out, "event-track term with {} holes", self.holes.len())
     }
 }
 
@@ -253,7 +253,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         delta(TRACK_BEYOND[1], vec![plain_type("Origin"), track()], track(), INSTANCED),
         delta(
             TRACK_BEYOND[2],
-            vec![plain_type("KernelTerm"), super::applied(cx, "List", [track()])?],
+            vec![plain_type("EventsTerm"), super::applied(cx, "List", [track()])?],
             track(),
             SPLICED,
         ),
@@ -357,7 +357,7 @@ fn rewritten(
             Some(Occurrence::new(occurrence.span(), fact))
         })
         .collect::<Option<Vec<_>>>()?;
-    musa_kernel::track(track.duration(), occurrences).ok()
+    musa_events::track(track.duration(), occurrences).ok()
 }
 
 // ---- the seven rules that reduce, and the three past both tables ----
@@ -412,7 +412,7 @@ const RETROGRADE: Rule = |arguments| {
             Some(Occurrence::new(mirrored, fact))
         })
         .collect::<Option<Vec<_>>>()?;
-    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_events::track(track.duration(), occurrences).ok()?))
 };
 
 /// `invert(axis, t)` — every written pitch mirrored about `axis`.
@@ -444,7 +444,7 @@ const SHIFT: Rule = |arguments| {
         .iter()
         .map(|occurrence| Occurrence::new(occurrence.span().translate(offset), occurrence.payload().clone()))
         .collect();
-    let Ok(shifted) = musa_kernel::track(track.duration().plus(offset), occurrences) else {
+    let Ok(shifted) = musa_events::track(track.duration().plus(offset), occurrences) else {
         return Some(refused("the shifted music leaves the track it is in"));
     };
     reduced(built(shifted))
@@ -452,13 +452,13 @@ const SHIFT: Rule = |arguments| {
 
 /// `together(a, b)` — both at once, in a track as long as the longer.
 ///
-/// The kernel's own stacking, which is D3's `max(d, e)` and `E ⊎ F`. §5.7's
+/// The event track's own stacking, which is D3's `max(d, e)` and `E ⊎ F`. §5.7's
 /// composition clause is discharged by calling the operation the clause is about
 /// rather than by re-deriving it here.
 const TOGETHER: Rule = |arguments| {
     let left = track_of(arguments.first()?)?;
     let right = track_of(arguments.get(1)?)?;
-    reduced(built(musa_kernel::together(vec![left, right])))
+    reduced(built(musa_events::together(vec![left, right])))
 };
 
 /// `set_note_pitches(t, ps)` — the *i*th note's pitch replaced by the *i*th
@@ -484,7 +484,7 @@ const SET_NOTE_PITCHES: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_events::track(track.duration(), occurrences).ok()?))
 };
 
 /// The occurrences of `track` that a `with` clause counts, grouped into
@@ -582,7 +582,7 @@ const RESPELLED: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_events::track(track.duration(), occurrences).ok()?))
 };
 
 /// `play(origin, scope, voicing, held)` — a chord sounding for a length.
@@ -627,7 +627,7 @@ const PLAY: Rule = |arguments| {
             )
         })
         .collect();
-    let Ok(sounded) = musa_kernel::track(span.duration(), occurrences) else {
+    let Ok(sounded) = musa_events::track(span.duration(), occurrences) else {
         return Some(refused("the chord does not fit the length it was given"));
     };
     reduced(built(sounded))
@@ -667,10 +667,10 @@ const PLAY: Rule = |arguments| {
 /// Nested sites compose without knowing it — the inner `instanced` has already
 /// run by the time the outer one prepends.
 ///
-/// A kernel quote's hole is the second caller and the same claim in different
+/// An event track quote's hole is the second caller and the same claim in different
 /// words: the material a `${…}` splices was produced inside that splice, so
-/// [`crate::lower::kernel`] hands it an origin whose path is one
-/// [`ExpansionStep::KernelSplice`] at the hole's locus. Two readings, one
+/// [`crate::lower::events`] hands it an origin whose path is one
+/// [`ExpansionStep::EventsSplice`] at the hole's locus. Two readings, one
 /// operation, because "these facts were made inside this expansion" is one
 /// thing to say.
 const INSTANCED: Rule = |arguments| {
@@ -692,20 +692,20 @@ const INSTANCED: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_events::track(track.duration(), occurrences).ok()?))
 };
 
-/// `spliced(quote, material)` — the track a kernel quote assembles once its
+/// `spliced(quote, material)` — the track an event track quote assembles once its
 /// holes hold the material the host wrote in them.
 ///
 /// The half of `01-surface.md` §7 that needs values, and the only half.
-/// [`crate::lower::kernel`] has already decided everything a quote can be wrong
+/// [`crate::lower::events`] has already decided everything a quote can be wrong
 /// about — that it parses, that it settles nothing its use settles, that every
 /// `${…}` stands where material can, that it is closed — and has stamped the
 /// payloads it wrote raw. What is left is a substitution and an evaluation, and
 /// both need the material, which is a value.
 ///
-/// A `let` per hole, first hole outermost, which is what the kernel's own
+/// A `let` per hole, first hole outermost, which is what the event track's own
 /// sharing is: `Term::bind` names an evaluated track, and a name referenced
 /// three times in a quote is three placements of one elaboration rather than
 /// three re-readings of the expression the hole wrote. The names are the fresh
@@ -713,7 +713,7 @@ const INSTANCED: Rule = |arguments| {
 /// hole can capture another's material.
 ///
 /// Nothing here can refuse. A term the reading checked is closed, and
-/// [`musa_kernel::evaluate`] is total on a closed term — `Term::duration`'s one
+/// [`musa_events::evaluate`] is total on a closed term — `Term::duration`'s one
 /// error is a free name, which is the very thing `check` already rejected. The
 /// `None`s below are D2's: a datum of the wrong shape, or a list whose length
 /// disagrees with the term's holes, is this compiler's table being wrong rather
@@ -732,9 +732,9 @@ const SPLICED: Rule = |arguments| {
     }
     let mut assembled = assembly.term.clone();
     for (name, track) in assembly.holes.iter().zip(material).rev() {
-        assembled = musa_kernel::Term::bind(name.clone(), musa_kernel::Term::literal(track), assembled);
+        assembled = musa_events::Term::bind(name.clone(), musa_events::Term::literal(track), assembled);
     }
-    reduced(built(musa_kernel::evaluate(assembled)))
+    reduced(built(musa_events::evaluate(assembled)))
 };
 
 /// `scoped(scope, t)` — every fact in `t` that had no voice of its own placed in
@@ -772,7 +772,7 @@ const SCOPED: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    reduced(built(musa_kernel::track(track.duration(), occurrences).ok()?))
+    reduced(built(musa_events::track(track.duration(), occurrences).ok()?))
 };
 
 /// The scope a `Scope` datum stands for.

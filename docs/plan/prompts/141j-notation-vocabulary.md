@@ -17,9 +17,9 @@ improvise, ending — have no core spelling at all. Neither does *sequencing*: a
 and there is no word for it. Register the vocabulary a notated block is built out of, so that prompt 141k has something
 to lower into.
 
-This is a gap rather than a decision. `docs/plan/prompts/README.md` states the kernel's semantic core as "`empty`,
+This is a gap rather than a decision. `docs/plan/prompts/README.md` states the event track's semantic core as "`empty`,
 `event`, `follow`, `together`, `map_payloads`, `duration` over exact rational ambient time", and `00-semantics.md` §3
-gives the two source equations in the kernel's own words — `use m; use n; ⇒ follow(m, n)` and
+gives the two source equations in the event track's own words — `use m; use n; ⇒ follow(m, n)` and
 `voices m and n ⇒ together(m, n)`. `together` is registered. `follow` and `empty` are not, because in the deleted
 contextual-`Music` design sequencing was the evaluator's *cursor* rather than an operation: placement was read from an
 ambient context, so nothing ever had to name the act of placing. Deleting that context is prompt 142's job, and it
@@ -55,9 +55,9 @@ cannot be done while the replacement has no word.
   words are written the same way, out of the same helpers, and `play` is not rewritten.
 - `crates/musa-compiler/src/chord.rs` — `Voicing` and `VoicingError::Empty`, "a chord with no notes is a rest, not a
   voicing". That is why silence cannot be `play` with an empty voicing and needs a case of its own.
-- `crates/musa-kernel`'s facade: `empty`, `track`, `follow`, `together`, `duration`. The rules this prompt registers are
-  translations of kernel operations, not new arithmetic, and `follow`'s duration additivity and associativity are
-  already proved there (`../../rules/kernel/04-algebraic-laws.md`).
+- `crates/musa-events`'s facade: `empty`, `track`, `follow`, `together`, `duration`. The rules this prompt registers are
+  translations of event track operations, not new arithmetic, and `follow`'s duration additivity and associativity are
+  already proved there (`../../rules/events/04-algebraic-laws.md`).
 
 ## Design
 
@@ -98,12 +98,12 @@ surface change with its own evidence, and surface changes are not this prompt's.
 and that expression is the reason to register `follow` rather than the reason not to: it needs `duration`, and a
 `duration : EventTrack ⟨written⟩ → Duration ⟨written⟩` would hand the source a query it has never had — a program could
 branch on how long a fragment is, which makes a track's extent part of every caller's control flow. `follow` is the
-kernel's own word, `musa_kernel::follow` already exists and is already proved associative and duration-additive, and
-registering it costs one rule that calls it.
+event track's own word, `musa_events::follow` already exists and is already proved associative and duration-additive,
+and registering it costs one rule that calls it.
 
 **`nothing` is `follow`'s identity and it is a value, not a rule.** An empty `music { }` block, a voice with no
 statements, and the seed of the left fold are all the same track: duration zero, no occurrences. It is
-`musa_kernel::empty` and nothing more.
+`musa_events::empty` and nothing more.
 
 *Repaired during implementation.* This paragraph asked for `Builtin::constructor` — 141ha's shape, "whose reduction
 shape is none at all" — or a zero-argument δ-rule, and neither works, for the same reason in two spellings. A δ-rule
@@ -117,7 +117,7 @@ registrations here rather than three.
 
 **Agreement is the check, as it was in 141e.** Each new rule is sampled against the code that builds the same fact in
 `elaborate.rs` today, by a second hand-written path, so a broken encoding cannot make agreement pass. `follow`'s law is
-the kernel's: durations add, and `follow(nothing, t)` and `follow(t, nothing)` are `t`.
+the event track's: durations add, and `follow(nothing, t)` and `follow(t, nothing)` are `t`.
 
 **Rejected: nineteen constructor builtins, one per fact kind.** It would make each notation statement one call rather
 than a call with a constructed argument, and it would put nineteen entries in a table whose accounting law is the thing

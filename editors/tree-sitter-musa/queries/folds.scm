@@ -28,7 +28,7 @@
   (mobile_statement)
   (harmony_declaration)
   (music_expression)
-  (kernel_quote)
+  (events_quote)
   (match_expression)
   (block_expression)
   (record_literal_expression)

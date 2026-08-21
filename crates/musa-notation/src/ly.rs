@@ -309,7 +309,7 @@ fn lane_body(
 ) -> Result<Vec<LyNode>, RenderError> {
     if lane.items().is_empty() {
         // An uncovered measure of this voice renders as spacer skips — a
-        // notation decision (docs/rules/kernel/02): the kernel stored nothing.
+        // notation decision (docs/rules/events/02): the event track stored nothing.
         let mut nodes = Vec::new();
         for mark in sections {
             nodes.push(mark_node(&mark.what));

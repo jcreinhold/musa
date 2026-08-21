@@ -1,17 +1,17 @@
 //! The variation transformations' contracts.
 //!
 //! `stretch`, `retrograde`, and `invert` are elaboration-time functions over
-//! an already-elaborated timeline, not kernel constructors
-//! (docs/rules/kernel/00-purpose.md: no new primitive without semantic
+//! an already-elaborated timeline, not events constructors
+//! (docs/rules/events/00-purpose.md: no new primitive without semantic
 //! necessity). What earns them that status is that each obeys an algebraic
-//! law relating it to the kernel's own operations, and those laws are what
+//! law relating it to the event track's own operations, and those laws are what
 //! this suite pins down:
 //!
 //! - `stretch 1 { x } ≡ x` — the identity factor changes nothing, including
 //!   the way durations are written;
 //! - `stretch f { a b } ≡ stretch f { a } stretch f { b }` — stretching
-//!   distributes over sequence (over overlay it is already a kernel law,
-//!   `musa-kernel/tests/laws.rs`, L13);
+//!   distributes over sequence (over overlay it is already an event-track law,
+//!   `musa-events/tests/laws.rs`, L13);
 //! - `retrograde { retrograde { x } } ≡ x` — retrograde is an involution,
 //!   ties included;
 //! - `retrograde { a b } ≡ retrograde { b } retrograde { a }` — retrograde is
@@ -250,8 +250,8 @@ fn the_variation_fixture_says_where_every_note_came_from() {
     // The point of the fixture is not the notes but the paths: a stretched
     // note knows it was stretched *and* which motif it was written in, and a
     // specialized note names the override that respelled it. Provenance is a
-    // layer above the kernel, and the kernel's normalization does not erase
-    // it (docs/rules/kernel/05-normalization.md).
+    // layer above the event track, and the event track's normalization does not erase
+    // it (docs/rules/events/05-normalization.md).
     let snapshot = snapshot_of(VARIATION);
     let mut dump = String::new();
     for (_, part) in snapshot.parts().iter() {
@@ -284,7 +284,7 @@ fn the_variation_fixture_says_where_every_note_came_from() {
                         ExpansionStep::Assertion { claim } => format!("assert {claim}"),
                         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
                         ExpansionStep::TemplateInstance { alias, .. } => format!("make {alias}"),
-                        ExpansionStep::KernelSplice { at } => format!("splice at {at}"),
+                        ExpansionStep::EventsSplice { at } => format!("splice at {at}"),
                     })
                     .collect();
                 let line = format!(

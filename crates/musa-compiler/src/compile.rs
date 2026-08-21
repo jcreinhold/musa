@@ -51,7 +51,7 @@ pub struct CompileOptions {
     ///
     /// A piece that leaves nothing open never consults this, so the default —
     /// `Realization::deterministic()` — is the absence of a question rather
-    /// than a choice of answer (`docs/rules/kernel/11-realization.md`).
+    /// than a choice of answer (`docs/rules/events/11-realization.md`).
     pub realization: musa_score::realize::Realization,
 }
 
@@ -69,15 +69,15 @@ pub enum DocumentKind {
     Piece,
     /// `library { … }` — declarations for other files to import.
     Material,
-    /// `% musa-kernel-2` — a kernel interchange file, read as itself
+    /// `% musa-events-3` — an events interchange file, read as itself
     /// (`docs/rules/language/01-surface.md` §7).
     ///
     /// A third kind rather than a second flavour of `Piece`, because the two
-    /// differ in what a caller may *do*: a kernel document has no surface
+    /// differ in what a caller may *do*: an events document has no surface
     /// syntax tree, so nothing that edits structure, completes a name, or
     /// renames a motif applies to it. It has a score, which is why it is not
     /// `Material` either.
-    Kernel,
+    Events,
 }
 
 /// The result of compiling a document: diagnostics always, a snapshot and a
@@ -88,7 +88,7 @@ pub struct Compilation {
     studio: crate::studio::StudioSpec,
     machines: Vec<(String, musa_score::MachineSpec)>,
     diagnostics: Vec<Diagnostic>,
-    identity: musa_kernel::SemanticHash,
+    identity: musa_events::SemanticHash,
     decisions: Vec<musa_score::DecisionRecord>,
     references: crate::resolve::ReferenceIndex,
     derivation: Option<musa_score::derivation::Derivation>,
@@ -108,7 +108,7 @@ impl Compilation {
             studio: crate::studio::StudioSpec::default(),
             machines: Vec::new(),
             diagnostics,
-            identity: musa_kernel::SemanticHash::default(),
+            identity: musa_events::SemanticHash::default(),
             decisions: Vec::new(),
             references: crate::resolve::ReferenceIndex::new(),
             derivation,
@@ -151,8 +151,8 @@ impl Compilation {
         self
     }
 
-    pub(crate) fn into_kernel(mut self) -> Self {
-        self.kind = DocumentKind::Kernel;
+    pub(crate) fn into_events(mut self) -> Self {
+        self.kind = DocumentKind::Events;
         self
     }
 
@@ -175,7 +175,7 @@ impl Compilation {
         self
     }
 
-    pub(crate) fn with_identity(mut self, identity: musa_kernel::SemanticHash) -> Self {
+    pub(crate) fn with_identity(mut self, identity: musa_events::SemanticHash) -> Self {
         self.identity = identity;
         self
     }
@@ -213,7 +213,7 @@ impl Compilation {
     }
 
     /// Every decision this compilation took, in the order the sites were
-    /// reached (`docs/rules/kernel/11-realization.md`).
+    /// reached (`docs/rules/events/11-realization.md`).
     ///
     /// The realization holds only what a composer *pinned*; this is what the
     /// piece actually asked and what it was answered, which is what a header
@@ -224,7 +224,7 @@ impl Compilation {
     }
 
     /// What this compilation *means*, as a digest of the piece's track
-    /// (docs/rules/kernel/05 N6).
+    /// (docs/rules/events/05 N6).
     ///
     /// Two compilations with the same identity are the same music, whatever
     /// their sources looked like; two with different identities differ in
@@ -235,7 +235,7 @@ impl Compilation {
     ///
     /// A compilation that produced no score has the identity of the empty
     /// piece, which is what a caller keying on it wants: nothing to install.
-    pub fn identity(&self) -> musa_kernel::SemanticHash {
+    pub fn identity(&self) -> musa_events::SemanticHash {
         self.identity
     }
 
@@ -313,12 +313,12 @@ impl Compilation {
 /// correction §26).
 ///
 /// Pipeline: parse → expansion-aware elaboration (motifs, repeat, transpose)
-/// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path.
+/// → event-track → `ScoreSnapshot` adapter. There is one semantic path.
 ///
-/// A document written in the *kernel* alternative
+/// A document written in the *events* alternative
 /// (`docs/rules/language/01-surface.md` §7) joins that path later rather than
 /// running beside it: it has no surface syntax to elaborate, so reading and
-/// checking the term replaces everything up to the kernel, and the projection
+/// checking the term replaces everything up to the event track, and the projection
 /// and every backend after it are shared. Which alternative a text is, is a
 /// question about its first line and is asked by `musa-syntax`.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
@@ -330,7 +330,7 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
     let _entered = span.enter();
     let alternative = musa_syntax::alternative(source.text());
     let compilation = match alternative {
-        musa_syntax::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
+        musa_syntax::DocumentAlternative::Events => crate::events_text::compile_events(source),
         musa_syntax::DocumentAlternative::Surface => {
             // Step 4 of the fixed order, and the only place it happens. What
             // `elaborate` then reads is a text with every adapter region
@@ -343,7 +343,7 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
         }
     };
     // Which alternative a text was read as is decided from its first line and
-    // is invisible afterwards, so a piece that is silently treated as kernel
+    // is invisible afterwards, so a piece that is silently treated as events
     // interchange has no other way of saying so.
     tracing::debug!(
         alternative = ?alternative,
@@ -361,15 +361,15 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
 /// caller that dispatched itself would be a caller that could get the
 /// dispatch wrong, and the whole toolchain formats through here.
 ///
-/// Kernel text is laid out by the kernel's own printer, which is what makes
-/// `musa format` idempotent on a file `musa kernel` produced. `None` means
+/// Events text is laid out by the event track's own printer, which is what makes
+/// `musa format` idempotent on a file `musa events` produced. `None` means
 /// the text cannot be read at all, and an unreadable document is left exactly
 /// as its author has it.
 pub fn format_document(text: &str, spacing: musa_syntax::BarSpacing) -> Option<String> {
     let span = tracing::debug_span!("format", bytes = text.len());
     let _entered = span.enter();
     match musa_syntax::alternative(text) {
-        musa_syntax::DocumentAlternative::Kernel => crate::kernel_text::format_kernel(text),
+        musa_syntax::DocumentAlternative::Events => crate::events_text::format_events(text),
         musa_syntax::DocumentAlternative::Surface => {
             let document = musa_syntax::parse(text);
             Some(musa_syntax::format(&document, spacing).text().to_owned())

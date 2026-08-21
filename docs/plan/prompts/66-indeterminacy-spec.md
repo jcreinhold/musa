@@ -19,12 +19,12 @@ Specification only. Prompt 67 implements the mechanism; prompt 68 gives it a sur
 
 ## Read
 
-- `docs/rules/kernel/08-open-questions.md` **Q2** — read the working stance first. It already says each realized
-  performance produces an ordinary finite kernel timeline and that the choice mechanism lives in the surface and its
-  provenance. This prompt is that stance being *confirmed by design*, not reversed.
-- `docs/rules/kernel/08-open-questions.md` (no canonical `join`), §32 (do not prematurely decide), §34 (semantic
-  necessity), §35 item 11 (do not add aleatory choice to the finite kernel).
-- `docs/rules/kernel/10-term-calculus.md` — T2 (`let` transparency), T3 (evaluation is normalization), T4 (totality and
+- `docs/rules/events/08-open-questions.md` **Q2** — read the working stance first. It already says each realized
+  performance produces an ordinary finite event track timeline and that the choice mechanism lives in the surface and
+  its provenance. This prompt is that stance being *confirmed by design*, not reversed.
+- `docs/rules/events/08-open-questions.md` (no canonical `join`), §32 (do not prematurely decide), §34 (semantic
+  necessity), §35 item 11 (do not add aleatory choice to the finite event track).
+- `docs/rules/events/10-term-calculus.md` — T2 (`let` transparency), T3 (evaluation is normalization), T4 (totality and
   determinism); `05-normalization.md` N6 (the semantic hash).
 - Prompt 43 — the semantic hash and what recompiles when it moves.
 - Prompt 58 — *the timeline holds every pass; the page prints the instruction once*. This is the shape.
@@ -48,16 +48,16 @@ fails, for four reasons the document must record, because it is the kind of desi
 3. **It breaks T3, T4, and N6 together.** Evaluation stops being deterministic and stops being unique, so there is no
    normal form and therefore no semantic hash. Prompt 43 keyed playback on that hash: editing an unchosen branch would
    change the work without changing the hash, and the session would not recompile.
-4. **It destroys the artifact that justified it.** A `.kernel` file containing `choose` cannot be normalized or hashed
-   without a choice environment, so the environment must ship alongside — which makes the file a *realization* corpus
-   after all, at the cost of every theorem above.
+4. **It destroys the artifact that justified it.** A `.event track` file containing `choose` cannot be normalized or
+   hashed without a choice environment, so the environment must ship alongside — which makes the file a *realization*
+   corpus after all, at the cost of every theorem above.
 
 Applying §34 literally: removing `choose` makes nothing impossible, and adding it makes two consumers — the engraver and
 the interchange format — strictly worse. It stays out.
 
 ### What goes in instead
 
-**A realization is a compile parameter; the freedom is a payload value; the kernel does not change.**
+**A realization is a compile parameter; the freedom is a payload value; the event track does not change.**
 
 ```text
 source  ──elaborate(realization)──▶  Term<ScoreFact>  ──evaluate──▶  Timeline
@@ -71,7 +71,7 @@ source  ──elaborate(realization)──▶  Term<ScoreFact>  ──evaluate�
   *ad lib.*, a repeat-as-many-times instruction, or a boxed fragment. Prompt 58's rule exactly.
 - The **decision** is a `Realization`: a seed plus a set of explicit overrides. Two compiles with the same source and
   the same realization produce the same timeline, the same normal form, and the same hash. T2–T4 and N6 are untouched,
-  because by the time the kernel sees anything, every choice is made.
+  because by the time the event track sees anything, every choice is made.
 
 ### Identity: a choice must be nameable across an edit
 
@@ -82,11 +82,11 @@ That needs a stable name per decision site.
 - **Not a `DeclarationId`.** Inserting a declaration renumbers everything after it.
 - **A structural path of names**: `ChoicePath` = part, voice, motif, bar, and an ordinal within the innermost named
   thing. Insert a bar at the top and the paths below it are unchanged, because names do not shift. (Prompt 67 narrowed
-  this to motif, bar and ordinal — see `docs/rules/kernel/11-realization.md`; a site among a voice's own items belongs
+  this to motif, bar and ordinal — see `docs/rules/events/11-realization.md`; a site among a voice's own items belongs
   to the piece, because a repeat barline crosses the system.)
 
 Each site's randomness is derived **per path** — `fnv1a_128(seed ‖ path)`, using the workspace's one stable digest
-(`musa-kernel/src/hash.rs`) — not drawn from a sequential stream. A stream would re-roll every later decision when a
+(`musa-events/src/hash.rs`) — not drawn from a sequential stream. A stream would re-roll every later decision when a
 site is inserted, which is the same failure the span-based identity has, arriving later and less visibly.
 
 ### The cost, conceded up front
@@ -102,26 +102,26 @@ theorems.
 ### What this closes
 
 **Q2 is resolved**, by its own stated trigger and in favour of its own working stance. §35 item 11 needs **no repair** —
-it forbids aleatory choice *in the finite kernel*, which is exactly what this design does.
+it forbids aleatory choice *in the finite event track*, which is exactly what this design does.
 
 ## Target
 
-- `docs/rules/kernel/11-realization.md` (new, status **candidate**): the refusal above with its four reasons; the
+- `docs/rules/events/11-realization.md` (new, status **candidate**): the refusal above with its four reasons; the
   realization model; `ChoicePath` identity and per-path derivation; the conceded law weakening; what a conforming
   consumer owes.
-- `docs/rules/kernel/08-open-questions.md`: **Q2 resolved (prompt 66)**, with the trigger quoted.
-- `docs/rules/kernel/08-open-questions.md`: the open-question list updated; a note that item 11 is *upheld*, not
+- `docs/rules/events/08-open-questions.md`: **Q2 resolved (prompt 66)**, with the trigger quoted.
+- `docs/rules/events/08-open-questions.md`: the open-question list updated; a note that item 11 is *upheld*, not
   amended.
-- `docs/rules/kernel/07-backend-contract.md`: a `.kernel` file is the projection of one realization, and its header says
-  which.
+- `docs/rules/events/07-backend-contract.md`: a `.event track` file is the projection of one realization, and its header
+  says which.
 - No code. No `Realization` type, no grammar.
 
 ## Check
 
 ```sh
-grep -n "Status: candidate" docs/rules/kernel/11-realization.md
-grep -n "RESOLVED (prompt 66)" docs/rules/kernel/08-open-questions.md
-grep -c "In C\|Klavierstück XI\|Feldman" docs/rules/kernel/11-realization.md   # the repertoire is named, not gestured at
+grep -n "Status: candidate" docs/rules/events/11-realization.md
+grep -n "RESOLVED (prompt 66)" docs/rules/events/08-open-questions.md
+grep -c "In C\|Klavierstück XI\|Feldman" docs/rules/events/11-realization.md   # the repertoire is named, not gestured at
 cargo fmt --check
 ```
 

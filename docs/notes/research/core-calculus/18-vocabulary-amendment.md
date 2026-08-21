@@ -29,9 +29,9 @@ The evidence that these were already distinct everywhere except in the type:
 
 - `docs/rules/constitution.md` §3 is titled "An event track records exact positions and lengths" — two words — and its
   body says "a nonnegative exact rational length" and, separately, occurrences "each with an exact start, end".
-- `docs/rules/kernel/00-purpose.md`: "positions form the abelian group `(ℚ, +, 0)` and lengths the ordered commutative
+- `docs/rules/events/00-purpose.md`: "positions form the abelian group `(ℚ, +, 0)` and lengths the ordered commutative
   monoid `(ℚ≥0, +, 0)`". Two different algebras.
-- `docs/rules/kernel/01-grammar.md` lexes `position-literal` and `length-literal` as separate categories.
+- `docs/rules/events/01-grammar.md` lexes `position-literal` and `length-literal` as separate categories.
 
 So the braid was only in the source type grammar. The musical falsifier is that one type for both makes beat 3 and three
 beats addable, which is the single arithmetic error a coordinate-tagged rational exists to catch. `Position[C]` was
@@ -79,7 +79,7 @@ boundary, not a hierarchy:
 - a **builtin** is an operation the compiler owns and can see inside, so the specification proves things about it (the
   four families of §5.8).
 
-Base types are called base types. `docs/rules/kernel/` keeps "primitive" in its ordinary English sense of *irreducible*,
+Base types are called base types. `docs/rules/events/` keeps "primitive" in its ordinary English sense of *irreducible*,
 where no registered unit is in scope.
 
 ## 5. Reading documents 00–17 after the rename

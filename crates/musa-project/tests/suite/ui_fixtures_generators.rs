@@ -106,7 +106,7 @@ fn unicode_fixture_is_current() -> Result {
 ///
 /// Three, because the screen has three different things to be right about and
 /// one piece cannot exercise them: a term declared in a bundled module, an
-/// expansion path that runs through a kernel quote, and an assertion the
+/// expansion path that runs through an event track quote, and an assertion the
 /// compiler refused. The last does not compile, which is the point — the
 /// interface has to show a claim at the place it was written even when the
 /// piece around it is not a score yet.
@@ -114,7 +114,7 @@ fn unicode_fixture_is_current() -> Result {
 fn elaboration_fixtures_are_current() -> Result {
     for (name, file) in [
         ("stdlib-basics", "stdlib-basics.musa"),
-        ("kernel-splice", "kernel-splice.musa"),
+        ("events-splice", "events-splice.musa"),
         ("refused-claim", "broken/claim-not-a-measure.musa"),
     ] {
         let source = std::fs::read_to_string(example(file))?;

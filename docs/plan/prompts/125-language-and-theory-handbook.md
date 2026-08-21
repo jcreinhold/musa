@@ -19,7 +19,7 @@ studio, assets, packages, samples, and clips before prompt 172 graduates the com
 
 ## Read
 
-- `docs/rules/language/`, `docs/rules/kernel/`, the roadmap language sections, and the style guide.
+- `docs/rules/language/`, `docs/rules/events/`, the roadmap language sections, and the style guide.
 - Prompts 92–124 and every bundled `.musa` source file introduced by them.
 - The relevant Open Music Theory chapters under `~/Code/papers/music-theory/open-music-theory/` cited by prompts
   100–119. In particular, use `013-major-scales-scale-degrees-and-key-signatures.md`, `016-intervals.md`,
@@ -32,8 +32,8 @@ studio, assets, packages, samples, and clips before prompt 172 graduates the com
 The handbook has a musician-facing task path and an implementor-facing reference path, joined by stable anchors:
 
 - start the musician path with notes, bars, voices, reusable phrases, key/scale degrees, chord symbols and voicings;
-  introduce functions, templates, modules, assertions, transformations, analysis, and kernel escape hatches only when a
-  musical task needs them;
+  introduce functions, templates, modules, assertions, transformations, analysis, and event track escape hatches only
+  when a musical task needs them;
 - state where Musa deliberately preserves distinctions that informal practice may blur: written pitch versus sounding
   pitch, pitch class versus `pc12`, key versus scale, chord symbol/class versus voicing, construction versus analysis,
   rule violation versus stylistic evidence, and source declaration versus generated occurrence;
@@ -44,7 +44,7 @@ The handbook has a musician-facing task path and an implementor-facing reference
   choice into “music theory says”;
 - make the developer path specify surface grammar, typing judgments, context requirements, desugaring, evaluation,
   normalization, resource diagnostics, provenance, caching invariants, module ownership, public/private boundaries, and
-  extension recipes. Include a worked trace from source through contextual `Music`, kernel term, occurrences, and a
+  extension recipes. Include a worked trace from source through contextual `Music`, event-track term, occurrences, and a
   rendered result;
 - generate the standard-library API index and editor documentation from authoritative declarations/doc comments.
   Handwritten prose may teach and cross-link but must not repeat signatures or parameter defaults.
@@ -56,7 +56,7 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 
 - A musician tutorial and task cookbook under `docs/rules/language/`, with compact complete pieces for tonal, modal,
   post-tonal/serial, contrapuntal, and generative-template use.
-- An implementor reference covering syntax-to-kernel elaboration, laws, extension points, and ownership boundaries.
+- An implementor reference covering syntax-to-event-track elaboration, laws, extension points, and ownership boundaries.
 - Generated standard-library API pages and `scripts/check-docs.sh`, which proves them synchronized with bundled source
   and validates the cited local chapters and internal links.
 - An explicit citation map from each implemented music-theory domain to the relevant local OMT chapter or Musa proof.

@@ -57,8 +57,8 @@
 mod laws;
 
 pub(crate) mod documented;
+pub(crate) mod events;
 pub(crate) mod items;
-pub(crate) mod kernel;
 pub(crate) mod notation;
 pub(crate) mod piece;
 mod quotes;
@@ -329,7 +329,7 @@ pub(crate) struct Lowering<'a> {
     claims: Vec<notation::Claimed>,
     /// The named place a decision site inside this walk is addressed under.
     ///
-    /// `docs/rules/kernel/11-realization.md`'s path identity: a site is the
+    /// `docs/rules/events/11-realization.md`'s path identity: a site is the
     /// named material enclosing it plus its ordinal among unnamed siblings, and
     /// the ordinal is [`Resolver::decide_count`]'s to mint. So what a walk
     /// carries is the names, and the empty path is a voice's own — which is
@@ -598,7 +598,7 @@ impl<'a> Lowering<'a> {
     /// voice, so the k-th of them is the *same* site in all of them — which is
     /// what makes a repeat the page can draw take one count rather than one per
     /// voice. See [`musa_score::ChoicePath`], and
-    /// `docs/rules/kernel/11-realization.md` for why identity is the path.
+    /// `docs/rules/events/11-realization.md` for why identity is the path.
     fn restart_sites(&mut self) {
         self.resolver.sites.remove(&musa_score::ChoicePath::default());
     }
@@ -676,7 +676,7 @@ fn paired<T>(mut members: Vec<T>, pair: impl Fn(T, T) -> T) -> Option<T> {
 ///
 /// Two readings mint one, and they are the two ways facts get made somewhere
 /// other than where they were written: [`piece`] at an instance site, whose step
-/// is the site's structural address, and [`kernel`] at a `${…}`, whose step is
+/// is the site's structural address, and [`events`] at a `${…}`, whose step is
 /// the locus the hole stands at.
 pub(crate) fn expansion(at: SourceSpan, step: musa_score::origin::ExpansionStep) -> musa_score::origin::Origin {
     musa_score::origin::Origin {
@@ -768,7 +768,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::Splice
             | SyntaxKind::SequenceSplice
             | SyntaxKind::MusicExpr
-            | SyntaxKind::KernelQuote
+            | SyntaxKind::EventsQuote
     )
 }
 

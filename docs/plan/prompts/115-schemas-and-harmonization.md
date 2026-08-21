@@ -67,7 +67,7 @@ Commit as `Add finite schema and harmonization libraries`.
 
 ## Stop
 
-- No schema keyword, kernel node, hidden recursion, unbounded generator, or inferred harmonic analysis.
+- No schema keyword, event-track node, hidden recursion, unbounded generator, or inferred harmonic analysis.
 - No one “best” voicing or rhythm attached to a harmonic skeleton.
 - No claim that a historical schema exhausts how a passage may be heard.
 - Do not add all named OMT schemas; implement the materially different representatives named in Target, then extend by

@@ -3,7 +3,7 @@
 //!
 //! One concern of the `elaborate` module; see its docs for the semantic path.
 
-use musa_kernel::{EventTrack, WrittenTime};
+use musa_events::{EventTrack, WrittenTime};
 use musa_score::origin::Origin;
 use musa_score::pitch::{PitchClass, WrittenPitch};
 use musa_score::scope::Scope;
@@ -68,7 +68,7 @@ pub(crate) enum FactKind {
         /// `(start, end, payload key)`, and every grace note in one group
         /// shares a start and an end — so without the index in the payload,
         /// `grace { c5 d5 }` and `grace { d5 c5 }` normalize to the same
-        /// timeline and the kernel calls them equal music. They are not. The
+        /// timeline and the event track calls them equal music. They are not. The
         /// alternative, giving them nonzero written durations so they sort,
         /// would put performed time into the notation.
         index: u8,
@@ -82,13 +82,13 @@ pub(crate) enum FactKind {
     /// A dynamic marking: a point at the onset it applies from.
     Dynamic { mark: DynamicMark },
     /// A hairpin over the region it spans, the mark it arrives at, and the
-    /// shape of the growth. The shape is a kernel value (`Progress`), so it
+    /// shape of the growth. The shape is an event-track value (`Progress`), so it
     /// survives serialization and every consumer reads the same curve; how
-    /// often to sample it is the consumer's policy (docs/rules/kernel/07).
+    /// often to sample it is the consumer's policy (docs/rules/events/07).
     Hairpin {
         grows: bool,
         target: DynamicMark,
-        shape: musa_kernel::Progress,
+        shape: musa_events::Progress,
     },
     /// The key signature, over the region it governs — the whole piece
     /// while the grammar has no `modulate`.
@@ -102,7 +102,7 @@ pub(crate) enum FactKind {
     /// The marking, not the map. `♩ = 92` is notation written at a place —
     /// the engraver prints it, the exporters carry it — and the written-time
     /// → second function performance integrates is *derived* from the markings
-    /// (docs/rules/kernel/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
+    /// (docs/rules/events/06-surface-elaboration.md). Keeping the two apart is why this is a fact:
     /// a fact has a place in the piece, and a function does not.
     ///
     /// Both halves are optional and neither implies the other. `tempo
@@ -230,7 +230,7 @@ impl FactKind {
 }
 
 /// One elaborated fact of a score: what is stated, where in the score's
-/// structure it belongs, and why it exists (docs/rules/kernel/06).
+/// structure it belongs, and why it exists (docs/rules/events/06).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ScoreFact {
     pub(crate) scope: Scope,

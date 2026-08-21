@@ -11,16 +11,16 @@ Dependency direction is one-way and never points back:
 ```text
 musa-syntax → musa-compiler → {musa-notation, musa-dsp} → musa-playback → musa-project → {musa, musa-lsp, musa-desktop}
                      ↑
-                musa-kernel (leaf)
+                musa-events (leaf)
 ```
 
 | Crate | Owns | Never exposes |
 | --- | --- | --- |
 | `musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
-| `musa-kernel` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
+| `musa-events` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
 | `musa-calculus` | the dependently typed core calculus: terms, NbE, elaboration, inductive families | `Value`, the evaluator, quotation |
 | `musa-score` | the musical values: pitch, chords, scales, exact time, marks, score and performance snapshots, provenance, diagnostics, analysis | any way to *build* one from text |
-| `musa-compiler` | resolution, typing, expansion, elaboration into the kernel — the passes that compute those values | pass types, `Type`, the resolver |
+| `musa-compiler` | resolution, typing, expansion, elaboration into the event track — the passes that compute those values | pass types, `Type`, the resolver |
 | `musa-notation` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
 
@@ -33,11 +33,11 @@ Three rules follow, and they are the ones most often reached for:
 - **The source is canonical.** No second editable AST, no mutable expanded cache. Every UI edit is a text edit.
 - **Exact time.** Musical time is `num-rational`. Floats appear at the performance and DSP edge and nowhere earlier.
 
-## 2. Surface to kernel
+## 2. Surface to events
 
 The surface grammar is settled in [`01-surface.md`](../../rules/language/01-surface.md) §1; the total value calculus and
 its metatheoretic obligations are [`02-core-calculus.md`](../../rules/language/02-core-calculus.md); the elaboration
-rules per construct are `../../rules/kernel/06-surface-elaboration.md`.
+rules per construct are `../../rules/events/06-surface-elaboration.md`.
 
 The shape to hold in mind:
 
@@ -49,13 +49,13 @@ The shape to hold in mind:
    not cross the crate boundary.
 4. **Elaborate** into a core term: an `EventTrack[WrittenTime, ScoreFact]` built from `track`, `follow`, `together`,
    `shift`, `scale`, and `restrict`, with `let` for sharing.
-5. **Normalize** the term (`../../rules/kernel/05-normalization.md`), which fixes occurrence order, payload
+5. **Normalize** the term (`../../rules/events/05-normalization.md`), which fixes occurrence order, payload
    serialization, semantic equality, and the semantic hash.
 6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-notation` and `musa-dsp` consume.
 
-The kernel is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a construct
-cannot be elaborated from the six that exist (`../../rules/kernel/00-purpose.md`), the specification is what changes,
-not `musa-kernel`.
+The event track is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a
+construct cannot be elaborated from the six that exist (`../../rules/events/00-purpose.md`), the specification is what
+changes, not `musa-events`.
 
 ### Typing, briefly
 
@@ -82,7 +82,7 @@ default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 `examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
 
 **This trace is the post-127c output.** The temporal spellings are current — `EventTrack`, `track`, `follow`,
-`together`, `% musa-kernel-2`. The type name `Music` is not: prompt 142 replaces it, and the pairs still owed are in
+`together`, `% musa-events-3`. The type name `Music` is not: prompt 142 replaces it, and the pairs still owed are in
 [`../clean-break-ledger.md`](../clean-break-ledger.md). What the trace *shows* about provenance, sharing, and exact time
 is unchanged by either rename.
 
@@ -98,11 +98,11 @@ fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
 use canon(subject, octave_answer, 1/2);
 ```
 
-`musa kernel examples/canon-functions.musa` prints the elaborated term:
+`musa events examples/canon-functions.musa` prints the elaborated term:
 
 ```text
-% musa-kernel-2
-kernel "Canon Functions" {
+% musa-events-3
+events "Canon Functions" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
     let shared0 = together {
         track 1/2 {
@@ -150,7 +150,7 @@ owes it.
 An occurrence carries the **declaration** it came from, the **expansion path** of steps taken to get there (`motif`,
 `transpose`, `splice`, `assertion`, and the rest), and, for a piece that leaves something open, the **choice path** that
 says which alternative was taken. The interface contract is `../../rules/desktop/04-provenance.md`; the realization
-model, including seeds and decisions, is `../../rules/kernel/11-realization.md`.
+model, including seeds and decisions, is `../../rules/events/11-realization.md`.
 
 Three invariants to preserve when adding a pass:
 
@@ -167,7 +167,7 @@ Three invariants to preserve when adding a pass:
 Termination is not enough: a total language can still ask for a score nobody can hold. One deterministic meter runs over
 checking and evaluation, charging a finite operation's known count *before* it enters its loop
 ([`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §4). It covers monomorphized definition count and
-closure environment size, fold work including products induced by nesting, generated occurrence and kernel binding
+closure environment size, fold work including products induced by nesting, generated occurrence and event-track binding
 counts, instantiation count and dependency depth, and quotation size after substitution.
 
 Two properties matter to a caller:
@@ -187,7 +187,7 @@ compiler internals.
 - Every fact a snapshot hands out is tagged with the revision it came from. The engraved score, the playback plan, and
   the recorded declarations all come from the *last valid* revision, which may be older than the text on screen; the
   snapshot says which.
-- Semantic identity is the kernel's `SemanticHash` over the normalized term. Two documents that differ only in
+- Semantic identity is the event track's `SemanticHash` over the normalized term. Two documents that differ only in
   whitespace, in declaration order where order does not matter, or in a name that was inlined, hash the same.
 - Expanding an Origin chain or an analysis finding must not trigger recompilation. Everything those views show was
   already recorded by the compile they belong to.
@@ -236,9 +236,9 @@ and without colour, so a help line cannot stop matching its message unnoticed. A
 not a longer message: its labels are spans in that document, it carries no fix, and all three renderers already know how
 to show one.
 
-**Adding a surface construct.** Decide its elaboration in `../../rules/kernel/06-surface-elaboration.md` before writing
-the parser, and add a positive fixture to `examples/`. If it cannot be elaborated from the three kernel combinators,
-that is the finding — report it, do not extend the kernel.
+**Adding a surface construct.** Decide its elaboration in `../../rules/events/06-surface-elaboration.md` before writing
+the parser, and add a positive fixture to `examples/`. If it cannot be elaborated from the three event track
+combinators, that is the finding — report it, do not extend the event track.
 
 ## 9. What to run
 

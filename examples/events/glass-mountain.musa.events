@@ -1,0 +1,38 @@
+% musa-events-3
+% generated from examples/glass-mountain.musa by musa-compiler
+events "Glass Mountain" {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    together {
+      track 4 {
+        occurrence "voice 0 0 note e5 1/2 [399:412 def 230:236 #1 via motif 399:412]" from 0 to 1/2;
+        occurrence "voice 0 0 rest 1/4 [399:412 def 245:251 #1 via motif 399:412]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note c5 1/2 [399:412 def 260:264 #1 via motif 399:412]" from 3/4 to 5/4;
+        occurrence "voice 0 0 note b4 1/4 [399:412 def 273:277 #1 via motif 399:412]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note a4 1/2 [399:412 def 286:290 #1 via motif 399:412]" from 3/2 to 2;
+        occurrence "voice 0 0 note a4 1/2 [470:483 def 230:236 #1 via transpose -4 -7 motif 470:483]" from 2 to 5/2;
+        occurrence "voice 0 0 rest 1/4 [470:483 def 245:251 #1 via transpose -4 -7 motif 470:483]" from 5/2 to 11/4;
+        occurrence "voice 0 0 note f4 1/2 [470:483 def 260:264 #1 via transpose -4 -7 motif 470:483]" from 11/4 to 13/4;
+        occurrence "voice 0 0 note e4 1/4 [470:483 def 273:277 #1 via transpose -4 -7 motif 470:483]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note d4 1/2 [470:483 def 286:290 #1 via transpose -4 -7 motif 470:483]" from 7/2 to 4;
+      };
+      track 4 {
+        occurrence "voice 1 0 note c5 1 [592:596 #3]" from 0 to 1;
+        occurrence "voice 1 0 note c5 1 [613:617 #3]" from 1 to 2;
+        occurrence "voice 1 0 note a4 1 [634:638 #3]" from 2 to 3;
+        occurrence "voice 1 0 note g#4 1 [655:660 #3]" from 3 to 4;
+      };
+      track 4 {
+        occurrence "voice 1 1 mark pedal [908:1038 #4]" from 0 to 4;
+        occurrence "voice 1 1 note a2 1 [941:945 #4]" from 0 to 1;
+        occurrence "voice 1 1 note f2 1 [966:970 #4]" from 1 to 2;
+        occurrence "voice 1 1 note d2 1 [991:995 #4]" from 2 to 3;
+        occurrence "voice 1 1 note e2 1 [1016:1020 #4]" from 3 to 4;
+      };
+      track 4 {
+        occurrence "piece meter 4/4 [163:173]" from 0 to 4;
+        occurrence "piece tempo 1/4=72 [139:158]" from 0 to 4;
+        occurrence "piece key a minor [178:190]" from 0 to 4;
+        occurrence "part 0 clef treble [344:356]" from 0 to 4;
+      }
+    };
+}

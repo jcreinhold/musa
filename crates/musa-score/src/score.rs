@@ -109,7 +109,7 @@ pub struct NotatedDuration {
     ///
     /// One duration has one spelling here even where the language has two:
     /// `c4/4.` records `3/8`, because this string reaches diagnostics, the
-    /// desktop inspector and every kernel golden, and a duration that arrived
+    /// desktop inspector and every events golden, and a duration that arrived
     /// there under two names would be two facts. The record of what the
     /// composer typed is the CST, which is lossless and is right there.
     pub spelling: String,
@@ -386,7 +386,7 @@ impl PartMap {
 ///
 /// Not a tempo *map* — this is the pair a reader sees printed over the staff.
 /// What it means in seconds is the performance layer's integration of every
-/// such mark in the piece (docs/rules/kernel/06-surface-elaboration.md).
+/// such mark in the piece (docs/rules/events/06-surface-elaboration.md).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metronome {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
@@ -447,10 +447,10 @@ pub struct Ramp {
     /// How far the change reaches, in whole notes.
     pub over: crate::time::MusicalDuration,
     /// How the change is spread across that reach, in normalized local time
-    /// (docs/rules/kernel/03 `Progress`). The shape is normative; how finely to
+    /// (docs/rules/events/03 `Progress`). The shape is normative; how finely to
     /// sample it is each consumer's choice.
     #[serde(with = "progress_serde")]
-    pub shape: musa_kernel::Progress,
+    pub shape: musa_events::Progress,
 }
 
 /// The initial meter.
@@ -742,7 +742,7 @@ pub struct ArticulationMarking {
 /// grace note has no place in the measure's rhythm: it fills none of the bar,
 /// and an event with zero notated duration would have to be excluded by hand
 /// from every bar check, every measure fill and every plan decomposition. In
-/// the kernel it *is* an occurrence with its own identity — see
+/// the event track it *is* an occurrence with its own identity — see
 /// `FactKind::Grace` — and this is how that occurrence reaches the page.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GraceNote {
@@ -814,15 +814,15 @@ pub struct PhraseSpan {
     pub origin: Origin,
 }
 
-/// `Progress` as exact breakpoint quadruples, so the kernel needs no `serde`.
+/// `Progress` as exact breakpoint quadruples, so the event track needs no `serde`.
 ///
-/// The kernel's dependency list is `num-rational` and `thiserror`; a payload
+/// The event track's dependency list is `num-rational` and `thiserror`; a payload
 /// value type is not a reason to widen it. `Progress::points` and
 /// `Progress::piecewise` are the two halves of this conversion and already
 /// exist for their own reasons, so the adapter is arithmetic-free and cannot
 /// admit a curve the constructor would reject.
 mod progress_serde {
-    use musa_kernel::Progress;
+    use musa_events::Progress;
     use num_rational::Ratio;
     use serde::{Deserialize as _, Deserializer, Serialize as _, Serializer};
 
@@ -865,9 +865,9 @@ pub struct HairpinSpan {
     pub target: DynamicMark,
     /// How the growth is shaped across the region, in normalized local time.
     /// The shape is normative; the sampling policy is the consumer's
-    /// (docs/rules/kernel/07).
+    /// (docs/rules/events/07).
     #[serde(with = "progress_serde")]
-    pub shape: musa_kernel::Progress,
+    pub shape: musa_events::Progress,
     /// Why this hairpin exists.
     pub origin: Origin,
 }
@@ -1290,7 +1290,7 @@ impl ScoreSnapshot {
     /// asks no questions was not realized, it was simply compiled, and every
     /// consumer that would otherwise show a seed shows nothing.
     /// `Some(seed)` says this page is *one reading* — which is exactly the
-    /// guarantee `docs/rules/kernel/11-realization.md` weakened, said out loud where
+    /// guarantee `docs/rules/events/11-realization.md` weakened, said out loud where
     /// a reader of the score can see it.
     pub fn performance(&self) -> Option<u64> {
         self.performance

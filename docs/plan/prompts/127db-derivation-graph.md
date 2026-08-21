@@ -24,7 +24,7 @@ blockers together, because they are one object.
   survive.
 - `crates/musa-compiler/src/origin.rs` — the current `Origin`, `ExpansionStep`, and `ChoicePath`, which are the closest
   existing thing and are a list.
-- `crates/musa-kernel/src/track.rs` and the event-track construction path in `crates/musa-compiler/src/elaborate.rs`.
+- `crates/musa-events/src/track.rs` and the event-track construction path in `crates/musa-compiler/src/elaborate.rs`.
 
 ## Design
 
@@ -67,8 +67,8 @@ builds, and nothing stores a derivation in a cache keyed without its pass descri
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel -p musa-compiler -p musa-project
-cargo clippy --all-targets -p musa-kernel -p musa-compiler -p musa-project -- -D warnings
+cargo nextest run -p musa-events -p musa-compiler -p musa-project
+cargo clippy --all-targets -p musa-events -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
@@ -81,7 +81,7 @@ Commit as `Record derivations as a finite grafted graph`.
 
 - No adapter phase, adapter import, or expansion record — prompt 127dc adds them as a `Generated` source.
 - No flattening of the graph to source/target pairs, and no summary label replacing an intermediate anchor.
-- No machine, audio, or derivation type inside `musa-kernel` beyond what a track occurrence already carries; the kernel
-  stays a leaf.
+- No machine, audio, or derivation type inside `musa-events` beyond what a track occurrence already carries; the event
+  track stays a leaf.
 - No cross-build identity, package registry, or persistent derivation cache.
 - No notation or studio migration.

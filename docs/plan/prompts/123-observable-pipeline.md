@@ -83,7 +83,7 @@ prompt: it is what makes the nine existing warnings audible.
 
 ### Never stdout
 
-Logs go to stderr in all three shells, with no option to change it. `musa render -o -` and `musa kernel` write payloads
+Logs go to stderr in all three shells, with no option to change it. `musa render -o -` and `musa events` write payloads
 to stdout, and the language server writes JSON-RPC there. A log line on stdout is a corrupted file or a protocol
 violation, so the destination is not a knob a caller can turn the wrong way.
 
@@ -173,7 +173,7 @@ Commit as `Give the pipeline a diagnostic voice`.
 - No metrics, no OpenTelemetry, no JSON log format, no file appender, no rotation. Stderr and a filter.
 - No logging inside the audio callback, the render loop, or any per-note or per-sample path, at any level.
 - No span or event that computes something to have something to say.
-- No `tracing` in `musa-syntax` or `musa-kernel`: a lexer and a finite term language have nothing to report that their
+- No `tracing` in `musa-syntax` or `musa-events`: a lexer and a finite term language have nothing to report that their
   return values do not already say, and both are leaves that other crates' spans already cover.
 - No `tracing` in `musa-wasm`: the browser has no stderr, and the shell adds nothing to the pipeline.
 - No change to what any diagnostic says. Diagnostics are for the person writing the piece; logs are for the person

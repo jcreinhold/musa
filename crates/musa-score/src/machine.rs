@@ -614,7 +614,7 @@ pub(crate) fn digest_of(step: StepTag, input: &str, output: &str, nodes: &[SpecN
         }
         framed(&mut bytes, &node.configuration);
     }
-    musa_kernel::stable_digest(&bytes)
+    musa_events::stable_digest(&bytes)
 }
 
 /// Write `part` preceded by its length.

@@ -44,7 +44,7 @@ equality version. A key may ignore stored fields if its documentation says so.
 The track's semantic hash no longer hashes human `Display` output. It hashes a versioned byte record containing the
 payload schema, the coordinate tag, the exact rational duration, occurrence count, endpoints, and duration-framed
 payload keys. Prompt 127a's addition is the coordinate tag: a written-time track and a performed-time track with the
-same occurrences are different values (`../../rules/kernel/12-payload-admission.md` A7).
+same occurrences are different values (`../../rules/events/12-payload-admission.md` A7).
 
 The implementation includes regression tests for:
 

@@ -13,7 +13,7 @@ phase: 1.5
 Turn the source drawer into roadmap §14.4's **Source** workspace: CodeMirror 6 with musa language support, diagnostics
 in the gutter, formatting on command, and live two-way linking between text and score. Then graduate
 `docs/rules/desktop/` from candidate to the governing interface specification, the same way prompt 12 graduated the
-kernel.
+event track.
 
 ## Read
 

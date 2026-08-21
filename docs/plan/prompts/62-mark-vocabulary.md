@@ -172,10 +172,10 @@ warning is prompt 70's, stated there rather than shipped dead here.
 
 **Six goldens moved, and each movement is a decision this prompt was told to make.**
 
-- `examples/profile-fixture.musa` and `examples/kernel/profile-fixture.kernel`: the Design renames the profile rule head
-  `articulation` to `mark`, which is eight characters shorter, so every provenance span after the first rule shifts. The
-  occurrence *keys* are unchanged; only byte offsets moved. Regenerated with `UPDATE_KERNEL_GOLDENS=1` and read line by
-  line.
+- `examples/profile-fixture.musa` and `examples/events/profile-fixture.event track`: the Design renames the profile rule
+  head `articulation` to `mark`, which is eight characters shorter, so every provenance span after the first rule
+  shifts. The occurrence *keys* are unchanged; only byte offsets moved. Regenerated with `UPDATE_EVENTS_GOLDENS=1` and
+  read line by line.
 - `crates/musa-compiler/tests/snapshots/profile_laws__profile_fixture.snap`: the same span shift, same fixture.
 - `crates/musa-compiler/tests/snapshots/notation_details_laws__tuplet_fixture.snap` and
   `crates/musa-notation/tests/snapshots/plan__tuplet_fixture.snap`: `Accent` became `Mark("accent")`. `Mark`'s *derived*

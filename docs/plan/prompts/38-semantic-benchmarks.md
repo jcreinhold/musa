@@ -59,7 +59,7 @@ heterogeneous multiset per piece plus projections; if that costs, it will cost i
 
 ### The baseline table
 
-`docs/rules/kernel/09-performance.md` (new) records: the harness, the exact command, the machine class, and a table of
+`docs/rules/events/09-performance.md` (new) records: the harness, the exact command, the machine class, and a table of
 P1–P4 × {small, large} with median and p95. Every prompt from 39 on re-runs the same command and appends its row, so the
 block carries its own regression history in one file. A prompt in this block is not done while its row is missing.
 
@@ -79,7 +79,7 @@ same commit.
 - `docs/plan/roadmap.md` §15: benchmark harness added to the development-dependency list (separate commit, first).
 - `crates/musa-compiler/benches/pipeline.rs`: P1–P4.
 - `crates/musa-compiler/Cargo.toml`: `[[bench]]`, dev-dependency.
-- `docs/rules/kernel/09-performance.md`: harness, command, machine class, baseline table, the 10% rule.
+- `docs/rules/events/09-performance.md`: harness, command, machine class, baseline table, the 10% rule.
 - `tests/fixtures/large-score.musa`: extended only if it lacks phase-2 constructs.
 
 ## Check
@@ -89,17 +89,17 @@ cargo bench -p musa-compiler
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-test -s docs/rules/kernel/09-performance.md
+test -s docs/rules/events/09-performance.md
 ```
 
 Commit the roadmap repair as `Add a benchmark harness to the dependency list`, then the rest as
-`Measure the semantic pipeline before the kernel migration`.
+`Measure the semantic pipeline before the event track migration`.
 
 ## Stop
 
 - **Change nothing that the benchmark measures.** If a benchmark reveals something slow, that is a finding for prompt 43
   or a new prompt, not work to do here. A baseline taken after an optimization is not a baseline.
-- No new public API on `Compilation`, `ScoreSnapshot`, or the kernel.
+- No new public API on `Compilation`, `ScoreSnapshot`, or the event track.
 - No CI wiring, no performance dashboards, no historical tracking beyond the checked-in table.
 - No UI-side (Playwright) budget work; B1/B2's end-to-end harness already exists and is prompt 22/26's.
 

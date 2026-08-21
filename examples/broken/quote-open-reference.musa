@@ -1,6 +1,6 @@
 // A quote is closed: the names it uses are the names it binds, and `${...}` is
 // the one way material from outside gets in. Writing the host's binding by name
-// reads as a kernel reference nothing bound, which is a free name — the piece's
+// reads as an event track reference nothing bound, which is a free name — the piece's
 // `theme` is not in scope inside the term, and never was.
 piece "Quote Open Reference" {
     let theme: EventTrack<WrittenTime> = music {
@@ -8,7 +8,7 @@ piece "Quote Open Reference" {
         d4/4
     };
 
-    let assembled: EventTrack<WrittenTime> = kernel EventTrack[WrittenTime, ScoreFact] {
+    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
         together {
             theme;
             shift by 1/2 theme;

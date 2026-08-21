@@ -338,14 +338,14 @@ fn indexed(name: &'static str, index: &'static str) -> Base {
 /// its owner guarantees that its hidden representation contains no closure and
 /// supplies the exact encoding", and this crate is that owner: every domain
 /// spelled with this is a spelling and a number, is what a `ScoreFact` already
-/// carries across the kernel boundary, and is what `12-payload-admission.md`
+/// carries across the event track boundary, and is what `12-payload-admission.md`
 /// admits. The guarantee is written at the registration rather than in a second
 /// table, so a base type added without it is refused wherever storability is
 /// required — which is §1.2's own safe direction.
 ///
 /// What is *not* spelled with it is as much of the statement: the phase-local
 /// types of §5.9 (`Syntax`, `Cat`, `TokenKind`, `Delimiter`, `NodePath`,
-/// `BindingPath`), the two quote bodies held whole (`Template`, `KernelTerm`),
+/// `BindingPath`), the two quote bodies held whole (`Template`, `EventsTerm`),
 /// and `Coordinate`, which is an index nothing stores. A step tag is not
 /// storable either, and could not be: §2 gives it no values.
 fn storable(name: &'static str) -> Base {
@@ -408,10 +408,10 @@ fn bases() -> Vec<Base> {
         // §5.7's event track, indexed by the same coordinate for the same
         // reason. Inert by D1's test rather than by convenience: an
         // `EventTrack` is normalized, carries a versioned exact identity
-        // (`../../rules/kernel/05-normalization.md`), and is taken apart by
+        // (`../../rules/events/05-normalization.md`), and is taken apart by
         // nothing the source language can write — every operation over it is
         // one of the eight compiler-owned builtins in [`track`]. A *declared*
-        // family of tracks would have to expose constructors the kernel's
+        // family of tracks would have to expose constructors the event track's
         // normal form does not admit, which is the opposite of what a track's
         // identity is for.
         //
@@ -465,7 +465,7 @@ fn bases() -> Vec<Base> {
         // apart by a program, and each carries a spelling and a reading this
         // compiler owns — a `NotatedDuration` holds the pieces a tie is written
         // with, a `ChordSymbol` holds a parsed analysis, a `Progress` is a
-        // kernel curve. They are here rather than in `Fact`'s own cases because
+        // events curve. They are here rather than in `Fact`'s own cases because
         // D1's test is inertness and not size: a case that spelled a
         // `NotatedDuration` out of a `Ratio` and a `Text` would let a program
         // build one whose spelling and value disagree.
@@ -508,13 +508,13 @@ fn bases() -> Vec<Base> {
         // a quote's body something a program could match on, and matching on it
         // is reading provenance, which §4's second rule forbids.
         plain("Template"),
-        // A kernel quote's term, held whole, for exactly [`plain("Template")`]'s
+        // An event track quote's term, held whole, for exactly [`plain("Template")`]'s
         // reason one stage down: `01-surface.md` §7 gives it no eliminator and
         // no spelling beyond the form that writes it, and two of them agree
-        // when the terms do. What a *declared* family of kernel terms would buy
+        // when the terms do. What a *declared* family of event-track terms would buy
         // is a program that could match on the assembly a composer wrote by
         // hand, which is reading provenance by another route.
-        plain("KernelTerm"),
+        plain("EventsTerm"),
     ]
     .into_iter()
     // The step tags this build's units count in, which are types with no
@@ -619,15 +619,15 @@ pub(crate) fn template_literal(template: crate::quote::Template, quotation: u32)
     literal(plain_type("Template"), rules::Quotation { template, quotation })
 }
 
-/// The literal one kernel quote is written as, at base type `KernelTerm`.
+/// The literal one events quote is written as, at base type `EventsTerm`.
 ///
 /// The hole names ride with the term because they are what `spliced` binds: the
 /// material arrives as a list, and the *i*th member is bound to the *i*th name.
 /// Recovering them from the term instead would mean searching it for names this
 /// compiler minted, which is the same fact stored twice and one place for the
 /// two to disagree.
-pub(crate) fn kernel_literal(term: track::Quoted, holes: Vec<String>) -> Literal {
-    literal(plain_type("KernelTerm"), track::Assembly { term, holes })
+pub(crate) fn events_literal(term: track::Quoted, holes: Vec<String>) -> Literal {
+    literal(plain_type("EventsTerm"), track::Assembly { term, holes })
 }
 
 /// The literal one token kind is written as, at base type `TokenKind`.

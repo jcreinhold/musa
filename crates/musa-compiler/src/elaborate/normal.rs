@@ -9,13 +9,13 @@ use super::place::{instantiate, placed, track_or_empty};
 use super::score::{meter_of, stated};
 use crate::compile::SourceDocument;
 use crate::resolve::{self, Resolver};
-use musa_kernel::WrittenTime;
+use musa_events::WrittenTime;
 use musa_score::score::ScoreSnapshot;
 use musa_syntax::ast::AstNode as _;
 use musa_syntax::ast::PieceDecl;
 
 /// The normalized human-display text of a source's piece timeline, for golden
-/// snapshots (docs/rules/kernel/05 N5). Semantic hashing uses separate framed N6
+/// snapshots (docs/rules/events/05 N5). Semantic hashing uses separate framed N6
 /// bytes. `None` when the
 /// source does not elaborate cleanly.
 ///
@@ -23,32 +23,32 @@ use musa_syntax::ast::PieceDecl;
 /// one temporal object, and the normal form is the text of that object —
 /// key, meter, form markers and chord symbols included.
 #[doc(hidden)]
-pub fn kernel_normal_form(
+pub fn events_normal_form(
     source: &SourceDocument,
     realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<String> {
     let (_, term, _) = piece_term(source, realization, imports)?;
-    Some(musa_kernel::evaluate_marked(term, instantiate).to_string())
+    Some(musa_events::evaluate_marked(term, instantiate).to_string())
 }
 
-/// The piece as a **term** (docs/rules/kernel/10): its name, and an `over` of one
+/// The piece as a **term** (docs/rules/events/10): its name, and an `over` of one
 /// literal per voice plus one for the piece-wide context.
 ///
 /// One literal per voice and not one for the whole, because that shape is what
 /// the interchange spelling is *for*: a reader of the text can see which lane a
 /// fact belongs to without taking a scope apart, and the normalized spelling
-/// ([`crate::kernel_normalized_text`]) is the one that collapses it. The sharing
+/// ([`crate::events_normalized_text`]) is the one that collapses it. The sharing
 /// the replaced elaborator wrapped around the `over` is gone with it: a motif
 /// called from two voices is one definition of the *document* now, and its body
-/// is shared where documents share things rather than in the kernel text.
+/// is shared where documents share things rather than in the events text.
 pub(crate) fn piece_term(
     source: &SourceDocument,
     realization: &musa_score::Realization,
     imports: &crate::imports::ImportSources,
 ) -> Option<(
     String,
-    musa_kernel::Term<WrittenTime, ScoreFact>,
+    musa_events::Term<WrittenTime, ScoreFact>,
     Vec<musa_score::DecisionRecord>,
 )> {
     let document = musa_syntax::parse(source.text());
@@ -98,19 +98,19 @@ pub(crate) fn piece_term(
             // — a `key` written mid-voice is the piece's from there — and the
             // piece layer below carries exactly those (`spoken_of` splits by
             // the same test). Printed in both, one fact would hash as two on
-            // reparse: `a_piece_and_its_kernel_printing_have_one_meaning`.
+            // reparse: `a_piece_and_its_events_printing_have_one_meaning`.
             let own = lane
                 .occurrences()
                 .iter()
                 .filter(|occurrence| occurrence.payload().scope.voice() == Some((part.id, voice.id)))
                 .cloned()
                 .collect();
-            parts.push(musa_kernel::Term::literal(track_or_empty(lane.duration(), own)));
+            parts.push(musa_events::Term::literal(track_or_empty(lane.duration(), own)));
         }
     }
     let marked = placed(&mut resolver, &score, &bars, sounding.duration());
-    parts.push(musa_kernel::Term::literal(spoken_of(&sounding, &marked)));
-    let term = musa_kernel::Term::together(parts).ok()?;
+    parts.push(musa_events::Term::literal(spoken_of(&sounding, &marked)));
+    let term = musa_events::Term::together(parts).ok()?;
     term.check().ok()?;
     Some((piece.name().unwrap_or_default(), term, resolver.decisions))
 }

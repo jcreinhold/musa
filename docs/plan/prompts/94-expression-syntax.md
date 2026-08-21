@@ -78,7 +78,7 @@ Musa change as `Add the elaboration expression grammar`.
 ## Stop
 
 - No type checking or evaluation — prompt 95.
-- No pitch arithmetic, scale, chord, template/module, assertion, or kernel-quotation syntax; their owning prompts add
+- No pitch arithmetic, scale, chord, template/module, assertion, or events-quotation syntax; their owning prompts add
   the smallest additional grammar.
 - No anonymous lambda syntax unless `01-surface.md` chose and justified it; named functions already support the block.
 - No independent TextMate or tree-sitter vocabulary list.

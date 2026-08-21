@@ -25,8 +25,8 @@ export type Piece =
   | "open-form-again"
   /** Terms declared in bundled modules, used in a piece (prompt 124). */
   | "stdlib-basics"
-  /** An expansion path that runs through a kernel quote. */
-  | "kernel-splice"
+  /** An expansion path that runs through an event track quote. */
+  | "events-splice"
   /** A claim the compiler refused: a piece that does not compile. */
   | "refused-claim";
 

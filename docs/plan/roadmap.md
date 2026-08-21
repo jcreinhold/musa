@@ -764,9 +764,9 @@ use head;                          // plays it again, anywhere later
 ```
 
 A bar means nothing. Its contents elaborate to exactly what they would elaborate to without it, and there is no bar in
-the kernel, in `ScoreSnapshot`, or in the notation plan — §12.1 already computes where the barlines fall. What the bar
-buys is the assertion: a voice is a flat stream of durations, so a dropped `1/4` in the fourth bar is not an error, it
-is every later barline in the part being one quarter out of place, silently. The bar is the composer stating the
+the event track, in `ScoreSnapshot`, or in the notation plan — §12.1 already computes where the barlines fall. What the
+bar buys is the assertion: a voice is a flat stream of durations, so a dropped `1/4` in the fourth bar is not an error,
+it is every later barline in the part being one quarter out of place, silently. The bar is the composer stating the
 intention the compiler can then check, and it is the first construct in the language that can be wrong in a way the
 compiler can point at.
 
@@ -1238,15 +1238,15 @@ pub fn compile(
 ) -> Compilation;
 ```
 
-> **The event-track core (`docs/rules/kernel/`):** the semantic core beneath this pipeline is the finite event-track
+> **The event-track core (`docs/rules/events/`):** the semantic core beneath this pipeline is the finite event-track
 > calculus — the "high-level compositional representation" and "motif expansion" stages above are the elaboration/HIR
 > that evaluates into core event tracks, and the normalized `ScoreSnapshot` is an adapter projection of them. Where this
-> roadmap and `docs/rules/kernel/` disagree on semantic architecture, the kernel wins; everything else in this document
-> stands.
+> roadmap and `docs/rules/events/` disagree on semantic architecture, the event track wins; everything else in this
+> document stands.
 
 > **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
 > calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music` type
-> this line used to name). They still terminate in one closed `Term[ScoreFact]` before kernel evaluation. Prompts
+> this line used to name). They still terminate in one closed `Term[ScoreFact]` before event track evaluation. Prompts
 > 154–169 refine the downstream path to exact gestures and typed instrument preparation. No intermediate type named by
 > that candidate is thereby a public crate API.
 
@@ -1947,13 +1947,13 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-leaves    musa-syntax        musa-calculus        musa-kernel
+leaves    musa-syntax        musa-calculus        musa-events
 
 values                      musa-score
-                            ← language, kernel
+                            ← language, event track
 
 passes                     musa-compiler
-                     ← calculus, kernel, language, score
+                     ← calculus, event track, language, score
 
 outputs         musa-notation                  musa-dsp
                  ← score                  ← score, compiler
@@ -1976,7 +1976,7 @@ In particular:
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
 - the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
-- the temporal kernel is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
+- the event-track is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
@@ -2254,7 +2254,7 @@ The CLI must call `musa-project` or other public facades. It should not recreate
 
 It is also where musa's logs are turned on. `musa -v check …` raises the level for this invocation; `MUSA_LOG` — the
 same syntax as `RUST_LOG`, but naming only this program — replaces the filter outright. Both write to stderr, always,
-because `musa render -o -` and `musa kernel` write their payloads to stdout and a log line there is a corrupted file.
+because `musa render -o -` and `musa events` write their payloads to stdout and a log line there is a corrupted file.
 
 The package is named `musa`, not `musa-cli`, because the package name is the binary name and the binary name is the word
 a person types. `cargo install musa` then `musa check piece.musa` — one word throughout. It is the one crate in the
@@ -2331,7 +2331,7 @@ Its stdout is the JSON-RPC transport and carries nothing else.
 ## 15.12 `musa-calculus`
 
 The dependently typed core the source language elaborates into, and a **leaf**: it depends on no other Musa crate and
-knows nothing about pitch, time, notation, or audio. It sits below `musa-compiler` the way `musa-kernel` does, and for
+knows nothing about pitch, time, notation, or audio. It sits below `musa-compiler` the way `musa-events` does, and for
 the same reason — the thing that has to be provably right is smaller than the thing that has to be convenient, and it is
 easier to keep it that way if it cannot reach the rest of the workspace.
 
@@ -2407,11 +2407,11 @@ callers get `Term` back through `quote`. Prompt 133 states the argument in full,
 arrives with the first caller that wants to inspect a normal form.
 
 
-## 15.13 `musa-kernel`
+## 15.13 `musa-events`
 
-The finite temporal kernel a checked program elaborates into, and the workspace's other **leaf**: it depends on no other
+The finite event-track a checked program elaborates into, and the workspace's other **leaf**: it depends on no other
 Musa crate, and it knows nothing about pitch, notation, instruments, or audio. The division with §15.12 is that
-`musa-calculus` is the calculus a term is *checked* in, and `musa-kernel` is the denotation a checked term *means* — an
+`musa-calculus` is the calculus a term is *checked* in, and `musa-events` is the denotation a checked term *means* — an
 ambient duration `d ∈ ℚ≥0` and a finite multiset of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d`. Both sit below
 `musa-compiler` for the same reason: the part that has to be provably right is smaller than the part that has to be
 convenient, and it stays that way only if it cannot reach the rest of the workspace.
@@ -2431,7 +2431,7 @@ num-rational
 thiserror
 ```
 
-Shorter even than §15.12's, and for a stricter reason: `docs/rules/kernel/` names what may never enter — musical
+Shorter even than §15.12's, and for a stricter reason: `docs/rules/events/` names what may never enter — musical
 semantics, since payloads are opaque; provenance interpretation, since provenance rides inside payloads; floats for
 symbolic time; an object that represents silence, since uncovered time is silent by absence; and anything from the sound
 layer.
@@ -2440,13 +2440,13 @@ Public interface:
 
 ```rust
 pub fn empty<C: Coordinate, A>(duration: Duration<C>) -> EventTrack<C, A>;
-pub fn event<C: Coordinate, A>(duration: Duration<C>, payload: A) -> Result<EventTrack<C, A>, KernelError>;
+pub fn event<C: Coordinate, A>(duration: Duration<C>, payload: A) -> Result<EventTrack<C, A>, EventsError>;
 pub fn follow<C: Coordinate, A>(parts: Vec<EventTrack<C, A>>) -> EventTrack<C, A>;
 pub fn together<C: Coordinate, A>(parts: Vec<EventTrack<C, A>>) -> EventTrack<C, A>;
 ```
 
 The basis is six operations and stays six. A surface convenience that cannot be elaborated from them is a change to the
-elaboration specification, never a seventh constructor here — `docs/rules/kernel/00-purpose.md` §26 owns the facade, and
+elaboration specification, never a seventh constructor here — `docs/rules/events/00-purpose.md` §26 owns the facade, and
 the code-map's implementor reference §2 states the same rule from the compiler's side.
 
 
@@ -2454,7 +2454,7 @@ the code-map's implementor reference §2 states the same rule from the compiler'
 
 The musical values a compilation produces, and the vocabulary they are written in. It sits below `musa-compiler` for the
 reason the other two lower crates do — the part that has to be *right* is smaller than the part that has to be
-convenient — but on a different axis: `musa-calculus` and `musa-kernel` are below the compiler because they are
+convenient — but on a different axis: `musa-calculus` and `musa-events` are below the compiler because they are
 *formal*, and this crate is below it because it holds the **answers** rather than the work of reaching them.
 
 The layering was true before the boundary existed. A closure over every `crate::` reference in `musa-compiler` found
@@ -2479,7 +2479,7 @@ Dependencies:
 
 ```text
 indexmap
-musa-kernel
+musa-events
 musa-syntax
 num-rational
 serde

@@ -58,7 +58,7 @@
 mod laws;
 
 use musa_calculus::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
-use musa_kernel::{Occurrence, Position, Span};
+use musa_events::{Occurrence, Position, Span};
 use num_rational::Ratio;
 
 use super::rules::{halves, items, nat, read, reduced, refused};
@@ -83,7 +83,7 @@ pub(super) const BEYOND: [&str; 5] = ["sounded", "follow", "tied", "joined", "no
 /// [`super::Domain`] asks for `Display`, and nine of `Fact`'s payload types have
 /// none: a `Clef`, a `Ramp`, a `Progress` are values the language reads and
 /// prints through a backend rather than through a `Display`, and
-/// `musa_kernel::Progress` could not be given one here in any case. The
+/// `musa_events::Progress` could not be given one here in any case. The
 /// precedent is [`Provenance`], one module over, and the choice this makes is
 /// the honest one — a payload with no spelling shows as its `Debug`, rather than
 /// acquiring a rendering nobody asked for in front of every formatter in the
@@ -193,7 +193,7 @@ const NOTATED: Rule = |arguments| {
 /// literal at a base type carries its own, so a `Definition` here would be a
 /// type the value already states, written twice.
 pub(crate) fn nothing() -> Literal {
-    let empty: VoiceTrack = musa_kernel::empty(musa_kernel::Duration::ZERO);
+    let empty: VoiceTrack = musa_events::empty(musa_events::Duration::ZERO);
     literal(track_type(), empty)
 }
 
@@ -223,7 +223,7 @@ const SOUNDED: Rule = |arguments| {
         origin: origin.clone(),
         tied: false,
     };
-    let Ok(sounded) = musa_kernel::track(span.duration(), vec![Occurrence::new(span, fact)]) else {
+    let Ok(sounded) = musa_events::track(span.duration(), vec![Occurrence::new(span, fact)]) else {
         return Some(refused("the fact does not fit the length it was given"));
     };
     reduced(built(sounded))
@@ -233,14 +233,14 @@ const SOUNDED: Rule = |arguments| {
 /// both.
 ///
 /// Total, which is why it answers a track rather than a `Result`:
-/// `musa_kernel::follow` translates every occurrence of `next` by `first`'s
+/// `musa_events::follow` translates every occurrence of `next` by `first`'s
 /// duration and adds the two durations, and neither step has a failing case —
-/// `../../rules/kernel/04-algebraic-laws.md` proves the associativity and the
+/// `../../rules/events/04-algebraic-laws.md` proves the associativity and the
 /// duration additivity this rule inherits rather than restates.
 const FOLLOW: Rule = |arguments| {
     let first = track_of(arguments.first()?)?;
     let next = track_of(arguments.get(1)?)?;
-    reduced(built(musa_kernel::follow(vec![first, next])))
+    reduced(built(musa_events::follow(vec![first, next])))
 };
 
 /// `tied(t)` — every fact of `t` continues into whatever follows it.
@@ -264,7 +264,7 @@ const TIED: Rule = |arguments| {
             Occurrence::new(occurrence.span(), fact)
         })
         .collect();
-    let Ok(marked) = musa_kernel::track(track.duration(), occurrences) else {
+    let Ok(marked) = musa_events::track(track.duration(), occurrences) else {
         return Some(refused("a tie changes no time and this one did"));
     };
     reduced(built(marked))
@@ -309,7 +309,7 @@ const JOINED: Rule = |arguments| {
     {
         return Some(refused("this tie has nothing to tie to"));
     }
-    let Ok(joined) = musa_kernel::track(track.duration(), merged.into_iter().flatten().collect()) else {
+    let Ok(joined) = musa_events::track(track.duration(), merged.into_iter().flatten().collect()) else {
         return Some(refused("a tied note reaches past the music it is written in"));
     };
     reduced(built(joined))
@@ -317,7 +317,7 @@ const JOINED: Rule = |arguments| {
 
 /// One occurrence of a written-time track, which is all three helpers below
 /// take and all any of them answers.
-type Written = Occurrence<musa_kernel::WrittenTime, ScoreFact>;
+type Written = Occurrence<musa_events::WrittenTime, ScoreFact>;
 
 /// The occurrences grouped into *statements*: one written note or rest, or the
 /// pitches of one chord, which share a span and an origin.
@@ -457,7 +457,7 @@ fn fact_of(datum: &Datum) -> Option<FactKind> {
         "Fact.Hairpin" => FactKind::Hairpin {
             grows: boolean(at(0)?)?,
             target: unwrapped::<DynamicMark>(at(1)?)?,
-            shape: unwrapped::<musa_kernel::Progress>(at(2)?)?,
+            shape: unwrapped::<musa_events::Progress>(at(2)?)?,
         },
         "Fact.Key" => {
             let key = read::<musa_score::Key>(at(0)?)?;

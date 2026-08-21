@@ -106,7 +106,7 @@ either.
 | 2 | one effect: a note reaching sound | passes — `force` of a thunk; D-2 |
 | 3 | composition: two patches in series | passes — value-level composition, D-5 |
 | 4 | dependency across a morphism: a gesture curve read by a filter | passes — the curve is a value payload (L24), read at force time |
-| 5 | hardest: a live-coded pattern that both sounds continuously and has notated extent | **fails** — this is precisely `docs/rules/kernel/08-open-questions.md` Q1, and P has no answer: the object is negative (it sounds forever) and positive (it has an extent), and CBPV forbids that. |
+| 5 | hardest: a live-coded pattern that both sounds continuously and has notated extent | **fails** — this is precisely `docs/rules/events/08-open-questions.md` Q1, and P has no answer: the object is negative (it sounds forever) and positive (it has an extent), and CBPV forbids that. |
 
 Case 5 failing is the informative one and it is *the same* failure `docs/core-boundary.md` §5 names as the trigger that
 reopens the signal question. Two independent framings agreeing on where the boundary breaks is evidence the boundary is

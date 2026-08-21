@@ -17,9 +17,9 @@ musa render <file.musa> --to <target>   mei | lilypond | musicxml | midi | wav
     --mode score | performance           for --to midi (default: score)
     -o <path>                            where to write it (`-` for stdout)
 musa play <file.musa> [--loop]          live playback through the audio engine
-musa kernel <file.musa> [--normalized]  print the piece as kernel interchange text
-musa kernel --check <file.musa.kernel>  parse, check, and evaluate kernel text
---seed <n>  on check, render and kernel: which performance to compile
+musa events <file.musa> [--normalized]  print the piece as events interchange text
+musa events --check <file.musa.events>  parse, check, and evaluate events text
+--seed <n>  on check, render and event track: which performance to compile
 ```
 
 ## Notes
@@ -54,7 +54,7 @@ because its shape is a specification, and a script that names it one file at a t
 the reason it is on the list. `-f` (or `--force`) formats it anyway, the way `git add -f` stages an ignored path: the
 override exists, and using it is a thing you did on purpose.
 - `--seed` selects a performance reading when a piece carries more than one. It applies to `check`, `render`, and
-  `kernel` — the three commands that compile.
+  `events` — the three commands that compile.
 - Exit codes follow the convention: success is silent, failure prints diagnostics to stderr.
 
 ## Make targets

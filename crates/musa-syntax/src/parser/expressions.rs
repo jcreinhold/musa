@@ -146,7 +146,7 @@ impl Parser<'_> {
             Some(SyntaxKind::MatchKw) => self.match_expr(),
             Some(SyntaxKind::IfKw) => self.if_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
-            Some(SyntaxKind::KernelKw) => self.kernel_quote(),
+            Some(SyntaxKind::EventsKw) => self.events_quote(),
             Some(SyntaxKind::QuoteKw) => self.quote_expr(),
             Some(SyntaxKind::Dollar) if self.quote_depth > 0 => self.splice(),
             Some(SyntaxKind::ScaleKw) => self.scale_expr(),

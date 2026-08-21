@@ -211,7 +211,7 @@ const SHARED_ITERATIONS: usize = BARS;
 ///
 /// So this is a second fixture rather than an edit to the first. Growing
 /// `large-score.musa` would move every P1–P5 number and make the forty rows
-/// already in `docs/rules/kernel/09-performance.md` non-comparable — the tension
+/// already in `docs/rules/events/09-performance.md` non-comparable — the tension
 /// recorded there and deliberately left alone. Two fixtures, both
 /// measured, and the pair is the evidence: the difference between them is the
 /// difference sharing makes.
@@ -227,7 +227,7 @@ fn shared_score() -> String {
 ",
         "//
 ",
-        "// The shared-structure workload for docs/rules/kernel/09-performance.md: the
+        "// The shared-structure workload for docs/rules/events/09-performance.md: the
 ",
         "// same 100 bars in four parts as large-score.musa, written as one motif
 ",

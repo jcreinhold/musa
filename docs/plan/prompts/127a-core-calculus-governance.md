@@ -11,7 +11,7 @@ phase: 3
 ## Task
 
 Amend Musa's governing and directive documents before changing code. Replace the old account—contextual `Music` above a
-temporal kernel and a separate process graph below it—with one total source language that can construct two finite core
+event-track and a separate process graph below it—with one total source language that can construct two finite core
 values: exact event tracks and deterministic step machines. Keep notation and audio distinct, and make their checked
 scheduler the explicit connection.
 
@@ -19,7 +19,7 @@ scheduler the explicit connection.
 
 - `docs/notes/research/core-calculus/` in order, especially `05-selected-calculus.md`, `06-proof-outline.md`, and
   `17-final-review.md`.
-- `docs/rules/{constitution,obligations}.md`, all of `docs/rules/kernel/`, `docs/rules/across-stages/`, and
+- `docs/rules/{constitution,obligations}.md`, all of `docs/rules/events/`, `docs/rules/across-stages/`, and
   `docs/rules/language/`.
 - `docs/plan/{roadmap.md,language-design-closure.md}`, `docs/plan/code-map/`, and prompts 92–127.
 - The amendment procedure in `docs/rules/README.md`.
@@ -44,10 +44,10 @@ language. Keep the true part: an audio history is not a finite event track or so
 named conversions, exact identity, derivation records, optional musical theories, unequal-duration overlay, and the
 real-time rules.
 
-Rewrite the language, kernel, across-stage, roadmap, and code-map documents to use the same names and stage boundaries.
-Delete superseded governing prose; keep its reasoning only under `docs/notes/research/`. Record an explicit clean-break
-ledger naming source syntax, Rust APIs, fixtures, and serialized forms that later prompts will delete rather than
-support through aliases.
+Rewrite the language, event track, across-stage, roadmap, and code-map documents to use the same names and stage
+boundaries. Delete superseded governing prose; keep its reasoning only under `docs/notes/research/`. Record an explicit
+clean-break ledger naming source syntax, Rust APIs, fixtures, and serialized forms that later prompts will delete rather
+than support through aliases.
 
 ## Target
 

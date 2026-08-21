@@ -419,7 +419,7 @@ impl Lowering<'_> {
                         // shape, so every hairpin is a straight line — the same
                         // value the old checker put in the timeline, put in the
                         // term instead of invented downstream.
-                        payload(origin, "Progress", musa_kernel::Progress::linear()),
+                        payload(origin, "Progress", musa_events::Progress::linear()),
                     ],
                 );
                 self.region(node, origin, reading, fact)

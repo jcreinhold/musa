@@ -16,13 +16,13 @@ phase: 4
 Audit the current language produced by prompts 92–171, including the clean replacement in 127a–127e and 150–153. Close
 every law, theory, provenance, tooling, documentation, performance, sound, asset, package, and real-time obligation, and
 graduate `docs/rules/language/` from candidate to governing. This prompt adds no feature. It demonstrates that one
-well-typed source semantics reaches the kernel, renderers, performance gestures, instruments, audio, project, editors,
-and desktop without a competing evaluator or undocumented exception.
+well-typed source semantics reaches the event track, renderers, performance gestures, instruments, audio, project,
+editors, and desktop without a competing evaluator or undocumented exception.
 
 ## Read
 
 - Prompt 92's acceptance matrix, the prompt-127a clean-break ledger, and all completion/repair notes through prompt 171.
-- All of `docs/rules/language/`, `docs/rules/kernel/`, `docs/rules/desktop/`, `docs/rules/`,
+- All of `docs/rules/language/`, `docs/rules/events/`, `docs/rules/desktop/`, `docs/rules/`,
   `docs/rules/across-stages/`, the roadmap, AGENTS.md, and the prompt README. The reasoning behind the language and the
   corrections applied to it is `docs/notes/research/60-language-decision-record.md`; it is history, and is read for
   context rather than audited against.
@@ -49,7 +49,7 @@ matrix where possible; review every manual bridge. At minimum it must cover:
   multiplicity, and exact cached/uncached arguments where a cache actually exists;
 - written pitch/interval action, scales/degrees/context, chord class/voicing, pc12/set/row operations, transformations,
   tonal construction, schemas, assertions, tonal analysis, and voice-leading/counterpoint profiles;
-- `.musa.kernel` document inclusion and local typed quote/antiquote, including hygiene, unknown payloads, source maps,
+- `.musa.events` document inclusion and local typed quote/antiquote, including hygiene, unknown payloads, source maps,
   and the context-neutral boundary;
 - exact performance gestures/control curves, checked scheduling, tempo/tuning realization, typed instrument machines,
   part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 171 row;
@@ -79,9 +79,9 @@ Five rows exist because these boundaries are cheap to hold and expensive to reco
 - **Notation adapters stay before inference and type blind.** No adapter or macro reads an inferred type, runs an audio
   machine, or creates a second checker. Expanded terms retain exact source maps.
 - **Every normative refusal has provenance.** `docs/rules/language/02-core-calculus.md` §7 and
-  `docs/rules/kernel/10-term-calculus.md` §"Provenance of the sharing discipline" cite the literature the design's
+  `docs/rules/events/10-term-calculus.md` §"Provenance of the sharing discipline" cite the literature the design's
   refusals are priced against. Audit that every "deliberately absent" item across `docs/rules/language/` and
-  `docs/rules/kernel/` either carries a citation or a musical falsifier. The project cites Open Music Theory by filename
+  `docs/rules/events/` either carries a citation or a musical falsifier. The project cites Open Music Theory by filename
   for every claim about music; a claim about programming languages is held to the same standard or it is an opinion.
 
 Run the representative corpus through source parse/format/reparse, adapter expansion, inference/evaluation, event-track
@@ -91,9 +91,9 @@ identity where promised, otherwise documented semantic normal-form or observatio
 wording with both category-correct technical terminology and a musician-comprehensible first sentence.
 
 Search for and remove stale alternate paths — `docs/plan/clean-break-ledger.md` is the list, and a row that still
-resolves in the workspace is a finding: contextual `Music`, partial/default calls, `Timeline`, old kernel spellings,
-public HIR/evaluator types, `StudioGraphSpec`, `compile_graph`, global note streams, raw public DSP parameter ids,
-block-defined feedback, unchecked asset paths, handwritten editor vocabularies, mutable expanded ASTs, and
+resolves in the workspace is a finding: contextual `Music`, partial/default calls, `Timeline`, old event track
+spellings, public HIR/evaluator types, `StudioGraphSpec`, `compile_graph`, global note streams, raw public DSP parameter
+ids, block-defined feedback, unchecked asset paths, handwritten editor vocabularies, mutable expanded ASTs, and
 source-independent widget state. Removed forms stay removed; do not restore them for compatibility.
 
 Graduation is conditional. If any row lacks implementation or evidence, leave `docs/rules/language/` candidate, repair

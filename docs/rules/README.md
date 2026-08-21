@@ -10,7 +10,7 @@ The order below is the precedence order: a page is bound by everything above it 
 | [`constitution.md`](constitution.md) | The few decisions every part of musa must follow |
 | [`obligations.md`](obligations.md) | The rules that fall out of those decisions |
 | [`across-stages/`](across-stages/README.md) | The rules no single stage owns: what data exists, when it is valid, how one stage produces the next, what equality means |
-| [`kernel/`](kernel/00-purpose.md) | The finite event-track core — exact tagged time, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization, the backend contract |
+| [`events/`](events/00-purpose.md) | The finite event-track core — exact tagged time, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization, the backend contract |
 | [`desktop/`](desktop/README.md) | The desktop interface: visual language, engraving quality, interaction, states, performance budgets |
 | [`style-guide.md`](style-guide.md) | `.musa` naming and spelling. Its machine-checkable subset is the lint pass, which cites this file by section number in its diagnostics |
 | [`language/`](language/README.md) | The one total source language that builds both core values. **Candidate**, not yet binding |
@@ -64,8 +64,8 @@ occurrence's *position* is a different quantity with a different algebra. It cha
 decision is stated in; its argument, its refused alternatives, and its answers to the six requirements above are in
 [`../notes/research/core-calculus/18-vocabulary-amendment.md`](../notes/research/core-calculus/18-vocabulary-amendment.md).
 
-Before it, prompt 127a replaced the account of a contextual `Music` value above a temporal kernel with a separate
-process graph below it. Its reason, refuted alternatives, and proof outline are in
+Before it, prompt 127a replaced the account of a contextual `Music` value above an event-track with a separate process
+graph below it. Its reason, refuted alternatives, and proof outline are in
 [`../notes/research/core-calculus/`](../notes/research/core-calculus/README.md); what it obliges later prompts to delete
 rather than alias is [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md).
 

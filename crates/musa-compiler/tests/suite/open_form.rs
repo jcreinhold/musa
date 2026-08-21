@@ -1,5 +1,5 @@
 //! Written freedom that is not a count: mobile form, free duration, and an
-//! improvised frame (`docs/rules/kernel/11-realization.md`).
+//! improvised frame (`docs/rules/events/11-realization.md`).
 //!
 //! Each of the three is checked twice — once for what it *sounds*, because a
 //! freedom that produces no music is a comment, and once for what it *says*,

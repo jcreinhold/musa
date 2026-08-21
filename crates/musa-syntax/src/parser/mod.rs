@@ -18,7 +18,7 @@
 //! - [`expressions`] — the expression grammar: precedence, atoms, records
 //! - [`pitches`] — written-pitch operators, scale and key expressions
 //! - [`patterns`] — match patterns and constructor bindings
-//! - [`quotation`] — quotes, splices, and kernel holes
+//! - [`quotation`] — quotes, splices, and events holes
 //! - [`notes`] — note items: notes, rests, chords, stacks, ties, durations
 //! - [`voice`] — voice-item statements beyond notes
 //! - [`score`] — score scaffolding: parts, voices, motif/fragment

@@ -38,7 +38,7 @@ mod parser;
 mod syntax_kind;
 mod types;
 
-pub use crate::document::{DocumentAlternative, KERNEL_MARKER, alternative};
+pub use crate::document::{DocumentAlternative, EVENTS_MARKER, alternative};
 pub use crate::edits::{
     Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
     spell_duration,

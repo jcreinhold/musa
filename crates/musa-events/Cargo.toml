@@ -1,0 +1,17 @@
+[package]
+description = "Finite temporal events: exact ambient time, typed occurrences, timeline/sequence/overlay"
+edition.workspace = true
+license.workspace = true
+name = "musa-events"
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+num-rational = "0.4"
+thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"

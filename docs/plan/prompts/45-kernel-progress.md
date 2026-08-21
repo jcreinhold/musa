@@ -1,6 +1,6 @@
 ---
 id: 45
-slug: kernel-progress
+slug: events-progress
 status: done
 depends_on: [44]
 phase: 3
@@ -10,31 +10,31 @@ phase: 3
 
 ## Task
 
-A hairpin is the one musical fact the kernel cannot say. The timeline records *that* a crescendo spans this region;
+A hairpin is the one musical fact the event track cannot say. The timeline records *that* a crescendo spans this region;
 **how** it grows exists only inside `performance.rs`, as `struct Curve { target, step, last }`, invented during lowering
-and thrown away. Two consequences, and they are the reason this is a kernel prompt and not a performance one:
+and thrown away. Two consequences, and they are the reason this is an event track prompt and not a performance one:
 
-- The `.kernel` interchange artifact (prompt 48) cannot carry the shape, so two implementations reading the same file
-  produce different sound. That is not an implementation difference; it is a specification hole.
+- The `.event track` interchange artifact (prompt 48) cannot carry the shape, so two implementations reading the same
+  file produce different sound. That is not an implementation difference; it is a specification hole.
 - Every future continuous control — `gliss`, *rit.*, a filter sweep, a fader move — arrives with nowhere to live, and
   the pressure will be to invent a private curve for each. Four private curves is
-  `docs/rules/kernel/08-open-questions.md`'s Q4 going unanswered four times.
+  `docs/rules/events/08-open-questions.md`'s Q4 going unanswered four times.
 
-Answer Q4. Add one payload value type, `Progress`, and prove that it needs **no new kernel operation** and **no change
-to any existing law**.
+Answer Q4. Add one payload value type, `Progress`, and prove that it needs **no new event-track operation** and **no
+change to any existing law**.
 
 ## Read
 
-- `docs/rules/kernel/08-open-questions.md` Q4 (continuous controls — the open question this prompt closes), §12 (payload
+- `docs/rules/events/08-open-questions.md` Q4 (continuous controls — the open question this prompt closes), §12 (payload
   opacity), §13 (payload mapping is functorial), §14 (time scaling is external to the payload), §4 (exact rationals),
-  §22 (tempo is `Beat → Second` and never kernel material), §34 (the smallest complete semantic basis).
+  §22 (tempo is `Beat → Second` and never event track material), §34 (the smallest complete semantic basis).
 - `crates/musa-compiler/src/performance.rs` — `hairpin_curves` and its `Curve`. Note precisely what it interpolates
   over: `step / last`, an **event index**, not a time. That choice is deliberate (interpolating over notes makes the
   arrival independent of the rhythm) and this prompt must preserve it, not silently replace it.
-- `docs/rules/kernel/03-denotational-semantics.md` D5 (`scale`) and D7 (`map_payload`) — the two operations a
+- `docs/rules/events/03-denotational-semantics.md` D5 (`scale`) and D7 (`map_payload`) — the two operations a
   time-parameterized payload could plausibly break, and the reason the design below does not.
-- `docs/rules/kernel/04-algebraic-laws.md` L11–L15 (the functor laws).
-- Prompt 48 (`kernel-interop`) — the payload text form that must carry this.
+- `docs/rules/events/04-algebraic-laws.md` L11–L15 (the functor laws).
+- Prompt 48 (`events-interop`) — the payload text form that must carry this.
 - PoSD ch. 6 (define errors out of existence) — an ill-formed curve should be unrepresentable, not diagnosed.
 
 ## Design
@@ -62,21 +62,21 @@ impl Progress {
 
 ### Why normalized local time is the whole design
 
-Index the curve by `u ∈ [0, 1]` over the occurrence's own span rather than by absolute beats. Then **every kernel
+Index the curve by `u ∈ [0, 1]` over the occurrence's own span rather than by absolute beats. Then **every event track
 operation acts on the span and leaves the payload bytes identical**:
 
 - `scale r` multiplies the span; `u` is unchanged, so the curve is carried along automatically and correctly.
 - `sequence` translates; same.
 - `overlay` does not touch spans at all.
-- `map_payload` is still an arbitrary `A → B` and still functorial — the kernel never inspects a `Progress`.
+- `map_payload` is still an arbitrary `A → B` and still functorial — the event track never inspects a `Progress`.
 
 That is the property that makes this safe. An absolute-time curve would have to be rewritten by `scale` and `sequence`,
-which means the kernel would have to *look inside payloads* to transform them — precisely the §12 violation the design
-exists to avoid, and it would break L11–L15. State this as a theorem in `03-denotational-semantics.md` and test it: **a
-curve-bearing occurrence transforms by its span alone.**
+which means the event track would have to *look inside payloads* to transform them — precisely the §12 violation the
+design exists to avoid, and it would break L11–L15. State this as a theorem in `03-denotational-semantics.md` and test
+it: **a curve-bearing occurrence transforms by its span alone.**
 
-So Q4's answer is that the kernel needed a *value*, not an *operation*. Record that in §32 and in
-`docs/rules/kernel/08-open-questions.md`: it is the third piece of §34 evidence, alongside prompts 39 and 44, that the
+So Q4's answer is that the event track needed a *value*, not an *operation*. Record that in §32 and in
+`docs/rules/events/08-open-questions.md`: it is the third piece of §34 evidence, alongside prompts 39 and 44, that the
 operation set is complete.
 
 ### What `Progress` deliberately cannot express
@@ -91,7 +91,7 @@ operation set is complete.
 
 Each of these is a boundary that stays cheap only if it is stated. Put them in the type's doc comment, not just here.
 
-### Shape is in the kernel; sampling policy is not
+### Shape is in the event track; sampling policy is not
 
 This is the distinction that keeps `performance.rs` honest and keeps every golden byte-identical.
 
@@ -105,51 +105,51 @@ instead. **No WAV, MIDI, or notation golden changes in this prompt.** Document t
 module docs with the rhythm-independence reason, so the next reader knows it is a decision rather than an accident, and
 note in `07-backend-contract.md` that a conforming consumer must honour the shape and may choose its own sampling.
 
-### Where it lives, and the argument for the kernel over the compiler
+### Where it lives, and the argument for the event track over the compiler
 
 `Progress` could be a compiler-side type — prompt 48's payload grammar is compiler-supplied, so it would serialize
-either way. It belongs in `musa-kernel` for one reason: **the invariance theorem above is a statement about the kernel's
-operations**, and it must be stated and property-tested where those operations are. A payload type whose correctness
-argument is "the kernel's operations leave it alone" cannot have its proof live in a crate that does not contain the
-kernel's operations.
+either way. It belongs in `musa-events` for one reason: **the invariance theorem above is a statement about the event
+track's operations**, and it must be stated and property-tested where those operations are. A payload type whose
+correctness argument is "the event track's operations leave it alone" cannot have its proof live in a crate that does
+not contain the event track's operations.
 
 Its exactness and its canonical form follow from that placement: `Ratio` breakpoints (§4), a `Canonical` implementation,
 and therefore a stable contribution to prompt 43's semantic hash.
 
 ### What this unlocks, and builds none of
 
-With `Progress` present and prompt 44's `prevailing` present, each of these is a new `FactKind` and zero kernel change:
-`gliss` (a note carrying a pitch progress), non-linear crescendo, `rit.`/`accel.` as a tempo-map input, studio parameter
-automation, `modulate` mid-piece. **Build none of them.** The grammar freeze (§35.1) holds; this prompt adds a value
-type and one use of it. Listing the payoff is how the prompt justifies the construct; implementing the payoff is a
+With `Progress` present and prompt 44's `prevailing` present, each of these is a new `FactKind` and zero event track
+change: `gliss` (a note carrying a pitch progress), non-linear crescendo, `rit.`/`accel.` as a tempo-map input, studio
+parameter automation, `modulate` mid-piece. **Build none of them.** The grammar freeze (§35.1) holds; this prompt adds a
+value type and one use of it. Listing the payoff is how the prompt justifies the construct; implementing the payoff is a
 different prompt with a different check.
 
 `TempoSegment` (prompt 36) *may* be re-expressed in terms of `Progress` as a shared value type — tempo would still be
-computed above the kernel and §22 would be untouched. Only do it if it deletes code; if it merely relocates it, leave it
-and say so.
+computed above the event track and §22 would be untouched. Only do it if it deletes code; if it merely relocates it,
+leave it and say so.
 
 ## Target
 
-- `crates/musa-kernel/src/progress.rs` (new): `Progress`, `Canonical`, the stated non-goals.
-- `crates/musa-kernel/tests/suite/laws.rs`: **L24** — for every operation, a curve-bearing occurrence's payload is
+- `crates/musa-events/src/progress.rs` (new): `Progress`, `Canonical`, the stated non-goals.
+- `crates/musa-events/tests/suite/laws.rs`: **L24** — for every operation, a curve-bearing occurrence's payload is
   byte-identical after transformation, and `at(u)` evaluated at corresponding absolute times agrees before and after
   `scale`, `sequence`, `overlay`, and `restrict`.
-- `docs/rules/kernel/03-denotational-semantics.md`: `Progress` and the span-alone theorem.
-- `docs/rules/kernel/04-algebraic-laws.md`: L24, with its test name.
-- `docs/rules/kernel/05-normalization.md`: the canonical form of a `Progress`.
-- `docs/rules/kernel/08-open-questions.md` and `docs/rules/kernel/08-open-questions.md`: **Q4 resolved**, with the
+- `docs/rules/events/03-denotational-semantics.md`: `Progress` and the span-alone theorem.
+- `docs/rules/events/04-algebraic-laws.md`: L24, with its test name.
+- `docs/rules/events/05-normalization.md`: the canonical form of a `Progress`.
+- `docs/rules/events/08-open-questions.md` and `docs/rules/events/08-open-questions.md`: **Q4 resolved**, with the
   answer and why it cost no operation.
 - `crates/musa-compiler/src/elaborate.rs`: `FactKind::Hairpin` gains a `Progress` (`Progress::linear()` from the current
   grammar).
 - `crates/musa-compiler/src/performance.rs`: `Curve` deleted; `hairpin_curves` reads the shape and keeps its sampling.
-- `docs/rules/kernel/07-backend-contract.md`: shape is normative, sampling is the consumer's.
-- `docs/rules/kernel/09-performance.md`: this prompt's row.
+- `docs/rules/events/07-backend-contract.md`: shape is normative, sampling is the consumer's.
+- `docs/rules/events/09-performance.md`: this prompt's row.
 
 ## Repairs made while implementing
 
 **`Progress` carries no `serde`, and the compiler adapts it.** `HairpinSpan` is a serialized snapshot type, so adding a
-`Progress` field to it demanded `Serialize`/`Deserialize`. The kernel's dependency list is `num-rational` and
-`thiserror`; roadmap §15 sanctions `serde` for `musa-compiler`, not for the crate the kernel was carved into, and a
+`Progress` field to it demanded `Serialize`/`Deserialize`. The event track's dependency list is `num-rational` and
+`thiserror`; roadmap §15 sanctions `serde` for `musa-compiler`, not for the crate the event track was carved into, and a
 payload value type is not a reason to widen it. `musa-compiler/src/score.rs` therefore carries a ~30-line
 `progress_serde` adapter that writes breakpoints as exact `(numer, denom, numer, denom)` quadruples through the
 already-public `Progress::points`/`Progress::piecewise`. The adapter is arithmetic-free and cannot admit a curve the
@@ -160,7 +160,7 @@ not an ill-formed value.
 sampling policy still needs somewhere to put its answer per event. The replacement holds the target mark and the
 *fraction the shape reached* — not `step`/`last`, which were the shape being invented. Where the old code computed
 `from + (to − from) · step/last`, it now computes `from + (to − from) · shape.at(u)` with `u = step/last`, which is the
-prompt's split made literal: the policy picks `u`, the kernel's value answers what fraction that is. With
+prompt's split made literal: the policy picks `u`, the event track's value answers what fraction that is. With
 `Progress::linear()` the two are identical rational expressions, which is why no golden moved.
 
 **The single-event hairpin lost its special case.** `Curve` handled `last == 0` with an `if` that jumped straight to the
@@ -186,7 +186,7 @@ identical to the digit — because **neither benchmark workload contains a hairp
 `large-score.musa`'s coda is point dynamics, articulations, ties, slurs and tuplets. The table therefore confirms the
 change costs nothing where there are no hairpins and says nothing else; the real cost is one two-element `Vec` per
 hairpin at elaboration, one clone at projection, and one `at()` per event under a hairpin replacing a multiply. Growing
-the fixture would invalidate forty existing rows, so `docs/rules/kernel/09-performance.md` records the gap and leaves
+the fixture would invalidate forty existing rows, so `docs/rules/events/09-performance.md` records the gap and leaves
 the repair to the prompt that next needs the fixture to change.
 
 ## Check
@@ -198,16 +198,16 @@ cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # no golden may change
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 grep -rn "struct Curve" crates/musa-compiler/src/ | wc -l   # 0
-grep -rn "Q4" docs/rules/kernel/08-open-questions.md            # reads as resolved
+grep -rn "Q4" docs/rules/events/08-open-questions.md            # reads as resolved
 cargo bench -p musa-compiler
 ```
 
-Commit as `Put continuous shape in the kernel denotation`.
+Commit as `Put continuous shape in the event-track denotation`.
 
 ## Stop
 
-- No new kernel operation. If the implementation seems to need one, the curve is not normalized correctly — fix that,
-  not the operation set.
+- No new event-track operation. If the implementation seems to need one, the curve is not normalized correctly — fix
+  that, not the operation set.
 - No absolute-time curves, no step segments, no periodic shapes, no units, no easing catalogue (`ease_in`, `expo`,
   Bézier). Piecewise-linear over `[0, 1]` is the whole construct.
 - No grammar change. `cresc.` still parses exactly as it does today and elaborates to `Progress::linear()`.

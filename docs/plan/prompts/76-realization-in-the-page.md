@@ -18,7 +18,7 @@ Pay the cost. The page prints the freedom, the Origin view shows the decision, a
 
 ## Read
 
-- `docs/rules/kernel/11-realization.md` (prompt 66) §"The cost, conceded up front" — this prompt is that paragraph's
+- `docs/rules/events/11-realization.md` (prompt 66) §"The cost, conceded up front" — this prompt is that paragraph's
   implementation, and it should be read as a debt being settled.
 - Prompt 24 (`origin-view`) — the provenance lens. A decision is provenance, and this is a fourth step in an existing
   chain, not a fifth panel.
@@ -53,8 +53,8 @@ source would make two composers with the same file unable to disagree about a pe
 open form is for.
 
 The consequence is that a realization must survive a session, so it belongs beside the other project state prompt 19
-already persists. Exports carry it: a `.kernel` file's header (prompt 67), and a note in exported MEI/MusicXML that this
-is one realization of an open work.
+already persists. Exports carry it: a `.event track` file's header (prompt 67), and a note in exported MEI/MusicXML that
+this is one realization of an open work.
 
 ### The wording
 
@@ -123,7 +123,7 @@ Commit as `Show the realization in the page`.
    *instruction*: a bar that engraved `4×` where the composer wrote `2 to 6` would have replaced the piece with one
    performance of it. It is an `OpenShape::Passes` so all three backends print it through the one text-direction emitter
    they already had, and `losses()` gained one honest line. Only ranged repeats change the interchange encoding, so
-   exactly two goldens moved: `examples/kernel/{loop-durations,in-c}.kernel`.
+   exactly two goldens moved: `examples/events/{loop-durations,in-c}.event track`.
 
 4. **A decision has *sites*, plural.** `repeat 2 to 6` written once in each of three voices is one question — that is
    prompt 67's rule — so `DecisionRecord` carries every span that asked, and an event finds its decision by the

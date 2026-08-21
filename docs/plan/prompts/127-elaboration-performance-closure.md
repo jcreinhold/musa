@@ -13,7 +13,7 @@ phase: 3
 Measure the score/elaboration implementation through prompt 125 against prompt 93's frozen workloads and new
 worst-plausible musical workloads, explain every material regression, and optimize only demonstrated bottlenecks. Close
 the language block with budgets that cover compiler latency, memory and allocation growth, editor queries, analysis,
-template expansion, and kernel quotation without weakening determinism, totality, provenance, diagnostics, or module
+template expansion, and events quotation without weakening determinism, totality, provenance, diagnostics, or module
 boundaries. Preserve the audio-bridge baseline unchanged except for explicitly completed expected-change entries; prompt
 170 performs the audio preparation/render/asset closure after those features exist.
 
@@ -21,12 +21,12 @@ boundaries. Preserve the audio-bridge baseline unchanged except for explicitly c
 
 - Prompt 38 and prompt 93's benchmark protocol, artifacts, compatibility corpus, and frozen baseline.
 - `docs/rules/desktop/06-performance.md` and all existing B-budget definitions.
-- `docs/rules/language/02-core.md`, `03-music.md`, `04-templates-and-modules.md`, `06-kernel-escape.md`, and
+- `docs/rules/language/02-core.md`, `03-music.md`, `04-templates-and-modules.md`, `06-event-track-escape.md`, and
   `07-analysis.md`.
 - Cache, semantic-hash, last-valid-artifact, realization, and provenance invariants from prompts 43, 50, 67, and 77.
 - `crates/musa-compiler/src/elaborate.rs` — `Share`, `music_key`, and `scale_in_force`; and
   `crates/musa-compiler/tests/suite/scale_context_laws.rs`, which fixes what a call site's pitch context means.
-- `docs/rules/kernel/10-term-calculus.md` §"Provenance of the sharing discipline", and Peyton Jones (1987) Chapters
+- `docs/rules/events/10-term-calculus.md` §"Provenance of the sharing discipline", and Peyton Jones (1987) Chapters
   14.7.2, 15, and 23. Chapter 15 defines the technique this prompt must measure; Chapter 23 is why it must be measured
   rather than assumed.
 
@@ -38,7 +38,7 @@ First extend the benchmark corpus with checked-in deterministic workloads that i
 - repeated and nested `Music` templates, modules/functors, context changes, source imports, and dense provenance;
 - scales/chords, schema harmonization, post-tonal transformations, tonal analysis, and counterpoint/voice-leading
   checks;
-- large `.musa.kernel` inclusion, many typed quote holes, formatter/parser recovery, hover/completion, and one source
+- large `.musa.events` inclusion, many typed quote holes, formatter/parser recovery, hover/completion, and one source
   edit near the beginning and end of a project.
 
 Collect wall time, CPU time where stable, peak resident memory, allocation count/bytes where the harness supports it,
@@ -47,7 +47,7 @@ under the same pinned environment as prompt 93; retain raw machine-readable resu
 
 Any cache introduced or changed here is correct only if its key includes semantic definition revision, typed arguments,
 the relevant elaboration/context environment, source/instance identity required by provenance, realization parameters,
-and compiler/stdlib format version. Prove cached and uncached results equal in kernel normal form, ordered diagnostics,
+and compiler/stdlib format version. Prove cached and uncached results equal in events normal form, ordered diagnostics,
 provenance, analyses, and resource failures. Eviction may change time and memory, never semantics or diagnostic order.
 
 **Measure the sharing gaps explicitly, and decide them with the measurement.** The `Share` type in
@@ -77,11 +77,11 @@ reference.
 If a gap is material, close it — the call-site gap by a sound key, the full-laziness gap by hoisting
 argument-independent subexpressions to piece-level bindings — under three conditions and no others:
 
-- **Semantics unchanged.** Evaluated kernel normal form, ordered diagnostics, provenance, and semantic hash identical
+- **Semantics unchanged.** Evaluated events normal form, ordered diagnostics, provenance, and semantic hash identical
   before and after, proved by differential test on the compatibility corpus. The shared binding is a `let`, so this is
   T2, and the *printed* term is allowed to shrink: a `let` bound once and used twice is the same term as the same body
-  written twice, which is what T2 says. The kernel-corpus goldens record the printed term and are refreshed with the
-  measurement that authorizes them.
+  written twice, which is what T2 says. The event-track-corpus goldens record the printed term and are refreshed with
+  the measurement that authorizes them.
 - **Visible, not magic.** The hoist appears as an Origin step. Peyton Jones (1987) §23.2.1's point transfers even though
   its laziness caveats do not: whether the sharing is found depends on how the source was written, and a performance
   property that turns on syntactic accident must be inspectable rather than silent.

@@ -29,7 +29,7 @@ a global style rule merely because it can be checked locally.
 Use the assertion syntax fixed by `docs/rules/language/01-surface.md`. Its predicate is one of a typed, documented
 family over a coherent private view—not an arbitrary `ScoreFact` callback or user reflection. Evaluate after contextual
 instantiation so ambient scale, absolute placement, and exact spans are real. A successful assertion returns the same
-kernel facts/extent under `≈facts`, adding an `Assertion` Origin step only; a failure names the claim, smallest witness,
+events facts/extent under `≈facts`, adding an `Assertion` Origin step only; a failure names the claim, smallest witness,
 expected domain, and source spans for assertion and offending material.
 
 Initial assertions:
@@ -53,7 +53,7 @@ The chord realization policy is a typed parameter so strict pitch-set equality, 
 non-chord-tone modes are different claims. Its type is owned by the predicate registry rather than added to the
 elaboration language: three inhabitants no function can take or return would be language surface with no caller, which
 `AGENTS.md` forbids in the same breath as deep modules. Assertions may wrap generated or handwritten music. A raw local
-kernel quote in prompt 121 intentionally does not inherit surface assertions unless the assertion is outside the quote.
+events quote in prompt 121 intentionally does not inherit surface assertions unless the assertion is outside the quote.
 
 ## Target
 

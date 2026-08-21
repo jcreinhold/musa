@@ -77,12 +77,12 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
   converts back to symbol values in the renderer. This is the same tie concept prompt 07 already used for
   measure-crossing decomposition — that pass now has a second source feeding it.
 - **The frozen direct lowerer refuses the new constructs** rather than growing to match them. `lower.rs` says it must
-  not grow with new features, and parity with the kernel path is what the differential test protects; a refusal keeps
-  both true. `phase_two_constructs_are_kernel_only` in `crates/musa-compiler/tests/suite/elaboration.rs` pins the
+  not grow with new features, and parity with the event-track path is what the differential test protects; a refusal
+  keeps both true. `phase_two_constructs_are_kernel_only` in `crates/musa-compiler/tests/suite/elaboration.rs` pins the
   boundary.
 - **Annotations are emitted after tie merging, not during elaboration.** They name `EventId`s, and merging decides how
-  many events exist. Marks ride along in the kernel payload and become annotations in `identify`, which also means a
-  group's members are always a contiguous id range — that is what lets the notation plan expand a `TupletSpan` by
+  many events exist. Marks ride along in the event-track payload and become annotations in `identify`, which also means
+  a group's members are always a contiguous id range — that is what lets the notation plan expand a `TupletSpan` by
   iterating the range.
 - **Tuplets must fit inside one measure** (diagnostic: `a tuplet must fit inside one measure`). A tuplet split across a
   barline would need the bracket itself decomposed, which neither MEI nor LilyPond expresses cleanly; the restriction is

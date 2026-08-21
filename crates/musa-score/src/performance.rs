@@ -1,11 +1,11 @@
 //! Performance resolver (roadmap §6.4, §15.3;
-//! docs/rules/kernel/06-surface-elaboration.md).
+//! docs/rules/events/06-surface-elaboration.md).
 //!
 //! The neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
 //! Tempo is a monotone map written-time → second applied to symbolic positions
-//! (§22) — it never rewrites the symbolic track, and "stretch" (a kernel
+//! (§22) — it never rewrites the symbolic track, and "stretch" (an event track
 //! time action) is not "tempo" (a performance map). Symbolic stays in beats
 //! until this boundary; floats (frequency, seconds→frames) appear only here.
 //!
@@ -70,7 +70,7 @@ impl Default for PerformanceOptions {
     }
 }
 
-/// A piecewise-monotone tempo map (docs/rules/kernel/06-surface-elaboration.md).
+/// A piecewise-monotone tempo map (docs/rules/events/06-surface-elaboration.md).
 ///
 /// One segment per written tempo, each carrying the exact number of seconds
 /// elapsed before it begins, accumulated as a rational: the rounding to whole
@@ -105,7 +105,7 @@ struct TempoPoint {
 struct RampRate {
     to: Ratio<i64>,
     over: Ratio<i64>,
-    shape: musa_kernel::Progress,
+    shape: musa_events::Progress,
 }
 
 impl TempoPoint {
@@ -253,7 +253,7 @@ impl IntegratedTempoMap {
     /// **sampled** here, into `steps_per_whole` constant segments per whole
     /// note of its reach. The density is the caller's argument rather than a
     /// constant of the map, because the shape is normative and the sampling
-    /// is the consumer's policy (docs/rules/kernel/07) — the same rule a hairpin's
+    /// is the consumer's policy (docs/rules/events/07) — the same rule a hairpin's
     /// `Progress` is read under, and the reason both are one type.
     pub fn segments(&self, steps_per_whole: u32) -> Vec<TempoSegment> {
         let mut segments = Vec::with_capacity(self.points.len());
@@ -502,7 +502,7 @@ impl PerformancePlan {
     /// Only the exporters ask. SMF has one tempo track, so a polytempo
     /// performance is written out sonically exact and notationally wrong,
     /// and the loss is stated rather than discovered
-    /// (`docs/rules/kernel/07-backend-contract.md`).
+    /// (`docs/rules/events/07-backend-contract.md`).
     pub fn is_polytempo(&self) -> bool {
         self.polytempo
     }
@@ -579,7 +579,7 @@ pub fn lower_performance(
             // The prevailing dynamic is per voice: a marking applies from its
             // event onward in the voice that wrote it, not across the part.
             //
-            // This is the kernel's prevailing rule (docs/rules/kernel/03 D11) applied
+            // This is the event track's prevailing rule (docs/rules/events/03 D11) applied
             // in bulk — one ordered pass over the voice, carrying the last
             // marking forward — and not one `EventTrack::prevailing` call per
             // event, which would be O(events × markings). The two conventions
@@ -720,7 +720,7 @@ pub fn lower_performance(
 
 /// Written time to frames, for one part.
 ///
-/// The composition order is the whole point (docs/rules/kernel/06-surface-elaboration.md): the
+/// The composition order is the whole point (docs/rules/events/06-surface-elaboration.md): the
 /// groove is a written-time → written-time warp and tempo is written-time → second, so the groove
 /// goes **first**. Composed the other way a shuffle would be specified in
 /// seconds and would straighten out as the band sped up.
@@ -794,7 +794,7 @@ impl Interpretation {
 /// hairpin arrives at.
 ///
 /// `fraction` is the *shape's* value, not the sampling position: the policy
-/// below picks `u`, the kernel's `Progress` says what fraction of the distance
+/// below picks `u`, the event track's `Progress` says what fraction of the distance
 /// `u` has covered, and this is that answer. A hairpin's last event has
 /// `fraction == 1` and therefore leaves the target in force.
 #[derive(Clone, Copy, Debug)]
@@ -806,7 +806,7 @@ struct Reached {
 /// Index a voice's events by the hairpin they fall under, sampling each
 /// hairpin's shape once per event.
 ///
-/// **Shape versus sampling policy** (docs/rules/kernel/07). The shape — how the
+/// **Shape versus sampling policy** (docs/rules/events/07). The shape — how the
 /// growth is distributed across the region — is a fact about the piece: it
 /// lives in the track as a `Progress`, it serializes, and every conforming
 /// consumer must honour it. *Where to sample it* is this layer's choice, and
@@ -850,7 +850,7 @@ fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, R
 /// the same bulk-index-once shape as [`Interpretation::collect`]: one pass
 /// here rather than a scan of every grace per event.
 ///
-/// The sort is by `index`, the ordering the payload carries (docs/rules/kernel/05
+/// The sort is by `index`, the ordering the payload carries (docs/rules/events/05
 /// N2). Normalization sorts occurrences by span then payload key, and every
 /// grace in a group shares a span — so `grace { c5 d5 }` and
 /// `grace { d5 c5 }` are told apart by nothing else. Reading the lane's
@@ -881,7 +881,7 @@ fn ratio_to_f32(value: Ratio<i64>) -> f32 {
 }
 
 /// Lower one score event: notes and chord tones become on/off pairs; rests
-/// schedule nothing (absence is silence; docs/rules/kernel/00-purpose.md).
+/// schedule nothing (absence is silence; docs/rules/events/00-purpose.md).
 ///
 /// **Where a grace note's time comes from.** A grace is a *point* occurrence —
 /// zero written duration — so performance is where it acquires one, and the
@@ -1119,7 +1119,7 @@ mod ramp_shape_laws {
     /// consumer that ignored it would be two seconds out.
     #[test]
     fn a_shaped_ramp_integrates_along_its_shape() {
-        let shape = musa_kernel::Progress::piecewise([(r(0, 1), r(0, 1)), (r(1, 2), r(1, 4)), (r(1, 1), r(1, 1))])
+        let shape = musa_events::Progress::piecewise([(r(0, 1), r(0, 1)), (r(1, 2), r(1, 4)), (r(1, 1), r(1, 1))])
             .expect("a curve");
         let point = TempoPoint {
             position: MusicalTime::ZERO,
@@ -1147,7 +1147,7 @@ mod ramp_shape_laws {
             ramp: Some(RampRate {
                 to: Ratio::from_integer(8),
                 over: Ratio::from_integer(4),
-                shape: musa_kernel::Progress::linear(),
+                shape: musa_events::Progress::linear(),
             }),
             seconds_offset: Ratio::ZERO,
         };

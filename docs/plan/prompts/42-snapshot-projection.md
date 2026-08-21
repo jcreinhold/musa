@@ -24,8 +24,8 @@ decision, and the next representation change is another workspace-wide edit.
 - PoSD ch. 4 (deep modules), ch. 5 (information hiding), ch. 7 (different layer, different abstraction — the snapshot is
   the *score* layer's abstraction over the timeline, and it should speak score, not storage). The red flags this prompt
   clears: *public fields expose layout*, *public interface mirrors storage*, *information leakage*.
-- `docs/rules/kernel/07-backend-contract.md` (the snapshot is the score-specific interpretation of the normalized
-  denotation), `docs/rules/kernel/07-backend-contract.md` (what consumers may assume — this prompt makes those
+- `docs/rules/events/07-backend-contract.md` (the snapshot is the score-specific interpretation of the normalized
+  denotation), `docs/rules/events/07-backend-contract.md` (what consumers may assume — this prompt makes those
   assumptions enforceable rather than conventional).
 - Every consumer, before designing the accessors: `crates/musa-notation/src/plan.rs`, `ly.rs`, `mei.rs`, `musicxml.rs`,
   `midi.rs`; `crates/musa-compiler/src/performance.rs`; `crates/musa-project/src/facts.rs`, `edit.rs`, `export.rs`,
@@ -80,9 +80,9 @@ workspace is the proof.
   invariant; constructors `pub(crate)`.
 - `crates/musa-compiler/src/project.rs`: projection updated; any Set B query implemented here, where the spans are.
 - `crates/musa-notation`, `crates/musa-project`, `apps/musa-desktop` (Rust side): call sites migrated.
-- `docs/rules/kernel/07-backend-contract.md`: a short section stating that the guarantees are now carried by the
+- `docs/rules/events/07-backend-contract.md`: a short section stating that the guarantees are now carried by the
   snapshot's interface, naming the accessors that carry each one.
-- `docs/rules/kernel/09-performance.md`: this prompt's row.
+- `docs/rules/events/09-performance.md`: this prompt's row.
 
 ## Repairs made while implementing
 
@@ -125,7 +125,7 @@ changes — that `plan.rs` and `performance.rs` read field-wise. Closing it woul
 behind it.
 
 **No snapshot changed and no allocation count moved.** 429 tests, every golden byte-identical, and P1–P4 allocation
-counts identical to prompts 40 and 41 — see `docs/rules/kernel/09-performance.md` for why this prompt's timings are not
+counts identical to prompts 40 and 41 — see `docs/rules/events/09-performance.md` for why this prompt's timings are not
 read as a regression.
 
 ## Check

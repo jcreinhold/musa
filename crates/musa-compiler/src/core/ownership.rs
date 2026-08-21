@@ -1071,37 +1071,37 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 121] = [
     BuiltinOwnership {
         operation: Builtin::Transpose,
         spelling: "transpose",
-        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        hidden_information: "contextual music representation, written-pitch provenance, and events construction",
         family: Family::Track,
     },
     BuiltinOwnership {
         operation: Builtin::Stretch,
         spelling: "stretch",
-        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        hidden_information: "contextual music representation, exact-time provenance, and events construction",
         family: Family::Track,
     },
     BuiltinOwnership {
         operation: Builtin::Retrograde,
         spelling: "retrograde",
-        hidden_information: "contextual music extent, occurrence provenance, and kernel construction",
+        hidden_information: "contextual music extent, occurrence provenance, and events construction",
         family: Family::Track,
     },
     BuiltinOwnership {
         operation: Builtin::Invert,
         spelling: "invert",
-        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        hidden_information: "contextual music representation, written-pitch provenance, and events construction",
         family: Family::Track,
     },
     BuiltinOwnership {
         operation: Builtin::Shift,
         spelling: "shift",
-        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        hidden_information: "contextual music representation, exact-time provenance, and events construction",
         family: Family::Track,
     },
     BuiltinOwnership {
         operation: Builtin::Together,
         spelling: "together",
-        hidden_information: "contextual music representation, origin paths, and kernel stacking construction",
+        hidden_information: "contextual music representation, origin paths, and events stacking construction",
         family: Family::Track,
     },
     BuiltinOwnership {

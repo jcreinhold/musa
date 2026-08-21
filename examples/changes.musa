@@ -10,7 +10,7 @@
 // region, so it carries the realized silence plus a text direction reading
 // `improvise over Dm7 | G7 | Cmaj7`. A player reading the exported part sees
 // the instruction; a program reading it sees a rest. That is stated in
-// `docs/rules/kernel/07-backend-contract.md` rather than discovered.
+// `docs/rules/events/07-backend-contract.md` rather than discovered.
 //
 // The last chord is `1 to 4/1`: held as long as the band likes. Its written
 // value is the whole note the engraver draws; what it sounds is the

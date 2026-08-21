@@ -2,7 +2,7 @@
 // stretched, backwards, mirrored, and, in the last bar, one occurrence
 // specialized without touching the motif every other bar uses.
 //
-// Every transformation here is an elaboration-time function: the kernel gains
+// Every transformation here is an elaboration-time function: the event track gains
 // nothing for any of them, and the score can still say where each note came
 // from.
 piece "Variation" {

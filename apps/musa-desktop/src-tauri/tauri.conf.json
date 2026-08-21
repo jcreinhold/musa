@@ -46,9 +46,9 @@
         "role": "Editor"
       },
       {
-        "ext": ["musa.kernel"],
-        "name": "musa-kernel-document",
-        "description": "Musa kernel interchange document",
+        "ext": ["musa.events"],
+        "name": "musa-events-document",
+        "description": "Musa events interchange document",
         "role": "Editor"
       }
     ]

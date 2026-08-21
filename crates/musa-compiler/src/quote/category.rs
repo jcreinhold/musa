@@ -126,7 +126,7 @@ token_kinds!(
     LetKw,
     FnKw,
     MusicKw,
-    KernelKw,
+    EventsKw,
     OptionKw,
     ListKw,
     ResultKw,

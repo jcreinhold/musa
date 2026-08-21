@@ -181,7 +181,7 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-UPDATE_KERNEL_GOLDENS=1 cargo test -p musa-compiler
+UPDATE_EVENTS_GOLDENS=1 cargo test -p musa-compiler
 for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa -- check "$f"; done
 ```
 

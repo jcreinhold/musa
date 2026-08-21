@@ -1,6 +1,6 @@
 # Scratch: the search for the musical motive
 
-**Status: research. Governs nothing.** `docs/rules/` holds the decisions this work fed into, `docs/rules/kernel/` the
+**Status: research. Governs nothing.** `docs/rules/` holds the decisions this work fed into, `docs/rules/events/` the
 governing kernel specification, `docs/rules/across-stages/` the cross-stage rules distilled from files 19–57 below.
 [`kernel-hypothesis/`](kernel-hypothesis/README.md) is the earlier research line, *upstream* of the numbered files here.
 This directory is downstream of all of them and is a working notebook: hard copies of thinking, kept so they can be

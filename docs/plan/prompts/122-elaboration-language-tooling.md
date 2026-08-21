@@ -12,7 +12,7 @@ phase: 3
 
 Make the score/elaboration portion of the candidate language understandable in editors: type-aware hover, signature
 help, completion, definition/references/rename, symbols/folding, diagnostics/fixes, standard-library navigation,
-analysis requests, and kernel-document/quote support. All answers come from compiler/project facts or the lossless
+analysis requests, and event-track-document/quote support. All answers come from compiler/project facts or the lossless
 syntax of half-typed source; the LSP and editor extensions do not grow a second type checker or theory engine. This
 prompt establishes the generated fact/documentation seam that prompt 169 extends to instruments, controls, processors,
 assets, and packages; it does not claim whole-language tooling closure.
@@ -35,10 +35,10 @@ Required behavior:
 - hover shows inferred local type, annotated public signature, domain distinction (`pitchclass` versus `pc12`, key
   versus scale, chord class versus voicing), Origin role, and standard-library source link;
 - signature help/completion knows partial application, named/default parameters, modules/templates, assertion policies,
-  scale/chord/analysis names, and kernel quote holes;
+  scale/chord/analysis names, and events quote holes;
 - definition/references/rename cross user libraries/templates/modules but bundled stdlib is read-only; generated facts
   navigate to definition and instance site;
-- symbols/folding include functions, modules, signatures, templates, and kernel composition/lets;
+- symbols/folding include functions, modules, signatures, templates, and event-track composition/lets;
 - a code action can insert explicit missing context/register/policy only when the diagnostic supplies a certain fix;
 - analysis requests use a command/code-lens surface and display typed findings/evidence without publishing them as
   compiler errors.

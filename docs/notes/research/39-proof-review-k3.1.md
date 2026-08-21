@@ -23,7 +23,7 @@ K₃.1 repairs the exact gaps in review 35 without silently changing semantic eq
 ### Fatal to the fixed closure proof
 
 1. **Current N5 bytes are not a complete canonical form.**
-   - **Location**: [38 §3 and Theorem T2.1](38-k3.1-closure.md), `docs/rules/kernel/05-normalization.md` N4–N6,
+   - **Location**: [38 §3 and Theorem T2.1](38-k3.1-closure.md), `docs/rules/events/05-normalization.md` N4–N6,
      `crates/musa-kernel/src/timeline.rs::write_canonical`, and `crates/musa-kernel/src/occurrence.rs`.
    - **Type**: false theorem / encoding–semantic-equality mismatch.
    - **Problem**: `write_canonical` inserts `Canonical::canonical_key()` directly between unescaped textual delimiters:

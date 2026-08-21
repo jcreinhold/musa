@@ -77,7 +77,7 @@ pub(crate) fn followed(origin: Origin, tracks: Vec<Raw>) -> Raw {
 /// nesting, and a voice of a hundred notes would be. It also costs quadratic
 /// work, since each `follow` translates everything accumulated so far.
 ///
-/// `follow` is associative — `musa_kernel::follow` places each track after the
+/// `follow` is associative — `musa_events::follow` places each track after the
 /// one before it, and where the brackets fall does not move a single occurrence
 /// — so the same music can be written as a *balanced* tree, whose depth is the
 /// logarithm of the count. That is what this builds.

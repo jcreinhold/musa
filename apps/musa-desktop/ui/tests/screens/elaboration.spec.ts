@@ -2,8 +2,8 @@
  * The elaboration workbench (`08-elaboration.md`), through the screen.
  *
  * Two pieces drive it, both real: `stdlib-basics.musa`, whose composer used
- * terms they did not declare, and `kernel-splice.musa`, every note of which is
- * generated through a kernel quote. What is tested is that the interface reads
+ * terms they did not declare, and `events-splice.musa`, every note of which is
+ * generated through an event track quote. What is tested is that the interface reads
  * the compiler's facts and adds nothing of its own — a term it did not resolve
  * has no tooltip, a step that is not a place reveals nothing, and a reading is
  * never painted as a problem.
@@ -90,9 +90,9 @@ test.describe("terms", () => {
   });
 });
 
-test.describe("an expansion through a kernel quote", () => {
+test.describe("an expansion through an event track quote", () => {
   test.beforeEach(async ({ page }) => {
-    await stubShell(page, "kernel-splice");
+    await stubShell(page, "events-splice");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
     await engraved(page);
@@ -112,12 +112,12 @@ test.describe("an expansion through a kernel quote", () => {
     // The kind is in the accessible name, so a screen reader hears what a
     // sighted reader sees in the row's shape (`03-interaction.md` §5).
     await expect(segments.first()).toHaveAccessibleName(/^assertion /);
-    await expect(path.locator(".segment.splice")).toHaveAccessibleName(/^kernel quotation /);
+    await expect(path.locator(".segment.splice")).toHaveAccessibleName(/^events quotation /);
   });
 
   /*
    * §4: a step that is not a place has nothing to reveal. The splice happened
-   * at a time in a kernel term, not at an offset in the file, and a row that
+   * at a time in an event track term, not at an offset in the file, and a row that
    * moved the caret to the nearest brace would be inventing a source map.
    */
   test("a step with no place in the source moves no caret", async ({ page }) => {

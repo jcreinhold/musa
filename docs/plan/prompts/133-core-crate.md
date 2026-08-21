@@ -21,7 +21,7 @@ musical types, no elaboration. The old checker keeps working; nothing calls this
   matrix — the rows this prompt discharges and the rows it must not claim.
 - `docs/notes/research/language-design-closure/43-*.md` (prompt 132's trial) — specifically what it deleted from the
   specification. A mechanism the trial marked for deletion is not built here.
-- `crates/musa-kernel/src/lib.rs` — the leaf crate this one is shaped after: a narrow facade, no dependency on anything
+- `crates/musa-events/src/lib.rs` — the leaf crate this one is shaped after: a narrow facade, no dependency on anything
   above it, and a public surface small enough to read in one sitting.
 - `crates/musa-compiler/src/core/mod.rs`'s `Value`, `Term`, and evaluator, and `core_budget.rs` — 15,017 lines that
   already contain a total evaluator with a cost budget. What survives is the *budget discipline*, not the

@@ -21,14 +21,14 @@ pub(super) fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layou
             SyntaxElement::Node(child) => {
                 writer.blank_line_if_pending();
                 // A quote is written as it stands. Its interior is the
-                // kernel's grammar, whose layout the kernel's own printer
+                // event track's grammar, whose layout the event track's own printer
                 // owns (`docs/rules/language/01-surface.md` §7), and a formatter
                 // that re-broke those lines by the host's rules would be a
                 // second opinion about a shape this crate has no reading of.
                 // Only the anchoring is this crate's: the block moves to the
                 // indent the host puts it at, keeping its lines' relative
                 // depth.
-                if child.kind() == SyntaxKind::KernelQuote {
+                if child.kind() == SyntaxKind::EventsQuote {
                     write_quote(&child.text().to_string(), writer);
                     continue;
                 }
@@ -196,7 +196,7 @@ fn write_splice(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
 
 /// Write a quotation verbatim, re-anchored at the writer's indent.
 ///
-/// The first line joins the line in progress — `let doubled: Music = kernel
+/// The first line joins the line in progress — `let doubled: Music = events
 /// EventTrack[WrittenTime, ScoreFact] {` — and the rest keep their depth relative to the
 /// shallowest of them, which is what makes reformatting a file that only
 /// moved sideways leave the quote's shape alone.

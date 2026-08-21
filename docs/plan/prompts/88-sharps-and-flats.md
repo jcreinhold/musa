@@ -72,7 +72,7 @@ source and confined to one node.
   keep writing `s`/`f`: `crates/musa-project/src/midi.rs` (`accidental`), the desktop's `steps.ts` (`ACCIDENTALS` and
   the accidental `CYCLE`) and `entry.svelte.ts` (the `Accidental` type). LilyPond's `s`/`f` and MEI's `s`/`x`/`f` are
   those formats' own spellings and do not move.
-- Every `examples/**/*.musa`, and every golden, snapshot and fixture that follows: 24 `*.musa.kernel`, the compiler and
+- Every `examples/**/*.musa`, and every golden, snapshot and fixture that follows: 24 `*.musa.events`, the compiler and
   render `insta` snapshots, `fixtures/lexed/*.json`, `*.snapshot.json`, and the tree-sitter token fixtures.
 
 ## Check
@@ -81,7 +81,7 @@ source and confined to one node.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-UPDATE_KERNEL_GOLDENS=1 cargo test -p musa-compiler
+UPDATE_EVENTS_GOLDENS=1 cargo test -p musa-compiler
 for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa -- check "$f"; done
 ```
 
@@ -94,5 +94,5 @@ printed in the source's own spelling.
 - **No optional octave**, at any point, for any reason. `c4` is scientific pitch and the digit is the octave.
 - **No Unicode accidentals** (`♯`, `♭`) in source. They are output, not input.
 - **No `x` for a double sharp.** `##` composes; `x` is a fourth thing to learn.
-- **No change to how a pitch is spelled anywhere but the source language** — MEI, MusicXML and the kernel keep their own
-  spellings, which are not musa's to choose.
+- **No change to how a pitch is spelled anywhere but the source language** — MEI, MusicXML and the event track keep
+  their own spellings, which are not musa's to choose.

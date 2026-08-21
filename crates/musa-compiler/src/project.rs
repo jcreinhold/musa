@@ -1,4 +1,4 @@
-//! The event-track → `ScoreSnapshot` projection (docs/rules/kernel/06).
+//! The event-track → `ScoreSnapshot` projection (docs/rules/events/06).
 //!
 //! Elaboration produces one `EventTrack<WrittenTime, ScoreFact>` for the whole
 //! score, though, is read part by part and voice by voice, with notes that
@@ -6,15 +6,15 @@
 //! module computes — and it is a *reading*, not a second representation: the
 //! track stays the only place a temporal fact lives.
 //!
-//! It is a module rather than a method on the track because the kernel
-//! must not learn what a score is (docs/rules/kernel/02-static-semantics.md).
+//! It is a module rather than a method on the track because the event track
+//! must not learn what a score is (docs/rules/events/02-static-semantics.md).
 //!
 //! Rational arithmetic on musa's magnitudes is total; the workspace
 //! arithmetic lint is allowed module-wide (see musa-compiler/src/time.rs).
 #![allow(clippy::arithmetic_side_effects)]
 
 use indexmap::IndexMap;
-use musa_kernel::{Canonical as _, EventTrack, Occurrence, Position, WrittenTime};
+use musa_events::{Canonical as _, EventTrack, Occurrence, Position, WrittenTime};
 
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::resolve::Resolver;
@@ -55,7 +55,7 @@ pub(crate) struct Projection {
 /// stand next to each other, a grace note waits at its onset for the note it
 /// leans on, and a region is closed by the event at its end. A track is a
 /// multiset and its occurrence list carries no order
-/// (`docs/rules/kernel/03-denotational-semantics.md` N4), so `retrograde`
+/// (`docs/rules/events/03-denotational-semantics.md` N4), so `retrograde`
 /// answers a lane whose notes are listed last-first and is right to. The
 /// reading sorts; the construction is not asked to promise. Sorting the
 /// buckets rather than the track keeps it allocation-free, and it is stable, so
@@ -173,7 +173,7 @@ fn agreed_repeats(
 /// The order is **canonical order** (N2: start, end, payload key), which is
 /// time order with source position as its tie-break — the payload key ends in
 /// the origin's source span. That matters twice. For the context maps it is
-/// the prevailing rule of `docs/rules/kernel/03` D11 applied in bulk: the last fact
+/// the prevailing rule of `docs/rules/events/03` D11 applied in bulk: the last fact
 /// starting at or before the piece's start is the one in force, and when
 /// `modulate` arrives this sweep already answers correctly for a key that
 /// changes at bar 40. Sorting on the fact's *source* position
@@ -183,8 +183,8 @@ fn agreed_repeats(
 /// one instant cannot swap on a re-elaboration.
 ///
 /// This is D11's *definition* applied by one ordered pass, not a `prevailing`
-/// call per fact. The kernel says what the answer is; bulk derivation sweeps
-/// (docs/rules/kernel/03 D11, "the performance rule").
+/// call per fact. The event track says what the answer is; bulk derivation sweeps
+/// (docs/rules/events/03 D11, "the performance rule").
 fn project_piece(
     resolver: &mut Resolver,
     occurrences: &[&Occurrence<WrittenTime, ScoreFact>],
@@ -573,7 +573,7 @@ fn project_points(
 /// Order is time order, outermost first, which is the order the annotation
 /// lists have always been in: a region that starts earlier comes first, and
 /// where two start together the one that ends later encloses the other.
-/// Membership follows the kernel's containment convention (docs/rules/kernel/03 D10)
+/// Membership follows the event track's containment convention (docs/rules/events/03 D10)
 /// and is derived by one ordered pass, not by a query per event.
 fn project_regions(
     resolver: &mut Resolver,
@@ -594,7 +594,7 @@ fn project_regions(
         let span = occurrence.span();
         let from_time = MusicalTime::new(span.start().as_ratio());
         let to_time = MusicalTime::new(span.end().as_ratio());
-        // The containment convention of docs/rules/kernel/03 D10, applied in one
+        // The containment convention of docs/rules/events/03 D10, applied in one
         // ordered pass rather than one `covering` call per event (D10, "the
         // performance rule"): a region `[s, e)` holds the events whose onset
         // satisfies `s ≤ onset < e`, and a point region holds the events at

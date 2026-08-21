@@ -1,5 +1,5 @@
 //! What the three notation backends do with a freedom they have no element
-//! for (`docs/rules/kernel/07-backend-contract.md`).
+//! for (`docs/rules/events/07-backend-contract.md`).
 //!
 //! The contract is not "it works" — none of the three formats has a mobile
 //! form, a free-duration bracket, or an improvised region. It is that each

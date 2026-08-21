@@ -71,7 +71,7 @@ pub(crate) fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::RecordUpdateExpr
             | SyntaxKind::QuestionExpr
             | SyntaxKind::MusicExpr
-            | SyntaxKind::KernelQuote
+            | SyntaxKind::EventsQuote
             | SyntaxKind::QuoteExpr
     )
 }

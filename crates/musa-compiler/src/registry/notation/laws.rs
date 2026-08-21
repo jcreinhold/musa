@@ -31,7 +31,7 @@
 use std::sync::Arc;
 
 use musa_calculus::{Answer, Cx, Datum, Refusal, Term};
-use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
+use musa_events::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
 use super::{BEYOND, FOLLOW, SOUNDED, nothing, opaque};
@@ -162,7 +162,7 @@ fn ramp() -> Ramp {
     Ramp {
         to: Some(60),
         over: MusicalDuration::new(ratio(2, 1)),
-        shape: musa_kernel::Progress::linear(),
+        shape: musa_events::Progress::linear(),
     }
 }
 
@@ -261,13 +261,13 @@ fn samples() -> Vec<(&'static str, Datum, FactKind)> {
                 vec![
                     case("Bool.True", Vec::new()),
                     opaque("DynamicMark", DynamicMark::Ff),
-                    opaque("Progress", musa_kernel::Progress::linear()),
+                    opaque("Progress", musa_events::Progress::linear()),
                 ],
             ),
             FactKind::Hairpin {
                 grows: true,
                 target: DynamicMark::Ff,
-                shape: musa_kernel::Progress::linear(),
+                shape: musa_events::Progress::linear(),
             },
         ),
         (
@@ -515,10 +515,10 @@ fn sounded_gives_the_fact_the_scope_and_origin_it_was_given() {
     );
     assert_eq!(fact.origin, provenance(), "the origin it was handed, complete");
     assert!(!fact.tied, "`sounded` writes no tie: a tie is a property of two facts");
-    // The kernel accepting it is not incidental: `musa_kernel::track` refuses an
+    // The event track accepting it is not incidental: `musa_events::track` refuses an
     // occurrence past the duration, so answering at all is the bound check.
-    musa_kernel::track(track.duration(), track.occurrences().to_vec())
-        .expect("what `sounded` answers is a track the kernel accepts");
+    musa_events::track(track.duration(), track.occurrences().to_vec())
+        .expect("what `sounded` answers is a track the event track accepts");
 }
 
 /// A fact of no length is ordinary and a fact of negative length is not.
@@ -589,7 +589,7 @@ fn note(start: Ratio<i64>, length: Ratio<i64>, spelling: &str) -> Occurrence<Wri
 
 /// A one-note track of the given length.
 fn bar(length: Ratio<i64>, spelling: &str) -> VoiceTrack {
-    musa_kernel::track(
+    musa_events::track(
         Duration::new(length).expect("a length is nonnegative"),
         vec![note(ratio(0, 1), length, spelling)],
     )
@@ -618,7 +618,7 @@ fn following_adds_the_durations_and_places_the_second_after_the_first() {
     assert_eq!(
         both.duration(),
         Duration::new(ratio(3, 4)).expect("three quarters is a duration"),
-        "the durations add, which is the kernel's own law"
+        "the durations add, which is the event track's own law"
     );
     let starts: Vec<Ratio<i64>> = both
         .occurrences()

@@ -17,13 +17,13 @@ musa that can be *wrong* in a way musa can point at.
 
 ## Read
 
-- `docs/rules/kernel/00-purpose.md` and `03-denotational-semantics.md` — the surface elaborates into the kernel; it does
-  not add to the ontology. A bar adds no operation, no payload, and no second notion of time.
+- `docs/rules/events/00-purpose.md` and `03-denotational-semantics.md` — the surface elaborates into the event track; it
+  does not add to the ontology. A bar adds no operation, no payload, and no second notion of time.
 - Prompt 07 (`NotationPlan`) — measures are **already** computed from the meter. This prompt must not create a second
   measure representation; AGENTS.md's layer table forbids exactly that collapse.
 - Prompt 40 and `MeterMap` — read what meter actually is today before designing on top of it. It is one meter for the
   piece, not a map, and that is what defers irregular durations (see Design).
-- Prompt 49 — `repeat` and motifs elaborate to kernel `let`. A named bar is a `let`, bound where it is written.
+- Prompt 49 — `repeat` and motifs elaborate to event track `let`. A named bar is a `let`, bound where it is written.
 - Prompt 56 — the secondary-label and help machinery. The bar-duration diagnostic is unreadable without it.
 - `crates/musa-syntax/src/{lexer,parser,ast,formatter}.rs`; `crates/musa-compiler/src/elaborate.rs`.
 
@@ -78,8 +78,8 @@ cycle-checker.
 
 Nothing. A bar elaborates to exactly what its contents elaborate to — the braces are erased after they are checked. A
 named bar elaborates to a `let` and its uses to references, which is prompt 49's machinery unchanged. There is no bar in
-the kernel, no bar in `ScoreSnapshot`, and no bar in the notation plan, because the notation plan already knows where
-measures are.
+the event track, no bar in `ScoreSnapshot`, and no bar in the notation plan, because the notation plan already knows
+where measures are.
 
 ### What the check can honestly say
 
@@ -183,7 +183,7 @@ cargo run -p musa -- format examples/glass-mountain.musa --check
 
 Semantic identity is the real check: barring an existing example must not change the timeline's shape, its times, or its
 payloads. Provenance spans do move, necessarily — the text moved — so the assertion is on everything else, and the
-kernel goldens' diff is the evidence. A bar that changes the music is a bug in this prompt.
+events goldens' diff is the evidence. A bar that changes the music is a bug in this prompt.
 
 ## Stop
 

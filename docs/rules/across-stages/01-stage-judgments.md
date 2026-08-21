@@ -75,7 +75,7 @@ together((d,E), (q,F)) = (max(d,q), E together with F)
 
 `follow` places one passage after another. `together` places both in one region: it does not require equal durations and
 does not insert rests. Scaling, restriction, and the coverage queries are defined in
-`docs/rules/kernel/03-denotational-semantics.md`; they are retained operations with named callers rather than part of
+`docs/rules/events/03-denotational-semantics.md`; they are retained operations with named callers rather than part of
 the six-operation basis.
 
 ## 4. Notation, analysis, and performance are separate conversions

@@ -1,6 +1,6 @@
 ---
 id: 86
-slug: the-kernel-file-reads
+slug: the-events-file-reads
 status: done
 depends_on: [48, 63, 67, 68]
 phase: 3
@@ -10,22 +10,22 @@ phase: 3
 
 ## Task
 
-Make a kernel file legible to a person. Prompt 48 made the interchange artifact real and the corpus in
-`examples/kernel/` is the deliverable a second implementation is validated against — but its payload label is packed to
+Make an events file legible to a person. Prompt 48 made the interchange artifact real and the corpus in
+`examples/events/` is the deliverable a second implementation is validated against — but its payload label is packed to
 the point of being unreadable, so the artifact cannot be checked by eye, and a golden diff cannot be reviewed. This
 prompt replaces the label's five-separator packed encoding with a flat, named, quoted token stream, and moves the corpus
-to `.musa.kernel` so the extension says whose file it is.
+to `.musa.events` so the extension says whose file it is.
 
 ## Read
 
-- `docs/rules/kernel/01-grammar.md` — the interchange syntax. §"Writing is not normalizing" and the naming rule at the
+- `docs/rules/events/01-grammar.md` — the interchange syntax. §"Writing is not normalizing" and the naming rule at the
   foot: *"Clear names, no unexplained shorthand (§24): `sequence`/`overlay`/`occurrence`, never `par`/`seq`/`atom`."*
   That rule is what this prompt applies one layer down, and it is what settles the extension.
-- `docs/rules/kernel/07-backend-contract.md` §"What a conforming consumer owes" — the three obligations, and the
+- `docs/rules/events/07-backend-contract.md` §"What a conforming consumer owes" — the three obligations, and the
   sentence after them saying what a consumer does **not** owe: understanding the payload. That is why the payload's
   spelling is free, and why nobody had reason to fix it until now.
-- `crates/musa-kernel/src/text.rs` — `TextPayload`, `print`, `parse`, `write_string`. The kernel carries a payload as an
-  opaque `"…"`-quoted string escaping `"`, `\` and newline, and never looks inside.
+- `crates/musa-events/src/text.rs` — `TextPayload`, `print`, `parse`, `write_string`. The event track carries a payload
+  as an opaque `"…"`-quoted string escaping `"`, `\` and newline, and never looks inside.
 - `crates/musa-compiler/src/factext.rs` — the whole of it. This prompt rewrites it.
 - `crates/musa-compiler/src/elaborate.rs` `instantiate` (the `Var`-mark reader) and `mark_of`, whose doc comment already
   concedes the fault: *"a reader counting backslashes is a reader who has stopped reading the music."*
@@ -51,8 +51,8 @@ Four faults, and the design is four rules that each kill one.
 1. **Five separators at five nesting levels** (`|` `@` `;` `:` `,`), none mnemonic.
 2. **Positional empty fields you must count.** `tempo@1/4@96@@@@` is seven fields, four of them empty.
 3. **Nesting re-escapes.** `join` escapes its separator at every level, so an inner value crossing four levels is
-   escaped four times: `examples/kernel/variation.kernel` carried `motif:299\\\\\\\\:311` — eight backslashes for one
-   colon.
+   escaped four times: `examples/events/variation.event track` carried `motif:299\\\\\\\\:311` — eight backslashes for
+   one colon.
 4. **Redundancy printed in full.** The definition span repeats the source span for every directly authored event; the
    declaration is `0` for every context fact; a duration writes `1/4;1/4;1/4` where one `1/4` says it.
 
@@ -66,9 +66,9 @@ nothing is escaped twice. A token is either
   quoting.
 
 "Always" is the injectivity argument: `mark text '8'` is `Text("8")` and `mark ottava 8` is `Number(8)`, and one rule
-keeps them apart without case analysis. Quoting with `'` also means a payload never contains `"`, so the kernel's own
-string escape has nothing to double except a literal backslash in composer text — the eight-backslash case becomes four,
-and the ordinary case becomes none.
+keeps them apart without case analysis. Quoting with `'` also means a payload never contains `"`, so the event track's
+own string escape has nothing to double except a literal backslash in composer text — the eight-backslash case becomes
+four, and the ordinary case becomes none.
 
 ```
 label   := scope kind origin
@@ -159,26 +159,26 @@ occurrence "voice 0 0 note g4 1/4 [299:311 def 97:104 #4 via motif 299:311]" fro
 ### What does not change
 
 Scope indices stay indices: `Scope::Voice { part, voice }` carries no names and `to_text` has no score to look them up
-in. The `4294967295` shared-binding placeholder stays as it is (`docs/rules/kernel/06`). Occurrence order stays
+in. The `4294967295` shared-binding placeholder stays as it is (`docs/rules/events/06`). Occurrence order stays
 construction order — within a voice that is already time order, which reads better than N2's global sort, and N2 is what
 `--normalized` is for.
 
 ### The extension
 
-`.kernel` says nothing about whose file it is, and collides with a word every operating system and compiler already
+`.event track` says nothing about whose file it is, and collides with a word every operating system and compiler already
 owns. The repo has two precedents for a suffix musa writes beside a piece, and they agree with each other: `sonata.musa`
-→ `sonata.musa.recovery` (`autosave.rs`) and `sonata.musa` → `sonata.musa.performance` (`realization.rs`). A kernel file
-is the third of exactly that kind, so it is spelled the same way: **`.musa.kernel`**.
+→ `sonata.musa.recovery` (`autosave.rs`) and `sonata.musa` → `sonata.musa.performance` (`realization.rs`). An events
+file is the third of exactly that kind, so it is spelled the same way: **`.musa.events`**.
 
-`invention.kernel` → `invention.musa.kernel`; the variant marker stays ahead of the suffix, so `canon.normal.kernel` →
-`canon.normal.musa.kernel`.
+`invention.event track` → `invention.musa.events`; the variant marker stays ahead of the suffix, so
+`canon.normal.event track` → `canon.normal.musa.events`.
 
 An abbreviation was considered and rejected on the format's own rule quoted above: `.musak` is a portmanteau rather than
 a word, which is the "unexplained shorthand" `01-grammar.md` names; and `.kern` is Humdrum's, a real music format this
 one should not be confused with.
 
-**Only the extension moves.** `kernel` also names the grammar's leading keyword (`kernel "Name" {`), the crate, the CLI
-verb, and `docs/rules/kernel/`. None of those changes, and a blanket substitution would break the format.
+**Only the extension moves.** `events` also names the grammar's leading keyword (`events "Name" {`), the crate, the CLI
+verb, and `docs/rules/events/`. None of those changes, and a blanket substitution would break the format.
 
 ## Target
 
@@ -190,15 +190,15 @@ verb, and `docs/rules/kernel/`. None of those changes, and a blanket substitutio
   format become one named thing, which is the point of putting the format in one module.
 - `crates/musa-compiler/src/elaborate.rs`: `mark_of` and `instantiate` become calls to those two, and `mark_of`'s doc
   comment loses the apology.
-- `crates/musa-project/src/export.rs`: `ExportRequest::extension()` returns `musa.kernel` — the one authoritative
+- `crates/musa-project/src/export.rs`: `ExportRequest::extension()` returns `musa.event track` — the one authoritative
   spelling; the CLI's `write_artifact` derives every path from it.
-- `crates/musa/src/main.rs`: the two usage lines naming `<file.kernel>`.
-- `examples/kernel/*.kernel` → `*.musa.kernel`, 24 files, regenerated content.
-- `crates/musa-compiler/tests/suite/kernel_interop.rs`: the corpus path, the `format!` that builds a golden's name, the
+- `crates/musa/src/main.rs`: the two usage lines naming `<file.events>`.
+- `examples/events/*.event track` → `*.musa.events`, 24 files, regenerated content.
+- `crates/musa-compiler/tests/suite/events_interop.rs`: the corpus path, the `format!` that builds a golden's name, the
   `canon.normal` literal, and the two assertions that pin a packed spelling.
-- `docs/rules/kernel/06-surface-elaboration.md`: the payload EBNF and its two worked examples.
-- `docs/rules/kernel/{01,07,08,09}.md`: the extension, wherever the corpus is named.
-- `Makefile`: `make snapshots` sets `UPDATE_KERNEL_GOLDENS=1`, which it does not today — the one command that claims to
+- `docs/rules/events/06-surface-elaboration.md`: the payload EBNF and its two worked examples.
+- `docs/rules/events/{01,07,08,09}.md`: the extension, wherever the corpus is named.
+- `Makefile`: `make snapshots` sets `UPDATE_EVENTS_GOLDENS=1`, which it does not today — the one command that claims to
   regenerate every golden must actually do so.
 - `.gitignore`: `*.performance` beside `*.recovery`.
 
@@ -208,7 +208,7 @@ verb, and `docs/rules/kernel/`. None of those changes, and a blanket substitutio
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa -- kernel examples/invention.musa
+cargo run -p musa -- event track examples/invention.musa
 ```
 
 The laws that must stay green, unchanged in meaning: `a_facts_text_form_round_trips` — keep its corpus and keep its
@@ -216,28 +216,29 @@ inversion axis written with every character the format separates on, adapted to 
 `a_facts_text_form_writes_no_decimals` — restated over *bare* words rather than the whole line, which is what it was
 always about: a tempo marking is allowed to be the word `rit.`, and quoting free text is exactly what lets a law about
 numbers stay a law about numbers; `facts_differing_only_in_provenance_have_different_text`;
-`printing_and_parsing_an_example_preserves_its_meaning`; `the_kernel_corpus_is_up_to_date` over `*.musa.kernel`.
+`printing_and_parsing_an_example_preserves_its_meaning`; `the_kernel_corpus_is_up_to_date` over `*.musa.events`.
 
 Two new laws:
 
-- **A label survives the kernel's own quoting.** For every fact in the corpus, `print` a one-occurrence timeline and
-  `parse` it back — the property the unit round trip does not cover, because it is the composition of the payload's
+- **A label survives the event track's own quoting.** For every fact in the corpus, `print` a one-occurrence timeline
+  and `parse` it back — the property the unit round trip does not cover, because it is the composition of the payload's
   escape with `write_string`'s that produced the eight backslashes.
 - **A label has no `"` in it.** That is what keeps the composition from doubling, and it is a property of the writer
   rather than a coincidence of the corpus.
 
-By eye, which is the point of the prompt: `examples/kernel/invention.musa.kernel` can be read aloud.
+By eye, which is the point of the prompt: `examples/events/invention.musa.events` can be read aloud.
 
 ## Stop
 
 - **No change to `canonical_key`, `Timeline::normalize`, the semantic hash, or normal form.** This is the text form
   only, and the evidence that they are separable is that no `.snap` moves.
-- **No `.musa.kernel` → `.musa` direction, and no editor support, highlighting or formatter for kernel files** (prompt
+- **No `.musa.events` → `.musa` direction, and no editor support, highlighting or formatter for events files** (prompt
   48's Stop stands).
-- **No payload grammar in `musa-kernel`.** The kernel stays generic in `A` and keeps handing an opaque string to the
-  caller's `TextPayload`; a kernel that knew what a note was would be the §12 violation the crate exists to prevent.
-- **No renaming of the `kernel` keyword, the `musa-kernel` crate, the `musa kernel` subcommand, or
-  `docs/rules/kernel/`.**
+- **No payload grammar in `musa-events`.** The event track stays generic in `A` and keeps handing an opaque string to
+  the caller's `TextPayload`; an event track that knew what a note was would be the §12 violation the crate exists to
+  prevent.
+- **No renaming of the `events` keyword, the `musa-events` crate, the `musa events` subcommand, or
+  `docs/rules/events/`.**
 - **No sorting of occurrences.** `--normalized` is where canonical order lives.
 - **No new `FactKind`, no new `ExpansionStep`, and no change to what a fact carries.** Same values, spelled so they can
   be read.

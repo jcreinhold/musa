@@ -88,8 +88,8 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 | Crate | What it owns |
 | --- | --- |
 | `musa-syntax` | tokens, parser, a lossless syntax tree, formatting, text edits |
-| `musa-kernel` | the temporal kernel: exact rational time, typed occurrences, timeline/sequence/overlay |
-| `musa-compiler` | name resolution, units, elaboration through the kernel, score and performance snapshots |
+| `musa-events` | the event-track: exact rational time, typed occurrences, timeline/sequence/overlay |
+| `musa-compiler` | name resolution, units, elaboration through the event track, score and performance snapshots |
 | `musa-notation` | engraving plan, MEI, LilyPond, MusicXML, MIDI |
 | `musa-dsp` | the studio graph, DSP processors, offline rendering |
 | `musa-playback` | audio device, transport, real-time queues, MIDI input |
@@ -109,9 +109,9 @@ reference. `make docs` builds it; `make docs-serve` reads it live.
 `docs/` has four directories, and which one a document is in says what force it has:
 
 - [`docs/rules/`](docs/rules/) — **governing.** The constitution, the rules that cross stages, and one specification per
-  stage: the [temporal kernel](docs/rules/kernel/) that is the semantic core, the
-  [source language](docs/rules/language/) that elaborates into it, the [desktop app](docs/rules/desktop/), and the
-  `.musa` [style guide](docs/rules/style-guide.md). Code that disagrees with any of it is wrong.
+  stage: the [event-track](docs/rules/events/) that is the semantic core, the [source language](docs/rules/language/)
+  that elaborates into it, the [desktop app](docs/rules/desktop/), and the `.musa`
+  [style guide](docs/rules/style-guide.md). Code that disagrees with any of it is wrong.
 - [`docs/plan/`](docs/plan/) — **what to build.** The [roadmap](docs/plan/roadmap.md) (layers, crate ownership, DSP
   rules, what is deliberately rejected), the numbered [prompts](docs/plan/prompts/) executed in dependency order, and a
   [code map](docs/plan/code-map/) saying what is implemented, partial, or absent.
@@ -122,10 +122,10 @@ reference. `make docs` builds it; `make docs-serve` reads it live.
 
 ## Status
 
-Early, and honest about it. The language, compiler, kernel, notation and audio export, the studio, and the score editor
-are implemented and tested; 135 of the 155 planned prompts are done. What remains is listed in `docs/plan/prompts/` with
-`status: pending` — effects and mixing, MusicXML export, MIDI entry, transforms, annotations and harmony, and imports
-with continuous curves.
+Early, and honest about it. The language, compiler, event track, notation and audio export, the studio, and the score
+editor are implemented and tested; 135 of the 155 planned prompts are done. What remains is listed in
+`docs/plan/prompts/` with `status: pending` — effects and mixing, MusicXML export, MIDI entry, transforms, annotations
+and harmony, and imports with continuous curves.
 
 Contributions should follow the same rules the prompts do: `make verify` is green, one prompt is one commit, and if the
 code and the design documents disagree, one of them gets repaired rather than left to drift.

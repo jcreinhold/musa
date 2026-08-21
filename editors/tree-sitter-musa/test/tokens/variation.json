@@ -5,7 +5,7 @@
     { "kind": "comment", "text": "// stretched, backwards, mirrored, and, in the last bar, one occurrence" },
     { "kind": "comment", "text": "// specialized without touching the motif every other bar uses." },
     { "kind": "comment", "text": "//" },
-    { "kind": "comment", "text": "// Every transformation here is an elaboration-time function: the kernel gains" },
+    { "kind": "comment", "text": "// Every transformation here is an elaboration-time function: the event track gains" },
     { "kind": "comment", "text": "// nothing for any of them, and the score can still say where each note came" },
     { "kind": "comment", "text": "// from." },
     { "kind": "piece", "text": "piece" },

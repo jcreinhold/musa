@@ -63,7 +63,7 @@ music-use    := "use" expr ";"
 scale-local  := "in" "scale" expr "{" music-statement* "}"
 assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
-kernel-quote := "kernel" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" kernel-item* "}"
+events-quote := "events" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" events-item* "}"
 antiquote    := "${" expr "}"
 document     := (import | binding | function | record | enum | trait | impl | inherent
                 | signature | structure | template | instance)*
@@ -831,14 +831,14 @@ Members are read as `Structure.member`. Inside a structure, a sibling member is 
 structure value, no structure argument to a function, no unpacking, and no recursion: `structure`, `signature`, and
 `template structure` are structural syntax that has finished before any value exists.
 
-## 7. Kernel documents and quotation
+## 7. Events documents and quotation
 
-A standalone `.musa.kernel` file contains exactly one closed term in the grammar of
-`docs/rules/kernel/10-term-calculus.md`:
+A standalone `.musa.events` file contains exactly one closed term in the grammar of
+`docs/rules/events/10-term-calculus.md`:
 
 ```text
-% musa-kernel-2
-kernel "example" {
+% musa-events-3
+events "example" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
     track 1/2 {
       occurrence "voice 0 0 note c4 1/2 [0:4]" from 0 to 1/2;
@@ -848,19 +848,19 @@ kernel "example" {
 
 It has no imports, functions, surface pitch operations, or free variables. Its payload text must decode as `ScoreFact`.
 
-A local quote is host syntax containing kernel syntax and typed antiquotation:
+A local quote is host syntax containing event-track syntax and typed antiquotation:
 
 ```musa
 fn delayed_double(
     subject: EventTrack[WrittenTime, ScoreFact],
-) -> EventTrack[WrittenTime, ScoreFact] { kernel EventTrack[WrittenTime, ScoreFact] {
+) -> EventTrack[WrittenTime, ScoreFact] { events EventTrack[WrittenTime, ScoreFact] {
         let s = ${subject} in
         together { s; shift by 1/2 s; }
     } }
 ```
 
 `${subject}` is one track antiquotation. It is instantiated in the quote's host environment and inserted as a typed
-kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
+events-term hole. Events identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
 terms. The completed quote must close and type-check before it becomes a track. No raw payload escape exists.
 
 Musa has a second quotation form — `quote at p { … }`, which builds `Syntax<Cat>` in the expansion phase — and the two
@@ -871,8 +871,8 @@ anything, and the locus is where a hole is instantiated. What follows is this qu
 Four rules a writer of quotes needs, and each one is the same rule the rest of the language already keeps:
 
 - **A quote is commented the way the file around it is.** `//` and `/* */` are trivia inside a quote, and `%` is not:
-  the quote is Musa source, so the host's comment syntax is the one that applies. The kernel's `%` lines belong to
-  `.musa.kernel` documents, which are not written inside a piece.
+  the quote is Musa source, so the host's comment syntax is the one that applies. The event track's `%` lines belong to
+  `.musa.events` documents, which are not written inside a piece.
 - **A raw payload says what the material is, and nothing about where it goes.** It states no scope and no origin; both
   are supplied by the use, exactly as they are for any shared body, and a quote that spells either is refused. A key,
   meter, clef or tempo payload is refused for the same reason at one remove — those are structural declarations with
@@ -882,7 +882,7 @@ Four rules a writer of quotes needs, and each one is the same rule the rest of t
   hole in a `let` value is instantiated once, at the `let`'s own locus, and each reference then places the finished
   facts wherever the term writes it. Every fact leaving a quote records that locus.
 - **Raw `shift`, `scale` and `restrict` are operations on time.** They move occurrences; they do not rewrite payloads,
-  because payloads are opaque to the kernel and arrive already transformed (`docs/rules/kernel/01-grammar.md`).
+  because payloads are opaque to the event track and arrive already transformed (`docs/rules/events/01-grammar.md`).
   Augmentation therefore belongs in the host — `${stretch(1/2, subject)}` — and raw `scale` belongs to material whose
   written values already say what was meant.
 
@@ -969,7 +969,7 @@ fixed_media harbor from "assets/harbor.wav";
 cue harbor at 17:1;
 ```
 
-The clip is beat-fitted and follows tempo. The fixed-media cue is only a kernel point at the score position; its
+The clip is beat-fitted and follows tempo. The fixed-media cue is only an event track point at the score position; its
 recorded duration remains seconds and is never manufactured into a written-time duration.
 
 ## 9. Corpus correctness relation
@@ -984,8 +984,8 @@ recorded duration remains seconds and is never manufactured into a written-time 
 | one chord class, two voicings | `play(voice(...))` | intentionally unequal under `≈facts` |
 | generic/symmetric row | finite row constructor and transforms | value equality; distinct-form count is observed |
 | assertion | `checked(predicate, body)` | successful body `≈music`; failure has no value |
-| standalone kernel | closed term parsing | `≡kernel` |
-| quote with antiquotation | typed substitution then closure | `≡kernel` after instantiation |
+| standalone events | closed term parsing | `≡events` |
+| quote with antiquotation | typed substitution then closure | `≡events` after instantiation |
 | swappable instruments/profiles | signature checking and profile realization | equal gesture type; sound equality not promised |
 | expression hairpin | profile-generated `ControlKey::expression` curve | exact gesture equality |
 | shared room | explicit mix-graph sends | frame equality modulo documented deterministic summation order |

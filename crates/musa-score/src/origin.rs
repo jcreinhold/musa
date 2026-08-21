@@ -97,7 +97,7 @@ impl Origin {
                 | ExpansionStep::MapNotePitches
                 | ExpansionStep::ScaleContext { .. }
                 | ExpansionStep::Assertion { .. }
-                | ExpansionStep::KernelSplice { .. } => {}
+                | ExpansionStep::EventsSplice { .. } => {}
             }
         }
     }
@@ -158,7 +158,7 @@ pub enum ExpansionStep {
         /// The claim's name, as the source spells it.
         claim: String,
     },
-    /// This fact entered through a kernel quotation
+    /// This fact entered through an events quotation
     /// (`docs/rules/language/01-surface.md` §7), at this position in the quote's
     /// own time.
     ///
@@ -169,7 +169,7 @@ pub enum ExpansionStep {
     /// occurrences afterwards, and the step still says where the splice was
     /// made, which is what a reader needs in order to know that a surface
     /// claim made inside the hole was checked *there* and not here.
-    KernelSplice {
+    EventsSplice {
         /// The locus, in whole notes, exactly.
         at: Ratio<i64>,
     },
@@ -351,7 +351,7 @@ impl std::fmt::Display for Interval {
 /// A realization has to make the *same* decision again after the composer
 /// edits an unrelated bar; otherwise every keystroke re-rolls the performance
 /// and the page flickers with music nobody wrote. That rules out the two
-/// obvious names (`docs/rules/kernel/11-realization.md`): a source span, because
+/// obvious names (`docs/rules/events/11-realization.md`): a source span, because
 /// reformatting would re-roll everything, and a [`DeclarationId`], because
 /// inserting a declaration renumbers everything after it.
 ///

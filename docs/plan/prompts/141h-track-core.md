@@ -40,7 +40,7 @@ arms build a `MusicOperation` — a *deferred contextual* description that `elab
 later against a key, a placement, a scope, and an origin. None of them computes an `EventTrack`, so there is no
 arithmetic in them to carry over. What is pure and does carry over is one layer down: `WrittenPitch::transpose` and
 `::invert`, `ScoreFact::stretched` and `::inverted`, `EventTrack::scale` and `::map_payloads`, and
-`musa_kernel::together`. The rules are *written* from those, and the sentence they answer to is §5.7's rather than the
+`musa_events::together`. The rules are *written* from those, and the sentence they answer to is §5.7's rather than the
 old arm's.
 
 **The payload is not an index the core can write.** This prompt said `EventTrack` is "indexed the way `Duration` and
@@ -82,15 +82,15 @@ under (`11-quotation.md` §3): the one number the rule cannot compute is the one
   `ExpansionStep` in `origin.rs`; and `stretch_segment`, `retrograde_segment`, `invert_segment`, and
   `map_note_pitches_segment`, which are the contextual versions and stay where they are. What the new rules take from
   them is the per-fact arithmetic, not the `Segment` plumbing.
-- `crates/musa-kernel/src/track.rs` — `EventTrack::scale`, `map_payloads`, `occurrences`, `duration`, `normalize`, and
-  the free `track`, `event`, `follow`, `together`. Every one is total or answers a `KernelError`, which is what makes
+- `crates/musa-events/src/track.rs` — `EventTrack::scale`, `map_payloads`, `occurrences`, `duration`, `normalize`, and
+  the free `track`, `event`, `follow`, `together`. Every one is total or answers a `EventsError`, which is what makes
   the result types below honest rather than uniform.
 - [`../../rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.7 (track-construction
   safety) and §5.8's third family. §5.7 is carried forward as an obligation to re-derive rather than an assumption to
   keep, and this is the prompt that re-derives its construction half against the new core.
 - [`../../rules/constitution.md`](../../rules/constitution.md) §4 and §7, on why the core is a calculus of occurrences
   of a canonical payload over exact rational time, and
-  [`../../rules/kernel/05-normalization.md`](../../rules/kernel/05-normalization.md) on what an `EventTrack` already
+  [`../../rules/events/05-normalization.md`](../../rules/events/05-normalization.md) on what an `EventTrack` already
   guarantees — normalized, exact, versioned identity — which is the whole of the inertness argument below.
 - [`../clean-break-ledger.md`](../clean-break-ledger.md) §1 and §2 — the rows prompt 142 owns. This prompt gives
   `EventTrack` a core spelling so that 142 can delete the type name `Music`; it deletes nothing itself.
@@ -105,7 +105,7 @@ under (`11-quotation.md` §3): the one number the rule cannot compute is the one
 
 **A track is a base type, and §5.8's own test is what decides it.** A base type is *inert*: it has no eliminator, no
 source program takes it apart, and two closed values of it are convertible exactly when the host says they agree.
-`musa-kernel`'s `EventTrack` is normalized, has a versioned exact identity, and is taken apart by nothing the source
+`musa-events`'s `EventTrack` is normalized, has a versioned exact identity, and is taken apart by nothing the source
 language can write — every operation over it is a compiler-owned builtin. A declared family would have to expose
 constructors that `05-normalization.md`'s normal form does not admit, which is the opposite of what a track's identity
 is for. It is registered at `Coordinate → Type 0` for the third finding's reason, so the eight signatures are written at
@@ -120,7 +120,7 @@ its declared argument types only when the host's table is wrong, and `Malformed:
 track builtin whose underlying operation can fail says so in its own result: `transpose` and `invert` because
 `WrittenPitch::transpose` and `::invert` answer `Option` at a fixed-width coordinate overflow, `stretch` because a
 factor at or below zero is not a stretch, `shift` because a negative offset is not a placement, and `play` because
-`musa_kernel::event` answers a `KernelError`. `retrograde`, `together`, and `map_note_pitches` cannot fail and say so by
+`musa_events::event` answers a `EventsError`. `retrograde`, `together`, and `map_note_pitches` cannot fail and say so by
 answering a track. Uniformity is not a reason to give a total operation an error case (`.claude/skills/module-design`
 rule 5), and the composition cost — a `Result` where the old spelling had a track — is 142's to spend on the surface,
 not this prompt's to hide.
@@ -162,10 +162,10 @@ this prompt adds is a second, *unused* spelling of the same values in the core's
   `("structural eliminators", 8)`, `("machine builtins", 9)`, and `("phase projections", 1)`, with the doc saying what
   each remaining group is waiting for and which prompt owns it.
 - Laws beside them: each of the eight answers what the pure operation it is written from answers, on a track built by
-  hand; §5.7's construction clause discharged as a law about `play` — the track it answers is one the kernel accepts,
-  with the requested placement and a complete `Origin` on every fact; each partial one refuses in its result type rather
-  than getting stuck, which is D2 at the one family that is not δ; and `map_note_pitches` applies the mapper exactly
-  once per note and leaves every non-note fact alone.
+  hand; §5.7's construction clause discharged as a law about `play` — the track it answers is one the event track
+  accepts, with the requested placement and a complete `Origin` on every fact; each partial one refuses in its result
+  type rather than getting stuck, which is D2 at the one family that is not δ; and `map_note_pitches` applies the mapper
+  exactly once per note and leaves every non-note fact alone.
 - `docs/plan/code-map/` rows for `musa-compiler`, and the row-16 sentence naming 141h for `Machine` repaired to name
   141ha.
 - Prompt 142's Read and `depends_on` repaired to name this prompt by its new slug.
@@ -195,5 +195,5 @@ Commit as `Give the track a core shape`.
   where the source learns the word.
 - No amendment to §5.7 or §5.8. If a signature cannot be written in the core's terms, that is a finding and stop
   condition 4 — the same rule 141c, 141f, and this repair worked under.
-- No change to `musa-kernel`. It stays a leaf, and the track's core spelling is a base type registered by the compiler,
-  not a type the kernel exports.
+- No change to `musa-events`. It stays a leaf, and the track's core spelling is a base type registered by the compiler,
+  not a type the event track exports.

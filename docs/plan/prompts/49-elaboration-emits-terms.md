@@ -13,23 +13,23 @@ phase: 3
 Change elaboration's output from a `Timeline<ScoreFact>` to a `Term<ScoreFact>` that is evaluated at the boundary.
 `repeat n { … }` becomes a `let` bound once and referenced `n` times instead of `n` elaborated copies; a motif
 application becomes a reference to its elaborated body; a canon becomes one `let` and two `shift`s. The compiled meaning
-is identical — T2 guarantees it — and the term is now what `musa kernel` prints, so the interchange file shows the
+is identical — T2 guarantees it — and the term is now what `musa events` prints, so the interchange file shows the
 structure a composer wrote rather than its expansion.
 
-Justified by two things and measured against both: elaboration cost on the large fixture, and what the kernel file looks
+Justified by two things and measured against both: elaboration cost on the large fixture, and what the events file looks
 like.
 
 ## Read
 
-- `docs/rules/kernel/10-term-calculus.md` T2 (`let` is transparent) and T3 (evaluation is normalization) — the theorems
+- `docs/rules/events/10-term-calculus.md` T2 (`let` is transparent) and T3 (evaluation is normalization) — the theorems
   that make this a representation change and not a semantic one.
-- `docs/rules/kernel/06-surface-elaboration.md` (normalization is a semantic boundary, **not** the internal
+- `docs/rules/events/06-surface-elaboration.md` (normalization is a semantic boundary, **not** the internal
   representation of every compiler pass — "nothing requires duplicating thousands of nodes merely to obey the normalized
   model"). This prompt is that sentence finally implemented; quote it in the module docs.
-- §20 (provenance lives above the kernel) — the hard part below.
+- §20 (provenance lives above the event track) — the hard part below.
 - `crates/musa-compiler/src/elaborate.rs` as prompts 39–41 left it: `elaborate_items`, `elaborate_item`'s `Repeat` and
   `Use` arms, `elaborate_use`.
-- `docs/rules/kernel/09-performance.md` P2 (elaboration) — the number this prompt moves.
+- `docs/rules/events/09-performance.md` P2 (elaboration) — the number this prompt moves.
 
 ## Design
 
@@ -73,25 +73,25 @@ repeats or motifs, P1 improves less because evaluation still materializes everyt
 does **not** improve on the large fixture, the fixture has no reuse to exploit — extend it with a repeat-heavy section
 and measure again, because a change justified by sharing must be measured on material that shares.
 
-Also record the qualitative result: the byte size and the readability of `examples/kernel/canon.kernel` before and
+Also record the qualitative result: the byte size and the readability of `examples/events/canon.event track` before and
 after. A canon that prints as one `let` and two `shift`s is the visible payoff, and the golden diff is the evidence.
 
 ### The boundary stays where it is
 
 `compile` still returns a `Compilation` whose snapshot is projected from an evaluated timeline. Terms are internal plus
-the `musa kernel` path. Nothing downstream of the compiler learns that terms exist.
+the `musa events` path. Nothing downstream of the compiler learns that terms exist.
 
 ## Target
 
-- `docs/rules/kernel/10-term-calculus.md`: the instantiation theorem, if Option A is taken (committed first).
-- `crates/musa-kernel/src/term.rs`: reference-site provenance hook, narrowly specified.
+- `docs/rules/events/10-term-calculus.md`: the instantiation theorem, if Option A is taken (committed first).
+- `crates/musa-events/src/term.rs`: reference-site provenance hook, narrowly specified.
 - `crates/musa-compiler/src/elaborate.rs`: emits `Term<ScoreFact>`; `repeat` and `use` become bindings; evaluation at
   the boundary.
 - `crates/musa-compiler/src/project.rs`: unchanged — it projects an evaluated timeline exactly as before.
-- `examples/kernel/*.kernel`: goldens re-recorded (these change; nothing else may).
-- `docs/rules/kernel/06-surface-elaboration.md`: the elaboration table gains the term column and the provenance
+- `examples/events/*.event track`: goldens re-recorded (these change; nothing else may).
+- `docs/rules/events/06-surface-elaboration.md`: the elaboration table gains the term column and the provenance
   resolution.
-- `docs/rules/kernel/09-performance.md`: before/after rows, plus the fixture note if the large fixture was extended.
+- `docs/rules/events/09-performance.md`: before/after rows, plus the fixture note if the large fixture was extended.
 
 ## Check
 
@@ -99,13 +99,13 @@ the `musa kernel` path. Nothing downstream of the compiler learns that terms exi
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject   # only examples/kernel/ goldens change
+cargo insta test --workspace --unreferenced=reject   # only examples/events/ goldens change
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
-cargo run -p musa -- kernel examples/canon.musa   # a let and two shifts, not a thousand occurrences
+cargo run -p musa -- event track examples/canon.musa   # a let and two shifts, not a thousand occurrences
 cargo bench -p musa-compiler
 ```
 
-Commit as `Elaborate into kernel terms`.
+Commit as `Elaborate into event-track terms`.
 
 ## Stop
 
@@ -127,16 +127,16 @@ discovered by the byte-identical-provenance requirement in *Stop*:
    mark a step *list*, not a step.
 3. **Nor can it carry the call site or the voice.** A motif body's `source_span` comes from the call and its `scope`
    from the voice. The body carries `u32::MAX` placeholders in both, and the mark says what to substitute — which is why
-   `4294967295` is visible inside shared bindings in `examples/kernel/*.kernel`.
+   `4294967295` is visible inside shared bindings in `examples/events/*.event track`.
 
-The mark is therefore `<depth>|<origin-span>|<scope>|<steps>`, and it is `ScoreFact`'s format, not the kernel's — the
-kernel still only knows it is an opaque string it hands to `instantiate` (T6 unchanged).
-`docs/rules/kernel/01-grammar.md` and `06-surface-elaboration.md` are repaired to say so.
+The mark is therefore `<depth>|<origin-span>|<scope>|<steps>`, and it is `ScoreFact`'s format, not the event track's —
+the events still only knows it is an opaque string it hands to `instantiate` (T6 unchanged).
+`docs/rules/events/01-grammar.md` and `06-surface-elaboration.md` are repaired to say so.
 
-**Two kernel accessors were needed, and both are about ownership, not inspection.** `Term::into_literal` and taking the
-term **by value** in `evaluate`/`evaluate_marked`. Both were added after measuring: the first draft cloned every
+**Two event track accessors were needed, and both are about ownership, not inspection.** `Term::into_literal` and taking
+the term **by value** in `evaluate`/`evaluate_marked`. Both were added after measuring: the first draft cloned every
 occurrence twice on the way to a value and cost **+29% allocations on the `large` workload**, which has no sharing to
-offset it. `docs/rules/kernel/09-performance.md` records the two corrections and the rule they illustrate. The
+offset it. `docs/rules/events/09-performance.md` records the two corrections and the rule they illustrate. The
 `evaluate` signature change is a repair to prompt 45's; callers that still need the term say `evaluate(term.clone())`.
 
 **A third bench workload, not a bigger second one.** `tests/fixtures/large-score.musa` has no `repeat` and no `use`, so
@@ -148,12 +148,12 @@ prompt 45 recorded, resolved by adding a column rather than moving one.
 **Coalescing adjacent literals was not in the prompt and is not optional.** Without it every note printed as its own
 nested `timeline` inside a `sequence`, and the corpus grew ~30% while saying nothing new. With it, files with no reuse
 are byte-identical to prompt 48's. `Term::seq` was deliberately *not* changed to coalesce: the printer prints the term
-it is given (`01-grammar.md`), so the producer folds and the kernel does not.
+it is given (`01-grammar.md`), so the producer folds and the event track does not.
 
 **Four levels spend their sharing**, listed in `06-surface-elaboration.md`: a tie crossing an item boundary,
 `retrograde`, `invert`, `stretch`, and a `use` with `with { … }` overrides. Each needs a *value*, so it evaluates its
 reference — which instantiates the body exactly as direct expansion would have — and the binding it made is pruned when
-the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five `use`s.
+the piece's term is closed. This is why `examples/events/variation.event track` has one `let` for five `use`s.
 
 **What did not change**: `project.rs`, the projected snapshot (byte-identical, as *Stop* required), `canonical_key`, any
-semantic hash, and any golden outside `examples/kernel/`.
+semantic hash, and any golden outside `examples/events/`.

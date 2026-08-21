@@ -20,8 +20,8 @@ dance producer writes on the first line of a track.
 
 ## Read
 
-- `docs/rules/kernel/11-realization.md` (prompt 66) — all of it. This prompt implements that document and nothing else.
-- `crates/musa-kernel/src/hash.rs` — FNV-1a 128, the workspace's one stable digest. Do not add a second.
+- `docs/rules/events/11-realization.md` (prompt 66) — all of it. This prompt implements that document and nothing else.
+- `crates/musa-events/src/hash.rs` — FNV-1a 128, the workspace's one stable digest. Do not add a second.
 - `crates/musa-compiler/src/origin.rs` — `DeclarationId`, `Origin`, `expansion_path`. `ChoicePath` goes here, because it
   is provenance.
 - `crates/musa-compiler/src/lib.rs` — `CompileOptions`, and how `compile` is called from `musa-project`.
@@ -59,14 +59,14 @@ impl Realization {
     /// Pin one site, leaving the rest to the seed.
     pub fn pinned(self, path: ChoicePath, decision: Decision) -> Self;
     /// Every decision actually taken, in path order — what the page shows and
-    /// what a `.kernel` header records.
+    /// what a `.event track` header records.
     pub fn taken(&self) -> impl Iterator<Item = (&ChoicePath, &Decision)>;
 }
 ```
 
-`Decision` carries all three shapes now, though only `Count` has a producer, because `taken()` and the `.kernel` header
-are serialization surfaces and a third variant added later would move the format. `Order` and `Duration` arrive with
-prompt 68; the enum is the one place where anticipating them costs nothing and not anticipating them costs a format
+`Decision` carries all three shapes now, though only `Count` has a producer, because `taken()` and the `.event track`
+header are serialization surfaces and a third variant added later would move the format. `Order` and `Duration` arrive
+with prompt 68; the enum is the one place where anticipating them costs nothing and not anticipating them costs a format
 revision.
 
 ### `ChoicePath` is a path of names
@@ -100,11 +100,11 @@ The hash covers the *timeline*, and the timeline already differs between realiza
 this prompt must **verify** that rather than assume it: two seeds producing different counts must produce different
 hashes, and the same seed must produce the same hash across processes.
 
-`.kernel` files need **no grammar change**. The header is a `%` comment line and `text.rs::parse` already treats later
-`%` lines as trivia:
+`.event track` files need **no grammar change**. The header is a `%` comment line and `text.rs::parse` already treats
+later `%` lines as trivia:
 
 ```
-% musa-kernel 1
+% musa-events 1
 % realization seed=42 pins=0
 ```
 
@@ -115,7 +115,7 @@ hashes, and the same seed must produce the same hash across processes.
 ```sh
 musa check  <file.musa> --seed 42
 musa render <file.musa> --to mei --seed 42
-musa kernel <file.musa> --seed 42
+musa events <file.musa> --seed 42
 ```
 
 Absent, the realization is `deterministic()`. A piece with no aleatory construct is bit-identical under every seed, and
@@ -128,8 +128,8 @@ that is a test: run the whole `examples/` corpus under three seeds and diff.
 - `crates/musa-syntax`: `repeat n to m { … }` — the range in the existing `repeat` statement.
 - `crates/musa-compiler/src/elaborate.rs`: the path is threaded through elaboration; the ranged repeat draws its count
   and records the decision.
-- `crates/musa-kernel/src/text.rs`: the realization header line, written and read.
-- `crates/musa-project`, `crates/musa`: `--seed` on `check`, `render`, `kernel`.
+- `crates/musa-events/src/text.rs`: the realization header line, written and read.
+- `crates/musa-project`, `crates/musa`: `--seed` on `check`, `render`, `events`.
 - `examples/`: `loop-durations.musa` — a four-bar house pattern whose fills repeat a variable number of times.
 - `crates/musa-compiler/tests/suite/realize.rs`: same seed → same hash; different seed → different hash; determinate
   pieces are seed-invariant across the corpus; `ChoicePath::canonical` is injective; inserting a named bar above a site
@@ -142,10 +142,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-for s in 1 2 3; do for f in examples/*.musa; do cargo run -q -p musa -- kernel "$f" --seed $s; done; done > /tmp/a
+for s in 1 2 3; do for f in examples/*.musa; do cargo run -q -p musa -- events "$f" --seed $s; done; done > /tmp/a
 # determinate pieces identical under every seed:
-diff <(cargo run -q -p musa -- kernel examples/canon.musa --seed 1) \
-     <(cargo run -q -p musa -- kernel examples/canon.musa --seed 999)
+diff <(cargo run -q -p musa -- event track examples/canon.musa --seed 1) \
+     <(cargo run -q -p musa -- event track examples/canon.musa --seed 999)
 cargo run -p musa -- check examples/loop-durations.musa --seed 42
 ```
 
@@ -169,7 +169,7 @@ caller — exactly as the provenance `path` already is. A ranged repeat inside a
 motif. This is prompt 66's T2 sharing question answered by construction rather than by a rule, and it is the reading T2
 forces once sharing is load-bearing.
 
-**A determinate piece's `.kernel` file has no realization header at all.** The Design shows the header written
+**A determinate piece's `.event track` file has no realization header at all.** The Design shows the header written
 unconditionally, which would have made every existing golden depend on a seed it never reads and broken the Check's own
 `diff` of `canon.musa` under two seeds. The header is written only when the piece actually decided something: every
 realization produces the determinate file, so naming one would be a claim the file does not need.
@@ -177,13 +177,13 @@ realization produces the determinate file, so naming one would be a claim the fi
 **A backwards range is refused rather than compiled.** `repeat 6 to 2` is a mistake about the music; treating it as zero
 passes would hide it in silence.
 
-**`musa_kernel::print` takes note lines; `musa_kernel::notes` reads them.** The Design says `.kernel` needs no grammar
-change and that is true, but "written and read" still needs an API, and the kernel must not learn what a realization is
-in order to carry the sentence. A note is an opaque `%` line; the compiler decides what goes in one.
+**`musa_events::print` takes note lines; `musa_events::notes` reads them.** The Design says `.event track` needs no
+grammar change and that is true, but "written and read" still needs an API, and the event track must not learn what a
+realization is in order to carry the sentence. A note is an opaque `%` line; the compiler decides what goes in one.
 
 ## Stop
 
-- No `choose`, no kernel change, no term form. Prompt 66 settled it.
+- No `choose`, no event track change, no term form. Prompt 66 settled it.
 - No mobile form, no free durations, no improvisation regions — prompt 68. `Decision` has the variants; nothing produces
   them.
 - No interface. Prompt 76.

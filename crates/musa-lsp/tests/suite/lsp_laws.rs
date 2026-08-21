@@ -55,9 +55,9 @@ const STDLIB_PIECE: &str = "piece \"Standard library\" {
 /// realization policy. Every prompt-122 law about *declarations* reads this.
 const TOOLING: &str = include_str!("tooling.musa");
 
-/// A kernel quote with holes in it — the one site whose completion is
+/// An event track quote with holes in it — the one site whose completion is
 /// narrower than the document's whole vocabulary.
-const KERNEL_SPLICE: &str = include_str!("../../../../examples/kernel-splice.musa");
+const EVENTS_SPLICE: &str = include_str!("../../../../examples/events-splice.musa");
 
 /// A small valid piece whose every position the tests can count by hand —
 /// one full bar of 4/4.
@@ -1182,11 +1182,11 @@ fn completion_in_a_policy_position_offers_the_three_policies() {
 }
 
 #[test]
-fn completion_in_a_kernel_hole_offers_only_what_a_hole_may_splice() {
+fn completion_in_a_events_hole_offers_only_what_a_hole_may_splice() {
     let mut server = Server::start();
-    let (uri, published) = server.open("kernel-splice", KERNEL_SPLICE);
+    let (uri, published) = server.open("events-splice", EVENTS_SPLICE);
     assert!(published.diagnostics.is_empty(), "{published:?}");
-    let items = completions(&mut server, &uri, at(KERNEL_SPLICE, "subject} in"));
+    let items = completions(&mut server, &uri, at(EVENTS_SPLICE, "subject} in"));
     let spliced = items
         .iter()
         .find(|item| item.label == "subject")

@@ -1,6 +1,6 @@
 ---
 id: 46
-slug: kernel-term-spec
+slug: events-term-spec
 status: done
 depends_on: [45]
 phase: 3
@@ -10,26 +10,27 @@ phase: 3
 
 ## Task
 
-Specify — in `docs/rules/kernel/`, before any code — the small term language whose meanings are the timelines the kernel
-already has: constructors, `let` for sharing, an evaluation relation into `(d, E)`, and the soundness theorems that make
-evaluation and normalization the same thing. This turns the kernel from an algebra of values into a calculus with a
-syntax, which is what a second implementation, an interchange file, and sharing-without-expansion all require.
+Specify — in `docs/rules/events/`, before any code — the small term language whose meanings are the timelines the event
+track already has: constructors, `let` for sharing, an evaluation relation into `(d, E)`, and the soundness theorems
+that make evaluation and normalization the same thing. This turns the event track from an algebra of values into a
+calculus with a syntax, which is what a second implementation, an interchange file, and sharing-without-expansion all
+require.
 
 Specification only. Prompt 47 implements it; prompt 48 gives it a text form; prompt 49 makes elaboration produce it.
-Marked candidate until prompt 48 graduates it, exactly as prompts 08–12 handled the kernel itself.
+Marked candidate until prompt 48 graduates it, exactly as prompts 08–12 handled the event track itself.
 
 ## Read
 
-- `docs/rules/kernel/01-grammar.md` — it already sketches an interchange grammar with un-normalized expressions and
+- `docs/rules/events/01-grammar.md` — it already sketches an interchange grammar with un-normalized expressions and
   named compositions. This prompt makes it precise and adds what it lacks; it is a repair of that document plus a new
   one, not a fresh design.
-- `docs/rules/kernel/03-denotational-semantics.md` (D0–D7 — the semantic domain the terms denote), `05-normalization.md`
+- `docs/rules/events/03-denotational-semantics.md` (D0–D7 — the semantic domain the terms denote), `05-normalization.md`
   (N1–N6 — normalization, equality, serialization, hash), `08-open-questions.md` **Q6** (no parser until a second
   producer/consumer exists — prompt 48 is that consumer, so this block is the trigger firing, not an end-run around it)
   and **Q1/Q5** (patterns and recursion stay out).
-- `docs/rules/kernel/01-grammar.md` (named references for sharing are part of the initial basis), §16 (no monadic
-  `join`), §18 (the kernel is finite), §32 (do not prematurely decide), §34 (semantic necessity).
-- `docs/rules/kernel/00-purpose.md`: "Not a general-purpose programming language (no recursion, no general
+- `docs/rules/events/01-grammar.md` (named references for sharing are part of the initial basis), §16 (no monadic
+  `join`), §18 (the event track is finite), §32 (do not prematurely decide), §34 (semantic necessity).
+- `docs/rules/events/00-purpose.md`: "Not a general-purpose programming language (no recursion, no general
   computation)". The calculus specified here must not violate that line; see the scope rule below.
 
 ## Design
@@ -72,8 +73,8 @@ Two of these need justification, and the specification must give it or drop them
 Give the evaluation relation `ρ ⊢ t ⇓ (d, E)` with an environment `ρ` mapping names to values, one rule per form. Then
 state the theorems that make this a calculus rather than a serialization format:
 
-- **T1 — homomorphism.** `⟦seq t u⟧ = ⟦t⟧ ; ⟦u⟧`, and likewise for `over`, `scale`, `restrict`. The kernel's L1–L18 are
-  then laws about terms too, by transport.
+- **T1 — homomorphism.** `⟦seq t u⟧ = ⟦t⟧ ; ⟦u⟧`, and likewise for `over`, `scale`, `restrict`. The event track's L1–L18
+  are then laws about terms too, by transport.
 - **T2 — `let` is transparent.** `⟦let x = t in u⟧ = ⟦u[t/x]⟧`. Sharing changes cost, never meaning.
 - **T3 — evaluation is normalization.** Evaluating a term and normalizing the result (N1) yields the canonical form; two
   terms are semantically equal exactly when their evaluations have equal canonical forms (N4). This is the theorem that
@@ -96,14 +97,14 @@ retrograde needs no primitive, and a calculus is not a reason to revisit that.
 
 ## Target
 
-- `docs/rules/kernel/10-term-calculus.md` (new): scope rule, grammar, evaluation relation, T1–T5, the absent list,
+- `docs/rules/events/10-term-calculus.md` (new): scope rule, grammar, evaluation relation, T1–T5, the absent list,
   status banner **candidate**.
-- `docs/rules/kernel/01-grammar.md`: repaired to be the surface syntax *of these terms*, with `let`, `shift`, and the
+- `docs/rules/events/01-grammar.md`: repaired to be the surface syntax *of these terms*, with `let`, `shift`, and the
   removal of anything it promises that the calculus does not have; the split between "grammar" (prompt 48's text form)
   and "calculus" (this document) stated in both.
-- `docs/rules/kernel/02-static-semantics.md`: well-formedness for terms.
-- `docs/rules/kernel/08-open-questions.md`: Q6 restated — the trigger has fired, and here is what fires it.
-- `docs/rules/kernel/00-purpose.md`: one paragraph placing the calculus under the existing "not a general-purpose
+- `docs/rules/events/02-static-semantics.md`: well-formedness for terms.
+- `docs/rules/events/08-open-questions.md`: Q6 restated — the trigger has fired, and here is what fires it.
+- `docs/rules/events/00-purpose.md`: one paragraph placing the calculus under the existing "not a general-purpose
   programming language" line, so the two documents cannot be read as disagreeing.
 
 ## Repairs made while implementing
@@ -131,12 +132,12 @@ fidelity` rather than after it. Reordered so the file reads Q1…Q7, Q9.
 
 **The prompt-implementation log gained prompts 44, 45, and 46.** The log is what prompt 12's graduation review reads,
 and it had entries through prompt 40 and nothing after. The three new entries state each prompt's finding in the form
-the earlier ones use — what the kernel gained, what it deliberately did not, and which open question moved.
+the earlier ones use — what the event track gained, what it deliberately did not, and which open question moved.
 
 **`shift`'s justification is D8's, and the document says so explicitly.** The design section argued sugar-versus-
 primitive on general grounds; the written specification anchors it to precedent instead — D4 was *struck* at prompt 37
 for being an operation that only restated another, so a primitive `shift` alongside `seq (timeline d {}) t` would be
-adding back exactly the kind of form the kernel already removed once.
+adding back exactly the kind of form the event track already removed once.
 
 **Printers write the expansion, never the sugar.** Stated in both `10-term-calculus.md` and `01-grammar.md`, because it
 is what keeps N5's canonical text unique now that the grammar has two ways to write a delay. `shift` is an input
@@ -154,15 +155,15 @@ states the counterexample beside the theorem so prompt 50 starts from the right 
 ## Check
 
 ```sh
-grep -n "Status: candidate" docs/rules/kernel/10-term-calculus.md
+grep -n "Status: candidate" docs/rules/events/10-term-calculus.md
 # every theorem names its future test; every form has a denotation:
-grep -c "Test:" docs/rules/kernel/10-term-calculus.md    # ≥ 5
+grep -c "Test:" docs/rules/events/10-term-calculus.md    # ≥ 5
 cargo fmt --check
 ```
 
 No code changes; the workspace build is untouched.
 
-Commit as `Specify the kernel term calculus`.
+Commit as `Specify the event-track term calculus`.
 
 ## Stop
 

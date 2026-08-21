@@ -1,11 +1,11 @@
-//! What elaboration through the temporal kernel guarantees, stated without an
+//! What elaboration through the event-track guarantees, stated without an
 //! oracle to compare against. The direct lowerer no longer exists, so the
 //! questions a differential suite once answered by comparison are answered
 //! here directly:
 //!
 //! - **fixtures** — positions, durations, spelling, identity, multiplicity,
 //!   ordering and provenance are pinned absolutely by the backend goldens
-//!   (`musa-notation`), the law suites, and the kernel normal forms below;
+//!   (`musa-notation`), the law suites, and the events normal forms below;
 //! - **the generated corpus** — arbitrary pieces still have to elaborate, and
 //!   what a random piece *means* is checkable without a second implementation:
 //!   one event per written statement, and a voice as long as the durations
@@ -27,7 +27,7 @@
 // arithmetic lint has nothing to protect here.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{CompileOptions, SourceDocument, compile, events_normal_form};
 
 use musa_score::{MusicalTime, Realization, Scope, ScoreSnapshot, Severity};
 use num_rational::Ratio;
@@ -51,9 +51,9 @@ fn errors_of(text: &str) -> Vec<String> {
 }
 
 #[test]
-fn kernel_normal_forms_snapshot() {
+fn events_normal_forms_snapshot() {
     for (name, source) in [("twinkle", TWINKLE), ("canon", CANON), ("counterpoint", COUNTERPOINT)] {
-        let form = kernel_normal_form(
+        let form = events_normal_form(
             &SourceDocument::new(source, name),
             &Realization::deterministic(),
             &musa_compiler::ImportSources::default(),
@@ -96,7 +96,7 @@ fn bars_are_erased_after_they_are_checked() {
     let flat = piece("c4/4 d4/4 e4/4 f4/4 g4/2 a4/2");
     let barred = piece("bar { c4/4 d4/4 e4/4 f4/4 } bar { g4/2 a4/2 }");
     let form = |source: &str| {
-        kernel_normal_form(
+        events_normal_form(
             &SourceDocument::new(source, "b"),
             &Realization::deterministic(),
             &musa_compiler::ImportSources::default(),
@@ -112,7 +112,7 @@ fn bars_are_erased_after_they_are_checked() {
 fn a_named_bar_plays_the_same_music_it_declared() {
     let source = "piece \"b\" { meter 4/4; score { part p { voice v { \
                   bar head { c4/2 d4/2 } use head; } } } }";
-    let form = kernel_normal_form(
+    let form = events_normal_form(
         &SourceDocument::new(source, "b"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
@@ -131,7 +131,7 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
     let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4/4 } } } }";
-    let form = kernel_normal_form(
+    let form = events_normal_form(
         &SourceDocument::new(source, "k"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
@@ -162,20 +162,20 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
 fn repeat_sounds_the_same_as_its_unrolling() {
     let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
     let unrolled = "piece \"x\" { score { part p { voice v { c4/4 d4/4 c4/4 d4/4 c4/4 d4/4 } } } }";
-    let a = kernel_normal_form(
+    let a = events_normal_form(
         &SourceDocument::new(repeated, "a"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
-    let b = kernel_normal_form(
+    let b = events_normal_form(
         &SourceDocument::new(unrolled, "b"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
     )
     .expect("elaborates");
     // Same temporal facts; provenance (and thus the snapshot) differs, which
-    // is exactly the semantic quotient at work (docs/rules/kernel/05-normalization.md).
+    // is exactly the semantic quotient at work (docs/rules/events/05-normalization.md).
     assert_ne!(a, b);
     // Payload heads (identity, kind, pitch) and spans agree.
     let heads_and_spans = |form: &str| -> Vec<String> {
@@ -196,7 +196,7 @@ fn repeat_sounds_the_same_as_its_unrolling() {
 #[test]
 fn a_repeat_says_on_the_timeline_that_it_is_one() {
     let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
-    let form = kernel_normal_form(
+    let form = events_normal_form(
         &SourceDocument::new(source, "a"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
@@ -250,7 +250,7 @@ fn endings_play_once_each_and_print_once_each() {
 /// refused: the bracket is a fact over the region — which pass it would have
 /// been — and the passage plays the one time there is. The old checker
 /// refused it, because it *expanded* repeats and an ending with no pass to
-/// belong to had nowhere to go; the kernel keeps the fact and the music as
+/// belong to had nowhere to go; the event track keeps the fact and the music as
 /// itself, which is what `lower/notation.rs`'s `ending` arm says. The broken
 /// corpus's `ending-outside-repeat` pinned the refusal; the premise retired
 /// with the expansion it was about, and this law pins the reading in its
@@ -274,7 +274,7 @@ fn an_ending_outside_a_repeat_is_read_where_it_stands() {
         })
         .collect();
     assert_eq!(sounded, ["c4", "d4"], "the ending's note plays once");
-    let form = kernel_normal_form(
+    let form = events_normal_form(
         &SourceDocument::new(source, "ending"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),

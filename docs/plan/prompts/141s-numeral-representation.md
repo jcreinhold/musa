@@ -125,7 +125,7 @@ down to the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we a
 Note that before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the deepest
 readable `Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a feature.
 
-Lean has no analogue because it has no such boundary: its kernel literal *is* the host datum. Musa's δ-rules read
+Lean has no analogue because it has no such boundary: its event track literal *is* the host datum. Musa's δ-rules read
 [`Datum`](../../../crates/musa-calculus/src/base.rs) and never a value, which is roadmap §15.12's privacy boundary, so
 the count has to cross it as a count.
 
@@ -137,16 +137,16 @@ not merely internal. Lean's `Nat` stays `inductive Nat where zero | succ`, with 
 a literal major premise exactly one level. Four differences remain, and each is a decision rather than an omission:
 
 1. **One canonical form, not two.** Lean lets `Nat.zero` and `lit 0` both be normal forms and reconciles them at every
-   comparison site. A syntactic kernel can afford that; NbE cannot, because a value with two shapes makes conversion ask
-   the question twice, and prompt 148's canonicity obligation wants one normal form per value.
-2. **Derived, not hard-wired.** Lean names `Nat.zero`, `Nat.succ`, and fourteen arithmetic operations as kernel globals.
-   `musa-calculus` names no family at all; the counting property is read off the declaration's shape, for the reason the
-   section above gives.
+   comparison site. A syntactic event track can afford that; NbE cannot, because a value with two shapes makes
+   conversion ask the question twice, and prompt 148's canonicity obligation wants one normal form per value.
+2. **Derived, not hard-wired.** Lean names `Nat.zero`, `Nat.succ`, and fourteen arithmetic operations as event track
+   globals. `musa-calculus` names no family at all; the counting property is read off the declaration's shape, for the
+   reason the section above gives.
 3. **`u64`, not a bignum.** Lean's literal is arbitrary precision. Overflow here falls back to a blocked spine, and the
    step budget answers long before 2⁶⁴ steps could be climbed.
-4. **No arithmetic in the core.** Lean's kernel accelerates `add`/`mul`/`div`/`mod`/`beq`/`ble` and eight more, because
-   the alternative for a proof kernel is unary arithmetic. Musa's arithmetic is a registered δ-rule in the *compiler*
-   (prompt 143), so the core keeps no privileged type. Cite Lean there when 143 weighs the same tradeoff.
+4. **No arithmetic in the core.** Lean's event track accelerates `add`/`mul`/`div`/`mod`/`beq`/`ble` and eight more,
+   because the alternative for a proof event track is unary arithmetic. Musa's arithmetic is a registered δ-rule in the
+   *compiler* (prompt 143), so the core keeps no privileged type. Cite Lean there when 143 weighs the same tradeoff.
 
 ### The raw layer names the family
 

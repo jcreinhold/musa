@@ -304,7 +304,7 @@ Evaluation returns `Timeline<A> = (d, E)`, where `d` is a nonnegative exact rati
 occurrences inside `[0, d]`.
 
 Sequence adds lengths. Overlay takes the greater length and combines occurrences. Overlay does not require equal lengths
-and does not insert rests. Normalization and payload equality remain those in `docs/rules/kernel/`.
+and does not insert rests. Normalization and payload equality remain those in `docs/rules/events/`.
 
 | Item | Rule |
 | --- | --- |

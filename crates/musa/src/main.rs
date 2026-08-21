@@ -29,7 +29,7 @@ fn main() -> ExitCode {
         Some("explain") => cmd_explain(args.get(1..).unwrap_or_default()),
         Some("render") => with_seed(args.get(1..).unwrap_or_default(), cmd_render),
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
-        Some("kernel") => with_seed(args.get(1..).unwrap_or_default(), cmd_kernel),
+        Some("events") => with_seed(args.get(1..).unwrap_or_default(), cmd_events),
         Some("analyze") => with_seed(args.get(1..).unwrap_or_default(), cmd_analyze),
         Some(other) if !other.starts_with('-') => {
             eprintln!("error: `{other}` is not a musa command");
@@ -85,9 +85,9 @@ fn print_usage() {
     println!("      --mode score | performance           for --to midi (default: score)");
     println!("      -o <path>                            where to write it (`-` for stdout)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
-    println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
-    println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
-    println!("      a file whose first line is `% musa-kernel-1` is Musa too: check, format");
+    println!("  musa events <file.musa> [--normalized] print the piece as events interchange text");
+    println!("  musa events --check <file.musa.events> parse, check, and evaluate events text");
+    println!("      a file whose first line is `% musa-events-1` is Musa too: check, format");
     println!("      and render read one wherever they read a piece");
     println!("  musa analyze <file.musa> --kind <kind> observe a score without changing it");
     println!("      --kind facts | chords | tonal | cadences | voice-leading | counterpoint");
@@ -98,7 +98,7 @@ fn print_usage() {
     println!("      --from <n> --to <n>                  read only [from, to), in whole notes");
     println!("      --segmentation attacks | beats | harmony-lane    what sounds together");
     println!("      --key \"<tonic> <mode>\"               read it in the key you hear");
-    println!("  --seed <n>  on check, render and kernel: which performance to compile");
+    println!("  --seed <n>  on check, render and events: which performance to compile");
     println!();
     println!("Everywhere:");
     println!("  -v, -vv, -vvv   say more about what musa is doing, on stderr");
@@ -115,7 +115,7 @@ fn print_usage() {
 /// x.musa -v` both work — a person reaching for more detail reaches for it
 /// wherever the cursor is.
 ///
-/// Logs go to stderr. `musa render -o -` and `musa kernel` write to stdout,
+/// Logs go to stderr. `musa render -o -` and `musa events` write to stdout,
 /// so a log line on that stream would corrupt a score.
 fn install_logging(args: Vec<String>) -> Vec<String> {
     let mut verbosity: u8 = 0;
@@ -167,7 +167,7 @@ fn open(path: &str, realization: &Realization) -> Result<ProjectSession, ExitCod
 
 /// Take `--seed N` out of `args`, leaving the subcommand's own arguments.
 ///
-/// Which performance to compile (`docs/rules/kernel/11-realization.md`). Absent, the
+/// Which performance to compile (`docs/rules/events/11-realization.md`). Absent, the
 /// realization is `deterministic()` — and a piece that leaves nothing open
 /// compiles to the same bytes under every seed, which is a test rather than a
 /// claim. It is removed here so no subcommand's parser has to know the flag
@@ -505,13 +505,13 @@ fn fraction(value: musa_project::Fraction) -> String {
     }
 }
 
-/// `musa kernel <file.musa> [--normalized] [-o <path>]` /
-/// `musa kernel --check <file.musa.kernel>`
+/// `musa events <file.musa> [--normalized] [-o <path>]` /
+/// `musa events --check <file.musa.events>`
 ///
-/// One direction only: kernel text is a projection of a piece, and a
-/// `.musa.kernel` file is never read back into a document (AGENTS.md — the source
+/// One direction only: events text is a projection of a piece, and a
+/// `.musa.events` file is never read back into a document (AGENTS.md — the source
 /// is canonical). `--check` is a reader, not an importer.
-fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
+fn cmd_events(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut output: Option<&str> = None;
     let mut normalized = false;
@@ -541,7 +541,7 @@ fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
         }
     }
     let Some(path) = path else {
-        eprintln!("error: kernel needs a file");
+        eprintln!("error: events needs a file");
         return ExitCode::FAILURE;
     };
     if check {
@@ -552,7 +552,7 @@ fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
                 return ExitCode::FAILURE;
             }
         };
-        return match musa_project::check_kernel(&text) {
+        return match musa_project::check_events(&text) {
             Ok(report) => {
                 println!(
                     "{path}: ok — piece {:?}, {} occurrences, duration {}",
@@ -574,7 +574,7 @@ fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
         Ok(session) => session,
         Err(code) => return code,
     };
-    let request = ExportRequest::Kernel { normalized };
+    let request = ExportRequest::Events { normalized };
     match session.export(request) {
         Ok(artifact) => {
             if output.is_none() {
@@ -917,16 +917,16 @@ impl Walked {
 /// Whether a walk should treat this file name as a musa document.
 ///
 /// Both alternatives (`docs/rules/language/01-surface.md` §7), because both are
-/// documents a bulk `musa format` is responsible for: a `.musa.kernel` file
+/// documents a bulk `musa format` is responsible for: a `.musa.events` file
 /// left out of the walk is a file `--check` calls clean and a later edit makes
 /// dirty without anything noticing.
 ///
 /// Matched on the whole name rather than on `Path::extension`, which reads
-/// `twinkle.musa.kernel` as a `kernel` file and would need the double
+/// `twinkle.musa.events` as a `events` file and would need the double
 /// extension taken apart by hand to say otherwise.
 fn is_document(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy();
-    name.ends_with(".musa") || name.ends_with(".musa.kernel")
+    name.ends_with(".musa") || name.ends_with(".musa.events")
 }
 
 /// A diagnostic rendered with source context by miette.

@@ -19,7 +19,7 @@ one named repairing prompt.
 
 ## Read
 
-- Prompt 38 and `docs/rules/kernel/09-performance.md`: reuse P1–P5, the three existing fixtures, `divan`, and the rule
+- Prompt 38 and `docs/rules/events/09-performance.md`: reuse P1–P5, the three existing fixtures, `divan`, and the rule
   that a benchmark seam stays private.
 - Prompt 49's sharing workload and provenance-byte-identity requirement.
 - `docs/rules/language/05-verification.md` and `docs/rules/desktop/06-performance.md` B1/B2.
@@ -47,7 +47,7 @@ peak resident bytes where the harness can report it credibly. Build fixtures out
 command, sample method, uncertainty, and the source generator. Do not turn a median from one run into a universal
 absolute gate; keep the existing relative 10% review rule and B1/B2 end-to-end budgets.
 
-Create a compatibility manifest from committed fixtures: semantic hash, normalized kernel text digest, stable diagnostic
+Create a compatibility manifest from committed fixtures: semantic hash, normalized events text digest, stable diagnostic
 codes/labels, Origin-path projection, performance lanes, studio intent, prepared graph summary, and the existing
 MEI/LilyPond/MusicXML/MIDI/WAV goldens. It is a test oracle, not a new serialization format and not a public API.
 

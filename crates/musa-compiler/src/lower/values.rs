@@ -8,9 +8,9 @@
 //! # Where a surface form has no core term
 //!
 //! One kind is read by the grammar and denotes nothing yet, and it answers a
-//! diagnostic rather than an unhelpful `None`. `MusicExpr` and `KernelQuote`
+//! diagnostic rather than an unhelpful `None`. `MusicExpr` and `EventsQuote`
 //! were here and are gone: prompt 141k folded the first and
-//! [`super::kernel`] reads the second. The anonymous product was here too, and
+//! [`super::events`] reads the second. The anonymous product was here too, and
 //! prompt 142 gave it a spelling at every width — [`super::paired`] nests it.
 //!
 //! - A **named** call argument. The core applies positionally, and reordering a
@@ -137,7 +137,7 @@ impl Lowering<'_> {
             SyntaxKind::QuestionExpr => self.question(node, origin),
             SyntaxKind::QuoteExpr => self.quote(node, origin),
             SyntaxKind::MusicExpr => self.music(node),
-            SyntaxKind::KernelQuote => self.kernel_quote(node, origin),
+            SyntaxKind::EventsQuote => self.events_quote(node, origin),
             _ => None,
         }
     }

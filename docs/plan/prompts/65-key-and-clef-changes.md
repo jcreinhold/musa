@@ -153,7 +153,7 @@ C♯ entered after a modulation to D major used to come out D♭.
 
 **Every `plan__*.snap` moved and none of them changed meaning**, for the same reason as at prompt 64: `MeasurePlan`
 gained two fields whose `Debug` rendering is the snapshot. `modulation` and `clef_change` were added to the `LilyPond`,
-MEI, `MusicXML` and kernel-golden corpora, because a feature with no golden is a feature nothing defends.
+MEI, `MusicXML` and events-golden corpora, because a feature with no golden is a feature nothing defends.
 
 **`cargo insta test --workspace --unreferenced=reject` is not in the Check.** `cargo-insta` is not installed here; the
 same repair was recorded at prompts 61, 62 and 64. `cargo nextest run --workspace` runs the same assertions.

@@ -19,7 +19,7 @@ use musa_syntax::ast::PieceDecl;
 /// sounds projected into `snapshot`, and the identity of the whole.
 ///
 /// One compilation, one temporal object
-/// (docs/rules/kernel/06-surface-elaboration.md). Part and voice identity live
+/// (docs/rules/events/06-surface-elaboration.md). Part and voice identity live
 /// in `Scope` rather than in a timeline per voice, which is why nothing here
 /// holds a lane: the projection buckets the piece's own occurrences by the scope
 /// each fact was constructed at.
@@ -37,19 +37,19 @@ pub(super) fn elaborate_score(
     piece: &PieceDecl,
     namespace: &str,
     snapshot: &mut ScoreSnapshot,
-) -> musa_kernel::SemanticHash {
+) -> musa_events::SemanticHash {
     let Some(score) = piece.score() else {
-        return musa_kernel::SemanticHash::default();
+        return musa_events::SemanticHash::default();
     };
     // Named bars join the namespace before any voice is read, so a bar in the
     // cello can be answered by the violin above it — or refused, if the answer
     // comes first. Either way the name exists.
     resolve::register_bars(resolver, snapshot, &score);
     let Some(read) = elaborated.piece(resolver, piece.syntax(), namespace) else {
-        return musa_kernel::SemanticHash::default();
+        return musa_events::SemanticHash::default();
     };
     let Some(sounding) = evaluated(resolver, elaborated, &read.track) else {
-        return musa_kernel::SemanticHash::default();
+        return musa_events::SemanticHash::default();
     };
     for part in &read.parts {
         if !part.name.is_empty()
@@ -94,7 +94,7 @@ pub(super) fn elaborate_score(
             sink.extend(lanes);
         }
     }
-    let whole = musa_kernel::together(vec![placed(resolver, &score, &bars, sounding.duration()), sounding]);
+    let whole = musa_events::together(vec![placed(resolver, &score, &bars, sounding.duration()), sounding]);
     // The piece's identity, taken where the piece exists as one temporal object
     // and nowhere else: after this line the timeline is a projection, and a hash
     // of the projection would be a hash of a view.

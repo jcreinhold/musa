@@ -172,7 +172,7 @@ fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Opti
         // seconds per beat, which is where the evenness a listener hears
         // lives. The value is in the track rather than invented during
         // lowering, so a second implementation integrates the same curve.
-        shape: musa_kernel::Progress::linear(),
+        shape: musa_events::Progress::linear(),
     })
 }
 
@@ -230,7 +230,7 @@ pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
 /// quarter a whole note without ever failing.
 ///
 /// The short form is spelled out — `/4.` records `3/8` — because that spelling
-/// reaches diagnostics, the desktop inspector and every kernel golden, and one
+/// reaches diagnostics, the desktop inspector and every event track golden, and one
 /// duration must not arrive there under two names.
 pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
     let text = musa_syntax::ast::Duration::of(node)?.value()?;

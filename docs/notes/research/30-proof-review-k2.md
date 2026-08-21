@@ -95,7 +95,7 @@ not silently added to the proof.
 
 2. **The stated R1 theorem does not establish governing semantic R1 and lineage preservation simultaneously.**
    - **Location**: [28 §§4, 7, and 9](28-candidate-k2.md), [29 Theorem 9.1](29-metatheory-of-k2.md),
-     `docs/rules/kernel/05-normalization.md` N3–N6, and `crates/musa-compiler/src/elaborate.rs`.
+     `docs/rules/events/05-normalization.md` N3–N6, and `crates/musa-compiler/src/elaborate.rs`.
    - **Type**: wrong relation or object / cross-document inconsistency.
    - **Problem**: current timeline normalization preserves full payload values, while governing semantic equality uses
      each payload's `canonical_key`. The current `ScoreFact` key includes `source_span` and `expansion_path` but omits

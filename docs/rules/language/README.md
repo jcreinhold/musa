@@ -3,7 +3,7 @@
 **Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–171. Until
 prompt 172 completes its conformance audit, everything above this directory in
 [the precedence ladder](../../README.md#which-document-wins) takes precedence: `docs/rules/`,
-`docs/rules/across-stages/`, `docs/rules/kernel/`, and the relevant settled parts of `docs/plan/roadmap.md`. A
+`docs/rules/across-stages/`, `docs/rules/events/`, and the relevant settled parts of `docs/plan/roadmap.md`. A
 contradiction is a prompt defect to repair, not permission to implement whichever text is convenient.
 
 Two consequences of the governing core boundary are worth restating here, because both are easy to misread locally.
@@ -64,7 +64,7 @@ project contracts.
 These documents **decide**; [`../../book/`](../../book/src/introduction.md) **teaches**. The teaching pages quote
 fixtures rather than inventing syntax and generate every standard-library signature from the compiler's own record, and
 `scripts/check-docs.sh` holds them to it. Where the two disagree, the specification is right and the book has a bug. The
-implementor's path — grammar to kernel, laws, ownership, and extension recipes — is
+implementor's path — grammar to events, laws, ownership, and extension recipes — is
 [`../../plan/code-map/implementor-reference.md`](../../plan/code-map/implementor-reference.md).
 
 ## Graduation
@@ -75,12 +75,12 @@ Prompt 172 may mark this specification governing only after all of the following
    named here — including the language pass at 128–149, whose obligations replace rather than extend the ones
    `02-core-calculus.md` §5 carried before it;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
-3. the core law suite passes and no surface convenience has entered `musa-kernel` or `musa-calculus`. It does *not* pass
+3. the core law suite passes and no surface convenience has entered `musa-events` or `musa-calculus`. It does *not* pass
    unchanged: the course correction's final phases re-derive the metatheory matrix against the surviving calculus, and
    prompt 142 remains the one prompt permitted to have moved the compatibility oracle. Both are audited by the entries
    they leave behind, not by the suite being untouched;
 4. live and offline rendering agree, part routing is isolated, and builds are reproducible from the project closure;
-5. the roadmap, governance decisions, kernel and across-stage documents, style guide, implementation, and prompt stack
+5. the roadmap, governance decisions, events and across-stage documents, style guide, implementation, and prompt stack
    pass a final contradiction audit.
 
 The reasoning that produced this candidate — the design essay it was split out of, and the corrections applied to it

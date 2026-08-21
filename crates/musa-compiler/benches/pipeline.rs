@@ -7,13 +7,13 @@
 //! | --- | --- | --- |
 //! | P0 | parse only | separates syntax cost from elaboration |
 //! | P1 | `compile` end to end | B1's server-side share: a keystroke costs a compile |
-//! | P2 | elaboration only, parse excluded | the stage the kernel migration rewrote |
+//! | P2 | elaboration only, parse excluded | the stage the event track migration rewrote |
 //! | P3 | the snapshot projection | the stage the migration created, most likely to regress |
 //! | P4 | canonical form of the whole piece | what semantic identity pays on every edit |
 //! | P5 | the semantic hash of the whole piece | what the session actually asks for |
 //! | P6 | the tonal analysis of the whole piece | the one stage that grows with the chord vocabulary |
 //! | P7 | every analysis kind at once | what a reader opening the analysis panel pays |
-//! | K0 | a `.musa.kernel` document | the interchange alternative, which shares no stage with the surface one |
+//! | K0 | a `.musa.events` document | the interchange alternative, which shares no stage with the surface one |
 //! | E0–E4 | format, recover, edit head, edit tail, name under cursor | the interactive path |
 //! | S0–S2 | identical calls, distinct arguments, hand-hoisted | the two sharing gaps |
 //!
@@ -22,7 +22,7 @@
 //! `Vec<ScoreEvent>` per voice with one heterogeneous multiset per piece will
 //! show up there first, if it shows up at all.
 //!
-//! Results are recorded in `docs/rules/kernel/09-performance.md` through the kernel
+//! Results are recorded in `docs/rules/events/09-performance.md` through the event track
 //! migration and in `docs/rules/language/06-performance.md` from prompt 93 on. Run
 //! with:
 //!
@@ -52,8 +52,8 @@ const AUDIO_BRIDGE: &str = include_str!("../../../tests/fixtures/audio-bridge.mu
 const CORE_PRESSURE: &str = include_str!("../../../tests/fixtures/core-pressure.musa");
 const TEMPLATE_PRESSURE: &str = include_str!("../../../tests/fixtures/template-pressure.musa");
 const ANALYSIS_PRESSURE: &str = include_str!("../../../tests/fixtures/analysis-pressure.musa");
-const KERNEL_PRESSURE: &str = include_str!("../../../tests/fixtures/kernel-pressure.musa");
-const KERNEL_DOCUMENT: &str = include_str!("../../../tests/fixtures/kernel-pressure.musa.kernel");
+const EVENTS_PRESSURE: &str = include_str!("../../../tests/fixtures/events-pressure.musa");
+const EVENTS_DOCUMENT: &str = include_str!("../../../tests/fixtures/events-pressure.musa.events");
 const DECLARATION_LIBRARIES: [&str; 4] = [
     include_str!("../../../tests/fixtures/elaboration-libraries/library-0.musa"),
     include_str!("../../../tests/fixtures/elaboration-libraries/library-1.musa"),
@@ -83,7 +83,7 @@ const WORKLOADS: [&str; 11] = [
     "core-pressure",
     "template-pressure",
     "analysis-pressure",
-    "kernel-pressure",
+    "events-pressure",
 ];
 
 fn source(workload: &str) -> SourceDocument {
@@ -97,7 +97,7 @@ fn source(workload: &str) -> SourceDocument {
         "core-pressure" => SourceDocument::new(CORE_PRESSURE, "tests/fixtures/core-pressure.musa"),
         "template-pressure" => SourceDocument::new(TEMPLATE_PRESSURE, "tests/fixtures/template-pressure.musa"),
         "analysis-pressure" => SourceDocument::new(ANALYSIS_PRESSURE, "tests/fixtures/analysis-pressure.musa"),
-        "kernel-pressure" => SourceDocument::new(KERNEL_PRESSURE, "tests/fixtures/kernel-pressure.musa"),
+        "events-pressure" => SourceDocument::new(EVENTS_PRESSURE, "tests/fixtures/events-pressure.musa"),
         _ => SourceDocument::new(LARGE, "tests/fixtures/large-score.musa"),
     }
 }
@@ -136,8 +136,8 @@ fn p1_compile(bencher: divan::Bencher<'_, '_>, workload: &str) {
     bencher.bench_local(|| compile(divan::black_box(&source), &options));
 }
 
-/// P2 — everything after parsing: elaboration through the kernel and the
-/// snapshot adapter. This is the stage the kernel migration rewrote.
+/// P2 — everything after parsing: elaboration through the event track and the
+/// snapshot adapter. This is the stage the event track migration rewrote.
 #[divan::bench(args = WORKLOADS)]
 fn p2_elaborate(bencher: divan::Bencher<'_, '_>, workload: &str) {
     let parsed = bench::parse(&source(workload));
@@ -145,7 +145,7 @@ fn p2_elaborate(bencher: divan::Bencher<'_, '_>, workload: &str) {
     bencher.bench_local(|| bench::elaborate(divan::black_box(&parsed), &options));
 }
 
-/// P3 — the snapshot projection alone: kernel tracks back into score
+/// P3 — the snapshot projection alone: events tracks back into score
 /// events, with elaboration hoisted out of the measured region.
 #[divan::bench(args = WORKLOADS)]
 fn p3_project(bencher: divan::Bencher<'_, '_>, workload: &str) {
@@ -212,12 +212,12 @@ fn p7_analyze_all(bencher: divan::Bencher<'_, '_>, workload: &str) {
     });
 }
 
-/// K0 — a `.musa.kernel` document compiled as itself: the interchange
+/// K0 — a `.musa.events` document compiled as itself: the interchange
 /// alternative, which shares no stage with the surface one but pays the same
 /// budget when an editor opens one.
 #[divan::bench]
-fn k0_kernel_document(bencher: divan::Bencher<'_, '_>) {
-    let document = SourceDocument::new(KERNEL_DOCUMENT, "tests/fixtures/kernel-pressure.musa.kernel");
+fn k0_events_document(bencher: divan::Bencher<'_, '_>) {
+    let document = SourceDocument::new(EVENTS_DOCUMENT, "tests/fixtures/events-pressure.musa.events");
     let options = CompileOptions::default();
     bencher.bench_local(|| compile(divan::black_box(&document), &options));
 }
@@ -389,7 +389,7 @@ fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
 /// standard library has no printed term here — which is a missing
 /// measurement, not a measurement of zero, and the caller says so.
 fn duplication(source: &SourceDocument) -> Option<(usize, usize)> {
-    musa_compiler::kernel_text(
+    musa_compiler::events_text(
         source,
         &musa_score::Realization::default(),
         &musa_compiler::ImportSources::default(),

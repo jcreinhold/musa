@@ -64,5 +64,5 @@ Commit as `Import SoundFont instruments through the sampler`.
 ## Stop
 
 - No General MIDI orchestration policy, MIDI-file player, bank editor, SF3 extension, or proprietary sampler format.
-- No binary SoundFont data in source, kernel facts, or desktop IPC.
+- No binary SoundFont data in source, event track facts, or desktop IPC.
 - No claim of complete support while a sound-changing generator/modulator is ignored.

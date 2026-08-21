@@ -84,7 +84,7 @@ one it declines, CBPV — and it records what the earlier notes got right, becau
 operation needs a value in a type) is not refuted by this evidence and should not be quietly buried by it.
 
 **`musa-calculus` enters the roadmap now**, before it exists, because roadmap §15 is where a new crate's dependencies
-are declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-kernel` is:
+are declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-events` is:
 nothing in it knows what a pitch is.
 
 **The consequential edits to `docs/rules/across-stages/` are part of this amendment, not prompt 149's audit.** Two

@@ -10,22 +10,22 @@ phase: 3
 
 ## Task
 
-Make the kernel timeline the *only* place a temporal fact lives. Today notes are occurrences while slurs, phrases,
+Make the event track timeline the *only* place a temporal fact lives. Today notes are occurrences while slurs, phrases,
 tuplets, dynamics, hairpins, and ties are tags copied onto every note payload they cover (`elaborate.rs`'s `Marks`),
 reconstructed afterwards by the adapter into `AnnotationStore` spans keyed by event ids the adapter itself assigns.
 Replace that with a heterogeneous payload — `ScoreFact` — so each of those is an occurrence with its own span, its own
 provenance, and no copy of itself on anything else. `ScoreSnapshot` keeps its exact public shape and is computed from
 the timeline by projection.
 
-This prompt adds **no kernel constructor**. That it needs none is the evidence `docs/rules/kernel/00-purpose.md` asks
-for.
+This prompt adds **no event-track constructor**. That it needs none is the evidence `docs/rules/events/00-purpose.md`
+asks for.
 
 ## Read
 
-- `docs/rules/kernel/02-static-semantics.md` (payloads are typed and musically opaque to the kernel), §21 (typed
+- `docs/rules/events/02-static-semantics.md` (payloads are typed and musically opaque to the event track), §21 (typed
   interval payloads are the agreed shape for facts with temporal extent), §27 (if a score concept will not fit, the
-  *snapshot* grows, not the kernel), §34.
-- `docs/rules/kernel/06-surface-elaboration.md` — the elaboration table this prompt rewrites, and the adapter contract
+  *snapshot* grows, not the event track), §34.
+- `docs/rules/events/06-surface-elaboration.md` — the elaboration table this prompt rewrites, and the adapter contract
   it must keep satisfying.
 - `crates/musa-compiler/src/elaborate.rs`: `Marks`, `VoicePayload`, `PayloadKind`, `adapt_voice`, `reverse`, `retie`.
   `retie` exists only because a tie is encoded as a payload flag; it should not survive this prompt.
@@ -44,11 +44,11 @@ for.
 ```rust
 /// One elaborated fact of a score: what is stated, where in the score's
 /// structure it belongs, and why it exists. Where it is in *time* is the
-/// occurrence's span — never a field here (docs/rules/kernel/03 D0).
+/// occurrence's span — never a field here (docs/rules/events/03 D0).
 pub(crate) struct ScoreFact {
     scope: Scope,      // Piece | Part(PartId) | Voice(PartId, VoiceId)
     kind: FactKind,    // what is stated
-    origin: Origin,    // provenance, above the kernel (§20)
+    origin: Origin,    // provenance, above the event track (§20)
 }
 ```
 
@@ -62,7 +62,7 @@ complecting this prompt removes.
 | Variant | Span | Notes |
 | --- | --- | --- |
 | `Note { pitch, duration, articulations }` | the sounding extent | `duration: NotatedDuration` is *notation intent* — how many noteheads spell the span — and stays in the payload (roadmap §2: notated ≠ performed) |
-| `Rest { duration, articulations }` | the notated extent | notation intent, not silence; the kernel gains no silence object (§2) |
+| `Rest { duration, articulations }` | the notated extent | notation intent, not silence; the event track gains no silence object (§2) |
 | `Slur` / `Phrase { name }` | first onset → last end |  |
 | `Tuplet { num, den }` | the bracketed region | unreduced, as the backends need |
 | `Dynamic { mark }` | a point at the onset it applies from |  |
@@ -122,11 +122,11 @@ observable output of `compile` is byte-identical, and the only thing that change
 - `crates/musa-compiler/src/elaborate.rs`: `ScoreFact`/`Scope`/`FactKind`; `Marks`, `PayloadKind`, `VoicePayload`,
   `retie`, and the adapter's merge loop deleted; tie merging at elaboration; one timeline per piece.
 - `crates/musa-compiler/src/project.rs` (new): the timeline → `ScoreSnapshot` projection, private to the crate. It is a
-  module, not a method on the timeline: the kernel must not learn what a score is.
+  module, not a method on the timeline: the event track must not learn what a score is.
 - `crates/musa-compiler/src/lower.rs`: unchanged (the oracle is frozen).
-- `docs/rules/kernel/06-surface-elaboration.md`: elaboration table and adapter contract rewritten for `ScoreFact`.
-- `docs/rules/kernel/08-open-questions.md`: Q3 and Q7 evidence; the §34 note that heterogeneity needed no constructor.
-- `docs/rules/kernel/09-performance.md`: this prompt's P1–P4 row.
+- `docs/rules/events/06-surface-elaboration.md`: elaboration table and adapter contract rewritten for `ScoreFact`.
+- `docs/rules/events/08-open-questions.md`: Q3 and Q7 evidence; the §34 note that heterogeneity needed no constructor.
+- `docs/rules/events/09-performance.md`: this prompt's P1–P4 row.
 
 ## Check
 
@@ -136,15 +136,16 @@ cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test -p musa-compiler -p musa-notation --unreferenced=reject   # no golden may change
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
-cargo bench -p musa-compiler   # append the row to docs/rules/kernel/09-performance.md
+cargo bench -p musa-compiler   # append the row to docs/rules/events/09-performance.md
 grep -rn "struct Marks\|fn retie" crates/ | wc -l   # 0
 ```
 
-Commit as `Elaborate every notated fact as a kernel occurrence`.
+Commit as `Elaborate every notated fact as an event-track occurrence`.
 
 ## Stop
 
-- No kernel constructor, no kernel change of any kind. A perceived need is a spec repair committed first (§29, §34).
+- No event-track constructor, no event track change of any kind. A perceived need is a spec repair committed first (§29,
+  §34).
 - `ScoreSnapshot`'s public shape does not change here — not one field, not one accessor. That is prompt 42.
 - Key, meter, tempo, section, and harmony are **not** in scope; they are prompt 40.
 - Do not delete the oracle or the differential suite; they are this prompt's safety net.
@@ -171,11 +172,11 @@ Commit as `Elaborate every notated fact as a kernel occurrence`.
 - **`cargo insta test --unreferenced=reject` is not runnable here** (`cargo-insta` is not installed). The stronger
   statement was checked instead and holds: `git status` shows **no snapshot file changed at all**, and all 430 workspace
   tests pass. The canonical key was deliberately shaped so a note or rest with nothing written on it keys exactly as it
-  did before, which is why the kernel normal-form goldens are untouched.
+  did before, which is why the events normal-form goldens are untouched.
 - **Motif note overrides count events, not facts.** `with { note 2 = g5; }` numbers positions by groups of occurrences
   sharing a span; once a `slur` inside a motif body is an occurrence of its own, that numbering had to skip non-event
   facts, or bracketing a motif would have silently renumbered its notes.
 - **P2 on the large workload is +13% against prompt 38's row**, over the block's 10% gate and declared here as the rule
-  requires, with the reasoning in `docs/rules/kernel/09-performance.md`: the timeline holds more occurrences because
+  requires, with the reasoning in `docs/rules/events/09-performance.md`: the timeline holds more occurrences because
   regions are occurrences now, and elaboration groups statements to merge ties. The trade is that a slur is stored once
   instead of once per note it covers, and the `Vec<u32>` every note used to carry is gone.

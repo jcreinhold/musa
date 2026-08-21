@@ -2,8 +2,8 @@
  * What Origin says about music the composer did not write note by note
  * (`docs/rules/desktop/08-elaboration.md` §§4–5).
  *
- * `kernel-splice.musa` is the hardest case the workbench has: every note in it
- * is generated, its expansion path runs through a kernel quote, and one of its
+ * `events-splice.musa` is the hardest case the workbench has: every note in it
+ * is generated, its expansion path runs through an event track quote, and one of its
  * steps is a claim about the passage rather than a place in the source.
  * `claim-not-a-measure.musa` is the other end — a piece that does not compile,
  * because the composer asserted something of a passage that is not true of it.
@@ -11,14 +11,14 @@
 
 import { describe, expect, it } from "vitest";
 
-import kernelFixture from "../../fixtures/kernel-splice.snapshot.json";
+import eventsFixture from "../../fixtures/events-splice.snapshot.json";
 import refusedFixture from "../../fixtures/refused-claim.snapshot.json";
 import report from "../../fixtures/pivot-ambiguity.analysis.json";
 import { Workspace } from "../../src/lib/state/selection.svelte";
 import { applyFix, onlyFix } from "../../src/lib/state/fix";
 import type { AnalysisFacts, ProjectSnapshot, StepFact } from "../../src/lib/state/snapshot";
 
-const SPLICED = kernelFixture as unknown as ProjectSnapshot;
+const SPLICED = eventsFixture as unknown as ProjectSnapshot;
 const REFUSED = refusedFixture as unknown as ProjectSnapshot;
 const READING = report as unknown as AnalysisFacts;
 
@@ -26,7 +26,7 @@ function workspace(snapshot: ProjectSnapshot): Workspace {
   return new Workspace(() => snapshot);
 }
 
-describe("an expansion path through a kernel quote", () => {
+describe("an expansion path through an event track quote", () => {
   const events = SPLICED.score?.events ?? [];
 
   it("is generated music, all of it", () => {
@@ -53,7 +53,7 @@ describe("an expansion path through a kernel quote", () => {
 
   /*
    * `08-elaboration.md` §4: a step that is not a place has nothing to reveal.
-   * A splice happened at a time in the kernel term, not at an offset in the
+   * A splice happened at a time in the event track term, not at an offset in the
    * file, and a row that pointed it at the nearest brace would be inventing a
    * source map the compiler declined to write.
    */

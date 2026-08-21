@@ -11,7 +11,7 @@
 //! does not know.
 
 use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensResult};
-use musa_project::{KernelTokenClass, Span, kernel_classify};
+use musa_project::{EventsTokenClass, Span, events_classify};
 use musa_syntax::{DocumentAlternative, SyntaxKind, TokenClass, classify};
 
 use crate::workspace::Document;
@@ -57,21 +57,21 @@ fn type_index(class: TokenClass) -> Option<u32> {
     Some(index)
 }
 
-/// The legend index of a kernel token class.
+/// The legend index of an event track token class.
 ///
 /// A separate map rather than a conversion into [`TokenClass`], because the
 /// two languages classify different things and a lossy translation between
-/// them would colour kernel text as an approximation of musa text. They meet
+/// them would colour events text as an approximation of musa text. They meet
 /// at the legend, which is where they should: `Comment` is a comment in both.
-fn kernel_type_index(class: KernelTokenClass) -> u32 {
+fn events_type_index(class: EventsTokenClass) -> u32 {
     match class {
-        KernelTokenClass::Comment => 0,
-        KernelTokenClass::Keyword => 1,
-        KernelTokenClass::Number => 4,
-        KernelTokenClass::Text => 5,
-        KernelTokenClass::Name => 6,
-        KernelTokenClass::Punctuation => 7,
-        KernelTokenClass::Type => 9,
+        EventsTokenClass::Comment => 0,
+        EventsTokenClass::Keyword => 1,
+        EventsTokenClass::Number => 4,
+        EventsTokenClass::Text => 5,
+        EventsTokenClass::Name => 6,
+        EventsTokenClass::Punctuation => 7,
+        EventsTokenClass::Type => 9,
     }
 }
 
@@ -84,8 +84,8 @@ pub(crate) fn full(document: &Document) -> SemanticTokensResult {
     let mut data = Vec::new();
     let mut previous_line = 0_u32;
     let mut previous_start = 0_u32;
-    if document.alternative() == DocumentAlternative::Kernel {
-        for (range, class) in kernel_classify(source) {
+    if document.alternative() == DocumentAlternative::Events {
+        for (range, class) in events_classify(source) {
             let span = Span {
                 start: u32::try_from(range.start).unwrap_or(u32::MAX),
                 end: u32::try_from(range.end).unwrap_or(u32::MAX),
@@ -96,7 +96,7 @@ pub(crate) fn full(document: &Document) -> SemanticTokensResult {
                     line,
                     start,
                     length,
-                    kernel_type_index(class),
+                    events_type_index(class),
                     &mut previous_line,
                     &mut previous_start,
                 );

@@ -17,9 +17,9 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
    coinductive and a process graph has no musical extent. A complete semantic preparation result crosses under exact
    `R1`; the private process IR has its own formal tick semantics. What these forbid is hard to re-open — only through
    `docs/rules/README.md`'s amendment procedure.
-2. **`docs/rules/kernel/`** — the governing kernel specification: a small temporal kernel (ambient exact rational time,
+2. **`docs/rules/events/`** — the governing event-track specification: a small event track (ambient exact rational time,
    typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology, and the surface language elaborates into it.
-   Where it and the roadmap disagree on semantic architecture, the kernel wins.
+   Where it and the roadmap disagree on semantic architecture, the event track wins.
 3. **`docs/rules/across-stages/`** — the cross-stage formal specification, owning presentation, pass, process, and
    identity semantics. It refines **`docs/plan/roadmap.md`**, which still owns the broad crate/product plan.
 4. **`docs/rules/desktop/`** — the desktop interface specification: visual language, engraving quality bar, interaction
@@ -48,10 +48,10 @@ let them drift silently.
 | Path | What lives there |
 | --- | --- |
 | `crates/musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits |
-| `crates/musa-kernel` | finite temporal kernel: exact time, typed occurrences, timeline/sequence/overlay, normalization |
+| `crates/musa-events` | finite event-track: exact time, typed occurrences, timeline/sequence/overlay, normalization |
 | `crates/musa-calculus` | the dependently typed core calculus a checked term lives in: NbE, elaboration, inductive families |
 | `crates/musa-score` | the musical values: pitch, chords, scales, exact time, marks, score/performance snapshots, provenance, diagnostics, analysis |
-| `crates/musa-compiler` | resolution, units, imports, expansion, elaboration through the kernel — the passes that compute those values |
+| `crates/musa-compiler` | resolution, units, imports, expansion, elaboration through the event track — the passes that compute those values |
 | `crates/musa-notation` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
 | `crates/musa-dsp` | studio graph spec→render-plan compiler, processors, offline rendering |
 | `crates/musa-playback` | CPAL stream, transport, real-time queues, MIDI input |
@@ -68,7 +68,7 @@ let them drift silently.
 | `docs/README.md` | the map of the four directories and the precedence ladder — read this first |
 | `docs/rules/` | **governing.** constitution, obligations, and the per-stage specifications |
 | `docs/rules/across-stages/` | cross-stage presentations, derivations, process semantics, identity |
-| `docs/rules/kernel/` | the temporal-kernel specification |
+| `docs/rules/events/` | the event-track specification |
 | `docs/rules/desktop/` | the desktop interface specification |
 | `docs/rules/language/` | the elaboration-language specification (candidate until prompt 172) |
 | `docs/rules/style-guide.md` | `.musa` naming and spelling; the lint pass cites it by section |
@@ -77,7 +77,7 @@ let them drift silently.
 | `docs/notes/` | **governs nothing.** `research/` decision records, `toolchain/` machine traps |
 
 Dependency direction is one-way: language → score → compiler → audio → engine → project → {cli, lsp, desktop}, with
-`musa-notation` sitting on `musa-score` alone, and with `musa-calculus` and `musa-kernel` two leaves that
+`musa-notation` sitting on `musa-score` alone, and with `musa-calculus` and `musa-events` two leaves that
 `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also depends on `musa-syntax`
 (highlighting and completion answer on half-typed source, which the session's facts cannot describe — roadmap §15.11).
 `musa-wasm` is a fourth shell, over compiler + render, and `packages/*` sits below it in TypeScript. No dependency

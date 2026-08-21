@@ -72,4 +72,4 @@ Playback runs through the built-in audio engine. Without a `studio` block the pa
 - [The language](../reference/language.md) — the full surface syntax.
 - `examples/` in the repository — pieces the test suite compiles on every run. `glass-mountain.musa` exercises motifs,
   transposition, and the studio; `annotated.musa` shows phrases, sections, and chord symbols.
-- [The temporal kernel](../concepts/temporal-kernel.md) — what your piece means once it compiles.
+- [The event-track](../concepts/event-track.md) — what your piece means once it compiles.

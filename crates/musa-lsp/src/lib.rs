@@ -423,15 +423,15 @@ fn execute_command(
 ///
 /// The gate on every feature that reads a surface syntax tree or resolves a
 /// name a `.musa` file declares: completion, go-to-definition, references,
-/// rename, code actions, and folding all answer from structure a kernel
+/// rename, code actions, and folding all answer from structure an event track
 /// document does not have. Answering them anyway would not be empty — it
-/// would be *wrong*, because a kernel document's compiled facts carry the
+/// would be *wrong*, because an event track document's compiled facts carry the
 /// source spans of the piece that produced them, and every one of those
 /// offsets is a position in a different file.
 ///
 /// The features that do answer for both alternatives — diagnostics,
 /// formatting, semantic tokens, symbols, hover — dispatch inside themselves,
-/// because for them the kernel case is a different answer rather than no
+/// because for them the event track case is a different answer rather than no
 /// answer.
 fn surface_only(document: &Document) -> Option<&Document> {
     (document.alternative() == musa_syntax::DocumentAlternative::Surface).then_some(document)

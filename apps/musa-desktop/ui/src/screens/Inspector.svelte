@@ -32,7 +32,7 @@
     instance: "template instance",
     transform: "transform",
     assertion: "assertion",
-    splice: "kernel quotation",
+    splice: "events quotation",
     specialization: "specialization",
   };
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";

@@ -18,7 +18,7 @@ Read top to bottom. A document is bound by everything above it and binds everyth
    the amendment procedure in [`rules/README.md`](rules/README.md).
 2. [`rules/across-stages/`](rules/across-stages/README.md) — the rules no single stage owns: what data exists, when it
    is valid, how one stage produces the next, what equality means.
-3. [`rules/kernel/`](rules/kernel/00-purpose.md), [`rules/desktop/`](rules/desktop/README.md), and
+3. [`rules/events/`](rules/events/00-purpose.md), [`rules/desktop/`](rules/desktop/README.md), and
    [`rules/style-guide.md`](rules/style-guide.md) — the per-stage specifications. Each owns its stage and defers to
    `across-stages/` at the boundaries.
 4. [`rules/language/`](rules/language/README.md) — the source language. Still a **candidate**: where it and anything

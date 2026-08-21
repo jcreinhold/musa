@@ -2,8 +2,8 @@
 //! `musa-score` defines.
 //!
 //! Pipeline (docs/plan/code-map/stage-pipeline.md): CST → expansion-aware
-//! elaboration → temporal kernel (`musa-kernel`) → `ScoreSnapshot` adapter.
-//! One semantic path: the kernel — not the surface grammar — defines the
+//! elaboration → temporal events (`musa-events`) → `ScoreSnapshot` adapter.
+//! One semantic path: the event track — not the surface grammar — defines the
 //! ontology.
 //!
 //! Owns: name resolution, unit checking, motif expansion, imports and
@@ -46,11 +46,11 @@ mod docs;
 /// compiler says so.
 mod document;
 mod elaborate;
+mod events_text;
 mod expand;
 mod factext;
 mod imports;
 mod infer;
-mod kernel_text;
 mod lint;
 /// The surface CST read as a [`musa_calculus::Raw`].
 ///
@@ -82,31 +82,31 @@ mod template;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]
-pub use crate::elaborate::kernel_normal_form;
+pub use crate::elaborate::events_normal_form;
+#[doc(hidden)]
+pub use crate::events_text::{
+    EventsCheck, check_events_text, events_normalized_text, events_text, events_text_meaning,
+};
 pub use crate::expand::{AdapterEdit, AdapterEditError, AdapterPrintError, adapter_edits, adapter_print};
 pub use crate::imports::{
     ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
     standard_library_modules, standard_library_source,
 };
-#[doc(hidden)]
-pub use crate::kernel_text::{
-    KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
-};
-/// Kernel text as an editor sees it, re-exported so a language server can
-/// colour and outline a kernel document without a second copy of the grammar
-/// and without depending on `musa-kernel` itself.
+/// Events text as an editor sees it, re-exported so a language server can
+/// colour and outline an event track document without a second copy of the grammar
+/// and without depending on `musa-events` itself.
 ///
-/// The names carry `kernel` because a shell holds these beside
+/// The names carry `events` because a shell holds these beside
 /// `musa-syntax`'s classification of *surface* text. Two classifiers over
 /// two grammars are two things, and the unqualified word belongs to the
 /// language a composer actually writes.
-pub use musa_kernel::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
+pub use musa_events::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};
 
 pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
 };
-/// The kernel's semantic digest, re-exported so a consumer can hold a
-/// compilation's identity without depending on the kernel directly.
-pub use musa_kernel::SemanticHash;
+/// The event track's semantic digest, re-exported so a consumer can hold a
+/// compilation's identity without depending on the event track directly.
+pub use musa_events::SemanticHash;

@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Write the payload-admission rule into `docs/rules/kernel/` **before** prompt 156 admits the first payload that is not
+Write the payload-admission rule into `docs/rules/events/` **before** prompt 156 admits the first payload that is not
 `ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. Prompt 126 decided that the core
 is a calculus of occurrences of any canonical payload. The later proof review found that the current N5 display writer
 is not an injective encoding and that “injective on values” contradicts `ScoreFact` deliberately dropping fields. This
@@ -19,11 +19,11 @@ prompt repairs the governing rule and implementation together; it adds no tempor
 ## Read
 
 - `docs/rules/constitution.md` §8 and §4 — the decision, its boundary, and its list of what is forbidden.
-- `docs/rules/kernel/00-purpose.md` §12 (payload opacity), `03-denotational-semantics.md` D1–D12, `04-algebraic-laws.md`
+- `docs/rules/events/00-purpose.md` §12 (payload opacity), `03-denotational-semantics.md` D1–D12, `04-algebraic-laws.md`
   L1–L24 and X1–X3, `05-normalization.md` N1–N7, `07-backend-contract.md`, `10-term-calculus.md` T1–T6 and the scope
   rule.
-- `crates/musa-kernel/src/occurrence.rs` — `Canonical`, the whole contract as it stands.
-- `crates/musa-kernel/tests/suite/laws.rs` — the suite already proves L1–L24 at payload `u8`.
+- `crates/musa-events/src/occurrence.rs` — `Canonical`, the whole contract as it stands.
+- `crates/musa-events/tests/suite/laws.rs` — the suite already proves L1–L24 at payload `u8`.
 - `crates/musa-compiler/src/elaborate.rs` — `ScoreFact::canonical_key`, the one admission that exists, as the worked
   example the rule must describe rather than contradict.
 - `docs/rules/across-stages/04-identity-and-realization.md`, `docs/notes/research/40-canonical-framing-bug.md`, and the
@@ -33,25 +33,25 @@ prompt repairs the governing rule and implementation together; it adds no tempor
 
 ### The rule
 
-A new document, `docs/rules/kernel/12-payload-admission.md`, stating in this order:
+A new document, `docs/rules/events/12-payload-admission.md`, stating in this order:
 
-1. **What a payload is.** An opaque value of the type parameter `A`. The kernel never looks inside one; every operation
-   acts on the span and leaves the payload byte-identical (L24 is the strongest form of this, for `Progress`).
+1. **What a payload is.** An opaque value of the type parameter `A`. The event track never looks inside one; every
+   operation acts on the span and leaves the payload byte-identical (L24 is the strongest form of this, for `Progress`).
 2. **What a payload owes.** `Canonical` supplies an exact stable owner type id, a quotient/schema version, and a
    deterministic total `canonical_key`. Key equality **defines the admitted payload equality**. The key is complete for
    those equality classes; it need not distinguish raw stored values which the declared quotient intentionally
    identifies. It emits no address, hash-ordered iteration, or float. Changing observed fields or their encodings
    changes the quotient version.
-3. **What a payload may not do.** Add an operation to the kernel; require the kernel to inspect it; carry absolute time
-   (seconds, frames, samples); carry a coinductive value. Each with the law or boundary that forbids it, citing
-   `docs/rules/constitution.md` §8.
+3. **What a payload may not do.** Add an operation to the event track; require the event track to inspect it; carry
+   absolute time (seconds, frames, samples); carry a coinductive value. Each with the law or boundary that forbids it,
+   citing `docs/rules/constitution.md` §8.
 4. **Law transport.** L1–L23, X1–X3, and T1–T6 hold at every admitted payload **unchanged**, by genericity of the
    statements over `A` — not by a new proof per payload. L24 holds conditionally: at a payload carrying a `Progress`.
    N1–N7 hold given `Canonical`. Say which laws are transported and which are conditional, and say that the law suite's
    instantiation at a non-`ScoreFact` payload is the evidence.
 5. **What `canonical_key` may quotient away, and what that costs.** N3 is the admitted equality projection and may drop
    presentation detail; it is not an interchange form. The admission record says what is dropped and why. Remove every
-   contradictory “injective on stored values” statement from kernel docs and trait comments.
+   contradictory “injective on stored values” statement from event track docs and trait comments.
 6. **The admission table.** One row per admitted payload: the payload, the crate that defines it, what its key includes,
    what it deliberately quotients away, and the falsifying example that would show the choice wrong. `ScoreFact` is the
    first row and must be written from the code as it stands, not from what it ought to be.
@@ -101,14 +101,14 @@ law needs a different *statement*, the admission rule is wrong and this prompt i
 
 ## Target
 
-- `docs/rules/kernel/12-payload-admission.md` — the rule, the transport statement, and the admission table with
+- `docs/rules/events/12-payload-admission.md` — the rule, the transport statement, and the admission table with
   `ScoreFact` as its first row.
-- Repaired `docs/rules/kernel/{02-static-semantics,05-normalization,07-backend-contract,10-term-calculus}.md` identity
+- Repaired `docs/rules/events/{02-static-semantics,05-normalization,07-backend-contract,10-term-calculus}.md` identity
   claims.
-- `R1` in `docs/rules/kernel/07-backend-contract.md`.
-- `docs/rules/kernel/00-purpose.md`'s document list and any `docs/rules/kernel/README`-equivalent index updated to name
+- `R1` in `docs/rules/events/07-backend-contract.md`.
+- `docs/rules/events/00-purpose.md`'s document list and any `docs/rules/events/README`-equivalent index updated to name
   the new document.
-- A second payload instantiation in `crates/musa-kernel/tests/suite/laws.rs` exercising the existing law properties,
+- A second payload instantiation in `crates/musa-events/tests/suite/laws.rs` exercising the existing law properties,
   named so the suite says what it protects.
 - Versioned schema metadata on every current `Canonical` implementation and a framed semantic hash writer separate from
   `Display`, with the exact/adversarial regressions above.
@@ -117,10 +117,10 @@ law needs a different *statement*, the admission rule is wrong and this prompt i
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel
+cargo nextest run -p musa-events
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-mdwright fmt-check docs/rules/kernel/*.md docs/rules/*.md
+mdwright fmt-check docs/rules/events/*.md docs/rules/*.md
 python3 scripts/renumber-prompts.py audit
 ```
 

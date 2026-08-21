@@ -1,7 +1,7 @@
 # Operational semantics and typing rules
 
 The kernel calculus under the hypothesis: its terms, its typing judgments, its evaluation, and the theorems that must
-survive. The shape is `docs/rules/kernel/10-term-calculus.md` with two forms added and one theorem newly at risk.
+survive. The shape is `docs/rules/events/10-term-calculus.md` with two forms added and one theorem newly at risk.
 
 The design constraint throughout is the one that document already fixed and that Amendment IV of `00-constitution.md`
 restates: **no abstraction, no recursion, no function space.** Every addition below is checked against T4 (totality)
@@ -19,7 +19,7 @@ The calculus is parametric in a **payload signature**
 
 where `A` is a set of payload values, `G` is a group, and `·` is an action `G × A → A`. The kernel knows nothing else
 about `A` — not that it is pitch, not that it has an ordering, not that it is finite. `Σ` is supplied by the consumer
-exactly as payloads are supplied today (`docs/rules/kernel/01-grammar.md`).
+exactly as payloads are supplied today (`docs/rules/events/01-grammar.md`).
 
 The **time group** `T = ℚ>0 ⋉ ℚ` is fixed and built in: scaling by a positive rational and translation. `scale` and
 `shift` are its generators. Retrograde extends `T` to allow negative scaling; whether it does is Q-H.
@@ -126,7 +126,7 @@ clause of the denotation, which is what keeps T3 true.
 
 `02-denotational-semantics.md` E2 duplicates the continuation when the first operand has conflict. Naively this makes
 `let x = alt a b in seq x (seq x x)` exponential, which would break T5 — observation commutes with sharing — in spirit
-if not in letter, and would certainly break the performance budgets in `docs/rules/kernel/09-performance.md`.
+if not in letter, and would certainly break the performance budgets in `docs/rules/events/09-performance.md`.
 
 The resolution is that the *value* need not be a materialized event structure. Represent a value as a **branch-indexed
 structure**: a set of events each tagged with the branch choices it is contingent on, exactly the way a BDD represents
@@ -166,7 +166,7 @@ up to *isomorphism of labelled event structures*, not equality of sorted multise
 
 Compared with the multiset denotation's linear-time canonical form, this is a real regression. It is bounded by the fact
 that `|E|` is the note count of a piece and ties are rare, but it should be measured against
-`docs/rules/kernel/09-performance.md`'s budgets before adoption, not after. Recorded as Q-I.
+`docs/rules/events/09-performance.md`'s budgets before adoption, not after. Recorded as Q-I.
 
 **T4 — totality.** Survives, and this is the theorem the whole design was shaped around. There is no abstraction, no
 recursion, and no `fix`. `act` is total because a group action is a total function. `alt` is total because it is a
@@ -194,12 +194,12 @@ analysis — "this passage is `L` then `P` applied to that one" — a claim the 
 
 ## 6. What is still deliberately absent
 
-Unchanged from `docs/rules/kernel/10-term-calculus.md`, and worth restating because the additions above make the
+Unchanged from `docs/rules/events/10-term-calculus.md`, and worth restating because the additions above make the
 temptation stronger, not weaker:
 
 - **No abstraction and no application.** `act` exists so that `map` does not have to. If a consumer needs an arbitrary
   payload function, it applies one *outside* the kernel, to the value, as `Payload(f)` already allows.
-- **No recursion.** Q1 in `docs/rules/kernel/08-open-questions.md` (infinite and live patterns) stays open and stays
+- **No recursion.** Q1 in `docs/rules/events/08-open-questions.md` (infinite and live patterns) stays open and stays
   out.
 - **No conditional.** A branch on a payload value would make evaluation depend on `A`, which the signature discipline
   forbids. `alt` is a *nondeterministic* branch that commits to nothing, which is a different thing and is why it can be

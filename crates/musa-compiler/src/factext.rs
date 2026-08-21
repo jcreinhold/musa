@@ -1,8 +1,8 @@
-//! `ScoreFact`'s interchange text form (docs/rules/kernel/01).
+//! `ScoreFact`'s interchange text form (docs/rules/events/01).
 //!
-//! The kernel carries payloads as opaque quoted strings (§12); this module is
+//! The event track carries payloads as opaque quoted strings (§12); this module is
 //! the other half — the one place that says what a musical fact looks like in
-//! a `.musa.kernel` file, and the only place that reads one back.
+//! a `.musa.events` file, and the only place that reads one back.
 //!
 //! **This is not `Canonical::canonical_key`, and it cannot be.** The key is
 //! the *equality* serialization (N3): it deliberately omits the definition
@@ -27,7 +27,7 @@
 //! `'…'`, escaping `\` and `'` — used for *every* free-text field, always,
 //! even where quoting would not be needed. Always, because that is what keeps
 //! `mark text '8'` and `mark ottava 8` apart without case analysis, and
-//! because a payload that never contains `"` gives the kernel's own string
+//! because a payload that never contains `"` gives the event track's own string
 //! escape nothing to double.
 //!
 //! ```text
@@ -47,7 +47,7 @@
 //! one — and never a float, because a consumer that reads a hairpin's shape
 //! and rounds it produces different sound from the same file.
 
-use musa_kernel::{Canonical as _, PayloadText, TextPayload};
+use musa_events::{Canonical as _, PayloadText, TextPayload};
 use num_rational::Ratio;
 
 use crate::elaborate::{FactKind, ScoreFact};
@@ -552,7 +552,7 @@ fn write_step(words: &mut Words, step: &ExpansionStep) {
             words.word("special");
             words.word(span_word(*override_site));
         }
-        ExpansionStep::KernelSplice { at } => {
+        ExpansionStep::EventsSplice { at } => {
             words.word("splice");
             words.word(ratio_text(*at));
         }
@@ -592,7 +592,7 @@ fn take_step(words: &mut Words) -> Option<ExpansionStep> {
         "special" => Some(ExpansionStep::Specialization {
             override_site: words.span()?,
         }),
-        "splice" => Some(ExpansionStep::KernelSplice { at: words.ratio()? }),
+        "splice" => Some(ExpansionStep::EventsSplice { at: words.ratio()? }),
         _ => None,
     }
 }
@@ -996,7 +996,7 @@ fn take_tempo(words: &mut Words) -> Option<FactKind> {
 /// The canonical key *is* the text form here, because `Progress` has no
 /// provenance to omit: N3's injectivity and the round-trip property coincide,
 /// and it is one bare word with no whitespace in it.
-fn read_progress(text: &str) -> Option<musa_kernel::Progress> {
+fn read_progress(text: &str) -> Option<musa_events::Progress> {
     let points: Option<Vec<(Ratio<i64>, Ratio<i64>)>> = text
         .split(',')
         .map(|point| {
@@ -1004,7 +1004,7 @@ fn read_progress(text: &str) -> Option<musa_kernel::Progress> {
             Some((read_ratio(u)?, read_ratio(v)?))
         })
         .collect();
-    musa_kernel::Progress::piecewise(points?)
+    musa_events::Progress::piecewise(points?)
 }
 
 #[cfg(test)]
@@ -1059,14 +1059,14 @@ mod tests {
     /// exact binary expansion, so a text form that went through `f64` would
     /// write `0.3333…` and read back something else — the failure this test
     /// makes visible.
-    fn awkward_shape() -> musa_kernel::Progress {
-        musa_kernel::Progress::piecewise(vec![
+    fn awkward_shape() -> musa_events::Progress {
+        musa_events::Progress::piecewise(vec![
             (Ratio::new(0, 1), Ratio::new(0, 1)),
             (Ratio::new(1, 3), Ratio::new(1, 7)),
             (Ratio::new(5, 7), Ratio::new(2, 3)),
             (Ratio::new(1, 1), Ratio::new(1, 1)),
         ])
-        .unwrap_or_else(musa_kernel::Progress::linear)
+        .unwrap_or_else(musa_events::Progress::linear)
     }
 
     /// One fact of every kind, each carrying the awkward provenance above —
@@ -1245,7 +1245,7 @@ mod tests {
     }
 
     /// No double quote anywhere, which is a property of the writer rather
-    /// than of the corpus: the kernel wraps a payload in `"…"` and escapes
+    /// than of the corpus: the event track wraps a payload in `"…"` and escapes
     /// `"` and `\` inside it, so a payload that quoted with `"` would have
     /// every free-text field escaped twice — which is how the form this
     /// replaced reached eight backslashes for one colon.
@@ -1258,16 +1258,16 @@ mod tests {
     }
 
     /// The composition the unit round trip does not cover: a fact written
-    /// into a one-occurrence track, printed as kernel text, parsed back.
+    /// into a one-occurrence track, printed as events text, parsed back.
     #[test]
-    fn a_label_survives_the_kernels_own_quoting() {
-        use musa_kernel::{Duration, Occurrence, Position, Span, Term, WrittenTime, track};
+    fn a_label_survives_the_events_own_quoting() {
+        use musa_events::{Duration, Occurrence, Position, Span, Term, WrittenTime, track};
         for fact in corpus().into_iter().flatten() {
             let extent = Duration::<WrittenTime>::new(Ratio::new(1, 4)).expect("nonnegative");
             let span = Span::new(Position::ZERO, extent.reach()).expect("0 to 1/4 is a span");
             let body = track(extent, vec![Occurrence::new(span, fact.clone())]).expect("one occurrence");
-            let printed = musa_kernel::print("round-trip", &Term::literal(body), &[]);
-            let parsed = musa_kernel::parse::<WrittenTime, ScoreFact>(&printed)
+            let printed = musa_events::print("round-trip", &Term::literal(body), &[]);
+            let parsed = musa_events::parse::<WrittenTime, ScoreFact>(&printed)
                 .expect("what we printed parses")
                 .into_term();
             let read = parsed

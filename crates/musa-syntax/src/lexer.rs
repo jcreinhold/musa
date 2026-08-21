@@ -234,7 +234,7 @@ enum RawToken {
     Caret,
     #[token("#")]
     Hash,
-    // Only ever the head of `${…}`, an antiquotation inside a kernel quote.
+    // Only ever the head of `${…}`, an antiquotation inside an event track quote.
     // It is its own token because the brace after it is the host's, and a
     // two-character token would have to be un-lexed to find that out.
     #[token("$")]
@@ -374,12 +374,12 @@ enum RawToken {
     #[token("music", priority = 3)]
     MusicKw,
     // The word that opens a quotation. A keyword rather than a contextual
-    // name because `kernel EventTrack[WrittenTime, ScoreFact] { … }` is an
+    // name because `events EventTrack[WrittenTime, ScoreFact] { … }` is an
     // expression form, and one that started with an ordinary identifier would be a
     // call until proven otherwise.
-    #[token("kernel", priority = 3)]
-    KernelKw,
-    // The other quotation's word. A keyword for the same reason `kernel` is
+    #[token("events", priority = 3)]
+    EventsKw,
+    // The other quotation's word. A keyword for the same reason `events` is
     // one — `quote at here { … }` is an expression form, and a word that
     // lexed as an identifier would read as a call to `quote` until the `at`
     // proved otherwise.
@@ -565,7 +565,7 @@ impl RawToken {
             | Self::LetKw
             | Self::FnKw
             | Self::MusicKw
-            | Self::KernelKw
+            | Self::EventsKw
             | Self::QuoteKw
             | Self::OptionKw
             | Self::ListKw
@@ -711,7 +711,7 @@ impl RawToken {
             Self::LetKw => SyntaxKind::LetKw,
             Self::FnKw => SyntaxKind::FnKw,
             Self::MusicKw => SyntaxKind::MusicKw,
-            Self::KernelKw => SyntaxKind::KernelKw,
+            Self::EventsKw => SyntaxKind::EventsKw,
             Self::QuoteKw => SyntaxKind::QuoteKw,
             Self::OptionKw => SyntaxKind::OptionKw,
             Self::ListKw => SyntaxKind::ListKw,

@@ -5,7 +5,7 @@ graces-reordered
 // Grace notes, and the question the page refuses to answer (docs/plan/prompts/71).
 //
 // A grace note has no written duration. That is not an omission musa has to
-// patch over — it is the fact about grace notes, and the temporal kernel says
+// patch over — it is the fact about grace notes, and the event-track says
 // it exactly: a grace is a *point* occurrence, start equal to end, standing at
 // the onset of the note it leans on.
 //
@@ -18,7 +18,7 @@ graces-reordered
 // profiles read the same page two ways, and the page is unchanged.
 //
 // Compare with `graces-reordered.musa`, which is this piece with one grace
-// group written backwards. The two must not compile to the same kernel term:
+// group written backwards. The two must not compile to the same event-track term:
 // normalization orders occurrences by span and then by payload, every grace in
 // a group shares a span, so the order is carried in the payload or it is lost.
 piece "Graces" {
@@ -117,11 +117,11 @@ piece "Graces" {
 
 // `graces.musa` with two grace groups written backwards, and nothing else
 // changed. The note is at the bottom of the file on purpose: every byte above
-// it is identical to `graces.musa`, so `diff` on the two kernel terms shows
+// it is identical to `graces.musa`, so `diff` on the two event-track terms shows
 // the reordering and nothing else.
 //
 // The diff must not be empty. Every grace in a group stands at one instant, so
-// normalization (docs/rules/kernel/05, N2) orders occurrences by span and then by
+// normalization (docs/rules/events/05, N2) orders occurrences by span and then by
 // payload key — and a span they all share settles nothing. The written order
 // is carried in the payload as an index, or these two pieces of music are one.
 

@@ -20,7 +20,7 @@ and provenance minted by the elaborator rather than allocated by the author. Thi
 - `docs/rules/language/11-quotation.md` in full, and prompt 132's staff-construction program — the specification and the
   program it was written against. If the trial's program does not compile at the end of this prompt, the prompt is not
   done.
-- `docs/rules/language/01-surface.md` §7 — the kernel quote, its typed antiquotation, and its four writer's rules. Two
+- `docs/rules/language/01-surface.md` §7 — the events quote, its typed antiquotation, and its four writer's rules. Two
   of those rules generalize and this implementation must satisfy them: a quote is commented like the file around it, and
   the quotation locus is where a hole is *instantiated*, which differs from where its result lands under `let`.
 - `crates/musa-syntax/src/parser.rs` — the quote body is parsed by this parser and nothing else. A separate template
@@ -45,7 +45,7 @@ means the check is a fact about the grammar rather than a special case list to m
 
 **Hygiene, stated as two rules.** An identifier written literally in a quote refers to what it referred to at the
 quote's site; an identifier arriving through a splice keeps its own binding. Spliced syntax is never captured by a
-binder written in the quote. This is the same discipline §7's kernel quote already keeps between kernel and host
+binder written in the quote. This is the same discipline §7's events quote already keeps between event track and host
 identifiers, and the implementation should share the alpha-renaming machinery rather than growing a second one.
 
 **Provenance is minted, not passed.** Every node written literally in a quote gets `Derived { origin, quotation, path }`
@@ -99,7 +99,7 @@ Commit as `Implement quotation, splicing, and automatic provenance`.
 ## Stop
 
 - No pattern form. Prompt 140 owns destructuring, and the two are separable: one builds, one matches.
-- No merge of `quote at here { … }` with `kernel T { … }`, and no third quotation form.
+- No merge of `quote at here { … }` with `events T { … }`, and no third quotation form.
 - No string-to-syntax operation, no runtime `eval`, no procedural macro over token streams, no unhygienic escape, and no
   way to read provenance from inside a quote.
 - No fresh-name operation. If a program needs one, that is a finding and a repair of `11-quotation.md`, not an addition

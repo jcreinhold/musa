@@ -1,6 +1,6 @@
 ---
 id: 37
-slug: kernel-observation
+slug: event-track-observation
 status: done
 depends_on: [12]
 phase: 3
@@ -10,23 +10,23 @@ phase: 3
 
 ## Task
 
-Repair three places where `musa-kernel`'s public surface and `docs/rules/kernel/` disagree with each other or with the
+Repair three places where `musa-events`'s public surface and `docs/rules/events/` disagree with each other or with the
 code: `restrict` returns a type that cannot be restricted again although L17 says restriction composes;
 `Timeline::extend` is public with no caller; and two specification rows record behaviour the implementation does not
-have. Nothing outside `crates/musa-kernel/` and `docs/rules/kernel/` changes. This prompt opens the 37–48 consolidation
+have. Nothing outside `crates/musa-events/` and `docs/rules/events/` changes. This prompt opens the 37–48 consolidation
 block and adds its rows to the prompt README.
 
 ## Read
 
-- `docs/rules/kernel/03-denotational-semantics.md` D6 (restriction reports whole and visible spans), D4 (ambient
+- `docs/rules/events/03-denotational-semantics.md` D6 (restriction reports whole and visible spans), D4 (ambient
   extension).
-- `docs/rules/kernel/04-algebraic-laws.md` L7–L8 (extension laws), L16–L17 (restriction identity and *composition*).
-- `docs/rules/kernel/08-open-questions.md` prompt-09 and prompt-10 log entries — they record a D6 refinement "updated
+- `docs/rules/events/04-algebraic-laws.md` L7–L8 (extension laws), L16–L17 (restriction identity and *composition*).
+- `docs/rules/events/08-open-questions.md` prompt-09 and prompt-10 log entries — they record a D6 refinement "updated
   when the candidate banner comes off (prompt 12)". The banner came off; D6 was not updated.
-- `crates/musa-kernel/src/timeline.rs` (`RestrictedView`, `Timeline::extend`, `Timeline::restrict`),
-  `crates/musa-kernel/tests/suite/laws.rs` (`restrict_view` — the helper that exists *because* the API does not
+- `crates/musa-events/src/timeline.rs` (`RestrictedView`, `Timeline::extend`, `Timeline::restrict`),
+  `crates/musa-events/tests/suite/laws.rs` (`restrict_view` — the helper that exists *because* the API does not
   compose).
-- `docs/rules/kernel/03-denotational-semantics.md` (observation never moves an occurrence's origin claim), §34 (smallest
+- `docs/rules/events/03-denotational-semantics.md` (observation never moves an occurrence's origin claim), §34 (smallest
   complete basis — this prompt removes a constructor rather than adding one).
 - PoSD ch. 10 "define errors out of existence" and the red flag *information leakage*: the visible span is currently
   stored next to the whole span, so two facts that must agree are kept in two places.
@@ -72,7 +72,7 @@ Three decisions, each with a reason:
 
 `extend` has no caller: `sequence` and `overlay` compute extents themselves, and no surface construct asks a timeline to
 grow without adding material. Deleting it removes a public constructor, an error variant
-(`KernelError::ShrinkingExtension`), and laws L7–L8 from the maintained set. Under §34 this is the correct direction:
+(`EventsError::ShrinkingExtension`), and laws L7–L8 from the maintained set. Under §34 this is the correct direction:
 the basis shrinks when the evidence says a construct is not needed. Record the deletion in `08-open-questions.md`'s
 implementation log with the argument, so re-adding it requires new evidence rather than taste.
 
@@ -92,28 +92,28 @@ is the standalone operation that goes.
 
 ## Target
 
-- `crates/musa-kernel/src/timeline.rs`, `occurrence.rs`, `error.rs`: `Observation` replaces `RestrictedView` and
+- `crates/musa-events/src/timeline.rs`, `occurrence.rs`, `error.rs`: `Observation` replaces `RestrictedView` and
   `ObservedOccurrence`; `extend` and `ShrinkingExtension` deleted; `lib.rs` facade list updated.
-- `crates/musa-kernel/tests/suite/laws.rs`: `restrict_view` helper deleted; L16/L17 stated through the public API; L17
+- `crates/musa-events/tests/suite/laws.rs`: `restrict_view` helper deleted; L16/L17 stated through the public API; L17
   generalized to arbitrary windows; `extend_identity`, `extend_composition`, `overlay_respects_extension` deleted.
-- `docs/rules/kernel/03`, `04`, `06`, `08`: the repairs above.
+- `docs/rules/events/03`, `04`, `06`, `08`: the repairs above.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-kernel
-cargo clippy --all-targets -p musa-kernel -- -D warnings
+cargo nextest run -p musa-events
+cargo clippy --all-targets -p musa-events -- -D warnings
 cargo fmt --check
-cargo build --workspace   # nothing outside the kernel crate referenced extend or RestrictedView
+cargo build --workspace   # nothing outside the events crate referenced extend or RestrictedView
 grep -rn "RestrictedView\|ObservedOccurrence\|ShrinkingExtension" crates/ | wc -l   # 0
 ```
 
-Commit as `Make kernel observation composable and drop ambient extension`.
+Commit as `Make event-track observation composable and drop ambient extension`.
 
 ## Stop
 
 - No change to `sequence`, `overlay`, `timeline`, `scale`, `map_payload`, or normalization.
-- No new kernel constructors. This prompt only removes and repairs.
+- No new event track constructors. This prompt only removes and repairs.
 - No compiler, render, project, or desktop changes — if one is forced, the prompt is mis-scoped: stop and repair it.
 - Do not "fix" `Canonical`'s `String` keys here; that is prompt 43, and it needs prompt 38's measurement first.
 
@@ -123,7 +123,7 @@ Commit as `Make kernel observation composable and drop ambient extension`.
   is only correct where the two overlap, and a *fabricated* empty span can land on the extent — where the
   point-at-the-end rule would then read an occurrence that neither window shows. The proptest found this immediately
   once L17 was generalized to arbitrary windows, which is the argument for generalizing it.
-- `docs/rules/kernel/02-static-semantics.md` K3 also stated the extension rule; the prompt named 03, 04, and 06 but not
+- `docs/rules/events/02-static-semantics.md` K3 also stated the extension rule; the prompt named 03, 04, and 06 but not
   02. It is struck with the same note rather than left contradicting the code.
 - `restrict_composition` is now stated as `restrict_K ∘ restrict_J = restrict_{J ∩ K}` over two independently generated
   windows, with "observes nothing" as the law for windows that do not meet; the strictly-nested case is kept as a worked

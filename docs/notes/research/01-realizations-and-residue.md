@@ -82,7 +82,7 @@ pieces is, and it is the row that says the motive needs morphisms and not only a
   a stream of CC7 or velocity scaling. **EQ** must not confuse the marking with any of its numeric readings.
 
 **Residue.** A *shape on a span*, with each realization supplying its own numeric interpretation. Roadmap §2's "dynamic
-marking ≠ decibels" is this row. `docs/rules/kernel/04-algebraic-laws.md` L24 already says the right thing — a
+marking ≠ decibels" is this row. `docs/rules/events/04-algebraic-laws.md` L24 already says the right thing — a
 curve-bearing occurrence transforms by its span alone — which means continuous shape is payload and costs the kernel no
 operation. **Recorded verdict: in the motive, as an opaque payload value with a span.**
 

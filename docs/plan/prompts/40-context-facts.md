@@ -13,19 +13,19 @@ phase: 3
 Finish what prompt 39 started: move the last temporal facts that live outside the timeline into it. Key and meter become
 region occurrences spanning the piece; sections and chord symbols become point occurrences at the time they mark.
 `KeyMap`, `MeterMap`, and the section/harmony arms of `AnnotationStore` become projections. After this prompt there is
-exactly one temporal representation in the compiler, and `docs/rules/kernel/06-surface-elaboration.md`'s promise — that
-key/meter/harmony regions arrive "without any kernel change" — is demonstrated rather than asserted.
+exactly one temporal representation in the compiler, and `docs/rules/events/06-surface-elaboration.md`'s promise — that
+key/meter/harmony regions arrive "without any event track change" — is demonstrated rather than asserted.
 
 Tempo does **not** move. That is not an omission; see below.
 
 ## Read
 
-- `docs/rules/kernel/06-surface-elaboration.md` (key/meter/harmony as typed interval payloads once extent matters), §22
-  (tempo is the performance layer's `Beat → Second` map and never kernel material).
-- `docs/rules/kernel/08-open-questions.md` **Q8** — this prompt is its resolution: the working stance was "context maps
-  until the surface gives them extent"; this prompt gives them kernel extent *without* waiting for the surface, and
+- `docs/rules/events/06-surface-elaboration.md` (key/meter/harmony as typed interval payloads once extent matters), §22
+  (tempo is the performance layer's `Beat → Second` map and never event track material).
+- `docs/rules/events/08-open-questions.md` **Q8** — this prompt is its resolution: the working stance was "context maps
+  until the surface gives them extent"; this prompt gives them event track extent *without* waiting for the surface, and
   records why that was the right order.
-- `docs/rules/kernel/07-backend-contract.md` (what consumers may assume — unchanged by this prompt, and that is the
+- `docs/rules/events/07-backend-contract.md` (what consumers may assume — unchanged by this prompt, and that is the
   point).
 - `crates/musa-compiler/src/score.rs`: `KeyMap`, `MeterMap`, `TempoMap`, `SectionMark`, `HarmonyMark`.
 - `crates/musa-compiler/src/elaborate.rs`: `elaborate_annotations`, `piece_extent`, `resolve_position` — the last
@@ -58,8 +58,8 @@ The projection reproduces `KeyMap`/`MeterMap`/`SectionMark`/`HarmonyMark` exactl
 ### Tempo stays out, deliberately and visibly
 
 §22 is unambiguous: tempo is a map from symbolic time to physical time, applied at realization; it never rescales the
-timeline. `stretch` changes the music, a tempo change changes the performance of it, and the kernel must not offer a
-place where those two could be confused. Prompt 36's piecewise `TempoMap` therefore stays exactly where it is, in the
+timeline. `stretch` changes the music, a tempo change changes the performance of it, and the event track must not offer
+a place where those two could be confused. Prompt 36's piecewise `TempoMap` therefore stays exactly where it is, in the
 snapshot and the performance layer.
 
 Write this as a comment on `TempoMap` naming §22, because the next reader of this block will otherwise ask why tempo was
@@ -79,7 +79,7 @@ The "the piece ends before `9:1`" diagnostic must keep firing on the same inputs
 
 Score-level facts now sort into the same canonical order as notes. `Canonical::canonical_key` must place them
 deterministically — key and meter before the notes at the same instant, since that is how a reader encounters them — and
-the canonical serialization (`kernel_normal_form`) gains them. Existing kernel-normal-form goldens **will** change;
+the canonical serialization (`events_normal_form`) gains them. Existing events-normal-form goldens **will** change;
 re-record them in this commit and say so, since every other golden in the repo must not.
 
 ## Target
@@ -87,11 +87,11 @@ re-record them in this commit and say so, since every other golden in the repo m
 - `crates/musa-compiler/src/elaborate.rs`: the four new `FactKind` variants; `elaborate_annotations` produces
   occurrences; `piece_extent` deleted in favour of the timeline extent; `resolve_position` reads the meter fact.
 - `crates/musa-compiler/src/project.rs`: context maps and score-level annotations projected.
-- `crates/musa-compiler/tests/snapshots/`: kernel-normal-form goldens re-recorded (only these).
-- `docs/rules/kernel/06-surface-elaboration.md`: the `key`/`meter`/`tempo` row rewritten; the "future shape" section
+- `crates/musa-compiler/tests/snapshots/`: events-normal-form goldens re-recorded (only these).
+- `docs/rules/events/06-surface-elaboration.md`: the `key`/`meter`/`tempo` row rewritten; the "future shape" section
   becomes the present shape, with tempo's exclusion stated.
-- `docs/rules/kernel/08-open-questions.md`: **Q8 resolved** — state the resolution and delete the open question.
-- `docs/rules/kernel/09-performance.md`: this prompt's row.
+- `docs/rules/events/08-open-questions.md`: **Q8 resolved** — state the resolution and delete the open question.
+- `docs/rules/events/09-performance.md`: this prompt's row.
 
 ## Check
 
@@ -129,12 +129,12 @@ Commit as `Elaborate key, meter, and score annotations as occurrences`.
   pushing. It also *takes* the key and meter out of the snapshot on the way past — `lower_header` still parses them,
   because parsing a header is not a temporal act and the direct oracle needs it until prompt 41 — so the only thing that
   puts either back is the projection.
-- **`kernel_normal_form` prints one timeline, not one per part.** The goldens changed more than the prompt implies:
+- **`events_normal_form` prints one timeline, not one per part.** The goldens changed more than the prompt implies:
   after prompt 39 a compilation has exactly one temporal object, and score-level facts belong to no part, so a normal
   form built per part had nowhere to put them. Multi-part goldens (`counterpoint`) therefore lose their second
-  `timeline` block and gain its occurrences in canonical order. Only the three kernel-normal-form goldens changed; every
+  `timeline` block and gain its occurrences in canonical order. Only the three events-normal-form goldens changed; every
   other golden in the repo is byte-identical, which is what `fixtures_have_full_parity` also proves — the direct lowerer
-  and the kernel path still produce equal `KeyMap`s and `MeterMap`s.
+  and the event-track path still produce equal `KeyMap`s and `MeterMap`s.
 - **Piece-scoped facts key as `*|*`.** Occurrences sort by `(start, end, key)`, so the scope prefix is what orders facts
   sharing a span; `*` sorts before any part number, which is the "key and meter before the notes at the same instant"
   the Design asks for, and reads as the wildcard scope it is.
@@ -144,4 +144,4 @@ Commit as `Elaborate key, meter, and score annotations as occurrences`.
 - **`Canonical::canonical_key` was repaired while it was open.** It built its scope prefix with one `format!` and the
   whole key with another; it now writes into a single `String` sized up front. Allocation count is unchanged and `grow`
   per iteration fell from 24 478 to 310 — P4 on the large workload is **27% faster** than prompt 39's row. See
-  `docs/rules/kernel/09-performance.md`; no phase regressed.
+  `docs/rules/events/09-performance.md`; no phase regressed.

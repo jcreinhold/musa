@@ -123,7 +123,7 @@ fn a_new_performance_is_another_reading() -> Result {
     assert_eq!(answered(&session), ["6 passes"]);
 
     // And the piece is untouched. A performance is the project's, never the
-    // file's (`docs/rules/kernel/11-realization.md`).
+    // file's (`docs/rules/events/11-realization.md`).
     assert_eq!(session.snapshot().source(), source);
     assert!(!session.snapshot().unsaved());
     Ok(())

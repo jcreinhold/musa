@@ -61,7 +61,7 @@ pub struct ProjectSession {
     /// The paths behind those imports, for callers that watch them.
     import_paths: Vec<PathBuf>,
     /// Which reading of the work this session compiles
-    /// (`docs/rules/kernel/11-realization.md`). A piece that leaves nothing open
+    /// (`docs/rules/events/11-realization.md`). A piece that leaves nothing open
     /// never consults it, which is why it is a plain field with a default
     /// rather than something an opener has to supply.
     realization: musa_score::Realization,
@@ -96,7 +96,7 @@ pub struct ProjectSession {
     /// not change the music does not interrupt it.
     ///
     /// Two documents, because a plan is built from two: the piece's semantic
-    /// identity (docs/rules/kernel/05 N6) and the studio that voices it. Keying on
+    /// identity (docs/rules/events/05 N6) and the studio that voices it. Keying on
     /// the score alone would let a changed instrument go unheard until the
     /// next note edit.
     installed: Option<InstalledPlan>,
@@ -471,12 +471,12 @@ impl ProjectSession {
                 Ok(ExportArtifact::bytes(bytes).warn(warnings))
             }
             ExportRequest::PerformanceDump => Ok(ExportArtifact::text(playback::performance_dump(score)?)),
-            ExportRequest::Kernel { normalized } => {
+            ExportRequest::Events { normalized } => {
                 let document = musa_compiler::SourceDocument::new(&valid.source, &self.name);
                 let printer = if normalized {
-                    musa_compiler::kernel_normalized_text
+                    musa_compiler::events_normalized_text
                 } else {
-                    musa_compiler::kernel_text
+                    musa_compiler::events_text
                 };
                 printer(&document, &self.realization, &self.imports)
                     .map(ExportArtifact::text)
@@ -821,7 +821,7 @@ impl ProjectSession {
     /// Not an edit — the source is untouched and nothing about the piece
     /// changed. It *is* a state of the session: the page a composer is
     /// looking at is a function of the source **and** the realization
-    /// (`docs/rules/kernel/11-realization.md`), so a new realization takes a
+    /// (`docs/rules/events/11-realization.md`), so a new realization takes a
     /// revision and lands in the history, and undo goes back to the reading
     /// that was on screen before.
     pub fn realize(&mut self, realization: musa_score::Realization) -> ProjectUpdate {
@@ -1013,10 +1013,10 @@ impl ProjectSession {
         // does not sound, so it has no score, and the absence of one is not a
         // failure — which is the whole reason `kind` exists.
         self.compiles = match kind {
-            // A kernel document has a score for the same reason a piece does,
-            // and its emptiness is as legitimate: `kernel "x" { … timeline 0
+            // An events document has a score for the same reason a piece does,
+            // and its emptiness is as legitimate: `events "x" { … timeline 0
             // {} }` is a well-formed file that denotes silence.
-            musa_compiler::DocumentKind::Piece | musa_compiler::DocumentKind::Kernel => score.is_some(),
+            musa_compiler::DocumentKind::Piece | musa_compiler::DocumentKind::Events => score.is_some(),
             musa_compiler::DocumentKind::Material => !had_errors,
         };
         let mut score_changed = false;

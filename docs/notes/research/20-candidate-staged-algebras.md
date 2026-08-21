@@ -433,7 +433,7 @@ K₁ is not yet a specification. It owes:
 
 1. preservation, progress, determinism, and strong normalization for the total value fragment with abstract data;
 2. decidability of kinding, index constraints, type conversion, and module matching;
-3. the timeline algebra and canonical normalization already substantially proved in `docs/rules/kernel/`;
+3. the timeline algebra and canonical normalization already substantially proved in `docs/rules/events/`;
 4. warp identity, composition, and overlay preservation, including a decision on discontinuities;
 5. process port safety, graph-normalization soundness, and causal execution of every admitted primitive;
 6. a precise `prepare` coherence theorem with all required hypotheses;

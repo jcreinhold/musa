@@ -121,7 +121,7 @@ governing decision.
 ### 3.2 The proposal's own caller falsifier has already fired
 
 **VERIFIED.** `git log -S 'pub fn extend' -- crates/musa-kernel` finds commit `1b15995`, titled “Make kernel observation
-composable and drop ambient extension.” [Kernel static semantics §3](../../rules/kernel/02-static-semantics.md) records
+composable and drop ambient extension.” [Kernel static semantics §3](../../rules/events/02-static-semantics.md) records
 the reason: `extend` was removed at prompt 37 because nothing called it. The current implementation has no `extend`,
 though the crate-level documentation still contains a stale link to `Timeline::extend`.
 

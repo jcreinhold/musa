@@ -99,7 +99,7 @@
   ; the declaration it stands before, because that is what it is.
   "private"
   "music"
-  "kernel"
+  "events"
   ; The other quotation's word, and the `at` that names its anchor
   ; (`docs/rules/language/11-quotation.md` §2).
   "quote"
@@ -365,22 +365,22 @@
 ; A bar's name is a target, not a value.
 (bar_statement name: (identifier) @label)
 
-; --- A kernel quote ---------------------------------------------------------
+; --- An event track quote ---------------------------------------------------------
 ;
 ; `EventTrack`, its coordinate, and its payload are types — the same words
-; `musa-kernel`'s own classifier calls types (`crates/musa-kernel/src/editor.rs`).
+; `musa-events`'s own classifier calls types (`crates/musa-events/src/editor.rs`).
 ; Inside the body
-; the words belong to the kernel's grammar, and an editor colouring them from
+; the words belong to the event track's grammar, and an editor colouring them from
 ; here would be a second copy of that lexis; what is marked instead is the
 ; seam — the quote's head, and the `${` that lets the host back in.
-(kernel_quote constructor: (identifier) @type)
-(kernel_quote coordinate: (identifier) @type)
-(kernel_quote payload: (identifier) @type)
-(kernel_hole "$" @punctuation.special)
+(events_quote constructor: (identifier) @type)
+(events_quote coordinate: (identifier) @type)
+(events_quote payload: (identifier) @type)
+(events_hole "$" @punctuation.special)
 
 ; --- A syntax quote ---------------------------------------------------------
 ;
-; The opposite of the kernel quote's treatment, and for the opposite reason:
+; The opposite of the event track quote's treatment, and for the opposite reason:
 ; the body here *is* this grammar, so everything in it is already coloured by
 ; the rules above and re-stating them would be the second copy. What is marked
 ; is the seam: the `$` of each splice, which is the one character that means

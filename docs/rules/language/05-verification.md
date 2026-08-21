@@ -12,7 +12,7 @@ Constructor invariants are necessary for a value to inhabit its type and are che
 - a `triad` satisfies the declared tertian-member invariant;
 - a voicing contains exact pitches licensed by its chord-class and omission policy;
 - a `row12` is a bijection over `pc12`;
-- a kernel quote closes, type-checks, and contains decodable `ScoreFact` payloads;
+- an events quote closes, type-checks, and contains decodable `ScoreFact` payloads;
 - a control curve has ordered exact points in the control's domain;
 - an instrument implementation conforms to its declared instrument signature;
 - an asset resolves to the immutable identity in the build closure.
@@ -58,7 +58,7 @@ governs another voice's bars, so no claim about a measure can be answered where 
 Analyses are named services returning `analysis[A]` with method, assumptions, observations, alternatives, confidence
 where meaningful, and evidence locations. Roman-numeral analysis, tonicization/modulation readings, segmentation,
 common-chord search, orchestration observations, and voice-leading labels belong here. Analysis results do not enter
-kernel payloads unless the author explicitly writes an annotation derived from one, preserving provenance for that
+event-track payloads unless the author explicitly writes an annotation derived from one, preserving provenance for that
 choice.
 
 There is no privileged “the analysis.” Two methods may return different well-typed results. A failed or ambiguous
@@ -144,7 +144,7 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 | 93–96 | baseline fixtures captured; grammar/core type safety; finite budget diagnostics; no public elaboration API |
 | 97–99 | contextual laws, higher-order corpus, and bundled library pass without eager occurrence explosion |
 | 100–117 | domain constructor laws, source citations, assertions/analyses split, tonal and post-tonal counterexamples |
-| 118–119 | standalone kernel and quotation preserve the existing kernel grammar and closure guarantees |
+| 118–119 | standalone events and quotation preserve the existing event-track grammar and closure guarantees |
 | 120–122 | formatter, LSP, workbench, and handbook expose exact syntax and teach domain distinctions |
 | 123 | incremental and cold compilation meet recorded budgets; cache keys include context and build closure |
 | 154–160 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
@@ -159,6 +159,6 @@ diagnostic codes and salient labels, not whole prose strings.
 ## 7. Graduation evidence
 
 Prompt 170 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
-compatibility; public API diff; kernel constructor diff (which must be empty); reproducible asset lock audit;
+compatibility; public API diff; event-track constructor diff (which must be empty); reproducible asset lock audit;
 live/offline audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change
 from candidate to governing.

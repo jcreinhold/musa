@@ -59,7 +59,7 @@ identity, execution-closure key, or compiled-value cache.
 
 ## Target
 
-- Deliberate roadmap/kernel/candidate-spec repair and exact manifest/lock schemas.
+- Deliberate roadmap/events/candidate-spec repair and exact manifest/lock schemas.
 - Project resolver/cache and CLI fetch/update/locked/offline behavior with local test remotes.
 - Namespaced package imports, read-only definition navigation, asset integration, dependency graph/cycle/conflict tests.
 - Reproducibility law: a locked project resolves to the same exact source+asset closure with the network unavailable;

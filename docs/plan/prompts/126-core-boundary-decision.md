@@ -21,13 +21,13 @@ document and a repaired prompt stack. It produces no code.
 
 - Peyton Jones (1987) §§1.2–1.3 and 3 — the enriched-language-to-core translation, and why the core is the semantics.
   §§2.1–2.3 for what makes a calculus a calculus rather than a data structure with functions attached.
-- `docs/rules/kernel/` — the temporal kernel as ontology, and the elaboration story it fixes.
-- `docs/rules/kernel/00-overview.md`, `04-timeline.md`, `05-normalization.md`, `06-surface-elaboration.md`,
+- `docs/rules/events/` — the event-track as ontology, and the elaboration story it fixes.
+- `docs/rules/events/00-overview.md`, `04-timeline.md`, `05-normalization.md`, `06-surface-elaboration.md`,
   `10-term-calculus.md` — the laws that would have to be re-proved at any new payload.
 - `docs/rules/language/02-core-calculus.md` and `docs/rules/language/00-semantics.md` — the objects the language claims
   to compute.
-- `crates/musa-kernel/src/timeline.rs` and `src/occurrence.rs` — the payload type parameter as it actually stands.
-- `crates/musa-compiler/src/elaborate.rs` — every existing surface-to-kernel translation, which is the census's
+- `crates/musa-events/src/timeline.rs` and `src/occurrence.rs` — the payload type parameter as it actually stands.
+- `crates/musa-compiler/src/elaborate.rs` — every existing surface-to-event track translation, which is the census's
   evidence.
 - `crates/musa-dsp/src/spec.rs` and roadmap §13 — the studio graph, the largest surface with no calculus under it.
 - Roadmap §2's layer table, which any answer must leave standing.
@@ -42,15 +42,15 @@ document and a repaired prompt stack. It produces no code.
 ### 1. The census comes first
 
 Produce one table with a row for **every** construct the surface language accepts — statement, expression form,
-declaration, and block — and three columns: the construct, the kernel term or `ScoreFact` variant it elaborates to, and
-the elaboration site in `crates/musa-compiler/src/elaborate.rs`. A construct that elaborates into no kernel term gets
-the word **none** and a note on what happens to it instead. Exhaustiveness is checkable, not a matter of care: drive the
-row list from `crates/musa-syntax/src/keywords.rs`, the table prompt 84 made exhaustive by construction, and fail the
-prompt if a keyword has no row.
+declaration, and block — and three columns: the construct, the event-track term or `ScoreFact` variant it elaborates to,
+and the elaboration site in `crates/musa-compiler/src/elaborate.rs`. A construct that elaborates into no event-track
+term gets the word **none** and a note on what happens to it instead. Exhaustiveness is checkable, not a matter of care:
+drive the row list from `crates/musa-syntax/src/keywords.rs`, the table prompt 84 made exhaustive by construction, and
+fail the prompt if a keyword has no row.
 
 Two claims made in conversation are premises the census must confirm or refute, not assume:
 
-1. `Timeline<A>` and `Occurrence<A>` are payload-polymorphic, and outside `musa-kernel` are instantiated at `ScoreFact`
+1. `Timeline<A>` and `Occurrence<A>` are payload-polymorphic, and outside `musa-events` are instantiated at `ScoreFact`
    and nothing else.
 2. `GestureTimeline` — the exact instrument-independent control timeline prompt 156 is meant to build — is named in
    several design documents and in no line of code.
@@ -61,16 +61,16 @@ If either is false, say so and let the corrected fact drive the decision.
 
 Exactly three, plus one question that must be settled separately.
 
-- **A. Score-only core (the status quo).** The kernel is a calculus of notated occurrences. Performance, instruments,
-  and sound are compiler pipelines with no calculus, and the census's `none` rows are permanent.
-- **B. One kernel, several payloads.** The same finite temporal calculus, instantiated at `ScoreFact`, at a
+- **A. Score-only core (the status quo).** The event track is a calculus of notated occurrences. Performance,
+  instruments, and sound are compiler pipelines with no calculus, and the census's `none` rows are permanent.
+- **B. One event track, several payloads.** The same finite temporal calculus, instantiated at `ScoreFact`, at a
   gesture/control payload, and at whatever the instrument boundary requires. `timeline`/`sequence`/`overlay`,
   normalization, and the semantic hash are reused rather than reimplemented per layer.
 - **C. One dependently typed core.** Payloads and the indices that constrain them — part, voice, meter, tuning,
   transposition — become types in a single dependently typed calculus checked by normalization by evaluation.
 
 The separate question is **signals**. A DSP signal is coinductive: an unbounded stream consumed at a sample rate. The
-temporal kernel is inductive, finite, and total, and its totality is load-bearing for every law in `docs/rules/kernel/`.
+event-track is inductive, finite, and total, and its totality is load-bearing for every law in `docs/rules/events/`.
 Decide whether the sound layer enters the core at all, and decide it in those terms rather than by taste. If it stays
 out, name the object that crosses the boundary — the prepared render plan — and state the law that relates a score term
 to its rendering.
@@ -83,8 +83,9 @@ justification for anything.
 
 - **Translation totality.** Every census row is translated, or the candidate is rejected by naming the rows it cannot
   serve. This is §3's criterion applied literally.
-- **Law survival.** For each kernel law in `docs/rules/kernel/05-normalization.md` and `10-term-calculus.md`: does it
-  hold at the new payload unchanged, hold with a new proof, or fail? A candidate that needs a new proof must say which.
+- **Law survival.** For each event-track law in `docs/rules/events/05-normalization.md` and `10-term-calculus.md`: does
+  it hold at the new payload unchanged, hold with a new proof, or fail? A candidate that needs a new proof must say
+  which.
 - **Layer separation.** Roadmap §2's table survives intact: written pitch ≠ MIDI number, notated duration ≠ performed
   duration, voice ≠ mixer track, part ≠ synthesizer, dynamic marking ≠ decibels. A candidate that collapses a row is
   rejected regardless of its elegance — OMT keeps these vocabularies apart, and so does the roadmap.
@@ -109,7 +110,7 @@ the repair and the decision that forces it are one change.
 - The core-boundary decision record (`docs/notes/research/61-core-boundary-decision-record.md`): the census, the three
   candidates, the five tests applied to each, the chosen answer, the signal question settled, and the ledger over
   prompts 127–172. It states its own precedence: it governs over `docs/rules/language/` where they differ, and sits
-  under the temporal-kernel specification — the amendment is written into the governing documents themselves, in this
+  under the event-track specification — the amendment is written into the governing documents themselves, in this
   commit, or it has not been made.
 - Repairs to the `Design` and `depends_on` of every prompt in 127–172 the decision changes, and new prompt files for
   work the decision requires that no prompt covers, inserted with `scripts/renumber-prompts.py`.
@@ -123,7 +124,7 @@ the repair and the decision that forces it are one change.
 ```sh
 python3 scripts/renumber-prompts.py audit
 mdwright fmt-check docs/rules/*.md docs/plan/prompts/*.md docs/rules/language/*.md AGENTS.md
-cargo nextest run -p musa-kernel -p musa-compiler
+cargo nextest run -p musa-events -p musa-compiler
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 ```
@@ -135,8 +136,8 @@ rather than implemented. Commit as `Decide what the core is a calculus of`.
 
 ## Stop
 
-- No implementation. No new kernel payload in code, no new crate, no change to `crates/musa-kernel`'s public surface, no
-  dependency added.
+- No implementation. No new event-track payload in code, no new crate, no change to `crates/musa-events`'s public
+  surface, no dependency added.
 - No rejection by preference. A candidate is rejected by a census row it cannot translate, a law it breaks, or a roadmap
   §2 row it collapses — never by tone.
 - No unconditional deferral of the signal question. Deferring is allowed; deferring without naming the measurement or

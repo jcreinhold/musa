@@ -2346,7 +2346,7 @@ dependencies = [
  "indexmap 2.14.0",
  "insta",
  "musa-calculus",
- "musa-kernel",
+ "musa-events",
  "musa-score",
  "musa-syntax",
  "num-rational",
@@ -2387,7 +2387,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "musa-kernel"
+name = "musa-events"
 version = "0.1.0"
 dependencies = [
  "num-rational",
@@ -2465,7 +2465,7 @@ version = "0.1.0"
 dependencies = [
  "indexmap 2.14.0",
  "insta",
- "musa-kernel",
+ "musa-events",
  "musa-syntax",
  "num-rational",
  "proptest",

@@ -51,7 +51,7 @@ I inspected the current implementations:
 - `Timeline::write_canonical` interpolates the key without quoting, escaping, or length framing; and
 - `Timeline::semantic_hash` feeds exactly that text to FNV-1a.
 
-The governing `docs/rules/kernel/05-normalization.md` also contains a separate contradiction. N3 first requires keys to
+The governing `docs/rules/events/05-normalization.md` also contains a separate contradiction. N3 first requires keys to
 be injective on Rust values, then explicitly permits `ScoreFact` keys to quotient away `definition_span` and declaration
 id. The implemented equality follows the second idea: a payload owner's key declares the payload equality observed by
 the kernel. That is a defensible design, but it is not injectivity on the complete stored Rust value.

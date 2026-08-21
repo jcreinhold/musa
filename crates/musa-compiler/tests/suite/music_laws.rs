@@ -1,9 +1,9 @@
 //! Laws for contextual `music`: it is composed while open, instantiated at
-//! each `use`, and only then closed into one checked kernel term.
+//! each `use`, and only then closed into one checked event-track term.
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, SourceDocument, check_kernel_text, compile, kernel_text};
+use musa_compiler::{CompileOptions, SourceDocument, check_events_text, compile, events_text};
 
 use musa_score::{Code, MusicalDuration, MusicalTime, Realization, ScoreEvent, ScoreSnapshot};
 use num_rational::Ratio;
@@ -124,20 +124,20 @@ fn shared_instantiations_are_closed_and_keep_definition_and_call_provenance() {
     assert_eq!(first.origin.expansion_path.len(), 1);
     assert_eq!(second.origin.expansion_path.len(), 1);
 
-    let printed = kernel_text(
+    let printed = events_text(
         &SourceDocument::new(source, "music-laws.musa"),
         &Realization::deterministic(),
         &musa_compiler::ImportSources::default(),
     )
     .expect("reusable material closes to a term");
-    // Not `let shared0 =`. Since prompt 142 the kernel term is a projection of
+    // Not `let shared0 =`. Since prompt 142 the event-track term is a projection of
     // the evaluated piece rather than the shape elaboration was carried in, and
-    // `docs/rules/kernel/06-surface-elaboration.md` §Sharing was repaired to
+    // `docs/rules/events/06-surface-elaboration.md` §Sharing was repaired to
     // say so; what survives here is that the projection is *closed* — a term
     // naming nothing it does not bind — which is the half of this law that was
     // ever about the printing.
     assert!(!printed.contains("let shared"), "{printed}");
-    let checked = check_kernel_text(&printed).expect("the emitted term is closed and checked");
+    let checked = check_events_text(&printed).expect("the emitted term is closed and checked");
     assert_eq!(checked.occurrences, 5, "four notes plus the piece's meter fact");
 }
 

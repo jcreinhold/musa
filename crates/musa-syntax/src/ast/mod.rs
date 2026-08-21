@@ -19,7 +19,7 @@
 //! - `score` — score/part/voice scaffolding and the motif/fragment constructs
 //! - `voice` — note items and the statements a voice holds
 //! - `harmony` — harmonic analysis
-//! - `quotation` — quotes, splices, and kernel holes
+//! - `quotation` — quotes, splices, and events holes
 //! - `studio` — the studio graph
 
 use crate::SyntaxKind;
@@ -313,7 +313,7 @@ pub use voice::{
 
 pub use harmony::{ChordSymbol, HarmonyDecl, HarmonyStmt, Position};
 
-pub use quotation::{KernelHole, KernelQuote, QuoteExpr, QuotePattern, SequenceSplice, Splice};
+pub use quotation::{EventsHole, EventsQuote, QuoteExpr, QuotePattern, SequenceSplice, Splice};
 
 pub use studio::{
     Arg, ArgList, AssignStmt, BusDecl, CallExpr, ChainStmt, ModulateStmt, NameRef, ParamPath, PatchDecl, RouteStmt,

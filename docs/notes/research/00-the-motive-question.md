@@ -57,7 +57,7 @@ Grothendieck's own test, as `~/Code/papers/category-theory/grothendieck-method/p
 > wrong level. If two theorems in different domains have the same shape but no common generalization, you have not yet
 > found the right setting.
 
-*Falsified by:* any law of the motive that holds only under a proviso. `docs/rules/kernel/04-algebraic-laws.md` L18 is
+*Falsified by:* any law of the motive that holds only under a proviso. `docs/rules/events/04-algebraic-laws.md` L18 is
 exactly such a law today, and [04](04-candidate-fibred.md) argues that this is not a wart to be tolerated but the single
 most informative fact in the law list.
 

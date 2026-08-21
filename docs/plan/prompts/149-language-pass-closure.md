@@ -23,7 +23,7 @@ feature.
 - Every commit of prompts 128–148 (`git log --oneline 127dcfb..HEAD`), and every note they wrote under
   `docs/notes/research/language-design-closure/`. The repairs this prompt makes are the ones those commits implied and
   did not have standing to make.
-- All of `docs/rules/language/`, `docs/rules/kernel/`, `docs/rules/across-stages/`, `docs/rules/constitution.md`,
+- All of `docs/rules/language/`, `docs/rules/events/`, `docs/rules/across-stages/`, `docs/rules/constitution.md`,
   `docs/rules/obligations.md`, and `docs/rules/style-guide.md` — read for contradictions with each other, not only with
   the code.
 - `docs/plan/roadmap.md`, `docs/plan/clean-break-ledger.md`, `docs/plan/code-map/`, and
@@ -43,7 +43,7 @@ language whose implementation is four prompts old is guesswork, and guesswork co
 because the next reader cannot tell which parts were checked.
 
 **The contradiction audit is between documents, not only against code.** The most likely surviving contradictions are:
-`docs/rules/across-stages/05-metatheory.md`'s principal-type claim; `docs/rules/kernel/`'s payload-admission wording
+`docs/rules/across-stages/05-metatheory.md`'s principal-type claim; `docs/rules/events/`'s payload-admission wording
 against the `Storable` constraint; `docs/rules/language/06-performance.md`'s baseline against prompt 144's re-measured
 numbers; `docs/rules/desktop/`'s error-and-states voice against the diagnostics prompts 134–140 added; and the
 style-guide rules against what prompt 143 moved out of the compiler. Check each explicitly rather than trusting a
@@ -63,7 +63,7 @@ reaches. Delete the example and its sentence, or replace it with one that illust
 `fn figure(under: Scale)` is the idiom the standard library already writes — and check `docs/book/src/guide/cookbook.md`
 and `examples/scale-context.musa` for the same claim.
 
-**A stale cross-reference is not an amendment.** `docs/rules/kernel/06-surface-elaboration.md` and
+**A stale cross-reference is not an amendment.** `docs/rules/events/06-surface-elaboration.md` and
 `docs/rules/across-stages/05-metatheory.md` name prompt ranks that this pass superseded; correcting a pointer to say
 which prompt now owns the work changes no decision and is an ordinary repair. Changing what one of those documents
 *claims* is an amendment. Keep the two apart in the diff, and if a single edit is both, it is an amendment.
@@ -71,7 +71,7 @@ which prompt now owns the work changes no decision and is an ordinary repair. Ch
 **Where a governing document is genuinely falsified, stop.** This prompt may repair `docs/plan/`, `docs/book/`,
 `docs/plan/code-map/`, and `AGENTS.md` freely, and may repair `docs/rules/language/` as its own candidate specification.
 It may repair stale prompt-rank pointers anywhere. It may **not** amend a claim in `docs/rules/constitution.md`,
-`obligations.md`, `kernel/`, `across-stages/`, or `desktop/`. If one of those is falsified, the finding is published and
+`obligations.md`, `events/`, `across-stages/`, or `desktop/`. If one of those is falsified, the finding is published and
 the decision is handed back — the same rule prompts 147 and 148 worked under, and the reason prompt 128 exists as a
 separate prompt at all.
 
@@ -122,7 +122,7 @@ Commit as `Close the language pass`.
 ## Stop
 
 - No feature, no syntax, no builtin, no new law.
-- No amendment to `docs/rules/constitution.md`, `obligations.md`, `kernel/`, `across-stages/`, or `desktop/`. Publish
+- No amendment to `docs/rules/constitution.md`, `obligations.md`, `events/`, `across-stages/`, or `desktop/`. Publish
   the blocker and hand it back.
 - No repair of prompts 154 and beyond. They are repaired at reach.
 - No graduation of `docs/rules/language/`. Prompt 172.

@@ -1,0 +1,27 @@
+% musa-events-3
+% generated from examples/canon.musa, normalized by musa-compiler
+events "canon" {
+  composition main : EventTrack[WrittenTime, ScoreFact] =
+    track 15/4 {
+      occurrence "voice 0 0 note g4 1/4 [275:287 def 97:101 #1 via motif 275:287]" from 0 to 1/4;
+      occurrence "voice 0 0 note a4 1/4 [275:287 def 110:114 #1 via motif 275:287]" from 1/4 to 1/2;
+      occurrence "voice 0 0 note b4 1/4 [275:287 def 123:127 #1 via motif 275:287]" from 1/2 to 3/4;
+      occurrence "voice 0 0 note g4 1/4 [275:287 def 136:140 #1 via motif 275:287]" from 3/4 to 1;
+      occurrence "voice 0 0 note c5 1/2 [275:287 def 149:153 #1 via motif 275:287]" from 1 to 3/2;
+      occurrence "voice 0 0 note b4 1/2 [275:287 def 162:166 #1 via motif 275:287]" from 3/2 to 2;
+      occurrence "voice 0 0 note a4 1/2 [275:287 def 175:179 #1 via motif 275:287]" from 2 to 5/2;
+      occurrence "voice 0 0 note g4 1/2 [275:287 def 188:192 #1 via motif 275:287]" from 5/2 to 3;
+      occurrence "voice 0 1 rest 3/4 [344:351 #3]" from 0 to 3/4;
+      occurrence "voice 0 1 note d5 1/4 [406:418 def 97:101 #1 via transpose 4 7 motif 406:418]" from 3/4 to 1;
+      occurrence "voice 0 1 note e5 1/4 [406:418 def 110:114 #1 via transpose 4 7 motif 406:418]" from 1 to 5/4;
+      occurrence "voice 0 1 note f#5 1/4 [406:418 def 123:127 #1 via transpose 4 7 motif 406:418]" from 5/4 to 3/2;
+      occurrence "voice 0 1 note d5 1/4 [406:418 def 136:140 #1 via transpose 4 7 motif 406:418]" from 3/2 to 7/4;
+      occurrence "voice 0 1 note g5 1/2 [406:418 def 149:153 #1 via transpose 4 7 motif 406:418]" from 7/4 to 9/4;
+      occurrence "voice 0 1 note f#5 1/2 [406:418 def 162:166 #1 via transpose 4 7 motif 406:418]" from 9/4 to 11/4;
+      occurrence "voice 0 1 note e5 1/2 [406:418 def 175:179 #1 via transpose 4 7 motif 406:418]" from 11/4 to 13/4;
+      occurrence "voice 0 1 note d5 1/2 [406:418 def 188:192 #1 via transpose 4 7 motif 406:418]" from 13/4 to 15/4;
+      occurrence "piece meter 3/4 [40:50]" from 0 to 15/4;
+      occurrence "piece tempo 1/4=96 [20:35]" from 0 to 15/4;
+      occurrence "piece key g major [55:67]" from 0 to 15/4;
+    };
+}

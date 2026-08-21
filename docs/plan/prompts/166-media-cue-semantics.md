@@ -22,9 +22,9 @@ before any clip player is written.
 
 - `docs/rules/constitution.md` §4 and §8 — the boundary this prompt draws at the surface is the same one the core
   boundary draws in the type system, and rule 4 is the constraint the cue payload has to satisfy.
-  `docs/rules/kernel/12-payload-admission.md` from prompt 155a for what a media payload owes.
-- `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws;
-  backend contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 161 assets.
+  `docs/rules/events/12-payload-admission.md` from prompt 155a for what a media payload owes.
+- `docs/rules/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; event-track occurrence/transform
+  laws; backend contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 161 assets.
 - OMT `098-twentieth-century-rhythmic-techniques.md` on timeline notation using seconds. Cite it for the musical
   distinction; state the exact Musa behavior as local definitions and laws.
 - Existing `FactKind`, point occurrences, `Progress`, realization/provenance, notation loss reporting, and audio export
@@ -39,8 +39,8 @@ Define three disjoint constructs:
    policy. Initial policies are `crop`, `loop`, and honest playback `rate`; rate changes both duration and pitch unless
    a later pitch-preserving warp feature says otherwise.
 3. A **fixed-media cue** is a point occurrence at written position `b` referencing an asset and playback settings. Its
-   physical start is `tempo(b)` and its physical end is `tempo(b)+L`; its asset duration `L` is never stored as a kernel
-   extent.
+   physical start is `tempo(b)` and its physical end is `tempo(b)+L`; its asset duration `L` is never stored as an event
+   track extent.
 
 A musical clip has written duration, so it is an event-track occurrence and every track law applies. A fixed-media cue
 has physical duration but only a written onset, so its event-track support is a point. The decoded duration belongs to
@@ -52,9 +52,9 @@ duplicates its onset but does not stretch its media. Retrograde relocates the cu
 clip's beat interval transforms normally; its fit policy determines downstream playback. Make every non-law explicit.
 
 Both facts retain Origin and asset identity. Notation renders an optional labelled cue/clip annotation and reports
-losses per backend; the score UI may show a derived physical region, clearly distinguished from kernel support. Keep
-Keep prompt 70's generic printed marks valid, but do not infer playback from a matching string; executable media uses
-typed declarations.
+losses per backend; the score UI may show a derived physical region, clearly distinguished from event track support.
+Keep Keep prompt 70's generic printed marks valid, but do not infer playback from a matching string; executable media
+uses typed declarations.
 
 ## Target
 
@@ -66,8 +66,8 @@ typed declarations.
 ## Check
 
 ```sh
-cargo nextest run -p musa-syntax -p musa-kernel -p musa-compiler -p musa-notation -p musa-project
-cargo clippy --all-targets -p musa-syntax -p musa-kernel -p musa-compiler -p musa-notation -p musa-project -- -D warnings
+cargo nextest run -p musa-syntax -p musa-events -p musa-compiler -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-syntax -p musa-events -p musa-compiler -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

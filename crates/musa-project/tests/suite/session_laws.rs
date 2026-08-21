@@ -264,7 +264,7 @@ fn every_export_target_produces_an_artifact() -> Result {
 /// from a piece whose parts disagree about either is *sonically* exact — every
 /// note is written at the frame it actually sounds — and says the wrong thing
 /// about itself, so the export says so rather than letting it be found by
-/// whoever opens the file (`docs/rules/kernel/07-backend-contract.md`).
+/// whoever opens the file (`docs/rules/events/07-backend-contract.md`).
 #[test]
 fn midi_states_what_one_tempo_track_costs() -> Result {
     const POLY: &str = concat!(

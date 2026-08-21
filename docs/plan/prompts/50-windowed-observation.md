@@ -24,8 +24,8 @@ assume the first.
   engraving continuously visible) and §4: no speculative optimization; work like this "is considered only when B1 or B2
   is measured to fail on a real piece, and it becomes its own prompt with the measurement as its justification". This is
   that prompt; the measurement is its entry condition, not its conclusion.
-- `docs/rules/kernel/09-performance.md` — every row from prompts 38–47.
-- `docs/rules/kernel/10-term-calculus.md` T5, and prompt 47's `evaluate`.
+- `docs/rules/events/09-performance.md` — every row from prompts 38–47.
+- `docs/rules/events/10-term-calculus.md` T5, and prompt 47's `evaluate`.
 - `apps/musa-desktop/ui/src/lib/score/Score.svelte` — the resident-page window the UI already maintains, and
   `docs/rules/desktop/02-engraving.md` §7 (page virtualization). If a window is going to be pushed down, this is where
   its bounds come from.
@@ -83,16 +83,16 @@ including any regression accepted and why.
 
 Outcome 2 (gate closed):
 
-- `docs/rules/kernel/09-performance.md`: the measurements and the decision.
+- `docs/rules/events/09-performance.md`: the measurements and the decision.
 - This prompt's frontmatter flipped to `done`, with the statement above in the body.
 
 Outcome 1 (gate open):
 
-- `crates/musa-kernel/src/term.rs`: `observe`, with the equivalence law in `tests/terms.rs`.
-- `docs/rules/kernel/10-term-calculus.md`: the equivalence stated as a theorem with its test named.
+- `crates/musa-events/src/term.rs`: `observe`, with the equivalence law in `tests/terms.rs`.
+- `docs/rules/events/10-term-calculus.md`: the equivalence stated as a theorem with its test named.
 - `crates/musa-compiler/src/project.rs`: windowed projection and its partial-answer invariant.
 - `crates/musa-project`, `apps/musa-desktop`: the window plumbed from the resident page set.
-- `docs/rules/kernel/09-performance.md`: before/after for B1, B2, P1–P4, and the full-export check.
+- `docs/rules/events/09-performance.md`: before/after for B1, B2, P1–P4, and the full-export check.
 
 ## Check
 
@@ -118,7 +118,7 @@ produced.
 
 ## Outcome: the gate closed — no deferred observation was built
 
-The measurement is in `docs/rules/kernel/09-performance.md`, "Prompt 50 — the gate, measured, and closed". In short:
+The measurement is in `docs/rules/events/09-performance.md`, "Prompt 50 — the gate, measured, and closed". In short:
 
 **B1 passes with 98% headroom (2 ms of 120 ms). B2 does not clear the 20% bar — 373 ms of 400 ms, 6.8% headroom — so
 step 3 applied, and step 3 is decisive.** Splitting B2 into its stages shows 180 ms of debounce (fixed by design), 2 ms
@@ -129,8 +129,8 @@ A perfect lazy evaluator would move B2 from 373 ms to 371 ms. Deferred observati
 this prompt's own step 3 the finding belongs to prompt 22's surface: B2's headroom is thin, and the way to widen it is
 incremental or page-windowed engraving.
 
-Nothing was deleted and nothing was added to the kernel. `Term::observe` does not exist; `restrict` is still evaluated
-eagerly, which T5 says is the same answer.
+Nothing was deleted and nothing was added to the event track. `Term::observe` does not exist; `restrict` is still
+evaluated eagerly, which T5 says is the same answer.
 
 ### What was added
 

@@ -4,7 +4,7 @@
 //! realization is one reading of it. Putting a seed in the source would make
 //! two composers holding the same file unable to disagree about a
 //! performance, which is the opposite of what open form is for
-//! (`docs/rules/kernel/11-realization.md`).
+//! (`docs/rules/events/11-realization.md`).
 //!
 //! So it lives beside the piece, where a session's state is already kept on
 //! disk: a sibling file, in a directory the composer can
@@ -12,7 +12,7 @@
 //! `sonata.musa.performance`.
 //!
 //! The file is small on purpose — a seed and the decisions the composer kept
-//! — and it is written in the same spellings the `.musa.kernel` header uses, so
+//! — and it is written in the same spellings the `.musa.events` header uses, so
 //! the thing a composer reads in one place is the thing they read in the
 //! other. A file that cannot be read is **no realization** rather than an
 //! error: a corrupt sidecar should cost a performance, not a session.
