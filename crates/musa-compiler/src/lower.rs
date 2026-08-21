@@ -298,6 +298,17 @@ pub(crate) struct Lowering<'a> {
     sites: &'a mut Sites,
     /// Whether the phase's own vocabulary is readable here (§5.9).
     in_phase: bool,
+    /// Whether this walk is reading the *compiled* document.
+    ///
+    /// False while an imported module's own body is read. A use recorded then
+    /// carries a span in that module's coordinates, and
+    /// [`crate::resolve::Index`] holds one document's spans — an editor
+    /// translates them against the open text, so a foreign one lands wherever
+    /// the arithmetic puts it. The index says as much of every entry it keeps
+    /// ("where the declaration's name token is, *when it is in this
+    /// document*"); this is the same sentence for uses, said at the one walk
+    /// that can know.
+    here: bool,
     /// The modules this document writes, and how names read inside the
     /// declaration being walked. See [`Naming`].
     naming: Naming<'a>,
@@ -471,6 +482,7 @@ impl<'a> Lowering<'a> {
             resolver,
             sites,
             in_phase: false,
+            here: true,
             naming: Naming::default(),
             questions: Vec::new(),
             scrutinee_categories: Vec::new(),
@@ -502,6 +514,17 @@ impl<'a> Lowering<'a> {
     /// and proved there.
     pub(crate) fn claimed(&mut self) -> Vec<notation::Claimed> {
         std::mem::take(&mut self.claims)
+    }
+
+    /// The same walk, reading a document this compilation only imported.
+    ///
+    /// A method rather than a second constructor for [`Self::naming`]'s reason:
+    /// nearly every walk reads the document it is compiling, and the two that
+    /// do not — an import's declarations and a bundled module's members — say
+    /// so where they already hold the source that told them.
+    pub(crate) fn elsewhere(mut self) -> Self {
+        self.here = false;
+        self
     }
 
     /// A walk of an adapter phase, where §5.9's vocabulary is readable.

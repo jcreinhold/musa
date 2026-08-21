@@ -788,6 +788,11 @@ impl Read {
                 } else {
                     Lowering::new(resolver, sites)
                 };
+                let lowering = if source.from.is_some() {
+                    lowering.elsewhere()
+                } else {
+                    lowering
+                };
                 lowering.naming(Naming::at_root(modules).under(aliases)).item(&node)
             };
             match item {
@@ -885,9 +890,13 @@ impl Read {
                 MemberItem::Let(declaration) => declaration.syntax().clone(),
                 MemberItem::Function(declaration) => declaration.syntax().clone(),
             };
-            let read = Lowering::new(resolver, sites)
-                .naming(Naming::inside(modules, &member.scope))
-                .item(&written);
+            let lowering = Lowering::new(resolver, sites).naming(Naming::inside(modules, &member.scope));
+            let read = if member.source.is_some() {
+                lowering.elsewhere()
+            } else {
+                lowering
+            }
+            .item(&written);
             match read {
                 Declared::Item(Item::Definition(mut definition)) => {
                     // The one thing the walk cannot know: a member is written

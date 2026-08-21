@@ -47,8 +47,9 @@ private to it.
 
 - `fn identity_ratio(value: Ratio) -> Ratio` — Return an exact rational unchanged. This is useful when a public API wants to say explicitly that it preserves a proportion.
 - `fn identity_nat(value: Nat) -> Nat` — Return a natural number unchanged.
-- `fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, value: EventTrack<WrittenTime>) -> EventTrack<WrittenTime>` — Apply the second musical transformation, then the first.
-- `fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch, value: Pitch) -> Pitch` — Apply the second pitch function, then the first.
+- `fn compose<A, B, C>(after: B -> C, before: A -> B) -> A -> C` — Apply `before`, then `after`. The composition is the answer, not a value it was applied to: `compose(f, g)` names the function, and `compose(f, g)(x)` runs it.
+- `fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) -> EventTrack<WrittenTime> -> EventTrack<WrittenTime>` — Apply the second musical transformation, then the first.
+- `fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch) -> Pitch -> Pitch` — Apply the second pitch function, then the first.
 
 ## `std::harmony`
 
@@ -135,7 +136,8 @@ private to it.
 - `fn number_of(member: Pc12) -> Nat` — The canonical representative, zero through eleven.
 - `fn forget_spelling(spelled: NoteName) -> Pc12` — Forget a spelling. This is the only total map from the spelled domain into this one; it is not injective, and it has no inverse without a policy.
 - `fn spelled_in(member: Pc12, collection: Scale) -> Option<NoteName>` — Spell a pitch class inside one collection — the explicit policy that `forget_spelling` has no inverse without. Absent when the collection holds no note of this pitch class.
-- `fn transposed_by(index: Nat, member: Pc12) -> Pc12` — T_n: transposition by n semitones, `x + n` modulo twelve. The index comes first because it is what names the operation: T_3 of a member, read in that order. It is not a function of the index — a call supplies every parameter, and `transposed_by(3)` supplies one of two.
+- `fn transposed_by(index: Nat, member: Pc12) -> Pc12` — T_n: transposition by n semitones, `x + n` modulo twelve. The index comes first because it is what names the operation: T_3 of a member, read in that order.
+- `fn transposition(index: Nat) -> Pc12 -> Pc12` — T_n itself, as a value. Lewin's transformations are composed, inverted, and applied, so the operation has to be nameable and not only usable: `transposition(3)` is T_3, and `compose(transposition(3), inverted_about(0, _))` is a group element like any other.
 - `fn inverted_about(index: Nat, member: Pc12) -> Pc12` — I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror through zero. The twelve transpositions and the twelve inversions are together the whole 24-element affine group on `pc12` — and 24 is the number, whatever a row's four form labels might suggest.
 - `fn map_pc(function: Pc12 -> Pc12, members: List<Pc12>) -> List<Pc12>` — Apply one pitch-class function to every member of a finite list.
 - `fn pcset(members: List<Pc12>) -> PcSet12` — The set of everything listed, however often it was listed. A set cannot hold a duplicate, so this cannot fail: a repetition is a mistake only where order matters, which is `std::post_tonal::serial`.

@@ -43,9 +43,14 @@ library {
 
     // T_n: transposition by n semitones, `x + n` modulo twelve. The index
     // comes first because it is what names the operation: T_3 of a member,
-    // read in that order. It is not a function of the index — a call supplies
-    // every parameter, and `transposed_by(3)` supplies one of two.
+    // read in that order.
     fn transposed_by(index: Nat, member: Pc12) -> Pc12 { pc12_transposed(member, index) }
+
+    // T_n itself, as a value. Lewin's transformations are composed, inverted,
+    // and applied, so the operation has to be nameable and not only usable:
+    // `transposition(3)` is T_3, and `compose(transposition(3), inverted_about(0, _))`
+    // is a group element like any other.
+    fn transposition(index: Nat) -> Pc12 -> Pc12 { transposed_by(index, _) }
 
     // I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror
     // through zero. The twelve transpositions and the twelve inversions are

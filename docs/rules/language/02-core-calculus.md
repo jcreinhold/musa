@@ -164,10 +164,22 @@ and making it one was the only reason a class of type variable ever appeared in 
 ### 1.3 What the language does not have
 
 There is no `fix`, no recursive binding, no `partial`, no while loop, no exception, no mutation, no I/O, no reflection,
-no dynamic cast, and no effect handler. Functions may be higher-order. **A call must be complete**: an application
-supplies every declared parameter, and an under-applied call is a type error rather than a value. Partial application
-would make an ordinary argument list a place where a function silently becomes a function-valued result, which is
-exactly the value that may not be stored (§1.2).
+no dynamic cast, and no effect handler. Functions may be higher-order. **A call must be complete, and a section is
+written**: an application supplies every declared parameter, and an under-applied call is a type error rather than a
+value — unless the slots it leaves are written `_`, in which case it is a **section** and denotes the function that
+still needs them. `f(a, _)` is the function of one argument; `f(a)` on a two-parameter `f` is the same type error it
+always was.
+
+The rule is about *silence*, and the `_` is what removes the silence rather than the rule. What must never happen is
+`f(x)` quietly becoming a function-valued result when `f(x, y)` was meant, and a written `_` names every slot at every
+call, so a reader can still count the parameters without looking up the declaration. This does not need §1.2: a section
+is a function value, storability is a structural fact the checker computes over a type (§1.2), and where a function
+value may not stand §1.2 already refuses it. The earlier statement of this rule cited §1.2 for a rule §1.2 does not
+imply — see note 51 §6, and prompt 142a, which repaired it.
+
+Sections are surface, not a core form: `f(a, _)` elaborates to `fn (x) { f(a, x) }` before the core sees anything, and
+several `_`s bind left to right, so `g(_, b, _)` is `fn (x, y) { g(x, b, y) }`. Composition follows from the same
+enrichment and is an ordinary declaration in `std::core` rather than an operator.
 
 Recursion is by definition, checked (§2.4), and never by a term former. There is no `Type : Type`, no cumulativity, no
 universe polymorphism, no call-by-push-value stratification, no coinduction, and no first-class signal. Each is a
@@ -262,13 +274,31 @@ map(f, pitches)      % A := Pitch, B := NoteName, read off f's inferred type and
 
 Matching is syntactic over type constructors and variables: `List<A>` against `List<Pitch>` binds `A`; a variable
 already bound is checked against its binding. A parameter no explicit argument determines is an **error at the call,
-naming the parameter**, and the author writes the argument. Nothing is postponed, nothing is retried, and nothing is
-guessed: the set of solutions is empty or a singleton by construction, because first-order matching against a known type
-is the most general unifier computed without search.
+naming the parameter**, and the author writes the argument. Nothing is guessed: the set of solutions is empty or a
+singleton by construction, because first-order matching against a known type is the most general unifier computed
+without search.
+
+**The spine is walked in two passes, and argument order is not semantically significant.** An argument whose parameter
+type still mentions an unsolved parameter, and which no rule can infer — a bare `fn (x) { … }`, a record literal, a
+`match` — is *deferred*: a placeholder stands in its slot, the rest of the spine is walked, and the argument is then
+checked against the type that walk gave its slot. The deferred arguments are revisited in the order they were written,
+after the position the call stands in has been matched, since that position is the last thing that can decide a
+parameter.
+
+This is not postponement. Every argument is elaborated exactly once; there is no constraint queue, no wakeup discipline,
+no fixpoint, and no retry. Both the deferred set and the order of the second pass are fixed by the written argument
+order, so the answer cannot depend on which branch ran first, and a parameter still undetermined at the end is the
+refusal above rather than a new failure mode. What it buys is that `fold(combine, seed, values)` and
+`fold(seed, values, combine)` type the same, so a library no longer has to order its parameters around the checker. Two
+arguments do *not* defer: one whose slot is already settled, and a `fn` that annotates its own binder — checking the
+second is what makes its annotation and the slot agree, so it is one of the arguments a deferred one is waiting for. The
+design is Idris2's `checkRtoL` (`TTImp/Elab/App.idr`) without its fallback to left-to-right, which Musa does not need
+because a Musa spine has no ambiguous name resolution to fall back from.
 
 This is the whole inference story. It covers the corpus — the container operations, the folds, the phase traversals —
-because in all of them every type parameter is read off an explicit argument. It deliberately does not cover a parameter
-that appears only in the result type; such a parameter is written, and the signature says so.
+because in all of them every type parameter is read off an explicit argument or off the position the call stands in. It
+deliberately does not cover a parameter that appears in *neither*: `compose(fn (p) { … }, fn (q) { … })` at
+`Pitch -> Pitch` leaves the middle type unnamed, and the refusal names it rather than choosing one.
 
 ### 2.2 Refinement constructors and assertions
 

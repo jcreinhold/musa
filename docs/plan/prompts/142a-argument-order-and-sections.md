@@ -1,7 +1,7 @@
 ---
 id: 142a
 slug: argument-order-and-sections
-status: pending
+status: done
 depends_on: [142]
 phase: 3
 ---

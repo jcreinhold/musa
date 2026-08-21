@@ -90,7 +90,7 @@ impl Elaborator {
             // constructor rule sees the same head and the same arguments here.
             RawShape::Call { function, arguments } => match self.constructed_open(scope, raw)? {
                 Some(built) => Ok(built),
-                None => self.complete_call(scope, here, function, arguments),
+                None => self.complete_call(scope, here, function, arguments, None),
             },
             RawShape::RecordType(fields) => self.record_type(scope, here, fields),
             // §2: a record literal is an introduction form, so it checks. The
@@ -246,12 +246,20 @@ impl Elaborator {
     /// that runs past them into a result that takes more — which either
     /// applies, or earns [`Refusal::NotAFunction`] from the argument that
     /// could not.
-    fn complete_call(
+    ///
+    /// `expected` is the type the call stands at, and it is [`None`] unless
+    /// the caller is [`Elaborator::check`] with an argument the walk may
+    /// defer. It reaches the walk for one reason: a call all of whose
+    /// informative arguments are bare lambdas has nothing *inside* it to say
+    /// what they are, and the position it stands in does. See
+    /// [`Elaborator::apply_spine`].
+    pub(super) fn complete_call(
         &mut self,
         scope: &Scope,
         here: Origin,
         function: &Raw,
         arguments: &[Raw],
+        expected: Option<&Value>,
     ) -> Result<Typed, ElabError> {
         let head = self.infer(scope, function)?;
         let stated = scope.quote_type(&mut self.meter, &head.ty)?;
@@ -266,7 +274,7 @@ impl Elaborator {
             }
             .into());
         }
-        self.apply_spine(scope, here, head, &arguments.iter().collect::<Vec<_>>(), None)
+        self.apply_spine(scope, here, head, &arguments.iter().collect::<Vec<_>>(), expected)
     }
 
     /// `f a ⇒ B[a]`.
@@ -413,7 +421,7 @@ impl Elaborator {
         walk.slots.push(Slot::Argument(receiver.term.clone()));
         let value = scope.eval(&mut self.meter, &receiver.term)?;
         let ty = apply_closure(&mut self.meter, &codomain, value)?;
-        Self::finish_walk(here, function.term, ty, &walk)
+        Self::finish_walk(here, function.term, ty, &walk, Vec::new())
     }
 }
 

@@ -192,6 +192,28 @@ impl Elaborator {
                 ty: written,
                 body,
             } => crate::rec::define(self, scope, here, name, written, body, ty).map(Some),
+            // §2.1's spine in a checking position, for the one call that
+            // needs it: an argument the walk will defer has nothing inside the
+            // call to type it, and the position the call stands in is the last
+            // thing that can. `compose(fn (p) { … }, fn (q) { … })` at an
+            // annotated `let` is the shape — every argument is a bare lambda,
+            // so no argument teaches another, and the annotation does.
+            //
+            // Guarded on the *written* form rather than on what the walk turns
+            // out to defer, so the question is decided before anything is
+            // elaborated: a call with no checking-only argument can never
+            // defer, and takes exactly the path it always took — inferred,
+            // then `Switch`, where [`Self::carried`] gets its say. That is
+            // where the guard earns its keep, since an acceptance rule needs
+            // the mismatch to reach it rather than be unified away.
+            RawShape::Call { function, arguments } if arguments.iter().any(Raw::checks_only) => {
+                match self.abstracted(scope, raw, ty)? {
+                    Some(term) => Ok(Some(term)),
+                    None => self
+                        .complete_call(scope, here, function, arguments, Some(ty))
+                        .map(|typed| Some(typed.term)),
+                }
+            }
             RawShape::Var(_)
             | RawShape::Hosted(_)
             | RawShape::Lit(_)

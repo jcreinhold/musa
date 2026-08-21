@@ -31,6 +31,8 @@ trait-item   := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? 
 impl         := visibility? "impl" type-params? constraint where-clause? "{" function* "}"
 inherent     := "impl" type-params? type-name type-args? "{" function* "}"
 call         := expr "(" args? ")"
+args         := arg ("," arg)*
+arg          := expr | "_"
 expr         := literal | IDENT | qualified | "(" expr ")" | block | product | list
               | call | projection | method-call | index | operation | question
               | match | conditional | record-literal | record-update | music-expr
@@ -538,8 +540,11 @@ than left to a search:
 - A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the constraint or
   the qualified path; otherwise adding a trait to a package would change what existing code means.
 - There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
-- Where the receiver's type is not yet known — an unsolved metavariable — the method call is postponed, and if the type
-  is still unknown at the end of the declaration it is the ordinary *unsolved metavariable* error, reported at the call.
+- Where the receiver's type is not yet known — an unsolved metavariable — the method call is refused at the call, and
+  the refusal names the qualified path to write instead. Nothing is postponed: postponement was deleted with the rest of
+  the constraint machinery, and `02-core-calculus.md` §2.1's two-pass spine is what now makes a receiver's type known in
+  the cases that used to need it — an argument the walk defers is checked after the arguments that decide it, so
+  `applied(fn (p) { p.transposed(P8) }, c4)` resolves `.transposed` at `Pitch`.
 
 `T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
 `Trait::method(x)`. Explicit qualification is always available and always resolves, which is the escape hatch that makes
@@ -549,7 +554,16 @@ exactly one segment follows it. `std::tonal::TokenKind::PitchLiteral` has one re
 
 The `.` in an expression is projection or a method call. The `path` production's `.` — `bow.pressure`,
 `std.sound.basic_sine` — is a control address inside the sound declaration forms, which are staged rather than
-evaluated, and `Structure.member` (§6.1) is read at declaration time. The three never meet in one grammar.
+evaluated, and `Structure.member` (§6.1) is read at declaration time. The three never meet in one grammar. Nothing else
+is ever added to that list: `f . g` and `f.g` are the same three tokens — whitespace is trivia — so a composition
+operator spelled `.` would make one of the three unreadable. Composition is `std::core`'s `compose`, an ordinary
+declaration, which is what a section makes writable.
+
+**A `_` in an argument list is a section**: `f(a, _)` denotes the function that still needs the slot the `_` stands in,
+and several read left to right, so `g(_, b, _)` is `fn (x, y) { g(x, b, y) }`. It is surface only — the elaborated term
+is the complete call inside a lambda, so `02-core-calculus.md` §1.3's completeness rule is untouched and an
+under-applied call *without* a `_` is the type error it always was. The word is the one `pattern` already uses and means
+the same thing there: a slot with no name. A `_` written anywhere but an argument list is refused, naming itself.
 
 **Operators are surface syntax for trait methods**, and `10-traits.md` §5 is the table. `x == y` is `Eq::equal(x, y)`,
 `x < y` is `Ord::less(x, y)`, `x + y`, `x - y`, `x * y`, `x / y` are `Add`, `Sub`, `Mul`, `Div`, and `xs[i]` is

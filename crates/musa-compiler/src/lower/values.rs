@@ -164,6 +164,19 @@ impl Lowering<'_> {
     /// - Anything else is a variable, written through for the core to resolve.
     fn name(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let written = written_name(node)?;
+        // A `_` that reached here is one no argument list caught, so it stands
+        // where a value stands and there is no call for it to leave a slot in.
+        // Said as its own refusal rather than as "unknown name `_`", because
+        // the author wrote a form the language has and wrote it somewhere the
+        // form does not go.
+        if written == "_" {
+            return self.refuse(
+                Diagnostic::error(Code::NotAValue, "`_` is not a value")
+                    .at(crate::resolve::trimmed_span(node), "written here")
+                    .help("write `_` in a call's argument list — `transposed_by(3, _)` is the function that still needs the second argument")
+                    .note("a `_` elsewhere has no call to leave a slot in, so there is nothing for it to stand for"),
+            );
+        }
         if self.in_phase
             && let Some(literal) = phase_literal(&written)
         {
@@ -179,7 +192,9 @@ impl Lowering<'_> {
                         .help("a structure exports exactly what its signature lists; everything else is its own"),
                 );
             }
-            self.resolver.references.speak(&reading.name, span);
+            if self.here {
+                self.resolver.references.speak(&reading.name, span);
+            }
             return Some(Raw::var(origin, reading.name.as_str()));
         }
         // Every segment after the first, and not just the second: §1.2 lets a
@@ -194,9 +209,11 @@ impl Lowering<'_> {
             // Told to the index rather than resolved here: what this document
             // declares was recorded before any body was read, and the core
             // answers what the name means.
-            self.resolver
-                .references
-                .speak(&written, crate::resolve::trimmed_span(node));
+            if self.here {
+                self.resolver
+                    .references
+                    .speak(&written, crate::resolve::trimmed_span(node));
+            }
             return Some(Raw::var(origin, subject));
         }
         Some(segments.fold(Raw::var(origin, subject), |record, field| {
@@ -428,7 +445,7 @@ impl Lowering<'_> {
     /// about the written head, not about any type.
     fn application(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let head = child(node, is_expr_node)?;
-        let arguments = self.arguments(node)?;
+        let Written { arguments, slots } = self.arguments(node)?;
         // The one call whose arguments are not exactly what was written.
         // §5.7 requires every constructed fact to carry an origin and a scope,
         // `BUILTIN_OWNERSHIP` already calls both of them `play`'s hidden
@@ -454,10 +471,13 @@ impl Lowering<'_> {
                 // that eventually sounds it is the fold's to say.
                 super::notation::scope_of(origin, musa_score::Scope::Piece),
             ];
-            return Some(applied(
-                origin,
-                Raw::hosted(origin, "play"),
-                supplied.into_iter().chain(arguments),
+            return Some(sectioned(
+                applied(
+                    origin,
+                    Raw::hosted(origin, "play"),
+                    supplied.into_iter().chain(arguments),
+                ),
+                slots,
             ));
         }
         // The other call whose head is not what was written. `primitive` has no
@@ -473,7 +493,7 @@ impl Lowering<'_> {
             && written_name(&head).as_deref() == Some("primitive")
         {
             let unit = self.unit(node, origin)?;
-            return Some(Raw::app(origin, unit, arguments.into_iter().nth(2)?));
+            return Some(sectioned(Raw::app(origin, unit, arguments.into_iter().nth(2)?), slots));
         }
         // A dotted head is `10-traits.md` §6's method syntax, which resolves by
         // exact receiver *in the core*. Writing it as a projection applied would
@@ -496,7 +516,10 @@ impl Lowering<'_> {
             && !(self.in_phase && phase_literal(&written).is_some())
         {
             let receiver = Raw::var(self.origin(&head), receiver);
-            return Some(Raw::call(origin, Raw::method(origin, receiver, method), arguments));
+            return Some(sectioned(
+                Raw::call(origin, Raw::method(origin, receiver, method), arguments),
+                slots,
+            ));
         }
         let head = self.value(&head)?;
         // `Raw::call` and not `applied`, at the two sites that read an argument
@@ -505,7 +528,7 @@ impl Lowering<'_> {
         // reader's own constructions above stay applications, because an arity
         // sentence about `play`'s four arguments would be about this reading
         // rather than about the two the composer wrote.
-        Some(Raw::call(origin, head, arguments))
+        Some(sectioned(Raw::call(origin, head, arguments), slots))
     }
 
     /// The registered unit `primitive("name", version, …)` selects.
@@ -537,12 +560,20 @@ impl Lowering<'_> {
         ))
     }
 
-    /// The written arguments of an ordinary call, in order.
-    fn arguments(&mut self, node: &SyntaxNode) -> Option<Vec<Raw>> {
+    /// The written arguments of an ordinary call, in order, and the sections
+    /// among them.
+    ///
+    /// A written `_` is not an expression to lower: `02-core-calculus.md` §1.3
+    /// keeps a call complete, and a section is the surface's way of saying
+    /// which slot the completed call is *waiting* for. So the `_` becomes a
+    /// fresh variable here and [`sectioned`] binds it outside the call, which
+    /// is Peyton Jones ch. 3's enrichment — a convenience translated away
+    /// before anything types it — rather than a new term shape.
+    fn arguments(&mut self, node: &SyntaxNode) -> Option<Written> {
         let Some(list) = child(node, |kind| kind == SyntaxKind::ExprArgList) else {
-            return Some(Vec::new());
+            return Some(Written::default());
         };
-        let mut arguments = Vec::new();
+        let mut written = Written::default();
         for argument in children(&list, |kind| kind == SyntaxKind::ExprArg) {
             // A label at a *use* is refused rather than checked against the
             // declaration's field name, because checking it would need the
@@ -559,10 +590,22 @@ impl Lowering<'_> {
                         .note("a field's name is written at the declaration; a use passes values by position"),
                 );
             }
-            let written = child(&argument, is_expr_node)?;
-            arguments.push(self.value(&written)?);
+            let expression = child(&argument, is_expr_node)?;
+            if is_section_hole(&expression) {
+                // Minted rather than named after the parameter, because the
+                // parameter's name is the callee's and this reading has no
+                // callee. `Lowering::mint` prefixes `?`, which no written
+                // identifier can spell, so a section cannot capture a name the
+                // author had in scope.
+                let at = self.origin(&expression);
+                let bound = self.mint("section");
+                written.arguments.push(Raw::var(at, bound.as_str()));
+                written.slots.push((at, bound));
+                continue;
+            }
+            written.arguments.push(self.value(&expression)?);
         }
-        Some(arguments)
+        Some(written)
     }
 
     /// `fn (x: τ, …) -> ρ { e }`.
@@ -643,7 +686,8 @@ impl Lowering<'_> {
         let receiver = self.value(&child(node, is_expr_node)?)?;
         let named = own_tokens(node).find(|token| token.kind() == SyntaxKind::Identifier)?;
         let method = Raw::method(origin, receiver, named.text());
-        Some(Raw::call(origin, method, self.arguments(node)?))
+        let Written { arguments, slots } = self.arguments(node)?;
+        Some(sectioned(Raw::call(origin, method, arguments), slots))
     }
 
     /// `xs[i]` — `Index::at(xs, i)`, which is §5's last row and §1.5's own
@@ -1203,6 +1247,43 @@ fn phase_literal(written: &str) -> Option<musa_calculus::Literal> {
             .map(|held| crate::registry::literal(crate::registry::plain_type("Delimiter"), held)),
         _ => None,
     }
+}
+
+/// One call's written arguments, and the `_`s among them.
+///
+/// Two lists rather than one list of an enumeration, because the two answer
+/// different questions and are used at different moments: the arguments go
+/// inside the call, and the slots go around it.
+#[derive(Default)]
+struct Written {
+    /// The arguments in written order, a section's `_` already standing as the
+    /// variable [`sectioned`] will bind.
+    arguments: Vec<Raw>,
+    /// One binder per written `_`, left to right — so `g(_, b, _)` reads as
+    /// `fn (x, y) { g(x, b, y) }` and not the other way round.
+    slots: Vec<(Origin, String)>,
+}
+
+/// A call, wrapped in the binders its written `_`s stand for.
+///
+/// The identity when nothing was written, which is every call in the language
+/// before this reading existed and almost every call after it.
+fn sectioned(call: Raw, slots: Vec<(Origin, String)>) -> Raw {
+    slots
+        .into_iter()
+        .rev()
+        .fold(call, |body, (at, bound)| Raw::lam(at, bound.as_str(), body))
+}
+
+/// Whether an argument is a written `_`.
+///
+/// `_` lexes as an ordinary identifier — the regex is `[a-zA-Z_][a-zA-Z_0-9]*`
+/// — so this is a question about the one spelling and not about a token kind
+/// the grammar would have to grow. It is asked of an argument only: everywhere
+/// else `_` keeps meaning what it already meant, an ignored binding, and
+/// [`Lowering::name`] says so where a `_` is written as a value.
+fn is_section_hole(node: &SyntaxNode) -> bool {
+    node.kind() == SyntaxKind::NameExpr && written_name(node).as_deref() == Some("_")
 }
 
 /// The name a `NameExpr` writes: one identifier, or several joined by dots.

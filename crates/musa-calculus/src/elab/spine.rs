@@ -93,21 +93,45 @@ impl Elaborator {
         Ok(built)
     }
 
-    /// §2.1's one instantiation pass: apply `head` to the written arguments,
-    /// then match what remains against `expected` when the call is in a
-    /// checking position.
+    /// §2.1's instantiation pass: apply `head` to the written arguments, then
+    /// match what remains against `expected` when the call is in a checking
+    /// position.
     ///
-    /// One left-to-right walk, and the discipline is the document's: an
-    /// implicit parameter becomes a [hole](crate::meta::Hole) that the first
-    /// argument to mention it solves; an argument is *inferred* when its
-    /// domain still mentions an unsolved hole and *checked* otherwise, because
-    /// those are the two directions in which information can flow; a
-    /// constraint waits until the walk has said everything matching can say,
-    /// and is then resolved once, by lookup, never postponed. The author sees
-    /// the two errors this can raise — a parameter nothing determined
-    /// ([`Refusal::Unsolved`], at declaration end) and a call against a
-    /// non-function ([`Refusal::NotAFunction`], here) — and neither involves
-    /// a mechanism they have to name.
+    /// One left-to-right walk over the spine, and the discipline is the
+    /// document's: an implicit parameter becomes a [hole](crate::meta::Hole)
+    /// that the first argument to mention it solves; a constraint waits until
+    /// the walk has said everything matching can say, and is then resolved
+    /// once, by lookup, never postponed. The domain and the argument's written
+    /// form together decide what happens to it, in three cases rather than
+    /// two:
+    ///
+    /// - **Settled** — the argument is *checked* against it. So is an argument
+    ///   that annotates its own binder, because checking is what makes the
+    ///   annotation and the domain agree ([`Raw::annotates_its_binder`]).
+    /// - **Still quantified, and the argument can be inferred** — the argument
+    ///   teaches the parameter, and what it inferred is matched against the
+    ///   domain.
+    /// - **Still quantified, and the argument is a checking-only form that
+    ///   describes nothing** — the argument is *deferred*. Nothing can infer a
+    ///   bare `λ`, and checking one against a domain that is still a hole would
+    ///   bind its parameter to that hole; so a placeholder stands in the slot,
+    ///   the rest of the spine is walked — which is what solves the domain —
+    ///   and the argument is checked afterwards against the type it turned out
+    ///   to have. A λ that annotates its own binder is not here: it says what
+    ///   its parameter is, so it is one of the arguments the deferred ones are
+    ///   waiting for rather than one of the ones waiting.
+    ///
+    /// Deferral is not postponement. Each argument is elaborated exactly once,
+    /// there is no queue and no retry, and both the deferred set and the order
+    /// they are revisited in are fixed by the written argument order, so the
+    /// answer cannot depend on which branch ran first. A domain that is *still*
+    /// unsolved when the walk ends is checked against anyway, which is what
+    /// happened before this rule existed: the worst case is the old behaviour,
+    /// and the author sees §2.1's [`Refusal::Unsolved`] at declaration end.
+    ///
+    /// The emitted term is unaffected: the arguments are elaborated in one
+    /// order and the spine is built in the written one, so evaluation order is
+    /// exactly what was written.
     pub(super) fn apply_spine(
         &mut self,
         scope: &Scope,
@@ -150,6 +174,7 @@ impl Elaborator {
             | Shape::Let { .. } => head,
         };
         let mut walk = Walk::default();
+        let mut waiting: Vec<Waiting<'_>> = Vec::new();
         let mut ty = head.ty.clone();
         self.advance(scope, &mut ty, &mut walk)?;
         for argument in arguments {
@@ -163,24 +188,47 @@ impl Elaborator {
                 .into());
             };
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-            // The domain decides the direction (§2.1): still quantified, the
-            // argument teaches the parameter — inferred, and matched;
-            // settled, the argument is checked. A checking-only form is checked
-            // either way: inference has no rule for it, and the slot's Pi is
-            // the type it was always going to be read against, holes included.
-            let argument_term = if crate::unify::mentions_unsolved(&domain) && !argument.checks_only() {
+            let at = argument.origin();
+            let (slot, value) = if !crate::unify::mentions_unsolved(&domain)
+                || (argument.checks_only() && argument.annotates_its_binder())
+            {
+                // Checked: the argument is read against the domain, either
+                // because the domain is settled or because the argument
+                // annotates its own binder and checking is what makes the two
+                // agree.
+                let term = self.check(scope, argument, &domain)?;
+                let value = scope.eval(&mut self.meter, &term)?;
+                (Slot::Argument(term), value)
+            } else if argument.checks_only() {
+                // Deferred: a placeholder holds the slot so the rest of the
+                // walk can proceed, and the argument is checked below against
+                // whatever the rest of the walk made the domain be. The
+                // placeholder is an ordinary hole, so a codomain that reads the
+                // argument's *value* gets a value to read, and anything the
+                // walk learns about it is a solution the second pass then
+                // agrees with rather than overwrites.
+                let hole = self.fresh_hole(at, &domain);
+                let value = Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole.clone())));
+                waiting.push(Waiting {
+                    argument,
+                    domain: Arc::clone(&domain),
+                    hole: hole.clone(),
+                    at,
+                });
+                (Slot::Deferred(hole), value)
+            } else {
                 // Inferred — but an inferred head can still quantify over
                 // parameters the domain determines (`identity` used unapplied):
                 // the empty walk peels those into holes and does the matching,
                 // which is §2.1's one rule rather than a second path here.
                 let inferred = self.infer(scope, argument)?;
-                self.apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?
-                    .term
-            } else {
-                self.check(scope, argument, &domain)?
+                let term = self
+                    .apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?
+                    .term;
+                let value = scope.eval(&mut self.meter, &term)?;
+                (Slot::Argument(term), value)
             };
-            let value = scope.eval(&mut self.meter, &argument_term)?;
-            walk.slots.push(Slot::Argument(argument_term));
+            walk.slots.push(slot);
             ty = apply_closure(&mut self.meter, &codomain, value)?;
             self.advance(scope, &mut ty, &mut walk)?;
         }
@@ -190,10 +238,37 @@ impl Elaborator {
             // parameters — and any argument's still-unsolved ones — are
             // learned. The position is the mismatch's *expected*: it is the
             // type the author wrote and the walked type the one found.
+            //
+            // Before the deferred arguments and not after, because this is the
+            // last thing that can teach a domain anything: the expected type is
+            // where `fold(combine, seed, xs)`'s result type comes from when the
+            // seed is the lambda. Idris2 checks the rest of the spine including
+            // its target for the same reason.
             self.unifier
                 .unify_types(&mut self.meter, scope.depth(), here, expected, &ty)?;
         }
-        Self::finish_walk(here, head.term, ty, &walk)
+        // The second pass, in written order. `domain` is the same value the
+        // walk skipped, and it needs no re-derivation: a hole is shared, so a
+        // domain the walk solved is already solved here.
+        let mut deferred = Vec::with_capacity(waiting.len());
+        for Waiting {
+            argument,
+            domain,
+            hole,
+            at,
+        } in waiting
+        {
+            let term = self.check(scope, argument, &domain)?;
+            let value = scope.eval(&mut self.meter, &term)?;
+            let stood = Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole)));
+            // Assignment when the placeholder is still free, conversion when
+            // the walk already decided what stood there — one call, because
+            // those are the same procedure (see [`crate::unify`]).
+            self.unifier
+                .unify(&mut self.meter, scope.depth(), at, &domain, &stood, &value)?;
+            deferred.push(term);
+        }
+        Self::finish_walk(here, head.term, ty, &walk, deferred)
     }
 
     /// Skip the binders §2.1 fills rather than the author: an implicit
@@ -246,12 +321,27 @@ impl Elaborator {
     /// The walk's end: build the spine, and leave the residual type with the
     /// holes it still mentions — solved or not, which [`Self::settled`]
     /// audits.
-    pub(super) fn finish_walk(here: Origin, head: Term, ty: Value, walk: &Walk) -> Result<Typed, ElabError> {
+    pub(super) fn finish_walk(
+        here: Origin,
+        head: Term,
+        ty: Value,
+        walk: &Walk,
+        deferred: Vec<Term>,
+    ) -> Result<Typed, ElabError> {
+        // Consumed in order, which is what makes the emitted spine the written
+        // one: the deferred slots stand in `walk.slots` in the order they were
+        // written, and the second pass checked them in that same order.
+        let mut deferred = deferred.into_iter();
         let mut term = head;
         for slot in &walk.slots {
             let argument = match slot {
                 Slot::Parameter(hole) | Slot::Dictionary(hole) => Term::hole(here, hole.clone()),
                 Slot::Argument(term) => term.clone(),
+                // The placeholder is the fallback rather than a panic because
+                // it is a *correct* term: the second pass solved it to the
+                // argument's value, so a spine built from it says the same
+                // thing with the argument read back instead of as written.
+                Slot::Deferred(hole) => deferred.next().unwrap_or_else(|| Term::hole(here, hole.clone())),
             };
             term = Term::app(here, term, argument);
         }
@@ -269,6 +359,23 @@ pub(super) struct Walk {
     pub(super) slots: Vec<Slot>,
 }
 
+/// One argument [`Elaborator::apply_spine`] skipped, and where to put it back.
+///
+/// Not a postponed constraint: it is one argument, one slot, and one pass over
+/// the list, all of it inside the call that made it. Nothing outlives the spine.
+struct Waiting<'raw> {
+    /// The argument, still unelaborated.
+    argument: &'raw Raw,
+    /// The domain it will be checked against — the same value, whose holes the
+    /// rest of the walk may since have solved.
+    domain: Arc<Value>,
+    /// The placeholder that stood in the slot, so the checked argument can be
+    /// made to agree with anything the walk decided about it.
+    hole: crate::meta::Hole,
+    /// Where the argument was written, for the placeholder and the agreement.
+    at: Origin,
+}
+
 /// One spine slot of a [`Walk`].
 pub(super) enum Slot {
     /// An implicit parameter: the hole stands in the term whether or not the
@@ -278,4 +385,7 @@ pub(super) enum Slot {
     Dictionary(crate::meta::Hole),
     /// An argument the author wrote, elaborated.
     Argument(Term),
+    /// An argument the walk deferred, standing at the placeholder that held
+    /// its slot. [`Elaborator::finish_walk`] fills it from the second pass.
+    Deferred(crate::meta::Hole),
 }

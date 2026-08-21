@@ -577,12 +577,48 @@
       }
     },
     {
+      "name": "compose",
+      "kind": "function",
+      "signature": "fn compose<A, B, C>(after: B -> C, before: A -> B) -> A -> C",
+      "summary": "Apply `before`, then `after`. The composition is the answer, not a value it was applied to: `compose(f, g)` names the function, and `compose(f, g)(x)` runs it.",
+      "result": {
+        "name": "A -> C",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "after",
+          "label": "after: B -> C",
+          "ty": {
+            "name": "B -> C",
+            "distinction": null
+          }
+        },
+        {
+          "name": "before",
+          "label": "before: A -> B",
+          "ty": {
+            "name": "A -> B",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/core.musa",
+        "start": 485,
+        "end": 492
+      }
+    },
+    {
       "name": "compose_music",
       "kind": "function",
-      "signature": "fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, value: EventTrack<WrittenTime>) -> EventTrack<WrittenTime>",
+      "signature": "fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) -> EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
       "summary": "Apply the second musical transformation, then the first.",
       "result": {
-        "name": "EventTrack<WrittenTime>",
+        "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
         "distinction": null
       },
       "parameters": [
@@ -601,14 +637,6 @@
             "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
             "distinction": null
           }
-        },
-        {
-          "name": "value",
-          "label": "value: EventTrack<WrittenTime>",
-          "ty": {
-            "name": "EventTrack<WrittenTime>",
-            "distinction": null
-          }
         }
       ],
       "deprecation": null,
@@ -616,18 +644,18 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 368,
-        "end": 381
+        "start": 667,
+        "end": 680
       }
     },
     {
       "name": "compose_pitch",
       "kind": "function",
-      "signature": "fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch, value: Pitch) -> Pitch",
+      "signature": "fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch) -> Pitch -> Pitch",
       "summary": "Apply the second pitch function, then the first.",
       "result": {
-        "name": "Pitch",
-        "distinction": "a written pitch: letter, accidental, and octave"
+        "name": "Pitch -> Pitch",
+        "distinction": null
       },
       "parameters": [
         {
@@ -645,14 +673,6 @@
             "name": "Pitch -> Pitch",
             "distinction": null
           }
-        },
-        {
-          "name": "value",
-          "label": "value: Pitch",
-          "ty": {
-            "name": "Pitch",
-            "distinction": "a written pitch: letter, accidental, and octave"
-          }
         }
       ],
       "deprecation": null,
@@ -660,8 +680,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 680,
-        "end": 693
+        "start": 968,
+        "end": 981
       }
     },
     {
@@ -1098,6 +1118,13 @@
       "uses": []
     },
     {
+      "name": "compose",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
+      "uses": []
+    },
+    {
       "name": "compose_music",
       "kind": "function",
       "declaration": null,
@@ -1121,60 +1148,35 @@
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 2199,
-          "end": 2212
-        }
-      ]
+      "uses": []
     },
     {
       "name": "range",
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 3402,
-          "end": 3407
-        }
-      ]
+      "uses": []
     },
     {
       "name": "repeated",
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 3986,
-          "end": 3994
-        }
-      ]
+      "uses": []
     },
     {
       "name": "map",
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 3581,
-          "end": 3584
-        }
-      ]
+      "uses": []
     },
     {
       "name": "filter",
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",
-      "uses": [
-        {
-          "start": 3762,
-          "end": 3768
-        }
-      ]
+      "uses": []
     },
     {
       "name": "naturals",

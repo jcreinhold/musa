@@ -810,6 +810,20 @@ impl Raw {
         )
     }
 
+    /// Whether checking this against a still-unsolved domain would *teach*
+    /// that domain something.
+    ///
+    /// True of exactly one form: a λ whose binder the author annotated.
+    /// [`Elaborator::check`](crate::elab::Elaborator)'s λ rule makes a written
+    /// annotation agree with the domain it is checked against, so such an
+    /// argument solves the slot rather than waiting on it — and the
+    /// application walk skips it when it decides what to defer. Everything
+    /// else [`Self::checks_only`] names — a record, a `match`, a `rec`, a bare
+    /// λ — reads its types *from* the slot and has none to give back.
+    pub(crate) fn annotates_its_binder(&self) -> bool {
+        matches!(self.shape(), RawShape::Lam { domain: Some(_), .. })
+    }
+
     /// `function argument`.
     #[must_use]
     pub fn app(origin: Origin, function: Self, argument: Self) -> Self {

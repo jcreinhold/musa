@@ -8,6 +8,16 @@
 //! `fn` is declared where the declarations are, so it cannot close over an
 //! argument its caller just supplied — by giving the surface the lambda the
 //! core already had. These are the laws of both halves.
+//!
+//! # The written section
+//!
+//! Prompt 142a repaired §1.3 rather than reopening it. The ambiguity the rule
+//! is about is *silence* — `f(x)` quietly becoming a function — and a section
+//! is not silent: `f(x, _)` says which slot is left, so every slot is still
+//! named at every call and an under-applied call with no `_` is the same type
+//! error it was. What changed is only that the domain's operations may be
+//! values, which `note 51 §6` argues is the first thing a transformational
+//! theory needs.
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
@@ -157,4 +167,96 @@ fn a_lambda_is_a_value_and_may_be_stored() {
          let kept: Held = Keeps(fn (n: Nat) -> Nat { n });",
     );
     assert!(reported.is_empty(), "{reported:?}");
+}
+
+/// A section names the function a call was still waiting for, and the slot it
+/// is waiting for is written.
+///
+/// The pair to [`an_under_applied_builtin_is_refused`]: the same builtin, the
+/// same two parameters, and the `_` is the whole difference between a refusal
+/// and a value.
+#[test]
+fn a_section_names_the_function_a_call_is_waiting_for() {
+    let reported = errors("let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8, _);");
+    assert!(reported.is_empty(), "{reported:?}");
+}
+
+/// And it is the *right* function: the section applied to the argument it
+/// stood for does what the complete call would have done.
+#[test]
+fn a_section_applied_is_the_call_it_came_from() {
+    let sounding = |source: &str| {
+        let compilation = compile(
+            &SourceDocument::new(source, "complete-call-laws.musa"),
+            &CompileOptions::default(),
+        );
+        assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+        compilation
+            .into_snapshot()
+            .map(|snapshot| {
+                snapshot
+                    .parts()
+                    .iter()
+                    .flat_map(|(_, part)| part.voices())
+                    .flat_map(|(_, voice)| voice.events().to_vec())
+                    .map(|event| match event.kind {
+                        ScoreEventKind::Note { pitch } => pitch.to_string(),
+                        ScoreEventKind::Rest => "rest".to_owned(),
+                        ScoreEventKind::Chord { pitches } => format!("chord:{pitches:?}"),
+                    })
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default()
+    };
+    let piece = |declarations: &str, used: &str| {
+        format!(
+            "piece \"Sections\" {{ import std::core; \
+             let subject: EventTrack<WrittenTime> = music {{ c4/4 e4/4 }}; {declarations} \
+             score {{ part p {{ voice v {{ use {used}; }} }} }} }}"
+        )
+    };
+    let whole = sounding(&piece("", "transpose(P8, subject)"));
+    let sectioned = sounding(&piece(
+        "let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8, _);",
+        "raise(subject)",
+    ));
+    assert_eq!(sectioned, whole);
+    assert_eq!(whole, ["c5", "e5"]);
+}
+
+/// Two `_`s read left to right, which the *types* witness: the section's first
+/// parameter is the call's first slot, so an argument list that read them the
+/// other way round would not even check.
+#[test]
+fn two_sections_read_left_to_right() {
+    let reported =
+        errors("let moved: Interval -> EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(_, _);");
+    assert!(reported.is_empty(), "{reported:?}");
+    let swapped =
+        errors("let moved: EventTrack<WrittenTime> -> Interval -> EventTrack<WrittenTime> = transpose(_, _);");
+    assert!(!swapped.is_empty(), "the other order was accepted");
+}
+
+/// A method call reads a `_` the same way an ordinary call does — one reading
+/// in the lowering, not two.
+#[test]
+fn a_method_call_takes_a_section_too() {
+    let reported = errors(
+        "import std::list; \
+         let total: (Nat -> Nat -> Nat) -> Nat = range(4).fold_from_start(0, _);",
+    );
+    assert!(reported.is_empty(), "{reported:?}");
+}
+
+/// A `_` outside an argument list is refused for what it is, rather than
+/// looked up as a name and reported missing.
+#[test]
+fn an_underscore_that_stands_for_no_slot_is_refused_as_itself() {
+    let reported = errors("let held: Nat = _;");
+    assert!(
+        reported
+            .iter()
+            .any(|(_, message)| message.contains("`_` is not a value")),
+        "{reported:?}"
+    );
 }

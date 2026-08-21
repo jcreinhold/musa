@@ -6,6 +6,7 @@
 
 mod analysis_laws;
 mod annotation_laws;
+mod argument_order_laws;
 mod assertion_laws;
 mod bars;
 mod cause_laws;
