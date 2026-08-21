@@ -41,14 +41,32 @@ That is the vocabulary. **The post-tonal half — `Group<Ti>`, `Action<Ti, Pc(n)
 
 ## Design
 
-**Three traits, and no more.** `Torsor<P, V>` with `difference` and `shift`; `Group<G>` with `unit`, `compose`,
-`inverse`; `Action<G, X>` with `act`. Each is an ordinary flat trait under `10-traits.md`'s existing model — a record
-type, an impl table keyed by `(trait, head)`, one-step lookup — so nothing about resolution changes.
+**Three traits, and no more.** `Group<G>` with `unit`, `compose`, `inverse`; `Action<X, G>` with `act`; `Torsor<P, V>`
+with `difference`. Each is an ordinary flat trait under `10-traits.md`'s existing model — a record type, an impl table
+keyed by `(trait, head)`, one-step lookup — so nothing about resolution changes.
+
+**The carrier is the first parameter, and that is forced rather than chosen.** Note 52 §2.2 writes `Action<G, X>`, and
+the compiler refuses it: coherence keys on the first parameter (§1), so `Action<Interval, Pitch>` and `Action<Interval,
+NoteName>` are two instances at one head, and the second is a `duplicate-instance` error naming the first. `Interval`
+acts on two carriers and always did — that is `Transposable`'s two impls. Writing the carrier first also puts the head
+where §6's method syntax already looks: `.act` resolves by receiver, and the receiver is the carrier.
+
+**`Torsor` carries `difference` and nothing else.** A torsor is a simply transitive action, so a `Torsor` that also
+declared `shift` would give one operation two names at every point type — the duplication this prompt exists to remove,
+reintroduced by the trait that removes it. `10-traits.md` §9 refuses supertraits, so `Torsor` does not *require*
+`Action`; they are two flat traits a point type carries together, and the law that joins them is prose: `act(a,
+difference(a, b))` is `b`.
 
 **The instances are the point, and they exist today.** `Group<Interval>` is `P1`, `interval_add`, `interval_inverse`.
-`Action<Interval, Pitch>` and `Action<Interval, NoteName>` are the two halves `Transposable` had. `Torsor<Position,
-Duration>` is `position_between` and `position_shift`. That is one group, two carriers, and — with the paragraph below —
-two torsors, which is what makes a two-parameter trait worth declaring rather than a shape asserted with one instance.
+`Action<Pitch, Interval>` and `Action<NoteName, Interval>` are the two halves `Transposable` had. `Action<Position,
+Duration>` is `position_shift`. `Torsor<Pitch, Interval>` is `pitch_between`, which the paragraph below supplies.
+
+**There is no `Torsor<Position, Duration>`, and the registry is why.** `position_between` refuses a second position
+before the first — "a duration is nonnegative" — so `Duration` has no inverses, and time is a *monoid* action rather
+than a torsor. Note 52 §2.1 lists Position/Duration beside Pitch/Interval as though the two were one structure; they are
+not, and this prompt records the difference rather than smoothing it, for the reason §2.4 gives about spelled triads. A
+trait that certified a law its carrier does not satisfy would be worse than no trait. `Torsor` therefore lands with one
+instance and gains its second at 143, where `Pc(n)` and `Ic(n)` arrive.
 
 **One builtin is added, and it discharges a claim the governing document already makes.** There is no
 `pitch_between(a, b) -> Interval`. `03-musical-domains.md` §1 *proves* it exists and is unique — the cancellation lemma
@@ -94,9 +112,9 @@ vocabulary two subtrees share belongs to neither of them.
 - `docs/rules/language/10-traits.md`: nothing added. If §1's "Laws are prose" paragraph or §9's `checked trait laws` row
   needs a word to point at `05-verification.md` §4, that is the whole of this prompt's edit there.
 - `stdlib/src/algebra.musa`: the three trait declarations, and its `mod` line in `lib.musa`.
-- `stdlib/src/pitch.musa`: `Group<Interval>`, `Action<Interval, Pitch>`, `Action<Interval, NoteName>`, `Torsor<Pitch,
+- `stdlib/src/pitch.musa`: `Group<Interval>`, `Action<Pitch, Interval>`, `Action<NoteName, Interval>`, `Torsor<Pitch,
   Interval>`; `Transposable` deleted.
-- `stdlib/src/core.musa` or `algebra.musa`, whichever the module tree wants: `Torsor<Position, Duration>`.
+- `stdlib/src/algebra.musa`: `Action<Position, Duration>`, and the recorded reason there is no torsor at time.
 - `crates/musa-compiler`: `pitch_between`, with its ownership entry and its registry law.
 - `examples/`: one fixture writing the group, both torsors, and both actions, and showing that a difference and a shift
   undo each other.
@@ -122,6 +140,8 @@ theory-citation pass.
 - **No `law` clause, no `law` keyword, and no discharge judgment.** See *Why there is no `law` clause*. A trait carries
   methods; an algebraic claim is a law suite.
 - **No `Pc(n)`, no `Ti`, no `orbit`, and no `stabilizer`.** That is 143, and the reason is stated above.
+- **No `Torsor` at a carrier whose vectors have no inverses.** Time is the case, and the refusal is the finding rather
+  than a gap to fill.
 - **No `Eq` or `Ord` declaration.** 143 declares the operator traits; a second declaration here would be the coherence
   violation §2 refuses.
 - No builtin but `pitch_between`, and none removed. The collapse is 143.

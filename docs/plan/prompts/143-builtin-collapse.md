@@ -24,10 +24,10 @@ actually hides. Record what shrank and what did not, and why.
 
 **The seventeen modulus-12 entries are the largest single case, and they are collapsed here rather than at 142e.** That
 prompt named the algebra; this one supplies the carrier it acts on. `Pc12`, `PcSet12`, and `Row12` become `Pc(n)`,
-`PcSet(n)`, and `Row(n)` over 142d's index and 142f's declaration form; `Group<Ti>` and `Action<Ti, Pc(n)>` are the
-instances; and `orbit` and `stabilizer` — ordinary functions of a finite action, taking the modulus as the number it is
-— replace `row12_symmetries`, `row12_forms`, and `row12_matrix`. Note 52 §2.3 is the argument that those three builtins
-are one question asked three times.
+`PcSet(n)`, and `Row(n)` over 142d's index and 142f's declaration form; `Group<Ti>`, `Action<Pc(n), Ti>`, and
+`Torsor<Pc(n), Ic(n)>` are the instances; and `orbit` and `stabilizer` — ordinary functions of a finite action, taking
+the modulus as the number it is — replace `row12_symmetries`, `row12_forms`, and `row12_matrix`. Note 52 §2.3 is the
+argument that those three builtins are one question asked three times.
 
 *Repaired ordering:* this prompt now follows the staff rewrite — prompt 145 was pulled ahead of it and of 144 when the
 step-budget measurement said the rewrite could not wait for the cost table. That is the order prompt 140 already assumed
@@ -100,7 +100,7 @@ decision, or a budget?
   recording for each of the 131 entries whether it was kept, replaced, or moved to `stdlib/`, and the hidden information
   that decided it.
 - `stdlib/` gaining the operations that left the compiler, with their laws.
-- `stdlib/src/post_tonal/` rewritten over `Pc(n)`: `Group<Ti>`, `Action<Ti, Pc(n)>`, and `orbit`/`stabilizer` as
+- `stdlib/src/post_tonal/` rewritten over `Pc(n)`: `Group<Ti>`, `Action<Pc(n), Ti>`, and `orbit`/`stabilizer` as
   ordinary functions, with the modulus reaching them as the number it is.
 - `examples/`: the two fixtures the Check names.
 - P1/P2 measurements against `06-elaboration-baseline.md`'s baseline, and any mitigation applied, measured.
@@ -127,7 +127,7 @@ prompt 142's Check and closed at 144 — and nothing else. The staff class is gr
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.
 
-And the musical check the moved half brings with it: `orbit` under `Action<Ti, Pc(n)>` at modulus 12, applied to the
+And the musical check the moved half brings with it: `orbit` under `Action<Pc(n), Ti>` at modulus 12, applied to the
 committed set-class fixtures, reproduces `102-set-class-and-prime-form.md`'s prime forms, and `stabilizer` applied to
 the whole-tone and octatonic collections reproduces `106-collections.md`'s modes of limited transposition. Both as
 fixtures in `examples/`, both cited by `make docs-check`'s theory-citation pass.
