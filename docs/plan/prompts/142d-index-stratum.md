@@ -1,7 +1,7 @@
 ---
 id: 142d
 slug: index-stratum
-status: pending
+status: in-progress
 depends_on: [142c]
 phase: 3
 ---
