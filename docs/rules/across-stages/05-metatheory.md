@@ -15,25 +15,26 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 
 | Result | Review status | Implementation status |
 | --- | --- | --- |
-| ~~Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline~~ — **superseded** by the constitution's prompt-128 amendment, which replaced principal inference with bidirectional elaboration | the outline proof in `06-proof-outline.md` §2 stands for the discipline it was about; it is no longer a result about Musa | replaced; prompt 148 owes decidability of conversion, and soundness and completeness of normalization by evaluation, in its place |
-| Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
+| ~~Type inference terminates and returns a principal type in the two-class Hindley–Milner discipline~~ — **superseded** by the constitution's prompt-128 amendment, which replaced principal inference with bidirectional elaboration | the outline proof in `../../notes/research/core-calculus/06-proof-outline.md` §2 stands for the discipline it was about; it is no longer a result about Musa | replaced; prompt 148 owes decidability of conversion, and soundness and completeness of normalization by evaluation, in its place |
+| Accepted source expressions terminate, and a resource failure cannot change an accepted value | proved in outline, `../../notes/research/core-calculus/06-proof-outline.md` §2 | implemented for the current monomorphic core; the inferred core is prompt 127b |
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | absent; prompt 127b |
 | `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `docs/rules/events/03`–`05` and `10` | implemented and tested at the untagged type; coordinate tags are prompt 127c |
-| Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed as part of K₃.3 | implemented by prompt 155a with delimiter and structured-payload tests |
+| Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed under the K₃.3 integration closure, in this directory's history | implemented by prompt 155a with delimiter and structured-payload tests |
 | Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
 | Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
 | Chain and side-by-side laws (M4, M5) | proved | absent |
 | Scheduling emits every boundary exactly once and records every decision (M6) | proved | absent; prompt 151 |
 | Scheduling preserves simultaneous placement under an occurrence-local policy (M7, M8) | proved, conditionally | absent |
 | One audio frame is the reference step; a valid whole-machine batch changes nothing (R1-batch) | contract stated; the composition rule for feedback-free machines is proved | absent; current modulation runs once per host block |
-| Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed as part of K₃.3; the graft rule is stated by prompt 127a | only partial provenance exists today |
-| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed as part of K₃.3 | full preparation API and cache are not yet implemented |
+| Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed under the K₃.3 integration closure; the graft rule is stated by prompt 127a | only partial provenance exists today |
+| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed under the K₃.3 integration closure, in this directory's history | full preparation API and cache are not yet implemented |
 
-The proof-review record for the earlier event-track and identity results is in `docs/notes/research/25`, `30`, `35`,
-`39`, `42`, and `45`. The record for the current core calculus is
-[`docs/notes/research/core-calculus/`](../../notes/research/core-calculus/README.md), in order, ending at its final
-review. Both include failed drafts. The failures matter because they exposed missing assumptions now stated in this
-specification — most sharply the two feedback counterexamples that killed the single-`Flow` and port-scheduled designs.
+The record for the current core calculus is
+[`docs/notes/research/core-calculus/`](../../notes/research/core-calculus/README.md). The earlier event-track and
+identity results came out of the K₁, K₂, and K₃ lines, each closed by an adversarial proof review; those reviews and the
+candidates they reviewed are in the history of `docs/notes/research/`, deleted once the results they established were
+written into this specification. The failed drafts mattered because they exposed missing assumptions now stated here —
+most sharply the two feedback counterexamples that killed the single-`Flow` and port-scheduled designs.
 
 ## 2. Claims this specification does not make
 

@@ -25,11 +25,10 @@ can be removed without what prompt 142 supplies — a top-level definition scope
   what it implies about order-independence), and ch. 6's let-bound right-hand side. The fat bar's _second_ job is what
   this prompt supplies; its first job stays declined, for the reason
   [`case.rs`](../../../crates/musa-calculus/src/case.rs) already gives.
-- Notes [24 §H5](../../notes/research/language-design-closure/24-pipeline-and-syntax-review.md),
-  [26 §2.4](../../notes/research/language-design-closure/26-language-design-decision.md), and
-  [29](../../notes/research/language-design-closure/29-source-and-expansion-spec.md) — this repo found Finding A twice
-  before, chose join points in writing, and then lost the decision when note 42 superseded that design line for an
-  unrelated reason. What this prompt builds is that decision, spelled in a calculus with no labels.
+- Note 24 §H5, [note 26 §2.4](../../notes/research/language-design-closure/26-language-design-decision.md), and note 29
+  — this repo found Finding A twice before, chose join points in writing, and then lost the decision when note 42
+  superseded that design line for an unrelated reason. What this prompt builds is that decision, spelled in a calculus
+  with no labels.
 - `~/Code/smalltt`'s README on approximate conversion, the three quotation modes, approximate occurs checking, and
   head-plus-vector spines — and on glued evaluation, which is the one this prompt does _not_ build.
 - `crates/musa-calculus/src/{value.rs, eval.rs, quote.rs, unify.rs, case.rs, lib.rs}` — the six files that change, and

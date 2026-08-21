@@ -7,9 +7,9 @@ quotation, and syntax patterns. None of it had been written against a program. T
 paper, records what each specified mechanism is exercised by, answers the six falsifiers prompt 132 names one by one,
 and predicts the size of prompt 145's staff rewrite.
 
-The precedent is [`40-sealed-step-recursor-trial.md`](40-sealed-step-recursor-trial.md): complete programs, no ellipses,
-a mechanism-to-program table, and findings permitted to fail the interface. What changes is the scope — that trial
-questioned one operation, this one questions a language.
+The precedent is the sealed-step-recursor trial that preceded it: complete programs, no ellipses, a mechanism-to-program
+table, and findings permitted to fail the interface. What changes is the scope — that trial questioned one operation,
+this one questions a language.
 
 Nothing here amends [`docs/rules/constitution.md`](../../../rules/constitution.md) or
 [`docs/rules/obligations.md`](../../../rules/obligations.md). It repairs the four candidate documents of

@@ -499,7 +499,7 @@ aimed at them; they are where a further measurement should start.
 ## Prompt 127 public surface and dependencies
 
 No new crate, and no compiler internal became public. The sharing change is entirely inside
-`crates/musa-compiler/src/elaborate.rs`. The three items the benchmarks needed — `Sharing`, `sharing_source`, and
+`crates/musa-compiler/src/elaborate/`. The three items the benchmarks needed — `Sharing`, `sharing_source`, and
 `DISTINCT_ROOTS` — live in `musa_compiler::bench`, which is `#[doc(hidden)]`, exists only so the phases `compile` runs
 together can be timed apart, and is called by nothing outside `benches/`. The module-design audit
 (`bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-compiler`) reports those three items and nothing

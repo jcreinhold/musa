@@ -58,9 +58,9 @@ to be settled by a consumer that needed voice-level temporal queries the project
 **Answer: the working stance holds, and the event track gains no succession relation.** The deciding consumer is
 voice-leading and counterpoint analysis, which is the one part of the system whose entire subject matter is *lines*:
 seven style profiles and twenty-four rules, nine of them species rules about what a single line does from note to note.
-`crates/musa-compiler/src/analysis/motion.rs` serves all of them from a `Strand` that is the lane's own
-`(PartId, VoiceId)` plus its tones sorted by onset — succession is "the next tone in that vector," and line order is the
-strand's mean diatonic height. No relation, no threading pass, no predecessor field, no second identity.
+`crates/musa-score/src/analysis/motion.rs` serves all of them from a `Strand` that is the lane's own `(PartId, VoiceId)`
+plus its tones sorted by onset — succession is "the next tone in that vector," and line order is the strand's mean
+diatonic height. No relation, no threading pass, no predecessor field, no second identity.
 
 The one place a line genuinely is not available is honest about it rather than papered over: a jazz voicing written as a
 chord in a single lane has no lines inside it, so the analysis reads a *position from the bottom* and says so
@@ -228,7 +228,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   as a temporal one — the event track scales the span, and the surface layer respells the written value. `invert` is an
   ordinary `map_payloads`, with the unspellable mirror image (past a double accidental) surfacing as a diagnostic rather
   than a event-track-level failure. `retrograde` is the interesting one: it is a plain function over the finite
-  occurrence list in `musa-compiler/src/elaborate.rs`, reflecting each span about the ambient duration, and it needed
+  occurrence list in `musa-compiler/src/elaborate/`, reflecting each span about the ambient duration, and it needed
   **no** reversal primitive — the finite core's occurrences are already a materialized set, so reversal is a mapping
   over them rather than a construct they must be built with. Its laws (involution; anti-homomorphism for `follow`) are
   proven at the elaboration level in `musa-compiler/tests/transform_laws.rs`. Tie marks are the one thing reversal must

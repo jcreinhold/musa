@@ -23,9 +23,8 @@ in `musa-syntax`; the resolution rule and its diagnostics in `musa-calculus`. Re
   cannot reach, and `Chord::NamedChord(ChordSymbol::GSeven, [Spelling::C])` — a chord whose symbol contradicts its tones
   — is constructible today by anyone. The trial could not repair it, because prompt 132's Stop forbade adding a
   mechanism, so it recorded the gap and named this prompt as the answer.
-- [`docs/notes/research/language-design-closure/28-five-programs.md`](../../notes/research/language-design-closure/28-five-programs.md)
-  §7 — "Hidden constructors | tonal, phrase, tuning | keep", the row that has been in the corpus since before the
-  dependent core and has never had a spelling.
+- The five-programs trial, `28-five-programs.md`, §7 — "Hidden constructors | tonal, phrase, tuning | keep", the row
+  that has been in the corpus since before the dependent core and has never had a spelling.
 - `docs/rules/language/04-templates-and-modules.md` §4 — the *existing* privacy mechanism, and its limits. A structure
   member the signature does not list is already private, so this prompt is not inventing privacy; it is giving privacy
   to declarations a `structure` body cannot hold. A `structure` admits `binding | function` and no type declaration, so

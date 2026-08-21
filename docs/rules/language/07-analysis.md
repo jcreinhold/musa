@@ -47,7 +47,7 @@ Each kind states, in the doc comment of the module that implements it:
 
 This is not documentation for its own sake. It is what makes §3's classification mean anything. Without a stated α, a
 "candidate" is a severity label chosen by feel, and a finding with no stated relationship to the score is exactly the
-false claim `03-musical-domains.md` §5 forbids. **An analysis whose soundness claim cannot be written must not ship.**
+false claim `03-musical-domains.md` §6 forbids. **An analysis whose soundness claim cannot be written must not ship.**
 
 §22.3 of the same chapter is the standing warning about the other half: the obvious treatments of recursion are wrong.
 An analysis that walks a structure with self-reference — a form graph, a motivic derivation, a reduction tree — owes a
@@ -91,7 +91,7 @@ bytes — otherwise nobody can diff a report against yesterday's and act on the 
 ## 5. The boundary
 
 The public surface is one request, one report, one function, and the types they are made of. Segmenters, indexes,
-candidate graphs, and theory values stay private to `crates/musa-compiler/src/analysis.rs`.
+candidate graphs, and theory values stay private to `crates/musa-score/src/analysis/`.
 
 A public `musa-analysis` crate was considered and rejected. Its only caller would be `musa-compiler` — every consumer
 reaches analysis through `musa-project` — while its public surface would be exactly the pass details that later kinds
@@ -135,7 +135,7 @@ report is every score agreeing with it inside the scope and window, and that set
 concludes "the piece is in C major" from one `key-in-force` finding over one bar has read something α does not say.
 
 **What it does not do.** It does not interpret. A chord symbol is reported as written and no notes are derived from it,
-because `crates/musa-compiler/src/harmony.rs` opens by saying a symbol is recorded and never interpreted. Spelling
+because `crates/musa-score/src/harmony.rs` opens by saying a symbol is recorded and never interpreted. Spelling
 survives: `d#4` is reported as D-sharp and never as E-flat.
 
 ### Segmentation, which the other three kinds all rest on
@@ -183,7 +183,7 @@ two things the source already said next to each other.
 
 **Abstraction map.** α scans the slice sequence left to right accumulating classes and closes a region when no key
 accounts for the accumulation. Inside a region it stacks the collection's own thirds on each degree — so a numeral
-carries no quality of its own, the collection supplies it (`crates/musa-compiler/src/roman.rs`) — and adds the applied
+carries no quality of its own, the collection supplies it (`crates/musa-score/src/roman.rs`) — and adds the applied
 dominant and applied leading-tone chords of each tonicizable degree (OMT `050-tonicization.md`). Minor keys are read
 through the natural *and* harmonic collections, because a minor key sounds its raised seventh at every cadence (OMT
 `014`).
@@ -275,8 +275,8 @@ Nothing here decides whether a passage is in a style, and a profile is a lens th
 written out, because "florid counterpoint mixes the species" is a statement about those four lists and a fifth list
 written by hand would drift away from what it claims to combine.
 
-**The rules.** The registry in `crates/musa-compiler/src/analysis/rules.rs` is the table below, and a rule that is not
-in it cannot be checked by anything — an assertion resolves its rule word there, and a report prints from the same rows.
+**The rules.** The registry in `crates/musa-score/src/analysis/rules.rs` is the table below, and a rule that is not in
+it cannot be checked by anything — an assertion resolves its rule word there, and a report prints from the same rows.
 Every row has a citation, because a rule whose citation is "everyone knows" is what the registry exists to refuse.
 
 | Rule id | Profile | States | Strength | Cites |

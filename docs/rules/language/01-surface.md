@@ -207,9 +207,8 @@ succeeded with; where `e` fails, the answer around the `?` is that same `Err` va
 - The answer's type has to be a `Result`, and it is the type the enclosing function was *checked* against. A public
   signature is written, so in ordinary code that type is already known when the `?` is reached, and `?` is refused only
   when it turns out not to be a `Result` — the diagnostic naming the type it turned out to be. Where the answer's type
-  is still a metavariable, the constraint `Result<_, E>` is recorded with the same `E` as the subject and postponed
-  (`02-core-calculus.md` §2.1); a metavariable left unsolved at the end of the declaration is the ordinary *unsolved
-  metavariable* error, reported at the `?` that recorded the constraint.
+  is not yet decided when the `?` is reached, the `?` is refused there rather than waiting: nothing is postponed
+  (`02-core-calculus.md` §2.1), and the refusal names the signature to write.
 
 `?` is for `Result` and nothing else. An `Option` says only that a value is missing, not why, so there is no failure for
 `?` to carry; a caller that wants propagation matches and says what the absence means. There is no `Try`, no `Monad`, no
@@ -256,10 +255,10 @@ argument for `<>` survives the change intact, and the ambiguity that makes it ex
 - **`<>` belongs to the type grammar and `[]` to the term grammar**, and the parser always knows which one it is in. So
   `[` is free to serve the list literal `[c4, d4]`, the list pattern `[x, ..xs]`, and indexing `xs[i]` — three spellings
   of one idea — without ever appearing in a type.
-- **There is no term-level type application.** Implicit arguments are inserted by elaboration (`02-core-calculus.md`
-  §2.1), never written, so a `<` in term position is always the comparison operator and `f<a>(b)` has exactly one
-  reading. This is the rule that keeps `<>` cheap, and it is why the language admits type parameters without admitting
-  the ambiguity they usually bring.
+- **There is no term-level type application.** A type parameter is solved by elaboration (`02-core-calculus.md` §2.1),
+  never written, so a `<` in term position is always the comparison operator and `f<a>(b)` has exactly one reading. This
+  is the rule that keeps `<>` cheap, and it is why the language admits type parameters without admitting the ambiguity
+  they usually bring.
 
 Four former spellings are **hard errors carrying an applicable fix**, on the same precedent as `use` in import position
 and for the same reason — a language that accepts both spellings has a mixed corpus forever, and the fix machinery makes

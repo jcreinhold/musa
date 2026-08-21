@@ -37,7 +37,7 @@ The source language uses the typing and evaluation rules in `docs/rules/language
 
 means that expression `e` has type `A` when `Σ` supplies declarations and `Γ` supplies local variables. The judgment is
 **bidirectional**: `e` is either checked against an `A` that is already known, or its `A` is inferred and flows outward,
-with metavariables and pattern-fragment unification solving what the program determines. There is no principal type —
+with a type parameter solved by first-order matching against the written arguments' types. There is no principal type —
 constitution §9's *Checked bidirectionally* rule replaced that discipline — and an annotation is required only where a
 public signature or separate checking needs one. A type may mention a value.
 

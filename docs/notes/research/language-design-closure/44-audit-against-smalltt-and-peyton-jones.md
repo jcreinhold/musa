@@ -119,8 +119,7 @@ is copied.
 
 ### This repo had already found it, twice, and chosen the answer
 
-[`24-pipeline-and-syntax-review.md`](24-pipeline-and-syntax-review.md) §H5 is this finding, in 2024's design line, with
-the same citation:
+The pipeline-and-syntax review §H5 is this finding, in 2024's design line, with the same citation:
 
 > Peyton Jones §5.4.1 shows the exact case. Compiling an exhaustive, ordered, overlapping definition by the constructor
 > rule alone duplicates right-hand sides; the alternative is `[]` and `FAIL`. His `unwieldy` example is exhaustive and
@@ -129,9 +128,8 @@ the same citation:
 It offered three repairs — (a) join points, (b) restrict source matches to uniform ones, (c) permit duplication and
 bound it — and called (a) "the ordinary answer". [`26-language-design-decision.md`](26-language-design-decision.md) §2.4
 then **took** (a), in writing, with a worked example, and said what it bought: "This preserves source order without
-copying `other` or adding a runtime pattern-failure value."
-[`29-source-and-expansion-spec.md`](29-source-and-expansion-spec.md) carried it forward as "local join points that share
-ordered fallbacks".
+copying `other` or adding a runtime pattern-failure value." The source-and-expansion specification carried it forward as
+"local join points that share ordered fallbacks".
 
 Prompt 135 built the case compiler and took option (c) — permit duplication — without bounding it and without recording
 the choice. The decision was not overturned; it was lost. Note 42 superseded that whole design line for a _different_
