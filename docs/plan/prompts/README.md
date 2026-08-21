@@ -348,6 +348,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 142f     | writable-index                   | 3     | An indexed type spelled in source, checked at the sort its head declares                              |
 | 142g     | errors-below-refusals            | 3     | One error type per question: the kernel's below the elaborator's                                      |
 | 142h     | kernel-and-elaboration           | 3     | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law                          |
+| 142i     | core-re-checker                  | 3     | An independent kernel re-checker for elaborated terms, with negative controls                         |
 | 143      | builtin-collapse                 | 3     | Collapse the builtin registry behind traits and namespaces                                            |
 | 144      | diagnostics-and-performance      | 3     | Make the new failures legible and the new checker fast enough                                         |
 | 145      | staff-rewrite                    | 3     | Rewrite the staff adapter on the new language                                                         |
