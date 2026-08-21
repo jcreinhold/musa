@@ -1,7 +1,7 @@
 ---
 id: 142da
 slug: index-reflexivity
-status: pending
+status: done
 depends_on: [142d]
 phase: 3
 ---

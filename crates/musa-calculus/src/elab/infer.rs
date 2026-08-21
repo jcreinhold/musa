@@ -143,16 +143,46 @@ impl Elaborator {
     /// wrapper that quotation drops, so a universe read off the index would be
     /// reading a level off something erased.
     ///
-    /// The index only has to *be* a term. Which terms are admissible indices is
-    /// §1.5's grammar, and it is not checked here on purpose: an index is a
-    /// question only when two of them are compared, so [`crate::convert`] is
-    /// where the grammar lives and where an expression outside it is refused by
-    /// name. Checking it twice would be two places to keep in agreement, and the
-    /// earlier one could not see the comparison that gives the refusal its
-    /// message.
+    /// **§1.5's grammar is checked here**, which is where §1.5 sites it: an
+    /// index position holding anything else "is the refusal below, named at the
+    /// expression". Prompt 142d checked it at the comparison instead, and the
+    /// cost was that `≡` stopped being reflexive — two indices nothing can read
+    /// were answered "different", so `Row(mystery n)` was not the same type as
+    /// itself and a term could fail to check against its own type.
+    ///
+    /// It is still read once. [`crate::convert::reads_as_index`] is conversion's
+    /// own reader, asked one stage earlier rather than reimplemented, so there
+    /// is one grammar rather than two obliged to agree.
     fn refined_type(&mut self, scope: &Scope, here: Origin, ty: &Raw, index: &Raw) -> Result<Typed, ElabError> {
         let (ty, level) = self.check_type(scope, ty)?;
         let index = self.infer(scope, index)?;
+        // §1.5's grammar is checked *here*, where the type is formed and the
+        // expression that broke it is still on the page. Two things follow, and
+        // both are the reason the check is not left to the comparison:
+        //
+        // - the message names `Row(f x)`, which is what §1.5 asks for and what
+        //   a comparison could not produce — by then there are two types and no
+        //   written expression;
+        // - an unreadable index never reaches [`crate::convert`], so
+        //   `index::decide` is total on what does and a type is convertible with
+        //   itself. Refusing at the comparison instead answers "different" for
+        //   two indices nothing can read, which is not an answer about them.
+        //
+        // The reader is `convert`'s own, asked one stage earlier rather than
+        // reimplemented. A second reader would be two grammars obliged to agree.
+        let value = scope.eval(&mut self.meter, &index.term)?;
+        // A hole is §2.1's question and not this one: an index still mentioning
+        // one has not been determined by the call yet, and §2.1 already refuses
+        // an index variable no written argument determines. Refusing it here
+        // would be postponement's mirror image — a complaint raised before the
+        // information that answers it arrives.
+        if !crate::convert::mentions_unsolved(&value) && !crate::convert::reads_as_index(&mut self.meter, &value)? {
+            return Err(Refusal::UnreadableIndex {
+                shown: crate::show::spelled(&index.term),
+                at: index.term.origin(),
+            }
+            .into());
+        }
         Ok(Typed {
             term: Term::refine(here, ty, index.term),
             ty: Value::new(here, Form::Universe(level)),

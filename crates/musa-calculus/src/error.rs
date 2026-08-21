@@ -89,6 +89,16 @@ pub enum Malformed {
     /// inscrutable conversion failure somewhere else entirely.
     #[error("builtin `{0}` computed nothing at arguments it declares it accepts")]
     BuiltinStuck(Name),
+    /// A refined type reached conversion carrying an index §1.5's grammar cannot
+    /// read.
+    ///
+    /// A caller defect and not a verdict, which is the whole of what prompt
+    /// 142da changed. [`crate::Refusal::UnreadableIndex`] refuses such a type
+    /// where it is formed, so a comparison that meets one was handed a type that
+    /// should not exist. Answering "these two are different" instead is what
+    /// made a type inconvertible with itself.
+    #[error("a refined type reached conversion carrying an index that cannot be read")]
+    UnreadableIndex,
     /// A δ-rule answered data that does not fit its own declared result type.
     ///
     /// Three ways to earn it and one sentence for all of them: the constructor

@@ -458,6 +458,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::NotFiniteData { .. } => "not-finite-data",
         Refusal::BuiltinRefused { .. } => "builtin-refused",
         Refusal::NotANumeralFamily { .. } => "not-a-numeral-family",
+        Refusal::UnreadableIndex { .. } => "unreadable-index",
     }
 }
 

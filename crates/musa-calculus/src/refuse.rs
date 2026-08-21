@@ -315,6 +315,27 @@ pub enum Refusal {
         /// The declaration.
         at: Origin,
     },
+    /// An index expression outside `02-core-calculus.md` §1.5's grammar, refused
+    /// at the type that carries it.
+    ///
+    /// Refused **here**, where the type is formed, and not where two types are
+    /// compared. §1.5 sites it at the written expression — "`Row(f(x))` … is the
+    /// refusal below, named at the expression" — and the site is what makes the
+    /// relation an equivalence: an index the solver cannot read, met at a
+    /// comparison, leaves that comparison with no sound answer, and answering
+    /// "different" makes a type inconvertible with *itself*. Refusing the type
+    /// instead means the unreadable index never reaches a comparison, so
+    /// [`crate::index::decide`] is total on what does.
+    ///
+    /// The expression is carried as it was written, because §1.5 asks for a
+    /// message naming `Row(f x)` rather than a word about a linear form.
+    #[error("`{shown}` is not an index this can read")]
+    UnreadableIndex {
+        /// The index expression, as written.
+        shown: String,
+        /// Where it was written.
+        at: Origin,
+    },
     /// A term stood in type position whose own type is not a universe.
     #[error("this stands where a type is needed, but it is not one")]
     NotAType {

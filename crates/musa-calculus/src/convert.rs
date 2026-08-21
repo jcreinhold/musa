@@ -467,13 +467,19 @@ impl Conversion {
                 decided => decided,
             };
         }
-        // An index outside §1.5's grammar is refused *here*, by naming the
-        // expression it could not read — never postponed, never approximated,
-        // and never compared syntactically as a fallback. The message is the
-        // two written types, so a reader sees `Row(f x)` rather than a word
-        // about a linear form.
+        // Both sides are readable by construction. [`crate::Refusal::UnreadableIndex`]
+        // refuses an index outside §1.5's grammar where the type is *formed* —
+        // which is where §1.5 sites it ("named at the expression") and the one
+        // place the written expression still exists to be named — so an
+        // unreadable index never reaches a comparison.
+        //
+        // This arm is therefore a broken invariant and not a verdict. The code
+        // it replaces answered `disagree` here, and answering "different" for
+        // two indices nothing can read is what made `Row(mystery n)` fail to be
+        // the same type as itself. §1.5 still forbids a syntactic fallback, and
+        // this needs none: there is nothing left to fall back *for*.
         let (Some(mine), Some(theirs)) = (index_of(meter, mine)?, index_of(meter, theirs)?) else {
-            return Err(disagree(meter)?);
+            return Err(CoreError::Malformed(crate::error::Malformed::UnreadableIndex).into());
         };
         match index::decide(&mine, &theirs) {
             Verdict::Same => Ok(()),
@@ -942,6 +948,18 @@ fn index_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, Cor
 /// division, a call, a `match`, a projection, an overflow, and a variable of any
 /// sort but `Nat` and exact `Ratio` each land here, and the caller reports the
 /// written expression rather than anything about a linear form.
+/// Whether a value stands for an index `02-core-calculus.md` §1.5's grammar can
+/// read.
+///
+/// The one place type formation asks, and it is deliberately the *same* reader
+/// conversion uses rather than a second one that would have to be kept agreeing
+/// with it. §1.5 restricts what an index may say; asking here is what keeps an
+/// unreadable one out of every later comparison, so that [`crate::index::decide`]
+/// is total on what reaches it and `≡` is reflexive.
+pub(crate) fn reads_as_index(meter: &mut Meter, value: &Value) -> Result<bool, CoreError> {
+    Ok(index_of(meter, value)?.is_some())
+}
+
 fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError> {
     meter.nested("index reading", |meter| {
         meter.step("index reading")?;

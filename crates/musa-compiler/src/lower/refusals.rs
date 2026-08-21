@@ -211,6 +211,19 @@ fn file(refusal: &Refusal) -> Filed {
                 ..one(Code::ConversionMismatch, mismatch.at)
             }
         }
+        // An index outside `02-core-calculus.md` §1.5's grammar, named at the
+        // expression it could not read. The help states the grammar rather than
+        // the linear form the solver would have built, because §1.5 asks for a
+        // message about `Row(f x)` and a reader fixes the expression.
+        Refusal::UnreadableIndex { shown, at } => Filed {
+            said: Some(format!("`{shown}` is not an index")),
+            label: Some("this stands in an index position".to_owned()),
+            help: Some(std::borrow::Cow::Borrowed(
+                "an index is a literal, an index variable, `+`, `-`, or `*` by a literal — a call, a `match`, a \
+                 projection, and two variables multiplied are each outside it",
+            )),
+            ..one(Code::TypeMismatch, *at)
+        },
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
         Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),

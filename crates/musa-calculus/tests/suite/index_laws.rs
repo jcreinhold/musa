@@ -257,6 +257,19 @@ fn same_type(name: &str, left: &Raw, right: &Raw) -> bool {
         .unwrap_or_else(|error| panic!("{name}: {error}"))
 }
 
+/// Whether forming this type is refused because §1.5's grammar cannot read its
+/// index.
+///
+/// The refusal is asked of *elaboration* rather than of a comparison, which is
+/// prompt 142da's whole change: an index outside the grammar makes the type
+/// ill-formed, so there is never a comparison to refuse.
+fn refuses_the_index(raw: &Raw) -> bool {
+    matches!(
+        infer(&cx(), raw),
+        Err(musa_calculus::ElabError::Refused(Refusal::UnreadableIndex { .. }))
+    )
+}
+
 // ---- the solver decides ----------------------------------------------------
 
 /// §1.5: `Γ ⊢ T(a) ≡ T(b)` exactly when the solver decides `a = b`.
@@ -324,41 +337,87 @@ fn an_index_is_compared_as_a_quantity_and_not_as_an_expression() {
 
 // ---- the refusals ----------------------------------------------------------
 
-/// §1.5: an index outside the grammar is refused, and **not** compared
-/// syntactically as a fallback.
+/// §1.5: an index outside the grammar is refused **where the type is formed**,
+/// and never by a comparison.
 ///
-/// The stronger half of the law, and the one a lenient implementation would
-/// get wrong: `Row(mystery n)` is not even the same type as itself. A fallback
-/// that compared the two spines would answer `true` here and would thereby have
-/// decided an index question by a rule that is not arithmetic.
+/// This is the law prompt 142da moved. 142d refused `Row(mystery n)` at the
+/// comparison, which made it inconvertible with *itself* — a term could fail to
+/// check against its own type. Refusing the type instead keeps the refusal
+/// (§1.5's first bullet is untouched) and costs no reflexivity, because the
+/// ill-formed type is never built.
 #[test]
-fn an_index_outside_the_grammar_is_refused_rather_than_compared_syntactically() {
+fn an_arbitrary_call_in_an_index_is_refused_at_the_type() {
     let called = over_one(refined(Raw::app(TYPES, var("mystery"), var("n"))));
-    assert!(!same_type("an arbitrary call, against itself", &called, &called));
+    assert!(refuses_the_index(&called));
 }
 
 /// §1.5 admits multiplication **by a literal**; two open factors leave the
-/// fragment.
+/// fragment, and leave it at the type rather than at a comparison.
 #[test]
-fn two_variables_multiplied_leave_the_fragment() {
+fn two_variables_multiplied_are_refused_at_the_type() {
     let quadratic = over_two(refined(applied("count_mul", [var("n"), var("m")])));
-    assert!(!same_type("n * m, against itself", &quadratic, &quadratic));
+    assert!(refuses_the_index(&quadratic));
 }
 
 /// A base type that registered no measure has no literals the solver can read,
 /// which is what keeps `Syntax<Cat>`'s category from silently becoming an index.
 #[test]
-fn a_literal_of_an_unmeasured_base_type_is_not_an_index() {
+fn a_literal_of_an_unmeasured_base_type_is_refused_at_the_type() {
     let unmeasured = Raw::refine(
         TYPES,
         var("Row"),
         Raw::lit(TYPES, Literal::new(opaque().term(TYPES), Arc::new(Count(12)))),
     );
-    assert!(!same_type(
-        "an unmeasured literal, against itself",
-        &unmeasured,
-        &unmeasured
-    ));
+    assert!(refuses_the_index(&unmeasured));
+}
+
+/// The refusal names the expression, which is the reason for its site.
+///
+/// §1.5 asks for a message about `Row(f x)` rather than a word about a linear
+/// form, and a comparison could not produce one: by then there are two types and
+/// no written expression left to point at. Both halves are asserted, because the
+/// second is the one that rots quietly.
+#[test]
+fn the_refusal_names_the_expression_and_never_the_solver() {
+    let called = over_one(refined(Raw::app(TYPES, var("mystery"), var("n"))));
+    let Err(musa_calculus::ElabError::Refused(refusal)) = infer(&cx(), &called) else {
+        panic!("`Row(mystery n)` was not refused");
+    };
+    let Refusal::UnreadableIndex { shown, .. } = &refusal else {
+        panic!("refused as {refusal:?} rather than for its index");
+    };
+    assert!(
+        shown.contains("mystery"),
+        "the message does not name the expression: {shown}"
+    );
+    let sentence = refusal.to_string();
+    assert!(
+        !sentence.contains("linear"),
+        "the message names the solver's form: {sentence}"
+    );
+}
+
+/// The property the three refusals above buy: `≡` is reflexive.
+///
+/// Every type this suite can build is the same type as itself. Stated over the
+/// well-formed types rather than over one, because the defect 142da fixed was
+/// not visible in any single case — it appeared only where the index left the
+/// grammar, which is exactly where a reader stops looking.
+#[test]
+fn conversion_is_reflexive_at_every_well_formed_type() {
+    let types = [
+        refined(literal_index(12)),
+        refined(literal_index(24)),
+        var("Row"),
+        over_one(refined(var("n"))),
+        over_one(refined(applied("count_add", [var("n"), var("n")]))),
+        over_one(refined(applied("count_mul", [literal_index(2), var("n")]))),
+        over_two(refined(applied("count_add", [var("n"), var("m")]))),
+    ];
+    for (which, ty) in types.iter().enumerate() {
+        let name = format!("type {which}");
+        assert!(same_type(&name, ty, ty), "{name} is not the same type as itself");
+    }
 }
 
 /// The message names the two types as they were written.
