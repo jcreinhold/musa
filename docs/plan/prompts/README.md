@@ -344,7 +344,8 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 142d | index-stratum | 3 | A separate index language with a separate decider |
 | 142da | index-reflexivity | 3 | Refuse an unreadable index at the type, not at the comparison |
 | 142db | one-conversion-relation | 3 | One relation modulo the index theory, and the strategy that keeps it cheap |
-| 142e | algebra-and-laws | 3 | Torsor, group, and action, with orbit and stabilizer made ordinary |
+| 142e | algebra-and-laws | 3 | Torsor, group, and action, named at the domains that already have them |
+| 142f | writable-index | 3 | An indexed type spelled in source, checked at the sort its head declares |
 | 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
