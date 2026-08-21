@@ -734,7 +734,7 @@ fn children(node: &SyntaxNode, wanted: impl Fn(SyntaxKind) -> bool + Copy) -> Ve
 
 /// Whether a node kind is one of the written expression forms.
 ///
-/// The list `crate::core`'s own `is_expr_node` holds, plus the five forms
+/// The list `crate::phase`'s own `is_expr_node` holds, plus the five forms
 /// prompts 136 and 137 added to the grammar and the old checker never learned to
 /// read. That the two lists differ is the shape of what this module is for.
 fn is_expr_node(kind: SyntaxKind) -> bool {

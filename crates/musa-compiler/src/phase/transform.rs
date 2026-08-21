@@ -79,7 +79,7 @@ fn with_room(
     subject: &crate::quote::Syntax,
     spent: &mut musa_calculus::Spend,
 ) -> Result<crate::quote::Syntax, ExpansionFailure> {
-    let room = usize::try_from(crate::core_budget::NESTING.saturating_mul(crate::core_budget::FRAME_CEILING))
+    let room = usize::try_from(crate::phase_budget::NESTING.saturating_mul(crate::phase_budget::FRAME_CEILING))
         .unwrap_or(usize::MAX);
     let mut answer = None;
     if !cfg!(target_family = "wasm") {

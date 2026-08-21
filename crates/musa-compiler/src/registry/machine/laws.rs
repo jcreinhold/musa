@@ -24,7 +24,7 @@
 use musa_calculus::{Cx, Level, Raw, Shape, Term};
 
 use super::{SPELLINGS, UNREGISTERED};
-use crate::core::{BUILTIN_OWNERSHIP, Family};
+use crate::phase::{BUILTIN_OWNERSHIP, Family};
 use crate::registry::{HERE, owned};
 
 // ---- writing a program the way source would ----

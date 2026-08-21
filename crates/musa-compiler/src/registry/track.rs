@@ -14,7 +14,7 @@
 //!
 //! # What was not carried over
 //!
-//! [`crate::core`]'s evaluator has an arm for each of these eight, and not one
+//! [`crate::phase`]'s evaluator has an arm for each of these eight, and not one
 //! of them is the arithmetic below. Each builds a `MusicOperation` — a *deferred
 //! contextual* description that [`crate::elaborate`] closes later against a key,
 //! a placement, a scope, and an origin — so there was nothing to translate. What
@@ -69,8 +69,8 @@ use num_rational::Ratio;
 
 use super::rules::{items, nat, read, reduced, refused};
 use super::{HERE, held, literal, plain_type, tagged_type};
-use crate::core::Coordinate;
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
+use crate::phase::Coordinate;
 use musa_score::Interval;
 use musa_score::origin::{ExpansionStep, Origin};
 use musa_score::pitch::WrittenPitch;

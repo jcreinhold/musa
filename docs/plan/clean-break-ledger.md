@@ -54,7 +54,7 @@ best-effort translation.
 | `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
 | `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b, discharged by 127ca |
 | `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 |
-| `musa_compiler::core::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 |
+| `musa_compiler::phase::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 |
 | `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
 | `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |

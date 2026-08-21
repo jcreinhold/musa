@@ -177,7 +177,7 @@ and `Hash`. **That conflates two different objects.** `docs/core-boundary.md` st
 part→instrument binding, not the studio patch graph.
 
 Worse for the claim: **`B` does not exist yet.** Prompts 156, 157, and 158 are all `pending`. There is no type in the
-workspace for instrument bindings; `crates/musa-compiler/src/core/mod.rs:351`'s `Binding` is a let-binding in the value
+workspace for instrument bindings; `crates/musa-compiler/src/phase/mod.rs:351`'s `Binding` is a let-binding in the value
 calculus and unrelated.
 
 So D-1 as written is wrong twice over — wrong object, and a defect asserted against code not yet written. What survives

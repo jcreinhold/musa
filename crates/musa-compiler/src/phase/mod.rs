@@ -1,5 +1,12 @@
-//! The semantic core the checker lowers into: shapes, builtin ownership
-//! tables, adapter-phase reading, and the expand/edit/print entry points.
+//! The compile-time phase: reading an adapter module, expanding a region,
+//! editing and printing syntax, and the tables saying which builtins a
+//! transformer may reach.
+//!
+//! Named for what it runs, not for what it runs *on*. The core this lowers
+//! into is `musa-calculus`; everything here is the phase that drives it, which
+//! is why the names it exports are already `PhaseImports`, `PhaseWork`,
+//! `PhaseFamily`, and `phase_type`, and why `docs/rules/language/` calls it
+//! "the phase" throughout.
 
 mod adapter;
 mod edit;

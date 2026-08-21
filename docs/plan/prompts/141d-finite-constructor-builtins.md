@@ -15,11 +15,11 @@ Prompt 141b implemented the first half: a [`Rule`] is `fn(&[&Literal]) -> Option
 value of a *base* type. The second half has no mechanism at all, and the table that needs it is the one prompt 142
 registers on its first step.
 
-Counted from `crates/musa-compiler/src/core/mod.rs`'s `BUILTIN_OWNERSHIP`: of 92 δ-builtins, **54 answer a base type, 17
-answer an `Option`, 12 a `Result`, and 9 a `List`** — 38 of them, 41%, answer a value of a *declared family*. Six more
-take a `List` as an argument. Prompt 141 proved `Option`, `Result`, and `List` are ordinary declarations with ordinary
-constructors, which is exactly why their values are not literals: `Some(scale)` is a constructor applied to a field, and
-no arrangement of `Literal` is one.
+Counted from `crates/musa-compiler/src/phase/mod.rs`'s `BUILTIN_OWNERSHIP`: of 92 δ-builtins, **54 answer a base type,
+17 answer an `Option`, 12 a `Result`, and 9 a `List`** — 38 of them, 41%, answer a value of a *declared family*. Six
+more take a `List` as an argument. Prompt 141 proved `Option`, `Result`, and `List` are ordinary declarations with
+ordinary constructors, which is exactly why their values are not literals: `Some(scale)` is a constructor applied to a
+field, and no arrangement of `Literal` is one.
 
 Nor can a rule build one by hand. `Constant` has no public constructor and no public accessor anywhere in
 `musa-calculus`, so a `fn` pointer cannot name `Some`, `Ok`, or `Cons` even if it wanted to — and it could not capture
@@ -39,7 +39,7 @@ can register the table it has.
 - [`141`](141-collections.md), which proved `List`, `Option`, and `Vec A n` are writable as declarations. That proof is
   what makes this a gap rather than a design choice: their values are constructor applications *because* prompt 141 was
   right.
-- `crates/musa-compiler/src/core/mod.rs`'s `Shape`, the `delta` registration function, and `BUILTIN_OWNERSHIP` — the
+- `crates/musa-compiler/src/phase/mod.rs`'s `Shape`, the `delta` registration function, and `BUILTIN_OWNERSHIP` — the
   shape language the host already writes its signatures in (`Base`, `Option`, `List`, `Product`, `Result`), and the 92
   entries the counts above come from. `Shape::Product` is spelled and used by nothing, which this prompt's Design
   answers explicitly rather than building for.

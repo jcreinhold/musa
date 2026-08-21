@@ -30,7 +30,7 @@ Settle it, and register the three.
 - [`141e`](141e-compiler-registry.md)'s Design, which records the finding and the two encodings that were tried and
   refused: a λ standing where a `SyntaxStep` value belongs is ill-typed at a base type, and a payload holding a de
   Bruijn index is meaningless once it leaves the spine it was minted in.
-- `crates/musa-compiler/src/core/mod.rs`'s `SyntaxOp::instantiate` for `Fold`, `Recurse`, and `Run` — the three
+- `crates/musa-compiler/src/phase/mod.rs`'s `SyntaxOp::instantiate` for `Fold`, `Recurse`, and `Run` — the three
   signatures, with `Type::SyntaxStep` and its two ordinary variables — and `eval_syntax`'s arms for them, which are the
   reductions said again.
 - [`../../rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.9 on the phase registry, and

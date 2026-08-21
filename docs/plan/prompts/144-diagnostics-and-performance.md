@@ -41,7 +41,7 @@ says what the implementation owes instead. This prompt discharges it.
   The first half is implemented and does not bound what it claims to; the second is not implemented on the new path at
   all. §4.1 also fixes what may move without a version bump — shrinking the frame ceiling is free, raising the limit is
   a cost-table version bump — which is the constraint every option below is scored against.
-- `crates/musa-compiler/src/core/mod.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
+- `crates/musa-compiler/src/phase/mod.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
   discharge of that obligation: a scoped thread of `NESTING × FRAME_CEILING`, derived rather than picked, with the wasm
   fallback beside it. `musa-calculus` has no equivalent, and the shape of the answer is probably this one moved.
 - `crates/musa-calculus/src/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above

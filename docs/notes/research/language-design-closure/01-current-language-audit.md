@@ -28,7 +28,7 @@ compiled type identity.
 ## 2. What was checked
 
 This audit reads the governing language and cross-stage specifications and the implementation in
-`crates/musa-compiler/src/core/mod.rs`. The current implementation has these type forms:
+`crates/musa-compiler/src/phase/mod.rs`. The current implementation has these type forms:
 
 ```text
 Unit, Bool, Nat, Ratio, Duration,

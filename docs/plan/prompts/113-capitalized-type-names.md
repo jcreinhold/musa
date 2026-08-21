@@ -20,7 +20,7 @@ about — and that neither of them had right. No type is added, none is removed,
 - `docs/rules/language/01-surface.md` §1, which governs this prompt, and
   `docs/notes/research/60-language-decision-record.md` for what it does not touch.
 - `docs/rules/language/01-surface.md` §3, which lists the primitive value types and spells the pitch-class type
-  `spelled_pc` where `crates/musa-compiler/src/core/mod.rs` spells it `pitchclass`.
+  `spelled_pc` where `crates/musa-compiler/src/phase/mod.rs` spells it `pitchclass`.
 - Open Music Theory `099-pitch-and-pitch-class.md` and `003-reading-clefs.md`, which decide what this type is called:
   the first defines a pitch class as octave *and enharmonic* equivalence, the second calls the octave-free spelled thing
   a letter name.

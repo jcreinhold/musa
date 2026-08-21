@@ -25,7 +25,7 @@ step-budget measurement said the rewrite could not wait for the cost table. That
 
 ## Read
 
-- `crates/musa-compiler/src/core/mod.rs`'s `BUILTIN_OWNERSHIP` and `SYNTAX_OWNERSHIP` — **every entry's
+- `crates/musa-compiler/src/phase/mod.rs`'s `BUILTIN_OWNERSHIP` and `SYNTAX_OWNERSHIP` — **every entry's
   `hidden_information` field**, one at a time. That field is the argument for the operation existing, and this prompt is
   the audit that field was written for: an entry whose hidden information is "arithmetic on two numbers" was never
   hiding anything, and an entry hiding the build-local registry or a private representation still is.

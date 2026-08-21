@@ -3,14 +3,14 @@
 //! `02-core-calculus.md` §5.8 splits every compiler-owned operation into four
 //! families and gives each its own admissibility argument. Prompts 141b, 141c,
 //! and 141d built the mechanism for them; this module fills its δ half. What was
-//! a [`crate::core::Type`] and a [`crate::core::Shape`] becomes a
+//! a [`crate::phase::Type`] and a [`crate::phase::Shape`] becomes a
 //! [`musa_calculus::Term`], and what was an arm of the old evaluator becomes a rule
 //! over [`Datum`].
 //!
 //! # Nothing here decides anything new
 //!
-//! Every source signature is read off [`crate::core::BUILTIN_OWNERSHIP`] rather
-//! than retyped, and every phase signature off [`crate::core::SyntaxOp`]'s own
+//! Every source signature is read off [`crate::phase::BUILTIN_OWNERSHIP`] rather
+//! than retyped, and every phase signature off [`crate::phase::SyntaxOp`]'s own
 //! scheme, because 106 signatures written a second time by hand is 106 chances
 //! to write a different type from the one the old checker enforced. The rules are
 //! the same arithmetic on the same domain modules; only the unwrapping of an
@@ -111,8 +111,8 @@ use musa_calculus::{Index, Raw, RawArm, RawPattern};
 /// and the leaf the signature table names — and this is the one that is going
 /// away when prompt 142 deletes the old checker. Naming it for what it is keeps
 /// the translation's two sides legible in a single line.
-use crate::core::Base as Leaf;
-use crate::core::{BUILTIN_OWNERSHIP, Coordinate, Family, SYNTAX_OWNERSHIP, Shape, Type};
+use crate::phase::Base as Leaf;
+use crate::phase::{BUILTIN_OWNERSHIP, Coordinate, Family, SYNTAX_OWNERSHIP, Shape, Type};
 
 /// Where a term this module builds comes from.
 ///

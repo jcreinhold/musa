@@ -22,7 +22,7 @@ to write distinctions into messages because notes do not survive.
   with three fields and a stated reason for having no span), `level_of`, and its three callers: the import check in
   `expand`, `adapter_edit`, and `adapter_print`. The `ModuleFault::Broken` arm keeps `diagnostics.first().message` and
   substitutes its own help; the rest of the first diagnostic and all of every later one are dropped there.
-- [`crates/musa-compiler/src/core/mod.rs`](../../../crates/musa-compiler/src/core/mod.rs) — `read_adapter_module` and
+- [`crates/musa-compiler/src/phase/mod.rs`](../../../crates/musa-compiler/src/phase/mod.rs) — `read_adapter_module` and
   its doc comment, which is the constraint this prompt has to keep: "the diagnostics come back rather than being
   reported: they are about the adapter package's own document, and publishing a span inside it as a span in the
   composer's file is exactly what the source map exists to prevent." Also `read_adapter_module_metered`, which returns
@@ -161,7 +161,7 @@ impossible.
 - `docs/rules/desktop/05-states.md` §5 — the rule for a diagnostic about another document.
 - `crates/musa-compiler/tests/suite/quotation_laws.rs` and `syntax_pattern_laws.rs`: both `errors` helpers read causes,
   both helper doc comments repaired, and one new law per suite on a two-diagnostic module.
-- `crates/musa-compiler/src/core/mod.rs`: the `quote_splice` comment repaired.
+- `crates/musa-compiler/src/phase/mod.rs`: the `quote_splice` comment repaired.
 - `docs/plan/code-map/` rows for `musa-compiler`, `musa-project`, `musa-lsp`, and the desktop.
 
 ## Check

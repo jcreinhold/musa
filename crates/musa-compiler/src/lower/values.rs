@@ -1192,7 +1192,7 @@ fn operator_method(kind: SyntaxKind) -> Option<&'static str> {
 
 /// The literal a phase enumeration's written name denotes.
 ///
-/// The two namespaces `crate::core`'s own `phase_value` reads, and no others: a
+/// The two namespaces `crate::phase`'s own `phase_value` reads, and no others: a
 /// dotted name outside them is a projection, which is why this answers [`None`]
 /// rather than refusing.
 fn phase_literal(written: &str) -> Option<musa_calculus::Literal> {

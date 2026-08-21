@@ -41,7 +41,7 @@ Give the core the program: one group of named definitions, every signature known
   rule: "a definition recurses on **one** argument, and the `match` at the top of its body is what says which". A
   hypothesis is minted by a `match` inside one body, so a *mutually* recursive pair has no hypothesis to become. The
   graph rule is therefore not a leftover — it is everything the measure does not reach.
-- `crates/musa-compiler/src/core/mod.rs`'s `check_and_evaluate_metered`: `symbols` is built from every `raw` definition
+- `crates/musa-compiler/src/phase/mod.rs`'s `check_and_evaluate_metered`: `symbols` is built from every `raw` definition
   before the loop that checks bodies, `infer_open_declarations` runs between them, and `Code::DependencyCycle` — "these
   definitions call each other", with the cycle named — is the refusal at the end. That is the behaviour being replaced,
   and reading it is how to know the three rules are the three rules rather than a guess.

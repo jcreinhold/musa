@@ -1,13 +1,13 @@
 //! A fresh-variable minter for rank-1 signature instantiation.
 //!
-//! The registry's rank-1 signatures (`crate::core::Type` operations like
+//! The registry's rank-1 signatures (`crate::phase::Type` operations like
 //! `SyntaxOp::instantiate`) take fresh type variables per instantiation site.
 //! Unification, generalization, and schemes left with the old checker;
 //! `musa-calculus` owns typed elaboration now.
 //!
 //! Nothing here is public.
 
-use crate::core::Type;
+use crate::phase::Type;
 
 /// A type variable, named by the [`Minter`] that made it.
 pub(crate) type TypeVar = u32;

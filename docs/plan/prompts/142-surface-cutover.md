@@ -228,7 +228,7 @@ leaves close with the rewrite and with nothing smaller — 145's **Read** carrie
 **The phase stops subtracting the standard library.** *Found during implementation, and written here because the
 migration is what made it observable.*
 
-[`core.rs`](../../../crates/musa-compiler/src/core/mod.rs)'s `read_adapter_module_metered` refuses an adapter module
+[`core.rs`](../../../crates/musa-compiler/src/phase/mod.rs)'s `read_adapter_module_metered` refuses an adapter module
 that writes any `import`, on the stated grounds that "expansion runs before ordinary resolution, so an adapter reads its
 own declarations and the phase's operations". Two governing sentences say that refusal is wrong, and one note says the
 premise behind it is wrong:
@@ -251,8 +251,8 @@ name and Ousterhout ch. 8 prices: a convenience dropped from a layer is paid by 
 
 The proof that it is not merely inconvenient is `staff.musa`'s printer, and it is a proof rather than an argument. A
 printer is checked **twice** — once under the phase and once ordinarily
-([`Printer`](../../../crates/musa-compiler/src/core/mod.rs)) — so every declaration it reaches must have a spelling both
-readings accept. `dotted(dots: Nat)` counts a `Nat` down. Ordinarily that is
+([`Printer`](../../../crates/musa-compiler/src/phase/mod.rs)) — so every declaration it reaches must have a spelling
+both readings accept. `dotted(dots: Nat)` counts a `Nat` down. Ordinarily that is
 `match dots { Zero -> …, Succ(fewer) -> … }`, and the phase's type language has `Type::Nat` as a primitive with no
 constructors, so the phase cannot destructure it. In the phase that is `nat_fold`, and ordinarily `nat_fold` is
 `std::nat`'s function, reachable only by an import. **The intersection of the two readings is empty**, and no amount of

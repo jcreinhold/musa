@@ -74,7 +74,7 @@ fn pitch(spelling: &str) -> WrittenPitch {
 /// A written beat, as a rule's argument.
 fn beat(value: Ratio<i64>) -> Datum {
     Datum::Lit(literal(
-        tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+        tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
         value,
     ))
 }

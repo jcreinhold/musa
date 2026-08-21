@@ -26,7 +26,8 @@ evaluator in `musa-compiler`.
   `run(budget, e) ⇓ done(v) | failed(ResourceError)`, and the rule that a budget may stop an evaluation but never change
   an accepted one.
 - Research `05-selected-calculus.md` §2 and `06-proof-outline.md` §2.
-- `crates/musa-compiler/src/core_budget.rs` — the existing deterministic `WorkMeter`, its five limits, and `Exhaustion`.
+- `crates/musa-compiler/src/phase_budget.rs` — the existing deterministic `WorkMeter`, its five limits, and
+  `Exhaustion`.
 - The completion notes of prompts 127aa, 127ab, 127ac, and 127ad.
 
 ## Design

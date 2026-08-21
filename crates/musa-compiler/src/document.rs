@@ -148,7 +148,7 @@ impl Source {
     /// One caller, and it is the expansion phase. An adapter's `print` is read
     /// where it is *run* rather than with its module — its parameter is the
     /// package's own type, which the phase has no name for — and a helper only
-    /// `print` reaches goes with it ([`crate::core::Printer`]). So the phase asks
+    /// `print` reaches goes with it ([`crate::phase::Printer`]). So the phase asks
     /// for the module without those lines.
     ///
     /// By name and not by rebuilding the node, because the node is where the
@@ -198,7 +198,7 @@ pub(crate) struct Document {
     /// counters, and reading an adapter *module* is the checking half of them.
     /// A number estimated on that side would be a second opinion about work the
     /// core already counted exactly, so the reading reports what it spent and
-    /// the phase adds it up — see [`crate::core::PhaseWork`].
+    /// the phase adds it up — see [`crate::phase::PhaseWork`].
     spend: musa_calculus::Spend,
 }
 
@@ -250,7 +250,7 @@ impl Document {
 
     /// The same, and what reading it charged.
     ///
-    /// For [`crate::core::AdapterModule`], which has a budget of its own:
+    /// For [`crate::phase::AdapterModule`], which has a budget of its own:
     /// `26-language-design-decision.md` §3.5 gives the expansion phase four
     /// counters and two of them are this reading's work. A phase that estimated
     /// them would be keeping a second opinion about work the core already

@@ -3,7 +3,7 @@
 //! One body walk, read twice. A quote that builds and a quote that matches share
 //! a grammar — the same parser reads both bodies, and only what a `$` *means*
 //! differs — so [`Walk`] carries which direction is being read rather than there
-//! being two walks to keep in step. That is the arrangement `crate::core`'s own
+//! being two walks to keep in step. That is the arrangement `crate::phase`'s own
 //! `QuoteWalk` already had; what changes here is only what the walk *answers*.
 //!
 //! # What a quote becomes

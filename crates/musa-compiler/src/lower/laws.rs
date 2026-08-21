@@ -1045,8 +1045,8 @@ fn a_written_play_supplies_the_origin_and_the_scope_no_composer_has() {
         Term::pi(
             musa_calculus::Origin::UNKNOWN,
             "held",
-            crate::registry::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
-            crate::registry::tagged_type("EventTrack", crate::core::Coordinate::WrittenTime),
+            crate::registry::tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
+            crate::registry::tagged_type("EventTrack", crate::phase::Coordinate::WrittenTime),
         ),
     );
     musa_calculus::check(&cx, &sounds, &sound_for)

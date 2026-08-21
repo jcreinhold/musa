@@ -128,7 +128,7 @@ the shorter list. Preservation, progress, determinism, and strong normalization 
 
 ## 7. What was built
 
-- **`crates/musa-compiler/src/core/mod.rs`** — `Builtin` and `Eliminator` carry `ListFoldFromStart` and
+- **`crates/musa-compiler/src/phase/mod.rs`** — `Builtin` and `Eliminator` carry `ListFoldFromStart` and
   `ListFoldFromEnd` and no `ListFold`; `eval` iterates forward for one and in reverse for the other, building neither
   the recursive term nor a closure per element. The law asserting the structural eliminators by hand says eight.
 - **The retirement diagnostic** — `list_fold` is an unresolved name carrying an applicable fix that names

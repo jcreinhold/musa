@@ -61,7 +61,7 @@ Five rows exist because these boundaries are cheap to hold and expensive to reco
 - **Patterns are still depth one.** `docs/rules/language/02-core-calculus.md` §6.2 fixes the invariant that every
   sub-position of a pattern is a binder and never another pattern, with no repeated variables, guards, or patterns on
   the left of a definition. This is mechanically checkable and should be checked that way: `Pattern` in
-  `crates/musa-compiler/src/core/mod.rs` must remain non-recursive, and the surface grammar must not admit a pattern
+  `crates/musa-compiler/src/phase/mod.rs` must remain non-recursive, and the surface grammar must not admit a pattern
   inside a pattern. Nesting would require a pattern-match compiler and a failure mechanism between equations, a
   subsystem whose only purpose is compiling a convenience into eliminators the language already writes directly. If a
   prompt between 92 and 144 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites

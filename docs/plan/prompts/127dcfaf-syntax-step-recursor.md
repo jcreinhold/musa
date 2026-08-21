@@ -35,9 +35,9 @@ that an adapter may look at a node before deciding whether, in what order, and u
   candidate pages this prompt amends, and it amends them in this commit before any code changes, per
   [`../../rules/README.md`](../../rules/README.md).
 - `docs/rules/language/05-verification.md` — where the adapter laws live.
-- `crates/musa-compiler/src/core/mod.rs`: `fold_syntax` at line 9519 and its caller at 9405; the `Builtin` and
+- `crates/musa-compiler/src/phase/mod.rs`: `fold_syntax` at line 9519 and its caller at 9405; the `Builtin` and
   `Eliminator` enums; `BUILTIN_OWNERSHIP`; and the storable-data admission predicate that must exclude `SyntaxStep`.
-- `crates/musa-compiler/src/core_budget.rs`: `Reduction::SyntaxFold` at line 144 and its spelling at 162.
+- `crates/musa-compiler/src/phase_budget.rs`: `Reduction::SyntaxFold` at line 144 and its spelling at 162.
 - `docs/rules/language/02-core-calculus.md` §1.1 and the `d`/`a` variable classes — a sealed step is excluded from `d`
   because its hidden representation contains the current algebra.
 - `~/Code/papers/logic-and-computation/type-theory/logical-relations-as-types/text.md` §1.4 — the Tait-computability
@@ -93,11 +93,11 @@ table says what each owes. A law whose evidence is a paragraph is asserted, not 
   nested recursors; the §5.8 builtin-family row; the `d`-exclusion; and the sentence recording that 127da's fold-only
   law is superseded and why.
 - `docs/rules/language/05-verification.md` — the eleven laws, each naming its evidence.
-- `crates/musa-compiler/src/core/mod.rs` — `SyntaxStep` as a phase-local value; the recursor builtin with its branches
+- `crates/musa-compiler/src/phase/mod.rs` — `SyntaxStep` as a phase-local value; the recursor builtin with its branches
   and initial context; `run_syntax_step`; the derived `fold_syntax`; `BUILTIN_OWNERSHIP` entries with their hidden
   information; and the storability predicate rejecting `SyntaxStep` at the phase boundary with a diagnostic that says
   why.
-- `crates/musa-compiler/src/core_budget.rs` — reduction kinds for minting and running a step, with their printed
+- `crates/musa-compiler/src/phase_budget.rs` — reduction kinds for minting and running a step, with their printed
   spellings.
 - `crates/musa-syntax/`, `editors/tree-sitter-musa/` — only if the frozen surface needs syntax. If `run_syntax_step` is
   a builtin rather than a form, neither changes and the prompt says so.

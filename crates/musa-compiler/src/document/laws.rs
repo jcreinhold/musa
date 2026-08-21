@@ -446,10 +446,10 @@ fn the_standard_library_elaborates() {
 ///
 /// Whole, with nothing left over. What it took was the annotation on `expand`
 /// and on `edit`: the replaced checker was told each operation's type by
-/// [`crate::core::read_adapter_module`] and solved the rest, and a bidirectional
+/// [`crate::phase::read_adapter_module`] and solved the rest, and a bidirectional
 /// reading settles a `fn` where the `fn` stands. So the phase's interface is now
 /// written in the two files that implement it rather than held in a table beside
-/// them — the same move [`crate::core::Printer`] already argued for `print`, and
+/// them — the same move [`crate::phase::Printer`] already argued for `print`, and
 /// the repair `01-surface.md` §1 asks for anywhere else a declaration is left
 /// open.
 #[test]
@@ -479,7 +479,7 @@ fn the_staff_adapter_elaborates() {
 
 /// One adapter, read the way the expansion phase reads one.
 ///
-/// Through [`crate::core::read_adapter_module`] and not through a document
+/// Through [`crate::phase::read_adapter_module`] and not through a document
 /// assembled here, because two details of §5.9's scope are the phase's and
 /// cannot be guessed from the file: the modules an `import` brings in, and the
 /// declarations `print` takes with it. `print` is read where it *runs* — with
@@ -488,9 +488,9 @@ fn the_staff_adapter_elaborates() {
 /// entry is what keeps this a law about the adapter rather than about the
 /// harness.
 fn adapter(source: &str) -> Vec<String> {
-    match crate::core::read_adapter_module(source, crate::core::PhaseImports::bundled()) {
+    match crate::phase::read_adapter_module(source, crate::phase::PhaseImports::bundled()) {
         Ok(_) => Vec::new(),
-        Err(crate::core::ModuleFault::Broken(said)) => {
+        Err(crate::phase::ModuleFault::Broken(said)) => {
             let mut said: Vec<String> = said
                 .iter()
                 .map(|complaint| format!("{:?}: {}", complaint.code, complaint.message))
@@ -499,7 +499,7 @@ fn adapter(source: &str) -> Vec<String> {
             said.dedup();
             said
         }
-        Err(crate::core::ModuleFault::Stopped) => vec!["Stopped: a compilation limit was crossed".to_owned()],
+        Err(crate::phase::ModuleFault::Stopped) => vec!["Stopped: a compilation limit was crossed".to_owned()],
     }
 }
 

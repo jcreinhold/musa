@@ -18,7 +18,7 @@ pattern the checker admits.
 
 - `docs/rules/language/02-core-calculus.md` §5.5 on `match` and its patterns, and §5.7 on evaluation — a pattern's
   meaning is decided by the value it names, not by which base type it happens to be.
-- `crates/musa-compiler/src/core/mod.rs`: `Checker::pattern_literal` (which literal patterns exist),
+- `crates/musa-compiler/src/phase/mod.rs`: `Checker::pattern_literal` (which literal patterns exist),
   `literal_values_equal` (the runtime comparison), `literal_key` (the exhaustiveness key), and `matches_pattern`.
 - Prompt 127ab, which added `Text` and its literals, and prompt 127b's evaluator configurations.
 - Prompt 127dc, and prompt 127dd's Design — an adapter reads the token kind and the token text it is handed, and both

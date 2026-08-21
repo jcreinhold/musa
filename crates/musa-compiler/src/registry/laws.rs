@@ -1,7 +1,7 @@
 //! What has to be true of the compiler's registrations.
 //!
 //! Unit tests rather than a file in `tests/suite/`, and that is forced rather
-//! than chosen: the laws read `crate::core`'s registration tables directly, and
+//! than chosen: the laws read `crate::phase`'s registration tables directly, and
 //! those are private to it. A test outside this crate links against
 //! `parse`/`compile`/`render_notation` and can reach none of them, and
 //! widening the facade so it could would leave the crate's internal types
@@ -16,7 +16,7 @@
 use musa_calculus::{Answer, Datum, Refusal, Term};
 
 use super::{bases, builtins, owned, rules};
-use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP};
+use crate::phase::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP};
 
 /// The whole context builds: declarations, base types, and every registration
 /// check [`musa_calculus::Registry::new`] makes.
@@ -342,25 +342,25 @@ fn every_partial_exact_time_operation_states_its_own_refusal() {
     for (spelling, operation, arguments, expected) in [
         (
             "ratio_div",
-            crate::core::Builtin::RatioDiv,
+            crate::phase::Builtin::RatioDiv,
             vec![exact(num_rational::Ratio::new(3, 4)), exact(num_rational::Ratio::ZERO)],
             "an exact rational is not divided by zero",
         ),
         (
             "duration_of",
-            crate::core::Builtin::DurationOf,
+            crate::phase::Builtin::DurationOf,
             vec![exact(below)],
             "a duration is nonnegative, and this exact rational is below zero",
         ),
         (
             "duration_scale",
-            crate::core::Builtin::DurationScale,
+            crate::phase::Builtin::DurationScale,
             vec![beat(num_rational::Ratio::new(1, 4)), exact(below)],
             "a duration is nonnegative, and this exact rational is below zero",
         ),
         (
             "position_between",
-            crate::core::Builtin::PositionBetween,
+            crate::phase::Builtin::PositionBetween,
             vec![
                 instant(num_rational::Ratio::new(2, 1)),
                 instant(num_rational::Ratio::new(1, 1)),
@@ -384,7 +384,7 @@ fn exact(value: num_rational::Ratio<i64>) -> Datum {
 /// A `Duration ⟨written⟩` argument.
 fn beat(value: num_rational::Ratio<i64>) -> Datum {
     Datum::Lit(super::literal(
-        super::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+        super::tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
         value,
     ))
 }
@@ -392,7 +392,7 @@ fn beat(value: num_rational::Ratio<i64>) -> Datum {
 /// A `Position ⟨written⟩` argument.
 fn instant(value: num_rational::Ratio<i64>) -> Datum {
     Datum::Lit(super::literal(
-        super::tagged_type("Position", crate::core::Coordinate::WrittenTime),
+        super::tagged_type("Position", crate::phase::Coordinate::WrittenTime),
         value,
     ))
 }

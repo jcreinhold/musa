@@ -12,7 +12,7 @@
 //!
 //! §5.8's D1 admits an argument or result type that is "a base type **or a
 //! finite constructor over base types**", and 41% of the δ-builtins in
-//! [`crate::core`]'s table answer an `Option`, a `Result`, or a `List`. A
+//! [`crate::phase`]'s table answer an `Option`, a `Result`, or a `List`. A
 //! signature that says so has to *name* those families, and a family constant
 //! exists only after [`musa_calculus::declare`] has run. So the order is fixed and
 //! not a preference: declare the families in a bare context, read their
@@ -559,7 +559,7 @@ fn eq_instances() -> Vec<RawImpl> {
             var(name),
             Raw::lit(
                 HERE,
-                crate::registry::coordinate_literal(crate::core::Coordinate::WrittenTime),
+                crate::registry::coordinate_literal(crate::phase::Coordinate::WrittenTime),
             ),
         )
     };

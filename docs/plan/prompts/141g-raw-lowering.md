@@ -33,7 +33,7 @@ its own.
   and it is larger than the builtin table by every measure.
 - [`142`](142-surface-cutover.md) in full, whose Target this prompt takes the first bullet of and whose **Stop** list
   governs here too: no compatibility mode, no second elaborator selected by a flag, no new language feature.
-- `crates/musa-compiler/src/core/mod.rs`'s `Checker` — every surface form that has to be readable, and `lower_type`,
+- `crates/musa-compiler/src/phase/mod.rs`'s `Checker` — every surface form that has to be readable, and `lower_type`,
   `lower_signature`, `check_pattern`, `quote_template`, and `music_expression` in particular. It is what is being
   *replaced*, so it is the list of what must still be readable, not the design to copy: unification, implicit insertion,
   coverage, and scheme instantiation leave with it.

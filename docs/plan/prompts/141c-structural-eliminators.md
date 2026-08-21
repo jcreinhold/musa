@@ -33,9 +33,9 @@ migrate `stdlib/src/adapters/staff.musa` onto.
 - `crates/musa-calculus/src/family/mod.rs`'s `iota` — the existing structural eliminator, and the proof that a rule
   which answers a *term* built from its arguments is enough. A recursor reduces to `method(fields…, hypotheses…)`;
   nothing in it inspects a value that quotation could not have produced.
-- `crates/musa-compiler/src/core/mod.rs`'s `Eliminator` (eight entries), `SyntaxOp` (three `PhaseFamily::Fold` entries),
-  and `eval_syntax` — the eleven operations, what each is applied to, and which of them prompt 142 must keep working
-  because `stdlib/` calls it.
+- `crates/musa-compiler/src/phase/mod.rs`'s `Eliminator` (eight entries), `SyntaxOp` (three `PhaseFamily::Fold`
+  entries), and `eval_syntax` — the eleven operations, what each is applied to, and which of them prompt 142 must keep
+  working because `stdlib/` calls it.
 - `stdlib/src/adapters/staff.musa:1932`, `:1957`, `:2234`, and `stdlib/src/adapters/doubled.musa:107` — the calls, with
   their `fn (kid, later) { … }` arguments written out. These are the programs this prompt exists to keep compiling.
 - Peyton Jones ch. 6 on the enriched lambda calculus: the enrichment is a set of constants *with their reduction rules*,

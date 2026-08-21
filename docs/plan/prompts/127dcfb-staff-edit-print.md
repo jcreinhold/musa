@@ -26,7 +26,7 @@ land §2.6's structured edit changing one pitch and no other byte, and prove the
 - Prompt [127dcfah](127dcfah-printed-literals.md) — `text_join` and the five literal spellings. The printer is written
   with those and adds none: this prompt's "no new compiler-owned operation" stands because the operations a printer
   needs landed there, after the attempt to write this one found that the language could not build a text at all.
-- `crates/musa-compiler/src/core/mod.rs`'s `AdapterModule` doc comment — "**A module and not an expression** … a reader
+- `crates/musa-compiler/src/phase/mod.rs`'s `AdapterModule` doc comment — "**A module and not an expression** … a reader
   written without local definitions is a reader nobody can follow (Peyton Jones ch. 3)". It says that about `expand` and
   `edit`, and `print` is the one operation 127dce exempted from it.
 - Peyton Jones ch. 3 (`~/Code/papers/logic-and-computation/software-engineering/`
@@ -121,7 +121,7 @@ that a promise rather than a label.
 
 ## Target
 
-- `print` read in the scope the Design section fixes: `crates/musa-compiler/src/core/mod.rs`'s `print_value` and
+- `print` read in the scope the Design section fixes: `crates/musa-compiler/src/phase/mod.rs`'s `print_value` and
   `run_printer` compile one small piece holding `at`'s ordinary imports, the module declarations the printer names
   transitively, the subject, and the printer — under `Reading::Source`, so the phase environment is as absent as the
   empty scope made it, and with a declaration that writes down one of the phase's own types kept out of the splice.

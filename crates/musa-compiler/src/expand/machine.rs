@@ -121,9 +121,9 @@ pub(crate) fn expand_one(
         return Ok((hit.printed.clone(), record, hit.charges));
     }
 
-    let (answer, work) = crate::core::expand_syntax(
+    let (answer, work) = crate::phase::expand_syntax(
         adapter_source,
-        crate::core::PhaseImports::at(&uri, &options.imports),
+        crate::phase::PhaseImports::at(&uri, &options.imports),
         &subject,
     );
     // The run happened, so the run is charged, and everything below reports
@@ -186,8 +186,8 @@ pub(crate) fn expand_one(
 /// answered `Err` is not a fault at all: it read the region and would not have
 /// it, and what a musician needs to read is the adapter's own sentence about
 /// their own text. What is left is the adapter being broken.
-pub(crate) fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: &str, site: SourceSpan) -> Diagnostic {
-    if let crate::core::ExpansionFailure::Refused { message, at } = failure {
+pub(crate) fn stopped_or_refused(failure: &crate::phase::ExpansionFailure, path: &str, site: SourceSpan) -> Diagnostic {
+    if let crate::phase::ExpansionFailure::Refused { message, at } = failure {
         // The adapter pointed. Where it pointed at the composer's own text,
         // that is where the caret goes; where it pointed at a node it built,
         // there is nothing under it, and saying so is better than a caret that
@@ -201,7 +201,7 @@ pub(crate) fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: 
                 .help("the adapter pointed at a node it built rather than at one it was given, so the whole region is as close as the report can get"),
         };
     }
-    if matches!(*failure, crate::core::ExpansionFailure::Stopped) {
+    if matches!(*failure, crate::phase::ExpansionFailure::Stopped) {
         return Diagnostic::error(
             Code::ResourceLimit,
             format!("expanding this region with `{path}` crossed a compilation limit"),
@@ -213,12 +213,12 @@ pub(crate) fn stopped_or_refused(failure: &crate::core::ExpansionFailure, path: 
         site,
         format!("`{path}` did not expand this region"),
         match *failure {
-            crate::core::ExpansionFailure::Stopped | crate::core::ExpansionFailure::Refused { .. } => "handled above",
-            crate::core::ExpansionFailure::NotATransformer(_) => {
+            crate::phase::ExpansionFailure::Stopped | crate::phase::ExpansionFailure::Refused { .. } => "handled above",
+            crate::phase::ExpansionFailure::NotATransformer(_) => {
                 "the adapter's `expand` is not a transformer — it must take one region and answer with one"
             }
-            crate::core::ExpansionFailure::NoAnswer => "the adapter did not answer",
-            crate::core::ExpansionFailure::NotAnExpression(_) => {
+            crate::phase::ExpansionFailure::NoAnswer => "the adapter did not answer",
+            crate::phase::ExpansionFailure::NotAnExpression(_) => {
                 "the adapter answered with something that is not a well-formed expression"
             }
         },

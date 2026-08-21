@@ -112,30 +112,30 @@ pub(crate) fn level_of(
         code: Code::Expansion,
         causes: Vec::new(),
     };
-    let module = crate::core::read_adapter_module(adapter_source, crate::core::PhaseImports::at(document, sources))
+    let module = crate::phase::read_adapter_module(adapter_source, crate::phase::PhaseImports::at(document, sources))
         .map_err(|fault| match fault {
-            crate::core::ModuleFault::Stopped => LevelFault {
-                message: format!("reading `{path}` crossed a compilation limit"),
-                help: "an adapter is total, so this is a limit rather than a loop",
-                code: Code::ResourceLimit,
-                // A read that ran out of budget said nothing about the module, so
-                // there is nothing to carry.
-                causes: Vec::new(),
-            },
-            // The wrapper's own sentence, and not a word of the module's spliced
-            // into it: the causes below say what is wrong inside the module, each
-            // at its own place in it, and a summary here would say the first one
-            // twice and the rest not at all.
-            crate::core::ModuleFault::Broken(diagnostics) => LevelFault {
-                message: format!("`{path}` is not an adapter module"),
-                help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
-                code: Code::Expansion,
-                causes: diagnostics
-                    .into_iter()
-                    .map(|diagnostic| musa_score::diagnose::Cause::of(document, diagnostic))
-                    .collect(),
-            },
-        })?;
+        crate::phase::ModuleFault::Stopped => LevelFault {
+            message: format!("reading `{path}` crossed a compilation limit"),
+            help: "an adapter is total, so this is a limit rather than a loop",
+            code: Code::ResourceLimit,
+            // A read that ran out of budget said nothing about the module, so
+            // there is nothing to carry.
+            causes: Vec::new(),
+        },
+        // The wrapper's own sentence, and not a word of the module's spliced
+        // into it: the causes below say what is wrong inside the module, each
+        // at its own place in it, and a summary here would say the first one
+        // twice and the rest not at all.
+        crate::phase::ModuleFault::Broken(diagnostics) => LevelFault {
+            message: format!("`{path}` is not an adapter module"),
+            help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
+            code: Code::Expansion,
+            causes: diagnostics
+                .into_iter()
+                .map(|diagnostic| musa_score::diagnose::Cause::of(document, diagnostic))
+                .collect(),
+        },
+    })?;
     let declared = module.text("level").ok_or_else(|| {
         plain(
             format!("`{path}` declares no conformance level"),

@@ -93,7 +93,7 @@ the value's own size that the ordinary charge on a built value already covers.
 
 ## Target
 
-- The six operations in `crates/musa-compiler/src/core/mod.rs`'s builtin-ownership registry, classified as δ-builtins
+- The six operations in `crates/musa-compiler/src/phase/mod.rs`'s builtin-ownership registry, classified as δ-builtins
   with their declared signatures, and evaluated.
 - Law tests: the family classification laws still pass with the six added (four families, disjoint and exhaustive, no
   arrow in a δ signature); the round-trip law per spelling over a generated sample; `text_join` over the empty list, one

@@ -32,7 +32,7 @@ assuming it.
   than trusting them.
 - §5.7, Lemma 1 — `follow` has duration `Σᵢdᵢ` and `together` duration `maxᵢdᵢ`, both with the same occurrence-count
   sum. `together` is implemented today and `follow` is not.
-- `crates/musa-compiler/src/core/mod.rs`: `Type` at line 432, where `Duration` is untagged and there is no `Position`;
+- `crates/musa-compiler/src/phase/mod.rs`: `Type` at line 432, where `Duration` is untagged and there is no `Position`;
   the `Builtin` enum and `BUILTIN_OWNERSHIP` around line 2300, where `interval_add` is the only arithmetic-shaped entry
   in the whole registry.
 - `crates/musa-compiler/src/time.rs` and the note, stretch, and shift paths that consume today's untagged duration.
@@ -125,8 +125,8 @@ different meaning. Registering operations for a coordinate nothing can make woul
 
 ## Target
 
-- `Duration<C>` coordinate-tagged and `Position<C>` added in `crates/musa-compiler/src/core/mod.rs`, with every existing
-  duration use migrated to `WrittenTime`, and the coordinate carried in the exact encoding.
+- `Duration<C>` coordinate-tagged and `Position<C>` added in `crates/musa-compiler/src/phase/mod.rs`, with every
+  existing duration use migrated to `WrittenTime`, and the coordinate carried in the exact encoding.
 - The twenty-one δ-builtins above, each with its `BUILTIN_OWNERSHIP` entry.
 - The D1–D4 law suite extended to cover them — the sampling law reaching every one of them from the seeds — and a law
   that no compiler-owned operation takes two positions and answers with one.

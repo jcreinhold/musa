@@ -442,7 +442,7 @@ fn spine(term: &Term) -> (&Term, Vec<&Term>) {
     (head, arguments)
 }
 
-/// The eight forms, read off [`crate::core::MachineOp::instantiate`] rather than
+/// The eight forms, read off [`crate::phase::MachineOp::instantiate`] rather than
 /// retyped.
 ///
 /// ```text

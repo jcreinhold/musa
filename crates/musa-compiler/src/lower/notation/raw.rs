@@ -72,7 +72,7 @@ pub(crate) fn followed(origin: Origin, tracks: Vec<Raw>) -> Raw {
 /// The obvious accumulator is a left spine — `follow(follow(follow(nothing, a),
 /// b), c)` — and it is as deep as the block is long. The evaluator descends that
 /// spine, spending several frames per `follow`, so
-/// [`crate::core_budget::NESTING`]'s 256 levels are reached at some sixty
+/// [`crate::phase_budget::NESTING`]'s 256 levels are reached at some sixty
 /// statements: `examples/in-c.musa`'s fifty-three-figure voice is refused for
 /// nesting, and a voice of a hundred notes would be. It also costs quadratic
 /// work, since each `follow` translates everything accumulated so far.
@@ -136,7 +136,7 @@ pub(crate) fn written_duration(origin: Origin, held: Ratio<i64>) -> Raw {
     Raw::lit(
         origin,
         crate::registry::literal(
-            crate::registry::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+            crate::registry::tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
             held,
         ),
     )

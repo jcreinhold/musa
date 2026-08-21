@@ -8,7 +8,7 @@
 use super::category::TOKEN_KINDS;
 use super::path::Scope;
 use super::*;
-use crate::core::{ExpansionFailure, expand_region};
+use crate::phase::{ExpansionFailure, expand_region};
 
 const REGION: &str = "let melody = together(a, b)";
 

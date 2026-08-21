@@ -7,7 +7,7 @@
 1. **The retained-fragment translation does not cover current named partial applications of ordinary functions.**
 
    - **Location:** `04a-formal-rules.md` §§4 and 12; `08-proof-outline.md` Theorem 8; `09-metatheory.md` Theorem 10.1;
-     current `crates/musa-compiler/src/core/mod.rs` application checking and `apply_closure`.
+     current `crates/musa-compiler/src/phase/mod.rs` application checking and `apply_closure`.
    - **Type:** false statement / incomplete translation.
    - **Problem:** `Old_complete` excludes partial compiler operations but explicitly retains ordinary source functions.
      Current Musa permits a call to supply a later named parameter while leaving an earlier required parameter missing.

@@ -89,7 +89,7 @@ fn old(quoted: &str) -> Syntax {
     }};
 }}"
     );
-    crate::core::expand_syntax(&source, crate::core::PhaseImports::bundled(), &subject())
+    crate::phase::expand_syntax(&source, crate::phase::PhaseImports::bundled(), &subject())
         .0
         .expect("the old evaluator runs the transformer")
 }

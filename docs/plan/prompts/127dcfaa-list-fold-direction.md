@@ -31,13 +31,13 @@ primitive has evidence.
   change a page below `constitution.md` and `obligations.md`.
 - `docs/rules/language/01-surface.md`, the paragraph beginning "Structural folds do not add syntax", which names the
   three folds a source author writes.
-- `crates/musa-compiler/src/core/mod.rs`: the `Eliminator` enum and its doc comment ("The seven structural
+- `crates/musa-compiler/src/phase/mod.rs`: the `Eliminator` enum and its doc comment ("The seven structural
   eliminators"), `Eliminator::instantiate`, `Eliminator::arity`, the `BUILTIN_OWNERSHIP` array, the `Builtin::ListFold`
   arm of `eval`, and the law asserting the eliminator list by name.
 - `crates/musa-compiler/src/data.rs`, `fold_name`'s doc comment: "The shape is `nat_fold`, `list_fold`, `option_fold` —
   the eliminators the language already had — because a generated fold *is* one of those." A generated fold is one of
   those in shape but not in direction, which is the sentence this prompt makes true.
-- `crates/musa-compiler/src/core_budget.rs`: `Reduction` and `CostTable`.
+- `crates/musa-compiler/src/phase_budget.rs`: `Reduction` and `CostTable`.
 - `stdlib/src/adapters/staff.musa`, `from_the_end`, and its comment explaining that the sequence is assembled from its
   end because `list_fold` runs left to right. That helper is the closure chain this prompt deletes.
 - Prompt [127dcec](127dcec-construction-charges.md): its **Design** measured the closure chain at 104,016 constructed
@@ -177,18 +177,18 @@ eliminator and deletes its wrapper.
   §5.8's structural-eliminator row becomes eight names.
 - `docs/rules/language/01-surface.md` — the "Structural folds do not add syntax" paragraph names four folds and says the
   direction is in the name.
-- `crates/musa-compiler/src/core/mod.rs` — `Builtin` and `Eliminator` gain `ListFoldFromStart` and `ListFoldFromEnd` and
-  lose `ListFold`; `arity` and `instantiate` cover both with the one type; `BUILTIN_OWNERSHIP` carries both entries with
-  their hidden information; `eval` iterates forward for one and in reverse for the other; the "seven structural
+- `crates/musa-compiler/src/phase/mod.rs` — `Builtin` and `Eliminator` gain `ListFoldFromStart` and `ListFoldFromEnd`
+  and lose `ListFold`; `arity` and `instantiate` cover both with the one type; `BUILTIN_OWNERSHIP` carries both entries
+  with their hidden information; `eval` iterates forward for one and in reverse for the other; the "seven structural
   eliminators" doc comment and the law that asserts the eliminator names by hand say eight.
-- `crates/musa-compiler/src/core/mod.rs` resolution — the bare `list_fold` is an unresolved name carrying an applicable
+- `crates/musa-compiler/src/phase/mod.rs` resolution — the bare `list_fold` is an unresolved name carrying an applicable
   fix that names `list_fold_from_start` as the one preserving the old meaning, in the shape prompt 109 used for
   `use std::…`.
 - `crates/musa-compiler/src/data.rs` — `fold_name`'s doc comment says a generated fold is a catamorphism and names the
   three it shares that shape with.
-- `crates/musa-compiler/src/core_budget.rs` — `Reduction::ListFoldFromStart` and `Reduction::ListFoldFromEnd` with their
-  printed spellings; `CostTable::V2` unchanged, and its doc comment states that a new reduction *kind* is not a table
-  change.
+- `crates/musa-compiler/src/phase_budget.rs` — `Reduction::ListFoldFromStart` and `Reduction::ListFoldFromEnd` with
+  their printed spellings; `CostTable::V2` unchanged, and its doc comment states that a new reduction *kind* is not a
+  table change.
 - `stdlib/`, `tests/fixtures/core-pressure.musa`, and the fixture sources under `crates/musa-compiler/tests/suite/` —
   the migration table above.
 - Tests in `crates/musa-compiler`: the two folds agree for addition and disagree for the projection `s(x,a) = x`;

@@ -21,7 +21,7 @@ compiler-owned operation anywhere in the workspace. This frees the name for prom
   words, two meanings", and §5.8's four families and its statement of the registry's law suite.
 - [`../../rules/across-stages/03-machine-calculus.md`](../../rules/across-stages/03-machine-calculus.md) §2, for what a
   *registered primitive* will mean at prompt 127d.
-- `crates/musa-compiler/src/core/mod.rs`: `PrimitiveOwnership`, `PRIMITIVE_OWNERSHIP`, `BUILTIN_OWNERSHIP`, `Family`,
+- `crates/musa-compiler/src/phase/mod.rs`: `PrimitiveOwnership`, `PRIMITIVE_OWNERSHIP`, `BUILTIN_OWNERSHIP`, `Family`,
   `Eliminator`, and the ownership law suite at the end of the file.
 - `crates/musa-syntax/src/types.rs` and its three consumers.
 
@@ -63,7 +63,7 @@ Update the ledger row's replacement column only if the merged registry makes its
 ## Target
 
 - One `BuiltinOwnership<T>`, one `Builtin` enum, one `BUILTIN_OWNERSHIP` table, and one lookup path in
-  `crates/musa-compiler/src/core/mod.rs`.
+  `crates/musa-compiler/src/phase/mod.rs`.
 - `Family::{Delta, Eliminator, Track}`, with the doc comment on each citing the §5.8 family it names.
 - The ownership law suite reading one table, with its classified-exactly-once and family-count assertions restated over
   79 entries rather than 71 plus 8.

@@ -1,7 +1,7 @@
 //! What each compiler-owned δ operation computes.
 //!
-//! One rule per row of [`crate::core::BUILTIN_OWNERSHIP`]'s δ half and of
-//! [`crate::core::SYNTAX_OWNERSHIP`]'s builder half, translated from the old
+//! One rule per row of [`crate::phase::BUILTIN_OWNERSHIP`]'s δ half and of
+//! [`crate::phase::SYNTAX_OWNERSHIP`]'s builder half, translated from the old
 //! evaluator's `eval_builtin` and `eval_syntax` rather than rewritten. The
 //! arithmetic, the domain calls, and the wording of every refusal are the ones
 //! that were there; what changed is only how an argument is read and how an
@@ -56,7 +56,7 @@ use musa_calculus::{Answer, Datum, Literal, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
-use crate::core::{Builtin, Coordinate, SyntaxOp};
+use crate::phase::{Builtin, Coordinate, SyntaxOp};
 use crate::quote::{Cat, Syntax, token_kind_spelling};
 use musa_score::origin::Interval;
 use musa_score::pitch::{PitchClass, WrittenPitch};

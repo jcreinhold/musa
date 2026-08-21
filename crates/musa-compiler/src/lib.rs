@@ -33,8 +33,6 @@
 #[doc(hidden)]
 pub mod bench;
 mod compile;
-mod core;
-mod core_budget;
 mod data;
 mod docs;
 /// A whole document, elaborated through `musa-calculus`.
@@ -62,6 +60,8 @@ mod lint;
 mod lower;
 mod module;
 mod package;
+mod phase;
+mod phase_budget;
 /// The compiler's own `data` declarations, reachable only from [`registry`].
 mod prelude;
 mod project;

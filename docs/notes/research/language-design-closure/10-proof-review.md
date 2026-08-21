@@ -32,7 +32,7 @@ that merely repeats a conclusion as evidence that an implementation satisfies it
 
 2. **The claimed conservative extension is not an embedding of the governing old core.**
    - **Location:** `09-metatheory.md` Theorem 10.1; `04a-formal-rules.md` §6.8; governing
-     `docs/rules/language/02-core-calculus.md` §§5.6–5.7; `crates/musa-compiler/src/core/mod.rs`.
+     `docs/rules/language/02-core-calculus.md` §§5.6–5.7; `crates/musa-compiler/src/phase/mod.rs`.
    - **Type:** false statement / wrong source calculus.
    - **Problem:** the proposed formal grammar and rules contain only `nat_fold`, `list_fold`, and `option_fold` as
      structural eliminators. The general primitive rule is expressly unavailable to structural folds and the bounded

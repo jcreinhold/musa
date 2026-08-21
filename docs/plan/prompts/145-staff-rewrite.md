@@ -46,7 +46,7 @@ A rather than an implementation.
   the adapter's meaning or the tests were coupled to internals — and which one it is has to be established, not assumed.
 - `docs/notes/research/language-design-closure/41-staff-on-the-repaired-interface.md` — the last time this file was
   rewritten and measured, and the method that measurement used.
-- **The open question this prompt closes**: `syntax_anchor`'s third argument. `crates/musa-compiler/src/core/mod.rs`'s
+- **The open question this prompt closes**: `syntax_anchor`'s third argument. `crates/musa-compiler/src/phase/mod.rs`'s
   `SyntaxOp::Anchor` still takes `(subject, path, here)`, and `stdlib/src/adapters/staff.musa`'s `anchored` supplies the
   place as `syntax_built(here, 33, 0)`. `docs/rules/language/11-quotation.md` §5 and
   `docs/notes/research/language-design-closure/45-phase-registry-survey.md`'s row both say the argument goes and both
@@ -59,7 +59,7 @@ A rather than an implementation.
   operation that mints a fresh place, because `syntax_built` is exactly what quotation removed. The Design section
   decides the shape; it is not a change to make quietly inside the rewrite.
 - `crates/musa-compiler/src/quote/mod.rs`'s `Derived` and `check_expression`, and
-  `crates/musa-compiler/src/core/mod.rs`'s `syntax_quote` — how a quote mints provenance without an author supplying a
+  `crates/musa-compiler/src/phase/mod.rs`'s `syntax_quote` — how a quote mints provenance without an author supplying a
   number, which is the mechanism the anchor either adopts or argues against.
 
 ## Design
@@ -109,7 +109,7 @@ special case. Making the builtin answer at `Expr` would put a parse inside a bui
 This prompt changes the arity and nothing else about the signature.
 
 **What moves with it, and each of these is a Target item, not a side effect.** The registry entry, declared type, doc
-comment, and evaluator arm in `crates/musa-compiler/src/core/mod.rs`; `PhaseFamily::Builder`'s doc comment, which
+comment, and evaluator arm in `crates/musa-compiler/src/phase/mod.rs`; `PhaseFamily::Builder`'s doc comment, which
 currently says every builder is "a function of its displayed arguments and nothing else — no counter, no clock, no
 compiler state", and is no longer true of the anchor — repair it the way `CheckedSyntaxQuote` is already argued, since
 which site wrote a node is a fact about the *program* and two runs of one program still agree exactly; the two
@@ -158,7 +158,7 @@ possible way to make the number look worse for a good reason and better for a ba
 - Mechanical checks in the Check section for the five eliminations.
 - The rendered corpus for every staff example byte-identical.
 - `syntax_anchor` at two arguments: the registry entry, declared type, doc comment, and evaluator arm in
-  `crates/musa-compiler/src/core/mod.rs`, with the site index drawn from `Resolver::next_quotation`;
+  `crates/musa-compiler/src/phase/mod.rs`, with the site index drawn from `Resolver::next_quotation`;
   `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand/mod.rs`'s two anchor unit tests
   rewritten at the new arity with the law they hold unchanged.
 - `stdlib/src/adapters/doubled.musa`'s call site moved to the new arity, and nothing else in that file touched.

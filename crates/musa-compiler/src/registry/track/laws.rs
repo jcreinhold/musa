@@ -38,8 +38,8 @@ use super::{
     INVERT, PLAY, RETROGRADE, SET_NOTE_PITCHES, SHIFT, SPELLINGS, STRETCH, TOGETHER, TRACK_BEYOND, TRANSPOSE, built,
     track_type,
 };
-use crate::core::{BUILTIN_OWNERSHIP, Family};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
+use crate::phase::{BUILTIN_OWNERSHIP, Family};
 use crate::registry::{HERE, held, literal, origin_literal, owned, plain_type, tagged_type};
 use musa_score::Interval;
 use musa_score::origin::{DeclarationId, ExpansionStep, Origin, SourceSpan};
@@ -144,7 +144,7 @@ where
 /// A written beat, as a rule's argument.
 fn beat(value: Ratio<i64>) -> Datum {
     Datum::Lit(literal(
-        tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+        tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
         value,
     ))
 }

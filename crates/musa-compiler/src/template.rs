@@ -315,7 +315,7 @@ fn collect_parameters(resolver: &mut Resolver, template: &TemplateDecl, name: &s
         let Some(parameter_name) = parameter.name() else {
             continue;
         };
-        let Some(ty) = crate::core::type_node_of(parameter.syntax()) else {
+        let Some(ty) = crate::phase::type_node_of(parameter.syntax()) else {
             resolver.report(
                 Diagnostic::error(Code::NotAValue, format!("parameter `{parameter_name}` has no type"))
                     .at(span, "a template parameter states the type it takes")
@@ -374,7 +374,7 @@ fn arguments_of(resolver: &mut Resolver, stmt: &MakeStmt, entry: &Entry, name: &
             );
             return None;
         }
-        arguments.push(crate::core::expr_node_of(node)?);
+        arguments.push(crate::phase::expr_node_of(node)?);
     }
     Some(arguments)
 }

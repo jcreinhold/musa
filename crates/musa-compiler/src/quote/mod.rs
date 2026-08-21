@@ -5,7 +5,7 @@
 //! and says the source language has no syntax value. That stays true. Nothing
 //! here is nameable from ordinary source: the types have no written spelling at
 //! all, and the operations over them are offered only where a transformer is
-//! checked ([`crate::core`]'s expansion phase). What §5's sentence forbids is a
+//! checked ([`crate::phase`]). What §5's sentence forbids is a
 //! program that can inspect itself, and a program still cannot.
 //!
 //! The defect this module exists to repair is

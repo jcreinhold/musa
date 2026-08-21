@@ -70,7 +70,7 @@ contradicted itself about which one it meant: its family list defined "machine p
 of `across-stages/03-machine-calculus.md` §2, while its privacy paragraph used the same phrase for the registered
 *units* whose `State`, `start`, and `step` are private.
 
-The boundary that resolves it was already in the code — `crates/musa-compiler/src/core/mod.rs` declares
+The boundary that resolves it was already in the code — `crates/musa-compiler/src/phase/mod.rs` declares
 `const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8]`, which is the braid in one line — and it is an information
 boundary, not a hierarchy:
 

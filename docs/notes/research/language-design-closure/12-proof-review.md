@@ -18,7 +18,7 @@ The frozen proof does neither. Under the closure plan, a High or Medium problem 
 1. **The conservative-extension theorem still excludes current partial controlled operations.**
 
    - **Location:** `04a-formal-rules.md` §§4, 6.8, and 12; `09-metatheory.md` Theorem 10.1; governing
-     `docs/rules/language/00-semantics.md` §3; current `crates/musa-compiler/src/core/mod.rs`.
+     `docs/rules/language/00-semantics.md` §3; current `crates/musa-compiler/src/phase/mod.rs`.
    - **Type:** false theorem / incomplete embedding.
    - **Exact counterexample:** the governing language gives
 
@@ -175,7 +175,7 @@ Theorem 10.1.
 - The governing source semantics for partial application, the governing core and module contracts, the temporal-kernel
   and exact-anchor stage contracts used by the proofs.
 - The current `ExprKind`, `Value::Builtin`, `BuiltinValue`, controlled-operation table, and `apply_builtin` behavior in
-  `crates/musa-compiler/src/core/mod.rs`.
+  `crates/musa-compiler/src/phase/mod.rs`.
 - The shipped partial-application example and its focused law test. The test
   `higher_order_music_laws::a_delayed_canon_accepts_a_partially_applied_answer_and_has_maximum_extent` passed.
 - Focused current suites also passed: 5 core laws, 4 finite-data laws, 15 module laws, and 12 kernel-quotation laws.

@@ -259,7 +259,7 @@ fn host() -> Cx {
 
 /// `EventTrack ⟨written⟩` — what a complete block inhabits.
 fn track() -> Term {
-    crate::registry::tagged_type("EventTrack", crate::core::Coordinate::WrittenTime)
+    crate::registry::tagged_type("EventTrack", crate::phase::Coordinate::WrittenTime)
 }
 
 // ---- the fold ----

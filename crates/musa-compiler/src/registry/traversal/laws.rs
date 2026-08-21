@@ -23,7 +23,7 @@
 
 use musa_calculus::{Cx, Raw, RawArm, RawPattern, Term};
 
-use crate::core::expand_region;
+use crate::phase::expand_region;
 use crate::quote::{Cat, Delimiter, ExpansionPath, Syntax, read_region};
 use crate::registry::rules::Kind;
 use crate::registry::{HERE, held, literal, owned, plain_type, syntax_type};

@@ -47,10 +47,10 @@ fn module(expand: &str) -> String {
 }
 
 /// Expand one region's worth of text through `transformer`, and print it.
-fn answer(transformer: &str, region: &str) -> Result<crate::quote::Printed, crate::core::ExpansionFailure> {
+fn answer(transformer: &str, region: &str) -> Result<crate::quote::Printed, crate::phase::ExpansionFailure> {
     let read = musa_syntax::parse(region);
     let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
-    crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject)
+    crate::phase::expand_syntax(&module(transformer), crate::phase::PhaseImports::bundled(), &subject)
         .0
         .map(|output| crate::quote::print(&output))
 }
@@ -182,9 +182,9 @@ fn an_adapter_may_not_emit_another_region() {
 
 #[test]
 fn an_adapter_written_with_an_adapter_is_refused() {
-    let Err(crate::core::ModuleFault::Broken(diagnostics)) = crate::core::read_adapter_module(
+    let Err(crate::phase::ModuleFault::Broken(diagnostics)) = crate::phase::read_adapter_module(
         "library {\n    let expand = syntax other { c4 };\n}\n",
-        crate::core::PhaseImports::bundled(),
+        crate::phase::PhaseImports::bundled(),
     ) else {
         panic!("the bootstrap is adapter-free")
     };
@@ -322,13 +322,13 @@ fn a_refusal_that_points_at_a_generated_node_lands_on_the_region_and_says_so() {
     let read = musa_syntax::parse("c4");
     let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
     let Err(generated) =
-        crate::core::expand_syntax(&module(&refusing), crate::core::PhaseImports::bundled(), &subject).0
+        crate::phase::expand_syntax(&module(&refusing), crate::phase::PhaseImports::bundled(), &subject).0
     else {
         panic!("the adapter refuses");
     };
     assert_eq!(
         generated,
-        crate::core::ExpansionFailure::Refused {
+        crate::phase::ExpansionFailure::Refused {
             message: "nothing here is mine".to_owned(),
             at: None,
         },
@@ -360,7 +360,7 @@ fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
     // budget look like a file that is not well-typed.
     let site = SourceSpan::new(0, 1);
     let refused = stopped_or_refused(
-        &crate::core::ExpansionFailure::Refused {
+        &crate::phase::ExpansionFailure::Refused {
             message: "not mine to read".to_owned(),
             at: Some(SourceSpan::new(4, 5)),
         },
@@ -368,11 +368,11 @@ fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
         site,
     );
     let broken = stopped_or_refused(
-        &crate::core::ExpansionFailure::NotATransformer(Vec::new()),
+        &crate::phase::ExpansionFailure::NotATransformer(Vec::new()),
         "std::adapters::doubled",
         site,
     );
-    let stopped = stopped_or_refused(&crate::core::ExpansionFailure::Stopped, "std::adapters::doubled", site);
+    let stopped = stopped_or_refused(&crate::phase::ExpansionFailure::Stopped, "std::adapters::doubled", site);
     assert_eq!(refused.code, Code::Expansion);
     assert_eq!(broken.code, Code::Expansion);
     assert_eq!(stopped.code, Code::ResourceLimit, "a stop is a limit and says so");
@@ -778,10 +778,10 @@ fn expanding_a_printed_region_gives_back_the_value_it_was_printed_from() {
     assert!(messages(&expansion).is_empty(), "{:?}", messages(&expansion));
     let record = expansion.records.first().expect("one record");
     let expression = crate::quote::print(&record.output).text;
-    let round_tripped = crate::core::evaluate_text(&expression);
+    let round_tripped = crate::phase::evaluate_text(&expression);
     assert_eq!(
         round_tripped,
-        crate::core::evaluate_text("\"hello\""),
+        crate::phase::evaluate_text("\"hello\""),
         "the printed region evaluates to the value it was printed from: {expression}"
     );
     assert_eq!(round_tripped.as_deref(), Some("hello"), "and the law is not vacuous");
@@ -977,7 +977,7 @@ fn charged(transformer: &str, region: &str) -> u64 {
     let read = musa_syntax::parse(region);
     let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
     let (answered, work) =
-        crate::core::expand_syntax(&module(transformer), crate::core::PhaseImports::bundled(), &subject);
+        crate::phase::expand_syntax(&module(transformer), crate::phase::PhaseImports::bundled(), &subject);
     if let Err(fault) = answered {
         panic!("the transformer answers over `{region}`: {fault:?}");
     }
@@ -1023,19 +1023,19 @@ fn nested_region(levels: usize) -> crate::quote::Syntax {
 /// guarded and reads unmistakably in the output.
 #[test]
 fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
-    let (answered, _) = crate::core::expand_syntax(
+    let (answered, _) = crate::phase::expand_syntax(
         &module(&recursing("\"\"", EACH_ONCE)),
-        crate::core::PhaseImports::bundled(),
+        crate::phase::PhaseImports::bundled(),
         &nested_region(1_000),
     );
     assert!(
-        matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
+        matches!(answered, Err(crate::phase::ExpansionFailure::Stopped)),
         "a region too deep to read is a limit crossed, not a crash and not a malformed adapter"
     );
     // And the phase says so where the region stands, with the code that
     // means a limit rather than the one that means a broken adapter.
     let complaint = stopped_or_refused(
-        &crate::core::ExpansionFailure::Stopped,
+        &crate::phase::ExpansionFailure::Stopped,
         "std::adapters::doubled",
         SourceSpan::new(4, 9),
     );
@@ -1062,13 +1062,13 @@ fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
 /// sets this limit against the checker that now spends it.
 #[test]
 fn a_region_nested_deeper_than_anyone_writes_still_expands() {
-    let (answered, _) = crate::core::expand_syntax(
+    let (answered, _) = crate::phase::expand_syntax(
         &module(&recursing("\"\"", EACH_ONCE)),
-        crate::core::PhaseImports::bundled(),
+        crate::phase::PhaseImports::bundled(),
         &nested_region(16),
     );
     assert!(
-        !matches!(answered, Err(crate::core::ExpansionFailure::Stopped)),
+        !matches!(answered, Err(crate::phase::ExpansionFailure::Stopped)),
         "a region forty-eight groups deep was refused: the nesting limit is below what adapters meet"
     );
 }

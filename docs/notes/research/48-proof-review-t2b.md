@@ -277,7 +277,7 @@ encoding omissions above are repair obligations, not evidence that `Result` is t
   and K against the displayed abstract calculus.
 - I replayed duplicate namespaces, ambiguous `Result` introduction, private constructor access, cross-structure cycles,
   import-alias identity, missing child encodings, and the combined reducibility measure.
-- I inspected current `crates/musa-compiler/src/core/mod.rs`, `module.rs`, and `package.rs`. The current checker is
+- I inspected current `crates/musa-compiler/src/phase/mod.rs`, `module.rs`, and `package.rs`. The current checker is
   expected-type-aware, but its private `Type`, `Value`, and `Pattern` surfaces have no `Text`, structural `Result`, or
   nominal-data cases. Current modules contain value members only.
 - I ran `cargo test -p musa-compiler --test module_laws -q`; all 15 governing value-only module tests passed.

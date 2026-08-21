@@ -23,7 +23,7 @@ musical types, no elaboration. The old checker keeps working; nothing calls this
   specification. A mechanism the trial marked for deletion is not built here.
 - `crates/musa-events/src/lib.rs` — the leaf crate this one is shaped after: a narrow facade, no dependency on anything
   above it, and a public surface small enough to read in one sitting.
-- `crates/musa-compiler/src/core/mod.rs`'s `Value`, `Term`, and evaluator, and `core_budget.rs` — 15,017 lines that
+- `crates/musa-compiler/src/phase/mod.rs`'s `Value`, `Term`, and evaluator, and `core_budget.rs` — 15,017 lines that
   already contain a total evaluator with a cost budget. What survives is the *budget discipline*, not the
   representation, and this prompt should be explicit about which of the two it is borrowing.
 - `docs/plan/roadmap.md` §15 as amended by prompt 128 — the crate's declared place and its dependency list. A dependency

@@ -32,7 +32,7 @@ a function taking and returning that type.
 Drop the name from the vocabulary and that stops compiling. The type does not go away — nothing about `drop` changes —
 it just becomes unspellable, so the value can be held but never annotated, never passed to a declared function, never
 named in a library signature. That is the hole the existing law
-`every_offered_type_name_is_read_and_written_the_same_way` (`crates/musa-compiler/src/core/mod.rs`) exists to prevent.
+`every_offered_type_name_is_read_and_written_the_same_way` (`crates/musa-compiler/src/phase/mod.rs`) exists to prevent.
 So `Unit` is readable, printable, and offered — and inhabited by nothing written.
 
 There is already a precedent for a nameable type with no value: `AudioFrameStep`. `lower_type` says of it that it "is a
@@ -122,7 +122,7 @@ and can stand anywhere a type can.
 
 The decision is only worth recording if a later prompt cannot undo it without noticing.
 
-- **`crates/musa-compiler/src/core/mod.rs`** gains `unit_is_the_one_offered_type_no_written_expression_produces`. It
+- **`crates/musa-compiler/src/phase/mod.rs`** gains `unit_is_the_one_offered_type_no_written_expression_produces`. It
   compiles one literal per type that has one — the table is source text, checked by the parser and the checker rather
   than asserted — collects every base type some δ-builtin answers with at any depth of its result shape, and asserts
   that the offered vocabulary minus that union is exactly `["Unit"]`. A domain reachable only inside an `Option` still

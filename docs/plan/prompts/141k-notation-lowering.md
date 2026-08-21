@@ -40,7 +40,7 @@ registered.
   lowers to. `00-semantics.md` §3 says the function and block spellings "invoke the same semantic action, so their
   equality is an implementation theorem rather than a duplicated convention"; here that theorem is one law, because both
   spellings produce the same call.
-- `crates/musa-compiler/src/core/mod.rs` — the notation arms this replaces, and in particular `PitchTerm` and its three
+- `crates/musa-compiler/src/phase/mod.rs` — the notation arms this replaces, and in particular `PitchTerm` and its three
   errors. A written pitch is resolved "as far as a scale-free evaluator can", and `in scale` supplies what is missing;
   read why that staging exists before deciding where scale resolution goes here.
 - `crates/musa-compiler/src/scale.rs`, `chord.rs`, `pitch.rs`, `harmony.rs` — the theory algorithms a statement's

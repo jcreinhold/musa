@@ -130,7 +130,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
                     plain_type("Origin"),
                     crate::prelude::constant(cx, "Scope")?,
                     crate::prelude::constant(cx, "Fact")?,
-                    super::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
+                    super::tagged_type("Duration", crate::phase::Coordinate::WrittenTime),
                 ],
                 track(),
             ),
@@ -148,7 +148,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         Builtin::new(
             BEYOND[4],
             super::arrow(
-                vec![super::tagged_type("Duration", crate::core::Coordinate::WrittenTime)],
+                vec![super::tagged_type("Duration", crate::phase::Coordinate::WrittenTime)],
                 super::plain_type("NotatedDuration"),
             ),
             Family::Delta,

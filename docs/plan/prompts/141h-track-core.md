@@ -75,7 +75,7 @@ under (`11-quotation.md` §3): the one number the rule cannot compute is the one
 - `crates/musa-compiler/src/registry/traversal.rs` — the one existing structural registration, its vocabulary, and the
   termination argument in its module doc. `map_note_pitches` is registered the same way and its termination argument is
   shorter, because it applies itself nowhere.
-- `crates/musa-compiler/src/core/mod.rs`'s `BUILTIN_OWNERSHIP` rows for the eight, `Family::Track`, and
+- `crates/musa-compiler/src/phase/mod.rs`'s `BUILTIN_OWNERSHIP` rows for the eight, `Family::Track`, and
   `Builtin::parameters` — the signatures as the old checker states them, which are what is being re-stated over
   `EventTrack` rather than redesigned.
 - `crates/musa-compiler/src/elaborate.rs` — `ScoreFact` and its `stretched`, `inverted`, and `pitch_of`; `Origin` and

@@ -11,7 +11,7 @@ use musa_calculus::{Origin, Raw};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::{Lowering, applied, child, children, is_type_node, paired};
-use crate::core::Coordinate;
+use crate::phase::Coordinate;
 use musa_score::diagnose::{Code, Diagnostic};
 
 impl Lowering<'_> {

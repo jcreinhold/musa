@@ -247,20 +247,20 @@ pub fn adapter_edits(
         crate::quote::ExpansionPath::at(vec![u32::try_from(ordinal).unwrap_or(u32::MAX)]),
     );
     let anchors = subject.spans(site);
-    let (answer, _work) = crate::core::edit_syntax(
+    let (answer, _work) = crate::phase::edit_syntax(
         adapter_source,
-        crate::core::PhaseImports::at(&uri, &options.imports),
+        crate::phase::PhaseImports::at(&uri, &options.imports),
         subject,
         command,
         anchor,
         argument,
     );
     let patches = answer.map_err(|failure| match failure {
-        crate::core::EditFailure::Refused(message) => AdapterEditError::Refused {
+        crate::phase::EditFailure::Refused(message) => AdapterEditError::Refused {
             adapter: import.path.clone(),
             message,
         },
-        crate::core::EditFailure::Stopped => AdapterEditError::Broken(Box::new(
+        crate::phase::EditFailure::Stopped => AdapterEditError::Broken(Box::new(
             Diagnostic::error(
                 Code::ResourceLimit,
                 format!("editing this region with `{}` crossed a compilation limit", import.path),
@@ -268,12 +268,12 @@ pub fn adapter_edits(
             .at(site, "this region")
             .help("the adapter is total, so this is a limit rather than a loop"),
         )),
-        crate::core::EditFailure::NotAnEditor(_) => AdapterEditError::Broken(Box::new(refusal(
+        crate::phase::EditFailure::NotAnEditor(_) => AdapterEditError::Broken(Box::new(refusal(
             site,
             format!("`{}`'s `edit` is not an editor", import.path),
             "an adapter module declares `let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> { … };`",
         ))),
-        crate::core::EditFailure::NoAnswer => AdapterEditError::Broken(Box::new(refusal(
+        crate::phase::EditFailure::NoAnswer => AdapterEditError::Broken(Box::new(refusal(
             site,
             format!("`{}` did not answer this command", import.path),
             "the adapter checked and then produced nothing, which is a fault in the adapter",
@@ -415,18 +415,18 @@ pub fn adapter_print(
             level: level.word().to_owned(),
         });
     }
-    crate::core::print_value(
+    crate::phase::print_value(
         adapter_source,
-        crate::core::PhaseImports::at(&uri, &options.imports),
+        crate::phase::PhaseImports::at(&uri, &options.imports),
         at,
         value,
     )
     .map_err(|failure| match failure {
-        crate::core::PrintFailure::Loss(message) => AdapterPrintError::Loss {
+        crate::phase::PrintFailure::Loss(message) => AdapterPrintError::Loss {
             adapter: adapter.to_owned(),
             message,
         },
-        crate::core::PrintFailure::Stopped => AdapterPrintError::Broken(Box::new(
+        crate::phase::PrintFailure::Stopped => AdapterPrintError::Broken(Box::new(
             Diagnostic::error(
                 Code::ResourceLimit,
                 format!("writing a region with `{adapter}` crossed a compilation limit"),
@@ -440,17 +440,17 @@ pub fn adapter_print(
         //
         // Their coordinates are dropped rather than published. A printer and its
         // subject are read together in a piece neither of them is written in
-        // (`crate::core::print_value`), so a span here is a position in text no
+        // (`crate::phase::print_value`), so a span here is a position in text no
         // consumer can open — and the adapter is a file a consumer *can* open,
         // which is what would make an offset into the reading land somewhere
         // real and wrong.
-        crate::core::PrintFailure::NotAPrinter(why) => broken_by(
+        crate::phase::PrintFailure::NotAPrinter(why) => broken_by(
             format!("`{adapter}`'s `print` does not read this value"),
             "a printer is `fn (value: T) { … }` answering `Ok(text)` or `Err(loss)`, where `T` is the type its regions \
              produce",
             why.into_iter().map(|diagnostic| said_by(adapter, diagnostic)).collect(),
         ),
-        crate::core::PrintFailure::NoAnswer => broken(
+        crate::phase::PrintFailure::NoAnswer => broken(
             format!("`{adapter}` did not answer for this value"),
             "the adapter checked and then produced nothing, which is a fault in the adapter",
         ),
@@ -462,7 +462,7 @@ pub fn adapter_print(
 ///
 /// [`musa_score::diagnose::Cause::of`] everywhere else keeps the labels, because
 /// everywhere else the offsets are offsets into a file the reader can open. Here
-/// they are offsets into the piece [`crate::core::print_value`] wrote to read the
+/// they are offsets into the piece [`crate::phase::print_value`] wrote to read the
 /// printer and the value together, and `adapter` is a real file: kept, they would
 /// resolve against text they did not come from and point somewhere plausible and
 /// wrong. The sentence is what an adapter author acts on, and it survives.
