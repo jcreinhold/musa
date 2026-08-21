@@ -2,7 +2,7 @@
 id: 148
 slug: kernel-and-elaboration
 status: pending
-depends_on: [147]
+depends_on: [147a]
 phase: 3
 ---
 
