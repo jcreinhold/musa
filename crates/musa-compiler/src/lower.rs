@@ -796,16 +796,16 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
 }
 
 /// Whether a node kind is one of the written type forms.
+///
+/// The grammar's own list, asked rather than restated. A copy of it here went
+/// stale the moment `IndexedType` joined the grammar: `Nat(12)` parsed, and
+/// every reader that finds an annotation with this predicate looked straight
+/// past it, so a parameter written at an indexed type lowered as a λ with no
+/// domain and the author was told their parameter needed a type. The list that
+/// decides what a type node *is* belongs to the crate that builds the nodes.
+///
+/// `is_expr_node` above is a deliberately different list and says so; this one
+/// never had a reason to differ.
 fn is_type_node(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::TypeExpr
-            | SyntaxKind::TypeName
-            | SyntaxKind::AppliedType
-            | SyntaxKind::OptionType
-            | SyntaxKind::ListType
-            | SyntaxKind::ResultType
-            | SyntaxKind::FunctionType
-            | SyntaxKind::ProductType
-    )
+    musa_syntax::ast::is_type(kind)
 }

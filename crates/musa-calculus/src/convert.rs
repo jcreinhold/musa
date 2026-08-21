@@ -690,10 +690,20 @@ impl ElabError {
     /// way the sides were compared; a read-back that cannot complete — the
     /// budget the comparison just spent, for one — leaves the refusal to its
     /// endpoints rather than spending a second refusal on the first.
+    ///
+    /// **A pair that reads back equal is not attached.** Reading a type back is
+    /// erasure (§1.5), so two types that differ only in an index — `Row(3)` and
+    /// `Row(2)` — become one word twice, and a renderer that preferred the roots
+    /// would say "expected `Row`, found `Row`" over endpoints that had been
+    /// built by [`indexed_shown`] to say exactly which indices disagreed. The
+    /// roots earn their place by naming what was asked; a pair that names the
+    /// same thing on both sides names nothing, and the endpoints are left to
+    /// speak.
     fn rooted(self, at: At<'_>, meter: &mut Meter, depth: u32, left: &Value, right: &Value) -> Self {
         let mut error = self;
         if let Self::Refused(Refusal::Mismatch(mismatch)) = &mut error
             && let (Ok(expected), Ok(found)) = (at.quote(meter, depth, left), at.quote(meter, depth, right))
+            && expected != found
         {
             mismatch.whole = Some(Box::new((expected, found)));
         }

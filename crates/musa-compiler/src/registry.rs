@@ -98,8 +98,9 @@ mod track;
 mod traversal;
 
 use std::any::Any;
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use musa_calculus::{
     Base, Builtin, Cx, Datum, ElabError, Level, Literal, Operator, Origin, Payload, Refusal, Registry, Term,
@@ -574,27 +575,54 @@ fn type0() -> Term {
     Term::universe(HERE, Level::ZERO)
 }
 
+/// The registered base type named `name`.
+///
+/// [`bases`] is the one table and this is how a *term* reaches it, which the
+/// three builders below need and [`plain`] cannot give them. A base type
+/// carries its owner's rules — §1.2's storability and §1.5's reading of its
+/// literals as index values — and [`Base`]'s equality is by *name*, so a second
+/// `Base` spelled the same and registered with none of them is accepted
+/// everywhere the registration is and then answers differently when asked.
+///
+/// That is what `Bar(3/4)` met. `3/4` lowered to a literal whose type was a
+/// freshly built `Ratio` with `measuring` left behind, so §1.5's reader found a
+/// literal at a base type that registers no measure and reported an exact
+/// fraction as not an index — while `fn q() -> Ratio { 3/4 }` checked, because
+/// conversion only ever compared the name.
+///
+/// A name with no registration is a defect in this module and never in a
+/// program — every caller writes a `&'static str` this file also registers — so
+/// it is asserted rather than reported, and every test run is where the
+/// assertion is made. Release keeps the fresh `Base` the builder would have
+/// made anyway, which is the behaviour this replaced.
+fn registered(name: &'static str) -> Base {
+    static TABLE: LazyLock<HashMap<Box<str>, Base>> = LazyLock::new(|| {
+        bases()
+            .into_iter()
+            .map(|base| (Box::from(&**base.name()), base))
+            .collect()
+    });
+    debug_assert!(TABLE.contains_key(name), "`{name}` is a registered base type");
+    TABLE.get(name).cloned().unwrap_or_else(|| plain(name))
+}
+
 /// The term naming a plain base type.
 pub(crate) fn plain_type(name: &'static str) -> Term {
-    plain(name).term(HERE)
+    registered(name).term(HERE)
 }
 
 /// The term naming `Duration`, `Position`, or `EventTrack` at one coordinate.
 pub(crate) fn tagged_type(name: &'static str, which: Coordinate) -> Term {
     Term::app(
         HERE,
-        indexed(name, "Coordinate").term(HERE),
+        registered(name).term(HERE),
         literal(plain_type("Coordinate"), which).term(HERE),
     )
 }
 
 /// The term naming `Syntax` at one category.
 pub(crate) fn syntax_type(cat: crate::quote::Cat) -> Term {
-    Term::app(
-        HERE,
-        indexed("Syntax", "Cat").term(HERE),
-        category_literal(cat).term(HERE),
-    )
+    Term::app(HERE, registered("Syntax").term(HERE), category_literal(cat).term(HERE))
 }
 
 /// The literal one coordinate is written as, at base type `Coordinate`.
