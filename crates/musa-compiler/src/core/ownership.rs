@@ -118,7 +118,7 @@ pub(crate) enum SyntaxOp {
     /// [`crate::syntax::anchor_place`] of the anchored node: the place derives
     /// from the arguments alone, because a δ rule is a function of its
     /// arguments and nothing else (§5.8's D3), and the reservation it uses is
-    /// [`crate::syntax::DELTA_QUOTATION`]'s.
+    /// [`crate::syntax::path::DELTA_QUOTATION`]'s.
     Anchor,
     /// `syntax_number(node)` — the exact rational a numeric token spells.
     ///
