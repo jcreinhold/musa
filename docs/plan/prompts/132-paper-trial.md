@@ -12,7 +12,7 @@ phase: 3
 
 Prompts 129–131 specify a dependent core, records, enums, traits, operators, methods, quotation, and syntax patterns.
 None of it has been written against a program. Write it against nine, on paper, and record the predicted size of the
-staff rewrite — that number becomes prompt 145's gate. If any program needs something the specification refuses, this
+staff rewrite — that number becomes prompt 165's gate. If any program needs something the specification refuses, this
 prompt repairs 129–131 and stops; implementation does not begin on a design the trial rejected.
 
 ## Read
@@ -80,10 +80,10 @@ if any program needs:
 Each falsifier gets a yes or no with the program that decided it. "Probably not" is not an answer a later prompt can act
 on.
 
-**Predict the staff rewrite's size, in public.** State a predicted line count and byte count for prompt 145's
+**Predict the staff rewrite's size, in public.** State a predicted line count and byte count for prompt 165's
 `staff.musa`, derived from the four rewritten pieces and stated with the extrapolation shown, not asserted. Record the
 current 2,404 lines / 93,252 bytes beside it — the file as prompt 127dcfb left it, not the smaller figure note 41
-measured before the `// ---- writing` section existed. Prompt 145 measures against this number, so a prediction that is
+measured before the `// ---- writing` section existed. Prompt 165 measures against this number, so a prediction that is
 generous here is a gate that means nothing there. Say what would count as the design failing — a rewrite that is not
 *dramatically* shorter — and put a figure on "dramatically".
 
@@ -130,5 +130,5 @@ Commit as `Paper-trial the dependent language before any code implements it`.
   amends the constitution to make its own programs pass has stopped being a trial.
 - No new mechanism. This trial may delete from the specification and repair it; adding a feature because a program
   wanted one is how the specification got long enough to need a trial.
-- No new prompt. If the trial finds work that 133–149 do not cover, it says so and the next prompt to run is a repair,
+- No new prompt. If the trial finds work that 133–169 do not cover, it says so and the next prompt to run is a repair,
   written under the prompt README's §6 and §7 with that finding as its evidence.

@@ -151,6 +151,6 @@ Commit as `Add traits, dictionaries, and coherence`.
   no auto-deref, no blanket impls, no functional dependencies, and no associated-type resolution beyond what
   `10-traits.md` states. Every one of these turns the lookup into a search.
 - No user-written `Storable` instance, behind any spelling.
-- No deletion from `BUILTIN_OWNERSHIP`. Prompt 143 collapses the registry, after there is something to collapse it into.
+- No deletion from `BUILTIN_OWNERSHIP`. Prompt 163 collapses the registry, after there is something to collapse it into.
 - No `musa-compiler` checker wire-up beyond the `Code` table, and no `stdlib/` migration. Prompt 142.
 - No `Syntax<Cat>`, no quotation, no collection library.

@@ -94,12 +94,12 @@ impl Budget {
     /// a folded application in a lazy position is re-unfolded by every
     /// consumer, because a pure `Arc`-shared value has no thunk to update, and
     /// the adapter reads shared partial applications nineteen million times.
-    /// The residual is the adapter's algorithm and prompt 145's to remove;
+    /// The residual is the adapter's algorithm and prompt 165's to remove;
     /// note 44 §6's closing records the mechanism. The budget does not move
     /// for any of it.
     ///
     /// limited.** §4 says so in as many words: "Conversion and metavariable
-    /// metrics have no defaults yet: prompt 144 measures the new checker and
+    /// metrics have no defaults yet: prompt 164 measures the new checker and
     /// sets them, and until it does, the checker charges them and reports them
     /// without a limit." The charge paths are live and tested through
     /// [`Self::scaled`]; only the defaults are open.
@@ -115,7 +115,7 @@ impl Budget {
     /// reads a value back is the path that builds a mismatch's message. This
     /// exists so that can be stated as a law rather than left as a comment: a
     /// conversion that answers `true` under this budget read nothing back, and
-    /// one that exhausts did. `conversion_laws.rs` is the caller, and prompt 144
+    /// one that exhausts did. `conversion_laws.rs` is the caller, and prompt 164
     /// is the one that turns the measurement into a real limit.
     #[must_use]
     pub const fn without_quotation(self) -> Self {
@@ -130,7 +130,7 @@ impl Budget {
     /// This exists for one caller and it is a real one: §4's independence law
     /// is normative, and the only way to state it is to run the same terms
     /// under two budgets and check that a narrower one either exhausted or
-    /// agreed. Prompt 148's audit consumes those tests.
+    /// agreed. Prompt 168's audit consumes those tests.
     ///
     /// It is not a knob the compiler turns. [`crate::Cx::new`] uses
     /// [`Self::LANGUAGE`] and nothing in the pipeline narrows it, because a

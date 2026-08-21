@@ -92,7 +92,7 @@ comparison.
 
 **Comparison joins a family that already exists.** `token_kind_equal` and `delimiter_equal` are two registry entries
 beside `syntax_number`, and they are the members of the `text_equal`/`nat_equal` family the phase's own types need. They
-are not permanent: prompt 143 collapses that whole family behind `Eq`, and these go with it. Adding two members of a
+are not permanent: prompt 163 collapses that whole family behind `Eq`, and these go with it. Adding two members of a
 family scheduled for collapse is cheaper than inventing a second comparison discipline for two types.
 
 **`syntax_built` keeps its role argument, and that is not a compromise.** The first version of this prompt removed it on
@@ -151,7 +151,7 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 `stdlib/src/adapters/staff.musa` must still expand: this prompt retypes two arguments it passes, so the adapter's call
-sites move with them, mechanically and without redesign. A rewrite of the adapter here is prompt 145's work done in the
+sites move with them, mechanically and without redesign. A rewrite of the adapter here is prompt 165's work done in the
 wrong commit.
 
 Commit as `Give syntax a category, and the phase API its types`.
@@ -165,8 +165,8 @@ Commit as `Give syntax a category, and the phase API its types`.
 - No change to `syntax_built`'s signature, and no deletion of its role argument. Prompt 139 replaces the operation.
 - No deletion of `recurse_syntax`, `run_syntax_step`, or the derived `syntax_fold_from_leaves`. `11-quotation.md` §5
   says they survive.
-- No deletion of registry entries. Prompt 143.
+- No deletion of registry entries. Prompt 163.
 - No namespaced enum constructors in `musa-compiler`'s checker. Prompt 142 replaces that checker; a namespacing feature
   built in it now is deleted before it has a second caller.
-- No rewrite of `stdlib/src/adapters/staff.musa` beyond the mechanical retyping. Prompt 145 measures the rewrite, and a
+- No rewrite of `stdlib/src/adapters/staff.musa` beyond the mechanical retyping. Prompt 165 measures the rewrite, and a
   partial rewrite here would corrupt that measurement.

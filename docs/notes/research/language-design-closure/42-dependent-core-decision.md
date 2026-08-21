@@ -105,8 +105,8 @@ The specification is rewritten by the prompts that follow this one, not by this 
 | `docs/rules/language/02-core-calculus.md` | [129](../../../plan/prompts/129-dependent-core-spec.md) | Universes, Π, Σ and dependent records, inductive families with strict positivity, dependent match with coverage, the identity type, NbE conversion, bidirectional elaboration, metavariables, the well-founded termination rule, and §5's metatheory obligations restated against all of it. |
 | `docs/rules/language/01-surface.md`, new `10-traits.md` | [130](../../../plan/prompts/130-trait-and-surface-spec.md) | Records, enums, traits and coherence, operators through traits, inherent methods with exact receiver lookup, collections. |
 | new `docs/rules/language/11-quotation.md` | [131](../../../plan/prompts/131-quotation-spec.md) | `Syntax<Cat>`, quotation and splicing, derived provenance, syntax patterns, and what survives of the sealed-step recursor. |
-| `docs/rules/language/06-elaboration-baseline.md` | [144](../../../plan/prompts/144-diagnostics-and-performance.md) | The P1/P2 baselines re-measured against a checker that normalizes during conversion, under the existing 10% gate. |
-| `docs/plan/code-map/` | [149](../../../plan/prompts/149-language-pass-closure.md) | Every crate the pass touched, including `musa-calculus`. |
+| `docs/rules/language/06-elaboration-baseline.md` | [164](../../../plan/prompts/164-diagnostics-and-performance.md) | The P1/P2 baselines re-measured against a checker that normalizes during conversion, under the existing 10% gate. |
+| `docs/plan/code-map/` | [169](../../../plan/prompts/169-language-pass-closure.md) | Every crate the pass touched, including `musa-calculus`. |
 
 The code map cannot be updated in this commit for the honest reason that no code exists yet: `musa-calculus` is a crate
 prompt 133 creates. What this record *does* fix is where it sits — `docs/plan/roadmap.md` §15.12, a leaf below
@@ -132,7 +132,7 @@ implementation. 142 is the single prompt permitted to move it, and every moved e
 | `.musa` source — `stdlib/`, `examples/`, book fixtures, desktop and LSP fixtures | Rewritten by 142 in one commit. Green at the end, not in the middle. |
 | Semantic hashes, kernel digests, Origin paths | Held by the compatibility oracle. A moved hash is a behaviour change and is argued by slug in the expected-changes fixture. |
 | MEI, LilyPond, MusicXML, MIDI corpora | Unchanged. A language that elaborates differently and exports differently has changed two things and can prove neither. |
-| Diagnostic codes | Extended, not renumbered. `Code` is a named enum, so conversion, coverage, termination, unsolved-metavariable, and ambiguous-instance failures are new variants with new `musa explain` entries (prompt 144). |
+| Diagnostic codes | Extended, not renumbered. `Code` is a named enum, so conversion, coverage, termination, unsolved-metavariable, and ambiguous-instance failures are new variants with new `musa explain` entries (prompt 164). |
 | `ProjectSession`, `compile`, `render_notation`, `compile_graph` | Unchanged signatures. The core is below `musa-compiler`; nothing above it learns that the checker was replaced. |
 | `crates/musa-compiler/src/infer.rs` | Deleted at 142, with every superseded checking path in `core.rs`. Not kept behind a flag — a second checker is a second semantics. |
 
@@ -162,7 +162,7 @@ evaluation … dependent types can be reopened with that evidence." `Syntax<Cat>
 evidence before evaluation. The reopening is on §8.3's own terms.
 
 **Note 39 §6.5** accepted per-type duplication as a cost. The builtin registry's 117 source operations are what that
-cost grew into. Prompt 143 collapses it and reports what shrank and what did not, which is the honest way to find out
+cost grew into. Prompt 163 collapses it and reports what shrank and what did not, which is the honest way to find out
 whether §6.5 was wrong or merely early.
 
 **Note 39 §11.1** described what dropping totality would require. This amendment does not drop totality; §8 below
@@ -201,7 +201,7 @@ item the amendment does not satisfy on §11.2's terms, and it says so rather tha
 uses. There is no unstated safety boundary. Obligations §10 is therefore amended to add a second admission route —
 measured engineering evidence from a committed Musa program the language deformed — with four requirements attached: the
 program named and committed at a stated revision, its size measured, its compensating constructs enumerated and counted,
-and a later prompt that rewrites it and reports the new measurement. §1 above supplies the first three; prompt 145 owes
+and a later prompt that rewrites it and reports the new measurement. §1 above supplies the first three; prompt 165 owes
 the fourth.
 
 The route is deliberately narrow. "The compiler would be nicer" does not open it; a committed program that we wrote,
@@ -219,8 +219,8 @@ kept.
 **7.5 — "repairing prompts 127a, 127aa–127b, 153, and 146, plus every language/tooling prompt whose diagnostics assume
 principal inferred types."** Those ranks moved; the obligation did not. 127a and 127aa–127d are `done` and are not
 edited — the amendment they made (event tracks and machines below a temporal kernel) is orthogonal to this one and
-survives it untouched. The old 153 and 146 are now [150–153](../../../plan/prompts/150-machine-runtime.md), repaired to
-depend on 149. Prompt 149 owns the sweep for diagnostics that assume principal inferred types, and it is a separate
+survives it untouched. The old 153 and 146 are now [170–173](../../../plan/prompts/170-machine-runtime.md), repaired to
+depend on 149. Prompt 169 owns the sweep for diagnostics that assume principal inferred types, and it is a separate
 prompt precisely because doing it inside the implementation would hide it.
 
 ---
@@ -285,18 +285,18 @@ available choice with no term on either side of the distinction is how a core st
 Twenty-two prompts, a new crate, a replaced type checker, and one migration of `stdlib/`, `examples/`, and every fixture
 corpus. Three gates decide whether it was worth it, and all three are measurements rather than judgements:
 
-1. **The staff benchmark** ([145](../../../plan/prompts/145-staff-rewrite.md)). The rewrite is measured against 2,404
+1. **The staff benchmark** ([165](../../../plan/prompts/165-staff-rewrite.md)). The rewrite is measured against 2,404
    lines / 93,252 bytes, with zero `callN` helpers, zero hand-allocated role integers, zero string dispatch on token
    kinds, and `Pending` as a record. Prompt 132 predicts the number before any code exists. If it does not move
    dramatically, this amendment was wrong and 145 is a repair of Phase A rather than an implementation.
-2. **The performance gate** ([144](../../../plan/prompts/144-diagnostics-and-performance.md)). P1 and P2 against the
+2. **The performance gate** ([164](../../../plan/prompts/164-diagnostics-and-performance.md)). P1 and P2 against the
    recorded baselines in `docs/rules/language/06-elaboration-baseline.md`, under the existing 10% relative gate. A
    checker that normalizes during conversion is exactly where this regresses silently.
-3. **The generality claim** ([146](../../../plan/prompts/146-studio-rewrite.md)). The studio adapter was chosen before
+3. **The generality claim** ([166](../../../plan/prompts/166-studio-rewrite.md)). The studio adapter was chosen before
    any of these mechanisms existed. If it gains nothing, that is a real result about adapters and it is recorded as
    asymmetry rather than averaged away.
 
-Prompt [149](../../../plan/prompts/149-language-pass-closure.md) writes the closing note that puts the four measurements
+Prompt [169](../../../plan/prompts/169-language-pass-closure.md) writes the closing note that puts the four measurements
 together, and it is the honest place to record anything that did not work: a mechanism nobody used, a prediction that
 was wrong, or a cost higher than note 39 §11.2 estimated. This record is a decision taken on evidence, not a proof that
 the decision was right; the proof is 145's number.

@@ -9,8 +9,8 @@ Four questions:
    shipped parser would refuse. The question is asked of the book's teaching
    pages and not of the specifications: those illustrate rules with
    deliberately compressed fragments, and several specify sound and asset
-   syntax that prompts 156-168 have not built yet. Holding the whole candidate
-   to its corpus is prompt 172's graduation audit
+   syntax that prompts 176-188 have not built yet. Holding the whole candidate
+   to its corpus is prompt 192's graduation audit
    (`docs/rules/language/05-verification.md` §7), not this checker's.
 2. Does every internal link land? A relative path must exist, and an `#anchor`
    must be a heading in the file it points at. This is asked of **all** of

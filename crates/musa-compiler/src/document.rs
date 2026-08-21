@@ -40,7 +40,7 @@
 //! # Why the context is rebuilt per document
 //!
 //! [`crate::registry::owned`] declares the prelude and registers every builtin
-//! each time it is called. That is measurable, and it is prompt 144's to
+//! each time it is called. That is measurable, and it is prompt 164's to
 //! measure: sharing one context means deciding what it does about a document
 //! that declares a private family of its own, and deciding that before there is
 //! a number would be guessing.

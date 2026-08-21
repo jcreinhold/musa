@@ -23,7 +23,7 @@ and where the `Untied` collision that forced `names_a_phase_type` into the compi
   read what it built before widening it. The parser, formatter, and CST work it did is the pattern to follow.
 - `stdlib/src/adapters/staff.musa`'s `data Pending` and every site that destructures it, and the `Tying`/`Tie`
   constructor collision together with `names_a_phase_type` in `crates/musa-compiler/src/phase/mod.rs`. Those are the two
-  concrete programs this prompt has to improve, and prompt 145 measures whether it did.
+  concrete programs this prompt has to improve, and prompt 165 measures whether it did.
 - `crates/musa-syntax/src/{keywords.rs, parser.rs, highlight.rs}` and the formatter — where a new keyword actually
   enters the language, and what else has to move with it.
 - `editors/tree-sitter-musa` and the drift law that binds it to the real lexer. A new keyword that does not reach the

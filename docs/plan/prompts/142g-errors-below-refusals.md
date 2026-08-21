@@ -1,12 +1,20 @@
 ---
 id: 142g
 slug: errors-below-refusals
-status: pending
+status: superseded
 depends_on: [142f]
 phase: 3
 ---
 
 # Put the Kernel's Errors Below the Elaborator's
+
+> **Superseded by [prompt 149](149-errors-below-refusals.md), *Put the Kernel's Errors Below the Elaborator's*.** Prompt
+> 149 carries this prompt's whole Task against the error types prompts 146–148 leave behind: 146 deletes the trait
+> variants, 147 deletes the shape variants, and 148 draws the kernel/elaborator boundary this split was describing by
+> hand. The argument is unchanged and 149 cites it; only the list of variants is shorter.
+>
+> This file is not executed. It stays because the ledger and the prompts above it link to it, and because prompt 149's
+> Read section cites it for the argument rather than repeating it.
 
 ## Task
 

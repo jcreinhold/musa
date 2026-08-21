@@ -9,7 +9,7 @@ event-track governed by [`../../rules/events/`](../../rules/events/README.md) an
 prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
 `docs/rules/` owns identity-level commitments. `docs/rules/across-stages/` owns the current cross-stage semantics, and
-`docs/plan/code-map/` maps those rules to current code. Prompts 127a–127e and 150–153 deliberately replace the current
+`docs/plan/code-map/` maps those rules to current code. Prompts 127a–127e and 170–173 deliberately replace the current
 split between the temporal core and a separate studio calculus. Prompt 127a amends the rules first; no code prompt may
 implement the new design against stale rules.
 
@@ -24,9 +24,9 @@ Prompts 20–26 implement `docs/rules/desktop/`; prompt 26 graduated it from can
 the event track.
 
 **The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 wrote the first candidate.
-Prompts 127a–127e and 150–153 replace its contextual `Music` core with the reviewed event-track and machine calculus in
-one clean break. Prompts 154–171 then implement, measure, and audit performance, sound, assets, and packages on that
-base. Prompt 172 makes the resulting language governing only if the complete conformance matrix is green. Until then,
+Prompts 127a–127e and 170–173 replace its contextual `Music` core with the reviewed event-track and machine calculus in
+one clean break. Prompts 174–191 then implement, measure, and audit performance, sound, assets, and packages on that
+base. Prompt 192 makes the resulting language governing only if the complete conformance matrix is green. Until then,
 everything above `docs/rules/language/` in [the precedence ladder](../../README.md#which-document-wins) remains
 authoritative where the candidate differs.
 
@@ -349,48 +349,68 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 142g | errors-below-refusals | 3 | One error type per question: the kernel's below the elaborator's |
 | 142h | kernel-and-elaboration | 3 | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law |
 | 142i | core-re-checker | 3 | An independent kernel re-checker for elaborated terms, with negative controls |
-| 143 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
-| 144 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
-| 145 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
+| 143 | one-theory-amendment | 3 | Commit the language to one theory; amend the constitution to say so |
+| 144 | core-calculus-specification | 3 | Rewrite §§1–3 as one dependent presentation, before any code |
+| 145 | repair-the-dependent-rules | 3 | Repair quotation and surface; retire the trait specification outright |
+| 146 | delete-the-trait-system | 3 | Delete traits and dictionaries; type-directed disambiguation in their place |
+| 147 | term-and-binder-collapse | 3 | Seventeen shapes to seven terms, three binders, three case nodes |
+| 148 | kernel-and-elaboration | 3 | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law |
+| 149 | errors-below-refusals | 3 | One error type per question: the kernel's below the elaborator's |
+| 150 | delete-the-index-stratum | 3 | Delete `Indexed` and the solver; restore read-back equality |
+| 151 | universe-levels | 3 | A non-cumulative polymorphic hierarchy; the two-universe ceiling goes |
+| 152 | metavariables-and-unification | 3 | Real metavariables, a constraint queue, pattern unification |
+| 153 | implicit-arguments | 3 | Implicit binders written, inserted, and named |
+| 154 | case-trees | 3 | Case trees replace generated recursors; the motive becomes dependent |
+| 155 | indexed-families | 3 | A constructor may choose its index; `Equal` becomes library code |
+| 156 | records-leave-the-core | 3 | `record` as one-constructor data with generated projections |
+| 157 | core-re-checker | 3 | An independent kernel re-checker for elaborated terms, with negative controls |
+| 158 | syntax-as-a-family | 3 | `Syntax : Cat -> Type`, and the language's one coercion rule deleted |
+| 159 | macros-as-functions | 3 | Macros as ordinary total functions over one evaluator |
+| 160 | one-declaration-form | 3 | `enum` and `record` become sugar over an indexed `data` |
+| 161 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make` — all four go |
+| 162 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed |
+| 163 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
+| 164 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
+| 165 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
 | 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
-| 146 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
-| 147 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
-| 148 | core-conformance | 3 | Discharge the core's obligation matrix |
-| 149 | language-pass-closure | 3 | Close the language pass |
-| 150 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
-| 151 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
-| 152 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
-| 153 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
+| 166 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
+| 167 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
+| 168 | core-conformance | 3 | Discharge the core's obligation matrix |
+| 169 | language-pass-closure | 3 | Close the language pass |
+| 170 | machine-runtime | 3 | Give each prepared machine one deterministic next step |
+| 171 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
+| 172 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
+| 173 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 153a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
 | 153b | studio-spec-ownership | 3 | The studio spec moves to musa-dsp; the audio crate stops depending on the compiler |
 | 153c | dependency-law | 3 | The crate layering written down once and enforced by a manifest check |
-| 154 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
-| 155 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 174 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
+| 175 | exact-studio-values | 3 | Exact written quantities through audio preparation |
 | 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
-| 156 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
-| 157 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
-| 158 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
-| 159 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
-| 160 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
-| 161 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
-| 162 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
-| 163 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
-| 164 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
-| 165 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
-| 166 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
-| 167 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
-| 168 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
-| 169 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
-| 170 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
-| 171 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
-| 172 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
-| 173 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
-| 174 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
-| 175 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
-| 176 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
-| 177 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
-| 178 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
-| 179 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
+| 176 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
+| 177 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
+| 178 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
+| 179 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
+| 180 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
+| 181 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
+| 182 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
+| 183 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
+| 184 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
+| 185 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
+| 186 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
+| 187 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
+| 188 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
+| 189 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
+| 190 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
+| 191 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
+| 192 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
+| 193 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
+| 194 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
+| 195 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
+| 196 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
+| 197 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
+| 198 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
+| 199 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the event-track insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as the
 regression oracle** when prompt 11 landed: the new event-track elaboration had to reproduce its snapshots exactly
@@ -606,7 +626,7 @@ running signals do not. 127 measures that implementation. Later research found t
 is open-ended, but the typed machine that produces its next frame is finite data. Treating the two as the same thing had
 pushed the machine description out of the language for the wrong reason.
 
-**127a–127d and 150–153 make the clean correction.** 127a amends the governing documents before code changes. 127aa–127b
+**127a–127d and 170–173 make the clean correction.** 127a amends the governing documents before code changes. 127aa–127b
 then install one small, strict, total, HM-inferred language with complete calls and a checked storable-data boundary, in
 five steps that each leave the workspace green: inference and the two kinds of type variable (127aa), `text`, sums and
 `Result` (127ab), library-declared finite data (127ac), complete calls and the corpus migration (127ad), and the typed
@@ -636,19 +656,19 @@ monad (127dcfad) — the traversal repair those four leave behind: a paper trial
 sealed steps (127dcfae), its implementation and the rules amendment that precedes it (127dcfaf), and the staff rewrite
 that measures which repair removed what (127dcfag), the last thing the language was missing, found by trying to write
 the printer and discovering that nothing in the language builds a text at all (127dcfah). The studio trial and the
-freeze that were to follow — 127dcg and 127dd — are superseded by 146 and 147, which do the same work on the language
+freeze that were to follow — 127dcg and 127dd — are superseded by 166 and 167, which do the same work on the language
 the pass below installs. The ergonomics land before the traversal deliberately: with them in hand, an improvement
 measured after the recursor cannot be an improvement `foldr`, `if`, record update, or `?` had already made. 127dcfaf
 supersedes 127da's rule that a fold is the only way into a syntax value — an adapter may now look at a node before
 choosing whether, in what order, and under what context to read its children — while leaving derived paths, unreadable
 `SourceInfo`, and the builder facade exactly where 127da put them. The second blocker — a lowered match with no
 executable meaning — closes by _not_ adding a decision-tree target: source `match` remains the one evaluator. Deleting
-contextual `Music` was 127e's job and is now 142's, folded into the one migration rather than done twice. 150 gives each
-machine one exact next step. 151 makes the time-to-frame policy explicit. 152 makes one sample frame the reference
-meaning of audio and treats host blocks only as checked batching. 153 proves and audits the complete path before any
+contextual `Music` was 127e's job and is now 142's, folded into the one migration rather than done twice. 170 gives each
+machine one exact next step. 171 makes the time-to-frame policy explicit. 172 makes one sample frame the reference
+meaning of audio and treats host blocks only as checked batching. 173 proves and audits the complete path before any
 later sound prompt may run. Old syntax, APIs, and serialized forms are removed, not kept behind aliases.
 
-**128–142 rebuilt the surface language on a dependent core, and 150–153 wait for what follows.** The staff adapter is
+**128–142 rebuilt the surface language on a dependent core, and 170–173 wait for what follows.** The staff adapter is
 the evidence: 2,404 lines of Musa for a notation reader, most of it compensating for a language that cannot build a
 list, name a field, or say what a piece of syntax is. 128 amends the constitution and obligations to admit that
 evidence, keeping totality and widening it to a checked well-founded measure — Musa is almost entirely a compile-time
@@ -667,7 +687,7 @@ constructor is decoration — which is 136a. Ranks 133–142 carried the impleme
 families, records and enums, visibility, traits, typed syntax, quotation and patterns, collections, and one surface
 cutover rather than two.
 
-**Then the course correction, and its own correction, changed what 143–149 are for.** Note 50 audited every mechanism of
+**Then the course correction, and its own correction, changed what 163–169 are for.** Note 50 audited every mechanism of
 that core against the committed Musa program requiring it, found no user of the identity type, universe polymorphism,
 indexed families, postponed constraints, general measures, or constraint-based traits, and deleted them; the compiler
 shed 32,482 lines and the old `core.rs` checker with them. Notes 51 and 52 then audited _that_, because the rule tested
@@ -678,40 +698,40 @@ signature; deleting the elaboration order that makes un-annotated lambdas work; 
 forbids naming T₃, the first object of post-tonal theory. **142a–142e are that correction** — the two-pass spine and
 written sections, the finished excision, and a stratified Dependent ML index whose equality is decided by arithmetic and
 never by unification, with torsors, group actions, and laws checked by enumeration over the finite carriers an index
-makes knowable. 143–149 survive with their tasks intact and their targets enlarged: the builtin collapse now has the
+makes knowable. 163–169 survive with their tasks intact and their targets enlarged: the builtin collapse now has the
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
-**154–160 build musical sound on that core.** 154 makes the primitive vocabulary discoverable from one catalogue; 155
-keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 156 defines
-instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 157 makes an instrument a typed machine contract
-over private primitives. 158 preserves part identity through prepared routing, and 159 maps musical controls to private
-parameters only during preparation. 160 gives the surface one clear sound/profile choice while keeping expert machine
+**174–180 build musical sound on that core.** 174 makes the primitive vocabulary discoverable from one catalogue; 175
+keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 176 defines
+instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 177 makes an instrument a typed machine contract
+over private primitives. 178 preserves part identity through prepared routing, and 179 maps musical controls to private
+parameters only during preparation. 180 gives the surface one clear sound/profile choice while keeping expert machine
 and mix declarations available. Removed patch syntax is a hard error with a certain fix, not a compatibility path.
 
-**161–167 add external sound without making builds or time implicit.** 161 defines verified content-addressed assets
-before a decoder exists. 162 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from
+**181–187 add external sound without making builds or time implicit.** 181 defines verified content-addressed assets
+before a decoder exists. 182 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from
 module imports; exact source bytes establish equality and hashes only locate candidates. It promises no stable compiled
-identity or persistent compiled-value cache. 163 builds one deterministic sampler runtime; 164 and 165 translate SFZ and
-SoundFont into it through explicit support matrices rather than adopting either format as Musa's ontology. 166
-distinguishes a beat-fitted clip from a point cue whose asset keeps its physical duration; 167 implements both as
+identity or persistent compiled-value cache. 183 builds one deterministic sampler runtime; 184 and 185 translate SFZ and
+SoundFont into it through explicit support matrices rather than adopting either format as Musa's ontology. 186
+distinguishes a beat-fitted clip from a point cue whose asset keeps its physical duration; 187 implements both as
 machines under the same prepared offline/live step semantics.
 
-**168–172 make the sound language usable and make graduation expensive.** 168 repairs Sound/Mix around instruments,
-exposed controls, part outputs, assets, and media without creating GUI-owned state. 169 extends generated editor facts
-and the two-path handbook. 170 measures preparation, rendering, decoded memory, callback deadlines, and UI updates. 171
-audits every performance/sound/asset/package law and format support claim. Only 172 combines that green matrix with the
+**188–192 make the sound language usable and make graduation expensive.** 188 repairs Sound/Mix around instruments,
+exposed controls, part outputs, assets, and media without creating GUI-owned state. 189 extends generated editor facts
+and the two-path handbook. 190 measures preparation, rendering, decoded memory, callback deadlines, and UI updates. 191
+audits every performance/sound/asset/package law and format support claim. Only 192 combines that green matrix with the
 score/theory/events/tooling matrix and conditionally graduates `docs/rules/language/`.
 
-**Prompts 173–179 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
+**Prompts 193–199 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
 proved — Rust compiles source to MEI, a worker engraver turns MEI into SVG, `xml:id`s carry provenance — is packaged,
-not reinvented. **173** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
-(`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **174** extracts the desktop's worker
+not reinvented. **193** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
+(`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **194** extracts the desktop's worker
 engraver into `packages/musa-engrave` so two platforms share one provenance-critical module instead of drifting apart.
-**175** scaffolds `@musa/web` with the low-level `parse`/`render` pair (the mermaid shape). **176** adds the MathJax
+**195** scaffolds `@musa/web` with the low-level `parse`/`render` pair (the mermaid shape). **196** adds the MathJax
 layer: `typeset()`, the `<musa-score>` element, visible error boxes, an opt-in observer — with the source kept in the
-DOM, because text is canonical on the web too. **177** wires the `event-<hex>` contract to page callbacks, the feature
-that makes it musa and not another notation renderer. **178** ships the CDN single-tag build (Blob-inlined worker),
-example pages, and the build-time recipe for static sites. **179** is deferred: in-page playback, scheduled only when a
+DOM, because text is canonical on the web too. **197** wires the `event-<hex>` contract to page callbacks, the feature
+that makes it musa and not another notation renderer. **198** ships the CDN single-tag build (Blob-inlined worker),
+example pages, and the build-time recipe for static sites. **199** is deferred: in-page playback, scheduled only when a
 real need is demonstrated.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
@@ -721,7 +741,7 @@ on; phases describe scope, not strict order.
 
 ## Out of scope for this sequence
 
-The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 155's
+The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 175's
 native score/elaboration stability point. The following remain outside this sequence:
 
 - CLAP/VST hosting and the macOS Audio Unit bridge;

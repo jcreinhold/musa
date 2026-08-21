@@ -46,7 +46,7 @@ registration has a real decision in it rather than a transcription.
 - [`../../rules/across-stages/03-machine-calculus.md`](../../rules/across-stages/03-machine-calculus.md) §2 in full —
   the nine forms, their typing rules, the storable-port premises, and the two sentences that decide the shape here:
   "there is no public `lift` from a source function into a machine", and "the step tag `K` prevents machines whose steps
-  mean different things from being connected". §7's M1–M8 are the safety obligations; prompt 148 owes their proof and
+  mean different things from being connected". §7's M1–M8 are the safety obligations; prompt 168 owes their proof and
   this prompt owes them a representation they can be stated about.
 - [`../../rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.8's fourth family and the
   §5.7 paragraph "What this obligation does not cover", which is the argument for this prompt being separate.
@@ -148,7 +148,7 @@ Commit as `Give the machine a core shape`.
 - No tenth form. §2's set is closed, and a tenth is a change to the calculus — stop condition 4, not a repair.
 - No `lift`, and no machine built from a source function. §2 forbids it in one sentence, and a core that admitted one
   would make M1–M8 unprovable.
-- No step semantics, no scheduling, no audio. §3's one step and §7's M1–M8 are prompts 148 and 150–153; this prompt owes
+- No step semantics, no scheduling, no audio. §3's one step and §7's M1–M8 are prompts 168 and 170–173; this prompt owes
   them a representation, not a runtime.
 - No deletion of `Type::Machine`, `Type::Primitive`, `MachineOp`, or the old checker's machine path. 142 owns them.
 - No amendment to `03-machine-calculus.md` or to §5.8. A form that cannot be written in the core's terms is a finding.

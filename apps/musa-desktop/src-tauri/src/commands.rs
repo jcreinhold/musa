@@ -138,7 +138,7 @@ pub fn snapshot(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
 /// `kind` is the analysis's own command-line spelling, which is what the
 /// snapshot's findings and the language server's lenses both name it by. The
 /// request is the default one — the whole score, segmented at attacks —
-/// because a panel has nowhere to put a narrowing and prompt 168 owns the
+/// because a panel has nowhere to put a narrowing and prompt 188 owns the
 /// screen that would.
 ///
 /// # Errors

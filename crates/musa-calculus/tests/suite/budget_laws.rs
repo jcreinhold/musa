@@ -200,7 +200,7 @@ fn a_term_nested_past_the_limit_is_refused() {
 /// covers a term some way past the limit and not one arbitrarily past it:
 /// measured on this shape in a debug build, 756 levels refuse and 1,256 abort.
 /// Charging `Elaborator::check` and `Elaborator::infer` is what closes that,
-/// and it is prompt 144's third step rather than this repair's, because at 256
+/// and it is prompt 164's third step rather than this repair's, because at 256
 /// it would refuse programs that compile today — a cost-table version bump,
 /// which §4.1 says is argued in the specification and never made to pass a
 /// test.

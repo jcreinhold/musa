@@ -72,7 +72,7 @@ requirements here rather than by reference.
 5. **How stored files and public APIs migrate.** No stored format changes at all: indices are erased at quotation, so a
    compiled term, an event track, the `% musa-events-3` interchange format, and every pinned digest are byte-identical
    before and after — 142d's load-bearing check. The public API change is the seventeen builtins collapsing at prompt
-   143, which is a clean break under [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md) and touches no
+   163, which is a clean break under [`../plan/clean-break-ledger.md`](../plan/clean-break-ledger.md) and touches no
    file a user has written.
 6. **The record.** Note 51 above, with note 50 standing unedited beside it as
    [`../notes/research/core-calculus/18-vocabulary-amendment.md`](../notes/research/core-calculus/18-vocabulary-amendment.md)

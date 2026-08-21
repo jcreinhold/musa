@@ -104,6 +104,6 @@ Commit as `Match syntax by quoting the shape you mean`.
 - No pattern guards, no view patterns, no or-patterns beyond what the language already has, and no regular-expression
   matching over token trees.
 - No more than one open sequence splice per repetition, and no backtracking.
-- No deletion of `recurse_syntax` or the string-dispatch builtins. Prompt 143 removes what is dead after 145 and 146
+- No deletion of `recurse_syntax` or the string-dispatch builtins. Prompt 163 removes what is dead after 145 and 146
   prove it is.
-- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 145.
+- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 165.

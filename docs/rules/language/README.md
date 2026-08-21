@@ -1,7 +1,7 @@
 # Musa language candidate
 
-**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–171. Until
-prompt 172 completes its conformance audit, everything above this directory in
+**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–191. Until
+prompt 192 completes its conformance audit, everything above this directory in
 [the precedence ladder](../../README.md#which-document-wins) takes precedence: `docs/rules/`,
 `docs/rules/across-stages/`, `docs/rules/events/`, and the relevant settled parts of `docs/plan/roadmap.md`. A
 contradiction is a prompt defect to repair, not permission to implement whichever text is convenient.
@@ -69,10 +69,10 @@ implementor's path — grammar to events, laws, ownership, and extension recipes
 
 ## Graduation
 
-Prompt 172 may mark this specification governing only after all of the following hold:
+Prompt 192 may mark this specification governing only after all of the following hold:
 
-1. prompts 93–171 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
-   named here — including the language pass at 128–149, whose obligations replace rather than extend the ones
+1. prompts 93–191 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
+   named here — including the language pass at 128–169, whose obligations replace rather than extend the ones
    `02-core-calculus.md` §5 carried before it;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the core law suite passes and no surface convenience has entered `musa-events` or `musa-calculus`. It does *not* pass

@@ -1058,7 +1058,7 @@ fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
 /// frames a level, so the first refusal is at 19. Sixteen is still past
 /// anything a person writes and it leaves the exact boundary to the meter's
 /// own law rather than pinning it here, but the headroom an adapter has
-/// shrank fourfold and that is a measurement, not a preference: prompt 144
+/// shrank fourfold and that is a measurement, not a preference: prompt 164
 /// sets this limit against the checker that now spends it.
 #[test]
 fn a_region_nested_deeper_than_anyone_writes_still_expands() {

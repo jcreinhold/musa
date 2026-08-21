@@ -17,7 +17,7 @@ as its two torsors, pitch and spelled pitch class as its two carriers. `Transpos
 method and one idea, and becomes the action it always was.
 
 That is the vocabulary. **The post-tonal half — `Group<Ti>`, `Action<Ti, Pc(n)>`, and `orbit`/`stabilizer` replacing
-`row12_symmetries` and `row12_forms` — is prompt 143's**, for the reason stated below.
+`row12_symmetries` and `row12_forms` — is prompt 163's**, for the reason stated below.
 
 ## Read
 
@@ -72,7 +72,7 @@ instance and gains its second at 143, where `Pc(n)` and `Ic(n)` arrive.
 `pitch_between(a, b) -> Interval`. `03-musical-domains.md` §1 *proves* it exists and is unique — the cancellation lemma
 is exactly that — and the registry never gave it an operation, so the corpus's canonical torsor has an action and no
 difference. Add it, in `crates/musa-compiler`, beside `pitch_transposed` and hidden by the same fixed-width coordinate
-representation. Prompt 143's survey is over 132 entries after this, not 131, and the entry it audits is one whose
+representation. Prompt 163's survey is over 132 entries after this, not 131, and the entry it audits is one whose
 counterpart it will keep.
 
 **Why the post-tonal half is 143's.** `Group<Ti>` and `Action<Ti, Pc(n)>` need three things this prompt cannot make: the

@@ -4,7 +4,7 @@
 //!
 //! Each test names the §5 obligation it partially discharges. "Partially" is the
 //! honest word: a law tested over a corpus is tested at the terms in that
-//! corpus, and prompt 148 owes the metatheory matrix — soundness and
+//! corpus, and prompt 168 owes the metatheory matrix — soundness and
 //! completeness of `NbE` against the declarative rules, decidability, subject
 //! reduction, canonicity — which no example-based suite can supply.
 

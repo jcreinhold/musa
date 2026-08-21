@@ -51,7 +51,7 @@ its own.
 - [`141ga`](141ga-quotation-core.md), which owns both quotation forms. They left this prompt on the evidence its own
   implementation produced — see Design — and everything else about reading the surface stayed.
 - `musa_calculus::Refusal`'s variants and `musa_calculus::PathStep`. A refusal is what a composer will see, so the
-  mapping to [`crate::diagnose::Diagnostic`] is part of reading the surface rather than a later polish. Prompt 144 owns
+  mapping to [`crate::diagnose::Diagnostic`] is part of reading the surface rather than a later polish. Prompt 164 owns
   *how good* the message is; this prompt owns that there is one, at a span.
 - The `module-design` skill's audit questions. This module's whole claim is that it is small because the core does the
   hard part; a lowering that grew a type of its own would have failed that claim.

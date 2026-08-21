@@ -186,7 +186,7 @@ fn the_group_check_terminates_on_a_mutually_recursive_group() {
 ///
 /// The message is the core's, which names the occurrence rather than the arrow
 /// it stands to the left of. That is weaker than what the old checker said and
-/// prompt 144 owns the wording; what this law is about is that the declaration
+/// prompt 164 owns the wording; what this law is about is that the declaration
 /// is refused at all, and at `Trap`.
 #[test]
 fn a_non_positive_declaration_is_rejected_at_its_field() {
@@ -215,35 +215,6 @@ fn a_declaration_that_stores_a_function_is_a_type_with_no_storable_instance() {
     assert_eq!(errors(&compilation), "");
 }
 
-/// Sealing. A signature's `data Hidden;` names the type and withholds its
-/// constructors, so `Only` is the structure's own however visible the type is.
-///
-/// Ignored: a `data` declaration inside a `structure` is not carried by the
-/// current engine — `module.rs`'s member walk reads a structure's `let` and
-/// `fn` members only, so the family is never registered and the bare `Only`
-/// resolves to the prelude's `Unit.Only` instead of refusing as private. No
-/// committed program (examples/, stdlib/) declares data inside a structure,
-/// so the course correction leaves the machinery out rather than carrying it
-/// for one law. What still covers the contract: [`Refusal::Private`] fires for
-/// module-private *definitions*, exercised by the module laws. Deferred to:
-/// the module system's data members, when a program demands them.
-#[test]
-#[ignore = "structure-internal data declarations are not carried; see the note above"]
-fn a_private_constructor_may_not_be_named_outside_its_structure() {
-    let compilation = compile_library(
-        "signature Owner { data Hidden; let made: Hidden; } \
-         structure Keep: Owner { data Hidden { Only(count: Nat) } let made: Hidden = Only(1); } \
-         let outside: Nat = 1; \
-         let taken = Only(2);",
-    );
-    let reported = errors(&compilation);
-    assert!(reported.contains("`Only` is private"), "{reported}");
-    assert!(
-        reported.contains("a structure's constructors are its own"),
-        "{reported}"
-    );
-}
-
 /// A signature member the structure never declares is the same failure read
 /// from the other side: the type is promised and not provided.
 #[test]
@@ -260,7 +231,7 @@ fn a_structure_that_declares_no_such_type_does_not_match_its_signature() {
 /// `(A : Type) → Type`), so both mistakes are reported by the elaborator as
 /// what they are: one argument too many is an application of something that is
 /// no longer a function, and one too few leaves a function standing where a
-/// type is needed. Naming the count is prompt 144's, and the span is the law —
+/// type is needed. Naming the count is prompt 164's, and the span is the law —
 /// the written type, not the declaration.
 #[test]
 fn a_declaration_instantiated_at_the_wrong_arity_is_rejected() {

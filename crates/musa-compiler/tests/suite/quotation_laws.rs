@@ -417,7 +417,7 @@ fn what_a_quote_builds_is_charged() {
     // whose limit a quote cannot reach before the fold's own wall: the group
     // branch's children arrive as one right-nested `Cons` chain, so a flat
     // region evaluates as deep as it is wide, and a 256-level budget refuses
-    // one at 123 siblings (measured; prompt 144 owns the depth, and this law
+    // one at 123 siblings (measured; prompt 164 owns the depth, and this law
     // sizes its regions around the wall rather than pretending the wall is
     // about what a quote builds).
     let narrow = probe(

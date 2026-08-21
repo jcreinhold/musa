@@ -14,7 +14,7 @@ Establish the compatibility and performance oracle for the elaboration-language 
 changes. Extend the existing semantic benchmark harness with workloads that distinguish plain source, repeated/shared
 material, deep transform nesting, many small declarations, and the existing performance/studio/audio pipeline; record
 time and allocations; and freeze the semantic, provenance, diagnostic, graph, scheduling, and backend outputs that
-prompts 94–172 must preserve for source using no new syntax, except where the baseline explicitly records a defect for
+prompts 94–192 must preserve for source using no new syntax, except where the baseline explicitly records a defect for
 one named repairing prompt.
 
 ## Read

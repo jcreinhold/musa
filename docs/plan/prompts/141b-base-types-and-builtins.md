@@ -73,11 +73,11 @@ diagnostic. Two designs answer that:
 
 - *A closed payload universe* — integer, rational, text, bytes — with every host base type encoded into one. Refused.
   `Syntax` is a tree, so the encoding is `encode_exactly` on every phase operation and the decode on every read, and
-  prompt 145's rewrite runs the adapter per keystroke. It also puts a list of the host's data shapes inside a leaf
+  prompt 165's rewrite runs the adapter per keystroke. It also puts a list of the host's data shapes inside a leaf
   calculus, which is the enumeration the corollary forbids wearing a different hat.
 - *An opaque payload behind a trait* — `same`, `shown`, `as_any`, three methods with one reason each. Taken. Sharing
   survives, nothing is encoded, and the downcast is the host's own concern at the host's own δ-rule. The cost is `dyn`
-  dispatch on the conversion path, which prompt 144 measures.
+  dispatch on the conversion path, which prompt 164 measures.
 
 **D3 is enforced by the type, not by a promise.** A δ-rule is a `fn` pointer, not a closure: it cannot capture host
 state, so "the result is a function of the argument values alone" is checked by the compiler rather than reviewed. A
@@ -144,7 +144,7 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
 - `docs/rules/language/02-core-calculus.md` §1: the one-line repair admitting §5.8's extension.
 - `docs/plan/code-map/` rows for `musa-calculus`, replacing "a leaf calculus with no base types".
 - No change to `musa-compiler`'s checker, no `stdlib/` or `examples/` change, and the compiler's `BUILTIN_OWNERSHIP`
-  table left where it is. Prompt 142 hands it over; prompt 143 collapses it.
+  table left where it is. Prompt 142 hands it over; prompt 163 collapses it.
 
 ## Check
 
@@ -166,7 +166,7 @@ Commit as `Give the core its base types and builtins`.
   `Syntax`, the boundary this prompt exists to draw has already been crossed.
 - No move of `BUILTIN_OWNERSHIP`, no change to the compiler's checker, and no wiring. Prompt 142 owns the cutover, and a
   half-wired compiler is exactly the ambiguous middle 142's Design forbids.
-- No collapse of any builtin behind a trait or a method. Prompt 143.
+- No collapse of any builtin behind a trait or a method. Prompt 163.
 - No amendment to §5.8, its four families, or D1–D4. This prompt implements them; a disagreement is a finding to record.
 - No `partial` δ-rule and no panicking one. D2 is a condition on registration, not a runtime hope.
 - No interning table and no interior mutability in the registry. A registry that mutates during evaluation is an

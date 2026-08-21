@@ -4,10 +4,10 @@
 core values (`../rules/constitution.md`, `../rules/README.md`).
 
 This page names every source spelling, Rust API, serialized form, fixture, and test name that prompts 127b–127d, 142,
-143, and 150–153 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It
+143, and 170–173 **delete** rather than keep working through an alias, a deprecation shim, or a compatibility reader. It
 exists so that "clean break" is a checkable list rather than an intention.
 
-Prompt 143's row is the one that arrived by a different route. It is not a rename the event-track amendment forced; it
+Prompt 163's row is the one that arrived by a different route. It is not a rename the event-track amendment forced; it
 is the **count that admitted the index**, entered here so that admitting a feature on a workaround obliges removing the
 workaround (`../rules/obligations.md` §10). Seventeen of the compiler's 121 `Builtin` variants are one modulus spelled
 into the compiler because the language could not say it, and a prompt that lands the index without deleting them has not
@@ -131,8 +131,8 @@ These survive the break unchanged, and a prompt that removes one is wrong:
 
 ## 7. How a prompt discharges its rows
 
-A prompt in 127b–127d, 142, and 150–153 is not done while a row it owns still resolves in the workspace. The check is
+A prompt in 127b–127d, 142, and 170–173 is not done while a row it owns still resolves in the workspace. The check is
 mechanical: after the prompt's commit, searching the workspace for the deleted spelling returns only this ledger and the
 research record. If it returns code, a fixture, or a governing document, the break is incomplete.
 
-Prompt 153 audits the whole ledger as one of its conformance rows.
+Prompt 173 audits the whole ledger as one of its conformance rows.

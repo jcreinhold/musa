@@ -31,7 +31,7 @@ reports it.
   without an unresolved ambiguity — but the music statements are the test that proves it, and a fixture for each of the
   four belongs in this prompt.
 - `crates/musa-compiler/src/phase/mod.rs`'s `BUILTIN_OWNERSHIP` (117 source operations) and `SYNTAX_OWNERSHIP` (14 phase
-  operations). The operator table has to cover the arithmetic, comparison, and text entries; prompt 143 is the prompt
+  operations). The operator table has to cover the arithmetic, comparison, and text entries; prompt 163 is the prompt
   that deletes them, and this prompt is where their replacements must actually exist.
 - `docs/rules/style-guide.md` and `crates/musa-compiler/src/lint.rs` — this is the prompt that adds naming rules for
   traits, methods, record fields, and enum constructors, each with the diagnostic that reports it. Adding the rules in
@@ -123,7 +123,7 @@ Commit as `Route operators and methods through traits`.
 - No user-defined operator symbols, no operator sections, no precedence declarations.
 - No return-type-directed overloading and no auto-deref.
 - No method resolution on a generic parameter — the negative test is the point of the feature.
-- No deletion from `BUILTIN_OWNERSHIP`; prompt 143.
+- No deletion from `BUILTIN_OWNERSHIP`; prompt 163.
 - No `musa-compiler` checker wire-up beyond the `Code` table and `lint.rs`, and no `stdlib/` or `examples/` migration.
   Prompt 142.
 - No `Syntax<Cat>`, no quotation, no collection library.

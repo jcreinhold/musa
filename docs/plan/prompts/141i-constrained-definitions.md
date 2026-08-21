@@ -201,7 +201,7 @@ Commit as `Give a free definition its dictionary`.
 ## Stop
 
 - No surface change and no `.musa` change. The grammar already parses every clause this prompt admits, `stdlib/` and
-  `examples/` write none of them today, and the file that will is prompt 145's rewrite. `editors/tree-sitter-musa` is
+  `examples/` write none of them today, and the file that will is prompt 165's rewrite. `editors/tree-sitter-musa` is
   untouched for the same reason: the drift law binds it to the lexer, and the lexer does not move.
 - No wiring. `mod lower` stays behind its dead-code expectation and prompt 142 is still the first caller, exactly as
   141g, 141ga, and 141h leave it. The laws beside these rules are their caller.

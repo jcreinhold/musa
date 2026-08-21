@@ -60,7 +60,7 @@ other way. Neither kind comes first, so neither is declared first.
 - [`137`](137-traits-and-dictionaries.md), for what `declare_impl` does and in what order — coherence at the key, the
   orphan check, the `where` clause, and only then the dictionary value from the method bodies. This prompt moves *when*
   that runs and changes nothing *in* it.
-- [`143`](143-builtin-collapse.md), which is the prompt that meets this at scale: it moves `nat_add`, `text_equal`, and
+- [`143`](163-builtin-collapse.md), which is the prompt that meets this at scale: it moves `nat_add`, `text_equal`, and
   `duration_of` behind traits whose `impl` bodies call library functions, in the same documents as the definitions that
   call those traits' methods. Every one of those is the shape above.
 - [`program.rs`](../../../crates/musa-calculus/src/program.rs)'s `free`, and its doc comment's warning — "a spurious

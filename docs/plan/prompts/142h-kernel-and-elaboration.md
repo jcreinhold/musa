@@ -1,12 +1,20 @@
 ---
 id: 142h
 slug: kernel-and-elaboration
-status: pending
+status: superseded
 depends_on: [142g]
 phase: 3
 ---
 
 # Draw the Line Between the Kernel and the Elaborator
+
+> **Superseded by [prompt 148](148-kernel-and-elaboration.md), *Draw the Line Between the Kernel and the Elaborator*.**
+> Prompt 148 carries this prompt's whole Task, moved after prompt 147's collapse of the term language. Drawing the
+> boundary across seventeen shapes and then rewriting them is the same filing done twice, and the collapse is what makes
+> the file assignment obvious.
+>
+> This file is not executed. It stays because the ledger and the prompts above it link to it, and because prompt 148's
+> Read section cites it for the argument rather than repeating it.
 
 ## Task
 

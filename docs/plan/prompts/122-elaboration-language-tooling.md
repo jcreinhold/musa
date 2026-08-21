@@ -14,7 +14,7 @@ Make the score/elaboration portion of the candidate language understandable in e
 help, completion, definition/references/rename, symbols/folding, diagnostics/fixes, standard-library navigation,
 analysis requests, and event-track-document/quote support. All answers come from compiler/project facts or the lossless
 syntax of half-typed source; the LSP and editor extensions do not grow a second type checker or theory engine. This
-prompt establishes the generated fact/documentation seam that prompt 169 extends to instruments, controls, processors,
+prompt establishes the generated fact/documentation seam that prompt 189 extends to instruments, controls, processors,
 assets, and packages; it does not claim whole-language tooling closure.
 
 ## Read
@@ -48,7 +48,7 @@ Generate editor vocabularies/queries from authoritative Musa sources. Add protoc
 
 Design the generated item-documentation record so later declaration kinds can use it without publishing compiler HIR:
 stable source identity, user-facing name/kind, summary, signature, source span or read-only virtual document, and
-deprecation/origin metadata. Do not add audio variants before prompt 169 has real compiler callers, but do not hard-code
+deprecation/origin metadata. Do not add audio variants before prompt 189 has real compiler callers, but do not hard-code
 the record around only functions and theory declarations.
 
 ## Target
@@ -80,5 +80,5 @@ Commit each repository intentionally and record cross-repository commit ids. Com
 - No rename of bundled standard-library definitions and no edit to generated music facts.
 - No incremental compiler or semantic-token protocol optimization without prompt 127's measurement.
 - No desktop interaction redesign — prompt 124.
-- No instrument/control/processor/asset/package hover or completion yet — prompt 169 adds those from their eventual
+- No instrument/control/processor/asset/package hover or completion yet — prompt 189 adds those from their eventual
   authoritative registries.

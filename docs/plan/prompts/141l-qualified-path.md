@@ -47,7 +47,7 @@ patterns, and make the operator and index forms desugar to it the way §1.5 says
   core's qualified names are dot-separated — `rsplit_once('.')` is the lookup — and `Eq.equal` reaching a trait method
   through `constant` is what `crates/musa-calculus/tests/suite/trait_laws.rs` already proves. This prompt supplies the
   surface half of a mechanism that is finished on the core side.
-- [`143`](143-builtin-collapse.md), which declares the traits these spellings name. `Eq`, `Ord`, `Add`, `Sub`, `Mul`,
+- [`143`](163-builtin-collapse.md), which declares the traits these spellings name. `Eq`, `Ord`, `Add`, `Sub`, `Mul`,
   `Div`, and `Index` are not in `crate::registry::owned` and are not this prompt's to add.
 
 ## Design
@@ -99,7 +99,7 @@ type's namespace, which is exactly the case §6's exact-receiver lookup is for. 
 *trait* method and a trait method is what a `where` can supply; a transposition is neither.
 
 **The traits do not exist yet, and that costs nothing here.** `crate::registry::owned` declares no `Eq`, `Ord`, `Add`,
-or `Index`, and prompt 143 is where the registry collapses behind them. Nothing calls this lowering until 142 wires it,
+or `Index`, and prompt 163 is where the registry collapses behind them. Nothing calls this lowering until 142 wires it,
 so writing the spelling §1.5 fixes before the trait it names is declared changes no program's behavior — it changes
 which prompt is holding the wrong thing. The laws declare their own trait, as 141i's already do with `Same`.
 
@@ -130,7 +130,7 @@ be the class's name — so it goes on prompt 142's second-path audit rather than
 - `docs/plan/code-map/` rows for `musa-compiler`.
 - Prompt 142 repaired: its `depends_on` names this prompt, its Read cites it, and its second-path audit carries the
   dictionary-binder finding above.
-- Prompt 143 repaired: its Design records that the operator and index readings already write `Eq::equal` and
+- Prompt 163 repaired: its Design records that the operator and index readings already write `Eq::equal` and
   `Index::at`, so what it adds is the declarations those spellings name rather than a change to the lowering.
 
 ## Check
@@ -153,7 +153,7 @@ Commit as `Read the qualified path`.
   and every checking path in `core.rs` are untouched, and the corpus still goes through them.
 - No `.musa` file changes, in `stdlib/`, `examples/`, or any fixture corpus. The adapters keep writing `TokenKind.Comma`
   until 142 migrates them; this prompt makes `TokenKind::Comma` read to the same literal, and migrating is not reading.
-- No trait declared. `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, and `Index` are prompt 143's, and a trait declared here to
+- No trait declared. `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, and `Index` are prompt 163's, and a trait declared here to
   make a law green would be 143's survey answered in advance by the prompt with no argument for it.
 - No grammar change. `musa-syntax` already parses both path positions; a path form it does not admit is not this
   prompt's to add.
@@ -163,6 +163,6 @@ Commit as `Read the qualified path`.
   name reaches is still `use` and `import`'s, and a path whose prefix names no module is the core's `UnknownName`.
 - No second meaning for `.`. `Same.same(x, y)` stays §6 method syntax on a receiver named `Same`, and `Same.same` alone
   stays a projection. Changing that is an amendment to `01-surface.md` §1.5, not a repair.
-- No message rewriting beyond the one `help` named above. Prompt 144 owns how good a refusal's sentence is, including
+- No message rewriting beyond the one `help` named above. Prompt 164 owns how good a refusal's sentence is, including
   `MethodOnVariable`'s own.
 - No dictionary-binder rename in `musa-calculus`. It is recorded in Design and carried to 142's audit.

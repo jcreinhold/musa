@@ -23,7 +23,7 @@ interface Engraver {
 ```
 
 No component outside this module touches a Verovio toolkit, an MEI string, or a raw SVG string. The module's home is
-`packages/musa-engrave` (prompt 169): one engraver shared by the desktop UI and `@musa/web`, so the two platforms cannot
+`packages/musa-engrave` (prompt 189): one engraver shared by the desktop UI and `@musa/web`, so the two platforms cannot
 drift on a provenance-critical detail.
 
 ## 2. The worker rule

@@ -12,7 +12,7 @@
 //! points at. It does not decide how good the sentence is: the message is the
 //! refusal's own [`Display`](std::fmt::Display), which `musa-calculus` wrote beside
 //! the rule that raises it and can therefore name a normal form nobody wrote.
-//! Prompt 144 owns rewriting those; this prompt owns that every one of them
+//! Prompt 164 owns rewriting those; this prompt owns that every one of them
 //! arrives as a diagnostic, with a code that `musa explain` knows and a span a
 //! reader can jump to. [`Refusal::BuiltinRefused`] is the one whose sentence
 //! comes from further out still — a δ-rule in `musa-compiler`'s own registry
@@ -54,7 +54,7 @@ struct Filed {
     ///
     /// Almost always [`None`]: what to do about a refusal is the refusal's own
     /// sentence, written in `musa-calculus` beside the rule that raises it, and
-    /// prompt 144 owns how good those are. The exception is a repair the core
+    /// prompt 164 owns how good those are. The exception is a repair the core
     /// cannot name because it is not the core's to know — a form the surface
     /// offers and the core has never heard of.
     help: Option<std::borrow::Cow<'static, str>>,
@@ -63,7 +63,7 @@ struct Filed {
     ///
     /// [`None`] for nearly all of them, and the module documentation says why:
     /// a refusal's wording is the core's, written beside the rule that raises
-    /// it, and prompt 144 owns the pass over all of them. This is not that pass
+    /// it, and prompt 164 owns the pass over all of them. This is not that pass
     /// — it is the narrower case where the core's vocabulary and the language's
     /// are *different words for the same thing*, so forwarding the core's would
     /// teach a composer a term the language does not use.

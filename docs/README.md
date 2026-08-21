@@ -22,7 +22,7 @@ Read top to bottom. A document is bound by everything above it and binds everyth
    [`rules/style-guide.md`](rules/style-guide.md) — the per-stage specifications. Each owns its stage and defers to
    `across-stages/` at the boundaries.
 4. [`rules/language/`](rules/language/README.md) — the source language. Still a **candidate**: where it and anything
-   above it differ, the thing above wins, and the difference is a defect in the candidate to repair. Prompt 172's
+   above it differ, the thing above wins, and the difference is a defect in the candidate to repair. Prompt 192's
    conformance audit is what graduates it.
 5. [`plan/roadmap.md`](plan/roadmap.md) — the broad crate and product plan. Everything above refines it; where it and a
    specification above disagree, the specification wins.

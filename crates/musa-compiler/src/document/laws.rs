@@ -468,7 +468,7 @@ fn the_doubled_adapter_elaborates() {
 /// `Iterable` carries the folds, and a survey that withheld the module would
 /// report three names as missing that the phase finds.
 ///
-/// This file is prompt 145's benchmark and 142's Stop forbids rewriting it, so
+/// This file is prompt 165's benchmark and 142's Stop forbids rewriting it, so
 /// what it took was a *migration*: the two `::` paths a type namespace now
 /// wants, the three products that had to become records for `with` to reach
 /// them, and the fold call sites the trait rewrote.

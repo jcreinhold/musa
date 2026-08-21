@@ -68,7 +68,7 @@ carries the third case. Say so in the doc comment rather than discovering it whe
 conversion agrees with normalization (`convertible(a, b)` exactly when `normalize(a) == normalize(b)`); normalization is
 stable (`normalize(normalize(t)) == normalize(t)`); evaluation is deterministic; α-equivalent inputs have identical
 terms; β, η at Π and at records, δ, and ι each hold as stated equations; and exhaustion never turns into a wrong answer.
-Each law names the §5 obligation it partially discharges and says what prompt 148 still owes.
+Each law names the §5 obligation it partially discharges and says what prompt 168 still owes.
 
 ## Target
 

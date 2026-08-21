@@ -36,7 +36,7 @@
 //! on a raw `let` chain in a debug build: 756 levels are refused and 1,256
 //! abort. A term deep in the elaborator without being deep in the evaluator —
 //! the left-nested application spine
-//! `docs/plan/prompts/144-diagnostics-and-performance.md` measures, where
+//! `docs/plan/prompts/164-diagnostics-and-performance.md` measures, where
 //! `infer` stood 516 frames deep while the nesting counter read 2 — is bounded
 //! by no limit this room can be derived from at all.
 //!

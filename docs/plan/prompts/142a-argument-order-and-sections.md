@@ -51,7 +51,7 @@ written argument order, so the answer cannot depend on which branch ran first.
 
 Idris2 falls back from right-to-left to left-to-right on `InvalidArgs`. Musa does not need the fallback, because Musa
 does not have `%search`, `with`, or ambiguous name resolution in the spine — the two-pass order is total. If a program
-is found that needs it, that is a finding for prompt 144, not a silent addition here.
+is found that needs it, that is a finding for prompt 164, not a silent addition here.
 
 **A section is surface, not a core form.** `f(a, _)` elaborates to `fn (x) { f(a, x) }` in `lower/`, before the core
 sees anything, and the core's completeness rule is untouched: the elaborated term applies `f` to two arguments. This is

@@ -23,11 +23,11 @@ the decision it records has been absorbed or reversed, and the page goes.
 | --- | --- |
 | [26](language-design-closure/26-language-design-decision.md) | The elaboration-language candidate: what the source language is, and the stage boundaries it elaborates across |
 | [27](language-design-closure/27-adapter-trials.md) | That one adapter interface serves both notation and sound |
-| [33](language-design-closure/33-metatheory.md) | The metatheory of the inferred language — prompt 148's conformance list is drawn from it |
-| [41](language-design-closure/41-staff-on-the-repaired-interface.md) | The staff adapter measured per repair, which is the baseline prompt 145 is answerable to |
+| [33](language-design-closure/33-metatheory.md) | The metatheory of the inferred language — prompt 168's conformance list is drawn from it |
+| [41](language-design-closure/41-staff-on-the-repaired-interface.md) | The staff adapter measured per repair, which is the baseline prompt 165 is answerable to |
 | [42](language-design-closure/42-dependent-core-decision.md) | The dependent core: the evidence, the cost, and the refusals prompt 128's amendment overturned |
 | [43](language-design-closure/43-dependent-language-trial.md) | The ten-program trial of that core, run before any code implemented it |
-| [44](language-design-closure/44-audit-against-smalltt-and-peyton-jones.md) | The audit against smalltt and Peyton Jones, and the diagnostics work prompt 144 owes |
+| [44](language-design-closure/44-audit-against-smalltt-and-peyton-jones.md) | The audit against smalltt and Peyton Jones, and the diagnostics work prompt 164 owes |
 | [45](language-design-closure/45-phase-registry-survey.md) | The phase registry entry by entry, after the syntax index |
 | [46](language-design-closure/46-collections-and-the-vec-answer.md) | That `Vec A n` does not ship, and the condition that re-opens it |
 | [47](language-design-closure/47-diagnostics-about-another-document.md) | Carrying a diagnostic about a document the composer did not write |

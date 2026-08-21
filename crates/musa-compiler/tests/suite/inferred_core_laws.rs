@@ -197,7 +197,7 @@ fn each_refused_shape_is_refused_by_name() {
         // back is `TypeMismatch` — from `NotAType`, because an over-applied
         // family stops being a type before anyone counts its arguments. The
         // shape is closed, which is what this table is for; that the composer
-        // is not told the arity is a diagnostic prompt 144 owes, and asserting
+        // is not told the arity is a diagnostic prompt 164 owes, and asserting
         // `WrongArity` here would be asserting a message nothing produces.
         (
             "a data instantiation at the wrong arity",

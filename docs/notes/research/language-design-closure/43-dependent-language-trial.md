@@ -5,7 +5,7 @@
 Prompts 129–131 specified a dependent core, records, namespaced enums, traits, operators, methods, `Syntax<Cat>`,
 quotation, and syntax patterns. None of it had been written against a program. This note writes it against ten, on
 paper, records what each specified mechanism is exercised by, answers the six falsifiers prompt 132 names one by one,
-and predicts the size of prompt 145's staff rewrite.
+and predicts the size of prompt 165's staff rewrite.
 
 The precedent is the sealed-step-recursor trial that preceded it: complete programs, no ellipses, a mechanism-to-program
 table, and findings permitted to fail the interface. What changes is the scope — that trial questioned one operation,
@@ -65,11 +65,11 @@ Prompts 133–137 owe that evidence and §7 says which mechanism owes which.
 
 The measurements are against `stdlib/src/adapters/staff.musa` at prompt 127dcfb's commit: **2,404 lines, 93,252 bytes,
 1,814 non-comment non-blank lines**. Note 41 measured 2,158 lines before the `// ---- writing` section existed; that is
-not the number prompt 145 is gated on.
+not the number prompt 165 is gated on.
 
 **A note on prompt 132's own arithmetic.** Its item 1 names the `// ---- writing` section, which in the file is the
 printer; `call1`–`call7` are in `// --------- emitting`. Both are trialled in §1, because the question item 1 asks is
-about the second and the section it names is the first, and leaving either out would be a rewrite prompt 145 was
+about the second and the section it names is the first, and leaving either out would be a rewrite prompt 165 was
 surprised by. Its items 5–8 allot four slots to note 28's five programs, "minus any the corpus has since retired". None
 has been retired — what changed is that `Music` was deleted by prompt 127a and every program that named it now names
 `EventTrack[WrittenTime, ScoreFact]` — so this trial writes ten programs rather than nine.
@@ -278,7 +278,7 @@ records the repair.
 
 `// ---- writing` (lines 2168–2404) is the other direction: `StaffEvent` and `StaffItem` to `Text`. It names no phase
 operation and builds no syntax, so quotation is irrelevant to it. What the new language changes there is smaller and
-worth stating so prompt 145 does not expect otherwise:
+worth stating so prompt 165 does not expect otherwise:
 
 ```musa
 // spaced: text_equal(first, "") becomes ==
@@ -1276,7 +1276,7 @@ in one record literal, and `beat_target(request.register, low, middle, high)` tw
 
 The honest alternative is to split `realize` into two helpers taking the computed values as parameters, which is what
 §5.1 did for `members` and what the trial recommends for prompt 142's migration. The version above is written the
-duplicating way *on purpose*, because it is what an author reaches for first and prompt 144's diagnostics work should
+duplicating way *on purpose*, because it is what an author reaches for first and prompt 164's diagnostics work should
 know that. **Repeated subexpressions are the standing cost of a block that holds one expression**, and no mechanism in
 the specification addresses it. It is not a falsifier — every program is writable, and the total language has no effects
 so the duplication is only work, charged twice to the §4 meter — but it is the trial's clearest ergonomic finding and
@@ -1376,7 +1376,7 @@ has a conjunction, and every one of them is a fold or a guard.
 ## 6. Program ten — the studio adapter's `validate`
 
 `stdlib/src/adapters/studio.musa` does not exist; prompt 127dcg's design and note 27 §3 are what this rewrites, and
-prompt 146 is what will build it. `validate` is the half of the studio that is *not* an adapter — an ordinary total
+prompt 166 is what will build it. `validate` is the half of the studio that is *not* an adapter — an ordinary total
 package function over the finished description — which is what makes it the trial's only test of the new language away
 from syntax entirely.
 
@@ -1620,7 +1620,7 @@ and refer to; today's staff and studio both emit closed expressions.
   derivable *depends* on `Id` and `DecEq` existing, and `02-core-calculus.md` §5's consistency obligation is stated over
   them. Deleting the identity type would delete the vocabulary the metatheory is written in.
 - **Quote patterns.** Neither adapter uses one, because staff notation is not Musa syntax (§2.2). But an adapter *over
-  Musa syntax* — a template dialect, a lint, a structured edit — is exactly what the form is for, and prompt 147's
+  Musa syntax* — a template dialect, a lint, a structured edit — is exactly what the form is for, and prompt 167's
   freeze is where the absence of a user should be decided. Recorded as at risk rather than deleted.
 - **The non-structural termination measure.** Every recursion in the trial is structural, so `02-core-calculus.md`
   §2.4's general form buys nothing here. It is kept because the *point* of §2.4 is that the checker has no hole in it,
@@ -1685,7 +1685,7 @@ Two rows are worth naming rather than averaging.
 
 **The sequence splice is entirely studio's.** The staff adapter emits right-nested `Sounded(anchor, event, after)` and
 never a list, so `$..xs` has no staff site at all; the studio emits one list and uses it once. A feature with one user
-across two adapters is a feature to watch, and prompt 146 is where it either earns its keep or is recorded as
+across two adapters is a feature to watch, and prompt 166 is where it either earns its keep or is recorded as
 speculative.
 
 **Named-field enum cases are studio's strongest need and staff's mildest.** Staff's enums are small and their positional
@@ -1695,8 +1695,8 @@ argued the feature from `Pending`; the better argument is a diagnostic type nobo
 
 ## 12. The predicted size of the staff rewrite
 
-Prompt 145 is gated on this number, so it is derived rather than asserted, and the derivation is shown so that prompt
-145 can say which line of it was wrong.
+Prompt 165 is gated on this number, so it is derived rather than asserted, and the derivation is shown so that prompt
+165 can say which line of it was wrong.
 
 The file is **2,404 lines / 93,252 bytes / 1,814 non-comment non-blank lines** at prompt 127dcfb. It divides into six
 parts, and §§1–4 above measured four of them directly:
@@ -1716,12 +1716,12 @@ three lines a destructure costs, plus the `callN` sites in that range times the 
 is deliberately *conservative* — it credits nothing to legibility, nothing to the possibility that a rewrite finds a
 better factoring, and it charges the record literals in full.
 
-**The prediction for prompt 145: 2,050 ± 100 lines, and 79,000 ± 4,000 bytes.** Bytes fall further than lines because
+**The prediction for prompt 165: 2,050 ± 100 lines, and 79,000 ± 4,000 bytes.** Bytes fall further than lines because
 the deleted material is unusually wide — `syntax_group(syntax_built(here, role, 0), "layout", [` is 48 columns before
 its first argument — and the added material is unusually narrow.
 
 **That is a 14% reduction, and it is not dramatic.** The prompt asked for a figure on "dramatically", so: the design
-fails its own acceptance gate if prompt 145 does not reach **at least 25%** — 1,800 lines — and the trial predicts it
+fails its own acceptance gate if prompt 165 does not reach **at least 25%** — 1,800 lines — and the trial predicts it
 will not. Three reasons, all of them findings rather than excuses:
 
 1. **The file is half printer and half reader, and quotation only touches the reader's output.** §1.3 measured the
@@ -1730,13 +1730,13 @@ will not. Three reasons, all of them findings rather than excuses:
 3. **`Pending` survives, for the third time** (§3). What records delete is the fourteen destructures, which §3 measured
    at −68 lines — real, and one thirtieth of the file.
 
-So the honest prediction is that **prompt 145 will not clear the bar prompt 132 was asked to set, and the bar is the
+So the honest prediction is that **prompt 165 will not clear the bar prompt 132 was asked to set, and the bar is the
 wrong measurement.** The line count was chosen in prompt 128's amendment as the evidence that the language was
 underpowered, and it was the right evidence for *that* claim: 119 lines of `callN`, 27 unchecked integers, and 21 string
 comparisons are what an underpowered language looks like. It is the wrong evidence for whether the replacement worked,
 because most of the file was never about the language.
 
-The trial therefore proposes a second gate for prompt 145, alongside the line count and not instead of it — every item
+The trial therefore proposes a second gate for prompt 165, alongside the line count and not instead of it — every item
 is a count the file can be grepped for, and every one goes to zero or to a named number:
 
 | Gate | Now | Required at 145 |
@@ -1752,7 +1752,7 @@ is a count the file can be grepped for, and every one goes to zero or to a named
 | phase operations named by the file | 8 | ≤ 5 |
 | lines | 2,404 | ≤ 2,150 |
 
-Prompt 145's Design should be repaired to carry this table, and prompt 132's Stop forbids this trial from writing that
+Prompt 165's Design should be repaired to carry this table, and prompt 132's Stop forbids this trial from writing that
 repair. §13 R8 records what it says.
 
 ## 13. Corrections to the specification
@@ -1810,16 +1810,16 @@ admitting K globally is a separate amendment with a program that needs it and ha
 nominates prompt 132 is replaced by what prompt 132 found. Forced by §10, and by the absence of any index unification in
 ten programs.
 
-**R8 — prompt 145's acceptance gate is a line count and should be a table.** §12 predicts the rewrite lands at 2,050 ±
+**R8 — prompt 165's acceptance gate is a line count and should be a table.** §12 predicts the rewrite lands at 2,050 ±
 100 lines, a 14% reduction, and argues that the line count measures the file rather than the language. The ten-row table
-in §12 is what prompt 145 should be gated on. **This trial does not write that repair**: prompt 132's Stop forbids
+in §12 is what prompt 165 should be gated on. **This trial does not write that repair**: prompt 132's Stop forbids
 changing another prompt, and the repair belongs in the commit that acts on it under the prompt README's §6.
 
 **[`42-dependent-core-decision.md`](42-dependent-core-decision.md) needs no repair, and this was checked rather than
 assumed.** Note 39 §11.2's five items are the cost of adopting a dependent core — constitution §9's rule, the CBPV and
 elimination choices, obligations §10's admission route, the proof obligations that replace Algorithm W, and the prompts
 to repair — and the trial changes the answer to none of them. R7 drops an axiom *within* the core note 42 admitted; it
-does not change whether the core was worth adopting, which is what note 42 decided and what prompt 145 answers.
+does not change whether the core was worth adopting, which is what note 42 decided and what prompt 165 answers.
 
 ## 14. What this trial does not cover
 
@@ -1847,6 +1847,6 @@ compiler would have found nothing to say about either, so the paper limitation a
 places: conversion, coverage in the presence of indices, coherence, and the termination measure are all owed executable
 evidence by prompts 133–137 and audited by 148.
 
-**Prompt 146's studio adapter is not written here, only its `validate`.** The adapter half — expansion, `edit`, and
+**Prompt 166's studio adapter is not written here, only its `validate`.** The adapter half — expansion, `edit`, and
 `print` over graph declarations — is exercised in this trial only through note 40 §4's programs, which the recursor
-findings already cover and which prompts 129–131 do not change. The eight-item coverage list stays prompt 146's.
+findings already cover and which prompts 129–131 do not change. The eight-item coverage list stays prompt 166's.

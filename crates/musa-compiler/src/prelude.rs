@@ -513,7 +513,7 @@ pub(crate) fn musical() -> Vec<RawData> {
 /// type of what it matches rather than against its own spelling. Exact-receiver
 /// method resolution (`10-traits.md` §6) runs *after* the subject is inferred,
 /// which is the only place the question has an answer. So the lowering writes
-/// one name and the checker picks the instance — which is also what prompt 143
+/// one name and the checker picks the instance — which is also what prompt 163
 /// needs standing before it can collapse `text_equal` and its four siblings onto
 /// `==`.
 fn eq_class() -> RawTrait {
@@ -545,7 +545,7 @@ fn eq_class() -> RawTrait {
 ///
 /// `Position<WrittenTime>` is absent for the opposite reason: `position_equal`
 /// exists, but no literal spells a position and no source program can therefore
-/// reach the instance. Prompt 143 adds it in the commit that gives `==` its
+/// reach the instance. Prompt 163 adds it in the commit that gives `==` its
 /// meaning, where it will have a caller.
 ///
 /// Each body is the builtin itself rather than a λ around it. The dictionary

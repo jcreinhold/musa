@@ -285,7 +285,7 @@ impl SyntaxOp {
             // Two comparisons, and only two: the phase's own types have no
             // `match`, and equality against a named constant is the whole of
             // what an adapter asks of a kind or a delimiter. They are members
-            // of the `text_equal`/`nat_equal` family, and prompt 143 collapses
+            // of the `text_equal`/`nat_equal` family, and prompt 163 collapses
             // that family behind `Eq` with these inside it.
             Self::KindEqual => Type::Function(vec![Type::TokenKind, Type::TokenKind], Box::new(Type::Bool)),
             Self::DelimiterEqual => Type::Function(vec![Type::Delimiter, Type::Delimiter], Box::new(Type::Bool)),
@@ -391,7 +391,7 @@ pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17]
         spelling: "syntax_group",
         // It used to claim the delimiter set as well. `Delimiter` hides that
         // now, and a builder that hides only its source information is what
-        // prompt 143 collapses.
+        // prompt 163 collapses.
         hidden_information: "generated source information, which an adapter can carry but not forge",
         family: PhaseFamily::Builder,
     },

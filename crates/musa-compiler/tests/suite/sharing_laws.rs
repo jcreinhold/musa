@@ -30,7 +30,7 @@
 //! `docs/rules/language/06-elaboration-baseline.md` fixes is not charged, and a nullary
 //! motif called four hundred times costs about what one call costs. That is a
 //! hole, it is recorded as one, and it is not this file's to close — the meter
-//! is `resource_validation.rs`'s subject and prompt 144 re-measures it. A law
+//! is `resource_validation.rs`'s subject and prompt 164 re-measures it. A law
 //! stated here against a meter that does not run would have hidden it.
 
 // A failure is more useful reported with what actually happened than with an

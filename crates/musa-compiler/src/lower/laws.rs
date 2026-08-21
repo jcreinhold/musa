@@ -940,7 +940,7 @@ fn a_site_answers_the_span_it_was_numbered_for() {
 ///
 /// Declared out of source in the law rather than in [`crate::registry::owned`],
 /// which is [`with_same`]'s arrangement and is what prompt 141l's Stop asks for:
-/// `Eq` is prompt 143's to *ship*, and what a law needs is something for `==` to
+/// `Eq` is prompt 163's to *ship*, and what a law needs is something for `==` to
 /// resolve to while it checks that it resolves at all.
 fn with_equality() -> Cx {
     let cx = host();

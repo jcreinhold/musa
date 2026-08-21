@@ -167,7 +167,7 @@ duration and performed duration are different types
 
 Instruments, the studio, and orchestration are specified in [`08-performance-and-sound.md`](08-performance-and-sound.md)
 against OMT `114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md`, and are built by prompts
-156–168. Their citations belong to that specification until then; prompt 169 adds their half of this handbook.
+176–188. Their citations belong to that specification until then; prompt 189 adds their half of this handbook.
 
 ## 11. What Musa proves for itself
 

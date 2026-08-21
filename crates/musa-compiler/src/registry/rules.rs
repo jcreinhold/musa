@@ -28,7 +28,7 @@
 //!   with no representable sum is the honest example — and each is a signature
 //!   that promises more than its rule delivers. They are left as they are and
 //!   named here rather than quietly widened to `Option`, because widening one is
-//!   a language change and prompt 143 is where the whole family is reconsidered.
+//!   a language change and prompt 163 is where the whole family is reconsidered.
 //!
 //! # Reading is untyped and writing is not
 //!
@@ -46,7 +46,7 @@
 //! `Nat` is *declared* (`Zero`, `Succ`) rather than registered, because source
 //! code pattern-matches on it and a base type has no cases. So `nat_add` writes
 //! its answer one `Succ` at a time, and a large sum is a large term. That is the
-//! representation the prelude chose and not a defect of this module; prompt 143,
+//! representation the prelude chose and not a defect of this module; prompt 163,
 //! which collapses `nat_add` and `ratio_add` behind `Add`, is where a binary
 //! representation would be argued for.
 

@@ -28,7 +28,7 @@ methods and type namespaces under exact-receiver lookup, and the surface forms f
   own `Tie`. `crates/musa-compiler/src/phase/mod.rs`'s `names_a_phase_type` exists only because constructor names are
   currently flat within a module.
 - `crates/musa-compiler/src/phase/mod.rs`'s builtin registry — the 131 entries are the exact set the operator and method
-  design has to cover, and prompt 143 is the prompt that deletes them.
+  design has to cover, and prompt 163 is the prompt that deletes them.
 - Peyton Jones ch. 3 (translating a high-level language into the core) and ch. 4–5 (structured types, the semantics of
   pattern matching) — the desugarings in this document are the same kind of translation, and ch. 3's argument that a
   language for programmers needs abstractions and local definitions is the argument in root `AGENTS.md` under "No
@@ -100,7 +100,7 @@ checkable, so each added form gets its corpus rows — accepted, rejected, and t
   129's core; §9's corpus extended with the accepted and rejected rows for every one.
 - `docs/rules/language/10-traits.md`, new: coherence, the orphan rule, instance lookup and its termination measure,
   dictionary elaboration, `where` and local-beats-global, the operator-to-trait table covering the builtin set prompt
-  143 will collapse, inherent methods and type namespaces with exact-receiver lookup, `Eq` versus `Id`, `DecEq`, and an
+  163 will collapse, inherent methods and type namespaces with exact-receiver lookup, `Eq` versus `Id`, `DecEq`, and an
   explicit list of what is refused and why.
 - `docs/rules/language/README.md`: the document-map row for `10-traits.md`, and the graduation list if it now names a
   different set of documents.

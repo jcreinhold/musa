@@ -8,7 +8,7 @@ phase: 3
 
 # Close the Inferred Source Core
 
-> **Governed by the event-track and machine core installed by prompts 127a–127e and 150–153.** Last of the five prompts
+> **Governed by the event-track and machine core installed by prompts 127a–127e and 170–173.** Last of the five prompts
 > that replace the source checker and evaluator; the chain is 127aa, 127ab, 127ac, 127ad, 127b. Prompts 127c and 127d
 > depend on this one, so it is the point at which the source language is a single, closed, checkable thing again.
 

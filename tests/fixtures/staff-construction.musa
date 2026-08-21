@@ -34,7 +34,7 @@
 //   spells them `data`, which is what `staff.musa` spells them today. The
 //   declarations below are `staff.musa`'s own, unchanged but for the fields
 //   that now hold an expression rather than an unparsed tree.
-// - `syntax_anchor` takes two arguments at prompt 145: the place its answer
+// - `syntax_anchor` takes two arguments at prompt 165: the place its answer
 //   stands at derives from the anchored node and nothing else, at a reserved
 //   construction site no quote can draw. One call per node stays the law —
 //   two calls about one node meet the duplicate-path gate — but it is the
