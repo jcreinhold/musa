@@ -1,6 +1,6 @@
 //! A core refusal, restated where it was written.
 //!
-//! `musa-core` answers a rejected program with a [`musa_core::ElabError`], which
+//! `musa-calculus` answers a rejected program with a [`musa_calculus::ElabError`], which
 //! names an [`Origin`] and nothing else about place: the core is a leaf that
 //! must not learn what a file is (`02-core-calculus.md` §7). [`super::Sites`]
 //! holds the other half of that arrangement, and this module is where the two
@@ -10,7 +10,7 @@
 //!
 //! It decides **which code** a refusal is filed under and **which node** it
 //! points at. It does not decide how good the sentence is: the message is the
-//! refusal's own [`Display`](std::fmt::Display), which `musa-core` wrote beside
+//! refusal's own [`Display`](std::fmt::Display), which `musa-calculus` wrote beside
 //! the rule that raises it and can therefore name a normal form nobody wrote.
 //! Prompt 144 owns rewriting those; this prompt owns that every one of them
 //! arrives as a diagnostic, with a code that `musa explain` knows and a span a
@@ -20,13 +20,13 @@
 //!
 //! # Why the match is written out
 //!
-//! Fifty-three variants, each named once. The alternative — asking `musa-core` for
+//! Fifty-three variants, each named once. The alternative — asking `musa-calculus` for
 //! a refusal's origin and its severity through accessors — would put the same
 //! fifty-four arms in the core *as well*, because the code still has to be chosen
 //! here. One list of the variants is the smaller arrangement, and a variant
 //! added to the core fails to compile here until somebody says where it belongs.
 
-use musa_core::{ElabError, Origin, Refusal};
+use musa_calculus::{ElabError, Origin, Refusal};
 
 use super::Sites;
 use crate::diagnose::{Cause, Code, Diagnostic};
@@ -49,7 +49,7 @@ struct Filed {
     /// The repair, for a refusal whose repair is a *surface* spelling.
     ///
     /// Almost always [`None`]: what to do about a refusal is the refusal's own
-    /// sentence, written in `musa-core` beside the rule that raises it, and
+    /// sentence, written in `musa-calculus` beside the rule that raises it, and
     /// prompt 144 owns how good those are. The exception is a repair the core
     /// cannot name because it is not the core's to know — a form the surface
     /// offers and the core has never heard of.
@@ -73,7 +73,7 @@ struct Filed {
 /// **exhaustion** is not a judgment at all — the checker ran out of room — and
 /// is filed under [`Code::ResourceLimit`] with no place, because the budget ends
 /// wherever it happens to end and pointing at that node would blame it.
-/// A **malformed** term is this compiler's own defect: `musa-core` says a term
+/// A **malformed** term is this compiler's own defect: `musa-calculus` says a term
 /// handed to it is one it could not have produced, so the report says that
 /// rather than dressing it as a source error.
 ///
@@ -130,7 +130,7 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
             .note("the program was not judged: elaboration reached a deterministic limit before it could answer"),
         ElabError::Malformed(malformed) => Diagnostic::error(
             Code::UnsupportedLanguageStage,
-            format!("the compiler built a core term musa-core could not have produced: {malformed}"),
+            format!("the compiler built a core term musa-calculus could not have produced: {malformed}"),
         )
         .note("this is a defect in the compiler rather than in the source"),
     }
@@ -321,7 +321,7 @@ fn file(refusal: &Refusal) -> Filed {
 /// spelling the composer wrote. [`None`] for the shapes the surface cannot
 /// write back (a dependent Π is the one a mismatch can still reach), which
 /// leaves the core's own sentence standing.
-fn spelled_type(term: &musa_core::Term) -> Option<String> {
+fn spelled_type(term: &musa_calculus::Term) -> Option<String> {
     crate::lower::documented::spelled(term)
 }
 
@@ -331,17 +331,17 @@ fn spelled_type(term: &musa_core::Term) -> Option<String> {
 /// below is structural — a `List<Option<Degree>>` mismatched against
 /// `List<Option<Pitch>>` is the degree confusion twice wrapped, and the
 /// sentence that answers it is the degree's own.
-fn headed(term: &musa_core::Term) -> Option<(String, Vec<musa_core::Term>)> {
+fn headed(term: &musa_calculus::Term) -> Option<(String, Vec<musa_calculus::Term>)> {
     let mut head = term;
     let mut arguments = Vec::new();
-    while let musa_core::Shape::App { function, argument, .. } = head.shape() {
+    while let musa_calculus::Shape::App { function, argument, .. } = head.shape() {
         arguments.push(argument.clone());
         head = function;
     }
     arguments.reverse();
     match head.shape() {
-        musa_core::Shape::Base(base) => Some((base.to_string(), arguments)),
-        musa_core::Shape::Const(constant) => Some((constant.to_string(), arguments)),
+        musa_calculus::Shape::Base(base) => Some((base.to_string(), arguments)),
+        musa_calculus::Shape::Const(constant) => Some((constant.to_string(), arguments)),
         _ => None,
     }
 }
@@ -357,7 +357,7 @@ fn headed(term: &musa_core::Term) -> Option<(String, Vec<musa_core::Term>)> {
 /// table is one-directional per entry for the same reason it always was, and
 /// every operation it names lives in `stdlib/src/`, so a rename that orphans
 /// one of these strings shows up in `stdlib/reference.md` in the same commit.
-fn crossing(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'static str> {
+fn crossing(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Option<&'static str> {
     // A container of the wrong element is the same confusion one layer out.
     // `Option<Roman>` where `Option<ChordClass>` was wanted is a numeral that
     // has not met a collection, and the sentence about that is the sentence
@@ -414,7 +414,7 @@ fn crossing(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'sta
         // Π; the sentence is the surface's. A codomain that mentions the
         // binder is nobody's slip — it is a type that computes — and earns no
         // advice.
-        _ if matches!(found.shape(), musa_core::Shape::Pi { .. }) => {
+        _ if matches!(found.shape(), musa_calculus::Shape::Pi { .. }) => {
             return crossing_function(expected, found);
         }
         _ => return None,
@@ -422,8 +422,8 @@ fn crossing(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'sta
 }
 
 /// The function row of [`crossing`], kept apart because it reads the Π.
-fn crossing_function(expected: &musa_core::Term, found: &musa_core::Term) -> Option<&'static str> {
-    let musa_core::Shape::Pi { codomain, .. } = found.shape() else {
+fn crossing_function(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Option<&'static str> {
+    let musa_calculus::Shape::Pi { codomain, .. } = found.shape() else {
         return None;
     };
     // `expected` is closed here — a mismatch's sides are both elaborated

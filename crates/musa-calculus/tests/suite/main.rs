@@ -1,4 +1,4 @@
-//! Every `musa-core` integration test, linked as one binary.
+//! Every `musa-calculus` integration test, linked as one binary.
 //!
 //! One test target per file means one more link of the whole workspace on every
 //! build, and one more set of object files that cargo never reclaims from
@@ -38,7 +38,7 @@ mod visibility_laws;
 
 /// The terms every law suite is stated over.
 pub(crate) mod fixtures {
-    use musa_core::{Budget, CoreError, Cx, Index, Level, Origin, Term};
+    use musa_calculus::{Budget, CoreError, Cx, Index, Level, Origin, Term};
 
     /// The origin every node of a sample's *type* carries.
     ///
@@ -280,7 +280,7 @@ pub(crate) mod fixtures {
 /// `Id (Type 1) (Type 0) (Type 0)` supplies a second family with a constructor.
 /// Everything below is built from those.
 pub(crate) mod programs {
-    use musa_core::{ElabError, Level, Origin, Raw, Refusal, Term};
+    use musa_calculus::{ElabError, Level, Origin, Raw, Refusal, Term};
 
     /// Where every raw term in the corpus says it was written.
     ///
@@ -360,8 +360,8 @@ pub(crate) mod programs {
             Term::pi(
                 WRITTEN,
                 "_",
-                Term::var(WRITTEN, musa_core::Index(0)),
-                Term::var(WRITTEN, musa_core::Index(1)),
+                Term::var(WRITTEN, musa_calculus::Index(0)),
+                Term::var(WRITTEN, musa_calculus::Index(1)),
             ),
         )
     }
@@ -419,8 +419,8 @@ pub(crate) mod programs {
                     Term::pi(
                         WRITTEN,
                         "x",
-                        Term::var(WRITTEN, musa_core::Index(0)),
-                        Term::var(WRITTEN, musa_core::Index(1)),
+                        Term::var(WRITTEN, musa_calculus::Index(0)),
+                        Term::var(WRITTEN, musa_calculus::Index(1)),
                     ),
                 )),
             },
@@ -436,7 +436,7 @@ pub(crate) mod programs {
                     WRITTEN,
                     [
                         ("ty", Term::universe(WRITTEN, Level::ZERO)),
-                        ("val", Term::var(WRITTEN, musa_core::Index(0))),
+                        ("val", Term::var(WRITTEN, musa_calculus::Index(0))),
                     ],
                 )),
             },

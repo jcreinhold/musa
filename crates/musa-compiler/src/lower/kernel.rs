@@ -57,7 +57,7 @@
 #[cfg(test)]
 mod laws;
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_kernel::{Duration, Term, WrittenTime};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};

@@ -38,7 +38,7 @@ are what a new reader pays:
 
 | Body | Lines | What it is |
 | --- | ---: | --- |
-| `musa-core` total | 20,869 | the core calculus: `elab` 2,666 · `family` 1,820 · `case` 1,396 · `dictionary` 1,253 · `base` 1,136 · `raw` 1,068 · `eval` 985 · `refuse` 951 · `unify` 935 · `program` 826 · `term` 729 · `declare` 704 · `rec` 647 · `quote` 579 |
+| `musa-calculus` total | 20,869 | the core calculus: `elab` 2,666 · `family` 1,820 · `case` 1,396 · `dictionary` 1,253 · `base` 1,136 · `raw` 1,068 · `eval` 985 · `refuse` 951 · `unify` 935 · `program` 826 · `term` 729 · `declare` 704 · `rec` 647 · `quote` 579 |
 | `musa-compiler` total | 50,364 | of which **`core.rs` alone: 15,413** — the old checker, still live for one caller |
 | the new path | 13,775 | `lower/` 8,262 + `registry/` 5,513 — the translation and the δ rules |
 | the `Term` language | 18 formers | `Var`, `Const`, `Def`, `Numeral`, `Base`, `Lit`, `Builtin`, `Universe`, `Pi`, `Lam`, `App`, `RecordType/Record/Project`, `Id/Refl/J`, `Meta`, `Let` |
@@ -53,18 +53,18 @@ them**. The sprawl is not in the calculus. It is in the compiler running two of 
 
 **R1 — The old checker, which was supposed to be gone.** The code-map says of the registry row "prompt 142 … deletes the
 old checker and evaluator," and 142's own Target names "`check_material` calling 141g's and 141k's lowering and
-`musa_core::check`, with the old checking path deleted." Neither happened for the library path: `elaborate_material`
+`musa_calculus::check`, with the old checking path deleted." Neither happened for the library path: `elaborate_material`
 (elaborate.rs:1099) still calls `core::check_material` → `check_and_evaluate`, and `core.rs` still carries `Type` (line
 318), `ExprKind` (697), `Value` (3311), `Checker` (5428), and the whole checking pass — an estimated 10–11K lines of the
 file's 15.4K (estimate: the `Type`→`Checker` span plus the check/eval machinery after it, minus the ownership tables and
 adapter drivers that stay; to be measured properly at removal). One caller keeps it alive: standalone `library { … }`
 documents. Every other path — pieces, the registry's own stdlib construction, adapter modules — already elaborates
-through musa-core. This is the single largest simplification available in the repository: one checker, one unifier, one
-evaluator, the Idris2 shape. **It has no owner prompt.** Proposal: a new prompt between 145 and 143, scoped to moving
-`elaborate_material` onto the document path and deleting what dies — the library document is already a material reader
-over a resolved module tree, so the port is a lowering plus a call, and the staff-class suite is the regression gate
-that says the new reading agrees with the old. Whether 142's Target sentence is repaired to record the remainder, or the
-removal lands as its belated delivery, is the same work either way.
+through musa-calculus. This is the single largest simplification available in the repository: one checker, one unifier,
+one evaluator, the Idris2 shape. **It has no owner prompt.** Proposal: a new prompt between 145 and 143, scoped to
+moving `elaborate_material` onto the document path and deleting what dies — the library document is already a material
+reader over a resolved module tree, so the port is a lowering plus a call, and the staff-class suite is the regression
+gate that says the new reading agrees with the old. Whether 142's Target sentence is repaired to record the remainder,
+or the removal lands as its belated delivery, is the same work either way.
 
 **R2 — The phase-operation retirements already specified.** `11-quotation.md` §5 retires seven of fourteen phase
 operations; the macro surface that remains is `recurse_syntax`, `run_syntax_step`, `syntax_fold_from_leaves`,

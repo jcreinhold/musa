@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Phase B has built [`crates/musa-core`](../../../../crates/musa-core) across prompts 133–136: terms, values, NbE,
+Phase B has built [`crates/musa-calculus`](../../../../crates/musa-calculus) across prompts 133–136: terms, values, NbE,
 bidirectional elaboration with metavariables, inductive families, dependent `match`, and — uncommitted at the time of
 writing — records and enums. Two references sit outside the repository that the design has been claiming kinship with:
 
@@ -10,7 +10,7 @@ writing — records and enums. Two references sit outside the repository that th
   an argument about _how to make elaboration fast_ rather than a specification of what to elaborate.
 - **Peyton Jones, _The Implementation of Functional Programming Languages_** (1987) — chapters 3–6: the enriched lambda
   calculus, structured types, the semantics of pattern matching, and its efficient compilation. Several prompts already
-  cite it by chapter, and [`case.rs`](../../../../crates/musa-core/src/case.rs)'s module header names ch. 5 as its
+  cite it by chapter, and [`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s module header names ch. 5 as its
   source.
 
 This note asks whether the implementation, and the prompts still to come, actually follow them. Every divergence is
@@ -26,13 +26,13 @@ Nothing here governs. `docs/rules/` governs; this is evidence for a later repair
 
 The measurable one is not a micro-optimization. `match` duplicates an arm's body once per case-tree leaf the arm
 reaches, and elaboration re-typechecks each copy. Peyton Jones §5.4.1 names this exact failure — it is his `unwieldy`
-example — and the fix he gives (the fat bar) is the one thing [`case.rs`](../../../../crates/musa-core/src/case.rs)'s
-header explicitly declines. The decline is correct; the _replacement_ was never supplied. Measured below: elaborated
-term size and elaboration time both grow by **2.2× per matched column**, reaching 14.9 MB and 45 ms at ten columns for a
-program whose source is eleven lines.
+example — and the fix he gives (the fat bar) is the one thing
+[`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s header explicitly declines. The decline is correct; the
+_replacement_ was never supplied. Measured below: elaborated term size and elaboration time both grow by **2.2× per
+matched column**, reaching 14.9 MB and 45 ms at ten columns for a program whose source is eleven lines.
 
-The remaining four ad hoc divergences are all one design decision seen from four sides: **musa-core has no notion of a
-top-level definition, so it has no unfolding control**, and every technique smalltt spends its README on — glued
+The remaining four ad hoc divergences are all one design decision seen from four sides: **musa-calculus has no notion of
+a top-level definition, so it has no unfolding control**, and every technique smalltt spends its README on — glued
 evaluation, approximate conversion, the three quotation modes, approximate occurs checking — is a technique for deciding
 _when not to unfold_. None of them can be implemented in a core that cannot fold anything. Prompt 142 hands that core
 the standard library.
@@ -43,10 +43,10 @@ the standard library.
 
 ## §1 What is followed, and correctly
 
-[`case.rs`](../../../../crates/musa-core/src/case.rs) is a faithful ch. 5 pattern-matching compiler with two dependent
-extensions, and both extensions are argued in its header rather than assumed.
+[`case.rs`](../../../../crates/musa-calculus/src/case.rs) is a faithful ch. 5 pattern-matching compiler with two
+dependent extensions, and both extensions are argued in its header rather than assumed.
 
-| ch. 5 | musa-core | Status |
+| ch. 5 | musa-calculus | Status |
 | --- | --- | --- |
 | Variable rule | `solve`'s `None` arm and `leaf`'s `left` binder collection | followed |
 | Constructor rule | `split` → `method` → `narrowed` | followed |
@@ -102,7 +102,7 @@ whose compilation contains `B xs ys` twice, and the observation that "only one r
 duplicated, the constructor rule". His fix is to replace each duplicated `E` with `FAIL` and hang the single copy of `E`
 off one `[]`.
 
-[`case.rs`](../../../../crates/musa-core/src/case.rs)'s header declines the fat bar with this reason:
+[`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s header declines the fat bar with this reason:
 
 > The fat-bar exists so an equation can fail into the next one, and Musa's arms do not fall through
 
@@ -160,7 +160,7 @@ A throwaway integration test elaborated this program at `Nat → … → Nat` fo
 
 Every arm is all-variables in every column but one, so every arm survives every split it does not itself decide. Size is
 the character length of the elaborated `Term`'s `Debug` form — a proxy, but a monotone one; time is wall-clock for the
-single `musa_core::check` call, debug build, warm.
+single `musa_calculus::check` call, debug build, warm.
 
 | columns | elaborated term (chars) | elaboration (ms) | growth |
 | ---: | ---: | ---: | ---: |
@@ -217,9 +217,9 @@ Two consequences worth naming:
 
 **Where it lands.** The _implementation_ repair needs no amendment: `02-core-calculus.md` §6.2 fixes the meaning of
 `match`, and the meaning does not change — the hoisted tree is convertible with the duplicated one, which is exactly the
-law [`coverage_laws.rs`](../../../../crates/musa-core/tests/suite/coverage_laws.rs) already states. It should be a new
-prompt between 136 and 137, ahead of 142's cutover; folding it into prompt 144 (`diagnostics-and-performance`) is worse,
-because 142 runs the whole standard library through this compiler first.
+law [`coverage_laws.rs`](../../../../crates/musa-calculus/tests/suite/coverage_laws.rs) already states. It should be a
+new prompt between 136 and 137, ahead of 142's cutover; folding it into prompt 144 (`diagnostics-and-performance`) is
+worse, because 142 runs the whole standard library through this compiler first.
 
 **One part of the repair is not mine to make.** `02-core-calculus.md` §6.2 states the decline in the same incomplete
 form the code does —
@@ -249,7 +249,7 @@ _heuristic_, and Finding A's fix makes the residual cost linear rather than expo
 
 ## §4 ch. 3 and ch. 6 — the enriched calculus
 
-**Backed, and already load-bearing.** [`raw.rs`](../../../../crates/musa-core/src/raw.rs)'s `RawShape` is ch. 3's
+**Backed, and already load-bearing.** [`raw.rs`](../../../../crates/musa-calculus/src/raw.rs)'s `RawShape` is ch. 3's
 enriched lambda calculus almost item for item — `Let`, `Match`, `Rec`, constructors, and annotation — extended for
 dependency (`Pi`, `Id`, `J`, `RecordType`, `Update`) and missing only `FatBar`/`FAIL`, whose absence §2 has already
 argued. AGENTS.md's **"no sublanguage by subtraction"** standard is derived from ch. 3 and holds here: nothing
@@ -266,8 +266,8 @@ call-by-value core does not ask. The one that transfers is the let-bound right-h
 
 Coquand's algorithm — elaboration into the semantic domain with NbE conversion, contextual metavariables, de Bruijn
 indices for terms and levels for values, pattern-fragment higher-order unification — is followed exactly.
-[`value.rs`](../../../../crates/musa-core/src/value.rs)'s header states the boundary argument, and `Value` genuinely
-never leaves the crate. That is smalltt's central structural decision and musa-core keeps it.
+[`value.rs`](../../../../crates/musa-calculus/src/value.rs)'s header states the boundary argument, and `Value` genuinely
+never leaves the crate. That is smalltt's central structural decision and musa-calculus keeps it.
 
 ## §6 Finding C — no glued evaluation, because there is nothing to glue
 
@@ -277,7 +277,7 @@ smalltt's README spends its longest section on **glued evaluation**: a top-level
 values, one where the definition stays folded and one where it is unfolded, so conversion can try the folded one first
 and unification can produce solutions that mention `Nat` rather than the 400-node normal form of `Nat`.
 
-musa-core has no top-level definition scope at all. `Spine::Const` covers families, constructors and recursors — all
+musa-calculus has no top-level definition scope at all. `Spine::Const` covers families, constructors and recursors — all
 rigid — and everything else is either a context assumption or a `let`, and `let` is δ-transparent through
 `Scope::define`. There is nothing that _could_ be held folded, so there is nothing glued evaluation would buy today. The
 implementation is not wrong for its current inputs.
@@ -449,7 +449,7 @@ This normalizes both sides completely and compares normal forms — the most exp
 _second_ implementation of a question `Unifier` already answers value-directed with early exit. The repo's own
 second-path audits (prompt 133's, and prompt 148's to come) forbid exactly this shape.
 
-It is latent: a search finds no caller outside musa-core's own law suites, and stating the laws through the naive
+It is latent: a search finds no caller outside musa-calculus's own law suites, and stating the laws through the naive
 procedure is arguably the _right_ thing for a specification test — it is the definition, checked against the
 implementation. The trap is the first external caller, which prompt 142 will supply.
 
@@ -462,7 +462,7 @@ before 142 hands it a caller.
 
 **Backed, with a cost worth recording.**
 
-[`value.rs`](../../../../crates/musa-core/src/value.rs)'s header argues it: quotation is type-directed because it
+[`value.rs`](../../../../crates/musa-calculus/src/value.rs)'s header argues it: quotation is type-directed because it
 performs η at Π and at records, so quoting a blocked application's argument needs that argument's type, so a neutral
 must be able to say its type. Without it `f g` and `f (λx. g x)` quote differently and conversion answers `false` for
 two terms §3 calls equal. That argument is sound and the alternative — type-directed _conversion_ without quoting, as
@@ -497,7 +497,7 @@ Worth stating, because a thorough audit that finds only problems is not thorough
   generalization boundary), ch. 6's laziness transformations (no laziness), and ch. 10–24's runtime machinery (musa has
   no graph reduction) are all absent for reasons that survive.
 - **The `Value`-never-leaves boundary is the right one** and is held. smalltt does not have this constraint, and
-  musa-core keeping it while still following Coquand's algorithm is the audit's clearest success.
+  musa-calculus keeping it while still following Coquand's algorithm is the audit's clearest success.
 
 ## The one thing that would change the verdict
 

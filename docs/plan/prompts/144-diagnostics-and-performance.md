@@ -43,19 +43,19 @@ says what the implementation owes instead. This prompt discharges it.
   a cost-table version bump — which is the constraint every option below is scored against.
 - `crates/musa-compiler/src/core.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
   discharge of that obligation: a scoped thread of `NESTING × FRAME_CEILING`, derived rather than picked, with the wasm
-  fallback beside it. `musa-core` has no equivalent, and the shape of the answer is probably this one moved.
-- `crates/musa-core/src/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above `eval.rs`'s
-  `fn pi` — the ~2 KiB per level that note records, and, more to the point, **what it is a measurement of**: `eval`
-  recursing into itself. The chain a real program drives is `infer → check → eval → apply → infer`, and it costs five
-  times that.
+  fallback beside it. `musa-calculus` has no equivalent, and the shape of the answer is probably this one moved.
+- `crates/musa-calculus/src/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above
+  `eval.rs`'s `fn pi` — the ~2 KiB per level that note records, and, more to the point, **what it is a measurement of**:
+  `eval` recursing into itself. The chain a real program drives is `infer → check → eval → apply → infer`, and it costs
+  five times that.
 - `crates/musa-compiler/src/expand.rs`'s `nested_region` helper and the two laws beside it,
   `a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal` and
   `a_region_nested_deeper_than_anyone_writes_still_expands` — the second's doc comment records a measurement taken
   during 142 and explicitly declines to decide the number, because the number is this prompt's. Read it against
   `Budget::NESTING`'s own doc claim, "past anything a person writes and short of anything a host cannot hold", which was
   written about an evaluator that no longer exists.
-- `crates/musa-core/src/elab.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged nothing for
-  nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
+- `crates/musa-calculus/src/elab.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged nothing
+  for nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
 - `crates/musa-compiler/src/lower/notation.rs`'s `notated`, at the line that writes
   `built = applied(origin, follow, [built, next])` — the voice fold's left-nested `follow` spine. One statement, one
   level of function position, one frame of elaboration; the depth of a voice's term is the number of notes in it.
@@ -72,7 +72,7 @@ says what the implementation owes instead. This prompt discharges it.
 - `~/Code/smalltt`'s README on glued evaluation, approximate conversion, the three quotation modes, and approximate
   occurs checking — the techniques the items below are, stated by the implementation this core was audited against.
 - Peyton Jones ch. 5 §5.4.1 and ch. 6's let-bound right-hand side, for Finding A, plus
-  [`crates/musa-core/src/case.rs`](../../../crates/musa-core/src/case.rs) and the law
+  [`crates/musa-calculus/src/case.rs`](../../../crates/musa-calculus/src/case.rs) and the law
   `a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` in `coverage_laws.rs`, which is the program that falsified
   the hoisting condition 136b was going to ship.
 - Peyton Jones ch. 12 §12.4 — the update of a shared redex's root with its result is what makes shared work happen once,
@@ -117,7 +117,7 @@ change that does not move the number is reverted rather than kept because it see
 
 **The nesting budget does not bound the stack, and the room obligation is unhonoured on the new path.** §4.1 says a
 limit is only a refusal if the machine survives long enough to print it. It does not. Elaborating `examples/*.musa`
-through `musa-core` on `cargo nextest`'s 2 MiB test thread aborts with `has overflowed its stack`; under
+through `musa-calculus` on `cargo nextest`'s 2 MiB test thread aborts with `has overflowed its stack`; under
 `RUST_MIN_STACK=268435456` the same run completes and reports `nested evaluation levels at 257 of 256` and
 `reduction steps at 200001 of 200000`, so the budgets do fire — long after the process would already be dead. Three
 things are wrong and they are not the same thing, which is why the obvious single fix is the wrong one.
@@ -147,17 +147,18 @@ climbing at 188 because the step budget fires there; the stack it already spent 
 real corpus is past the cliff already: `examples/in-c.musa` reaches 3,505 KiB with `elab::check` 388 deep.
 
 _Third, nothing arranges the room._ `musa-compiler` honours §4.1 for the *old* evaluator and only there: `core.rs`'s
-`with_room` runs a transformer on a scoped thread of `NESTING × FRAME_CEILING`. Every `musa-core` entry point — `check`,
-`infer`, `normalize`, `convertible`, `declare` — runs on whatever stack the caller happened to have.
+`with_room` runs a transformer on a scoped thread of `NESTING × FRAME_CEILING`. Every `musa-calculus` entry point —
+`check`, `infer`, `normalize`, `convertible`, `declare` — runs on whatever stack the caller happened to have.
 
 > **Step 1 landed early, out of stack order.** Prompt 141s found the same defect from the other end — elaborating a
 > hand-built `Nat` tower of 220 aborted at about 215 levels while `Budget::NESTING` promised a refusal at 256 — and the
 > room was arranged then rather than left waiting for this prompt, because §4 does not admit an abort and the fix
-> touches no acceptance. `crates/musa-core/src/room.rs` is `with_room` at the `musa-core` seam, over `check`, `infer`,
-> `normalize`, `normalize_type`, `convertible`, `convertible_types`, `declare`, `declare_program`, `declare_trait`,
-> `declare_impl`, `well_typed`, and `Cx::assume`/`define`, with `FRAME_CEILING` at 32 KiB against a measured 10 KiB a
-> level for the `infer → check → eval → quote` chain in a debug build on arm64 and under 3 KiB in a release one. The law
-> is `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused`, stated on a 2 MiB thread.
+> touches no acceptance. `crates/musa-calculus/src/room.rs` is `with_room` at the `musa-calculus` seam, over `check`,
+> `infer`, `normalize`, `normalize_type`, `convertible`, `convertible_types`, `declare`, `declare_program`,
+> `declare_trait`, `declare_impl`, `well_typed`, and `Cx::assume`/`define`, with `FRAME_CEILING` at 32 KiB against a
+> measured 10 KiB a level for the `infer → check → eval → quote` chain in a debug build on arm64 and under 3 KiB in a
+> release one. The law is `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused`, stated on a 2 MiB
+> thread.
 >
 > **What that leaves this prompt** is steps 2 and 3 below, undiminished, and one measurement it should not have to
 > rediscover: the room bounds the stack only where the charge tracks the descent. The elaborator reaches the bottom of a
@@ -185,12 +186,12 @@ would refuse a 128-note voice, turning a crash into a rejection of ordinary musi
 today is a cost-table version bump and a bad one. So:
 
 1. **Arrange the room first**, because it is owed already, it is cheap, and it is the only half that turns an abort into
-   a diagnostic without touching acceptance. Move `with_room`'s shape to the `musa-core` seam and give `musa-core` a
-   measured `FRAME_CEILING` of its own — measured on the `infer → check → eval` chain that real programs drive, not on
-   `eval` recursing into itself, which is what the existing ~2 KiB note measured and why it reads five times too low.
-   Every host gets it, including the desktop session thread, which today asks for none. **Done at prompt 141s** — see
-   the note above; what is left here is to confirm the ceiling still holds once (2) has changed what a level costs, and
-   to decide whether the session thread wants room of its own now that the seam has some.
+   a diagnostic without touching acceptance. Move `with_room`'s shape to the `musa-calculus` seam and give
+   `musa-calculus` a measured `FRAME_CEILING` of its own — measured on the `infer → check → eval` chain that real
+   programs drive, not on `eval` recursing into itself, which is what the existing ~2 KiB note measured and why it reads
+   five times too low. Every host gets it, including the desktop session thread, which today asks for none. **Done at
+   prompt 141s** — see the note above; what is left here is to confirm the ceiling still holds once (2) has changed what
+   a level costs, and to decide whether the session thread wants room of its own now that the seam has some.
 2. **Then take the depth out of the spine**, so that the room needed stops being a function of how long a voice is.
    Either the fold builds a shape whose elaboration is not `N` deep, or the elaborator walks an application spine
    iteratively with an explicit work stack. Both are behaviour-preserving; measure both against P1/P2 before choosing,
@@ -220,8 +221,8 @@ today is a cost-table version bump and a bad one. So:
    frames a level in the NbE descent is free by §4.1's own sentence — shrinking the frame ceiling changes nothing
    normative — so it is the one to try first, and it is the same work as (2) pointed at the recursor instead of at the
    voice spine. Raising `NESTING` is a cost-table version bump and is not free in a second way either: both seams size
-   their stack as `NESTING × FRAME_CEILING`, `musa-core`'s `room.rs` at 8 MiB today and `core.rs`'s `with_room` for the
-   expansion phase, so the room every host allocates scales with the limit. Whichever way it goes,
+   their stack as `NESTING × FRAME_CEILING`, `musa-calculus`'s `room.rs` at 8 MiB today and `core.rs`'s `with_room` for
+   the expansion phase, so the room every host allocates scales with the limit. Whichever way it goes,
    `a_region_nested_deeper_than_anyone_writes_still_expands` ends this prompt carrying a depth the measurement supports
    and a comment that states the measurement, and `Budget::NESTING`'s doc claim ends it re-earned or corrected.
 
@@ -229,10 +230,10 @@ A stack that is merely *larger* is step 1 and is not steps 2 and 3. `RUST_MIN_ST
 config, or CI is not any of them: it hides the defect from the suite while leaving every host that is not the suite
 exactly as it was.
 
-**The four items prompt 136b left here, and what each one waits on.** Note 44 audited `musa-core` against smalltt and
-Peyton Jones and found seven divergences. 136b removed the ad hoc ones; these are the ones it could not, and the reason
-is the same for all four: none of them can be _priced_ until prompt 142 points the standard library at this checker, and
-each of them waits on a top-level definition scope held folded.
+**The four items prompt 136b left here, and what each one waits on.** Note 44 audited `musa-calculus` against smalltt
+and Peyton Jones and found seven divergences. 136b removed the ad hoc ones; these are the ones it could not, and the
+reason is the same for all four: none of them can be _priced_ until prompt 142 points the standard library at this
+checker, and each of them waits on a top-level definition scope held folded.
 
 *Repaired before the prompt opens: two obligations it already owned were named nowhere in it.* The first is the decision
 141u's measurement left standing. Note 44 §6's closing records the mechanism — glued evaluation without graph update is
@@ -316,10 +317,10 @@ and never a quietly raised threshold.
   measured `std::tonal` fix or an argued cost-table version bump, with the measurement recorded in
   `docs/rules/language/06-performance.md` either way.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
-- The room obligation discharged at the `musa-core` seam, with a `FRAME_CEILING` constant in `musa-core` carrying the
-  measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command that produced
-  the number in the doc comment beside it, as `core_budget.rs`'s already does. **Delivered at prompt 141s**; what
-  remains is re-measuring the ceiling after the spine walk below changes what a level costs.
+- The room obligation discharged at the `musa-calculus` seam, with a `FRAME_CEILING` constant in `musa-calculus`
+  carrying the measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command
+  that produced the number in the doc comment beside it, as `core_budget.rs`'s already does. **Delivered at prompt
+  141s**; what remains is re-measuring the ceiling after the spine walk below changes what a level costs.
 - The elaborator's recursion charged for nesting, and the spine walk that lets 256 stay 256. If either forces a
   cost-table version bump, the bump lands in `02-core-calculus.md` §4 with its reason, and `06-performance.md` records
   what the change cost.
@@ -331,8 +332,8 @@ and never a quietly raised threshold.
   size the new limit implies.
 - A law that a voice long enough to reach the nesting limit is **refused and not fatal**, run on a thread no larger than
   the desktop session thread, so the guarantee is stated at the size the smallest host actually has. The law
-  `a_term_nested_past_the_limit_is_refused` in `musa-core`'s `budget_laws.rs` is the one to extend: it descends through
-  `eval` alone today, which is exactly the measurement that read five times too low.
+  `a_term_nested_past_the_limit_is_refused` in `musa-calculus`'s `budget_laws.rs` is the one to extend: it descends
+  through `eval` alone today, which is exactly the measurement that read five times too low.
 - `apps/musa-desktop/src-tauri/src/session.rs`'s `spawn` giving its thread the room §4.1 requires, or an argued note
   saying why the seam alone is enough.
 - `docs/plan/code-map/` rows.

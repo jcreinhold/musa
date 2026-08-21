@@ -1,6 +1,6 @@
 //! Marking lowering: `marked` and `mark_argument` turn marks and articulations into payloads.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 use num_rational::Ratio;

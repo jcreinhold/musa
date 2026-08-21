@@ -44,9 +44,9 @@ of instantiation. That evidence is this prompt's Design.
   the arithmetic below is right.
 - [`141f`](141f-phase-traversals.md), whose `UNREGISTERED` table and accounting law this prompt adds a term to rather
   than editing around.
-- `musa-core`'s `Registry::check_finite_data` and `Elaborator::definition`, which are the two facts the pattern side's
-  shape is derived from: a δ signature admits a base type at a *literal* index and refuses one at a variable, and an
-  unannotated `let` infers its value where a `match` has no inference rule. Both are cited in the Design rather than
+- `musa-calculus`'s `Registry::check_finite_data` and `Elaborator::definition`, which are the two facts the pattern
+  side's shape is derived from: a δ signature admits a base type at a *literal* index and refuses one at a variable, and
+  an unannotated `let` infers its value where a `match` has no inference rule. Both are cited in the Design rather than
   worked around; between them they decide that the pattern form is a `Bool` and three reads rather than one `Option` of
   a list of lists.
 - `crates/musa-compiler/src/lower/values.rs`'s `match_on` and `equality_chain`, which already lower a match against
@@ -153,8 +153,8 @@ check and not a restatement.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

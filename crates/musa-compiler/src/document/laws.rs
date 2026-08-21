@@ -2,7 +2,7 @@
 //!
 //! Beside the driver rather than in `tests/suite/`, for [`crate::lower::laws`]'s
 //! reason: the context is [`crate::registry::owned`] and the answer is a
-//! [`musa_core::Term`], and both are private to this crate.
+//! [`musa_calculus::Term`], and both are private to this crate.
 //!
 //! # The survey
 //!
@@ -182,13 +182,13 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
-        musa_core::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+        musa_calculus::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
     };
-    let case = |name: &str, fields: Vec<musa_core::Datum>| musa_core::Datum::Case {
+    let case = |name: &str, fields: Vec<musa_calculus::Datum>| musa_calculus::Datum::Case {
         constructor: std::sync::Arc::from(name),
         fields,
     };
-    let whole = |count| musa_core::Datum::Count {
+    let whole = |count| musa_calculus::Datum::Count {
         family: std::sync::Arc::from("Nat"),
         count,
     };
@@ -261,17 +261,17 @@ fn a_prelude_container_folds_and_earns_its_derived_methods() {
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
-        musa_core::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+        musa_calculus::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
     };
-    let whole = |count| musa_core::Datum::Count {
+    let whole = |count| musa_calculus::Datum::Count {
         family: std::sync::Arc::from("Nat"),
         count,
     };
-    let case = |name: &str, fields: Vec<musa_core::Datum>| musa_core::Datum::Case {
+    let case = |name: &str, fields: Vec<musa_calculus::Datum>| musa_calculus::Datum::Case {
         constructor: std::sync::Arc::from(name),
         fields,
     };
-    let listed = |items: Vec<musa_core::Datum>| {
+    let listed = |items: Vec<musa_calculus::Datum>| {
         items
             .into_iter()
             .rev()
@@ -307,7 +307,7 @@ fn a_prelude_container_folds_and_earns_its_derived_methods() {
 
 /// The two questions a [`Document`] answers are one interface, not two.
 ///
-/// [`Document::value`] hands back an [`musa_core::ElabError`] and nothing else
+/// [`Document::value`] hands back an [`musa_calculus::ElabError`] and nothing else
 /// about place, so the only way a caller turns one into a diagnostic is through
 /// the site table the same document holds — which is the arrangement
 /// `02-core-calculus.md` §7 asks for, with the core a leaf that never learns

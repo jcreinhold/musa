@@ -10,10 +10,10 @@ phase: 3
 
 ## Task
 
-Create `crates/musa-core`: the core term language of `docs/rules/language/02-core-calculus.md` — universes, Π, dependent
-records, an identity type — with contexts, evaluation, quotation, and conversion by normalization-by-evaluation, behind
-a facade that exposes neither semantic values nor the evaluator. No surface, no musical types, no elaboration. The old
-checker keeps working; nothing calls this crate yet except its own tests.
+Create `crates/musa-calculus`: the core term language of `docs/rules/language/02-core-calculus.md` — universes, Π,
+dependent records, an identity type — with contexts, evaluation, quotation, and conversion by
+normalization-by-evaluation, behind a facade that exposes neither semantic values nor the evaluator. No surface, no
+musical types, no elaboration. The old checker keeps working; nothing calls this crate yet except its own tests.
 
 ## Read
 
@@ -40,7 +40,7 @@ caller asks whether two terms are the same, and the crate answers without teachi
 
 The obvious objection is that prompt 134's elaborator wants to check against a *value* type rather than re-normalizing
 at every step, and exposing `Value` would let it. The answer is that the elaborator then belongs in this crate, not that
-`Value` belongs in the facade: 134 adds check/infer *inside* `musa-core` over a surface-independent raw term, and
+`Value` belongs in the facade: 134 adds check/infer *inside* `musa-calculus` over a surface-independent raw term, and
 `musa-compiler` keeps only the translation from Musa syntax to that raw term. Exposing `Value` now would be a public
 item with no caller in this prompt and a caller in the next one who is on the wrong side of the boundary. Write that
 argument into the crate's module documentation, because the pressure to leak it will come back.
@@ -64,19 +64,19 @@ three-outcome law: `normalize` and `convertible` return an exhaustion outcome th
 answer. A `bool` return for `convertible` therefore is not enough; the signature above is the sketch, and the real one
 carries the third case. Say so in the doc comment rather than discovering it when the first deep term arrives.
 
-**Laws, as tests, in `crates/musa-core/tests/suite/`.** Conversion is reflexive, symmetric, and transitive; conversion
-agrees with normalization (`convertible(a, b)` exactly when `normalize(a) == normalize(b)`); normalization is stable
-(`normalize(normalize(t)) == normalize(t)`); evaluation is deterministic; α-equivalent inputs have identical terms; β, η
-at Π and at records, δ, and ι each hold as stated equations; and exhaustion never turns into a wrong answer. Each law
-names the §5 obligation it partially discharges and says what prompt 148 still owes.
+**Laws, as tests, in `crates/musa-calculus/tests/suite/`.** Conversion is reflexive, symmetric, and transitive;
+conversion agrees with normalization (`convertible(a, b)` exactly when `normalize(a) == normalize(b)`); normalization is
+stable (`normalize(normalize(t)) == normalize(t)`); evaluation is deterministic; α-equivalent inputs have identical
+terms; β, η at Π and at records, δ, and ι each hold as stated equations; and exhaustion never turns into a wrong answer.
+Each law names the §5 obligation it partially discharges and says what prompt 148 still owes.
 
 ## Target
 
-- `crates/musa-core` in the workspace, with the facade above, `Value` and the evaluator private, and a module doc
+- `crates/musa-calculus` in the workspace, with the facade above, `Value` and the evaluator private, and a module doc
   comment that states the invariants before the implementation does.
-- `crates/musa-core/tests/suite/{main.rs, conversion_laws.rs, normalization_laws.rs, budget_laws.rs}` — one test binary,
-  one module per file, per root `AGENTS.md`.
-- `docs/plan/code-map/`: `musa-core`'s row, marked for what is implemented here and what is absent.
+- `crates/musa-calculus/tests/suite/{main.rs, conversion_laws.rs, normalization_laws.rs, budget_laws.rs}` — one test
+  binary, one module per file, per root `AGENTS.md`.
+- `docs/plan/code-map/`: `musa-calculus`'s row, marked for what is implemented here and what is absent.
 - No change to `musa-compiler`, `musa-language`, or any shell. The crate is a leaf with no callers yet, and it stays
   that way until prompt 142.
 
@@ -84,8 +84,8 @@ names the §5 obligation it partially discharges and says what prompt 148 still 
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo nextest run -p musa-calculus
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo deny check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

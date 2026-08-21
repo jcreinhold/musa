@@ -10,11 +10,11 @@ phase: 3
 
 ## Task
 
-`musa-core` cannot express a single real Musa program: there is no way to write `3`, `"c"`, or `1/4`, and no way to name
-`Nat`, `Text`, `Duration`, `Pitch`, `EventTrack`, `Machine`, or `Syntax`. `02-core-calculus.md` §5.8 already obliges
-base types with no eliminator and four families of compiler-owned builtin over them; nothing implements that obligation.
-Implement it: base types, literals, and a builtin registry the **host supplies and the core enforces**, so that prompt
-142 has something to wire the compiler to.
+`musa-calculus` cannot express a single real Musa program: there is no way to write `3`, `"c"`, or `1/4`, and no way to
+name `Nat`, `Text`, `Duration`, `Pitch`, `EventTrack`, `Machine`, or `Syntax`. `02-core-calculus.md` §5.8 already
+obliges base types with no eliminator and four families of compiler-owned builtin over them; nothing implements that
+obligation. Implement it: base types, literals, and a builtin registry the **host supplies and the core enforces**, so
+that prompt 142 has something to wire the compiler to.
 
 ## Read
 
@@ -27,11 +27,11 @@ Implement it: base types, literals, and a builtin registry the **host supplies a
 - [`127ca`](127ca-builtin-ownership-registry.md), which named the registry and merged the compiler's two ownership
   tables into `BUILTIN_OWNERSHIP`, and `crates/musa-compiler/src/core.rs`'s `BuiltinOwnership`, `Family`, `Builtin`, and
   its ownership law suite. That table is what prompt 142 hands to the core; this prompt does not move it.
-- `crates/musa-core/src/{term.rs, raw.rs, value.rs, eval.rs, unify.rs, quote.rs, case.rs, context.rs, elab.rs,
+- `crates/musa-calculus/src/{term.rs, raw.rs, value.rs, eval.rs, unify.rs, quote.rs, case.rs, context.rs, elab.rs,
   recheck.rs, storable.rs}` — the eleven files the extension touches, and in particular prompt 136b's
   `Neutral { head, spine }`, which is where a builtin stuck on a non-literal argument belongs.
-- The `module-design` skill's audit questions, on one boundary specifically: what `musa-core` must know about a pitch.
-  The answer this prompt commits to is *nothing*, and the interface is what makes that true or false.
+- The `module-design` skill's audit questions, on one boundary specifically: what `musa-calculus` must know about a
+  pitch. The answer this prompt commits to is *nothing*, and the interface is what makes that true or false.
 - Peyton Jones ch. 3 §3.1 and ch. 6 — a core is enriched with constants and their δ-rules rather than made to enumerate
   them; the built-in functions are a parameter of the reduction machine, not part of its syntax.
 - Peyton Jones ch. 4 §4.1 and ch. 5 §5.1 on what a pattern *is*: a constructor pattern is the elimination form of an
@@ -47,7 +47,7 @@ claims to be the whole language. Repair §1 with one line admitting the extensio
 repair of a claim the implementation proved incomplete, which is the kind `docs/rules/language/` is candidate for, and
 it changes no obligation.
 
-**The core owns the mechanism; the host owns the table.** `musa-core` is a leaf and must not learn what a pitch is.
+**The core owns the mechanism; the host owns the table.** `musa-calculus` is a leaf and must not learn what a pitch is.
 §5.8's corollary is explicit that a later musical domain needs no new proof — only a base type, arrow-free signatures,
 and a D1–D4 discharge — and a core that enumerated the base types would make every domain a core amendment and falsify
 the corollary. So the registry is caller-supplied and immutable, carried on `Cx` beside `classes` and `declared`, which
@@ -109,7 +109,7 @@ patterns exactly this way, for exactly this reason. So the desugaring belongs to
 `Bool`. A `RawPattern::Lit` in the core would be a third party to a conversation between two things the core does not
 know, and it would have to learn `Bool` to compile it.
 
-`musa-core` therefore has **no literal pattern**, and `case.rs` keeps the half of D1 it can enforce: a
+`musa-calculus` therefore has **no literal pattern**, and `case.rs` keeps the half of D1 it can enforce: a
 `RawPattern::Constructor` or `RawPattern::Record` at a base-typed column is `Refusal::BaseNotMatchable`, naming the base
 type. Coverage needs no rule at all — the only pattern the core admits there is `RawPattern::Bind`, which is the
 catch-all D1 requires, and a column of catch-alls is never tested. Prompt 142 owns the desugaring, and this Design is
@@ -124,8 +124,8 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Base`, `Literal`, the `Payload` trait, `Builtin`, `Family`, and `Registry` with its
-  registration checks, all doc-commented with their invariants before the implementation.
+- `crates/musa-calculus/src/base.rs`: `Base`, `Literal`, the `Payload` trait, `Builtin`, `Family`, and `Registry` with
+  its registration checks, all doc-commented with their invariants before the implementation.
 - `Shape::Base`/`Shape::Lit`/`Shape::Builtin`, `RawShape::Lit`, `Form::Lit`, and `Head::Base`/`Head::Builtin`, with
   their arms in `eval.rs` (δ and stuck-is-neutral), `unify.rs` (base identity and literal identity), `quote.rs`,
   `recheck.rs`, and `storable.rs`.
@@ -138,11 +138,11 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
   δ-rule that answers nothing at arguments it declared it accepts is **not** among them: it is a host defect rather than
   a program error, so it belongs to `error.rs`'s `Malformed`, which is the crate's existing word for a caller that
   handed over something that does not fit.
-- `crates/musa-core/tests/suite/base_laws.rs`: the worked registry, and the laws — inertness (no reduction inspects a
-  literal, and no destructuring pattern stands at a base type), literal conversion, δ agreement with the host function
+- `crates/musa-calculus/tests/suite/base_laws.rs`: the worked registry, and the laws — inertness (no reduction inspects
+  a literal, and no destructuring pattern stands at a base type), literal conversion, δ agreement with the host function
   over a finite sample, stuck-is-neutral, budget charging, and the registration refusals.
 - `docs/rules/language/02-core-calculus.md` §1: the one-line repair admitting §5.8's extension.
-- `docs/plan/code-map/` rows for `musa-core`, replacing "a leaf calculus with no base types".
+- `docs/plan/code-map/` rows for `musa-calculus`, replacing "a leaf calculus with no base types".
 - No change to `musa-compiler`'s checker, no `stdlib/` or `examples/` change, and the compiler's `BUILTIN_OWNERSHIP`
   table left where it is. Prompt 142 hands it over; prompt 143 collapses it.
 
@@ -150,8 +150,8 @@ matched — so the mechanism is exercised without `musa-compiler` changing. 142 
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -162,8 +162,8 @@ Commit as `Give the core its base types and builtins`.
 
 ## Stop
 
-- No base type named after a musical domain inside `musa-core`. If the core mentions a pitch, a duration, or a `Syntax`,
-  the boundary this prompt exists to draw has already been crossed.
+- No base type named after a musical domain inside `musa-calculus`. If the core mentions a pitch, a duration, or a
+  `Syntax`, the boundary this prompt exists to draw has already been crossed.
 - No move of `BUILTIN_OWNERSHIP`, no change to the compiler's checker, and no wiring. Prompt 142 owns the cutover, and a
   half-wired compiler is exactly the ambiguous middle 142's Design forbids.
 - No collapse of any builtin behind a trait or a method. Prompt 143.

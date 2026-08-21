@@ -1,6 +1,6 @@
 //! The stack-room constants adapter expansion is run under.
 //!
-//! Typed elaboration and metering live in `musa-core` now (`musa_core::budget`
+//! Typed elaboration and metering live in `musa-calculus` now (`musa_calculus::budget`
 //! owns the language's acceptance limits); what remains here is the host-side
 //! arithmetic that gives one expansion a real stack: [`crate::core::with_room`]
 //! runs a transformer on a dedicated thread `NESTING * FRAME_CEILING` bytes

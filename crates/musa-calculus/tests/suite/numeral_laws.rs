@@ -13,7 +13,7 @@
 //! `Shape::Numeral` or a counting family's private shape, because what is being
 //! claimed is that `3` and `Succ (Succ (Succ Zero))` are the same *program*.
 
-use musa_core::{Budget, Cx, ElabError, Level, Raw, Refusal, Shape, Term};
+use musa_calculus::{Budget, Cx, ElabError, Level, Raw, Refusal, Shape, Term};
 
 use crate::family_laws::{apply, container_context, nat_context, var};
 use crate::programs::{WRITTEN, refusal};
@@ -34,7 +34,7 @@ fn tower(count: u64) -> Raw {
 ///
 /// If `Nat` is not a type, which would be a defect in this crate.
 fn nat(cx: &Cx) -> Term {
-    musa_core::infer(cx, &var("Nat")).expect("`Nat` is a type").0
+    musa_calculus::infer(cx, &var("Nat")).expect("`Nat` is a type").0
 }
 
 /// `n`'s predecessor, written as a `match`.
@@ -48,15 +48,15 @@ fn predecessor(subject: Raw) -> Raw {
         WRITTEN,
         [subject],
         vec![
-            musa_core::RawArm {
-                patterns: vec![musa_core::RawPattern::constructor(WRITTEN, "Nat.Zero", [])],
+            musa_calculus::RawArm {
+                patterns: vec![musa_calculus::RawPattern::constructor(WRITTEN, "Nat.Zero", [])],
                 body: var("Nat.Zero"),
             },
-            musa_core::RawArm {
-                patterns: vec![musa_core::RawPattern::constructor(
+            musa_calculus::RawArm {
+                patterns: vec![musa_calculus::RawPattern::constructor(
                     WRITTEN,
                     "Nat.Succ",
-                    [musa_core::RawPattern::bind(WRITTEN, "k")],
+                    [musa_calculus::RawPattern::bind(WRITTEN, "k")],
                 )],
                 body: var("k"),
             },
@@ -122,21 +122,22 @@ fn a_numeral_and_the_tower_it_stands_for_are_one_program() {
     let (cx, _) = nat_context();
     let nat = nat(&cx);
     for count in [0, 1, 2, 7, 63, 127] {
-        let counted = musa_core::check(&cx, &nat, &numeral(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
-        let built = musa_core::check(&cx, &nat, &tower(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
+        let counted =
+            musa_calculus::check(&cx, &nat, &numeral(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
+        let built = musa_calculus::check(&cx, &nat, &tower(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
         assert!(
-            musa_core::convertible(&cx, &nat, &counted, &built).unwrap_or_else(|error| panic!("{count}: {error}")),
+            musa_calculus::convertible(&cx, &nat, &counted, &built).unwrap_or_else(|error| panic!("{count}: {error}")),
             "the numeral {count} and the tower it stands for are not convertible"
         );
 
-        let from_count = musa_core::check(&cx, &nat, &predecessor(numeral(count)))
-            .and_then(|term| musa_core::normalize(&cx, &nat, &term).map_err(ElabError::from))
+        let from_count = musa_calculus::check(&cx, &nat, &predecessor(numeral(count)))
+            .and_then(|term| musa_calculus::normalize(&cx, &nat, &term).map_err(ElabError::from))
             .unwrap_or_else(|error| panic!("{count}: {error}"));
-        let from_tower = musa_core::check(&cx, &nat, &predecessor(tower(count)))
-            .and_then(|term| musa_core::normalize(&cx, &nat, &term).map_err(ElabError::from))
+        let from_tower = musa_calculus::check(&cx, &nat, &predecessor(tower(count)))
+            .and_then(|term| musa_calculus::normalize(&cx, &nat, &term).map_err(ElabError::from))
             .unwrap_or_else(|error| panic!("{count}: {error}"));
         assert!(
-            musa_core::convertible(&cx, &nat, &from_count, &from_tower)
+            musa_calculus::convertible(&cx, &nat, &from_count, &from_tower)
                 .unwrap_or_else(|error| panic!("{count}: {error}")),
             "matching on the numeral {count} and on its tower computed different answers"
         );
@@ -152,7 +153,7 @@ fn a_numeral_and_the_tower_it_stands_for_are_one_program() {
 ///
 /// It used to be here for a worse reason — at the full budget a tower deep
 /// enough to reach 256 aborted the process around 215 levels, so the narrow
-/// budget was dodging a crash rather than making a point. `musa-core`'s `room`
+/// budget was dodging a crash rather than making a point. `musa-calculus`'s `room`
 /// module discharges §4.1's second half now, and the tower law that used to
 /// share this context is stated at the language budget again.
 ///
@@ -161,7 +162,7 @@ fn a_numeral_and_the_tower_it_stands_for_are_one_program() {
 /// If `Nat` is not a declaration, which would be a defect in this crate.
 fn narrow_nat_context() -> Cx {
     let cx = Cx::with_budget(Budget::LANGUAGE.scaled(16));
-    let group = musa_core::declare(&cx, &crate::family_laws::nat()).expect("Nat is a declaration");
+    let group = musa_calculus::declare(&cx, &crate::family_laws::nat()).expect("Nat is a declaration");
     cx.declaring(&group)
 }
 
@@ -177,7 +178,7 @@ fn narrow_nat_context() -> Cx {
 /// the point: the *smaller* one is the one that cannot be written.
 ///
 /// Stated at [`Budget::LANGUAGE`] rather than at a narrowed share of it, which
-/// is what §4.1's room obligation buys. Before `musa-core`'s `room` module a
+/// is what §4.1's room obligation buys. Before `musa-calculus`'s `room` module a
 /// tower deep enough to reach the real limit of 256 aborted the process at
 /// about 215 levels, so this law could only be stated at a divided budget —
 /// about the language's limit, but not at it.
@@ -185,15 +186,15 @@ fn narrow_nat_context() -> Cx {
 fn a_tower_past_the_nesting_limit_exhausts_where_the_numeral_answers() {
     let (cx, _) = nat_context();
     let nat = nat(&cx);
-    let counted = musa_core::check(&cx, &nat, &numeral(5_000)).expect("a numeral is one node at any count");
-    musa_core::normalize(&cx, &nat, &counted).expect("and evaluating one is reading it");
+    let counted = musa_calculus::check(&cx, &nat, &numeral(5_000)).expect("a numeral is one node at any count");
+    musa_calculus::normalize(&cx, &nat, &counted).expect("and evaluating one is reading it");
 
     let past = Budget::NESTING.saturating_add(1);
-    match musa_core::check(&cx, &nat, &tower(past)) {
+    match musa_calculus::check(&cx, &nat, &tower(past)) {
         Err(ElabError::Exhausted(exhausted)) => {
             assert_eq!(
                 exhausted.metric,
-                musa_core::Metric::Nesting,
+                musa_calculus::Metric::Nesting,
                 "the tower ran out of depth"
             );
         }
@@ -217,8 +218,8 @@ fn a_numeral_costs_a_nesting_depth_its_count_never_reaches() {
     for count in [5_u64, 5_000] {
         let cx = narrow_nat_context();
         let nat = nat(&cx);
-        let term = musa_core::check(&cx, &nat, &numeral(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
-        musa_core::normalize(&cx, &nat, &term).unwrap_or_else(|error| panic!("{count}: {error}"));
+        let term = musa_calculus::check(&cx, &nat, &numeral(count)).unwrap_or_else(|error| panic!("{count}: {error}"));
+        musa_calculus::normalize(&cx, &nat, &term).unwrap_or_else(|error| panic!("{count}: {error}"));
     }
 }
 
@@ -228,7 +229,7 @@ fn a_numeral_costs_a_nesting_depth_its_count_never_reaches() {
 /// *aborted*, because building a fifty-thousand-node left spine overflows the
 /// host stack before any budget can speak, and §4 says a total language may
 /// refuse but may not crash. The claim has two halves because there are two
-/// places a tower could come back: the term, and the [`musa_core::Datum`] a
+/// places a tower could come back: the term, and the [`musa_calculus::Datum`] a
 /// δ-rule reads. A tower in either would cost a node per unit and recurse on
 /// drop.
 #[test]
@@ -236,15 +237,15 @@ fn a_numeral_of_fifty_thousand_neither_overflows_nor_deepens() {
     let (cx, _) = nat_context();
     let nat = nat(&cx);
     let count = 50_000;
-    let term = musa_core::check(&cx, &nat, &numeral(count)).expect("fifty thousand is one node");
-    let normal = musa_core::normalize(&cx, &nat, &term).expect("and evaluating it is reading it");
+    let term = musa_calculus::check(&cx, &nat, &numeral(count)).expect("fifty thousand is one node");
+    let normal = musa_calculus::normalize(&cx, &nat, &term).expect("and evaluating it is reading it");
     assert_eq!(depth(&term), 1, "the elaborated numeral is one node");
     assert_eq!(depth(&normal), 1, "and so is its normal form");
 
-    let datum = musa_core::canonical(&normal).expect("a closed numeral is canonical data");
+    let datum = musa_calculus::canonical(&normal).expect("a closed numeral is canonical data");
     assert_eq!(
         datum,
-        musa_core::Datum::Count {
+        musa_calculus::Datum::Count {
             family: std::sync::Arc::from("Nat"),
             count,
         },
@@ -290,7 +291,7 @@ pub(crate) fn refused_numerals() -> Vec<RefusedNumeral> {
 #[test]
 fn a_refused_numeral_says_which_condition_the_family_fails() {
     let cx = container_context();
-    let Err(error) = musa_core::infer(&cx, &Raw::numeral(WRITTEN, "Option", 3)) else {
+    let Err(error) = musa_calculus::infer(&cx, &Raw::numeral(WRITTEN, "Option", 3)) else {
         panic!("`Option` takes a parameter, so a number cannot be written at it");
     };
     let refusal = refusal("a number at a parameterized family", error);
@@ -326,18 +327,18 @@ fn any_family_of_the_counting_shape_takes_a_numeral() {
             ],
         )],
     );
-    let group = musa_core::declare(&cx, &declaration).expect("Depth is a declaration");
+    let group = musa_calculus::declare(&cx, &declaration).expect("Depth is a declaration");
     let cx = cx.declaring(&group);
-    let ty = musa_core::infer(&cx, &var("Depth")).expect("`Depth` is a type").0;
-    let counted = musa_core::check(&cx, &ty, &Raw::numeral(WRITTEN, "Depth", 4)).expect("four is a `Depth`");
-    let built = musa_core::check(
+    let ty = musa_calculus::infer(&cx, &var("Depth")).expect("`Depth` is a type").0;
+    let counted = musa_calculus::check(&cx, &ty, &Raw::numeral(WRITTEN, "Depth", 4)).expect("four is a `Depth`");
+    let built = musa_calculus::check(
         &cx,
         &ty,
         &(0..4).fold(var("Depth.Surface"), |built, _| apply(var("Depth.Deeper"), [built])),
     )
     .expect("and so is the tower");
     assert!(
-        musa_core::convertible(&cx, &ty, &counted, &built).expect("both are closed"),
+        musa_calculus::convertible(&cx, &ty, &counted, &built).expect("both are closed"),
         "a family of the counting shape did not count"
     );
 }
@@ -351,7 +352,7 @@ fn any_family_of_the_counting_shape_takes_a_numeral() {
 #[test]
 fn a_number_at_an_undeclared_name_is_an_unknown_name() {
     let (cx, _) = nat_context();
-    let Err(error) = musa_core::infer(&cx, &Raw::numeral(WRITTEN, "Nowhere", 3)) else {
+    let Err(error) = musa_calculus::infer(&cx, &Raw::numeral(WRITTEN, "Nowhere", 3)) else {
         panic!("`Nowhere` is not declared");
     };
     let refusal = refusal("a number at an undeclared name", error);
@@ -369,7 +370,7 @@ fn a_number_at_an_undeclared_name_is_an_unknown_name() {
 #[test]
 fn a_numeral_is_not_a_type() {
     let (cx, _) = nat_context();
-    let Err(error) = musa_core::check(&cx, &Term::universe(WRITTEN, Level::ZERO), &numeral(3)) else {
+    let Err(error) = musa_calculus::check(&cx, &Term::universe(WRITTEN, Level::ZERO), &numeral(3)) else {
         panic!("`3` is not a type");
     };
     let refusal = refusal("a number in type position", error);

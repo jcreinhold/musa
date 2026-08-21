@@ -167,8 +167,8 @@ ship.
     and chosen local join points as the answer; prompt 135 silently took the option those notes rejected. The proposed
     replacement is note 26's join point in a calculus without labels — one `let`-bound function per arm, applied at each
     leaf, well-typed because a variable pattern's binder *is* the abstraction that makes the body uniform. The other
-    four ad hoc findings are one decision seen four ways: musa-core has no top-level definition scope, so it cannot fold
-    anything, so none of smalltt's speed techniques — glued evaluation, approximate conversion, the three quotation
+    four ad hoc findings are one decision seen four ways: musa-calculus has no top-level definition scope, so it cannot
+    fold anything, so none of smalltt's speed techniques — glued evaluation, approximate conversion, the three quotation
     modes, approximate occurs checking — are available. Prompt 142 hands that core the standard library. Also: neutral
     spines are left-nested `Arc` chains with the head O(n) away, `rigid` has no structural arm for two lambdas or two
     records (which prompt 137's dictionaries make a hot path), and `convertible` is a second and maximally naive
@@ -192,9 +192,9 @@ ship.
     sides of the prompt's own test. The index *mechanism* stays, with `Syntax<Cat>` as its user and `Vec` as the fixture
     the family, coverage, and termination laws are stated over; a program that computes an arity re-opens the type as an
     ordinary prompt. The note also records why the collection library is a fixture in `collection_laws.rs` rather than
-    crate items — `musa-core` is a leaf calculus whose only pre-declared thing is `Storable` — and three defects writing
-    it found: an accumulating recursion was silently miscompiled, because the hypothesis a split binds stood at the
-    branch's own accumulator and the call's new one was dropped; the re-checker had no rule for a `let` in checking
+    crate items — `musa-calculus` is a leaf calculus whose only pre-declared thing is `Storable` — and three defects
+    writing it found: an accumulating recursion was silently miscompiled, because the hypothesis a split binds stood at
+    the branch's own accumulator and the call's new one was dropped; the re-checker had no rule for a `let` in checking
     position; and a `match` whose goal was still a metavariable was an internal error rather than a program.
 
 48. [47-diagnostics-about-another-document.md](47-diagnostics-about-another-document.md) records what prompt 141a's

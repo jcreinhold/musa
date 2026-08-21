@@ -19,14 +19,14 @@ unregistered. Eight of them are the **track** builtins — `transpose`, `stretch
 
 Do the reshaping for the track, and register the eight. **The nine machine builtins moved to prompt 141ha**, on the
 evidence in *What this prompt found* below: a machine is a constructor with type indices, which is a third reduction
-shape `musa-core` does not have, and it needs a unit and a product type nothing has declared. After this prompt and
+shape `musa-calculus` does not have, and it needs a unit and a product type nothing has declared. After this prompt and
 141ha the only rows left out of the core's registry are the eight collection eliminators, which become library code, and
 the one phase projection, which is defined.
 
 ## What this prompt found
 
 The four findings below are why this file was repaired before any code was written. Each is a fact about the core as
-prompts 141b–141ga left it, checked against `crates/musa-core/src/eval.rs` and `base.rs` rather than inferred.
+prompts 141b–141ga left it, checked against `crates/musa-calculus/src/eval.rs` and `base.rs` rather than inferred.
 
 **A δ-rule never sees a function, and never sees a type.** `eval.rs`'s `canonical` answers `None` at `Form::Lam` and at
 `Form::Universe`, and `delta` fires only when *every* argument on the spine is canonical data. So a builtin whose
@@ -63,11 +63,11 @@ under (`11-quotation.md` §3): the one number the rule cannot compute is the one
 
 ## Read
 
-- `crates/musa-core/src/eval.rs`'s `delta`, `canonical`, and `constructed`, and `base.rs`'s `Reduction`, `Builtin::new`,
-  and `Builtin::structural_with`. These are the two reduction shapes a builtin may have, and reading them is what
-  produced the first finding above. `structural_with`'s doc argues `Family::Eliminator` "by construction rather than by
-  parameter", on the grounds that "§5.8's other three families all compute a value from values" — `map_note_pitches` is
-  the counterexample, and repairing that claim is part of this prompt.
+- `crates/musa-calculus/src/eval.rs`'s `delta`, `canonical`, and `constructed`, and `base.rs`'s `Reduction`,
+  `Builtin::new`, and `Builtin::structural_with`. These are the two reduction shapes a builtin may have, and reading
+  them is what produced the first finding above. `structural_with`'s doc argues `Family::Eliminator` "by construction
+  rather than by parameter", on the grounds that "§5.8's other three families all compute a value from values" —
+  `map_note_pitches` is the counterexample, and repairing that claim is part of this prompt.
 - `crates/musa-compiler/src/registry/rules.rs`'s `UNREGISTERED` and `BEYOND`, and the accounting law in
   `registry/laws.rs` that counts each group again off the tables themselves. That law is what tells you this prompt is
   finished. `BEYOND` is also the precedent for a registered operation in neither ownership table, which this prompt uses
@@ -125,11 +125,11 @@ answering a track. Uniformity is not a reason to give a total operation an error
 rule 5), and the composition cost — a `Result` where the old spelling had a track — is 142's to spend on the surface,
 not this prompt's to hide.
 
-**`map_note_pitches` is a track builtin with a structural reduction, and that is one repair to `musa-core`.** Its mapper
-is a function, so no δ-rule can fire at it. `Builtin::structural_with` is the mechanism that fires on a literal and
-answers a term, and it hard-codes `Family::Eliminator` on an argument this prompt's evidence falsifies. Take the family
-as a parameter — the family says which of §5.8's four admissibility arguments covers the operation, the reduction says
-how it computes, and `map_note_pitches` is the case that proves they are two questions. Its rewrite reads the track
+**`map_note_pitches` is a track builtin with a structural reduction, and that is one repair to `musa-calculus`.** Its
+mapper is a function, so no δ-rule can fire at it. `Builtin::structural_with` is the mechanism that fires on a literal
+and answers a term, and it hard-codes `Family::Eliminator` on an argument this prompt's evidence falsifies. Take the
+family as a parameter — the family says which of §5.8's four admissibility arguments covers the operation, the reduction
+says how it computes, and `map_note_pitches` is the case that proves they are two questions. Its rewrite reads the track
 literal, applies the mapper to each written pitch it holds, and hands the answers back through one registered operation
 in neither ownership table:
 
@@ -149,15 +149,15 @@ this prompt adds is a second, *unused* spelling of the same values in the core's
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Builtin::structural_with` takes the family rather than fixing it, with its doc
+- `crates/musa-calculus/src/base.rs`: `Builtin::structural_with` takes the family rather than fixing it, with its doc
   repaired to say why the family and the reduction are two questions, and `Builtin::structural` unchanged at
   `Family::Eliminator` since a traversal is one. `traversal.rs`'s two registrations pass the family they already had.
 - `crates/musa-compiler/src/registry.rs`: `EventTrack` registered at `Coordinate → Type 0` and `Origin` registered
   plain, both doc-commented with the §5.8 inertness test that decided base-type-over-family, and an `origin_literal`
   beside `coordinate_literal` for the one caller that writes one.
-- The eight track builtins registered as `musa_core::Family::Track`, seven with δ-rules and `map_note_pitches` with a
-  structural one, in a `registry/track.rs` beside `traversal.rs`. `set_note_pitches` registered beside them and named in
-  a `TRACK_BEYOND` counted the way `BEYOND` is.
+- The eight track builtins registered as `musa_calculus::Family::Track`, seven with δ-rules and `map_note_pitches` with
+  a structural one, in a `registry/track.rs` beside `traversal.rs`. `set_note_pitches` registered beside them and named
+  in a `TRACK_BEYOND` counted the way `BEYOND` is.
 - `crates/musa-compiler/src/registry/rules.rs`: `REGISTERED` and `UNREGISTERED` updated, leaving
   `("structural eliminators", 8)`, `("machine builtins", 9)`, and `("phase projections", 1)`, with the doc saying what
   each remaining group is waiting for and which prompt owns it.
@@ -174,8 +174,8 @@ this prompt adds is a second, *unused* spelling of the same values in the core's
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

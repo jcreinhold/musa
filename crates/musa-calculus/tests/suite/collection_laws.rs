@@ -4,7 +4,7 @@
 //!
 //! `List`, `Option`, `Buildable`, `Iterable`, and `Index` are declared *here*
 //! rather than shipped as items of this crate, and that is
-//! [`musa_core`](musa_core)'s own boundary rather than a convenience: the core is
+//! [`musa_calculus`](musa_calculus)'s own boundary rather than a convenience: the core is
 //! a calculus, it has no base types at all — no `Bool`, no `Nat`, no `Option` —
 //! and everything above it is library code elaborated *into* it. A container
 //! declared in `src/` would be the first exception, and it would be an exception
@@ -29,7 +29,7 @@
 //! what is not built is a *collection library* around it, because no program asks
 //! for one.
 
-use musa_core::{
+use musa_calculus::{
     Cx, Raw, RawArm, RawData, RawImpl, RawPattern, RawTrait, Refusal, Term, check, convertible, declare_impl,
     declare_trait, infer,
 };
@@ -510,7 +510,7 @@ pub(crate) fn context() -> Cx {
     let (cx, _) = nat_context();
     let mut cx = cx;
     for declaration in [booleans(), options(), lists()] {
-        let group = musa_core::declare(&cx, &declaration).expect("a collection family is a declaration");
+        let group = musa_calculus::declare(&cx, &declaration).expect("a collection family is a declaration");
         cx = cx.declaring(&group);
     }
     // `Buildable` before `Iterable`, because `Iterable`'s derived bodies name it.

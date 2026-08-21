@@ -9,7 +9,7 @@
 //! obligation and prompt 135's termination checker owes for the recursive
 //! definitions this crate does not yet have.
 
-use musa_core::{Cx, Index, Level, Origin, Shape, Term, normalize, normalize_type};
+use musa_calculus::{Cx, Index, Level, Origin, Shape, Term, normalize, normalize_type};
 
 use crate::fixtures::{Sample, corpus};
 

@@ -81,7 +81,7 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
 /// here.
 ///
 /// The metric and the limit are read out of the message because that is where
-/// the new core puts them: a `ResourceLimit` from `musa-core` arrives with no
+/// the new core puts them: a `ResourceLimit` from `musa-calculus` arrives with no
 /// labels at all, where the replaced meter carried both in one. §4 requires the
 /// diagnostic to name "the operation, metric, attempted amount, and limit", and
 /// the message does name all four — but a label is also what gives a diagnostic

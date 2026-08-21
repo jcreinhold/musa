@@ -72,8 +72,8 @@ use crate::budget::Budget;
 /// and halve it until the law aborts rather than refuses:
 ///
 /// ```sh
-/// cargo nextest run -p musa-core -E 'test(elaborating_a_term_nested)'
-/// cargo nextest run -p musa-core --cargo-profile release -E 'test(elaborating_a_term_nested)'
+/// cargo nextest run -p musa-calculus -E 'test(elaborating_a_term_nested)'
+/// cargo nextest run -p musa-calculus --cargo-profile release -E 'test(elaborating_a_term_nested)'
 /// ```
 ///
 /// `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused` is

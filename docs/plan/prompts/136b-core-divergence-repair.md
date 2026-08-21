@@ -10,11 +10,11 @@ phase: 3
 
 ## Task
 
-Note 44 audited `musa-core` against smalltt and Peyton Jones ch. 3–6 and found seven divergences, five of them ad hoc —
-departures that were never argued, or were argued against a different question than the one they answer. One is measured
-today at 2.2× per matched column in both term size and elaboration time. Remove every ad hoc divergence that can be
-removed without what prompt 142 supplies — a top-level definition scope, and real code to price a change against — and
-hand the ones that cannot to prompt 144 with the argument written down rather than left to be rediscovered.
+Note 44 audited `musa-calculus` against smalltt and Peyton Jones ch. 3–6 and found seven divergences, five of them ad
+hoc — departures that were never argued, or were argued against a different question than the one they answer. One is
+measured today at 2.2× per matched column in both term size and elaboration time. Remove every ad hoc divergence that
+can be removed without what prompt 142 supplies — a top-level definition scope, and real code to price a change against
+— and hand the ones that cannot to prompt 144 with the argument written down rather than left to be rediscovered.
 
 ## Read
 
@@ -23,8 +23,8 @@ hand the ones that cannot to prompt 144 with the argument written down rather th
   long-term design for each. It governs nothing — it is the evidence this prompt implements.
 - Peyton Jones ch. 5 §5.4.1 (`unwieldy`: only the constructor rule duplicates right-hand sides), §5.5 (uniformity, and
   what it implies about order-independence), and ch. 6's let-bound right-hand side. The fat bar's _second_ job is what
-  this prompt supplies; its first job stays declined, for the reason [`case.rs`](../../../crates/musa-core/src/case.rs)
-  already gives.
+  this prompt supplies; its first job stays declined, for the reason
+  [`case.rs`](../../../crates/musa-calculus/src/case.rs) already gives.
 - Notes [24 §H5](../../notes/research/language-design-closure/24-pipeline-and-syntax-review.md),
   [26 §2.4](../../notes/research/language-design-closure/26-language-design-decision.md), and
   [29](../../notes/research/language-design-closure/29-source-and-expansion-spec.md) — this repo found Finding A twice
@@ -32,16 +32,16 @@ hand the ones that cannot to prompt 144 with the argument written down rather th
   unrelated reason. What this prompt builds is that decision, spelled in a calculus with no labels.
 - `~/Code/smalltt`'s README on approximate conversion, the three quotation modes, approximate occurs checking, and
   head-plus-vector spines — and on glued evaluation, which is the one this prompt does _not_ build.
-- `crates/musa-core/src/{value.rs, eval.rs, quote.rs, unify.rs, case.rs, lib.rs}` — the six files that change, and the
-  header arguments in each that are being amended rather than ignored.
+- `crates/musa-calculus/src/{value.rs, eval.rs, quote.rs, unify.rs, case.rs, lib.rs}` — the six files that change, and
+  the header arguments in each that are being amended rather than ignored.
 - `docs/rules/language/02-core-calculus.md` §3 (definitional equality, η at Π and at records) and §6.2 (the case
   compiler). §6.2's sentence about the fat bar is **not** repaired here; see **Stop**.
 - Prompt [144](144-diagnostics-and-performance.md), whose Design this prompt repairs to own Finding C.
 
 ## Design
 
-Five repairs, in the order they must land. Each is internal to `musa-core`: `Value` never leaves the crate, so nothing
-below is visible to any other crate, and the whole prompt changes no program's meaning.
+Five repairs, in the order they must land. Each is internal to `musa-calculus`: `Value` never leaves the crate, so
+nothing below is visible to any other crate, and the whole prompt changes no program's meaning.
 
 **F first, because D and E are written against it.** Today a neutral is a left-nested chain of `Arc<Neutral>`: finding
 the head of `f x y z` is three hops, `flexible_head` does it on both sides of every unification step, `force` does it
@@ -91,7 +91,7 @@ folded, and there is nothing foldable in this core yet; see the handoff below.
 out. The cache answers "does `?α` occur in this value" by lookup instead of by traversal — and once the check rides on
 the walk that _writes the solution_, there is no traversal to skip: quotation visits every node of the term it is
 building whether or not the answer is already known. smalltt's cache pays off because its occurs check is a separate
-approximate pass that stops at folded definitions; musa-core has no definition scope, `force` unfolds a solved
+approximate pass that stops at folded definitions; musa-calculus has no definition scope, `force` unfolds a solved
 metavariable before quotation matches on it, and so the solution's every node is written out anyway. The cache becomes
 able to save work at exactly the moment glued evaluation lands, and for exactly the same reason — so it goes to prompt
 144 with Finding C rather than being built here as a lookup that can never hit.
@@ -148,13 +148,13 @@ a thin call into the unifier's conversion with metavariable solving disabled, an
 into the law suites as a **test-local oracle**, where its naivety is the point: the specification checked against the
 implementation. The same applies to `convertible_types`.
 
-**What is deliberately left to prompt 144, and why.** Finding C — no glued evaluation — is not ad hoc: musa-core has no
-top-level definition scope, so there is nothing that _could_ be held folded, and every smalltt technique that is missing
-is a technique for deciding when not to unfold. It becomes wrong at prompt 142, which points the standard library at
-this core. Four items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's approximate
-rigid/flex/full conversion, E's flexible quotation mode, and E's per-metavariable occurs cache. **Finding A joins
-them**, for a different reason argued above — not that it cannot be built, but that what remains of it after B is a
-constant factor no one can price until real code goes through this compiler. This prompt's documents half is to repair
+**What is deliberately left to prompt 144, and why.** Finding C — no glued evaluation — is not ad hoc: musa-calculus has
+no top-level definition scope, so there is nothing that _could_ be held folded, and every smalltt technique that is
+missing is a technique for deciding when not to unfold. It becomes wrong at prompt 142, which points the standard
+library at this core. Four items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's
+approximate rigid/flex/full conversion, E's flexible quotation mode, and E's per-metavariable occurs cache. **Finding A
+joins them**, for a different reason argued above — not that it cannot be built, but that what remains of it after B is
+a constant factor no one can price until real code goes through this compiler. This prompt's documents half is to repair
 144's **Read**, **Design**, and **Target** so 144 owns all six by name and by citation, rather than leaving a future
 reader to rediscover the audit. That is a repair of a pending prompt, which the prompt README's §6 makes ordinary.
 
@@ -166,15 +166,15 @@ unreachable, but never whether a `match` is exhaustive.
 
 ## Target
 
-- `crates/musa-core/src/value.rs` and its 50 use sites: `Neutral { head, spine: Vec<Elim> }`, with `Head` and `Elim` as
-  above and per-`Elim` origins.
-- `crates/musa-core/src/unify.rs`: structural `Lam`/`Lam` and `Record`/`Record` arms, η dispatch on the type at Π and at
-  record types, and `by_reading_back` reachable only on the failure path.
-- `crates/musa-core/src/quote.rs` and `unify.rs`: scope restriction and the occurs check fused into quotation, and
+- `crates/musa-calculus/src/value.rs` and its 50 use sites: `Neutral { head, spine: Vec<Elim> }`, with `Head` and `Elim`
+  as above and per-`Elim` origins.
+- `crates/musa-calculus/src/unify.rs`: structural `Lam`/`Lam` and `Record`/`Record` arms, η dispatch on the type at Π
+  and at record types, and `by_reading_back` reachable only on the failure path.
+- `crates/musa-calculus/src/quote.rs` and `unify.rs`: scope restriction and the occurs check fused into quotation, and
   `restrict` deleted rather than kept beside it.
-- `crates/musa-core/src/case.rs`: first-row column selection.
-- `crates/musa-core/src/lib.rs`: `convertible` and `convertible_types` as one procedure with the unifier.
-- Laws in `crates/musa-core/tests/suite/`:
+- `crates/musa-calculus/src/case.rs`: first-row column selection.
+- `crates/musa-calculus/src/lib.rs`: `convertible` and `convertible_types` as one procedure with the unifier.
+- Laws in `crates/musa-calculus/tests/suite/`:
     - note 44's interleaved-column program elaborates with a term size that grows **polynomially** in the number of
       columns, stated as a ratio law so it is not a pinned byte count;
     - an arm reaching two leaves gets each leaf's _definition_ for the variables it binds — the program that falsified
@@ -198,7 +198,7 @@ unreachable, but never whether a `match` is exhaustive.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check

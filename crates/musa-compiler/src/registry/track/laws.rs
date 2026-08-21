@@ -7,7 +7,7 @@
 //!
 //! # Two ways of asking, and why both
 //!
-//! Seven of the eight are δ-rules, so a law can call the [`musa_core::Rule`]
+//! Seven of the eight are δ-rules, so a law can call the [`musa_calculus::Rule`]
 //! directly and compare its answer with the pure operation it was written from —
 //! [`WrittenPitch::transpose`], [`ScoreFact::stretched`],
 //! [`musa_kernel::together`]. That is the agreement half, and it is the sharper
@@ -30,7 +30,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Answer, Cx, Datum, Refusal, Term};
+use musa_calculus::{Answer, Cx, Datum, Refusal, Term};
 use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
@@ -210,8 +210,8 @@ fn the_eight_track_rows_are_registered_under_the_names_the_table_gives() {
 
 /// The head of a registered builtin, by name.
 fn head(cx: &Cx, spelling: &str) -> Term {
-    let (term, _) = musa_core::infer(cx, &musa_core::Raw::var(HERE, spelling)).unwrap_or_else(|refusal| {
-        let unknown = matches!(refusal, musa_core::ElabError::Refused(Refusal::UnknownName { .. }));
+    let (term, _) = musa_calculus::infer(cx, &musa_calculus::Raw::var(HERE, spelling)).unwrap_or_else(|refusal| {
+        let unknown = matches!(refusal, musa_calculus::ElabError::Refused(Refusal::UnknownName { .. }));
         panic!("`{spelling}` is not registered (unknown name: {unknown})");
     });
     term
@@ -554,9 +554,9 @@ fn term(datum: &Datum) -> Term {
 /// `map_note_pitches` has. Three steps that fail on different mistakes: the
 /// application is checked at the result type the registration declares, so an
 /// argument of the wrong domain is refused before the rule runs;
-/// [`musa_core::normalize`] fires the rule and realizes what it answered against
+/// [`musa_calculus::normalize`] fires the rule and realizes what it answered against
 /// that declared result, which is where a rule that answered the wrong shape
-/// becomes a misfit; and [`musa_core::well_typed`] re-checks the normal form
+/// becomes a misfit; and [`musa_calculus::well_typed`] re-checks the normal form
 /// independently of the evaluator that produced it.
 #[test]
 fn every_track_application_reduces_and_re_checks_at_its_own_signature() {
@@ -597,8 +597,8 @@ fn every_track_application_reduces_and_re_checks_at_its_own_signature() {
         let whole = arguments.into_iter().fold(head(&cx, spelling), |function, argument| {
             Term::app(HERE, function, argument)
         });
-        let _normal =
-            musa_core::normalize(&cx, ty, &whole).unwrap_or_else(|why| panic!("`{spelling}` does not reduce: {why}"));
+        let _normal = musa_calculus::normalize(&cx, ty, &whole)
+            .unwrap_or_else(|why| panic!("`{spelling}` does not reduce: {why}"));
     }
 }
 
@@ -615,8 +615,8 @@ fn map_note_pitches_applies_the_mapper_once_per_notehead() {
     let ty = track_type();
     let mapper = Term::lam(HERE, "pitch", term(&plain("Pitch", pitch("g4"))));
     let whole = Term::app(HERE, Term::app(HERE, head(&cx, SPELLINGS[6]), mapper), term(&given()));
-    let normal = musa_core::normalize(&cx, &ty, &whole).expect("`map_note_pitches` reduces");
-    let musa_core::Shape::Lit(ref answer) = *normal.shape() else {
+    let normal = musa_calculus::normalize(&cx, &ty, &whole).expect("`map_note_pitches` reduces");
+    let musa_calculus::Shape::Lit(ref answer) = *normal.shape() else {
         panic!("`map_note_pitches` reduced to something that is not a literal: {normal:?}");
     };
     let mapped = held::<VoiceTrack>(answer).expect("the answer is a track");

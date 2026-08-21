@@ -1,10 +1,10 @@
-//! The compiler's own operations, said in `musa-core`'s terms.
+//! The compiler's own operations, said in `musa-calculus`'s terms.
 //!
 //! `02-core-calculus.md` §5.8 splits every compiler-owned operation into four
 //! families and gives each its own admissibility argument. Prompts 141b, 141c,
 //! and 141d built the mechanism for them; this module fills its δ half. What was
 //! a [`crate::core::Type`] and a [`crate::core::Shape`] becomes a
-//! [`musa_core::Term`], and what was an arm of the old evaluator becomes a rule
+//! [`musa_calculus::Term`], and what was an arm of the old evaluator becomes a rule
 //! over [`Datum`].
 //!
 //! # Nothing here decides anything new
@@ -56,7 +56,7 @@
 //! because `03-machine-calculus.md` §2 gives them typing rules and no
 //! reductions. The nine left are two kinds and neither is registrable here: the
 //! eight collection eliminators are traversals over `Nat`, `List`, and
-//! `Option`, which are *declared*, so [`musa_core::declare`] already generated
+//! `Option`, which are *declared*, so [`musa_calculus::declare`] already generated
 //! their recursors and [`Registry::new`] refuses a structural target that is
 //! not a base type; and `primitive` is typed by a build-local registry rather
 //! than by a signature, which [`machine::UNREGISTERED`] argues and prompt 142
@@ -101,13 +101,13 @@ use std::any::Any;
 use std::fmt;
 use std::sync::Arc;
 
-use musa_core::{Base, Builtin, Cx, Datum, ElabError, Level, Literal, Origin, Payload, Refusal, Registry, Term};
+use musa_calculus::{Base, Builtin, Cx, Datum, ElabError, Level, Literal, Origin, Payload, Refusal, Registry, Term};
 #[cfg(test)]
-use musa_core::{Index, Raw, RawArm, RawPattern};
+use musa_calculus::{Index, Raw, RawArm, RawPattern};
 
 /// The old table's name for one inert domain, renamed on the way in.
 ///
-/// `Base` means two things in this module — the registration `musa-core` holds,
+/// `Base` means two things in this module — the registration `musa-calculus` holds,
 /// and the leaf the signature table names — and this is the one that is going
 /// away when prompt 142 deletes the old checker. Naming it for what it is keeps
 /// the translation's two sides legible in a single line.
@@ -223,8 +223,8 @@ where
     // `type_name` rather than a name each caller passes: the sentence is about a
     // Rust domain that disagreed with its own registration, and a caller free to
     // name it could name it wrongly.
-    let broken = || ElabError::from(musa_core::Malformed::NotALiteral(std::any::type_name::<T>().into()));
-    let musa_core::Shape::Lit(ref value) = *normal.shape() else {
+    let broken = || ElabError::from(musa_calculus::Malformed::NotALiteral(std::any::type_name::<T>().into()));
+    let musa_calculus::Shape::Lit(ref value) = *normal.shape() else {
         return Err(broken());
     };
     held::<T>(value).ok_or_else(broken)
@@ -253,9 +253,9 @@ pub(crate) fn argument(shape: crate::assert::ParamType, normal: &Term) -> Option
     match shape {
         ParamType::Scale => Some(Argument::Scale(*read_back::<crate::scale::Scale>(normal).ok()?)),
         ParamType::Chord => Some(Argument::Chord(*read_back::<crate::chord::ChordClass>(normal).ok()?)),
-        ParamType::Count => Some(Argument::Count(rules::nat(&musa_core::canonical(normal)?)?)),
+        ParamType::Count => Some(Argument::Count(rules::nat(&musa_calculus::canonical(normal)?)?)),
         ParamType::Ranges => {
-            let written = musa_core::canonical(normal)?;
+            let written = musa_calculus::canonical(normal)?;
             let ranges = rules::items(&written)?
                 .into_iter()
                 .map(|range| {
@@ -283,12 +283,12 @@ pub(crate) fn argument(shape: crate::assert::ParamType, normal: &Term) -> Option
 ///
 /// [`ElabError`] when a declaration or a signature in this compiler is wrong,
 /// which is a compiler defect rather than a program's, and is returned rather
-/// than panicked on for the reason `musa-core` returns
-/// [`musa_core::Malformed`].
+/// than panicked on for the reason `musa-calculus` returns
+/// [`musa_calculus::Malformed`].
 pub(crate) fn owned() -> Result<Cx, ElabError> {
     let mut cx = Cx::new();
     for declaration in crate::prelude::structural() {
-        let group = musa_core::declare(&cx, &declaration)?;
+        let group = musa_calculus::declare(&cx, &declaration)?;
         cx = cx.declaring(&group);
     }
     // Declared *by* a context standing in the phase module and added to one that
@@ -296,13 +296,13 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
     // the module it was written in, and the compiler's own context — standing
     // nowhere — is inside every module and may still mint a step.
     for declaration in crate::prelude::phase() {
-        let group = musa_core::declare(&cx.in_module(crate::prelude::PHASE), &declaration)?;
+        let group = musa_calculus::declare(&cx.in_module(crate::prelude::PHASE), &declaration)?;
         cx = cx.declaring(&group);
     }
     let bases = bases();
     cx = cx.with_externs(Arc::new(Registry::new(bases.clone(), Vec::new())?));
     for declaration in crate::prelude::musical() {
-        let group = musa_core::declare(&cx, &declaration)?;
+        let group = musa_calculus::declare(&cx, &declaration)?;
         cx = cx.declaring(&group);
     }
     let builtins = builtins(&cx)?;
@@ -818,7 +818,7 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     let index = crate::prelude::constant(cx, "Nat")?;
     let splices = applied(cx, "List", [applied(cx, "List", [expression.clone()])?])?;
     let delta = |name: &'static str, arguments: Vec<Term>, result: Term, rule| {
-        Builtin::new(name, arrow(arguments, result), musa_core::Family::Delta, rule)
+        Builtin::new(name, arrow(arguments, result), musa_calculus::Family::Delta, rule)
     };
     Ok(vec![
         delta(
@@ -866,14 +866,14 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 /// it "one acceptance rule in the checker rather than a `forget` an author
 /// writes", and both halves of that are here: the rule is
 /// [`rules::forgets`], carried on the `Syntax` registration and asked by
-/// `musa-core`'s one directional site, and this operation is what the *checker*
+/// `musa-calculus`'s one directional site, and this operation is what the *checker*
 /// inserts — it is in neither ownership table, so no name resolves to it and no
 /// adapter can write it.
 ///
 /// It is a δ-builtin and not bare acceptance because an elaborated term has to
 /// re-check in the core. Without it the term the elaborator produced would hold
 /// a `Syntax ⟨expr⟩` where its own type says `Syntax ⟨token-tree⟩`, and
-/// [`musa_core::well_typed`] would refuse a term this compiler had accepted.
+/// [`musa_calculus::well_typed`] would refuse a term this compiler had accepted.
 ///
 /// One direction and one signature, because [`crate::syntax::Cat`] has two
 /// cases. A third category is a case in [`rules::forgets`] and a second
@@ -885,7 +885,7 @@ fn syntax_carrier() -> Builtin {
             vec![syntax_type(crate::syntax::Cat::Expr)],
             syntax_type(crate::syntax::Cat::TokenTree),
         ),
-        musa_core::Family::Delta,
+        musa_calculus::Family::Delta,
         rules::FORGET,
     )
 }
@@ -918,7 +918,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         built.push(Builtin::new(
             entry.spelling,
             delta_type(cx, arguments, result)?,
-            musa_core::Family::Delta,
+            musa_calculus::Family::Delta,
             rule,
         ));
     }
@@ -935,7 +935,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         built.push(Builtin::new(
             entry.spelling,
             phase_type(cx, &entry.operation.instantiate(&mut minter))?,
-            musa_core::Family::Delta,
+            musa_calculus::Family::Delta,
             rule,
         ));
     }
@@ -1014,7 +1014,7 @@ pub(crate) fn run_syntax_step(cx: &Cx) -> Result<Definition, ElabError> {
         .into_iter()
         .rev()
         .fold(body, |built, name| Raw::lam(HERE, name, built));
-    let value = musa_core::check(cx, &ty, &written)?;
+    let value = musa_calculus::check(cx, &ty, &written)?;
     Ok(Definition { ty, value })
 }
 
@@ -1039,7 +1039,7 @@ fn missing(spelling: &str) -> ElabError {
 /// Something this module was asked for and has no core spelling of.
 ///
 /// A compiler defect either way, and [`Refusal::UnknownName`] rather than a
-/// [`musa_core::Malformed`] because what went wrong is a *name* with nothing
+/// [`musa_calculus::Malformed`] because what went wrong is a *name* with nothing
 /// behind it — the same sentence a program earns for a name that is not in
 /// scope, which is exactly the shape of this failure one level up.
 fn unnameable(what: &str) -> ElabError {

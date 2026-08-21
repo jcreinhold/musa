@@ -10,11 +10,11 @@ phase: 3
 
 ## Task
 
-Implement the trait *semantics* prompt 130 specified, in `musa-core` and nowhere else: `trait` and `impl` declarations
-elaborated to dependent records and their values, the instance table, coherence, the orphan rule and the termination
-measure — all three checked at the declaration — `where` constraints, constraint resolution with local-beats-global and
-postponement, and the generated `Storable` instances that retire the `d` type-variable class. Prompt 137a spells all of
-this on the surface; this prompt is the mechanism it spells.
+Implement the trait *semantics* prompt 130 specified, in `musa-calculus` and nowhere else: `trait` and `impl`
+declarations elaborated to dependent records and their values, the instance table, coherence, the orphan rule and the
+termination measure — all three checked at the declaration — `where` constraints, constraint resolution with
+local-beats-global and postponement, and the generated `Storable` instances that retire the `d` type-variable class.
+Prompt 137a spells all of this on the surface; this prompt is the mechanism it spells.
 
 ## Read
 
@@ -26,19 +26,20 @@ this on the surface; this prompt is the mechanism it spells.
 - `docs/rules/language/02-core-calculus.md` §1.1 as rewritten by 129 — the `Storable` constraint, and the rule that its
   instances are generated from the declaration group and never written by hand. That is the single most important
   coherence property in the system: a user-writable `Storable` instance is a hole in the kernel payload boundary.
-- `crates/musa-core/src/{family.rs, declare.rs}` — the precedent this follows exactly. A `data` declaration is
+- `crates/musa-calculus/src/{family.rs, declare.rs}` — the precedent this follows exactly. A `data` declaration is
   elaborated in `cx.closed()`, its telescope is read binder by binder in the scope the previous binders built, and the
   group it produces is carried on a `Cx`. A trait is the same shape with a record where the constructors were, and
   reusing that shape rather than inventing a second one is what keeps `Cx` a single idea.
-- `crates/musa-core/src/{elab.rs, unify.rs, meta.rs}` — `fresh_meta`, the pattern-fragment unifier, and `settled`.
+- `crates/musa-calculus/src/{elab.rs, unify.rs, meta.rs}` — `fresh_meta`, the pattern-fragment unifier, and `settled`.
   Postponing a constraint whose head is unknown is *not* new machinery: the hole is a metavariable, solving the
   constraint solves it, and `zonk` substitutes it away. Recovering an instance's parameters from a lookup is
   unification, not a hand-written matcher.
-- `crates/musa-core/src/rec.rs`'s `field_type`, and `elab.rs`'s `projection` and `update` — how a telescope's field type
-  is read at a subject. A dictionary is a record, so every question about reaching into one is already answered there.
+- `crates/musa-calculus/src/rec.rs`'s `field_type`, and `elab.rs`'s `projection` and `update` — how a telescope's field
+  type is read at a subject. A dictionary is a record, so every question about reaching into one is already answered
+  there.
 - `crates/musa-compiler/src/infer.rs`'s `d`-variable handling — the machinery being replaced, and the failure messages
   it produces today, which the constraint form must match or beat.
-- *A Philosophy of Software Design* ch. 7 — why this prompt stops at `musa-core`. A trait's semantics and a trait's
+- *A Philosophy of Software Design* ch. 7 — why this prompt stops at `musa-calculus`. A trait's semantics and a trait's
   spelling change for different reasons and are checkable by different tests; a single prompt covering both would be one
   abstraction spread over two layers, and neither half could be committed green on its own.
 
@@ -110,26 +111,26 @@ prompt adds.
 
 ## Target
 
-- `crates/musa-core/src/class.rs`: `PackageId`, `Head`, `Key`, `Constraint`, `Trait`, `Instance`, `Classes`, and §4's
-  size and occurrence measures.
-- `crates/musa-core/src/dictionary.rs`: trait and impl elaboration, the declaration-time checks, constraint resolution
-  with local-beats-global and postponement, and the generated `Storable` instances.
+- `crates/musa-calculus/src/class.rs`: `PackageId`, `Head`, `Key`, `Constraint`, `Trait`, `Instance`, `Classes`, and
+  §4's size and occurrence measures.
+- `crates/musa-calculus/src/dictionary.rs`: trait and impl elaboration, the declaration-time checks, constraint
+  resolution with local-beats-global and postponement, and the generated `Storable` instances.
 - `Cx` carries a `PackageId` and the `Classes` in scope, the way it already carries a `ModuleId` and its declared
   groups; `Raw` gains `RawTrait`, `RawImpl`, `RawConstraint`, and the method and `where` forms they need.
 - The `Refusal` variants these checks report, and their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs`:
   duplicate instance, orphan impl, unresolved instance, non-terminating instance head, and hand-written `Storable`,
   beside the declaration-shape refusals (reserved or headless class, duplicate or missing or unknown method, a replaced
   derived method, wrong class arity, a blanket instance).
-- `crates/musa-core/tests/suite/{trait_laws.rs, coherence_laws.rs}` plus the compile-fail cases.
-- `docs/plan/code-map/` rows for `musa-core`.
+- `crates/musa-calculus/tests/suite/{trait_laws.rs, coherence_laws.rs}` plus the compile-fail cases.
+- `docs/plan/code-map/` rows for `musa-calculus`.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
+cargo nextest run -p musa-calculus -p musa-compiler
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
@@ -141,8 +142,8 @@ Commit as `Add traits, dictionaries, and coherence`.
 ## Stop
 
 - **No `musa-language` change.** No `trait`, `impl`, or `where` keyword, no grammar, no CST, no formatter, no
-  tree-sitter. `musa-core` takes a `RawTrait` the way it takes every other `Raw`, and a test builds one directly — which
-  is how every prompt since 133 has tested this crate.
+  tree-sitter. `musa-calculus` takes a `RawTrait` the way it takes every other `Raw`, and a test builds one directly —
+  which is how every prompt since 133 has tested this crate.
 - No operators, no method-call syntax, no `Type::item` paths, and no exact-receiver resolution. 137a.
 - No `docs/rules/style-guide.md` rule and no `lint.rs` diagnostic. Their subject is spelling, and nothing is spellable
   yet.

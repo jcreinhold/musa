@@ -591,7 +591,7 @@ representation only: that a number written as a number is the number written as 
 
 ## 6. Implementation boundary
 
-`Term`, `Value`, `Closure`, evaluator environments, and resource proofs remain private to their crates. `musa-core`
+`Term`, `Value`, `Closure`, evaluator environments, and resource proofs remain private to their crates. `musa-calculus`
 exposes checking, conversion, and normalization over `Term` and exposes no `Value`: the semantic domain contains
 closures over the evaluator's own representation, so publishing it would make every later change to evaluation a
 breaking change for `musa-compiler`. A registered primitive's `State`, `start`, and `step` are private to the crate that

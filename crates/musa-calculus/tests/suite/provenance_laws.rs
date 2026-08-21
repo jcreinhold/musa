@@ -19,7 +19,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_core::{Cx, Field, Index, Level, Name, Origin, Shape, Term, convertible, normalize};
+use musa_calculus::{Cx, Field, Index, Level, Name, Origin, Shape, Term, convertible, normalize};
 
 use crate::fixtures::{BINDERS, Sample, corpus};
 

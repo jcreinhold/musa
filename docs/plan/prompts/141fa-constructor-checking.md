@@ -24,16 +24,17 @@ This is not a new feature. The **value** side of the same boundary has done it s
   constructor checks against its family at known parameters and indices. A projection, a variable, and a literal infer."
   Then §1.1 on why a parameter is fixed across the declaration and an index is chosen per constructor — that is what
   makes reading a parameter off the expected type well defined and reading an index off it not.
-- `crates/musa-core/src/elab.rs` — `Elaborator::check`, `bare`, and `abstracted`. `bare` is §1.3's rule, and it is the
-  measurement below: it qualifies the written word and re-checks, and that re-check cannot succeed for a family with
+- `crates/musa-calculus/src/elab.rs` — `Elaborator::check`, `bare`, and `abstracted`. `bare` is §1.3's rule, and it is
+  the measurement below: it qualifies the written word and re-checks, and that re-check cannot succeed for a family with
   parameters, which is all three of `Option`, `List`, and `Result`.
-- `crates/musa-core/src/family.rs` — `realize`, `realize_case`, and `element`. `realize` is this prompt's rule one level
-  down and is the design to follow rather than to duplicate: it takes canonical data whose fields carry no parameters,
-  plus the type it stands at, and supplies the parameters from the type. Its doc comment — "the parameters come before
-  the fields, ι reads them by position, and nothing in the name or the fields says what they are" — is the argument.
-- `crates/musa-core/src/base.rs`'s `Datum::Case`, whose `fields` doc says "the family's parameters are not among them".
-  That is the same decision, taken for δ-rule answers, and it is why a rule that answers `Option.Some(x)` is already
-  written the way source wants to write it.
+- `crates/musa-calculus/src/family.rs` — `realize`, `realize_case`, and `element`. `realize` is this prompt's rule one
+  level down and is the design to follow rather than to duplicate: it takes canonical data whose fields carry no
+  parameters, plus the type it stands at, and supplies the parameters from the type. Its doc comment — "the parameters
+  come before the fields, ι reads them by position, and nothing in the name or the fields says what they are" — is the
+  argument.
+- `crates/musa-calculus/src/base.rs`'s `Datum::Case`, whose `fields` doc says "the family's parameters are not among
+  them". That is the same decision, taken for δ-rule answers, and it is why a rule that answers `Option.Some(x)` is
+  already written the way source wants to write it.
 - [`141b`](141b-base-types-and-builtins.md) for `Builtin::structural_with`'s closed-vocabulary invariant, which the
   rejected alternative below breaks.
 - [`141g`](141g-raw-lowering.md)'s Design — "a lowering that took an expected type would be checking, and checking is
@@ -65,8 +66,8 @@ spelling.
 
 **Not by making a parameter implicit, and the reason is measured.** The obvious alternative is to generate a
 constructor's type with its family's parameters as implicit Π binders, which is what several dependent languages do.
-Trialled: 28 of `musa-core`'s 163 laws fail, because `infer(cx, Raw::var("Option.Some"))` stops answering a closed term
-and answers an unsolved implicit instead — and a closed constructor term is exactly what 141b's `structural_with`
+Trialled: 28 of `musa-calculus`'s 163 laws fail, because `infer(cx, Raw::var("Option.Some"))` stops answering a closed
+term and answers an unsolved implicit instead — and a closed constructor term is exactly what 141b's `structural_with`
 vocabulary requires. It would also change the meaning of every explicit spelling already written rather than accepting
 one more. A change that rewrites twenty-eight laws to admit one program is evidence about the change.
 
@@ -77,26 +78,26 @@ coverage exists to check. A constructor whose indices do not match is refused wh
 
 ## Target
 
-- `crates/musa-core/src/elab.rs`: §2's constructor rule in `check`, doc-commented with the sentence it implements and
-  the reason it reads parameters and not indices. `bare` becomes reachable — folded into the new rule if that is the
+- `crates/musa-calculus/src/elab.rs`: §2's constructor rule in `check`, doc-commented with the sentence it implements
+  and the reason it reads parameters and not indices. `bare` becomes reachable — folded into the new rule if that is the
   narrower interface, kept beside it if it is not, but not left as a case that cannot fire.
 - The term the rule builds is the term the explicit spelling builds. One answer, stated as a law rather than asserted.
-- Laws in `crates/musa-core/tests/suite/`: a bare constructor, a qualified constructor, and an applied constructor each
-  check against a parameterized family; the explicitly parameterized spelling still checks and yields the same term; a
-  constructor of a family with no parameters is unaffected; a nested constructor (`Some(Ok(0))`) checks; an
+- Laws in `crates/musa-calculus/tests/suite/`: a bare constructor, a qualified constructor, and an applied constructor
+  each check against a parameterized family; the explicitly parameterized spelling still checks and yields the same
+  term; a constructor of a family with no parameters is unaffected; a nested constructor (`Some(Ok(0))`) checks; an
   under-applied and an over-applied constructor are still refused, with the refusals they have now; an indexed family's
   constructor still checks its own indices.
 - A law in `crates/musa-compiler` that the prelude's own families are writable the way source writes them — `None`,
   `Some(x)`, `Ok(x)`, `Err(x)`, and a `List.Cons` chain — since those five are what the surface lowers to and the
   compiler's context is where they are declared.
-- `docs/plan/code-map/` rows for `musa-core`.
+- `docs/plan/code-map/` rows for `musa-calculus`.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

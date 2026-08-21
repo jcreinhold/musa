@@ -1,4 +1,4 @@
-//! A whole document, elaborated through `musa-core`.
+//! A whole document, elaborated through `musa-calculus`.
 //!
 //! [`crate::lower`] reads one declaration and [`crate::registry`] says what the
 //! compiler's own vocabulary is. This is the module that puts the two together
@@ -16,9 +16,9 @@
 //!
 //! # The order the three doors are opened in
 //!
-//! `musa-core` has three that a document walks through: [`musa_core::declare`]
-//! for a family group, [`musa_core::declare_trait`], and
-//! [`musa_core::declare_program`] for everything a body can be. They are not
+//! `musa-calculus` has three that a document walks through: [`musa_calculus::declare`]
+//! for a family group, [`musa_calculus::declare_trait`], and
+//! [`musa_calculus::declare_program`] for everything a body can be. They are not
 //! interchangeable and the order between them is forced:
 //!
 //! 1. **Families first**, ordered among themselves, because a `data` field is a
@@ -30,7 +30,7 @@
 //!    is an ordinary term that may call any definition, and a definition that
 //!    writes `x.m(y)` resolves it at the receiver's head, which is an instance.
 //!    Declaring either kind first makes it blind to the other, which is what
-//!    [`musa_core::declare_program`] exists to avoid.
+//!    [`musa_calculus::declare_program`] exists to avoid.
 //!
 //! The one shape this order cannot express is a family whose field names a
 //! `record`, since `01-surface.md` §1.2 makes a record a *definition*. That is a
@@ -51,7 +51,7 @@ pub(crate) mod laws;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_core::{Cx, ElabError, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility};
+use musa_calculus::{Cx, ElabError, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 
@@ -168,7 +168,7 @@ impl Source {
 
 /// A document's declarations, elaborated, and the context they are in.
 ///
-/// Opaque on purpose, for [`musa_core::declare`]'s reason one level up: a
+/// Opaque on purpose, for [`musa_calculus::declare`]'s reason one level up: a
 /// consumer asks this what a name *means* and never what the elaborator did to
 /// find out.
 pub(crate) struct Document {
@@ -199,7 +199,7 @@ pub(crate) struct Document {
     /// A number estimated on that side would be a second opinion about work the
     /// core already counted exactly, so the reading reports what it spent and
     /// the phase adds it up — see [`crate::core::PhaseWork`].
-    spend: musa_core::Spend,
+    spend: musa_calculus::Spend,
 }
 
 impl Document {
@@ -214,7 +214,7 @@ impl Document {
     /// Not the *piece*: a piece is read afterwards and through
     /// [`Document::piece`], so a caller that wants both adds two numbers rather
     /// than reading one that quietly means whichever happened first.
-    pub(crate) const fn spend(&self) -> musa_core::Spend {
+    pub(crate) const fn spend(&self) -> musa_calculus::Spend {
         self.spend
     }
 
@@ -235,7 +235,7 @@ impl Document {
 
     /// The normal form of `raw` in this document's context, with its type.
     ///
-    /// Goes through [`musa_core::infer`] rather than reaching into the group,
+    /// Goes through [`musa_calculus::infer`] rather than reaching into the group,
     /// which is what makes this the same reading a source term gets: the term is
     /// elaborated, its type is inferred, and the value is normalized *at* that
     /// type, so η applies where the type says it should.
@@ -259,9 +259,9 @@ impl Document {
     /// # Errors
     ///
     /// As [`Self::term`].
-    pub(crate) fn term_metered(&self, raw: &Raw) -> Result<((Term, Term), musa_core::Spend), ElabError> {
-        let ((term, ty), elaborating) = musa_core::infer_metered(&self.cx, raw)?;
-        let (normal, normalizing) = musa_core::normalize_metered(&self.cx, &ty, &term)?;
+    pub(crate) fn term_metered(&self, raw: &Raw) -> Result<((Term, Term), musa_calculus::Spend), ElabError> {
+        let ((term, ty), elaborating) = musa_calculus::infer_metered(&self.cx, raw)?;
+        let (normal, normalizing) = musa_calculus::normalize_metered(&self.cx, &ty, &term)?;
         Ok(((normal, ty), elaborating.and(normalizing)))
     }
 
@@ -305,7 +305,7 @@ impl Document {
     /// # Errors
     ///
     /// [`ElabError`] for [`Self::track`]'s reasons, on either of the two terms
-    /// or on any argument, and [`musa_core::Malformed::NotALiteral`] when an
+    /// or on any argument, and [`musa_calculus::Malformed::NotALiteral`] when an
     /// argument's normal form does not hold what its shape declares — which is
     /// this crate's defect rather than a program's, since every argument was
     /// checked at that shape's own type.
@@ -364,7 +364,7 @@ impl Document {
         // an argument that was checked at its shape's type and does not read
         // back as that shape means this crate's registration and its reading
         // disagree, which no program can cause and no diagnostic can repair.
-        let broken = || ElabError::from(musa_core::Malformed::NotALiteral(claimed.predicate.name.into()));
+        let broken = || ElabError::from(musa_calculus::Malformed::NotALiteral(claimed.predicate.name.into()));
         let mut arguments = Vec::with_capacity(claimed.arguments.len());
         for (argued, shape) in claimed.arguments.iter().zip(claimed.predicate.parameters) {
             arguments.push(match *argued {
@@ -398,9 +398,9 @@ impl Document {
         self.names
             .iter()
             .filter_map(|name| {
-                let (term, ty) = musa_core::infer(&self.cx, &Raw::var(Origin::UNKNOWN, &**name)).ok()?;
+                let (term, ty) = musa_calculus::infer(&self.cx, &Raw::var(Origin::UNKNOWN, &**name)).ok()?;
                 let (step, input, output) = crate::registry::machine_ports(&ty)?;
-                let normal = musa_core::normalize(&self.cx, &ty, &term).ok()?;
+                let normal = musa_calculus::normalize(&self.cx, &ty, &term).ok()?;
                 let nodes = crate::registry::machine_nodes(&normal)?;
                 Some((name.to_string(), crate::MachineSpec::new(step, input, output, nodes)))
             })
@@ -533,11 +533,11 @@ pub(crate) fn elaborate(
         }
     }
     let mut refused = false;
-    let mut spend = musa_core::Spend::default();
+    let mut spend = musa_calculus::Spend::default();
     let mut structural = Vec::new();
     for (_, declared) in order_types(resolver, read.types)? {
         match declared {
-            TypeDecl::Family(group) => match musa_core::declare_metered(&cx, &group) {
+            TypeDecl::Family(group) => match musa_calculus::declare_metered(&cx, &group) {
                 Ok((declared, spent)) => {
                     spend = spend.and(spent);
                     cx = cx.declaring(&declared);
@@ -556,7 +556,7 @@ pub(crate) fn elaborate(
                     definitions: vec![held],
                     instances: Vec::new(),
                 };
-                match musa_core::declare_program_metered(&cx, &program) {
+                match musa_calculus::declare_program_metered(&cx, &program) {
                     Ok((declared, spent)) => {
                         spend = spend.and(spent);
                         cx = cx.defining(&declared);
@@ -570,7 +570,7 @@ pub(crate) fn elaborate(
         }
     }
     for raw in &read.classes {
-        match musa_core::declare_trait_metered(&cx, raw) {
+        match musa_calculus::declare_trait_metered(&cx, raw) {
             Ok((declared, spent)) => {
                 spend = spend.and(spent);
                 cx = cx.declaring_class(&declared);
@@ -591,7 +591,7 @@ pub(crate) fn elaborate(
         definitions: read.definitions,
         instances: read.instances,
     };
-    let declared = match musa_core::declare_program_metered(&cx, &program) {
+    let declared = match musa_calculus::declare_program_metered(&cx, &program) {
         Ok((declared, spent)) => {
             spend = spend.and(spent);
             declared
@@ -737,8 +737,8 @@ struct Read {
     /// Each type declaration beside the node it was written at, because the node
     /// is what [`order_types`] reads its dependencies off.
     types: Vec<(SyntaxNode, TypeDecl)>,
-    classes: Vec<musa_core::RawTrait>,
-    instances: Vec<musa_core::RawImpl>,
+    classes: Vec<musa_calculus::RawTrait>,
+    instances: Vec<musa_calculus::RawImpl>,
     definitions: Vec<RawTopLevel>,
     /// Each definition's declaration beside the name it bound, held until the
     /// document is elaborated. See [`documented`].
@@ -867,14 +867,14 @@ impl Read {
     /// *ordinary definition* filed under a qualified name, and an instance is
     /// the same declaration read a second time in a scope where the functor's
     /// parameters name what the site passed. Nothing here is a second kind of
-    /// item and nothing crosses into [`musa_core`] that a `let` at a root does
+    /// item and nothing crosses into [`musa_calculus`] that a `let` at a root does
     /// not.
     ///
     /// Filed after [`Self::gather`] rather than during it, because a member is
     /// not written where it is checked: `Modules` has already flattened the
     /// tree, and a walk of a source's children would find the `structure` and
     /// not its members. Order does not otherwise matter —
-    /// [`musa_core::declare_program`] computes the dependency order over the
+    /// [`musa_calculus::declare_program`] computes the dependency order over the
     /// whole list.
     fn flatten(&mut self, resolver: &mut Resolver, sites: &mut Sites, modules: &Modules) {
         for member in modules.members() {
@@ -990,7 +990,7 @@ fn instantiated(
     whole.then_some(bound)
 }
 
-/// One lowered definition, as the member of a program `musa-core` reads.
+/// One lowered definition, as the member of a program `musa-calculus` reads.
 ///
 /// The visibility comes from the node rather than from the [`Definition`], for
 /// the reason `crate::lower::items` gives for leaving it off: a caller has the
@@ -1043,7 +1043,7 @@ impl Declaring {
 /// name*: `cx` holds every definition this document declared, so the type a use
 /// of the name would have is the type the declaration ended up with. Nothing is
 /// re-elaborated — the name is one node, and what comes back is what
-/// [`musa_core::declare_program`] already settled.
+/// [`musa_calculus::declare_program`] already settled.
 ///
 /// A name that will not infer is passed over silently. It cannot be a name this
 /// document failed to declare — the walk only holds declarations the core
@@ -1052,7 +1052,7 @@ impl Declaring {
 fn documented(resolver: &mut Resolver, cx: &Cx, declaring: Vec<Declaring>) {
     for held in declaring {
         let inferred = || {
-            let (_, ty) = musa_core::infer(cx, &Raw::var(held.origin, &*held.name)).ok()?;
+            let (_, ty) = musa_calculus::infer(cx, &Raw::var(held.origin, &*held.name)).ok()?;
             crate::lower::documented::spelled(&ty)
         };
         if let Some(item) = crate::lower::documented::documented(&held.node, &held.name, held.uri.as_deref(), inferred)
@@ -1128,7 +1128,7 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
 ///
 /// `01-surface.md` §1.2 gives a document two ways to declare a type: a `data` or
 /// `enum` names an inductive family, and a `record` names a Σ. The core keeps
-/// them apart — a family is [`musa_core::declare`]'s and a record is an ordinary
+/// them apart — a family is [`musa_calculus::declare`]'s and a record is an ordinary
 /// definition — but *the document* cannot, because either may name the other. A
 /// sum whose payload is a product (`data Taken { Took(read: Reading) }`) and a
 /// product holding a sum (`record Pending { taken: Taken; }`) are both ordinary
@@ -1136,7 +1136,7 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
 /// first unwritable. So the two travel in one list, in one dependency order —
 /// see [`order_types`].
 enum TypeDecl {
-    /// A `data` or `enum` group, declared by [`musa_core::declare_metered`].
+    /// A `data` or `enum` group, declared by [`musa_calculus::declare_metered`].
     Family(RawData),
     /// A `record`, declared by defining its Σ under the record's name.
     Record(RawTopLevel),
@@ -1156,7 +1156,7 @@ impl TypeDecl {
 /// The type declarations, ordered so that each is declared after the types its
 /// fields name.
 ///
-/// The same analysis [`musa_core::declare_program`] runs over definitions and
+/// The same analysis [`musa_calculus::declare_program`] runs over definitions and
 /// for the same reason, one door over: a written order is not a dependency
 /// order, and `data Chord { root: NoteName; }` may be written above the `data
 /// NoteName` it needs.

@@ -1,10 +1,10 @@
 //! The surface CST read as a raw core term.
 //!
 //! `docs/rules/language/02-core-calculus.md` §2 elaborates a surface term into a
-//! core term, and [`musa_core::Raw`] is what it reads. This module is the half
+//! core term, and [`musa_calculus::Raw`] is what it reads. This module is the half
 //! that knows about `.musa`: it walks the lossless CST that
 //! [`musa_language`](musa_language) produced and writes the raw term that
-//! `musa-core` checks. Nothing here decides a type — that is the core's, and the
+//! `musa-calculus` checks. Nothing here decides a type — that is the core's, and the
 //! whole reason this module is a fraction of the size of the checker it replaces.
 //!
 //! # What "lowering" is, and what it is not
@@ -17,11 +17,11 @@
 //!   into the other is reading.
 //! - **Desugaring.** `if c { a } else { b }` is `match c { Bool.True → a ; …}`,
 //!   `x == y` is `Eq.equal x y` (`10-traits.md` §5), and `x.m(y)` is
-//!   [`RawShape::Method`](musa_core::RawShape::Method) applied. The core has no
+//!   [`RawShape::Method`](musa_calculus::RawShape::Method) applied. The core has no
 //!   operator table and never learns one.
 //! - **Numbering.** §7 asks that every core term record the surface node it came
-//!   from, and `musa-core` is a leaf that cannot know what a span is. [`Sites`]
-//!   is the table that makes a [`musa_core::Origin`] mean something again when a
+//!   from, and `musa-calculus` is a leaf that cannot know what a span is. [`Sites`]
+//!   is the table that makes a [`musa_calculus::Origin`] mean something again when a
 //!   refusal comes back.
 //!
 //! What is *not* here: name resolution to an index, unification, implicit
@@ -33,12 +33,12 @@
 //!
 //! Lowering never asks what type a position wants. That is not an economy, it is
 //! the boundary: a function that took an expected type would be *checking*, and
-//! checking is exactly what moved to `musa-core`. The visible consequences are
+//! checking is exactly what moved to `musa-calculus`. The visible consequences are
 //! two, and both are deliberate:
 //!
 //! - An unknown name is **written through** as a variable. The core holds the
 //!   context, so the core answers
-//!   [`Refusal::UnknownName`](musa_core::Refusal::UnknownName), at the origin
+//!   [`Refusal::UnknownName`](musa_calculus::Refusal::UnknownName), at the origin
 //!   this module gave the node.
 //! - A literal's base type comes from **the surface node**, never from a type
 //!   flowing in. `02-core-calculus.md` §2 says a literal infers, so `3` is a
@@ -70,7 +70,7 @@ use std::collections::HashMap;
 
 use num_rational::Ratio;
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::diagnose::Diagnostic;
@@ -80,17 +80,17 @@ use crate::resolve::Resolver;
 
 /// Every surface node a raw term was read from, numbered.
 ///
-/// `musa-core` carries a [`Origin`] on every term and says in its own module
+/// `musa-calculus` carries a [`Origin`] on every term and says in its own module
 /// documentation that the number is "the caller's": the core keeps it attached
 /// to the right term and never interprets it. This is the caller's half — the
-/// table that turns it back into a span when a [`musa_core::ElabError`] arrives
+/// table that turns it back into a span when a [`musa_calculus::ElabError`] arrives
 /// and has to be pointed at something a composer wrote.
 ///
 /// # Why a table rather than a span in the term
 ///
 /// An [`Origin`] is one word and `Copy`, which is what lets every term hold one
 /// without provenance becoming a thing worth switching off. A `SourceSpan` is
-/// two words and would have to cross into `musa-core`, which is a leaf that must
+/// two words and would have to cross into `musa-calculus`, which is a leaf that must
 /// not learn what a file is. So the span stays here and the core carries an
 /// index into here, which is the same arrangement
 /// [`crate::derivation`](crate::derivation) already uses for the same reason.
@@ -622,7 +622,7 @@ fn applied(origin: Origin, head: Raw, arguments: impl IntoIterator<Item = Raw>) 
 /// [`Raw::hosted`] and not [`Raw::var`], which is what makes an unannotated
 /// `[1, 2]` infer. `List` has a parameter and a parameter is an explicit binder
 /// at an ordinary use, so `List.Cons 1 …` written as an *author* would write it
-/// means `Cons` at the type `1` — see `musa-core`'s `constructed_open`. The
+/// means `Cons` at the type `1` — see `musa-calculus`'s `constructed_open`. The
 /// reader knows it wrote no parameter, and `hosted` is how it says so.
 fn listed(origin: Origin, members: Vec<Raw>) -> Raw {
     let mut built = Raw::hosted(origin, "List.Empty");

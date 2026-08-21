@@ -1947,7 +1947,7 @@ musa/
 ## 15.1 Dependency direction
 
 ```text
-musa-language   musa-core   musa-kernel
+musa-language   musa-calculus   musa-kernel
       │             │            │
       └─────────────┼────────────┘
                     ▼
@@ -2034,7 +2034,7 @@ Dependencies:
 
 ```text
 musa-language
-musa-core
+musa-calculus
 num-rational
 slotmap
 indexmap
@@ -2325,7 +2325,7 @@ be run under a debugger — a span per request, carrying the method and the docu
 Its stdout is the JSON-RPC transport and carries nothing else.
 
 
-## 15.12 `musa-core`
+## 15.12 `musa-calculus`
 
 The dependently typed core the source language elaborates into, and a **leaf**: it depends on no other Musa crate and
 knows nothing about pitch, time, notation, or audio. It sits below `musa-compiler` the way `musa-kernel` does, and for
@@ -2408,7 +2408,7 @@ arrives with the first caller that wants to inspect a normal form.
 
 The finite temporal kernel a checked program elaborates into, and the workspace's other **leaf**: it depends on no other
 Musa crate, and it knows nothing about pitch, notation, instruments, or audio. The division with §15.12 is that
-`musa-core` is the calculus a term is *checked* in, and `musa-kernel` is the denotation a checked term *means* — an
+`musa-calculus` is the calculus a term is *checked* in, and `musa-kernel` is the denotation a checked term *means* — an
 ambient duration `d ∈ ℚ≥0` and a finite multiset of occurrences `(s, e, a)` with `0 ≤ s ≤ e ≤ d`. Both sit below
 `musa-compiler` for the same reason: the part that has to be provably right is smaller than the part that has to be
 convenient, and it stays that way only if it cannot reach the rest of the workspace.

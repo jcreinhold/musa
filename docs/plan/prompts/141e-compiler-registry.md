@@ -17,9 +17,9 @@ the old checker's `Value`.
 
 Fill the mechanism's δ half. Declare the families the compiler's own signatures mention, register the inert musical
 domains as base types, and re-express every δ entry of both tables — 92 of `BUILTIN_OWNERSHIP`'s 117 and 14 of
-`SYNTAX_OWNERSHIP`'s 17 — as `musa_core::Builtin`s with rules over `Datum`. The other 28 are named, counted, and left,
-each for a reason the Design gives. Nothing calls the result: this prompt is the table, proved by its own suite, exactly
-as 141b–141d were the mechanism proved by theirs. Prompt 142 is still the one cutover.
+`SYNTAX_OWNERSHIP`'s 17 — as `musa_calculus::Builtin`s with rules over `Datum`. The other 28 are named, counted, and
+left, each for a reason the Design gives. Nothing calls the result: this prompt is the table, proved by its own suite,
+exactly as 141b–141d were the mechanism proved by theirs. Prompt 142 is still the one cutover.
 
 ## Read
 
@@ -36,9 +36,9 @@ as 141b–141d were the mechanism proved by theirs. Prompt 142 is still the one 
 - [`../../rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §1's type list and §5.8's four
   families. §1 is the authority on which musical types are declared families and which are base types, and on why `Nat`
   is inductive while `Ratio` is inert: `zero | succ` is well founded and ℚ has no least element to descend to.
-- `crates/musa-core/tests/suite/base_laws.rs` — the shape a worked registry and its laws take, and the fixture pattern
-  where the families are declared before the builtins that answer them.
-- `crates/musa-core/src/base.rs`'s `check_finite_data` doc comment, which reserves the literal-index case in so many
+- `crates/musa-calculus/tests/suite/base_laws.rs` — the shape a worked registry and its laws take, and the fixture
+  pattern where the families are declared before the builtins that answer them.
+- `crates/musa-calculus/src/base.rs`'s `check_finite_data` doc comment, which reserves the literal-index case in so many
   words, and `Registry::new`'s, which says why a structural target must be a base type. Both are why this prompt's scope
   is what it is rather than what it was.
 - Peyton Jones ch. 2 §2.5.3 and §2.6: built-in functions are δ-conversion, and "constants and built-in functions, each
@@ -135,12 +135,12 @@ audit looks for, and 142 is where the old one is deleted. But "nothing calls thi
 
 - `crates/musa-compiler/src/prelude.rs`: the `data` declarations the registry's signatures mention — `Bool`, `Nat`,
   `Option`, `List`, `Result`, and the row fault — with the context that holds them.
-- `crates/musa-core/src/base.rs`: `check_finite_data` admits a literal index under a registered base head, with the
-  refusal unchanged everywhere else, and `crates/musa-core/tests/suite/base_laws.rs` states both halves.
+- `crates/musa-calculus/src/base.rs`: `check_finite_data` admits a literal index under a registered base head, with the
+  refusal unchanged everywhere else, and `crates/musa-calculus/tests/suite/base_laws.rs` states both halves.
 - `crates/musa-compiler/src/registry.rs`: the generic `Payload`, the base types with their kinds, the `Shape`-to-`Term`
   translation, the 92 δ entries of `BUILTIN_OWNERSHIP` and the 14 δ builders of `SYNTAX_OWNERSHIP` with their rules, and
-  the assembled `musa_core::Registry`, with the rules themselves in `src/registry/rules.rs`. The two tables stay two,
-  because §5.9 makes the phase registry separate, and the two walks over them stay two for the same reason.
+  the assembled `musa_calculus::Registry`, with the rules themselves in `src/registry/rules.rs`. The two tables stay
+  two, because §5.9 makes the phase registry separate, and the two walks over them stay two for the same reason.
 - `crates/musa-compiler/src/lib.rs`: `mod prelude` and `mod registry` carrying
   `#[cfg_attr(not(test), expect(dead_code, …))]` with the reason naming prompt 142, so that "nothing calls this" is a
   claim the compiler retires rather than a comment.
@@ -160,8 +160,8 @@ audit looks for, and 142 is where the old one is deleted. But "nothing calls thi
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -172,11 +172,11 @@ Commit as `Say what the compiler owns, in the core's own terms`.
 
 ## Stop
 
-- No elaboration through `musa-core`, no surface change, no `.musa` file touched, and no old checking path deleted.
+- No elaboration through `musa-calculus`, no surface change, no `.musa` file touched, and no old checking path deleted.
   Prompt 142 owns the cutover and owns it whole.
 - No builtin added, removed, renamed, or merged. The tables say the same 117 and 17 things they said before; prompt 143
   is where they get smaller.
-- No musical type in `musa-core`. The core stays a leaf, and every name this prompt writes is registered from the
+- No musical type in `musa-calculus`. The core stays a leaf, and every name this prompt writes is registered from the
   compiler side.
 - No second `Datum` arm, and no change to `Rule`, `Rewrite`, `Builtin`, or `Registry`'s public surface. The one core
   change is the positive check 141d reserved, and it arrives with its callers. A signature this prompt still cannot

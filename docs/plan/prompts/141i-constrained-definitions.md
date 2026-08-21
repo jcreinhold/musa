@@ -17,8 +17,8 @@ and elaborates it to "an extra parameter holding the dictionary", and `10-traits
 "a dictionary bound by an enclosing `where` clause". Give the core the binder those four sentences already describe, and
 delete the refusal.
 
-This is drift, not a feature. `musa-core`'s own `Constraint` doc already lists the three positions its arguments may be
-read under — "a trait's own context under its parameters, an instance's under the instance parameters, **a function's
+This is drift, not a feature. `musa-calculus`'s own `Constraint` doc already lists the three positions its arguments may
+be read under — "a trait's own context under its parameters, an instance's under the instance parameters, **a function's
 `where` under its type parameters**" — and the third has no door.
 
 ## Read
@@ -32,20 +32,21 @@ read under — "a trait's own context under its parameters, an instance's under 
 - [`../../rules/language/10-traits.md`](../../rules/language/10-traits.md) §4 — the three lookup steps, step 1's local
   dictionary, and postponement. §4's termination measure is checked **at an instance** and is not this prompt's
   business: a free definition's `where` binds a dictionary, it does not declare one, so there is no descent to measure.
-- `crates/musa-core/src/dictionary.rs` — `requirements`, and `method_at`'s `Kind::Derived` arm. `requirements` is this
-  prompt's rule one level down: it walks a derived method's `where`, elaborates each constraint, **discharges** the key
-  into the scope as well as assuming a binder for it, and hands back the scope the body is written in. `method_at`'s
+- `crates/musa-calculus/src/dictionary.rs` — `requirements`, and `method_at`'s `Kind::Derived` arm. `requirements` is
+  this prompt's rule one level down: it walks a derived method's `where`, elaborates each constraint, **discharges** the
+  key into the scope as well as assuming a binder for it, and hands back the scope the body is written in. `method_at`'s
   derived arm is the use-site half: the trait's arguments and the method's own parameters become metavariables, and each
   of the method's own constraints goes through `resolve`. Both halves already exist; what is missing is the door a
   definition reaches them through.
-- `crates/musa-core/src/term.rs` — `Shape::Pi`'s `plicity` field and its doc: "**no core rule reads this** — it is here
-  because a type reached by projection or by substitution has been through the semantic domain, and elaboration still
-  has to be able to ask whether the binder it found was implicit". That sentence is the design.
-- `crates/musa-core/src/elab.rs` — `inserted`, `lambda`, `abstracted`, and `function_type`. `inserted` is the loop that
-  fills an implicit binder with a metavariable; it is where a constraint binder is filled by `10-traits.md` §4 instead.
-- `crates/musa-core/src/family.rs` — `Binder`, `Group::params`, `Constant::ty`, and the `split_off(params)` arithmetic
-  that a family's parameters are counted by. This is where `enum` costs more than `fn` and `record`, and the cost is
-  named in the Design below rather than discovered.
+- `crates/musa-calculus/src/term.rs` — `Shape::Pi`'s `plicity` field and its doc: "**no core rule reads this** — it is
+  here because a type reached by projection or by substitution has been through the semantic domain, and elaboration
+  still has to be able to ask whether the binder it found was implicit". That sentence is the design.
+- `crates/musa-calculus/src/elab.rs` — `inserted`, `lambda`, `abstracted`, and `function_type`. `inserted` is the loop
+  that fills an implicit binder with a metavariable; it is where a constraint binder is filled by `10-traits.md` §4
+  instead.
+- `crates/musa-calculus/src/family.rs` — `Binder`, `Group::params`, `Constant::ty`, and the `split_off(params)`
+  arithmetic that a family's parameters are counted by. This is where `enum` costs more than `fn` and `record`, and the
+  cost is named in the Design below rather than discovered.
 - `crates/musa-compiler/src/lower/items.rs` — `unconstrained`, whose doc argues for the refusal on exactly the ground
   this prompt removes, and `function`, `structural`, `enumeration`, and `instance`. Also the module doc's rule that a
   type declaration's parameter is explicit and a function's is implicit, which fixes where a constraint binder goes.
@@ -86,8 +87,8 @@ pub enum Plicity {
 ```
 
 `Constraint` becomes `pub` with its fields still `pub(crate)` — an opaque public type, which is what it already is
-everywhere but the `enum` above. `Plicity` loses `Copy` and keeps `Clone`; it has no user outside `musa-core`, so the
-ripple is internal and mechanical.
+everywhere but the `enum` above. `Plicity` loses `Copy` and keeps `Clone`; it has no user outside `musa-calculus`, so
+the ripple is internal and mechanical.
 
 **This adds no term to the calculus, which is §1.4's claim and has to stay true.** §1's "exactly one Π" is untouched:
 there is one function type, and a constraint is a marking on its binder that **no core rule reads** — the same status
@@ -157,20 +158,20 @@ changes are 142's.
 
 ## Target
 
-- `crates/musa-core/src/term.rs`: `Plicity::Constraint(Arc<Constraint>)`, doc-commented with the sentence it implements
-  and with the reason the constraint rides on the binder rather than in a table. `Copy` goes; `Clone` stays.
-- `crates/musa-core/src/class.rs`: `Constraint` public, fields still `pub(crate)`.
-- `crates/musa-core/src/raw.rs`: `Raw::constrained_pi(origin, constraint: RawConstraint, codomain: Self)`, and
+- `crates/musa-calculus/src/term.rs`: `Plicity::Constraint(Arc<Constraint>)`, doc-commented with the sentence it
+  implements and with the reason the constraint rides on the binder rather than in a table. `Copy` goes; `Clone` stays.
+- `crates/musa-calculus/src/class.rs`: `Constraint` public, fields still `pub(crate)`.
+- `crates/musa-calculus/src/raw.rs`: `Raw::constrained_pi(origin, constraint: RawConstraint, codomain: Self)`, and
   `RawData::context: Vec<RawConstraint>`. No `constrained_lam` — the core writes that λ.
-- `crates/musa-core/src/elab.rs`: the filling arm in `inserted` and the abstracting arm beside `lambda`, the second
+- `crates/musa-calculus/src/elab.rs`: the filling arm in `inserted` and the abstracting arm beside `lambda`, the second
   discharging as well as assuming. `function_type` takes the constraint's dictionary type as the domain and levels it
   the way it levels any other.
-- `crates/musa-core/src/family.rs`: `Binder::plicity`, and `declare` appending one constraint binder per
+- `crates/musa-calculus/src/family.rs`: `Binder::plicity`, and `declare` appending one constraint binder per
   `RawData::context` entry after the written parameters.
 - `crates/musa-compiler/src/lower/items.rs`: `unconstrained` deleted; `function`, `structural`, and `enumeration`
   reading their `where` through the existing `written_constraints`; `instance` refusing a constraint on an impl method
   under `Code::Misplaced`.
-- Laws in `crates/musa-core/tests/suite/`: `same` checks and its body's `==` resolves to the bound dictionary rather
+- Laws in `crates/musa-calculus/tests/suite/`: `same` checks and its body's `==` resolves to the bound dictionary rather
   than a global instance; a call at a known head resolves; a call whose head is a metavariable postpones and is answered
   when the head is solved; a constraint no instance can answer is refused at the use site, naming the type and the
   trait; an inner `where` shadows an outer one (§4 step 1's "innermost first"); a constrained record type is convertible
@@ -180,15 +181,15 @@ changes are 142's.
   becomes the admission it was blocking — the same source, lowered and then declared by the core — plus a `record` and
   an `enum` each carrying one, plus the impl-method refusal.
 - `docs/plan/code-map/spec-to-implementation-map.md`: the lowering row loses the `where` clause from its list of four
-  refused forms, and the `musa-core` traits row records the constraint binder.
+  refused forms, and the `musa-calculus` traits row records the constraint binder.
 - `AGENTS.md`'s prompt count.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

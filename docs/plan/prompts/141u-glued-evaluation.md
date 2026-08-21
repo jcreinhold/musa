@@ -67,14 +67,14 @@ on it**. This prompt does not make nineteen million calls cheaper by two orders 
   ran first — and §4, the meter this prompt is measured on and does not move.
 - [Prompt 141n](141n-top-level-program.md) — the top-level program, which is what made a definition scope exist and so
   made Finding C real rather than hypothetical.
-- [`context.rs`](../../../crates/musa-core/src/context.rs)'s `Cx::defined`, `Cx::env`, and `Cx::assumed`, and
-  [`scope.rs`](../../../crates/musa-core/src/scope.rs)'s `define` — where a definition's _evaluated_ value is pushed
+- [`context.rs`](../../../crates/musa-calculus/src/context.rs)'s `Cx::defined`, `Cx::env`, and `Cx::assumed`, and
+  [`scope.rs`](../../../crates/musa-calculus/src/scope.rs)'s `define` — where a definition's _evaluated_ value is pushed
   into `Env = List<Value>` today, and why a use of it is already its normal form before anything asks.
-- [`value.rs`](../../../crates/musa-core/src/value.rs)'s `Head` and `Neutral` — head plus `Vec<Elim>` since prompt
+- [`value.rs`](../../../crates/musa-calculus/src/value.rs)'s `Head` and `Neutral` — head plus `Vec<Elim>` since prompt
   136b's Finding F, which is what makes adding one head a variant rather than a restructuring.
-- [`eval.rs`](../../../crates/musa-core/src/eval.rs)'s `apply`, [`quote.rs`](../../../crates/musa-core/src/quote.rs),
-  and [`unify.rs`](../../../crates/musa-core/src/unify.rs) — the three places that ask "is this canonical yet", which
-  are the three places that will have to force δ.
+- [`eval.rs`](../../../crates/musa-calculus/src/eval.rs)'s `apply`,
+  [`quote.rs`](../../../crates/musa-calculus/src/quote.rs), and [`unify.rs`](../../../crates/musa-calculus/src/unify.rs)
+  — the three places that ask "is this canonical yet", which are the three places that will have to force δ.
 - Peyton Jones **ch. 12 §12.1** — tree reduction against graph reduction, which is this same observation one machine
   down: an expression evaluated once and shared costs a sum where an expression rebuilt at each use costs a product.
   Take the analysis; musa has no graph reducer and this prompt does not build one.
@@ -260,9 +260,9 @@ change it.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run -p musa-compiler -E 'test(staff_expansion_laws) or test(staff_writing_laws) or test(conversion_laws)'
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

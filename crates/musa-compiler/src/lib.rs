@@ -39,7 +39,7 @@ mod data;
 mod derivation;
 mod diagnose;
 mod docs;
-/// A whole document, elaborated through `musa-core`.
+/// A whole document, elaborated through `musa-calculus`.
 ///
 /// Nothing reaches it yet, and prompt 141o's Design says why: the walk is built
 /// and proved one prompt before the cutover that wires it, so that a wrong walk
@@ -56,7 +56,7 @@ mod imports;
 mod infer;
 mod kernel_text;
 mod lint;
-/// The surface CST read as a [`musa_core::Raw`].
+/// The surface CST read as a [`musa_calculus::Raw`].
 ///
 /// Nothing reaches it yet, and prompt 141g's Design says why: the reading is
 /// built and proved one prompt before the cutover that wires it, so that a wrong
@@ -78,7 +78,7 @@ mod profile;
 mod project;
 mod realize;
 mod reference;
-/// The compiler's own operations as `musa-core` registrations.
+/// The compiler's own operations as `musa-calculus` registrations.
 ///
 /// Nothing reaches it yet, and prompt 141e's Design says why: the registry is
 /// built and proved one prompt before the cutover that uses it, so that a wrong

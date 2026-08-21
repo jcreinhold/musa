@@ -1,6 +1,6 @@
 //! Asserts: `asserted` and the `claimed_predicate`/`claim_arguments` pair that report what a claim refused.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 

@@ -7,7 +7,7 @@
 //! `List<τ>`, `Result<τ, τ>`, `τ -> τ` — and the three base types that take an
 //! *index* rather than a type argument.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::{Lowering, applied, child, children, is_type_node, paired};
@@ -22,7 +22,7 @@ impl Lowering<'_> {
     ///
     /// Arity, and whether a name denotes a type at all. `Option<Nat, Nat>`
     /// lowers to `Option Nat Nat` and the core refuses it as
-    /// [`Refusal::NotAFunction`](musa_core::Refusal::NotAFunction) against
+    /// [`Refusal::NotAFunction`](musa_calculus::Refusal::NotAFunction) against
     /// `Option`'s own kind, which is the same answer one pass later and from the
     /// declaration rather than from a table beside it. The two exceptions below
     /// are the cases where lowering *cannot* write a term at all, so there is
@@ -50,7 +50,7 @@ impl Lowering<'_> {
                 let codomain = self.ty(parts.get(1)?)?;
                 // `arrow` and not `pi`: a written arrow declares no parameter,
                 // and §1.3's completeness rule counts the ones that were
-                // declared. `musa_core::ARROW_BINDER` says the rest.
+                // declared. `musa_calculus::ARROW_BINDER` says the rest.
                 Some(Raw::arrow(origin, domain, codomain))
             }
             // `01-surface.md`'s anonymous product, as the `Pair` the prelude
@@ -90,7 +90,7 @@ impl Lowering<'_> {
     /// different is the tail — an unknown name is *written through* as a variable
     /// rather than refused here, because the core is what knows which names stand
     /// in the context and answers with
-    /// [`Refusal::UnknownName`](musa_core::Refusal::UnknownName) at this very
+    /// [`Refusal::UnknownName`](musa_calculus::Refusal::UnknownName) at this very
     /// origin.
     fn named_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let written = node.to_string();
@@ -168,7 +168,7 @@ impl Lowering<'_> {
     ///
     /// It has to be checked *here* rather than in the signature, because the
     /// signature cannot say it. A step tag is a host notion:
-    /// [`crate::registry`] owns the table and `musa-core` owns the mechanism, so
+    /// [`crate::registry`] owns the table and `musa-calculus` owns the mechanism, so
     /// `Machine Nat A B` is a well-typed core term and nothing in the core could
     /// learn otherwise. The one place the surface writes a step is the one place
     /// left to refuse it.
@@ -312,7 +312,7 @@ impl Index {
 }
 
 /// One indexed base type applied to the literal that indexes it.
-fn indexed_type(origin: Origin, name: &str, index: musa_core::Literal) -> Raw {
+fn indexed_type(origin: Origin, name: &str, index: musa_calculus::Literal) -> Raw {
     Raw::app(origin, Raw::var(origin, name), Raw::lit(origin, index))
 }
 

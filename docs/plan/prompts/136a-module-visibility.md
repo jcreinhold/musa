@@ -13,7 +13,7 @@ phase: 3
 Give the language one visibility marker. `private` before a top-level declaration makes that declaration nameable only
 inside its own module; `private` before an enum's cases keeps the type public and makes its constructors module-local,
 so a package can maintain an invariant its clients cannot break. Grammar, CST, formatter, highlighting, and tree-sitter
-in `musa-language`; the resolution rule and its diagnostics in `musa-core`. Record the rule in
+in `musa-language`; the resolution rule and its diagnostics in `musa-calculus`. Record the rule in
 `docs/rules/language/01-surface.md` §1.3 and `docs/rules/language/04-templates-and-modules.md` §4.
 
 ## Read
@@ -38,11 +38,11 @@ in `musa-language`; the resolution rule and its diagnostics in `musa-core`. Reco
 - `crates/musa-compiler/src/module.rs` — what a module scope has to be able to answer, and **not** where this lands.
   That `NameScope` belongs to the checker prompt 142 deletes; building the filter there would be work thrown away, and
   the Stop below forbids it.
-- `crates/musa-core/src/{scope.rs, context.rs, family.rs, declare.rs}` — where a name is resolved *after* 142. A raw
+- `crates/musa-calculus/src/{scope.rs, context.rs, family.rs, declare.rs}` — where a name is resolved *after* 142. A raw
   variable resolves against binders and against the declared groups a `Cx` was extended by, and `Cx` is flat: there is
   no module in it for a filter to test against. That is the missing prerequisite this prompt supplies, and it is why the
   filter cannot be "a filter on an existing lookup" until the lookup has a boundary to know about.
-- `crates/musa-core/src/origin.rs` — the precedent for the shape that boundary takes. An `Origin` is "a number the
+- `crates/musa-calculus/src/origin.rs` — the precedent for the shape that boundary takes. An `Origin` is "a number the
   caller assigned, and the only thing this crate does with that number is keep it attached to the right term"; a module
   identity is the same bargain, and the argument that keeps the core a leaf is the same one.
 - *A Philosophy of Software Design* ch. 5 and ch. 8 — information hiding, and the argument that an invariant maintained
@@ -91,13 +91,13 @@ package's own interface and the point of hiding the constructors. The bare-const
 message.
 
 **The core has to learn what a module is, and it learns exactly one thing about it.** `Cx` is flat: a raw name resolves
-against binders and against the groups the context was extended by, and nothing in `musa-core` can say whether an
+against binders and against the groups the context was extended by, and nothing in `musa-calculus` can say whether an
 elaboration is happening inside a declaration's own module. Give it an opaque module identity — a number the caller
 assigns — carried on a `Cx` and stamped on a declared group when it is brought into scope, compared only for equality
 and never interpreted. That is `Origin`'s bargain word for word (`origin.rs`: the core "does not know what a file is,
 what a span is, or what a syntax node is, and it must not learn"), and it is what keeps this rule in the crate that is
-provably right without importing the compiler's idea of a package. `musa-core` never mints one; the caller does, and no
-caller mints a real one until 142.
+provably right without importing the compiler's idea of a package. `musa-calculus` never mints one; the caller does, and
+no caller mints a real one until 142.
 
 The alternative — have the compiler build each module's `Cx` without the private declarations at all — is rejected, and
 for a stated reason rather than a preference: a name that is absent is `UnknownName`, and this prompt's whole value is
@@ -131,12 +131,12 @@ name it. Parsing round-trips losslessly and formatting is idempotent with the ma
 
 - `musa-language`: the `private` keyword, its grammar and CST positions, formatter layout, highlighting, and completion.
 - `editors/tree-sitter-musa`: grammar and queries, with the drift test green.
-- `musa-core`: an opaque module identity on `Cx` and on a declared group, the visibility a `RawData` and its cases
+- `musa-calculus`: an opaque module identity on `Cx` and on a declared group, the visibility a `RawData` and its cases
   carry, the resolution filter, the mixed-enum refusal, the outside-`match` refusal, and their diagnostics with `musa
   explain` codes. A context with no module named is inside every module, which is what keeps every existing test and
   every existing caller unchanged.
-- `crates/musa-language/tests/suite/` and `crates/musa-core/tests/suite/` cases, including the `Chord` program from note
-  43 §5.1 written out as a fixture: the package builds a `NamedChord` through `build`, and the client that tries to
+- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the `Chord` program from
+  note 43 §5.1 written out as a fixture: the package builds a `NamedChord` through `build`, and the client that tries to
   build one directly is refused.
 - `docs/rules/language/01-surface.md` §1.3 and §1 grammar, and `docs/rules/language/04-templates-and-modules.md` §4 —
   the rule, the public-by-default argument with its re-opening condition, and the non-overlap with sealing.
@@ -147,9 +147,9 @@ name it. Parsing round-trips losslessly and formatting is idempotent with the ma
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-core
+cargo nextest run -p musa-language -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-language -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test
@@ -163,10 +163,10 @@ Commit as `Let a package hide what it maintains`.
 
 - No visibility tier below or above the module. No `pub` keyword, no export list, no re-export form.
 - No `musa-compiler` wire-up and no migration of `stdlib/` or `examples/`; the marker reaches real packages in 142, and
-  the two adapter rewrites at 145 and 146 are what measure whether it earned its keep. `musa-core` takes the module
+  the two adapter rewrites at 145 and 146 are what measure whether it earned its keep. `musa-calculus` takes the module
   identity as a parameter and mints none, so nothing supplies a real one until then — the rule is testable here because
   a test can assign the numbers a compiler will later assign.
-- **No module system in `musa-core`.** One opaque identity, compared for equality, is the whole of it. No path, no
+- **No module system in `musa-calculus`.** One opaque identity, compared for equality, is the whole of it. No path, no
   nesting, no parent relation, no `import`, no notion of a file. If a refusal needs to *print* a module's name, the
   caller supplies the text the way it supplies a span for an `Origin`.
 - No change to `signature`/`structure` sealing, and no new privacy mechanism beside it.

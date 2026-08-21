@@ -1,6 +1,6 @@
 //! One concern of the enclosing module; see its module docs.
 
-use musa_core::Raw;
+use musa_calculus::Raw;
 
 use crate::diagnose::Diagnostic;
 
@@ -13,7 +13,7 @@ use super::{not_the_operation, read_adapter_module};
 ///
 /// Two of `CompilerLimits`' four counters (`26-language-design-decision.md`
 /// §3.5); the other two are the phase's own and are counted by
-/// [`crate::expand`]. Read off [`musa_core::Spend`], because a transformer is
+/// [`crate::expand`]. Read off [`musa_calculus::Spend`], because a transformer is
 /// elaborated and normalized by the ordinary machinery and a separate accounting
 /// of the same work would be a second opinion about it.
 pub(crate) struct PhaseWork {
@@ -36,7 +36,7 @@ impl PhaseWork {
     /// elaboration would report zero for the checking half and charge nothing
     /// for a module of any size. The number is the core's own rather than an
     /// estimate on this side, which is what the paragraph above requires.
-    pub(crate) const fn of(spent: musa_core::Spend) -> Self {
+    pub(crate) const fn of(spent: musa_calculus::Spend) -> Self {
         Self {
             evaluation_steps: spent.steps,
         }
@@ -94,7 +94,7 @@ pub(crate) fn edit_syntax(
     anchor: u64,
     argument: &str,
 ) -> (Result<Vec<AdapterPatch>, EditFailure>, PhaseWork) {
-    let mut spent = musa_core::Spend::default();
+    let mut spent = musa_calculus::Spend::default();
     let answer = run_editor(adapter_source, imports, subject, command, anchor, argument, &mut spent);
     (answer, PhaseWork::of(spent))
 }
@@ -106,7 +106,7 @@ fn run_editor(
     command: &str,
     anchor: u64,
     argument: &str,
-    spent: &mut musa_core::Spend,
+    spent: &mut musa_calculus::Spend,
 ) -> Result<Vec<AdapterPatch>, EditFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
         ModuleFault::Stopped => EditFailure::Stopped,
@@ -117,7 +117,7 @@ fn run_editor(
     // the module's own context. The anchor arrives as a number rather than
     // inside the argument text because a command spelled as one string would be
     // one an adapter could not take apart.
-    let here = musa_core::Origin::UNKNOWN;
+    let here = musa_calculus::Origin::UNKNOWN;
     let (answer, spend) = module
         .run(
             "edit",
@@ -143,8 +143,8 @@ fn run_editor(
 /// [`None`] when the normal form is not one, which is this crate's defect rather
 /// than an adapter's for [`answered`]'s reason: the call was checked before it
 /// was normalized, so an editor cannot reach it by being wrong.
-fn patches(answer: &musa_core::Datum) -> Option<Result<Vec<AdapterPatch>, EditFailure>> {
-    let musa_core::Datum::Case {
+fn patches(answer: &musa_calculus::Datum) -> Option<Result<Vec<AdapterPatch>, EditFailure>> {
+    let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
     } = *answer
@@ -160,8 +160,8 @@ fn patches(answer: &musa_core::Datum) -> Option<Result<Vec<AdapterPatch>, EditFa
 }
 
 /// One `Pair<Nat, Text>` an editor asked for.
-fn patch(field: &musa_core::Datum) -> Option<AdapterPatch> {
-    let musa_core::Datum::Case {
+fn patch(field: &musa_calculus::Datum) -> Option<AdapterPatch> {
+    let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
     } = *field
@@ -171,7 +171,7 @@ fn patch(field: &musa_core::Datum) -> Option<AdapterPatch> {
     if &**constructor != "Pair.Both" {
         return None;
     }
-    let [musa_core::Datum::Count { count, .. }, ref text] = fields[..] else {
+    let [musa_calculus::Datum::Count { count, .. }, ref text] = fields[..] else {
         return None;
     };
     Some((count, said(text)?))
@@ -183,11 +183,11 @@ fn patch(field: &musa_core::Datum) -> Option<AdapterPatch> {
 /// `Empty`/`Cons`, so a closed list is that chain and reading it is walking it.
 /// [`None`] the moment an element is not what `each` expects, which keeps the
 /// whole answer one decision rather than a vector with a hole in it.
-fn listed<T>(held: &musa_core::Datum, each: impl Fn(&musa_core::Datum) -> Option<T>) -> Option<Vec<T>> {
+fn listed<T>(held: &musa_calculus::Datum, each: impl Fn(&musa_calculus::Datum) -> Option<T>) -> Option<Vec<T>> {
     let mut read = Vec::new();
     let mut rest = held;
     loop {
-        let musa_core::Datum::Case {
+        let musa_calculus::Datum::Case {
             ref constructor,
             ref fields,
         } = *rest
@@ -206,8 +206,8 @@ fn listed<T>(held: &musa_core::Datum, each: impl Fn(&musa_core::Datum) -> Option
 }
 
 /// The text a literal holds.
-pub(crate) fn said(held: &musa_core::Datum) -> Option<String> {
-    let musa_core::Datum::Lit(ref value) = *held else {
+pub(crate) fn said(held: &musa_calculus::Datum) -> Option<String> {
+    let musa_calculus::Datum::Lit(ref value) = *held else {
         return None;
     };
     crate::registry::held::<String>(value).cloned()
@@ -216,7 +216,7 @@ pub(crate) fn said(held: &musa_core::Datum) -> Option<String> {
 /// One region, as the term the phase hands an operation.
 pub(crate) fn region(subject: crate::syntax::Syntax) -> Raw {
     Raw::lit(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         crate::registry::literal(crate::registry::syntax_type(crate::syntax::Cat::TokenTree), subject),
     )
 }
@@ -224,7 +224,7 @@ pub(crate) fn region(subject: crate::syntax::Syntax) -> Raw {
 /// One `Text` argument, the same way.
 fn text(said: &str) -> Raw {
     Raw::lit(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         crate::registry::literal(crate::registry::plain_type("Text"), said.to_owned()),
     )
 }

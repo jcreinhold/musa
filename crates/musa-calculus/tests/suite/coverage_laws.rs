@@ -8,7 +8,7 @@
 //! the compiler's internals rather than the language's meaning, and §6.2 fixes
 //! the meaning.
 
-use musa_core::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
+use musa_calculus::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
 
 use crate::family_laws::{apply, core_constant, nat_context, type0, var, vec};
 use crate::programs::WRITTEN;
@@ -20,7 +20,7 @@ use crate::programs::WRITTEN;
 /// If either declaration is refused, which would be a defect in this crate.
 pub(crate) fn nat_vec_context() -> Cx {
     let (cx, _) = nat_context();
-    let group = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
+    let group = musa_calculus::declare(&cx, &vec()).expect("Vec is a declaration");
     cx.declaring(&group)
 }
 
@@ -50,7 +50,7 @@ fn arrow(domain: Raw, codomain: Raw) -> Raw {
 ///
 /// If it is not a type, which is a defect in the test that wrote it.
 fn core(cx: &Cx, name: &str, ty: &Raw) -> Term {
-    musa_core::infer(cx, ty)
+    musa_calculus::infer(cx, ty)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
@@ -79,10 +79,10 @@ fn number(count: u32) -> Raw {
 ///
 /// If they are not, or if either is not a term at `ty`.
 fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
-    let left = musa_core::check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
-    let right = musa_core::check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
+    let left = musa_calculus::check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
+    let right = musa_calculus::check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
     assert!(
-        musa_core::convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
+        musa_calculus::convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
         "{name}"
     );
 }
@@ -155,7 +155,7 @@ fn a_compiled_match_re_checks_in_the_core() {
             ],
         ),
     );
-    let _compiled = musa_core::check(&cx, &ty, &by_match).expect("a nested match elaborates");
+    let _compiled = musa_calculus::check(&cx, &ty, &by_match).expect("a nested match elaborates");
 }
 
 /// ch. 5's variable rule: a variable pattern in a split column is *expanded*
@@ -219,7 +219,7 @@ fn a_nested_pattern_splits_the_columns_it_opens() {
     );
     let nat = core_constant(&cx, "Nat");
     let written = arrow(var("Nat"), var("Nat"));
-    musa_core::check(&cx, &ty, &minus_two).expect("a nested match covers Nat");
+    musa_calculus::check(&cx, &ty, &minus_two).expect("a nested match covers Nat");
     for (argument, expected) in [(0, 0), (1, 0), (2, 0), (3, 1), (5, 3)] {
         same(
             &cx,
@@ -263,7 +263,7 @@ fn several_subjects_are_matched_as_one_matrix() {
     );
     let nat = core_constant(&cx, "Nat");
     let written = arrow(var("Nat"), arrow(var("Nat"), var("Nat")));
-    musa_core::check(&cx, &ty, &program).expect("a two-column matrix covers Nat × Nat");
+    musa_calculus::check(&cx, &ty, &program).expect("a two-column matrix covers Nat × Nat");
     for (left, right, expected) in [(0, 3, 0), (2, 0, 0), (2, 3, 3), (1, 1, 1)] {
         same(
             &cx,
@@ -348,7 +348,7 @@ fn a_match_is_refused_for_the_reason_it_is_wrong() {
     } in refused_matches()
     {
         let ty = core(&cx, name, &ty);
-        let Err(error) = musa_core::check(&cx, &ty, &raw) else {
+        let Err(error) = musa_calculus::check(&cx, &ty, &raw) else {
             panic!("{name}: the match was admitted");
         };
         let refusal = crate::programs::refusal(name, error);
@@ -403,7 +403,7 @@ fn subject(column: usize) -> String {
 /// The elaborated size of a `match`, as a proxy a law can compare across widths.
 fn interleaved_size(cx: &Cx, columns: usize) -> usize {
     let ty = nat_arrows(cx, columns);
-    let compiled = musa_core::check(cx, &ty, &interleaved(columns)).expect("the interleaved program elaborates");
+    let compiled = musa_calculus::check(cx, &ty, &interleaved(columns)).expect("the interleaved program elaborates");
     format!("{compiled:?}").len()
 }
 

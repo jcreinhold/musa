@@ -76,7 +76,7 @@ position, so the rule is one arm there, ahead of the unification, and it fires o
 concrete category.
 
 **`TokenKind` and `Delimiter` become types, without a namespacing feature.** The first version of this prompt justified
-them by prompt 136's namespaced enum constructors — which prompt 136 delivered in `musa-core`, while the phase
+them by prompt 136's namespaced enum constructors — which prompt 136 delivered in `musa-calculus`, while the phase
 environment is in `musa-compiler`'s checker, which has bare constructors and no namespaces. The checker does have
 something better suited: `qualified_name` already folds `A.b` into one flat name. So the two are phase-local base types
 whose values are compiler-owned constants named `TokenKind.PitchLiteral` and `Delimiter.Braces` in that flat namespace,
@@ -140,9 +140,9 @@ boundary as data.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-compiler -p musa-core
+cargo nextest run -p musa-language -p musa-compiler -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

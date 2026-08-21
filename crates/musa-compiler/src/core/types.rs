@@ -376,7 +376,7 @@ pub(crate) enum Shape {
     ///
     /// The one signature in the table that is neither a base type nor a
     /// container over one, and the reason it is spelled as a name rather than as
-    /// an anonymous pair: a δ-rule answers a `musa_core::Datum`, which is a
+    /// an anonymous pair: a δ-rule answers a `musa_calculus::Datum`, which is a
     /// literal or a constructor, so a bare product is the one thing it cannot
     /// write. That is the mechanism noticing something true — the pair was a
     /// domain concept wearing a tuple — so it is declared in

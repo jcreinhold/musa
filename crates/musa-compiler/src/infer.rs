@@ -3,7 +3,7 @@
 //! The registry's rank-1 signatures (`crate::core::Type` operations like
 //! `SyntaxOp::instantiate`) take fresh type variables per instantiation site.
 //! Unification, generalization, and schemes left with the old checker;
-//! `musa-core` owns typed elaboration now.
+//! `musa-calculus` owns typed elaboration now.
 //!
 //! Nothing here is public.
 

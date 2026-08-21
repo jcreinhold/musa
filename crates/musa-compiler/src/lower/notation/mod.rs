@@ -103,7 +103,7 @@ pub(super) use raw::{
 mod repeats;
 mod statement;
 
-use musa_core::Raw;
+use musa_calculus::Raw;
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;

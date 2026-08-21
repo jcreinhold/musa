@@ -12,8 +12,8 @@ phase: 3
 
 Add the first two surface forms of the new language: structural records with field projection and `with` update along a
 path, and nominal enums whose constructors live in their type's namespace. Grammar, CST, formatter, and tree-sitter in
-`musa-language`; elaboration into the core in `musa-core`. This is where `data Pending`'s eight-field destructure dies
-and where the `Untied` collision that forced `names_a_phase_type` into the compiler stops being possible.
+`musa-language`; elaboration into the core in `musa-calculus`. This is where `data Pending`'s eight-field destructure
+dies and where the `Untied` collision that forced `names_a_phase_type` into the compiler stops being possible.
 
 ## Read
 
@@ -34,7 +34,7 @@ and where the `Untied` collision that forced `names_a_phase_type` into the compi
 ## Design
 
 **Where each half lands, and why the compiler is not wired up yet.** The grammar, CST, formatter, and highlighting go
-into `musa-language`; the elaboration of records and enums into core terms goes into `musa-core`, over the raw term
+into `musa-language`; the elaboration of records and enums into core terms goes into `musa-calculus`, over the raw term
 prompt 134 introduced. `musa-compiler` connects the two exactly once, in prompt 142. Until then a `record` declaration
 parses, formats, and highlights, and then fails resolution with the existing unknown-declaration diagnostic. That is
 deliberate: wiring a second checking path through the old compiler and then deleting it in 142 would mean building the
@@ -79,8 +79,8 @@ collide.
 - `musa-language`: grammar, CST nodes, typed AST wrappers, formatter, highlighting, and completion for record and enum
   declarations, path update, and namespaced constructor paths.
 - `editors/tree-sitter-musa`: grammar and queries, with the drift test green.
-- `musa-core`: elaboration of records and enums into core records and families, and their laws.
-- `crates/musa-language/tests/suite/` and `crates/musa-core/tests/suite/` cases, including the collision program.
+- `musa-calculus`: elaboration of records and enums into core records and families, and their laws.
+- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/` cases, including the collision program.
 - `docs/plan/code-map/` rows for both crates.
 - No `stdlib/` or `examples/` change: nothing is migrated until 142.
 
@@ -88,9 +88,9 @@ collide.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-core
+cargo nextest run -p musa-language -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-language -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

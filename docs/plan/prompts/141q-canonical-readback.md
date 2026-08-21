@@ -19,12 +19,12 @@ Prompt 142's `assert` needs a second question answered. `assert within_ranges([(
 prelude declares, a list is `List.Cons`/`List.Empty`, and a pair is `Pair.Both`. Their normal forms are *constructor
 spines*, and `read_back` returns `NotALiteral` for every one of them.
 
-The core already knows how to see a constructor spine as data — [`musa_core::Datum`] is the type, and §5.8's δ hands one
-to every builtin rule. What it has no door for is the same reading from a **term**. `eval::canonical` and
+The core already knows how to see a constructor spine as data — [`musa_calculus::Datum`] is the type, and §5.8's δ hands
+one to every builtin rule. What it has no door for is the same reading from a **term**. `eval::canonical` and
 `eval::constructed` are private and take a `Value`; `family::constructed`, which knows where a constructor's fields
 begin, is `pub(crate)`. A consumer holding a normal form has no way in.
 
-This prompt opens that door, and it opens it in `musa-core` rather than in the compiler for the reason `AGENTS.md`
+This prompt opens that door, and it opens it in `musa-calculus` rather than in the compiler for the reason `AGENTS.md`
 states: the parameter count of `Pair.Both` is something the declaration already fixed, and a compiler that hardcoded
 "two of `Pair.Both`'s four arguments are types" would be re-deriving a fact the core computed — the same shape of
 mistake as an adapter re-parsing `3/8` out of a token's spelling.
@@ -34,7 +34,7 @@ mistake as an adapter re-parsing `3/8` out of a token's spelling.
 - [`docs/rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.8, which states D1: what
   canonical data is, and why a δ-rule is a function over data rather than a callback into the evaluator. This prompt
   adds no new answer to that question — it exposes the answer §5.8 already gives, at a second input type.
-- [`141b`](141b-base-types-and-builtins.md), which introduced [`musa_core::Datum`], its two arms, and the
+- [`141b`](141b-base-types-and-builtins.md), which introduced [`musa_calculus::Datum`], its two arms, and the
   `Literal`/`Base` pair the compiler downcasts through.
 - [`141e`](141e-compiler-registry.md), which wrote `read_back` and the `held::<T>` downcast this prompt restates rather
   than replaces.
@@ -56,8 +56,8 @@ pub fn canonical(term: &Term) -> Option<Datum>
 ```
 
 Free rather than a method, and taking a normal form rather than a value, because that is what a consumer of
-[`musa_core::check`] holds. It needs no `Cx`: a constructor spine carries its own [`Constant`], and a `Constant` carries
-the group that declared it, so where the fields begin is already in the term.
+[`musa_calculus::check`] holds. It needs no `Cx`: a constructor spine carries its own [`Constant`], and a `Constant`
+carries the group that declared it, so where the fields begin is already in the term.
 
 **It is §5.8's `canonical`, at the other input type.** Both walk a head-and-spine, both skip a constructor's parameters,
 both refuse a partial application, a λ, a record, and a universe. The difference is entirely that one forces a `Value`
@@ -95,16 +95,16 @@ route is already paved.
 
 ## Target
 
-- `musa_core::canonical`, exported from the crate root, doc-commented with its `None` cases enumerated: a partial
+- `musa_calculus::canonical`, exported from the crate root, doc-commented with its `None` cases enumerated: a partial
   application, a λ, a record, a record type, a universe, a Π, an identity, a variable, a definition, a family, a
   recursor, and a builtin.
 - `family::constructed`'s question answered for a `Term` as well as a `Neutral`, without duplicating the parameter-count
   rule: the rule moves into one helper and both readings call it.
-- Laws in `musa-core`: a literal reads back; a saturated constructor reads back with its parameters excluded; a
+- Laws in `musa-calculus`: a literal reads back; a saturated constructor reads back with its parameters excluded; a
   constructor one field short does not, and neither does one argument too many; a λ, a record, a record type, and a
   universe do not; nested data reads back nested; and — the one that ties the two readings together — a term and the
   value it evaluates to read back to the *same* `Datum`.
-- A row in [`docs/plan/code-map/`](../code-map/) for the new `musa-core` door.
+- A row in [`docs/plan/code-map/`](../code-map/) for the new `musa-calculus` door.
 
 No new item in `crate::registry`, and no widened visibility there. See the Design's last two paragraphs.
 
@@ -120,16 +120,16 @@ Committing it here would have meant either carrying 142's half-finished work int
 across two, and neither is a thing to do to keep a bullet true. So the bullet moved instead, which is the repair
 procedure working rather than a shortcut around it.
 
-Nothing about the door itself is deferred: `musa_core::canonical` and its seven `musa-core` laws land here, and the
-crate's own suite is what proves them. What waits is a second demonstration through the compiler, and 142 is the caller
-that makes it a demonstration rather than a law with no consumer.
+Nothing about the door itself is deferred: `musa_calculus::canonical` and its seven `musa-calculus` laws land here, and
+the crate's own suite is what proves them. What waits is a second demonstration through the compiler, and 142 is the
+caller that makes it a demonstration rather than a law with no consumer.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

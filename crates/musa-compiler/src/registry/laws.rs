@@ -13,13 +13,13 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Answer, Datum, Refusal, Term};
+use musa_calculus::{Answer, Datum, Refusal, Term};
 
 use super::{bases, builtins, owned, rules};
 use crate::core::{BUILTIN_OWNERSHIP, Family, PhaseFamily, SYNTAX_OWNERSHIP};
 
 /// The whole context builds: declarations, base types, and every registration
-/// check [`musa_core::Registry::new`] makes.
+/// check [`musa_calculus::Registry::new`] makes.
 ///
 /// This is the law the four-stage order in [`super`] exists for. A base type
 /// whose kind named an undeclared family, a musical family holding an
@@ -218,7 +218,7 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
 /// defined.
 ///
 /// The claim prompt 141f closes, stated where both halves can be checked at once.
-/// Fourteen builders and two traversals reach [`musa_core::Registry`];
+/// Fourteen builders and two traversals reach [`musa_calculus::Registry`];
 /// `run_syntax_step` does not, and is a term that checks at its own type instead
 /// — which is what makes leaving it out a design decision rather than a gap.
 #[test]
@@ -255,16 +255,16 @@ fn sixteen_phase_rows_are_registered_and_one_is_defined() {
         [
             text.clone(),
             text.clone(),
-            Term::lam(super::HERE, "context", Term::var(super::HERE, musa_core::Index(0))),
+            Term::lam(super::HERE, "context", Term::var(super::HERE, musa_calculus::Index(0))),
         ],
     );
     let asked = super::literal(text.clone(), "the context".to_owned()).term(super::HERE);
     let run = applied(
-        Term::var(super::HERE, musa_core::Index(0)),
+        Term::var(super::HERE, musa_calculus::Index(0)),
         [text.clone(), text.clone(), asked.clone(), sealed],
     );
     assert_eq!(
-        musa_core::normalize(&cx, &text, &run).expect("it reduces"),
+        musa_calculus::normalize(&cx, &text, &run).expect("it reduces"),
         asked,
         "running a step is the sealed function applied to the context and nothing else"
     );
@@ -279,9 +279,9 @@ fn applied(head: Term, arguments: impl IntoIterator<Item = Term>) -> Term {
 
 /// `name` resolves in `cx`, which is what "registered" means to a program, and
 /// the term it resolves to.
-fn named(cx: &musa_core::Cx, name: &str) -> Term {
-    let (term, _) = musa_core::infer(cx, &musa_core::Raw::var(super::HERE, name)).unwrap_or_else(|refusal| {
-        let unknown = matches!(refusal, musa_core::ElabError::Refused(Refusal::UnknownName { .. }));
+fn named(cx: &musa_calculus::Cx, name: &str) -> Term {
+    let (term, _) = musa_calculus::infer(cx, &musa_calculus::Raw::var(super::HERE, name)).unwrap_or_else(|refusal| {
+        let unknown = matches!(refusal, musa_calculus::ElabError::Refused(Refusal::UnknownName { .. }));
         panic!("`{name}` is not registered (unknown name: {unknown}): {refusal}");
     });
     term
@@ -298,10 +298,10 @@ fn named(cx: &musa_core::Cx, name: &str) -> Term {
 /// and where those arguments actually come from is
 /// [`super::machine::laws`]'s question, asked at the positions §2's rules put
 /// them in.
-pub(super) fn resolves(cx: &musa_core::Cx, name: &str) {
-    if let Err(refusal) = musa_core::infer(cx, &musa_core::Raw::var(super::HERE, name)) {
+pub(super) fn resolves(cx: &musa_calculus::Cx, name: &str) {
+    if let Err(refusal) = musa_calculus::infer(cx, &musa_calculus::Raw::var(super::HERE, name)) {
         assert!(
-            matches!(refusal, musa_core::ElabError::Refused(Refusal::Unsolved { .. })),
+            matches!(refusal, musa_calculus::ElabError::Refused(Refusal::Unsolved { .. })),
             "`{name}` is not registered: {refusal}"
         );
     }
@@ -310,7 +310,7 @@ pub(super) fn resolves(cx: &musa_core::Cx, name: &str) {
 /// A `Datum` is compared by value, which is what the agreement law relies on.
 ///
 /// Stated because it is the one assumption that law makes and the one that would
-/// fail silently: if [`musa_core::Payload::same`] answered `false` for equal
+/// fail silently: if [`musa_calculus::Payload::same`] answered `false` for equal
 /// values, every comparison would fail, and if it answered `true` for unequal
 /// ones, every comparison would pass.
 #[test]

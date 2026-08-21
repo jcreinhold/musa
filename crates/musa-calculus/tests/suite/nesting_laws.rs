@@ -19,7 +19,7 @@
 //! parameter — which no library would ship and which is the only way to state
 //! that the flag is consulted rather than assumed.
 
-use musa_core::{Cx, Raw, RawArm, RawData, RawPattern, Refusal, Term};
+use musa_calculus::{Cx, Raw, RawArm, RawData, RawPattern, Refusal, Term};
 
 use crate::family_laws::{apply, binder, constructor, data, family, nat_context, type0, var};
 use crate::programs::{WRITTEN, refusal};
@@ -127,7 +127,7 @@ fn containers() -> Cx {
         ("Result", results()),
         ("Cont", continuations()),
     ] {
-        let group = musa_core::declare(&cx, &declaration).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let group = musa_calculus::declare(&cx, &declaration).unwrap_or_else(|error| panic!("{name}: {error}"));
         cx = cx.declaring(&group);
     }
     cx
@@ -155,7 +155,7 @@ fn staff_read() -> RawData {
 /// every later one meaningless.
 fn staff_context() -> Cx {
     let cx = containers();
-    let group = musa_core::declare(&cx, &staff_read()).expect("a family may hold a list of itself");
+    let group = musa_calculus::declare(&cx, &staff_read()).expect("a family may hold a list of itself");
     cx.declaring(&group)
 }
 
@@ -165,7 +165,7 @@ fn staff_context() -> Cx {
 ///
 /// If it is not a type, which is a defect in the test that wrote it.
 fn core(cx: &Cx, name: &str, ty: &Raw) -> Term {
-    musa_core::infer(cx, ty)
+    musa_calculus::infer(cx, ty)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
@@ -189,7 +189,7 @@ fn a_family_may_hold_a_list_of_itself() {
     let cx = staff_context();
     let staff = core(&cx, "StaffRead", &var("StaffRead"));
 
-    let _built = musa_core::check(&cx, &staff, &apply(var("StaffRead.Body"), [two_sung()]))
+    let _built = musa_calculus::check(&cx, &staff, &apply(var("StaffRead.Body"), [two_sung()]))
         .expect("`Body` is applied to a list of `StaffRead`");
 
     // `match` on it binds `items` at `List StaffRead` — asked by checking the
@@ -209,7 +209,7 @@ fn a_family_may_hold_a_list_of_itself() {
             ],
         ),
     );
-    let _read = musa_core::check(&cx, &ty, &children).expect("`items` binds at `List StaffRead`");
+    let _read = musa_calculus::check(&cx, &ty, &children).expect("`items` binds at `List StaffRead`");
 }
 
 /// A nested field gets **no induction hypothesis**, which is the decision rather
@@ -225,9 +225,9 @@ fn a_family_may_hold_a_list_of_itself() {
 fn the_recursor_hands_a_nested_field_no_hypothesis() {
     let cx = staff_context();
     let nat = core(&cx, "Nat", &var("Nat"));
-    let one = musa_core::check(&cx, &nat, &apply(var("Nat.Succ"), [var("Nat.Zero")])).expect("one is a Nat");
+    let one = musa_calculus::check(&cx, &nat, &apply(var("Nat.Succ"), [var("Nat.Zero")])).expect("one is a Nat");
 
-    let counted = musa_core::check(
+    let counted = musa_calculus::check(
         &cx,
         &nat,
         &apply(
@@ -242,7 +242,7 @@ fn the_recursor_hands_a_nested_field_no_hypothesis() {
     )
     .expect("the `Body` method takes the field alone");
     assert!(
-        musa_core::convertible(&cx, &nat, &counted, &one).expect("both are Nats"),
+        musa_calculus::convertible(&cx, &nat, &counted, &one).expect("both are Nats"),
         "ι did not fire at the nested constructor"
     );
 }
@@ -275,7 +275,7 @@ fn an_occurrence_may_sit_at_any_depth_of_positive_parameters() {
             ],
         )],
     );
-    musa_core::declare(&cx, &declaration).expect("nesting is about position rather than depth");
+    musa_calculus::declare(&cx, &declaration).expect("nesting is about position rather than depth");
 }
 
 /// A declaration this widening still refuses, and why it is not the arrow's
@@ -330,7 +330,7 @@ fn an_occurrence_outside_a_positive_position_is_still_refused() {
             ),
         },
     ] {
-        let Err(error) = musa_core::declare(&cx, &declaration) else {
+        let Err(error) = musa_calculus::declare(&cx, &declaration) else {
             panic!("{name}: the declaration was admitted");
         };
         let refusal = refusal(name, error);
@@ -385,7 +385,7 @@ fn a_fold_into_a_nested_field_is_refused() {
             ),
         ),
     );
-    let Err(error) = musa_core::check(&cx, &ty, &size) else {
+    let Err(error) = musa_calculus::check(&cx, &ty, &size) else {
         panic!("a fold through a container was admitted — §2.4's measure has changed, and so must this law");
     };
     let refusal = refusal("a fold into a nested field", error);

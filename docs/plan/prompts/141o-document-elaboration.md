@@ -10,17 +10,17 @@ phase: 3
 
 ## Task
 
-Thirteen prompts built a reading, a vocabulary, and four doors into `musa-core`, and
+Thirteen prompts built a reading, a vocabulary, and four doors into `musa-calculus`, and
 [`crate::lower`](../../../crates/musa-compiler/src/lower.rs) has no caller outside its own laws. Nothing walks a
-*document*: nothing decides which of [`musa_core::declare`](../../../crates/musa-core/src/lib.rs), `declare_trait`,
-`declare_impl`, and `declare_program` a written declaration goes through, nothing orders the family groups, and so
-nothing has ever handed the new checker a real file.
+*document*: nothing decides which of [`musa_calculus::declare`](../../../crates/musa-calculus/src/lib.rs),
+`declare_trait`, `declare_impl`, and `declare_program` a written declaration goes through, nothing orders the family
+groups, and so nothing has ever handed the new checker a real file.
 
 Write that walk, and use it to say what the corpus still needs.
 
 ## Read
 
-- [`141g`](141g-raw-lowering.md)'s `Item` — four variants "because `musa-core` has four doors … and this is the type
+- [`141g`](141g-raw-lowering.md)'s `Item` — four variants "because `musa-calculus` has four doors … and this is the type
   that says which one a written declaration goes through. A caller matches once and calls". This prompt is that caller.
 - [`141n`](141n-top-level-program.md)'s `declare_program` and `Cx::defining`, and its Design's first paragraph: the
   program is a group and the group is the door. What it left is "building the group out of 141g's items and handing it
@@ -31,13 +31,13 @@ Write that walk, and use it to say what the corpus still needs.
 - [`141k`](141k-notation-lowering.md) and [`141l`](141l-qualified-path.md), whose readings the survey below exercises
   for the first time on real files rather than on written-out laws.
 - [`142`](142-surface-cutover.md)'s Design, in particular **"Order the work so the migration is mechanical"** —
-  elaborate through `musa-core` first and get the corpus passing "with the old spellings still in place; then migrate
-  spellings; then delete", because "mixing the three makes every failure ambiguous between 'the new checker is wrong'
-  and 'this file was translated wrong'". This prompt is the first of those three and nothing else. Its own precedent is
-  named there: 141e took the registry slice one prompt earlier for the same reason, since "a table of 117 builtins is a
-  *translation* with an oracle to check it against, and burying it inside a diff that also moves 11,304 lines of `.musa`
-  would have made a wrong signature indistinguishable from a wrong migration". A walk that has never been run on a real
-  file is the same wager one level up.
+  elaborate through `musa-calculus` first and get the corpus passing "with the old spellings still in place; then
+  migrate spellings; then delete", because "mixing the three makes every failure ambiguous between 'the new checker is
+  wrong' and 'this file was translated wrong'". This prompt is the first of those three and nothing else. Its own
+  precedent is named there: 141e took the registry slice one prompt earlier for the same reason, since "a table of 117
+  builtins is a *translation* with an oracle to check it against, and burying it inside a diff that also moves 11,304
+  lines of `.musa` would have made a wrong signature indistinguishable from a wrong migration". A walk that has never
+  been run on a real file is the same wager one level up.
 - `crates/musa-compiler/src/core.rs`'s `check_piece`, `check_arguments`, `check_template_voice`, and `check_material`,
   and the `data_owners` and `module_owners` helpers beside them. They are the shape of the argument this walk takes — a
   document is its imports, its own root, and the piece or voice being checked — and they are what 142 replaces. Read

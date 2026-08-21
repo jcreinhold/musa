@@ -3,7 +3,7 @@
 //! `recurse_syntax` and `syntax_fold_from_leaves` are §5.8's *second* family and
 //! not its first: each takes four branch functions, so neither is a δ-builtin,
 //! and each fires on a `Syntax` literal and rewrites to a term the core then
-//! evaluates. That is the shape prompt 141c gave `musa-core`, and this is the
+//! evaluates. That is the shape prompt 141c gave `musa-calculus`, and this is the
 //! first thing to use it.
 //!
 //! # What a rewrite may name, and how
@@ -44,7 +44,7 @@
 #[cfg(test)]
 mod laws;
 
-use musa_core::{Builtin, Cx, ElabError, Index, Literal, Term};
+use musa_calculus::{Builtin, Cx, ElabError, Index, Literal, Term};
 
 use super::rules::Kind;
 use super::{HERE, held, literal, plain_type, syntax_type, type0};
@@ -61,7 +61,7 @@ pub(super) fn eliminators(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         Builtin::structural_with(
             SPELLINGS[0],
             recurse_type(cx)?,
-            musa_core::Family::Eliminator,
+            musa_calculus::Family::Eliminator,
             Recurse::SUBJECT,
             vocabulary(cx, &["List.Empty", "List.Cons", "SyntaxStep", "SyntaxStep.Step"])?,
             rewrite_recurse,
@@ -69,7 +69,7 @@ pub(super) fn eliminators(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         Builtin::structural_with(
             SPELLINGS[1],
             fold_type(cx)?,
-            musa_core::Family::Eliminator,
+            musa_calculus::Family::Eliminator,
             Fold::SUBJECT,
             vocabulary(cx, &["List.Empty", "List.Cons"])?,
             rewrite_fold,

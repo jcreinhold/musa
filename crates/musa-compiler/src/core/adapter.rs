@@ -1,6 +1,6 @@
 //! One concern of the enclosing module; see its module docs.
 
-use musa_core::Raw;
+use musa_calculus::Raw;
 use musa_language::SyntaxKind;
 use musa_language::ast::AstNode as _;
 
@@ -62,7 +62,7 @@ impl AdapterModule {
     /// the module already fixed — so a phase that reported only the run would
     /// charge nothing for the expensive half and let a file buy unbounded
     /// checking by arranging to be refused.
-    pub(crate) const fn spend(&self) -> musa_core::Spend {
+    pub(crate) const fn spend(&self) -> musa_calculus::Spend {
         self.read.spend()
     }
 
@@ -100,15 +100,19 @@ impl AdapterModule {
     /// The arguments are terms rather than values because that is the phase's
     /// side of the boundary: a region is a literal at `Syntax ⟨token-tree⟩`, a
     /// command is a literal at `Text`, and an anchor is the prelude's `Nat`.
-    pub(crate) fn run(&self, name: &str, arguments: Vec<Raw>) -> Result<(musa_core::Datum, musa_core::Spend), Unrun> {
+    pub(crate) fn run(
+        &self,
+        name: &str,
+        arguments: Vec<Raw>,
+    ) -> Result<(musa_calculus::Datum, musa_calculus::Spend), Unrun> {
         if !self.declares(name) {
             return Err(Unrun::Undeclared);
         }
-        let here = musa_core::Origin::UNKNOWN;
+        let here = musa_calculus::Origin::UNKNOWN;
         let call = Raw::call(here, Raw::var(here, name), arguments);
         let ((normal, _), spend) = self.read.term_metered(&call).map_err(|error| match error {
-            musa_core::ElabError::Exhausted(_) => Unrun::Stopped,
-            error @ (musa_core::ElabError::Refused(_) | musa_core::ElabError::Malformed(_)) => {
+            musa_calculus::ElabError::Exhausted(_) => Unrun::Stopped,
+            error @ (musa_calculus::ElabError::Refused(_) | musa_calculus::ElabError::Malformed(_)) => {
                 Unrun::Refused(vec![crate::lower::refusals::restate(self.read.sites(), &error)])
             }
         })?;
@@ -117,7 +121,7 @@ impl AdapterModule {
         // one of its constructors. A term that is not one is this crate's defect
         // rather than an adapter's, which is why the two callers report it as
         // "no answer" rather than as a refusal with the adapter's name on it.
-        let datum = musa_core::canonical(&normal).ok_or(Unrun::NoAnswer)?;
+        let datum = musa_calculus::canonical(&normal).ok_or(Unrun::NoAnswer)?;
         Ok((datum, spend))
     }
 }
@@ -274,7 +278,7 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
 /// A stop when a limit was crossed, and the module's own complaints when not.
 ///
 /// Read off the diagnostics rather than off a meter, because the meter is
-/// [`musa_core`]'s now and it reports exhaustion the way it reports everything
+/// [`musa_calculus`]'s now and it reports exhaustion the way it reports everything
 /// else — as a refusal, filed under [`Code::ResourceLimit`] by
 /// [`crate::lower::refusals::restate`].
 fn module_fault(diagnostics: Vec<Diagnostic>) -> ModuleFault {

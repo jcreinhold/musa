@@ -91,7 +91,7 @@ pub struct Cx {
     /// context that names no base type is the one every test written before
     /// this rule existed already had.
     ///
-    /// The core never builds one. `crates/musa-core/src/base.rs` argues why —
+    /// The core never builds one. `crates/musa-calculus/src/base.rs` argues why —
     /// a leaf calculus that enumerated the base types would make every new
     /// musical domain a core amendment.
     externs: Option<Arc<Registry>>,

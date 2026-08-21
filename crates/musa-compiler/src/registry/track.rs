@@ -4,10 +4,10 @@
 //! §5.8's *third* family. A track builtin is neither a δ-builtin nor a
 //! structural eliminator: `02-core-calculus.md` §5.8 gives it its own
 //! admissibility argument — §5.7's, about construction safety — and
-//! [`musa_core::Family::Track`] is where that is recorded. Seven of the eight
+//! [`musa_calculus::Family::Track`] is where that is recorded. Seven of the eight
 //! still *reduce* the way a δ-builtin does, because data in and data out is what
 //! they do; `map_note_pitches` takes a mapper and reduces the way a traversal
-//! does. That is why [`musa_core::Builtin::structural_with`] takes the family
+//! does. That is why [`musa_calculus::Builtin::structural_with`] takes the family
 //! rather than fixing it: the family says which of §5.8's admissibility
 //! arguments covers the operation, the reduction says how it computes, and this
 //! module is the case that proves they are two questions.
@@ -63,7 +63,7 @@
 #[cfg(test)]
 mod laws;
 
-use musa_core::{Builtin, Cx, Datum, ElabError, Family, Index, Literal, Rule, Term};
+use musa_calculus::{Builtin, Cx, Datum, ElabError, Family, Index, Literal, Rule, Term};
 use musa_kernel::{Duration, Occurrence, Position, Span};
 use num_rational::Ratio;
 

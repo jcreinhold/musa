@@ -1,6 +1,6 @@
 //! Raw notation payload builders; see `notation` module docs.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;

@@ -2,18 +2,18 @@
 //!
 //! Beside the lowering rather than in `tests/suite/`, and for the reason
 //! [`crate::registry::laws`] gives for the δ agreement law: the answer is a
-//! [`musa_core::Raw`], the context is [`crate::registry::owned`], and both are
+//! [`musa_calculus::Raw`], the context is [`crate::registry::owned`], and both are
 //! private to this crate. A test outside it could observe neither.
 //!
 //! # The one property this module can have
 //!
-//! **What lowering writes, the core accepts.** `musa-core` decides what a type
+//! **What lowering writes, the core accepts.** `musa-calculus` decides what a type
 //! is and what a term inhabits it, so agreeing with it is the whole of what a
 //! reading can be right about — a lowering that produced a plausible-looking
 //! term the core refused would be worse than one that refused at the node, and a
 //! law that checked the shape of the [`Raw`] instead would be this module
 //! marking its own homework. So every law below lowers something a composer
-//! could write and hands it to [`musa_core::check`].
+//! could write and hands it to [`musa_calculus::check`].
 //!
 //! The corollary is what these laws *do not* test: nothing here asserts that an
 //! unknown name is refused, because the core refuses it, and nothing here
@@ -26,7 +26,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
+use musa_calculus::{Cx, Level, Plicity, Raw, RawData, RawPattern, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
@@ -119,7 +119,7 @@ fn host() -> Cx {
 
 /// `Type 0`, which every type a signature writes lands in.
 fn type0() -> Term {
-    Term::universe(musa_core::Origin::UNKNOWN, Level::ZERO)
+    Term::universe(musa_calculus::Origin::UNKNOWN, Level::ZERO)
 }
 
 /// The type one declared name denotes.
@@ -129,7 +129,7 @@ fn declared(cx: &Cx, name: &str) -> Term {
 
 /// `f a`, for building the expected type of a law's subject.
 fn at(function: Term, argument: Term) -> Term {
-    Term::app(musa_core::Origin::UNKNOWN, function, argument)
+    Term::app(musa_calculus::Origin::UNKNOWN, function, argument)
 }
 
 // ---- types ----
@@ -167,7 +167,7 @@ fn every_written_base_type_lowers_to_a_type_the_core_accepts() {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
-        musa_core::check(&cx, &type0(), &raw).unwrap_or_else(|failure| {
+        musa_calculus::check(&cx, &type0(), &raw).unwrap_or_else(|failure| {
             panic!("`{written}` lowers to a type the core accepts, not {failure:?}");
         });
     }
@@ -180,7 +180,7 @@ fn a_written_constructor_lowers_to_the_family_applied() {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
-        musa_core::check(&cx, &type0(), &raw).unwrap_or_else(|failure| {
+        musa_calculus::check(&cx, &type0(), &raw).unwrap_or_else(|failure| {
             panic!("`{written}` lowers to a type the core accepts, not {failure:?}");
         });
     }
@@ -192,15 +192,15 @@ fn a_written_arrow_lowers_to_a_pi_nothing_refers_through() {
     let (raw, complaints) = lowered_type("Nat -> Text");
     assert!(complaints.is_empty(), "an arrow lowers without complaint");
     let raw = raw.expect("an arrow lowers");
-    let term = musa_core::check(&cx, &type0(), &raw).expect("the arrow is a type");
+    let term = musa_calculus::check(&cx, &type0(), &raw).expect("the arrow is a type");
     let expected = Term::pi(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         "argument",
         declared(&cx, "Nat"),
         crate::registry::plain_type("Text"),
     );
     assert!(
-        musa_core::convertible_types(&cx, &term, &expected).expect("both are types"),
+        musa_calculus::convertible_types(&cx, &term, &expected).expect("both are types"),
         "`Nat -> Text` is the Π whose codomain does not mention its binder"
     );
 }
@@ -220,7 +220,7 @@ fn a_name_the_compiler_does_not_own_is_written_through_for_the_core_to_resolve()
         "the parameter reaches the core as a name for it to resolve"
     );
     assert!(
-        musa_core::check(&cx, &type0(), &raw).is_err(),
+        musa_calculus::check(&cx, &type0(), &raw).is_err(),
         "and in a context that does not bind `A`, the core is what refuses it"
     );
 }
@@ -243,7 +243,7 @@ fn a_phase_type_is_readable_only_where_an_adapter_is_read() {
     let (raw, complaints) = lowered_type_in("Syntax<Expr>", true);
     assert!(complaints.is_empty(), "`Syntax<Expr>` lowers inside the phase");
     let raw = raw.expect("`Syntax<Expr>` lowers inside the phase");
-    musa_core::check(&cx, &type0(), &raw).expect("`Syntax ⟨expr⟩` is a type");
+    musa_calculus::check(&cx, &type0(), &raw).expect("`Syntax ⟨expr⟩` is a type");
 
     let (raw, complaints) = lowered_type("Syntax<Expr>");
     assert!(
@@ -252,7 +252,7 @@ fn a_phase_type_is_readable_only_where_an_adapter_is_read() {
     );
     let raw = raw.expect("outside the phase it still lowers, as a name");
     assert!(
-        musa_core::check(&cx, &type0(), &raw).is_err(),
+        musa_calculus::check(&cx, &type0(), &raw).is_err(),
         "and the core is what refuses it, since `Syntax` is not a name ordinary source may resolve"
     );
 }
@@ -280,7 +280,7 @@ fn every_written_literal_lowers_to_a_term_the_core_checks_at_its_own_domain() {
         let (raw, complaints) = lowered_expr(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
-        musa_core::check(&cx, &expected, &raw).unwrap_or_else(|failure| {
+        musa_calculus::check(&cx, &expected, &raw).unwrap_or_else(|failure| {
             panic!("`{written}` checks at its own domain, not {failure:?}");
         });
     }
@@ -303,7 +303,7 @@ fn the_written_container_forms_lower_to_the_constructors_they_stand_for() {
         let (raw, complaints) = lowered_expr(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
-        musa_core::check(&cx, &expected, &raw).unwrap_or_else(|failure| {
+        musa_calculus::check(&cx, &expected, &raw).unwrap_or_else(|failure| {
             panic!("`{written}` checks at the type its constructors build, not {failure:?}");
         });
     }
@@ -316,7 +316,7 @@ fn a_conditional_lowers_to_the_two_armed_boolean_match() {
     let (raw, complaints) = lowered_expr("if true { 1 } else { 2 }");
     assert!(complaints.is_empty(), "a conditional lowers without complaint");
     let raw = raw.expect("a conditional lowers");
-    musa_core::check(&cx, &declared(&cx, "Nat"), &raw).expect("and the core checks it at the arms' type");
+    musa_calculus::check(&cx, &declared(&cx, "Nat"), &raw).expect("and the core checks it at the arms' type");
 }
 
 /// A `?` propagates to the position that delimits the answer, and the subject is
@@ -346,19 +346,19 @@ fn a_question_lowers_to_a_match_that_evaluates_its_subject_once() {
     // the whole expression, so the answer has to be a `Result` — which is the
     // rule the surface always had, now enforced by the core rather than by a
     // state machine beside it.
-    let bound = Raw::annotated_lam(musa_core::Origin::UNKNOWN, "r", result_of_nat_text_raw(), raw);
+    let bound = Raw::annotated_lam(musa_calculus::Origin::UNKNOWN, "r", result_of_nat_text_raw(), raw);
     let expected = Term::pi(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         "r",
         result_of_nat_text(&cx),
         result_of_nat_text(&cx),
     );
-    musa_core::check(&cx, &expected, &bound).expect("`\\r -> Ok(r?)` is the identity on a `Result`");
+    musa_calculus::check(&cx, &expected, &bound).expect("`\\r -> Ok(r?)` is the identity on a `Result`");
 }
 
 /// `Result Nat Text`, as a raw term.
 fn result_of_nat_text_raw() -> Raw {
-    let here = musa_core::Origin::UNKNOWN;
+    let here = musa_calculus::Origin::UNKNOWN;
     Raw::app(
         here,
         Raw::app(here, Raw::var(here, "Result"), Raw::var(here, "Nat")),
@@ -487,9 +487,9 @@ fn inhabits_its_written_type(cx: &Cx, written: &str, defined: &Definition) {
         .ty
         .as_ref()
         .unwrap_or_else(|| panic!("`{written}` wrote its type"));
-    let (declared, _) = musa_core::infer(cx, declared)
+    let (declared, _) = musa_calculus::infer(cx, declared)
         .unwrap_or_else(|failure| panic!("`{written}`'s written type is a type, not {failure:?}"));
-    musa_core::check(cx, &declared, &defined.value)
+    musa_calculus::check(cx, &declared, &defined.value)
         .unwrap_or_else(|failure| panic!("`{written}`'s value inhabits it, not {failure:?}"));
 }
 
@@ -505,7 +505,7 @@ fn a_data_declaration_lowers_to_a_family_the_core_declares() {
         ],
         "a `data` names every field of every constructor"
     );
-    musa_core::declare(&host(), &data).expect("the core declares what the surface wrote");
+    musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
 }
 
 /// `01-surface.md` §1.3's two case forms, which differ only in whether the
@@ -523,7 +523,7 @@ fn an_enum_lowers_a_positional_case_by_position_and_a_named_one_by_name() {
         "a positional case's fields are named by their positions"
     );
     assert_eq!(data.params.len(), 1, "and the declaration's parameter is the group's");
-    musa_core::declare(&host(), &data).expect("the core declares what the surface wrote");
+    musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
 }
 
 /// A `record` is its fields (`01-surface.md` §1.2), so it is a *definition* of a
@@ -544,14 +544,14 @@ fn a_parameterized_record_lowers_to_a_function_to_a_type() {
     let defined = definition(written, SyntaxKind::RecordDecl);
     inhabits_its_written_type(&cx, written, &defined);
     let expected = Term::pi(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         "A",
         type0(),
-        Term::universe(musa_core::Origin::UNKNOWN, Level::ZERO),
+        Term::universe(musa_calculus::Origin::UNKNOWN, Level::ZERO),
     );
-    let (declared, _) = musa_core::infer(&cx, defined.ty.as_ref().expect("a written type")).expect("it is a type");
+    let (declared, _) = musa_calculus::infer(&cx, defined.ty.as_ref().expect("a written type")).expect("it is a type");
     assert!(
-        musa_core::convertible_types(&cx, &declared, &expected).expect("both are types"),
+        musa_calculus::convertible_types(&cx, &declared, &expected).expect("both are types"),
         "a record's parameter is explicit, because a written `Cell<Nat>` is `Cell Nat`"
     );
 }
@@ -565,7 +565,7 @@ fn a_written_signature_becomes_the_pi_and_the_lambda_binds_without_repeating_it(
     let defined = definition(written, SyntaxKind::FnDecl);
     inhabits_its_written_type(&cx, written, &defined);
     assert!(
-        matches!(defined.value.shape(), musa_core::RawShape::Lam { domain: None, .. }),
+        matches!(defined.value.shape(), musa_calculus::RawShape::Lam { domain: None, .. }),
         "the λ binds bare: the domain is in the Π, and writing it twice would convert it against itself"
     );
 }
@@ -580,7 +580,7 @@ fn a_signature_the_author_did_not_finish_writing_has_no_pi_to_hand_forward() {
         "there is no raw term for a type nobody wrote, and a hole is the core's to mint"
     );
     assert!(
-        matches!(defined.value.shape(), musa_core::RawShape::Lam { domain: None, .. }),
+        matches!(defined.value.shape(), musa_calculus::RawShape::Lam { domain: None, .. }),
         "and the value keeps what was written, so nothing is lost"
     );
 }
@@ -593,7 +593,7 @@ fn a_binding_carries_the_type_it_wrote_and_no_other() {
     inhabits_its_written_type(&cx, written, &defined);
     let bare = definition("let held = 3;", SyntaxKind::LetDecl);
     assert!(bare.ty.is_none(), "an unannotated binding has no written type");
-    musa_core::infer(&cx, &bare.value).expect("and its value infers, which is why it needs none");
+    musa_calculus::infer(&cx, &bare.value).expect("and its value infers, which is why it needs none");
 }
 
 /// A trait and an instance of it, both read out of source and both admitted.
@@ -609,7 +609,7 @@ fn a_trait_and_an_instance_lower_to_declarations_the_core_admits() {
         class.methods.first().expect("one method").body.is_none(),
         "required, because it wrote `;`"
     );
-    let declared = musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
     let cx = cx.declaring_class(&declared);
 
     let Item::Instance(instance) = item("impl Same<Nat> { fn same(x, y) { true } }", SyntaxKind::ImplDecl) else {
@@ -617,7 +617,7 @@ fn a_trait_and_an_instance_lower_to_declarations_the_core_admits() {
     };
     assert_eq!(&*instance.name, "Same", "the head name is the trait");
     assert_eq!(instance.args.len(), 1, "applied to what it is an instance for");
-    musa_core::declare_impl(&cx, &instance).expect("the core declares the instance");
+    musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
 }
 
 /// A derived method is written once at the trait, and its body is the λ its own
@@ -633,7 +633,7 @@ fn a_method_with_a_block_is_derived_and_its_body_binds_what_its_type_quantifies(
     };
     let derived = class.methods.get(1).expect("the second method");
     assert!(derived.body.is_some(), "derived, because it wrote a block");
-    musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
 }
 
 // ---- refusals ----
@@ -698,12 +698,12 @@ fn with_same() -> Cx {
     let Item::Class(class) = item("trait Same<A> { fn same(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
         panic!("a `trait` is a class declaration");
     };
-    let declared = musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
     let cx = cx.declaring_class(&declared);
     let Item::Instance(instance) = item("impl Same<Nat> { fn same(x, y) { true } }", SyntaxKind::ImplDecl) else {
         panic!("an `impl` is an instance declaration");
     };
-    let instance = musa_core::declare_impl(&cx, &instance).expect("the core declares the instance");
+    let instance = musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
     cx.declaring_instance(&instance)
 }
 
@@ -812,7 +812,7 @@ fn a_core_refusal_is_restated_at_the_span_that_caused_it() {
     let raw = Lowering::new(&mut resolver, &mut sites)
         .expr(&node)
         .expect("an unknown name is written through rather than refused here");
-    let failure = musa_core::check(&cx, &declared(&cx, "Nat"), &raw).expect_err("the core is what refuses it");
+    let failure = musa_calculus::check(&cx, &declared(&cx, "Nat"), &raw).expect_err("the core is what refuses it");
     let complaint = super::refusals::restate(&sites, &failure);
     assert_eq!(
         complaint.code,
@@ -836,8 +836,8 @@ fn a_refusal_carrying_no_written_origin_points_nowhere() {
     let sites = Sites::default();
     let complaint = super::refusals::restate(
         &sites,
-        &musa_core::Refusal::UnknownName {
-            at: musa_core::Origin::UNKNOWN,
+        &musa_calculus::Refusal::UnknownName {
+            at: musa_calculus::Origin::UNKNOWN,
             name: "nowhere".into(),
             candidates: Vec::new(),
         }
@@ -860,7 +860,7 @@ fn a_site_answers_the_span_it_was_numbered_for() {
     assert_eq!(sites.span(first), Some(crate::origin::SourceSpan::new(3, 9)));
     assert_eq!(sites.span(second), Some(crate::origin::SourceSpan::new(11, 14)));
     assert_eq!(
-        sites.span(musa_core::Origin::UNKNOWN),
+        sites.span(musa_calculus::Origin::UNKNOWN),
         None,
         "a term nobody wrote has nowhere to point, and says so"
     );
@@ -880,12 +880,12 @@ fn with_equality() -> Cx {
     let Item::Class(class) = item("trait Eq<A> { fn equal(x: A, y: A) -> Bool; }", SyntaxKind::TraitDecl) else {
         panic!("a `trait` is a class declaration");
     };
-    let declared = musa_core::declare_trait(&cx, &class).expect("the core declares the trait");
+    let declared = musa_calculus::declare_trait(&cx, &class).expect("the core declares the trait");
     let cx = cx.declaring_class(&declared);
     let Item::Instance(instance) = item("impl Eq<Nat> { fn equal(x, y) { true } }", SyntaxKind::ImplDecl) else {
         panic!("an `impl` is an instance declaration");
     };
-    let instance = musa_core::declare_impl(&cx, &instance).expect("the core declares the instance");
+    let instance = musa_calculus::declare_impl(&cx, &instance).expect("the core declares the instance");
     cx.declaring_instance(&instance)
 }
 
@@ -947,13 +947,13 @@ fn a_module_prefix_reads_to_the_name_it_qualifies() {
 #[test]
 fn an_enum_case_is_reached_by_its_type_in_an_expression_and_in_a_pattern() {
     let cx = host();
-    let tying = musa_core::declare(&cx, &declaration("enum Tying { Untied, Tied }", SyntaxKind::EnumDecl))
+    let tying = musa_calculus::declare(&cx, &declaration("enum Tying { Untied, Tied }", SyntaxKind::EnumDecl))
         .expect("the core declares the family");
     let cx = cx.declaring(&tying);
 
     let (built, complaints) = lowered_expr("Tying::Untied");
     assert!(complaints.is_empty(), "the path is read: {complaints:?}");
-    musa_core::check(&cx, &declared(&cx, "Tying"), &built.expect("the path lowers"))
+    musa_calculus::check(&cx, &declared(&cx, "Tying"), &built.expect("the path lowers"))
         .expect("and the case it names inhabits its own type");
 
     let matched = lowered_pattern("Tying::Untied").expect("the pattern lowers");
@@ -1034,21 +1034,21 @@ fn a_written_play_supplies_the_origin_and_the_scope_no_composer_has() {
     );
     let built = built.expect("the body lowers");
     let sound_for = Raw::lam(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         "chosen",
-        Raw::lam(musa_core::Origin::UNKNOWN, "held", built),
+        Raw::lam(musa_calculus::Origin::UNKNOWN, "held", built),
     );
     let sounds = Term::pi(
-        musa_core::Origin::UNKNOWN,
+        musa_calculus::Origin::UNKNOWN,
         "chosen",
         crate::registry::plain_type("Voicing"),
         Term::pi(
-            musa_core::Origin::UNKNOWN,
+            musa_calculus::Origin::UNKNOWN,
             "held",
             crate::registry::tagged_type("Duration", crate::core::Coordinate::WrittenTime),
             crate::registry::tagged_type("EventTrack", crate::core::Coordinate::WrittenTime),
         ),
     );
-    musa_core::check(&cx, &sounds, &sound_for)
+    musa_calculus::check(&cx, &sounds, &sound_for)
         .unwrap_or_else(|failure| panic!("a voicing played for a length sounds a track, not {failure:?}"));
 }

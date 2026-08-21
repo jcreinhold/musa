@@ -3,13 +3,13 @@
 //!
 //! The suite is written against the facade rather than against the
 //! representation, because the representation is private and the whole point of
-//! [`musa_core::declare`] is that a caller writes `Nat`, `Nat.Zero`, and
+//! [`musa_calculus::declare`] is that a caller writes `Nat`, `Nat.Zero`, and
 //! `Nat.elim` as ordinary names afterwards. A law stated over `Group`'s fields
 //! would be a law about a data structure; these are laws about a language.
 
 use std::sync::Arc;
 
-use musa_core::{
+use musa_calculus::{
     Cx, Group, Level, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Term, Visibility,
 };
 
@@ -98,7 +98,7 @@ pub(crate) fn nat() -> RawData {
 /// If the declaration is refused, which would be a defect in this crate.
 pub(crate) fn nat_context() -> (Cx, Arc<Group>) {
     let cx = Cx::new();
-    let group = musa_core::declare(&cx, &nat()).expect("Nat is a declaration");
+    let group = musa_calculus::declare(&cx, &nat()).expect("Nat is a declaration");
     let cx = cx.declaring(&group);
     (cx, group)
 }
@@ -158,7 +158,7 @@ pub(crate) fn result() -> RawData {
 pub(crate) fn container_context() -> Cx {
     let (mut cx, _) = nat_context();
     for declaration in [option(), result()] {
-        let group = musa_core::declare(&cx, &declaration).expect("a container is a declaration");
+        let group = musa_calculus::declare(&cx, &declaration).expect("a container is a declaration");
         cx = cx.declaring(&group);
     }
     cx
@@ -176,7 +176,7 @@ fn a_constructor_reads_its_parameters_off_the_expected_type() {
     let cx = container_context();
     let option_nat = checked_type(&cx, &apply(var("Option"), [var("Nat")]));
 
-    let written = |raw: Raw| musa_core::check(&cx, &option_nat, &raw);
+    let written = |raw: Raw| musa_calculus::check(&cx, &option_nat, &raw);
     written(var("None")).expect("a bare nullary constructor checks");
     written(var("Option.None")).expect("a qualified nullary constructor checks");
 
@@ -199,7 +199,7 @@ fn a_constructor_reads_its_parameters_off_the_expected_type() {
 fn a_family_with_no_parameters_is_unaffected() {
     let (cx, _) = nat_context();
     let nat = core_nat(&cx);
-    let written = |raw: Raw| musa_core::check(&cx, &nat, &raw);
+    let written = |raw: Raw| musa_calculus::check(&cx, &nat, &raw);
     let expectations: &[(&str, Raw, Raw)] = &[
         ("Zero", var("Zero"), var("Nat.Zero")),
         (
@@ -224,9 +224,9 @@ fn a_nested_constructor_reads_the_parameters_of_the_type_it_stands_at() {
     let inner = apply(var("Result"), [var("Nat"), var("Nat")]);
     let ty = checked_type(&cx, &apply(var("Option"), [inner.clone()]));
 
-    let nested = musa_core::check(&cx, &ty, &apply(var("Some"), [apply(var("Ok"), [var("Nat.Zero")])]))
+    let nested = musa_calculus::check(&cx, &ty, &apply(var("Some"), [apply(var("Ok"), [var("Nat.Zero")])]))
         .expect("`Some(Ok(0))` checks");
-    let explicit = musa_core::check(
+    let explicit = musa_calculus::check(
         &cx,
         &ty,
         &apply(
@@ -265,7 +265,7 @@ fn a_constructor_given_the_wrong_number_of_arguments_is_still_refused() {
         ),
     ];
     for (name, raw, expected) in questions {
-        let Err(error) = musa_core::check(&cx, &option_nat, raw) else {
+        let Err(error) = musa_calculus::check(&cx, &option_nat, raw) else {
             panic!("{name}: the program was admitted");
         };
         let refusal = refusal(name, error);
@@ -285,9 +285,9 @@ fn a_declaration_brings_its_names_into_scope_at_their_types() {
         ("Nat.Succ", Term::pi(WRITTEN, "n", core_nat(&cx), core_nat(&cx))),
     ];
     for (name, ty) in expectations {
-        let (_, found) = musa_core::infer(&cx, &var(name)).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let found = musa_core::normalize_type(&cx, &found).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = musa_core::normalize_type(&cx, ty).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let (_, found) = musa_calculus::infer(&cx, &var(name)).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let found = musa_calculus::normalize_type(&cx, &found).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let expected = musa_calculus::normalize_type(&cx, ty).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(found, expected, "{name}");
     }
 }
@@ -306,8 +306,9 @@ fn a_declaration_brings_its_names_into_scope_at_their_types() {
 #[test]
 fn the_generated_recursor_eliminates_into_the_motive() {
     let (cx, _) = nat_context();
-    let at =
-        |function: u32, argument: Term| Term::app(WRITTEN, Term::var(WRITTEN, musa_core::Index(function)), argument);
+    let at = |function: u32, argument: Term| {
+        Term::app(WRITTEN, Term::var(WRITTEN, musa_calculus::Index(function)), argument)
+    };
     let succ = |argument: Term| Term::app(WRITTEN, core_constant(&cx, "Nat.Succ"), argument);
 
     // (P : Nat → Type 0) → P Zero → ((n : Nat) → P n → P (Succ n)) → (t : Nat) → P t
@@ -329,20 +330,20 @@ fn the_generated_recursor_eliminates_into_the_motive() {
                     Term::pi(
                         WRITTEN,
                         "_",
-                        at(2, Term::var(WRITTEN, musa_core::Index(0))),
-                        at(3, succ(Term::var(WRITTEN, musa_core::Index(1)))),
+                        at(2, Term::var(WRITTEN, musa_calculus::Index(0))),
+                        at(3, succ(Term::var(WRITTEN, musa_calculus::Index(1)))),
                     ),
                 ),
                 Term::pi(
                     WRITTEN,
                     "t",
                     core_nat(&cx),
-                    at(3, Term::var(WRITTEN, musa_core::Index(0))),
+                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
                 ),
             ),
         ),
     );
-    musa_core::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
+    musa_calculus::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
 
     // The same telescope with the induction hypothesis dropped: a *recursion*
     // rule rather than an induction one, which is the mistake worth catching.
@@ -361,19 +362,19 @@ fn the_generated_recursor_eliminates_into_the_motive() {
                     WRITTEN,
                     "n",
                     core_nat(&cx),
-                    at(2, succ(Term::var(WRITTEN, musa_core::Index(0)))),
+                    at(2, succ(Term::var(WRITTEN, musa_calculus::Index(0)))),
                 ),
                 Term::pi(
                     WRITTEN,
                     "t",
                     core_nat(&cx),
-                    at(3, Term::var(WRITTEN, musa_core::Index(0))),
+                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
                 ),
             ),
         ),
     );
     assert!(
-        musa_core::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
+        musa_calculus::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
         "a recursor with no induction hypothesis was accepted as this one"
     );
 }
@@ -406,10 +407,10 @@ fn iota_fires_when_the_target_becomes_a_constructor() {
         ("pred 2 = 1", predecessor(two), one),
     ];
     for (name, left, right) in questions {
-        let left = musa_core::check(&cx, &core_nat(&cx), left).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let right = musa_core::check(&cx, &core_nat(&cx), right).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let left = musa_calculus::check(&cx, &core_nat(&cx), left).unwrap_or_else(|error| panic!("{name}: {error}"));
+        let right = musa_calculus::check(&cx, &core_nat(&cx), right).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert!(
-            musa_core::convertible(&cx, &core_nat(&cx), &left, &right).expect("both are terms at Nat"),
+            musa_calculus::convertible(&cx, &core_nat(&cx), &left, &right).expect("both are terms at Nat"),
             "{name}"
         );
     }
@@ -435,10 +436,11 @@ fn a_recursor_blocked_on_a_variable_does_not_fire() {
         ),
     );
     let constantly_zero = Raw::lam(WRITTEN, "m", var("Nat.Zero"));
-    let predecessor = musa_core::check(&cx, &arrow, &predecessor).expect("a blocked recursor is still well typed");
-    let constantly_zero = musa_core::check(&cx, &arrow, &constantly_zero).expect("a constant function is well typed");
+    let predecessor = musa_calculus::check(&cx, &arrow, &predecessor).expect("a blocked recursor is still well typed");
+    let constantly_zero =
+        musa_calculus::check(&cx, &arrow, &constantly_zero).expect("a constant function is well typed");
     assert!(
-        !musa_core::convertible(&cx, &arrow, &predecessor, &constantly_zero).expect("both are terms at Nat → Nat"),
+        !musa_calculus::convertible(&cx, &arrow, &predecessor, &constantly_zero).expect("both are terms at Nat → Nat"),
         "a recursor blocked on a variable answered its base case"
     );
 }
@@ -469,10 +471,10 @@ fn a_match_computes_a_type() {
             },
         ],
     );
-    let computed = musa_core::check(&cx, &universe0, &computing).expect("a match at a universe checks");
-    let nat = musa_core::check(&cx, &universe0, &var("Nat")).expect("Nat at Type 0");
+    let computed = musa_calculus::check(&cx, &universe0, &computing).expect("a match at a universe checks");
+    let nat = musa_calculus::check(&cx, &universe0, &var("Nat")).expect("Nat at Type 0");
     assert!(
-        musa_core::convertible(&cx, &universe0, &computed, &nat).expect("conversion is decidable"),
+        musa_calculus::convertible(&cx, &universe0, &computed, &nat).expect("conversion is decidable"),
         "the computed type is the type the arm wrote"
     );
 }
@@ -482,7 +484,7 @@ fn a_match_computes_a_type() {
 #[test]
 fn a_parameterized_family_declares_over_an_earlier_one() {
     let (cx, _) = nat_context();
-    let group = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
+    let group = musa_calculus::declare(&cx, &vec()).expect("Vec is a declaration");
     let cx = cx.declaring(&group);
 
     // `Vec.Cons A x Nil : Vec A`, with `A := {}` and `x := {}`.
@@ -492,13 +494,13 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
         var("Vec.Cons"),
         [unit_type.clone(), unit, apply(var("Vec.Nil"), [unit_type.clone()])],
     );
-    let ty = musa_core::check(
+    let ty = musa_calculus::check(
         &cx,
         &Term::universe(WRITTEN, Level::ZERO),
         &apply(var("Vec"), [unit_type]),
     )
     .expect("`Vec {}` is a type");
-    musa_core::check(&cx, &ty, &singleton).expect("a one-element vector inhabits it");
+    musa_calculus::check(&cx, &ty, &singleton).expect("a one-element vector inhabits it");
 }
 
 /// §1.1: mutually recursive families are declared together, and the recursor of
@@ -507,7 +509,7 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
 #[test]
 fn mutual_families_share_one_declaration_and_one_set_of_motives() {
     let (cx, _) = nat_context();
-    let group = musa_core::declare(
+    let group = musa_calculus::declare(
         &cx,
         &data(
             Vec::new(),
@@ -546,15 +548,15 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
             apply(var("Even.FromOdd"), [apply(var("Odd.FromEven"), [var("Even.Zero")])]),
         ],
     );
-    let counted = musa_core::check(&cx, &core_nat(&cx), &to_nat).expect("a mutual induction elaborates");
-    let two = musa_core::check(
+    let counted = musa_calculus::check(&cx, &core_nat(&cx), &to_nat).expect("a mutual induction elaborates");
+    let two = musa_calculus::check(
         &cx,
         &core_nat(&cx),
         &apply(var("Nat.Succ"), [apply(var("Nat.Succ"), [var("Nat.Zero")])]),
     )
     .expect("two is a Nat");
     assert!(
-        musa_core::convertible(&cx, &core_nat(&cx), &counted, &two).expect("both are Nats"),
+        musa_calculus::convertible(&cx, &core_nat(&cx), &counted, &two).expect("both are Nats"),
         "the mutual recursor did not count two constructors"
     );
 }
@@ -593,7 +595,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
             ),
         ),
         positive(
-            // §1.1 admits the infinitary constructor and [`musa_core`] does not:
+            // §1.1 admits the infinitary constructor and [`musa_calculus`] does not:
             // §1.2 makes an arrow unstorable anyway, so the narrowing costs a
             // family nothing here could hold. The mutual form is the workaround.
             "an occurrence to the right of an arrow",
@@ -698,7 +700,7 @@ fn a_declaration_is_refused_for_the_reason_it_is_wrong() {
         expected,
     } in refused_declarations()
     {
-        let Err(error) = musa_core::declare(&cx, &declaration) else {
+        let Err(error) = musa_calculus::declare(&cx, &declaration) else {
             panic!("{name}: the declaration was admitted");
         };
         let refusal = refusal(name, error);
@@ -712,7 +714,7 @@ fn a_declaration_is_refused_for_the_reason_it_is_wrong() {
 ///
 /// If it is not a type, which is a defect in the test that asked.
 fn checked_type(cx: &Cx, raw: &Raw) -> Term {
-    musa_core::check(cx, &Term::universe(WRITTEN, Level::ZERO), raw).expect("a type")
+    musa_calculus::check(cx, &Term::universe(WRITTEN, Level::ZERO), raw).expect("a type")
 }
 
 /// `Nat` as a core term, for a checking question.
@@ -722,7 +724,7 @@ fn core_nat(cx: &Cx) -> Term {
 
 /// A declared name as a core term.
 ///
-/// Elaborated rather than constructed, because [`musa_core::Constant`] has no
+/// Elaborated rather than constructed, because [`musa_calculus::Constant`] has no
 /// public constructor — which is the boundary holding: a caller writes a name
 /// and this crate decides what it means.
 ///
@@ -730,7 +732,7 @@ fn core_nat(cx: &Cx) -> Term {
 ///
 /// If the name is not in scope, which is a defect in the test that asked.
 pub(crate) fn core_constant(cx: &Cx, name: &str) -> Term {
-    musa_core::infer(cx, &var(name))
+    musa_calculus::infer(cx, &var(name))
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }

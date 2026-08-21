@@ -106,9 +106,9 @@ The specification is rewritten by the prompts that follow this one, not by this 
 | `docs/rules/language/01-surface.md`, new `10-traits.md` | [130](../../../plan/prompts/130-trait-and-surface-spec.md) | Records, enums, traits and coherence, operators through traits, inherent methods with exact receiver lookup, collections. |
 | new `docs/rules/language/11-quotation.md` | [131](../../../plan/prompts/131-quotation-spec.md) | `Syntax<Cat>`, quotation and splicing, derived provenance, syntax patterns, and what survives of the sealed-step recursor. |
 | `docs/rules/language/06-performance.md` | [144](../../../plan/prompts/144-diagnostics-and-performance.md) | The P1/P2 baselines re-measured against a checker that normalizes during conversion, under the existing 10% gate. |
-| `docs/plan/code-map/` | [149](../../../plan/prompts/149-language-pass-closure.md) | Every crate the pass touched, including `musa-core`. |
+| `docs/plan/code-map/` | [149](../../../plan/prompts/149-language-pass-closure.md) | Every crate the pass touched, including `musa-calculus`. |
 
-The code map cannot be updated in this commit for the honest reason that no code exists yet: `musa-core` is a crate
+The code map cannot be updated in this commit for the honest reason that no code exists yet: `musa-calculus` is a crate
 prompt 133 creates. What this record *does* fix is where it sits — `docs/plan/roadmap.md` §15.12, a leaf below
 `musa-compiler` with `indexmap`, `thiserror`, and `tracing` as its whole dependency list, knowing nothing about pitch,
 time, notation, or audio.
@@ -122,7 +122,7 @@ or a hand-written provenance path, the design is wrong and 129–131 are repaire
 ## 5. How stored files and public APIs migrate
 
 **One migration, at [prompt 142](../../../plan/prompts/142-surface-cutover.md), not two.** Phases B and C build
-`musa-core` as a new leaf crate while the existing checker keeps working, which is why the compatibility oracle
+`musa-calculus` as a new leaf crate while the existing checker keeps working, which is why the compatibility oracle
 (`existing_language_behavior_matches_the_migration_oracle`) can stay untouched through five prompts of new
 implementation. 142 is the single prompt permitted to move it, and every moved entry is argued in
 `crates/musa-compiler/tests/fixtures/elaboration-expected-changes.json`.

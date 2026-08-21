@@ -22,12 +22,13 @@ enough to be either, and that generality is the contextual-`Music` mistake in a 
 
 ## The three things that make this its own prompt
 
-**A machine builtin can never fire, and must not.** `musa-core`'s `eval.rs` reduces a δ-builtin only when every argument
-on its spine is canonical data, and `canonical` answers `None` at `Form::Universe`. Every machine form is polymorphic in
-its step and its ports, so a type stands on every one of those spines and no rule of theirs would ever run. That is not
-a defect to route around: §2 gives the nine forms **typing rules and no reductions**, so a machine's application *is*
-its value, and two machines are the same machine exactly when they were built the same way. What the core is missing is
-a way to say so — `Reduction` has `Delta` and `Structural` and no third variant, and `Builtin::new` demands a `Rule`.
+**A machine builtin can never fire, and must not.** `musa-calculus`'s `eval.rs` reduces a δ-builtin only when every
+argument on its spine is canonical data, and `canonical` answers `None` at `Form::Universe`. Every machine form is
+polymorphic in its step and its ports, so a type stands on every one of those spines and no rule of theirs would ever
+run. That is not a defect to route around: §2 gives the nine forms **typing rules and no reductions**, so a machine's
+application *is* its value, and two machines are the same machine exactly when they were built the same way. What the
+core is missing is a way to say so — `Reduction` has `Delta` and `Structural` and no third variant, and `Builtin::new`
+demands a `Rule`.
 
 **A machine needs a unit and a product.** §2's rules are written over `(A, D)` and `Unit`: `beside` pairs both ports,
 `copy` answers a pair, `drop` answers unit, `swap` exchanges a pair's halves, and `feedback` threads a stored value
@@ -37,7 +38,7 @@ types with no source spelling; the core has records (prompt 136) and nothing ano
 
 **`primitive` is typed by a registry, not by a signature.** `MachineOp::instantiate` returns `None` for it, and the old
 checker types it by a rule of its own: the literal name and version select a unit from the build-local registry, and its
-ports come from that unit. Nothing in `musa-core` reads a build-local anything, so this is the one form whose
+ports come from that unit. Nothing in `musa-calculus` reads a build-local anything, so this is the one form whose
 registration has a real decision in it rather than a transcription.
 
 ## Read
@@ -49,10 +50,10 @@ registration has a real decision in it rather than a transcription.
   this prompt owes them a representation they can be stated about.
 - [`../../rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.8's fourth family and the
   §5.7 paragraph "What this obligation does not cover", which is the argument for this prompt being separate.
-- `crates/musa-core/src/base.rs` — `Reduction`, `Builtin::new`, `Builtin::structural_with`, `Family::Machine`, and
+- `crates/musa-calculus/src/base.rs` — `Reduction`, `Builtin::new`, `Builtin::structural_with`, `Family::Machine`, and
   `Registry::new`'s two checks. `check_delta_signatures` already skips a non-δ family, so a machine signature is not
   held to D1; what is missing is the registration shape, not permission.
-- `crates/musa-core/src/eval.rs`'s `delta` and `canonical`, which is where "can never fire" is a fact rather than a
+- `crates/musa-calculus/src/eval.rs`'s `delta` and `canonical`, which is where "can never fire" is a fact rather than a
   worry.
 - `crates/musa-compiler/src/core.rs` — `MachineOp` and its `instantiate`, `Type::Machine`, `Type::Primitive`,
   `Type::Product`, `Type::Unit`, and `machine_type`. The rank-1 schemes there are the signatures being restated as
@@ -81,10 +82,10 @@ The indices are types rather than literals because §2's ports are arbitrary sto
 to D1's literal-index rule — that rule is about what a `fn` **rule** can write, and a constructor writes nothing. This
 is the whole reason the third reduction shape below is the right answer rather than a workaround.
 
-**`musa-core` gains `Builtin::constructor`, and `Reduction` gains `None`.** A builtin registered that way has a type, a
-family, and no computation: its saturated application stays a neutral spine, and conversion of two of them is the
-structural conversion the core already does on spines. Three consequences are worth stating because they are what makes
-this safe rather than convenient — a constructor contributes no ι-rule, so §5.8's inertness argument covers it
+**`musa-calculus` gains `Builtin::constructor`, and `Reduction` gains `None`.** A builtin registered that way has a
+type, a family, and no computation: its saturated application stays a neutral spine, and conversion of two of them is
+the structural conversion the core already does on spines. Three consequences are worth stating because they are what
+makes this safe rather than convenient — a constructor contributes no ι-rule, so §5.8's inertness argument covers it
 unchanged; `Malformed::BuiltinStuck` cannot fire for it, because there is no rule to answer `None`; and it cannot be
 confused with a δ-builtin whose rule was forgotten, which is exactly what "a rule that always answers `None`" would have
 been.
@@ -111,7 +112,7 @@ unused spelling. `Type::Machine`, `Type::Primitive`, and the old checker's machi
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Reduction::None`, `Builtin::constructor(name, ty, family)`, and the doc paragraph
+- `crates/musa-calculus/src/base.rs`: `Reduction::None`, `Builtin::constructor(name, ty, family)`, and the doc paragraph
   arguing why a constructor is not a rule that never fires. `Registry::new`'s existing checks unchanged — a constructor
   is not a δ-builtin and not a structural eliminator, so neither check applies to it, and the laws say so.
 - `crates/musa-compiler/src/prelude.rs`: `Unit`, and the product the Design's decision selected, each doc-commented with
@@ -125,15 +126,15 @@ unused spelling. `Type::Machine`, `Type::Primitive`, and the old checker's machi
   convertible and two built differently are not; a machine with an open port is a well-typed value that is simply not
   yet *a* machine; `connect` at mismatched ports is refused by the core rather than by a hand-written arm; and a
   constructor's saturated application normalizes to itself.
-- `docs/plan/code-map/` rows for `musa-core` and `musa-compiler`.
+- `docs/plan/code-map/` rows for `musa-calculus` and `musa-compiler`.
 - Prompt 142's Read and `depends_on` repaired to name this prompt.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

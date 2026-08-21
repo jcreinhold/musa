@@ -253,7 +253,7 @@ impl Derived {
 /// the counter itself gives out — disjointness by construction rather than by
 /// a discipline anyone maintains. A δ rule needs this because it is a
 /// function of its argument values alone (`02-core-calculus.md` §5.8's D3 is a
-/// property of the `musa_core::Rule` type, not a promise): it has no counter
+/// property of the `musa_calculus::Rule` type, not a promise): it has no counter
 /// to draw from, and its answer's identity must therefore come from structure
 /// the arguments already carry. `48-the-anchors-place-without-a-name-supply.md`
 /// is the argument, from Peyton Jones ch. 9's name supply and Idris2's

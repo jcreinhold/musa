@@ -83,9 +83,9 @@ be read by someone who thinks this amendment is a mistake. It answers §11.2's f
 one it declines, CBPV — and it records what the earlier notes got right, because 39 §8's reasoning (no *musical*
 operation needs a value in a type) is not refuted by this evidence and should not be quietly buried by it.
 
-**`musa-core` enters the roadmap now**, before it exists, because roadmap §15 is where a new crate's dependencies are
-declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-kernel` is: nothing
-in it knows what a pitch is.
+**`musa-calculus` enters the roadmap now**, before it exists, because roadmap §15 is where a new crate's dependencies
+are declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-kernel` is:
+nothing in it knows what a pitch is.
 
 **The consequential edits to `docs/rules/across-stages/` are part of this amendment, not prompt 149's audit.** Two
 governing documents restate §9's inference rule in their own words: `01-stage-judgments.md` §2 says `A` is the principal
@@ -115,7 +115,7 @@ matrix, which is prompt 148's.
   Nothing else in the matrix moves.
 - `docs/rules/README.md`'s "Changing a decision" section: this amendment recorded as the most recent one, with a link to
   the record, the way prompt 127a's is.
-- `docs/plan/roadmap.md` §15: `musa-core` in the crate list and in the dependency lists, as a leaf below
+- `docs/plan/roadmap.md` §15: `musa-calculus` in the crate list and in the dependency lists, as a leaf below
   `musa-compiler`.
 - `docs/rules/language/README.md`: the graduation list and the prompt ranges it names, repaired for this pass.
 

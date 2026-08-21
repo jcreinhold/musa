@@ -8,7 +8,7 @@
 //! law below turns on exactly that difference, so separating them into two files
 //! would put each half of a contrast in a different place.
 
-use musa_core::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
+use musa_calculus::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
 
 use crate::family_laws::{apply, binder, constructor, data, family, nat_context, var, vec};
 use crate::programs::WRITTEN;
@@ -26,9 +26,9 @@ use crate::programs::WRITTEN;
 /// If any declaration is refused, which would be a defect in this crate.
 pub(crate) fn tying_context() -> Cx {
     let (cx, _) = nat_context();
-    let vectors = musa_core::declare(&cx, &vec()).expect("Vec is a declaration");
+    let vectors = musa_calculus::declare(&cx, &vec()).expect("Vec is a declaration");
     let cx = cx.declaring(&vectors);
-    let tying = musa_core::declare(
+    let tying = musa_calculus::declare(
         &cx,
         &data(
             Vec::new(),
@@ -43,7 +43,7 @@ pub(crate) fn tying_context() -> Cx {
     )
     .expect("Tying is a declaration");
     let cx = cx.declaring(&tying);
-    let slur = musa_core::declare(
+    let slur = musa_calculus::declare(
         &cx,
         &data(
             Vec::new(),
@@ -82,7 +82,7 @@ fn arrow(domain: Raw, codomain: Raw) -> Raw {
 ///
 /// If it is not a type, which is a defect in the test that wrote it.
 fn core(cx: &Cx, name: &str, ty: &Raw) -> Term {
-    musa_core::infer(cx, ty)
+    musa_calculus::infer(cx, ty)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
@@ -93,10 +93,10 @@ fn core(cx: &Cx, name: &str, ty: &Raw) -> Term {
 ///
 /// If they are not, or if either is not a term at `ty`.
 fn same(cx: &Cx, name: &str, ty: &Term, left: &Raw, right: &Raw) {
-    let left = musa_core::check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
-    let right = musa_core::check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
+    let left = musa_calculus::check(cx, ty, left).unwrap_or_else(|error| panic!("{name} (left): {error}"));
+    let right = musa_calculus::check(cx, ty, right).unwrap_or_else(|error| panic!("{name} (right): {error}"));
     assert!(
-        musa_core::convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
+        musa_calculus::convertible(cx, ty, &left, &right).unwrap_or_else(|error| panic!("{name}: {error}")),
         "{name}"
     );
 }
@@ -349,7 +349,7 @@ fn a_bare_constructor_is_the_one_the_expected_type_names() {
 fn the_same_case_name_in_two_families_does_not_collide() {
     let cx = tying_context();
     let tying = core(&cx, "Tying", &var("Tying"));
-    let Err(error) = musa_core::check(&cx, &tying, &var("Slur.Untied")) else {
+    let Err(error) = musa_calculus::check(&cx, &tying, &var("Slur.Untied")) else {
         panic!("`Slur.Untied` must not inhabit `Tying`");
     };
     let refusal = crate::programs::refusal("the other family's case at this type", error);
@@ -376,7 +376,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
             // §1.1: two fixed universes, and the second is not itself a type —
             // the expectation is elaborated by being inferred, so the largest
             // writable one is the first, which this record's small fields meet.
-            ty: Raw::universe(WRITTEN, musa_core::Level::ZERO),
+            ty: Raw::universe(WRITTEN, musa_calculus::Level::ZERO),
             expected: |refusal| matches!(refusal, Refusal::DuplicateField { .. }),
         },
         RefusedRecord {
@@ -473,7 +473,10 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
 fn counted() -> Raw {
     Raw::record_type(
         WRITTEN,
-        [("A", Raw::universe(WRITTEN, musa_core::Level::ZERO)), ("x", var("A"))],
+        [
+            ("A", Raw::universe(WRITTEN, musa_calculus::Level::ZERO)),
+            ("x", var("A")),
+        ],
     )
 }
 
@@ -489,7 +492,7 @@ fn a_record_or_an_enum_is_refused_for_the_reason_it_is_wrong() {
     } in refused_records()
     {
         let ty = core(&cx, name, &ty);
-        let Err(error) = musa_core::check(&cx, &ty, &raw) else {
+        let Err(error) = musa_calculus::check(&cx, &ty, &raw) else {
             panic!("{name}: elaboration accepted a program it must refuse");
         };
         let refusal = crate::programs::refusal(name, error);

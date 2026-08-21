@@ -60,7 +60,7 @@
 #[cfg(test)]
 mod laws;
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 

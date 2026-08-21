@@ -1,6 +1,6 @@
 //! Diagnostic helpers: provenance and the `not_a_*` refusal builders.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 
 use crate::diagnose::{Code, Diagnostic};
 use crate::lower::Lowering;

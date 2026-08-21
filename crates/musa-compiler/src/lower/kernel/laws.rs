@@ -2,7 +2,7 @@
 //!
 //! Beside the module rather than in `tests/suite/`, for
 //! [`crate::lower::piece::laws`]'s reason: what the reading answers is a
-//! [`musa_core::Raw`] and what it assembles is a [`crate::elaborate::VoiceTrack`],
+//! [`musa_calculus::Raw`] and what it assembles is a [`crate::elaborate::VoiceTrack`],
 //! and neither leaves this crate.
 //!
 //! The division of labour with `tests/suite/kernel_quote_laws.rs` is the one the

@@ -48,7 +48,7 @@ generics, flat traits, and quotation. It needs nothing else. That gap is what th
 
 ## The audit table
 
-musa-core is 20,869 lines / 928 KB / 30 files. The language side of musa-compiler adds `core.rs` 15,422 (the old
+musa-calculus is 20,869 lines / 928 KB / 30 files. The language side of musa-compiler adds `core.rs` 15,422 (the old
 checker, still the live path for `library { }` via `elaborate.rs:1099`), `elaborate.rs` 1,557, `infer.rs` 822, `lower/`
 8,262, `registry/` 5,513, `expand.rs` 2,485, `syntax.rs` 2,076.
 
@@ -86,7 +86,7 @@ And the compiler side:
 | Expansion boundary, syntax values, anchors | `expand.rs`, `syntax.rs` | **keep** |
 | `lower/` (CST → Raw) | 8,262 | **keep**, shrinks as `Raw` shrinks |
 
-Expected net: musa-core 20,869 → ≈11–12K lines; the compiler loses ≈18K more. Total deletion ≈25,000 lines.
+Expected net: musa-calculus 20,869 → ≈11–12K lines; the compiler loses ≈18K more. Total deletion ≈25,000 lines.
 
 ## The surviving language
 
@@ -124,7 +124,7 @@ they die in phase 5, not before).
 1. **Documents first** (the repo's repair discipline): rewrite `02-core-calculus.md` as the surviving calculus; rewrite
    `10-traits.md` as the flat model; amend `01-surface.md` §1.4 and `11-quotation.md` §1 (which already describes a base
    type in everything but name).
-2. **musa-core excision.** Delete `Id`/`refl`/`J`, `level.rs`, `recheck.rs`, `storable.rs`; replace `unify.rs` with
+2. **musa-calculus excision.** Delete `Id`/`refl`/`J`, `level.rs`, `recheck.rs`, `storable.rs`; replace `unify.rs` with
    first-order matching; replace `dictionary.rs`/`class.rs` with the flat table; strip plicity, indices, motive
    inference, and measures from `raw`/`elab`/`family`/`declare`/`case`/`rec`. Prune the suites that tested deleted
    machinery.

@@ -11,10 +11,10 @@ phase: 3
 ## Task
 
 Give a δ-rule a way to say *the program is wrong*. Today its only "no" is `None`, which
-[`eval.rs`](../../../crates/musa-core/src/eval.rs) reports as `Malformed::BuiltinStuck` — restated to the composer as "a
-defect in the compiler rather than in the source" — so every registered operation with a real refusal had to answer
-`Result τ Text` instead and hand the composer's own mistake back as a value. Add the third answer, move the refusals
-that are program errors onto it, and take `Result` off the notation vocabulary, so that a notated block denotes
+[`eval.rs`](../../../crates/musa-calculus/src/eval.rs) reports as `Malformed::BuiltinStuck` — restated to the composer
+as "a defect in the compiler rather than in the source" — so every registered operation with a real refusal had to
+answer `Result τ Text` instead and hand the composer's own mistake back as a value. Add the third answer, move the
+refusals that are program errors onto it, and take `Result` off the notation vocabulary, so that a notated block denotes
 `EventTrack ⟨written⟩` and `01-surface.md` §2's signatures are true as written.
 
 ## Read
@@ -37,14 +37,14 @@ that are program errors onto it, and take `Result` off the notation vocabulary, 
   malformed term is the compiler's own defect. A rule that can only answer `None` collapses the first into the third,
   which is exactly the bug. §5.8 fixes when a rule fires; §5.7 is why `sounded` and `play` take an origin and a scope no
   source writes.
-- `crates/musa-core/src/base.rs` — the `Rule` type, `Reduction::Delta`, and the long argument at `Builtin::constructor`
-  for why "no reduction at all" is a *shape* rather than a rule that always answers `None`. This prompt adds the
-  neighbouring distinction on the other side: a rule that answers nothing because the *term* is wrong, and a rule that
-  answers nothing because the *program* is.
-- `crates/musa-core/src/eval.rs`'s δ-reduction, the one site that turns a rule's answer into an outcome, and
-  `crates/musa-core/src/error.rs`'s `Malformed::BuiltinStuck` and `MisfitAnswer` — the two caller-defect sentences that
-  stay caller defects.
-- `crates/musa-core/src/refuse.rs` — `Refusal`, which gains one variant, and which
+- `crates/musa-calculus/src/base.rs` — the `Rule` type, `Reduction::Delta`, and the long argument at
+  `Builtin::constructor` for why "no reduction at all" is a *shape* rather than a rule that always answers `None`. This
+  prompt adds the neighbouring distinction on the other side: a rule that answers nothing because the *term* is wrong,
+  and a rule that answers nothing because the *program* is.
+- `crates/musa-calculus/src/eval.rs`'s δ-reduction, the one site that turns a rule's answer into an outcome, and
+  `crates/musa-calculus/src/error.rs`'s `Malformed::BuiltinStuck` and `MisfitAnswer` — the two caller-defect sentences
+  that stay caller defects.
+- `crates/musa-calculus/src/refuse.rs` — `Refusal`, which gains one variant, and which
   `crates/musa-compiler/src/lower/refusals.rs` files under a `Code` by an exhaustive match, so a variant added here
   fails to compile there until somebody says where it belongs.
 - `crates/musa-compiler/src/registry/rules.rs`'s `answered` and `refused`, and every caller of `refused` in
@@ -161,8 +161,8 @@ Two words of §2's worked example, both outside this prompt's boundary and both 
 
 ## Target
 
-- `musa_core::Rule` answering three cases rather than two, the third carrying the sentence to say; `eval.rs` turning it
-  into a `Refusal` at the application's origin, and leaving `Malformed::BuiltinStuck` for the arguments-not-admitted
+- `musa_calculus::Rule` answering three cases rather than two, the third carrying the sentence to say; `eval.rs` turning
+  it into a `Refusal` at the application's origin, and leaving `Malformed::BuiltinStuck` for the arguments-not-admitted
   case it already reports.
 - The new `Refusal` variant filed under a `Code` in `crates/musa-compiler/src/lower/refusals.rs`, with the code declared
   in `crates/musa-compiler/src/diagnose.rs` and explained in `crates/musa-project/src/diagnostic.rs`.
@@ -177,13 +177,13 @@ Two words of §2's worked example, both outside this prompt's boundary and both 
 - Laws: a rule that refuses reports at the application's origin and not as a compiler defect; a rule that answers
   nothing still reports as a compiler defect; a notated block's type is `EventTrack ⟨written⟩`; a saved fragment folds
   into another block through `use` without a `?`; `stack c4 major/2` written where §2 writes it elaborates.
-- `docs/plan/code-map/` rows for `musa-core` and `musa-compiler`.
+- `docs/plan/code-map/` rows for `musa-calculus` and `musa-compiler`.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
+cargo nextest run -p musa-calculus -p musa-compiler
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

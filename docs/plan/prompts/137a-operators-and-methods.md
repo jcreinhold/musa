@@ -22,9 +22,9 @@ reports it.
   list. §5 and §6 make both of them *surface* spellings for terms `Raw` can already hold: `x == y` is `Eq.equal x y` and
   `x.m(y)` is a name and an application, so the elaborator never learns an operator table and no new `Raw` shape is
   needed for either.
-- Prompt 137's `crates/musa-core/src/{class.rs, dictionary.rs}` — the tables this prompt queries. Exact-receiver lookup
-  is `Classes::method` plus the same resolution 137 already runs; if this prompt finds itself writing a second lookup,
-  that is a repair of 137 rather than work here.
+- Prompt 137's `crates/musa-calculus/src/{class.rs, dictionary.rs}` — the tables this prompt queries. Exact-receiver
+  lookup is `Classes::method` plus the same resolution 137 already runs; if this prompt finds itself writing a second
+  lookup, that is a repair of 137 rather than work here.
 - `crates/musa-language/src/{lexer.rs, parser.rs}` — the token set, and the reason the operators are addable. The lexer
   has no `==`, `+`, or `*` today; `-`, `/`, `<`, and `>` exist and are consumed **only** by music statements (durations,
   negative rationals, type arguments, hairpins), never by `expr()`. So infix operators enter the expression grammar
@@ -42,10 +42,10 @@ reports it.
 ## Design
 
 **Operators and methods are spellings, not semantics.** The parser desugars `a + b` to an application of a qualified
-name and `x.m(y)` to a projection-free application, so what reaches `musa-core` is what a hand-written `Add.add(a, b)`
-would have reached it as, and `a + b` and `Add.add(a, b)` are convertible because they are the same term. This is what
-keeps the operator table out of the elaborator, and it is testable directly: the law is a convertibility check, not a
-snapshot of a desugaring.
+name and `x.m(y)` to a projection-free application, so what reaches `musa-calculus` is what a hand-written
+`Add.add(a, b)` would have reached it as, and `a + b` and `Add.add(a, b)` are convertible because they are the same
+term. This is what keeps the operator table out of the elaborator, and it is testable directly: the law is a
+convertibility check, not a snapshot of a desugaring.
 
 **Failing operations keep their failing shape.** `ratio_sub` returns `Result` today, and its operator form returns
 `Result` tomorrow. No partial operator, no panicking division, no silent saturation. A total language that grows one
@@ -92,21 +92,22 @@ tree-sitter grammar agrees with the real lexer under the drift law. Each style r
 - `musa-language`: the `trait`, `impl`, and `where` keywords, their grammar and CST positions, operator tokens and
   precedence, method-call and `Type::item` paths, formatter layout, highlighting, and completion.
 - `editors/tree-sitter-musa`: grammar, queries, and corpus, with the drift test green.
-- `musa-core`: exact-receiver method resolution over 137's tables, and the refusal for a method on an unconstrained
+- `musa-calculus`: exact-receiver method resolution over 137's tables, and the refusal for a method on an unconstrained
   type.
 - New `Code` variants with `musa explain` text for: ambiguous instance, and a method on an unconstrained type.
 - `docs/rules/style-guide.md` naming rules and their `lint.rs` diagnostics.
 - `docs/rules/language/01-surface.md` §1.3 — replace the `trait`/`impl` deferral with the rule.
-- `crates/musa-language/tests/suite/` and `crates/musa-core/tests/suite/operator_laws.rs`, plus the compile-fail suite.
+- `crates/musa-language/tests/suite/` and `crates/musa-calculus/tests/suite/operator_laws.rs`, plus the compile-fail
+  suite.
 - `docs/plan/code-map/` rows.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-core -p musa-compiler
+cargo nextest run -p musa-language -p musa-calculus -p musa-compiler
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-core -p musa-compiler -- -D warnings
+cargo clippy --all-targets -p musa-language -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

@@ -1,6 +1,6 @@
 //! Nominal data a library declares for itself.
 //!
-//! The declarations themselves now live in `musa-core`'s family registry;
+//! The declarations themselves now live in `musa-calculus`'s family registry;
 //! what remains here is the identity a `Type::Nominal` variant still carries.
 //!
 //! Nothing here is public. A declaration's identity is *build-local*: it is

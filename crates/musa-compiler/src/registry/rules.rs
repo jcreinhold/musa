@@ -9,7 +9,7 @@
 //!
 //! # A rule is a `fn`, which is D3 rather than a style
 //!
-//! [`musa_core::Rule`] is a function pointer, so a rule cannot capture the
+//! [`musa_calculus::Rule`] is a function pointer, so a rule cannot capture the
 //! compiler — no meter, no span, no diagnostic sink, no interning table. §5.8's
 //! D3 asks that "the result is a function of the argument values alone", and
 //! that is a property of the type here rather than a promise a reader has to
@@ -22,7 +22,7 @@
 //!   moves: the same size is charged, at the same point, by the one meter that
 //!   sees every reduction rather than by each rule for itself.
 //! - **`None` is louder than it was.** The old evaluator left an unanswered
-//!   application as a stuck term. [`musa_core::Malformed::BuiltinStuck`] now
+//!   application as a stuck term. [`musa_calculus::Malformed::BuiltinStuck`] now
 //!   reports it, which is D2 enforced rather than assumed. Every `None` below
 //!   is one the old evaluator also answered — `interval_add` at an interval pair
 //!   with no representable sum is the honest example — and each is a signature
@@ -36,7 +36,7 @@
 //! constructor name, so `Option.Some` is `Option.Some` wherever it came from.
 //! Writing one does need a type, and the core supplies it — a `Datum::Case` is
 //! realized against the builtin's own declared result type, so a rule names a
-//! constructor and never a [`musa_core::Term`]. The exception is `Datum::Lit`,
+//! constructor and never a [`musa_calculus::Term`]. The exception is `Datum::Lit`,
 //! which is used with the type the rule supplied, which is why every writer here
 //! goes through [`super::literal`] and the same [`super::plain_type`] the
 //! registration used.
@@ -52,7 +52,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Answer, Datum, Literal, Rule};
+use musa_calculus::{Answer, Datum, Literal, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
@@ -106,7 +106,7 @@ pub(super) const BEYOND: [&str; 7] = [
 ///
 /// One constant because two places have to agree on it and neither can read the
 /// other: [`super::syntax_carrier`] registers the builtin under it, and
-/// [`forgets`] answers it to `musa-core`'s elaborator.
+/// [`forgets`] answers it to `musa-calculus`'s elaborator.
 pub(super) const FORGOTTEN: &str = "forget_category";
 
 /// The rows that do not, by family and by count.
@@ -116,7 +116,7 @@ pub(super) const FORGOTTEN: &str = "forget_category";
 ///
 /// - a **structural eliminator** traverses `Nat`, `List`, or `Option`, which are
 ///   declared families with generated recursors, and
-///   [`musa_core::Registry::new`] refuses a structural target that is not a base
+///   [`musa_calculus::Registry::new`] refuses a structural target that is not a base
 ///   type. Registering one would be a second ι-rule for a type that has one, so
 ///   all eight are library code. Four of them no longer exist as *names*: the
 ///   prelude declares `Iterable<C, A>`, so a fold over a list, an option, or a
@@ -136,7 +136,7 @@ pub(super) const FORGOTTEN: &str = "forget_category";
 ///   registered under their own spellings.
 /// - a **phase projection** is `run_syntax_step`, which hides nothing: it is the
 ///   `run` field of a `SyntaxStep` applied to a context, and a projection is not
-///   a compiler-owned operation. [`musa_core::Registry::new`] would have refused
+///   a compiler-owned operation. [`musa_calculus::Registry::new`] would have refused
 ///   it anyway, since its target is a declared family and a rewrite over one is
 ///   the second ι-rule that check exists to catch. It is *defined* instead —
 ///   [`super::run_syntax_step`].
@@ -938,7 +938,7 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         // ---- the 25 rows this module does not own ----
         //
         // Eight structural eliminators over declared families, whose recursors
-        // `musa_core::declare` already generated; eight track and nine machine
+        // `musa_calculus::declare` already generated; eight track and nine machine
         // builtins waiting on the reshaping prompt 142 does; and the phase
         // table, which has a walk of its own below.
         Builtin::NatFold
@@ -1177,7 +1177,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
 /// Whether a `Syntax ⟨wanted⟩` position accepts a `Syntax ⟨held⟩`, and what
 /// carries it there.
 ///
-/// `11-quotation.md` §1's forgetting rule, as `musa-core` asks it: a token-tree
+/// `11-quotation.md` §1's forgetting rule, as `musa-calculus` asks it: a token-tree
 /// position accepts a tree of any category, because a token-tree position is
 /// precisely one that has not been parsed as anything more specific, and every
 /// other position requires its own category exactly. Directional on purpose —
@@ -1185,7 +1185,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
 /// uncertified splice the index exists to refuse, and the core asks this only
 /// where a direction exists.
 ///
-/// `None` at two equal categories, which is [`musa_core::Accepts`]'s contract:
+/// `None` at two equal categories, which is [`musa_calculus::Accepts`]'s contract:
 /// there is nothing to carry, and ordinary conversion says so more cheaply than
 /// a coercion nobody would read.
 pub(super) fn forgets(wanted: &Literal, held: &Literal) -> Option<&'static str> {

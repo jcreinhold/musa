@@ -28,7 +28,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Origin, Raw, Term};
+use musa_calculus::{Cx, Origin, Raw, Term};
 use musa_language::SyntaxKind;
 
 use super::super::{Lowering, Sites};
@@ -127,10 +127,10 @@ fn new(cx: &Cx, quoted: &str) -> Syntax {
 /// independent of the evaluator that produced it.
 fn answer(cx: &Cx, program: &Raw, cat: Cat) -> Syntax {
     let ty = syntax_type(cat);
-    let term = musa_core::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
+    let term = musa_calculus::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
-        musa_core::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    let musa_core::Shape::Lit(ref built) = *normal.shape() else {
+        musa_calculus::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
+    let musa_calculus::Shape::Lit(ref built) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };
     held::<Syntax>(built).expect("the answer is a syntax value").clone()
@@ -245,7 +245,7 @@ fn a_quote_inhabits_the_expression_category_at_the_anchor_it_was_given() {
     let cx = owned().expect("the compiler's own context builds");
     let program = Raw::lam(HERE, "here", lowered(&format!("quote at here {{ {BODY} }}")));
     let ty = Term::pi(HERE, "here", plain_type("NodePath"), syntax_type(Cat::Expr));
-    musa_core::check(&cx, &ty, &program).unwrap_or_else(|why| panic!("a quote does not check: {why}"));
+    musa_calculus::check(&cx, &ty, &program).unwrap_or_else(|why| panic!("a quote does not check: {why}"));
 }
 
 /// The law prompt 141ga exists for: the core builds the tree the old evaluator

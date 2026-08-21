@@ -96,7 +96,7 @@ than note 39 §11.2 estimated.
 - `docs/book/` teaching the new language, with its fixtures and generated signatures current.
 - The closing note under `docs/notes/research/language-design-closure/`, putting the four measurements together and
   recording what did not work.
-- `docs/plan/code-map/` accurate for every crate the pass touched, including `musa-core`.
+- `docs/plan/code-map/` accurate for every crate the pass touched, including `musa-calculus`.
 
 ## Check
 

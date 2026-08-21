@@ -8,7 +8,7 @@
 //! of them is checked at the declaration precisely so that no use site has to
 //! ask.
 
-use musa_core::{Cx, Origin, PackageId, RawConstraint, Refusal, declare_impl, declare_trait};
+use musa_calculus::{Cx, Origin, PackageId, RawConstraint, Refusal, declare_impl, declare_trait};
 
 use crate::family_laws::{apply, binder, constructor, data, family, nat, nat_context, type0, var};
 use crate::programs::{WRITTEN, refusal};
@@ -26,7 +26,7 @@ fn a_second_instance_for_a_key_names_the_first() {
     let first = eq_nat(&cx);
     let cx = cx.declaring_instance(&first);
 
-    let second = musa_core::RawImpl {
+    let second = musa_calculus::RawImpl {
         origin: ELSEWHERE,
         ..instance(
             "Eq",
@@ -57,7 +57,7 @@ fn a_second_instance_for_a_key_names_the_first() {
 fn an_instance_is_at_home_with_its_trait() {
     // Trait and instance in one package, head type in another: §3's first home.
     let types = Cx::new().in_package(PackageId::new(1));
-    let group = musa_core::declare(&types, &nat()).expect("Nat is a declaration");
+    let group = musa_calculus::declare(&types, &nat()).expect("Nat is a declaration");
     let library = types.declaring(&group).in_package(PackageId::new(2));
     let equality = declare_trait(&library, &eq()).expect("Eq is a declaration");
     let library = library.declaring_class(&equality);
@@ -84,7 +84,7 @@ fn an_instance_is_at_home_with_its_head_type() {
     let library = Cx::new().in_package(PackageId::new(1));
     let equality = declare_trait(&library, &eq()).expect("Eq is a declaration");
     let library = library.declaring_class(&equality).in_package(PackageId::new(2));
-    let group = musa_core::declare(&library, &nat()).expect("Nat is a declaration");
+    let group = musa_calculus::declare(&library, &nat()).expect("Nat is a declaration");
     let types = library.declaring(&group);
 
     assert!(
@@ -108,7 +108,7 @@ fn an_instance_is_at_home_with_its_head_type() {
 /// The super-constraint lands on the *second* parameter, which is what lets an
 /// instance be filed under a rigid head while the constraint it has to discharge
 /// falls on a type variable.
-fn held() -> musa_core::RawTrait {
+fn held() -> musa_calculus::RawTrait {
     // Two parameters and no `where` (§1's flat law): what the law below needs
     // is a trait whose key is its *first* argument, so that the second can be
     // the variable a local dictionary constrains.
@@ -133,7 +133,7 @@ fn holding() -> Cx {
 
 /// `impl<A> Held<Box A, A> { held = Eq.equal; }` — an instance whose method
 /// needs `Eq<A>`, so that who answers it (or refuses) is observable.
-fn holds(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_core::ElabError> {
+fn holds(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_calculus::ElabError> {
     declare_impl(
         cx,
         &instance(
@@ -170,7 +170,7 @@ fn a_constraint_on_a_variable_no_local_dictionary_answers_is_refused() {
 /// one-parameter traits — the shape §4's measure is stated over.
 fn measured() -> Cx {
     let cx = Cx::new();
-    let one = musa_core::declare(
+    let one = musa_calculus::declare(
         &cx,
         &data(
             vec![binder("A", type0())],
@@ -179,7 +179,7 @@ fn measured() -> Cx {
     )
     .expect("F is a declaration");
     let cx = cx.declaring(&one);
-    let two = musa_core::declare(
+    let two = musa_calculus::declare(
         &cx,
         &data(
             vec![binder("A", type0()), binder("B", type0())],
@@ -200,7 +200,7 @@ fn measured() -> Cx {
 }
 
 /// `impl<A> C<F A> where <context> { }`.
-fn measured_instance(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_core::ElabError> {
+fn measured_instance(cx: &Cx, context: Vec<RawConstraint>) -> Result<(), musa_calculus::ElabError> {
     declare_impl(
         cx,
         &instance(

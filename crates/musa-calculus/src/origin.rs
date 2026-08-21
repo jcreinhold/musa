@@ -11,7 +11,7 @@
 //! normal form is not source. Without an origin on the terms involved, the best
 //! available diagnostic is two unfamiliar expressions and no place to point.
 //!
-//! **An origin is opaque here.** `musa-core` is a leaf: it does not know what a
+//! **An origin is opaque here.** `musa-calculus` is a leaf: it does not know what a
 //! file is, what a span is, or what a syntax node is, and it must not learn.
 //! What it carries is a number the caller assigned, and the only thing it does
 //! with that number is keep it attached to the right term.

@@ -2,7 +2,7 @@
 description = "The dependently typed core: terms, contexts, and conversion by normalization-by-evaluation"
 edition.workspace = true
 license.workspace = true
-name = "musa-core"
+name = "musa-calculus"
 repository.workspace = true
 version.workspace = true
 

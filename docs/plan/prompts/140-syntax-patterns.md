@@ -85,9 +85,9 @@ does not affect matching. Two open sequence splices in one group are refused.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-language -p musa-compiler -p musa-core
+cargo nextest run -p musa-language -p musa-compiler -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test

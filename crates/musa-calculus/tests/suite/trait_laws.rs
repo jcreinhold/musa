@@ -5,12 +5,12 @@
 //! wrong place to learn that a library cannot answer, because the author reading
 //! the message is not the author who can fix it. So the programs here are
 //! declarations rather than terms, and they run through
-//! [`declare_trait`](musa_core::declare_trait) and
-//! [`declare_impl`](musa_core::declare_impl) rather than through `check`.
+//! [`declare_trait`](musa_calculus::declare_trait) and
+//! [`declare_impl`](musa_calculus::declare_impl) rather than through `check`.
 
 use std::sync::Arc;
 
-use musa_core::{
+use musa_calculus::{
     Cx, ElabError, Index, Instance, Level, PackageId, Raw, RawBinder, RawConstraint, RawDefinition, RawImpl, RawMethod,
     RawTrait, Refusal, Term, Visibility, declare_impl, declare_trait,
 };
@@ -166,7 +166,7 @@ pub(crate) fn keyed() -> RawTrait {
 /// type variable — which is what every question about the termination measure
 /// and about a variable head needs.
 pub(crate) fn boxed_context(cx: &Cx) -> Cx {
-    let group = musa_core::declare(
+    let group = musa_calculus::declare(
         cx,
         &data(
             vec![binder("A", type0())],
@@ -218,7 +218,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
     // head type at home in one, and the instance written in another.
     let orphan = {
         let home = Cx::new().in_package(PackageId::new(1));
-        let group = musa_core::declare(&home, &crate::family_laws::nat()).expect("Nat is a declaration");
+        let group = musa_calculus::declare(&home, &crate::family_laws::nat()).expect("Nat is a declaration");
         let home = home.declaring(&group);
         let equality = declare_trait(&home, &eq()).expect("Eq is a declaration");
         home.declaring_class(&equality).in_package(PackageId::new(2))
@@ -447,7 +447,7 @@ pub(crate) fn refused_declarations() -> Vec<RefusedDeclaration> {
             // instance can ever answer and no `where` here binds — the repair
             // is on the signature and the refusal says so.
             name: "a constraint on a type variable nothing discharges",
-            outcome: musa_core::check(
+            outcome: musa_calculus::check(
                 &with_eq_nat,
                 &Term::pi(
                     WRITTEN,
@@ -495,7 +495,7 @@ fn storable(cx: &Cx, argument: Raw) -> Result<(), ElabError> {
 /// applied once, so that resolution's answer for `C τ` is observable.
 fn probe(cx: &Cx, class: &'static str, argument: Raw) -> Result<(), ElabError> {
     let nat = crate::family_laws::core_constant(cx, "Nat");
-    musa_core::check(cx, &nat, &probe_program(class, argument)).map(|_| ())
+    musa_calculus::check(cx, &nat, &probe_program(class, argument)).map(|_| ())
 }
 
 /// The probe program itself, so that a law can ask the question under a
@@ -520,7 +520,7 @@ fn a_use_of_a_method_becomes_the_instance_that_answers_it() {
     let cx = context();
     let cx = cx.declaring_instance(&eq_nat(&cx));
     let nat = crate::family_laws::core_constant(&cx, "Nat");
-    let term = musa_core::check(&cx, &nat, &var("Eq.equal")).expect("`Eq.equal` at `Nat` resolves");
+    let term = musa_calculus::check(&cx, &nat, &var("Eq.equal")).expect("`Eq.equal` at `Nat` resolves");
 
     // The instance defines `equal = Nat.Zero`, so a resolved use is convertible
     // to it. Convertible rather than syntactically equal: what elaboration
@@ -528,7 +528,7 @@ fn a_use_of_a_method_becomes_the_instance_that_answers_it() {
     // the record rule that make the two one term.
     let zero = crate::family_laws::core_constant(&cx, "Nat.Zero");
     assert!(
-        musa_core::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
+        musa_calculus::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
         "a resolved method use is not the definition the instance gave it"
     );
 }
@@ -541,7 +541,7 @@ fn a_constraint_no_argument_determines_is_reported_as_the_hole_it_is() {
     // nothing to check it against, nothing ever determines the head, and the
     // report is the one for an unsolved hole rather than a second report saying
     // the same thing about instances.
-    let outcome = musa_core::infer(&cx, &var("Eq.equal"));
+    let outcome = musa_calculus::infer(&cx, &var("Eq.equal"));
     let Err(error) = outcome else {
         panic!("a method use at no particular type was accepted");
     };
@@ -588,7 +588,7 @@ fn a_parameterized_family_is_storable_exactly_when_its_parameter_is() {
 #[test]
 fn a_family_that_stores_a_function_is_not_storable() {
     let cx = storing();
-    let group = musa_core::declare(
+    let group = musa_calculus::declare(
         &cx,
         &data(
             Vec::new(),
@@ -620,7 +620,7 @@ fn a_family_that_stores_a_function_is_not_storable() {
 #[test]
 fn a_family_holding_a_function_at_depth_is_not_storable() {
     let cx = storing();
-    let group = musa_core::declare(
+    let group = musa_calculus::declare(
         &cx,
         &data(
             Vec::new(),
@@ -694,10 +694,10 @@ fn core_type0() -> Term {
 fn a_where_clause_binds_a_dictionary_its_body_finds() {
     let cx = context();
     let cx = cx.declaring_instance(&eq_nat(&cx));
-    let ty = musa_core::infer(&cx, &constrained_scheme())
+    let ty = musa_calculus::infer(&cx, &constrained_scheme())
         .expect("the signature is a type")
         .0;
-    let _term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds the bound dictionary");
+    let _term = musa_calculus::check(&cx, &ty, &var("Eq.equal")).expect("the body finds the bound dictionary");
 }
 
 /// The filling half: a use at a head §4 can key on becomes the instance.
@@ -712,10 +712,10 @@ fn a_use_at_a_known_head_fills_the_constraint_from_the_table() {
     let cx = context();
     let cx = cx.declaring_instance(&eq_nat(&cx));
     let nat = crate::family_laws::core_constant(&cx, "Nat");
-    let term = musa_core::check(&cx, &nat, &under_same(var("same"))).expect("`same` at `Nat` resolves");
+    let term = musa_calculus::check(&cx, &nat, &under_same(var("same"))).expect("`same` at `Nat` resolves");
     let zero = crate::family_laws::core_constant(&cx, "Nat.Zero");
     assert!(
-        musa_core::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
+        musa_calculus::convertible(&cx, &nat, &term, &zero).expect("conversion is decidable"),
         "the inserted dictionary is not the one `impl Eq<Nat>` gave"
     );
 }
@@ -726,8 +726,9 @@ fn a_use_at_a_known_head_fills_the_constraint_from_the_table() {
 fn a_use_at_a_head_no_instance_answers_is_refused() {
     let cx = context();
     let cx = cx.declaring_instance(&eq_nat(&cx));
-    let boxed = musa_core::check(&cx, &core_type0(), &apply(var("Box"), [var("Nat")])).expect("`Box Nat` is a type");
-    let outcome = musa_core::check(&cx, &boxed, &under_same(var("same")));
+    let boxed =
+        musa_calculus::check(&cx, &core_type0(), &apply(var("Box"), [var("Nat")])).expect("`Box Nat` is a type");
+    let outcome = musa_calculus::check(&cx, &boxed, &under_same(var("same")));
     let Err(error) = outcome else {
         panic!("`same` was accepted at a type no instance covers");
     };
@@ -747,7 +748,7 @@ fn a_use_at_a_head_no_instance_answers_is_refused() {
 #[test]
 fn an_inner_where_clause_shadows_an_outer_one() {
     let cx = context();
-    let ty = musa_core::infer(
+    let ty = musa_calculus::infer(
         &cx,
         &Raw::implicit_pi(
             WRITTEN,
@@ -762,7 +763,7 @@ fn an_inner_where_clause_shadows_an_outer_one() {
     )
     .expect("the signature is a type")
     .0;
-    let term = musa_core::check(&cx, &ty, &var("Eq.equal")).expect("the body finds a bound dictionary");
+    let term = musa_calculus::check(&cx, &ty, &var("Eq.equal")).expect("the body finds a bound dictionary");
     let projected = |index| {
         Term::lam(
             WRITTEN,
@@ -782,11 +783,11 @@ fn an_inner_where_clause_shadows_an_outer_one() {
     // record it is read back as is η for the binder — what is pinned here is
     // *which* binder.
     assert!(
-        musa_core::convertible(&cx, &ty, &term, &projected(0)).expect("conversion is decidable"),
+        musa_calculus::convertible(&cx, &ty, &term, &projected(0)).expect("conversion is decidable"),
         "the inner `where` is what a body reaches"
     );
     assert!(
-        !musa_core::convertible(&cx, &ty, &term, &projected(1)).expect("conversion is decidable"),
+        !musa_calculus::convertible(&cx, &ty, &term, &projected(1)).expect("conversion is decidable"),
         "and the outer one is shadowed"
     );
 }
@@ -813,11 +814,11 @@ fn a_constrained_record_type_is_the_record_it_would_be_without_the_clause() {
         Raw::lam(WRITTEN, "A", Raw::record_type(WRITTEN, [("value", var("A"))])),
         apply(var("Cell"), [var("Nat")]),
     );
-    let applied = musa_core::check(&cx, &core_type0(), &cell).expect("`Cell Nat` is a type");
-    let written = musa_core::check(&cx, &core_type0(), &Raw::record_type(WRITTEN, [("value", var("Nat"))]))
+    let applied = musa_calculus::check(&cx, &core_type0(), &cell).expect("`Cell Nat` is a type");
+    let written = musa_calculus::check(&cx, &core_type0(), &Raw::record_type(WRITTEN, [("value", var("Nat"))]))
         .expect("the hand-written record is a type");
     assert!(
-        musa_core::convertible_types(&cx, &applied, &written).expect("conversion is decidable"),
+        musa_calculus::convertible_types(&cx, &applied, &written).expect("conversion is decidable"),
         "a constrained record type is not the record its fields make it"
     );
 }

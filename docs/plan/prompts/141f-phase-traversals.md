@@ -10,8 +10,8 @@ phase: 3
 
 ## Task
 
-Prompt 141c gave `musa-core` §5.8's second family — a structural eliminator that fires on a literal target and rewrites
-to a term — and said in its own Task why it was a prerequisite: `recurse_syntax`, `run_syntax_step`, and
+Prompt 141c gave `musa-calculus` §5.8's second family — a structural eliminator that fires on a literal target and
+rewrites to a term — and said in its own Task why it was a prerequisite: `recurse_syntax`, `run_syntax_step`, and
 `syntax_fold_from_leaves` traverse a `Syntax`, which is a base type, so no library traversal can recurse on one. Prompt
 141e went to register those three and could not.
 
@@ -88,10 +88,10 @@ argument to write down and to sample, and §4's meter stays the backstop.
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Builtin::structural_with`, `Builtin::vocabulary`, the vocabulary on
+- `crates/musa-calculus/src/base.rs`: `Builtin::structural_with`, `Builtin::vocabulary`, the vocabulary on
   `BuiltinDeclaration`, and `Builtin::structural` restated as the empty-vocabulary case — doc-commented with their
   invariants before the implementation. `Rewrite` keeps its signature.
-- `crates/musa-core/tests/suite/base_laws.rs`: a worked traversal whose rewrite builds a list from its registered
+- `crates/musa-calculus/tests/suite/base_laws.rs`: a worked traversal whose rewrite builds a list from its registered
   vocabulary and names a type parameter by index, with the laws — the answer is evaluated by the core, a vocabulary term
   is closed and therefore scope-independent, and two registries with the same vocabulary reduce a term identically.
 - `crates/musa-compiler/src/prelude.rs`: `SyntaxStep` declared, with its constructor private to the phase module.
@@ -104,14 +104,14 @@ argument to write down and to sample, and §4's meter stays the backstop.
   an answer stands at a strictly smaller node. The agreement law reaches `expand_region`, `read_region`, and `Syntax`,
   all private to `musa-compiler`, so a test outside the crate cannot state it — which is the reason 141e already gives
   in `crates/musa-compiler/src/registry/laws.rs`'s own header for the δ agreement law, and it is the same reason twice.
-- `docs/plan/code-map/` rows for `musa-core` and `musa-compiler`.
+- `docs/plan/code-map/` rows for `musa-calculus` and `musa-compiler`.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

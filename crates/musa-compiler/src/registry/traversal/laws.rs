@@ -21,7 +21,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Raw, RawArm, RawPattern, Term};
+use musa_calculus::{Cx, Raw, RawArm, RawPattern, Term};
 
 use crate::core::expand_region;
 use crate::registry::rules::Kind;
@@ -55,10 +55,10 @@ fn old(transformer: &str) -> Syntax {
 /// What the core answers for `program`, which must be a `Syntax ⟨token-tree⟩`.
 fn new(cx: &Cx, program: &Raw) -> Syntax {
     let ty = syntax_type(Cat::TokenTree);
-    let term = musa_core::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
+    let term = musa_calculus::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
-        musa_core::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    let musa_core::Shape::Lit(ref answer) = *normal.shape() else {
+        musa_calculus::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
+    let musa_calculus::Shape::Lit(ref answer) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };
     held::<Syntax>(answer).expect("the answer is a syntax value").clone()
@@ -337,7 +337,7 @@ fn collect_kinds(node: &Syntax, into: &mut Vec<musa_language::SyntaxKind>) {
 /// The structural arm fires on a literal and on nothing else, so a traversal
 /// standing at a variable is neutral rather than stuck — which is what lets a
 /// traversal appear inside a function nobody has applied yet, and is the
-/// difference between "not yet" and [`musa_core::Malformed::BuiltinStuck`].
+/// difference between "not yet" and [`musa_calculus::Malformed::BuiltinStuck`].
 #[test]
 fn a_traversal_at_a_variable_stays_neutral() {
     let cx = owned().expect("the compiler's own context builds");
@@ -377,9 +377,9 @@ fn a_traversal_at_a_variable_stays_neutral() {
                 [Raw::var(HERE, "subject")],
             ),
         );
-        let term = musa_core::check(&cx, &ty, &blocked)
+        let term = musa_calculus::check(&cx, &ty, &blocked)
             .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not check: {why}"));
-        let _normal = musa_core::normalize(&cx, &ty, &term)
+        let _normal = musa_calculus::normalize(&cx, &ty, &term)
             .unwrap_or_else(|why| panic!("`{spelling}` at a variable does not reduce: {why}"));
     }
 }
@@ -400,7 +400,7 @@ fn every_self_application_stands_at_a_smaller_node() {
     let subject = subject();
     let target = literal(syntax_type(Cat::TokenTree), subject.clone());
     let mut sampled = 0_usize;
-    let rewrites: [musa_core::Rewrite; 2] = [super::rewrite_recurse, super::rewrite_fold];
+    let rewrites: [musa_calculus::Rewrite; 2] = [super::rewrite_recurse, super::rewrite_fold];
     for (builtin, rewrite) in all.iter().zip(rewrites) {
         let answer = rewrite(builtin, &target).expect("the rewrite answers at a group");
         let mut written = Vec::new();
@@ -421,35 +421,35 @@ fn every_self_application_stands_at_a_smaller_node() {
 /// Every syntax literal a term holds, in the order it holds them.
 fn trees(term: &Term, into: &mut Vec<Syntax>) {
     match *term.shape() {
-        musa_core::Shape::Lit(ref value) => {
+        musa_calculus::Shape::Lit(ref value) => {
             if let Some(node) = held::<Syntax>(value) {
                 into.push(node.clone());
             }
         }
-        musa_core::Shape::App {
+        musa_calculus::Shape::App {
             ref function,
             ref argument,
         } => {
             trees(function, into);
             trees(argument, into);
         }
-        musa_core::Shape::Lam { ref body, .. } => trees(body, into),
+        musa_calculus::Shape::Lam { ref body, .. } => trees(body, into),
         // Spelled out rather than wildcarded, for the reason
         // `crate::registry::phase_type` gives: a variant added to `Shape` that
         // could hold a literal should stop here and be decided.
-        musa_core::Shape::Var(_)
-        | musa_core::Shape::Const(_)
-        | musa_core::Shape::Def(_)
-        | musa_core::Shape::Base(_)
-        | musa_core::Shape::Numeral(_)
-        | musa_core::Shape::Builtin(_)
-        | musa_core::Shape::Universe(_)
-        | musa_core::Shape::Pi { .. }
-        | musa_core::Shape::RecordType(_)
-        | musa_core::Shape::Record(_)
-        | musa_core::Shape::Project { .. }
-        | musa_core::Shape::Hole(_)
-        | musa_core::Shape::Let { .. } => {}
+        musa_calculus::Shape::Var(_)
+        | musa_calculus::Shape::Const(_)
+        | musa_calculus::Shape::Def(_)
+        | musa_calculus::Shape::Base(_)
+        | musa_calculus::Shape::Numeral(_)
+        | musa_calculus::Shape::Builtin(_)
+        | musa_calculus::Shape::Universe(_)
+        | musa_calculus::Shape::Pi { .. }
+        | musa_calculus::Shape::RecordType(_)
+        | musa_calculus::Shape::Record(_)
+        | musa_calculus::Shape::Project { .. }
+        | musa_calculus::Shape::Hole(_)
+        | musa_calculus::Shape::Let { .. } => {}
     }
 }
 

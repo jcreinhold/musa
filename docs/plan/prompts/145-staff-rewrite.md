@@ -86,7 +86,7 @@ and `[0]` because a site's outermost node is `[0]` and this site builds exactly 
 
     *Repaired during implementation.* The sentence this replaces drew the site index from `Resolver::next_quotation`,
     "the same counter `syntax_quote` draws from". The code said no: the anchor executes as a δ rule,
-    `musa_core::Rule` is `fn(&[Datum]) -> Option<Answer>` with no compiler state by design (D3 is a property of the
+    `musa_calculus::Rule` is `fn(&[Datum]) -> Option<Answer>` with no compiler state by design (D3 is a property of the
     type), and since prompt 142 the adapter's calls never pass through the lowering that owns the counter. The
     mechanism is the one `48-the-anchors-place-without-a-name-supply.md` argues from Peyton Jones ch. 9 and Idris2's
     `UST.nextName`: the place derives from the arguments alone — `origin` is the anchored node's path, already unique

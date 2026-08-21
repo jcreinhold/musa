@@ -179,7 +179,7 @@ fn run_printer(
     };
     let printed = match document.value("printed") {
         Ok((printed, _)) => printed,
-        Err(musa_core::ElabError::Exhausted(_)) => return Err(PrintFailure::Stopped),
+        Err(musa_calculus::ElabError::Exhausted(_)) => return Err(PrintFailure::Stopped),
         Err(error) => {
             return Err(PrintFailure::NotAPrinter(vec![crate::lower::refusals::restate(
                 document.sites(),
@@ -199,15 +199,15 @@ fn run_printer(
 /// [`PrintFailure::Loss`] is what the error arm *means* — the printer read the
 /// value and said which part of it it could not spell — so the two arms are not
 /// success and failure here. They are the two answers §4 declares.
-fn answered(printed: &musa_core::Term) -> Option<Result<String, PrintFailure>> {
-    let musa_core::Datum::Case {
+fn answered(printed: &musa_calculus::Term) -> Option<Result<String, PrintFailure>> {
+    let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
-    } = musa_core::canonical(printed)?
+    } = musa_calculus::canonical(printed)?
     else {
         return None;
     };
-    let [musa_core::Datum::Lit(ref said)] = fields[..] else {
+    let [musa_calculus::Datum::Lit(ref said)] = fields[..] else {
         return None;
     };
     let said = crate::registry::held::<String>(said)?.clone();

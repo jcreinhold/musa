@@ -18,14 +18,14 @@ Prompt 145's Design, as written, drew the site index from `Resolver::next_quotat
 draws from." That sentence was written against the old checker, which owns the counter and could see a phase call.
 Implementation found two facts against it:
 
-1. **The anchor executes as a δ rule, and a δ rule is a function pointer.** `musa_core::Rule` is
+1. **The anchor executes as a δ rule, and a δ rule is a function pointer.** `musa_calculus::Rule` is
    `fn(&[Datum]) -> Option<Answer>` — values in, answer out. `registry/rules.rs`'s module documentation carries the
    reason on its face: "a rule cannot capture the compiler — no meter, no span, no diagnostic sink, no interning table.
    §5.8's D3 asks that 'the result is a function of the argument values alone', and that is a property of the type
    here." A rule has no counter to draw from and cannot be given one without changing the core calculus's own type —
    which is `docs/rules/across-stages/02-core-calculus.md` §5.8, amendment territory, and out of this prompt's reach.
 2. **The adapter does not pass through the code that owns the counter.** Since prompt 142, adapter modules elaborate
-   through the document path into musa-core; the compiler's lowering — the only places `next_quotation` is drawn
+   through the document path into musa-calculus; the compiler's lowering — the only places `next_quotation` is drawn
    (`core.rs`'s old `syntax_quote`, `lower/quotes.rs`'s new one) — never sees the adapter's `syntax_anchor` call. The
    counter the Design named is behind a door the caller no longer opens.
 
@@ -49,13 +49,13 @@ the reading algorithm's correctness is the question.
 
 ## The options, weighed
 
-**(a) Thread a call site through `musa_core::Rule`.** Change the signature to hand each δ call its origin, then derive
-the index from that. Rejected: D3 is stated as a property of the type — "the result is a function of the argument values
-alone" — and a call-site channel is a function of the *call*, not the values. One builtin's convenience is not worth a
-hole in the core's determinism statement, and the change is the constitution's to make, not a prompt's.
+**(a) Thread a call site through `musa_calculus::Rule`.** Change the signature to hand each δ call its origin, then
+derive the index from that. Rejected: D3 is stated as a property of the type — "the result is a function of the argument
+values alone" — and a call-site channel is a function of the *call*, not the values. One builtin's convenience is not
+worth a hole in the core's determinism statement, and the change is the constitution's to make, not a prompt's.
 
-**(b) Special-case the call at elaboration.** Teach musa-core's elaborator to recognize `syntax_anchor` and rewrite it
-into an internal three-argument form with a site index baked in. Rejected: a hidden third argument is the
+**(b) Special-case the call at elaboration.** Teach musa-calculus's elaborator to recognize `syntax_anchor` and rewrite
+it into an internal three-argument form with a site index baked in. Rejected: a hidden third argument is the
 hidden-information failure the registry exists to name, and it builds a second, invisible mechanism beside quotation for
 the same job. The trial's own falsifier — "a hand-written provenance path, or a role integer by another name — no" —
 fires on a mechanism the author cannot see just as much as on one they must maintain.

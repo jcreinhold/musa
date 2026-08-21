@@ -1,6 +1,6 @@
 //! Facts: `context`, `fact`, `region`, `notated_duration`, `held`, the pitch and interval readings, and the written scale.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;

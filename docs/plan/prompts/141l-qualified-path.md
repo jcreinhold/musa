@@ -13,8 +13,8 @@ phase: 3
 `01-surface.md` §1.5 calls explicit qualification "the escape hatch that makes the strictness above affordable", and
 `10-traits.md` §6 rests method syntax's whole refusal of a generic receiver on it: "any use that lookup refuses can be
 written out." Nothing reads it. [`141g`](141g-raw-lowering.md) wrote every other surface form and left a `PathExpr` as
-its own text — `Raw::var("Eq::equal")` — and no name `musa-core` holds is spelled with `::`, so *every* qualified path
-is `UnknownName` today: a trait method, an enum case, an inherent function alike. Read it, in expressions and in
+its own text — `Raw::var("Eq::equal")` — and no name `musa-calculus` holds is spelled with `::`, so *every* qualified
+path is `UnknownName` today: a trait method, an enum case, an inherent function alike. Read it, in expressions and in
 patterns, and make the operator and index forms desugar to it the way §1.5 says they do.
 
 ## Read
@@ -43,17 +43,17 @@ patterns, and make the operator and index forms desugar to it the way §1.5 says
 - `crates/musa-language/src/ast.rs`'s `PathExpr::segments`, which already hands the reading exactly what it needs.
   Re-deriving the segments from `node.to_string()` would be the shape of mistake root `AGENTS.md` names: "an adapter
   re-parsing `3/8` out of a token's spelling".
-- `crates/musa-core/src/class.rs`'s `Classes::method`, `crate::dictionary::method_at`, and `elab::constant`. The core's
-  qualified names are dot-separated — `rsplit_once('.')` is the lookup — and `Eq.equal` reaching a trait method through
-  `constant` is what `crates/musa-core/tests/suite/trait_laws.rs` already proves. This prompt supplies the surface half
-  of a mechanism that is finished on the core side.
+- `crates/musa-calculus/src/class.rs`'s `Classes::method`, `crate::dictionary::method_at`, and `elab::constant`. The
+  core's qualified names are dot-separated — `rsplit_once('.')` is the lookup — and `Eq.equal` reaching a trait method
+  through `constant` is what `crates/musa-calculus/tests/suite/trait_laws.rs` already proves. This prompt supplies the
+  surface half of a mechanism that is finished on the core side.
 - [`143`](143-builtin-collapse.md), which declares the traits these spellings name. `Eq`, `Ord`, `Add`, `Sub`, `Mul`,
   `Div`, and `Index` are not in `crate::registry::owned` and are not this prompt's to add.
 
 ## Design
 
 **The separator is the whole finding, and it points at the surface rather than the core.** A `where` clause on a `fn` is
-admitted and unusable, and the reason is not that `musa-core` refuses a generic receiver — §6 says it should, and
+admitted and unusable, and the reason is not that `musa-calculus` refuses a generic receiver — §6 says it should, and
 `Refusal::MethodOnVariable` is that rule working. The reason is that the repair §6 names has no reading. Two candidate
 fixes are therefore wrong before they are written. Teaching `lower/values.rs`'s `application` to tell a trait name from
 a receiver would give lowering a scope it does not have and does not need, because the surface already tells them apart
@@ -62,10 +62,10 @@ give `.` a second meaning that §1.5 assigns to projection — a `docs/rules/` c
 amendment procedure and not a repair — and would leave `Eq::equal` broken afterwards. `Same.same(x, y)` stays refused.
 
 **One reading, and §1.5 wrote it.** Segments left to right; drop the leading lowercase ones, which are modules; the
-first capitalized segment and the one segment after it are the name. Join them with `.`, which is how `musa-core` spells
-a qualified name — `Nat.Succ`, `Bool.True`, `Eq.equal` — and hand it through as a variable for the core to resolve, the
-same as every other name 141g writes through. Nothing is looked up: which segments are modules is a question about
-capitalization, and capitalization is a question about the written text. That is what keeps
+first capitalized segment and the one segment after it are the name. Join them with `.`, which is how `musa-calculus`
+spells a qualified name — `Nat.Succ`, `Bool.True`, `Eq.equal` — and hand it through as a variable for the core to
+resolve, the same as every other name 141g writes through. Nothing is looked up: which segments are modules is a
+question about capitalization, and capitalization is a question about the written text. That is what keeps
 [`Lowering`](../../../crates/musa-compiler/src/lower.rs)'s "No scope" true.
 
 **More than one segment after the first capitalized one is refused here.** "Exactly one segment follows it" is a claim
@@ -107,9 +107,9 @@ which prompt is holding the wrong thing. The laws declare their own trait, as 14
 `Trait::super_field(&constraint.class)` — the trait's own name — so inside any constrained body the trait is a spellable
 *value* and `(Same.same)(x, y)` type-checks today as an ordinary record projection out of it. It works only for a
 required method, only under a `where` binder, and it lets source name a binder the core minted; it is a second path to
-the qualified reading, reached by a spelling no document offers. Renaming that binder is a `musa-core` change with its
-own risk surface — `super_field` also names the dictionary *field* a super-constraint occupies, which §1 requires to be
-the class's name — so it goes on prompt 142's second-path audit rather than into a prompt about reading the surface.
+the qualified reading, reached by a spelling no document offers. Renaming that binder is a `musa-calculus` change with
+its own risk surface — `super_field` also names the dictionary *field* a super-constraint occupies, which §1 requires to
+be the class's name — so it goes on prompt 142's second-path audit rather than into a prompt about reading the surface.
 
 ## Target
 
@@ -123,10 +123,10 @@ the class's name — so it goes on prompt 142's second-path audit rather than in
   the `where` clause, or `Trait::m(x, y)`. This prompt is what makes the second half of that sentence true, so it is the
   prompt that may say it. The core's own message still spells `Trait.method`; 144 owns that wording.
 - Laws in `crates/musa-compiler/src/lower/laws.rs`, each lowering something a composer could write and handing it to
-  `musa_core::check` in a context the law declares: a trait method reached by `Trait::method` under a `where` and at a
-  known head; an enum case reached by `Type::Case` in an expression and in a pattern; a module-prefixed path reading to
-  the same name as the bare one; an operator checking under a `where` and at a known head; a path with an extra segment
-  refused at the node with `Code::QualifiedPath`.
+  `musa_calculus::check` in a context the law declares: a trait method reached by `Trait::method` under a `where` and at
+  a known head; an enum case reached by `Type::Case` in an expression and in a pattern; a module-prefixed path reading
+  to the same name as the bare one; an operator checking under a `where` and at a known head; a path with an extra
+  segment refused at the node with `Code::QualifiedPath`.
 - `docs/plan/code-map/` rows for `musa-compiler`.
 - Prompt 142 repaired: its `depends_on` names this prompt, its Read cites it, and its second-path audit carries the
   dictionary-binder finding above.
@@ -137,8 +137,8 @@ the class's name — so it goes on prompt 142's second-path audit rather than in
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler -p musa-project
-cargo clippy --all-targets -p musa-core -p musa-compiler -p musa-project -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler -p musa-project
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -165,4 +165,4 @@ Commit as `Read the qualified path`.
   stays a projection. Changing that is an amendment to `01-surface.md` §1.5, not a repair.
 - No message rewriting beyond the one `help` named above. Prompt 144 owns how good a refusal's sentence is, including
   `MethodOnVariable`'s own.
-- No dictionary-binder rename in `musa-core`. It is recorded in Design and carried to 142's audit.
+- No dictionary-binder rename in `musa-calculus`. It is recorded in Design and carried to 142's audit.

@@ -50,7 +50,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{
+use musa_calculus::{
     Level, Name, Origin, Raw, RawBinder, RawConstraint, RawConstructor, RawData, RawDefinition, RawFamily, RawImpl,
     RawMethod, RawTrait, Visibility,
 };
@@ -63,9 +63,9 @@ use crate::resolve::trimmed_span;
 
 /// One declaration, read.
 ///
-/// Four variants because `musa-core` has four doors — [`musa_core::declare`],
-/// [`musa_core::declare_trait`], [`musa_core::declare_impl`], and
-/// [`musa_core::check`] — and this is the type that says which one a written
+/// Four variants because `musa-calculus` has four doors — [`musa_calculus::declare`],
+/// [`musa_calculus::declare_trait`], [`musa_calculus::declare_impl`], and
+/// [`musa_calculus::check`] — and this is the type that says which one a written
 /// declaration goes through. A caller matches once and calls; it never has to
 /// ask what word the source used.
 #[derive(Debug)]
@@ -90,12 +90,12 @@ pub(crate) enum Item {
 /// no raw term for a type nobody wrote, since a hole is a thing the *core*
 /// mints and not a thing a reading may hand it. When the type is [`None`] the
 /// value still carries every annotation the author did write, so nothing is
-/// lost: what changes is which of [`musa_core::check`] and [`musa_core::infer`]
+/// lost: what changes is which of [`musa_calculus::check`] and [`musa_calculus::infer`]
 /// a caller uses.
 ///
 /// # What is deliberately not here
 ///
-/// **Visibility.** `musa-core` gives a family, a constructor, and a trait one
+/// **Visibility.** `musa-calculus` gives a family, a constructor, and a trait one
 /// because it filters names by module (`136a`), and gives a definition none.
 /// Carrying a marker this type's consumers cannot pass on would be a field
 /// answering a question nobody asked; [`crate::resolve`] reads `private` off the
@@ -127,7 +127,7 @@ pub(crate) struct Definition {
 /// consequences.
 #[derive(Debug)]
 pub(crate) enum Declared {
-    /// The declaration, through whichever of `musa-core`'s doors it goes.
+    /// The declaration, through whichever of `musa-calculus`'s doors it goes.
     Item(Item),
     /// A declaration that could not be read. The refusal is already reported at
     /// whatever could not be read, so a caller states no complaint of its own.
@@ -565,7 +565,7 @@ impl Lowering<'_> {
     /// The plicity is not decided here, because a [`RawBinder`] does not carry
     /// one: the caller writes them into a Π at the plicity its own declaration
     /// wants, and [`RawTrait`], [`RawImpl`], and [`RawMethod`] leave the choice
-    /// to `musa-core`.
+    /// to `musa-calculus`.
     fn type_parameters(&mut self, node: &SyntaxNode) -> Vec<RawBinder> {
         let Some(list) = child(node, |kind| kind == SyntaxKind::TypeParams) else {
             return Vec::new();
@@ -602,7 +602,7 @@ impl Lowering<'_> {
     ///
     /// An impl method takes its type from the dictionary field it fills, so a
     /// constraint of its own has nowhere to go and never will — the same
-    /// reasoning `musa-core` gives for one on a *required* trait method. The
+    /// reasoning `musa-calculus` gives for one on a *required* trait method. The
     /// parser attaches a `WhereClause` to every `FnDecl`, including these, and
     /// before this refusal existed the clause was read and dropped.
     ///

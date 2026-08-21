@@ -51,7 +51,7 @@
 //! the continuation of a chain cannot be bound to a name and would have to be
 //! copied into every coverage hole of a destructuring.
 
-use musa_core::{Origin, Raw, RawArm, RawPattern};
+use musa_calculus::{Origin, Raw, RawArm, RawPattern};
 #[cfg(test)]
 mod laws;
 
@@ -142,7 +142,7 @@ impl Lowering<'_> {
         // earns §7's wrong-category refusal rather than a silent crossing.
         let at_expression = matches!(
             subject.shape(),
-            musa_core::RawShape::Var(name) if self.scrutinee_is_expression(name)
+            musa_calculus::RawShape::Var(name) if self.scrutinee_is_expression(name)
         );
         let bound = self.mint("subject");
         let mut fallback = None;

@@ -31,7 +31,7 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
     let mut resolver = Resolver::new();
     let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(library.syntax())], None)?;
     let (normal, _ty) = document
-        .term(&musa_core::Raw::var(musa_core::Origin::UNKNOWN, "it"))
+        .term(&musa_calculus::Raw::var(musa_calculus::Origin::UNKNOWN, "it"))
         .ok()?;
     crate::registry::read_back::<String>(&normal).ok().cloned()
 }
@@ -51,7 +51,7 @@ pub(crate) fn expand_syntax(
     // Built here and lent inwards rather than made on the other side of
     // `with_room`: what a run charged is reported by the caller that asked for
     // it, and a total kept on a scoped thread would go out of scope with it.
-    let mut spent = musa_core::Spend::default();
+    let mut spent = musa_calculus::Spend::default();
     let answer = with_room(adapter_source, imports, subject, &mut spent);
     (answer, PhaseWork::of(spent))
 }
@@ -77,7 +77,7 @@ fn with_room(
     adapter_source: &str,
     imports: PhaseImports<'_>,
     subject: &crate::syntax::Syntax,
-    spent: &mut musa_core::Spend,
+    spent: &mut musa_calculus::Spend,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let room = usize::try_from(crate::core_budget::NESTING.saturating_mul(crate::core_budget::FRAME_CEILING))
         .unwrap_or(usize::MAX);
@@ -102,7 +102,7 @@ fn run_transformer(
     adapter_source: &str,
     imports: PhaseImports<'_>,
     subject: crate::syntax::Syntax,
-    spent: &mut musa_core::Spend,
+    spent: &mut musa_calculus::Spend,
 ) -> Result<crate::syntax::Syntax, ExpansionFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
         ModuleFault::Stopped => ExpansionFailure::Stopped,
@@ -132,8 +132,8 @@ fn run_transformer(
 /// [`ExpansionFailure::Refused`]'s: a transformer that answers `Err` has
 /// *worked*, and what it says is the adapter package's sentence about the
 /// composer's text.
-fn expanded(answer: &musa_core::Datum) -> Option<Result<crate::syntax::Syntax, ExpansionFailure>> {
-    let musa_core::Datum::Case {
+fn expanded(answer: &musa_calculus::Datum) -> Option<Result<crate::syntax::Syntax, ExpansionFailure>> {
+    let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
     } = *answer
@@ -143,7 +143,7 @@ fn expanded(answer: &musa_core::Datum) -> Option<Result<crate::syntax::Syntax, E
     let [ref held] = fields[..] else { return None };
     match &**constructor {
         "Result.Ok" => {
-            let musa_core::Datum::Lit(ref produced) = *held else {
+            let musa_calculus::Datum::Lit(ref produced) = *held else {
                 return None;
             };
             Some(Ok(crate::registry::held::<crate::syntax::Syntax>(produced)?.clone()))

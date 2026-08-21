@@ -11,7 +11,7 @@
 //! As in the other suites, these are laws stated over a corpus and therefore
 //! discharged at the terms in it. Prompt 148 owes the metatheory matrix.
 
-use musa_core::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize};
+use musa_calculus::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize};
 
 use crate::programs::{Program, Refused, WRITTEN, accepted, core_unit_type, refusal, refused, unit, unit_type};
 
@@ -42,7 +42,7 @@ fn elaboration_is_deterministic() {
 /// Not a stylistic preference — it is what lets the next stage treat the output
 /// as an ordinary core term whose `Hole` nodes are spelling, evaluated through
 /// their solutions. An *unsolved* one would be a gap every later pass had to
-/// know about, and [`Elaborator::settled`](musa_core) is what refuses it.
+/// know about, and [`Elaborator::settled`](musa_calculus) is what refuses it.
 #[test]
 fn an_accepted_terms_holes_are_all_solved() {
     for program in accepted() {
@@ -149,7 +149,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         expected,
     } in crate::family_laws::refused_declarations()
     {
-        let Err(error) = musa_core::declare(&declaring, &declaration) else {
+        let Err(error) = musa_calculus::declare(&declaring, &declaration) else {
             panic!("{name}: the declaration was admitted");
         };
         let refusal = refusal(name, error);
@@ -324,7 +324,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
     // graph rule is about how definitions name each other, so the smallest
     // program that reaches it is a program rather than a term.
     for (name, group) in crate::program_laws::refused_groups() {
-        let Err(error) = musa_core::declare_program(&crate::coverage_laws::nat_vec_context(), &group) else {
+        let Err(error) = musa_calculus::declare_program(&crate::coverage_laws::nat_vec_context(), &group) else {
             panic!("{name}: the group was declared, and §2.4 refuses it");
         };
         reached.insert(kind(&refusal(name, error)));
@@ -493,7 +493,7 @@ fn an_undetermined_binder_is_told_to_write_its_type() {
 /// means.
 #[test]
 fn a_narrow_budget_exhausts_rather_than_refusing() {
-    let cx = Cx::with_budget(musa_core::Budget::LANGUAGE.scaled(4096));
+    let cx = Cx::with_budget(musa_calculus::Budget::LANGUAGE.scaled(4096));
     let program = Raw::annotated_bind(
         WRITTEN,
         "id",
@@ -528,7 +528,7 @@ fn plicity_is_not_part_of_conversion() {
         "conversion looks at neither plicity nor binder name"
     );
     assert_eq!(
-        musa_core::convertible_types(&cx, &explicit, &implicit),
+        musa_calculus::convertible_types(&cx, &explicit, &implicit),
         Ok(true),
         "and normalization does not reintroduce the distinction"
     );
@@ -537,9 +537,9 @@ fn plicity_is_not_part_of_conversion() {
 /// Whether a term mentions no metavariable anywhere.
 ///
 /// Written by walking the shape rather than by a `Debug` string, so that a new
-/// [`musa_core::Shape`] variant holding a term is a compile error here.
+/// [`musa_calculus::Shape`] variant holding a term is a compile error here.
 fn holes_solved(term: &Term) -> bool {
-    use musa_core::Shape;
+    use musa_calculus::Shape;
 
     match term.shape() {
         Shape::Hole(hole) => hole.is_solved(),

@@ -51,7 +51,7 @@ adding a language feature under a migration diff, which is why it is a prompt of
 The cheap answer is to delete the family and register `Nat` as a base type with a `u64` literal, the way 141b did for
 `EventTrack` and `Origin`. It is the wrong answer three times over. 141b's own rule refuses destructuring at a
 base-typed column, so every `match n { Zero, Succ p }` in the corpus stops compiling.
-[`rec.rs`](../../../crates/musa-core/src/rec.rs) derives its measure from a constructor field, so no function could
+[`rec.rs`](../../../crates/musa-calculus/src/rec.rs) derives its measure from a constructor field, so no function could
 recurse on a number. And `Vec A n` indexes a family by a `Nat`, so a base-typed `Nat` would put the length outside the
 language that reasons about it. A base type is for something the core has no rules about; numbers are something the core
 has *every* rule about, and only their storage is at issue.
@@ -88,9 +88,9 @@ neutral is not a closed numeral, so a numeral and a neutral are simply unequal. 
 
 Exactly at an elimination, one level at a time. ι on the generated recursor reads the count: zero takes the base arm,
 `k` takes the step arm applied to the numeral `k - 1` and to the hypothesis for it.
-[`case.rs`](../../../crates/musa-core/src/case.rs) splits a column at a counting family the same way. One unfold, one
-level, one step charged — so a fold over a numeral `n` costs what a fold over a tower of height `n` costs, and *nothing
-else does*.
+[`case.rs`](../../../crates/musa-calculus/src/case.rs) splits a column at a counting family the same way. One unfold,
+one level, one step charged — so a fold over a numeral `n` costs what a fold over a tower of height `n` costs, and
+*nothing else does*.
 
 ### Cost, and the limit that stays
 
@@ -117,17 +117,17 @@ and not about numerals, so it is recorded rather than fixed here.
 ### A numeral crosses the δ boundary as a number
 
 `Datum` gains a `Count { family, count }` arm, and the readback answers it. The alternative — read a numeral back as the
-`count` nested [`Datum::Case`](../../../crates/musa-core/src/base.rs)s it denotes — is the same mistake one layer out
-and it is worse there than in the term. Worse because a `Datum` tower costs a node per unit *and* recurses on the host
-stack when it is **dropped**, so a host asking for a large `Nat` as data would abort where the term never could; and
-because [`rules::nat`](../../../crates/musa-compiler/src/registry/rules.rs) exists only to count that tower back down to
-the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we already computed" names exactly this. Note that
-before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the deepest readable
-`Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a feature.
+`count` nested [`Datum::Case`](../../../crates/musa-calculus/src/base.rs)s it denotes — is the same mistake one layer
+out and it is worse there than in the term. Worse because a `Datum` tower costs a node per unit *and* recurses on the
+host stack when it is **dropped**, so a host asking for a large `Nat` as data would abort where the term never could;
+and because [`rules::nat`](../../../crates/musa-compiler/src/registry/rules.rs) exists only to count that tower back
+down to the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we already computed" names exactly this.
+Note that before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the deepest
+readable `Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a feature.
 
 Lean has no analogue because it has no such boundary: its kernel literal *is* the host datum. Musa's δ-rules read
-[`Datum`](../../../crates/musa-core/src/base.rs) and never a value, which is roadmap §15.12's privacy boundary, so the
-count has to cross it as a count.
+[`Datum`](../../../crates/musa-calculus/src/base.rs) and never a value, which is roadmap §15.12's privacy boundary, so
+the count has to cross it as a count.
 
 ### Where Lean 4 agrees, and where this deliberately does not
 
@@ -140,7 +140,7 @@ a literal major premise exactly one level. Four differences remain, and each is 
    comparison site. A syntactic kernel can afford that; NbE cannot, because a value with two shapes makes conversion ask
    the question twice, and prompt 148's canonicity obligation wants one normal form per value.
 2. **Derived, not hard-wired.** Lean names `Nat.zero`, `Nat.succ`, and fourteen arithmetic operations as kernel globals.
-   `musa-core` names no family at all; the counting property is read off the declaration's shape, for the reason the
+   `musa-calculus` names no family at all; the counting property is read off the declaration's shape, for the reason the
    section above gives.
 3. **`u64`, not a bignum.** Lean's literal is arbitrary precision. Overflow here falls back to a blocked spine, and the
    step budget answers long before 2⁶⁴ steps could be climbed.
@@ -150,11 +150,11 @@ a literal major premise exactly one level. Four differences remain, and each is 
 
 ### The raw layer names the family
 
-`Raw::numeral(origin, family, count)`, with `family` a name, the way [`Raw::var`](../../../crates/musa-core/src/raw.rs)
-already spells `Nat.Succ`. The compiler is what knows the numeral family is called `Nat`; the core does not, and should
-not guess in infer mode or search for a unique counting family in scope. Elaboration resolves the name and refuses
-`Refusal::NotANumeralFamily { name, reason }` when the family does not count, with `reason` naming which of the four
-conditions failed. `lower.rs::whole` becomes one call and loses its loop.
+`Raw::numeral(origin, family, count)`, with `family` a name, the way
+[`Raw::var`](../../../crates/musa-calculus/src/raw.rs) already spells `Nat.Succ`. The compiler is what knows the numeral
+family is called `Nat`; the core does not, and should not guess in infer mode or search for a unique counting family in
+scope. Elaboration resolves the name and refuses `Refusal::NotANumeralFamily { name, reason }` when the family does not
+count, with `reason` naming which of the four conditions failed. `lower.rs::whole` becomes one call and loses its loop.
 
 ### The governing document
 
@@ -164,7 +164,7 @@ moves. That obligation is a law here, not an assertion — see **Target**.
 
 ## Target
 
-- `musa-core` recognizes a counting family at `declare_data` from its shape alone, with no host nomination and no
+- `musa-calculus` recognizes a counting family at `declare_data` from its shape alone, with no host nomination and no
   ordering requirement.
 - `Shape::Numeral { family, count }` and its value, threaded through `term`, `value`, `eval`, `case`, `unify`, `quote`,
   `recheck`, `show`, and `storable` — every walker gets a real arm, none gets a `todo!()`.
@@ -196,9 +196,9 @@ moves. That obligation is a law here, not an assertion — see **Target**.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run -p musa-compiler -E 'test(numeral) or test(whole)'
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -210,9 +210,9 @@ measurement. This prompt lands in the middle of 142's migration: that suite is r
 neither causes nor can fix, and `-D warnings` is red on `core.rs`'s superseded checking paths, which 142's own Target
 deletes. `check_piece`, `check_arguments` and `check_template_voice` each occur once in the tree — their definition — at
 the 142 checkpoint `1f071ea`, before this prompt existed, so the failure is 142's to close and gating on it would be
-gating one prompt on another's unfinished work. `musa-core`'s suite and clippy are the ones that must be wholly green,
-because `musa-core` is the crate this prompt changes; the compiler side is checked at the two named behaviours, and
-142's own Check is where the whole corpus answers.
+gating one prompt on another's unfinished work. `musa-calculus`'s suite and clippy are the ones that must be wholly
+green, because `musa-calculus` is the crate this prompt changes; the compiler side is checked at the two named
+behaviours, and 142's own Check is where the whole corpus answers.
 
 Commit as `A numeral is one node, not a tower`.
 
@@ -227,6 +227,6 @@ Commit as `A numeral is one node, not a tower`.
 - **No change to the step budget or its default.** Three examples exhaust the 200,000-step reduction budget for reasons
   that are not this one, and prompt 144 owns that measurement.
 - **No corpus migration.** Not one `.musa` file, fixture, or snapshot moves for this prompt except where a numeral's
-  printed form appears in a `musa-core` law.
+  printed form appears in a `musa-calculus` law.
 - **No second numeral family.** The compiler writes `Nat` and only `Nat`; that a user could declare another counting
   family is a consequence of deriving the property, not a feature to build a surface for.

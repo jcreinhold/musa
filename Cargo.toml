@@ -10,8 +10,8 @@ version = "0.1.0"
 
 [workspace.dependencies]
 musa-audio = { path = "crates/musa-audio", version = "0.1.0" }
+musa-calculus = { path = "crates/musa-calculus", version = "0.1.0" }
 musa-compiler = { path = "crates/musa-compiler", version = "0.1.0" }
-musa-core = { path = "crates/musa-core", version = "0.1.0" }
 musa-engine = { path = "crates/musa-engine", version = "0.1.0" }
 musa-kernel = { path = "crates/musa-kernel", version = "0.1.0" }
 musa-language = { path = "crates/musa-language", version = "0.1.0" }

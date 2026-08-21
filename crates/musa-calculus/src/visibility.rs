@@ -10,7 +10,7 @@
 //! # A module is a number here, and nothing else
 //!
 //! [`ModuleId`] is opaque in this crate for the same reason [`crate::Origin`]
-//! is: `musa-core` is a leaf, it does not know what a file, a package, or an
+//! is: `musa-calculus` is a leaf, it does not know what a file, a package, or an
 //! `import` is, and it must not learn. What it carries is a number the caller
 //! assigned, and the only thing it ever does with that number is compare it with
 //! another one. There is no path, no nesting, no parent relation, and no module

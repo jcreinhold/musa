@@ -1,7 +1,7 @@
 //! The declarations every Musa program is read against, and the context that
 //! holds them.
 //!
-//! `musa-core` is a leaf that knows nothing about pitch, time, or notation
+//! `musa-calculus` is a leaf that knows nothing about pitch, time, or notation
 //! (roadmap §15.12), so *something* has to say that `Pitch` is an inert base
 //! type and that `Option` is a family with two constructors. This module is that
 //! something. It is the host half of `02-core-calculus.md` §5.8: the core owns
@@ -14,7 +14,7 @@
 //! finite constructor over base types**", and 41% of the δ-builtins in
 //! [`crate::core`]'s table answer an `Option`, a `Result`, or a `List`. A
 //! signature that says so has to *name* those families, and a family constant
-//! exists only after [`musa_core::declare`] has run. So the order is fixed and
+//! exists only after [`musa_calculus::declare`] has run. So the order is fixed and
 //! not a preference: declare the families in a bare context, read their
 //! constants back out of it, build the registry against them, and only then hand
 //! the whole thing to the rest of the compiler.
@@ -47,7 +47,7 @@
 //! `Coordinate` and `Cat` look like enumerations and are registered as base
 //! types with literal values instead. They index `Duration`, `Position`, and
 //! `Syntax`, and a δ-rule is a `fn` pointer: it can build a
-//! [`musa_core::Literal`] with no context and cannot build a constructor at all,
+//! [`musa_calculus::Literal`] with no context and cannot build a constructor at all,
 //! so `duration_of` — which answers a `Duration` and takes only a `Ratio` —
 //! could not write down the type of its own answer if the index were a
 //! constructor. Nothing is lost by it, because neither is pattern-matched by
@@ -55,7 +55,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{
+use musa_calculus::{
     Cx, ElabError, Level, ModuleId, Origin, Raw, RawArm, RawBinder, RawConstraint, RawConstructor, RawData,
     RawDefinition, RawFamily, RawImpl, RawMethod, RawPattern, RawProgram, RawTopLevel, RawTrait, Term, Visibility,
 };
@@ -65,7 +65,7 @@ use musa_core::{
 /// Every term here is compiler-owned: no source file wrote `data Nat`, and a
 /// diagnostic that pointed at one would be pointing at a line that does not
 /// exist. [`Origin::UNKNOWN`] is the honest answer, and the same one
-/// `musa-core`'s own suites use for a term the host assembled.
+/// `musa-calculus`'s own suites use for a term the host assembled.
 const HERE: Origin = Origin::UNKNOWN;
 
 /// `data Bool { False, True }`.
@@ -239,7 +239,7 @@ fn pair_data() -> RawData {
 /// `data RowFault { Fault(List Nat, List Pc12) }`.
 ///
 /// Why the twelve-tone row's failure has a name rather than a tuple: a rule
-/// answers a [`musa_core::Datum`], which is a literal or a constructor, and an
+/// answers a [`musa_calculus::Datum`], which is a literal or a constructor, and an
 /// anonymous pair is neither. That is the mechanism noticing something true —
 /// the pair was a domain concept wearing a tuple. *Open Music Theory*
 /// `108-basics-of-twelve-tone-theory.md` says what the two halves are: the order
@@ -998,14 +998,14 @@ fn supplies(name: &str, value: Raw) -> RawDefinition {
 ///
 /// # Errors
 ///
-/// As [`musa_core::declare_trait`] and [`musa_core::declare_impl`] — in practice
+/// As [`musa_calculus::declare_trait`] and [`musa_calculus::declare_impl`] — in practice
 /// never, since the declarations are this module's own and a failure here is a
 /// compiler defect rather than a program's.
 pub(crate) fn equality(cx: &Cx) -> Result<Cx, ElabError> {
-    let class = musa_core::declare_trait(cx, &eq_class())?;
+    let class = musa_calculus::declare_trait(cx, &eq_class())?;
     let mut cx = cx.declaring_class(&class);
     for instance in eq_instances() {
-        let declared = musa_core::declare_impl(&cx, &instance)?;
+        let declared = musa_calculus::declare_impl(&cx, &instance)?;
         cx = cx.declaring_instance(&declared);
     }
     Ok(cx)
@@ -1025,11 +1025,11 @@ pub(crate) fn equality(cx: &Cx) -> Result<Cx, ElabError> {
 pub(crate) fn collections(cx: Cx) -> Result<Cx, ElabError> {
     let mut cx = cx;
     for class in [buildable_class(), iterable_class()] {
-        let declared = musa_core::declare_trait(&cx, &class)?;
+        let declared = musa_calculus::declare_trait(&cx, &class)?;
         cx = cx.declaring_class(&declared);
     }
     for instance in [buildable_list(), iterable_list(), iterable_option()] {
-        let declared = musa_core::declare_impl(&cx, &instance)?;
+        let declared = musa_calculus::declare_impl(&cx, &instance)?;
         cx = cx.declaring_instance(&declared);
     }
     Ok(cx)
@@ -1050,10 +1050,10 @@ pub(crate) fn collections(cx: Cx) -> Result<Cx, ElabError> {
 /// `run_syntax_step` is not a registered builtin because a projection is not a
 /// compiler-owned operation: it hides nothing, which is the test every
 /// `SYNTAX_OWNERSHIP` row states for itself, and
-/// [`Registry::new`](musa_core::Registry::new) would have refused it in any
+/// [`Registry::new`](musa_calculus::Registry::new) would have refused it in any
 /// case — its target is a *declared* family, and a rewrite over one is the
 /// second ι-rule that check exists to catch. It is defined instead, by the same
-/// [`musa_core::declare_program`] that reads a library's own definitions.
+/// [`musa_calculus::declare_program`] that reads a library's own definitions.
 ///
 /// **Only where a phase reads.** §5.9 keeps the two vocabularies apart, so a
 /// piece that wrote `run_syntax_step` must get the unknown name it earned;
@@ -1073,7 +1073,7 @@ pub(crate) fn expansion(cx: &Cx) -> Result<Cx, ElabError> {
         definitions: vec![run_syntax_step()],
         instances: Vec::new(),
     };
-    let declared = musa_core::declare_program(cx, &program)?;
+    let declared = musa_calculus::declare_program(cx, &program)?;
     Ok(cx.defining(&declared))
 }
 
@@ -1139,15 +1139,15 @@ fn run_syntax_step() -> RawTopLevel {
 ///
 /// # Errors
 ///
-/// As [`musa_core::infer`] — in practice [`musa_core::Refusal::Unbound`] for a
+/// As [`musa_calculus::infer`] — in practice [`musa_calculus::Refusal::Unbound`] for a
 /// name this module did not declare.
 pub(crate) fn constant(cx: &Cx, name: &str) -> Result<Term, ElabError> {
-    musa_core::infer(cx, &Raw::var(HERE, name)).map(|(term, _)| term)
+    musa_calculus::infer(cx, &Raw::var(HERE, name)).map(|(term, _)| term)
 }
 
 // ---- raw-syntax helpers ----
 //
-// The same shapes `musa-core`'s own suites build, spelled once here so that the
+// The same shapes `musa-calculus`'s own suites build, spelled once here so that the
 // declarations above read as declarations rather than as struct literals.
 
 fn binder(name: &str, ty: Raw) -> RawBinder {
@@ -1251,14 +1251,14 @@ mod tests {
         reason = "a law that cannot fail loudly is not a law"
     )]
 
-    use musa_core::{Cx, Level, Raw, Term};
+    use musa_calculus::{Cx, Level, Raw, Term};
 
     use super::{HERE, applied, constant, structural, var};
 
     /// The structural families elaborate in a bare context.
     ///
     /// Worth a test rather than a comment because positivity, universe levels,
-    /// and constructor-field scoping are all checked by `musa-core` and all
+    /// and constructor-field scoping are all checked by `musa-calculus` and all
     /// silently absent until something declares them. It is also the claim
     /// [`structural`] makes by being separate from [`super::musical`]: these
     /// name no base type, so no registry is needed to declare them.
@@ -1269,7 +1269,7 @@ mod tests {
     fn the_structural_families_elaborate_with_no_registry() {
         let mut cx = Cx::new();
         for declaration in structural() {
-            let group = musa_core::declare(&cx, &declaration).expect("a compiler declaration elaborates");
+            let group = musa_calculus::declare(&cx, &declaration).expect("a compiler declaration elaborates");
             cx = cx.declaring(&group);
         }
         for name in ["Bool", "Nat", "Option", "List", "Result"] {
@@ -1282,14 +1282,14 @@ mod tests {
     ///
     /// `Datum::Case` names a constructor as `Family.Case` and nothing else, so a
     /// δ-rule answering `Option.Some` is writing this string. If the qualified
-    /// spelling here and the one `musa-core` builds ever disagreed, every such
+    /// spelling here and the one `musa-calculus` builds ever disagreed, every such
     /// rule would answer `MisfitAnswer` at reduction rather than failing to
     /// build.
     #[test]
     fn each_constructor_is_nameable_by_its_qualified_spelling() {
         let mut cx = Cx::new();
         for declaration in structural() {
-            let group = musa_core::declare(&cx, &declaration).expect("a compiler declaration elaborates");
+            let group = musa_calculus::declare(&cx, &declaration).expect("a compiler declaration elaborates");
             cx = cx.declaring(&group);
         }
         for name in [
@@ -1308,7 +1308,7 @@ mod tests {
     /// constructor names its case and supplies its fields, and never its
     /// family's parameters.
     ///
-    /// `02-core-calculus.md` §2 states the rule and `musa-core`'s own suite
+    /// `02-core-calculus.md` §2 states the rule and `musa-calculus`'s own suite
     /// proves it over families that suite declares. What this law adds is that
     /// the families *this* module declares are the shape it fires on. Three of
     /// the five carry parameters, and a parameterized family whose constructors
@@ -1319,11 +1319,11 @@ mod tests {
     fn a_prelude_constructor_is_written_without_its_family_s_parameters() {
         let mut cx = Cx::new();
         for declaration in structural() {
-            let group = musa_core::declare(&cx, &declaration).expect("a compiler declaration elaborates");
+            let group = musa_calculus::declare(&cx, &declaration).expect("a compiler declaration elaborates");
             cx = cx.declaring(&group);
         }
         let ty = |raw: &Raw| {
-            musa_core::check(&cx, &Term::universe(HERE, Level::ZERO), raw).expect("a prelude family is a type")
+            musa_calculus::check(&cx, &Term::universe(HERE, Level::ZERO), raw).expect("a prelude family is a type")
         };
         let zero = var("Nat.Zero");
         let programs: &[(&str, Raw, Raw)] = &[
@@ -1353,7 +1353,7 @@ mod tests {
             ),
         ];
         for (name, at, program) in programs {
-            musa_core::check(&cx, &ty(at), program).unwrap_or_else(|error| panic!("{name}: {error}"));
+            musa_calculus::check(&cx, &ty(at), program).unwrap_or_else(|error| panic!("{name}: {error}"));
         }
     }
 }

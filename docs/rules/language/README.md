@@ -75,7 +75,7 @@ Prompt 172 may mark this specification governing only after all of the following
    named here — including the language pass at 128–149, whose obligations replace rather than extend the ones
    `02-core-calculus.md` §5 carried before it;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
-3. the core law suite passes and no surface convenience has entered `musa-kernel` or `musa-core`. It does *not* pass
+3. the core law suite passes and no surface convenience has entered `musa-kernel` or `musa-calculus`. It does *not* pass
    unchanged: the course correction's final phases re-derive the metatheory matrix against the surviving calculus, and
    prompt 142 remains the one prompt permitted to have moved the compatibility oracle. Both are audited by the entries
    they leave behind, not by the suite being untouched;

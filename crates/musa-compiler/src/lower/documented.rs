@@ -200,10 +200,10 @@ fn collapsed(node: &SyntaxNode) -> String {
 /// have one are the ones a `let` without an annotation ends up at — a base type,
 /// a declared family, a definition standing for a type, each with its arguments
 /// in angle brackets, and the arrow that declares no parameter.
-pub(crate) fn spelled(ty: &musa_core::Term) -> Option<String> {
+pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
     let mut head = ty;
-    let mut arguments: Vec<&musa_core::Term> = Vec::new();
-    while let musa_core::Shape::App {
+    let mut arguments: Vec<&musa_calculus::Term> = Vec::new();
+    while let musa_calculus::Shape::App {
         ref function,
         ref argument,
     } = *head.shape()
@@ -224,36 +224,36 @@ pub(crate) fn spelled(ty: &musa_core::Term) -> Option<String> {
         })
     };
     match *head.shape() {
-        musa_core::Shape::Base(ref base) => Some(format!("{base}{}", spelled_arguments()?)),
-        musa_core::Shape::Const(ref constant) => Some(format!("{constant}{}", spelled_arguments()?)),
-        musa_core::Shape::Universe(_) if arguments.is_empty() => Some("Type".to_owned()),
+        musa_calculus::Shape::Base(ref base) => Some(format!("{base}{}", spelled_arguments()?)),
+        musa_calculus::Shape::Const(ref constant) => Some(format!("{constant}{}", spelled_arguments()?)),
+        musa_calculus::Shape::Universe(_) if arguments.is_empty() => Some("Type".to_owned()),
         // `A -> B` and only `A -> B`: a Π whose binder is named is one the
         // surface writes as a parameter list, and a parameter list belongs to a
         // declaration rather than to a type.
-        musa_core::Shape::Pi {
-            plicity: musa_core::Plicity::Explicit,
+        musa_calculus::Shape::Pi {
+            plicity: musa_calculus::Plicity::Explicit,
             ref name,
             ref domain,
             ref codomain,
-        } if arguments.is_empty() && &**name == musa_core::ARROW_BINDER => {
+        } if arguments.is_empty() && &**name == musa_calculus::ARROW_BINDER => {
             Some(format!("{} -> {}", spelled(domain)?, spelled(codomain)?))
         }
         // Written out rather than left to a wildcard, so a shape added to the
         // core has to be classified here before this crate builds again —
         // `crate::registry::machine`'s own discipline, and for its reason.
-        musa_core::Shape::Universe(_)
-        | musa_core::Shape::Pi { .. }
-        | musa_core::Shape::Var(_)
-        | musa_core::Shape::Def(_)
-        | musa_core::Shape::Numeral(_)
-        | musa_core::Shape::Lit(_)
-        | musa_core::Shape::Builtin(_)
-        | musa_core::Shape::Lam { .. }
-        | musa_core::Shape::App { .. }
-        | musa_core::Shape::RecordType(_)
-        | musa_core::Shape::Record(_)
-        | musa_core::Shape::Project { .. }
-        | musa_core::Shape::Hole(_)
-        | musa_core::Shape::Let { .. } => None,
+        musa_calculus::Shape::Universe(_)
+        | musa_calculus::Shape::Pi { .. }
+        | musa_calculus::Shape::Var(_)
+        | musa_calculus::Shape::Def(_)
+        | musa_calculus::Shape::Numeral(_)
+        | musa_calculus::Shape::Lit(_)
+        | musa_calculus::Shape::Builtin(_)
+        | musa_calculus::Shape::Lam { .. }
+        | musa_calculus::Shape::App { .. }
+        | musa_calculus::Shape::RecordType(_)
+        | musa_calculus::Shape::Record(_)
+        | musa_calculus::Shape::Project { .. }
+        | musa_calculus::Shape::Hole(_)
+        | musa_calculus::Shape::Let { .. } => None,
     }
 }

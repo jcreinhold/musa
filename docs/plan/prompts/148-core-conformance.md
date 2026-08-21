@@ -60,7 +60,7 @@ variable class — say so, because a simplification is evidence that the new fou
 **The privacy audit and the second-path audit.** Does anything reachable from source now reveal a private
 representation, a registry decision, a normal form the author was not meant to see, or a budget? Can two code paths
 answer the same question — the elaborator's conversion and the re-checker's, the case-tree compiler and the recursor,
-`musa-core`'s `Storable` and the kernel's payload admission? A second path is not automatically wrong, but an
+`musa-calculus`'s `Storable` and the kernel's payload admission? A second path is not automatically wrong, but an
 undocumented one always is.
 
 **The boundary with prompt 153, stated.** This prompt owns the *language*: the core calculus, its elaboration, the

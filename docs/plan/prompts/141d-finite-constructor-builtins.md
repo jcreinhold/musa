@@ -21,10 +21,10 @@ take a `List` as an argument. Prompt 141 proved `Option`, `Result`, and `List` a
 constructors, which is exactly why their values are not literals: `Some(scale)` is a constructor applied to a field, and
 no arrangement of `Literal` is one.
 
-Nor can a rule build one by hand. `Constant` has no public constructor and no public accessor anywhere in `musa-core`,
-so a `fn` pointer cannot name `Some`, `Ok`, or `Cons` even if it wanted to — and it could not capture the group they
-come from, because capturing is what D3 forbids. Give δ-rules the finite constructors, so that prompt 142 can register
-the table it has.
+Nor can a rule build one by hand. `Constant` has no public constructor and no public accessor anywhere in
+`musa-calculus`, so a `fn` pointer cannot name `Some`, `Ok`, or `Cons` even if it wanted to — and it could not capture
+the group they come from, because capturing is what D3 forbids. Give δ-rules the finite constructors, so that prompt 142
+can register the table it has.
 
 ## Read
 
@@ -43,14 +43,14 @@ the table it has.
   language the host already writes its signatures in (`Base`, `Option`, `List`, `Product`, `Result`), and the 92 entries
   the counts above come from. `Shape::Product` is spelled and used by nothing, which this prompt's Design answers
   explicitly rather than building for.
-- `crates/musa-core/src/family.rs`'s `Constant`, `Group`, `Declared`, `Constructor`, and `Found::named` — every one of
-  them public as a *type* and none of them constructible or readable from outside the crate. That is the wall, and
+- `crates/musa-calculus/src/family.rs`'s `Constant`, `Group`, `Declared`, `Constructor`, and `Found::named` — every one
+  of them public as a *type* and none of them constructible or readable from outside the crate. That is the wall, and
   whether to open it is this prompt's central decision. Then `element`, which reads a family application off a value
   type, and `iota`'s `ready`, which is where "a constructor's parameters come before its fields" is load-bearing.
-- `crates/musa-core/src/case.rs`'s split, around `built` — the declaration context, then the parameters, then each field
-  as it is assumed, which is the environment a stored field type is read in. Realization walks the same telescope in the
-  same order, which is why it needs no new machinery and no index.
-- `crates/musa-core/src/eval.rs`'s `delta` and `structural` — the two firing conditions, and the one this prompt
+- `crates/musa-calculus/src/case.rs`'s split, around `built` — the declaration context, then the parameters, then each
+  field as it is assumed, which is the environment a stored field type is read in. Realization walks the same telescope
+  in the same order, which is why it needs no new machinery and no index.
+- `crates/musa-calculus/src/eval.rs`'s `delta` and `structural` — the two firing conditions, and the one this prompt
   generalizes.
 - Peyton Jones ch. 3 §3.2 and ch. 6, on the enriched calculus's constants: a δ-rule is a rewrite over *constructed*
   data, not only over atoms, and ch. 4 §4.1 on the constructor as the introduction form a rule must be able to write.
@@ -141,18 +141,18 @@ over it, so the mechanism is exercised without `musa-compiler` changing. Prompt 
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Datum` and the widened `Rule`, doc-commented with their invariants before the
+- `crates/musa-calculus/src/base.rs`: `Datum` and the widened `Rule`, doc-commented with their invariants before the
   implementation.
-- `crates/musa-core/src/eval.rs`: the firing condition generalized from *literal* to *canonical data*, the `Datum` built
-  from the argument values, and the answer realized at the builtin's own result type.
-- `crates/musa-core/src/family.rs`: the constructor a saturated spine is built by, and realization at a family type.
+- `crates/musa-calculus/src/eval.rs`: the firing condition generalized from *literal* to *canonical data*, the `Datum`
+  built from the argument values, and the answer realized at the builtin's own result type.
+- `crates/musa-calculus/src/family.rs`: the constructor a saturated spine is built by, and realization at a family type.
 - `Registry::new`: D1 stated positively, replacing the arrow-only check for δ-builtins.
 - One new `Refusal` variant with its `musa explain` code in `crates/musa-compiler/src/diagnose.rs`, and one new
   `Malformed` variant for an answer that does not fit the type it answers at.
-- `crates/musa-core/tests/suite/base_laws.rs`: a declared family in the worked registry, and the laws — a rule reads a
-  constructed argument, a rule answers a constructed value, a partially applied constructor leaves the spine blocked,
+- `crates/musa-calculus/tests/suite/base_laws.rs`: a declared family in the worked registry, and the laws — a rule reads
+  a constructed argument, a rule answers a constructed value, a partially applied constructor leaves the spine blocked,
   the degenerate case still behaves exactly as 141b's laws say, and the registration refusal.
-- `docs/plan/code-map/` rows for `musa-core`, extending 141b's row rather than adding a third.
+- `docs/plan/code-map/` rows for `musa-calculus`, extending 141b's row rather than adding a third.
 - No change to `musa-compiler`'s checker, no `stdlib/` or `examples/` change, and no builtin moved out of
   `BUILTIN_OWNERSHIP`.
 
@@ -160,8 +160,8 @@ over it, so the mechanism is exercised without `musa-compiler` changing. Prompt 
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -177,7 +177,7 @@ Commit as `Let a δ-rule speak the finite constructors`.
 - No change to `Rewrite` or to how a structural eliminator fires. 141c decided that, and a traversal's target is a
   literal for its own reason.
 - No ambient context in a rule and no interior mutability in the registry. D3 is still enforced by the type.
-- No `List`, `Option`, `Result`, or `Nat` in `musa-core/src/`. The core learns that a family has constructors, never
+- No `List`, `Option`, `Result`, or `Nat` in `musa-calculus/src/`. The core learns that a family has constructors, never
   which families exist.
 - No wiring, no move of `BUILTIN_OWNERSHIP`, and no `musa-compiler` checker change. Prompt 142 owns the cutover.
 - No amendment to §5.8. This prompt implements the half of D1 that was skipped; a disagreement is a finding to record.

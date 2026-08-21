@@ -158,7 +158,7 @@ fn assign_profile(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, part: &
 pub(super) fn evaluated(
     resolver: &mut Resolver,
     elaborated: &crate::document::Document,
-    raw: &musa_core::Raw,
+    raw: &musa_calculus::Raw,
 ) -> Option<VoiceTrack> {
     match elaborated.track(raw) {
         Ok(track) => Some(track),
@@ -284,7 +284,7 @@ pub(super) fn elaborate_material(
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &library.imports(), &options.imports);
     // The one checker, here as everywhere: the library and its imports as a
-    // document, declared by musa-core. A document that came back is not yet a
+    // document, declared by musa-calculus. A document that came back is not yet a
     // library that checks — `elaborate` answers `Some` beside refusals it
     // reported — so the diagnostics decide.
     let sources: Vec<crate::document::Source> = libraries

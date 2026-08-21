@@ -11,7 +11,7 @@ phase: 3
 ## Task
 
 `02-core-calculus.md` §1.1 states exactly one positivity prohibition: "A recursive occurrence may not appear to the left
-of an arrow at any depth." [`declare.rs`](../../../crates/musa-core/src/declare.rs)'s `occurrence` refuses a second
+of an arrow at any depth." [`declare.rs`](../../../crates/musa-calculus/src/declare.rs)'s `occurrence` refuses a second
 thing the section never mentions — a recursive occurrence *nested inside another family's argument*. So
 
 ```musa
@@ -22,7 +22,7 @@ data StaffRead {
 ```
 
 is refused with "`StaffRead` occurs in `Body` where a recursive occurrence is not allowed", and
-[`family.rs`](../../../crates/musa-core/src/family.rs)'s module doc records the narrowing deliberately, offering
+[`family.rs`](../../../crates/musa-calculus/src/family.rs)'s module doc records the narrowing deliberately, offering
 "written as a mutual declaration instead" as the repair.
 
 The repair does not hold up. Writing the mutual declaration means hand-rolling a second list family per containing type
@@ -45,8 +45,8 @@ actual rule.
   This prompt widens what 135 accepts; it does not change what 135 does with what it already accepted.
 - [Prompt 141, collections](141-collections.md) — `List` and the literal, which is what a nested occurrence is nested
   *in* and why hand-rolling around it is a loss rather than a spelling.
-- [`141s-numeral-representation.md`](141s-numeral-representation.md) — the precedent for a `musa-core` prompt landing
-  inside 142's migration, and its **Check** section's argument for why the compiler suite is not the gate.
+- [`141s-numeral-representation.md`](141s-numeral-representation.md) — the precedent for a `musa-calculus` prompt
+  landing inside 142's migration, and its **Check** section's argument for why the compiler suite is not the gate.
 - Peyton Jones ch. 4 §4.1–§4.2 — what a structured-type declaration means and which occurrences a fixed point admits.
   Ch. 4's account is the reason the prohibition is about *arrows* and not about depth: a negative occurrence admits a
   fixed point that diverges, and an occurrence under a positive functor does not.
@@ -65,7 +65,7 @@ by the same sentence that refused them before.
 
 Whether `List<X>` is positive in `X` is a question about `List`, not about the field. So [`Group`] gains one flag per
 parameter, computed in `declare_data` after the constructors are built and stored beside them — the same arrangement
-[`Constructor::recursive`](../../../crates/musa-core/src/family.rs) already has, and for its reason: the positivity
+[`Constructor::recursive`](../../../crates/musa-calculus/src/family.rs) already has, and for its reason: the positivity
 check and every later reader must be the same list rather than two derivations that can disagree.
 
 A parameter is positive when, in every constructor field of every family in its group, each occurrence of it is either
@@ -79,9 +79,9 @@ pass — which is also why this is a lookup rather than an analysis rerun per fi
 
 ### A nested field is not a recursive field
 
-[`Constructor::recursive`](../../../crates/musa-core/src/family.rs) stays the direct occurrences only, so the generated
-recursor gives **no induction hypothesis** for a nested field. That is a real weakening and it is the decision, not an
-omission:
+[`Constructor::recursive`](../../../crates/musa-calculus/src/family.rs) stays the direct occurrences only, so the
+generated recursor gives **no induction hypothesis** for a nested field. That is a real weakening and it is the
+decision, not an omission:
 
 - §1.1 promises the recursor exists and is the only eliminator. It does not promise a hypothesis per field, and a
   recursor with fewer hypotheses is weaker rather than unsound: the family is still the least fixed point of a strictly
@@ -138,9 +138,9 @@ it says today, because "a recursive occurrence is not allowed" was true of two d
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run -p musa-compiler -E 'test(staff_construction_fixture) or test(staff_dispatch_fixture)'
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

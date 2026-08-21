@@ -13,7 +13,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Instance, Raw, Refusal, Term, check, convertible, declare_impl, declare_trait, infer};
+use musa_calculus::{Cx, Instance, Raw, Refusal, Term, check, convertible, declare_impl, declare_trait, infer};
 
 use crate::family_laws::{binder, nat_context, type0, var};
 use crate::programs::WRITTEN;
@@ -65,7 +65,7 @@ fn add_nat(cx: &Cx, class: &'static str) -> Arc<Instance> {
 /// about the head rather than about the method name.
 fn box_context(cx: &Cx) -> Cx {
     use crate::family_laws::{constructor, data, family};
-    let group = musa_core::declare(
+    let group = musa_calculus::declare(
         cx,
         &data(
             vec![binder("A", type0())],

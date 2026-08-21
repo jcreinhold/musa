@@ -2344,13 +2344,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "musa-calculus"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "musa-compiler"
 version = "0.1.0"
 dependencies = [
  "divan",
  "indexmap 2.14.0",
  "insta",
- "musa-core",
+ "musa-calculus",
  "musa-kernel",
  "musa-language",
  "num-rational",
@@ -2359,13 +2366,6 @@ dependencies = [
  "slotmap",
  "thiserror 2.0.20",
  "tracing",
-]
-
-[[package]]
-name = "musa-core"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.20",
 ]
 
 [[package]]

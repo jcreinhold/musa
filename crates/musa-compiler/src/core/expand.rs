@@ -79,8 +79,8 @@ pub(crate) fn expand_region(
 /// The span comes from the node the adapter handed back, never from anything
 /// the adapter computed: `SourceInfo` has no eliminator, so an adapter can
 /// point at a node it holds and cannot say where a node is.
-pub(crate) fn refusal_of(held: &musa_core::Datum) -> Option<ExpansionFailure> {
-    let musa_core::Datum::Case {
+pub(crate) fn refusal_of(held: &musa_calculus::Datum) -> Option<ExpansionFailure> {
+    let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
     } = *held
@@ -90,7 +90,7 @@ pub(crate) fn refusal_of(held: &musa_core::Datum) -> Option<ExpansionFailure> {
     if &**constructor != "Pair.Both" {
         return None;
     }
-    let [musa_core::Datum::Lit(ref node), ref message] = fields[..] else {
+    let [musa_calculus::Datum::Lit(ref node), ref message] = fields[..] else {
         return None;
     };
     let node = crate::registry::held::<crate::syntax::Syntax>(node)?;

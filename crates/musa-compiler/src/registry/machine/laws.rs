@@ -4,9 +4,9 @@
 //! written in *raw* syntax rather than in assembled terms, which is the one
 //! thing that makes this file different from [`super::super::track::laws`].
 //! Every form here is polymorphic and every one of its type arguments is
-//! implicit, so a hand-built [`musa_core::Term`] would have to supply four
+//! implicit, so a hand-built [`musa_calculus::Term`] would have to supply four
 //! metavariable solutions the elaborator exists to find. Writing the program the
-//! way a source file would and handing it to [`musa_core::check`] is what makes
+//! way a source file would and handing it to [`musa_calculus::check`] is what makes
 //! "`identity` is a machine at whatever ports the position wants" a claim about
 //! the registration rather than about the test's arithmetic.
 //!
@@ -21,7 +21,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Level, Raw, Shape, Term};
+use musa_calculus::{Cx, Level, Raw, Shape, Term};
 
 use super::{SPELLINGS, UNREGISTERED};
 use crate::core::{BUILTIN_OWNERSHIP, Family};
@@ -96,13 +96,13 @@ fn context() -> Cx {
 
 /// `raw`, elaborated as a type.
 fn ty(cx: &Cx, raw: &Raw) -> Term {
-    musa_core::check(cx, &Term::universe(HERE, Level::ZERO), raw)
+    musa_calculus::check(cx, &Term::universe(HERE, Level::ZERO), raw)
         .unwrap_or_else(|why| panic!("a law's own type does not elaborate: {why}"))
 }
 
 /// `program`, checked at `at`.
 fn checked(cx: &Cx, at: &Term, program: &Raw, what: &str) -> Term {
-    musa_core::check(cx, at, program)
+    musa_calculus::check(cx, at, program)
         .unwrap_or_else(|why| panic!("`{what}` is not well typed at the type §2 gives it: {why}"))
 }
 
@@ -140,7 +140,7 @@ fn the_eight_machine_rows_are_registered_and_the_ninth_is_not() {
             .unwrap_or_else(|| panic!("`{spelling}` is registered"));
         assert_eq!(
             builtin.family(),
-            musa_core::Family::Machine,
+            musa_calculus::Family::Machine,
             "`{spelling}` is §5.8's fourth family"
         );
         assert!(
@@ -160,7 +160,7 @@ fn the_eight_machine_rows_are_registered_and_the_ninth_is_not() {
             "`{spelling}` is typed by a registry rather than by a signature, so it is not registered"
         );
         assert!(
-            musa_core::infer(&cx, &name(spelling)).is_err(),
+            musa_calculus::infer(&cx, &name(spelling)).is_err(),
             "and so it is not nameable either"
         );
     }
@@ -278,11 +278,11 @@ fn two_machines_are_the_same_exactly_when_they_were_built_the_same_way() {
     let right = checked(&cx, &at, &chained, "connect(identity, identity)");
     let bare = checked(&cx, &at, &name(SPELLINGS[1]), SPELLINGS[1]);
     assert!(
-        musa_core::convertible(&cx, &at, &left, &right).expect("conversion decides"),
+        musa_calculus::convertible(&cx, &at, &left, &right).expect("conversion decides"),
         "two machines built the same way are one machine"
     );
     assert!(
-        !musa_core::convertible(&cx, &at, &left, &bare).expect("conversion decides"),
+        !musa_calculus::convertible(&cx, &at, &left, &bare).expect("conversion decides"),
         "a chain of two identities is not the identity: §2 gives it no reduction that would make it one"
     );
 }
@@ -294,7 +294,7 @@ fn two_machines_are_the_same_exactly_when_they_were_built_the_same_way() {
 /// without a rule saying so: a Π applied once is a Π, so `connect(identity)` is
 /// a value of function type and can stand nowhere a `Machine` is wanted. The law
 /// is worth stating because arity is the one thing a constructor's registration
-/// does *not* check — [`musa_core::Builtin::arity`] is read off the signature and
+/// does *not* check — [`musa_calculus::Builtin::arity`] is read off the signature and
 /// nothing fires at it — so the ordinary typing rule is carrying all of it.
 #[test]
 fn a_form_short_of_its_arguments_is_a_function_and_not_a_machine() {
@@ -307,7 +307,7 @@ fn a_form_short_of_its_arguments_is_a_function_and_not_a_machine() {
         &Raw::app(HERE, name(SPELLINGS[2]), name(SPELLINGS[1])),
         "connect(identity)",
     );
-    let refused = musa_core::check(
+    let refused = musa_calculus::check(
         &cx,
         &ty(&cx, &machine(a(), b())),
         &Raw::app(HERE, name(SPELLINGS[2]), name(SPELLINGS[1])),
@@ -336,7 +336,7 @@ fn connect_at_mismatched_ports_is_refused_by_the_core() {
             Raw::annot(HERE, name(SPELLINGS[1]), machine(b(), c())),
         ],
     );
-    let refused = musa_core::check(&cx, &at, &mismatched);
+    let refused = musa_calculus::check(&cx, &at, &mismatched);
     assert!(
         refused.is_err(),
         "`connect` may not chain a machine that answers a `Nat` into one that reads a `Bool`"
@@ -346,7 +346,7 @@ fn connect_at_mismatched_ports_is_refused_by_the_core() {
 /// A saturated form normalizes to itself.
 ///
 /// The reduction half of `Reduction::None`, checked where it can actually fail:
-/// [`musa_core::normalize`] runs the evaluator over the whole spine, and a form
+/// [`musa_calculus::normalize`] runs the evaluator over the whole spine, and a form
 /// registered with a δ-rule or a rewrite would either fire, get stuck, or
 /// realize an answer at the wrong shape. What comes back is the same spine —
 /// same head, same number of arguments — which is what "its application is its
@@ -358,7 +358,7 @@ fn a_saturated_form_normalizes_to_itself() {
     let chained = applied(SPELLINGS[2], [name(SPELLINGS[1]), name(SPELLINGS[1])]);
     let term = checked(&cx, &at, &chained, "connect(identity, identity)");
     let (head, taken) = spine(&term);
-    let normal = musa_core::normalize(&cx, &at, &term).expect("a machine normalizes");
+    let normal = musa_calculus::normalize(&cx, &at, &term).expect("a machine normalizes");
     let (settled, left) = spine(&normal);
     let Shape::Builtin(ref before) = *head.shape() else {
         panic!("`connect(identity, identity)` is not headed by a builtin: {head:?}");
@@ -369,7 +369,7 @@ fn a_saturated_form_normalizes_to_itself() {
     assert_eq!(before, after, "the head is still `connect`");
     assert_eq!(taken, left, "and it still carries every argument it was given");
     assert!(
-        musa_core::convertible(&cx, &at, &term, &normal).expect("conversion decides"),
+        musa_calculus::convertible(&cx, &at, &term, &normal).expect("conversion decides"),
         "a machine and its normal form are the same machine"
     );
 }
@@ -398,7 +398,7 @@ fn each_registered_unit_has_a_signature_of_its_own() {
                 .unwrap_or_else(|| panic!("`{spelling}` is registered"));
             assert_eq!(
                 builtin.family(),
-                musa_core::Family::Machine,
+                musa_calculus::Family::Machine,
                 "`{spelling}` is §5.8's fourth family"
             );
             assert!(
@@ -430,8 +430,8 @@ fn each_step_tag_is_its_own_type() {
     assert!(!tags.is_empty(), "a build with units counts in at least one tag");
     let mut named: Vec<&str> = Vec::new();
     for tag in &tags {
-        let (_, sort) =
-            musa_core::infer(&cx, &name(tag.name())).unwrap_or_else(|why| panic!("`{}` is a type: {why}", tag.name()));
+        let (_, sort) = musa_calculus::infer(&cx, &name(tag.name()))
+            .unwrap_or_else(|why| panic!("`{}` is a type: {why}", tag.name()));
         assert!(
             matches!(*sort.shape(), Shape::Universe(_)),
             "`{}` is a type and not a value",

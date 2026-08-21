@@ -57,7 +57,7 @@
 #[cfg(test)]
 mod laws;
 
-use musa_core::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
+use musa_calculus::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
 use musa_kernel::{Occurrence, Position, Span};
 use num_rational::Ratio;
 
@@ -179,7 +179,7 @@ const NOTATED: Rule = |arguments| {
 /// A literal rather than a registration, and the reduction rules are the reason
 /// rather than a preference. A δ-rule fires "at the moment the last argument
 /// arrives" (`02-core-calculus.md` §5.8), so a rule of no arguments never fires
-/// at all; a [`musa_core::Builtin::constructor`] has no reduction by design, so
+/// at all; a [`musa_calculus::Builtin::constructor`] has no reduction by design, so
 /// `follow(nothing, t)` would be handed a rigid neutral where [`FOLLOW`] expects
 /// canonical data, and the spine would block forever. Neither shape is a near
 /// miss — both say "operation", and `nothing` is not one.
@@ -389,7 +389,7 @@ fn join(previous: &mut [Written], statement: &[Written]) {
 }
 
 /// The origin a literal holds, as [`super::track`] wraps one.
-fn held_origin(value: &musa_core::Literal) -> Option<&Provenance> {
+fn held_origin(value: &musa_calculus::Literal) -> Option<&Provenance> {
     super::held::<Provenance>(value)
 }
 

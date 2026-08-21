@@ -18,7 +18,7 @@
 //!   callee — which is the core's, one pass later. Prompt 142's migration writes
 //!   the arguments in order.
 
-use musa_core::{Origin, Raw, RawArm, RawPattern};
+use musa_calculus::{Origin, Raw, RawArm, RawPattern};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
@@ -231,7 +231,7 @@ impl Lowering<'_> {
     /// type or a trait, and exactly one segment follows it." So the modules are
     /// dropped — what a module name *reaches* is `use` and `import`'s question,
     /// and this module resolves nothing — and what is left is joined with `.`,
-    /// which is how `musa-core` spells a qualified name: `Nat.Succ`,
+    /// which is how `musa-calculus` spells a qualified name: `Nat.Succ`,
     /// `Bool.True`, `Eq.equal`. The result goes through as a variable like every
     /// other name, so an item nothing declares is the core's `UnknownName` at
     /// the origin this node was numbered with, and `Lowering`'s "No scope"
@@ -276,7 +276,7 @@ impl Lowering<'_> {
     /// shape: the token decides, and nothing is passed in. `Nat` and `Bool` are
     /// declared families rather than base types, so their literals are
     /// constructor applications — `3` is three `Nat.Succ`s — which is why they
-    /// need no [`musa_core::Literal`] and no registered domain.
+    /// need no [`musa_calculus::Literal`] and no registered domain.
     fn literal(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let token = significant_tokens(node).next()?;
         Some(match token.kind() {
@@ -373,7 +373,7 @@ impl Lowering<'_> {
     ///
     /// A constructor application and not a structural record, which makes a
     /// written product *canonical data*: `Pair.Both a b` is a
-    /// [`musa_core::Datum::Case`], so a δ-rule and a claim's argument can read
+    /// [`musa_calculus::Datum::Case`], so a δ-rule and a claim's argument can read
     /// one back, and a record cannot be read back at all. That is the whole of
     /// why this is `Pair` — see [`crate::prelude`] for why the halves stay
     /// positional, and [`super::paired`] for why a wider one nests to the right.
@@ -569,7 +569,7 @@ impl Lowering<'_> {
     ///
     /// The result type becomes an annotation on the body rather than being
     /// dropped: it is what the author wrote about the answer, and
-    /// [`RawShape::Annot`](musa_core::RawShape::Annot) is the one place the core
+    /// [`RawShape::Annot`](musa_calculus::RawShape::Annot) is the one place the core
     /// admits a written type inside a term.
     pub(super) fn lambda(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let parameters = self.parameters(node)?;
@@ -1192,7 +1192,7 @@ fn operator_method(kind: SyntaxKind) -> Option<&'static str> {
 /// The two namespaces `crate::core`'s own `phase_value` reads, and no others: a
 /// dotted name outside them is a projection, which is why this answers [`None`]
 /// rather than refusing.
-fn phase_literal(written: &str) -> Option<musa_core::Literal> {
+fn phase_literal(written: &str) -> Option<musa_calculus::Literal> {
     let (namespace, case) = written.split_once('.')?;
     match namespace {
         "TokenKind" => crate::syntax::token_kind_named(case).map(crate::registry::token_kind_literal),

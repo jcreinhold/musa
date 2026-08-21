@@ -12,7 +12,7 @@
 //! stated as tests: the *smallest* disagreeing pair, and the path from the two
 //! whole types down to it.
 
-use musa_core::{
+use musa_calculus::{
     Base, Builtin, Cx, ElabError, Index, Level, Mismatch, PathStep, Raw, Refusal, Registry, Term, check, infer,
 };
 
@@ -55,7 +55,11 @@ fn wired() -> std::sync::Arc<Registry> {
             })
     };
     // `identity : {K A : Type 0} → Wire K A A`
-    let identity = Builtin::constructor("identity", implicits(2, ported(2, 0, 1, 1)), musa_core::Family::Machine);
+    let identity = Builtin::constructor(
+        "identity",
+        implicits(2, ported(2, 0, 1, 1)),
+        musa_calculus::Family::Machine,
+    );
     // `connect : {K A B C : Type 0} → Wire K A B → Wire K B C → Wire K A C`
     let connect = Builtin::constructor(
         "connect",
@@ -68,7 +72,7 @@ fn wired() -> std::sync::Arc<Registry> {
                 Term::pi(WRITTEN, "second", ported(5, 0, 2, 3), ported(6, 0, 1, 3)),
             ),
         ),
-        musa_core::Family::Machine,
+        musa_calculus::Family::Machine,
     );
     std::sync::Arc::new(Registry::new(vec![wire], vec![identity, connect]).expect("two constructors register"))
 }
@@ -198,7 +202,7 @@ fn a_metavariable_determined_twice_must_be_determined_the_same_way() {
 ///   already pointed at.
 /// - **The constants are registered rather than bound.** A λ- or `let`-bound
 ///   polymorphic value puts its metavariables *under* binders, so a solution is a
-///   λ, unfolding it is [`musa_core`]'s β, and evaluating the body resolves the
+///   λ, unfolding it is [`musa_calculus`]'s β, and evaluating the body resolves the
 ///   next link for free — the chain is chased by accident. Registered constants
 ///   are elaborated in the empty scope, where nothing chases it but forcing.
 ///
@@ -351,7 +355,7 @@ fn mismatch(name: &'static str, raw: &Raw, ty: &Term) -> Mismatch {
 
 /// A `let`'s three parts, when the term is one.
 fn binding(term: &Term) -> Option<(&Term, &Term, &Term)> {
-    if let musa_core::Shape::Let { ty, value, body, .. } = term.shape() {
+    if let musa_calculus::Shape::Let { ty, value, body, .. } = term.shape() {
         Some((ty, value, body))
     } else {
         None
@@ -363,7 +367,7 @@ fn binding(term: &Term) -> Option<(&Term, &Term, &Term)> {
 /// A closed term has none; this is the property a leaked solution would break.
 fn mentions_free_variable(term: &Term) -> bool {
     fn walk(term: &Term, depth: u32) -> bool {
-        use musa_core::Shape;
+        use musa_calculus::Shape;
 
         match term.shape() {
             Shape::Var(index) => index.0 >= depth,

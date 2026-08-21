@@ -10,9 +10,10 @@ phase: 3
 
 ## Task
 
-Give `musa-core` parameterized and indexed `data` declarations with strict positivity, generated dependent recursors,
-dependent `match` compiled through case trees with coverage checking, and the checked well-founded termination rule that
-prompt 128 kept totality for. After this prompt the core is complete: everything above it is library code.
+Give `musa-calculus` parameterized and indexed `data` declarations with strict positivity, generated dependent
+recursors, dependent `match` compiled through case trees with coverage checking, and the checked well-founded
+termination rule that prompt 128 kept totality for. After this prompt the core is complete: everything above it is
+library code.
 
 Also **level metavariables**, which prompt 134 deferred to here: `data Vec (A : Type l)` is the first declaration that
 cannot write its own levels, so this is the prompt that has to solve them.
@@ -136,25 +137,25 @@ compile-fail suite carries one case per refusal.
 
 ## Target
 
-- Parameterized and indexed `data` in `musa-core`, with strict positivity, generated dependent recursors, case-tree
+- Parameterized and indexed `data` in `musa-calculus`, with strict positivity, generated dependent recursors, case-tree
   compilation with coverage and unreachability reporting, index refinement by the solution rule, and the well-founded
   termination checker.
 - Level metavariables and their solver, with `Level` forced wherever it is read.
 - New `Code` variants with `musa explain` text for: non-positive occurrence, incomplete match, unreachable branch,
   forced index, and unchecked recursion. `musa-compiler`'s diagnostic registry is the one file this prompt touches
   there; its checker is untouched.
-- `crates/musa-core/tests/suite/{family_laws.rs, coverage_laws.rs, termination_laws.rs}` and the compile-fail cases.
-- `docs/plan/code-map/`: `musa-core`'s row updated to "core complete".
+- `crates/musa-calculus/tests/suite/{family_laws.rs, coverage_laws.rs, termination_laws.rs}` and the compile-fail cases.
+- `docs/plan/code-map/`: `musa-calculus`'s row updated to "core complete".
 - No change to `musa-compiler`.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run --workspace
-cargo nextest run --run-ignored all -p musa-core
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo nextest run --run-ignored all -p musa-calculus
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

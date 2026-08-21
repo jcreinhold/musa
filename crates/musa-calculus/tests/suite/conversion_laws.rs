@@ -8,7 +8,7 @@
 //! completeness of `NbE` against the declarative rules, decidability, subject
 //! reduction, canonicity — which no example-based suite can supply.
 
-use musa_core::{Budget, CoreError, Cx, Index, Level, Origin, Term, convertible, convertible_types};
+use musa_calculus::{Budget, CoreError, Cx, Index, Level, Origin, Term, convertible, convertible_types};
 
 use crate::fixtures::{Sample, corpus, corpus_at};
 
@@ -75,7 +75,7 @@ fn conversion_is_transitive() {
         equal,
     } in corpus()
     {
-        let middle = musa_core::normalize(&cx, &ty, &left).expect("the corpus normalizes");
+        let middle = musa_calculus::normalize(&cx, &ty, &left).expect("the corpus normalizes");
         assert_eq!(convertible(&cx, &ty, &left, &middle), Ok(true), "{name}: left ≡ nf");
         assert_eq!(
             convertible(&cx, &ty, &middle, &right),
@@ -124,8 +124,8 @@ fn conversion_agrees_with_normalization() {
         ..
     } in corpus()
     {
-        let left_nf = musa_core::normalize(&cx, &ty, &left).expect("the corpus normalizes");
-        let right_nf = musa_core::normalize(&cx, &ty, &right).expect("the corpus normalizes");
+        let left_nf = musa_calculus::normalize(&cx, &ty, &left).expect("the corpus normalizes");
+        let right_nf = musa_calculus::normalize(&cx, &ty, &right).expect("the corpus normalizes");
         assert_eq!(
             convertible(&cx, &ty, &left, &right),
             Ok(left_nf == right_nf),
@@ -175,7 +175,10 @@ fn a_malformed_term_is_reported_rather_than_aborting() {
     let unbound = Term::var(HERE, Index(0));
     let type0 = Term::universe(HERE, Level::ZERO);
     assert!(
-        matches!(musa_core::normalize_type(&cx, &unbound), Err(CoreError::Malformed(_))),
+        matches!(
+            musa_calculus::normalize_type(&cx, &unbound),
+            Err(CoreError::Malformed(_))
+        ),
         "a variable with no binder is a defect with a name"
     );
 
@@ -183,7 +186,7 @@ fn a_malformed_term_is_reported_rather_than_aborting() {
     let projected_function = Term::project(HERE, Term::lam(HERE, "z", Term::var(HERE, Index(0))), "fst");
     assert!(
         matches!(
-            musa_core::normalize(&a, &Term::var(HERE, Index(0)), &projected_function),
+            musa_calculus::normalize(&a, &Term::var(HERE, Index(0)), &projected_function),
             Err(CoreError::Malformed(_))
         ),
         "a function has no fields"
@@ -256,8 +259,8 @@ fn a_conversion_that_agrees_reads_nothing_back() {
 ///
 /// If either side has no normal form, which the corpus guarantees it does.
 fn oracle(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> bool {
-    let left = musa_core::normalize(cx, ty, left).expect("the corpus normalizes");
-    let right = musa_core::normalize(cx, ty, right).expect("the corpus normalizes");
+    let left = musa_calculus::normalize(cx, ty, left).expect("the corpus normalizes");
+    let right = musa_calculus::normalize(cx, ty, right).expect("the corpus normalizes");
     left == right
 }
 
@@ -267,8 +270,8 @@ fn oracle(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> bool {
 ///
 /// As [`oracle`].
 fn type_oracle(cx: &Cx, left: &Term, right: &Term) -> bool {
-    let left = musa_core::normalize_type(cx, left).expect("the corpus normalizes");
-    let right = musa_core::normalize_type(cx, right).expect("the corpus normalizes");
+    let left = musa_calculus::normalize_type(cx, left).expect("the corpus normalizes");
+    let right = musa_calculus::normalize_type(cx, right).expect("the corpus normalizes");
     left == right
 }
 

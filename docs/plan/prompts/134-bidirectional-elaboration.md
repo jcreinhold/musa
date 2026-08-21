@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Add check/infer elaboration to `musa-core`: a surface-independent raw term goes in, a typed core term comes out.
+Add check/infer elaboration to `musa-calculus`: a surface-independent raw term goes in, a typed core term comes out.
 Metavariables, pattern-fragment unification, implicit-argument insertion, constraint postponement, and the diagnostics
 for the two failures this introduces — an unsolved metavariable and a conversion mismatch — which are the first errors
 in Musa's history that talk about a normal form the author never wrote.
@@ -37,8 +37,8 @@ in Musa's history that talk about a normal form the author never wrote.
 ## Design
 
 **The raw term is the boundary, and it is surface-independent.** `musa-compiler` will translate Musa syntax into it;
-nothing about it mentions pitches, bars, or `.musa` grammar. Keeping it that way is what lets `musa-core` stay a leaf
-and lets the elaborator's tests be written without a parser.
+nothing about it mentions pitches, bars, or `.musa` grammar. Keeping it that way is what lets `musa-calculus` stay a
+leaf and lets the elaborator's tests be written without a parser.
 
 **Metavariables are contextual.** A meta is created together with the context it may refer to, and solved by a term in
 that context, so a solution can never capture a variable that was not in scope at the creation site. Spelling this out
@@ -80,21 +80,22 @@ terminates. And the negative suite: every refusal above has a compile-fail test 
 
 ## Target
 
-- Check/infer elaboration in `musa-core` over the raw term, with contextual metavariables, pattern-fragment unification,
-  postponement, and implicit insertion.
+- Check/infer elaboration in `musa-calculus` over the raw term, with contextual metavariables, pattern-fragment
+  unification, postponement, and implicit insertion.
 - An independent re-checker for elaborated terms, used by the tests as the primary correctness gate.
 - Two new `Code` variants and their `musa explain` text, with the unfolding policy stated where the code lives.
-- `crates/musa-core/tests/suite/{elaboration_laws.rs, unification_laws.rs}` and a compile-fail suite for the refusals.
-- `docs/plan/code-map/`: `musa-core`'s row updated.
+- `crates/musa-calculus/tests/suite/{elaboration_laws.rs, unification_laws.rs}` and a compile-fail suite for the
+  refusals.
+- `docs/plan/code-map/`: `musa-calculus`'s row updated.
 - No change to `musa-compiler`'s checking path. Still nothing calls this.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

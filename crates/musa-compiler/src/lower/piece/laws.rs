@@ -1,7 +1,7 @@
 //! What reading a piece promises.
 //!
 //! Beside the module for [`crate::document::laws`]'s reason: the answer is a
-//! [`musa_core::Term`] in a context [`crate::registry::owned`] built, and both
+//! [`musa_calculus::Term`] in a context [`crate::registry::owned`] built, and both
 //! are private to this crate.
 //!
 //! # The survey
@@ -63,7 +63,7 @@ fn piece_of(root: &SyntaxNode) -> Option<SyntaxNode> {
 /// *read* — every part numbered, every voice folded — and the term it answers
 /// has to **check**, which is what says the fold built something that is a
 /// written-time track rather than merely a term.
-fn checked(node: &SyntaxNode) -> (Option<musa_core::Term>, Vec<String>) {
+fn checked(node: &SyntaxNode) -> (Option<musa_calculus::Term>, Vec<String>) {
     checked_with(node, &[])
 }
 
@@ -89,7 +89,7 @@ fn checked(node: &SyntaxNode) -> (Option<musa_core::Term>, Vec<String>) {
 /// pedantic — `examples/module-functor-study.musa` declares two template pieces
 /// and makes the *second*, so the first `piece` node under the root is a
 /// template nothing in that file instantiates.
-fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_core::Term>, Vec<String>) {
+fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_calculus::Term>, Vec<String>) {
     let mut resolver = Resolver::new();
     let root = node.ancestors().last().unwrap_or_else(|| node.clone());
     let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
@@ -129,7 +129,7 @@ fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_core::T
 /// score and writes raw terms — and a survey that skipped it whenever a
 /// signature still said `Music` would be reporting on everything except the
 /// thing it is surveying.
-fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode) -> Option<musa_core::Term> {
+fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode) -> Option<musa_calculus::Term> {
     let Some(mut document) = elaborated else {
         let mut sites = crate::lower::Sites::default();
         crate::lower::Lowering::new(resolver, &mut sites).piece(node, DOCUMENT, None);
@@ -146,7 +146,7 @@ fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode
 }
 
 /// `source`, which every law that expects success reads its answer out of.
-fn piece(source: &str) -> musa_core::Term {
+fn piece(source: &str) -> musa_calculus::Term {
     let (answer, said) = checked(&written(source));
     answer.unwrap_or_else(|| panic!("the piece elaborates: {said:?}"))
 }

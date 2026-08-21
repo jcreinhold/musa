@@ -10,13 +10,14 @@ phase: 3
 
 ## Task
 
-[`document.rs::elaborate`](../../../crates/musa-compiler/src/document.rs) opens `musa-core`'s doors in this order:
-families, then traits through `declare_trait`, then the definitions as one group through `musa_core::declare_program`,
-then `Cx::defining`, and last a loop over the document's `impl`s calling `musa_core::declare_impl`.
+[`document.rs::elaborate`](../../../crates/musa-compiler/src/document.rs) opens `musa-calculus`'s doors in this order:
+families, then traits through `declare_trait`, then the definitions as one group through
+`musa_calculus::declare_program`, then `Cx::defining`, and last a loop over the document's `impl`s calling
+`musa_calculus::declare_impl`.
 
 Because that loop is last, **no definition in a document can resolve a method by receiver against an instance the same
-document declares.** [`elab.rs::method`](../../../crates/musa-core/src/elab.rs) filters the traits declaring a spelling
-by the ones with a dictionary at the receiver's head —
+document declares.** [`elab.rs::method`](../../../crates/musa-calculus/src/elab.rs) filters the traits declaring a
+spelling by the ones with a dictionary at the receiver's head —
 
 ```rust
 scope.discharged(&key).is_some() || classes.instance(&key).is_some()
@@ -62,8 +63,8 @@ other way. Neither kind comes first, so neither is declared first.
 - [`143`](143-builtin-collapse.md), which is the prompt that meets this at scale: it moves `nat_add`, `text_equal`, and
   `duration_of` behind traits whose `impl` bodies call library functions, in the same documents as the definitions that
   call those traits' methods. Every one of those is the shape above.
-- [`program.rs`](../../../crates/musa-core/src/program.rs)'s `free`, and its doc comment's warning — "a spurious edge is
-  a spurious *cycle*, and a cycle is refused". That sentence is the whole difficulty of this prompt, because the
+- [`program.rs`](../../../crates/musa-calculus/src/program.rs)'s `free`, and its doc comment's warning — "a spurious
+  edge is a spurious *cycle*, and a cycle is refused". That sentence is the whole difficulty of this prompt, because the
   definition-to-instance direction is the one direction that cannot be computed exactly.
 - Peyton Jones **ch. 6 §6.2.8** and **ch. 8**, cited by 141n for the first half and load-bearing again here. §6.2.8's
   "minimal groups" is what the Design's two edge kinds protect: an analysis that puts a declaration into a recursive
@@ -152,8 +153,8 @@ moves eleven thousand lines of `.musa`, for the reason 142's own Design gives ab
 - `RawProgram::instances`, doc-commented with why the two kinds travel together: each can name the other and neither
   comes first.
 - `Definitions` renamed to `Program`, holding both kinds, with `instances()` beside `members()`; `Cx::defining` taking
-  it and extending both the definition scope and `Classes` in one call; `musa_core::declare_program` re-documented for
-  what it now takes and what it now refuses.
+  it and extending both the definition scope and `Classes` in one call; `musa_calculus::declare_program` re-documented
+  for what it now takes and what it now refuses.
 - One dependency graph over both kinds in one index space, with the two edge kinds above. An `impl`'s free names read
   from its parameters, its arguments, its `where` clause, and its method bodies.
 - `ordering` distinguishing the two: a soft back edge is dropped, a hard back edge is `Refusal::DefinitionCycle` with
@@ -161,7 +162,8 @@ moves eleven thousand lines of `.musa`, for the reason 142's own Design gives ab
   self-edge is 141n's recursive case for a definition and dropped for an instance.
 - `document.rs`'s `elaborate` losing its `declare_impl` loop, and its module documentation rewritten to **three** doors
   in a forced order, with the third taking definitions and instances as one group and saying why.
-- Laws in [`crates/musa-core/tests/suite/program_laws.rs`](../../../crates/musa-core/tests/suite/program_laws.rs):
+- Laws in
+  [`crates/musa-calculus/tests/suite/program_laws.rs`](../../../crates/musa-calculus/tests/suite/program_laws.rs):
   - a definition written *before* an `impl` may call its method by receiver;
   - an `impl`'s method body may name a definition written *after* it;
   - two `impl`s of one trait whose bodies both write that trait's method spelling both elaborate, and the one whose
@@ -171,9 +173,9 @@ moves eleven thousand lines of `.musa`, for the reason 142's own Design gives ab
   - two definitions that name each other are still `DefinitionCycle`, naming both, unchanged;
   - both kinds come back in the order the document wrote them, whatever order they were elaborated in.
 - Rows in [`docs/plan/code-map/spec-to-implementation-map.md`](../code-map/spec-to-implementation-map.md): the
-  `musa-core` row for §2.4's declaration group, which currently describes definitions only, and the `musa-compiler` row
-  for `document.rs`, which currently says "instances last, because an `impl`'s method bodies are ordinary terms that may
-  call any definition" — the half-truth this prompt completes.
+  `musa-calculus` row for §2.4's declaration group, which currently describes definitions only, and the `musa-compiler`
+  row for `document.rs`, which currently says "instances last, because an `impl`'s method bodies are ordinary terms that
+  may call any definition" — the half-truth this prompt completes.
 
 ### What lands with 142 instead
 
@@ -186,8 +188,8 @@ keep a bullet true is not a thing to do to a bullet.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

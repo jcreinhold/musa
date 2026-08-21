@@ -1,6 +1,6 @@
 //! Materials: `senza`, `mobile`, `arranged`, `declared_material`, and the spoken/sounded families.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::SyntaxNode;
 use musa_language::ast::AstNode as _;
 use num_rational::Ratio;

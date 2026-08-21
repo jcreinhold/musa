@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Give every `musa-core` term an **origin**: the surface node it was elaborated from, carried by the representation,
+Give every `musa-calculus` term an **origin**: the surface node it was elaborated from, carried by the representation,
 preserved by evaluation and quotation, and invisible to conversion. This is
 [`docs/rules/language/02-core-calculus.md`](../../rules/language/02-core-calculus.md) §7, which prompt 133 built the
 crate without and which no prompt in the stack currently owns.
@@ -20,8 +20,9 @@ crate without and which no prompt in the stack currently owns.
 - `docs/rules/language/02-core-calculus.md` §7 in full — the three reasons it is normative, the preservation clause
   ("preserved by substitution, by instantiation, and by `quote`"), the η clause, the metavariable-solution clause, and
   the exclusion clause ("Origins are **not** part of conversion").
-- Prompt [133](133-core-crate.md)'s Design and the code it produced: `crates/musa-core/src/{term,value,eval,quote}.rs`.
-  This prompt changes the representation those four share, so read them as one thing.
+- Prompt [133](133-core-crate.md)'s Design and the code it produced:
+  `crates/musa-calculus/src/{term,value,eval,quote}.rs`. This prompt changes the representation those four share, so
+  read them as one thing.
 - `docs/rules/across-stages/` on origin paths, and `crates/musa-compiler/src/derivation.rs` — the derivation graph an
   origin will eventually name a node in. This prompt does **not** connect the two; it fixes the shape of the hole.
 - `docs/rules/desktop/` on the Origin view, for what an origin is ultimately read by.
@@ -31,10 +32,10 @@ crate without and which no prompt in the stack currently owns.
 
 ## Design
 
-**An origin is opaque to this crate.** `musa-core` is a leaf and does not know what a surface node is. An `Origin` is
-therefore an identifier the caller supplies and this crate only carries, plus one distinguished value for a term nobody
-wrote. Making it a `u32` newtype rather than a span keeps `musa-core` from acquiring a notion of *file*, which is the
-first step toward acquiring a notion of source text.
+**An origin is opaque to this crate.** `musa-calculus` is a leaf and does not know what a surface node is. An `Origin`
+is therefore an identifier the caller supplies and this crate only carries, plus one distinguished value for a term
+nobody wrote. Making it a `u32` newtype rather than a span keeps `musa-calculus` from acquiring a notion of *file*,
+which is the first step toward acquiring a notion of source text.
 
 **Terms wrap rather than widen.** A `Term` becomes `{ origin, node }` over an enum of shapes, rather than every variant
 growing a field. Three things follow, and they are the reason for the shape:
@@ -64,21 +65,21 @@ prompts' questions.
 
 ## Target
 
-- `Origin` in `musa-core`'s public interface, with `UNKNOWN` and a caller-supplied constructor.
+- `Origin` in `musa-calculus`'s public interface, with `UNKNOWN` and a caller-supplied constructor.
 - `Term` restructured as origin plus shape, with a hand-written `PartialEq` that compares shapes, and prompt 133's
   constructor helpers carrying an origin argument.
 - Origins on values, and preservation through `eval` and `quote` including both η cases.
-- `crates/musa-core/tests/suite/provenance_laws.rs`, and prompt 133's three suites still passing unchanged in what they
-  assert.
+- `crates/musa-calculus/tests/suite/provenance_laws.rs`, and prompt 133's three suites still passing unchanged in what
+  they assert.
 - `docs/plan/roadmap.md` §15.12 and `docs/plan/code-map/`: the row and the interface sketch updated.
 
 ## Check
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core
+cargo nextest run -p musa-calculus
 cargo nextest run --workspace
-cargo clippy --all-targets -p musa-core -- -D warnings
+cargo clippy --all-targets -p musa-calculus -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -91,6 +92,6 @@ Commit as `Let a core term say where it came from`.
 - No elaboration, no metavariables, no unification. Prompt 134 attaches origins; this prompt makes there be somewhere to
   attach them to.
 - No connection to `crates/musa-compiler/src/derivation.rs`, no `Derived { origin, quotation, path }`. Prompt 138.
-- No span, no file identity, no source text in `musa-core`.
+- No span, no file identity, no source text in `musa-calculus`.
 - No origin in conversion, and no "compare origins too" option. A knob here is a second semantics.
 - No change to `musa-compiler`, `musa-language`, or any shell.

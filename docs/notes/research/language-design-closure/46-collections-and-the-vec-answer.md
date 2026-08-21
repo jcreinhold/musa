@@ -49,10 +49,10 @@ equality, so a `Vec` indexed by it is probably not the program that needs K eith
 
 ## 4. Where the collection library lives, and why it is not in `src/`
 
-`musa-core` is a leaf calculus with no base types. There is no `Bool`, `Nat`, `Option`, or `Text` in its `src/`; the one
-pre-declared thing is `Storable`, and it is pre-declared because the *check* is the evidence rather than a declaration
-an author could write. Shipping `List`, `Buildable`, `Iterable`, and `Index` as crate items would make the calculus a
-calculus of one particular library.
+`musa-calculus` is a leaf calculus with no base types. There is no `Bool`, `Nat`, `Option`, or `Text` in its `src/`; the
+one pre-declared thing is `Storable`, and it is pre-declared because the *check* is the evidence rather than a
+declaration an author could write. Shipping `List`, `Buildable`, `Iterable`, and `Index` as crate items would make the
+calculus a calculus of one particular library.
 
 So the collection library is written where every other library in this crate is written — as ordinary `RawData`,
 `RawTrait`, and `RawImpl` fixtures, in `collection_laws.rs`, exactly as `Nat`, `Box`, `Vec`, `Eq`, `Ord`, and `Add`

@@ -9,7 +9,7 @@
 //! refusal quotes the name the author wrote rather than the unfolding the
 //! elaborator matched against.
 
-use musa_core::{
+use musa_calculus::{
     Raw, RawProgram, RawTopLevel, Refusal, Shape, Visibility, check, convertible, convertible_metered, declare_program,
     declare_program_metered,
 };
@@ -184,7 +184,7 @@ fn a_refusal_quotes_the_name_the_author_wrote() {
         definition("bad", Some(var("Nat")), apply(var("n"), [var("Nat.Zero")])),
     ]);
     let error = declare_program(&cx, &raw).expect_err("applying a Nat is refused");
-    let musa_core::ElabError::Refused(Refusal::NotAFunction { ty, .. }) = error else {
+    let musa_calculus::ElabError::Refused(Refusal::NotAFunction { ty, .. }) = error else {
         panic!("applying a Nat is NotAFunction, got {error}");
     };
     let Shape::Def(def) = ty.shape() else {

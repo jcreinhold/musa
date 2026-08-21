@@ -1,6 +1,6 @@
 //! Statement lowering: `music`, `motif`, `fragment`, `note`, and the fold that turns written statements into claims.
 
-use musa_core::{Origin, Raw};
+use musa_calculus::{Origin, Raw};
 use musa_language::ast::AstNode as _;
 use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -79,9 +79,9 @@ impl Lowering<'_> {
             value = match child(parameter, is_type_node) {
                 Some(written) => {
                     let domain = self.ty(&written)?;
-                    musa_core::Raw::annotated_lam(at, bound, domain, value)
+                    musa_calculus::Raw::annotated_lam(at, bound, domain, value)
                 }
-                None => musa_core::Raw::lam(at, bound, value),
+                None => musa_calculus::Raw::lam(at, bound, value),
             };
         }
         Some(crate::lower::items::Definition {
@@ -137,7 +137,7 @@ impl Lowering<'_> {
     pub(crate) fn named_bar(&mut self, node: &SyntaxNode, name: &str) -> Option<crate::lower::items::Definition> {
         Some(crate::lower::items::Definition {
             origin: self.origin(node),
-            name: musa_core::Name::from(name),
+            name: musa_calculus::Name::from(name),
             ty: None,
             value: self.music(node)?,
         })

@@ -5,7 +5,7 @@
 //! a core term. This type is what stands in for "surface" here, and it is
 //! deliberately **surface-independent**: it knows about names, plicity, and
 //! annotations, and it knows nothing about pitches, bars, or `.musa` grammar.
-//! That is what lets `musa-core` stay a leaf, and what lets the elaborator's
+//! That is what lets `musa-calculus` stay a leaf, and what lets the elaborator's
 //! tests be written without a parser.
 //!
 //! # What separates it from [`Term`](crate::Term)

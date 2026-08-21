@@ -389,7 +389,7 @@ fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
     // reach the reader as the adapter's own sentence.
     //
     // The stop is provoked by nesting rather than by narrowing a budget.
-    // `musa_core::Budget::scaled` says why in as many words — the core's
+    // `musa_calculus::Budget::scaled` says why in as many words — the core's
     // limit is `LANGUAGE` and nothing in the pipeline lowers it, "because a
     // budget the caller could lower would make acceptance a property of the
     // invocation rather than of the language" — so the only honest way to

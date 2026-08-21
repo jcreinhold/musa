@@ -4,15 +4,15 @@
 //! §5.8's *fourth* family, and the one that reduces least: §2 gives its forms
 //! typing rules and **no reductions**, so a machine's application is its value
 //! and two machines are the same machine exactly when they were built the same
-//! way. [`musa_core::Builtin::constructor`] is how a table says that, and this
+//! way. [`musa_calculus::Builtin::constructor`] is how a table says that, and this
 //! module is its first caller.
 //!
 //! # Why none of these could have been a rule
 //!
 //! Every form is polymorphic in its step tag and its ports, so a *type* stands
-//! on every one of their spines. [`musa_core::eval`]'s `canonical` answers
+//! on every one of their spines. [`musa_calculus::eval`]'s `canonical` answers
 //! `None` at a universe, so a δ-rule registered here would block forever and
-//! [`musa_core::Malformed::BuiltinStuck`] would never even get the chance to
+//! [`musa_calculus::Malformed::BuiltinStuck`] would never even get the chance to
 //! report it. That is not a mechanism to route around: a machine has nothing to
 //! compute until §3 gives it a step, and §3 is prompts 150–153.
 //!
@@ -29,7 +29,7 @@
 //!   prevents machines whose steps mean different things from being connected"
 //!   is a property of the signature.
 //! - **Storability** is `02-core-calculus.md` §1.2's `Storable` constraint,
-//!   written into these signatures by [`musa_core::requiring_storable`] and
+//!   written into these signatures by [`musa_calculus::requiring_storable`] and
 //!   discharged during elaboration. There is no instance for an arrow — §1.2
 //!   admits instances only on declared types and generates them, so a function
 //!   type is refused before any table is consulted — and the base types this
@@ -50,7 +50,7 @@
 //! `primitive` no typing rule at all, because its type is read out of the
 //! build-local registry rather than written down. See [`UNREGISTERED`].
 
-use musa_core::{Builtin, Cx, ElabError, Index, Term};
+use musa_calculus::{Builtin, Cx, ElabError, Index, Term};
 
 use super::{HERE, ported, type0};
 
@@ -122,7 +122,7 @@ pub(crate) fn is_step_tag(written: &str) -> bool {
 #[cfg(test)]
 pub(super) const UNREGISTERED: [&str; 1] = ["primitive"];
 
-pub(super) fn step_tags() -> Vec<musa_core::Base> {
+pub(super) fn step_tags() -> Vec<musa_calculus::Base> {
     let mut tags: Vec<&'static str> = Vec::new();
     for descriptor in units() {
         let spelling = descriptor.step().spelling();
@@ -164,7 +164,7 @@ pub(super) fn primitives(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         registered.push(Builtin::constructor(
             unit_spelling(descriptor.id(), descriptor.version()),
             ty,
-            musa_core::Family::Machine,
+            musa_calculus::Family::Machine,
         ));
     }
     Ok(registered)
@@ -228,7 +228,7 @@ fn port(cx: &Cx, shape: crate::machine::PortShape) -> Result<Term, ElabError> {
 /// is ever read back.
 pub(crate) fn ports(ty: &Term) -> Option<(crate::machine::StepTag, String, String)> {
     let (head, arguments) = spine(ty);
-    let musa_core::Shape::Base(ref base) = *head.shape() else {
+    let musa_calculus::Shape::Base(ref base) = *head.shape() else {
         return None;
     };
     if &**base.name() != "Machine" {
@@ -266,7 +266,7 @@ fn node(term: &Term, nodes: &mut Vec<crate::machine::SpecNode>) -> Option<usize>
     use crate::machine::{SpecForm, SpecNode};
 
     let (head, arguments) = spine(term);
-    let musa_core::Shape::Builtin(ref builtin) = *head.shape() else {
+    let musa_calculus::Shape::Builtin(ref builtin) = *head.shape() else {
         return None;
     };
     let built = match &**builtin.name() {
@@ -347,23 +347,23 @@ fn unit_named(spelling: &str) -> Option<&'static crate::machine::PrimitiveDescri
 /// which is what makes a machine's digest an identity rather than a hint.
 fn stored(term: &Term) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
-    write_stored(&musa_core::canonical(term)?, &mut bytes)?;
+    write_stored(&musa_calculus::canonical(term)?, &mut bytes)?;
     Some(bytes)
 }
 
-fn write_stored(datum: &musa_core::Datum, bytes: &mut Vec<u8>) -> Option<()> {
+fn write_stored(datum: &musa_calculus::Datum, bytes: &mut Vec<u8>) -> Option<()> {
     match *datum {
-        musa_core::Datum::Lit(ref literal) => {
+        musa_calculus::Datum::Lit(ref literal) => {
             let exact = super::held::<num_rational::Ratio<i64>>(literal)?;
             bytes.push(0);
             bytes.extend_from_slice(&exact.numer().to_be_bytes());
             bytes.extend_from_slice(&exact.denom().to_be_bytes());
         }
-        musa_core::Datum::Count { .. } => {
+        musa_calculus::Datum::Count { .. } => {
             bytes.push(3);
             bytes.extend_from_slice(&super::rules::nat(datum)?.to_be_bytes());
         }
-        musa_core::Datum::Case {
+        musa_calculus::Datum::Case {
             ref constructor,
             ref fields,
         } => match &**constructor {
@@ -391,8 +391,8 @@ fn write_stored(datum: &musa_core::Datum, bytes: &mut Vec<u8>) -> Option<()> {
 fn spelled(ty: &Term) -> Option<String> {
     let (head, arguments) = spine(ty);
     match *head.shape() {
-        musa_core::Shape::Base(ref base) if arguments.is_empty() => Some(base.name().to_string()),
-        musa_core::Shape::Const(ref constant) => {
+        musa_calculus::Shape::Base(ref base) if arguments.is_empty() => Some(base.name().to_string()),
+        musa_calculus::Shape::Const(ref constant) => {
             let name = constant.to_string();
             if name == "Pair" {
                 let [first, second] = arguments[..] else {
@@ -404,25 +404,25 @@ fn spelled(ty: &Term) -> Option<String> {
         }
         // Written out rather than left to a wildcard, so that a shape added to
         // the core has to be classified here before this crate builds again —
-        // `musa_core::canonical`'s own discipline, and for its reason.
-        musa_core::Shape::Base(_)
-        | musa_core::Shape::Var(_)
-        | musa_core::Shape::Def(_)
-        | musa_core::Shape::Lit(_)
-        | musa_core::Shape::Numeral(_)
-        | musa_core::Shape::Builtin(_)
-        | musa_core::Shape::Universe(_)
-        | musa_core::Shape::Pi { .. }
-        | musa_core::Shape::Lam { .. }
+        // `musa_calculus::canonical`'s own discipline, and for its reason.
+        musa_calculus::Shape::Base(_)
+        | musa_calculus::Shape::Var(_)
+        | musa_calculus::Shape::Def(_)
+        | musa_calculus::Shape::Lit(_)
+        | musa_calculus::Shape::Numeral(_)
+        | musa_calculus::Shape::Builtin(_)
+        | musa_calculus::Shape::Universe(_)
+        | musa_calculus::Shape::Pi { .. }
+        | musa_calculus::Shape::Lam { .. }
         // `App` cannot appear — the peel above ended because the head was not
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
-        | musa_core::Shape::App { .. }
-        | musa_core::Shape::RecordType(_)
-        | musa_core::Shape::Record(_)
-        | musa_core::Shape::Project { .. }
-        | musa_core::Shape::Hole(_)
-        | musa_core::Shape::Let { .. } => None,
+        | musa_calculus::Shape::App { .. }
+        | musa_calculus::Shape::RecordType(_)
+        | musa_calculus::Shape::Record(_)
+        | musa_calculus::Shape::Project { .. }
+        | musa_calculus::Shape::Hole(_)
+        | musa_calculus::Shape::Let { .. } => None,
     }
 }
 
@@ -430,7 +430,7 @@ fn spelled(ty: &Term) -> Option<String> {
 fn spine(term: &Term) -> (&Term, Vec<&Term>) {
     let mut head = term;
     let mut arguments = Vec::new();
-    while let musa_core::Shape::App {
+    while let musa_calculus::Shape::App {
         ref function,
         ref argument,
     } = *head.shape()
@@ -485,7 +485,7 @@ pub(super) fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     ]
     .into_iter()
     .zip(SPELLINGS)
-    .map(|(ty, spelling)| Builtin::constructor(spelling, ty, musa_core::Family::Machine))
+    .map(|(ty, spelling)| Builtin::constructor(spelling, ty, musa_calculus::Family::Machine))
     .collect())
 }
 
@@ -670,7 +670,7 @@ fn scheme(binders: &[&'static str], storable: &[usize], arguments: Vec<Term>, re
         .enumerate()
         .rev()
         .fold(applied, |built, (which, position)| {
-            musa_core::requiring_storable(HERE, at(bound.saturating_add(which), *position), built)
+            musa_calculus::requiring_storable(HERE, at(bound.saturating_add(which), *position), built)
         });
     binders.iter().rev().fold(constrained, |built, name| {
         Term::implicit_pi(HERE, *name, type0(), built)

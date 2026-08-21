@@ -9,7 +9,7 @@
 //! deterministic rather than flaky-by-construction. That is the property being
 //! protected — a timeout here would make acceptance a property of the host.
 
-use musa_core::{
+use musa_calculus::{
     Budget, CoreError, Cx, ElabError, Level, Metric, Origin, Raw, Term, convertible, convertible_types, normalize_type,
 };
 
@@ -187,7 +187,7 @@ fn a_term_nested_past_the_limit_is_refused() {
 /// because nothing was left alive to consult it.
 ///
 /// What makes this pass is not a larger limit but the room under it: §4.1 owes
-/// `nesting limit × frame ceiling` bytes of stack, `musa-core`'s `room` module
+/// `nesting limit × frame ceiling` bytes of stack, `musa-calculus`'s `room` module
 /// arranges them, and the budget does not move, so the same terms are accepted
 /// and refused as before. A regression here shows up as an *abort* rather than
 /// as a failed assertion, which is the point — that is what the defect looked
@@ -209,7 +209,7 @@ fn elaborating_a_term_nested_past_the_limit_is_refused() {
     on_the_smallest_host(|| {
         let cx = Cx::new();
         let too_deep = nested_raw_lets(NESTING_LIMIT.saturating_add(64));
-        match musa_core::infer(&cx, &too_deep) {
+        match musa_calculus::infer(&cx, &too_deep) {
             Err(ElabError::Exhausted(error)) => assert_eq!(error.metric, Metric::Nesting),
             other => panic!("expected a nesting refusal, got {other:?}"),
         }

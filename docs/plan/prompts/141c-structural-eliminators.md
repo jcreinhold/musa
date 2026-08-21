@@ -10,7 +10,7 @@ phase: 3
 
 ## Task
 
-Prompt 141b gave `musa-core` §5.8's δ-builtins — first-order operations over base types, reduced by a
+Prompt 141b gave `musa-calculus` §5.8's δ-builtins — first-order operations over base types, reduced by a
 `fn(&[&Literal]) -> Option<Literal>`. §5.8 names **four** families, and the second one, *structural eliminators*, is
 "the generated recursors and the derived traversals over them". The generated recursors are prompt 135's ι-rule and are
 done. The derived traversals are not: eleven compiler-owned operations take a *function* argument, and a δ-rule cannot
@@ -30,7 +30,7 @@ migrate `stdlib/src/adapters/staff.musa` onto.
   §1.4's ι-rule, which is the shape this prompt copies.
 - [`141b`](141b-base-types-and-builtins.md) in full — `Base`, `Literal`, `Builtin`, `Family`, `Registry`, and
   `eval.rs`'s `delta`, which is where the new rule fires beside the old one.
-- `crates/musa-core/src/family.rs`'s `iota` — the existing structural eliminator, and the proof that a rule which
+- `crates/musa-calculus/src/family.rs`'s `iota` — the existing structural eliminator, and the proof that a rule which
   answers a *term* built from its arguments is enough. A recursor reduces to `method(fields…, hypotheses…)`; nothing in
   it inspects a value that quotation could not have produced.
 - `crates/musa-compiler/src/core.rs`'s `Eliminator` (eight entries), `SyntaxOp` (three `PhaseFamily::Fold` entries), and
@@ -96,20 +96,20 @@ change, and prompt 142 is still the one cutover.
 
 ## Target
 
-- `crates/musa-core/src/base.rs`: `Rewrite`, `Builtin::structural`, the target index on `BuiltinDeclaration`, and
+- `crates/musa-calculus/src/base.rs`: `Rewrite`, `Builtin::structural`, the target index on `BuiltinDeclaration`, and
   `Builtin::rewrite`, all doc-commented with their invariants before the implementation. `Builtin::new` keeps its
   meaning and gains a doc line saying it builds a δ-builtin.
-- `crates/musa-core/src/eval.rs`: the structural arm beside `delta`, firing on a literal target and passing every other
-  argument through as the term it was.
+- `crates/musa-calculus/src/eval.rs`: the structural arm beside `delta`, firing on a literal target and passing every
+  other argument through as the term it was.
 - Registration checks: a target index within arity, and a target type headed by a registered [`Base`]; D1's arrow-free
   check narrowed to δ-builtins so that a structural signature is not refused for having the arrow it must have.
 - Two new `Refusal` variants with their `musa explain` codes in `crates/musa-compiler/src/diagnose.rs`: a target index
   outside the signature, and a structural eliminator whose target is not a base type.
-- `crates/musa-core/tests/suite/base_laws.rs`: the worked structural eliminator and its laws — it fires when its target
-  is a literal and not before, a function argument is passed through unevaluated, the rewrite's result is evaluated by
-  the core rather than by the host, a neutral target leaves a neutral, budget charging, and the two registration
-  refusals.
-- `docs/plan/code-map/` rows for `musa-core`, extending 141b's row rather than adding a second one.
+- `crates/musa-calculus/tests/suite/base_laws.rs`: the worked structural eliminator and its laws — it fires when its
+  target is a literal and not before, a function argument is passed through unevaluated, the rewrite's result is
+  evaluated by the core rather than by the host, a neutral target leaves a neutral, budget charging, and the two
+  registration refusals.
+- `docs/plan/code-map/` rows for `musa-calculus`, extending 141b's row rather than adding a second one.
 - No change to `musa-compiler`'s checker, no `stdlib/` or `examples/` change, and no builtin moved out of
   `BUILTIN_OWNERSHIP`.
 
@@ -117,8 +117,8 @@ change, and prompt 142 is still the one cutover.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
@@ -129,8 +129,8 @@ Commit as `Give the core its structural eliminators`.
 
 ## Stop
 
-- No collection eliminator registered in `musa-core`, and no `List`, `Nat`, or `Option` in its `src/`. Those are library
-  types; prompt 141 already proved they are writable.
+- No collection eliminator registered in `musa-calculus`, and no `List`, `Nat`, or `Option` in its `src/`. Those are
+  library types; prompt 141 already proved they are writable.
 - No wiring, no move of `BUILTIN_OWNERSHIP`, and no `musa-compiler` checker change. Prompt 142 owns the cutover.
 - No registry collapse and no builtin deleted. Prompt 143.
 - No callback into the evaluator, no `Value` in a public signature, and no interior mutability. The rule takes terms and

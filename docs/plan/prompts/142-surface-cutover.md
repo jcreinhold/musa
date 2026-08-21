@@ -10,10 +10,10 @@ phase: 3
 
 ## Task
 
-Close the seam. Wire `musa-compiler` to `musa-core`, migrate `stdlib/`, `examples/`, and every fixture corpus onto the
-new language, delete contextual `Music` and the rank-1 Hindley–Milner checker along with every superseded checking path,
-and discharge `docs/plan/clean-break-ledger.md`. This is the one migration, and it is green at the end rather than in
-the middle. It absorbs prompt 127e, whose file stays as a superseded record rather than being repaired.
+Close the seam. Wire `musa-compiler` to `musa-calculus`, migrate `stdlib/`, `examples/`, and every fixture corpus onto
+the new language, delete contextual `Music` and the rank-1 Hindley–Milner checker along with every superseded checking
+path, and discharge `docs/plan/clean-break-ledger.md`. This is the one migration, and it is green at the end rather than
+in the middle. It absorbs prompt 127e, whose file stays as a superseded record rather than being repaired.
 
 ## Read
 
@@ -25,10 +25,10 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   from the enclosing voice's left fold. Absorbing it was right because migrating `stdlib/` twice — once onto the old
   core's replacement, once onto the new language — would have been the same files rewritten for two different reasons
   within ten prompts.
-- [`141b`](141b-base-types-and-builtins.md), which gives `musa-core` the base types, literals, and builtin registry
+- [`141b`](141b-base-types-and-builtins.md), which gives `musa-calculus` the base types, literals, and builtin registry
   without which no real Musa program can be elaborated by it.
 - [`141e`](141e-compiler-registry.md), which *filled* that registry: the compiler's prelude declarations, the inert
-  musical domains as base types, the 92 δ builtins and 14 δ phase builders as `musa_core::Builtin`s, and the sampled
+  musical domains as base types, the 92 δ builtins and 14 δ phase builders as `musa_calculus::Builtin`s, and the sampled
   agreement with the old evaluator that makes them a translation rather than a rewrite. It also names the 28 entries it
   left and why — which is where this prompt's own list of what still has no core spelling comes from. Its accounting law
   is what will fail if this prompt forgets one.
@@ -37,8 +37,8 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   `run_syntax_step` is a definition here rather than a builtin, so the migration writes `step.run(context)` where the
   old source wrote a call.
 - [`141g`](141g-raw-lowering.md), which built the reading half of this prompt's first Target bullet — surface CST to
-  `musa_core::Raw`, with the site table that points a refusal back at a span, and laws rather than a caller. It exists
-  because this prompt's own Design asks for the three stages in order and an ordering inside one commit is not
+  `musa_calculus::Raw`, with the site table that points a refusal back at a span, and laws rather than a caller. It
+  exists because this prompt's own Design asks for the three stages in order and an ordering inside one commit is not
   observable; the argument is 141e's, one level up. What is left here is the *wiring*: the passes that call it, the
   readback out of normal forms, and the deletion of what it replaces.
 - [`141ga`](141ga-quotation-core.md), which gave a template an inert core shape and moved both quotation forms onto
@@ -89,14 +89,14 @@ the middle. It absorbs prompt 127e, whose file stays as a superseded record rath
   this migration written out in advance. Its "what §2 still says that is not true" list is the other: `play(chosen,
   1/2)` and `-> EventTrack[WrittenTime, ScoreFact]` are both spellings this prompt makes true or repairs in
   `01-surface.md`.
-- [`141n`](141n-top-level-program.md), which gave `musa-core` the thing a pass hands a whole document to: one group of
-  named definitions, every signature collected before any body, so a later declaration may be referenced. It was split
-  off when starting this prompt found that the core had no door for it — `declare` takes a *data* group, `check` takes
-  one term, and `Cx::define`'s binder is nameless on purpose, so the only named binding on offer was `RawShape::Let`,
-  which scopes forward only. `examples/neo-riemannian.musa:72` calls the `compose_close` declared at `:151`, and
-  `examples/tonal-construction.musa` does the same kind of thing eighteen times, so a nested `let` chain would have
-  refused the existing corpus before any of it was migrated. What is left here is building the group out of 141g's items
-  and handing it over.
+- [`141n`](141n-top-level-program.md), which gave `musa-calculus` the thing a pass hands a whole document to: one group
+  of named definitions, every signature collected before any body, so a later declaration may be referenced. It was
+  split off when starting this prompt found that the core had no door for it — `declare` takes a *data* group, `check`
+  takes one term, and `Cx::define`'s binder is nameless on purpose, so the only named binding on offer was
+  `RawShape::Let`, which scopes forward only. `examples/neo-riemannian.musa:72` calls the `compose_close` declared at
+  `:151`, and `examples/tonal-construction.musa` does the same kind of thing eighteen times, so a nested `let` chain
+  would have refused the existing corpus before any of it was migrated. What is left here is building the group out of
+  141g's items and handing it over.
 - [`141o`](141o-document-elaboration.md), which walks a whole document: which of the core's four doors each written
   declaration goes through, the order they open in, and the dependency ordering the family groups need for the reason
   141n's definitions needed one. It was split off when starting this prompt found that `crate::lower` had no caller at
@@ -160,7 +160,7 @@ necessarily anywhere between. That is the price of a clean break, and the altern
 elaborator selected by a flag, a per-file opt-in — costs more, because every later reader has to learn both languages
 and decide which one a file is in.
 
-**Order the work so the migration is mechanical.** Elaborate through `musa-core` first and get the existing corpus
+**Order the work so the migration is mechanical.** Elaborate through `musa-calculus` first and get the existing corpus
 passing under the new checker with the old spellings still in place; then migrate spellings; then delete. Mixing the
 three makes every failure ambiguous between "the new checker is wrong" and "this file was translated wrong", and there
 will be enough failures that the distinction matters. Prompt 141e already took the first slice of this — the registry
@@ -266,9 +266,9 @@ rules never authorized.
 
 ## Target
 
-- `musa-compiler` elaborating through `musa-core`: `check_piece`, `check_arguments`, `check_template_voice`, and
-  `check_material` calling 141g's and 141k's lowering and `musa_core::check`, with the old checking path deleted. The
-  declaration reading is 141g's, the notation reading is 141k's, and the structure around them is 141p's; what this
+- `musa-compiler` elaborating through `musa-calculus`: `check_piece`, `check_arguments`, `check_template_voice`, and
+  `check_material` calling 141g's and 141k's lowering and `musa_calculus::check`, with the old checking path deleted.
+  The declaration reading is 141g's, the notation reading is 141k's, and the structure around them is 141p's; what this
   delivers is the rest — bar lines, the instance sites templates make, the kernel quote, the tie, the passes that call
   the whole of it, and the readback that turns a normal form into the musical value a consumer receives. A track is a
   literal at `EventTrack ⟨written⟩`, so the readback is a normal form, a literal, and the payload it holds; what costs
@@ -293,15 +293,15 @@ rules never authorized.
     and only the type `(A, B)` refused — one construct disagreeing with itself, which is a defect rather than a stage.
     Both halves now read the family 141ha declared for the machine calculus's wiring: `(A, B)` is `Pair A B` and
     `(a, b)` is `Pair.Both a b`, in the expression and in the pattern. A *constructor application* and not a structural
-    record, because that is what makes a written product **canonical data** — `Pair.Both a b` is a `musa_core::Datum`
-    and a record is not, so a δ-rule and an assertion's argument can read one back. `prelude.rs`'s own note already
-    argued the same point one level down: §2's pairs are wiring, field names would be invented here and read by every
-    program that matched on one, and two products that named them differently would stop being the same type. **A wider
-    product nests to the right**, so `(A, B, C)` is `Pair A (Pair B C)`, `(a, b, c)` is `Pair.Both a (Pair.Both b c)`,
-    and a pattern folds the same way. One fold, applied three times, written once in `lower.rs` — the *direction* has to
-    agree between the type side, the value side, and the pattern, and three copies of it are three chances for one to
-    lean the other way. This closes the second of the two faults 141o's standard-library survey recorded and one of the
-    two on the staff adapter.
+    record, because that is what makes a written product **canonical data** — `Pair.Both a b` is a
+    `musa_calculus::Datum` and a record is not, so a δ-rule and an assertion's argument can read one back.
+    `prelude.rs`'s own note already argued the same point one level down: §2's pairs are wiring, field names would be
+    invented here and read by every program that matched on one, and two products that named them differently would stop
+    being the same type. **A wider product nests to the right**, so `(A, B, C)` is `Pair A (Pair B C)`, `(a, b, c)` is
+    `Pair.Both a (Pair.Both b c)`, and a pattern folds the same way. One fold, applied three times, written once in
+    `lower.rs` — the *direction* has to agree between the type side, the value side, and the pattern, and three copies
+    of it are three chances for one to lean the other way. This closes the second of the two faults 141o's
+    standard-library survey recorded and one of the two on the staff adapter.
 
     *Repaired during implementation.* This bullet said wider products kept the refusal, on the grounds that a choice
     between `(a, (b, c))` and `((a, b), c)` was one "the corpus does not force, since all 36 products it writes are
@@ -490,9 +490,9 @@ rules never authorized.
     `member_types`, `plain`, `plain_one`, `admits`), `data.rs` (`Kind`, `Unifier`, `rebuilt`, `member_types`), and
     `registry.rs` — and the third is *live code the new core depends on*. `registry::builtins` types the phase builders
     by instantiating `SYNTAX_OWNERSHIP`'s scheme with `crate::infer::Unifier` and translating the resulting `Type`
-    through `phase_type`, so the registry `musa-core` reads is currently filled by the checker being deleted. Stating
-    those signatures in core vocabulary is therefore part of this deletion rather than a consequence of it, and until it
-    is done the deletion is not available whatever the warning count says.
+    through `phase_type`, so the registry `musa-calculus` reads is currently filled by the checker being deleted.
+    Stating those signatures in core vocabulary is therefore part of this deletion rather than a consequence of it, and
+    until it is done the deletion is not available whatever the warning count says.
   - **`elaborate.rs` and `resolve.rs` are carved, not deleted.** `elaborate_parsed` is still the entry point and now
     orchestrates `crate::document::elaborate`; `FactKind`, `ScoreFact`, and `VoiceTrack` are the fact representation
     `registry/track.rs`, `factext.rs`, `lower/kernel/laws.rs`, and `kernel_text.rs` read; `piece_term` and
@@ -518,7 +518,7 @@ rules never authorized.
   things `03-machine-calculus.md` §2's premises forced, recorded here rather than left as drift:
   - **A base type declares its own storability, and a host signature is the only thing that may demand it.**
     `Base::storable` is a fact the base type carries, `Cx::with_externs` generates the instances from it, and
-    `musa_core::requiring_storable` wraps a registered signature in the constraint binder. That is what makes §2's
+    `musa_calculus::requiring_storable` wraps a registered signature in the constraint binder. That is what makes §2's
     `data A` premises *writable*: they appear on `machine(p)`'s two ports, `identity`'s one, and `feedback`'s stored
     value, and on nothing else — `connect`, `beside`, `copy`, `drop`, and `swap` carry no premise and now carry no
     binder. `Storable` stays reserved and generated (`02-core-calculus.md` §1.2): no source may write `impl Storable`,
@@ -535,7 +535,7 @@ rules never authorized.
     against `registry::is_step_tag`, carrying forward the two messages the replaced checker already wrote. Both halves
     of §2 therefore survive the restatement and they survive it differently: storability as something the signature
     *says*, the step tag as something the surface *reads*.
-  - **A conversion mismatch names the two types it was already holding.** `musa-core` gained `show.rs`, a printer in
+  - **A conversion mismatch names the two types it was already holding.** `musa-calculus` gained `show.rs`, a printer in
     core vocabulary — `Machine K A B` and not `Machine<K, A, B>`, because that is what the term is — so `Mismatch` says
     `expected Ratio, found Nat` and `Refusal::UnkeyedConstraint` says which type no key could hold. Prompt 144 still
     owns the rest of the diagnostic surface; what is discharged here is only the part where the stage had computed the
@@ -553,7 +553,7 @@ rules never authorized.
       `fn walked(items: StaffItem) -> (Position<WrittenTime> -> Result<Realization, Text>)` declares one parameter and
       returns a function. That declaration and a two-parameter one have the same type.
     - What separates them is already in the term: a declared parameter carries the name its author wrote, and a written
-      arrow's binder carries `musa_core::ARROW_BINDER` because a Π always binds and nothing in `A → B` refers to the
+      arrow's binder carries `musa_calculus::ARROW_BINDER` because a Π always binds and nothing in `A → B` refers to the
       argument. `Raw::arrow` is now the constructor for the second, `elab.rs::declared_parameters` stops at it, and
       `Refusal::Underapplied` names the parameters no argument reached — "nothing is given for `by`" rather than a count
       the reader has to go and resolve. A *registered* signature is read the other way, every explicit binder counted,

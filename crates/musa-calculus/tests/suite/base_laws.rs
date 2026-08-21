@@ -32,7 +32,7 @@
 use std::any::Any;
 use std::sync::Arc;
 
-use musa_core::{
+use musa_calculus::{
     Answer, Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal,
     Origin, Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
 };
@@ -382,7 +382,7 @@ fn applied(function: Term, arguments: impl IntoIterator<Item = Term>) -> Term {
 ///
 /// The worked structural eliminator, and everything about it is what a δ-builtin
 /// cannot be: two of its arguments are functions, so no arrangement of
-/// [`Rule`](musa_core::Rule) could ever see them as literals, and the answer it
+/// [`Rule`](musa_calculus::Rule) could ever see them as literals, and the answer it
 /// gives is an *application* of one of them rather than a value it computed
 /// itself.
 ///
@@ -466,7 +466,7 @@ fn tree_spin() -> Builtin {
 ///   `recurse_syntax` will need for its own `C` and `A`.
 /// - **Its group branch takes a `List A`**, so firing at a node with children
 ///   means *building a list*. `List.Cons` is a constructor of a declared family;
-///   a [`Rewrite`](musa_core::Rewrite) is handed a literal and a builtin and can
+///   a [`Rewrite`](musa_calculus::Rewrite) is handed a literal and a builtin and can
 ///   name neither. The vocabulary is where the host puts the two terms it
 ///   resolved from the context that declared them.
 ///
@@ -623,9 +623,9 @@ fn host_at(budget: Budget) -> Cx {
 /// If a declaration is refused, which would be a defect in this crate.
 fn declarations() -> (Vec<Arc<Group>>, Declared) {
     let roomy = Cx::with_budget(Budget::LANGUAGE);
-    let options = musa_core::declare(&roomy, &options()).expect("`Option` is a declaration");
+    let options = musa_calculus::declare(&roomy, &options()).expect("`Option` is a declaration");
     let declaring = roomy.declaring(&options);
-    let lists = musa_core::declare(&declaring, &lists()).expect("`List` is a declaration");
+    let lists = musa_calculus::declare(&declaring, &lists()).expect("`List` is a declaration");
     let declaring = declaring.declaring(&lists);
     let option = named(&declaring, "Option");
     let option_int = Term::app(TYPES, option.clone(), int().term(TYPES));
@@ -1011,7 +1011,7 @@ fn a_rule_that_answers_nothing_is_still_a_compiler_defect() {
     assert!(
         matches!(
             normalize(&cx, &int_ty, &term),
-            Err(CoreError::Malformed(musa_core::Malformed::BuiltinStuck(_)))
+            Err(CoreError::Malformed(musa_calculus::Malformed::BuiltinStuck(_)))
         ),
         "a rule with nothing to say at arguments it declares it accepts is the table's mistake"
     );
@@ -1139,7 +1139,7 @@ fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
 // ---- reading data back out of a term ---------------------------------------
 //
 // Everything above this line reads data on the way *in*, when δ fires. These
-// read it on the way out, through [`musa_core::canonical`], which is the same
+// read it on the way out, through [`musa_calculus::canonical`], which is the same
 // D1 question asked of a normal form. The corpus is the same `Option` and the
 // same `Int`, deliberately: if the two readings agreed only on terms written
 // for them separately they would not be one answer to one question.
@@ -1148,11 +1148,11 @@ fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
 #[test]
 fn a_literal_reads_back_as_itself() {
     assert_eq!(
-        musa_core::canonical(&int_lit(3).term(TERMS)),
+        musa_calculus::canonical(&int_lit(3).term(TERMS)),
         Some(Datum::Lit(int_lit(3)))
     );
     assert_eq!(
-        musa_core::canonical(&text_lit("c").term(TERMS)),
+        musa_calculus::canonical(&text_lit("c").term(TERMS)),
         Some(Datum::Lit(text_lit("c")))
     );
 }
@@ -1180,7 +1180,7 @@ fn a_saturated_constructor_reads_back_without_its_parameters() {
     for (name, written, expected) in questions {
         let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(
-            musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+            musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
             Some(expected),
             "{name}"
         );
@@ -1199,7 +1199,7 @@ fn nested_data_reads_back_nested() {
     let written = calls("Option.Some", [inner, some(Raw::lit(TERMS, int_lit(4)))]);
     let term = check(&cx, &ty, &written).expect("the nested value checks");
     assert_eq!(
-        musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+        musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
         Some(case("Option.Some", [case("Option.Some", [Datum::Lit(int_lit(4))])]))
     );
 }
@@ -1208,7 +1208,7 @@ fn nested_data_reads_back_nested() {
 ///
 /// The law that makes the two halves one answer. `option_or` is handed a
 /// [`Datum`] by the evaluator when it fires, and it answers the field it found;
-/// [`musa_core::canonical`] is handed the same subject as a term. If the field
+/// [`musa_calculus::canonical`] is handed the same subject as a term. If the field
 /// the rule acted on and the field the reading reports could differ, a host
 /// would have to know which door it came through — and §5.8's whole point is
 /// that it does not.
@@ -1220,7 +1220,7 @@ fn a_term_and_the_rule_that_fires_on_it_see_the_same_data() {
     let subject = some(Raw::lit(TERMS, int_lit(9)));
 
     let held = check(&cx, &ty, &subject).expect("the subject checks");
-    let read = musa_core::canonical(&normalize_at(&cx, &ty, &held)).expect("the term reads back as data");
+    let read = musa_calculus::canonical(&normalize_at(&cx, &ty, &held)).expect("the term reads back as data");
 
     let program = calls("option_or", [subject, Raw::lit(TERMS, int_lit(0))]);
     let fired = check(&cx, &int_ty, &program).expect("the application checks");
@@ -1280,7 +1280,7 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
     for (name, written, ty) in questions {
         let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(
-            musa_core::canonical(&normalize_at(&cx, &ty, &term)),
+            musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
             None,
             "{name} is not data"
         );

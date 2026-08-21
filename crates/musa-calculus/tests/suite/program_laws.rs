@@ -13,7 +13,7 @@
 //! than a copy — which is the property that keeps `stdlib/`'s two thousand
 //! definitions from being quadratic in the corpus.
 
-use musa_core::{
+use musa_calculus::{
     Cx, ModuleId, Program, Raw, RawArm, RawImpl, RawPattern, RawProgram, RawTopLevel, RawTrait, Refusal, Shape, Term,
     Visibility,
 };
@@ -75,7 +75,7 @@ fn number(count: u32) -> Raw {
 /// If `Nat` is not in scope, which is a defect in the fixture rather than in
 /// any law.
 fn nat(cx: &Cx) -> Term {
-    musa_core::infer(cx, &var("Nat")).expect("Nat is declared").0
+    musa_calculus::infer(cx, &var("Nat")).expect("Nat is declared").0
 }
 
 /// The group, declared, or a panic naming what refused it.
@@ -84,7 +84,7 @@ fn nat(cx: &Cx) -> Term {
 ///
 /// When elaboration refuses a program a law says it accepts.
 fn declared(name: &str, cx: &Cx, program: &RawProgram) -> std::sync::Arc<Program> {
-    musa_core::declare_program(cx, program).unwrap_or_else(|error| panic!("{name}: {error}"))
+    musa_calculus::declare_program(cx, program).unwrap_or_else(|error| panic!("{name}: {error}"))
 }
 
 /// The refusal a group answers with, or a panic naming what it did instead.
@@ -94,7 +94,7 @@ fn declared(name: &str, cx: &Cx, program: &RawProgram) -> std::sync::Arc<Program
 /// When elaboration accepts a program a law says it refuses, or fails for a
 /// reason that is not a refusal at all (§4).
 fn refused(name: &str, cx: &Cx, program: &RawProgram) -> Refusal {
-    let Err(error) = musa_core::declare_program(cx, program) else {
+    let Err(error) = musa_calculus::declare_program(cx, program) else {
         panic!("{name}: the group was declared, and this law says it cannot be");
     };
     refusal(name, error)
@@ -147,11 +147,11 @@ fn a_body_may_name_a_definition_written_after_it() {
     let definitions = declared("a forward reference", &cx, &group);
     let inside = cx.defining(&definitions);
     let ty = nat(&inside);
-    let term = musa_core::check(&inside, &ty, &var("earlier")).expect("the definition is in scope after the group");
-    let normal = musa_core::normalize(&inside, &ty, &term).expect("and it computes");
-    let expected = musa_core::check(&inside, &ty, &number(3)).expect("three is a natural number");
+    let term = musa_calculus::check(&inside, &ty, &var("earlier")).expect("the definition is in scope after the group");
+    let normal = musa_calculus::normalize(&inside, &ty, &term).expect("and it computes");
+    let expected = musa_calculus::check(&inside, &ty, &number(3)).expect("three is a natural number");
     assert!(
-        musa_core::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
+        musa_calculus::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
         "the forward call ran: `later 2` is 3"
     );
 }
@@ -172,11 +172,11 @@ fn a_body_may_name_an_unannotated_definition_written_after_it() {
     let definitions = declared("a forward reference to an inferred definition", &cx, &group);
     let inside = cx.defining(&definitions);
     let ty = nat(&inside);
-    let term = musa_core::check(&inside, &ty, &var("earlier")).expect("the definition is in scope");
-    let normal = musa_core::normalize(&inside, &ty, &term).expect("and it computes");
-    let expected = musa_core::check(&inside, &ty, &number(3)).expect("three is a natural number");
+    let term = musa_calculus::check(&inside, &ty, &var("earlier")).expect("the definition is in scope");
+    let normal = musa_calculus::normalize(&inside, &ty, &term).expect("and it computes");
+    let expected = musa_calculus::check(&inside, &ty, &number(3)).expect("three is a natural number");
     assert!(
-        musa_core::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
+        musa_calculus::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
         "the inferred definition was elaborated before the one that names it"
     );
 }
@@ -252,11 +252,11 @@ fn a_self_recursive_definition_goes_to_the_measure() {
     let ty = nat(&inside);
     for (left, right) in [(0, 0), (0, 3), (2, 0), (2, 3)] {
         let written = apply(var("add"), [number(left), number(right)]);
-        let sum = musa_core::check(&inside, &ty, &written).expect("addition applies");
-        let normal = musa_core::normalize(&inside, &ty, &sum).expect("and computes");
-        let expected = musa_core::check(&inside, &ty, &number(left + right)).expect("so does the answer");
+        let sum = musa_calculus::check(&inside, &ty, &written).expect("addition applies");
+        let normal = musa_calculus::normalize(&inside, &ty, &sum).expect("and computes");
+        let expected = musa_calculus::check(&inside, &ty, &number(left + right)).expect("so does the answer");
         assert!(
-            musa_core::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
+            musa_calculus::convertible(&inside, &ty, &normal, &expected).expect("conversion answers"),
             "{left} + {right} is {}",
             left + right
         );
@@ -292,10 +292,10 @@ fn a_private_definition_is_invisible_from_another_module() {
     let ty = nat(&cx);
 
     let at_home = cx.defining(&definitions).in_module(INSIDE);
-    musa_core::check(&at_home, &ty, &var("secret")).expect("its own module may name it");
+    musa_calculus::check(&at_home, &ty, &var("secret")).expect("its own module may name it");
 
     let elsewhere = cx.defining(&definitions).in_module(OUTSIDE);
-    let Err(error) = musa_core::check(&elsewhere, &ty, &var("secret")) else {
+    let Err(error) = musa_calculus::check(&elsewhere, &ty, &var("secret")) else {
         panic!("another module named a private definition");
     };
     let refusal = refusal("a private definition", error);
@@ -325,8 +325,8 @@ fn a_use_of_a_definition_does_not_grow_with_its_body() {
     let definitions = declared("two definitions of different size", &cx, &group);
     let inside = cx.defining(&definitions);
     let ty = nat(&inside);
-    let small = musa_core::check(&inside, &ty, &var("small")).expect("`small` is in scope");
-    let large = musa_core::check(&inside, &ty, &var("large")).expect("`large` is in scope");
+    let small = musa_calculus::check(&inside, &ty, &var("small")).expect("`small` is in scope");
+    let large = musa_calculus::check(&inside, &ty, &var("large")).expect("`large` is in scope");
     assert_eq!(
         size(&small),
         size(&large),
@@ -358,7 +358,7 @@ fn tagged() -> RawTrait {
 /// point somewhere other than at itself.
 fn tagged_context() -> Cx {
     let cx = boxed_context(&nat_vec_context());
-    let declared = musa_core::declare_trait(&cx, &tagged()).expect("Tagged is a declaration");
+    let declared = musa_calculus::declare_trait(&cx, &tagged()).expect("Tagged is a declaration");
     cx.declaring_class(&declared)
 }
 
@@ -384,8 +384,8 @@ fn tag_of(receiver: Raw) -> Raw {
 /// If it does not elaborate, which every law that calls it says it does.
 fn computed(name: &str, cx: &Cx, subject: &Raw) -> Term {
     let ty = nat(cx);
-    let term = musa_core::check(cx, &ty, subject).unwrap_or_else(|error| panic!("{name}: {error}"));
-    musa_core::normalize(cx, &ty, &term).unwrap_or_else(|error| panic!("{name}: {error}"))
+    let term = musa_calculus::check(cx, &ty, subject).unwrap_or_else(|error| panic!("{name}: {error}"));
+    musa_calculus::normalize(cx, &ty, &term).unwrap_or_else(|error| panic!("{name}: {error}"))
 }
 
 /// Whether `subject` computes to `count` at `Nat`.
@@ -396,8 +396,8 @@ fn computed(name: &str, cx: &Cx, subject: &Raw) -> Term {
 fn counts(name: &str, cx: &Cx, subject: &Raw, count: u32) -> bool {
     let ty = nat(cx);
     let normal = computed(name, cx, subject);
-    let expected = musa_core::check(cx, &ty, &number(count)).expect("a numeral is a natural number");
-    musa_core::convertible(cx, &ty, &normal, &expected).expect("conversion answers")
+    let expected = musa_calculus::check(cx, &ty, &number(count)).expect("a numeral is a natural number");
+    musa_calculus::convertible(cx, &ty, &normal, &expected).expect("conversion answers")
 }
 
 /// 141r: a definition may call a method of an instance its own document

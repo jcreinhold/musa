@@ -8,14 +8,14 @@
 //! the repair: the package builds one through `build`, and a client that reaches
 //! for the constructor is told the name exists and is maintained elsewhere.
 //!
-//! `musa-core` mints no module identity — the caller does (`origin.rs`'s bargain)
+//! `musa-calculus` mints no module identity — the caller does (`origin.rs`'s bargain)
 //! — so these tests assign the numbers a compiler will assign at prompt 142. Two
 //! numbers is the whole apparatus: [`INSIDE`] is the package, [`OUTSIDE`] is a
 //! client.
 
 use std::sync::Arc;
 
-use musa_core::{Cx, Group, ModuleId, Raw, RawArm, RawData, RawPattern, Refusal, Term, check, declare, infer};
+use musa_calculus::{Cx, Group, ModuleId, Raw, RawArm, RawData, RawPattern, Refusal, Term, check, declare, infer};
 
 use crate::family_laws::{apply, binder, constructor, data, family, hidden_case, hidden_family, var};
 use crate::programs::{WRITTEN, refusal};
@@ -217,7 +217,7 @@ fn a_private_family_hides_the_type_as_well_as_its_cases() {
 ///
 /// The clause that keeps this rule invisible to every caller that has no
 /// packages — including every other suite in this crate, and every caller of
-/// `musa-core` until prompt 142 supplies real numbers.
+/// `musa-calculus` until prompt 142 supplies real numbers.
 #[test]
 fn a_context_with_no_module_sees_everything() {
     let (_, group) = package();

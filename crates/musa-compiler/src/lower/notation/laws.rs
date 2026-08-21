@@ -1,15 +1,15 @@
 //! What reading a notated block promises.
 //!
 //! Beside the module rather than in `tests/suite/`, for [`crate::lower::laws`]'s
-//! reason: the answer is a [`musa_core::Raw`], the context is
+//! reason: the answer is a [`musa_calculus::Raw`], the context is
 //! [`crate::registry::owned`], and both are private to this crate.
 //!
 //! # The two properties a law here can have
 //!
-//! **The core accepts what the fold writes.** `musa-core` decides what inhabits
+//! **The core accepts what the fold writes.** `musa-calculus` decides what inhabits
 //! `EventTrack ⟨written⟩`, so agreeing with it is the whole of what a reading can
 //! be right about, and every law that builds a track hands it to
-//! [`musa_core::check`] rather than inspecting its shape and calling that
+//! [`musa_calculus::check`] rather than inspecting its shape and calling that
 //! agreement.
 //!
 //! **Two spellings are one term.** `00-semantics.md` §3 says the function and
@@ -30,7 +30,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_core::{Cx, Origin, Raw, RawShape, Term};
+use musa_calculus::{Cx, Origin, Raw, RawShape, Term};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use super::super::items::{Declared, Definition, Item};
@@ -167,7 +167,7 @@ fn definition(written: &str, wanted: SyntaxKind) -> Definition {
 ///
 /// "One raw term up to the origins" is what §3's implementation theorem asks a
 /// law to check, and two source texts that write the same music necessarily
-/// write it at different offsets. [`musa_core::Origin`] is a site index, so
+/// write it at different offsets. [`musa_calculus::Origin`] is a site index, so
 /// erasing it is a substitution rather than a parse: everything else in the
 /// derived rendering — the names, the literals, the spine — is the term.
 fn shape(raw: &Raw) -> String {
@@ -184,7 +184,7 @@ fn erased(shown: &str) -> String {
 /// `shown` with every run of digits that immediately follows `marker` replaced
 /// by one underscore.
 ///
-/// Three markers cover both origins: [`musa_core::Origin`] is a site index and
+/// Three markers cover both origins: [`musa_calculus::Origin`] is a site index and
 /// renders as `Origin(7)`, and the compiler's own origin — carried as a
 /// `Provenance` payload inside a `sounded` call — renders its spans as
 /// `start: 36, end: 40`. Nothing else in the rendering follows those markers, and
@@ -278,7 +278,7 @@ fn an_empty_block_is_the_track_of_no_occurrences() {
         crate::registry::empty_track(),
         "and the literal is `nothing`, which is what the fold seeds with"
     );
-    musa_core::check(&cx, &track(), read.term()).expect("and the block is a track like every other, empty or not");
+    musa_calculus::check(&cx, &track(), read.term()).expect("and the block is a track like every other, empty or not");
 }
 
 /// The fold itself: one `follow` per statement, over the seed.
@@ -338,7 +338,7 @@ fn two_statements_are_one_follow_the_core_accepts() {
         1,
         "with both statements merged into the one subtree the seed is folded onto"
     );
-    musa_core::check(&cx, &track(), read.term())
+    musa_calculus::check(&cx, &track(), read.term())
         .unwrap_or_else(|failure| panic!("the core accepts what the fold wrote, not {failure:?}"));
 }
 
@@ -516,7 +516,7 @@ fn a_block_asks_nothing() {
             "`{written}` drains nothing: {:?}",
             read.term().shape()
         );
-        musa_core::check(&cx, &track(), read.term())
+        musa_calculus::check(&cx, &track(), read.term())
             .unwrap_or_else(|failure| panic!("`{written}` is a track, not {failure:?}"));
     }
 }
@@ -670,7 +670,7 @@ fn a_saved_fragment_folds_into_another_block_through_use() {
         "and neither block is an answer somebody has to open"
     );
     let joined = Raw::bind(Origin::UNKNOWN, "answer", saved.value, read.term().clone());
-    musa_core::check(&cx, &track(), &joined)
+    musa_calculus::check(&cx, &track(), &joined)
         .unwrap_or_else(|failure| panic!("the core accepts one block used inside another, not {failure:?}"));
 }
 
@@ -680,6 +680,6 @@ fn a_saved_fragment_folds_into_another_block_through_use() {
 fn a_fragment_inhabits_the_track_type_it_was_promised() {
     let cx = host();
     let defined = definition("fragment answer { c4/4 d4/4 }", SyntaxKind::FragmentDecl);
-    musa_core::check(&cx, &track(), &defined.value)
+    musa_calculus::check(&cx, &track(), &defined.value)
         .unwrap_or_else(|failure| panic!("the core accepts a fragment's value, not {failure:?}"));
 }

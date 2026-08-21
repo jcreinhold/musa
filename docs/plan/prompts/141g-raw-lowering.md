@@ -10,16 +10,16 @@ phase: 3
 
 ## Task
 
-Write the half of elaboration that knows about `.musa`: a lossless CST in, a [`musa_core::Raw`] out, and a table that
-turns a [`musa_core::Origin`] back into a span when a refusal comes home. Nothing is wired to it and nothing is deleted
-— the laws beside it are its caller, exactly as 141e's registry and 141f's `run_syntax_step` were theirs until something
-called them.
+Write the half of elaboration that knows about `.musa`: a lossless CST in, a [`musa_calculus::Raw`] out, and a table
+that turns a [`musa_calculus::Origin`] back into a span when a refusal comes home. Nothing is wired to it and nothing is
+deleted — the laws beside it are its caller, exactly as 141e's registry and 141f's `run_syntax_step` were theirs until
+something called them.
 
 Prompt 142 said this in its own Design and then asked for it in the same commit as the migration:
 
-> Elaborate through `musa-core` first and get the existing corpus passing under the new checker with the old spellings
-> still in place; then migrate spellings; then delete. Mixing the three makes every failure ambiguous between "the new
-> checker is wrong" and "this file was translated wrong".
+> Elaborate through `musa-calculus` first and get the existing corpus passing under the new checker with the old
+> spellings still in place; then migrate spellings; then delete. Mixing the three makes every failure ambiguous between
+> "the new checker is wrong" and "this file was translated wrong".
 
 An ordering inside one commit is not observable. This prompt makes the first of the three a thing that can be wrong on
 its own.
@@ -29,8 +29,8 @@ its own.
 - [`141e`](141e-compiler-registry.md)'s Design, which is this prompt's argument one prompt earlier and about the other
   table: "a table of 117 builtins is a *translation* with an oracle to check it against, and burying it inside a diff
   that also moves 11,304 lines of `.musa` would have made a wrong signature indistinguishable from a wrong migration."
-  Reading the surface is the same kind of thing — a translation, with `musa-core`'s own acceptance as its oracle — and
-  it is larger than the builtin table by every measure.
+  Reading the surface is the same kind of thing — a translation, with `musa-calculus`'s own acceptance as its oracle —
+  and it is larger than the builtin table by every measure.
 - [`142`](142-surface-cutover.md) in full, whose Target this prompt takes the first bullet of and whose **Stop** list
   governs here too: no compatibility mode, no second elaborator selected by a flag, no new language feature.
 - `crates/musa-compiler/src/core.rs`'s `Checker` — every surface form that has to be readable, and `lower_type`,
@@ -42,7 +42,7 @@ its own.
   Design.
 - [`../../rules/language/01-surface.md`](../../rules/language/01-surface.md) §1 and §7 for the forms, and
   [`10-traits.md`](../../rules/language/10-traits.md) §5 and §6 for what `x == y` and `x.m(y)` are spellings *of*.
-  `musa_core::Raw`'s own module documentation says the core never learns an operator table; this is the module that
+  `musa_calculus::Raw`'s own module documentation says the core never learns an operator table; this is the module that
   therefore has to hold one.
 - [`141fa`](141fa-constructor-checking.md), which makes what this prompt writes checkable. A surface constructor is
   written without its family's parameters — `Some(x)`, `None`, `[a, b]` — and a reading that holds no expected type
@@ -50,9 +50,9 @@ its own.
   Design.
 - [`141ga`](141ga-quotation-core.md), which owns both quotation forms. They left this prompt on the evidence its own
   implementation produced — see Design — and everything else about reading the surface stayed.
-- `musa_core::Refusal`'s variants and `musa_core::PathStep`. A refusal is what a composer will see, so the mapping to
-  [`crate::diagnose::Diagnostic`] is part of reading the surface rather than a later polish. Prompt 144 owns *how good*
-  the message is; this prompt owns that there is one, at a span.
+- `musa_calculus::Refusal`'s variants and `musa_calculus::PathStep`. A refusal is what a composer will see, so the
+  mapping to [`crate::diagnose::Diagnostic`] is part of reading the surface rather than a later polish. Prompt 144 owns
+  *how good* the message is; this prompt owns that there is one, at a span.
 - The `module-design` skill's audit questions. This module's whole claim is that it is small because the core does the
   hard part; a lowering that grew a type of its own would have failed that claim.
 
@@ -60,12 +60,12 @@ its own.
 
 **One direction, and the core has the other.** Lowering reads, desugars, and numbers. It does not resolve a name to an
 index, unify, insert an implicit argument, check coverage, check positivity, or check termination — every one of those
-is `musa-core`'s, and a second implementation beside it is the second path `02-core-calculus.md` §5's audit exists to
-catch. The visible consequence is that an unknown name is *written through* as a variable rather than refused here: the
-core is what holds the context, so the core is what answers `UnknownName`, at the origin this module gave it.
+is `musa-calculus`'s, and a second implementation beside it is the second path `02-core-calculus.md` §5's audit exists
+to catch. The visible consequence is that an unknown name is *written through* as a variable rather than refused here:
+the core is what holds the context, so the core is what answers `UnknownName`, at the origin this module gave it.
 
 **A literal infers, so the surface node decides its domain.** §2 says so in as many words, and
-[`musa_core::RawShape::Lit`] carries the base type it inhabits. So `Integer` is a `Nat`, `Rational` is a `Ratio`, a
+[`musa_calculus::RawShape::Lit`] carries the base type it inhabits. So `Integer` is a `Nat`, `Rational` is a `Ratio`, a
 `PitchLiteral` in expression position is a `Pitch`, and the pitch-*class* that `01-surface.md` §7 calls "checked in its
 expected domain" is read from the form that supplies it — `chord c# minor` is a `ChordExpr`, and the node is what says
 `NoteName`, not a type flowing in. Where the old checker read an `Integer` as a `Duration` because a `Duration` was
@@ -73,11 +73,11 @@ expected, the new reading is a `Nat` and the conversion is written. **That is a 
 migration owns it**; this prompt owns only that the reading is the node's and not a type expectation's, because a
 lowering that took an expected type would be checking, and checking is what was moved.
 
-**Origins are a table here, not a span in the core.** `musa-core` is a leaf that must not learn what a file is, and an
-[`musa_core::Origin`] is one word so that every term can afford one. `Sites` is the caller's half: it hands out a number
-per surface node and answers with the span again when an `ElabError` arrives. A refusal about a *registered signature*
-carries `Origin::UNKNOWN` by construction and therefore has nowhere of its own to point; it says so rather than pointing
-at node one.
+**Origins are a table here, not a span in the core.** `musa-calculus` is a leaf that must not learn what a file is, and
+an [`musa_calculus::Origin`] is one word so that every term can afford one. `Sites` is the caller's half: it hands out a
+number per surface node and answers with the span again when an `ElabError` arrives. A refusal about a *registered
+signature* carries `Origin::UNKNOWN` by construction and therefore has nowhere of its own to point; it says so rather
+than pointing at node one.
 
 **Declarations lower too, and that is where the module boundary is.** A `data`, `record`, `enum`, `trait`, or `impl`
 declaration becomes a `RawData`, `RawTrait`, or `RawImpl`, and a `let` or `fn` becomes a name, a raw type, and a raw
@@ -104,10 +104,10 @@ already implements it for a δ-rule's answer; what was missing was the same rule
 every list literal were refused by the core until it existed.
 
 **Laws are the caller, and the oracle is the core.** The property this module can have is that what it writes, the core
-accepts — so every law lowers something real and hands it to `musa_core::check` in [`crate::registry::owned`]'s context.
-That is checkable now, needs nothing migrated, and is exactly the property the cutover will rely on. Where an answer is
-also *computable*, the law normalizes it and compares against the old evaluator, which is still present and is the
-second oracle 142 will remove.
+accepts — so every law lowers something real and hands it to `musa_calculus::check` in [`crate::registry::owned`]'s
+context. That is checkable now, needs nothing migrated, and is exactly the property the cutover will rely on. Where an
+answer is also *computable*, the law normalizes it and compares against the old evaluator, which is still present and is
+the second oracle 142 will remove.
 
 ## Target
 
@@ -116,7 +116,7 @@ second oracle 142 will remove.
   further than the laws and prompt 142 need.
 - The literal readers for every base type the surface writes, sharing [`crate::registry`]'s own literal writers so that
   a lowered `Duration<WrittenTime>` and a registered signature's are one expression rather than two that agree today.
-- `musa_core::ElabError` restated as a [`crate::diagnose::Diagnostic`] at the span `Sites` numbered, with a code per
+- `musa_calculus::ElabError` restated as a [`crate::diagnose::Diagnostic`] at the span `Sites` numbered, with a code per
   refusal family and the `PathStep` trail as the diagnostic's cause.
 - Laws in `crates/musa-compiler/src/lower/laws.rs`: every written base type, constructor, and arrow lowers to a type the
   core accepts; every surface expression form lowers to a term the core checks at its written type; a pattern column
@@ -132,8 +132,8 @@ second oracle 142 will remove.
 
 ```sh
 cargo build --workspace
-cargo nextest run -p musa-core -p musa-compiler
-cargo clippy --all-targets -p musa-core -p musa-compiler -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -- -D warnings
 cargo fmt --check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

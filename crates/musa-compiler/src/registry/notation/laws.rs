@@ -30,7 +30,7 @@
 
 use std::sync::Arc;
 
-use musa_core::{Answer, Cx, Datum, Refusal, Term};
+use musa_calculus::{Answer, Cx, Datum, Refusal, Term};
 use musa_kernel::{Duration, Occurrence, Position, Span, WrittenTime};
 use num_rational::Ratio;
 
@@ -672,8 +672,8 @@ fn nothing_is_the_track_of_no_duration_and_no_occurrences() {
 
 /// The head of a registered builtin, by name.
 fn head(cx: &Cx, spelling: &str) -> Term {
-    let (term, _) = musa_core::infer(cx, &musa_core::Raw::var(HERE, spelling)).unwrap_or_else(|refusal| {
-        let unknown = matches!(refusal, musa_core::ElabError::Refused(Refusal::UnknownName { .. }));
+    let (term, _) = musa_calculus::infer(cx, &musa_calculus::Raw::var(HERE, spelling)).unwrap_or_else(|refusal| {
+        let unknown = matches!(refusal, musa_calculus::ElabError::Refused(Refusal::UnknownName { .. }));
         panic!("`{spelling}` is not registered (unknown name: {unknown})");
     });
     term
@@ -720,7 +720,7 @@ fn every_notation_application_reduces_and_re_checks_at_its_own_signature() {
         let whole = arguments.into_iter().fold(head(&cx, spelling), |function, argument| {
             Term::app(HERE, function, argument)
         });
-        let _normal =
-            musa_core::normalize(&cx, ty, &whole).unwrap_or_else(|why| panic!("`{spelling}` does not reduce: {why}"));
+        let _normal = musa_calculus::normalize(&cx, ty, &whole)
+            .unwrap_or_else(|why| panic!("`{spelling}` does not reduce: {why}"));
     }
 }
