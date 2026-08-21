@@ -34,6 +34,16 @@ machinery and no identity type.
 - `stdlib/src/pitch.musa`'s `Transposable`, `compose_intervals`, `inverse_interval`; `stdlib/src/transformational.musa`
   in full, including the comment on why finite-group statements hold only after spelling is forgotten;
   `stdlib/src/post_tonal/serial.musa`'s `D12 x C2` comment.
+- `~/Code/Idris2/src/Idris/Elab/Interface.idr`, and `src/Parser/Lexer/Source.idr`'s keyword list. Idris 2 elaborates an
+  interface to a record of methods, which is what `class.rs` already does and is not a deviation. It has **no** law
+  mechanism: `law` is not a keyword, and the idiom for enforcing one is a proof field over propositional `=`, discharged
+  with `Refl` and `%hint` search. Musa has deleted all three — the identity type (§1.4, note 51 §7), proof terms (this
+  prompt's Stop), and instance search (`10-traits.md` §9's first row) — so a law here can be prose or decided by
+  exhaustion, and there is no third option. Record the deviation as forced rather than chosen.
+- Runciman, Naylor & Lindblad, *SmallCheck and Lazy SmallCheck* (Haskell Symposium 2008), and Claessen & Hughes,
+  *QuickCheck* (ICFP 2000). Exhaustive enumeration over a bounded value space is the mechanism, and the boundary those
+  papers draw is the one the two routes encode: exhaustion at a **fixed finite carrier** is a proof for that carrier and
+  not a schema for all `n`.
 - Open Music Theory `102-set-class-and-prime-form.md`, `106-collections.md`, and `110-row-properties.md` — orbit,
   stabilizer, and canonical representative are the subject of those three chapters and are the functions this prompt
   makes ordinary.
