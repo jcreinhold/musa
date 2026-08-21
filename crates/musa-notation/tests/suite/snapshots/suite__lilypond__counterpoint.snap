@@ -1,0 +1,44 @@
+---
+source: crates/musa-notation/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+\header {
+  title = "Counterpoint Study"
+}
+
+partViolin = {
+  \clef "treble"
+  \time 4/4
+  \key d \minor
+  {
+    \tempo 4 = 90
+    d'2 % event:0
+    f'2 % event:1
+    |
+    e'2 % event:2
+    <d' fs' a'>2\fermata % event:3
+    |
+  }
+}
+partViola = {
+  \clef "alto"
+  \time 4/4
+  \key d \minor
+  {
+    d2 % event:4
+    a,2 % event:5
+    |
+    bf,2 % event:6
+    a,2\fermata % event:7
+    |
+  }
+}
+\score {
+  <<
+    \new Staff \partViolin
+    \new Staff \partViola
+  >>
+}

@@ -642,7 +642,7 @@ fn logging_never_writes_to_the_stream_a_score_is_piped_on() -> std::io::Result<(
     );
     for line in stdout.lines() {
         assert!(
-            !line.contains("musa_compiler") && !line.contains("musa_project") && !line.contains("musa_render"),
+            !line.contains("musa_compiler") && !line.contains("musa_project") && !line.contains("musa_notation"),
             "a log line reached stdout: {line}"
         );
     }

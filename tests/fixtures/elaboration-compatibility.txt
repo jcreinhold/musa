@@ -398,7 +398,7 @@ files=11
 digest=507d990a00e030444665ad69199ce19a
 
 [backend midi]
-oracle=crates/musa-render/tests/suite/midi.rs
+oracle=crates/musa-notation/tests/suite/midi.rs
 
 [backend wav]
 oracle=tests/fixtures/audio-bridge-audio.compat

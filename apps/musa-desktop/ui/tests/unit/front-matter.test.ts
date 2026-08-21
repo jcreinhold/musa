@@ -5,7 +5,7 @@
  * The MEI backend writes the page head itself so that every printed line
  * carries an `xml:id`, which is what makes clicking the title the same
  * machinery as clicking a notehead. These tests hold the two halves of that
- * contract together: the ids `musa-render` writes and the fields this module
+ * contract together: the ids `musa-notation` writes and the fields this module
  * maps them to are one list, and the fixture is the real MEI the core
  * produced.
  */

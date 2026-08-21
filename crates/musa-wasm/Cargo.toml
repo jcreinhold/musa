@@ -15,7 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 console_error_panic_hook = "0.1"
 musa-compiler = { workspace = true }
-musa-render = { workspace = true }
+musa-notation = { workspace = true }
 musa-score = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"

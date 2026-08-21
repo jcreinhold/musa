@@ -21,7 +21,8 @@ an edge format: the `NotationPlan` drives it, and no MusicXML convention enters 
 
 ## Design
 
-- `musa-render`: `NotationTarget::MusicXml` on the existing facade. quick-xml writer like prompt 13; no string assembly.
+- `musa-notation`: `NotationTarget::MusicXml` on the existing facade. quick-xml writer like prompt 13; no string
+  assembly.
 - Content: `score-partwise` document; `<part>` per part; `<measure>` per plan measure; `<note>` with
   `<pitch><step><alter><octave>`, `<duration>` in divisions, `<type>` (quarter/eighth/…), dots, `<tie>` +
   `<notations><tied>` for ties (both forms, per the spec), `<notations>` slurs/articulations, `<direction>` dynamics,
@@ -40,7 +41,7 @@ an edge format: the `NotationPlan` drives it, and no MusicXML convention enters 
 
 ## Target
 
-- `musa-render`: MusicXML writer covering notes, rests, chords, ties, slurs, articulations, dynamics, tuplets,
+- `musa-notation`: MusicXML writer covering notes, rests, chords, ties, slurs, articulations, dynamics, tuplets,
   multi-voice, key/time/clef.
 - Wiring in CLI, project export, desktop export menu.
 - Tests: insta snapshots for all examples incl. the prompt-17 fixture; well-formedness reparse; divisions exactness
@@ -49,8 +50,8 @@ an edge format: the `NotationPlan` drives it, and no MusicXML convention enters 
 ## Check
 
 ```sh
-cargo nextest run -p musa-render -p musa-project
-cargo clippy --all-targets -p musa-render -p musa-project -- -D warnings
+cargo nextest run -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/counterpoint.musa --to musicxml -o /tmp/cp.musicxml
 # manual: open /tmp/cp.musicxml in two consumers, note results

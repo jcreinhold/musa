@@ -53,7 +53,7 @@ nor the desktop app ever chains compiler → render → engine calls themselves.
   last-valid artifacts and a flag saying so. Playback keeps working from the last-valid plan. This is a headline
   behavior — test it directly.
 - `ProjectSnapshot` is the frontend's whole view: source text, diagnostics, current score MEI (rendered through
-  `musa-render`), playback state, revision. The frontend owns nothing semantic (§14.2).
+  `musa-notation`), playback state, revision. The frontend owns nothing semantic (§14.2).
 - Move the prompt-12/13 orchestration here: `export(ExportRequest::{Wav, Mei, LilyPond, PerformanceDump})` and an
   internal `prepare_playback()` that rebuilds and reinstalls the engine plan after each valid compile (debouncing/engine
   ownership policy: session owns an optional `AudioEngine`; `play`/`stop`/`seek` commands pass through to it).

@@ -43,7 +43,7 @@ carry their pre-127a spellings, and the pairs are in [`../clean-break-ledger.md`
 | `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-audio` | absent | prompts 150–152 |
 | `schedule(format, policy, time map, track)` with a recorded decision list | `musa-audio` | absent | prompt 152 |
 | Gesture event track | `musa-compiler` | absent | prompt 156 and its admission tests |
-| Engraving plan and current exports | `musa-render` | implemented for current score facts | language graduation matrix |
+| Engraving plan and current exports | `musa-notation` | implemented for current score facts | language graduation matrix |
 | Analysis packages with their own hidden value types and evidence | `musa-compiler` | partial built-in analyses; no general package mechanism | accepted source type design and real package examples |
 | Valid whole-machine step order | `musa-audio` | partial and not conforming to the new ordering rule | known ordering counterexample, machine-law tests |
 | Feedback through initialized one-step state | `musa-audio` | current behavior depends on caller buffer size | one-frame step, `batch` contract, and partition tests (R1-batch) |

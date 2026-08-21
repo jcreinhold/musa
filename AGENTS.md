@@ -52,7 +52,7 @@ let them drift silently.
 | `crates/musa-calculus` | the dependently typed core calculus a checked term lives in: NbE, elaboration, inductive families |
 | `crates/musa-score` | the musical values: pitch, chords, scales, exact time, marks, score/performance snapshots, provenance, diagnostics, analysis |
 | `crates/musa-compiler` | resolution, units, imports, expansion, elaboration through the kernel — the passes that compute those values |
-| `crates/musa-render` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
+| `crates/musa-notation` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
 | `crates/musa-audio` | studio graph spec→render-plan compiler, processors, offline rendering |
 | `crates/musa-engine` | CPAL stream, transport, real-time queues, MIDI input |
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
@@ -77,10 +77,11 @@ let them drift silently.
 | `docs/notes/` | **governs nothing.** `research/` decision records, `toolchain/` machine traps |
 
 Dependency direction is one-way: language → score → compiler → audio → engine → project → {cli, lsp, desktop}, with
-`musa-render` sitting on `musa-score` alone, and with `musa-calculus` and `musa-kernel` two leaves that `musa-compiler`
-(and later consumers) depend on, and `musa-lsp` the one shell that also depends on `musa-language` (highlighting and
-completion answer on half-typed source, which the session's facts cannot describe — roadmap §15.11). `musa-wasm` is a
-fourth shell, over compiler + render, and `packages/*` sits below it in TypeScript. No dependency points upward.
+`musa-notation` sitting on `musa-score` alone, and with `musa-calculus` and `musa-kernel` two leaves that
+`musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also depends on `musa-language`
+(highlighting and completion answer on half-typed source, which the session's facts cannot describe — roadmap §15.11).
+`musa-wasm` is a fourth shell, over compiler + render, and `packages/*` sits below it in TypeScript. No dependency
+points upward.
 
 ## Commands
 

@@ -10,7 +10,7 @@ phase: 1
 
 ## Task
 
-Implement `musa-render`'s foundation: the backend-neutral `NotationPlan` that derives measures, beaming groups, and
+Implement `musa-notation`'s foundation: the backend-neutral `NotationPlan` that derives measures, beaming groups, and
 tied-duration decomposition from a `ScoreSnapshot`, so MEI, LilyPond, and MusicXML writers (prompts 08, 09, 22) share
 one source of truth and no backend assumption enters the compiler.
 
@@ -22,7 +22,7 @@ one source of truth and no backend assumption enters the compiler.
 
 ## Design
 
-- Create `musa-render` with dependencies: `musa-compiler`, `serde`, `thiserror` (quick-xml and midly arrive at prompts
+- Create `musa-notation` with dependencies: `musa-compiler`, `serde`, `thiserror` (quick-xml and midly arrive at prompts
   08 and 18).
 - Public surface:
 
@@ -51,7 +51,7 @@ one source of truth and no backend assumption enters the compiler.
 
 ## Target
 
-- `musa-render`: `NotationPlan`, `NotationOptions`, `plan_notation`.
+- `musa-notation`: `NotationPlan`, `NotationOptions`, `plan_notation`.
 - Tests: insta snapshots of a debug rendering of the plan for all three examples; unit tests for measure splitting,
   beaming groups (4/4 vs 6/8), tie decomposition with shared `EventId`; proptest: the sum of tied pieces equals the
   original duration and every piece is inside one measure.
@@ -61,8 +61,8 @@ one source of truth and no backend assumption enters the compiler.
 ## Check
 
 ```sh
-cargo nextest run -p musa-render
-cargo clippy --all-targets -p musa-render -- -D warnings
+cargo nextest run -p musa-notation
+cargo clippy --all-targets -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/counterpoint.musa --to plan
 ```

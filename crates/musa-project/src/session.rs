@@ -463,8 +463,8 @@ impl ProjectSession {
             // taken from there; the losses are a fact about the target and
             // are the same either way.
             ExportRequest::Mei => Ok(ExportArtifact::text(valid.mei.clone()).warn(valid.mei_warnings.clone())),
-            ExportRequest::LilyPond => Ok(render_notation(score, musa_render::NotationTarget::LilyPond)?),
-            ExportRequest::MusicXml => Ok(render_notation(score, musa_render::NotationTarget::MusicXml)?),
+            ExportRequest::LilyPond => Ok(render_notation(score, musa_notation::NotationTarget::LilyPond)?),
+            ExportRequest::MusicXml => Ok(render_notation(score, musa_notation::NotationTarget::MusicXml)?),
             ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio)?)),
             ExportRequest::Midi(mode) => {
                 let (bytes, warnings) = playback::to_midi(score, mode)?;
@@ -486,7 +486,7 @@ impl ProjectSession {
                     .ok_or(ProjectError::NoValidScore)
             }
             ExportRequest::NotationPlanDump => {
-                let plan = musa_render::plan_notation(score, &musa_render::NotationOptions::default())
+                let plan = musa_notation::plan_notation(score, &musa_notation::NotationOptions::default())
                     .map_err(|error| ProjectError::Notation(error.to_string()))?;
                 Ok(ExportArtifact::text(format!("{plan:#?}")))
             }
@@ -1028,7 +1028,7 @@ impl ProjectSession {
             if let Some(composer) = self.project.as_ref().and_then(|meta| meta.composer.as_deref()) {
                 score.inherit_composer(composer);
             }
-            match render_notation(&score, musa_render::NotationTarget::Mei) {
+            match render_notation(&score, musa_notation::NotationTarget::Mei) {
                 Ok(rendered) => {
                     let mei = rendered.as_text().unwrap_or_default().to_owned();
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
@@ -1219,9 +1219,9 @@ impl ProjectSession {
 
 fn render_notation(
     score: &musa_score::ScoreSnapshot,
-    target: musa_render::NotationTarget,
+    target: musa_notation::NotationTarget,
 ) -> Result<ExportArtifact, ProjectError> {
-    musa_render::render_notation(score, target, &musa_render::NotationOptions::default())
+    musa_notation::render_notation(score, target, &musa_notation::NotationOptions::default())
         .map(|rendered| ExportArtifact::text(rendered.text()).warn(rendered.warnings().to_vec()))
         .map_err(|error| ProjectError::Notation(error.to_string()))
 }

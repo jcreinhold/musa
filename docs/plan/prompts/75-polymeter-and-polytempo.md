@@ -69,7 +69,7 @@ hand to another program rather than something only musa knows.
 - Prompt 63 §"Inheritance is per kind" — meter and tempo are both `Override`, which is what makes per-voice work with no
   new rule.
 - Prompt 61 `bars.rs` — `BarLines` is per-piece today. Polymeter makes it per-scope, which is the real change.
-- `crates/musa-render/src/plan.rs::plan_staff` (:820) — the measure walk, which assumes one barline grid.
+- `crates/musa-notation/src/plan.rs::plan_staff` (:820) — the measure walk, which assumes one barline grid.
 - `crates/musa-engine/src/playback.rs` (:90) — the frame merge. Read it before worrying about polytempo's engine cost;
   the news is good (see below).
 - `docs/rules/kernel/08-open-questions.md` and §34.
@@ -119,7 +119,7 @@ is the exact move the gate exists to prevent.
 
 - `crates/musa-compiler`: `bars(scope)`; per-scope meter resolution; per-lane tempo maps in `PerformancePlan` if the
   gate passes.
-- `crates/musa-render/src/plan.rs`: per-staff barline grids; per-staff beaming.
+- `crates/musa-notation/src/plan.rs`: per-staff barline grids; per-staff beaming.
 - `crates/musa-project/src/midi.rs`: the single-tempo-track resolution and its warning.
 - `docs/rules/desktop/`: non-aligned barlines within a system.
 - `docs/rules/kernel/08-open-questions.md`: the polymeter rows proven; the polytempo row added or the decline recorded.

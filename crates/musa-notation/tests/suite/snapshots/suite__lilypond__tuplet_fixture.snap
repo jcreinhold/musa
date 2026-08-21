@@ -1,0 +1,61 @@
+---
+source: crates/musa-notation/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+\header {
+  title = "Tuplet Fixture"
+}
+
+partFlute = {
+  \clef "treble"
+  \time 4/4
+  \key c \major
+  {
+    \tempo 4 = 96
+    \tuplet 3/2 {
+      c''8\mf % event:0
+      d''8 % event:1
+      e''8 % event:2
+    }
+    f''8( % event:3
+    g''8) % event:4
+    a''4^> % event:5
+    g''4~^. % event:6
+    |
+    g''4 % event:6
+    a'8^-\p % event:7
+    d''8 % event:8
+    \tuplet 3/2 {
+      c''8 % event:9
+      d''8 % event:a
+      e''8 % event:b
+    }
+    b'8^^( % event:c
+    c''8) % event:d
+    |
+  }
+}
+partCello = {
+  \clef "bass"
+  \time 4/4
+  \key c \major
+  {
+    <c g>2\p % event:e
+    e4 % event:f
+    g4~ % event:10
+    |
+    g2 % event:10
+    a4^-( % event:11
+    g4) % event:12
+    |
+  }
+}
+\score {
+  <<
+    \new Staff \partFlute
+    \new Staff \partCello
+  >>
+}

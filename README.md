@@ -90,7 +90,7 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 | `musa-language` | tokens, parser, a lossless syntax tree, formatting, text edits |
 | `musa-kernel` | the temporal kernel: exact rational time, typed occurrences, timeline/sequence/overlay |
 | `musa-compiler` | name resolution, units, elaboration through the kernel, score and performance snapshots |
-| `musa-render` | engraving plan, MEI, LilyPond, MusicXML, MIDI |
+| `musa-notation` | engraving plan, MEI, LilyPond, MusicXML, MIDI |
 | `musa-audio` | the studio graph, DSP processors, offline rendering |
 | `musa-engine` | audio device, transport, real-time queues, MIDI input |
 | `musa-project` | the session facade: documents, revisions, commands, exports |

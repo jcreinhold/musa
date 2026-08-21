@@ -136,7 +136,7 @@ not a preference for large definitions.
 ### 3.2 What it subsumes
 
 Repeats, first and second endings, ossia staves, *ad libitum* passages, cue-sized optional parts, mobile form, and
-score-level alternative versions are today four or five special cases across `musa-compiler` and `musa-render`, each
+score-level alternative versions are today four or five special cases across `musa-compiler` and `musa-notation`, each
 with its own representation. All are the same construct: alternative configurations of one object. APOSD names this red
 flag *special-general mixture*, and merging removes it rather than adding to it.
 
@@ -182,7 +182,7 @@ representation that has to be told the classification.
 
 ### 4.2 What becomes derived
 
-The barline. Which layer is engraved as the bar is a decision `musa-render` makes; re-barring a passage changes no
+The barline. Which layer is engraved as the bar is a decision `musa-notation` makes; re-barring a passage changes no
 denotation. Beaming, which OMT `009` ties to metrical grouping, is then a function of the layers rather than of a stored
 bar.
 
@@ -319,7 +319,7 @@ That cuts both ways, and both directions are argued here rather than asserted.
 
 Checked against the APOSD list, in the direction that matters — does the proposal *remove* red flags or add them?
 
-- **Information leakage — removed.** Voice identity as payload metadata is a leak today: `musa-render` must know the
+- **Information leakage — removed.** Voice identity as payload metadata is a leak today: `musa-notation` must know the
   metadata convention to beam correctly, `musa-compiler` must know it to analyze counterpoint, and neither is told by a
   type. As a chain in `≤` it is structure both read from one place.
 - **Special-general mixture — removed.** §3.2: five special cases become one construct.

@@ -9,7 +9,7 @@ specification does not.
 Dependency direction is one-way and never points back:
 
 ```text
-musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine → musa-project → {musa, musa-lsp, musa-desktop}
+musa-language → musa-compiler → {musa-notation, musa-audio} → musa-engine → musa-project → {musa, musa-lsp, musa-desktop}
                      ↑
                 musa-kernel (leaf)
 ```
@@ -21,7 +21,7 @@ musa-language → musa-compiler → {musa-render, musa-audio} → musa-engine �
 | `musa-calculus` | the dependently typed core calculus: terms, NbE, elaboration, inductive families | `Value`, the evaluator, quotation |
 | `musa-score` | the musical values: pitch, chords, scales, exact time, marks, score and performance snapshots, provenance, diagnostics, analysis | any way to *build* one from text |
 | `musa-compiler` | resolution, typing, expansion, elaboration into the kernel — the passes that compute those values | pass types, `Type`, the resolver |
-| `musa-render` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
+| `musa-notation` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
 | `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
 
 `musa-lsp` is the one shell that also depends on `musa-language`, because highlighting and completion must answer on
@@ -51,7 +51,8 @@ The shape to hold in mind:
    `shift`, `scale`, and `restrict`, with `let` for sharing.
 5. **Normalize** the term (`../../rules/kernel/05-normalization.md`), which fixes occurrence order, payload
    serialization, semantic equality, and the semantic hash.
-6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-render` and `musa-audio` consume.
+6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-notation` and `musa-audio`
+   consume.
 
 The kernel is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a construct
 cannot be elaborated from the six that exist (`../../rules/kernel/00-purpose.md`), the specification is what changes,
@@ -138,7 +139,7 @@ Read what each part is doing.
   a note.
 - The durations are exact rationals throughout. `1/4` is a quarter, not 0.25.
 
-From the term, `musa-render` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element
+From the term, `musa-notation` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element
 can name the occurrence it came from, and every occurrence can name the source span, which is what makes clicking a note
 on the page move the caret to the text that wrote it.
 

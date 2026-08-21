@@ -6,7 +6,7 @@
  * title on the page is findable the same way a notehead is, and clicking it
  * is the same gesture reaching a different field. This module is the other
  * half of that contract: the ids here and the `FRONT_*` constants in
- * `musa-render`'s `mei.rs` are one list, and they change together.
+ * `musa-notation`'s `mei.rs` are one list, and they change together.
  *
  * Only these five lines are editable on the page; part names, dynamics, and
  * tempo marks are not.

@@ -1,0 +1,80 @@
+---
+source: crates/musa-notation/tests/mei.rs
+expression: mei_of(source)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">
+  <meiHead>
+    <fileDesc>
+      <titleStmt>
+        <title>Counterpoint Study</title>
+      </titleStmt>
+      <pubStmt/>
+    </fileDesc>
+  </meiHead>
+  <music>
+    <body>
+      <mdiv>
+        <score>
+          <scoreDef meter.count="4" meter.unit="4" key.sig="1f" key.mode="minor">
+            <pgHead>
+              <rend halign="center" valign="top">
+                <rend xml:id="front-title" fontsize="x-large">Counterpoint Study</rend>
+              </rend>
+            </pgHead>
+            <pgHead2>
+              <rend halign="center" valign="top" fontsize="small">– <num label="page">#</num> –</rend>
+            </pgHead2>
+            <staffGrp>
+              <staffDef n="1" lines="5" clef.shape="G" clef.line="2">
+                <label>violin</label>
+                <labelAbbr>vio.</labelAbbr>
+              </staffDef>
+              <staffDef n="2" lines="5" clef.shape="C" clef.line="3">
+                <label>viola</label>
+                <labelAbbr>vio.</labelAbbr>
+              </staffDef>
+            </staffGrp>
+          </scoreDef>
+          <section>
+            <measure n="1">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <note xml:id="event-0" dur="2" oct="4" pname="d"/>
+                  <note xml:id="event-1" dur="2" oct="4" pname="f"/>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <note xml:id="event-4" dur="2" oct="3" pname="d"/>
+                  <note xml:id="event-5" dur="2" oct="2" pname="a"/>
+                </layer>
+              </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="90" mm.unit="4" midi.bpm="90"/>
+            </measure>
+            <measure n="2" right="end">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <note xml:id="event-2" dur="2" oct="4" pname="e"/>
+                  <chord xml:id="event-3" dur="2">
+                    <note oct="4" pname="d"/>
+                    <note oct="4" pname="f" accid="s"/>
+                    <note oct="4" pname="a"/>
+                  </chord>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <note xml:id="event-6" dur="2" oct="2" pname="b" accid="f"/>
+                  <note xml:id="event-7" dur="2" oct="2" pname="a"/>
+                </layer>
+              </staff>
+              <fermata staff="1" startid="#event-3"/>
+              <fermata staff="2" startid="#event-7"/>
+            </measure>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>

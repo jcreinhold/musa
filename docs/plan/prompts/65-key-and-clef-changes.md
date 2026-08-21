@@ -82,7 +82,7 @@ golden, not a semantics prompt.
 - `crates/musa-language`: `key` and `clef` as voice items; recovery; the formatter's paragraph-break rule.
 - `crates/musa-compiler`: `FactKind::Key` and `FactKind::Clef` produced at position; the `Latest` and `Override`
   resolutions from prompt 63's table, each with its counterexample test; spelling reads `key_at`.
-- `crates/musa-render`: the seven exporter rows above; `plan.rs` places a mid-measure clef.
+- `crates/musa-notation`: the seven exporter rows above; `plan.rs` places a mid-measure clef.
 - `crates/musa-project/src/session.rs`: the speller reads the key at the caret.
 - `examples/`: `modulation.musa` — one piece, three keys, and a viola part that starts in a fourth and follows the
   third; `clef-change.musa` — a cello line crossing into treble.

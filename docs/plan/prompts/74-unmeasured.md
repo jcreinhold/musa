@@ -93,7 +93,7 @@ no meter. The diagnostic says that.
 - `crates/musa-language`: `meter none` and `senza { … }`.
 - `crates/musa-compiler`: the unbounded stretch in `BarLines`; the bar-inside-`senza` diagnostic; the
   groove-without-meter diagnostic; `ContextTrack`'s unmeasured value.
-- `crates/musa-render/src/plan.rs`: proportional spacing for unmeasured stretches; no barline; the four exporters.
+- `crates/musa-notation/src/plan.rs`: proportional spacing for unmeasured stretches; no barline; the four exporters.
 - `docs/rules/desktop/`: the proportional-spacing rule, agreed and written down.
 - `examples/`: `cadenza.musa` (a measured concerto movement with an unmeasured cadenza inside measure 42), `chant.musa`
   (a fully unmeasured line).

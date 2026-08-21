@@ -20,7 +20,7 @@
 //!   statements inside motif and bar bodies are therefore forbidden (§2:
 //!   motif definition ≠ its expansions).
 //! - **A track is built over one time coordinate.** Notation folds repeats
-//!   (`musa-render`'s `Fold`); performance does not. A track read on the
+//!   (`musa-notation`'s `Fold`); performance does not. A track read on the
 //!   wrong side of that fold answers about the wrong measure. Nothing can
 //!   violate either rule yet — there is one stretch per kind — and they are
 //!   written down so the change that makes context positional has something

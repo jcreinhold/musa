@@ -20,7 +20,7 @@ breached.
 - `crates/musa-compiler/src/score.rs` — `TempoMap` (:336) and `TempoChange` (:308). `changes` exists and nothing ever
   populates it (`resolve.rs::parse_tempo` :761 writes `Vec::new()` unconditionally). Prompt 63 deleted the field; this
   prompt is what makes the capability real.
-- `crates/musa-render/src/plan.rs` (:524) and `crates/musa-compiler/src/performance.rs` (:107) — **both read the same
+- `crates/musa-notation/src/plan.rs` (:524) and `crates/musa-compiler/src/performance.rs` (:107) — **both read the same
   `TempoMap`**. One is drawing a printed symbol; the other is computing seconds. That collapse is what §2 forbids, and
   it is the thing this prompt separates.
 - `docs/rules/kernel/06-surface-elaboration.md` — tempo is `Beat → Second`.
@@ -90,7 +90,7 @@ The text-only form emits the words and no `<sound>`, which is what makes the exp
 - `crates/musa-language`: `tempo` as a voice item; the three forms; recovery and formatting.
 - `crates/musa-compiler`: `FactKind::Tempo`; `ScoreSnapshot::tempo_at` and its `ContextTrack`; `TempoMap` and
   `TempoChange` **deleted**; `performance.rs` derives `IntegratedTempoMap` from the markings.
-- `crates/musa-render`: the four exporters; `plan.rs` prints the marking and no longer computes seconds.
+- `crates/musa-notation`: the four exporters; `plan.rs` prints the marking and no longer computes seconds.
 - `crates/musa-project/src/session.rs`: the reinstall regression test.
 - `examples/`: `tempo-changes.musa` — a piece in three tempos with one text-only marking.
 - `docs/rules/kernel/06-surface-elaboration.md`: a note that the marking/map split is where the implementation now

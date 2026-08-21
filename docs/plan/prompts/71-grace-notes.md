@@ -110,7 +110,7 @@ and `07-backend-contract.md`.
 - `crates/musa-compiler`: `FactKind::Grace`; the `index`; the N2 ordering test that fails without it; the `grace`
   profile settings — which are the second and third settings prompt 62 deferred generalizing for, so the per-mark
   settings table is designed **here**, with three examples rather than one.
-- `crates/musa-render`: the four exporters; beaming and the slur to the principal.
+- `crates/musa-notation`: the four exporters; beaming and the slur to the principal.
 - `crates/musa-compiler/src/performance.rs`: the steal, both directions.
 - `examples/`: `graces.musa` — the same three-note figure under a Baroque and a Romantic profile, which is the fixture
   that proves the split.
@@ -129,7 +129,7 @@ diff <(cargo run -q -p musa -- kernel examples/graces.musa) \
      <(cargo run -q -p musa -- kernel examples/graces-reordered.musa) && exit 1
 # notation is profile-independent, performance is not — the pair of tests
 # that say so, in the two crates that own the two halves:
-cargo nextest run -p musa-render -p musa-compiler -E 'test(graces)'
+cargo nextest run -p musa-notation -p musa-compiler -E 'test(graces)'
 ```
 
 Commit as `Add grace notes`.

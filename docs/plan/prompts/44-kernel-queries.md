@@ -28,7 +28,7 @@ The four rebuilds, read them before designing anything:
   which is correct only while every such fact spans the whole piece, and silently wrong the day `modulate` exists.
 - `crates/musa-compiler/src/project.rs` `project_regions` — converts each region's span to an `(from, to)` event-id pair
   by linear search over the event extents (`.iter().find`, `.iter().rev().find`), once per region.
-- `crates/musa-render/src/plan.rs` `Marks::collect` — converts back, calling `score.events_in(from, to)` to rebuild
+- `crates/musa-notation/src/plan.rs` `Marks::collect` — converts back, calling `score.events_in(from, to)` to rebuild
   which events a phrase or hairpin contains. Span → ids → membership: the projection destroys the containment the
   timeline had, and the plan reconstructs it.
 - `crates/musa-compiler/src/performance.rs` `lower_performance` — carries `dynamic = Some(mark)` forward per voice. A
@@ -142,7 +142,7 @@ lives.
 - `crates/musa-compiler/src/project.rs`: `project_piece` uses time order and the prevailing rule, not
   `origin.definition_span`; `project_regions` uses the containment convention.
 - `crates/musa-compiler/src/performance.rs`: the per-voice dynamic scan replaced.
-- `crates/musa-render/src/plan.rs`: `Marks::collect`'s membership rebuild replaced by prompt 42's accessor.
+- `crates/musa-notation/src/plan.rs`: `Marks::collect`'s membership rebuild replaced by prompt 42's accessor.
 - `docs/rules/kernel/09-performance.md`: this prompt's row.
 
 ## Repairs made while implementing

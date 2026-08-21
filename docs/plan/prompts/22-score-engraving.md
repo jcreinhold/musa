@@ -72,7 +72,7 @@ generated.
 
 ```sh
 cargo nextest run -p musa-project         # writes the large fixture; fails when it is stale
-cargo nextest run -p musa-render          # MEI for the new fixture stays green
+cargo nextest run -p musa-notation          # MEI for the new fixture stays green
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test   # includes goldens + perf budgets

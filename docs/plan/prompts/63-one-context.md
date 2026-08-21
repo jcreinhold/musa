@@ -160,7 +160,7 @@ prompt only builds the shape and states the bug so 72 has something to point at.
 - `crates/musa-compiler/src/elaborate.rs`: `context_facts` emits real spans; `FactKind::Clef`.
 - `crates/musa-compiler/src/resolve.rs`: `part_metadata`'s silent last-wins becomes a duplicate-declaration diagnostic
   under prompt 56's machinery, with the first declaration as the secondary label.
-- `crates/musa-render/src/{plan,ly,mei,musicxml}.rs`, `crates/musa-project/src/{facts,midi,session}.rs`: every scalar
+- `crates/musa-notation/src/{plan,ly,mei,musicxml}.rs`, `crates/musa-project/src/{facts,midi,session}.rs`: every scalar
   read replaced; `is_constant` guards the existing emission path.
 - `crates/musa-compiler/tests/suite/context.rs`: the four inheritance rules, each with the counterexample that motivates
   it; `changes()` on a constant track yields exactly one entry.

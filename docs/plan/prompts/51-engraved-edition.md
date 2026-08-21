@@ -111,7 +111,7 @@ None of this is new language; it is the backends emitting what the plan already 
   formatter; the highlighter's keyword table.
 - `musa-compiler`: `ScoreSnapshot` carries the four; `resolve` fills them.
 - `musa-project`: the `musa.toml` composer fallback applied once, where the snapshot is built.
-- `musa-render`: `FrontMatter` on `NotationPlan`; `<meiHead>`, `<label>`/`<labelAbbr>`, `right="end"`; LilyPond
+- `musa-notation`: `FrontMatter` on `NotationPlan`; `<meiHead>`, `<label>`/`<labelAbbr>`, `right="end"`; LilyPond
   `\header`; MusicXML `<work>`/`<identification>`.
 - `apps/musa-desktop/ui`: `header: "auto"`, `footer: "auto"`, `mnumInterval: 0`; the goldens re-shot.
 - `examples/`: `glass-mountain.musa` and `twinkle.musa` gain front matter — they are the corpus the goldens are cut
@@ -122,7 +122,7 @@ None of this is new language; it is the backends emitting what the plan already 
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-render -p musa-project
+cargo nextest run -p musa-language -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

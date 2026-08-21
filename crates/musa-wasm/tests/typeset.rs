@@ -9,7 +9,7 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_notation::{NotationOptions, NotationTarget, render_notation};
 use musa_wasm::{typeset_impl, validate_impl};
 
 /// A fixture from the corpus, read relative to the workspace root.

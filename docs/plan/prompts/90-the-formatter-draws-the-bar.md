@@ -17,8 +17,8 @@ beam groups the beats a player hears, and a double space is what a beam looks li
 ## Read
 
 - `docs/plan/roadmap.md`: *"The formatter should operate on syntax, not on the expanded semantic model."* That is the
-  constraint the whole design bends around — the formatter may not ask `musa-render` for a `NotationPlan`, because that
-  is upward in the dependency graph.
+  constraint the whole design bends around — the formatter may not ask `musa-notation` for a `NotationPlan`, because
+  that is upward in the dependency graph.
 - `crates/musa-language/src/formatter.rs` — all of it, especially `MEASURE`'s nineteen lines of rationale, `inline_bar`,
   `format_token`, and `spaced_before`.
 - Prompt 87's `beat_groups`, which is the shared answer this prompt spaces by and `beam_unit` beams by.
@@ -93,7 +93,7 @@ visible without the comment that used to explain it.
 - **No proportional spacing.** That is prompt 91, and it is optional; this prompt's spacing is the one every file gets.
 - **No line-duration configuration.** `MEASURE` is already decided, in writing, at duration.
 - **No token rewriting.** The formatter rewrites whitespace.
-- **No asking `musa-render` anything.** The dependency points the other way, and `beat_groups` is why it does not need
+- **No asking `musa-notation` anything.** The dependency points the other way, and `beat_groups` is why it does not need
   to.
 - **No cross-voice alignment.** Voices are separate blocks in the text and cannot be aligned vertically; the property
   this prompt buys is that beat *n* is in the same column on every line of *one* voice.

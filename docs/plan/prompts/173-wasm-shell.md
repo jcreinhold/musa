@@ -12,7 +12,7 @@ phase: 5
 
 Create `crates/musa-wasm`, the shell crate that carries the whole semantic pipeline — parse, compile, notation plan, MEI
 render — into the browser as one small WebAssembly module. It is a shell like `musa` and `musa-lsp`: it depends on
-`musa-compiler` and `musa-render`, never the reverse, and it adds no semantics of its own. Its only new work is
+`musa-compiler` and `musa-notation`, never the reverse, and it adds no semantics of its own. Its only new work is
 translating `Diagnostic`s into a wasm-crossing data type and packaging the artifact the way post-wasm-pack tooling
 prescribes.
 
@@ -21,8 +21,8 @@ prescribes.
 - Roadmap §15 (shell architecture, dependency direction) and the deep-module conventions in
   `docs/plan/prompts/README.md`.
 - `crates/musa-compiler/src/compile.rs` — the `compile` / `SourceDocument` / `Compilation` facade this shell calls, and
-  `crates/musa-render/src/render.rs` — `render_notation` with `NotationTarget::Mei`.
-- `crates/musa-render/src/mei.rs` header: the `xml:id` contract the web package depends on downstream.
+  `crates/musa-notation/src/render.rs` — `render_notation` with `NotationTarget::Mei`.
+- `crates/musa-notation/src/mei.rs` header: the `xml:id` contract the web package depends on downstream.
 - Post-wasm-pack toolchain (wasm-pack and the rustwasm working group were sunset in July 2025):
   `cargo build --target wasm32-unknown-unknown` + pinned `wasm-bindgen-cli` (`--target web`) + pinned binaryen
   `wasm-opt`. `--target web`, not `bundler`: explicit `init()` avoids the top-level-await footgun and lets the JS side

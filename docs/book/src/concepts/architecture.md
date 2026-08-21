@@ -13,7 +13,7 @@ Dependencies point one way only. No dependency points upward.
 | `musa-language` | Tokens, parser, a lossless syntax tree, formatting, text edits |
 | `musa-kernel` | The temporal kernel: exact rational time, typed occurrences, track/follow/together |
 | `musa-compiler` | Name resolution, units, elaboration through the kernel, score and performance snapshots |
-| `musa-render` | The engraving plan; MEI, LilyPond, MusicXML, and MIDI export |
+| `musa-notation` | The engraving plan; MEI, LilyPond, MusicXML, and MIDI export |
 | `musa-audio` | The studio graph, DSP processors, offline rendering |
 | `musa-engine` | The audio device, transport, real-time queues, MIDI input |
 | `musa-project` | The session facade: documents, revisions, commands, exports |

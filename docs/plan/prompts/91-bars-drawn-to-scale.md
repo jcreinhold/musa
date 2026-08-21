@@ -162,4 +162,4 @@ New laws:
 - **No `f64`, anywhere on this path.**
 - **No changes to `musa-lsp`.**
 - **No proportional spacing in the desktop editor's own view.** The setting is about the text on disk; how the score is
-  engraved is `musa-render`'s and is already proportional by construction.
+  engraved is `musa-notation`'s and is already proportional by construction.

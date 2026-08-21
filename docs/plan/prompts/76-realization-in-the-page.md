@@ -84,7 +84,8 @@ separately and report it rather than assuming the budget covers it.
 - `apps/musa-desktop/ui`: the seed control in Settings; the decision step in the Origin view; the pin action; the
   appear/vanish rule.
 - `crates/musa-project`: the realization persisted in project state; pin and unpin commands with undo.
-- `crates/musa-render/src/plan.rs`: the fragment box, the *ad lib.* text, the duration bracket, the ranged repeat sign.
+- `crates/musa-notation/src/plan.rs`: the fragment box, the *ad lib.* text, the duration bracket, the ranged repeat
+  sign.
 - `docs/rules/desktop/`: the wording rules and the new Origin step.
 - `apps/musa-desktop/ui/fixtures/`: an open-form fixture and its screenshot goldens, at two seeds.
 

@@ -113,7 +113,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-git diff --stat -- crates/musa-render/tests/snapshots    # empty: notation never swings
+git diff --stat -- crates/musa-notation/tests/snapshots    # empty: notation never swings
 cargo run -p musa -- render examples/shuffle.musa --to midi -o /tmp/s.mid
 cargo run -p musa -- check examples/house.musa
 ```
@@ -152,7 +152,7 @@ is no longer the only way to fail it.
 distinguishing `--mode score` from `--mode performance`. Score mode exists so a notation program can read the page;
 handing it a swung onset would make it draw triplets, which is an engraver printing an interpretation — the exact thing
 this prompt exists not to do. `PerformedNote` therefore gained `notated_on`, symmetric with the `notated_off` it already
-carried: both facts per note, and the mode picks. The file is `crates/musa-render/src/midi.rs`; the Target's
+carried: both facts per note, and the mode picks. The file is `crates/musa-notation/src/midi.rs`; the Target's
 `crates/musa-project/src/midi.rs` is MIDI *input*.
 
 **The warp lives in `groove.rs`, and the clock that applies it is a type.** The Target puts `Groove` in `profile.rs` and

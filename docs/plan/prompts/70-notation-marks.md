@@ -99,7 +99,7 @@ row whose column is `None`. MEI and MusicXML cover most of the table; LilyPond c
   argument forms, recovery, formatting.
 - `crates/musa-compiler`: the vocabulary rows above; shape checking against `Placement` with prompt 56's diagnostics;
   the profile settings each row needs.
-- `crates/musa-render`: the `Point` and `Span` emitters; `plan.rs` positions them.
+- `crates/musa-notation`: the `Point` and `Span` emitters; `plan.rs` positions them.
 - `examples/`: marks added to the existing corpus where they belong — a fermata in `counterpoint.musa`, pedal in
   `glass-mountain.musa` — plus `ornaments.musa` and `drum-chart.musa`.
 - Prompt 62's measured claim re-checked: adding `portato` after this prompt must still cost one row.
@@ -124,10 +124,10 @@ Commit as `Add the notation marks`.
    producer; in fact `marks.rs` was a table of five rows with three backend columns and nothing else. So the anchoring
    machinery is this prompt's, not a matter of filling in two empty variants.
 
-2. **`Placement` became `Anchor`, and the concept is sharper for it.** `crates/musa-render/src/plan.rs` already exports
-   a public `Placement { Above, Below }` — which side of the staff a mark prints on. That is a genuinely different
-   question from where a mark attaches in time, and one name for both would have been the kind of complecting this repo
-   is built to avoid. `Anchor { Note(Slot), Point, Span }` says the second thing only.
+2. **`Placement` became `Anchor`, and the concept is sharper for it.** `crates/musa-notation/src/plan.rs` already
+   exports a public `Placement { Above, Below }` — which side of the staff a mark prints on. That is a genuinely
+   different question from where a mark attaches in time, and one name for both would have been the kind of complecting
+   this repo is built to avoid. `Anchor { Note(Slot), Point, Span }` says the second thing only.
 
 3. **Note-anchored rows carry a `Slot`, and that is what keeps the claim true.** One string column per backend cannot
    express that a trill goes inside `<ornaments>`, a harmonic inside `<technical>`, and a fermata directly under

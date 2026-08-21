@@ -16,7 +16,7 @@
 //! makes that a fact the compiler checks rather than a property someone has to
 //! keep re-establishing.
 //!
-//! It also matches what consumers ask for. `musa-render` imports 34 names from
+//! It also matches what consumers ask for. `musa-notation` imports 34 names from
 //! the compiler and every one of them is here; it now rebuilds against this
 //! crate rather than against the whole pipeline.
 //!

@@ -1,0 +1,805 @@
+---
+source: crates/musa-notation/tests/plan.rs
+expression: "format!(\"{rendered:#?}\")"
+---
+NotationPlan {
+    front: FrontMatter {
+        title: "Annotated",
+        subtitle: None,
+        composer: None,
+        arranger: None,
+        copyright: None,
+        performance: None,
+    },
+    staves: [
+        StaffPlan {
+            name: "piano",
+            clef: Some(
+                Treble,
+            ),
+            key: Some(
+                KeySignature {
+                    fifths: 0,
+                    mode: Minor,
+                },
+            ),
+            time_signature: (
+                4,
+                4,
+            ),
+            measures: [
+                MeasurePlan {
+                    number: 1,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
+                    time_signature: Some(
+                        (
+                            4,
+                            4,
+                        ),
+                    ),
+                    key: Some(
+                        KeySignature {
+                            fifths: 0,
+                            mode: Minor,
+                        },
+                    ),
+                    clefs: [],
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        0,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: A,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                        spelling: "1/4",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 4,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "antecedent",
+                                            start: true,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        1,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: C,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                        spelling: "1/4",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 4,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "antecedent",
+                                            start: false,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        2,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: E,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "antecedent",
+                                            start: false,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                            ],
+                            slurs: [],
+                            phrases: [
+                                PhraseRange {
+                                    name: "antecedent",
+                                    from: EventId(
+                                        0,
+                                    ),
+                                    to: EventId(
+                                        4,
+                                    ),
+                                },
+                            ],
+                            hairpins: [],
+                            points: [],
+                            marks: [],
+                        },
+                    ],
+                },
+                MeasurePlan {
+                    number: 2,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
+                    time_signature: None,
+                    key: None,
+                    clefs: [],
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        3,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: F,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "antecedent",
+                                            start: false,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        4,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: E,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "antecedent",
+                                            start: false,
+                                            stop: true,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                            ],
+                            slurs: [],
+                            phrases: [],
+                            hairpins: [],
+                            points: [],
+                            marks: [],
+                        },
+                    ],
+                },
+                MeasurePlan {
+                    number: 3,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
+                    time_signature: None,
+                    key: None,
+                    clefs: [],
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        5,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: B,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                        spelling: "1/4",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 4,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "consequent",
+                                            start: true,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        6,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: E,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                        spelling: "1/4",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 4,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "consequent",
+                                            start: false,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        7,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: G,
+                                            accidental: Accidental(
+                                                1,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "consequent",
+                                            start: false,
+                                            stop: false,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                            ],
+                            slurs: [],
+                            phrases: [
+                                PhraseRange {
+                                    name: "consequent",
+                                    from: EventId(
+                                        5,
+                                    ),
+                                    to: EventId(
+                                        8,
+                                    ),
+                                },
+                            ],
+                            hairpins: [],
+                            points: [],
+                            marks: [],
+                        },
+                    ],
+                },
+                MeasurePlan {
+                    number: 4,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
+                    time_signature: None,
+                    key: None,
+                    clefs: [],
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        8,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: A,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 5,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 1,
+                                            },
+                                        ),
+                                        spelling: "1",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 1,
+                                                },
+                                            ),
+                                        ],
+                                    },
+                                    tie: none,
+                                    beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    phrase: Some(
+                                        PhraseMark {
+                                            name: "consequent",
+                                            start: false,
+                                            stop: true,
+                                        },
+                                    ),
+                                    hairpin: None,
+                                    dynamic: None,
+                                    articulations: [],
+                                    graces: [],
+                                    spans: [],
+                                    free: None,
+                                },
+                            ],
+                            slurs: [],
+                            phrases: [],
+                            hairpins: [],
+                            points: [],
+                            marks: [],
+                        },
+                    ],
+                },
+            ],
+            tempos: [],
+        },
+    ],
+    tempos: [
+        PositionedMark {
+            measure: 1,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: TempoText {
+                metronome: Some(
+                    Metronome {
+                        beat: Ratio {
+                            numer: 1,
+                            denom: 4,
+                        },
+                        bpm: 96,
+                    },
+                ),
+                text: None,
+            },
+        },
+    ],
+    sections: [
+        PositionedMark {
+            measure: 1,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: "Exposition",
+        },
+        PositionedMark {
+            measure: 3,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: "Development",
+        },
+    ],
+    harmony: [
+        PositionedMark {
+            measure: 1,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: ChordSymbol {
+                letter: A,
+                accidental: Accidental(
+                    0,
+                ),
+                quality: Minor,
+                seventh: None,
+                extension: None,
+                text: "am",
+            },
+        },
+        PositionedMark {
+            measure: 2,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: ChordSymbol {
+                letter: F,
+                accidental: Accidental(
+                    0,
+                ),
+                quality: Major,
+                seventh: Some(
+                    Major,
+                ),
+                extension: None,
+                text: "fmaj7",
+            },
+        },
+        PositionedMark {
+            measure: 3,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: ChordSymbol {
+                letter: E,
+                accidental: Accidental(
+                    0,
+                ),
+                quality: Major,
+                seventh: Some(
+                    Minor,
+                ),
+                extension: None,
+                text: "e7",
+            },
+        },
+        PositionedMark {
+            measure: 4,
+            onset_in_measure: MusicalDuration(
+                Ratio {
+                    numer: 0,
+                    denom: 1,
+                },
+            ),
+            what: ChordSymbol {
+                letter: A,
+                accidental: Accidental(
+                    0,
+                ),
+                quality: Minor,
+                seventh: None,
+                extension: None,
+                text: "am",
+            },
+        },
+    ],
+    repeats: [],
+    open: [],
+    holds: [],
+}

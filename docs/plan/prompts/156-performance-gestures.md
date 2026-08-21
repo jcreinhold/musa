@@ -73,8 +73,8 @@ minimum immutable lane/control information required by MIDI and `musa-audio`. `P
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render -p musa-project
-cargo clippy --all-targets -p musa-compiler -p musa-render -p musa-project -- -D warnings
+cargo nextest run -p musa-compiler -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-compiler -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo bench -p musa-compiler

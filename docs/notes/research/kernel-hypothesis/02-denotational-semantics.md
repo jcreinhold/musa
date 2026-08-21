@@ -252,8 +252,8 @@ because an atom whose interface is as wide as its implementation is APOSD's shal
 
 | Observation | Type | Who needs it |
 | --- | --- | --- |
-| `hearings` | `Music → List<Hearing>` | `musa-render` for realization, `musa-engine` for playback |
-| `lines` | `Hearing → List<Line>` | `musa-render` for beaming and stems; the counterpoint style for its rules |
+| `hearings` | `Music → List<Hearing>` | `musa-notation` for realization, `musa-engine` for playback |
+| `lines` | `Hearing → List<Line>` | `musa-notation` for beaming and stems; the counterpoint style for its rules |
 | `occurrences` | `Hearing → List<Occurrence>` | everything that works today, unchanged |
 | `restrict`, `covering`, `prevailing` | as today, on a `Hearing` | unchanged |
 

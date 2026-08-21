@@ -397,7 +397,7 @@ different musical outputs.
 | evaluation core and source evaluator | `musa-compiler` | no |
 | contextual recipes and target adapters | `musa-compiler` | recipes private; caller-ready facts public |
 | exact temporal term and timeline | `musa-kernel` | yes, through its small algebra |
-| notation plan and exporters | `musa-render` | plan private; render operations public |
+| notation plan and exporters | `musa-notation` | plan private; render operations public |
 | process validation and prepared execution | `musa-audio` | graph private; preparation public |
 | live stepping and device transport | `musa-engine` | engine facade only |
 | revision inputs and query coordination | `musa-project` | session facade only |

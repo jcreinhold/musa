@@ -3,7 +3,7 @@
 //! Measure numbering is a function of the meters in force, not a division by
 //! one number. Before this module every measure:beat conversion in the
 //! workspace divided by `Meter::measure_len()` — nine functions in
-//! `musa-render`'s planner threaded it as a parameter — so nothing in any
+//! `musa-notation`'s planner threaded it as a parameter — so nothing in any
 //! signature said "this piece has a single time signature", and nothing
 //! objected when it did not.
 //!
@@ -11,7 +11,7 @@
 //! bars and the callers are about other things:
 //!
 //! - **A `BarLines` is built over one time coordinate.** Notation folds
-//!   repeats (`musa-render`'s `Fold`), so a written measure and a sounding
+//!   repeats (`musa-notation`'s `Fold`), so a written measure and a sounding
 //!   measure are different measures; performance and the fact index do not
 //!   fold. Those are two `BarLines` values built at two call sites, not one
 //!   value with a flag, so that neither can silently inherit the other's

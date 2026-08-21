@@ -56,7 +56,7 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 
 - `musa-language`: new syntax + CST + typed wrappers + formatter rules.
 - `musa-compiler`: annotation model, tie merging, tuplet elaboration, diagnostics.
-- `musa-render`: plan + MEI + LilyPond support.
+- `musa-notation`: plan + MEI + LilyPond support.
 - Tests: snapshots at every layer for the new fixture; proptest: tuplet elaboration sums to the notated span (`3:2` of
   eighths spans one quarter); tie merging preserves total span and provenance.
 
@@ -99,8 +99,8 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-render
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-render -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-notation
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/tuplet-fixture.musa --to mei -o /tmp/t.mei
 cargo run -p musa -- render examples/tuplet-fixture.musa --to lilypond -o /tmp/t.ly

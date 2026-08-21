@@ -33,7 +33,7 @@ performance MIDI (interpreted) via `midly`.
   The score remains untouched: interpretation lives only in the plan (§6.4).
 - The default profile (no `performance` block) reproduces prompt 15–17 behavior exactly: full gate, neutral amplitude.
   Golden WAV from prompt 17 must remain byte-identical for pieces without profiles.
-- MIDI export in `musa-render` (add `midly`, §15.4):
+- MIDI export in `musa-notation` (add `midly`, §15.4):
 
   ```rust
   pub fn render_midi(
@@ -54,15 +54,15 @@ performance MIDI (interpreted) via `midly`.
 ## Target
 
 - `musa-language`/`musa-compiler`: `performance` blocks, profile model, interpreted `lower_performance`.
-- `musa-render`: `render_midi` both modes; CLI + project + desktop export wiring.
+- `musa-notation`: `render_midi` both modes; CLI + project + desktop export wiring.
 - Tests: profile gate/velocity unit tests; default-profile WAV byte-identity regression; midly round-trip snapshots;
   determinism.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render -p musa-project
-cargo clippy --all-targets -p musa-compiler -p musa-render -p musa-project -- -D warnings
+cargo nextest run -p musa-compiler -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-compiler -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/profile-fixture.musa --to midi --mode performance -o /tmp/p.mid
 cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm4.wav

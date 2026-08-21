@@ -94,7 +94,7 @@ observation total, and this inherits it rather than adding a diagnostic.
 - `crates/musa-language`: `ramp to … over … [curve …]` in the tempo statement.
 - `crates/musa-compiler`: the `Progress` payload on `FactKind::Tempo`; the bpm→seconds-per-beat conversion;
   `IntegratedTempoMap`'s piecewise-linear integration and its cross-check property.
-- `crates/musa-render` and `crates/musa-project/src/midi.rs`: the four exporters above.
+- `crates/musa-notation` and `crates/musa-project/src/midi.rs`: the four exporters above.
 - `examples/`: `rubato.musa` — a phrase with a rit. and an a tempo; `riser.musa` — an eight-bar accelerando into a drop.
 - `docs/rules/kernel/07-backend-contract.md`: the MIDI sampling rate, stated as the consumer's choice.
 

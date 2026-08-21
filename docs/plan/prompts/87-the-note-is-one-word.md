@@ -27,7 +27,7 @@ prompt is green with every example exactly as it stands.
 - `crates/musa-compiler/src/resolve.rs` `parse_duration`, and `crates/musa-language/src/edits.rs` `set_duration`. Both
   take *the first `Rational`-or-`Integer` token under the statement node*. That pattern is why this prompt introduces a
   node.
-- `crates/musa-render/src/plan.rs` `beam_unit`.
+- `crates/musa-notation/src/plan.rs` `beam_unit`.
 
 ## Design
 
@@ -104,7 +104,7 @@ and `score.rs`'s doc comment saying otherwise is amended in this commit.
 ## Target
 
 - `crates/musa-language/src/meter.rs` (new): `beat_groups`, exported from `lib.rs` and re-exported by `musa-compiler`
-  beside `musa_kernel::SemanticHash`, so `musa-render` reaches it without a new edge in the graph. `musa-render`'s
+  beside `musa_kernel::SemanticHash`, so `musa-notation` reaches it without a new edge in the graph. `musa-notation`'s
   `beam_unit` loses its own answer and becomes `beat_group_at`, which returns the group a given onset falls in — a
   uniform unit cannot describe 2+2+3.
 - `crates/musa-language/src/lexer.rs`, `syntax_kind.rs`, `highlight.rs` (`SPELLINGS` and `TokenClass::of`),

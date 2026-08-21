@@ -68,7 +68,7 @@ fn event_digest(events: &[PerformanceEvent]) -> String {
 }
 
 fn backend_snapshot_digest(prefix: &str) -> Result<(usize, String)> {
-    let directory = repository().join("crates/musa-render/tests/suite/snapshots");
+    let directory = repository().join("crates/musa-notation/tests/suite/snapshots");
     let mut names: Vec<String> = [
         "annotated",
         "canon",
@@ -259,7 +259,7 @@ fn manifest() -> Result<String> {
     }
     // MIDI and WAV use byte-level law tests instead of insta snapshots. The
     // audio-bridge oracle owns their concrete bytes below the compiler layer.
-    out.push_str("\n[backend midi]\noracle=crates/musa-render/tests/suite/midi.rs\n");
+    out.push_str("\n[backend midi]\noracle=crates/musa-notation/tests/suite/midi.rs\n");
     out.push_str("\n[backend wav]\noracle=tests/fixtures/audio-bridge-audio.compat\n");
     Ok(out)
 }

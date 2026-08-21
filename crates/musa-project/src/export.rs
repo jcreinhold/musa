@@ -19,7 +19,7 @@ pub enum ExportRequest {
     Wav,
     /// A Standard MIDI File. Two documents, not one setting: `Score` is the
     /// neutral reading, `Performance` the profiled one (roadmap §12.5).
-    Midi(musa_render::MidiMode),
+    Midi(musa_notation::MidiMode),
     /// The performance lowering, as a debug dump.
     PerformanceDump,
     /// The notation plan, as a debug dump.

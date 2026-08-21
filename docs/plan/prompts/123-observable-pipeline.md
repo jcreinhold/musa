@@ -111,7 +111,7 @@ and precisely what no user can otherwise see. The name is the one field that is 
 
 ## Target
 
-- Roadmap repair: add `tracing` to the dependency lists of §15.3 `musa-compiler`, §15.4 `musa-render`, §15.5
+- Roadmap repair: add `tracing` to the dependency lists of §15.3 `musa-compiler`, §15.4 `musa-notation`, §15.5
   `musa-audio`, and §15.11 `musa-lsp`; add `tracing-subscriber` to §15.7 `musa-project`; state in §15.8 that the CLI
   installs the subscriber and reads `MUSA_LOG`. The lists are closed, so this is the prompt that opens them.
 - `musa-project`: a new `logging` module exposing `Logging` and `FILTER_VARIABLE` on the facade, and spans on
@@ -119,7 +119,7 @@ and precisely what no user can otherwise see. The name is the one field that is 
   autosave, MIDI, realization, and `musa.toml` warnings already exist and become audible without being touched.
 - `musa-compiler`: spans on `compile` and `format_document`; events at the parse / check / elaborate / adapt boundaries
   and in `imports::load`.
-- `musa-render`, `musa-audio`: a span per public entry, recording the plan or graph size the caller already knows.
+- `musa-notation`, `musa-audio`: a span per public entry, recording the plan or graph size the caller already knows.
 - `musa-engine`: spans on `open`, `install`, and `command`, recording the negotiated device and stream configuration.
   Nothing below the queue boundary.
 - `musa-lsp`: a span per request carrying the method and the request id — the same id the client's own log records, so a
@@ -152,7 +152,7 @@ and precisely what no user can otherwise see. The name is the one field that is 
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render -p musa-audio -p musa-engine -p musa-project -p musa-lsp -p musa
+cargo nextest run -p musa-compiler -p musa-notation -p musa-audio -p musa-engine -p musa-project -p musa-lsp -p musa
 cargo nextest run -p musa-engine --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check

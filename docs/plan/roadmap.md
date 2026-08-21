@@ -1927,7 +1927,7 @@ musa/
 ├── crates/
 │   ├── musa-language/
 │   ├── musa-compiler/
-│   ├── musa-render/
+│   ├── musa-notation/
 │   ├── musa-audio/
 │   ├── musa-engine/
 │   ├── musa-project/
@@ -1955,7 +1955,7 @@ values                      musa-score
 passes                     musa-compiler
                      ← calculus, kernel, language, score
 
-outputs         musa-render                  musa-audio
+outputs         musa-notation                  musa-audio
                  ← score                  ← score, compiler
                                                  │
                                              musa-engine
@@ -1972,7 +1972,7 @@ In particular:
 
 - the musical values sit below the pipeline that computes them (§15.15): `musa-score` holds written pitch, chords,
   scales, exact time, marks, the score snapshot, the performance plan, provenance, diagnostics, and analysis, and names
-  no pass at all — which is why `musa-render` depends on it and not on `musa-compiler`;
+  no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
 - the core does not depend on the compiler, on `musa-language`, or on anything musical (§15.12);
@@ -1982,7 +1982,7 @@ In particular:
 - the frontend does not know about CPAL or FunDSP;
 - the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion must
   answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe;
-- the wasm shell sits on `musa-render` and, like the CLI, on `musa-compiler` directly (§15.14), and nothing in the
+- the wasm shell sits on `musa-notation` and, like the CLI, on `musa-compiler` directly (§15.14), and nothing in the
   workspace depends on it — `packages/*` consumes its built artifact from TypeScript, below Cargo entirely.
 
 ## 15.2 `musa-language`
@@ -2060,7 +2060,7 @@ pub fn compile(
 
 Most compiler passes remain private modules inside this crate.
 
-## 15.4 `musa-render`
+## 15.4 `musa-notation`
 
 Owns:
 
@@ -2196,7 +2196,7 @@ Dependencies:
 ```text
 musa-language
 musa-compiler
-musa-render
+musa-notation
 musa-audio
 musa-engine
 serde
@@ -2499,9 +2499,9 @@ see it.
 
 The fourth shell, and the only one that is not a program: a WebAssembly module carrying the whole semantic pipeline —
 parse, compile, notation plan, MEI — into the browser for `@musa/web`. Like `musa` and `musa-lsp` it adds no semantics
-of its own. Unlike them it has no session, and that is why it sits on `musa-compiler` and `musa-render` directly instead
-of on `musa-project`: a web snippet is one self-contained string, with no file to open, no revision history to keep, and
-no audio device to hold.
+of its own. Unlike them it has no session, and that is why it sits on `musa-compiler` and `musa-notation` directly
+instead of on `musa-project`: a web snippet is one self-contained string, with no file to open, no revision history to
+keep, and no audio device to hold.
 
 Owns:
 
@@ -2513,7 +2513,7 @@ Dependencies:
 
 ```text
 musa-compiler
-musa-render
+musa-notation
 wasm-bindgen
 serde
 serde-wasm-bindgen

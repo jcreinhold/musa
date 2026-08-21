@@ -7,11 +7,11 @@ category of artifacts.
 
 | Realization | Lands in | Crate |
 | --- | --- | --- |
-| Engraving | MEI, LilyPond, MusicXML — notated symbols with spelling, stems, beams, barlines | `musa-render` |
+| Engraving | MEI, LilyPond, MusicXML — notated symbols with spelling, stems, beams, barlines | `musa-notation` |
 | Performance | gestures and control curves on exact rational time | `musa-compiler` |
 | Sound | a sample stream | `musa-audio`, `musa-engine` |
 | Analysis | harmonic function, set class, voice-leading verdicts, form | `musa-compiler::analysis` |
-| MIDI | note numbers, velocities, physical onsets | `musa-render` |
+| MIDI | note numbers, velocities, physical onsets | `musa-notation` |
 | Identity | the semantic hash — when two pieces are the same piece | `musa-kernel` |
 
 > **The question.** Is there an object `M(p)` such that every realization factors through it — `p ↦ M(p) ↦ R(p)` for

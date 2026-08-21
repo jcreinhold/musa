@@ -23,7 +23,7 @@ fast path's other branch.
 - Prompt 57 §"Irregular durations are deferred, and the reason is honest" — the debt this pays.
 - Prompt 61 `bars.rs` — `BarLines::uniform` is the only constructor; this prompt adds the other one.
 - Prompt 63 `context.rs` and `scope.rs` — `ContextTrack`, the inheritance table, and the motif-body invariant.
-- `crates/musa-render/src/plan.rs` — `Fold` (:584) and `plan_staff`'s measure walk (:820).
+- `crates/musa-notation/src/plan.rs` — `Fold` (:584) and `plan_staff`'s measure walk (:820).
 - `crates/musa-compiler/src/elaborate.rs` — `Share` and `bind_anonymous`; the bar-duration check (:1680).
 
 ## Design
@@ -96,7 +96,7 @@ Each backend's constant case must produce byte-identical output to before, which
   recovery set, and the formatter's blank-line rule (a meter change is a paragraph break, like a section).
 - `crates/musa-compiler`: the meter-resolution pass; `BarLines::from_changes`; the barline and motif-body diagnostics;
   `bar 5/4 { … }` and the pickup, which are now expressible and must be accepted.
-- `crates/musa-render`: the four exporters above; `plan.rs` walks `BarLines::measures()`.
+- `crates/musa-notation`: the four exporters above; `plan.rs` walks `BarLines::measures()`.
 - `examples/`: `changing-meter.musa` — a folk tune alternating 7/8 and 4/4, which is the case this exists for, plus a
   pickup in `twinkle.musa`. `examples/broken/meter-mid-bar.musa`.
 - `docs/plan/roadmap.md` §7.2; prompt 57's deferral struck with a pointer here.

@@ -21,7 +21,7 @@ What the composer writes once, the page prints once, and the performance plays t
   is load-bearing.
 - Prompt 06 (`repeat n { … }` as it exists), prompt 49 (it is already a kernel `let` referenced n times — the sharing
   this prompt needs is already in the term).
-- Prompt 07 / `crates/musa-render/src/plan.rs` — where barlines are decided.
+- Prompt 07 / `crates/musa-notation/src/plan.rs` — where barlines are decided.
 - Prompt 57 — bars. An ending is a run of bars, and repeat barlines fall on barlines.
 - `docs/rules/desktop/02-engraving.md` — repeat barlines and volta brackets are Verovio's `<ending>` and
   `@right="rptend"`.
@@ -130,8 +130,8 @@ Volta brackets are written in the topmost staff's first lane only, as engravers 
 - `crates/musa-compiler`: ending placement and count rules, all as `Code::Misplaced`; `FactKind::Repeat` and
   `FactKind::Ending` with their `factext` spellings; `RepeatRegion`/`EndingRegion` on `AnnotationStore`; the
   every-voice-agrees rule and its warning.
-- `crates/musa-render`: the fold, `RepeatMark`/`VoltaMark` on `NotationPlan`, and repeat barlines and volta brackets in
-  the MEI, LilyPond, and MusicXML backends; MIDI unchanged, because performance was already correct.
+- `crates/musa-notation`: the fold, `RepeatMark`/`VoltaMark` on `NotationPlan`, and repeat barlines and volta brackets
+  in the MEI, LilyPond, and MusicXML backends; MIDI unchanged, because performance was already correct.
 - `examples/repeats.musa`: two parts, two endings; goldens at every backend.
 - `examples/broken/ending-outside-repeat.musa` and `examples/broken/ending-past-the-count.musa`: the rendered reports,
   snapshotted as prompt 56 established.
@@ -152,8 +152,8 @@ of bars, and the one-line rule is about bars.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-render
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-render -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-notation
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/repeats.musa --to mei -o -    # one body, |: :|, two endings
 cargo run -p musa -- render examples/repeats.musa --to midi        # every pass, as before

@@ -92,7 +92,7 @@ Several layers coexist, they need not agree, and none of them owns an interval o
   dissonance* is two layers with incommensurable periods. A model that predicts an existing classification is worth more
   than one that has to be told it.
 - **Barlines become a projection, not a fact.** Which layer is notated as the bar is an engraving decision made by
-  `musa-render`, and re-barring a passage does not change what it denotes.
+  `musa-notation`, and re-barring a passage does not change what it denotes.
 
 ### What this leaves open
 

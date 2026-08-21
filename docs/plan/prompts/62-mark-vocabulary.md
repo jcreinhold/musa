@@ -126,7 +126,7 @@ defends. If a column starts to look like performance, it belongs in a profile.
 - `crates/musa-compiler/src/score.rs`: `ArticulationMark` **deleted**; `Note`/`Rest` facts carry `Vec<Mark>`.
 - `crates/musa-compiler/src/{resolve,elaborate,factext,performance,project,profile}.rs`: every match arm replaced by a
   lookup; `suggest` fed from `VOCABULARY` instead of `NAMES`.
-- `crates/musa-render/src/{plan,ly,mei,musicxml}.rs`: one `Placement::Attached` emitter each, reading the backend
+- `crates/musa-notation/src/{plan,ly,mei,musicxml}.rs`: one `Placement::Attached` emitter each, reading the backend
   column.
 - `crates/musa-compiler/tests/suite/marks.rs`: every vocabulary row round-trips through `lookup`; an unknown mark
   produces prompt 56's diagnostic with a suggestion; the table's names are unique.
@@ -178,7 +178,7 @@ warning is prompt 70's, stated there rather than shipped dead here.
   line.
 - `crates/musa-compiler/tests/snapshots/profile_laws__profile_fixture.snap`: the same span shift, same fixture.
 - `crates/musa-compiler/tests/snapshots/notation_details_laws__tuplet_fixture.snap` and
-  `crates/musa-render/tests/snapshots/plan__tuplet_fixture.snap`: `Accent` became `Mark("accent")`. `Mark`'s *derived*
+  `crates/musa-notation/tests/snapshots/plan__tuplet_fixture.snap`: `Accent` became `Mark("accent")`. `Mark`'s *derived*
   `Debug` printed the whole vocabulary row, which would have made an annotation snapshot move whenever a *backend*
   spelling changed — a fact about the exporter, not about the score being snapshotted. The hand-written `Debug` prints
   the name alone, and that is what the goldens now hold. These are debug renderings; the rendered MEI, LilyPond and

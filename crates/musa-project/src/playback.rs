@@ -79,13 +79,13 @@ pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u
 /// [`ProjectError::Notation`] if a written pitch is outside MIDI's range.
 pub(crate) fn to_midi(
     score: &ScoreSnapshot,
-    mode: musa_render::MidiMode,
+    mode: musa_notation::MidiMode,
 ) -> Result<(Vec<u8>, Vec<String>), ProjectError> {
     let performance = musa_score::lower_performance(score, &PerformanceOptions::default())
         .map_err(|error| ProjectError::Performance(error.to_string()))?;
-    let options = musa_render::MidiOptions {
+    let options = musa_notation::MidiOptions {
         mode,
-        ..musa_render::MidiOptions::default()
+        ..musa_notation::MidiOptions::default()
     };
     // SMF has one tempo track and one time-signature track for the whole
     // file. Every note is written at the frame it is actually played at, so
@@ -107,8 +107,8 @@ pub(crate) fn to_midi(
                 .to_owned(),
         );
     }
-    let bytes =
-        musa_render::render_midi(&performance, &options).map_err(|error| ProjectError::Notation(error.to_string()))?;
+    let bytes = musa_notation::render_midi(&performance, &options)
+        .map_err(|error| ProjectError::Notation(error.to_string()))?;
     Ok((bytes, warnings))
 }
 

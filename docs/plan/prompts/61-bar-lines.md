@@ -27,7 +27,7 @@ rather than argued.
   blocks mid-piece meter.
 - Every site that divides by it: `elaborate.rs::resolve_position` (:781), the bar-duration check (:1680),
   `check_tuplets` (:2296), `resolve.rs::check_measure_sanity` (:927), `musa-project/src/facts.rs` (:290, :546), and
-  `musa-render/src/plan.rs` — `plan_notation` (:516), `Fold::marks` (:660), `measure_of`/`last_measure_of` (:691,
+  `musa-notation/src/plan.rs` — `plan_notation` (:516), `Fold::marks` (:660), `measure_of`/`last_measure_of` (:691,
   :700), `positioned` (:796), `plan_staff` (:820), `plan_lane` (:901), `assign_beams` (:1056).
 - Prompt 58 and `plan.rs`'s `Fold` — repeats and endings **renumber measures**. This is the hazard the design section
   addresses; read `Fold::at`/`end_at` before writing anything.
@@ -104,7 +104,7 @@ so 64 has something to break rather than something to discover.
 ### Who owns it
 
 `BarLines` lives in `musa-compiler` and is reachable from `ScoreSnapshot`, because the meters that determine it are the
-compiler's. `musa-render` and `musa-project` consume it and construct nothing except the folded instance, which is
+compiler's. `musa-notation` and `musa-project` consume it and construct nothing except the folded instance, which is
 notation's own business and belongs in `plan.rs`.
 
 `positioned`, `measure_of` and `last_measure_of` all disappear into `BarLines::at`, which is the test of whether the
@@ -129,7 +129,7 @@ today.
 - `crates/musa-compiler/src/score.rs`: `ScoreSnapshot::bars()`. `MeterMap` and `measure_len()` stay for now — prompt 63
   is what deletes them.
 - `crates/musa-compiler/src/{elaborate,resolve}.rs`, `crates/musa-project/src/facts.rs`,
-  `crates/musa-render/src/plan.rs`: every `measure_len` parameter and every division removed; `facts.rs::position`,
+  `crates/musa-notation/src/plan.rs`: every `measure_len` parameter and every division removed; `facts.rs::position`,
   `plan.rs::measure_of`, `plan.rs::last_measure_of`, and `plan.rs::positioned`'s arithmetic deleted.
 - `crates/musa-compiler/tests/suite/bars.rs`: the inverse property, the degenerate-meter case, and a fixed-input test
   per deleted function so the replacements are compared against what they replace rather than against themselves.

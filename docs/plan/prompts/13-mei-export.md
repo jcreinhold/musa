@@ -21,7 +21,7 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
 
 ## Design
 
-- Add `quick-xml` to `musa-render`. Build XML through a real writer (§12.2) — no `format!()` string assembly scattered
+- Add `quick-xml` to `musa-notation`. Build XML through a real writer (§12.2) — no `format!()` string assembly scattered
   through traversal.
 - Public surface (the §15.4 facade, completed incrementally):
 
@@ -50,7 +50,7 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
 
 ## Target
 
-- `musa-render`: MEI writer + `render_notation` facade with `NotationTarget::Mei`.
+- `musa-notation`: MEI writer + `render_notation` facade with `NotationTarget::Mei`.
 - `musa`: `render --to mei`.
 - Tests: insta snapshots for all three examples; a well-formedness check parsing the output back with quick-xml; a test
   asserting every note/layer id in the MEI resolves to an `EventId` present in the snapshot; MEI schema validation if a
@@ -61,8 +61,8 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
 ## Check
 
 ```sh
-cargo nextest run -p musa-render -p musa
-cargo clippy --all-targets -p musa-render -p musa -- -D warnings
+cargo nextest run -p musa-notation -p musa
+cargo clippy --all-targets -p musa-notation -p musa -- -D warnings
 cargo fmt --check
 cargo run -p musa -- render examples/glass-mountain.musa --to mei -o /tmp/gm.mei
 grep -c 'xml:id="event-' /tmp/gm.mei   # non-zero, matches snapshot event count

@@ -55,8 +55,8 @@ an annotation; prompt 116 adds that explicit claim.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render -p musa-project
-cargo clippy --all-targets -p musa-compiler -p musa-render -p musa-project -- -D warnings
+cargo nextest run -p musa-compiler -p musa-notation -p musa-project
+cargo clippy --all-targets -p musa-compiler -p musa-notation -p musa-project -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/chord-voicings.musa
 cargo run -p musa -- render examples/chord-voicings.musa --to musicxml -o /tmp/chord-voicings.musicxml

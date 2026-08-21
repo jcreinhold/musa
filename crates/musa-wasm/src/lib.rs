@@ -1,7 +1,7 @@
 //! The WebAssembly shell: one small module that carries the
 //! whole semantic pipeline — parse, compile, notation plan, MEI render — into
 //! the browser for `@musa/web`. A shell like `musa` and `musa-lsp`: it
-//! depends on `musa-compiler` and `musa-render`, never the reverse, and adds
+//! depends on `musa-compiler` and `musa-notation`, never the reverse, and adds
 //! no semantics of its own.
 //!
 //! Owns: the wasm-crossing diagnostic type and the three functions of the
@@ -17,7 +17,7 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_render::{NotationOptions, NotationTarget, render_notation};
+use musa_notation::{NotationOptions, NotationTarget, render_notation};
 use musa_score::{Diagnostic, Severity};
 use serde::Serialize;
 use wasm_bindgen::JsValue;

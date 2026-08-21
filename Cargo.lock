@@ -2436,29 +2436,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "musa-project"
-version = "0.1.0"
-dependencies = [
- "hound",
- "musa-audio",
- "musa-compiler",
- "musa-engine",
- "musa-language",
- "musa-render",
- "musa-score",
- "num-rational",
- "serde",
- "serde_json",
- "tempfile",
- "text-size",
- "thiserror 2.0.20",
- "toml 1.1.4+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "musa-render"
+name = "musa-notation"
 version = "0.1.0"
 dependencies = [
  "insta",
@@ -2470,6 +2448,28 @@ dependencies = [
  "quick-xml",
  "thiserror 2.0.20",
  "tracing",
+]
+
+[[package]]
+name = "musa-project"
+version = "0.1.0"
+dependencies = [
+ "hound",
+ "musa-audio",
+ "musa-compiler",
+ "musa-engine",
+ "musa-language",
+ "musa-notation",
+ "musa-score",
+ "num-rational",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "text-size",
+ "thiserror 2.0.20",
+ "toml 1.1.4+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2492,7 +2492,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "musa-compiler",
- "musa-render",
+ "musa-notation",
  "musa-score",
  "serde",
  "serde-wasm-bindgen",

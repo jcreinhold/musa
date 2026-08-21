@@ -1,0 +1,49 @@
+---
+source: crates/musa-notation/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+\header {
+  title = "Annotated"
+}
+
+chords = {
+  \chordmode
+  {
+    a1:m
+    f1:maj7
+    e1:7
+    a1:m
+  }
+}
+partPiano = {
+  \clef "treble"
+  \time 4/4
+  \key a \minor
+  {
+    \tempo 4 = 96
+    \mark \markup { \bold "Exposition" }
+    a'4^\markup { \italic "antecedent" } % event:0
+    c''4 % event:1
+    e''2 % event:2
+    |
+    f''2 % event:3
+    e''2 % event:4
+    |
+    \mark \markup { \bold "Development" }
+    b'4^\markup { \italic "consequent" } % event:5
+    e''4 % event:6
+    gs''2 % event:7
+    |
+    a''1 % event:8
+    |
+  }
+}
+\score {
+  <<
+    \new ChordNames \chords
+    \new Staff \partPiano
+  >>
+}

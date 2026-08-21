@@ -131,10 +131,10 @@ observable output of `compile` is byte-identical, and the only thing that change
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render -p musa-project
+cargo nextest run -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-cargo insta test -p musa-compiler -p musa-render --unreferenced=reject   # no golden may change
+cargo insta test -p musa-compiler -p musa-notation --unreferenced=reject   # no golden may change
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 cargo bench -p musa-compiler   # append the row to docs/rules/kernel/09-performance.md
 grep -rn "struct Marks\|fn retie" crates/ | wc -l   # 0
@@ -165,7 +165,7 @@ Commit as `Elaborate every notated fact as a kernel occurrence`.
   a block boundary merges at the level containing both sides. The one thing that must stay at voice level is the
   *dangling* tie diagnostic — a tie at the end of a `slur` block continues into what follows the block, so complaining
   per level would reject valid music.
-- **`grep -rn "struct Marks\|fn retie" crates/` returns 1, not 0**: `musa-render/src/plan.rs` has an unrelated
+- **`grep -rn "struct Marks\|fn retie" crates/` returns 1, not 0**: `musa-notation/src/plan.rs` has an unrelated
   `struct Marks` — the notation planner's per-event annotation index, which predates this prompt and has nothing to do
   with payload tags. Scoped to `crates/musa-compiler`, the check returns 0.
 - **`cargo insta test --unreferenced=reject` is not runnable here** (`cargo-insta` is not installed). The stronger

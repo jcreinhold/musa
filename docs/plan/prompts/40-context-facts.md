@@ -30,7 +30,7 @@ Tempo does **not** move. That is not an omission; see below.
 - `crates/musa-compiler/src/score.rs`: `KeyMap`, `MeterMap`, `TempoMap`, `SectionMark`, `HarmonyMark`.
 - `crates/musa-compiler/src/elaborate.rs`: `elaborate_annotations`, `piece_extent`, `resolve_position` — the last
   functions that compute temporal facts outside the timeline.
-- `crates/musa-project/src/facts.rs` (`OutlineFacts` reads sections and phrases), `crates/musa-render/src/plan.rs`
+- `crates/musa-project/src/facts.rs` (`OutlineFacts` reads sections and phrases), `crates/musa-notation/src/plan.rs`
   (measures are computed from `MeterMap`).
 
 ## Design
@@ -99,7 +99,7 @@ re-record them in this commit and say so, since every other golden in the repo m
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test -p musa-render --unreferenced=reject     # backend goldens unchanged
+cargo insta test -p musa-notation --unreferenced=reject     # backend goldens unchanged
 for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 cargo run -p musa -- render examples/annotated.musa --to mei -o /tmp/a.mei
 cargo bench -p musa-compiler

@@ -73,7 +73,7 @@ const ON_THE_BEAT: &str = "grace { steal = 1/8; from = principal; }";
 const AHEAD_OF_IT: &str = "grace { steal = 1/8; from = previous; }";
 
 // The other half of the pair — one engraving from two profiles — lives in
-// `musa-render`'s `graces.rs`, because the dependency runs that way and a
+// `musa-notation`'s `graces.rs`, because the dependency runs that way and a
 // notation backend is what has to be shown not to care.
 
 #[test]

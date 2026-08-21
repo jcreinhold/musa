@@ -8,7 +8,7 @@ good and bad output is almost entirely in how it is driven, themed, scaled, and 
 
 ## 1. Ownership
 
-Rust owns MEI (prompt 13, `musa-render`). The frontend owns nothing musical. The render layer converts
+Rust owns MEI (prompt 13, `musa-notation`). The frontend owns nothing musical. The render layer converts
 `ProjectSnapshot.mei` → SVG and hands back a page index and an id map. It is a projection, not a model.
 
 The render layer's public surface to the rest of the UI is deliberately narrow:

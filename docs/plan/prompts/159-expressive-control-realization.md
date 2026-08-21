@@ -62,7 +62,7 @@ allowed only after binding.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-audio -p musa-render -p musa-engine -p musa-project
+cargo nextest run -p musa-compiler -p musa-audio -p musa-notation -p musa-engine -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject

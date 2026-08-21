@@ -55,8 +55,8 @@ primitive, stop and demonstrate what information source code cannot express befo
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render
-cargo clippy --all-targets -p musa-compiler -p musa-render -- -D warnings
+cargo nextest run -p musa-compiler -p musa-notation
+cargo clippy --all-targets -p musa-compiler -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/diatonic-sequences.musa
 cargo run -p musa -- check examples/rule-of-the-octave.musa

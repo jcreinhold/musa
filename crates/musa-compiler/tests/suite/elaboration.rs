@@ -5,7 +5,7 @@
 //!
 //! - **fixtures** — positions, durations, spelling, identity, multiplicity,
 //!   ordering and provenance are pinned absolutely by the backend goldens
-//!   (`musa-render`), the law suites, and the kernel normal forms below;
+//!   (`musa-notation`), the law suites, and the kernel normal forms below;
 //! - **the generated corpus** — arbitrary pieces still have to elaborate, and
 //!   what a random piece *means* is checkable without a second implementation:
 //!   one event per written statement, and a voice as long as the durations

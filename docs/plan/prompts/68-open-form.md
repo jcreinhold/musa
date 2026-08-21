@@ -104,7 +104,7 @@ realization and nothing else; that is exact for what MIDI is.
 - `crates/musa-language`: `fragment`, `mobile`, `improvise`, and `to` in a duration; recovery and formatting.
 - `crates/musa-compiler`: three `FactKind` variants; `Decision::{Order, Duration}` producers; Fisher–Yates over the
   per-path stream; the notated-versus-performed split for free durations.
-- `crates/musa-render`: the three lossy emissions above, each warning once; `plan.rs` draws the bracket and the box.
+- `crates/musa-notation`: the three lossy emissions above, each warning once; `plan.rs` draws the bracket and the box.
 - `examples/`: `in-c.musa` (Riley — the fifty-three-figure test), `mobile.musa` (Klavierstück XI's shape),
   `changes.musa` (a chart with an improvised chorus).
 - `docs/rules/kernel/08-open-questions.md`: rows 7–10 marked proven, or the reason they are not.

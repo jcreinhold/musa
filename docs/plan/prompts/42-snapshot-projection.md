@@ -27,7 +27,7 @@ decision, and the next representation change is another workspace-wide edit.
 - `docs/rules/kernel/07-backend-contract.md` (the snapshot is the score-specific interpretation of the normalized
   denotation), `docs/rules/kernel/07-backend-contract.md` (what consumers may assume — this prompt makes those
   assumptions enforceable rather than conventional).
-- Every consumer, before designing the accessors: `crates/musa-render/src/plan.rs`, `ly.rs`, `mei.rs`, `musicxml.rs`,
+- Every consumer, before designing the accessors: `crates/musa-notation/src/plan.rs`, `ly.rs`, `mei.rs`, `musicxml.rs`,
   `midi.rs`; `crates/musa-compiler/src/performance.rs`; `crates/musa-project/src/facts.rs`, `edit.rs`, `export.rs`,
   `midi.rs`, `snapshot.rs`. The accessor set is designed *from the calls that exist*, not from the fields.
 
@@ -79,7 +79,7 @@ workspace is the proof.
 - `crates/musa-compiler/src/score.rs`: fields private; the chosen accessor set, each with a doc comment stating its
   invariant; constructors `pub(crate)`.
 - `crates/musa-compiler/src/project.rs`: projection updated; any Set B query implemented here, where the spans are.
-- `crates/musa-render`, `crates/musa-project`, `apps/musa-desktop` (Rust side): call sites migrated.
+- `crates/musa-notation`, `crates/musa-project`, `apps/musa-desktop` (Rust side): call sites migrated.
 - `docs/rules/kernel/07-backend-contract.md`: a short section stating that the guarantees are now carried by the
   snapshot's interface, naming the accessors that carry each one.
 - `docs/rules/kernel/09-performance.md`: this prompt's row.
@@ -88,7 +88,7 @@ workspace is the proof.
 
 **The Set B motivation above was wrong about where the duplication is.** The Design section claims *marks attached to an
 event* is re-derived "from `annotations` by id" in each of MEI, LilyPond and MusicXML. It is not: those three backends
-consume `NotationPlan`, and `NotationPlan` is built once, in `musa-render/src/plan.rs`. Exactly two places in the
+consume `NotationPlan`, and `NotationPlan` is built once, in `musa-notation/src/plan.rs`. Exactly two places in the
 workspace read `annotations` and rebuild anything from it, and they do the *same* rebuild two different ways:
 
 - `plan.rs::Marks::collect` walks `from.0..=to.0` for phrases, hairpins and tuplets — raw id arithmetic that assumes

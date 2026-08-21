@@ -155,7 +155,7 @@ not the meter's denominator. That judgement lives in one place and this is not i
 
 - `musa-project`: `HeaderField`, `EditCommand::SetHeader`, its resolution and its refusals; the wire shape follows the
   other edits.
-- `musa-render`: the encoded `<pgHead>` with front-matter ids; `front-copyright` on the `<pgFoot>` line.
+- `musa-notation`: the encoded `<pgHead>` with front-matter ids; `front-copyright` on the `<pgFoot>` line.
 - `apps/musa-desktop/ui`:
   - `header: "encoded"`, and `<pgHead2>` proven or the loss reported.
   - `TypographicRow` / `EditableValue` — the rest underline.
@@ -180,7 +180,7 @@ not the meter's denominator. That judgement lives in one place and this is not i
 ## Check
 
 ```sh
-cargo nextest run -p musa-project -p musa-render
+cargo nextest run -p musa-project -p musa-notation
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm run check && npm run test

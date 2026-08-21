@@ -81,5 +81,5 @@ Commit as `Add performance lowering with frame scheduling`.
 - No `Parameter` events from the grammar (nothing produces them until prompt 29/30); the variant exists now so the enum
   is stable.
 - No audio rendering, no MIDI file export.
-- Do not put `lower_performance` in `musa-render` or `musa-audio`; it is part of the compiler's lowering pipeline
+- Do not put `lower_performance` in `musa-notation` or `musa-audio`; it is part of the compiler's lowering pipeline
   (§10.6, §15.3).

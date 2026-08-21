@@ -82,7 +82,7 @@ track and a machine meet only at `schedule`.
 | Tokens, concrete syntax tree, formatting, and text edits | `musa-language` | parsing and edit operations |
 | Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
 | Exact finite event tracks and their laws | `musa-kernel` | `Term`, the track type, construction, queries, equality, and hash |
-| Engraving plan and file export | `musa-render` | `render_notation` and export results |
+| Engraving plan and file export | `musa-notation` | `render_notation` and export results |
 | Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-audio` | `prepare_execution` and an opaque prepared machine |
 | Audio-device negotiation, transport, and callback | `musa-engine` | `AudioEngine` and transport commands |
 | Source documents, revisions, commands, and derived-result coordination | `musa-project` | `ProjectSession` |

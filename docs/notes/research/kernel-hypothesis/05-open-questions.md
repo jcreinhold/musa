@@ -41,10 +41,10 @@ reading would be wrong.
 layers are an analysis, a claim in the sense of Amendment VI, and the kernel carries only the notated meter — which is
 itself just the layer the engraver chose to bar.
 
-**What settles it.** Whether any *non-analytic* consumer needs a layer. `musa-render` needs one to bar and beam; that is
-satisfied by the notated meter alone. `musa-engine` needs one for a click; same. If no consumer outside analysis needs
-the non-notated layers, answer (ii) wins and Amendment III narrows to "the notated meter is a layer, not a region" —
-which is still enough to refute the region model and still enough to represent explicit polymeter.
+**What settles it.** Whether any *non-analytic* consumer needs a layer. `musa-notation` needs one to bar and beam; that
+is satisfied by the notated meter alone. `musa-engine` needs one for a click; same. If no consumer outside analysis
+needs the non-notated layers, answer (ii) wins and Amendment III narrows to "the notated meter is a layer, not a region"
+— which is still enough to refute the region model and still enough to represent explicit polymeter.
 
 **Current lean.** (ii), with the amendment narrowed. Explicit polymeter (OMT `098`) is notated and so is carried;
 implicit polymeter and hypermeter are heard and so are analyses. This preserves the falsifier that motivated the atom
@@ -168,7 +168,7 @@ Ordered so that the earliest step is the most likely to refute the hypothesis, w
    `overlay(seq(60, 62), seq(57, 59))` and `overlay(seq(60, 59), seq(57, 62))` satisfy `semantic_eq`. The current
    denotation identifies parallel motion with a voice exchange, exactly as Proposition B predicts. What remains of
    step 1 is the first/second-ending case and a check of whether any consumer recovers the distinction downstream —
-   `musa-render`'s beaming is the place to look, since if it beams both identically the information is gone from the
+   `musa-notation`'s beaming is the place to look, since if it beams both identically the information is gone from the
    whole pipeline and not just from the kernel.
 2. **Prototype the branch-indexed value representation** (`04-operational-semantics.md` §4.1) and check the linear size
    obligation on a piece with nested alternatives. This is the one non-obvious implementation requirement, and if it
@@ -191,7 +191,7 @@ Stated plainly, so it is possible to lose:
 
 - **Step 1 fails.** If voice identity and alternatives are already faithfully represented where it matters, the
   motivating deletions do not exist.
-- **Nobody wants `lines`.** If `musa-render` and the counterpoint style are both happier with payload metadata after
+- **Nobody wants `lines`.** If `musa-notation` and the counterpoint style are both happier with payload metadata after
   seeing the alternative, the atom is not paying for itself and Amendment II should be withdrawn to a note.
 - **Step 2 or 3 fails badly.** An exponential value representation or an expensive canonical form would make the kernel
   violate its own performance budgets, and a semantics that cannot be computed is not a semantics for this project.

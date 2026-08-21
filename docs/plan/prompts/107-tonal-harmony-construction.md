@@ -102,8 +102,8 @@ modulation remains a claim about a passage and belongs to analysis.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-render
-cargo clippy --all-targets -p musa-compiler -p musa-render -- -D warnings
+cargo nextest run -p musa-compiler -p musa-notation
+cargo clippy --all-targets -p musa-compiler -p musa-notation -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/tonal-construction.musa
 cargo run -p musa -- render examples/tonal-construction.musa --to musicxml -o /tmp/tonal-construction.musicxml

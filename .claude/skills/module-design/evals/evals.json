@@ -21,7 +21,7 @@
     },
     {
       "id": 4,
-      "prompt": "I'm writing a `struct NotationPlan` in `crates/musa-render`. The current sketch has eight `pub` fields — measures, staves, beams, ties, plus four convenience accessor methods that just read them. Which fields should actually be public, and should the accessors exist at all?",
+      "prompt": "I'm writing a `struct NotationPlan` in `crates/musa-notation`. The current sketch has eight `pub` fields — measures, staves, beams, ties, plus four convenience accessor methods that just read them. Which fields should actually be public, and should the accessors exist at all?",
       "expected_output": "An analysis distinguishing data (what defines the plan) from operations (what consumers compute), recommending private fields with a small set of caller-oriented operations, and flagging that accessors which only mirror field layout are shallow surface rather than real abstraction.",
       "files": []
     },

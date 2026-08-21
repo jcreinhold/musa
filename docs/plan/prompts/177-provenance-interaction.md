@@ -17,8 +17,8 @@ the same provenance the desktop app's origin view is built on, delivered as a DO
 
 ## Read
 
-- `crates/musa-render/src/mei.rs` header — the `xml:id` contract: `event-<hex>`, tie pieces as `event-<hex>-t2`, `-t3`,
-  …; stripping the suffix yields the `EventId`. Layers are `layer-<s>-<l>` and are not event-mapped.
+- `crates/musa-notation/src/mei.rs` header — the `xml:id` contract: `event-<hex>`, tie pieces as `event-<hex>-t2`,
+  `-t3`, …; stripping the suffix yields the `EventId`. Layers are `layer-<s>-<l>` and are not event-mapped.
 - Prompt 176 — where the SVG lands (shadow roots and sibling containers); interaction must cross that boundary
   deliberately.
 - `docs/rules/desktop/` (origin view, linked reading) for the semantics; the web analog is a callback, not a port of the
