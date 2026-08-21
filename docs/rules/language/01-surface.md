@@ -541,10 +541,10 @@ than left to a search:
 - A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the constraint or
   the qualified path; otherwise adding a trait to a package would change what existing code means.
 - There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
-- Where the receiver's type is not yet known — an unsolved metavariable — the method call is refused at the call, and
-  the refusal names the qualified path to write instead. Nothing is postponed: postponement was deleted with the rest of
-  the constraint machinery, and `02-core-calculus.md` §2.1's two-pass spine is what now makes a receiver's type known in
-  the cases that used to need it — an argument the walk defers is checked after the arguments that decide it, so
+- Where the receiver's type is still undetermined after the spine walk, the method call is refused at the call, and the
+  refusal names the qualified path to write instead. Nothing is postponed: postponement was deleted with the rest of the
+  constraint machinery, and `02-core-calculus.md` §2.1's two-pass spine is what now makes a receiver's type known in the
+  cases that used to need it — an argument the walk defers is checked after the arguments that decide it, so
   `applied(fn (p) { p.transposed(P8) }, c4)` resolves `.transposed` at `Pitch`.
 
 `T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
@@ -1046,6 +1046,6 @@ is a rule nobody can implement, which is why the third column is not optional.
 | qualified path | `std::tonal::TokenKind::PitchLiteral` ⇝ that constructor | a lowercase segment after a capitalized one — *a type namespace holds one item*, pointing at the extra segment |
 | inherent constructor | `Duration::of(r) : Result<Duration, RangeError>` | an unqualified `of(r)` chosen by its result type — *unresolved name*, since return-type-directed overloading does not exist to find it |
 | list literal | `[c4, d4] : List<Pitch>` | `[]` in an inferring position — *element type unknown*, with the annotation as the fix |
-| `collect` | `let out: List<Nat> = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *unsolved metavariable*, naming `D` |
+| `collect` | `let out: List<Nat> = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *type parameter not determined*, naming `D` |
 | comprehension | — | `[f(x) for x in xs]` — *no comprehension*, with `xs.map(f)` as the fix |
 | former `data` | — | `data D { … }` — *a product and a sum get different words*, with `record` or `enum` as the applicable fix |

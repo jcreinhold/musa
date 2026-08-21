@@ -78,9 +78,10 @@ Each implementation step must test the premise on which its proof relies:
 
 - byte encoders test empty strings, delimiters, newlines, multiplicity, coordinate tags, version changes, and migration;
 - registries reject one id and version paired with two exact descriptors;
-- elaboration tests that checking and inference agree where both apply and that an unsolved metavariable is reported at
-  the term that left it unsolved, and compile-fail tests cover a function hidden in a list, constructor, or abstract
-  value; an incomplete call; a term whose termination measure the checker cannot see; and a non-exhaustive match;
+- elaboration tests that checking and inference agree where both apply and that a type parameter no written argument
+  determines is reported at the call that left it undetermined, and compile-fail tests cover a function hidden in a
+  list, constructor, or abstract value; an incomplete call; a recursive call that does not descend structurally; and a
+  non-exhaustive match;
 - machines test every constructor, the first feedback output, Boolean negation through a stored delay, causality, and
   the whole-node scheduling counterexample the old graph rules could not handle;
 - batching tests every partition of the same requested frames against a plain structural interpreter;
