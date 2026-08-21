@@ -23,28 +23,45 @@ ordinary source: an adapter module is checked in a scope where these names resol
 they do not. Law 11 of the recursor — phase conservativity — is unchanged and is the reason that separation is stated
 rather than assumed.
 
-## 1. `Syntax<Cat>` is a parameterized base type
+## 1. `Syntax` is an inductive family over `Cat`
 
-`Cat` is an ordinary two-case enum, and `Syntax` is a compiler-owned **base type parameterized by a closed literal of
-it** (`02-core-calculus.md` §1.1 and §5.8), not an inductive family:
+`Cat` is an ordinary two-case enum, and `Syntax` is a family indexed by it (`02-core-calculus.md` §1.1):
 
 ```text
 enum Cat { Expr, TokenTree }
 
-Syntax⟨expr⟩, Syntax⟨token-tree⟩ : Type 0        % compiler-owned; there is no declaration form
+Syntax : Cat -> Type 0
 ```
 
-That distinction is the course correction's, and it is the whole reason quotation costs the type system nothing. A
-family would make `Cat` an index a `match` could unify, and would pull the indexed-family machine into the core for one
-type. As a base type the parameter is inert: no reduction inspects it, conversion compares it by literal equality, and
-the only rule that ever reads it is the splice boundary below — which is exactly the safety the index was for, without
-the machinery. The previous framing is recorded in note 50's audit as the audit's own example: the implementation had
-already made `Syntax` a base type, and only this document still said "family".
+**This is a repair of what this section said, and the reason it said otherwise has expired.** The previous statement
+made `Syntax` a compiler-owned base type parameterized by a closed literal, on the argument that "a family would make
+`Cat` an index a `match` could unify, and would pull the indexed-family machine into the core for one type". After
+prompt 156 that machine is in the core for the musical domains anyway, so the cost of the family is zero and its benefit
+is real: matching a syntax value **refines its category**, and an adapter that inspects what it was handed learns the
+category rather than asserting it.
+
+Two things stop being compiler machinery as a consequence. `as_expression` becomes an ordinary function in the source
+rather than a builtin, because a function may now return `Option (Syntax Expr)` and have the category mean something
+inside the branch. And forgetting becomes a function, which is the subject of the next paragraph.
+
+**Forgetting is written, not inferred.** The previous statement of this section carried one acceptance rule: *a position
+of category `TokenTree` accepts a value of any category*. That is subtyping — a rule that lets a value of one type stand
+where another is written, decided outside conversion — and `../constitution.md` §9 refuses it in every form, on the
+argument `../obligations.md` §17 states. It is replaced by a total function, written at the splice site:
+
+```musa
+forget : (c : Cat) -> Syntax c -> Syntax TokenTree
+```
+
+The cost of writing it is measured rather than guessed: four call sites inside `elab/check.rs` and two projections in
+`stdlib/`. What is bought is that every place a category is dropped says so in the source, which is exactly the property
+the amendment exists to buy — an acceptance rule the conversion checker cannot see was the defect, and this is one of
+the two places musa had one. Prompt 159 is where the rule is deleted and the function replaces it.
 
 The representation does not change. A syntax value is still the lossless token tree prompt 127da declared — `Missing`,
-`Token`, `Identifier`, `Group` over a `SourceInfo` with no eliminator — and `Syntax<TokenTree>` is that tree with
-nothing claimed about it. **The parameter is a claim about how the tree parses**, and `Expr` says that the real parser
-read this tree as an expression.
+`Token`, `Identifier`, `Group` over a `SourceInfo` with no eliminator — and `Syntax TokenTree` is that tree with nothing
+claimed about it. **The index is a claim about how the tree parses**, and `Expr` says that the real parser read this
+tree as an expression.
 
 **Two cases, not four.** Prompt 131 wrote `Item` and `Pattern` beside them and prompt 132's trial found that no program
 constructs either: both trialled adapters build expressions and read token trees, and each unused case carries its own
@@ -54,30 +71,34 @@ than into an expression, which no planned adapter does; re-adding it is an enum 
 Two rules follow, and between them they are the whole discipline:
 
 - **A refined claim is introduced only by an operation that establishes it.** The constructors are compiler-owned, so
-  there is no way to assert `Syntax<Expr>` about a tree nobody parsed. The introduction forms are §2's quote, whose body
+  there is no way to assert `Syntax Expr` about a tree nobody parsed. The introduction forms are §2's quote, whose body
   the real parser read at that category; §4's pattern, which re-establishes a claim by matching a shape that carries it;
-  and a **checked parse**, `as_expression : Syntax<TokenTree> -> Option<Syntax<Expr>>`, which runs the real parser over
-  a tree the adapter already holds and answers `None` when it is not an expression.
-- **A claim is forgotten wherever it is not needed.** A position of category `TokenTree` accepts a value of any
-  category, because a token-tree position is precisely one that has not been parsed as anything more specific. Every
-  other position requires its own category exactly. This is one acceptance rule rather than a `forget` operation the
-  author writes, and it is why splicing an expression into an argument list needs no ceremony.
+  and a **checked parse**, `as_expression : Syntax TokenTree -> Option (Syntax Expr)`, which runs the real parser over a
+  tree the adapter already holds and answers `None` when it is not an expression.
+- **A claim is forgotten where it is not needed, and the forgetting is written.** `forget` above, at the site. A
+  token-tree position is precisely one that has not been parsed as anything more specific, so dropping the claim is
+  always sound; what changed is that it is now visible in the source rather than performed by the elaborator.
 
-**What the parameter buys, and where.** Prompt 131 argued it at *construction*: an adapter that builds something in
+**What the index buys, and where.** Prompt 131 argued it at *construction*: an adapter that builds something in
 expression position and gets it wrong would learn at the line that made it rather than at expansion time. Prompt 132's
 trial found that argument does not survive its own conclusion — once construction goes through §2's quote, the parser
-has already read the body, so a constructed node cannot be miscategorized and the parameter catches nothing there.
+has already read the body, so a constructed node cannot be miscategorized and the index catches nothing there.
 
 **What it buys is the splice boundary**, and that is a real thing to buy. An adapter that lifts a node out of the
-composer's own region holds a `Syntax<TokenTree>` and must put it where an expression stands; `bar (4, 4) { { } }` puts
-a brace group where a pitch belongs. `as_expression` is where that is decided, so the diagnostic lands on the composer's
+composer's own region holds a `Syntax TokenTree` and must put it where an expression stands; `bar (4, 4) { { } }` puts a
+brace group where a pitch belongs. `as_expression` is where that is decided, so the diagnostic lands on the composer's
 line instead of on the region after a malformed tree has reached `checked_expression`. This is also why splicing the
 composer's node is *preferable* to rebuilding one from its text: the spliced node keeps its `Original` source
 information (§3), so Origin, `edit`, and `print` all point back at what was written.
 
-**The obligation the parameter creates**, owed by the course correction's final phases: every value of `Syntax<Expr>`
-prints as source that the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does.
-The parameter is a certificate, and a certificate nobody checks is a comment.
+**And now it buys a third thing, which is why the family is worth the repair.** A `match` on a `Syntax c` value refines
+`c` in each branch, so an adapter that takes syntax apart can write the branch where it holds an expression and the
+branch where it holds a raw tree, and the checker knows which is which. Under the base type, both branches had the same
+type and the distinction lived in the adapter's head.
+
+**The obligation the index creates**, owed by the prompts that implement it: every value of `Syntax Expr` prints as
+source that the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does. The index
+is a certificate, and a certificate nobody checks is a comment.
 
 ## 2. `quote at here { … }`
 
@@ -85,10 +106,10 @@ The parameter is a certificate, and a certificate nobody checks is a comment.
 quote at p { body }        p : NodePath        body : Musa surface syntax
 ```
 
-The quote elaborates to a `Syntax<c>` construction, where `c` is the category the expected type demands — and the demand
-is always `Expr`, because construction is fixed at `⟨expr⟩` and a `⟨token-tree⟩` position receives the value by §1's
-forgetting rule. What a quote builds is therefore never in doubt; what can fail is that the built tree is no expression,
-which the certificate below checks.
+The quote elaborates to a `Syntax c` construction, where `c` is the category the expected type demands — and the demand
+is always `Expr`, because construction is fixed at `Expr` and a `TokenTree` position receives the value through §1's
+`forget`, written at the site. What a quote builds is therefore never in doubt; what can fail is that the built tree is
+no expression, which the certificate below checks.
 
 **The body is read by the real parser.** Not a template dialect, not a string, not a token-stream approximation. A
 quotation that does not share the parser is a second grammar to keep in step with the first, and it is the "sublanguage
@@ -96,13 +117,14 @@ by subtraction" root `AGENTS.md` forbids — every convenience the dialect lacke
 instead of once by the compiler. The concrete consequence is that a quote's body is formatted, highlighted, and
 diagnosed by the same machinery as the file around it.
 
-**A quote builds at `⟨expr⟩`, and the certificate is checked rather than believed.** Trying each category until one
-parses would be search, and it would make an ambiguous body's meaning depend on the order the elaborator tried — so the
-category is not tried at all: `instantiate_quote` answers `Syntax ⟨expr⟩` for every quote, and before it answers, the
+**A quote builds at `Expr`, and the certificate is checked rather than believed.** Trying each category until one parses
+would be search, and it would make an ambiguous body's meaning depend on the order the elaborator tried — so the
+category is not tried at all: `instantiate_quote` answers `Syntax Expr` for every quote, and before it answers, the
 built tree must parse as an expression or the rule does not reduce. `let e = quote at p { Note($x) };` therefore infers
-`Syntax<Expr>`; the annotation `let e: Syntax<TokenTree> = …` is the same value carried by §1's rule, not a second way
-to build. This is the checking-form discipline this section stated before the registry fixed the category: its reason
-was that two categories tempted a search, and fixing one by construction is that reason discharged.
+`Syntax Expr`; the annotation `let e: Syntax TokenTree = forget(Expr, …)` is the same value with its claim dropped in
+the source, not a second way to build. This is the checking-form discipline this section stated before the registry
+fixed the category: its reason was that two categories tempted a search, and fixing one by construction is that reason
+discharged.
 
 **Splicing.**
 
@@ -121,7 +143,7 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
   so the two quotations agree here rather than differing (§6).
 - `?` inside a splice leaves the enclosing *function*, exactly as `01-surface.md` §1 says: a quote is not a function
   boundary and a splice is not an argument to one.
-- `$..xs` splices a `List<Syntax<c>>` where a sequence is grammatical — an argument list, a group's contents, a run of
+- `$..xs` splices a `List (Syntax c)` where a sequence is grammatical — an argument list, a group's contents, a run of
   items or statements. Where a sequence is not grammatical it is refused, naming the position.
 - A splice stands where a **whole node** stands and never inside one. There is no way to build the identifier `abc` out
   of `$a` and `bc`, because a splice is not string concatenation and a syntax value is not text. The separator a
@@ -138,7 +160,7 @@ scopes a syntax value carries are opaque (127da): package code may compare two n
 received, and has no operation that constructs one.
 
 **What a quote is not.** It is not `eval`: the result is a syntax value that the phase then checks and elaborates like
-any other, and there is no operation from `Text` to `Syntax<c>`. It is not a procedural macro over a token stream: the
+any other, and there is no operation from `Text` to `Syntax c`. It is not a procedural macro over a token stream: the
 body is parsed, so an adapter cannot assemble syntax the grammar does not admit. Both are refused in the Stop list of
 the prompt that wrote this document, and both are refused here for the same reason: they are holes in the boundary
 `00-semantics.md` §2 exists to hold.
@@ -296,7 +318,7 @@ Musa has two quotation forms and they stay two:
 |  | `events T { … }` (`01-surface.md` §7) | `quote at p { … }` (this document) |
 | --- | --- | --- |
 | Stage | elaboration | the expansion phase |
-| Builds | a closed event-track term | `Syntax<Cat>` |
+| Builds | a closed event-track term | `Syntax c` |
 | Holes hold | host **values**, instantiated into a term with no functions | **syntax**, spliced into syntax |
 | Hole spelling | `${e}` | `${e}`, with `$x` as its shorthand, and `$..xs` for a sequence |
 
@@ -339,12 +361,12 @@ two things have a similar shape. There is no third quotation form, and adding on
 
 | Obligation | What discharges it | Owed by |
 | --- | --- | --- |
-| **Index soundness** — a `Syntax<Expr>` prints as source the parser reads as an expression, and `as_expression` answers `Some` exactly then | round-trip property tests over the corpus, and the construction rules of §1 | 138, 147 |
+| **Index soundness** — a `Syntax Expr` prints as source the parser reads as an expression, and `as_expression` answers `Some` exactly then | round-trip property tests over the corpus, and the construction rules of §1 | 138, 147 |
 | **Derived-identity injectivity** — the triple of §3 is injective on literal nodes, and no two distinct literal positions collide | the path-uniqueness argument, plus `checked_expression`'s gate as its executable evidence | 139, 148 |
 | **Hygiene** — no identifier written in a quote captures one spliced in, or the reverse | the scope discipline of 127da, restated for splicing | 139, 147 |
 | **Construction/pattern round trip** — matching a quote pattern against a quote built from the same shape returns the spliced values unchanged | property tests over generated shapes | 140, 147 |
 | **Single-level descent** — a pattern binds only proper children and supplies no path | §5's four properties, checked as laws | 140, 148 |
-| **Phase conservativity** (law 11) — ordinary source can neither name nor obtain `Syntax<Cat>`, and the completed phase result is storable data | unchanged from 127da and 127dcfaf | 147 |
+| **Phase conservativity** (law 11) — ordinary source can neither name nor obtain `Syntax c`, and the completed phase result is storable data | unchanged from 127da and 127dcfaf | 147 |
 
 The theoretical provenance of the constructions here — staged quotation, splicing at syntactic categories, and hygiene —
 is [`citations.md`](citations.md) §14. What is Musa's own is one thing: derived identity as a computed triple rather

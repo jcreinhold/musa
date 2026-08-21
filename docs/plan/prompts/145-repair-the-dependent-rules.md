@@ -1,7 +1,7 @@
 ---
 id: 145
 slug: repair-the-dependent-rules
-status: pending
+status: done
 depends_on: [144]
 phase: 3
 ---

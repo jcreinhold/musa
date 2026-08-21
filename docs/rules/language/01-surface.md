@@ -16,14 +16,19 @@ type         := type-name type-args? | "(" type ")" | "(" type "," type ("," typ
               | fn-type
 fn-type      := type "->" type | "(" (type ("," type)*)? ")" "->" type
 type-name    := (module-path "::")? IDENT
-type-args    := "<" type ("," type)* ">"
-type-params  := "<" IDENT ("," IDENT)* ">"
+type-args    := "<" type ("," type)* ">" index-args?
+type-params  := "<" type-param ("," type-param)* ">"
+type-param   := IDENT | "{" IDENT (":" type)? "}"          % braces mark an inferred parameter
+index-params := "(" IDENT ":" type ("," IDENT ":" type)* ")"
+index-args   := "(" expr ("," expr)* ")"                    % a type applied to index arguments
 where-clause := "where" constraint ("," constraint)*
 constraint   := type-name type-args
 visibility   := "private"
 binding      := visibility? "let" IDENT (":" type)? "=" expr ";"
 function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type where-clause? block
 param        := IDENT (":" type)? ("=" expr)?
+data         := visibility? "data" IDENT type-params? index-params? "{" data-case ("," data-case)* ","? "}"
+data-case    := visibility? IDENT ("(" params? ")")? (":" type)?     % the result type names the indices it chooses
 record       := visibility? "record" IDENT type-params? where-clause? "{" field-decl* "}"
 field-decl   := IDENT ":" type ";"
 enum         := visibility? "enum" IDENT type-params? where-clause? "{" (enum-case ("," enum-case)* ","?)? "}"
@@ -34,7 +39,7 @@ impl         := visibility? "impl" type-params? constraint where-clause? "{" fun
 inherent     := "impl" type-params? type-name type-args? "{" function* "}"
 call         := expr "(" args? ")"
 args         := arg ("," arg)*
-arg          := expr | "_"
+arg          := expr | "_" | "{" IDENT "=" expr "}"          % a named inferred argument
 expr         := literal | IDENT | qualified | "(" expr ")" | block | product | list
               | call | projection | method-call | index | operation | question
               | match | conditional | record-literal | record-update | music-expr
@@ -69,7 +74,7 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 events-quote := "events" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" events-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | record | enum | trait | impl | inherent
+document     := (import | binding | function | data | record | enum | trait | impl | inherent
                 | signature | structure | template | instance)*
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
@@ -363,17 +368,24 @@ Five rules fix it.
   is available where an arm wants several — `Pending { read = r, taken = t }` binds those two and says nothing about the
   rest, and `Pending { read }` is the shorthand that binds a field to its own name. There is nothing to be exhaustive
   about, so there is no `..`: a record has one shape.
-- **A record is its fields.** Two declarations with the same field names at the same types denote the same type, and one
-  is accepted where the other is expected. This follows from the core, where a record type *is* its fields
-  (`02-core-calculus.md` §1), and it is what makes dictionaries work in `10-traits.md`. An author who wants two
-  quantities kept apart declares them as one-case enums (§1.3), which are nominal because each declaration generates its
-  own family. The declared name is still what diagnostics say, so an error about `Pending` names `Pending`.
-- **Parameters are allowed and are ordinary**: `record Cell<A> { at: Nat; value: A; }`. A record that must carry a
-  dictionary carries it as a field — a `where` on a record would be a constraint discharged at every construction, and
-  `10-traits.md` §4's one-step lookup exists precisely so that there is nothing to discharge.
-- **It adds no term to the calculus.** A `record` declaration elaborates to a core record type, a literal to core record
-  introduction, a projection to core projection, a pattern to the case tree of `02-core-calculus.md` §6.2, and `with` to
-  the `let`-and-literal rule of §1.
+- **A record is a declaration, and two of them are two types.** This is a **repair**, and the rule it replaces was the
+  opposite one: a record used to be *its fields*, so two declarations with the same field names at the same types
+  denoted the same type. That followed from a core in which a record type was a structural product, and it existed to
+  make trait dictionaries work — two projections of the same dictionary had to be convertible. Prompt 146 deletes the
+  trait system and prompt 157 makes a record a **one-constructor inductive family** (`02-core-calculus.md` §1.1), which
+  is nominal like every other family, so both the mechanism and its client are gone. What replaces the structural rule
+  is nothing, because nothing else used it: no two records in `stdlib/` or `examples/` declare the same field set, so
+  the change is a rule about programs nobody has written. An author who wants two quantities kept apart now gets that by
+  default.
+- **Parameters are allowed and are ordinary**: `record Cell<A> { at: Nat; value: A; }`. A record that must carry an
+  operation carries it as a field, which after prompt 146 is how a structure is written at all: `Group` is a record
+  whose fields are its unit, its composition, and its inverse, so there is no constraint left for a `where` to discharge
+  at construction.
+- **It adds no term to the calculus, and after prompt 157 it adds no *shape* either.** A `record` declaration elaborates
+  to a one-constructor family, a literal to that constructor applied to its fields, a projection to a generated function
+  whose body is a one-branch case tree, a pattern to the case tree of `02-core-calculus.md` §6.2, and `with` to the
+  `let`-and-literal rule of §1. The core has no record former, no record introduction, and no projection form; `record`
+  is a spelling, and prompt 161 is where that is stated as one declaration form with two conveniences.
 
 The measurement this is answering is in the file above. `stdlib/src/adapters/staff.musa` declares `Pending` as an
 eight-field product with the only spelling the language had — a single-constructor `data` — and then destructures all
@@ -417,20 +429,27 @@ to the printer splice. Namespaced constructors delete the collision at its sourc
 flat-constructor program does. It also changes what an import can do: a module brings the *type* into scope and the
 constructors arrive with it, so two imported enums with a case of the same name cannot conflict at all.
 
-**Enums are nominal, records are not**, and the difference is the core. Each `enum` declaration generates its own
-inductive family with its own constructors (`02-core-calculus.md` §1.1), so `enum Beats { Beats(Nat) }` and
-`enum Bars { Bars(Nat) }` are two types; two records with a single `Nat` field are one. Choosing between them is
-therefore a real choice and the document says which is which.
+**Both are nominal, and both are the same declaration underneath.** Each `enum` declaration generates its own inductive
+family with its own constructors (`02-core-calculus.md` §1.1), so `enum Beats { Beats(Nat) }` and
+`enum Bars { Bars(Nat) }` are two types — and after prompt 157 so is every `record`, for the same reason (§1.2). The
+choice between the two spellings is therefore about **arity and field names** rather than about identity: `enum` where
+there are several cases, `record` where there is one and its fields want names. Prompt 161 makes that exact statement
+the rule, with `data` as the form both desugar to.
 
 **An enum may have no cases at all.** `enum Empty {}` declares the type with no closed inhabitant, which is the type
 `02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
 value of it has no arms, and every arm it does not have is covered.
 
-`enum` declares parameters and no indices, and that is final rather than deferred: no committed program narrows a type
-by matching, and the one indexed-looking type in the tooling, `Syntax<Cat>`, is a compiler-owned base type with the
-category a closed literal (`02-core-calculus.md` §1.1, `11-quotation.md` §1). `Option<A>` and `Result<A, E>` become
-ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the
-bare-constructor rule, and `option_fold` is replaced by the `match` that was always underneath it.
+**A declaration may carry indices, and `data` is where they are written.** A constructor's result type names the indices
+it chooses — `Nil : Vec<A>(0)`, `Cons(head: A, tail: Vec<A>(n)) : Vec<A>(n + 1)` — and matching on such a value refines
+the index in each branch (`02-core-calculus.md` §1.1). `enum` and `record` are the two spellings that do not write one:
+`enum` for several nullary or positional cases, `record` for one case with named fields. This reverses what this
+paragraph said before, which was that parameters-and-no-indices was final on the evidence that no committed program
+narrows a type by matching; prompt 143's amendment answers that evidence — the corpus was writing the workaround,
+seventeen compiler builtins spent on one modulus, rather than exhibiting no demand. `Syntax` is the immediate
+beneficiary and is now a family over `Cat` (`11-quotation.md` §1). `Option<A>` and `Result<A, E>` become ordinary enums
+declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor
+rule, and `option_fold` is replaced by the `match` that was always underneath it.
 
 The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` appears in the staff adapter at
 twenty-one sites over thirteen distinct string literals, and a misspelling in any of them is a comparison that is
@@ -468,13 +487,10 @@ one, and a stated answer for what its `match` coverage means.
 `enum`, `data`, or `structure` and hides the whole declaration; §4 of `04-templates-and-modules.md` states the boundary
 it hides behind and why it does not overlap with sealing. A marked declaration is nameable from a sibling definition in
 its own module and from nowhere else, including through an `import` alias and through a re-export, and marking one
-changes no program that did not name it. `trait` and `impl` take the marker in the grammar above, and what it means for
-an `impl` is settled: **the marker hides the name, never the instance.** A private `impl` is still the one entry in the
-global table for its (trait, head) pair, still refuses a duplicate declared anywhere, and still answers every lookup
-that reaches that pair from any module. What `private` withholds is the ability to *write* the instance's own
-declaration name where one exists, which for an `impl` is nearly nothing — so the marker is admissible there and close
-to inert, and that is the point: coherence (`10-traits.md` §2) is a property of the program, and a visibility marker
-that could suspend it would let the same expression elaborate to two different dictionaries in two modules.
+changes no program that did not name it. `trait` and `impl` take the marker in the grammar above for as long as those
+forms survive; §1.4 says who removes them. After prompt 146 the question the marker used to raise there does not arise,
+because a structure is an ordinary value with an ordinary name: marking it private hides that name and nothing else,
+exactly as it does for a `let`.
 
 Public by default is the opposite of Rust's choice and the opposite of what *A Philosophy of Software Design* ch. 5
 would argue for a fresh language, and the argument it loses to is specific rather than general: Musa's packages are
@@ -487,49 +503,33 @@ is what changes.
 There is one visibility boundary and it is the module. No `pub(crate)`, no `pub(super)`, no package-visible tier, and no
 export list: a second tier is a new decision that needs a program that wants it.
 
-### 1.4 Traits and impls
+### 1.4 Traits and impls — deprecated, owned by 146
 
-A `trait` declares methods over one or more type parameters; an `impl` supplies them at a type. `10-traits.md` owns
-coherence, the orphan rule, instance lookup, dictionary elaboration, and the explicit list of what is refused. This
-section is the grammar and the desugaring.
+**These forms are being removed and this section states what replaces them.** A `trait` declared methods over one or
+more type parameters and an `impl` supplied them at a type; the specification that owned coherence, the orphan rule,
+instance lookup, and dictionary elaboration is retired by prompt 145 with no successor, and prompt 146 deletes the
+mechanism. The grammar keeps `trait`, `impl`, and `where` until that prompt runs, so the corpus still validates against
+this document in the meantime.
 
-```musa
-trait Eq<A> {
-    fn equal(x: A, y: A) -> Bool;
-}
+The measurement behind the removal is the whole argument: six traits, 82 call sites, and **zero** trait-constrained
+signatures — not one function in `stdlib/` or `examples/` is polymorphic over a trait — with `Eq`'s five instance bodies
+literally the five compiler builtins. A dispatch mechanism with nothing to dispatch on is a name-resolution mechanism
+wearing a costume.
 
-impl Eq<Tying> {
-    fn equal(x: Tying, y: Tying) -> Bool {
-        match (x, y) {
-            (Tying::Untied, Tying::Untied) -> true,
-            (Tying::TiedOn, Tying::TiedOn) -> true,
-            _ -> false,
-        }
-    }
-}
+Three things replace it, and each is smaller than what it replaces:
 
-fn is_untied(x: Tying) -> Bool { x == Tying::Untied }
+- **A structure becomes a record.** `trait Group<G>` becomes `record Group(G : Type) { unit: G; compose: G -> G -> G;
+  inverse: G -> G; }`, and an instance becomes an ordinary value. This is strictly more than the trait had, because a
+  record is first-class: a function may take two groups, return one, or hold a list of them. `stdlib/src/algebra.musa`'s
+  own comments name all three of those as things the trait could not do.
+- **Overloading becomes disambiguation.** `==` at five types is five names in scope and an elaborator that already knows
+  the expected type (§1.5). The failure mode improves rather than degrades: a diagnostic listing the candidates and the
+  type that ruled each out says more than "no instance found".
+- **Open dispatch, where anything genuinely wants it, is a macro's job** — `11-quotation.md`, and prompt 160.
 
-fn same<A>(x: A, y: A) -> Bool where Eq<A> { x == y }
-```
-
-- **A method with a `;` is required and a method with a block is derived.** A required method is a field of the trait's
-  dictionary and every impl supplies it. A derived method is written once at the trait, in terms of the required ones,
-  and **an impl may not replace it**. That is how "no specialization" is a mechanism rather than a rule: there is no
-  overridable definition to specialize.
-- **`where` states the constraints, and nothing is inferred into a signature.** A public generic signature that uses
-  `==` at a parameter says `where Eq<A>`; a missing constraint is an error at the signature, naming the method that
-  needed it.
-- **An `impl` block without a trait declares inherent items** in the type's namespace: `impl Duration { fn of(r: Ratio)
-  -> Result<Duration, RangeError> { … } }`. Which form a block is is decided by whether its head name resolves to a
-  trait or to a type, and a name that is neither is an error saying so.
-
-**It adds no term to the calculus.** A trait elaborates to a function from its parameters to a core record type — `Eq :
-(A : Type 0) → Type 0` with `Eq A = { equal : A → A → Bool }` — an impl to a definition of that type, a `where`
-constraint to an extra parameter holding the dictionary, and a use of a method to a projection from it. `x == y` inside
-`same` is `d.equal(x, y)` for the `d` the caller supplied, while the same operator inside `is_untied` is the global
-`Eq<Tying>` instance projected directly. The η rule on core records is what makes two elaborations of the same
-dictionary convertible, which is the property `10-traits.md`'s coherence argument rests on.
+An `impl` block *without* a trait head declares inherent items in the type's namespace: `impl Duration { fn of(r: Ratio)
+-> Result<Duration, RangeError> { … } }`. That form is **not** deprecated: it is a namespace, not a dispatch mechanism,
+and prompt 146 keeps it.
 
 ### 1.5 Methods, paths, and operators
 
@@ -566,19 +566,21 @@ is the complete call inside a lambda, so `02-core-calculus.md` §1.3's completen
 under-applied call *without* a `_` is the type error it always was. The word is the one `pattern` already uses and means
 the same thing there: a slot with no name. A `_` written anywhere but an argument list is refused, naming itself.
 
-**Operators are surface syntax for trait methods**, and `10-traits.md` §5 is the table. `x == y` is `Eq::equal(x, y)`,
-`x < y` is `Ord::less(x, y)`, `x + y`, `x - y`, `x * y`, `x / y` are `Add`, `Sub`, `Mul`, `Div`, and `xs[i]` is
-`Index::at(xs, i)`. Two rules keep this from becoming overloading under another name.
+**Operators are surface syntax for named functions.** `x == y` is `equal(x, y)`, `x < y` is `less(x, y)`, `x + y`, `x -
+y`, `x * y`, `x / y` are `add`, `sub`, `mul`, `div`, and `xs[i]` is `at(xs, i)`. Which `equal` is meant is decided by
+the **type-directed disambiguation** prompt 146 introduces: the candidates are the definitions of that name in scope,
+the expected type rules out all but one, and a call that leaves more than one standing is refused with the candidates
+and the type that failed to separate them listed. Two rules keep this from becoming overloading under another name.
 
-- **An operator resolves only when the concrete head type is known or a `where` supplies the dictionary.** There is no
-  search and no defaulting; an unresolved operator names the type it could not find an instance for.
+- **An operator resolves only when the expected type or the head argument's type is known.** There is no search and no
+  defaulting; an unresolved operator names the type it could not separate the candidates by, and lists them.
 - **An operation that can fail keeps its failing shape.** `ratio_div` answers `Result` today and `x / y` answers
   `Result` tomorrow; `xs[i]` answers `Option<A>` for a list, because a list index can be out of range. A partial
   operator is how a total language quietly grows a hole, and the shape is the thing that stops it. A container whose
   index type cannot be out of range may have a total instance; the language does not promise one here.
 
 Heterogeneous operations stay named functions on purpose. `position_shift(p, d)` adds a duration to a position and
-`duration_scale(d, r)` scales a duration by a rational; neither is `+` or `*`, because the traits are homogeneous and
+`duration_scale(d, r)` scales a duration by a rational; neither is `+` or `*`, because the operators are homogeneous and
 because these are exactly the two operations `02-core-calculus.md` §1.1 separates `Position` from `Duration` to keep
 distinguishable. An operator that quietly accepted a beat where a number of beats was meant would give back the one
 arithmetic error the two types exist to catch.
@@ -589,35 +591,21 @@ A list literal has a type: `[c4, d4, e4] : List<Pitch>`. The elements are checke
 takes its element type from the position it is written in — in an inferring position with nothing to take it from, it is
 refused, and the diagnostic names the annotation to write.
 
-Two traits carry the rest, and `10-traits.md` states them:
-
-```musa
-trait Iterable<C, A> {
-    fn fold_from_start<B>(source: C, zero: B, step: (B, A) -> B) -> B;
-    fn fold_from_end<B>(source: C, zero: B, step: (A, B) -> B) -> B;
-
-    fn map<D, B>(source: C, f: A -> B) -> D where Buildable<D, B> { … }
-    fn filter(source: C, keep: A -> Bool) -> C where Buildable<C, A> { … }
-    fn collect<D>(source: C) -> D where Buildable<D, A> { … }
-}
-
-trait Buildable<C, A> {
-    fn empty() -> C;
-    fn push(target: C, item: A) -> C;
-}
-```
-
-`fold_from_start` and `fold_from_end` are required; `map`, `filter`, and `collect` are derived, so a container earns all
-five by writing two. The methods are reached by exact receiver like any other: `xs.map(f)`, `xs.filter(keep)`,
+The rest is ordinary definitions, and that is a change from what this section used to say. It described two traits,
+`Iterable` and `Buildable`, with `fold_from_start` and `fold_from_end` required and `map`, `filter`, and `collect`
+derived. Prompt 146 deletes the trait system, and prompt 156 generates an eliminator for every declared family, so the
+fold over a container **is** that container's recursor and nobody writes it: `iterable_list()`'s hand-written
+catamorphism was a stand-in for the one `List` already implies. `map`, `filter`, and `collect` become ordinary library
+functions — one set per container, reached by exact receiver like any other method: `xs.map(f)`, `xs.filter(keep)`,
 `xs.fold_from_end(zero, step)`.
 
 `collect` is where "no return-type-directed overloading" needs saying precisely. `let out: List<Nat> = xs.collect();`
-works because `D` is fixed by *checking* against the annotation, and a type argument fixed by checking is not a search.
-`xs.collect()` in an inferring position is refused, naming `D` as the thing it could not determine. The refused design
-is the other one: choosing which instance to use *because* of a return type nobody has written down yet, which makes
-elaboration depend on the order constraints are reached.
+works because the answer type is fixed by *checking* against the annotation, and a type fixed by checking is not a
+search. `xs.collect()` in an inferring position is refused, naming the answer type as the thing it could not determine.
+The refused design is the other one: choosing which definition to use *because* of a return type nobody has written down
+yet, which makes elaboration depend on the order constraints are reached.
 
-This is the grammar and not the library. The library owns `List`, its instances, and the builders; nothing here promises
+This is the grammar and not the library. The library owns `List`, its folds, and its builders; nothing here promises
 what those look like. There is no comprehension in v1: a comprehension is sugar over `map` and `filter` (Peyton Jones
 1987 ch. 7), and adding the sugar before the thing it sugars has a user is the wrong order.
 
@@ -775,7 +763,14 @@ register; `stack c major7/2` is rejected, because a pitch class chooses no regis
 `Pc12` exactly once; symmetry may make fewer than 48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error.
 Row-form naming always states a convention.
 
-## 6. Declaration templates
+## 6. Declaration templates — deprecated, owned by 162
+
+**`template`, `signature`, `structure`, `template structure`, and `make` are being removed, and prompt 162 removes
+them.** They are the module layer, and after prompt 146 a structure is an ordinary record and a functor an ordinary
+function, so the layer describes a second way to say what the term language already says. The forms stay in the grammar
+and in this specification until that prompt runs, so `stdlib/` and `examples/` still validate against this document in
+the meantime; nothing new should be written in them, and §6 and §6.1 below record what they mean rather than what they
+are for.
 
 ```musa
 fn theme() -> EventTrack[WrittenTime, ScoreFact] { music {
@@ -809,10 +804,11 @@ Whatever precedes the file's piece or library — imports, bindings, functions, 
 template body reads that root and its own parameters and nothing from the site that instantiates it; the arguments at a
 site are evaluated in the site's own scope, which is why `subject` above can be passed on from `study` to `answer`.
 
-## 6.1 Signatures and structures
+## 6.1 Signatures and structures — deprecated, owned by 162
 
 A signature names what a bundle of values must provide; a structure provides them; a `template structure` is a functor
-from structures to a structure.
+from structures to a structure. All three are deprecated on §6's terms: a record type is the signature, a record value
+is the structure, and a function from one to another is the functor.
 
 ```musa
 signature TonalContext {
@@ -878,7 +874,7 @@ fn delayed_double(
 events-term hole. Events identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
 terms. The completed quote must close and type-check before it becomes a track. No raw payload escape exists.
 
-Musa has a second quotation form — `quote at p { … }`, which builds `Syntax<Cat>` in the expansion phase — and the two
+Musa has a second quotation form — `quote at p { … }`, which builds a `Syntax(c)` in the expansion phase — and the two
 are deliberately not merged. The discipline they share is stated once in [`11-quotation.md`](11-quotation.md) §6: holes
 are typed, nothing quoted captures a host identifier or the reverse, a quote must close and check before it becomes
 anything, and the locus is where a hole is instantiated. What follows is this quote's own, and it stays here.

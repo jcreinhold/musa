@@ -60,19 +60,22 @@ the reason is the quotient lemma directly above: `P8` fixes every spelled class,
 many intervals rather than by one. A specification that gave both carriers a torsor would be claiming the octave
 quotient does not exist.
 
-**The carrier is the first parameter.** `10-traits.md` §2 keys an instance on its first parameter and one mover moves
-several carriers, so `Action<Interval, Pitch>` and `Action<Interval, SpelledPC>` would be two instances at one head and
-the second an error. Writing the carrier first also puts the head where §6's method syntax looks: `p up M3` is
-`p.act(M3)`, resolved on `p`.
+**The carrier is the first parameter.** This began as a resolution key — instance lookup chose on the first parameter,
+and one mover moving several carriers would have put `Action<Interval, Pitch>` and `Action<Interval, SpelledPC>` at one
+head. Prompt 146 deletes that mechanism and the ordering survives it as a reading convention, stated at
+[`../style-guide.md`](../style-guide.md) §6. It also puts the head where method syntax looks: `p up M3` is `p.act(M3)`,
+resolved on `p`.
 
-**Time is an action and not a torsor**, for a reason that is about time rather than about the traits. A `Duration` is a
-length and not a displacement — it is nonnegative, and the operation answering the length between two positions refuses
-a second position standing before the first — so the movers have no inverses and `Position` carries `Action<Position,
-Duration>` alone. §4's row and §5's indexed domains carry the same three traits at the moduli they are stated over.
+**Time is an action and not a torsor**, for a reason that is about time rather than about the structures. A `Duration`
+is a length and not a displacement — it is nonnegative, and the operation answering the length between two positions
+refuses a second position standing before the first — so the movers have no inverses and `Position` carries
+`Action<Position, Duration>` alone. §4's row and §5's indexed domains carry the same three structures at the moduli they
+are stated over.
 
-**The laws are prose here and law suites in `05-verification.md` §4.** A trait declaration in this language carries
-methods and never obligations; `10-traits.md` §9 gives the reason, and §4's law 7 is where the pitch action's identity,
-composition, and cancellation are actually checked.
+**The laws are prose here and law suites in `05-verification.md` §4.** A structure declaration in this language carries
+operations and never obligations — a checked law is a proof obligation, a judgment, and a budget, and the language
+refuses all three — so §4's law 7 is where the pitch action's identity, composition, and cancellation are actually
+checked.
 
 ## 2. Scale, key, degree, and register
 

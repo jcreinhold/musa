@@ -24,10 +24,10 @@ projects source rather than owning another mutable score, instrument, or mix mod
 Third, the constitution's amendment at prompt 128 replaced the *type discipline* this candidate was written against, and
 the course correction then replaced the replacement. Prompt 128's evidence — the staff adapter — stood; what prompts
 129–142 built around it was the standard proof-assistant checklist, and the audit of every committed program found none
-of that machinery in use. The governing design is now the surviving one: bidirectional checking, lightweight dependency
-where programs use it, flat trait lookup, structural recursion, and typed quotation as the one admitted form of
-metaprogramming. `02-core-calculus.md`, `10-traits.md`, and `11-quotation.md` describe only what survived. Both records
-stand:
+of that machinery in use. Prompt 143 then corrected the correction: there is **one** type theory and the core is it — Π,
+inductive families with indices, case trees, pattern unification, and a predicative hierarchy — with traits removed
+rather than narrowed and subtyping refused in every form. `02-core-calculus.md` and `11-quotation.md` describe what
+survived; there is no trait document, and prompt 146 deletes the mechanism one would have described. Both records stand:
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md)
 and the correction's
 [`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md).
@@ -54,8 +54,7 @@ form, and `01-surface.md`'s type grammar has a multi-parameter function type.
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-audio semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
-| `10-traits.md` | coherence, dictionary elaboration, operators, methods and namespaces, and what is refused |
-| `11-quotation.md` | `Syntax<Cat>`, quoting and splicing, derived identity, and quotation as a pattern |
+| `11-quotation.md` | `Syntax : Cat -> Type`, quoting and splicing, derived identity, and quotation as a pattern |
 | `citations.md` | every theoretical claim in these documents, and the chapter or proof it comes from |
 
 The numbering deliberately leaves room for future notation and analysis documents without renumbering the sound and

@@ -94,20 +94,29 @@ Four declarations, one rule, because in all four the prefix arrives second:
 | Written | Read as | Write instead |
 | --- | --- | --- |
 | `impl Duration { fn duration_of(…) }` | `d.duration_of()` | `fn of` |
-| `trait Eq<A> { fn eq_equal(…) }` | `Eq.eq_equal(x, y)` | `fn equal` |
+| `record Group<G> { group_unit: G; }` | `g.group_unit` | `unit` |
 | `record Duration { duration_beats: Ratio; }` | `d.duration_beats` | `beats` |
 | `enum Decision<P> { DecisionYes(P) }` | `Decision::DecisionYes` | `Yes` |
 
-This is the exact shape `docs/rules/language/10-traits.md` §5's migration table invites. Every `chord_root`,
-`row12_retrograde`, and `duration_of` in the builtin registry is a name from a language with no receivers, and moving
-one across without dropping the prefix writes the old shape in the new spelling.
+This is the exact shape a migration out of the builtin registry invites. Every `chord_root`, `row12_retrograde`, and
+`duration_of` there is a name from a language with no receivers, and moving one across without dropping the prefix
+writes the old shape in the new spelling.
 
 Rename to the part that is not the prefix. Where that leaves a name too thin to stand alone, what the code wants is an
 inherent *function* rather than a method: `Duration::of(r)` reads because the path supplies what the receiver would
-have. A trait **instance** is not subject to this — those names belong to the trait, and an impl that renamed one would
-not be implementing it.
+have. A field that implements a named structure is not subject to this — `Group`'s `compose` is called `compose`
+wherever it appears, because the name belongs to the structure and a record that renamed it would not be one.
 
 Enforced: `redundant-name-prefix`.
+
+**A structure's carrier is its first field.** `record Group(G : Type) { unit: G; compose: (G, G) -> G; inverse: G -> G;
+}` puts the thing being described before the operations that describe it, and every structure in `stdlib/` reads the
+same way for the same reason. This was once a resolution key — the trait system chose an instance by its first parameter
+— and it survives that mechanism's deletion as what it should have been all along: an ordering a reader can rely on. A
+`Torsor` whose carrier is buried between two operations is legal and unreadable.
+
+Not enforced: field order is a reading convention, and a lint that could not tell a carrier from an ordinary first field
+would be guessing.
 
 ## 7. Candidate vocabulary says which layer it means
 

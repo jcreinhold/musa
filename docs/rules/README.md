@@ -68,8 +68,8 @@ requirements here rather than by reference.
 4. **The formal specification and the code map.** [`language/02-core-calculus.md`](language/02-core-calculus.md) §§1–3
    are rewritten by prompt 144, which exists so that this decision can be reviewed as a decision rather than as a
    specification diff; §1.5's index stratum and §1.1's non-dependent eliminator are retired there, and §1.4's refusal of
-   the identity type is repaired to say it refused the apparatus. [`language/10-traits.md`](language/10-traits.md) is
-   retired outright by prompt 146 and gets no successor.
+   the identity type is repaired to say it refused the apparatus. The trait specification is retired outright by prompt
+   145 and gets no successor; prompt 146 deletes the mechanism it described.
    [`../plan/code-map/spec-to-implementation-map.md`](../plan/code-map/spec-to-implementation-map.md) is rewritten
    against the new core as each prompt lands, not in advance of them.
 5. **How stored files and public APIs migrate.** No stored format changes: indices were erased at quotation, so nothing
