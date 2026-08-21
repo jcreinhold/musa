@@ -88,8 +88,8 @@ def main() -> None:
         die(f"expected closing brace, got {body[-1]!r}")
 
     # Methods may carry a visibility prefix (`pub(crate) fn music`, `pub(super)
-    # fn motif`), so the anchor accepts an optional with-visibility lead.
-    METHOD = re.compile(r"^    (?:pub(?:\([^)]*\))? )?fn (\w+)")
+    # fn motif`) and a `const` lead, so the anchor accepts both.
+    METHOD = re.compile(r"^    (?:pub(?:\([^)]*\))? )?(?:const )?fn (\w+)")
     anchors = [
         (i, m.group(1)) for i, l in enumerate(body[1:], start=1) if (m := METHOD.match(l))
     ]
@@ -103,11 +103,15 @@ def main() -> None:
     chunks = []
     for k, (i, name) in enumerate(anchors):
         nxt = anchors[k + 1][0] if k + 1 < len(anchors) else len(body)
-        depth, j = 0, i
+        # `opened` guards the multi-line signature: `fn f(\n …\n) -> T {`
+        # leaves depth at 0 on the anchor line, and a bare depth test would end
+        # the chunk there and drop the body.
+        depth, j, opened = 0, i, False
         while j < nxt:
             depth += strip(body[j]).count("{") - strip(body[j]).count("}")
             j += 1
-            if depth <= 0:
+            opened = opened or depth > 0
+            if opened and depth <= 0:
                 break
         s = i
         while s > 1 and re.match(r"^    (///|//|#\[)", body[s - 1]):
@@ -134,7 +138,9 @@ def main() -> None:
         # Only bare `fn` methods get widened to pub(super); methods that
         # already carry a visibility keep it.
         cast = [
-            re.sub(r"^    fn ", "    pub(super) fn ", l) if re.match(r"^    fn ", l) else l
+            re.sub(r"^    (const )?fn ", r"    pub(super) \1fn ", l)
+            if re.match(r"^    (const )?fn ", l)
+            else l
             for l in chunk
         ]
         text = (

@@ -195,7 +195,7 @@ pub enum Refusal {
     /// told that nothing is given for `by` is already at the edit. The names
     /// are the declaration's own, which is also the only place a parameter is
     /// declared at all — see
-    /// [`declared_parameters`](crate::elab::declared_parameters).
+    /// [`declared_parameters`](crate::elab::infer::declared_parameters).
     #[error(
         "`{function}` takes {wanted} argument{}, and {written} {} written: nothing is given for {}",
         if *.wanted == 1 { "" } else { "s" },
