@@ -502,6 +502,7 @@ impl TokenClass {
             | SyntaxKind::FieldPattern
             | SyntaxKind::FieldPath
             | SyntaxKind::AppliedType
+            | SyntaxKind::IndexedType
             | SyntaxKind::DataMember => return None,
         };
         Some(class)

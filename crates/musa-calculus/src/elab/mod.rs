@@ -7,10 +7,10 @@
 //!
 //! # Which forms check and which infer
 //!
-//! Introduction forms **check**: a λ, a record literal, `refl`, and a `let` all
-//! have a rule that reads the type they are given. Elimination forms **infer**:
-//! an application, a projection, and `J` compute a type from the type of what
-//! they eliminate. That split is not an implementation preference — it is what
+//! Introduction forms **check**: a λ, a record literal, and a `let` all have a
+//! rule that reads the type they are given. Elimination forms **infer**: an
+//! application and a projection compute a type from the type of what they
+//! eliminate. That split is not an implementation preference — it is what
 //! makes the *only* place conversion is called be §2's `Switch` rule, so a
 //! program's acceptance depends on one comparison per node rather than on the
 //! order in which a checker happened to reach its constraints.

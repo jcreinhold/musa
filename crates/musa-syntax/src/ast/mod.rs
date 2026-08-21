@@ -268,6 +268,7 @@ pub fn is_type(kind: SyntaxKind) -> bool {
             | SyntaxKind::ListType
             | SyntaxKind::ResultType
             | SyntaxKind::AppliedType
+            | SyntaxKind::IndexedType
     )
 }
 
@@ -292,7 +293,9 @@ pub use declarations::{
     LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl, TraitDecl,
 };
 
-pub use types::{AppliedType, FunctionType, ListType, OptionType, ProductType, ResultType, TypeExpr, TypeName};
+pub use types::{
+    AppliedType, FunctionType, IndexedType, ListType, OptionType, ProductType, ResultType, TypeExpr, TypeName,
+};
 
 pub use expressions::{
     ApplyExpr, ExprArg, ExprArgList, FieldInit, FieldPath, FieldPattern, FieldUpdate, IfExpr, LambdaExpr, ListExpr,

@@ -220,6 +220,7 @@ impl Elaborator {
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
             | RawShape::ConstrainedPi { .. }
+            | RawShape::Refine { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }
             | RawShape::RecordType(_)

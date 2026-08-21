@@ -87,6 +87,11 @@ fn stor(
         // A function is never storable, and neither is a type standing where
         // data should: §1.2's two negative rules.
         Form::Pi { .. } | Form::Lam(_) | Form::Universe(_) => Ok(false),
+        // Storable exactly when what it refines is. §1.2's check is over the
+        // *representation*, and an index is not part of one: it is erased
+        // before evaluation (§1.5), so a value of `Row(12)` holds precisely
+        // what a value of `Row` holds and encodes to the same bytes.
+        Form::Refine { ty, .. } => stor(meter, cx, ty, visiting, depth),
         Form::RecordType(telescope) => {
             let mut env = telescope.env.clone();
             for field in telescope.fields.iter() {

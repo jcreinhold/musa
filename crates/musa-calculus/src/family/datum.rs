@@ -52,8 +52,8 @@ pub(crate) fn counted(numeral: &Numeral) -> Option<Datum> {
 /// Everything that is not saturated canonical data, which is a longer list than
 /// it sounds: a constructor one argument short or one too many, a variable, a
 /// definition, a family or a recursor applied or bare, a builtin, a λ, a Π, a
-/// universe, an identity type, a `refl`, a record, a record type, and a literal
-/// that has somehow been applied to something. A record is on that list
+/// universe, a record, a record type, and a literal that has somehow been
+/// applied to something. A record is on that list
 /// deliberately — [`Datum`] has no record arm, and `01-surface.md`'s written
 /// product reaches here as `Pair.Both` rather than as one.
 ///
@@ -64,6 +64,10 @@ pub fn canonical(term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Hole(_) => None,
+        // A refinement is a *type*, and a type is not data a δ-rule reads. It
+        // reaches here only in a signature, never in an argument position, and
+        // "not data" is this function's ordinary answer rather than an error.
+        Shape::Refine { .. } => None,
         Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Numeral(ref numeral) if arguments.is_empty() => counted(numeral),
         Shape::Const(ref constant) => {

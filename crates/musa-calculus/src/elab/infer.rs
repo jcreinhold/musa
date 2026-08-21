@@ -67,6 +67,7 @@ impl Elaborator {
                 domain,
                 codomain,
             } => self.function_type(scope, here, filling.clone(), name, domain, codomain),
+            RawShape::Refine { ty, index } => self.refined_type(scope, here, ty, index),
             RawShape::ConstrainedPi { constraint, codomain } => {
                 self.constrained_function_type(scope, here, constraint, codomain)
             }
@@ -133,6 +134,29 @@ impl Elaborator {
             // make the answer depend on which one was written first.
             RawShape::Match { .. } | RawShape::Rec { .. } => Err(Refusal::Uninferable { at: here }.into()),
         }
+    }
+
+    /// `T(i) ⇒ Type l` — a type refined by an index (§1.5).
+    ///
+    /// The refined type carries the whole thing's universe, because the
+    /// refinement adds no inhabitants and no size: `Row(12)` is `Row` under a
+    /// wrapper that quotation drops, so a universe read off the index would be
+    /// reading a level off something erased.
+    ///
+    /// The index only has to *be* a term. Which terms are admissible indices is
+    /// §1.5's grammar, and it is not checked here on purpose: an index is a
+    /// question only when two of them are compared, so [`crate::convert`] is
+    /// where the grammar lives and where an expression outside it is refused by
+    /// name. Checking it twice would be two places to keep in agreement, and the
+    /// earlier one could not see the comparison that gives the refusal its
+    /// message.
+    fn refined_type(&mut self, scope: &Scope, here: Origin, ty: &Raw, index: &Raw) -> Result<Typed, ElabError> {
+        let (ty, level) = self.check_type(scope, ty)?;
+        let index = self.infer(scope, index)?;
+        Ok(Typed {
+            term: Term::refine(here, ty, index.term),
+            ty: Value::new(here, Form::Universe(level)),
+        })
     }
 
     /// `(x : A) → B ⇒ Type (max l l')`.

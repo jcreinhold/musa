@@ -553,6 +553,7 @@ fn holes_solved(term: &Term) -> bool {
         | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Numeral(_) => true,
+        Shape::Refine { ty, index } => holes_solved(ty) && holes_solved(index),
         Shape::Pi { domain, codomain, .. } => holes_solved(domain) && holes_solved(codomain),
         Shape::Lam { body, .. } => holes_solved(body),
         Shape::App { function, argument } => holes_solved(function) && holes_solved(argument),

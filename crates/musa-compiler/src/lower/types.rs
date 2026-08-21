@@ -36,6 +36,7 @@ impl Lowering<'_> {
             }
             SyntaxKind::TypeName => self.named_type(node, origin),
             SyntaxKind::AppliedType => self.applied_type(node, origin),
+            SyntaxKind::IndexedType => self.indexed_type(node, origin),
             SyntaxKind::OptionType => self.one_argument(node, origin, "Option"),
             SyntaxKind::ListType => self.one_argument(node, origin, "List"),
             SyntaxKind::ResultType => {
@@ -72,6 +73,33 @@ impl Lowering<'_> {
             }
             _ => None,
         }
+    }
+
+    /// `Pc(12)`, `Row(n)`, `Bar(3/4)` — a type carrying an index
+    /// (`02-core-calculus.md` §1.5).
+    ///
+    /// The head is read as a type and the index as an ordinary *expression*,
+    /// which is the whole of the difference from [`Lowering::applied_type`]:
+    /// `Pc<A>` takes a type and `Pc(12)` takes a number, and the two spellings
+    /// are what keep the positions apart.
+    ///
+    /// **The grammar of an index is not checked here.** §1.5 restricts what an
+    /// index may *say* — literals, index variables, and three operators — and an
+    /// expression outside that is refused where two indices are compared, by
+    /// naming the expression. Refusing it here would be a second reading of the
+    /// same written type, and the earlier of the two could not say which
+    /// comparison it broke.
+    ///
+    /// Nothing is done about the *three existing* indexed base types either, and
+    /// that is deliberate: `Duration<C>`, `Position<C>`, and `Syntax<Cat>` carry
+    /// **parameters**, not indices, and stay in angle brackets. See
+    /// [`Base::measuring`](musa_calculus::Base::measuring) for the argument.
+    fn indexed_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        let head = child(node, is_type_node)?;
+        let written = node.children().find(|child| !is_type_node(child.kind()))?;
+        let ty = self.ty(&head)?;
+        let index = self.expr(&written)?;
+        Some(Raw::refine(origin, ty, index))
     }
 
     /// `Option<τ>` and `List<τ>`, which have their own node kinds because the

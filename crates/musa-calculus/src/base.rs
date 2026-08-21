@@ -112,6 +112,7 @@ struct BaseDeclaration {
     kind: Term,
     storable: bool,
     accepts: Option<Accepts>,
+    measures: Option<Measures>,
 }
 
 /// Whether a position of an indexed base type accepts a value of it at a
@@ -138,6 +139,28 @@ struct BaseDeclaration {
 /// [`crate::Malformed::UnregisteredCarrier`] — a table defect, like every other
 /// disagreement between a host's rule and its own signature.
 pub type Accepts = fn(expected: &Literal, found: &Literal) -> Option<&'static str>;
+
+/// How to read a literal of this base type as an **index** — a value of
+/// `02-core-calculus.md` §1.5's decidable arithmetic domain.
+///
+/// The answer is an exact fraction as `(numerator, denominator)`, so `Nat` and
+/// exact `Ratio` are one signature: a whole number answers with a denominator
+/// of one. `None` is "this literal is not a number", which is a host defect
+/// rather than a program's fault — a base type registers this exactly when its
+/// literals *are* the domain.
+///
+/// A `fn` pointer for [`Accepts`]'s reason, and needed for D1's: a literal's
+/// payload is [`Arc<dyn Payload>`](Payload) and opaque to this crate, so the
+/// only party that can turn one into a number is the host that put it there.
+/// Registered on the base type rather than on the payload because the *type* is
+/// what says a position is an index position; a payload that happens to hold a
+/// number is not thereby an index.
+///
+/// A base type without one has no literals the solver can read, so an index
+/// written at it is §1.5's refusal that names the expression. That is the
+/// intended default: [`Base::new`] leaves it absent, and only `Nat` and `Ratio`
+/// have any reason to supply it.
+pub type Measures = fn(literal: &Literal) -> Option<(i128, i128)>;
 
 /// Two base types are the same when they have the same name.
 ///
@@ -179,6 +202,7 @@ impl Base {
             kind,
             storable: false,
             accepts: None,
+            measures: None,
         }))
     }
 
@@ -219,6 +243,49 @@ impl Base {
         }))
     }
 
+    /// The same base type, with its owner's rule for reading its literals as
+    /// index values (§1.5).
+    ///
+    /// Beside [`Self::accepting`] and [`Self::storable`] for the reason each of
+    /// them gives: almost no base type is an index domain, and a constructor
+    /// parameter would spell the absence at every registration.
+    ///
+    /// # The distinction this method records
+    ///
+    /// §1.5 ends by naming six compiler-owned types that *look* indexed and are
+    /// not — `Duration C`, `Position C`, `EventTrack C δ`, `Syntax<Cat>`,
+    /// `Primitive K δ δ`, and `Machine K δ δ` — and this is where the record
+    /// belongs, because the kind alone cannot tell a reader which of the two an
+    /// argument is. Each of those arguments is a **parameter**: it survives into
+    /// the elaborated term and is compared by §3's ordinary conversion. None of
+    /// them registers a measure, and none could:
+    ///
+    /// - `Duration WrittenTime` and `Duration PhysicalTime` must be
+    ///   *inconvertible*. Erasure is exactly the promise that the argument stops
+    ///   mattering, so an erased index would make them one type.
+    /// - `Syntax<Cat>` carries a directional forgetting rule ([`Accepts`],
+    ///   `11-quotation.md` §1). Conversion is symmetric; a solver that decided
+    ///   both directions would certify nothing.
+    /// - Two of `Machine`'s three arguments are *types*, and no arithmetic
+    ///   domain contains a type.
+    ///
+    /// So the two mechanisms sit side by side and the question each answers is
+    /// the difference: a parameter says *what this is a type of*, and survives;
+    /// an index says *how many* or *how much*, is decided by arithmetic, and is
+    /// erased.
+    #[must_use]
+    pub fn measuring(&self, measures: Measures) -> Self {
+        Self(Arc::new(BaseDeclaration {
+            measures: Some(measures),
+            ..self.declaration()
+        }))
+    }
+
+    /// Its owner's rule for reading its literals as index values, if it has one.
+    pub(crate) fn measures(&self) -> Option<Measures> {
+        self.0.measures
+    }
+
     /// This declaration's fields, for a method that replaces one of them.
     fn declaration(&self) -> BaseDeclaration {
         BaseDeclaration {
@@ -226,6 +293,7 @@ impl Base {
             kind: self.0.kind.clone(),
             storable: self.0.storable,
             accepts: self.0.accepts,
+            measures: self.0.measures,
         }
     }
 
@@ -589,6 +657,32 @@ struct BuiltinDeclaration {
     /// The closed terms this builtin's rewrite may write. Empty for every
     /// builtin that needs none, which is every δ-builtin and most traversals.
     vocabulary: Vec<Term>,
+    /// Which index-language operator this builtin spells, if any.
+    indexes: Option<Operator>,
+}
+
+/// The three operators `02-core-calculus.md` §1.5's index grammar admits.
+///
+/// A host tags its own arithmetic builtins with these ([`Builtin::indexing`]),
+/// because the core must not know that `nat_add` is addition: naming a host's
+/// operations here would put the compiler's vocabulary inside the calculus, and
+/// two hosts spelling addition differently would then be two calculi.
+///
+/// **Only an open application is ever read through one.** A δ-rule fires as soon
+/// as its arguments are canonical, so `2 + 3` has already reduced to `5` by the
+/// time an index position is compared, and the operator matters exactly when a
+/// variable is under it — `Bar(p + q)`, which is the case §1.5 exhibits and the
+/// reason a linear form is the normal form rather than a number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Operator {
+    /// `i + i`.
+    Add,
+    /// `i - i`.
+    Subtract,
+    /// `k * i`. §1.5 admits multiplication **by a literal** only; an
+    /// application with a variable on both sides leaves the fragment and is
+    /// refused at the expression, not approximated.
+    Multiply,
 }
 
 /// Two builtins are the same when they have the same name, for the reason
@@ -752,7 +846,33 @@ impl Builtin {
             arity,
             reduction,
             vocabulary,
+            indexes: None,
         }))
+    }
+
+    /// The same builtin, tagged as spelling `operator` in §1.5's index grammar.
+    ///
+    /// Beside the constructors rather than a parameter of them, for
+    /// [`Base::measuring`]'s reason: three builtins per numeric type carry a
+    /// tag and every other registration would spell its absence. See
+    /// [`Operator`] for why the core takes this from the host instead of
+    /// recognizing an operation by name.
+    #[must_use]
+    pub fn indexing(&self, operator: Operator) -> Self {
+        Self(Arc::new(BuiltinDeclaration {
+            name: Arc::clone(&self.0.name),
+            ty: self.0.ty.clone(),
+            family: self.0.family,
+            arity: self.0.arity,
+            reduction: self.0.reduction,
+            vocabulary: self.0.vocabulary.clone(),
+            indexes: Some(operator),
+        }))
+    }
+
+    /// Which index-language operator it spells, if the host said it spells one.
+    pub(crate) fn indexes(&self) -> Option<Operator> {
+        self.0.indexes
     }
 
     /// Its name.
@@ -1045,6 +1165,11 @@ impl Registry {
                 }
                 indexed = true;
             }
+            // Finite data exactly when what it refines is. The index is not
+            // checked and could not be: it is erased (§1.5), so no δ-rule ever
+            // receives one and a `Datum` cannot hold one. Early, because a
+            // refinement has no arguments applied above it.
+            Shape::Refine { ty, .. } => return self.check_finite_data(builtin, ty),
             Shape::Const(constant) if constant.is_family() => {}
             Shape::Var(_)
             | Shape::Universe(_)

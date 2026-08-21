@@ -39,6 +39,22 @@ wrapper!(ResultType, SyntaxKind::ResultType);
 pub struct AppliedType(SyntaxNode);
 wrapper!(AppliedType, SyntaxKind::AppliedType);
 
+/// `Pc(12)` — a type carrying an index.
+pub struct IndexedType(SyntaxNode);
+wrapper!(IndexedType, SyntaxKind::IndexedType);
+
+impl IndexedType {
+    /// The type's name.
+    pub fn name(&self) -> Option<String> {
+        child::<TypeName>(&self.0).map(|name| name.syntax().to_string().trim().to_owned())
+    }
+
+    /// The index it carries, as the expression node it was written as.
+    pub fn index(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|node| !is_type(node.kind()))
+    }
+}
+
 impl AppliedType {
     /// The declaration's name.
     pub fn name(&self) -> Option<String> {

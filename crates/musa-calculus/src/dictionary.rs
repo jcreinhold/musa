@@ -26,27 +26,28 @@
 //! values, and it is what lets an impl's dictionary type be computed under the
 //! instance parameters and then checked against under the `where` clause.
 //!
-//! # A constraint is discharged by solving a metavariable
+//! # A constraint is discharged by a hole resolved at declaration end
 //!
-//! §4 postpones a constraint whose head is not yet known, and a postponed
-//! constraint needs a hole in the output term that something later fills. That
-//! is what a metavariable *is*, so a use of `Eq.equal` elaborates to
-//! `?d.equal` with `?d : Eq ?A` recorded as pending; when `?A` is solved the
-//! lookup runs and `?d` is solved to the instance's dictionary, and `zonk`
-//! substitutes it away like any other. Nothing new had to be built for
-//! postponement, and a constraint that is still blocked at the end is reported
-//! by the machinery that already reports an unsolved hole.
+//! A constraint met mid-expression needs a hole in the output term that
+//! something later fills, so a use of `Eq.equal` elaborates to `?d.equal` with
+//! `?d : Eq ?A`, registered by [`Elaborator::constrain`]. Nothing retries it:
+//! [`Elaborator::settled`] resolves every registered constraint once, at the
+//! end of the declaration, when matching has said everything it can about
+//! `?A` — and `zonk` substitutes the answer away like any other solution.
+//! Nothing new had to be built for the deferral, and a constraint whose head is
+//! still unknown by then is reported by the machinery that already reports an
+//! unsolved hole.
 //!
-//! # An instance's parameters are recovered by unification
+//! # An instance's parameters are recovered by matching
 //!
 //! Lookup finds `impl<T> Eq<List<T>>` from the key `(Eq, List)` alone, and the
 //! `T` still has to be found. It is found the way every other unknown in this
-//! crate is: a metavariable per instance parameter, the instance's *written*
-//! arguments evaluated in an environment of those metas, and unification against
-//! the arguments actually asked for. Writing a first-order matcher here instead
-//! would be a second conversion checker beside 134's, free to disagree with it about
-//! exactly the cases — η, δ, a solved meta — where agreement is what coherence
-//! rests on.
+//! crate is: a hole per instance parameter, the instance's *written* arguments
+//! evaluated in an environment of those holes, and §2.1's first-order match
+//! against the arguments actually asked for. Writing a bespoke matcher here
+//! instead would be a second conversion checker beside 134's, free to disagree
+//! with it about exactly the cases — η, δ, a solved hole — where agreement is
+//! what coherence rests on.
 
 use std::sync::Arc;
 
@@ -557,20 +558,24 @@ pub(crate) fn resolve_at(
 /// Whether a constraint's argument is a type no instance could ever answer, as
 /// against one whose head is not known *yet*.
 ///
-/// §4's postponement is for the second. Spending it on the first trades a true
-/// sentence now — "an arrow has no instance" — for an unsolved hole reported at
-/// the end of the declaration, which sends the author looking for a missing
-/// annotation instead of for the arrow they wrote.
+/// Waiting for [`Elaborator::settled`] is for the second, and by the time this
+/// runs the waiting is over. What is left is which sentence to report, and the
+/// choice is worth making: calling an arrow merely unsolved sends the author
+/// looking for a missing annotation instead of for the arrow they wrote, so
+/// `true` here earns the true sentence — "an arrow has no instance" — and every
+/// shape that might still have resolved answers `false`.
 fn unkeyed(term: &Term) -> bool {
     match term.shape() {
         Shape::Hole(_) => false,
         Shape::App { function, .. } => unkeyed(function),
+        // Keyed exactly when what it refines is: see `class::head_of`.
+        Shape::Refine { ty, .. } => unkeyed(ty),
         // Canonical formers. None of them is a name, so no `impl` could ever be
         // keyed on one, and `02-core-calculus.md` §1.2 says so of the arrow in
         // particular.
         Shape::Pi { .. } | Shape::Universe(_) | Shape::RecordType(_) | Shape::Lam { .. } | Shape::Record(_) => true,
-        // Neutral: stuck on a metavariable, and solving it is what postponement
-        // is for.
+        // Neutral: stuck on a hole, and solving it is what waiting until
+        // declaration end is for.
         Shape::Project { .. } | Shape::Let { .. } => false,
         // Reached only when `head_of` answered, so unreachable here. `false`
         // keeps the answer conservative rather than inventing a refusal. A base
@@ -646,7 +651,7 @@ fn dictionary_type(
 ///
 /// `None` for a constraint whose first argument has no head at all, which is not
 /// a defect: such a dictionary is still *bound*, and a use that needs it is
-/// postponed until its head is known rather than answered from here.
+/// resolved at declaration end, once its head is known, rather than from here.
 pub(crate) fn discharges(constraint: &Constraint, scope: &Scope) -> Option<Key> {
     let head = head_of(constraint.args.first()?, scope.depth())?;
     Some(Key {
@@ -716,6 +721,9 @@ fn constant(term: &Term) -> Option<&Constant> {
     match term.shape() {
         Shape::Const(constant) => Some(constant),
         Shape::App { function, .. } => constant(function),
+        // The orphan rule asks where a type is *declared*, and a refinement
+        // declares nothing: `Row(12)` is at home wherever `Row` is.
+        Shape::Refine { ty, .. } => constant(ty),
         // A head that is not a declared constant is not one §3 can place, and
         // `orphan` reads that as "not at home here" rather than guessing.
         Shape::Var(_)

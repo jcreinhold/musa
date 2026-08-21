@@ -263,14 +263,36 @@ pub enum Shape {
         /// The field's name.
         field: Name,
     },
-    /// A metavariable: a term elaboration has not determined yet (§2.1).
+    /// `T(i)` — a type refined by an index expression (§1.5).
     ///
-    /// It is closed and stands for `λx₀ … xₙ₋₁. ?α`, so the elaborator writes it
-    /// applied to the binders in scope and a solution can capture nothing it was
-    /// not given. **An elaborated term contains none of these**: a meta still
-    /// unsolved when elaboration ends is a refusal, and one that is solved is
-    /// unfolded away — which is why [`crate::check`] and [`crate::infer`] can
-    /// promise an output the re-checker accepts.
+    /// A **wrapper**, not a parameter and not a family index. `Row(12)` is the
+    /// ordinary declared type `Row` under a refinement, so
+    /// [`crate::family`] does not grow by a line and a value of `Row(12)` is a
+    /// value of `Row`. Three consequences follow from that one choice, and each
+    /// is what §1.5 asks for:
+    ///
+    /// - **Erasure is structural.** [`crate::quote`] drops the wrapper and reads
+    ///   back `ty` alone, so a read-back term carries no index and every stored
+    ///   artifact is byte-identical to what it was before the stratum existed.
+    ///   It is not a property a test watches; it is where the code sits.
+    /// - **Conversion has one arm.** Two refinements agree when their types
+    ///   agree and [`crate::index::decide`] answers `Same`; a refinement never
+    ///   agrees with a bare type, because `Row(12)` and `Row` are two types.
+    /// - **Nothing else changes.** Evaluation passes through, the eliminators
+    ///   are untouched, and no rule anywhere takes a refinement apart.
+    ///
+    /// The index is an ordinary [`Term`] of index sort rather than an
+    /// [`crate::index::Expr`], and that is the repair §1.5 took at 142d: an
+    /// index variable is an ordinary parameter, so it is bound, substituted, and
+    /// solved by machinery that already exists. Reading a *value* of this
+    /// position into a linear form is [`crate::convert`]'s, at the one place a
+    /// comparison needs it.
+    Refine {
+        /// The type being refined.
+        ty: Term,
+        /// The index it is refined by.
+        index: Term,
+    },
     /// `let x : A = v in e`, non-recursive. Its unfolding is δ.
     Let {
         /// The binder's written name.
@@ -320,6 +342,21 @@ impl PartialEq for Shape {
             // family, where two towers would have been walked to the floor.
             (Self::Numeral(left), Self::Numeral(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
+            // Both halves: a refinement *is* its type and its index, and two
+            // refinements at one type by two indices are two types. α-equality
+            // is syntactic here, as everywhere in this impl; deciding whether
+            // two *different* index expressions denote one quantity is
+            // conversion's question and [`crate::index`]'s answer.
+            (
+                Self::Refine {
+                    ty: left_ty,
+                    index: left_index,
+                },
+                Self::Refine {
+                    ty: right_ty,
+                    index: right_index,
+                },
+            ) => left_ty == right_ty && left_index == right_index,
             (
                 Self::Pi {
                     filling: _,
@@ -401,6 +438,7 @@ impl PartialEq for Shape {
                 | Self::Record(_)
                 | Self::Project { .. }
                 | Self::Numeral(_)
+                | Self::Refine { .. }
                 | Self::Let { .. },
                 _,
             ) => false,
@@ -513,6 +551,9 @@ impl Term {
             | Shape::Record(_)
             | Shape::Project { .. }
             | Shape::Let { .. } => Ok(Level::ZERO),
+            // A refinement is at the level of what it refines. The index is a
+            // value, not a type, so it contributes no level at all.
+            Shape::Refine { ty, .. } => Self::level_of(ty),
         }
     }
 
@@ -577,6 +618,12 @@ impl Term {
                 body,
             },
         )
+    }
+
+    /// `ty(index)` — `ty` refined by `index` (§1.5).
+    #[must_use]
+    pub fn refine(origin: Origin, ty: Self, index: Self) -> Self {
+        Self::new(origin, Shape::Refine { ty, index })
     }
 
     /// `function argument`.

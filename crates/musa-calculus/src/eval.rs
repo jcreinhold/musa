@@ -104,6 +104,17 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 }),
             )),
             Shape::App { function, argument } => application(meter, env, here, function, argument),
+            // A refinement evaluates both halves and reduces neither: there is
+            // no ι, no δ, and no β at one, because §1.5 gives it no elimination
+            // form. It is carried so that conversion can ask about it, and
+            // dropped by `quote` so that nothing downstream ever sees it.
+            Shape::Refine { ty, index } => Ok(Value::new(
+                here,
+                Form::Refine {
+                    ty: Arc::new(eval(meter, env, ty)?),
+                    index: Arc::new(eval(meter, env, index)?),
+                },
+            )),
             Shape::RecordType(fields) => Ok(Value::new(
                 here,
                 Form::RecordType(Telescope {
@@ -193,24 +204,14 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
     eval(meter, &env.push(value), body)
 }
 
-/// The value with a solved metavariable at its head unfolded, or `None` when
-/// there was nothing to unfold.
-///
-/// A neutral is blocked on its *head*, and the head of `?α x y .f` is `?α`. Once
-/// that meta is solved the whole spine computes again, but the value already
-/// built still says "blocked" — so every place that decides something by looking
-/// at a value's shape has to ask here first. Returning `None` rather than a
-/// clone keeps the common case, a value with no metavariable anywhere in it,
-/// free.
-///
-/// **One unfolding is not enough**, and that is why this is a loop. `?α := ?β`
-/// is an ordinary solution — it is what solving a flex-flex pair writes — and it
-/// stores the value `?β` *had at that moment*, which is a neutral blocked on
-/// `?β`. Solve `?β` afterwards and unfolding `?α` once answers a value that is
-/// blocked again. A caller that trusted a single step would then read a solved
-/// metavariable as an unsolved one; in [`crate::convert`] that is not a missed
 /// The value with a solved hole at its head seen through, or `None` when the
 /// head is not one.
+///
+/// A neutral is blocked on its *head*, and the head of `?α x y .f` is `?α`. Once
+/// that hole is solved the whole spine computes again, but the value already
+/// built still says "blocked" — so every place that decides something by looking
+/// at a value's shape has to ask here first. Returning `None` rather than a
+/// clone keeps the common case, a value with no hole anywhere in it, free.
 ///
 /// A loop rather than a step: a solution can itself be headed by a hole that
 /// has since been solved, and a caller that trusted one step would read a
@@ -330,6 +331,9 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
     let mut answer = match force(meter, value)? {
         Some(forced) => forced,
         None => match &value.form {
+            // Nothing to open. A refinement holds no hole at its head and no
+            // definition to unfold: §1.5 gives it no reduction at all.
+            Form::Refine { .. } => return Ok(None),
             Form::Neutral(neutral) => match unfold(meter, neutral)? {
                 Some(unfolded) => unfolded,
                 None => return Ok(None),
@@ -397,6 +401,9 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
     match function.form {
         Form::Lam(body) => apply_closure(meter, &body, argument),
+        // Not a function, and not applied to anything: `Row(12) x` is what a
+        // caller wrote when it meant `Row x`, and this is where it says so.
+        Form::Refine { .. } => Err(Malformed::NotAFunction.into()),
         // A blocked application is where ι at an inductive family fires: the
         // recursor's target is its last argument, so this is the first moment the
         // elimination can know it has met a constructor.
@@ -526,6 +533,8 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
     meter.nested("canonical data", |meter| {
         let forced = opened(meter, value)?;
         match forced.as_ref().unwrap_or(value).form {
+            // A type, not data. See `crate::family::canonical`.
+            Form::Refine { .. } => Ok(None),
             Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
             // The count read back as the tower it stands for. See
             // [`crate::family::canonical`], which is the same answer one layer
@@ -633,6 +642,9 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     };
     let forced = opened(meter, subject)?;
     let rewritten = match forced.as_ref().unwrap_or(subject).form {
+        // A structural rule rewrites a *literal*; a refinement is a type, and
+        // no builtin's target position holds one.
+        Form::Refine { .. } => None,
         Form::Lit(ref literal) => {
             meter.step("structural reduction")?;
             rewrite(builtin, literal)
@@ -670,6 +682,9 @@ pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Na
 /// [`project`] without the bookkeeping charge — see [`applying`].
 fn projecting(_meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
     match record.form {
+        // Not a record, so there is no field to find — the same answer a
+        // universe or a λ gets below.
+        Form::Refine { .. } => Err(Malformed::NotARecord.into()),
         Form::Record(fields) => fields
             .iter()
             .find(|(name, _)| name == field)
@@ -778,6 +793,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Lit(_)
             | Form::Numeral(_)
+            | Form::Refine { .. }
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
         Elim::Project { field, .. } => match head.form {
@@ -791,6 +807,7 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Lit(_)
             | Form::Numeral(_)
+            | Form::Refine { .. }
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
     }

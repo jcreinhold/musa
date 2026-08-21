@@ -238,10 +238,18 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         } if arguments.is_empty() && &**name == musa_calculus::ARROW_BINDER => {
             Some(format!("{} -> {}", spelled(domain)?, spelled(codomain)?))
         }
+        // `Row(12)` — the index is shown, because this spelling is what a
+        // reader sees in documentation and in a hover, and the index is the
+        // whole of what distinguishes the type. It is erased in the *term*
+        // (`02-core-calculus.md` §1.5), not in what a type is called.
+        musa_calculus::Shape::Refine { ref ty, ref index } if arguments.is_empty() => {
+            Some(format!("{}({})", spelled(ty)?, spelled_index(index)?))
+        }
         // Written out rather than left to a wildcard, so a shape added to the
         // core has to be classified here before this crate builds again —
         // `crate::registry::machine`'s own discipline, and for its reason.
-        musa_calculus::Shape::Universe(_)
+        musa_calculus::Shape::Refine { .. }
+        | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Pi { .. }
         | musa_calculus::Shape::Var(_)
         | musa_calculus::Shape::Def(_)
@@ -255,5 +263,19 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         | musa_calculus::Shape::Project { .. }
         | musa_calculus::Shape::Hole(_)
         | musa_calculus::Shape::Let { .. } => None,
+    }
+}
+
+/// One index as it was written, for [`spelled`]'s refinement arm.
+///
+/// The two canonical index forms and nothing else: an open index — a variable,
+/// or an arithmetic expression under one — has no spelling a documentation
+/// consumer could use, and answering `None` is what makes the whole type spell
+/// as nothing rather than as a guess.
+fn spelled_index(index: &musa_calculus::Term) -> Option<String> {
+    match *index.shape() {
+        musa_calculus::Shape::Numeral(ref numeral) => Some(numeral.to_string()),
+        musa_calculus::Shape::Lit(ref literal) => Some(literal.to_string()),
+        _ => None,
     }
 }

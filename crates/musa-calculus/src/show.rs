@@ -113,6 +113,16 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
         Shape::Universe(universe) => {
             let _ = write!(out, "Type {universe}");
         }
+        // `T(i)`, which is how §1.5 spells it and how the surface writes it.
+        // Parenthesized like an argument rather than like an application: the
+        // parentheses are part of the spelling, so `List Pc(12)` needs no more
+        // of them than `List Nat` does.
+        Shape::Refine { ty, index } => {
+            write(out, ty, Level::Argument, names);
+            out.push('(');
+            write(out, index, Level::Outer, names);
+            out.push(')');
+        }
         Shape::App { .. } => parenthesized(out, level, Level::Applied, |out| {
             let (head, arguments) = spine(term);
             write(out, head, Level::Applied, names);
@@ -239,6 +249,7 @@ fn mentioned(term: &Term) -> bool {
 fn occurs(term: &Term, depth: u32) -> bool {
     match term.shape() {
         Shape::Var(index) => index.0 == depth,
+        Shape::Refine { ty, index } => occurs(ty, depth) || occurs(index, depth),
         Shape::App { function, argument } => occurs(function, depth) || occurs(argument, depth),
         Shape::Pi {
             filling,

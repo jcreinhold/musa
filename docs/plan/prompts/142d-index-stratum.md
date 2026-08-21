@@ -1,7 +1,7 @@
 ---
 id: 142d
 slug: index-stratum
-status: in-progress
+status: done
 depends_on: [142c]
 phase: 3
 ---
@@ -82,3 +82,5 @@ a defect in erasure.
 - No inductive-family indices. `family/` is not touched.
 - No solver in the audio, notation, or project crates. `musa-calculus` owns it and nothing re-derives it.
 - Do not use the index to re-admit anything note 51 §7 keeps deleted.
+
+Commit as `Build the index stratum: a solver beside the checker, and erased before it is stored`.

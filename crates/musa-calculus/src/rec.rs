@@ -419,6 +419,13 @@ impl Rewrite<'_> {
                 function: self.term(function, bound)?,
                 argument: self.term(argument, bound)?,
             },
+            // Both halves, for the reason the arm above walks both: a call to
+            // the definition being measured can stand in either, and one this
+            // rule did not see is one it did not check.
+            RawShape::Refine { ty, index } => RawShape::Refine {
+                ty: self.term(ty, bound)?,
+                index: self.term(index, bound)?,
+            },
             // A call whose head is not the definition being defined: `spine`
             // read it as one and `self.call` declined it, so what is left is an
             // ordinary walk into the parts.

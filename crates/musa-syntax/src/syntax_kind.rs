@@ -725,6 +725,21 @@ pub enum SyntaxKind {
     /// `Motive` is a [`SyntaxKind::TypeName`]; this is the applied form, which
     /// only a parameterized declaration can be written in.
     AppliedType,
+    /// `Pc(12)`, `Row(n)`, `Bar(3/4)` — a type carrying an **index**.
+    ///
+    /// Parentheses rather than angle brackets, and the difference is the point:
+    /// `Pc<A>` would be a type built from another type, and `Pc(12)` is a type
+    /// built from a *number*. `docs/rules/language/02-core-calculus.md` §1.5
+    /// spells it this way so the two are distinguishable at a glance, and the
+    /// grammar keeps them apart rather than deciding by what the argument turns
+    /// out to be.
+    ///
+    /// The argument is read as an ordinary expression. Which expressions are
+    /// admissible indices is §1.5's grammar, and the parser is not where it is
+    /// decided: an index is a question only where two of them are compared, so
+    /// the refusal that names the expression belongs to the checker and reaches
+    /// the author with the comparison that could not be made.
+    IndexedType,
     /// `data Motive;` — one member of a signature naming a type without its
     /// constructors, which is what makes the constructors private to the
     /// structure that declares them.

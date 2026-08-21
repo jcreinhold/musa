@@ -376,7 +376,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::Constraint
         | SyntaxKind::BinaryExpr
         | SyntaxKind::MethodCallExpr
-        | SyntaxKind::IndexExpr => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::IndexExpr
+        | SyntaxKind::IndexedType => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

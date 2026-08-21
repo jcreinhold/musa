@@ -92,6 +92,7 @@ mod elab;
 mod error;
 mod eval;
 mod family;
+mod index;
 mod level;
 mod list;
 mod meta;
@@ -110,7 +111,8 @@ mod value;
 mod visibility;
 
 pub use crate::base::{
-    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
+    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Measures, Operator, Payload, Registry, Rewrite,
+    Rule,
 };
 pub use crate::budget::{Budget, Metric, ResourceError, Spend};
 pub use crate::class::{Constraint, Instance, PackageId, Trait};

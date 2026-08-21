@@ -195,6 +195,10 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
         let value = unfolded_value.as_ref().unwrap_or(value);
         let here = value.origin;
         match &ty.form {
+            // §1.5: a refinement adds no inhabitants and no η. What inhabits
+            // `Row(12)` is exactly what inhabits `Row`, so the type directing
+            // this read is the one underneath.
+            Form::Refine { ty, .. } => read(meter, reading, ty, value),
             // η at Π: a lambda, whether or not the value is one. A λ has no
             // filling to write — it is the Π that says how the argument arrives.
             Form::Pi {
@@ -237,9 +241,12 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
                 // of them — which is what keeps quotation's node charge
                 // independent of the number the author wrote.
                 Form::Numeral(numeral) => Ok(Term::new(here, crate::term::Shape::Numeral(numeral.clone()))),
-                Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => {
-                    read_type(meter, reading, value)
-                }
+                Form::Universe(_)
+                | Form::Pi { .. }
+                | Form::Lam(_)
+                | Form::RecordType(_)
+                | Form::Refine { .. }
+                | Form::Record(_) => read_type(meter, reading, value),
             },
             Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
@@ -281,6 +288,12 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
                 ))
             }
             Form::RecordType(telescope) => read_telescope(meter, here, reading, telescope),
+            // **This is erasure.** The wrapper is dropped and the refined type
+            // is read back alone, so no index survives into a `Term` — and
+            // therefore none reaches a snapshot, a digest, or a stored
+            // artifact. §1.5's "erased before evaluation" is this one line, not
+            // a property a test watches.
+            Form::Refine { ty, .. } => read_type(meter, reading, ty),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
             Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
@@ -369,6 +382,7 @@ fn read_elimination(
                 | Form::Record(_)
                 | Form::Lit(_)
                 | Form::Numeral(_)
+                | Form::Refine { .. }
                 | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
             };
             Ok(Term::app(*origin, quoted, read(meter, reading, &domain, argument)?))

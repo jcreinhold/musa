@@ -195,6 +195,7 @@ impl Elaborator {
                 | Shape::RecordType(_)
                 | Shape::Record(_)
                 | Shape::Project { .. }
+                | Shape::Refine { .. }
                 | Shape::Let { .. } => 0,
             };
             return self.holes(scope, here, built, params);

@@ -380,6 +380,7 @@ fn mentions_free_variable(term: &Term) -> bool {
             | Shape::Lit(_)
             | Shape::Numeral(_) => false,
             Shape::Universe(_) | Shape::Hole(_) => false,
+            Shape::Refine { ty, index } => walk(ty, depth) || walk(index, depth),
             Shape::Pi { domain, codomain, .. } => walk(domain, depth) || walk(codomain, depth.saturating_add(1)),
             Shape::Lam { body, .. } => walk(body, depth.saturating_add(1)),
             Shape::App { function, argument } => walk(function, depth) || walk(argument, depth),

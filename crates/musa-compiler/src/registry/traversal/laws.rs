@@ -434,6 +434,12 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
             trees(argument, into);
         }
         musa_calculus::Shape::Lam { ref body, .. } => trees(body, into),
+        // An index can hold a literal — `Bar(3/4)` does — so both halves are
+        // walked rather than skipped.
+        musa_calculus::Shape::Refine { ref ty, ref index } => {
+            trees(ty, into);
+            trees(index, into);
+        }
         // Spelled out rather than wildcarded, for the reason
         // `crate::registry::phase_type` gives: a variant added to `Shape` that
         // could hold a literal should stop here and be decided.

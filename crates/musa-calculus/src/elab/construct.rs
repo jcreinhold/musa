@@ -112,6 +112,7 @@ impl Elaborator {
             | RawShape::Universe(_)
             | RawShape::ConstrainedPi { .. }
             | RawShape::Pi { .. }
+            | RawShape::Refine { .. }
             | RawShape::Lam { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }

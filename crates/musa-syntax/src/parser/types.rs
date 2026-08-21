@@ -111,6 +111,27 @@ impl Parser<'_> {
             self.finish();
             return;
         }
+        // `Pc(12)` — a type carrying an index. `02-core-calculus.md` §1.5 spells
+        // an index in parentheses precisely so that it is not the angle-bracket
+        // form above: `Pc<A>` takes a type and `Pc(12)` takes a number, and the
+        // grammar tells them apart rather than the checker.
+        //
+        // The index is read as an ordinary expression, because §1.5's grammar is
+        // a restriction on what an index may *say* and not a second syntax. An
+        // expression outside it is refused where two indices are compared, with
+        // the comparison that could not be made; refusing it here would be a
+        // complaint with nothing to point at.
+        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::LParen) {
+            self.start(SyntaxKind::IndexedType);
+            self.start(SyntaxKind::TypeName);
+            self.bump();
+            self.finish();
+            self.bump(); // `(`
+            self.expr();
+            self.expect(SyntaxKind::RParen, "`)`");
+            self.finish();
+            return;
+        }
         self.start(SyntaxKind::TypeName);
         if self.at(SyntaxKind::Identifier) || self.at_any(MOVED_TYPE_KEYWORDS) {
             self.respelled_type();

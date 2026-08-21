@@ -24,6 +24,7 @@ mod coverage_laws;
 mod elaboration_laws;
 mod family_laws;
 mod glued_laws;
+mod index_laws;
 mod nesting_laws;
 mod normalization_laws;
 mod numeral_laws;

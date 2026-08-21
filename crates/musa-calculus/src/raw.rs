@@ -423,6 +423,27 @@ pub enum RawShape {
         /// `B`, under the binder.
         codomain: Raw,
     },
+    /// `T(i)` — `T` refined by the index expression `i` (§1.5).
+    ///
+    /// A *wrapper*, not a family index: `Row(12)` is ordinary `Row` under a
+    /// refinement, so `family/` gains nothing, a value of `Row(12)` is a value
+    /// of `Row`, and [`crate::quote`] drops the wrapper and reads back `Row`
+    /// alone. What the refinement changes is which programs are accepted and
+    /// nothing else.
+    ///
+    /// The index is an ordinary [`Raw`], because §1.5 gives an index no binder
+    /// form of its own: an index variable is a parameter of index sort, bound
+    /// and solved exactly as a type parameter is. What is *not* ordinary is
+    /// what an index may say, and that is decided where two of them are
+    /// compared rather than where one is written — [`crate::convert`] reads an
+    /// index position into the index language, or refuses it by naming the
+    /// expression.
+    Refine {
+        /// `T`, the type being refined.
+        ty: Raw,
+        /// `i`, the index it carries.
+        index: Raw,
+    },
     /// `λx. e`, with the binder's type written only when it is not already
     /// known.
     Lam {
@@ -830,6 +851,12 @@ impl Raw {
     /// λ — reads its types *from* the slot and has none to give back.
     pub(crate) fn annotates_its_binder(&self) -> bool {
         matches!(self.shape(), RawShape::Lam { domain: Some(_), .. })
+    }
+
+    /// `ty(index)` — `ty` refined by an index expression (§1.5).
+    #[must_use]
+    pub fn refine(origin: Origin, ty: Self, index: Self) -> Self {
+        Self::new(origin, RawShape::Refine { ty, index })
     }
 
     /// `function argument`.

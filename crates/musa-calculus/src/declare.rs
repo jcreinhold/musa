@@ -623,6 +623,11 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
     let under = bound.saturating_add(1);
     match term.shape() {
         Shape::Var(index) => watched.holds(depth.saturating_add(bound), *index).then_some(here),
+        // Both halves, for the reason `class::occurrences` gives: an index is an
+        // ordinary term and a declaration binder it mentions is mentioned.
+        Shape::Refine { ty, index } => {
+            mentions(ty, watched, depth, bound).or_else(|| mentions(index, watched, depth, bound))
+        }
         Shape::Const(_)
         | Shape::Def(_)
         | Shape::Base(_)

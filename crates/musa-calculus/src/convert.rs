@@ -37,13 +37,15 @@
 
 use std::sync::Arc;
 
+use crate::base::Operator;
 use crate::budget::Meter;
 use crate::error::CoreError;
 use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
+use crate::index::{self, Exact, Expr, Sort, Verdict};
 use crate::origin::Origin;
 use crate::quote::{Depth, Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
-use crate::term::{DbLevel, Field, Term};
+use crate::term::{DbLevel, Field, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
@@ -341,6 +343,11 @@ impl Conversion {
                 // ones.
                 | Form::Lit(_)
                 | Form::Numeral(_) => {}
+                // A refinement has whatever η what it refines has, and no η of
+                // its own: §1.5 gives it no elimination form, so there is
+                // nothing to expand. Left to the match below, which compares the
+                // two values directly and is where the index question is asked.
+                Form::Refine { .. } => {}
                 // A type that is still a metavariable says nothing yet, and a λ
                 // under it would be one the elaborator has not pinned down. The
                 // match below reads both sides back, which is the honest answer
@@ -387,6 +394,31 @@ impl Conversion {
             (Form::RecordType(one), Form::RecordType(other)) => {
                 self.record_types(meter, depth, at, origin, left, right, one, other)
             }
+            // §1.5's one hook. The refined types are compared by §3 as any two
+            // types are; the indices are handed to the arithmetic decider, which
+            // is a different question with a different answer procedure.
+            (
+                Form::Refine {
+                    ty: mine,
+                    index: my_index,
+                },
+                Form::Refine {
+                    ty: theirs,
+                    index: their_index,
+                },
+            ) => {
+                self.step(meter, depth, At::Type, origin, mine, theirs)?;
+                self.indices(meter, depth, origin, left, right, my_index, their_index)
+            }
+            // A refinement never converts with what it refines. `Row(12)` and
+            // `Row` are two types, and reading them back would print one word
+            // twice, because erasure is what quotation does — so the message is
+            // built here, where the index is still in hand.
+            (Form::Refine { .. }, _) | (_, Form::Refine { .. }) => Err(Failure::Mismatch {
+                expected: refinement_shown(meter, depth, left)?,
+                found: refinement_shown(meter, depth, right)?,
+                path: Vec::new(),
+            }),
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
             // Two different forms, which is a disagreement: reading both sides
             // back is how the message says so. The one pair that is not already
@@ -394,6 +426,58 @@ impl Conversion {
             // type is still unknown, and quotation refuses that rather than
             // guessing.
             _ => Self::by_reading_back(meter, depth, at, left, right),
+        }
+    }
+
+    /// Two index arguments of the same refined type (§1.5).
+    ///
+    /// The one place in this crate where a comparison is *not* answered by
+    /// normalization by evaluation. §1.5's design is that two questions get two
+    /// deciders: `Γ ⊢ T(a) ≡ T(b)` holds exactly when the solver decides `a = b`
+    /// in the index domain, and §3's machinery is not involved because it
+    /// decides terms and an index is not one.
+    ///
+    /// The exception is a flexible index, and it is not an exception to the
+    /// separation. An index variable is an *ordinary parameter of index sort*
+    /// (§1.5), solved at the call by §2.1's first-order matching from the
+    /// written arguments — the same binder and the same rule a type parameter
+    /// gets. So a side that still holds an unsolved hole is §2.1's question,
+    /// asked of the ordinary walk; only once both sides are rigid is there
+    /// arithmetic to decide.
+    fn indices(
+        &mut self,
+        meter: &mut Meter,
+        depth: u32,
+        origin: Origin,
+        left: &Value,
+        right: &Value,
+        mine: &Value,
+        theirs: &Value,
+    ) -> Step {
+        let disagree = |meter: &mut Meter| -> Result<Failure, CoreError> {
+            Ok(Failure::Mismatch {
+                expected: refinement_shown(meter, depth, left)?,
+                found: refinement_shown(meter, depth, right)?,
+                path: Vec::new(),
+            })
+        };
+        if mentions_unsolved(mine) || mentions_unsolved(theirs) {
+            return match self.step(meter, depth, At::Type, origin, mine, theirs) {
+                Err(Failure::Mismatch { .. }) => Err(disagree(meter)?),
+                decided => decided,
+            };
+        }
+        // An index outside §1.5's grammar is refused *here*, by naming the
+        // expression it could not read — never postponed, never approximated,
+        // and never compared syntactically as a fallback. The message is the
+        // two written types, so a reader sees `Row(f x)` rather than a word
+        // about a linear form.
+        let (Some(mine), Some(theirs)) = (index_of(meter, mine)?, index_of(meter, theirs)?) else {
+            return Err(disagree(meter)?);
+        };
+        match index::decide(&mine, &theirs) {
+            Verdict::Same => Ok(()),
+            Verdict::Different => Err(disagree(meter)?),
         }
     }
 
@@ -745,6 +829,9 @@ fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
 fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
+        // Both halves. `Row(?α)` mentions `?α`, and an occurs check that looked
+        // past the index would let a hole be solved by a value that names it.
+        Form::Refine { ty, index } => mentions_hole(ty, target) || mentions_hole(index, target),
         Form::Pi { domain, codomain, .. } => {
             mentions_hole(domain, target) || codomain.env.iter().any(|item| mentions_hole(item, target))
         }
@@ -777,6 +864,9 @@ fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
 pub(crate) fn mentions_unsolved(value: &Value) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
+        // Both halves, for [`mentions_hole`]'s reason read existentially: a
+        // slot typed `Row(?n)` has not been determined by the call.
+        Form::Refine { ty, index } => mentions_unsolved(ty) || mentions_unsolved(index),
         Form::Pi { domain, codomain, .. } => mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved),
         Form::Lam(closure) => closure.env.iter().any(mentions_unsolved),
         Form::RecordType(telescope) => telescope.env.iter().any(mentions_unsolved),
@@ -797,5 +887,144 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
                     Elim::Project { .. } => false,
                 })
         }
+    }
+}
+
+/// A refined type as it was written, for a message that has to show the index.
+///
+/// [`quote_type`] cannot be used for the whole of it: erasure is what quotation
+/// does (§1.5), so reading `Row(12)` back answers `Row`, and a mismatch between
+/// two refinements of one type would print the same word twice. So the wrapper
+/// is rebuilt here, where both halves are still values.
+///
+/// A value that is not a refinement quotes ordinarily — this is the one arm of
+/// the pair where a refinement met a bare type.
+fn refinement_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+    let Form::Refine { ty, index } = &value.form else {
+        return quote_type(meter, Depth(depth), Mode::Keep, value);
+    };
+    Ok(Term::refine(
+        value.origin,
+        quote_type(meter, Depth(depth), Mode::Keep, ty)?,
+        index_shown(meter, depth, index)?,
+    ))
+}
+
+/// One index value, as a term a message can print.
+///
+/// The two canonical index forms are read back directly, because neither is a
+/// type and [`quote_type`] refuses both; everything else in the grammar — a
+/// variable, an open application of an arithmetic builtin — is a neutral and
+/// quotes as one.
+fn index_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+    match &value.form {
+        Form::Numeral(numeral) => Ok(Term::new(value.origin, Shape::Numeral(numeral.clone()))),
+        Form::Lit(literal) => Ok(literal.term(value.origin)),
+        Form::Universe(_)
+        | Form::Pi { .. }
+        | Form::Lam(_)
+        | Form::RecordType(_)
+        | Form::Record(_)
+        | Form::Refine { .. }
+        | Form::Neutral(_) => quote_type(meter, Depth(depth), Mode::Keep, value),
+    }
+}
+
+/// An index position read as §1.5's index expression, or `None` at the first
+/// thing outside the grammar.
+///
+/// This is the *only* function that knows the grammar, which is what keeps
+/// [`crate::index`] free of [`crate::value`]: it is handed a normalized
+/// expression and answers, and the reading happens at the one place a
+/// comparison meets an index.
+///
+/// `None` is a refusal and never an approximation. Two variables multiplied, a
+/// division, a call, a `match`, a projection, an overflow, and a variable of any
+/// sort but `Nat` and exact `Ratio` each land here, and the caller reports the
+/// written expression rather than anything about a linear form.
+fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError> {
+    meter.nested("index reading", |meter| {
+        meter.step("index reading")?;
+        let opened = opened(meter, value)?;
+        let value = opened.as_ref().unwrap_or(value);
+        match &value.form {
+            // A counting family holds its count directly, so `Nat` needs no
+            // host reader: §5.8's opacity is about a base type's payload, and a
+            // numeral is not one.
+            Form::Numeral(numeral) => Ok(Some(Expr::literal(
+                Sort::Count,
+                Exact::whole(i128::from(numeral.count)),
+            ))),
+            Form::Lit(literal) => Ok(measured(literal)),
+            Form::Neutral(neutral) => match (&neutral.head, neutral.spine.as_slice()) {
+                (Head::Var(DbLevel(level), ty), []) => Ok(sort_of(ty).map(|sort| Expr::variable(sort, *level))),
+                (Head::Builtin(builtin), [Elim::App { argument: left, .. }, Elim::App { argument: right, .. }]) => {
+                    match builtin.indexes() {
+                        Some(operator) => arithmetic(meter, operator, left, right),
+                        None => Ok(None),
+                    }
+                }
+                _ => Ok(None),
+            },
+            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => Ok(None),
+            // A refinement is a type, and §1.5 refuses an index over one: that
+            // would be a universe by another name.
+            Form::Refine { .. } => Ok(None),
+        }
+    })
+}
+
+/// One open application of an arithmetic builtin, read as a linear form.
+fn arithmetic(meter: &mut Meter, operator: Operator, left: &Value, right: &Value) -> Result<Option<Expr>, CoreError> {
+    let (Some(left), Some(right)) = (index_of(meter, left)?, index_of(meter, right)?) else {
+        return Ok(None);
+    };
+    match operator {
+        Operator::Add => left.add(meter, &right),
+        Operator::Subtract => left.subtract(meter, &right),
+        // §1.5 admits multiplication by a *literal*, so exactly one side has to
+        // be closed. Two open factors is the refusal the grammar names, and it
+        // is the refusal that keeps the form linear.
+        Operator::Multiply => match (left.as_constant(), right.as_constant()) {
+            (Some(factor), _) => right.scale(meter, factor),
+            (None, Some(factor)) => left.scale(meter, factor),
+            (None, None) => Ok(None),
+        },
+    }
+}
+
+/// A base literal read as an exact index value by its own type's host rule.
+///
+/// D1 keeps a payload opaque to this crate, so the party that put the number in
+/// is the only one that can take it out — [`crate::base::Measures`], registered
+/// on the base type. A literal at a base type that registered none is not an
+/// index, which is the intended default and the reason `Syntax<Cat>`'s category
+/// does not become one.
+fn measured(literal: &crate::base::Literal) -> Option<Expr> {
+    let mut head = literal.ty();
+    while let Shape::App { function, .. } = head.shape() {
+        head = function;
+    }
+    let Shape::Base(base) = head.shape() else {
+        return None;
+    };
+    let (numerator, denominator) = base.measures()?(literal)?;
+    Exact::new(numerator, denominator).map(|value| Expr::literal(Sort::Rational, value))
+}
+
+/// Which index sort a variable's type puts it in, if any.
+///
+/// The two sorts a solver is wanted for, and no third: §1.5's finite literal
+/// enums are decided by [`crate::base::Payload::same`] at an ordinary base type
+/// and have nothing linear to normalize. A variable of any other type is
+/// outside the grammar, which is the refusal §1.5 names.
+fn sort_of(ty: &Value) -> Option<Sort> {
+    let Form::Neutral(neutral) = &ty.form else {
+        return None;
+    };
+    match &neutral.head {
+        Head::Const(constant) => constant.counting().map(|_| Sort::Count),
+        Head::Base(base) => base.measures().map(|_| Sort::Rational),
+        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Hole(_) => None,
     }
 }

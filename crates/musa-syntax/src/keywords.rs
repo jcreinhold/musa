@@ -1110,6 +1110,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
         | SyntaxKind::AppliedType
+        | SyntaxKind::IndexedType
         | SyntaxKind::DataMember
         | SyntaxKind::EqualsEquals
         | SyntaxKind::Plus

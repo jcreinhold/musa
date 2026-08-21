@@ -199,6 +199,9 @@ fn is_normal(term: &Term) -> bool {
         | Shape::Lit(_)
         | Shape::Numeral(_)
         | Shape::Builtin(_) => true,
+        // A refinement has no elimination form, so it is never a redex; both
+        // halves still have to be normal.
+        Shape::Refine { ty, index } => is_normal(ty) && is_normal(index),
         Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
         Shape::Lam { body, .. } => is_normal(body),
         Shape::App { function, argument } => {
