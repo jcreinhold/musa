@@ -24,6 +24,11 @@ every refactor.
   `match` in about forty lines of Rust AST builder.
 - `stdlib/src/algebra.musa` — the three taxes, in that file's own words.
 - `/Users/jcreinhold/Code/Idris2/src/TTImp/Elab/Ambiguity.idr` — the disambiguation model.
+- `docs/rules/language/01-surface.md` §1.4 as prompt 145 left it — "the grammar keeps `trait`, `impl`, and `where` until
+  that prompt runs" names *this* prompt, so the surface forms come out here.
+- `crates/musa-syntax/src/parser/declarations.rs`, `syntax_kind.rs`, `keywords.rs`, and
+  `editors/tree-sitter-musa/grammar.js` — the four places the surface forms are written down, held together by the drift
+  law.
 
 ## Design
 
@@ -46,6 +51,17 @@ diagnostic listing the candidates and the type that ruled each out, which is str
 *The rest becomes macros.* Anything genuinely wanting dispatch on an open set is a macro's job, and prompt 160 is where
 that lands.
 
+**The grammar goes with the mechanism, and this is the repair.** The prompt as first written deleted the elaboration and
+left `trait`, `where`, and the constraint syntax standing in the parser. `01-surface.md` §1.4 — governing since prompt
+145 — says the grammar keeps them only until this prompt runs, so leaving them is drift of exactly the kind the root
+`AGENTS.md` forbids, and the alternative is worse: a lowerer that parses a `trait` in order to refuse it is a
+transitional diagnostic the very next prompt would delete. `trait`, the `where` clause, and the constraint production
+come out of `musa-syntax` and out of the tree-sitter grammar in the same commit as the mechanism they spelled.
+
+`impl` **stays**, and that is why this is not a keyword sweep: an `impl` block without a trait head declares inherent
+items in a type's namespace (`01-surface.md` §1.4's closing paragraph), which is a namespace and not a dispatch
+mechanism. What comes out of the `impl` production is its optional trait head and its optional `where`.
+
 **The `fold` question, answered concretely.** Deleting `Iterable` does not mean hand-writing `list_fold`, `nat_fold`,
 `option_fold`. Prompt 156 gives every declared family a generated eliminator, so the fold for a family *is* its
 recursor, generated. `iterable_list()`'s forty lines of Rust go away entirely — they were a hand-written catamorphism
@@ -66,6 +82,10 @@ answers equality by its own eliminator, and the five δ-builtins stay δ-builtin
 - `stdlib/`, `examples/`: every `impl` and every trait-method call site rewritten. The 82 sites are the measurement.
 - `crates/musa-compiler/tests/suite/`: `trait_laws.rs` and `operator_laws.rs`'s trait sections deleted; a disambiguation
   law suite added.
+- `crates/musa-syntax`: `trait`, the `where` clause, and the constraint production removed from the keyword table, the
+  syntax kinds, the parser, the typed AST, the highlighter, and the formatter; `impl`'s trait head removed and its
+  inherent form kept; `trait_syntax_laws.rs` deleted.
+- `editors/tree-sitter-musa/`: the same three productions removed, the corpus refreshed, and the drift law green.
 
 ## Check
 
@@ -78,7 +98,9 @@ cargo insta test --workspace --unreferenced=reject
 ! grep -rn 'trait\b' stdlib/src --include=*.musa
 ! test -f crates/musa-calculus/src/class.rs
 ! test -f crates/musa-calculus/src/dictionary.rs
+! grep -rn 'TraitKw\|WhereKw\|TraitDecl' crates/musa-syntax/src
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 `--run-ignored all` may still show the staff class prompt 166 owns and nothing else. Any new red is this prompt's.
@@ -90,3 +112,4 @@ Commit as `Delete the trait system`.
 - No change to the term language. The collapse is 147 and mixing them makes both diffs unreadable.
 - No new record features. Records stay exactly what they are today until 157 turns them into data.
 - No proof search, no instance arguments, no "one small dispatch case". That is the appendage this prompt removes.
+- No removal of the `impl` keyword. The inherent form is a namespace and `01-surface.md` §1.4 keeps it by name.
