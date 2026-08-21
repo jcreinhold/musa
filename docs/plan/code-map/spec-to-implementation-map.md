@@ -227,7 +227,7 @@ semantics that reference obeys. The `Defined` behind it stores two `Value`s and 
 of the `Arc` cycle `family/` needed a declaration context to avoid.
 
 Visibility is 136a's mechanism unchanged, filtered in `elab/name.rs`'s name resolution after binders and declarations
-and before the host's registry. Laws in `tests/suite/program_laws.rs`.
+and before the host's registry. Laws in `crates/musa-calculus/tests/suite/program_laws.rs`.
 
 **Owes.** Prompt 141o assembles the group out of a document's lowered declarations; prompt 142 is the first *pass* that
 hands it a piece.
@@ -283,7 +283,8 @@ families taken optimistically so `Cons : A → List A → List A` terminates. A 
 
 `Constructor::recursive` stays the direct occurrences alone, so such a field carries **no induction hypothesis** and a
 fold *through* a container is not yet writable; that gap is asserted as a law rather than left to be discovered. The
-arrow rule is untouched at any depth and under any container. Laws in `tests/suite/nesting_laws.rs`.
+arrow rule is untouched at any depth and under any container. Laws in
+`crates/musa-calculus/tests/suite/nesting_laws.rs`.
 
 ### There are no indices, and the motive is not dependent
 
@@ -443,9 +444,10 @@ Overflow past `u64::MAX` neither saturates nor refuses — the step stays an ord
 5, and unreachable at 2⁶⁴ steps anyway. `Refusal::NotANumeralFamily` names the first condition of the counting rule the
 written family fails, in the order an author reads a declaration in.
 
-Laws in `tests/suite/numeral_laws.rs`: convertibility with the hand-built tower and agreement under a `match` at every
-count the tower can still be written at; a nesting cost independent of the count across three orders of magnitude; and
-fifty thousand neither overflowing the stack nor deepening the term — on both sides of the data boundary.
+Laws in `crates/musa-calculus/tests/suite/numeral_laws.rs`: convertibility with the hand-built tower and agreement under
+a `match` at every count the tower can still be written at; a nesting cost independent of the count across three orders
+of magnitude; and fifty thousand neither overflowing the stack nor deepening the term — on both sides of the data
+boundary.
 
 **Owes.** Prompt 142 writes numerals from the surface; prompt 143 adds arithmetic over them; prompt 148 audits §5.10
 with the rest of §5.

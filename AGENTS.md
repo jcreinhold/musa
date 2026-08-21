@@ -109,11 +109,11 @@ alone.
 both. Change the generator and regenerate, never the file — see
 [`docs/notes/toolchain/generated-files.md`](docs/notes/toolchain/generated-files.md).
 
-**Integration tests live in `crates/<crate>/tests/suite/`, one module per file**, declared in `tests/suite/main.rs`, so
-each crate builds one test binary rather than one per file. A file directly under `tests/` becomes its own target and
-its own link of the workspace; 103 of them made a clean build twice as slow and left 17,000 stale object files per
-incremental rebuild. Adding a test file means adding its `mod` line. Paths in `include_str!` are relative to the file,
-so they carry the extra `../`; insta snapshots are prefixed `suite__`. See
+**Integration tests live in `crates/<crate>/tests/suite/`, one module per file**, declared in
+`crates/<crate>/tests/suite/main.rs`, so each crate builds one test binary rather than one per file. A file directly
+under `tests/` becomes its own target and its own link of the workspace; 103 of them made a clean build twice as slow
+and left 17,000 stale object files per incremental rebuild. Adding a test file means adding its `mod` line. Paths in
+`include_str!` are relative to the file, so they carry the extra `../`; insta snapshots are prefixed `suite__`. See
 [`docs/notes/toolchain/slow-test-suite.md`](docs/notes/toolchain/slow-test-suite.md).
 
 **Slow tests carry `#[ignore]` and say so in their name**, so the default suite asks for them by name. Marking one

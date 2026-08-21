@@ -51,6 +51,27 @@ LINK = re.compile(r"(?<!!)\[[^\]^]*\]\(([^)\s]+)\)")
 CITATION = re.compile(r"`(\d{3}-[a-z0-9-]+\.md)`")
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
 
+# Everything below exists because `check_links` cannot see these citations.
+# It reads `prose_lines`, which strips inline code spans before matching, so a
+# path written as `crates/musa-score/src/analysis/rules.rs` — the way this repo
+# writes almost all of them — is invisible to it. That blind spot let three
+# specifications name modules in the wrong crate and let two directories hold a
+# file of the same name for months.
+SPAN = re.compile(r"`([^`]+)`")
+# The workspace's top-level directories. A code span starting with one of these
+# is claiming a file exists, and is checkable.
+WORKSPACE = ("apps/", "crates/", "docs/", "editors/", "examples/", "packages/", "scripts/", "stdlib/", "tests/")
+# `file.rs:120`, `file.rs:12-20`, and `file.rs::symbol` all point at a real file.
+LOCATOR = re.compile(r"(::.+|:\d+(?:-\d+)?)$")
+# A citation by bare filename: `02-core-calculus.md`. Two digits, because three
+# is an Open Music Theory chapter and CITATION already owns those.
+BARE = re.compile(r"\d{2}[a-z]*-[a-z0-9-]+\.md")
+# Paths are only checkable in documents that describe the code as it is now. A
+# `done` prompt describes the code as it stood when that prompt ran, and a
+# research record describes a design that was deleted; both are correct as
+# history and would have to be falsified to pass a liveness check.
+LIVE = ("docs/rules", "docs/book", "docs/plan/code-map", "docs/README.md", "docs/plan/README.md", "docs/plan/roadmap.md")
+
 
 def markdown_files() -> list[pathlib.Path]:
     return sorted(DOCS.rglob("*.md")) + EXTRA
@@ -201,6 +222,67 @@ def check_links() -> list[str]:
     return problems
 
 
+def code_spans(path: pathlib.Path):
+    """Every inline code span outside a fenced block, with its line number.
+
+    The exact complement of `prose_lines`: that function throws these away so
+    the link check can be strict, and this one picks them up so the paths
+    written inside them are checked too.
+    """
+    fenced = False
+    for number, line in enumerate(path.read_text().splitlines(), start=1):
+        if FENCE.match(line):
+            fenced = not fenced
+            continue
+        if not fenced:
+            for span in SPAN.findall(line):
+                yield number, span
+
+
+def live_files() -> list[pathlib.Path]:
+    return [path for path in markdown_files() if str(path.relative_to(ROOT)).startswith(LIVE) or path in EXTRA]
+
+
+def check_paths() -> list[str]:
+    """Every backticked workspace path in a live document names something."""
+    problems = []
+    for path in live_files():
+        for number, span in code_spans(path):
+            if not span.startswith(WORKSPACE):
+                continue
+            # A glob, a brace list, or a `<placeholder>` is a pattern rather
+            # than a path, and says so in its own punctuation.
+            if any(character in span for character in "*?[]{}<> "):
+                continue
+            target = ROOT / LOCATOR.sub("", span).rstrip("/")
+            if not target.exists():
+                problems.append(f"{path.relative_to(ROOT)}:{number}: `{span}` names nothing")
+    return problems
+
+
+def check_bare_citations() -> list[str]:
+    """A document cited by bare filename resolves to exactly one document.
+
+    Not-found is deliberately not an error here: a bare name is also how this
+    repo cites chapters of books it does not contain. Ambiguity is the failure
+    worth gating on, because a reader cannot resolve it at all — and because it
+    is what happened, twice, before this check existed.
+    """
+    index: dict[str, list[pathlib.Path]] = {}
+    for path in markdown_files():
+        index.setdefault(path.name, []).append(path)
+    problems = []
+    for path in markdown_files():
+        for number, span in code_spans(path):
+            if not BARE.fullmatch(span):
+                continue
+            found = index.get(span, [])
+            if len(found) > 1:
+                named = ", ".join(sorted(str(one.relative_to(ROOT)) for one in found))
+                problems.append(f"{path.relative_to(ROOT)}:{number}: `{span}` is ambiguous — {named}")
+    return problems
+
+
 def check_citations() -> list[str]:
     if not OMT.is_dir():
         print(f"note: no Open Music Theory checkout at {OMT}; citations unchecked", file=sys.stderr)
@@ -237,6 +319,8 @@ def main() -> int:
     for name, check in (
         ("musa examples", check_examples),
         ("internal links", check_links),
+        ("workspace paths", check_paths),
+        ("bare citations", check_bare_citations),
         ("theory citations", check_citations),
         ("module coverage", check_modules),
     ):

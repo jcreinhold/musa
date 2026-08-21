@@ -1,7 +1,8 @@
 # 00 — Purpose of the Event-Track Core
 
-**Status: governing since prompt 12; amended at prompt 127a.** This file is the entry point to `docs/rules/events/`; its
-document map is at the bottom. Bound by `../constitution.md`, `../obligations.md`, and `../across-stages/`.
+**Status: governing since prompt 12; amended at prompt 127a.** The first document of `docs/rules/events/`, and the one
+the rest assumes: it argues why the core is this small and what it refuses to hold. The directory's document map is in
+[`README.md`](README.md). Bound by `../constitution.md`, `../obligations.md`, and `../across-stages/`.
 
 The directory is called `events/` after the value it specifies: the **finite event track**, one of the two core values
 of `constitution.md` §3 and §4. It was called `kernel/` until the vocabulary amendment recorded in
@@ -185,20 +186,3 @@ musician-facing Musa source
 ```
 
 The last two arrows leave this directory. `../across-stages/03-machine-calculus.md` owns them.
-
-## Document map
-
-| File | Contents |
-| --- | --- |
-| `01-grammar.md` | The interchange syntax (not the musician-facing syntax). |
-| `02-static-semantics.md` | Well-formedness rules. |
-| `03-denotational-semantics.md` | The denotation `(d, E)` and every operation's definition. |
-| `04-algebraic-laws.md` | The laws, formally, cross-referenced to their property tests. |
-| `05-normalization.md` | Canonical normal form, semantic equality, serialization. |
-| `06-surface-elaboration.md` | How the surface constructs elaborate. |
-| `07-backend-contract.md` | What downstream consumers may assume. |
-| `08-open-questions.md` | What is deliberately undecided. |
-| `09-pipeline-baseline.md` | The measured cost of the core path, prompt by prompt. |
-| `10-term-calculus.md` | The term calculus: syntax, evaluation, soundness theorems. |
-| `11-realization.md` | Seeded finite realization and its reproducibility laws. |
-| `12-payload-admission.md` | Payload equality, schema ownership, law transport, and exact identity framing. |

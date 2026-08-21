@@ -4,7 +4,7 @@
 implemented, per execution rule 5.
 
 This directory is the executable work plan for building musa according to [`../roadmap.md`](../roadmap.md), with the
-event-track governed by [`../../rules/events/`](../../rules/events/00-purpose.md) and the desktop interface by
+event-track governed by [`../../rules/events/`](../../rules/events/README.md) and the desktop interface by
 [`../../rules/desktop/`](../../rules/desktop/README.md). Each numbered prompt delivers one feature and builds on the
 prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
