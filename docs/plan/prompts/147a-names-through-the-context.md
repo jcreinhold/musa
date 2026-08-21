@@ -1,7 +1,7 @@
 ---
 id: 147a
 slug: names-through-the-context
-status: pending
+status: in-progress
 depends_on: [147]
 phase: 3
 ---
@@ -28,6 +28,9 @@ then reached by 151 and 157 deleting the four that remain.
 - `crates/musa-calculus/src/{eval,quote,convert}.rs`, `src/context.rs`, `src/program.rs`, `src/base.rs` — where the four
   declarations are read today.
 - `crates/musa-calculus/src/case.rs` §`motive_level` — why a recursor's universe is part of a term's identity until 152.
+- `crates/musa-calculus/src/base.rs` §`check_finite_data` and §`check_structural_targets`, and
+  `crates/musa-calculus/src/elab/infer.rs` §`declared_parameters` — the three readers that decide a base type from a
+  declared family, and a registered operation from a definition, off a term alone. They are why [`Role`] has six arms.
 - `/Users/jcreinhold/Code/Idris2/src/Core/TT/Term.idr` (`Ref` and `NameType`) and `Core/Context.idr` (`Def`) — the
   reference split: a term carries a name and a cheap role, and the context owns the definition.
 - Peyton Jones ch. 3 — a name is a reference into an environment, and the environment is not part of the expression.
@@ -42,8 +45,9 @@ enum Shape {
     …
 }
 
-/// What the *term* fixes about a name.
-enum Role { Function, Constructor, TypeConstructor, Recursor(Sort) }
+/// What the *term* fixes about a name: Idris2's `NameType`, with the two arms
+/// §5.8 adds and the payload §1.3 forces.
+enum Role { Defined, Constructor, TypeConstructor, Recursor(Sort), Base, Builtin }
 
 /// What the *context* answers about a name.
 enum Definition {
@@ -55,17 +59,36 @@ enum Definition {
 }
 ```
 
-`Role::Function` covers a top-level definition and a builtin, `TypeConstructor` covers a declared family and a
-registered base type, and which of the two a name is is the context's answer rather than the term's. That is the split
-this prompt is for: a term says *what kind of thing the elaborator resolved this name to*, which is what a reader of the
-term needs; the context says *what it reduces to*, which is what only a reducer needs.
+A term says *what kind of thing the elaborator resolved this name to*, which is what a reader of the term needs; the
+context says *what it reduces to*, which is what only a reducer needs. That is the split this prompt is for, and
+[`Role`] is the reader's half: one word, where the four removed variants held an `Arc` to a whole declaration group, an
+elaborated definition, a base's kind and host rules, or a δ-table.
 
-**`Role` has four arms and the fourth is not optional.** §1.3 has no universe polymorphism, so a recursor takes its
-motive universe per use site: `case.rs`'s `motive_level` mints `Nat.elim` at `Type 1` whenever a `match` computes a
-type, and `family::Constant`'s equality already says two eliminations into different universes are two terms. A
-three-arm `Role` would make them one term and move acceptance. Prompt 152 makes recursors level-polymorphic and the
-level an argument; when it lands, this arm loses its payload. Until then the universe is part of *which name this is*,
-which is a term fact and not a context fact — so carrying it here is the boundary holding, not leaking.
+**`Role` has six arms, and the merge to four was tried against the code and refused.** The tempting reading is that
+`Defined` and `Builtin` are both "a function" and that `TypeConstructor` and `Base` are both "a type", with the context
+answering which. Three checks say otherwise, and each of them reads the distinction off a *term* with no context in
+hand:
+
+- `base.rs`'s `check_finite_data` admits a registered base type applied to data (§5.8's D1) *and* a declared family
+  applied to data (prompt 141's `List`, `Option`, `Result`), and refuses a base type this registry never registered —
+  `Refusal::UnknownBase`, which `base_laws.rs`'s "a δ signature over a base type nobody registered" pins. A registry
+  cannot see declarations, so a merged arm would have to admit every unregistered spelling as a possible family, and
+  that refusal would become unreachable.
+- `check_structural_targets` tells `Refusal::TargetNotABase` from `Refusal::UnknownBase` by the same reading, and
+  `base_laws.rs` pins both.
+- `elab/infer.rs`'s `declared_parameters` reads a *registered* signature's arrow as its parameter list and a *source*
+  definition's as a parameter list plus a returned function, and tells them apart by `matches!(head.shape(),
+  Shape::Builtin(_))`. Merging `Defined` and `Builtin` would make `transpose(P8)` fully applied.
+
+Refusing to move those is what "no program's acceptance moves" means here, so the tag keeps them apart. It stays a
+*tag*: six words against four declarations, which is the whole content of §6's boundary.
+
+**The recursor's payload is not optional either.** §1.3 has no universe polymorphism, so a recursor takes its motive
+universe per use site: `case.rs`'s `motive_level` mints `Nat.elim` at `Type 1` whenever a `match` computes a type, and
+`family::Constant`'s equality already says two eliminations into different universes are two terms. A payload-free
+recursor arm would make them one term and move acceptance. Prompt 152 makes recursors level-polymorphic and the level an
+argument; when it lands, this arm loses its payload. Until then the universe is part of *which name this is*, which is a
+term fact and not a context fact — so carrying it here is the boundary holding, not leaking.
 
 **`Definition` has five arms, not the six the split-out sketch named.** Two corrections, both from the code:
 
@@ -75,7 +98,8 @@ which is a term fact and not a context fact — so carrying it here is the bound
 - `Constructor`, `TypeConstructor`, and the recursor the sketch forgot are one arm, because one lookup already answers
   all three: `Cx::declared` returns a `family::Found`, and `Found::at(sort)` turns it into the `family::Constant` that
   every reduction rule in `family/` already takes. Three arms re-spelling that constant's three roles would be a second
-  copy of `Role` free to disagree with the first.
+  *payload* free to disagree with the first. [`Role`] names them separately because a tag is what a reader of the term
+  reads without a context; the constant that carries the declaration is one thing, found once.
 
 `Globals::definition(name, role)` is the one lookup, and the three `Cx` already has — `declared`, `definition`,
 `extern_named` — are its three cases, in that order. The order is the shadowing rule `elab/name.rs` states today: a
