@@ -38,6 +38,24 @@ candidates they reviewed are in the history of `docs/notes/research/`, deleted o
 written into this specification. The failed drafts mattered because they exposed missing assumptions now stated here —
 most sharply the two feedback counterexamples that killed the single-`Flow` and port-scheduled designs.
 
+## 1a. The core calculus: what is argued and what is tested
+
+`../language/02-core-calculus.md` states a dependency chain — `termination ⟹ normalization ⟹ decidable conversion ⟹
+decidable type checking` — and this row exists so that nobody reads it as a claim musa has proved. **Musa does not ship
+a formalized metatheory of its core calculus, and this specification does not pretend to one.** What each link rests on
+is stated separately, because the three kinds of support are not interchangeable.
+
+| Link in the chain | What supports it here |
+| --- | --- |
+| Every accepted definition terminates | **Argued**, from structural descent over the case tree (`02-core-calculus.md` §2.4), and **tested** by compile-fail fixtures for calls that do not descend. There is no mechanized proof, and the case-tree substrate is new work at prompt 155 rather than inherited |
+| Normalization by evaluation is sound and complete for the core | **Borrowed**, from Abel and Sattler and from Coquand's algorithm (`../language/citations.md` §13.1). The theorem is about the calculus in those papers; that musa's implementation is an instance of it is argued, not proved |
+| Conversion is decidable | **Follows** from the two above, and is **tested** the only way an implementation can be: the resource meter turns a non-answer into a stated refusal (`02-core-calculus.md` §4) rather than a hang, so a divergence would surface as an exhaustion rather than as silence |
+| Type checking is decidable | **Follows**, with the same standing. Prompt 169's conformance suite is where the claim is exercised over the corpus rather than asserted |
+| An elaborated term is well typed | **Tested, and this is the strongest of the four**: the kernel re-checker of prompts 149 and 158 re-checks accepted terms from scratch, so the claim is checked on every program the suite runs rather than argued about |
+
+The honest summary is that musa buys its confidence from a re-checker and a corpus, not from a proof. That is a
+defensible position for a music compiler and an indefensible one to be vague about, which is why the row is here.
+
 ## 2. Claims this specification does not make
 
 Nothing here proves:

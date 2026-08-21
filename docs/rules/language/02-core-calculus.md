@@ -3,10 +3,10 @@
 **Status: candidate.** The one total source language every surface construct elaborates into. This directory's hub —
 most other pages here refine it.
 
-The source language is a pure, strict, **total** calculus with lightweight dependency: two universes, one function type
-whose result may mention its argument, records with named fields, parameterized enumerations, types refined by an
-**index** from a decidable arithmetic domain (§1.5), pattern matching, structural recursion, definitional equality
-decided by normalization by evaluation, and exact resource checking. Its metaprogramming — hygienic quotation, splicing,
+The source language is a pure, strict, **total** calculus with **dependent types**: one function type whose result may
+mention its argument, inductive families with parameters and indices, a universe hierarchy, pattern matching compiled to
+case trees, structural recursion, metavariables solved by pattern unification, definitional equality decided by
+normalization by evaluation, and exact resource checking. Its metaprogramming — hygienic quotation, splicing,
 provenance, and syntax traversal — is the primary extension mechanism and is specified in `11-quotation.md`. Surface
 conveniences elaborate into the calculus before evaluation. It is deliberately more expressive than the event-track term
 calculus and deliberately less expressive than a general-purpose programming language, because it may not diverge.
@@ -15,26 +15,31 @@ It is **one** language, and it builds **both** core values: an event track and a
 There is no second calculus for the studio, and nothing about audio lives outside it — only the audio *history* does,
 because a history is coinductive and no value here is.
 
-**The course correction.** Prompt 128 admitted a dependent foundation on the evidence of
-`stdlib/src/adapters/staff.musa`, and prompts 129–142 implemented the standard proof-assistant checklist around that
-evidence: inductive families with indices, an identity type, universe-level metavariables, pattern unification with
-postponement, a well-founded termination rule, and a trait engine with recursive constraint discharge. The audit of
-every committed `.musa` program —
-[`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md)
-— found that none of that machinery has a user: no program declares an indexed family, writes an identity proof,
-ascribes a universe level, states an instance constraint, or presents a non-structural measure. This document therefore
-describes the surviving design: the same totality, the same exactness, the same macros, and the dependency real programs
-use, with everything else deleted rather than wrapped. Where a section below refuses a feature the checklist would have
-included, the refusal is priced here and is re-opened only by a committed program that needs it.
+**One theory, and this document is its presentation.** The calculus described here is intensional Martin-Löf type theory
+in the shape of Idris2's `Core/TT`: Π types, inductive families, case trees, metavariables, and a universe hierarchy,
+and nothing beside them. `../constitution.md` §9 is where that was decided, at prompt 143, and
+[`../../notes/research/language-design-closure/53-one-theory.md`](../../notes/research/language-design-closure/53-one-theory.md)
+carries the evidence: the core had been carrying three partial mechanisms — an erased index sort, a non-dependent
+eliminator, and first-order instantiation in place of unification — each admitted to avoid a dependent core and each
+approximating one badly. Given families, all three disappear rather than being replaced.
 
-**And one step of the correction was taken back, by measuring what the corpus writes instead.** The audit's rule — every
-mechanism names the committed program that requires it — proves nothing about a feature a self-written standard library
-never had, because absence of use is evidence of the workaround, not of the absence of demand.
+Two earlier records stand unedited beside that one, because a reader of this document will meet their traces in the code
+before the code catches up.
+[`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md)
+deleted a proof-assistant checklist that had been built around prompt 128's admission and that no committed program
+used;
 [`../../notes/research/language-design-closure/51-the-terseness-audit.md`](../../notes/research/language-design-closure/51-the-terseness-audit.md)
-asked the question the audit did not, exhibited the workaround — seventeen compiler builtins spent on a single modulus,
-a `fallback` parameter in a public signature, a bar summed at run time — and §1.5 is what deletes it. It is Xi and
-Pfenning's stratified index and not a step back toward indexed families: the index language is separate, the solver
-decides it, and every piece of machinery the audit removed stays removed.
+found that the deletion had gone one step too far and proposed the stratified index that §1.5 held until prompt 143
+retired it. What separates this presentation from the checklist note 50 deleted is not the feature list but the *reason*
+each feature is here: a family is here because seventeen compiler builtins spend themselves on one modulus without it,
+unification is here because implicit arguments and index refinement are unavailable without it, and the apparatus that
+has no such argument — tactics, proof search, hint databases, opt-outs from totality — stays refused and is listed as
+refused in §1.3.
+
+**What this document does not yet describe is the code.** The specification is written before the prompts that implement
+it, which is the rule prompt 142c followed and the reason it is cited rather than repeated. Prompts 146–163 are that
+implementation, and where a section below says a mechanism is specified but not yet built, it names the prompt that owes
+it.
 
 ## 1. Syntax
 
@@ -45,76 +50,124 @@ The grammar below is the whole *pure* calculus. §5.8 extends it with base types
 builtins over them — a conservative extension, proved there rather than assumed here, and the reason a musical domain is
 a registration rather than an amendment. Read the two together: nothing below changes, and three productions are added.
 
+**The core term language is seven constructors**, and the surface language elaborates into them:
+
 ```text
-e  ::= x                                    % variable
-     | Type 0  | Type 1                     % the two universes
-     | (x : e) → e        | λx. e | e e     % function: formation, introduction, elimination
-     | { f₁ : e, …, fₙ : e }                % record type; field types may mention the parameters in scope
-     | { f₁ = e, …, fₙ = e } | e.f          % record introduction and projection
-     | N e…                                 % an enumeration at its parameters
-     | c e…                                 % a constructor of an enumeration
-     | elim_N …                             % the generated eliminator of an enumeration
-     | let x : e = e in e                   % non-recursive local binding
+t  ::= x                                    % a variable, a de Bruijn index into the local scope
+     | n                                    % a name, carrying the role its context entry gives it
+     | ?m[σ]                                % a metavariable at its scope (§2.1)
+     | bind x. t                            % one binder former, at λ, Π, or let (below)
+     | t t                                  % application
+     | k                                    % a literal: a base-type payload, or a numeral at a counting family
+     | Type ℓ                               % a universe at a level expression (§1, *The hierarchy*)
 ```
 
-That is the whole grammar. There is no metavariable former, no identity former, and no level arithmetic: the two
-features the previous calculus listed here exist nowhere in this one, and what replaced the reasoning they supported is
-stated in §1.4 and §2.1.
+The binder former carries which binder it is and how its argument is filled:
 
-**Two universes, fixed.** `Type 0 : Type 1`, and there is no `Type : Type`, no `Type 2`, and no level a program can
-write or a checker can solve. Ordinary types and type constructors live at `Type 0`; `Type 1` exists so that a type of
-types — a trait's dictionary type, an enumeration's parameters — has somewhere to stand. A declaration that would need a
-third level is refused. The hierarchy exists to keep the checker from proving everything: a total language whose type
-theory is inconsistent is not total in any useful sense.
+```text
+bind  ::= λ(x : A)  |  (x : A) →  |  let x : A = t
+fill  ::= written | inferred
+```
 
-**One function type, and every binder is explicit.** There is no implicit-binder form and no plicity annotation for a
-rule to ignore. A generic function's type parameters are ordinary leading parameters; at a call site they may be
-*omitted*, which is an elaboration rule of §2.1 and not a binder property. Nothing downstream — traits, `Syntax<Cat>`,
-`Duration C` — needs a second binder form, and now nothing anywhere has one.
+Seven, and the list is closed by an argument rather than by taste. Idris2's `Core/TT/Term.idr` carries twelve; the five
+musa does not keep are the two quantity-carrying forms it has no linearity for, the laziness forms it has no laziness
+for, and the erasure marker it has no erasure for. Everything else a term could be is a *context* fact rather than a
+term fact: a name's reduction behaviour is what its `Definition` says — undeclared, a compiled case tree, a constructor,
+a type constructor, a registered base type, or a compiler builtin — and never a constructor of the term language. A term
+former holding a declaration is a context entry smuggled into a term, and §6 is where that boundary is stated as a rule.
 
-**Dependency where programs use it, in two forms.** A result type may mention an earlier explicit parameter, and a type
-may carry **index arguments** from the decidable domain of §1.5 — `Pc(12)`, `Row(n)`, `Bar(p + q)`. `Duration C`,
-`Position C`, and `Syntax<Cat>` are neither: their argument is an ordinary parameter, kept in the term and compared by
-conversion, which is what §1.5's closing paragraph separates them on. Records are named products: a field's type may
-mention the type parameters in scope at the declaration, and no field's type mentions a sibling field's *value*, because
-no committed program has one that does. That last restriction is the difference between records and a telescope, and it
-is what keeps projection a lookup rather than an instantiation.
+The surface forms that look like term formers are elaborations into this grammar. A record type is a one-constructor
+family and a projection is a generated function whose body is a one-branch case tree (§1.1); `match` is a case tree
+(§6.2); a section is a λ (§1.3). None of them is a shape the kernel knows.
 
-### 1.1 Enumerations
+**The hierarchy.** `Type ℓ` for a **level expression** ℓ:
 
-A declaration group introduces enumerations with **parameters**, fixed across the whole declaration:
+```text
+ℓ ::= 0  |  u  |  ℓ + 1  |  max ℓ ℓ
+```
+
+`u` is a level parameter. Levels are generalized **per declaration**, as in Lean: a declaration's level parameters are
+collected when it is elaborated and instantiated at each use, so nothing is constrained from a distance and separate
+checking is unaffected. There is no global constraint graph, and there is no `imax`, which exists in other systems to
+support an impredicative sort musa does not have.
+
+The hierarchy is **non-cumulative**: `A : Type i` does not make `A : Type i+1`. A definition that must work at several
+levels is written level-polymorphically, which says the same thing and says it in the type. Cumulativity would be
+subtyping — a directional `≼` where the calculus has a symmetric `≡` — and `../constitution.md` §9 refuses subtyping in
+every form, on the argument that acceptance must be decided by one relation. Agda and Lean 4 are both non-cumulative;
+the non-cumulative theory accepts strictly fewer terms than the cumulative one and so cannot be unsound where that one
+is sound.
+
+There is no `Type : Type`. A total language whose type theory is inconsistent is not total in any useful sense.
+
+**One function type, two fillings.** `(x : A) → B` is the only function type, and `B` may mention `x`. A binder records
+whether its argument is **written** by the caller or **inferred** by elaboration; that is a property of the binder, not
+a second Π, and conversion does not read it. An inferred argument is solved by §2.1's unifier or reported at the call.
+
+**Dependency is what Π means.** A result type may mention any earlier argument, and a family's index may be any term of
+the index's type — a call, a projection, a value the program computed. `Pc(12)`, `Row(n)`, and `Bar(m)` are ordinary
+applied type constructors, not a second sort of thing, and they are compared by §3's one conversion relation like
+everything else. `Duration C`, `Position C`, and `Syntax c` are the same mechanism: an argument, kept in the term,
+compared by conversion. The distinction the previous calculus drew between a *parameter that survives* and an *index
+that is erased* does not exist here, because nothing is erased.
+
+### 1.1 Inductive families
+
+A declaration group introduces **inductive families**: type constructors with **parameters**, fixed across the whole
+declaration, and **indices**, which each constructor chooses.
 
 ```text
 data Tree<A> {
     Leaf,
     Node(left: Tree<A>, value: A, right: Tree<A>),
 }
+
+data Vec<A> : (n : Nat) -> Type {
+    Nil                                    : Vec<A>(0),
+    Cons(head: A, tail: Vec<A>(n))         : Vec<A>(n + 1),
+}
 ```
 
-There are no per-constructor indices. A constructor's fields are ordinary types written under the parameters, and a
-constructor at known parameters checks or infers like any function value. The index was the previous calculus's one
-machine for making a `match` narrow a *type*; no committed program narrows a type by matching, and `11-quotation.md` §1
-states why that is the whole of what quotation asks of the type system.
+A parameter is the same in every constructor's result; an index is not, and that difference is the whole of what a
+family adds. `Nil` chooses `0` and `Cons` chooses `n + 1`, so matching a `Vec<A>(m)` against `Nil` teaches the checker
+that `m` is `0` — which is what *refinement* means and what the previous non-dependent eliminator could not do.
 
-**This is not the index of §1.5, and the two must not be confused.** §1.5's index is an arithmetic argument the *type*
-carries, decided by a solver and erased before evaluation; a constructor never chooses one, no `match` reads one, and
-nothing in this section changes to admit it. What stays deleted here is the machinery that made a constructor's choice
-of index a fact a pattern could learn: index unification, the dependent motive, and the forced and inaccessible patterns
-that go with them.
+**Elimination is dependent.** The generated eliminator's motive is a **family**, not a type: for `data N : Δ → Type` it
+is `(δ : Δ) → N δ → Type ℓ`, so a method's result type and its induction hypotheses are the motive *applied to* the
+indices that constructor chose and to the value being eliminated. `match` compiles through a case tree (§6.2) to this
+eliminator, and coverage is decided on the tree.
 
-**Strict positivity is checked on the declaration group**, so mutually recursive enumerations are checked together. A
+**Unification decides which patterns are reachable.** Splitting a scrutinee of type `N a` against a constructor whose
+result is `N b` unifies `a` with `b`. A solution refines the rest of the branch; a mismatch of two distinct constructors
+makes the branch **impossible** and it is not written; a variable determined by the unification is a *forced* pattern,
+elaborated rather than matched. §2.1 is the unifier, and it is the same one, not a second one.
+
+**Strict positivity is checked on the declaration group**, so mutually recursive families are checked together. A
 recursive occurrence may not appear to the left of an arrow at any depth: a negative occurrence admits a fixed point,
-and a fixed point admits divergence. An occurrence **nested** inside another enumeration's parameter —
+and a fixed point admits divergence. An occurrence **nested** inside another family's parameter —
 `Body(items: List<StaffRead>)` — is admitted and carries **no induction hypothesis**: the eliminator's method takes such
 a field and nothing more, because a hypothesis for it would be a synthesized functorial map rather than an application.
 A fold *through* a container is written with the container's own fold, which is what the corpus already does.
 
-**The core's elimination form is the generated eliminator `elim_N`**, non-dependent: its motive is a constant function
-of the scrutinee. Surface `match` compiles through a case tree to nested eliminator applications, which is where
-coverage is decided (§6.2). No rule unifies an index, because there is none to unify.
+**Indices must not make the checker search.** An index is an ordinary term, so two of them are compared by conversion
+(§3) and solved by unification (§2.1), and both of those are decidable — but only the *pattern fragment* of unification
+is unitary. Outside it, a constraint is **postponed**, never guessed, and elaboration that ends with one still unsolved
+is an error naming the index it could not determine. That is the whole of the discipline: musa admits index refinement
+and refuses index *search*.
 
-The finite and exact musical domains named in `01-surface.md` enter as declared enumerations and base types through
-§5.8's conservative-extension obligation, not by assumption. The types the language carries for its own sake are:
+**A family with no indices is an *enumeration*.** The word is not retired: §§5 and 6 use it where indices are irrelevant
+— a counting enumeration (§5.10) is a family with no parameters, no indices, and two constructors — and nothing about
+those sections changes because indices now exist.
+
+**Records are one-constructor families.** `{ f₁ : A₁, …, fₙ : Aₙ }` declares a family with one constructor and `n`
+fields, `r.f` is a generated function whose body is a one-branch case tree, and η holds at `quote` for a one-constructor
+family exactly as it does for Π. Field types may mention the parameters in scope and, unlike the previous calculus, may
+mention earlier fields' *values*, because a one-constructor family's constructor is an ordinary telescope. No committed
+program has one that does; the restriction is lifted because keeping it would now be a special case rather than a
+simplification.
+
+The finite and exact musical domains named in `01-surface.md` enter as declared families and base types through §5.8's
+conservative-extension obligation, not by assumption. The types the language carries for its own sake are:
 
 ```text
 Unit  Bool  Nat  Ratio  Text
@@ -126,7 +179,7 @@ Machine K δ δ         % a finite description of a stepping process — not the
 ```
 
 `C` ranges over `WrittenTime`, `PerformedTime`, and `PhysicalTime`; `K` over `AudioFrameStep`. Both are ordinary
-declared enumerations whose closed literals index the three base types above. `δ` ranges over types satisfying §1.2's
+declared families whose closed literals index the three base types above. `δ` ranges over types satisfying §1.2's
 storability check.
 
 Five of these are decisions rather than conveniences:
@@ -198,28 +251,35 @@ Sections are surface, not a core form: `f(a, _)` elaborates to `fn (x) { f(a, x)
 several `_`s bind left to right, so `g(_, b, _)` is `fn (x, y) { g(x, b, y) }`. Composition follows from the same
 enrichment and is an ordinary declaration in `std::core` rather than an operator.
 
-Recursion is by definition, checked (§2.4), and never by a term former. There is no `Type : Type`, no cumulativity, no
-universe polymorphism, no call-by-push-value stratification, no coinduction, and no first-class signal. Each is a
-separate amendment under `../README.md`.
+Recursion is by definition, checked (§2.4), and never by a term former. There is no `Type : Type`, no call-by-push-value
+stratification, no coinduction, and no first-class signal. Each is a separate amendment under `../README.md`.
 
-The course correction adds to this list, and each addition is priced in note 50's audit:
+**No subtyping, in any form.** Not cumulativity, not subsumption, not a coercive rule for one type pair.
+`../constitution.md` §9 refuses it and `../obligations.md` §17 states the test: acceptance is decided by one relation,
+and a rule that lets a term of one type stand where another is written is a second one the checker cannot see. Where a
+conversion is wanted it is a named total function, written at the site. The one coercive rule the implementation still
+has — `Accepts`, which forgets a `Syntax` category — is deleted at prompt 159, where `Syntax : Cat → Type` becomes a
+family and forgetting becomes an ordinary function.
 
-- **No identity type.** `Id`, `refl`, `J`, and K are gone. Definitional equality (§3) is what type checking needs and
-  `==` is what programs need; no committed program proves an equality theorem. The K question the previous calculus
-  priced in §1.4 dissolves with the type it was asked about.
-- **No implicit arguments.** A type parameter is explicit at the definition and may be omitted at the call, where §2.1's
-  one rule solves it or refuses. There is no second binder form, no insertion, and nothing for conversion not to read.
-- **No indexed families, which is a narrower refusal than it was.** An *enumeration* has parameters only (§1.1): a
-  constructor never chooses an index, so there is no index unification, no dependent motive, and no forced pattern. A
-  *type* may carry an index, by §1.5, decided by a solver and erased before evaluation. The refusal is about what a
-  constructor may determine and what a `match` may learn, and it is unchanged; it was never about whether `Row(24)` may
-  be a type.
-- **No metavariables in the term language, and no postponed constraints.** A generic argument the call site does not
-  determine is an error there, not a hole that waits.
-- **No termination measures.** Structural descent is the whole rule (§2.4).
-- **No recursive instance resolution.** Traits are flat dictionaries with one-step lookup (`10-traits.md` §4).
+**No apparatus.** The theory is admitted; the proof assistant is not, and the line is between what may be *declared* and
+what the system will *search for*:
+
+- **No tactic language, no hint database, no proof search, no `auto` implicit**, and no interactive hole as a workflow.
+  An argument elaboration cannot determine is reported, not hunted for.
+- **No opt-out from totality.** No `partial`, no `assert_total`, no assumed-terminating annotation, no `believe_me`.
+- **No termination measures.** Structural descent over the case tree is the whole rule (§2.4).
+- **No index search.** Unification solves the pattern fragment and postpones the rest (§2.1); it never guesses, and it
+  never enumerates.
 - **No guards and no fall-through in `match`** — unchanged from before, restated here because this section is where the
   refusals live.
+- **No elaborator reflection.** Musa has one metaprogramming mechanism, typed quotation (`11-quotation.md`), and a macro
+  is an ordinary total function over the `Syntax` family rather than a program that inspects the elaborator's state.
+
+Three refusals the previous statement of this section carried are **retired**, and are listed here so a reader meeting
+the old text is not confused. The identity type is now declarable (§1.4), because it is an ordinary family and refusing
+one particular family would be a special case with nothing behind it. Implicit arguments are admitted (§2.1), as a
+filling on the one binder rather than as a second Π. Families with indices are admitted (§1.1), which is what makes the
+first two worth having. What was refused with them — the apparatus above — is refused still.
 
 **There is also no signed integer type**, and the reason is elimination rather than a preference about numbers. `Nat` is
 in the language to be the *inductive* numeric type: `zero | succ` is well founded, so its eliminator terminates by
@@ -240,170 +300,33 @@ different notes on the page and different chords underneath. Keeping the general
 `Interval` load-bearing rather than decorative — roadmap §2's separation of written pitch from MIDI number, applied to
 the number itself.
 
-### 1.4 Identity: not admitted
+### 1.4 Identity: declarable, and not built in
 
-This section previously stated the identity type and the K decision. Both are deleted, and the section is kept so
-references to it land on the reason. The audit found no committed program that constructs, eliminates, or converts an
-identity proof; the trial that motivated admitting K had already found that no program unifies an index at all. The
-correct response to an unused equality type in a language that is not a proof assistant is deletion, not a cheaper
-version of it. Equality here is definitional (§3, deciding types) or computational (`==`, deciding values), and those
-two are each documented where they live. Re-opening is an ordinary amendment, and the evidence it needs is stated in
-advance: a committed program that states an equality between two values and eliminates it.
-
-### 1.5 Index refinement
-
-A type may carry **index arguments**. An index is a value of a fixed decidable arithmetic domain, written in parentheses
-after the type name so that it is distinguishable at a glance from a parameter in angle brackets:
+`Equal` is an ordinary inductive family and `Refl` is its one constructor:
 
 ```text
-Pc(12)            % a pitch class in a 12-fold division
-Row(n)            % a bijection onto Pc(n)
-Bar(3/4)          % a bar whose contents sum to three quarters
-Voicing(4)        % four voices, not a list that happens to have four
+data Equal<A> : (x : A) -> (y : A) -> Type {
+    Refl : Equal<A>(x, x),
+}
 ```
 
-`Pc<A>` would be a type built from another type. `Pc(12)` is a type built from a *number*, and the whole of this section
-is what that number is allowed to be, who decides when two of them agree, and what it is forbidden to do.
+Nothing about it is core machinery. It is declared in the standard library like any other family, its eliminator is
+generated like any other family's, and `rewrite` is surface sugar over that eliminator. The core has no identity former,
+no `refl` term, no `J` rule, and no K: what makes an equality usable is §1.1's dependent motive, which every family has.
 
-**The rule, in one sentence.** A type may carry index arguments drawn from a fixed decidable domain; indices are erased
-before evaluation, never matched on, and two indexed types are the same type when the solver proves their indices equal.
+This is a repair of the previous statement of this section rather than a reversal of it. What that statement refused —
+on the audit's evidence that no committed program constructs, eliminates, or converts an identity proof — was the
+*apparatus*: a built-in identity type with its own conversion rule, the K question, and the machinery that comes with
+treating equality proofs as a checker concern. That apparatus stays refused. What could not survive the amendment at
+prompt 143 is the refusal of the *declaration*, because after §1.1 there is no mechanism left to refuse: `Equal` is four
+lines of ordinary source, and a rule forbidding one particular family would be a special case the language could not
+state a reason for.
 
-#### The domain
-
-Three sorts, all decidable, and all already in the language: `Nat`, exact `Ratio`, and **finite literal enums** — which
-is the sort `Syntax<Cat>`'s category has always been. The expression language over them is:
-
-```text
-i ::= n                 % a literal of the sort
-    | x                 % an index variable
-    | i + i  |  i - i   % addition and subtraction
-    | k * i             % multiplication by a literal
-    | i = i  |  i < i   % comparison, where a condition is wanted
-```
-
-That is Presburger arithmetic, so equality and entailment in it are decidable, and the fragment the corpus generates —
-equality of two linear forms — is decidable by normalizing both and comparing. **Nothing else enters.** An expression
-outside the grammar is a refusal that names the expression, not a constraint that is postponed, approximated, or
-assumed. Multiplication of two variables, division, an arbitrary function call, a `match`, a projection, and a variable
-of any other sort are each that refusal.
-
-An **index variable** is an ordinary parameter of index sort. It is introduced by appearing in a signature and solved at
-the call by §2.1's first-order matching, from the written arguments' types — the same binder and the same rule a type
-parameter gets, because an index that needed its own binder form would be the second Π §1 just finished deleting:
-
-```text
-fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>
-fn follow(a: Bar(p), b: Bar(q)) -> Bar(p + q)
-```
-
-`n` in the first is read off the argument, and `p + q` in the second is computed rather than matched. An index variable
-no written argument determines is the same refusal §2.1 already gives for a type parameter, naming the index.
-
-#### What this is not
-
-This is the confusion that costs the most, so it is stated before anything else about the mechanism.
-
-**It is not inductive-family indices.** Enumerations have parameters only (§1.1), and that is unchanged. A constructor
-never chooses an index; there is no index unification, no dependent motive, no forced or inaccessible pattern, and no
-`J`. `family/` does not grow by one line. An indexed type is a **declared or base type applied to index expressions**,
-and its refinements are the constructor judgments §2.2 already describes, now with a type to say what they enforced.
-
-**It is not a dependent type**, and the difference is what an index may *say*, not where it is written down. A dependent
-type may mention any term: a call, a `match`, a projection, a value the program computed. An index may mention only the
-grammar above — literals, the four operators, and **variables of index sort that the signature binds**. `n` in
-`fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` is such a variable, bound the way §2.1 binds a type parameter and
-solved the way §2.1 solves one, which is why an index needs no second binder form and gets none. An index position
-holding anything else — `Row(f(x))`, `Row(match … )` — is the refusal below, named at the expression.
-
-That restriction is what keeps the two decision procedures apart, and the code says so structurally: `index.rs` holds
-the expression, its normal form, and `decide`, and **does not import `value.rs`**. It is handed an index expression and
-answers; it never evaluates, never forces, and never sees a term. Reading an index position into that expression — or
-refusing it — happens at the one place conversion meets one, which is also the only place that needs to know the
-grammar. If `index.rs` ever needs a `Value`, the stratification has been broken.
-
-**It is not a constraint, and not a trait.** There is no instance table, no dictionary, nothing to resolve, and nothing
-an author can hand-write an instance for. §1.2 makes the same argument about storability, for the same reason.
-
-#### Erasure is total
-
-An index is erased **at quotation**. `quote` drops index arguments, so a read-back term carries none, and everything
-downstream of elaboration is byte-identical to what it was before this section existed: a compiled term, an event track,
-the `% musa-events-3` interchange format, `../across-stages/43-semantic-identity.md`'s digests, and every snapshot in
-the suite. This is not a property to be tested for and hoped about; it is where the erasure happens, so that
-byte-identity is the check.
-
-The consequence worth stating plainly: **an index changes which programs are accepted and nothing else.** It cannot
-change a value, a sound, a rendering, or a file. A design that let one would have made the index a runtime quantity, and
-a runtime quantity is a term.
-
-#### Conversion asks the solver
-
-`Γ ⊢ T(a) ≡ T(b)` holds exactly when the solver decides `a = b` in the index domain. This is the **index-sort case of
-§3's one relation**, not a second equality standing beside it: `≡` is the congruence generated by β, η, δ, ι together
-with this theory, and what differs between the two halves is the procedure that decides them, not the judgment they
-decide. §3's normalization by evaluation is not involved here and cannot be — it decides *terms*, and an index is not
-one — so the conversion checker meets an index the way it meets any opaque payload: it asks, and takes the answer.
-
-An index expression outside the grammar makes the **type** ill formed and is refused where the type is written, so a
-comparison is never handed one. That is what makes the solver total on what reaches it, and it is what makes `≡`
-reflexive; refusing at the comparison instead would answer "different" for two indices nothing can read, and a type
-would fail to be the same type as itself.
-
-This separation is the whole design, and the reason to state it as a rule rather than as an implementation note. The
-calculus this one replaced braided two questions into one procedure: *are these terms equal* and *are these indices
-equal* were both settled by unification, and the second is where the machinery and the cost lived. Two independent
-procedures deciding one relation, neither of which knows the other exists, is not a smaller version of that; it is a
-different shape, and it is why the term core does not grow to buy this.
-
-A mismatch is reported in the domain's own words. "a `Row(12)` where a `Row(24)` was expected" is the diagnostic; the
-solver's internal linear form never appears in a message.
-
-#### What is honestly checkable
-
-An index says something statically only when something static determines it, and this section says which case each type
-is in rather than implying the strong one everywhere.
-
-| Type | The index is | Checked |
-| --- | --- | --- |
-| `Pc(n)`, `Ic(n)` | a parameter fixed where the value is constructed | statically |
-| `Row(n)`, `Icv(n)` | derived arithmetically from the carrier's | statically |
-| `Voicing(k)` | a literal at the declaration | statically |
-| `Bar(m)` | the sum of the contents' durations | statically **when the durations are**; otherwise a checked constructor and a runtime refusal, exactly as today |
-
-The `Bar(m)` row is the honest one and the reason this table exists. `follow(a: Bar(p), b: Bar(q)) -> Bar(p + q)`
-settles a bar written out note by note, which is the common case in notated music and in every expansion an adapter
-produces. A bar folded out of a list whose length the checker does not know has no static sum, and gets the constructor
-and the diagnostic it has now. Promising more would be promising a length-indexed list, and a length-indexed list is a
-dependent type.
-
-#### The refusals
-
-Each of these is a refusal that names what it refused, and each is re-opened only by a committed program that needs it,
-under `../README.md`:
-
-- **An index expression outside the grammar above** — two variables multiplied, a division, a call, a `match`, a
-  projection, or a variable of any sort but `Nat`, `Ratio`, and a finite literal enum. The refusal names the expression,
-  and it is a refusal rather than an approximation: an index the solver cannot read is not assumed, not postponed, and
-  not compared syntactically as a fallback.
-- **Matching on an index.** There is no pattern that inspects one, because there is no value to inspect: it is erased.
-- **An index in an eliminator's motive.** §1.1's eliminator is non-dependent and stays so.
-- **An existential index** — a value carrying an index the type does not name. `Row(n)` for *some* `n` is not a type.
-- **An index-level function.** The grammar is closed; a user cannot extend it, and neither can the standard library.
-- **A proof term.** Nothing witnesses an index equality, because the solver decides it and produces no evidence a
-  program could hold. The identity type stays deleted (§1.4).
-- **An index over a type**, which would be a universe by another name (§1.3).
-
-**The compiler-owned indexed types are a different mechanism, and this section does not absorb them.** `Duration C`,
-`Position C`, `EventTrack C δ`, `Syntax<Cat>`, `Primitive K δ δ`, and `Machine K δ δ` look indexed and are not: their
-arguments are **parameters**, present in the elaborated term and compared by §3's ordinary conversion. That is what
-makes `Duration WrittenTime` and `Duration PhysicalTime` inconvertible, what lets `Syntax<Cat>` carry a directional
-forgetting rule (`11-quotation.md` §1) that a symmetric conversion could not state, and what puts two of `Machine`'s
-three arguments at *types* rather than at any arithmetic domain. An erased index could do none of the three, because
-erasure is exactly the promise that the argument stops mattering after elaboration.
-
-So the two live side by side and the distinction is which question the argument answers. A parameter says *what this is
-a type of*, and survives. An index says *how many* or *how much*, is decided by arithmetic, and is erased. Prompt 142d
-records this at the registration rather than leaving a reader to infer it from a kind.
+Two things follow, and they are the reason this section is worth keeping rather than deleting. Equality that decides
+*types* is definitional and lives in §3; equality that decides *values* is `==` and lives in the library. `Equal` is
+neither: it is a proposition a program may state, and the only way to inhabit it is a term the author writes, because
+there are no tactics (§1.3). A law that computation cannot discharge is therefore a law that does not get written, and
+`05-verification.md` is where that boundary is drawn.
 
 ## 2. Static semantics: bidirectional checking
 
@@ -424,56 +347,63 @@ Two rules switch between the modes, and they are the only two:
 ```
 
 `Switch` is where conversion (§3) is called, and it is the only place a type equality is decided. `Annot` is how an
-author re-enters checking mode, and it is why an annotation is a language feature rather than a hint. Here `ℓ` is one of
-the two levels of §1, and the rule knows which one by the declaration form it is checking.
+author re-enters checking mode, and it is why an annotation is a language feature rather than a hint. Here `ℓ` is a
+level expression of §1, solved like any other unknown (§2.1) and generalized when the declaration closes.
+
+`Switch` is also where `../obligations.md` §17's rule bites. It calls conversion, and conversion is the *only* thing it
+may call: there is no second premise that accepts `A` where `B` was expected, no coercion inserted here or anywhere, and
+no relation `≼`. A later prompt that adds one is amending the constitution, not extending the elaborator.
 
 Introduction forms check; elimination forms infer. `λx. e` checks against `(x : A) → B`, so a lambda binder needs no
 annotation when its type is known; an application infers its function, then checks its argument against the domain, then
-substitutes the argument into the codomain — which is where the lightweight dependency of §1 lives, and all it asks of
-this section. A record literal checks field by field. A constructor checks against its enumeration at known parameters.
-A projection, a variable, and a literal infer.
+instantiates the codomain with the argument — which is where dependency lives, and all it asks of this section. A record
+literal checks field by field. A constructor checks against its family at known parameters, and its **indices are
+matched against the expected type's**, which is where §1.1's refinement enters checking. A projection, a variable, and a
+literal infer.
 
 Annotations are written at public signatures and wherever information is not locally and deterministically available.
-The elaborator never invents a term the author did not write except the one case §2.1 states, and that case invents a
-*type argument*, never a value.
+The elaborator never invents a term the author did not write except through §2.1's metavariables, and what those stand
+for is always solved or reported — never defaulted.
 
-### 2.1 Generic instantiation is first-order and local
+### 2.1 Unification
 
-A call may omit leading type parameters. Each omitted parameter is solved **once, at the call**, by first-order matching
-of the explicitly written arguments' inferred types against the declared parameter types, left to right:
+**Checking may create a metavariable and postpone.** A metavariable `?m[σ]` stands for a term not yet known, carrying
+the **scope** σ of local variables it may mention. It is created where the elaborator needs a term it cannot yet
+determine — an omitted argument, an inferred binder's type, an index the expected type does not fix — and it is solved
+by unification or reported.
 
-```text
-fn map<A, B>(function: A -> B, values: List<A>) -> List<B>
-map(f, pitches)      % A := Pitch, B := NoteName, read off f's inferred type and the list's
-```
+The constraint queue is part of the judgment, not an implementation note. Elaboration produces, besides a term, a set of
+constraints `A ≟ B`; a constraint is attempted when it is created and **postponed** when it is not yet decidable;
+postponed constraints are retried when a metavariable they mention is solved. Elaboration of a declaration ends by
+draining the queue, and a constraint still unsolved at the end is an **error naming what could not be determined**.
+Nothing is defaulted, and nothing is left for a later declaration to settle.
 
-Matching is syntactic over type constructors and variables: `List<A>` against `List<Pitch>` binds `A`; a variable
-already bound is checked against its binding. A parameter no explicit argument determines is an **error at the call,
-naming the parameter**, and the author writes the argument. Nothing is guessed: the set of solutions is empty or a
-singleton by construction, because first-order matching against a known type is the most general unifier computed
-without search.
+**Solving is Miller's pattern fragment, and only that.** `?m x₁ … xₙ ≟ t` is solved uniquely when the `xᵢ` are distinct
+local variables not otherwise constrained, and `t` mentions no variable outside them and does not mention `?m`. Inside
+that fragment a solution is unique, so accepting it is not a guess. Outside it — a metavariable applied to a
+non-variable, or a `max` of two unknown levels — the constraint is postponed, and if it never becomes a pattern it is
+the error above. Higher-order unification proper, backtracking search over solutions, and defaulting rules that pick one
+solution among several are each refused: they would make acceptance depend on the order constraints were solved in,
+which is the property `../obligations.md` §17 exists to protect.
 
-**The spine is walked in two passes, and argument order is not semantically significant.** An argument whose parameter
-type still mentions an unsolved parameter, and which no rule can infer — a bare `fn (x) { … }`, a record literal, a
-`match` — is *deferred*: a placeholder stands in its slot, the rest of the spine is walked, and the argument is then
-checked against the type that walk gave its slot. The deferred arguments are revisited in the order they were written,
-after the position the call stands in has been matched, since that position is the last thing that can decide a
-parameter.
+**Implicit arguments are a filling, not a second binder.** A binder marked `inferred` (§1) has its argument supplied by
+the elaborator: an application against such a binder inserts a fresh metavariable. Insertion happens where the
+elaborator meets the binder, so it is a property of the type and not of the call site's spelling, and conversion never
+reads the filling — two Π types that differ only in filling are the same type.
 
-This is not postponement. Every argument is elaborated exactly once; there is no constraint queue, no wakeup discipline,
-no fixpoint, and no retry. Both the deferred set and the order of the second pass are fixed by the written argument
-order, so the answer cannot depend on which branch ran first, and a parameter still undetermined at the end is the
-refusal above rather than a new failure mode. What it buys is that `fold(combine, seed, values)` and
-`fold(seed, values, combine)` type the same, so a library no longer has to order its parameters around the checker. Two
-arguments do *not* defer: one whose slot is already settled, and a `fn` that annotates its own binder — checking the
-second is what makes its annotation and the slot agree, so it is one of the arguments a deferred one is waiting for. The
-design is Idris2's `checkRtoL` (`TTImp/Elab/App.idr`) without its fallback to left-to-right, which Musa does not need
-because a Musa spine has no ambiguous name resolution to fall back from.
+**Argument order is not semantically significant.** An argument whose slot still mentions an unsolved metavariable, and
+which cannot itself be inferred — a bare `fn (x) { … }`, a record literal, a `match` — is checked after the rest of the
+spine has constrained its slot. With a real constraint queue this needs no special discipline: the argument's check
+produces constraints like any other, and they are attempted when they can be. What the previous calculus achieved with a
+fixed two-pass walk and no queue is a consequence here rather than a mechanism.
 
-This is the whole inference story. It covers the corpus — the container operations, the folds, the phase traversals —
-because in all of them every type parameter is read off an explicit argument or off the position the call stands in. It
-deliberately does not cover a parameter that appears in *neither*: `compose(fn (p) { … }, fn (q) { … })` at
-`Pitch -> Pitch` leaves the middle type unnamed, and the refusal names it rather than choosing one.
+**What this replaces, and why the replacement is not optional.** The previous statement of this section specified
+first-order matching of written arguments against declared parameter types, solved once at the call, with no queue and
+nothing that waits — Idris2's `checkRtoL` without the fallback that makes it a unifier. It covered the corpus and
+nothing more: every construct wanting a solution the call site does not exhibit — an implicit argument, an index unified
+by a `match`, a metavariable outliving its call — was unavailable, and unavailable by omission rather than by decision.
+`53-one-theory.md` measures that. This section specifies the mechanism; prompt 153 implements it, and prompt 154 the
+implicit arguments that ride on it.
 
 ### 2.2 Refinement constructors and assertions
 
@@ -483,16 +413,22 @@ rationals, or already-validated musical values. It is not a partial term operati
 
 Literal constructors enforce refinements such as nonnegative `Duration`, finite scale members, and row bijectivity.
 These are constructor judgments returning a value or a located diagnostic, and the value they return may be **indexed**
-by §1.5: `fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` performs the same runtime check it always did and now
+(§1.1): `fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` performs the same runtime check it always did and now
 says in its type which modulus it checked against. That is this section's mechanism gaining a type, not a second one.
 
-The refinement does not thereby become load-bearing in every operation that touches the value, and the reason is
-erasure. An index is not evidence a program holds, constructs, or passes; it is arithmetic the checker does and then
-discards, so an operation that does not care about `n` mentions `n` nowhere. The earlier statement of this section
-refused type-level refinements on the grounds that no committed program manipulates such evidence before evaluation,
-which is still true and is now the argument *for* the stratified form rather than against any form: there is no evidence
-to manipulate. Named predicates used by `assert` return finite evidence that the assertion layer can report, and that is
-a different thing — evidence a program does hold, about a value the checker could not settle.
+The refinement does not thereby become load-bearing in every operation that touches the value. An index is an ordinary
+argument of an ordinary type constructor, so an operation that does not care about `n` is polymorphic in it and mentions
+it only where it binds it. What an index gives is that two moduli cannot be mixed silently: `Row(12)` and `Row(24)` are
+different types, and §3 says so by comparing their arguments like any other. Named predicates used by `assert` return
+finite evidence that the assertion layer can report, and that is a different thing — evidence a program does hold, about
+a value the checker could not settle.
+
+**Nothing is erased.** The previous statement of this section rested on erasure: an index was arithmetic the checker did
+and then discarded, so it could not be manipulated because there was nothing to manipulate. That is no longer true and
+nothing replaces it, because nothing needed it. `../across-stages/04-identity-and-realization.md` digests performance
+projections, bindings, seeds, and options — **never a core term** — so no stored artifact contains a type, and the
+byte-identity that erasure was protecting was never at risk. The one rule that survives from it is stated where it
+belongs: a value's *meaning* does not depend on a type argument, because a type argument is a type.
 
 ### 2.3 Track and machine construction
 
@@ -510,9 +446,17 @@ can check.
 
 A recursive definition is admitted when every recursive call it can make descends structurally: the call's recursive
 argument is a variable bound by an enclosing `match` pattern to a **strict subterm** of the value being matched, through
-constructors of the same enumeration. The elaborator sees the descent because it compiled the `match` (§6.2): the case
-tree is where each hypothesis is bound, and a recursive call that reaches for something no pattern bound is refused,
-naming the call.
+constructors of the same family. The elaborator sees the descent because it compiled the `match` (§6.2): the case tree
+is where each hypothesis is bound, and a recursive call that reaches for something no pattern bound is refused, naming
+the call.
+
+**The descent is checked on the case tree, and that is a change of substrate rather than of rule.** Structural descent
+used to fall out of the generated eliminator: a recursive call was an application of a method to a hypothesis the
+eliminator had bound, so the argument was a subterm by construction and nothing had to be verified. With `match`
+compiled to a case tree (§6.2) and elimination dependent (§1.1), the checker walks the tree instead: each `Split` binds
+its constructor's fields as strict subterms of the scrutinee, and a call is admitted when its recursive argument is one
+of those bindings, transitively, along the path to the `Answer` it sits in. Prompt 155 is where this is implemented, and
+it is the one piece of termination checking musa has to write rather than inherit.
 
 That is the whole rule. There is no measure language, no well-founded-order argument, and no decreasingness proof to
 write, because the thirteen recursive definitions in the corpus all descend structurally and the audit found no
@@ -532,46 +476,44 @@ through the graph.
 
 ## 3. Dynamic semantics: evaluation, and conversion by NbE
 
-**There is one conversion relation, and it is modulo the index theory.**
+**There is one conversion relation, and one procedure decides it.**
 
 ```text
-Γ ⊢ A ≡ B    is the congruence generated by  β, η, δ, ι  ∪  T
+Γ ⊢ A ≡ B    is the congruence generated by  β, η, δ, ι
 ```
 
-β, η at functions and at records, δ for definitions, and ι on eliminators applied to constructors are the term half; `T`
-is §1.5's index theory. Both halves are decided by one procedure: **normalization by evaluation** evaluates each side
-into a semantic domain of values with closures and neutral terms and quotes it back to a normal form, comparing up to α,
-and where it meets two index arguments it asks `T` instead of normalizing — because an index is not a term and cannot be
-evaluated. Reduction is never performed on syntax.
-
-This is *conversion modulo a theory* in Strub's sense, and the shape is what buys the metatheory: `T` is decidable, so
-`≡` is decidable, so type checking is. Stating it as **one relation with two decision procedures** rather than as two
-relations is deliberate. The procedures are and stay separate — `index.rs` does not import `value.rs`, and neither calls
-the other — but what they jointly decide is a single judgment, and a reader who holds two equalities in mind will look
-for a rule that relates them and find none, because there is nothing to relate.
-
-**`≡` is an equivalence relation**, and each property is discharged in the half it belongs to. Reflexivity: α on the
-read-back term for the term part, and `T`'s own reflexivity for the index part — which holds only because an index
-outside §1.5's grammar is refused where the type is *formed*, so a comparison never meets one. Symmetry and transitivity
-likewise hold in both halves. A conversion checker whose relation is not reflexive would let a term fail to check
-against its own type, which is why the siting of that refusal is a rule and not an implementation preference.
+β and η at functions and at one-constructor families, δ for definitions, ι on eliminators applied to constructors. It is
+decided by **normalization by evaluation**: each side is evaluated into a semantic domain of values with closures and
+neutral terms, quoted back to a normal form, and the two normal forms are compared up to α. Reduction is never performed
+on syntax, and there is no substitution function anywhere in the implementation.
 
 ```text
 eval  : Env → Term  → Value          % closures for binders, neutrals for blocked eliminations
-quote : Level → Value → Term         % reads a value back at a de Bruijn level, η-expanding at functions and records
+quote : Level → Value → Term         % reads a value back at a de Bruijn level, η-expanding where the type says to
 Γ ⊢ A ≡ B   iff   quote(|Γ|, eval(ρ_Γ, A)) = quote(|Γ|, eval(ρ_Γ, B))
 ```
 
-η at functions and at records is performed by `quote` rather than by a conversion rule, which is why two record values
-with the same projections are convertible without a rule that inspects both at once — the property `10-traits.md`'s
-one-instance-per-head rule rests on when two projections of the same dictionary meet.
+**That `iff` is exact, and it is the load-bearing sentence of this document.** Everything a type says survives
+read-back, so two types are the same type exactly when their normal forms agree. Nothing is erased before quotation,
+nothing is compared before quotation, and no separate decider is consulted alongside it. The obligation this puts on
+every later prompt is stated as a rule in `../obligations.md` §17: **no rule may accept a program that conversion would
+reject, and nothing that distinguishes two types may be hidden from read-back.**
 
-**The index-sort case, stated once more because it is where the two procedures meet.** Where conversion meets two
-indexed types at the same head, it asks §1.5's solver whether the index arguments are equal and takes the answer. The
-two procedures are independent — this one settles terms by NbE, that one settles indices by arithmetic, and neither
-calls the other — and that independence is what keeps the term core from growing to buy the stratum. `quote` drops
-indices, so a normal form never carries one, which is what makes erasure a fact about where the code sits rather than a
-property a test has to keep watching.
+The previous calculus could not state it that way. §1.5's erased index sort dropped indices at `quote`, which made the
+`iff` say `Pc(12) ≡ Pc(24)`; the implementation therefore compared indexed forms structurally on *values*, before
+quoting, and the specification and the code disagreed about what the rule was. That is the defect prompt 143's amendment
+names, and it is why the amendment refuses subtyping in the same breath: a subsumption rule is the same shape of thing,
+an acceptance decision made outside the one relation.
+
+η at functions and at one-constructor families is performed by `quote` rather than by a conversion rule, which is why
+two values with the same projections are convertible without a rule that inspects both at once. It is type-directed:
+`quote` η-expands where the type it is reading back at says to, and for a one-constructor family that is a choice about
+that family rather than a term former in the core (§1.1).
+
+**`≡` is an equivalence relation.** Reflexivity is α on the read-back term; symmetry and transitivity follow from
+comparing normal forms. There is no case in which two types nothing can read fail to be equal to themselves, because
+there is no case in which conversion is handed something it cannot read: an ill-formed type is refused where it is
+*formed*, not where it is compared.
 
 **The strategy is part of the specification.** Conversion is decidable either way, but the four rules below are what
 make it *cheap*, and a checker that lost one would still be correct and would grind. They are rules, not notes:
@@ -585,15 +527,23 @@ make it *cheap*, and a checker that lost one would still be correct and would gr
 - **The meter is the backstop.** A budget crossing is a refusal (§4), never a hang and never a silent pass.
 
 **What conversion does *not* have to do** is the other half of why it is cheap, and each absence is load-bearing rather
-than incidental. There is **no index unification inside the checker**, because §1.1 admits no family indices — that is
-where the complexity of a general indexed family lives. There are **no unary towers**, because of the numeral rule
-above. There are **no proof terms to unfold**, because there are none at all; a language with them needs a way to seal
-them, and that is what opacity annotations in other systems are for.
+than incidental. There are **no unary towers**, because of the numeral rule above. There are **no proof terms to
+unfold** in the ordinary case: `Equal` is declarable (§1.4) but nothing in the checker constructs or inspects one, so
+there is no need for the opacity annotations other systems use to seal proofs away from conversion. And there is
+**nothing to decide beside the terms** — no index theory, no solver, no coercion — which is the difference between this
+section and the one it replaces.
 
-What remains is **large elimination** — a recursor whose motive is a type — and it is the one construct by which
-evaluating a user's own definition can happen during conversion. It is bounded by §2.4's structural recursion and by the
-meter. Naming it is what makes the three absences above a claim a reader can check rather than an accident of the
-current implementation.
+**Unification is not conversion, and the boundary is a rule.** §2.1 solves metavariables; §3 decides equality. Where
+unification needs to know whether two closed terms agree it calls conversion, never the other way round: conversion
+never invents a solution, never postpones, and never consults the constraint queue. A conversion that could solve a
+metavariable would make type equality depend on elaboration state, and two identical programs could then differ in what
+they accept.
+
+What remains is **large elimination** — a case tree whose motive computes a type — and it is the one construct by which
+evaluating a user's own definition can happen during conversion. Dependent elimination (§1.1) is what makes this
+ordinary rather than exotic: a family's index may be computed, so checking a type may run a program. It is bounded by
+§2.4's structural recursion and by the meter, and §4's numbers are measured **after** families land rather than
+predicted before — prompt 165 owns that measurement.
 
 **The dependency chain runs one way, and it is the reason totality is kept rather than a matter of taste:**
 
@@ -686,11 +636,13 @@ because a program refused at 256 levels and accepted at 512 is a program two com
 
 ## 5. Metatheoretic obligations
 
-**This section states obligations; it discharges none of them.** The course correction owes the audit, and it is smaller
-than the one it replaces for the same reason the calculus is: there is no identity type to be consistent, no index
-unification to be sound, no measure to be well founded, and no constraint solver to be deterministic. **The §5.7–§5.10
-numbering is preserved** so that references from `../across-stages/` and the prompt stack still land on the obligations
-they were pointing at.
+**This section states obligations; it discharges none of them.** The list grew when the calculus became one theory, and
+it grew in the places the theory actually reaches: unification has to be sound, coverage has to be complete under a
+dependent motive, and the hierarchy has to be consistent. Two obligations the previous list carried are gone, because
+the mechanisms are: there is no measure to be well founded and no index solver to be deterministic.
+`../across-stages/05-metatheory.md` §1a says plainly which of these musa **argues** and which it **tests**, and the
+answer is that none of them is mechanized. **The §5.7–§5.10 numbering is preserved** so that references from
+`../across-stages/` and the prompt stack still land on the obligations they were pointing at.
 
 | Obligation | What discharges it | Owed by |
 | --- | --- | --- |
@@ -698,12 +650,14 @@ they were pointing at.
 | **NbE completeness** — convertible terms quote to α-equal normal forms | the same relation, at the identity substitution | the correction's final phases |
 | **Decidability of conversion** — `Γ ⊢ A ≡ B` terminates and is an equivalence | normalization plus α-comparison; equivalence tested as a law | the correction's final phases |
 | **Type preservation** — an elaborated term has the type its judgment gave it | induction over the elaboration rules | the correction's final phases |
-| **Canonicity for closed storable types** — a closed term of a storable type evaluates to a constructor form | canonicity argument over the enumeration declarations | the correction's final phases |
+| **Canonicity for closed storable types** — a closed term of a storable type evaluates to a constructor form | canonicity argument over the family declarations | the correction's final phases |
 | **Strong normalization** — every accepted term normalizes | reducibility over the calculus, given §2.4 and §1.1's positivity | the correction's final phases |
-| **Strict positivity ⟹ consistency** — the empty type has no closed inhabitant | positivity plus the two-level hierarchy | the correction's final phases |
+| **Strict positivity ⟹ consistency** — the empty type has no closed inhabitant | positivity plus the predicative, non-cumulative hierarchy (§1) | the correction's final phases |
 | **Coverage completeness** — an accepted `match` covers every constructor, and an unreachable arm is rejected | case-tree compilation (§6.2) | the correction's final phases |
 | **Termination soundness** — an accepted recursive definition denotes a total function | the structural check of §2.4 | the correction's final phases |
-| **Generic instantiation determinacy** — a call's omitted parameters are the unique first-order match, or the call is refused | the singleton property of first-order matching against known types | the correction's final phases |
+| **Unification soundness** — a solution the unifier commits to makes the two sides convertible | induction over the unification rules, with the pattern-fragment restriction (§2.1) as the premise | prompt 158's re-checker, which re-checks every solved term |
+| **Unification determinacy** — inside the pattern fragment a solution is unique, and outside it nothing is committed | Miller's property for the fragment; a postponement discipline that never defaults | prompt 153 |
+| **Coverage under a dependent motive** — an accepted `match` covers every reachable constructor, and an impossible branch is one unification refutes | case-tree compilation (§6.2) with the index unification of §1.1 | prompts 155 and 156 |
 | **Storability faithfulness** — the structural check accepts exactly the types with no function at any depth | induction over the type's structure; a compile-fail suite for functions in stored positions | the correction's final phases |
 | **Track-construction safety** (§5.7) | re-derived against the surviving calculus | the correction's final phases |
 | **Musical domains are a conservative extension** (§5.8) | re-derived against the surviving calculus | the correction's final phases |
@@ -943,7 +897,7 @@ conversion that compared names would answer `false` for two spellings of one fun
 
 The theoretical provenance of this calculus — every construction, and the chapter or paper it comes from — is
 [`citations.md`](citations.md) §13. The short form: nothing here is novel, and after the course correction there is
-markedly less of it. Bidirectional checking, first-order unification, NbE, case-tree compilation, and structural
-recursion are all older than the proof assistants the previous calculus cited. Musa's own contributions remain the
-storability check, the three-outcome budget law, the phase environment of §5.9, and the refusals of §1.3 — each priced
-where it stands.
+markedly less of it. Bidirectional checking, pattern unification, NbE, case-tree compilation, and structural recursion
+are all older than the proof assistants the previous calculus cited, and the term language is Idris2's with five
+constructors removed. Musa's own contributions remain the storability check, the three-outcome budget law, the phase
+environment of §5.9, and the refusals of §1.3 — each priced where it stands.

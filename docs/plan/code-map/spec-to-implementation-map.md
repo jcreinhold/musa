@@ -46,7 +46,7 @@ unfulfilled. `partial` means some of it stands. `absent` means no code answers t
 | [Collections](#collections) | `musa-syntax`/`musa-calculus` | partial | 142, 145 |
 | [Per-term provenance](#per-term-provenance) | `musa-calculus` | implemented | 138 |
 | [User-defined nominal data](#user-defined-nominal-data) | `musa-compiler` | absent | 142 |
-| [Index refinement](#index-refinement) | `musa-calculus` | absent | 142c, 142d, 143 |
+| [Inductive families with indices](#inductive-families-with-indices) | `musa-calculus` | absent | 151, 155, 156 |
 
 ## Ledger: the rest of the roadmap
 
@@ -137,8 +137,8 @@ conversion (note 44 §7; §6's glued evaluation landed at 141u). Prompt 169: the
 
 ## Bidirectional elaboration
 
-> Check/infer over a surface-independent raw term, with §2.1's first-order holes standing for the binders a use site
-> does not write.
+> Check/infer over a surface-independent raw term, with §2.1's metavariables standing for the binders a use site does
+> not write, solved by pattern unification or postponed.
 
 `musa-calculus` · **implemented** · `02-core-calculus.md` §2
 
@@ -165,7 +165,11 @@ read a solved hole as an unsolved one and assign it a second time — assignment
 which determined one thing once. Each pass after the first is charged, so a chain is bounded by the §4 budget rather
 than by a claim that chains are short.
 
-**Owes.** Nothing calls this yet — prompt 142 cuts the compiler over.
+**Owes.** Prompt 142 cut the compiler over. What §2.1 now specifies is **absent**: there is no constraint queue, nothing
+postpones, and no metavariable outlives the call that created it — the crate implements first-order matching where the
+specification states pattern unification. Prompt 153 replaces the mechanism; prompt 154 adds the implicit arguments that
+ride on it; prompt 152 gives levels something to solve in. Until then this row is *implemented against a superseded
+§2.1*, and that is the gap to read it with.
 
 ## Top-level definition groups
 
@@ -293,8 +297,9 @@ A family is completely described by its parameters (`family/mod.rs`), and the ge
 `case.rs` has no substitution and no index to refine, which is why it needs neither a solution rule nor a forced-index
 refusal.
 
-Note 50 deleted the general indexed machine and the dependent motive together. Prompt 142d's index stratum is a
-*different* mechanism and belongs to [Index refinement](#index-refinement), not here.
+Note 50 deleted the general indexed machine and the dependent motive together, and prompt 142d rebuilt a *different*
+mechanism — an erased index sort — in their place. Prompt 143 reversed that: both come back as one mechanism, and it
+belongs to [Inductive families with indices](#inductive-families-with-indices).
 
 Mutual recursion between _definitions_ is deferred.
 
@@ -1223,22 +1228,28 @@ it.
 
 **Owes.** Prompt 142 cuts the compiler over and supplies the identities.
 
-## Index refinement
+## Inductive families with indices
 
-> A type carrying index arguments over ℕ, exact ℚ, and finite literal enums, erased at quotation, decided by a solver.
+> A type constructor whose constructors choose their indices, eliminated by a dependent motive, with `match` compiled to
+> a case tree and refinement decided by unification.
 
-`musa-calculus` · **absent** · `02-core-calculus.md` §1.5
+`musa-calculus` · **absent** · `02-core-calculus.md` §1.1
 
-The special cases exist and predate the general mechanism — `base.rs` already indexes `Syntax` by a category literal and
-`EventTrack` by its coordinate. What is missing is the expression language, the decision procedure, and the one hook in
-`convert.rs` that hands an index question to it.
+What exists is the non-indexed half: `family/` declares parameterized families and generates eliminators, and
+`family/assemble.rs`'s `motive_type` answers a *type* rather than a family, so a `match` refines nothing. `base.rs`
+already applies a base type to arguments — `Syntax` to a category literal, `EventTrack` to its coordinate — which is the
+shape an index takes, without the refinement.
 
-`family/` is *not* where this goes and does not grow: an inductive family still has parameters only, and confusing the
-two is the mistake `02-core-calculus.md` §1.1 now warns about in its own words.
+The erased index stratum that stood here is **reversed**. `index.rs` and its decision procedure were built at prompt
+142d against `02-core-calculus.md` §1.5, and prompt 143's amendment retired both: the erasure made §3's conversion rule
+false about the implementation, and the arithmetic the stratum uniquely bought had no user in any committed `.musa`
+file. The row that described it is [`../prompts/142c-index-amendment.md`](../prompts/142c-index-amendment.md), which now
+carries a reversal banner.
 
-**Owes.** Prompt 142c wrote the specification and the amendment. Prompt 142d builds `index.rs`, whose load-bearing check
-is byte-identity of every snapshot, fixture, and pinned digest, since an index that reaches a stored file is a defect in
-erasure. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the amendment was granted on.
+**Owes.** Prompt 151 deletes `index.rs`, the `Indexed` shape, and the conversion hook, turning an indexed type into an
+ordinary applied type constructor. Prompt 155 builds case trees; prompt 156 gives constructors their indices and the
+eliminator its dependent motive. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the original amendment
+was granted on.
 
 ---
 

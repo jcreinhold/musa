@@ -1,7 +1,7 @@
 ---
 id: 144
 slug: core-calculus-specification
-status: in-progress
+status: done
 depends_on: [143]
 phase: 3
 ---
