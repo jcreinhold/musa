@@ -27,7 +27,7 @@ u.musa: ok
 ```
 
 `Pc` declares no index and takes one; it takes a whole number in one signature and an exact fraction in the next; and
-`Nat`, which is the sort an index is *drawn from*, carries one itself. The index is elaborated by `infer`, so it is
+`Nat`, which is the sort an index is _drawn from_, carries one itself. The index is elaborated by `infer`, so it is
 whatever it happens to be rather than what the head asked for, and there is no head that asked for anything.
 
 Give a declared type an index telescope with sorts, and check each index argument at the sort its head declares.
@@ -48,7 +48,7 @@ inferring matters because a sort the head declares is the only thing a `Pc(3/4)`
   this prompt fills, and if §1.5 needs a sentence to say the head declares it, repair the section first and commit the
   repair.
 - §2.1's first-order matching. `fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` binds `n` by appearing in a
-  signature, so a use site's index may be a *variable* as well as a literal, and the sort check has to accept both.
+  signature, so a use site's index may be a _variable_ as well as a literal, and the sort check has to accept both.
 - `crates/musa-calculus/src/elab/infer.rs`'s `indexed_type_formation` as prompt 142da left it — the one site that builds
   an indexed term, and the site whose `self.infer(scope, index)` asks the expression a question only the head's
   declaration can answer.
@@ -62,7 +62,7 @@ inferring matters because a sort the head declares is the only thing a `Pc(3/4)`
 - Commit `87193e13` and the law it added to `crates/musa-compiler/src/lower/laws.rs`,
   `an_index_written_in_a_type_reaches_the_core_as_the_type_it_forms`. It asserts that `Nat(12)` and `Ratio(3/4)` are
   accepted, which this prompt makes false: both heads are sorts and neither declares an index. The law's subject — the
-  whole path from parser to formed type, and a `Ratio` literal that reaches §1.5's reader at the *registered* base —
+  whole path from parser to formed type, and a `Ratio` literal that reaches §1.5's reader at the _registered_ base —
   survives at a head that does declare one, and rewriting it that way is part of the target.
 - `crates/musa-calculus/src/convert.rs`'s `sort_of`, which already decides §1.5's question about a type value: a
   counting family is `Sort::Count` and a base registering `Measures` is `Sort::Rational`. The declaration check is that
@@ -104,7 +104,7 @@ was expected", not "linear constraint unsatisfiable" and not "unsolved metavaria
 delete is the one in the Task.
 
 **Erasure is unchanged, and byte-identity is how that is checked.** `quote` already drops indices (142d). Making the
-form writable adds programs that are *accepted*; it adds nothing to any stored artifact. Every snapshot, the
+form writable adds programs that are _accepted_; it adds nothing to any stored artifact. Every snapshot, the
 `elaboration-compatibility` fixture, the `musa-events` pinned digests, and `apps/musa-desktop/ui/fixtures/` move through
 this prompt unchanged.
 
@@ -112,6 +112,9 @@ this prompt unchanged.
 
 - `crates/musa-calculus/src/declare.rs`, `raw.rs`, `term.rs`: an index telescope on a declaration, with its sorts, and
   the arity a use site is checked against.
+- `crates/musa-calculus/src/base.rs`: the same telescope on a registered base, because a base is the other kind of
+  declaration a type head can be, and the calculus's own indexed fixture (`Row`) is one. A base declares its index
+  against the registry's sorts, which is where an index at an unmeasured base type is refused.
 - `crates/musa-calculus/src/elab/infer.rs`: `indexed_type_formation` checks each index argument at its declared sort
   instead of inferring it, and checks the arity.
 - `crates/musa-calculus/src/refuse.rs`: the refusals — a type that takes no index, the wrong number of indices, and a
@@ -120,7 +123,7 @@ this prompt unchanged.
   already, with the formatter and the tree-sitter grammar held to the drift law.
 - `crates/musa-compiler/src/lower/`: the declaration lowering, and the surface diagnostics for the three refusals.
 - Law suites: a `.musa` fixture that writes an indexed type and checks; an indexed type at one index refused where
-  another was asked for, *from source* rather than only from the calculus registry; `Nat(12)` refused; an index written
+  another was asked for, _from source_ rather than only from the calculus registry; `Nat(12)` refused; an index written
   at the wrong sort refused; an index variable bound by a signature and solved at the call; erasure, by byte-identity.
 
 ## Check
