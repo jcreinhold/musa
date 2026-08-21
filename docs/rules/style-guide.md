@@ -111,7 +111,7 @@ Enforced: `redundant-name-prefix`.
 
 ## 7. Candidate vocabulary says which layer it means
 
-**Candidate rule for prompts 93–188; it becomes governing only with prompt 189.** The additions in
+**Candidate rule for prompts 93–189; it becomes governing only with prompt 190.** The additions in
 `docs/rules/language/` keep the musician-facing word when it names a musical intention and the technical word when the
 author has deliberately entered an implementation block.
 

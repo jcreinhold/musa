@@ -109,7 +109,7 @@ every one of those steps. Each of those arms has to evaluate to the rest of the 
 be bound to a name first: `Raw::bind` with no written type *infers* its value, and §6.2 makes a `match` a checking form
 with no inference rule, so `let fallback = match …` is `Uninferable` by construction. The continuation is therefore
 copied into every coverage hole, which is `docs/plan/prompts/README.md`'s red flag rather than a shape to tune. Asking
-`matched` once per hole recomputes a shape walk; prompt 164 owns what that costs, and a duplicated continuation is not
+`matched` once per hole recomputes a shape walk; prompt 165 owns what that costs, and a duplicated continuation is not
 something a later prompt can measure its way out of.
 
 **And the index is not a variable, because D1 says so.** The signature a reader reaches for first is
@@ -173,5 +173,5 @@ Commit as `Give a quotation a core shape`.
   condition 4.
 - No new surface syntax for quotation and no grammar change. `musa-syntax` parses what prompt 139 taught it.
 - No collapse of the phase builders. `syntax_token`, `syntax_group`, and the rest stay registered and stay spellable:
-  hand-written construction is still how an adapter builds a node it did not quote, and prompt 165 is where the
+  hand-written construction is still how an adapter builds a node it did not quote, and prompt 166 is where the
   measurement of how much of it survives is taken.

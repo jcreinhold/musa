@@ -210,7 +210,7 @@ laws are decidable by enumeration inside the existing budget: orbit, stabilizer,
 functions of a finite action rather than one compiler builtin per question. Messiaen's modes of limited transposition
 (`106-collections.md`) are exactly the collections with a nontrivial stabilizer under T, and a row's symmetries
 (`110-row-properties.md`) are its stabilizer — two chapters that are this and nothing else. The seventeen `pc12_*` and
-`row12_*` builtins §4 is implemented by exist because the modulus could not be said; prompt 163 removes them, and if it
+`row12_*` builtins §4 is implemented by exist because the modulus could not be said; prompt 164 removes them, and if it
 does not, the argument in
 [`../../notes/research/language-design-closure/51-the-terseness-audit.md`](../../notes/research/language-design-closure/51-the-terseness-audit.md)
 was wrong.

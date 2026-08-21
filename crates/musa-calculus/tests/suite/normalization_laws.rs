@@ -5,7 +5,7 @@
 //!
 //! §5's obligations these partially discharge are named per test. What no
 //! example-based suite can supply is §5's *strong* normalization — that every
-//! well-typed term has a normal form — which prompt 168 owes as a proof
+//! well-typed term has a normal form — which prompt 169 owes as a proof
 //! obligation and prompt 135's termination checker owes for the recursive
 //! definitions this crate does not yet have.
 

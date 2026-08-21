@@ -29,7 +29,7 @@ field by field.
 
 [Note 44](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md) §6 predicted this
 exactly — "It becomes wrong at **prompt 142**, which points the whole standard library at this core" — and deferred the
-fix to prompt 164 because until 142 there was nothing foldable. There is now. Build Finding C: a definition scope whose
+fix to prompt 165 because until 142 there was nothing foldable. There is now. Build Finding C: a definition scope whose
 uses stay folded, `Head::Def` as the head that carries both forms, and conversion that tries the folded comparison
 first.
 
@@ -50,7 +50,7 @@ rather than re-evaluating one — so the 1.6 billion is not one definition rebui
 distinct calls**, each costing some eighty-five evaluation entries of β through the library. Nineteen million calls to
 read a 77-line page is the adapter's own reading algorithm, and
 [`staff.musa`](../../../stdlib/src/adapters/staff.musa)'s header says why in its own words: a list cannot be built, so
-the reading runs backwards. Prompt 141 closed that language gap and **prompt 165 is the prompt that rewrites the adapter
+the reading runs backwards. Prompt 141 closed that language gap and **prompt 166 is the prompt that rewrites the adapter
 on it**. This prompt does not make nineteen million calls cheaper by two orders of magnitude and must not claim to.
 
 ## Read
@@ -58,7 +58,7 @@ on it**. This prompt does not make nineteen million calls cheaper by two orders 
 - [Note 44](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md) **§6 in full** —
   Finding C, its three-part correct design, and its statement that Findings D and E wait on it. Also §7's and §8's
   closing paragraphs, which name the remainders this prompt does _not_ take.
-- [Prompt 164](164-diagnostics-and-performance.md), **Design**, "The six items prompt 136b left here" — the list this
+- [Prompt 165](165-diagnostics-and-performance.md), **Design**, "The six items prompt 136b left here" — the list this
   prompt takes the first two entries from, and the reason each was waiting. 144 keeps the other four.
 - `~/Code/smalltt`'s README on **glued evaluation** and on the three quotation modes. The `G` pair, the flexible-rigid
   head, and the speculative conversion are that implementation's, stated by it; take the design and not the Haskell.
@@ -191,7 +191,7 @@ and a spine disagreement there unfolds either side, since both unfold to the sam
   a refusal that would quote a type it just opened quotes the value *before* opening instead, so applying a value of an
   aliased type is refused at the alias's name; and when a same-head folded comparison fails and the unfolded retry also
   fails, the folded failure is the one reported — the unfolded comparison decides the question, and the folded one says
-  it better. That is half of what [164](164-diagnostics-and-performance.md)'s conversion-error work asks for, arriving
+  it better. That is half of what [165](165-diagnostics-and-performance.md)'s conversion-error work asks for, arriving
   as a consequence rather than as work.
 - **`Open`** — unfold `Def` heads. Metavariable solutions take this, because a solution mentioning a definition that
   escapes its scope is unsound; so does the canonical readback in
@@ -222,7 +222,7 @@ regression fails rather than merely slows.
 **The corpus, recorded rather than gated.** `examples/staff-page.musa`'s spend is re-measured and written into
 `budget.rs`'s doc comment beside `Budget::LANGUAGE` with the command that produced it, in the shape
 [`core_budget.rs`](../../../crates/musa-compiler/src/phase_budget.rs)'s `FRAME_CEILING` already uses — against
-1,605,182,361 before. Whatever it becomes is the number the cost-table prompt and prompt 165 both argue from. No
+1,605,182,361 before. Whatever it becomes is the number the cost-table prompt and prompt 166 both argue from. No
 prediction is offered, because the tally above says the residual is the adapter's call count and this prompt does not
 change it.
 
@@ -251,7 +251,7 @@ change it.
   other `*_metered` facades.
 - The re-measurement of `examples/staff-page.musa`, recorded in `budget.rs` with its command, and the residual against
   `Budget::LANGUAGE` stated plainly whichever way it falls — including, if it is still far past it, that the remainder
-  is prompt 165's.
+  is prompt 166's.
 - A closing line in [note 44](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md)
   §6 for Finding C and for `Head::Def`, so the audit's first two remaining items end here rather than being inherited
   again.
@@ -272,7 +272,7 @@ python3 scripts/renumber-prompts.py audit
 
 One truth-table line moves with this prompt and is not a stop: `every_example_elaborates`'s expected budget walls for
 the staff page drop from two to one, because the wall the page hits first is a different one when δ is lazy. The example
-is still refused at the same budget; prompt 165's rewrite still owns the class. `musa-compiler`'s full suite and its
+is still refused at the same budget; prompt 166's rewrite still owns the class. `musa-compiler`'s full suite and its
 clippy run are not gates here, for the reason [141s](141s-numeral-representation.md)'s and
 [141t](141t-nested-occurrences.md)'s **Check** sections state and measure: this prompt lands inside 142's migration,
 that suite is red for migration reasons this prompt neither causes nor can fix, and `-D warnings` is red on `core.rs`'s
@@ -292,6 +292,6 @@ Commit as `A definition stays folded until something needs it open`.
   `G` pair is genuinely needed, that is evidence and a repair, not a quiet widening of `Value`.
 - **No change to what is accepted or refused**, and none to any normal form or rendered output.
 - **No corpus change.** Not one `.musa` file, not one snapshot. If a fixture has to move, it is 142's.
-- **No adapter rewrite.** `staff.musa` is prompt 165's, and this prompt exists so that 145 is measured against a checker
+- **No adapter rewrite.** `staff.musa` is prompt 166's, and this prompt exists so that 145 is measured against a checker
   rather than against a normalizer.
 - **No work on the notation fold's follow spine.** It is quadratic, it is recorded, and it is 144's.

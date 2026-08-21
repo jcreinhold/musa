@@ -6,7 +6,7 @@ const GOOD: &str = "piece \"Budget\" { score { part p { voice v { c4/1 } } } }";
 ///
 /// Written as a long plain voice rather than the `range(100001)` this fixture
 /// used before the cutover, because deep *recursion* past the nesting limit is
-/// the case prompt 164's own measurement says still aborts rather than refuses
+/// the case prompt 165's own measurement says still aborts rather than refuses
 /// — "756 levels are refused and 1,256 abort" — and a test that aborts takes
 /// the whole suite with it. A voice's fold is δ rules all the way down, so two
 /// thousand notes charge steps and no depth, and the refusal is the one §4

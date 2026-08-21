@@ -41,7 +41,7 @@ A program that needs a length *in a type* — not one that happens to have a fix
 says better and more legibly, but one where the arity is computed and a mismatch has to be a type error rather than a
 runtime one.
 
-Two measurements ahead could produce one: prompt 165's staff rewrite and prompt 166's studio rewrite. If either writes a
+Two measurements ahead could produce one: prompt 166's staff rewrite and prompt 167's studio rewrite. If either writes a
 `Vec`, that is the program, and adding the type is an ordinary prompt rather than an amendment — nothing in
 `docs/rules/` promises `Vec` and nothing forbids it. `02-core-calculus.md` §1.4 and note 43 §10 already record the
 adjacent condition for the K axiom, which the same program would have to be measured against: `Nat` has decidable
@@ -97,7 +97,7 @@ recorded it could not be. A chord's pitches must come out as one list; a nested 
 language had no operation that built a list, so a group written inside brackets contributed no pitch. What closes it is
 a fold inside a fold with `push` at the bottom — the outer traversal carries the accumulator across children, the inner
 one adds each child's own contribution — and both run from the start, so the pitches come out in written order. That is
-the property the reversed reading algorithm existed to recover, and prompt 165 measures what recovering it is worth.
+the property the reversed reading algorithm existed to recover, and prompt 166 measures what recovering it is worth.
 
 `collect_in_an_inferring_position_is_refused` states the price. `collect`'s target is fixed by *checking*; choosing an
 instance from a result type nobody wrote down is return-type-directed overloading, which makes elaboration depend on the

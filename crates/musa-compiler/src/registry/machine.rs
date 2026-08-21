@@ -14,7 +14,7 @@
 //! `None` at a universe, so a δ-rule registered here would block forever and
 //! [`musa_calculus::Malformed::BuiltinStuck`] would never even get the chance to
 //! report it. That is not a mechanism to route around: a machine has nothing to
-//! compute until §3 gives it a step, and §3 is prompts 170–173.
+//! compute until §3 gives it a step, and §3 is prompts 171–174.
 //!
 //! # What the ports are, and what is not checked here
 //!

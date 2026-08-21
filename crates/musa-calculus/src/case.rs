@@ -25,7 +25,7 @@
 //! into a `let`-bound function the leaves apply — is not obviously correct here,
 //! because a leaf binds its pattern variables by *definition* and a λ binder is
 //! an assumption. `coverage_laws.rs` holds the program that shows the
-//! difference, and prompt 164 owns the change.
+//! difference, and prompt 165 owns the change.
 //!
 //! # The goal does not change as the tree descends
 //!

@@ -192,7 +192,7 @@ Commit as `Carry an adapter module's own diagnostics to its author`.
   session does not own. A cause says where in words.
 - No fix, quick-fix, or code action on a cause, in any renderer.
 - No change to the wording of any diagnostic the checker raises, beyond `quote_splice`'s comment. Wording is prompt
-  164's; this prompt is delivery.
+  165's; this prompt is delivery.
 - No `ModuleFault::Stopped` change, and no attempt to report partial results from a read that crossed a limit.
 - No use of `causes` for ordinary imports. `Code::Import`'s "`{path}` does not compile" has the same shape and would
   benefit, but a library is resolved on a different path with a different failure type, and folding both into one prompt

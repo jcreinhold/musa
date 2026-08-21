@@ -7,7 +7,7 @@
 //! and how a finished machine is handed to the crate that will one day run it.
 //!
 //! What runs a machine is not here and is not anywhere yet. §1's `State(p)`,
-//! `start_p`, and `step_p` belong to a primitive's owner, and prompt 170 is
+//! `start_p`, and `step_p` belong to a primitive's owner, and prompt 171 is
 //! where they arrive. A descriptor states what a unit *is* — its name, its
 //! version, the step it counts in, its ports, and the shape of its
 //! configuration — which is exactly what the type checker needs and no more.
@@ -158,7 +158,7 @@ const fn all_same(ours: &[PortShape], theirs: &[PortShape]) -> bool {
 /// layout, configuration codec, start function, step function, and resource
 /// contract. What a descriptor holds is the part of that the *compiler* needs
 /// — the ports it must type and the configuration it must check — and the
-/// pair is what will select the rest when prompt 170 supplies it.
+/// pair is what will select the rest when prompt 171 supplies it.
 ///
 /// This is a build-local execution rule, not a promise of persistent compiled
 /// identity: the same name at the same version is one unit within one build,
@@ -204,7 +204,7 @@ impl PrimitiveDescriptor {
 ///
 /// A descriptor says what a unit *is*, which is what the compiler needs; §1's
 /// `State(p)`, `start_p`, and `step_p` are the unit owner's and arrive with
-/// prompt 170's runtime. That split is why a name is registered here before
+/// prompt 171's runtime. That split is why a name is registered here before
 /// anything can step it: the ports a machine is wired at are the compiler's to
 /// decide, and what one step does is not.
 ///
@@ -503,7 +503,7 @@ impl SpecNode {
 /// bytes, so a cache keyed on it cannot confuse two units that differ only in
 /// a configuration value.
 ///
-/// Its named consumer is `musa-dsp`, at prompt 172's `prepare_audio`.
+/// Its named consumer is `musa-dsp`, at prompt 173's `prepare_audio`.
 ///
 /// [`digest`]: MachineSpec::digest
 #[derive(Clone, Debug, PartialEq, Eq)]

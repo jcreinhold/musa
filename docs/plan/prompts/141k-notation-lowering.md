@@ -100,7 +100,7 @@ example above it say the opposite of the three sentences quoted here, and they c
 line: the body of `fn figure()` has no lexically enclosing `in scale`, so under "lexical rather than captured" its
 `step 1` is the diagnostic §2's last sentence describes, and the example cannot compile to have two readings. Only
 *dynamic* capture makes it differ at two use sites, which is the deleted contextual-`Music` behaviour. The example is a
-survival, not a decision, and repairing it belongs to [`149`](169-language-pass-closure.md), whose Task is the
+survival, not a decision, and repairing it belongs to [`149`](170-language-pass-closure.md), whose Task is the
 contradiction audit and which "may repair `docs/rules/language/` as its own candidate specification". Recorded there so
 the audit does not have to rediscover it.
 

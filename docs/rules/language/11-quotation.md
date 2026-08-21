@@ -182,7 +182,7 @@ document records that it checked rather than leaving the reader to infer it.
 diagnostic can land on the composer's line. Its duplicate-path half stays and used to catch an author who reused a role
 integer; now the derivation makes that unreachable, so what it catches is a compiler defect. Keeping it is not
 belt-and-braces: it is the test that makes "unique by construction" a claim with evidence rather than an assertion, and
-prompt 168's audit consumes it.
+prompt 169's audit consumes it.
 
 ## 4. Quotation as a pattern
 
@@ -231,12 +231,12 @@ never matches, which is the failure the `text_equal` chain already has. The answ
 notation's words and one `Text`-to-case lookup, which centralizes every literal in one function and makes the dispatch
 that reads it coverage-checked. That is `01-surface.md` §1.3's enum doing its job, not this form.
 
-Saying which half is which is what stops prompt 165 from being surprised by the remainder, and the trial's measurement
+Saying which half is which is what stops prompt 166 from being surprised by the remainder, and the trial's measurement
 is that the dispatch table shrinks by about a sixth rather than by a half.
 
 **The trial found no quote pattern in either adapter**, for a reason worth recording here rather than discovering twice:
 a quote pattern is written in Musa, and the notation both adapters read is not Musa. The form is for an adapter over
-Musa syntax — a template dialect, a lint, a structured edit — and prompt 167's freeze is where an absent user is
+Musa syntax — a template dialect, a lint, a structured edit — and prompt 168's freeze is where an absent user is
 decided.
 
 ## 5. The single-descent rule, satisfied rather than weakened
@@ -285,7 +285,7 @@ Seven of the fourteen phase operations therefore go, leaving `recurse_syntax`, `
 loses its third argument, because the place it took is what §3 computes — as `Derived { origin, quotation, path }` of
 the anchored node, at a reserved site no quote can draw, since a δ rule is a function of its arguments and nothing else
 (`02-core-calculus.md` §5.8's D3) and the node's own path is already the unique name. Prompt 139 owns the deletions;
-prompt 165 owns the anchor's arity, as the prompt that removes the last caller of the place argument. The binding three
+prompt 166 owns the anchor's arity, as the prompt that removes the last caller of the place argument. The binding three
 come back when an adapter introduces a name the composer can see and refer to, which neither the staff nor the studio
 adapter does.
 

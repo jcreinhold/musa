@@ -26,7 +26,7 @@ successor document, because after prompt 146 a structure is an ordinary record a
 ## Design
 
 **`11-quotation.md` §1's reason expires.** It reads: "A family would make `Cat` an index a `match` could unify, and
-would pull the indexed-family machine into the core for one type." After prompt 155 the machine is in the core for the
+would pull the indexed-family machine into the core for one type." After prompt 156 the machine is in the core for the
 music domains anyway, so the cost is zero and the benefit is real: matching a syntax value refines its category, and
 `as_expression` becomes an ordinary function rather than a compiler builtin.
 
@@ -37,7 +37,7 @@ word is required and why — an acceptance rule conversion cannot see is the thi
 
 **`01-surface.md` gains three things and loses one.** Gains: index syntax in `data`, writable implicit binders, and the
 statement that `record` and `enum` are sugar. Loses: `signature`/`structure`/`template structure`/`make`, which prompt
-161 deletes — marked *deprecated, owned by 161* here rather than removed, so the corpus still validates against this
+162 deletes — marked *deprecated, owned by 161* here rather than removed, so the corpus still validates against this
 document until that prompt runs.
 
 **`10-traits.md` is retired, not succeeded.** The counter-argument to answer is that retiring it loses the coherence
@@ -47,7 +47,7 @@ comes first — and that becomes a style-guide line about record field order, no
 
 **Record η loses its only client.** `10-traits.md` stated coherence as "unique up to conversion… decided by η at
 `quote`". That sentence is the sole reason record η is required by anything. Note its removal explicitly, because prompt
-156 depends on it and a reader who does not know this will think 156 is unsound.
+157 depends on it and a reader who does not know this will think 156 is unsound.
 
 ## Target
 

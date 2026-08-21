@@ -137,9 +137,9 @@ fn the_program_names_no_builder_and_allocates_no_role() {
     // them because nothing left can take one.
     //
     // Reading the source is the right observation here. These operations are
-    // still in the language — prompt 165 is where `staff.musa` stops using
+    // still in the language — prompt 166 is where `staff.musa` stops using
     // them — so what this says is that the *rewritten* program has no use for
-    // any of them, which is the measurement prompt 165 is gated on.
+    // any of them, which is the measurement prompt 166 is gated on.
     let retired = [
         "syntax_built",
         "syntax_token",

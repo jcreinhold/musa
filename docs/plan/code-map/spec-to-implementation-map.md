@@ -29,7 +29,7 @@ unfulfilled. `partial` means some of it stands. `absent` means no code answers t
 | [A written piece as the track it denotes](#a-written-piece-as-the-track-it-denotes) | `musa-compiler` | implemented, unreached | 142 |
 | [Records and enums as surface syntax](#records-and-enums-as-surface-syntax) | `musa-syntax` | implemented | 137, 142 |
 | [The private marker](#the-private-marker) | `musa-syntax` | implemented | 137, 142 |
-| [Module visibility](#module-visibility) | `musa-calculus` | implemented | 142, 165–166 |
+| [Module visibility](#module-visibility) | `musa-calculus` | implemented | 142, 166–167 |
 | [Records and enums, elaborated](#records-and-enums-elaborated) | `musa-calculus` | implemented | 142 |
 | [Traits and instances](#traits-and-instances) | `musa-calculus` | implemented | 137a, 142, 143 |
 | [Method resolution](#method-resolution) | `musa-calculus` | implemented | 142 |
@@ -58,9 +58,9 @@ defending it earns a section above.
 | Building and closing a fragment into a core term | compiler to event track | implemented, but over the deleted contextual `music` type | prompt 142 rebuilds it over ordinary values; differential and closure tests |
 | Finite `EventTrack<C,A>` operations, including unequal-duration `together` | `musa-events` | implemented at the old names and without the coordinate index | prompts 127b–127c; current 62 event track tests and final conformance audit |
 | Versioned exact bytes for event-track equality | `musa-events` | implemented; the coordinate tag is not yet in the encoding | prompt 127c, then a migration test when a persisted reader is added |
-| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-dsp` | absent | prompts 170–172 |
-| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-dsp` | absent | prompt 172 |
-| Gesture event track | `musa-compiler` | absent | prompt 176 and its admission tests |
+| `Machine<K,A,B>` as a core value of the source language | `musa-compiler`/`musa-dsp` | absent | prompts 171–173 |
+| `schedule(format, policy, time map, track)` with a recorded decision list | `musa-dsp` | absent | prompt 173 |
+| Gesture event track | `musa-compiler` | absent | prompt 177 and its admission tests |
 | Engraving plan and current exports | `musa-notation` | implemented for current score facts | language graduation matrix |
 | Analysis packages with their own hidden value types and evidence | `musa-compiler` | partial built-in analyses; no general package mechanism | accepted source type design and real package examples |
 | Valid whole-machine step order | `musa-dsp` | partial and not conforming to the new ordering rule | known ordering counterexample, machine-law tests |
@@ -132,8 +132,8 @@ It bounds what the *charge* bounds: `eval` and `quote` charge as they descend an
 elaborator's own recursion is charged nothing and reaches the bottom of a raw term before anything is charged — so a
 term far past the limit, 1,256 levels of raw `let`, measured, still aborts.
 
-**Owes.** Prompt 164: the elaborator's nesting charge and the spine walk that lets 256 stay 256, plus approximate
-conversion (note 44 §7; §6's glued evaluation landed at 141u). Prompt 168: the metatheory matrix.
+**Owes.** Prompt 165: the elaborator's nesting charge and the spine walk that lets 256 stay 256, plus approximate
+conversion (note 44 §7; §6's glued evaluation landed at 141u). Prompt 169: the metatheory matrix.
 
 ## Bidirectional elaboration
 
@@ -304,7 +304,7 @@ Maranget's necessity condition specialized to an ordered `match`: the first row 
 column is the leftmost that row tests. An arm's body is still elaborated once per leaf it reaches.
 
 **Owes.** Prompts 136–141 build records, enums, traits, `Syntax<Cat>`, and the collections on top of it as library code.
-Prompt 164 owes the arm-body hoist and its measurement (note 44 §2). Prompt 168 owes the metatheory matrix.
+Prompt 165 owes the arm-body hoist and its measurement (note 44 §2). Prompt 169 owes the metatheory matrix.
 
 ## Base types and builtins
 
@@ -408,7 +408,7 @@ an absence of two questions rather than an exemption from them.
 Nor is it a weaker `Builtin::new`: every machine form is polymorphic in its ports, so a type stands on every spine and
 `canonical` answers `None` at a universe, and a δ-rule registered there could never have fired.
 
-**Owes.** Prompt 142 writes the desugaring and cuts the compiler over; prompt 163 collapses the table behind traits.
+**Owes.** Prompt 142 writes the desugaring and cuts the compiler over; prompt 164 collapses the table behind traits.
 
 ## Numerals at a counting family
 
@@ -449,7 +449,7 @@ a `match` at every count the tower can still be written at; a nesting cost indep
 of magnitude; and fifty thousand neither overflowing the stack nor deepening the term — on both sides of the data
 boundary.
 
-**Owes.** Prompt 142 writes numerals from the surface; prompt 163 adds arithmetic over them; prompt 168 audits §5.10
+**Owes.** Prompt 142 writes numerals from the surface; prompt 164 adds arithmetic over them; prompt 169 audits §5.10
 with the rest of §5.
 
 ## The compiler's own domains and operations
@@ -604,7 +604,7 @@ agreement laws need the old evaluator and `eval_builtin`, `expand_region`, and `
   hand-built expected kinds, which is what checks the field data the two ends cannot see: a field read at the wrong
   offset, out of the wrong domain, or in the wrong order answers a kind the comparison names.
 
-**Owes.** Prompt 142 elaborates the surface into this registry and deletes the old checker and evaluator; prompt 163
+**Owes.** Prompt 142 elaborates the surface into this registry and deletes the old checker and evaluator; prompt 164
 collapses the table behind traits.
 
 ## The CST read as a raw core term
@@ -863,7 +863,7 @@ Three refusals: the private name; an enum marking some cases and not others; and
 family whose cases are private — the last raised at the split rather than at the `match`, since an arm that only binds
 never takes the type apart. The generated recursor is hidden with the cases.
 
-**Owes.** Prompt 142 supplies the first real module identities; prompts 165–166 measure whether the marker earned its
+**Owes.** Prompt 142 supplies the first real module identities; prompts 166–167 measure whether the marker earned its
 keep.
 
 ## Records and enums, elaborated
@@ -923,7 +923,7 @@ written.
 A family's constraints are ordinary parameters appended after the written ones, so none of `Group::params`'s arithmetic
 moves and `Storable` is unaffected — a dictionary is a parameter, never a stored field.
 
-**Owes.** Prompt 137a spells it on the surface; prompt 142 is the first caller; prompt 163 collapses the builtin
+**Owes.** Prompt 137a spells it on the surface; prompt 142 is the first caller; prompt 164 collapses the builtin
 registry into it.
 
 ## Method resolution
@@ -984,7 +984,7 @@ There is no `Storable` entry in any `Classes`, no generated instance, and no `Cx
 `trait Storable` is `Refusal::ReservedClass` and a source `impl Storable` is `Refusal::HandWrittenStorable`, behind
 every spelling.
 
-**Owes.** Prompt 163 retires `musa-compiler`'s `d` type-variable class against it; prompt 168 owes the payload-boundary
+**Owes.** Prompt 164 retires `musa-compiler`'s `d` type-variable class against it; prompt 169 owes the payload-boundary
 re-derivation.
 
 ## The syntax index
@@ -1006,8 +1006,8 @@ no namespacing feature was added to a checker prompt 142 deletes.
 A syntax value cannot say which category it has — the claim is erased — so `infer::admits` treats any two as equal.
 `Derived { origin, quotation, path }` names what `syntax_built` already computed.
 
-**Owes.** Prompt 139's quote is the replacement for the seven construction operations and prompt 165 is where the last
-caller stops using them; prompt 163 collapses `token_kind_equal` and `delimiter_equal` into `Eq`; the entry-by-entry
+**Owes.** Prompt 139's quote is the replacement for the seven construction operations and prompt 166 is where the last
+caller stops using them; prompt 164 collapses `token_kind_equal` and `delimiter_equal` into `Eq`; the entry-by-entry
 survey is [note 45](../../notes/research/language-design-closure/45-phase-registry-survey.md).
 
 ## Quotation as a written form
@@ -1032,7 +1032,7 @@ position in the quote's own tree; a spliced node keeps its arrival identity. `pa
 step in, since an empty path would restate the origin and put every site's outermost node at one address. The
 construction is charged to the expansion budget where it is built.
 
-**Owes.** Prompt 165 rewrites `stdlib/src/adapters/staff.musa` on it and measures; the trial's construction program
+**Owes.** Prompt 166 rewrites `stdlib/src/adapters/staff.musa` on it and measures; the trial's construction program
 compiles today as `tests/fixtures/staff-construction.musa`.
 
 ## Quote patterns
@@ -1066,7 +1066,7 @@ between them a search.
 Coverage is `Shape`, keyed on the template — like a literal it constrains without enumerating, so a match of shapes
 still needs the arm that says what the adapter reads, and two identical shapes are one arm.
 
-**Owes.** Prompt 165 rewrites `stdlib/src/adapters/staff.musa` and measures; the trial's dispatch program compiles today
+**Owes.** Prompt 166 rewrites `stdlib/src/adapters/staff.musa` and measures; the trial's dispatch program compiles today
 as `tests/fixtures/staff-dispatch.musa`, and it contains no quote pattern at all — which is
 [note 43](../../notes/research/language-design-closure/43-dependent-language-trial.md) §2's own finding about where the
 form belongs, since a pattern is written in Musa and staff notation is not.
@@ -1122,7 +1122,7 @@ the only producer is a module read and a module cannot import. Nothing is splice
 codes only ever raised inside an adapter module now reach their author with the note and the help they were written
 with.
 
-**Owes.** Prompt 164 owns the wording. `Code::Import`'s `` `{path}` does not compile `` is the same shape on the library
+**Owes.** Prompt 165 owns the wording. `Code::Import`'s `` `{path}` does not compile `` is the same shape on the library
 path and is named in [note 47](../../notes/research/language-design-closure/47-diagnostics-about-another-document.md) §4
 as the next application.
 
@@ -1155,7 +1155,7 @@ A resolved key that is a real path becomes a `file://` URI with the cause's mess
 help is already folded into the primary's. A key with no file behind it, and a cause with no labels at all, fold into
 the primary message instead of being dropped, because a composer who cannot click through still has to be told.
 
-**Owes.** Prompt 164 owns the wording.
+**Owes.** Prompt 165 owns the wording.
 
 ## Causes in the problems list
 
@@ -1194,7 +1194,7 @@ quadratic.
 [note 46](../../notes/research/language-design-closure/46-collections-and-the-vec-answer.md) records the answer and the
 condition that re-opens it.
 
-**Owes.** Prompt 142 writes the same declarations in `.musa` and hands them to authors; prompt 165 measures what a
+**Owes.** Prompt 142 writes the same declarations in `.musa` and hands them to authors; prompt 166 measures what a
 forward-accumulating traversal is worth against the reversed reading algorithm it replaces.
 
 ## Per-term provenance
@@ -1238,13 +1238,13 @@ two is the mistake `02-core-calculus.md` §1.1 now warns about in its own words.
 
 **Owes.** Prompt 142c wrote the specification and the amendment. Prompt 142d builds `index.rs`, whose load-bearing check
 is byte-identity of every snapshot, fixture, and pinned digest, since an index that reaches a stored file is a defect in
-erasure. Prompt 163 discharges the seventeen `pc12_*`/`row12_*` builtins the amendment was granted on.
+erasure. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the amendment was granted on.
 
 ---
 
 ## Recommended implementation order
 
-1. Carry out the clean break of prompts 127b–127d, 142, and 170–173: the event-track rename and coordinate index, the
+1. Carry out the clean break of prompts 127b–127d, 142, and 171–174: the event-track rename and coordinate index, the
    deletion of the contextual `music` type, machines as core values, and `schedule`.
 2. Finish or reject the small source-language design for theory-owned data. Do not implement it while stable package
    selection remains undefined.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the @musa/web wasm artifact (prompt 193), the post-wasm-pack way:
+# Build the @musa/web wasm artifact (prompt 194), the post-wasm-pack way:
 # cargo build → wasm-bindgen --target web → wasm-opt -Oz. Wasm-pack was
 # sunset in July 2025; this is its three useful steps, pinned.
 #

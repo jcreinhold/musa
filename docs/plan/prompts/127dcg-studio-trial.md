@@ -8,8 +8,8 @@ phase: 3
 
 # Write the Studio Adapter as an Unprivileged Package
 
-> **Superseded by prompt [166](166-studio-rewrite.md).** This file is kept rather than deleted because completed prompts
-> and research notes link to it. Its Task, Design, Target, and eight-item coverage list are prompt 166's obligations
+> **Superseded by prompt [167](167-studio-rewrite.md).** This file is kept rather than deleted because completed prompts
+> and research notes link to it. Its Task, Design, Target, and eight-item coverage list are prompt 167's obligations
 > verbatim; what changed is the language the adapter is written in. Do not execute this prompt.
 
 ## Task

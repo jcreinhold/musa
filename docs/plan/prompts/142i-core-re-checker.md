@@ -8,13 +8,14 @@ phase: 3
 
 # Build the Re-Checker the Crate Already Cites
 
-> **Superseded by [prompt 157](157-core-re-checker.md), *Build the Re-Checker the Crate Already Cites*.** Prompt 157
-> carries this prompt's whole Task, moved after the core replacement of prompts 147–156. A re-checker written against
-> the term language those prompts replace would be written twice, and after metavariables and case trees it is guarding
-> considerably more.
+> **Superseded by [prompt 149](149-the-trusted-kernel.md), *Make the Kernel Trusted and Elaboration Untrusted*, and
+> [prompt 158](158-recheck-the-whole-core.md), *Close the Re-Checker Over the Whole Core*.** This prompt's Task is split
+> in two because the re-checker's value depends on *when* it exists: 149 builds it while the term language is seven
+> constructors, so that prompts 151-157 are each guarded as they land, and 158 audits those extensions and closes the
+> pass over metavariables, case trees, families and levels.
 >
-> This file is not executed. It stays because the ledger and the prompts above it link to it, and because prompt 157's
-> Read section cites it for the argument rather than repeating it.
+> This file is not executed. It stays because the ledger and the prompts above it link to it, and because both
+> successors cite it for the argument rather than repeating it.
 
 ## Task
 
@@ -38,14 +39,14 @@ that is not in that file. The tests that are named `..._re_checks_in_the_core` c
 elaborator checking its own work, which is not evidence about anything.
 
 So there is one typing judgment in the crate, the elaborator's, and nothing validates the terms it emits. Prompt
-[168](168-core-conformance.md) discharges an obligation matrix that assumes the re-checker exists. Build it, at the path
+[169](169-core-conformance.md) discharges an obligation matrix that assumes the re-checker exists. Build it, at the path
 the comments already name.
 
 ## Read
 
 - Prompt [134](134-bidirectional-elaboration.md)'s sections on the re-checker — the specification this prompt
   discharges, unchanged. Read it for _why_ it was called the most valuable invariant, not only for what it asks.
-- Prompt [168](168-core-conformance.md), which already writes "the elaborator's conversion and the re-checker's" among
+- Prompt [169](169-core-conformance.md), which already writes "the elaborator's conversion and the re-checker's" among
   the pairs that must answer the same question.
 - 142h's `kernel/`–`elaboration/` boundary and its law suite. The re-checker's whole value is that it lives on the
   kernel side and _cannot_ call the elaborator; before 142h nothing enforced that and a re-checker would have been

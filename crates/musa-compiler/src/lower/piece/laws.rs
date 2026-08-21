@@ -903,7 +903,7 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 ///
 /// **This is the one thing standing between the survey and 142's Check**, and
 /// it is recorded rather than answered because both ways of answering it belong
-/// to prompt 164. Making the checker spend fewer steps on this shape is 144's
+/// to prompt 165. Making the checker spend fewer steps on this shape is 144's
 /// performance half, which already names the left-nested `follow` spine
 /// ([`crate::lower::notation`]) and the re-normalization conversion does.
 /// Raising 200,000 is a cost-table version bump: `02-core-calculus.md` §4 calls

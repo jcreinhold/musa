@@ -128,7 +128,7 @@ Two things the stance predicted wrong, both repaired in place:
 
 - **N5 is not a subset of the grammar.** It writes the N3 key bare and has no version header, and the N3 key is the
   *equality* serialization — for `ScoreFact` it deliberately omits provenance an interchange file must carry. The two
-  serializations are separate. At prompt 48 both stayed exactly as they were. Prompt 175a later found that N5 itself is
+  serializations are separate. At prompt 48 both stayed exactly as they were. Prompt 176a later found that N5 itself is
   not uniquely framed and moved semantic identity to N6's versioned binary record; `05-normalization.md` states the
   current repair.
 - **The payload grammar in `01-grammar.md` had to go.** Record-shaped payload values would make the event track know
@@ -169,7 +169,7 @@ is still one (`prevailing`), and the threshold is unmet by a wider margin than b
   subset of the grammar" was false in both directions: N5 writes the N3 key bare and has no version header, and the N3
   key for `ScoreFact` quotients away the definition span and declaration id an interchange file must carry. The key
   stayed untouched, the interchange text became a second function, and at prompt 48 no golden or semantic hash moved.
-  Prompt 175a later replaced ambiguous display hashing with versioned framed N6 bytes while preserving N5 display.
+  Prompt 176a later replaced ambiguous display hashing with versioned framed N6 bytes while preserving N5 display.
   Consequently `musa events --normalized` prints the *interchange* spelling of the normal form, which `--check` accepts
   — a strictly better artifact than N5 bytes, which nothing can read. Also: `examples/events/*.musa.events` are plain
   files rather than insta snapshots, because a corpus that exists to be read by another implementation must be readable

@@ -59,7 +59,7 @@ row12_of  row12_pcs  row12_head  row12_transposed  row12_inverted  row12_retrogr
 row12_matrix  row12_forms  row12_symmetries  row12_repeats  row12_missing
 ```
 
-That is **17 of the registry's 139 entries — 12% — spent on one value of one index**, and prompt 163's builtin collapse
+That is **17 of the registry's 139 entries — 12% — spent on one value of one index**, and prompt 164's builtin collapse
 was superseded before it could notice. The domain demands other values: `068-equal-divisions-of-the-octave.md` is
 *about* dividing the octave into n parts, `106-collections.md` generates collections from interval patterns that must
 sum to the octave, and quarter-tone and 19-EDO repertoire needs `Row(24)` and `Row(19)`. Under the current design each

@@ -132,7 +132,7 @@ Commit as `Give the core its structural eliminators`.
 - No collection eliminator registered in `musa-calculus`, and no `List`, `Nat`, or `Option` in its `src/`. Those are
   library types; prompt 141 already proved they are writable.
 - No wiring, no move of `BUILTIN_OWNERSHIP`, and no `musa-compiler` checker change. Prompt 142 owns the cutover.
-- No registry collapse and no builtin deleted. Prompt 163.
+- No registry collapse and no builtin deleted. Prompt 164.
 - No callback into the evaluator, no `Value` in a public signature, and no interior mutability. The rule takes terms and
   answers a term; anything wider re-opens roadmap §15.12.
 - No amendment to §5.8. This prompt implements its second family; a disagreement is a finding to record.

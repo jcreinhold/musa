@@ -186,7 +186,7 @@ fn the_group_check_terminates_on_a_mutually_recursive_group() {
 ///
 /// The message is the core's, which names the occurrence rather than the arrow
 /// it stands to the left of. That is weaker than what the old checker said and
-/// prompt 164 owns the wording; what this law is about is that the declaration
+/// prompt 165 owns the wording; what this law is about is that the declaration
 /// is refused at all, and at `Trap`.
 #[test]
 fn a_non_positive_declaration_is_rejected_at_its_field() {
@@ -231,7 +231,7 @@ fn a_structure_that_declares_no_such_type_does_not_match_its_signature() {
 /// `(A : Type) → Type`), so both mistakes are reported by the elaborator as
 /// what they are: one argument too many is an application of something that is
 /// no longer a function, and one too few leaves a function standing where a
-/// type is needed. Naming the count is prompt 164's, and the span is the law —
+/// type is needed. Naming the count is prompt 165's, and the span is the law —
 /// the written type, not the declaration.
 #[test]
 fn a_declaration_instantiated_at_the_wrong_arity_is_rejected() {

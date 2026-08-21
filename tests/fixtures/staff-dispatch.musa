@@ -46,7 +46,7 @@
 //   phase spells them `data` and names a case by its constructor, which is
 //   what `staff.musa` spells them today. Nothing about the dispatch changes.
 // - The trial writes `match kind { TokenKind::Tilde -> … }`. `TokenKind` and
-//   `Delimiter` are compared rather than matched until prompt 163 collapses
+//   `Delimiter` are compared rather than matched until prompt 164 collapses
 //   the builtin registry, so those two halves are chains over
 //   `token_kind_equal` and `delimiter_equal`. The distinction the trial draws
 //   — a *named* kind rather than its spelling — is the same either way.

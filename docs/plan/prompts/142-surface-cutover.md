@@ -19,7 +19,7 @@ in the middle. It absorbs prompt 127e, whose file stays as a superseded record r
 
 - `docs/plan/clean-break-ledger.md` in full — every source spelling, Rust API, serialized form, fixture, and test name
   it names as deleted rather than aliased. This prompt discharges the rows it owns and leaves the machine rows to
-  170–173.
+  171–174.
 - The superseded prompt [127e](127e-source-language-clean-break.md), whose whole Task this prompt absorbs. Everything it
   specifies is this prompt's obligation: contextual `Music` goes, notation becomes ordinary values, and placement comes
   from the enclosing voice's left fold. Absorbing it was right because migrating `stdlib/` twice — once onto the old
@@ -220,8 +220,8 @@ fixtures via their generators, and `editors/tree-sitter-musa`'s corpus. The book
 follow-up.
 
 **`staff.musa` migrates; it is not rewritten.** It moves onto the new language with its structure intact, still
-backwards, still without quotation. Prompt 165 rewrites it and measures the result against 2,404 lines, and a partial
-rewrite here would destroy that measurement. The same applies to the studio adapter and prompt 166. *Repaired ordering:*
+backwards, still without quotation. Prompt 166 rewrites it and measures the result against 2,404 lines, and a partial
+rewrite here would destroy that measurement. The same applies to the studio adapter and prompt 167. *Repaired ordering:*
 145 now lands immediately after this prompt, ahead of 143 and 144, because the staff budget failures this migration
 leaves close with the rewrite and with nothing smaller — 145's **Read** carries the measurement that reordered it.
 
@@ -504,7 +504,7 @@ rules never authorized.
     appears on a ledger of deleted concepts and both belong on this list.
   - **A dead item is not automatically a deletion, and `core_budget.rs`'s row is the proof.** `WorkMeter::output` and
     `preflight_output` are unused because nothing in the new lowering charges the million-occurrence limit
-    `06-elaboration-baseline.md` fixes: a capability not yet called, not a capability replaced. It stays, and prompt 164
+    `06-elaboration-baseline.md` fixes: a capability not yet called, not a capability replaced. It stays, and prompt 165
     re-measures it. Every row is sorted into *replaced* or *not yet called* before anything is removed, and that sorting
     is what the second-path audit records — an unsorted deletion silently converts a hole into an intention.
   - **The check is the crate's own warning count, because the ledger cannot be.** `clean-break-ledger.md` names concepts
@@ -539,7 +539,7 @@ rules never authorized.
     *says*, the step tag as something the surface *reads*.
   - **A conversion mismatch names the two types it was already holding.** `musa-calculus` gained `show.rs`, a printer in
     core vocabulary — `Machine K A B` and not `Machine<K, A, B>`, because that is what the term is — so `Mismatch` says
-    `expected Ratio, found Nat` and `Refusal::UnkeyedConstraint` says which type no key could hold. Prompt 164 still
+    `expected Ratio, found Nat` and `Refusal::UnkeyedConstraint` says which type no key could hold. Prompt 165 still
     owns the rest of the diagnostic surface; what is discharged here is only the part where the stage had computed the
     answer and printed none of it.
   - **§1.3's complete-call rule needed a form of its own, and "declared parameter" turned out not to be a fact about
@@ -598,7 +598,7 @@ rules never authorized.
     prompts.** `diatonic-sequences`, `rule-of-the-octave`, and `staff-page` reach 200,000 reduction steps. §4 sets that
     number as a language-version constant against the *replaced* checker, and this prompt's **Stop** forbids performance
     work and a benchmark rerun on a half-migrated compiler. *Repaired after the measurement this bullet deferred.*
-    `staff-page` goes to prompt 165, pulled ahead of 143 and 144 for exactly this: instrumented on the migrated checker,
+    `staff-page` goes to prompt 166, pulled ahead of 143 and 144 for exactly this: instrumented on the migrated checker,
     the 77-line file spends 1,605,182,361 reduction steps, 1,108,756,085 of them `eval` entries over 2,719 distinct
     source origins, with 18,922,391 δ-unfoldings over 84 distinct definitions — the adapter's backwards reading calling
     through the library. A per-term closedness tally (each distinct term shape walked once for a `Var` anywhere under
@@ -637,7 +637,7 @@ rules never authorized.
     two readings of one program rather than about two programs.
   - `stdlib/src/adapters/staff.musa` and `stdlib/src/adapters/doubled.musa` import `std::nat`, `std::option`, and
     `std::list` as they need them, and keep every call they already write. **This is the migration, not the rewrite**:
-    the diff is import lines, and prompt 165's measurement is untouched.
+    the diff is import lines, and prompt 166's measurement is untouched.
   - The law: a module whose printer names an imported function reads under both readings, and an adapter that writes
     `import syntax …` is refused with a sentence naming the bootstrap.
 - `stdlib/`, `examples/`, book fixtures, LSP fixtures, desktop generated fixtures, and the tree-sitter corpus migrated.
@@ -647,7 +647,7 @@ rules never authorized.
   141m's and unchanged — `Option` is a musical answer, `Result τ Text` is a diagnostic wearing a value's clothes — and
   what makes it worth doing here rather than never is that 141l routed `x + y` through `Add.add`.
 - Contextual `Music` and `ContextualMusic` gone from source, compiler, and documents.
-- `docs/plan/clean-break-ledger.md`: every row this prompt owns marked discharged, with the rows left for 170–173 named.
+- `docs/plan/clean-break-ledger.md`: every row this prompt owns marked discharged, with the rows left for 171–174 named.
 - `tests/fixtures/elaboration-expected-changes.json`: every moved oracle entry, argued.
 - `docs/plan/code-map/` rows for every crate that changed, and `docs/rules/language/` repaired wherever the
   implementation proved a specification claim wrong.
@@ -675,7 +675,7 @@ its change is argued in `elaboration-expected-changes.json`.
 **Two classes of budget exhaustion are expected red at this commit, and they are named rather than silent.** The *staff
 class*: every test whose only failure is `reduction steps at 200001 of 200000` out of the staff adapter's expansion —
 today `staff_expansion_laws`'s expansion regions, `every_example_elaborates`' staff-page case, and
-`the_staff_page_example_compiles_and_renders`. It closes at prompt 165, which lands next and whose Check runs the same
+`the_staff_page_example_compiles_and_renders`. It closes at prompt 166, which lands next and whose Check runs the same
 two `nextest` lines with this class green.
 
     *Repaired during implementation.* The class has one downstream member the failure-mode sentence does not name:
@@ -683,7 +683,7 @@ two `nextest` lines with this class green.
     at `staff-page.musa` with "cannot export: the piece has never compiled successfully" — the staff class seen one
     stage later, at the export boundary rather than at the budget. Its only failure is the staff adapter's; it goes
     green with the rest of the class at 145. The *tonal class*: the same failure mode out of `diatonic-sequences` and
-`rule-of-the-octave`, ordinary `std::tonal` evaluation with no adapter involved. It closes at prompt 164, which measures
+`rule-of-the-octave`, ordinary `std::tonal` evaluation with no adapter involved. It closes at prompt 165, which measures
 it and sets the cost table. This prompt's closing commit lists every red test in both classes by name; anything red
 outside them means the prompt is not done.
 
@@ -710,12 +710,12 @@ Commit as `Move the whole language over, once`.
 
 - No compatibility mode, no alias, no deprecation shim, no per-file language selection, no "old syntax still accepted
   with a warning". The ledger's rule is rename, delete, and version-break in the prompt that owns the concept.
-- No rewrite of `stdlib/src/adapters/staff.musa` or the studio adapter beyond mechanical migration. Prompts 165 and 166
+- No rewrite of `stdlib/src/adapters/staff.musa` or the studio adapter beyond mechanical migration. Prompts 166 and 167
   own those, and own their measurements.
-- No builtin-registry collapse. Prompt 163.
+- No builtin-registry collapse. Prompt 164.
 - No re-translation of a signature or a rule 141e already wrote. A disagreement between the two is a defect in one of
   them and is repaired where it is, not worked around here.
-- No performance work and no benchmark rerun. Prompt 164 measures the finished checker; measuring a half-migrated one
+- No performance work and no benchmark rerun. Prompt 165 measures the finished checker; measuring a half-migrated one
   would produce a number nobody can act on.
 - No hand-edited generated file, under any deadline pressure.
 - No new language feature. If the migration wants one, that is a finding and a repair, and it is far better to record it

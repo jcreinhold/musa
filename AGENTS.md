@@ -28,14 +28,14 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
    prompt 26.
 5. **`docs/rules/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
    extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
-   `import` and `use` are two words because they were always two statements. Candidate until prompt 192 graduates it, so
+   `import` and `use` are two words because they were always two statements. Candidate until prompt 193 graduates it, so
    everything above it in `docs/README.md`'s precedence ladder wins where they differ.
 
 Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 233 prompts through rank 179, with its README
 defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
-Prompts 127a–127d and 170–173, including inserted prompts 127aa–127ad, 127ca, and 127da, are the clean-break
+Prompts 127a–127d and 171–174, including inserted prompts 127aa–127ad, 127ca, and 127da, are the clean-break
 core-calculus cutover; 127a amends the current governing boundary before any code implements the replacement. Prompts
-**128–169** are the language pass: a dependent core with bidirectional elaboration, coherent traits, records, and typed
+**128–170** are the language pass: a dependent core with bidirectional elaboration, coherent traits, records, and typed
 quotation, admitted by an amendment at 128 on the evidence of `stdlib/src/adapters/staff.musa`, and measured by the
 rewrite of that same file at 145. **`code-map/`** reports which crate implements which stage and what is implemented,
 partial, or absent; it describes code and decides nothing.
@@ -70,7 +70,7 @@ let them drift silently.
 | `docs/rules/across-stages/` | cross-stage presentations, derivations, process semantics, identity |
 | `docs/rules/events/` | the event-track specification |
 | `docs/rules/desktop/` | the desktop interface specification |
-| `docs/rules/language/` | the elaboration-language specification (candidate until prompt 192) |
+| `docs/rules/language/` | the elaboration-language specification (candidate until prompt 193) |
 | `docs/rules/style-guide.md` | `.musa` naming and spelling; the lint pass cites it by section |
 | `docs/plan/` | **directive.** roadmap, numbered prompts, and the spec-to-code map |
 | `docs/book/` | **teaching.** tutorials, guide, how-to, explanation, reference |

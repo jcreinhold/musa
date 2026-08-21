@@ -13,7 +13,7 @@ use musa_syntax::{BarSpacing, SyntaxElement, SyntaxKind, format, parse};
 /// The program every layout law here is stated over.
 ///
 /// `Pending` is `stdlib/src/adapters/staff.musa`'s eight-field product, cut to
-/// the four fields the laws need: prompt 165 measures the real one.
+/// the four fields the laws need: prompt 166 measures the real one.
 const RECORDS: &str = r#"piece "Records" {
     record Region {
         anchor: Nat;

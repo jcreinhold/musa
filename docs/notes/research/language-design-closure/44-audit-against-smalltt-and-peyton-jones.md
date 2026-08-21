@@ -216,7 +216,7 @@ Two consequences worth naming:
 **Where it lands.** The _implementation_ repair needs no amendment: `02-core-calculus.md` §6.2 fixes the meaning of
 `match`, and the meaning does not change — the hoisted tree is convertible with the duplicated one, which is exactly the
 law [`coverage_laws.rs`](../../../../crates/musa-calculus/tests/suite/coverage_laws.rs) already states. It should be a
-new prompt between 136 and 137, ahead of 142's cutover; folding it into prompt 164 (`diagnostics-and-performance`) is
+new prompt between 136 and 137, ahead of 142's cutover; folding it into prompt 165 (`diagnostics-and-performance`) is
 worse, because 142 runs the whole standard library through this compiler first.
 
 **One part of the repair is not mine to make.** `02-core-calculus.md` §6.2 states the decline in the same incomplete
@@ -295,7 +295,7 @@ most-reduced value. Concretely:
    prerequisite.
 3. Quotation for _diagnostics_ stops at folded heads; quotation for meta solutions does not.
 
-This is squarely a prompt-164 concern and 144's own Design should name it, because 144 re-measures the P1/P2 budget
+This is squarely a prompt-165 concern and 144's own Design should name it, because 144 re-measures the P1/P2 budget
 against exactly the workload that exposes it.
 
 **Landed at prompt 141u**, one rank earlier than this note assigned it, because 142's migration measured the cliff
@@ -323,8 +323,8 @@ because Haskell's runtime updates the thunk; this evaluator is pure and cannot. 
 partially-applied functions read field by field, nineteen million calls over a 77-line page — is the worst case for
 exactly that. The folded comparison's win is real where the workload offers it (the laws measure it), the staff page
 offers none of it, and the residual stands exactly where the tally said it stands: the adapter's call count, which
-prompt 165's rewrite attacks. Whether an unfold memo (interior state behind the `Arc`, or a keyed cache at the unfold
-site) is worth its complexity is a decision prompt 164 now has the measurement to take.
+prompt 166's rewrite attacks. Whether an unfold memo (interior state behind the `Arc`, or a keyed cache at the unfold
+site) is worth its complexity is a decision prompt 165 now has the measurement to take.
 
 ## §7 Finding D — conversion has no approximate mode, and no structural rule at Π or at record types for _terms_
 
@@ -431,7 +431,7 @@ header's argument for them ("the spine of `f x y` reads back as three terms") is
 not about the values being three allocations.
 
 This is the single highest-value performance change in the crate and it is invisible outside it: `Value` never leaves,
-so the whole change is internal. It belongs in prompt 164, measured against 144's own gate.
+so the whole change is internal. It belongs in prompt 165, measured against 144's own gate.
 
 ## §10 Finding G — `convertible` is a second path, and the naive one
 
@@ -445,7 +445,7 @@ pub fn convertible(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Result<bool
 
 This normalizes both sides completely and compares normal forms — the most expensive decision procedure available, and a
 _second_ implementation of a question `Unifier` already answers value-directed with early exit. The repo's own
-second-path audits (prompt 133's, and prompt 168's to come) forbid exactly this shape.
+second-path audits (prompt 133's, and prompt 169's to come) forbid exactly this shape.
 
 It is latent: a search finds no caller outside musa-calculus's own law suites, and stating the laws through the naive
 procedure is arguably the _right_ thing for a specification test — it is the definition, checked against the
@@ -453,7 +453,7 @@ implementation. The trap is the first external caller, which prompt 142 will sup
 
 **Correct long-term design.** Keep one procedure. `convertible` becomes a thin call into the unifier's conversion with
 metavariable solving disabled, and the law suites keep the normalize-and-compare version as a **test-local oracle**,
-where its naivety is the point. Prompt 168's second-path audit is the natural place, but the facade should be fixed
+where its naivety is the point. Prompt 169's second-path audit is the natural place, but the facade should be fixed
 before 142 hands it a caller.
 
 ## §11 Finding H — neutral variables carry their types
@@ -541,5 +541,5 @@ leaf, report only the per-leaf refusal — and it needs a plan pass first, becau
 binder types too.
 
 **So the answer to "the one thing that would change the verdict" is: it changed.** Finding A is a latent constant factor
-rather than a present cost, and it goes to prompt 164 with Finding C, which is where this note's last section said it
+rather than a present cost, and it goes to prompt 165 with Finding C, which is where this note's last section said it
 should go if the measurement moved. Six items are waiting there, and 144's Design names each one.

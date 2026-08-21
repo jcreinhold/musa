@@ -144,7 +144,7 @@ fn matches_reject_missing_and_unreachable_cases_separately() {
 /// constructor `Name`, so the family is recoverable from `Result.Err` and its
 /// arguments are not held at all. That makes restoring the note a change to
 /// what the refusal *carries* rather than to what it prints — coverage
-/// diagnostics are prompt 164's, and this is one of them.
+/// diagnostics are prompt 165's, and this is one of them.
 #[test]
 fn a_match_over_a_sum_must_answer_for_both_injections() {
     for (declarations, missing) in [

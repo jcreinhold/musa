@@ -48,7 +48,7 @@ enum Definition { Undeclared, Compiled(CaseTree), Constructor{..},
 enum CaseTree   { Split { on, alternatives }, Answer(Term), Impossible }
 ```
 
-`CaseTree` is declared here and stays a stub with one `Answer` arm until prompt 154 fills it; declaring it now is what
+`CaseTree` is declared here and stays a stub with one `Answer` arm until prompt 155 fills it; declaring it now is what
 lets `Definition` be written once.
 
 **Where each of the seventeen goes.** `Lam`/`Pi`/`Let` → `Bind` + `Binder`. `Const`/`Def`/`Base`/`Builtin` → `Named` +
@@ -93,7 +93,7 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
 **The oracle is exact acceptance.** This prompt changes no program's verdict. `--run-ignored all` must show the same
-failure list, byte for byte, that prompt 165's Check records — same tests, same messages, same counts. A message that
+failure list, byte for byte, that prompt 166's Check records — same tests, same messages, same counts. A message that
 changes wording is acceptable only where a type name in it changed; a *count* that changes means a semantics change
 crept in and the prompt is not done.
 

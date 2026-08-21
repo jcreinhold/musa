@@ -1,6 +1,6 @@
 # 06 — Elaboration Baseline and Compatibility
 
-Status: **governing for the prompt 93–191 migration**.
+Status: **governing for the prompt 93–192 migration**.
 
 This is the before-picture for the elaboration language. It measures the compiler that accepts only the old surface
 language and fixes what that language means before its evaluator, type checker, and parser change. It is not a claim

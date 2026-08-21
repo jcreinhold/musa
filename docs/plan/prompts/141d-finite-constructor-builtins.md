@@ -114,7 +114,7 @@ constructor lookup and lets a rule build a `Term` — 141c's `Rewrite` shape, on
 It puts the core's declaration representation into all 38 host rules, each of which would walk its own signature to find
 the group it needs before it can say `Some`; and it makes `Constant` constructible from outside, which is the one thing
 keeping "a constant is what a declaration put in scope" true. A name plus fields is what a rule actually means, so that
-is what it should be able to write. The cost is one small tree per call where 141b had a borrowed slice, and prompt 164
+is what it should be able to write. The cost is one small tree per call where 141b had a borrowed slice, and prompt 165
 is where that gets measured rather than asserted.
 
 **D1 becomes a registration check instead of a comment.** `Registry::new` today refuses an arrow in a δ signature and

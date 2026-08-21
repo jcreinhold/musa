@@ -40,14 +40,14 @@ function may take two groups, return one, or store one in a list. `algebra.musa`
 the trait could not do; a record does them without a mechanism.
 
 *Overloading becomes disambiguation.* `==` at five types is five names in scope and a checker that already knows the
-expected type. This is local bidirectional elaboration — it needs nothing from prompt 152 — and its failure mode is a
+expected type. This is local bidirectional elaboration — it needs nothing from prompt 153 — and its failure mode is a
 diagnostic listing the candidates and the type that ruled each out, which is strictly better than "no instance found".
 
-*The rest becomes macros.* Anything genuinely wanting dispatch on an open set is a macro's job, and prompt 159 is where
+*The rest becomes macros.* Anything genuinely wanting dispatch on an open set is a macro's job, and prompt 160 is where
 that lands.
 
 **The `fold` question, answered concretely.** Deleting `Iterable` does not mean hand-writing `list_fold`, `nat_fold`,
-`option_fold`. Prompt 155 gives every declared family a generated eliminator, so the fold for a family *is* its
+`option_fold`. Prompt 156 gives every declared family a generated eliminator, so the fold for a family *is* its
 recursor, generated. `iterable_list()`'s forty lines of Rust go away entirely — they were a hand-written catamorphism
 standing in for the one the family already implies.
 
@@ -81,7 +81,7 @@ cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
-`--run-ignored all` may still show the staff class prompt 165 owns and nothing else. Any new red is this prompt's.
+`--run-ignored all` may still show the staff class prompt 166 owns and nothing else. Any new red is this prompt's.
 
 Commit as `Delete the trait system`.
 

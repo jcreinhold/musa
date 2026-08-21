@@ -28,7 +28,7 @@ and provenance minted by the elaborator rather than allocated by the author. Thi
   the language about what an expression is.
 - Prompt [138](138-typed-syntax.md)'s `Derived` representation and its identity law — quotation is the thing that mints
   derived nodes at scale, so a bug here shows up as two nodes that should be distinct sharing an identity.
-- `stdlib/src/adapters/staff.musa`'s `// ---- writing` section — the code this replaces, and the measurement prompt 165
+- `stdlib/src/adapters/staff.musa`'s `// ---- writing` section — the code this replaces, and the measurement prompt 166
   makes.
 - `crates/musa-compiler/src/expand/mod.rs` — where the phase runs, and where a quote's `at here` node comes from.
 
@@ -104,5 +104,5 @@ Commit as `Implement quotation, splicing, and automatic provenance`.
   way to read provenance from inside a quote.
 - No fresh-name operation. If a program needs one, that is a finding and a repair of `11-quotation.md`, not an addition
   made here.
-- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 165.
+- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 166.
 - No template dialect and no second parser for quote bodies, in any form, including "a small one just for tokens".

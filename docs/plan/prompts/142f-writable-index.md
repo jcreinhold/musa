@@ -67,7 +67,7 @@ inferring matters because a sort the head declares is the only thing a `Pc(3/4)`
 - `crates/musa-calculus/src/convert.rs`'s `sort_of`, which already decides §1.5's question about a type value: a
   counting family is `Sort::Count` and a base registering `Measures` is `Sort::Rational`. The declaration check is that
   predicate asked one stage earlier, not a second list of admissible sorts.
-- `docs/plan/prompts/163-builtin-collapse.md`, which is the first consumer: `Pc(n)`, `PcSet(n)`, and `Row(n)` cannot be
+- `docs/plan/prompts/164-builtin-collapse.md`, which is the first consumer: `Pc(n)`, `PcSet(n)`, and `Row(n)` cannot be
   declared until this lands.
 
 ## Design

@@ -336,7 +336,7 @@ test.describe("the large score", () => {
    * inherited the layout those had walked away from and measured two zoom
    * steps as one. A quarter of every run was double-counted, and p95 — by
    * construction — reported one of the doubles. Isolated, the same build
-   * measures 117–194 ms, and that is the number this asserts.
+   * measures 117–195 ms, and that is the number this asserts.
    */
   test("B8: a zoom step is re-laid out within 250 ms", async ({ page }) => {
     await stubShell(page, "large-score");

@@ -37,7 +37,7 @@ This is the prompt that closes it.
 **Construction is the missing half.** The language can take a list apart and cannot put one together, and every
 consequence in note 41 §7 follows from that asymmetry. A list literal `[a, b, c]`, `cons`-style extension, and a
 `Buildable` trait that accumulates are the three forms that close it; the traversal that had to run from the end runs
-forwards afterwards, which is prompt 165's measurement to make.
+forwards afterwards, which is prompt 166's measurement to make.
 
 **`Buildable` and `Iterable` are two traits, not one.** Building and traversing are different capabilities: a `Vec A n`
 is iterable at every length and buildable only into a `Vec A (n+1)`. Keeping them apart is what lets `collect` be typed
@@ -94,4 +94,4 @@ Commit as `Let a list be built`.
 - No partial indexing operator on `List`, and no panicking access anywhere.
 - No `musa-compiler` wire-up and no `stdlib/` or `examples/` change. Prompt 142.
 - No second fold direction and no reversal of 127dcfaa's decision.
-- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 165 measures it.
+- No rewrite of `stdlib/src/adapters/staff.musa`. Prompt 166 measures it.

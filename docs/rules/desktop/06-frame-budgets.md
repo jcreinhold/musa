@@ -39,7 +39,7 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
   starts and read the first mark *after* its own gesture; otherwise it either ends on the previous trial's background
   page and measures nothing, or inherits the layout that trial walked away from and measures two gestures as one. Both
   were happening in B8 — in strict alternation, so a quarter of every run was double-counted and p95, by construction,
-  reported one of the doubles at 267–275 ms. Isolated, the same build measures 117–194 ms per step, p95 183–194 ms. B8
+  reported one of the doubles at 267–275 ms. Isolated, the same build measures 117–195 ms per step, p95 184–195 ms. B8
   asserts a floor as well as a ceiling for this reason: a step that measured nothing is not a fast step.
 - These are **per-gesture** budgets. Stepping zoom again before the previous layout has finished queues a second full
   Verovio layout behind the first, and the second step costs roughly the sum. That is the honest cost of a gesture the

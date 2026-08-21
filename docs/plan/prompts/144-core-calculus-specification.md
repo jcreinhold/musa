@@ -61,7 +61,7 @@ specified but implemented at 152.
   of every surviving section unchanged.
 - `docs/rules/language/citations.md`: Coquand's NbE, Abel's normalization, Idris2's `Core/TT`.
 - `docs/rules/across-stages/05-metatheory.md`: the argued-versus-tested row.
-- `docs/plan/code-map/`: the rows that name §1.5 and §2.1 marked as owed to prompts 150 and 152.
+- `docs/plan/code-map/`: the rows that name §1.5 and §2.1 marked as owed to prompts 151 and 153.
 
 ## Check
 

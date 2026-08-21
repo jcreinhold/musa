@@ -138,7 +138,7 @@ a literal major premise exactly one level. Four differences remain, and each is 
 
 1. **One canonical form, not two.** Lean lets `Nat.zero` and `lit 0` both be normal forms and reconciles them at every
    comparison site. A syntactic event track can afford that; NbE cannot, because a value with two shapes makes
-   conversion ask the question twice, and prompt 168's canonicity obligation wants one normal form per value.
+   conversion ask the question twice, and prompt 169's canonicity obligation wants one normal form per value.
 2. **Derived, not hard-wired.** Lean names `Nat.zero`, `Nat.succ`, and fourteen arithmetic operations as event track
    globals. `musa-calculus` names no family at all; the counting property is read off the declaration's shape, for the
    reason the section above gives.
@@ -146,7 +146,7 @@ a literal major premise exactly one level. Four differences remain, and each is 
    step budget answers long before 2⁶⁴ steps could be climbed.
 4. **No arithmetic in the core.** Lean's event track accelerates `add`/`mul`/`div`/`mod`/`beq`/`ble` and eight more,
    because the alternative for a proof event track is unary arithmetic. Musa's arithmetic is a registered δ-rule in the
-   *compiler* (prompt 163), so the core keeps no privileged type. Cite Lean there when 143 weighs the same tradeoff.
+   *compiler* (prompt 164), so the core keeps no privileged type. Cite Lean there when 143 weighs the same tradeoff.
 
 ### The raw layer names the family
 
@@ -218,14 +218,14 @@ Commit as `A numeral is one node, not a tower`.
 
 ## Stop
 
-- **No arithmetic.** `+` on numerals, `nat_add`, and the builtin collapse are prompt 163. A numeral is a representation
+- **No arithmetic.** `+` on numerals, `nat_add`, and the builtin collapse are prompt 164. A numeral is a representation
   here and nothing more.
 - **No conversions between numeric types.** A written number meaning a `Ratio` or a `Position` is 142's own finding and
   142's work.
 - **No change to `Nat`'s declaration.** The family and its two constructors are exactly what they are today; if this
   prompt needs them to change, the design is wrong and this is a repair.
 - **No change to the step budget or its default.** Three examples exhaust the 200,000-step reduction budget for reasons
-  that are not this one, and prompt 164 owns that measurement.
+  that are not this one, and prompt 165 owns that measurement.
 - **No corpus migration.** Not one `.musa` file, fixture, or snapshot moves for this prompt except where a numeral's
   printed form appears in a `musa-calculus` law.
 - **No second numeral family.** The compiler writes `Nat` and only `Nat`; that a user could declare another counting

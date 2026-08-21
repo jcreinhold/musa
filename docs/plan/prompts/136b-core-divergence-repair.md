@@ -14,7 +14,7 @@ Note 44 audited `musa-calculus` against smalltt and Peyton Jones ch. 3–6 and f
 hoc — departures that were never argued, or were argued against a different question than the one they answer. One is
 measured today at 2.2× per matched column in both term size and elaboration time. Remove every ad hoc divergence that
 can be removed without what prompt 142 supplies — a top-level definition scope, and real code to price a change against
-— and hand the ones that cannot to prompt 164 with the argument written down rather than left to be rediscovered.
+— and hand the ones that cannot to prompt 165 with the argument written down rather than left to be rediscovered.
 
 ## Read
 
@@ -35,7 +35,7 @@ can be removed without what prompt 142 supplies — a top-level definition scope
   the header arguments in each that are being amended rather than ignored.
 - `docs/rules/language/02-core-calculus.md` §3 (definitional equality, η at Π and at records) and §6.2 (the case
   compiler). §6.2's sentence about the fat bar is **not** repaired here; see **Stop**.
-- Prompt [164](164-diagnostics-and-performance.md), whose Design this prompt repairs to own Finding C.
+- Prompt [165](165-diagnostics-and-performance.md), whose Design this prompt repairs to own Finding C.
 
 ## Design
 
@@ -93,7 +93,7 @@ building whether or not the answer is already known. smalltt's cache pays off be
 approximate pass that stops at folded definitions; musa-calculus has no definition scope, `force` unfolds a solved
 metavariable before quotation matches on it, and so the solution's every node is written out anyway. The cache becomes
 able to save work at exactly the moment glued evaluation lands, and for exactly the same reason — so it goes to prompt
-164 with Finding C rather than being built here as a lookup that can never hit.
+165 with Finding C rather than being built here as a lookup that can never hit.
 
 **A and B: only a necessary column is split, and that is enough.** These were written as one change because B decides
 how many leaves A has to serve; B turned out to decide the whole question.
@@ -138,7 +138,7 @@ characters, 10 at 14,928,160 — and argued A had to land before prompt 142 poin
 After the first-row rule that program is polynomial (3 columns at 34,594 characters, 6 at 73,361, ~1,384·k² + 22,138),
 each arm on it is elaborated exactly once, and every measured column is under 3 ms. What is left of A is a linear
 constant factor on the leaves a non-first-row arm reaches, whose worth can only be judged against real code. That is
-prompt 142's output and prompt 164's question, which is where Finding C already went for the same reason.
+prompt 142's output and prompt 165's question, which is where Finding C already went for the same reason.
 
 **G: one conversion procedure.** `convertible` normalizes both sides completely and compares — the most expensive
 decision available, and a second implementation of a question the unifier already answers value-directed with early
@@ -147,7 +147,7 @@ a thin call into the unifier's conversion with metavariable solving disabled, an
 into the law suites as a **test-local oracle**, where its naivety is the point: the specification checked against the
 implementation. The same applies to `convertible_types`.
 
-**What is deliberately left to prompt 164, and why.** Finding C — no glued evaluation — is not ad hoc: musa-calculus has
+**What is deliberately left to prompt 165, and why.** Finding C — no glued evaluation — is not ad hoc: musa-calculus has
 no top-level definition scope, so there is nothing that _could_ be held folded, and every smalltt technique that is
 missing is a technique for deciding when not to unfold. It becomes wrong at prompt 142, which points the standard
 library at this core. Four items ride on it and cannot be built before it: `Spine::Def` and the `G` pair, D's
@@ -177,7 +177,7 @@ unreachable, but never whether a `match` is exhaustive.
     - note 44's interleaved-column program elaborates with a term size that grows **polynomially** in the number of
       columns, stated as a ratio law so it is not a pinned byte count;
     - an arm reaching two leaves gets each leaf's _definition_ for the variables it binds — the program that falsified
-      A's hoisting condition, kept behind as the bound on what prompt 164 may do to `case.rs`;
+      A's hoisting condition, kept behind as the bound on what prompt 165 may do to `case.rs`;
     - an arm no leaf applies is still `Refusal::UnreachableBranch`, at the same origin;
     - conversion answers what it answered before on the whole `fixtures::corpus`, including the η samples, with
       `by_reading_back` never reached on a success;
@@ -185,7 +185,7 @@ unreachable, but never whether a `match` is exhaustive.
       programs the two-pass one did;
     - `convertible` and the test-local oracle agree on every sample — the second-path audit stated as a test rather than
       as a prohibition.
-- `docs/plan/prompts/164-diagnostics-and-performance.md`: **Read**, **Design**, and **Target** naming Finding C, the
+- `docs/plan/prompts/165-diagnostics-and-performance.md`: **Read**, **Design**, and **Target** naming Finding C, the
   `Def` head and the `G` pair, approximate conversion, the flexible quotation mode, the per-metavariable occurs cache,
   and Finding A with the falsifier this prompt found and the speculative shape that answers it, each cited to note 44.
 - `docs/plan/code-map/` rows updated for what changed.
@@ -218,7 +218,7 @@ Commit as `Remove the ad hoc divergences from the dependent core`.
   `coverage_laws.rs` already states.
 - No glued evaluation, no `Spine::Def`, no definition scope, no approximate conversion, no flexible quotation mode, and
   **no hoisting of arm bodies** — no plan/emit split of `case.rs` either, since its only caller was the hoist. Prompt
-  164, which this prompt repairs to say so.
+  165, which this prompt repairs to say so.
 - No behaviour change. The same programs elaborate, to convertible terms, with the same refusals at the same origins.
   The one permitted difference is which arm a `Refusal::UnreachableBranch` names when B's rule steps over rows an
   exhaustive earlier arm already covered — and that difference is a law here, not a side effect.

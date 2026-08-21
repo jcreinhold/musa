@@ -4,7 +4,7 @@ A decision record. Governs nothing; records why the language implementation is a
 
 ## The directive
 
-The implementation of prompts 128–165 sprawled past the language Musa needs. The correction, in the owner's words:
+The implementation of prompts 128–166 sprawled past the language Musa needs. The correction, in the owner's words:
 
 > the smallest practical language that gives Musa excellent metaprogramming, ordinary ergonomic programming, useful
 > lightweight dependency, and exact resource checking — not the smallest proof assistant capable of expressing all of
@@ -118,8 +118,8 @@ unification.
 Each phase is one commit with the workspace gates green (the carved red classes of prompt 142 travel with us unchanged;
 they die in phase 5, not before).
 
-0. **This note.** Supersede prompts 163–169 on the record: 143 (builtin collapse) is subsumed by phase 3, 144's budgets
-   are re-derived after the excision, 145's staff rewrite becomes phase 5's benchmark, 166–169 close a pass this
+0. **This note.** Supersede prompts 164–170 on the record: 143 (builtin collapse) is subsumed by phase 3, 144's budgets
+   are re-derived after the excision, 145's staff rewrite becomes phase 5's benchmark, 167–170 close a pass this
    correction replaces.
 1. **Documents first** (the repo's repair discipline): rewrite `02-core-calculus.md` as the surviving calculus; rewrite
    `10-traits.md` as the flat model; amend `01-surface.md` §1.4 and `11-quotation.md` §1 (which already describes a base

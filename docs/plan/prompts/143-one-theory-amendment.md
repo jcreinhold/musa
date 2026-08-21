@@ -65,10 +65,10 @@ becomes declarable because a family is declarable — that is a consequence of t
 property this amendment exists to buy is that `≡` is decided by one mechanism — evaluate, read back, compare — and
 subsumption is not decided that way. Roadmap §2's layer table argues the same from the domain: its whole point is that
 written pitch and MIDI number must **not** be interchangeable, and implicit conversion is the mechanism for making them
-so. Musa has exactly one coercive rule today, `Accepts` in `base.rs`; prompt 158 deletes it rather than generalizing it.
+so. Musa has exactly one coercive rule today, `Accepts` in `base.rs`; prompt 159 deletes it rather than generalizing it.
 
 **What is admitted that was not.** A universe *hierarchy* with level variables, replacing the two fixed points of
-`level.rs`. Prompt 151 owns the design; the amendment's part is to say the ceiling is gone. Non-cumulative, which is the
+`level.rs`. Prompt 152 owns the design; the amendment's part is to say the ceiling is gone. Non-cumulative, which is the
 sound and conventional choice and is argued at 151.
 
 **Traits are not narrowed — they are removed.** `10-traits.md` is retired outright by prompt 145 and gets no successor

@@ -117,7 +117,7 @@ Two are the criterion's own answer and stay values for good:
 | Site | Why it stays | The branch that reads it |
 | --- | --- | --- |
 | `Builtin::Row12Of` | a `RowFault` names *which* positions repeat and which classes are missing — an analysis a program reads, not a sentence a composer is told | `stdlib/src/post_tonal/serial.musa:28`'s `row`, which hands the `Result<Row12, (List<Nat>, List<Pc12>)>` on |
-| `SyntaxOp::Checked` | the gate exists so a transformer can *decide* what to say about a tree it built badly; refusing would take that decision away | `crates/musa-compiler`'s phase vocabulary, and prompt 165's rewritten adapter |
+| `SyntaxOp::Checked` | the gate exists so a transformer can *decide* what to say about a tree it built badly; refusing would take that decision away | `crates/musa-compiler`'s phase vocabulary, and prompt 166's rewritten adapter |
 
 Eleven are refusals by the criterion and stay values only until their callers move, all under prompt 142:
 
@@ -143,7 +143,7 @@ application changes: this is one entry in a reading, not a general mechanism for
 
 **One diagnostic code, not seven.** The refusals moving here are not a new family a reader looks up individually; they
 are the operations of the language saying no with their own sentences, which is what `lower/refusals.rs` already exists
-to restate. Prompt 164 owns how good the sentences are.
+to restate. Prompt 165 owns how good the sentences are.
 
 ### What §2 still says that is not true, recorded rather than repaired
 
@@ -202,7 +202,7 @@ Commit as `Let a rule refuse the program`.
   finds a §2 sentence that is still false afterwards, that is a finding to record, not an edit to make.
 - No change to which builtins are registered, and no signature change beyond dropping `Result τ Text` where the
   criterion says the failure is a refusal.
-- No builtin-registry collapse. Prompt 163.
+- No builtin-registry collapse. Prompt 164.
 - No new surface syntax, and no general mechanism for compiler-supplied arguments — `play` gets one reading, written
   once.
 - No rewrite of the `?` desugaring. Total constructors remove the reason `music { … }?` was reached for; the desugaring

@@ -201,5 +201,5 @@ generated declarations with the same public address; a structural declaration em
 private declaration from outside its module; `private` on a structure member; an `enum` that marks some of its cases and
 not the others; and a `match` outside the module on a type whose cases are private.
 
-Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 190 verifies that identity and
+Prompts 103–104 implement this stage. Prompt 124 measures expansion and caching. Prompt 191 verifies that identity and
 Origin remain stable through the migration.

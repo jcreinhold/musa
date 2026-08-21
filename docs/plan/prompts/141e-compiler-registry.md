@@ -58,7 +58,7 @@ so an anonymous pair is the one signature in the table a rule cannot write. The 
 that the pair was always a domain concept wearing a tuple. *Open Music Theory* `108-basics-of-twelve-tone-theory.md`
 says what it is — the order positions whose pitch class already appeared, and the pitch classes the sequence never names
 — so it is declared, named, and the shape constructor that only it used is deleted. That is `Shape` getting smaller
-because a type got a name, which is the direction the collapse in prompt 163 goes as well.
+because a type got a name, which is the direction the collapse in prompt 164 goes as well.
 
 **`Bool` and `Nat` are declared, and the musical domains are registered.** A base type is inert: it contributes no
 ι-rule, so two closed values of it are convertible exactly when the host says the payloads agree. That is right for a
@@ -174,7 +174,7 @@ Commit as `Say what the compiler owns, in the core's own terms`.
 
 - No elaboration through `musa-calculus`, no surface change, no `.musa` file touched, and no old checking path deleted.
   Prompt 142 owns the cutover and owns it whole.
-- No builtin added, removed, renamed, or merged. The tables say the same 117 and 17 things they said before; prompt 163
+- No builtin added, removed, renamed, or merged. The tables say the same 117 and 17 things they said before; prompt 164
   is where they get smaller.
 - No musical type in `musa-calculus`. The core stays a leaf, and every name this prompt writes is registered from the
   compiler side.
@@ -184,4 +184,4 @@ Commit as `Say what the compiler owns, in the core's own terms`.
 - No structural eliminator registered. The eight collection folds are 141c's argued exclusion and the three phase folds
   are 141f's; registering a fourth family's worth of stubs to make a count come out is the opposite of what the count is
   for.
-- No performance work. A unary `Nat` is what §1 asks for; prompt 164 measures the finished checker.
+- No performance work. A unary `Nat` is what §1 asks for; prompt 165 measures the finished checker.

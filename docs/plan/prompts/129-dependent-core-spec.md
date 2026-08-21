@@ -98,7 +98,7 @@ definition denotes a total function.
   Exhaustion is a third outcome, named as one — pretending it is a rejection would make acceptance depend on a resource
   limit.
 - **§5.7 (track construction) and §5.9 (the expansion phase, including law 11) are obligations to re-derive**, not
-  assumptions to carry. Prompt 168 owes the proofs; this document owes their statements against the new core.
+  assumptions to carry. Prompt 169 owes the proofs; this document owes their statements against the new core.
 - **§6.1's two-stage boundary is unchanged.** This language and the event-track term calculus stay two stages.
 - **§7's provenance grows.** Every core term records the surface node it was elaborated from, because a dependent
   checker reports failures in terms of normal forms the author never wrote, and because prompt 131's quotation needs a
@@ -109,7 +109,7 @@ types (rank-1 Hindley–Milner, two classes)" and §2's judgment table says "wit
 what makes both false, so it corrects both, in the commit that causes it — the same rule prompt 128 applied to
 `across-stages/`. Nothing else in that file moves: its representations, its two-column pipeline, and its declaration
 kinds are unaffected by a change of type discipline, and a prompt that rewrote them here would be doing 130's work
-early. Prompt 169's audit still owns whatever this leaves.
+early. Prompt 170's audit still owns whatever this leaves.
 
 **§5's obligation matrix is rewritten, not extended.** The new list: NbE soundness and completeness, decidability of
 conversion, type preservation, canonicity for the closed storable-data types, strong normalization, strict positivity
@@ -153,4 +153,4 @@ Commit as `Specify the dependent core`.
   141 — a core document that specifies them has admitted they are not library code.
 - No cumulativity, no universe polymorphism beyond level metavariables, no `partial`, no general recursion, no CBPV, no
   coinduction. Each is a separate amendment.
-- No proof. Stating an obligation is this prompt's job; discharging it is prompt 168's.
+- No proof. Stating an obligation is this prompt's job; discharging it is prompt 169's.

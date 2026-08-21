@@ -76,7 +76,7 @@ data makes unclear or unsafe. The staff adapter is not a musical operation; it i
 made three times longer than the notation it reads. The amendment adds a second admission route — *measured engineering
 evidence in Musa itself*, with the failing program named, its size recorded, and the specific constructs it compensates
 with enumerated — and keeps the musical route unchanged. It also keeps §10's real teeth: the failing program comes
-first. It exists, it is committed, and prompt 165 has to beat it.
+first. It exists, it is committed, and prompt 166 has to beat it.
 
 **The decision record is where the six requirements are discharged**, one heading per requirement, and it is written to
 be read by someone who thinks this amendment is a mistake. It answers §11.2's five items point by point — including the
@@ -87,15 +87,15 @@ operation needs a value in a type) is not refuted by this evidence and should no
 are declared and prompt 133 may not add one that the roadmap does not list. It is a leaf, the way `musa-events` is:
 nothing in it knows what a pitch is.
 
-**The consequential edits to `docs/rules/across-stages/` are part of this amendment, not prompt 169's audit.** Two
+**The consequential edits to `docs/rules/across-stages/` are part of this amendment, not prompt 170's audit.** Two
 governing documents restate §9's inference rule in their own words: `01-stage-judgments.md` §2 says `A` is the principal
 type of `e`, and `05-metatheory.md` §1 carries a reviewed result about Hindley–Milner inference with §4's evidence rule
-under it. Amending §9 and leaving those is the silent drift `AGENTS.md` forbids, and prompt 169 cannot repair them — its
+under it. Amending §9 and leaving those is the silent drift `AGENTS.md` forbids, and prompt 170 cannot repair them — its
 own Stop forbids amending `across-stages/`, and rightly, because a closure audit that quietly rewrites a governing claim
 has audited nothing. The rule that separates the two is the same one 149 states: correcting a *pointer* is a repair,
 changing what a document *claims* is an amendment, and an amendment belongs in the commit that caused it. Keep the edits
 minimal — restate the rule, mark the superseded result as superseded and say by what — and do not rewrite the metatheory
-matrix, which is prompt 168's.
+matrix, which is prompt 169's.
 
 ## Target
 
@@ -111,7 +111,7 @@ matrix, which is prompt 168's.
 - `docs/rules/across-stages/01-stage-judgments.md` §2: the source typing judgment restated as bidirectional, with no
   principal-type claim.
 - `docs/rules/across-stages/05-metatheory.md` §1 and §4: the Hindley–Milner inference row marked superseded by this
-  amendment and naming prompt 168 as the prompt that owes its replacement, and §4's inference evidence rule restated.
+  amendment and naming prompt 169 as the prompt that owes its replacement, and §4's inference evidence rule restated.
   Nothing else in the matrix moves.
 - `docs/rules/README.md`'s "Changing a decision" section: this amendment recorded as the most recent one, with a link to
   the record, the way prompt 127a's is.

@@ -9,7 +9,7 @@
 //! earlier and more legibly.
 //!
 //! As in the other suites, these are laws stated over a corpus and therefore
-//! discharged at the terms in it. Prompt 168 owes the metatheory matrix.
+//! discharged at the terms in it. Prompt 169 owes the metatheory matrix.
 
 use musa_calculus::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize};
 
