@@ -1,7 +1,7 @@
 ---
 id: 146
 slug: delete-the-trait-system
-status: pending
+status: in-progress
 depends_on: [145]
 phase: 3
 ---
@@ -23,7 +23,10 @@ every refactor.
   are the five δ-builtins with no λ around them, and `iterable_list()`, which hand-writes `fold_from_end` as a `rec` +
   `match` in about forty lines of Rust AST builder.
 - `stdlib/src/algebra.musa` — the three taxes, in that file's own words.
-- `/Users/jcreinhold/Code/Idris2/src/TTImp/Elab/Ambiguity.idr` — the disambiguation model.
+- `/Users/jcreinhold/Code/Idris2/src/TTImp/Elab/Ambiguity.idr` — the disambiguation model, and the one this prompt does
+  *not* take: trial elaboration answers an ambiguity the surface admits, and the design below does not admit one.
+- `crates/musa-compiler/src/lower/values.rs`'s `operator_method` and its comment — the stated reason operators were not
+  lowered as method syntax, which this prompt deletes.
 - `docs/rules/language/01-surface.md` §1.4 as prompt 145 left it — "the grammar keeps `trait`, `impl`, and `where` until
   that prompt runs" names *this* prompt, so the surface forms come out here.
 - `crates/musa-syntax/src/parser/declarations.rs`, `syntax_kind.rs`, `keywords.rs`, and
@@ -47,6 +50,35 @@ the trait could not do; a record does them without a mechanism.
 *Overloading becomes disambiguation.* `==` at five types is five names in scope and a checker that already knows the
 expected type. This is local bidirectional elaboration — it needs nothing from prompt 153 — and its failure mode is a
 diagnostic listing the candidates and the type that ruled each out, which is strictly better than "no instance found".
+
+**A namespace is a dotted name, and this is the second repair.** The prompt as first written said "disambiguation"
+without saying what a candidate *is*, and left the answer to the implementation; the implementation found that the whole
+mechanism is one already-existing thing. An `impl Pitch { fn act(…) }` block lowers to an ordinary top-level definition
+named `Pitch.act` — no new binding form, no table, no `Classes` map. It is reached three ways, and all three end at that
+one definition:
+
+- `Pitch::act(p, i)` — the path written out. Always available, always unambiguous, and the repair every diagnostic here
+  names.
+- `p.act(i)` — method syntax, resolved by the **rigid head of the receiver's inferred type**. `Pitch` heads `p`'s type,
+  so the name is `Pitch.act`. A receiver whose type has no rigid head — a parameter `A`, a function type, a universe, an
+  unsolved hole — is refused, naming the qualified spelling.
+- `p up M3`, `x == y`, `xs[i]` — operator sugar, which lowers to method syntax on the left operand. The old lowering
+  wrote `Eq::equal(x, y)` *instead of* method syntax for one reason, stated in its own comment: an operator under a
+  `where` had to resolve against the supplied dictionary. `where` is deleted here, so that reason goes with it and the
+  two spellings become one path.
+
+A **bare** member spelling — `equal(x, y)` with no receiver and no path — is the only case that consults the expected
+type: the candidates are every `Head.equal` in scope, and the head the site fixes filters them. The filter compares two
+names. Nothing is elaborated in order to be discarded, so no candidate can be reordered into a different answer, and
+this is what "type-directed" means here — not Idris's trial elaboration, which `Ambiguity.idr` needs because it admits
+ambiguity the surface cannot rule out and which this design does not have.
+
+**Where it lives, and this is why the Target moved.** `musa-compiler` performs no type-directed elaboration — it lowers
+CST to `Raw` and hands the result to `musa-calculus`, which is where `check`, `infer`, and every type is. A
+"disambiguation module" in the compiler would be a second elaborator obliged to agree with the first. The rule lives in
+`musa-calculus`: a `namespace` module that spells, splits, and searches dotted names, and one member rule in
+`elab/name.rs`. What the compiler does is lower `impl` and the operator table to those spellings, which is the ordinary
+job it already had.
 
 *The rest becomes macros.* Anything genuinely wanting dispatch on an open set is a macro's job, and prompt 160 is where
 that lands.
@@ -76,7 +108,9 @@ answers equality by its own eliminator, and the five δ-builtins stay δ-builtin
 - `crates/musa-calculus`: `class.rs` and `dictionary.rs` deleted; every `pub(crate)` path into them removed;
   `Shape`/`Form` variants for dictionaries and instances removed.
 - `crates/musa-compiler/src/prelude.rs`: the trait region deleted.
-- `crates/musa-compiler`: a disambiguation module — candidates by name, filtered by expected type, one diagnostic.
+- `crates/musa-calculus`: a `namespace` module — dotted names, the receiver's head, the candidates a member spelling has
+  — and the member rule in `elab/name.rs` that filters them, with one diagnostic listing what was left.
+- `crates/musa-compiler`: `impl` lowered to dotted-name definitions, and the operator table lowered to method syntax.
 - `stdlib/src/algebra.musa`: `Group`, `Action`, `Torsor` as records, with the carrier first as a field-order convention
   rather than a resolution key.
 - `stdlib/`, `examples/`: every `impl` and every trait-method call site rewritten. The 82 sites are the measurement.
