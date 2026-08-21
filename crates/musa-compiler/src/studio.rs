@@ -391,7 +391,7 @@ pub struct StudioSpec {
 impl StudioSpec {
     /// Move every place this spec points at back into the composer's own text
     /// (`crate::expand`).
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         self.span = map.maybe(self.span);
         for patch in self
             .patches

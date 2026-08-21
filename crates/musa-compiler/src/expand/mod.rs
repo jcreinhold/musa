@@ -24,4 +24,4 @@ pub(crate) use levels::{Level, SyntaxImport, level_of};
 pub(crate) use machine::{Cached, expand_one, names_written, region_body, region_name, syntax_imports};
 #[cfg(test)]
 pub(crate) use machine::{ordinary_expression, stopped_or_refused};
-pub(crate) use records::{Charges, Expansion, ExpansionRecord, Replacement, SourceMap};
+pub(crate) use records::{Charges, Expansion, ExpansionRecord};

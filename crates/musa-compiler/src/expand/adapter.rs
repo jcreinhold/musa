@@ -9,8 +9,8 @@ use crate::origin::SourceSpan;
 use super::Cached;
 use super::Expansion;
 use super::Level;
-use super::Replacement;
 use super::{expand_one, level_of, names_written, region_body, region_name, syntax_imports};
+use crate::origin::Replacement;
 
 /// Run step 4 of the fixed order over `source`.
 pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expansion {

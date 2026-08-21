@@ -1015,7 +1015,7 @@ impl AnnotationStore {
     /// without a line here is a store whose origins would keep positions in
     /// generated text, and the shortest way to make that visible is for this
     /// list and the field list above to be read together.
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for it in &mut self.slurs {
             it.origin.remap_spans(map);
         }
@@ -1261,7 +1261,7 @@ impl ScoreSnapshot {
     /// What this crosses is the one boundary the phase creates — the compiler
     /// read a second text, and everything it says has to be said about the
     /// first.
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for part in self.parts.parts.values_mut() {
             for voice in part.voices.values_mut() {
                 for event in &mut voice.events {

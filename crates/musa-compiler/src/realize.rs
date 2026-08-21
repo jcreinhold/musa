@@ -265,7 +265,7 @@ pub struct DecisionRecord {
 impl DecisionRecord {
     /// Move every place this record points at back into the composer's own
     /// text (`crate::expand`).
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for site in &mut self.sites {
             *site = map.span(*site);
         }

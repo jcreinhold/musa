@@ -1,6 +1,6 @@
 use crate::compile::SourceDocument;
 use crate::diagnose::Diagnostic;
-use crate::origin::SourceSpan;
+use crate::origin::{SourceMap, SourceSpan};
 
 /// The phase-tagged logical charges of `26-language-design-decision.md` §3.5.
 ///
@@ -85,74 +85,6 @@ impl ExpansionRecord {
     #[cfg(test)]
     pub(crate) fn anchor(&self, number: u64) -> Option<SourceSpan> {
         self.anchors.get(usize::try_from(number).ok()?).copied()
-    }
-}
-
-/// Where one stretch of the expanded text came from in the composer's text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Replacement {
-    /// The stretch, in expanded coordinates.
-    pub(crate) from: u32,
-    pub(crate) to: u32,
-    /// The region it replaced, in original coordinates.
-    pub(crate) original: SourceSpan,
-}
-
-/// The translation from the text the compiler read to the text the composer
-/// wrote.
-///
-/// Two rules and no more. A position outside every expansion moves by the
-/// accumulated difference in length of the expansions before it, which is
-/// exact. A position *inside* an expansion becomes the region that produced it,
-/// because there is no finer answer that is true: the character is not in the
-/// composer's file at all, and pointing at the region is pointing at the only
-/// text they can edit to change it.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct SourceMap {
-    pub(crate) replacements: Vec<Replacement>,
-}
-
-impl SourceMap {
-    /// Whether this map changes anything, which it does not for the enormous
-    /// majority of files: no region, no translation, no walk over a snapshot.
-    pub(crate) fn is_identity(&self) -> bool {
-        self.replacements.is_empty()
-    }
-
-    /// Where `offset` in the expanded text stands in the original.
-    fn offset(&self, offset: u32) -> u32 {
-        let mut shift: i64 = 0;
-        for replacement in &self.replacements {
-            if offset < replacement.from {
-                break;
-            }
-            if offset < replacement.to {
-                return replacement.original.start;
-            }
-            let generated = i64::from(replacement.to).saturating_sub(i64::from(replacement.from));
-            let original = i64::from(replacement.original.end).saturating_sub(i64::from(replacement.original.start));
-            shift = shift.saturating_add(original.saturating_sub(generated));
-        }
-        u32::try_from(i64::from(offset).saturating_add(shift)).unwrap_or(u32::MAX)
-    }
-
-    /// Where `span` in the expanded text stands in the original.
-    ///
-    /// A span that lies inside one expansion becomes that expansion's region,
-    /// whole: half of a generated call is not a place, and a caret under it
-    /// would be a caret under nothing.
-    pub(crate) fn span(&self, span: SourceSpan) -> SourceSpan {
-        for replacement in &self.replacements {
-            if span.start >= replacement.from && span.end <= replacement.to {
-                return replacement.original;
-            }
-        }
-        SourceSpan::new(self.offset(span.start), self.offset(span.end))
-    }
-
-    /// The same, for a span a caller may not have.
-    pub(crate) fn maybe(&self, span: Option<SourceSpan>) -> Option<SourceSpan> {
-        span.map(|span| self.span(span))
     }
 }
 

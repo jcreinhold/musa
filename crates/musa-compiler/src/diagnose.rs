@@ -524,7 +524,7 @@ impl Diagnostic {
     /// [`Self::causes`] is left alone, and that is the rule rather than an
     /// omission: a cause's spans are already in the document it names, and
     /// this map describes only the composer's own text.
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for label in &mut self.labels {
             label.span = map.span(label.span);
         }

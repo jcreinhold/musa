@@ -116,7 +116,7 @@ impl ReferenceIndex {
     /// A declaration in *another* document is left alone: its span is a
     /// position in that file's own coordinates, and this map describes only
     /// the document the phase rewrote.
-    pub(crate) fn remap_spans(&mut self, map: &crate::expand::SourceMap) {
+    pub(crate) fn remap_spans(&mut self, map: &crate::origin::SourceMap) {
         for entry in &mut self.entries {
             entry.declaration = map.maybe(entry.declaration);
             for span in &mut entry.uses {
