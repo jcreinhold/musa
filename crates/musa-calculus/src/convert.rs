@@ -10,16 +10,16 @@
 //! # One walk, two modes
 //!
 //! §2.1's other question — the type parameters of a callee, which the written
-//! arguments determine — is the *same* walk with the holes made assignable.
-//! There is no second procedure and no heuristic: a hole standing alone takes
-//! the value it is compared with, once, and a hole under a spine is an opaque
+//! arguments determine — is the *same* walk with the metas made assignable.
+//! There is no second procedure and no heuristic: a meta standing alone takes
+//! the value it is compared with, once, and a meta under a spine is an opaque
 //! head like any other. [`Conversion::deciding`] is the rigid mode and
 //! [`Conversion::solving`] the assigning one, and the only line that reads the
 //! difference is the assignment rule.
 //!
 //! Nothing here postpones, retries, or reaches a fixpoint. A comparison that
 //! cannot be decided is a [`Refusal::Mismatch`] at the site that asked, and a
-//! hole nothing determined is [`Refusal::Unsolved`] when the declaration ends.
+//! meta nothing determined is [`Refusal::Unsolved`] when the declaration ends.
 //!
 //! # Why solving quotes at a type
 //!
@@ -43,9 +43,9 @@ use crate::error::CoreError;
 use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
 use crate::index::{self, Exact, Expr, Sort, Verdict};
 use crate::origin::Origin;
-use crate::quote::{Depth, Mode, quote, quote_type};
+use crate::quote::{Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
-use crate::term::{DbLevel, Field, Shape, Term};
+use crate::term::{Constant, Field, Level, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
@@ -61,10 +61,10 @@ enum At<'a> {
 }
 
 impl At<'_> {
-    fn quote(self, meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+    fn quote(self, meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
         match self {
-            Self::Type => quote_type(meter, Depth(depth), Mode::Keep, value),
-            Self::Term(ty) => quote(meter, Depth(depth), Mode::Keep, ty, value),
+            Self::Type => quote_type(meter, depth, Mode::Keep, value),
+            Self::Term(ty) => quote(meter, depth, Mode::Keep, ty, value),
         }
     }
 }
@@ -83,7 +83,7 @@ pub(crate) struct Conversion {
     /// Whether this checker answers a question rather than making one true.
     ///
     /// Set by [`Self::deciding`], and read in exactly one place: the
-    /// assignment rule, which a deciding pass never fires — a hole is an
+    /// assignment rule, which a deciding pass never fires — a meta is an
     /// opaque head there, compared by identity like any other.
     deciding: bool,
 }
@@ -93,7 +93,7 @@ impl Conversion {
     ///
     /// Definitional equality *is* the rigid fragment of the one algorithm —
     /// the same type-directed walk with η and early exit, over values whose
-    /// holes are opaque heads rather than unknowns to determine. So
+    /// metas are opaque heads rather than unknowns to determine. So
     /// [`crate::convertible`] is this constructor and not a second procedure:
     /// two implementations of one question are two things to keep in
     /// agreement.
@@ -101,7 +101,7 @@ impl Conversion {
         Self { deciding: true }
     }
 
-    /// A checker that may solve a hole it meets alone on one side.
+    /// A checker that may solve a meta it meets alone on one side.
     ///
     /// The elaborator's mode, and the only one that assigns. Named rather than
     /// left to [`Default`] so that the two modes read as a pair at every
@@ -119,7 +119,7 @@ impl Conversion {
     pub(crate) fn unify_types(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         at: Origin,
         left: &Value,
         right: &Value,
@@ -140,7 +140,7 @@ impl Conversion {
     pub(crate) fn unify(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         at: Origin,
         ty: &Value,
         left: &Value,
@@ -151,7 +151,15 @@ impl Conversion {
     }
 
     /// One step: the one flexible case, then the structural descent.
-    fn step(&mut self, meter: &mut Meter, depth: u32, at: At<'_>, origin: Origin, left: &Value, right: &Value) -> Step {
+    fn step(
+        &mut self,
+        meter: &mut Meter,
+        depth: Level,
+        at: At<'_>,
+        origin: Origin,
+        left: &Value,
+        right: &Value,
+    ) -> Step {
         // The nesting charge is what keeps conversion inside §4.1's limit, and
         // it can only report a [`CoreError`], so the step's own answer travels
         // back inside its `Ok`.
@@ -173,20 +181,20 @@ impl Conversion {
         })?
     }
 
-    /// The one flexible case: an unsolved hole, unapplied, on either side —
+    /// The one flexible case: an unsolved meta, unapplied, on either side —
     /// the step tries both, because "the pattern side" is a direction the
     /// caller picks, not a property of the values.
     ///
     /// `Some` is "handled" and `None` is "rigid", which descends as any other
-    /// pair. An applied hole is rigid by choice: solving one would be
+    /// pair. An applied meta is rigid by choice: solving one would be
     /// higher-order, and §2.1 admits first-order assignment only — so an
-    /// unsolved applied hole compares by identity and is reported as the
+    /// unsolved applied meta compares by identity and is reported as the
     /// mismatch it is, which is §2.1's "the program did not say" with the
     /// application as the place that could not say it.
     fn assignment(
         &self,
         meter: &Meter,
-        depth: u32,
+        depth: Level,
         at: At<'_>,
         origin: Origin,
         left: &Value,
@@ -198,34 +206,34 @@ impl Conversion {
         let Form::Neutral(neutral) = &left.form else {
             return Ok(None);
         };
-        let Head::Hole(hole) = &neutral.head else {
+        let Head::Meta(meta) = &neutral.head else {
             return Ok(None);
         };
         if !neutral.spine.is_empty() {
             return Ok(None);
         }
         debug_assert!(
-            hole.solution().is_none(),
-            "a solved hole is forced before the assignment rule can meet it"
+            meta.solution().is_none(),
+            "a solved meta is forced before the assignment rule can meet it"
         );
-        // The reflexive case: the right forces back to this same hole, which
-        // happens where two holes have already been chained — `?l ≡ ?r` when
+        // The reflexive case: the right forces back to this same meta, which
+        // happens where two metas have already been chained — `?l ≡ ?r` when
         // `?r` was solved to `?l` is not an occurs failure, it is the one
         // solution the pair already has.
         if let Form::Neutral(right_neutral) = &right.form
-            && let Head::Hole(right_hole) = &right_neutral.head
+            && let Head::Meta(right_meta) = &right_neutral.head
             && right_neutral.spine.is_empty()
-            && right_hole == hole
+            && right_meta == meta
         {
             return Ok(Some(()));
         }
         // The occurs check, at its first-order strength: the unknown may not
         // occur in its own answer, transitively included.
-        if mentions_hole(right, hole) {
+        if mentions_meta(right, meta) {
             return Err(Failure::Occurs);
         }
         let _ = (meter, depth, at, origin);
-        hole.solve(right.clone())
+        meta.solve(right.clone())
             .map_err(|malformed| Failure::Core(malformed.into()))?;
         Ok(Some(()))
     }
@@ -254,7 +262,7 @@ impl Conversion {
     fn folded(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         at: At<'_>,
         origin: Origin,
         left: &Value,
@@ -305,7 +313,7 @@ impl Conversion {
     fn rigid(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         at: At<'_>,
         origin: Origin,
         left: &Value,
@@ -378,18 +386,11 @@ impl Conversion {
             ) => {
                 self.step(meter, depth, At::Type, origin, left_domain, right_domain)
                     .map_err(|failure| failure.under(PathStep::Domain))?;
-                let variable = Value::var(Origin::UNKNOWN, DbLevel(depth), Arc::clone(left_domain));
+                let variable = Value::var(Origin::UNKNOWN, depth, Arc::clone(left_domain));
                 let left_body = apply_closure(meter, left_codomain, variable.clone())?;
                 let right_body = apply_closure(meter, right_codomain, variable)?;
-                self.step(
-                    meter,
-                    depth.saturating_add(1),
-                    At::Type,
-                    origin,
-                    &left_body,
-                    &right_body,
-                )
-                .map_err(|failure| failure.under(PathStep::Codomain))
+                self.step(meter, depth.deeper(), At::Type, origin, &left_body, &right_body)
+                    .map_err(|failure| failure.under(PathStep::Codomain))
             }
             (Form::RecordType(one), Form::RecordType(other)) => {
                 self.record_types(meter, depth, at, origin, left, right, one, other)
@@ -441,13 +442,13 @@ impl Conversion {
     /// separation. An index variable is an *ordinary parameter of index sort*
     /// (§1.5), solved at the call by §2.1's first-order matching from the
     /// written arguments — the same binder and the same rule a type parameter
-    /// gets. So a side that still holds an unsolved hole is §2.1's question,
+    /// gets. So a side that still holds an unsolved meta is §2.1's question,
     /// asked of the ordinary walk; only once both sides are rigid is there
     /// arithmetic to decide.
     fn indices(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         origin: Origin,
         left: &Value,
         right: &Value,
@@ -496,20 +497,20 @@ impl Conversion {
     fn under_binder(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         origin: Origin,
         domain: &Arc<Value>,
         codomain: &Closure,
         left: &Value,
         right: &Value,
     ) -> Step {
-        let variable = Value::var(Origin::UNKNOWN, DbLevel(depth), Arc::clone(domain));
+        let variable = Value::var(Origin::UNKNOWN, depth, Arc::clone(domain));
         let body_type = apply_closure(meter, codomain, variable.clone())?;
         let left_body = apply(meter, left.origin, left.clone(), variable.clone())?;
         let right_body = apply(meter, right.origin, right.clone(), variable)?;
         self.step(
             meter,
-            depth.saturating_add(1),
+            depth.deeper(),
             At::Term(&body_type),
             origin,
             &left_body,
@@ -527,7 +528,7 @@ impl Conversion {
     fn field_by_field(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         origin: Origin,
         telescope: &Telescope,
         left: &Value,
@@ -550,7 +551,7 @@ impl Conversion {
     fn record_types(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         at: At<'_>,
         origin: Origin,
         left: &Value,
@@ -574,10 +575,10 @@ impl Conversion {
                 .map_err(|failure| failure.under(PathStep::Field(Arc::clone(&mine.name))))?;
             // Both telescopes proceed under the *same* variable, because the
             // field types have just been made equal.
-            let variable = Value::var(Origin::UNKNOWN, DbLevel(under), Arc::new(left_ty));
+            let variable = Value::var(Origin::UNKNOWN, under, Arc::new(left_ty));
             left_env = left_env.push(variable.clone());
             right_env = right_env.push(variable);
-            under = under.saturating_add(1);
+            under = under.deeper();
         }
         Ok(())
     }
@@ -587,7 +588,7 @@ impl Conversion {
     fn neutrals(
         &mut self,
         meter: &mut Meter,
-        depth: u32,
+        depth: Level,
         origin: Origin,
         one: &Arc<Neutral>,
         other: &Arc<Neutral>,
@@ -599,12 +600,12 @@ impl Conversion {
             (Head::Const(left), Head::Const(right)) => left == right,
             // Two metavariables reach this only in [`Self::deciding`] mode,
             // where §3 is being *asked* rather than made true and an unsolved
-            // A hole is as rigid as a variable here: the same one is equal
+            // A meta is as rigid as a variable here: the same one is equal
             // to itself, and two different ones are two different unknowns.
             // The matching pass never arrives here with an unsolved one on the
             // left — `assignment` answers first — and a solved one is forced
             // before the walk sees it.
-            (Head::Hole(left), Head::Hole(right)) => left == right,
+            (Head::Meta(left), Head::Meta(right)) => left == right,
             // Rigid for good: §5.8 gives a base type no eliminator, so nothing
             // under one could ever unblock it, and a builtin still headed here
             // has an argument that is not a literal. Both decide by name, like a
@@ -617,7 +618,7 @@ impl Conversion {
             (Head::Def(one, _, _), Head::Def(other, _, _)) => one == other,
             // Two different kinds of head, which never agree.
             (
-                Head::Hole(_)
+                Head::Meta(_)
                 | Head::Var(_, _)
                 | Head::Const(_)
                 | Head::Base(_)
@@ -667,7 +668,7 @@ impl Conversion {
     /// Not a weaker rule — quotation is η-long, so this decides exactly what
     /// [`crate::convertible`] decides. It solves no metavariable, which is why
     /// it is only ever reached once neither side has one at its head.
-    fn by_reading_back(meter: &mut Meter, depth: u32, at: At<'_>, left: &Value, right: &Value) -> Step {
+    fn by_reading_back(meter: &mut Meter, depth: Level, at: At<'_>, left: &Value, right: &Value) -> Step {
         let expected = at.quote(meter, depth, left)?;
         let found = at.quote(meter, depth, right)?;
         if expected == found {
@@ -699,7 +700,7 @@ impl ElabError {
     /// roots earn their place by naming what was asked; a pair that names the
     /// same thing on both sides names nothing, and the endpoints are left to
     /// speak.
-    fn rooted(self, at: At<'_>, meter: &mut Meter, depth: u32, left: &Value, right: &Value) -> Self {
+    fn rooted(self, at: At<'_>, meter: &mut Meter, depth: Level, left: &Value, right: &Value) -> Self {
         let mut error = self;
         if let Self::Refused(Refusal::Mismatch(mismatch)) = &mut error
             && let (Ok(expected), Ok(found)) = (at.quote(meter, depth, left), at.quote(meter, depth, right))
@@ -788,13 +789,13 @@ impl Failure {
 /// same either way, since there is nothing at a neutral type to η-expand.
 fn blocked_mismatch(
     meter: &mut Meter,
-    depth: u32,
+    depth: Level,
     one: &Arc<Neutral>,
     other: &Arc<Neutral>,
 ) -> Result<Failure, CoreError> {
     Ok(Failure::Mismatch {
-        expected: quote_type(meter, Depth(depth), Mode::Keep, &Value::shared_neutral(one))?,
-        found: quote_type(meter, Depth(depth), Mode::Keep, &Value::shared_neutral(other))?,
+        expected: quote_type(meter, depth, Mode::Keep, &Value::shared_neutral(one))?,
+        found: quote_type(meter, depth, Mode::Keep, &Value::shared_neutral(other))?,
         path: Vec::new(),
     })
 }
@@ -835,52 +836,52 @@ fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
     }
 }
 
-/// Does `value` mention this hole, unsolved, transitively?
+/// Does `value` mention this meta, unsolved, transitively?
 ///
 /// The occurs check of [`Conversion::assignment`]: the unknown may not occur in
-/// its own answer, and "transitively" is through other holes' solutions. A
+/// its own answer, and "transitively" is through other metas' solutions. A
 /// closure or telescope's *terms* are not walked: the value this asks about is
 /// one the walk created, and a term can reach one only through the environment
 /// that is walked.
-fn mentions_hole(value: &Value, target: &crate::meta::Hole) -> bool {
+fn mentions_meta(value: &Value, target: &crate::meta::Meta) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         // Both halves. `Row(?α)` mentions `?α`, and an occurs check that looked
-        // past the index would let a hole be solved by a value that names it.
-        Form::Indexed { ty, index } => mentions_hole(ty, target) || mentions_hole(index, target),
+        // past the index would let a meta be solved by a value that names it.
+        Form::Indexed { ty, index } => mentions_meta(ty, target) || mentions_meta(index, target),
         Form::Pi { domain, codomain, .. } => {
-            mentions_hole(domain, target) || codomain.env.iter().any(|item| mentions_hole(item, target))
+            mentions_meta(domain, target) || codomain.env.iter().any(|item| mentions_meta(item, target))
         }
-        Form::Lam(closure) => closure.env.iter().any(|item| mentions_hole(item, target)),
-        Form::RecordType(telescope) => telescope.env.iter().any(|item| mentions_hole(item, target)),
-        Form::Record(fields) => fields.iter().any(|(_, item)| mentions_hole(item, target)),
+        Form::Lam(closure) => closure.env.iter().any(|item| mentions_meta(item, target)),
+        Form::RecordType(telescope) => telescope.env.iter().any(|item| mentions_meta(item, target)),
+        Form::Record(fields) => fields.iter().any(|(_, item)| mentions_meta(item, target)),
         Form::Neutral(neutral) => {
             let head_mentions = match &neutral.head {
-                Head::Hole(hole) if hole == target => return true,
-                Head::Hole(hole) => hole.solution().is_some_and(|solution| mentions_hole(solution, target)),
-                Head::Var(_, ty) => mentions_hole(ty, target),
+                Head::Meta(meta) if meta == target => return true,
+                Head::Meta(meta) => meta.solution().is_some_and(|solution| mentions_meta(solution, target)),
+                Head::Var(_, ty) => mentions_meta(ty, target),
                 Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
-                Head::Def(_, ty, folded) => mentions_hole(ty, target) || mentions_hole(folded, target),
+                Head::Def(_, ty, folded) => mentions_meta(ty, target) || mentions_meta(folded, target),
             };
             head_mentions
                 || neutral.spine.iter().any(|elimination| match elimination {
-                    Elim::App { argument, .. } => mentions_hole(argument, target),
+                    Elim::App { argument, .. } => mentions_meta(argument, target),
                     Elim::Project { .. } => false,
                 })
         }
     }
 }
 
-/// Does `value` mention a hole nothing has solved?
+/// Does `value` mention a meta nothing has solved?
 ///
 /// The elaborator's reading of `02-core-calculus.md` §2.1's "inferable": an
-/// argument whose domain still mentions an unsolved hole is one whose type the
+/// argument whose domain still mentions an unsolved meta is one whose type the
 /// call has not determined, so the argument is *inferred* and the match learns
-/// the parameter from it. The same walk as [`mentions_hole`], existentially.
+/// the parameter from it. The same walk as [`mentions_meta`], existentially.
 pub(crate) fn mentions_unsolved(value: &Value) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
-        // Both halves, for [`mentions_hole`]'s reason read existentially: a
+        // Both halves, for [`mentions_meta`]'s reason read existentially: a
         // slot typed `Row(?n)` has not been determined by the call.
         Form::Indexed { ty, index } => mentions_unsolved(ty) || mentions_unsolved(index),
         Form::Pi { domain, codomain, .. } => mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved),
@@ -889,7 +890,7 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
         Form::Record(fields) => fields.iter().any(|(_, item)| mentions_unsolved(item)),
         Form::Neutral(neutral) => {
             let head_mentions = match &neutral.head {
-                Head::Hole(hole) => match hole.solution() {
+                Head::Meta(meta) => match meta.solution() {
                     Some(solution) => mentions_unsolved(solution),
                     None => true,
                 },
@@ -915,13 +916,13 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
 ///
 /// A value that is not an indexed type quotes ordinarily — this is the one arm of
 /// the pair where an indexed type met a bare type.
-fn indexed_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+fn indexed_shown(meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
     let Form::Indexed { ty, index } = &value.form else {
-        return quote_type(meter, Depth(depth), Mode::Keep, value);
+        return quote_type(meter, depth, Mode::Keep, value);
     };
     Ok(Term::indexed(
         value.origin,
-        quote_type(meter, Depth(depth), Mode::Keep, ty)?,
+        quote_type(meter, depth, Mode::Keep, ty)?,
         index_shown(meter, depth, index)?,
     ))
 }
@@ -932,9 +933,9 @@ fn indexed_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, C
 /// type and [`quote_type`] refuses both; everything else in the grammar — a
 /// variable, an open application of an arithmetic builtin — is a neutral and
 /// quotes as one.
-fn index_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, CoreError> {
+fn index_shown(meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
     match &value.form {
-        Form::Numeral(numeral) => Ok(Term::new(value.origin, Shape::Numeral(numeral.clone()))),
+        Form::Numeral(numeral) => Ok(Term::new(value.origin, Shape::Lit(Constant::Numeral(numeral.clone())))),
         Form::Lit(literal) => Ok(literal.term(value.origin)),
         Form::Universe(_)
         | Form::Pi { .. }
@@ -942,7 +943,7 @@ fn index_shown(meter: &mut Meter, depth: u32, value: &Value) -> Result<Term, Cor
         | Form::RecordType(_)
         | Form::Record(_)
         | Form::Indexed { .. }
-        | Form::Neutral(_) => quote_type(meter, Depth(depth), Mode::Keep, value),
+        | Form::Neutral(_) => quote_type(meter, depth, Mode::Keep, value),
     }
 }
 
@@ -985,7 +986,7 @@ fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError>
             ))),
             Form::Lit(literal) => Ok(measured(literal)),
             Form::Neutral(neutral) => match (&neutral.head, neutral.spine.as_slice()) {
-                (Head::Var(DbLevel(level), ty), []) => Ok(sort_of(ty).map(|sort| Expr::variable(sort, *level))),
+                (Head::Var(Level(level), ty), []) => Ok(sort_of(ty).map(|sort| Expr::variable(sort, *level))),
                 (Head::Builtin(builtin), [Elim::App { argument: left, .. }, Elim::App { argument: right, .. }]) => {
                     match builtin.indexes() {
                         Some(operator) => arithmetic(meter, operator, left, right),
@@ -1070,6 +1071,6 @@ fn sort_of(ty: &Value) -> Option<Sort> {
     match &neutral.head {
         Head::Const(constant) => constant.counting().map(|_| Sort::Count),
         Head::Base(base) => base.measures().map(|_| Sort::Rational),
-        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Hole(_) => None,
+        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Meta(_) => None,
     }
 }

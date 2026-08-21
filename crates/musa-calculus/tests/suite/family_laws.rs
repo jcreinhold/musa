@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use musa_calculus::{
-    Cx, Group, Level, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Term, Visibility,
+    Cx, Group, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern, Refusal, Sort, Term, Visibility,
 };
 
 use crate::programs::{WRITTEN, refusal};
@@ -75,7 +75,7 @@ pub(crate) fn apply(head: Raw, arguments: impl IntoIterator<Item = Raw>) -> Raw 
 }
 
 pub(crate) fn type0() -> Raw {
-    Raw::universe(WRITTEN, Level::ZERO)
+    Raw::universe(WRITTEN, Sort::ZERO)
 }
 
 /// `data Nat where Zero : Nat; Succ : (n : Nat) → Nat`.
@@ -281,7 +281,7 @@ fn a_declaration_brings_its_names_into_scope_at_their_types() {
     let expectations: &[(&str, Term)] = &[
         // `Nat : Type 0` — computed, not written: no constructor stores
         // anything, so the join of the non-recursive field levels is 0.
-        ("Nat", Term::universe(WRITTEN, Level::ZERO)),
+        ("Nat", Term::universe(WRITTEN, Sort::ZERO)),
         ("Nat.Zero", core_nat(&cx)),
         ("Nat.Succ", Term::pi(WRITTEN, "n", core_nat(&cx), core_nat(&cx))),
     ];
@@ -321,7 +321,7 @@ fn the_generated_recursor_eliminates_into_the_motive() {
     let expected = Term::pi(
         WRITTEN,
         "R",
-        Term::universe(WRITTEN, Level::ZERO),
+        Term::universe(WRITTEN, Sort::ZERO),
         Term::pi(
             WRITTEN,
             "Zero",
@@ -346,7 +346,7 @@ fn the_generated_recursor_eliminates_into_the_motive() {
     let without_hypothesis = Term::pi(
         WRITTEN,
         "R",
-        Term::universe(WRITTEN, Level::ZERO),
+        Term::universe(WRITTEN, Sort::ZERO),
         Term::pi(
             WRITTEN,
             "Zero",
@@ -369,7 +369,7 @@ fn the_generated_recursor_eliminates_into_the_motive() {
     let dependent = Term::pi(
         WRITTEN,
         "P",
-        Term::pi(WRITTEN, "_", core_nat(&cx), Term::universe(WRITTEN, Level::ZERO)),
+        Term::pi(WRITTEN, "_", core_nat(&cx), Term::universe(WRITTEN, Sort::ZERO)),
         Term::pi(
             WRITTEN,
             "Zero",
@@ -476,7 +476,7 @@ fn a_recursor_blocked_on_a_variable_does_not_fire() {
 #[test]
 fn a_match_computes_a_type() {
     let (cx, _) = nat_context();
-    let universe0 = Term::universe(WRITTEN, Level::ZERO);
+    let universe0 = Term::universe(WRITTEN, Sort::ZERO);
     let computing = Raw::match_on(
         WRITTEN,
         [var("Nat.Zero")],
@@ -520,7 +520,7 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
     );
     let ty = musa_calculus::check(
         &cx,
-        &Term::universe(WRITTEN, Level::ZERO),
+        &Term::universe(WRITTEN, Sort::ZERO),
         &apply(var("Vec"), [unit_type]),
     )
     .expect("`Vec {}` is a type");
@@ -738,7 +738,7 @@ fn a_declaration_is_refused_for_the_reason_it_is_wrong() {
 ///
 /// If it is not a type, which is a defect in the test that asked.
 fn checked_type(cx: &Cx, raw: &Raw) -> Term {
-    musa_calculus::check(cx, &Term::universe(WRITTEN, Level::ZERO), raw).expect("a type")
+    musa_calculus::check(cx, &Term::universe(WRITTEN, Sort::ZERO), raw).expect("a type")
 }
 
 /// `Nat` as a core term, for a checking question.

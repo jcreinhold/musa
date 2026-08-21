@@ -19,7 +19,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_calculus::{Cx, Field, Index, Level, Name, Origin, Shape, Term, convertible, normalize};
+use musa_calculus::{Binder, Cx, Field, Index, Name, Origin, Shape, Sort, Term, convertible, normalize};
 
 use crate::fixtures::{BINDERS, Sample, corpus};
 
@@ -119,11 +119,11 @@ fn a_normal_form_carries_no_origin_the_question_did_not() {
 #[test]
 fn beta_answers_the_body_rather_than_the_application() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Level::One);
+    let type1 = Term::universe(TYPE, Sort::One);
     let redex = Term::app(
         USE,
-        Term::lam(USE, "z", Term::universe(DEFINITION, Level::ZERO)),
-        Term::universe(USE, Level::ZERO),
+        Term::lam(USE, "z", Term::universe(DEFINITION, Sort::ZERO)),
+        Term::universe(USE, Sort::ZERO),
     );
 
     let normal = normalize(&cx, &type1, &redex).expect("normalizes");
@@ -139,8 +139,8 @@ fn beta_answers_the_body_rather_than_the_application() {
 #[test]
 fn delta_carries_the_definitions_origin() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Level::One);
-    let definition = Term::universe(DEFINITION, Level::ZERO);
+    let type1 = Term::universe(TYPE, Sort::One);
+    let definition = Term::universe(DEFINITION, Sort::ZERO);
 
     let through_let = normalize(
         &cx,
@@ -174,10 +174,10 @@ fn delta_carries_the_definitions_origin() {
 fn an_assumptions_occurrences_point_at_its_binder() {
     let cx = Cx::new();
     let a = cx
-        .assume(BINDER_A, &Term::universe(TYPE, Level::ZERO))
+        .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
 
-    let normal = normalize(&a, &Term::universe(TYPE, Level::One), &Term::var(USE, Index(0))).expect("normalizes");
+    let normal = normalize(&a, &Term::universe(TYPE, Sort::One), &Term::var(USE, Index(0))).expect("normalizes");
     assert_eq!(normal.origin(), BINDER_A, "A was written where A was assumed");
 }
 
@@ -191,7 +191,7 @@ fn an_assumptions_occurrences_point_at_its_binder() {
 fn eta_at_a_function_type_carries_the_expanded_terms_origin() {
     let cx = Cx::new();
     let a = cx
-        .assume(BINDER_A, &Term::universe(TYPE, Level::ZERO))
+        .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
     let arrow = Term::pi(TYPE, "z", Term::var(TYPE, Index(0)), Term::var(TYPE, Index(1)));
     let f = a.assume(BINDER_F, &arrow).expect("f : A → A");
@@ -200,7 +200,12 @@ fn eta_at_a_function_type_carries_the_expanded_terms_origin() {
     let normal = normalize(&f, &arrow_in_f, &Term::var(USE, Index(0))).expect("normalizes");
 
     assert_eq!(normal.origin(), BINDER_F, "the λ η wrote points at f");
-    let Shape::Lam { body, .. } = normal.shape() else {
+    let Shape::Bind {
+        binder: Binder::Lam,
+        body,
+        ..
+    } = normal.shape()
+    else {
         panic!("a variable at a function type reads back as a lambda, got {normal:?}")
     };
     assert_eq!(body.origin(), BINDER_F, "so does the application inside it");
@@ -224,7 +229,7 @@ fn eta_at_a_function_type_carries_the_expanded_terms_origin() {
 fn eta_at_a_record_type_carries_the_expanded_terms_origin() {
     let cx = Cx::new();
     let a = cx
-        .assume(BINDER_A, &Term::universe(TYPE, Level::ZERO))
+        .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
     let pair_type = Term::record_type(
         TYPE,
@@ -262,7 +267,7 @@ fn eta_at_a_record_type_carries_the_expanded_terms_origin() {
 fn a_blocked_elimination_keeps_the_origin_it_was_written_at() {
     let cx = Cx::new();
     let a = cx
-        .assume(BINDER_A, &Term::universe(TYPE, Level::ZERO))
+        .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
     let arrow = Term::pi(TYPE, "z", Term::var(TYPE, Index(0)), Term::var(TYPE, Index(1)));
     let f = a.assume(BINDER_F, &arrow).expect("f : A → A");
@@ -301,25 +306,24 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         Shape::Base(base) => Shape::Base(base.clone()),
         Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
-        Shape::Numeral(numeral) => Shape::Numeral(numeral.clone()),
         Shape::Universe(level) => Shape::Universe(*level),
         Shape::Indexed { ty, index } => Shape::Indexed {
             ty: restamp(ty, origin),
             index: restamp(index, origin),
         },
-        Shape::Pi {
-            filling,
-            name,
-            domain,
-            codomain,
-        } => Shape::Pi {
-            filling: filling.clone(),
+        Shape::Bind { name, binder, body } => Shape::Bind {
             name: Arc::clone(name),
-            domain: restamp(domain, origin),
-            codomain: restamp(codomain, origin),
-        },
-        Shape::Lam { name, body } => Shape::Lam {
-            name: Arc::clone(name),
+            binder: match binder {
+                Binder::Lam => Binder::Lam,
+                Binder::Pi { filling, ty } => Binder::Pi {
+                    filling: filling.clone(),
+                    ty: restamp(ty, origin),
+                },
+                Binder::Let { ty, value } => Binder::Let {
+                    ty: restamp(ty, origin),
+                    value: restamp(value, origin),
+                },
+            },
             body: restamp(body, origin),
         },
         Shape::App { function, argument } => Shape::App {
@@ -332,15 +336,9 @@ fn restamp(term: &Term, origin: Origin) -> Term {
             record: restamp(record, origin),
             field: Name::clone(field),
         },
-        Shape::Let { name, ty, value, body } => Shape::Let {
-            name: Arc::clone(name),
-            ty: restamp(ty, origin),
-            value: restamp(value, origin),
-            body: restamp(body, origin),
-        },
-        // A hole has no subterms to restamp, and its identity is the cell rather
+        // A meta has no subterms to restamp, and its identity is the cell rather
         // than anything written here — cloning it keeps the same unknown.
-        Shape::Hole(hole) => Shape::Hole(hole.clone()),
+        Shape::Meta(meta) => Shape::Meta(meta.clone()),
     };
     Term::new(origin, shape)
 }
@@ -364,15 +362,12 @@ fn children(term: &Term) -> Vec<&Term> {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Numeral(_) => Vec::new(),
+        | Shape::Lit(_) => Vec::new(),
         Shape::Indexed { ty, index } => vec![ty, index],
-        Shape::Pi { domain, codomain, .. } => vec![domain, codomain],
-        Shape::Lam { body, .. } => vec![body],
+        Shape::Bind { binder, body, .. } => binder.outer().chain(std::iter::once(body)).collect(),
         Shape::App { function, argument } => vec![function, argument],
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().map(|field| &field.term).collect(),
         Shape::Project { record, field: _ } => vec![record],
-        Shape::Let { ty, value, body, .. } => vec![ty, value, body],
-        Shape::Hole(_) => Vec::new(),
+        Shape::Meta(_) => Vec::new(),
     }
 }

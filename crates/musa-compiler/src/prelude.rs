@@ -56,8 +56,8 @@
 use std::sync::Arc;
 
 use musa_calculus::{
-    Cx, ElabError, Level, ModuleId, Origin, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern,
-    RawProgram, RawTopLevel, Term, Visibility,
+    Cx, ElabError, ModuleId, Origin, Raw, RawArm, RawBinder, RawConstructor, RawData, RawFamily, RawPattern,
+    RawProgram, RawTopLevel, Sort, Term, Visibility,
 };
 
 /// Where a declaration this module writes comes from.
@@ -1008,7 +1008,7 @@ fn option_of(element: Raw) -> Raw {
 }
 
 fn type0() -> Raw {
-    Raw::universe(HERE, Level::ZERO)
+    Raw::universe(HERE, Sort::ZERO)
 }
 
 #[cfg(test)]
@@ -1019,7 +1019,7 @@ mod tests {
         reason = "a law that cannot fail loudly is not a law"
     )]
 
-    use musa_calculus::{Cx, Level, Raw, Term};
+    use musa_calculus::{Cx, Raw, Sort, Term};
 
     use super::{HERE, applied, constant, structural, var};
 
@@ -1091,7 +1091,7 @@ mod tests {
             cx = cx.declaring(&group);
         }
         let ty = |raw: &Raw| {
-            musa_calculus::check(&cx, &Term::universe(HERE, Level::ZERO), raw).expect("a prelude family is a type")
+            musa_calculus::check(&cx, &Term::universe(HERE, Sort::ZERO), raw).expect("a prelude family is a type")
         };
         let zero = var("Nat.Zero");
         let programs: &[(&str, Raw, Raw)] = &[

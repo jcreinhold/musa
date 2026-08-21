@@ -537,7 +537,7 @@ fn a_nested_forward_traversal_joins_what_a_map_could_not() {
 /// diagnostic is an unsolved metavariable rather than a special case invented for
 /// traversals.
 #[test]
-fn a_fold_with_no_answer_type_is_refused_as_the_hole_it_is() {
+fn a_fold_with_no_answer_type_is_refused_as_the_meta_it_is() {
     let cx = context();
     let Err(error) = infer(&cx, &Raw::method(WRITTEN, numbers([0, 1]), "fold_from_start")) else {
         panic!("`xs.fold_from_start` with nothing to read `B` off must be refused, not guessed at");

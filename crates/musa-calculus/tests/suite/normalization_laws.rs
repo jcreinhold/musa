@@ -9,7 +9,7 @@
 //! obligation and prompt 135's termination checker owes for the recursive
 //! definitions this crate does not yet have.
 
-use musa_calculus::{Cx, Index, Level, Origin, Shape, Term, normalize, normalize_type};
+use musa_calculus::{Binder, Cx, Index, Origin, Shape, Sort, Term, normalize, normalize_type};
 
 use crate::fixtures::{Sample, corpus};
 
@@ -71,14 +71,20 @@ fn a_normal_form_contains_no_redex() {
 #[test]
 fn normal_forms_are_eta_long() {
     let cx = Cx::new();
-    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
+    let a = cx.assume(HERE, &Term::universe(HERE, Sort::ZERO)).expect("A : Type 0");
 
     let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
     let f = a.assume(HERE, &arrow).expect("f : A → A");
     let arrow_in_f = Term::pi(HERE, "z", Term::var(HERE, Index(1)), Term::var(HERE, Index(2)));
     let function = normalize(&f, &arrow_in_f, &Term::var(HERE, Index(0))).expect("f normalizes");
     assert!(
-        matches!(*function.shape(), Shape::Lam { .. }),
+        matches!(
+            *function.shape(),
+            Shape::Bind {
+                binder: Binder::Lam,
+                ..
+            }
+        ),
         "a variable at a function type reads back as a lambda, not as itself"
     );
 
@@ -106,7 +112,7 @@ fn normal_forms_are_eta_long() {
 #[test]
 fn alpha_equivalent_terms_normalize_to_the_same_term() {
     let cx = Cx::new();
-    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
+    let a = cx.assume(HERE, &Term::universe(HERE, Sort::ZERO)).expect("A : Type 0");
     let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
 
     let by_one_name = normalize(&a, &arrow, &Term::lam(HERE, "first", Term::var(HERE, Index(0)))).expect("normalizes");
@@ -124,7 +130,7 @@ fn alpha_equivalent_terms_normalize_to_the_same_term() {
 #[test]
 fn definitions_are_unfolded() {
     let cx = Cx::new();
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     let a = cx.assume(HERE, &type0).expect("A : Type 0");
     let x = a.assume(HERE, &Term::var(HERE, Index(0))).expect("x : A");
 
@@ -197,23 +203,31 @@ fn is_normal(term: &Term) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
         | Shape::Builtin(_) => true,
         // A refinement has no elimination form, so it is never a redex; both
         // halves still have to be normal.
         Shape::Indexed { ty, index } => is_normal(ty) && is_normal(index),
-        Shape::Pi { domain, codomain, .. } => is_normal(domain) && is_normal(codomain),
-        Shape::Lam { body, .. } => is_normal(body),
+        // A `let` is a redex on sight; a Π and a λ are normal when what they
+        // bind and what they hold are.
+        Shape::Bind {
+            binder: Binder::Let { .. },
+            ..
+        } => false,
+        Shape::Bind { binder, body, .. } => binder.outer().all(is_normal) && is_normal(body),
         Shape::App { function, argument } => {
-            !matches!(*function.shape(), Shape::Lam { .. })
-                && !is_delta_redex(term)
+            !matches!(
+                *function.shape(),
+                Shape::Bind {
+                    binder: Binder::Lam,
+                    ..
+                }
+            ) && !is_delta_redex(term)
                 && is_normal(function)
                 && is_normal(argument)
         }
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
         Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(record),
-        Shape::Hole(_) => false,
-        Shape::Let { .. } => false,
+        Shape::Meta(_) => false,
         // A normal form has none: elaboration either solved it or refused the
         // declaration that left it unsolved (§2.1). Reaching one here means a
         // term went to `normalize` before that happened.
@@ -246,7 +260,7 @@ fn is_normal(term: &Term) -> bool {
 /// charged in are the same shape.
 fn assumed_and_defined() -> (Cx, Term, Term, Term) {
     let cx = Cx::new();
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     let a = cx.assume(HERE, &type0).expect("A : Type 0");
     let x = a.assume(HERE, &Term::var(HERE, Index(0))).expect("x : A");
     let defined = x

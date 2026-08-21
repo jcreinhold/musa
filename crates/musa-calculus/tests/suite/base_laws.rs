@@ -33,8 +33,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_calculus::{
-    Answer, Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Level, Literal,
-    Origin, Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Term, check, convertible, infer, normalize,
+    Answer, Base, Budget, Builtin, CoreError, Cx, Datum, ElabError, Extern, Family, Group, Index, Literal, Origin,
+    Payload, Raw, RawArm, RawData, RawPattern, Refusal, Registry, Sort, Term, check, convertible, infer, normalize,
 };
 
 use crate::family_laws::{binder, constructor, data, family, type0, var};
@@ -121,12 +121,12 @@ impl Payload for Node {
 
 /// `Int : Type 0`.
 fn int() -> Base {
-    Base::new("Int", Term::universe(TYPES, Level::ZERO))
+    Base::new("Int", Term::universe(TYPES, Sort::ZERO))
 }
 
 /// `Text : Type 0`.
 fn text() -> Base {
-    Base::new("Text", Term::universe(TYPES, Level::ZERO))
+    Base::new("Text", Term::universe(TYPES, Sort::ZERO))
 }
 
 /// `n : Int`.
@@ -349,7 +349,7 @@ fn option_flatten(option_int: &Term, option_option_int: &Term) -> Builtin {
 
 /// `Tree : Type 0`.
 fn tree() -> Base {
-    Base::new("Tree", Term::universe(TYPES, Level::ZERO))
+    Base::new("Tree", Term::universe(TYPES, Sort::ZERO))
 }
 
 /// `t : Tree`.
@@ -480,7 +480,7 @@ fn tree_depth(list: &Term, vocabulary: Vec<Term>) -> Builtin {
         Term::pi(
             TYPES,
             "A",
-            Term::universe(TYPES, Level::ZERO),
+            Term::universe(TYPES, Sort::ZERO),
             Term::pi(
                 TYPES,
                 "leaf",
@@ -697,7 +697,7 @@ fn calls(function: &str, arguments: impl IntoIterator<Item = Raw>) -> Raw {
 fn a_registered_base_type_is_a_type() {
     let cx = host();
     let (_term, ty) = infer(&cx, &Raw::var(TERMS, "Int")).expect("`Int` resolves");
-    assert_eq!(ty, Term::universe(TYPES, Level::ZERO), "`Int : Type 0`");
+    assert_eq!(ty, Term::universe(TYPES, Sort::ZERO), "`Int : Type 0`");
 }
 
 /// A context with no registry names none of it, which is what leaves every other
@@ -793,7 +793,7 @@ fn a_literal_and_a_base_type_are_their_own_normal_forms() {
     let cx = host();
     let base = int().term(TYPES);
     assert_eq!(
-        normalize_at(&cx, &Term::universe(TYPES, Level::ZERO), &base),
+        normalize_at(&cx, &Term::universe(TYPES, Sort::ZERO), &base),
         base,
         "a base type normalizes to itself"
     );
@@ -1257,7 +1257,7 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
         (
             "the family itself",
             calls("Option", [Raw::var(TYPES, "Int")]),
-            Term::universe(TYPES, Level::ZERO),
+            Term::universe(TYPES, Sort::ZERO),
         ),
         (
             "a λ",
@@ -1273,8 +1273,8 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
         ),
         (
             "a universe",
-            Raw::universe(TYPES, Level::ZERO),
-            Term::universe(TYPES, Level::One),
+            Raw::universe(TYPES, Sort::ZERO),
+            Term::universe(TYPES, Sort::One),
         ),
     ];
     for (name, written, ty) in questions {
@@ -1574,7 +1574,7 @@ fn a_base_type_indexed_by_a_literal_is_finite_data() {
     // index is a literal rather than a constructor for D3's reason: a δ-rule is
     // a `fn` pointer, so the only type it can answer at is one it can build
     // without a context.
-    let tagged = Base::new("Tagged", arrow(int().term(TYPES), Term::universe(TYPES, Level::ZERO)));
+    let tagged = Base::new("Tagged", arrow(int().term(TYPES), Term::universe(TYPES, Sort::ZERO)));
     let at_zero = Term::app(TYPES, tagged.term(TYPES), int_lit(0).term(TYPES));
     Registry::new(
         vec![int(), tagged],
@@ -1690,7 +1690,7 @@ pub(crate) struct RefusedRegistry {
 /// term: `elaboration_laws.rs`'s gate reaches them the way it reaches a refused
 /// trait declaration, and for the same reason.
 pub(crate) fn refused_registries() -> Vec<RefusedRegistry> {
-    let unregistered = Base::new("Ratio", Term::universe(TYPES, Level::ZERO));
+    let unregistered = Base::new("Ratio", Term::universe(TYPES, Sort::ZERO));
     vec![
         RefusedRegistry {
             name: "one name registered twice",

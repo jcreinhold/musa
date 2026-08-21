@@ -103,7 +103,7 @@ use std::fmt;
 use std::sync::{Arc, LazyLock};
 
 use musa_calculus::{
-    Base, Builtin, Cx, Datum, ElabError, Level, Literal, Operator, Origin, Payload, Refusal, Registry, Term,
+    Base, Builtin, Cx, Datum, ElabError, Literal, Operator, Origin, Payload, Refusal, Registry, Sort, Term,
 };
 #[cfg(test)]
 use musa_calculus::{Index, Raw, RawArm, RawPattern};
@@ -243,7 +243,7 @@ where
     // Rust domain that disagreed with its own registration, and a caller free to
     // name it could name it wrongly.
     let broken = || ElabError::from(musa_calculus::Malformed::NotALiteral(std::any::type_name::<T>().into()));
-    let musa_calculus::Shape::Lit(ref value) = *normal.shape() else {
+    let musa_calculus::Shape::Lit(musa_calculus::Constant::Payload(ref value)) = *normal.shape() else {
         return Err(broken());
     };
     held::<T>(value).ok_or_else(broken)
@@ -572,7 +572,7 @@ pub(crate) fn empty_track() -> Literal {
 
 /// `Type 0`, which every base type but the two indexed ones is registered at.
 fn type0() -> Term {
-    Term::universe(HERE, Level::ZERO)
+    Term::universe(HERE, Sort::ZERO)
 }
 
 /// The registered base type named `name`.

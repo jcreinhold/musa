@@ -38,7 +38,7 @@ mod visibility_laws;
 
 /// The terms every law suite is stated over.
 pub(crate) mod fixtures {
-    use musa_calculus::{Budget, CoreError, Cx, Index, Level, Origin, Term};
+    use musa_calculus::{Budget, CoreError, Cx, Index, Origin, Sort, Term};
 
     /// The origin every node of a sample's *type* carries.
     ///
@@ -87,7 +87,7 @@ pub(crate) mod fixtures {
     }
 
     fn type0() -> Term {
-        Term::universe(TYPES, Level::ZERO)
+        Term::universe(TYPES, Sort::ZERO)
     }
 
     fn arrow(domain: Term, codomain: Term) -> Term {
@@ -243,8 +243,8 @@ pub(crate) mod fixtures {
             Sample {
                 name: "universes are not cumulative",
                 cx: empty,
-                ty: Term::universe(TYPES, Level::One),
-                left: Term::universe(TERMS, Level::ZERO),
+                ty: Term::universe(TYPES, Sort::One),
+                left: Term::universe(TERMS, Sort::ZERO),
                 right: Term::pi(TYPES, "_", type0(), type0()),
                 equal: false,
             },
@@ -280,7 +280,7 @@ pub(crate) mod fixtures {
 /// `Id (Type 1) (Type 0) (Type 0)` supplies a second family with a constructor.
 /// Everything below is built from those.
 pub(crate) mod programs {
-    use musa_calculus::{ElabError, Level, Origin, Raw, Refusal, Term};
+    use musa_calculus::{ElabError, Origin, Raw, Refusal, Sort, Term};
 
     /// Where every raw term in the corpus says it was written.
     ///
@@ -334,7 +334,7 @@ pub(crate) mod programs {
     }
 
     fn type0() -> Raw {
-        Raw::universe(WRITTEN, Level::ZERO)
+        Raw::universe(WRITTEN, Sort::ZERO)
     }
 
     fn var(name: &'static str) -> Raw {
@@ -356,7 +356,7 @@ pub(crate) mod programs {
         Term::parameter_pi(
             WRITTEN,
             "X",
-            Term::universe(WRITTEN, Level::ZERO),
+            Term::universe(WRITTEN, Sort::ZERO),
             Term::pi(
                 WRITTEN,
                 "_",
@@ -415,7 +415,7 @@ pub(crate) mod programs {
                 ty: Some(Term::parameter_pi(
                     WRITTEN,
                     "X",
-                    Term::universe(WRITTEN, Level::ZERO),
+                    Term::universe(WRITTEN, Sort::ZERO),
                     Term::pi(
                         WRITTEN,
                         "x",
@@ -435,7 +435,7 @@ pub(crate) mod programs {
                 ty: Some(Term::record_type(
                     WRITTEN,
                     [
-                        ("ty", Term::universe(WRITTEN, Level::ZERO)),
+                        ("ty", Term::universe(WRITTEN, Sort::ZERO)),
                         ("val", Term::var(WRITTEN, musa_calculus::Index(0))),
                     ],
                 )),
@@ -468,7 +468,7 @@ pub(crate) mod programs {
             Program {
                 name: "a universe",
                 raw: type0(),
-                ty: Some(Term::universe(WRITTEN, Level::One)),
+                ty: Some(Term::universe(WRITTEN, Sort::One)),
             },
             Program {
                 name: "an implicit written against an implicit binder",
@@ -512,7 +512,7 @@ pub(crate) mod programs {
             Refused {
                 name: "a universe checked one level too low",
                 raw: type0(),
-                ty: Some(Term::universe(WRITTEN, Level::ZERO)),
+                ty: Some(Term::universe(WRITTEN, Sort::ZERO)),
                 expected: |refusal| matches!(refusal, Refusal::Mismatch(_)),
             },
             Refused {
@@ -598,13 +598,13 @@ pub(crate) mod programs {
                 name: "a function whose domain is the second universe",
                 // §1.1's two fixed universes: `Type 1` would have to be a term
                 // of a third, and there is no third.
-                raw: Raw::pi(WRITTEN, "x", Raw::universe(WRITTEN, Level::One), unit_type()),
+                raw: Raw::pi(WRITTEN, "x", Raw::universe(WRITTEN, Sort::One), unit_type()),
                 ty: None,
                 expected: |refusal| matches!(refusal, Refusal::BeyondUniverses { .. }),
             },
             Refused {
                 name: "a binder type nothing determines",
-                // §2.1: no hole is invented for a binder's type and defaulted
+                // §2.1: no meta is invented for a binder's type and defaulted
                 // later — the λ is checking-only, and at `infer` the report is
                 // that the author must write the type.
                 raw: Raw::lam(WRITTEN, "x", var("x")),

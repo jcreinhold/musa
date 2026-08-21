@@ -5,13 +5,13 @@
 use std::sync::Arc;
 
 use crate::eval::{apply_closure, eval, opened};
-use crate::level::Level;
 use crate::namespace;
 use crate::origin::Origin;
 use crate::raw::{Raw, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Filling, Name, Shape, Term};
+use crate::sort::Sort;
+use crate::term::{Binder, Filling, Name, Shape, Term};
 use crate::value::{Env, Form, Value};
 
 use super::spine::{Slot, Walk};
@@ -52,7 +52,7 @@ impl Elaborator {
             RawShape::Numeral { family, count } => self.numeral(scope, here, family, *count),
             RawShape::Universe(written) => {
                 // §1: two universes, and a bare `Type` is `Type 0`.
-                let level = written.as_ref().copied().unwrap_or(Level::ZERO);
+                let level = written.as_ref().copied().unwrap_or(Sort::ZERO);
                 let Some(above) = level.succ() else {
                     return Err(Refusal::BeyondUniverses { at: here }.into());
                 };
@@ -203,7 +203,7 @@ impl Elaborator {
         // The reader is `convert`'s own, asked one stage earlier rather than
         // reimplemented. A second reader would be two grammars obliged to agree.
         let value = scope.eval(&mut self.meter, &index.term)?;
-        // A hole is §2.1's question and not this one: an index still mentioning
+        // A meta is §2.1's question and not this one: an index still mentioning
         // one has not been determined by the call yet, and §2.1 already refuses
         // an index variable no written argument determines. Refusing it here
         // would be postponement's mirror image — a complaint raised before the
@@ -258,7 +258,7 @@ impl Elaborator {
             }
             None => {
                 // §2: a binder the checking type did not describe must be
-                // annotated. No hole stands here, because nothing downstream
+                // annotated. No meta stands here, because nothing downstream
                 // of an inferred λ ever determines one — the annotation is the
                 // program saying what it means.
                 return Err(Refusal::Uninferable { at: here }.into());
@@ -416,7 +416,7 @@ impl Elaborator {
     /// that said "no such member" would send its reader looking for a typo.
     /// No `self`: a namespaced name is *looked up* and never elaborated
     /// against, which is the whole claim §1.5 makes about the mechanism. A rule
-    /// that needed the elaborator would need holes, and a hole here would be
+    /// that needed the elaborator would need metas, and a meta here would be
     /// the trial elaboration this design does not have.
     pub(super) fn namespaced(scope: &Scope, here: Origin, qualified: &Name) -> Result<Option<Typed>, ElabError> {
         let Some(defined) = scope.cx().definition(qualified) else {
@@ -510,11 +510,10 @@ fn declared_parameters(head: &Term, ty: &Term) -> Vec<Name> {
     let registered = matches!(head.shape(), Shape::Builtin(_));
     let mut declared = Vec::new();
     let mut rest = ty;
-    while let Shape::Pi {
-        filling,
+    while let Shape::Bind {
         name,
-        codomain,
-        ..
+        binder: Binder::Pi { filling, .. },
+        body,
     } = rest.shape()
     {
         if *filling == Filling::Written {
@@ -523,7 +522,7 @@ fn declared_parameters(head: &Term, ty: &Term) -> Vec<Name> {
             }
             declared.push(Arc::clone(name));
         }
-        rest = codomain;
+        rest = body;
     }
     declared
 }

@@ -41,8 +41,8 @@
 
 use std::sync::Arc;
 
-use crate::level::Level;
 use crate::origin::Origin;
+use crate::sort::Sort;
 use crate::term::{Filling, Name};
 use crate::visibility::{ModuleId, Visibility};
 
@@ -299,7 +299,7 @@ pub enum RawShape {
     Lit(crate::base::Literal),
     /// `Type l`, at a level the writer states — or bare `Type`, whose level is
     /// §2.1's third metavariable site.
-    Universe(Option<Level>),
+    Universe(Option<Sort>),
     /// `(x : A) → B`, at whichever [`Filling`] the binder has.
     Pi {
         /// Whether uses of the function must write this argument.
@@ -608,7 +608,7 @@ impl Raw {
 
     /// `Type level`, at a level the caller names.
     #[must_use]
-    pub fn universe(origin: Origin, level: Level) -> Self {
+    pub fn universe(origin: Origin, level: Sort) -> Self {
         Self::new(origin, RawShape::Universe(Some(level)))
     }
 
@@ -704,11 +704,11 @@ impl Raw {
     /// [`Refusal::Uninferable`](crate::Refusal::Uninferable) names.
     ///
     /// The application walk asks it when an argument's slot still mentions an
-    /// unsolved hole (§2.1's direction rule): inferring the argument to teach
-    /// the hole is right for everything inference has a rule for, but a
+    /// unsolved meta (§2.1's direction rule): inferring the argument to teach
+    /// the meta is right for everything inference has a rule for, but a
     /// checking-only form has to be checked against the slot as it stands —
     /// the slot's Pi descends around it, and an annotation inside is what the
-    /// hole is solved from.
+    /// meta is solved from.
     pub(crate) fn checks_only(&self) -> bool {
         matches!(
             self.shape(),

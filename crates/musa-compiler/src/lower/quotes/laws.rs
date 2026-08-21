@@ -130,7 +130,7 @@ fn answer(cx: &Cx, program: &Raw, cat: Cat) -> Syntax {
     let term = musa_calculus::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
         musa_calculus::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    let musa_calculus::Shape::Lit(ref built) = *normal.shape() else {
+    let musa_calculus::Shape::Lit(musa_calculus::Constant::Payload(ref built)) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };
     held::<Syntax>(built).expect("the answer is a syntax value").clone()

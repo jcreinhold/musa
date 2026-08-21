@@ -69,16 +69,13 @@ pub(crate) fn head_name(term: &Term) -> Option<Name> {
         Shape::Def(_)
         | Shape::Var(_)
         | Shape::Universe(_)
-        | Shape::Pi { .. }
-        | Shape::Lam { .. }
+        | Shape::Bind { .. }
         | Shape::RecordType(_)
         | Shape::Record(_)
         | Shape::Project { .. }
         | Shape::Builtin(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
-        | Shape::Let { .. } => None,
+        | Shape::Meta(_) => None,
     }
 }
 
@@ -131,7 +128,7 @@ pub(crate) fn declaring(scope: &Scope, member: &str) -> Vec<Name> {
 /// [`head_name`]'s twin, one representation over, and it exists for the one site
 /// that reads a head off a type it did not quote: a bare member spelling checked
 /// against an expected type. `None` for every flexible or structural form —
-/// a Π, a universe, a record, an unsolved hole — none of which names a
+/// a Π, a universe, a record, an unsolved meta — none of which names a
 /// namespace, so a site headed by one fixes nothing and the spelling stays
 /// ambiguous.
 ///
@@ -144,6 +141,6 @@ pub(crate) fn head_of(ty: &Value) -> Option<Name> {
     match &neutral.head {
         Head::Const(constant) => Some(constant.name()),
         Head::Base(base) => Some(Arc::clone(base.name())),
-        Head::Var(..) | Head::Builtin(_) | Head::Hole(_) | Head::Def(..) => None,
+        Head::Var(..) | Head::Builtin(_) | Head::Meta(_) | Head::Def(..) => None,
     }
 }

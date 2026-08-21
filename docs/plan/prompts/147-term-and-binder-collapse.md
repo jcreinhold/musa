@@ -1,7 +1,7 @@
 ---
 id: 147
 slug: term-and-binder-collapse
-status: in-progress
+status: done
 depends_on: [145]
 phase: 3
 ---
@@ -15,9 +15,9 @@ phase: 3
 rename `Hole` to `Meta`, and fix the naming while the file is open. **Mechanical: no semantics change and no program's
 acceptance moves.**
 
-The other half of `02-core-calculus.md` §1's seven — `Const`/`Def`/`Base`/`Builtin` becoming one `Named` whose
-reduction behaviour the *context* answers for — is prompt 147a. It was in this prompt and is not any more; the repair
-note at the end of **Design** says what the evidence was.
+The other half of `02-core-calculus.md` §1's seven — `Const`/`Def`/`Base`/`Builtin` becoming one `Named` whose reduction
+behaviour the *context* answers for — is prompt 147a. It was in this prompt and is not any more; the repair note at the
+end of **Design** says what the evidence was.
 
 ## Read
 
@@ -70,24 +70,23 @@ surface; `MetaSource` already exists in the crate, so the codebase had agreed an
 `Constraint`, which prompt 146 left as the three fillings that exist. `Index` keeps its name; `DbIndex` is rejected —
 the `Db` reads as *database*, and the pair `Index`/`Level` already says which side of the index/level duality each is
 on. `DbLevel` and `Depth` merge into one `Level`: they are a position and a count into the same environment, and
-carrying both invites using one where the other is meant. `Sort` takes the universe word so `Level` means one thing;
-152 gives `Sort` its contents. `show.rs`'s private `Level` becomes `Precedence`, which is what it always was.
+carrying both invites using one where the other is meant. `Sort` takes the universe word so `Level` means one thing; 152
+gives `Sort` its contents. `show.rs`'s private `Level` becomes `Precedence`, which is what it always was.
 `family::Binder` becomes `family::Parameter`, because one crate cannot spell a telescope position and a term's binder
 the same way and expect the mix-up to be caught — the same argument `Level`/`Sort` is made on.
 
 **Repaired at implementation (prompt 147a split out).** This prompt asked, in one commit, for both the collapse above
 and the relocation of reduction behaviour into the context. Implementation evidence says those are two prompts:
 
-- A recursor's motive universe is part of a term's identity — `family::Constant`'s `PartialEq` says so, and
-  `case.rs`'s `motive_level` mints `Nat.elim` at `Type 1` whenever a `match` computes a type. A `Named { name, role }`
-  whose `Role` is `Function | Constructor | TypeConstructor` cannot tell those two terms apart, so the sketch as
-  written moves acceptance — which this prompt's own oracle forbids. Fixing it needs either a fourth role or
-  level-polymorphic recursors, and the second is prompt 152, which this prompt's **Stop** excludes.
+- A recursor's motive universe is part of a term's identity — `family::Constant`'s `PartialEq` says so, and `case.rs`'s
+  `motive_level` mints `Nat.elim` at `Type 1` whenever a `match` computes a type. A `Named { name, role }` whose `Role`
+  is `Function | Constructor | TypeConstructor` cannot tell those two terms apart, so the sketch as written moves
+  acceptance — which this prompt's own oracle forbids. Fixing it needs either a fourth role or level-polymorphic
+  recursors, and the second is prompt 152, which this prompt's **Stop** excludes.
 - `Definition::Compiled(CaseTree)` cannot hold what a definition holds today — an elaborated value and its type — and
   case trees are prompt 155's, stubbed until then. The arm that would carry today's definitions is not in the sketch.
-- Reaching a definition by name at reduction time needs the definition table to reach `eval`, `apply`, and every
-  closure applied under `quote` and `convert`. That is an architecture this prompt does not describe and cannot be
-  read into it.
+- Reaching a definition by name at reduction time needs the definition table to reach `eval`, `apply`, and every closure
+  applied under `quote` and `convert`. That is an architecture this prompt does not describe and cannot be read into it.
 
 None of that touches the collapse above, which is mechanical exactly as claimed. 147a states the relocation with those
 three answered.
@@ -122,6 +121,6 @@ Commit as `Collapse the term language's binders and literals`.
 ## Stop
 
 - No `Named` and no `Definition` (147a): `Const`, `Def`, `Base`, and `Builtin` stay exactly as they are.
-- No `Indexed` deletion (151), no records-as-data (157), no case trees (155), no metavariable solving (153), no
-  universe change (152).
+- No `Indexed` deletion (151), no records-as-data (157), no case trees (155), no metavariable solving (153), no universe
+  change (152).
 - No new diagnostics. Wording repairs only where a renamed type appears in a message.

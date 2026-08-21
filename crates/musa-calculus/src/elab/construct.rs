@@ -35,7 +35,7 @@ impl Elaborator {
                 }
                 built
             }
-            Params::Holes(count) => self.holes(scope, here, built, count)?,
+            Params::Metas(count) => self.metas(scope, here, built, count)?,
         };
         Ok(Some(self.apply_spine(scope, here, built, &arguments, Some(ty))?))
     }
@@ -74,11 +74,11 @@ impl Elaborator {
         let Some((fields, params)) = written_case(scope, name) else {
             return Ok(None);
         };
-        Ok(Some((name.to_string(), fields, Params::Holes(params))))
+        Ok(Some((name.to_string(), fields, Params::Metas(params))))
     }
 
     /// §2's constructor rule reached from the other direction: `C a⃗ ⇒ N ?p⃗`,
-    /// where the `?p⃗` are the application pass's holes.
+    /// where the `?p⃗` are the application pass's metas.
     ///
     /// Three shapes arrive here. A **reader-written** constructor (a
     /// [`RawShape::Hosted`] name) knows its family from the name itself. A
@@ -103,7 +103,7 @@ impl Elaborator {
                     return Ok(None);
                 }
                 let built = self.infer(scope, &Raw::var(here, name.to_string()))?;
-                let built = self.holes(scope, here, built, params)?;
+                let built = self.metas(scope, here, built, params)?;
                 Ok(Some(self.apply_spine(scope, here, built, &arguments, None)?))
             }
             RawShape::Var(_)
@@ -130,12 +130,12 @@ impl Elaborator {
 
 /// A constructor's family parameters, for [`Elaborator::constructed`]: read
 /// off the expected type, or — where no expected type has named the family —
-/// one hole each, solved by the fields as they are written.
+/// one meta each, solved by the fields as they are written.
 enum Params {
     /// The values the expected type carries, in family order.
     Read(Vec<Value>),
     /// How many the family's telescope declares.
-    Holes(u32),
+    Metas(u32),
 }
 
 /// How many fields the constructor `name` names takes, and how many parameters

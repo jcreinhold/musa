@@ -23,12 +23,12 @@
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::term::{Filling, Name, Shape, Term};
+use crate::term::{Binder, Filling, Name, Shape, Term};
 
 /// How `term` is spelled, closed or not.
 pub(crate) fn spelled(term: &Term) -> String {
     let mut out = String::new();
-    write(&mut out, term, Level::Outer, &mut Vec::new());
+    write(&mut out, term, Precedence::Outer, &mut Vec::new());
     out
 }
 
@@ -62,8 +62,11 @@ pub(crate) fn listed(names: &[Name]) -> String {
 /// Three, because there are three ways a term binds looser than its neighbour:
 /// a binder extends to the right as far as it can, an application binds tighter
 /// than an arrow, and an argument binds tighter than an application.
+///
+/// Named for what it decides rather than for a number, so that `Sort` means
+/// one thing in this crate: a position in an environment.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Level {
+enum Precedence {
     /// Anything.
     Outer,
     /// An application or tighter: an arrow or a binder needs parentheses.
@@ -72,10 +75,10 @@ enum Level {
     Argument,
 }
 
-fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
+fn write(out: &mut String, term: &Term, at: Precedence, names: &mut Vec<Name>) {
     match term.shape() {
-        Shape::Hole(hole) => {
-            let _ = write!(out, "{hole}");
+        Shape::Meta(meta) => {
+            let _ = write!(out, "{meta}");
         }
         Shape::Var(index) => {
             let depth = names.len();
@@ -99,13 +102,8 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
         Shape::Base(base) => {
             let _ = write!(out, "{base}");
         }
-        Shape::Lit(literal) => {
-            let _ = write!(out, "{literal}");
-        }
-        // `384`, not 384 `Nat.Succ`s. What the author wrote is what a
-        // diagnostic, a hover, and a semantic hash should all say back.
-        Shape::Numeral(numeral) => {
-            let _ = write!(out, "{numeral}");
+        Shape::Lit(constant) => {
+            let _ = write!(out, "{constant}");
         }
         Shape::Builtin(builtin) => {
             let _ = write!(out, "{builtin}");
@@ -118,42 +116,41 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
         // parentheses are part of the spelling, so `List Pc(12)` needs no more
         // of them than `List Nat` does.
         Shape::Indexed { ty, index } => {
-            write(out, ty, Level::Argument, names);
+            write(out, ty, Precedence::Argument, names);
             out.push('(');
-            write(out, index, Level::Outer, names);
+            write(out, index, Precedence::Outer, names);
             out.push(')');
         }
-        Shape::App { .. } => parenthesized(out, level, Level::Applied, |out| {
+        Shape::App { .. } => parenthesized(out, at, Precedence::Applied, |out| {
             let (head, arguments) = spine(term);
-            write(out, head, Level::Applied, names);
+            write(out, head, Precedence::Applied, names);
             for argument in arguments {
                 out.push(' ');
-                write(out, argument, Level::Argument, names);
+                write(out, argument, Precedence::Argument, names);
             }
         }),
-        Shape::Pi {
-            filling,
+        Shape::Bind {
             name,
-            domain,
-            codomain,
-        } => parenthesized(out, level, Level::Outer, |out| {
+            binder: Binder::Pi { filling, ty },
+            body,
+        } => parenthesized(out, at, Precedence::Outer, |out| {
             match filling {
                 // An arrow, because nothing after it names the binder. Told by
                 // the *name* rather than by an occurs check: every reading that
                 // writes an unnamed Π says so here, and a binder a reader can
                 // see mentioned is one they would rather see written out.
-                Filling::Written if !mentioned(codomain) => {
-                    write(out, domain, Level::Applied, names);
+                Filling::Written if !mentioned(body) => {
+                    write(out, ty, Precedence::Applied, names);
                     out.push_str(" → ");
                 }
                 Filling::Written => {
                     let _ = write!(out, "({name} : ");
-                    write(out, domain, Level::Outer, names);
+                    write(out, ty, Precedence::Outer, names);
                     out.push_str(") → ");
                 }
                 Filling::Parameter => {
                     let _ = write!(out, "{{{name} : ");
-                    write(out, domain, Level::Outer, names);
+                    write(out, ty, Precedence::Outer, names);
                     out.push_str("} → ");
                 }
                 // The constraint and not its domain, because `{}` is what the
@@ -163,19 +160,23 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
                     let _ = write!(out, "[{}", constraint.class);
                     for argument in constraint.args.iter() {
                         out.push(' ');
-                        write(out, argument, Level::Argument, names);
+                        write(out, argument, Precedence::Argument, names);
                     }
                     out.push_str("] → ");
                 }
             }
             names.push(Arc::clone(name));
-            write(out, codomain, Level::Outer, names);
+            write(out, body, Precedence::Outer, names);
             names.pop();
         }),
-        Shape::Lam { name, body } => parenthesized(out, level, Level::Outer, |out| {
+        Shape::Bind {
+            name,
+            binder: Binder::Lam,
+            body,
+        } => parenthesized(out, at, Precedence::Outer, |out| {
             let _ = write!(out, "λ{name}. ");
             names.push(Arc::clone(name));
-            write(out, body, Level::Outer, names);
+            write(out, body, Precedence::Outer, names);
             names.pop();
         }),
         Shape::RecordType(fields) => {
@@ -185,7 +186,7 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
                     out.push_str(", ");
                 }
                 let _ = write!(out, "{} : ", field.name);
-                write(out, &field.term, Level::Outer, names);
+                write(out, &field.term, Precedence::Outer, names);
                 names.push(Arc::clone(&field.name));
             }
             for _ in fields.iter() {
@@ -200,25 +201,29 @@ fn write(out: &mut String, term: &Term, level: Level, names: &mut Vec<Name>) {
                     out.push_str(", ");
                 }
                 let _ = write!(out, "{} = ", field.name);
-                write(out, &field.term, Level::Outer, names);
+                write(out, &field.term, Precedence::Outer, names);
             }
             out.push_str(if fields.is_empty() { "}" } else { " }" });
         }
         Shape::Project { record, field } => {
-            write(out, record, Level::Argument, names);
+            write(out, record, Precedence::Argument, names);
             let _ = write!(out, ".{field}");
         }
-        Shape::Let { name, body, .. } => parenthesized(out, level, Level::Outer, |out| {
+        Shape::Bind {
+            name,
+            binder: Binder::Let { .. },
+            body,
+        } => parenthesized(out, at, Precedence::Outer, |out| {
             let _ = write!(out, "let {name} in ");
             names.push(Arc::clone(name));
-            write(out, body, Level::Outer, names);
+            write(out, body, Precedence::Outer, names);
             names.pop();
         }),
     }
 }
 
 /// `body`, in parentheses when `at` would bind looser than `needed`.
-fn parenthesized(out: &mut String, needed: Level, at: Level, body: impl FnOnce(&mut String)) {
+fn parenthesized(out: &mut String, needed: Precedence, at: Precedence, body: impl FnOnce(&mut String)) {
     let wrap = needed > at;
     if wrap {
         out.push('(');
@@ -251,21 +256,15 @@ fn occurs(term: &Term, depth: u32) -> bool {
         Shape::Var(index) => index.0 == depth,
         Shape::Indexed { ty, index } => occurs(ty, depth) || occurs(index, depth),
         Shape::App { function, argument } => occurs(function, depth) || occurs(argument, depth),
-        Shape::Pi {
-            filling,
-            domain,
-            codomain,
-            ..
-        } => {
-            let constrains = match filling {
-                Filling::Constraint(constraint) => constraint.args.iter().any(|argument| occurs(argument, depth)),
-                Filling::Written | Filling::Parameter => false,
+        Shape::Bind { binder, body, .. } => {
+            let constrains = match binder {
+                Binder::Pi {
+                    filling: Filling::Constraint(constraint),
+                    ..
+                } => constraint.args.iter().any(|argument| occurs(argument, depth)),
+                Binder::Lam | Binder::Pi { .. } | Binder::Let { .. } => false,
             };
-            constrains || occurs(domain, depth) || occurs(codomain, depth.saturating_add(1))
-        }
-        Shape::Lam { body, .. } => occurs(body, depth.saturating_add(1)),
-        Shape::Let { ty, value, body, .. } => {
-            occurs(ty, depth) || occurs(value, depth) || occurs(body, depth.saturating_add(1))
+            constrains || binder.outer().any(|term| occurs(term, depth)) || occurs(body, depth.saturating_add(1))
         }
         Shape::RecordType(fields) => fields
             .iter()
@@ -279,8 +278,7 @@ fn occurs(term: &Term, depth: u32) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
+        | Shape::Meta(_)
         | Shape::Builtin(_)
         | Shape::Universe(_) => false,
     }

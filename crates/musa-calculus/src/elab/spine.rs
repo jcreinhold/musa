@@ -48,24 +48,18 @@ impl Elaborator {
             .into());
         };
         let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-        let term = crate::quote::quote(
-            &mut self.meter,
-            crate::quote::Depth(scope.depth()),
-            crate::quote::Mode::Keep,
-            &domain,
-            param,
-        )?;
+        let term = crate::quote::quote(&mut self.meter, scope.depth(), crate::quote::Mode::Keep, &domain, param)?;
         Ok(Typed {
             term: Term::app(here, head.term, term),
             ty: apply_closure(&mut self.meter, &codomain, param.clone())?,
         })
     }
 
-    /// `head` applied to `count` fresh holes — a constructor's parameters when
+    /// `head` applied to `count` fresh metas — a constructor's parameters when
     /// no expected type named the family. The fields solve them through §2.1's
     /// ordinary matching, and [`Elaborator::settled`] audits what they could
     /// not.
-    pub(super) fn holes(
+    pub(super) fn metas(
         &mut self,
         scope: &Scope,
         here: Origin,
@@ -83,10 +77,10 @@ impl Elaborator {
                 .into());
             };
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-            let hole = self.fresh_hole(here, &domain);
-            let value = Value::neutral(Neutral::head(here, crate::value::Head::Hole(hole.clone())));
+            let meta = self.fresh_meta(here, &domain);
+            let value = Value::neutral(Neutral::head(here, crate::value::Head::Meta(meta.clone())));
             built = Typed {
-                term: Term::app(here, built.term, Term::hole(here, hole)),
+                term: Term::app(here, built.term, Term::meta(here, meta)),
                 ty: apply_closure(&mut self.meter, &codomain, value)?,
             };
         }
@@ -98,7 +92,7 @@ impl Elaborator {
     /// position.
     ///
     /// One left-to-right walk over the spine, and the discipline is the
-    /// document's: an implicit parameter becomes a [hole](crate::meta::Hole)
+    /// document's: an implicit parameter becomes a [meta](crate::meta::Meta)
     /// that the first argument to mention it solves; a constraint waits until
     /// the walk has said everything matching can say, and is then resolved
     /// once, by lookup, never postponed. The domain and the argument's written
@@ -113,8 +107,8 @@ impl Elaborator {
     ///   domain.
     /// - **Still quantified, and the argument is a checking-only form that
     ///   describes nothing** — the argument is *deferred*. Nothing can infer a
-    ///   bare `λ`, and checking one against a domain that is still a hole would
-    ///   bind its parameter to that hole; so a placeholder stands in the slot,
+    ///   bare `λ`, and checking one against a domain that is still a meta would
+    ///   bind its parameter to that meta; so a placeholder stands in the slot,
     ///   the rest of the spine is walked — which is what solves the domain —
     ///   and the argument is checked afterwards against the type it turned out
     ///   to have. A λ that annotates its own binder is not here: it says what
@@ -142,8 +136,8 @@ impl Elaborator {
     ) -> Result<Typed, ElabError> {
         // A *bare* constructor reference — no written fields — has nothing
         // for its family parameters to be learned from, so each becomes a
-        // hole (§2.1): `None` is `None<?>` wherever it stands, and the slot it
-        // is checked against solves the hole by ordinary first-order matching.
+        // meta (§2.1): `None` is `None<?>` wherever it stands, and the slot it
+        // is checked against solves the meta by ordinary first-order matching.
         // Without this a bare constructor at an undetermined slot would lend
         // the slot its Π-scheme, and the program that then drew a value from
         // the slot would meet a function type where its data was. A written
@@ -154,25 +148,22 @@ impl Elaborator {
                 if arguments.is_empty() && matches!(constant.role, crate::family::Role::Constructor(_)) =>
             {
                 let params = constant.group.params();
-                self.holes(scope, here, head, params)?
+                self.metas(scope, here, head, params)?
             }
-            Shape::Hole(_)
+            Shape::Meta(_)
             | Shape::Var(_)
             | Shape::Const(_)
             | Shape::Def(_)
-            | Shape::Numeral(_)
             | Shape::Base(_)
             | Shape::Lit(_)
             | Shape::Builtin(_)
             | Shape::Universe(_)
-            | Shape::Pi { .. }
-            | Shape::Lam { .. }
+            | Shape::Bind { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Indexed { .. }
-            | Shape::Let { .. } => head,
+            | Shape::Indexed { .. } => head,
         };
         let mut walk = Walk::default();
         let mut waiting: Vec<Waiting<'_>> = Vec::new();
@@ -204,23 +195,23 @@ impl Elaborator {
                 // Deferred: a placeholder holds the slot so the rest of the
                 // walk can proceed, and the argument is checked below against
                 // whatever the rest of the walk made the domain be. The
-                // placeholder is an ordinary hole, so a codomain that reads the
+                // placeholder is an ordinary meta, so a codomain that reads the
                 // argument's *value* gets a value to read, and anything the
                 // walk learns about it is a solution the second pass then
                 // agrees with rather than overwrites.
-                let hole = self.fresh_hole(at, &domain);
-                let value = Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole.clone())));
+                let meta = self.fresh_meta(at, &domain);
+                let value = Value::neutral(Neutral::head(at, crate::value::Head::Meta(meta.clone())));
                 waiting.push(Waiting {
                     argument,
                     domain: Arc::clone(&domain),
-                    hole: hole.clone(),
+                    meta: meta.clone(),
                     at,
                 });
-                (Slot::Deferred(hole), value)
+                (Slot::Deferred(meta), value)
             } else {
                 // Inferred — but an inferred head can still quantify over
                 // parameters the domain determines (`identity` used unapplied):
-                // the empty walk peels those into holes and does the matching,
+                // the empty walk peels those into metas and does the matching,
                 // which is §2.1's one rule rather than a second path here.
                 let inferred = self.infer(scope, argument)?;
                 let term = self
@@ -249,19 +240,19 @@ impl Elaborator {
                 .unify_types(&mut self.meter, scope.depth(), here, expected, &ty)?;
         }
         // The second pass, in written order. `domain` is the same value the
-        // walk skipped, and it needs no re-derivation: a hole is shared, so a
+        // walk skipped, and it needs no re-derivation: a meta is shared, so a
         // domain the walk solved is already solved here.
         let mut deferred = Vec::with_capacity(waiting.len());
         for Waiting {
             argument,
             domain,
-            hole,
+            meta,
             at,
         } in waiting
         {
             let term = self.check(scope, argument, &domain)?;
             let value = scope.eval(&mut self.meter, &term)?;
-            let stood = Value::neutral(Neutral::head(at, crate::value::Head::Hole(hole)));
+            let stood = Value::neutral(Neutral::head(at, crate::value::Head::Meta(meta)));
             // Assignment when the placeholder is still free, conversion when
             // the walk already decided what stood there — one call, because
             // those are the same procedure (see [`crate::convert`]).
@@ -273,7 +264,7 @@ impl Elaborator {
     }
 
     /// Skip the binders §2.1 fills rather than the author: an implicit
-    /// parameter becomes a fresh hole, a constraint is noted for the walk's
+    /// parameter becomes a fresh meta, a constraint is noted for the walk's
     /// end.
     pub(super) fn advance(&mut self, scope: &Scope, ty: &mut Value, walk: &mut Walk) -> Result<(), ElabError> {
         let _ = scope;
@@ -292,26 +283,26 @@ impl Elaborator {
             match filling {
                 Filling::Written => return Ok(()),
                 Filling::Parameter => {
-                    let hole = self.fresh_hole(current.origin, domain);
-                    walk.slots.push(Slot::Parameter(hole.clone()));
-                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
+                    let meta = self.fresh_meta(current.origin, domain);
+                    walk.slots.push(Slot::Parameter(meta.clone()));
+                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Meta(meta)));
                     *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
                 Filling::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
-                    // The codomain reads the evidence off its binder; a hole
+                    // The codomain reads the evidence off its binder; a meta
                     // stands for it, and [`Self::settled`] writes the computed
                     // evidence in — the one place a constraint is answered.
-                    let hole = self.fresh_hole(current.origin, domain);
+                    let meta = self.fresh_meta(current.origin, domain);
                     self.constraints.push((
                         constraint,
                         scope.clone(),
                         codomain.env.clone(),
                         current.origin,
-                        hole.clone(),
+                        meta.clone(),
                     ));
-                    walk.slots.push(Slot::Evidence(hole.clone()));
-                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Hole(hole)));
+                    walk.slots.push(Slot::Evidence(meta.clone()));
+                    let value = Value::neutral(Neutral::head(current.origin, crate::value::Head::Meta(meta)));
                     *ty = apply_closure(&mut self.meter, codomain, value)?;
                 }
             }
@@ -319,7 +310,7 @@ impl Elaborator {
     }
 
     /// The walk's end: build the spine, and leave the residual type with the
-    /// holes it still mentions — solved or not, which [`Self::settled`]
+    /// metas it still mentions — solved or not, which [`Self::settled`]
     /// audits.
     pub(super) fn finish_walk(
         here: Origin,
@@ -335,13 +326,13 @@ impl Elaborator {
         let mut term = head;
         for slot in &walk.slots {
             let argument = match slot {
-                Slot::Parameter(hole) | Slot::Evidence(hole) => Term::hole(here, hole.clone()),
+                Slot::Parameter(meta) | Slot::Evidence(meta) => Term::meta(here, meta.clone()),
                 Slot::Argument(term) => term.clone(),
                 // The placeholder is the fallback rather than a panic because
                 // it is a *correct* term: the second pass solved it to the
                 // argument's value, so a spine built from it says the same
                 // thing with the argument read back instead of as written.
-                Slot::Deferred(hole) => deferred.next().unwrap_or_else(|| Term::hole(here, hole.clone())),
+                Slot::Deferred(meta) => deferred.next().unwrap_or_else(|| Term::meta(here, meta.clone())),
             };
             term = Term::app(here, term, argument);
         }
@@ -366,26 +357,26 @@ pub(super) struct Walk {
 struct Waiting<'raw> {
     /// The argument, still unelaborated.
     argument: &'raw Raw,
-    /// The domain it will be checked against — the same value, whose holes the
+    /// The domain it will be checked against — the same value, whose metas the
     /// rest of the walk may since have solved.
     domain: Arc<Value>,
     /// The placeholder that stood in the slot, so the checked argument can be
     /// made to agree with anything the walk decided about it.
-    hole: crate::meta::Hole,
+    meta: crate::meta::Meta,
     /// Where the argument was written, for the placeholder and the agreement.
     at: Origin,
 }
 
 /// One spine slot of a [`Walk`].
 pub(super) enum Slot {
-    /// An implicit parameter: the hole stands in the term whether or not the
+    /// An implicit parameter: the meta stands in the term whether or not the
     /// walk solved it, and [`Elaborator::settled`] audits at declaration end.
-    Parameter(crate::meta::Hole),
+    Parameter(crate::meta::Meta),
     /// A constraint's evidence, computed at declaration end.
-    Evidence(crate::meta::Hole),
+    Evidence(crate::meta::Meta),
     /// An argument the author wrote, elaborated.
     Argument(Term),
     /// An argument the walk deferred, standing at the placeholder that held
     /// its slot. [`Elaborator::finish_walk`] fills it from the second pass.
-    Deferred(crate::meta::Hole),
+    Deferred(crate::meta::Meta),
 }

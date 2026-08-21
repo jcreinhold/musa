@@ -50,7 +50,7 @@
 
 use std::sync::Arc;
 
-use musa_calculus::{Level, Name, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Visibility};
+use musa_calculus::{Name, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Sort, Visibility};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
@@ -286,7 +286,7 @@ impl Lowering<'_> {
             types.push(field.ty);
         }
         let mut value = Raw::record_type(origin, names.iter().map(|name| &**name).zip(types));
-        let mut ty = Raw::universe(origin, Level::ZERO);
+        let mut ty = Raw::universe(origin, Sort::ZERO);
         for parameter in params.iter().rev() {
             value = Raw::lam(origin, Arc::clone(&parameter.name), value);
             ty = Raw::pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
@@ -514,7 +514,7 @@ impl Lowering<'_> {
                 let at = self.origin(written);
                 Some(RawBinder {
                     name: declared_name(written)?,
-                    ty: Raw::universe(at, Level::ZERO),
+                    ty: Raw::universe(at, Sort::ZERO),
                 })
             })
             .collect()

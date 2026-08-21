@@ -13,13 +13,13 @@
 //! whole types down to it.
 
 use musa_calculus::{
-    Base, Builtin, Cx, ElabError, Index, Level, Mismatch, PathStep, Raw, Refusal, Registry, Term, check, infer,
+    Base, Builtin, Cx, ElabError, Index, Mismatch, PathStep, Raw, Refusal, Registry, Sort, Term, check, infer,
 };
 
 use crate::programs::{WRITTEN, annotated_unit, core_unit_type, refusal, unit, unit_type};
 
 fn type0() -> Raw {
-    Raw::universe(WRITTEN, Level::ZERO)
+    Raw::universe(WRITTEN, Sort::ZERO)
 }
 
 fn var(name: &'static str) -> Raw {
@@ -78,7 +78,7 @@ fn wired() -> std::sync::Arc<Registry> {
 }
 
 fn core_type0() -> Term {
-    Term::universe(WRITTEN, Level::ZERO)
+    Term::universe(WRITTEN, Sort::ZERO)
 }
 
 /// `Type 0 → … → result`, with `arity` explicit arguments.
@@ -215,7 +215,7 @@ fn a_solution_that_is_itself_a_metavariable_is_followed_to_the_end() {
     let cx = Cx::new().with_externs(wired());
     let at = check(
         &cx,
-        &Term::universe(WRITTEN, Level::ZERO),
+        &Term::universe(WRITTEN, Sort::ZERO),
         &ported(unit_type(), unit_type(), unit_type()),
     )
     .expect("`Wire {} {} {}` is a type");
@@ -228,7 +228,7 @@ fn a_solution_that_is_itself_a_metavariable_is_followed_to_the_end() {
         .unwrap_or_else(|error| panic!("two registered constants meeting at a shared implicit: {error}"));
 }
 
-/// §2.1: a hole is never defaulted and never generalized, so a binder whose
+/// §2.1: a meta is never defaulted and never generalized, so a binder whose
 /// type nothing determines is a refusal that tells the author to write it.
 #[test]
 fn a_binder_nothing_determines_is_refused_rather_than_defaulted() {
@@ -264,10 +264,10 @@ fn a_mismatch_reports_the_smallest_pair_that_disagrees() {
             Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")),
             var("f"),
         ),
-        &Term::pi(WRITTEN, "x", core_unit_type(), Term::universe(WRITTEN, Level::ZERO)),
+        &Term::pi(WRITTEN, "x", core_unit_type(), Term::universe(WRITTEN, Sort::ZERO)),
     );
     assert_eq!(mismatch.path, vec![PathStep::Codomain]);
-    assert_eq!(mismatch.expected, Term::universe(WRITTEN, Level::ZERO));
+    assert_eq!(mismatch.expected, Term::universe(WRITTEN, Sort::ZERO));
     assert_eq!(mismatch.found, core_unit_type());
     assert_eq!(
         mismatch.to_string(),
@@ -288,10 +288,10 @@ fn a_mismatch_inside_a_record_type_names_the_field() {
             Raw::record(WRITTEN, [("a", unit())]),
             var("r"),
         ),
-        &Term::record_type(WRITTEN, [("a", Term::universe(WRITTEN, Level::ZERO))]),
+        &Term::record_type(WRITTEN, [("a", Term::universe(WRITTEN, Sort::ZERO))]),
     );
     assert_eq!(mismatch.path, vec![PathStep::Field("a".into())]);
-    assert_eq!(mismatch.expected, Term::universe(WRITTEN, Level::ZERO));
+    assert_eq!(mismatch.expected, Term::universe(WRITTEN, Sort::ZERO));
     assert_eq!(mismatch.found, core_unit_type());
 }
 
@@ -355,7 +355,12 @@ fn mismatch(name: &'static str, raw: &Raw, ty: &Term) -> Mismatch {
 
 /// A `let`'s three parts, when the term is one.
 fn binding(term: &Term) -> Option<(&Term, &Term, &Term)> {
-    if let musa_calculus::Shape::Let { ty, value, body, .. } = term.shape() {
+    if let musa_calculus::Shape::Bind {
+        binder: musa_calculus::Binder::Let { ty, value },
+        body,
+        ..
+    } = term.shape()
+    {
         Some((ty, value, body))
     } else {
         None
@@ -373,16 +378,12 @@ fn mentions_free_variable(term: &Term) -> bool {
             Shape::Var(index) => index.0 >= depth,
             // Closed by construction, so each escapes nothing: a declared
             // constant, and the three the host registered.
-            Shape::Const(_)
-            | Shape::Def(_)
-            | Shape::Base(_)
-            | Shape::Builtin(_)
-            | Shape::Lit(_)
-            | Shape::Numeral(_) => false,
-            Shape::Universe(_) | Shape::Hole(_) => false,
+            Shape::Const(_) | Shape::Def(_) | Shape::Base(_) | Shape::Builtin(_) | Shape::Lit(_) => false,
+            Shape::Universe(_) | Shape::Meta(_) => false,
             Shape::Indexed { ty, index } => walk(ty, depth) || walk(index, depth),
-            Shape::Pi { domain, codomain, .. } => walk(domain, depth) || walk(codomain, depth.saturating_add(1)),
-            Shape::Lam { body, .. } => walk(body, depth.saturating_add(1)),
+            Shape::Bind { binder, body, .. } => {
+                binder.outer().any(|term| walk(term, depth)) || walk(body, depth.saturating_add(1))
+            }
             Shape::App { function, argument } => walk(function, depth) || walk(argument, depth),
             Shape::RecordType(fields) => fields
                 .iter()
@@ -390,9 +391,6 @@ fn mentions_free_variable(term: &Term) -> bool {
                 .any(|(position, field)| walk(&field.term, depth.saturating_add(u32::try_from(position).unwrap_or(0)))),
             Shape::Record(fields) => fields.iter().any(|field| walk(&field.term, depth)),
             Shape::Project { record, .. } => walk(record, depth),
-            Shape::Let { ty, value, body, .. } => {
-                walk(ty, depth) || walk(value, depth) || walk(body, depth.saturating_add(1))
-            }
         }
     }
 
@@ -403,12 +401,12 @@ fn mentions_free_variable(term: &Term) -> bool {
 /// accepts, and nothing is solved or guessed to get there.
 #[test]
 fn a_universe_written_without_a_level_is_type_zero() {
-    let one = Term::universe(WRITTEN, Level::One);
+    let one = Term::universe(WRITTEN, Sort::One);
     let term = check(&Cx::new(), &one, &Raw::any_universe(WRITTEN))
         .unwrap_or_else(|error| panic!("a bare universe checked at `Type 1`: {error}"));
     assert_eq!(
         term,
-        Term::universe(WRITTEN, Level::ZERO),
+        Term::universe(WRITTEN, Sort::ZERO),
         "the level solved to the one the checking type determined"
     );
 }

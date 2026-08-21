@@ -61,12 +61,12 @@ use crate::elab::Elaborator;
 use crate::error::CoreError;
 use crate::eval::{apply, eval, field_type, opened, project};
 use crate::family::{Constant, Element, element};
-use crate::level::Level;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote, quote_type};
+use crate::quote::{quote, quote_type};
 use crate::raw::{Raw, RawArm, RawPattern};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
+use crate::sort::Sort;
 use crate::term::{Index, Name, Shape, Term};
 use crate::value::{Form, Head, Value};
 
@@ -499,7 +499,7 @@ impl Tree<'_, '_> {
         for (name, value, ty) in row.bindings.iter().chain(left.iter()) {
             let meter = self.elaborator.meter();
             let ty_term = inner.quote_type(meter, ty)?;
-            let value_term = quote(meter, Depth(inner.depth()), crate::quote::Mode::Keep, ty, value)?;
+            let value_term = quote(meter, inner.depth(), crate::quote::Mode::Keep, ty, value)?;
             bound.push((Arc::clone(name), ty_term, value_term));
             inner = inner.define(self.elaborator.meter(), Arc::clone(name), Arc::clone(ty), value.clone())?;
         }
@@ -587,7 +587,7 @@ impl Tree<'_, '_> {
             .get(column)
             .map(|subject| scope.quote_type(self.elaborator.meter(), &subject.ty))
             .transpose()?
-            .unwrap_or_else(|| Term::universe(at, Level::ZERO));
+            .unwrap_or_else(|| Term::universe(at, Sort::ZERO));
         // No cases to list: the subject's type is not a family, so there is no
         // declaration to read them off.
         Ok(Refusal::NoSuchConstructor {
@@ -624,7 +624,7 @@ impl Tree<'_, '_> {
             .collect();
         let ty = match problem.columns.get(column) {
             Some(subject) => scope.quote_type(self.elaborator.meter(), &subject.ty)?,
-            None => Term::universe(self.here, Level::ZERO),
+            None => Term::universe(self.here, Sort::ZERO),
         };
         for row in &problem.rows {
             match row.patterns.get(column).copied() {
@@ -668,24 +668,14 @@ impl Tree<'_, '_> {
         let mut built = Vec::new();
         for family in 0..split.element.group.arity() {
             let term = if family == split.element.family {
-                quote_type(
-                    self.elaborator.meter(),
-                    Depth(depth),
-                    crate::quote::Mode::Keep,
-                    &problem.goal,
-                )?
+                quote_type(self.elaborator.meter(), depth, crate::quote::Mode::Keep, &problem.goal)?
             } else {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
-                let domain = quote_type(
-                    self.elaborator.meter(),
-                    Depth(depth),
-                    crate::quote::Mode::Keep,
-                    &problem.goal,
-                )?;
+                let domain = quote_type(self.elaborator.meter(), depth, crate::quote::Mode::Keep, &problem.goal)?;
                 let codomain = quote_type(
                     self.elaborator.meter(),
-                    Depth(depth.saturating_add(1)),
+                    depth.deeper(),
                     crate::quote::Mode::Keep,
                     &problem.goal,
                 )?;
@@ -943,7 +933,7 @@ impl Tree<'_, '_> {
                         return Err(Refusal::NoSuchConstructor {
                             at: pattern.origin(),
                             name: Arc::clone(name),
-                            ty: Term::universe(pattern.origin(), Level::ZERO),
+                            ty: Term::universe(pattern.origin(), Sort::ZERO),
                             cases: vec![Arc::clone(&wanted)],
                         }
                         .into());
@@ -1060,7 +1050,7 @@ struct Motive {
 /// `xs.fold_from_start(empty, λacc. λx. match keep(x) { … })`, where the
 /// accumulator's type is fixed by what the fold is checked against and not by
 /// anything the arms can see.
-fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Level, ElabError> {
+fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Sort, ElabError> {
     let quoted = scope.quote_type(meter, goal)?;
     Ok(Term::level_of(&quoted)?)
 }
@@ -1073,7 +1063,7 @@ struct Split {
     /// The subject itself, as a term at the splitting depth.
     target: Term,
     /// The universe the motive lands in.
-    level: Level,
+    level: Sort,
 }
 
 impl Split {
@@ -1088,18 +1078,12 @@ impl Split {
         let _ = at;
         let depth = scope.depth();
         let meter = tree.elaborator.meter();
-        let ty = quote_type(meter, Depth(depth), crate::quote::Mode::Keep, &subject.ty)?;
+        let ty = quote_type(meter, depth, crate::quote::Mode::Keep, &subject.ty)?;
         let (_, arguments) = spine(&ty);
         let params = usize::try_from(found.group.params()).unwrap_or(usize::MAX);
         // Cheap because [`Subject`]'s value is a variable: this reads back a
         // variable, η-expanded at its type, and never a call's normal form.
-        let target = quote(
-            meter,
-            Depth(depth),
-            crate::quote::Mode::Keep,
-            &subject.ty,
-            &subject.value,
-        )?;
+        let target = quote(meter, depth, crate::quote::Mode::Keep, &subject.ty, &subject.value)?;
         let level = motive_level(meter, scope, goal)?;
         Ok(Self {
             element: Element {
@@ -1164,7 +1148,7 @@ fn variable(value: &Value) -> Option<u32> {
             crate::value::Head::Const(_)
             | crate::value::Head::Base(_)
             | crate::value::Head::Builtin(_)
-            | crate::value::Head::Hole(_)
+            | crate::value::Head::Meta(_)
             | crate::value::Head::Def(_, _, _) => None,
         },
         crate::value::Form::Neutral(_) => None,

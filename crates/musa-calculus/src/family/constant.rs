@@ -8,8 +8,8 @@ use super::group::{Counting, Group, Role};
 use crate::budget::Meter;
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::level::Level;
 use crate::origin::Origin;
+use crate::sort::Sort;
 use crate::term::{Name, Shape, Term};
 use crate::value::{Env, Form, Head, Neutral, Value};
 use crate::visibility::{ModuleId, Visibility};
@@ -155,7 +155,7 @@ impl Found {
 
     /// The constant this refers to, at the universe a recursor's motives land
     /// in.
-    pub(crate) fn at(self, level: Level) -> Constant {
+    pub(crate) fn at(self, level: Sort) -> Constant {
         match self {
             Self::Rigid(constant) => constant,
             Self::Recursor(group, family) => Constant {
@@ -225,7 +225,7 @@ impl Constant {
     }
 
     /// A family's generated recursor, eliminating into `level`.
-    pub(crate) fn recursor(group: &Arc<Group>, family: u32, level: Level) -> Self {
+    pub(crate) fn recursor(group: &Arc<Group>, family: u32, level: Sort) -> Self {
         Self {
             group: Arc::clone(group),
             family,
@@ -295,7 +295,7 @@ impl Constant {
     /// an index sits on the *type* — `Pc(12)` — and a constructor of it carries
     /// no index, because [`Shape::Indexed`](crate::Shape::Indexed) is a wrapper
     /// and a value of `Pc(12)` is a value of `Pc`.
-    pub(crate) fn declared_index(&self) -> Option<&super::group::Binder> {
+    pub(crate) fn declared_index(&self) -> Option<&super::group::Parameter> {
         matches!(self.role, Role::Family)
             .then(|| self.group.family_at(self.family)?.index.as_ref())
             .flatten()
@@ -432,12 +432,12 @@ impl Constant {
     /// `(p⃗ : Params) → (i⃗ : Indices) → Type l`.
     fn family_type(&self, meter: &mut Meter, builder: &mut Telescope<'_>) -> Result<Term, CoreError> {
         let Some(_declared) = self.group.family_at(self.family) else {
-            return Ok(Term::universe(self.group.origin, Level::ZERO));
+            return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
         builder.extend(meter, &self.group.params)?;
         // §1: a data family stores small types, so it lands at `Type 0`; the
         // declaration check is what makes that a theorem rather than a hope.
-        Ok(builder.finish(Term::universe(self.group.origin, Level::ZERO)))
+        Ok(builder.finish(Term::universe(self.group.origin, Sort::ZERO)))
     }
 
     /// `(p⃗ : Params) → (a⃗ : Fields) → N p⃗ idx⃗`.
@@ -447,7 +447,7 @@ impl Constant {
             .family_at(self.family)
             .and_then(|declared| declared.constructor_at(which))
         else {
-            return Ok(Term::universe(self.group.origin, Level::ZERO));
+            return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
         let params = builder.extend(meter, &self.group.params)?;
         builder.extend(meter, &constructor.fields)?;
@@ -460,9 +460,9 @@ impl Constant {
     }
 
     /// The recursor's type, at the universe its motives land in.
-    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: Level) -> Result<Term, CoreError> {
+    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: Sort) -> Result<Term, CoreError> {
         let Some(_declared) = self.group.family_at(self.family) else {
-            return Ok(Term::universe(self.group.origin, Level::ZERO));
+            return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
         let params = builder.extend(meter, &self.group.params)?;
         let motives = builder.motives(meter, level)?;

@@ -41,10 +41,10 @@
 
 use std::sync::Arc;
 
-use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::term::{DbLevel, Field, Filling, Name, Term};
+use crate::sort::Sort;
+use crate::term::{Field, Filling, Level, Name, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
 /// first.
@@ -79,7 +79,7 @@ pub(crate) struct Value {
 /// What a value is.
 #[derive(Clone)]
 pub(crate) enum Form {
-    Universe(Level),
+    Universe(Sort),
     Pi {
         /// Carried so that elaboration can read it off a *type it computed*
         /// rather than off the syntax it was written as — the point of §1's
@@ -161,7 +161,7 @@ pub(crate) struct Neutral {
 #[derive(Clone)]
 pub(crate) enum Head {
     /// A variable, with the type it was assumed at.
-    Var(DbLevel, Arc<Value>),
+    Var(Level, Arc<Value>),
     /// A declared constant. Rigid, like a variable: a family and a constructor
     /// never compute, and a recursor computes only when ι fires — which
     /// [`crate::eval::apply`] does at the moment the target becomes a
@@ -184,9 +184,9 @@ pub(crate) enum Head {
     Builtin(crate::base::Builtin),
     /// An unsolved placeholder for an unwritten argument. The one *flexible*
     /// head: a neutral headed by a variable can never compute, while this one
-    /// computes the moment the hole is solved — which is exactly the
-    /// distinction the matching pass turns on. See [`crate::meta::Hole`].
-    Hole(crate::meta::Hole),
+    /// computes the moment the meta is solved — which is exactly the
+    /// distinction the matching pass turns on. See [`crate::meta::Meta`].
+    Meta(crate::meta::Meta),
     /// A definition, held folded: what it is known as, its type, and the value
     /// it unfolds to.
     ///
@@ -215,7 +215,7 @@ pub(crate) enum Head {
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum DefHead {
     /// A `let` or context definition, named by the binder's level.
-    Local(DbLevel),
+    Local(Level),
     /// A top-level definition, named by the declaration itself.
     Global(crate::program::Def),
 }
@@ -290,7 +290,7 @@ impl Value {
     }
 
     /// A fresh variable at `level`, assumed at `ty`.
-    pub(crate) fn var(origin: Origin, level: DbLevel, ty: Arc<Self>) -> Self {
+    pub(crate) fn var(origin: Origin, level: Level, ty: Arc<Self>) -> Self {
         Self::neutral(Neutral::head(origin, Head::Var(level, ty)))
     }
 }

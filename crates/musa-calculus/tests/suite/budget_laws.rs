@@ -10,7 +10,7 @@
 //! protected — a timeout here would make acceptance a property of the host.
 
 use musa_calculus::{
-    Budget, CoreError, Cx, ElabError, Level, Metric, Origin, Raw, Term, convertible, convertible_types, normalize_type,
+    Budget, CoreError, Cx, ElabError, Metric, Origin, Raw, Sort, Term, convertible, convertible_types, normalize_type,
 };
 
 use crate::fixtures::{Sample, corpus, corpus_at};
@@ -94,8 +94,8 @@ fn the_language_budget_answers_every_question_in_the_corpus() {
 fn exhaustion_names_the_same_operation_and_metric_every_time() {
     let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(200_000));
     let deep = nested_lets(64);
-    let first = convertible_types(&narrow, &deep, &Term::universe(HERE, Level::ZERO));
-    let second = convertible_types(&narrow, &deep, &Term::universe(HERE, Level::ZERO));
+    let first = convertible_types(&narrow, &deep, &Term::universe(HERE, Sort::ZERO));
+    let second = convertible_types(&narrow, &deep, &Term::universe(HERE, Sort::ZERO));
     match (first, second) {
         (Err(CoreError::Exhausted(one)), Err(CoreError::Exhausted(two))) => {
             assert_eq!(one.operation, two.operation);
@@ -116,7 +116,7 @@ fn exhaustion_names_the_same_operation_and_metric_every_time() {
 #[test]
 fn exhaustion_is_monotone_in_the_budget() {
     let deep = nested_lets(200);
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     let mut exhausted = false;
     for divisor in DIVISORS {
         let cx = Cx::with_budget(Budget::LANGUAGE.scaled(divisor));
@@ -142,8 +142,8 @@ fn exhaustion_is_monotone_in_the_budget() {
 #[test]
 fn a_wide_term_is_not_a_deep_one() {
     let names: Vec<String> = (0..300).map(|field| format!("f{field}")).collect();
-    let one_up = Term::universe(HERE, Level::One);
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let one_up = Term::universe(HERE, Sort::One);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     let wide = Term::record_type(HERE, names.iter().map(|name| (name.as_str(), one_up.clone())));
 
     let cx = Cx::new();
@@ -261,7 +261,7 @@ fn on_the_smallest_host(law: impl FnOnce() + Send) {
 /// without needing a context, which is what makes it the right shape for
 /// measuring the meter rather than the language.
 fn nested_lets(depth: u32) -> Term {
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     (0..depth).fold(type0.clone(), |body, _| {
         Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
     })
@@ -278,7 +278,7 @@ fn nested_raw_lets(depth: u32) -> Raw {
     // and the one this nest used no longer is one. The unannotated form keeps
     // the chain the law measures — one level is still an `infer` standing
     // inside a `definition` standing inside an `eval`.
-    (0..depth).fold(Raw::universe(HERE, Level::ZERO), |value, _| {
+    (0..depth).fold(Raw::universe(HERE, Sort::ZERO), |value, _| {
         Raw::bind(HERE, "z", value, Raw::var(HERE, "z"))
     })
 }

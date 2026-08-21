@@ -6,7 +6,7 @@
 //! types, primitive dependent records with η, non-recursive `let`, and
 //! definitional equality decided by normalization by evaluation under a
 //! deterministic budget (prompt 133); bidirectional elaboration with
-//! first-order holes and type parameters (prompt 134); and parameterized
+//! first-order metas and type parameters (prompt 134); and parameterized
 //! inductive families with strict positivity, generated non-dependent
 //! recursors, `match` compiled to them through case trees with coverage, and
 //! the checked structural termination rule (prompt 135).
@@ -49,13 +49,13 @@
 //! - **Terms are de Bruijn-indexed; values are de Bruijn-levelled.** α-
 //!   equivalence is structural equality on terms, and quotation names a fresh
 //!   variable without renaming anything. [`Index`](term::Index) and
-//!   [`DbLevel`](term::DbLevel) are separate types so that confusing them is a
+//!   [`Level`](term::Level) are separate types so that confusing them is a
 //!   compile error rather than the classic bug in this construction.
 //! - **Reduction is never performed on syntax.** There is no substitution
 //!   function in this crate; β, δ, and ι are steps in the semantic domain.
 //! - **Universes are predicative and not cumulative.** `Type l : Type (succ l)`,
-//!   conversion compares levels for equality, and there is no subtyping inside
-//!   conversion.
+//!   conversion compares [`Sort`]s for equality, and there is no subtyping
+//!   inside conversion.
 //! - **Records are primitive with η**, not Σ sugar, so two records with the same
 //!   projections are convertible without a rule that inspects both at once.
 //!   Prompt 157 turns records into data and this is what it must preserve.
@@ -91,7 +91,6 @@ mod error;
 mod eval;
 mod family;
 mod index;
-mod level;
 mod list;
 mod meta;
 mod namespace;
@@ -104,6 +103,7 @@ mod refuse;
 mod room;
 mod scope;
 mod show;
+mod sort;
 mod storable;
 mod term;
 mod value;
@@ -116,8 +116,7 @@ pub use crate::base::{
 pub use crate::budget::{Budget, Metric, ResourceError, Spend};
 pub use crate::context::Cx;
 pub use crate::error::{CoreError, Malformed};
-pub use crate::family::{Binder, Constant, Constructor, Declared, Group, canonical};
-pub use crate::level::Level;
+pub use crate::family::{Constructor, Declared, Group, canonical};
 pub use crate::meta::MetaSource;
 pub use crate::origin::Origin;
 pub use crate::program::{Def, Program};
@@ -126,9 +125,10 @@ pub use crate::raw::{
     RawProgram, RawShape, RawTopLevel,
 };
 pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
+pub use crate::sort::Sort;
 pub use crate::storable::requiring_storable;
 pub use crate::term::Constraint;
-pub use crate::term::{DbLevel, Field, Filling, Index, Name, Shape, Term};
+pub use crate::term::{Binder, Constant, Field, Filling, Index, Level, Name, Shape, Term};
 pub use crate::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
@@ -215,7 +215,7 @@ pub fn declare_program_metered(cx: &Cx, program: &RawProgram) -> Result<(Arc<Pro
 ///
 /// The output is a core term with **no metavariables left in it**: §2.1 never
 /// defaults and never generalizes, so one still undetermined here is
-/// [`Refusal::Unsolved`] rather than a hole the next stage inherits. Every
+/// [`Refusal::Unsolved`] rather than a meta the next stage inherits. Every
 /// argument the term applies is written in it, which is the single most
 /// valuable invariant in this crate.
 ///
@@ -302,7 +302,7 @@ pub fn normalize_metered(cx: &Cx, ty: &Term, term: &Term) -> Result<(Term, Spend
         let mut meter = cx.meter();
         let ty = eval(&mut meter, cx.env(), ty)?;
         let value = eval(&mut meter, cx.env(), term)?;
-        let normal = quote(&mut meter, cx.quoting_depth(), Mode::Open, &ty, &value)?;
+        let normal = quote(&mut meter, cx.depth(), Mode::Open, &ty, &value)?;
         Ok((normal, meter.spent()))
     })
 }
@@ -320,7 +320,7 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
     with_room(|| {
         let mut meter = cx.meter();
         let value = eval(&mut meter, cx.env(), ty)?;
-        quote_type(&mut meter, cx.quoting_depth(), Mode::Open, &value)
+        quote_type(&mut meter, cx.depth(), Mode::Open, &value)
     })
 }
 

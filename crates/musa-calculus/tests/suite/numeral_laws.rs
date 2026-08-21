@@ -13,7 +13,7 @@
 //! `Shape::Numeral` or a counting family's private shape, because what is being
 //! claimed is that `3` and `Succ (Succ (Succ Zero))` are the same *program*.
 
-use musa_calculus::{Budget, Cx, ElabError, Level, Raw, Refusal, Shape, Term};
+use musa_calculus::{Budget, Cx, ElabError, Raw, Refusal, Shape, Sort, Term};
 
 use crate::family_laws::{apply, container_context, nat_context, var};
 use crate::programs::{WRITTEN, refusal};
@@ -77,20 +77,13 @@ fn depth(term: &Term) -> u32 {
             ref function,
             ref argument,
         } => deeper(function).max(deeper(argument)),
-        Shape::Pi {
-            ref domain,
-            ref codomain,
-            ..
-        } => deeper(domain).max(deeper(codomain)),
         Shape::Indexed { ref ty, ref index } => deeper(ty).max(deeper(index)),
-        Shape::Lam { ref body, .. } => deeper(body),
+        Shape::Bind {
+            ref binder, ref body, ..
+        } => binder
+            .outer()
+            .fold(deeper(body), |so_far, term| so_far.max(deeper(term))),
         Shape::Project { ref record, .. } => deeper(record),
-        Shape::Let {
-            ref ty,
-            ref value,
-            ref body,
-            ..
-        } => deeper(ty).max(deeper(value)).max(deeper(body)),
         Shape::RecordType(ref fields) | Shape::Record(ref fields) => {
             fields.iter().fold(1, |so_far, field| so_far.max(deeper(&field.term)))
         }
@@ -100,9 +93,8 @@ fn depth(term: &Term) -> u32 {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
         | Shape::Builtin(_)
-        | Shape::Hole(_)
+        | Shape::Meta(_)
         | Shape::Universe(_) => 1,
     }
 }
@@ -319,23 +311,23 @@ fn any_family_of_the_counting_shape_takes_a_numeral() {
     let declaration = crate::family_laws::data(
         Vec::new(),
         vec![crate::family_laws::family(
-            "Depth",
+            "Level",
             vec![
                 // Declared step-first, so that the recognition cannot be reading
                 // constructor *order* instead of constructor shape.
-                crate::family_laws::constructor("Deeper", vec![crate::family_laws::binder("under", var("Depth"))]),
+                crate::family_laws::constructor("Deeper", vec![crate::family_laws::binder("under", var("Level"))]),
                 crate::family_laws::constructor("Surface", Vec::new()),
             ],
         )],
     );
-    let group = musa_calculus::declare(&cx, &declaration).expect("Depth is a declaration");
+    let group = musa_calculus::declare(&cx, &declaration).expect("Level is a declaration");
     let cx = cx.declaring(&group);
-    let ty = musa_calculus::infer(&cx, &var("Depth")).expect("`Depth` is a type").0;
-    let counted = musa_calculus::check(&cx, &ty, &Raw::numeral(WRITTEN, "Depth", 4)).expect("four is a `Depth`");
+    let ty = musa_calculus::infer(&cx, &var("Level")).expect("`Level` is a type").0;
+    let counted = musa_calculus::check(&cx, &ty, &Raw::numeral(WRITTEN, "Level", 4)).expect("four is a `Level`");
     let built = musa_calculus::check(
         &cx,
         &ty,
-        &(0..4).fold(var("Depth.Surface"), |built, _| apply(var("Depth.Deeper"), [built])),
+        &(0..4).fold(var("Level.Surface"), |built, _| apply(var("Level.Deeper"), [built])),
     )
     .expect("and so is the tower");
     assert!(
@@ -371,7 +363,7 @@ fn a_number_at_an_undeclared_name_is_an_unknown_name() {
 #[test]
 fn a_numeral_is_not_a_type() {
     let (cx, _) = nat_context();
-    let Err(error) = musa_calculus::check(&cx, &Term::universe(WRITTEN, Level::ZERO), &numeral(3)) else {
+    let Err(error) = musa_calculus::check(&cx, &Term::universe(WRITTEN, Sort::ZERO), &numeral(3)) else {
         panic!("`3` is not a type");
     };
     let refusal = refusal("a number in type position", error);

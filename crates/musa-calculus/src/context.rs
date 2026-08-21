@@ -27,8 +27,7 @@ use crate::family::{Constant, Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
 use crate::program::{Defined, Program};
-use crate::quote::Depth;
-use crate::term::{DbLevel, Name, Term};
+use crate::term::{Level, Name, Term};
 use crate::value::{Env, Value};
 use crate::visibility::ModuleId;
 
@@ -80,7 +79,7 @@ pub struct Cx {
     /// a leaf calculus that enumerated the base types would make every new
     /// musical domain a core amendment.
     externs: Option<Arc<Registry>>,
-    depth: u32,
+    depth: Level,
     budget: Budget,
 }
 
@@ -105,7 +104,7 @@ impl Cx {
             definitions: List::EMPTY,
             module: None,
             externs: None,
-            depth: 0,
+            depth: Level::ZERO,
             budget,
         }
     }
@@ -126,7 +125,7 @@ impl Cx {
             definitions: self.definitions.clone(),
             module: self.module,
             externs: self.externs.clone(),
-            depth: 0,
+            depth: Level::ZERO,
             budget: self.budget,
         }
     }
@@ -312,9 +311,10 @@ impl Cx {
         })
     }
 
-    /// How many binders are in scope.
+    /// How many binders are in scope, which is also the level the next one
+    /// will be assumed at — see [`Level`].
     #[must_use]
-    pub const fn depth(&self) -> u32 {
+    pub(crate) const fn depth(&self) -> Level {
         self.depth
     }
 
@@ -330,7 +330,7 @@ impl Cx {
     /// a value already. Sharing the [`Arc`] with the variable's own type is why
     /// the two copies cannot disagree.
     pub(crate) fn assumed(&self, binder: Origin, ty: Arc<Value>) -> Self {
-        let variable = Value::var(binder, DbLevel(self.depth), Arc::clone(&ty));
+        let variable = Value::var(binder, self.depth, Arc::clone(&ty));
         self.pushed(ty, variable)
     }
 
@@ -357,7 +357,7 @@ impl Cx {
         let folded = Value::neutral(crate::value::Neutral::head(
             value.origin,
             crate::value::Head::Def(
-                crate::value::DefHead::Local(DbLevel(self.depth)),
+                crate::value::DefHead::Local(self.depth),
                 Arc::clone(&ty),
                 Arc::new(value),
             ),
@@ -383,10 +383,6 @@ impl Cx {
     pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
         &self.types
     }
-    pub(crate) const fn quoting_depth(&self) -> Depth {
-        Depth(self.depth)
-    }
-
     pub(crate) const fn env(&self) -> &Env {
         &self.env
     }
@@ -403,7 +399,7 @@ impl Cx {
             definitions: self.definitions.clone(),
             module: self.module,
             externs: self.externs.clone(),
-            depth: self.depth.saturating_add(1),
+            depth: self.depth.deeper(),
             budget: self.budget,
         }
     }

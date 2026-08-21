@@ -105,10 +105,11 @@ mod datum;
 mod group;
 mod iota;
 
-pub use constant::Constant;
+pub(crate) use constant::Constant;
 pub(crate) use constant::{Found, Numeral};
 pub use datum::canonical;
 pub(crate) use datum::{counted, realize};
-pub use group::{Binder, Constructor, Declared, Group};
+pub(crate) use group::Parameter;
+pub use group::{Constructor, Declared, Group};
 pub(crate) use group::{Counting, Element, Role, element};
 pub(crate) use iota::{constructed, iota, stepped};

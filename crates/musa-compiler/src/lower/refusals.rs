@@ -434,7 +434,14 @@ fn crossing(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Opti
         // Π; the sentence is the surface's. A codomain that mentions the
         // binder is nobody's slip — it is a type that computes — and earns no
         // advice.
-        _ if matches!(found.shape(), musa_calculus::Shape::Pi { .. }) => {
+        _ if matches!(
+            found.shape(),
+            musa_calculus::Shape::Bind {
+                binder: musa_calculus::Binder::Pi { .. },
+                ..
+            }
+        ) =>
+        {
             return crossing_function(expected, found);
         }
         _ => return None,
@@ -443,7 +450,12 @@ fn crossing(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Opti
 
 /// The function row of [`crossing`], kept apart because it reads the Π.
 fn crossing_function(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Option<&'static str> {
-    let musa_calculus::Shape::Pi { codomain, .. } = found.shape() else {
+    let musa_calculus::Shape::Bind {
+        binder: musa_calculus::Binder::Pi { .. },
+        body: codomain,
+        ..
+    } = found.shape()
+    else {
         return None;
     };
     // `expected` is closed here — a mismatch's sides are both elaborated

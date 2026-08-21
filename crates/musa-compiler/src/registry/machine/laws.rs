@@ -21,7 +21,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_calculus::{Cx, Level, Raw, Shape, Term};
+use musa_calculus::{Cx, Raw, Shape, Sort, Term};
 
 use super::{SPELLINGS, UNREGISTERED};
 use crate::phase::{BUILTIN_OWNERSHIP, Family};
@@ -96,7 +96,7 @@ fn context() -> Cx {
 
 /// `raw`, elaborated as a type.
 fn ty(cx: &Cx, raw: &Raw) -> Term {
-    musa_calculus::check(cx, &Term::universe(HERE, Level::ZERO), raw)
+    musa_calculus::check(cx, &Term::universe(HERE, Sort::ZERO), raw)
         .unwrap_or_else(|why| panic!("a law's own type does not elaborate: {why}"))
 }
 

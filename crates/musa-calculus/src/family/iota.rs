@@ -8,8 +8,8 @@ use super::group::{Group, Role};
 use crate::budget::Meter;
 use crate::error::CoreError;
 use crate::eval::{apply, eval};
-use crate::level::Level;
 use crate::origin::Origin;
+use crate::sort::Sort;
 use crate::term::Name;
 use crate::value::{Elim, Form, Head, Neutral, Value};
 use std::sync::Arc;
@@ -93,10 +93,10 @@ fn unread(method: &Value) -> Option<Value> {
     let Form::Lam(closure) = &method.form else {
         return None;
     };
-    // Depth one and level zero: at the top of a closure body the binder just
+    // Level one and level zero: at the top of a closure body the binder just
     // pushed is the innermost, and `occurrences` counts from the outside.
     (crate::term::occurrences(&closure.body, 1, 0) == 0)
-        .then(|| Value::new(method.origin, Form::Universe(crate::level::Level::ZERO)))
+        .then(|| Value::new(method.origin, Form::Universe(crate::sort::Sort::ZERO)))
 }
 
 /// The numeral a counting family's step constructor collapses to, when it has
@@ -165,7 +165,7 @@ struct Reduction {
     family: u32,
     which: u32,
     /// The universe the motives land in, which an induction hypothesis inherits.
-    level: Level,
+    level: Sort,
 }
 
 /// Decide whether `neutral` is a saturated recursor applied to a constructor,

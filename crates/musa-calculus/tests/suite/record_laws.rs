@@ -376,7 +376,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
             // §1.1: two fixed universes, and the second is not itself a type —
             // the expectation is elaborated by being inferred, so the largest
             // writable one is the first, which this record's small fields meet.
-            ty: Raw::universe(WRITTEN, musa_calculus::Level::ZERO),
+            ty: Raw::universe(WRITTEN, musa_calculus::Sort::ZERO),
             expected: |refusal| matches!(refusal, Refusal::DuplicateField { .. }),
         },
         RefusedRecord {
@@ -474,7 +474,7 @@ fn counted() -> Raw {
     Raw::record_type(
         WRITTEN,
         [
-            ("A", Raw::universe(WRITTEN, musa_calculus::Level::ZERO)),
+            ("A", Raw::universe(WRITTEN, musa_calculus::Sort::ZERO)),
             ("x", var("A")),
         ],
     )

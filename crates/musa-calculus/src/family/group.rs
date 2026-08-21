@@ -7,19 +7,23 @@ use super::constant::Constant;
 use super::iota::spine;
 use crate::budget::Meter;
 use crate::error::CoreError;
-use crate::level::Level;
 use crate::list::List;
 use crate::origin::Origin;
+use crate::sort::Sort;
 use crate::term::{Filling, Name, Term};
 use crate::value::{Env, Form, Value};
 use crate::visibility::{ModuleId, Visibility};
 use std::sync::Arc;
 
-/// One binder of a telescope: a name, the type it stands at, and how a use site
-/// fills it.
+/// One parameter of a telescope: a name, the type it stands at, and how a use
+/// site fills it.
+///
+/// Not `Binder`, which [`crate::term::Binder`] is: that one says which of the
+/// three ways a term binds, and this one is a position in a declaration's
+/// telescope. Two things a reader would mix up if they shared a spelling.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Binder {
-    /// The binder's written name, for diagnostics and for what quotation prints.
+pub(crate) struct Parameter {
+    /// Its written name, for diagnostics and for what quotation prints.
     pub name: Name,
     /// Its type, read under the declaration context and the binders before it.
     pub ty: Term,
@@ -33,10 +37,10 @@ pub struct Binder {
     pub filling: Filling,
 }
 
-impl Binder {
-    /// A binder a use site writes: `(name : ty)`.
+impl Parameter {
+    /// A parameter a use site writes: `(name : ty)`.
     #[must_use]
-    pub fn written(name: Name, ty: Term) -> Self {
+    pub(crate) fn written(name: Name, ty: Term) -> Self {
         Self {
             name,
             ty,
@@ -54,7 +58,7 @@ pub struct Constructor {
     pub(crate) visibility: Visibility,
     /// Its arguments, a telescope read under the declaration context and the
     /// group's parameters.
-    pub(crate) fields: Arc<[Binder]>,
+    pub(crate) fields: Arc<[Parameter]>,
     /// Which fields are recursive occurrences, as `(field, family)` pairs in
     /// field order.
     ///
@@ -78,7 +82,7 @@ pub struct Constructor {
 /// no indices, and it has exactly two constructors, one with no fields and one
 /// with a single field that is a recursive occurrence of the family itself. That
 /// sentence is both the recognition rule and the soundness argument for
-/// [`Shape::Numeral`](crate::term::Shape::Numeral), which is why it is one
+/// [`Constant::Numeral`](crate::term::Constant::Numeral), which is why it is one
 /// sentence and not two.
 ///
 /// Derived at [`crate::declare`] from the declaration's own shape rather than
@@ -128,7 +132,7 @@ pub struct Declared {
     /// make `Pc(12)` and `Nat(12)` different questions: the first is a family
     /// carrying the index it declared, and the second is an index written on a
     /// type that never asked for one.
-    pub(crate) index: Option<Binder>,
+    pub(crate) index: Option<Parameter>,
 }
 
 /// A declaration group: families declared together, over shared parameters.
@@ -147,7 +151,7 @@ pub struct Group {
     /// which is §7's preservation clause applied to syntax nobody wrote.
     pub(crate) origin: Origin,
     /// The parameters, read under the declaration context.
-    pub(crate) params: Arc<[Binder]>,
+    pub(crate) params: Arc<[Parameter]>,
     /// Whether each parameter occurs only strictly positively in the fields this
     /// group stores, in parameter order.
     ///
@@ -245,7 +249,7 @@ pub(crate) enum Role {
     /// family is declared once, and an elimination's goal is a type at `Type 0`
     /// or a type of types at `Type 1` — the use site knows which, and the
     /// declaration does not.
-    Recursor(Level),
+    Recursor(Sort),
 }
 
 impl Group {

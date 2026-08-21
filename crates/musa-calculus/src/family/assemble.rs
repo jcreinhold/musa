@@ -4,14 +4,14 @@
 //! One concern of the `family` module; see its docs for the calculus.
 
 use super::constant::Constant;
-use super::group::{Binder, Group, Role};
+use super::group::{Group, Parameter, Role};
 use crate::budget::Meter;
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::level::Level;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote_type};
-use crate::term::{DbLevel, Filling, Index, Name, Term};
+use crate::quote::quote_type;
+use crate::sort::Sort;
+use crate::term::{Filling, Index, Level, Name, Term};
 use crate::value::{Env, Value};
 use std::sync::Arc;
 
@@ -22,7 +22,7 @@ use std::sync::Arc;
 /// the arithmetic that goes wrong by hand. A position never changes, and
 /// [`Telescope::reference`] does the one subtraction.
 #[derive(Clone, Copy)]
-pub(super) struct At(u32);
+pub(super) struct At(Level);
 
 /// A binder that has been introduced: where it sits, and the type it stands at.
 type Introduced = (At, Value);
@@ -51,7 +51,7 @@ pub(super) struct Telescope<'a> {
     reading: Env,
     /// How many binders have been introduced, which is both the quoting depth
     /// and the next position.
-    depth: u32,
+    depth: Level,
     /// The binders, in order, to be folded into Π's by [`Self::close`].
     binders: Vec<(Filling, Name, Term)>,
 }
@@ -64,7 +64,7 @@ impl<'a> Telescope<'a> {
             origin: group.origin,
             env: declarations.clone(),
             reading: declarations,
-            depth: 0,
+            depth: Level::ZERO,
             binders: Vec::new(),
         }
     }
@@ -90,32 +90,30 @@ impl<'a> Telescope<'a> {
     pub(super) fn assume(&mut self, meter: &mut Meter, name: &str, ty: Term) -> Result<At, CoreError> {
         let value = eval(meter, &self.env, &ty)?;
         let at = At(self.depth);
-        self.env = self
-            .env
-            .push(Value::var(self.origin, DbLevel(self.depth), Arc::new(value)));
-        self.depth = self.depth.saturating_add(1);
+        self.env = self.env.push(Value::var(self.origin, self.depth, Arc::new(value)));
+        self.depth = self.depth.deeper();
         self.binders.push((Filling::Written, Arc::from(name), ty));
         Ok(at)
     }
 
     /// Introduce every binder of a stored telescope, answering where each sits
     /// and the type it stands at.
-    pub(super) fn extend(&mut self, meter: &mut Meter, binders: &[Binder]) -> Result<Vec<Introduced>, CoreError> {
+    pub(super) fn extend(&mut self, meter: &mut Meter, binders: &[Parameter]) -> Result<Vec<Introduced>, CoreError> {
         let mut introduced = Vec::with_capacity(binders.len());
         for binder in binders {
             let value = eval(meter, &self.reading, &binder.ty)?;
-            let ty = quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?;
+            let ty = quote_type(meter, self.depth, crate::quote::Mode::Open, &value)?;
             // A constraint binder's arguments are terms read under exactly the
             // binders its *type* was read under, so they travel by the same
             // eval-then-quote this line already does for the type. Re-indexing
             // one and not the other is how a recursor's parameters would end up
             // naming a motive.
             let filling = self.reindexed(meter, &binder.filling)?;
-            let variable = Value::var(self.origin, DbLevel(self.depth), Arc::new(value.clone()));
+            let variable = Value::var(self.origin, self.depth, Arc::new(value.clone()));
             self.env = self.env.push(variable.clone());
             self.reading = self.reading.push(variable);
             let at = At(self.depth);
-            self.depth = self.depth.saturating_add(1);
+            self.depth = self.depth.deeper();
             self.binders.push((filling, Arc::clone(&binder.name), ty));
             introduced.push((at, value));
         }
@@ -131,7 +129,7 @@ impl<'a> Telescope<'a> {
         let mut args = Vec::with_capacity(constraint.args.len());
         for argument in constraint.args.iter() {
             let value = eval(meter, &self.reading, argument)?;
-            args.push(quote_type(meter, Depth(self.depth), crate::quote::Mode::Open, &value)?);
+            args.push(quote_type(meter, self.depth, crate::quote::Mode::Open, &value)?);
         }
         Ok(Filling::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
@@ -143,7 +141,7 @@ impl<'a> Telescope<'a> {
     /// and nothing is applied to the value being eliminated. One per family
     /// rather than one overall because a mutual recursor eliminates into a
     /// different answer per family, which is what makes it statable at all.
-    pub(super) fn motives(&mut self, meter: &mut Meter, level: Level) -> Result<Vec<At>, CoreError> {
+    pub(super) fn motives(&mut self, meter: &mut Meter, level: Sort) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
             let ty = self.motive_type(which, level);
@@ -152,9 +150,9 @@ impl<'a> Telescope<'a> {
         Ok(introduced)
     }
 
-    fn motive_type(&self, which: u32, level: Level) -> Term {
+    fn motive_type(&self, which: u32, level: Sort) -> Term {
         if self.group.family_at(which).is_none() {
-            return Term::universe(self.origin, Level::ZERO);
+            return Term::universe(self.origin, Sort::ZERO);
         }
         Term::universe(self.origin, level)
     }
@@ -185,7 +183,7 @@ impl<'a> Telescope<'a> {
             .family_at(family)
             .and_then(|declared| declared.constructor_at(which))
         else {
-            return Ok(Term::universe(self.origin, Level::ZERO));
+            return Ok(Term::universe(self.origin, Sort::ZERO));
         };
         let fields_of = Arc::clone(&constructor.fields);
         let recursive = Arc::clone(&constructor.recursive);
@@ -218,12 +216,12 @@ impl<'a> Telescope<'a> {
     /// The variable naming the binder at `at`, seen from here.
     pub(super) fn reference(&self, at: Option<At>) -> Term {
         let Some(At(position)) = at else {
-            return Term::universe(self.origin, Level::ZERO);
+            return Term::universe(self.origin, Sort::ZERO);
         };
-        Term::var(
-            self.origin,
-            Index(self.depth.saturating_sub(1).saturating_sub(position)),
-        )
+        // The level-to-index conversion, which is what a reference *is*: the
+        // binder sits at `position` counting in, and the use site sits at
+        // `self.depth` counting in, so the index is the distance between them.
+        Term::var(self.origin, position.to_index(self.depth).unwrap_or(Index(0)))
     }
 
     pub(super) fn references(&self, introduced: &[Introduced]) -> Vec<Term> {

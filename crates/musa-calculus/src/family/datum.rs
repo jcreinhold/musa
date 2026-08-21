@@ -11,7 +11,7 @@ use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, eval};
 use crate::origin::Origin;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Constant as Written, Name, Shape, Term};
 use crate::value::{Form, Value};
 use std::sync::Arc;
 
@@ -63,13 +63,13 @@ pub(crate) fn counted(numeral: &Numeral) -> Option<Datum> {
 pub fn canonical(term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
-        Shape::Hole(_) => None,
+        Shape::Meta(_) => None,
         // An indexed type is a *type*, and a type is not data a δ-rule reads. It
         // reaches here only in a signature, never in an argument position, and
         // "not data" is this function's ordinary answer rather than an error.
         Shape::Indexed { .. } => None,
-        Shape::Lit(ref literal) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
-        Shape::Numeral(ref numeral) if arguments.is_empty() => counted(numeral),
+        Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
+        Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral),
         Shape::Const(ref constant) => {
             let (constructor, params) = saturated(constant, arguments.len())?;
             let fields = arguments
@@ -87,19 +87,16 @@ pub fn canonical(term: &Term) -> Option<Datum> {
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
         Shape::Lit(_)
-        | Shape::Numeral(_)
         | Shape::Var(_)
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Universe(_)
-        | Shape::Pi { .. }
-        | Shape::Lam { .. }
+        | Shape::Bind { .. }
         | Shape::App { .. }
         | Shape::RecordType(_)
         | Shape::Record(_)
-        | Shape::Project { .. }
-        | Shape::Let { .. } => None,
+        | Shape::Project { .. } => None,
     }
 }
 

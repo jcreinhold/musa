@@ -26,7 +26,7 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_calculus::{Cx, Level, Raw, RawData, RawPattern, RawShape, Term};
+use musa_calculus::{Cx, Raw, RawData, RawPattern, RawShape, Sort, Term};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::items::{Declared, Definition, Item};
@@ -119,7 +119,7 @@ fn host() -> Cx {
 
 /// `Type 0`, which every type a signature writes lands in.
 fn type0() -> Term {
-    Term::universe(musa_calculus::Origin::UNKNOWN, Level::ZERO)
+    Term::universe(musa_calculus::Origin::UNKNOWN, Sort::ZERO)
 }
 
 /// The type one declared name denotes.
@@ -614,7 +614,7 @@ fn a_parameterized_record_lowers_to_a_function_to_a_type() {
         musa_calculus::Origin::UNKNOWN,
         "A",
         type0(),
-        Term::universe(musa_calculus::Origin::UNKNOWN, Level::ZERO),
+        Term::universe(musa_calculus::Origin::UNKNOWN, Sort::ZERO),
     );
     let (declared, _) = musa_calculus::infer(&cx, defined.ty.as_ref().expect("a written type")).expect("it is a type");
     assert!(

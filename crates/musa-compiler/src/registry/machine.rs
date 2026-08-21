@@ -415,11 +415,9 @@ fn spelled(ty: &Term) -> Option<String> {
         | musa_calculus::Shape::Var(_)
         | musa_calculus::Shape::Def(_)
         | musa_calculus::Shape::Lit(_)
-        | musa_calculus::Shape::Numeral(_)
         | musa_calculus::Shape::Builtin(_)
         | musa_calculus::Shape::Universe(_)
-        | musa_calculus::Shape::Pi { .. }
-        | musa_calculus::Shape::Lam { .. }
+        | musa_calculus::Shape::Bind { .. }
         // `App` cannot appear — the peel above ended because the head was not
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
@@ -427,8 +425,7 @@ fn spelled(ty: &Term) -> Option<String> {
         | musa_calculus::Shape::RecordType(_)
         | musa_calculus::Shape::Record(_)
         | musa_calculus::Shape::Project { .. }
-        | musa_calculus::Shape::Hole(_)
-        | musa_calculus::Shape::Let { .. } => None,
+        | musa_calculus::Shape::Meta(_) => None,
     }
 }
 

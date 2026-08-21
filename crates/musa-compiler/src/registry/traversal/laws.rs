@@ -58,7 +58,7 @@ fn new(cx: &Cx, program: &Raw) -> Syntax {
     let term = musa_calculus::check(cx, &ty, program).unwrap_or_else(|why| panic!("the program does not check: {why}"));
     let normal =
         musa_calculus::normalize(cx, &ty, &term).unwrap_or_else(|why| panic!("the program does not reduce: {why}"));
-    let musa_calculus::Shape::Lit(ref answer) = *normal.shape() else {
+    let musa_calculus::Shape::Lit(musa_calculus::Constant::Payload(ref answer)) = *normal.shape() else {
         panic!("the answer is not a literal: {normal:?}")
     };
     held::<Syntax>(answer).expect("the answer is a syntax value").clone()
@@ -421,7 +421,7 @@ fn every_self_application_stands_at_a_smaller_node() {
 /// Every syntax literal a term holds, in the order it holds them.
 fn trees(term: &Term, into: &mut Vec<Syntax>) {
     match *term.shape() {
-        musa_calculus::Shape::Lit(ref value) => {
+        musa_calculus::Shape::Lit(musa_calculus::Constant::Payload(ref value)) => {
             if let Some(node) = held::<Syntax>(value) {
                 into.push(node.clone());
             }
@@ -433,7 +433,11 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
             trees(function, into);
             trees(argument, into);
         }
-        musa_calculus::Shape::Lam { ref body, .. } => trees(body, into),
+        musa_calculus::Shape::Bind {
+            binder: musa_calculus::Binder::Lam,
+            ref body,
+            ..
+        } => trees(body, into),
         // An index can hold a literal — `Bar(3/4)` does — so both halves are
         // walked rather than skipped.
         musa_calculus::Shape::Indexed { ref ty, ref index } => {
@@ -447,15 +451,14 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         | musa_calculus::Shape::Const(_)
         | musa_calculus::Shape::Def(_)
         | musa_calculus::Shape::Base(_)
-        | musa_calculus::Shape::Numeral(_)
         | musa_calculus::Shape::Builtin(_)
         | musa_calculus::Shape::Universe(_)
-        | musa_calculus::Shape::Pi { .. }
+        | musa_calculus::Shape::Lit(musa_calculus::Constant::Numeral(_))
+        | musa_calculus::Shape::Bind { .. }
         | musa_calculus::Shape::RecordType(_)
         | musa_calculus::Shape::Record(_)
         | musa_calculus::Shape::Project { .. }
-        | musa_calculus::Shape::Hole(_)
-        | musa_calculus::Shape::Let { .. } => {}
+        | musa_calculus::Shape::Meta(_) => {}
     }
 }
 

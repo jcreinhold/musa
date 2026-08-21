@@ -12,7 +12,7 @@
 //! η-long normal form, and conversion is then α-equality, which on de Bruijn
 //! *indices* is structural `==`.
 //!
-//! The prompt's sketch signature is `quote : Level → Value → Term`. It cannot
+//! The prompt's sketch signature is `quote : Sort → Value → Term`. It cannot
 //! be: without the type there is nothing to η-expand *against*, and `f` and
 //! `λx. f x` would read back differently. `docs/plan/roadmap.md` §15.12's
 //! `convertible(left, right, ty)` already carries the type for this reason, and
@@ -60,15 +60,8 @@ use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, apply_closure, field_type, head_type, opened, project};
 use crate::origin::Origin;
-use crate::term::{DbLevel, Field, Index, Term};
+use crate::term::{Constant, Field, Index, Level, Term};
 use crate::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value};
-
-/// How many binders are in scope while quoting.
-///
-/// Carried rather than derived because it is what turns a [`DbLevel`] created
-/// during quotation into the [`Index`] that names it.
-#[derive(Clone, Copy)]
-pub(crate) struct Depth(pub(crate) u32);
 
 /// Whether quotation opens a folded definition or keeps it.
 ///
@@ -98,7 +91,7 @@ pub(crate) enum Mode {
 /// depth in every signature twice.
 #[derive(Clone, Copy)]
 struct Reading {
-    depth: u32,
+    depth: Level,
     mode: Mode,
 }
 
@@ -133,8 +126,8 @@ impl Escape {
 
 impl Reading {
     /// A plain quotation: no metavariable to fit the answer into.
-    const fn open(depth: Depth, mode: Mode) -> Self {
-        Self { depth: depth.0, mode }
+    const fn open(depth: Level, mode: Mode) -> Self {
+        Self { depth, mode }
     }
 
     /// The value with whatever the head hides seen through: solved
@@ -148,13 +141,13 @@ impl Reading {
 
     fn under_binder(self) -> Self {
         Self {
-            depth: self.depth.saturating_add(1),
+            depth: self.depth.deeper(),
             ..self
         }
     }
 
-    const fn fresh(self) -> DbLevel {
-        DbLevel(self.depth)
+    const fn fresh(self) -> Level {
+        self.depth
     }
 
     /// The index that names `level` in the term being written.
@@ -164,7 +157,7 @@ impl Reading {
     /// itself — the solution has just as many binders inside it — and shifted by
     /// the binders the solution drops for one from the outer context, which is
     /// also where a variable the solution may not mention is refused.
-    fn index(self, level: DbLevel) -> Result<Index, Escape> {
+    fn index(self, level: Level) -> Result<Index, Escape> {
         level
             .to_index(self.depth)
             .ok_or_else(|| Escape::Core(Malformed::EscapedVariable.into()))
@@ -177,7 +170,7 @@ impl Reading {
 ///
 /// [`CoreError::Exhausted`] at a budget limit, [`CoreError::Malformed`] when
 /// the value does not inhabit the shape the type demands.
-pub(crate) fn quote(meter: &mut Meter, depth: Depth, mode: Mode, ty: &Value, value: &Value) -> Result<Term, CoreError> {
+pub(crate) fn quote(meter: &mut Meter, depth: Level, mode: Mode, ty: &Value, value: &Value) -> Result<Term, CoreError> {
     read(meter, Reading::open(depth, mode), ty, value).map_err(Escape::core)
 }
 
@@ -240,7 +233,10 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
                 // Already its own normal form, and one node rather than `count`
                 // of them — which is what keeps quotation's node charge
                 // independent of the number the author wrote.
-                Form::Numeral(numeral) => Ok(Term::new(here, crate::term::Shape::Numeral(numeral.clone()))),
+                Form::Numeral(numeral) => Ok(Term::new(
+                    here,
+                    crate::term::Shape::Lit(Constant::Numeral(numeral.clone())),
+                )),
                 Form::Universe(_)
                 | Form::Pi { .. }
                 | Form::Lam(_)
@@ -259,7 +255,7 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
 ///
 /// As [`quote`], plus [`Malformed::NotAType`] when the value is a canonical
 /// form no universe contains.
-pub(crate) fn quote_type(meter: &mut Meter, depth: Depth, mode: Mode, value: &Value) -> Result<Term, CoreError> {
+pub(crate) fn quote_type(meter: &mut Meter, depth: Level, mode: Mode, value: &Value) -> Result<Term, CoreError> {
     read_type(meter, Reading::open(depth, mode), value).map_err(Escape::core)
 }
 
@@ -341,9 +337,9 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
                 DefHead::Local(level) => Term::var(here, reading.index(*level)?),
                 DefHead::Global(def) => def.term(here),
             },
-            // Reached only unsolved: a solved hole is forced before quotation,
+            // Reached only unsolved: a solved meta is forced before quotation,
             // and a spine whose head is solved forces whole.
-            Head::Hole(hole) => Term::hole(here, hole.clone()),
+            Head::Meta(meta) => Term::meta(here, meta.clone()),
             Head::Const(constant) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
             // a base type has no eliminator and a builtin whose arguments were

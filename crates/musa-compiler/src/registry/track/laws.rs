@@ -616,7 +616,7 @@ fn map_note_pitches_applies_the_mapper_once_per_notehead() {
     let mapper = Term::lam(HERE, "pitch", term(&plain("Pitch", pitch("g4"))));
     let whole = Term::app(HERE, Term::app(HERE, head(&cx, SPELLINGS[6]), mapper), term(&given()));
     let normal = musa_calculus::normalize(&cx, &ty, &whole).expect("`map_note_pitches` reduces");
-    let musa_calculus::Shape::Lit(ref answer) = *normal.shape() else {
+    let musa_calculus::Shape::Lit(musa_calculus::Constant::Payload(ref answer)) = *normal.shape() else {
         panic!("`map_note_pitches` reduced to something that is not a literal: {normal:?}");
     };
     let mapped = held::<VoiceTrack>(answer).expect("the answer is a track");

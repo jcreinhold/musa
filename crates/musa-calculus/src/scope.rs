@@ -30,8 +30,8 @@ use crate::error::CoreError;
 use crate::family::Found;
 use crate::list::List;
 use crate::origin::Origin;
-use crate::quote::{Depth, quote_type};
-use crate::term::{DbLevel, Index, Name, Term};
+use crate::quote::quote_type;
+use crate::term::{Index, Level, Name, Term};
 use crate::value::{Env, Value};
 
 /// One binder, as elaboration sees it.
@@ -106,7 +106,7 @@ impl Scope {
     }
 
     /// How many binders are in scope.
-    pub(crate) const fn depth(&self) -> u32 {
+    pub(crate) const fn depth(&self) -> Level {
         self.cx.depth()
     }
 
@@ -121,7 +121,7 @@ impl Scope {
             }
             // A binding's level is below the current depth by construction, so
             // this is the index that names it.
-            let steps_out = self.depth().saturating_sub(binding.level).saturating_sub(1);
+            let steps_out = self.depth().0.saturating_sub(binding.level).saturating_sub(1);
             Some(Resolved {
                 index: Index(steps_out),
                 ty: Arc::clone(&binding.ty),
@@ -163,14 +163,14 @@ impl Scope {
     fn pushed(&self, name: Option<Name>, ty: Arc<Value>) -> List<Binding> {
         self.bindings.push(Binding {
             name,
-            level: self.depth(),
+            level: self.depth().0,
             ty,
         })
     }
 
     /// The variable a binder introduced here would be.
     pub(crate) fn fresh_var(&self, origin: Origin, ty: Arc<Value>) -> Value {
-        Value::var(origin, DbLevel(self.depth()), ty)
+        Value::var(origin, self.depth(), ty)
     }
 
     /// The values these binders stand for.
@@ -198,6 +198,6 @@ impl Scope {
     ///
     /// As [`quote_type`].
     pub(crate) fn quote_type(&self, meter: &mut Meter, value: &Value) -> Result<Term, CoreError> {
-        quote_type(meter, Depth(self.depth()), crate::quote::Mode::Keep, value)
+        quote_type(meter, self.depth(), crate::quote::Mode::Keep, value)
     }
 }

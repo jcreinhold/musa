@@ -25,7 +25,7 @@ use std::sync::Arc;
 use crate::error::CoreError;
 use crate::family::Role;
 use crate::origin::Origin;
-use crate::term::{Constraint, DbLevel, Term};
+use crate::term::{Constraint, Level, Term};
 use crate::value::{Elim, Form, Head, Value};
 
 /// The one constraint name this crate reserves and no author may write.
@@ -66,7 +66,7 @@ pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Ter
 ///
 /// [`Refusal::Unsolved`] when the port's type is an unsolved metavariable — a
 /// port nothing determined is *undetermined*, not unstorable, and the refusal
-/// is the hole's rather than a verdict about a type nobody wrote.
+/// is the meta's rather than a verdict about a type nobody wrote.
 /// [`Refusal::NotStorable`] naming the type when the walk says no, and
 /// [`Malformed::NotAType`](crate::Malformed::NotAType) when the argument is no
 /// type at all, which is a caller defect.
@@ -77,25 +77,20 @@ pub(crate) fn discharge(
     env: &crate::value::Env,
     at: Origin,
 ) -> Result<Term, crate::refuse::ElabError> {
-    let depth = u32::try_from(env.iter().count()).unwrap_or(u32::MAX);
+    let depth = Level(u32::try_from(env.iter().count()).unwrap_or(u32::MAX));
     let Some(argument) = constraint.args.first() else {
         return Err(crate::error::Malformed::NotAType.into());
     };
     let ty = crate::eval::eval(elaborator.meter(), env, argument)?;
-    let written = crate::quote::quote_type(
-        elaborator.meter(),
-        crate::quote::Depth(depth),
-        crate::quote::Mode::Open,
-        &ty,
-    )?;
+    let written = crate::quote::quote_type(elaborator.meter(), depth, crate::quote::Mode::Open, &ty)?;
     if let Some(opened) = crate::eval::opened(elaborator.meter(), &ty)?
         && let Form::Neutral(neutral) = &opened.form
-        && let crate::value::Head::Hole(hole) = &neutral.head
-        && !hole.is_solved()
+        && let crate::value::Head::Meta(meta) = &neutral.head
+        && !meta.is_solved()
     {
         return Err(crate::refuse::Refusal::Unsolved {
             site: crate::meta::MetaSource::TypeParameter,
-            created: hole.origin(),
+            created: meta.origin(),
             blocked: None,
         }
         .into());
@@ -125,7 +120,7 @@ pub(crate) fn is_storable(
     cx: &crate::context::Cx,
     ty: &Value,
 ) -> Result<bool, CoreError> {
-    stor(meter, cx, ty, &mut Vec::new(), &mut 0)
+    stor(meter, cx, ty, &mut Vec::new(), &mut Level(0))
 }
 
 /// [`is_storable`], under `visiting` (the families currently being decided, by
@@ -135,9 +130,9 @@ fn stor(
     cx: &crate::context::Cx,
     ty: &Value,
     visiting: &mut Vec<(usize, u32)>,
-    depth: &mut u32,
+    depth: &mut Level,
 ) -> Result<bool, CoreError> {
-    // A hole solved after this value was built still heads it — open first,
+    // A meta solved after this value was built still heads it — open first,
     // which is also what unfolds a definition standing in type position.
     let opened = crate::eval::opened(meter, ty)?;
     let ty = opened.as_ref().unwrap_or(ty);
@@ -157,8 +152,8 @@ fn stor(
                 if !stor(meter, cx, &field_ty, visiting, depth)? {
                     return Ok(false);
                 }
-                let fresh = Value::var(ty.origin, DbLevel(*depth), Arc::new(field_ty));
-                *depth = depth.saturating_add(1);
+                let fresh = Value::var(ty.origin, *depth, Arc::new(field_ty));
+                *depth = depth.deeper();
                 env = env.push(fresh);
             }
             Ok(true)
@@ -210,8 +205,8 @@ fn stor(
                                 answer = false;
                                 break;
                             }
-                            let fresh = Value::var(ty.origin, DbLevel(*depth), Arc::new(field_ty));
-                            *depth = depth.saturating_add(1);
+                            let fresh = Value::var(ty.origin, *depth, Arc::new(field_ty));
+                            *depth = depth.deeper();
                             env = env.push(fresh);
                         }
                         if !answer {
@@ -229,7 +224,7 @@ fn stor(
             },
             // An unknown type could hold a function, and a definition or a
             // builtin stuck at the head of one is no more decidable: refused.
-            Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Hole(_) => Ok(false),
+            Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Meta(_) => Ok(false),
         },
         // A checked type never evaluates to one of these; reaching one is a
         // compiler defect rather than a program's fault.

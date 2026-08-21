@@ -8,7 +8,7 @@
 //! completeness of `NbE` against the declarative rules, decidability, subject
 //! reduction, canonicity — which no example-based suite can supply.
 
-use musa_calculus::{Budget, CoreError, Cx, Index, Level, Origin, Term, convertible, convertible_types};
+use musa_calculus::{Budget, CoreError, Cx, Index, Origin, Sort, Term, convertible, convertible_types};
 
 use crate::fixtures::{Sample, corpus, corpus_at};
 
@@ -139,8 +139,8 @@ fn conversion_agrees_with_normalization() {
 #[test]
 fn conversion_at_universes_is_equality_and_not_inclusion() {
     let cx = Cx::new();
-    let zero = Term::universe(HERE, Level::ZERO);
-    let one = Term::universe(HERE, Level::One);
+    let zero = Term::universe(HERE, Sort::ZERO);
+    let one = Term::universe(HERE, Sort::One);
     assert_eq!(convertible_types(&cx, &zero, &zero), Ok(true));
     assert_eq!(
         convertible_types(&cx, &zero, &one),
@@ -157,7 +157,7 @@ fn conversion_at_universes_is_equality_and_not_inclusion() {
 #[test]
 fn conversion_ignores_binder_names() {
     let cx = Cx::new();
-    let a = cx.assume(HERE, &Term::universe(HERE, Level::ZERO)).expect("A : Type 0");
+    let a = cx.assume(HERE, &Term::universe(HERE, Sort::ZERO)).expect("A : Type 0");
     let arrow = Term::pi(HERE, "z", Term::var(HERE, Index(0)), Term::var(HERE, Index(1)));
     let by_one_name = Term::lam(HERE, "first", Term::var(HERE, Index(0)));
     let by_another = Term::lam(HERE, "second", Term::var(HERE, Index(0)));
@@ -173,7 +173,7 @@ fn conversion_ignores_binder_names() {
 fn a_malformed_term_is_reported_rather_than_aborting() {
     let cx = Cx::new();
     let unbound = Term::var(HERE, Index(0));
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     assert!(
         matches!(
             musa_calculus::normalize_type(&cx, &unbound),
@@ -202,7 +202,7 @@ fn a_malformed_term_is_reported_rather_than_aborting() {
 fn exhaustion_is_not_a_negative_answer() {
     let generous = Cx::with_budget(Budget::LANGUAGE);
     let narrow = Cx::with_budget(Budget::LANGUAGE.scaled(200_000));
-    let type0 = Term::universe(HERE, Level::ZERO);
+    let type0 = Term::universe(HERE, Sort::ZERO);
     let deep = (0..64).fold(type0.clone(), |body, _| {
         Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
     });

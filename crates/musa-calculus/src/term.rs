@@ -5,7 +5,7 @@
 //! to keep in step with it.
 //!
 //! **Terms are de Bruijn-*indexed*; values are de Bruijn-*levelled*.** That
-//! split is the whole reason both [`Index`] and [`DbLevel`] exist as separate
+//! split is the whole reason both [`Index`] and [`Level`] exist as separate
 //! types rather than as two `u32`s. An index counts binders *outward from the
 //! use site*, so α-equivalence on terms is structural equality — which is what
 //! makes conversion an `==` after quoting. A level counts binders *inward from
@@ -22,11 +22,11 @@
 //! `Arc<Term>`; and [`Term`]'s `PartialEq` compares shapes only, because §7
 //! says origins are not part of conversion.
 
+use std::fmt;
 use std::sync::Arc;
 
-use crate::family::Constant;
-use crate::level::Level;
 use crate::origin::Origin;
+use crate::sort::Sort;
 
 /// A binder's written name, and a record field's name.
 ///
@@ -140,24 +140,125 @@ impl Eq for Filling {}
 pub struct Index(pub u32);
 
 /// A de Bruijn level: how many binders in from the empty context a variable's
-/// binder is. `DbLevel(0)` is the outermost.
+/// binder is. `Level(0)` is the outermost.
 ///
 /// Levels appear only inside values and inside quotation, never in a [`Term`].
+///
+/// **A position and a count are the same number, and this type is both.** A
+/// scope holding `n` binders has levels `0..n`, so `Level(n)` names the next
+/// variable to be assumed *and* says how many are already in scope. Carrying
+/// the two as separate types — a level and a depth — invited passing one where
+/// the other was meant, in the one construction where that mistake is silent;
+/// [`Self::to_index`] is where both readings meet and is the reason there is
+/// one type here rather than two.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct DbLevel(pub u32);
+pub struct Level(pub u32);
 
-impl DbLevel {
+impl Level {
+    /// The outermost level, and the empty scope's depth.
+    pub const ZERO: Self = Self(0);
+
+    /// The same scope with one more binder in it.
+    #[must_use]
+    pub const fn deeper(self) -> Self {
+        Self(self.0.saturating_add(1))
+    }
+
     /// The index that names this level from inside a scope holding `depth`
     /// binders.
     ///
     /// `None` when the level is not in scope at that depth, which is a caller
     /// defect rather than a program error — quotation only ever asks about
     /// levels it created.
-    pub(crate) const fn to_index(self, depth: u32) -> Option<Index> {
-        match depth.checked_sub(self.0) {
+    pub(crate) const fn to_index(self, depth: Self) -> Option<Index> {
+        match depth.0.checked_sub(self.0) {
             Some(0) | None => None,
             Some(back) => Some(Index(back.saturating_sub(1))),
         }
+    }
+}
+
+/// Which binder a [`Shape::Bind`] introduces, and what it carries beside its
+/// body.
+///
+/// `02-core-calculus.md` §1 writes the term language with **one** binder former
+/// and a tag saying which binder it is, and this is that tag. Three
+/// constructors become one plus this, which is no saving in variants and is not
+/// what it is for: "go under a binder" is written once — in [`crate::eval`], in
+/// [`crate::quote`], in [`crate::elab::zonk`], and in every structural walk —
+/// instead of three times, and that is exactly where a de Bruijn bug would
+/// otherwise live.
+///
+/// **A λ carries no domain.** The one place a λ's domain is needed is quotation,
+/// which is type-directed and therefore already holds the Π it is quoting at.
+/// Storing it on the λ as well would be the same fact twice, free to disagree,
+/// and would oblige every site that builds a λ from a type it does not have —
+/// an impossible branch, a wrapper around a recursor method — to invent one.
+#[derive(Clone, Debug)]
+pub enum Binder {
+    /// `λx. body`.
+    Lam,
+    /// `(x : ty) → body`, the one function type.
+    Pi {
+        /// How a use site fills this argument. §1: exactly one Π, and **no
+        /// core rule reads this** — it is here because a type reached by
+        /// projection or by substitution has been through the semantic domain,
+        /// and elaboration still has to be able to ask how the binder it found
+        /// is filled.
+        filling: Filling,
+        /// `A`, the domain.
+        ty: Term,
+    },
+    /// `let x : ty = value in body`, non-recursive. Its unfolding is δ.
+    Let {
+        /// `A`.
+        ty: Term,
+        /// `v`.
+        value: Term,
+    },
+}
+
+/// α-equality on a binder: the type it stands at, and the value a `let` binds.
+///
+/// A [`Filling`] is excluded for [`Shape`]'s reason — `{x : A} → B` and
+/// `(x : A) → B` are one function type — and the two other binders are
+/// distinguished by their constructor, not by a tag anyone compares.
+impl PartialEq for Binder {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Lam, Self::Lam) => true,
+            (Self::Pi { ty: mine, .. }, Self::Pi { ty: theirs, .. }) => mine == theirs,
+            (
+                Self::Let {
+                    ty: my_ty,
+                    value: my_value,
+                },
+                Self::Let {
+                    ty: their_ty,
+                    value: their_value,
+                },
+            ) => my_ty == their_ty && my_value == their_value,
+            (Self::Lam | Self::Pi { .. } | Self::Let { .. }, _) => false,
+        }
+    }
+}
+
+impl Eq for Binder {}
+
+impl Binder {
+    /// The subterms read *outside* the binder: a domain, or a `let`\'s type and
+    /// value.
+    ///
+    /// A λ has none, which is the whole difference between the three as far as
+    /// a structural walk is concerned — so a walk asks this and then descends
+    /// into the body one binder deeper, once, instead of spelling three arms.
+    pub fn outer(&self) -> impl Iterator<Item = &Term> {
+        let (first, second) = match self {
+            Self::Lam => (None, None),
+            Self::Pi { ty, .. } => (Some(ty), None),
+            Self::Let { ty, value } => (Some(ty), Some(value)),
+        };
+        first.into_iter().chain(second)
     }
 }
 
@@ -205,6 +306,45 @@ impl PartialEq for Term {
 
 impl Eq for Term {}
 
+/// A closed value written as one node: a base-type payload, or a numeral at a
+/// counting family.
+///
+/// **Two arms, and the reason is a rule rather than taste.** §3 compares a
+/// numeral *as a number*, and ι decrements one, which is what lets `Nat`'s
+/// eliminator fire without unfolding a tower of `Succ`. A base literal is the
+/// opposite: opaque, with no constructor and no eliminator, so nothing in this
+/// crate takes one apart. One constructor of the term language because both are
+/// closed values written as one node; two arms because the rules that read them
+/// are not the same rules.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Constant {
+    /// A closed value of a base type, opaque to this crate (§5.8).
+    ///
+    /// Equal to another exactly when the host says the payloads agree at one
+    /// type — §5.8's sentence, and [`crate::base::Literal`]'s own `PartialEq`.
+    Payload(crate::base::Literal),
+    /// A closed value of a counting family, written as a count rather than as
+    /// that many applications of its step constructor.
+    ///
+    /// A *representation*, not a new kind of value: it is definitionally the
+    /// tower it stands for, and [`crate::family::Counting`] is the shape
+    /// condition that makes that true. Equality is constant time — two numerals
+    /// agree when they count the same far at the same family — where two towers
+    /// would have been walked to the floor.
+    Numeral(crate::family::Numeral),
+}
+
+impl fmt::Display for Constant {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // `384`, not 384 `Nat.Succ`s. What the author wrote is what a
+        // diagnostic, a hover, and a semantic hash should all say back.
+        match self {
+            Self::Payload(literal) => write!(out, "{literal}"),
+            Self::Numeral(numeral) => write!(out, "{numeral}"),
+        }
+    }
+}
+
 /// What a term is.
 ///
 /// Separate from [`Term`] so that the origin has one home. A shape's children
@@ -213,8 +353,8 @@ impl Eq for Term {}
 #[derive(Clone, Debug)]
 pub enum Shape {
     /// A placeholder for an argument the instantiation walk has not yet
-    /// solved — see [`crate::meta::Hole`].
-    Hole(crate::meta::Hole),
+    /// solved — see [`crate::meta::Meta`].
+    Meta(crate::meta::Meta),
     /// A variable, named by how many binders out its binder is.
     Var(Index),
     /// A declared constant: an inductive family, one of its constructors, or its
@@ -224,7 +364,7 @@ pub enum Shape {
     /// constructor, and a recursor are all just *applied* — [`Self::App`] already
     /// says what an argument is, and three spine-carrying variants would say it
     /// three more times while making partial application a different term.
-    Const(Constant),
+    Const(crate::family::Constant),
     /// A use of a top-level definition (§2.4).
     ///
     /// Separate from [`Self::Const`] rather than a fourth
@@ -234,48 +374,26 @@ pub enum Shape {
     /// the definition is: see [`crate::program`] for why a use is a reference
     /// rather than a copy of the body.
     Def(crate::program::Def),
-    /// A closed value of a counting family, written as a count rather than as
-    /// that many applications of its step constructor.
-    ///
-    /// A *representation*, not a new kind of value: it is definitionally the
-    /// tower it stands for, and [`crate::family::Counting`] is the shape
-    /// condition that makes that true. Distinct from [`Self::Lit`] because the
-    /// two mean opposite things — a base literal is opaque and nothing in this
-    /// crate takes one apart, while a numeral is taken apart by every
-    /// elimination at its family, one level at a time.
-    Numeral(crate::family::Numeral),
     /// A base type: §5.8's conservative extension, registered by the host and
     /// inert here. It has no constructor and no eliminator, so no rule in this
     /// crate ever takes one apart — which is D1 stated as a representation.
     Base(crate::base::Base),
-    /// A closed value of a base type, opaque to this crate.
-    Lit(crate::base::Literal),
+    /// A closed value written as one node: see [`Constant`].
+    Lit(Constant),
     /// A compiler-owned operation. Rigid until its arguments are literals, at
     /// which point [`crate::eval::apply`] runs its δ-rule — the same moment, and
     /// the same arm, at which ι fires for a recursor.
     Builtin(crate::base::Builtin),
     /// `Type l`. Predicative and not cumulative: `Type l : Type (succ l)`.
-    Universe(Level),
-    /// `(x : A) → B`, the one function type.
-    Pi {
-        /// How a use site fills this argument. §1: exactly one Π, and **no
-        /// core rule reads this** — it is here because a type reached by
-        /// projection or by substitution has been through the semantic domain,
-        /// and elaboration still has to be able to ask how the binder it found
-        /// is filled.
-        filling: Filling,
+    Universe(Sort),
+    /// `bind x. body` — a λ, a Π, or a `let`, at one node (§1).
+    Bind {
         /// The binder's written name.
         name: Name,
-        /// `A`.
-        domain: Term,
-        /// `B`, under the binder.
-        codomain: Term,
-    },
-    /// `λx. e`.
-    Lam {
-        /// The binder's written name.
-        name: Name,
-        /// The body, under the binder.
+        /// Which binder this is, and what it carries beside the body.
+        binder: Binder,
+        /// The body, under the binder: a λ\'s body, a Π\'s codomain, a
+        /// `let`\'s continuation.
         body: Term,
     },
     /// `f a`.
@@ -335,17 +453,6 @@ pub enum Shape {
         /// The index it is refined by.
         index: Term,
     },
-    /// `let x : A = v in e`, non-recursive. Its unfolding is δ.
-    Let {
-        /// The binder's written name.
-        name: Name,
-        /// `A`.
-        ty: Term,
-        /// `v`.
-        value: Term,
-        /// `e`, under the binder.
-        body: Term,
-    },
 }
 
 /// α-equality: the three things a core term carries that conversion does not
@@ -365,7 +472,7 @@ pub enum Shape {
 impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Hole(left), Self::Hole(right)) => left == right,
+            (Self::Meta(left), Self::Meta(right)) => left == right,
             (Self::Var(left), Self::Var(right)) => left == right,
             (Self::Const(left), Self::Const(right)) => left == right,
             // Two uses of one definition are one term. Conversion never gets
@@ -375,14 +482,9 @@ impl PartialEq for Shape {
             (Self::Def(left), Self::Def(right)) => left == right,
             (Self::Base(left), Self::Base(right)) => left == right,
             (Self::Builtin(left), Self::Builtin(right)) => left == right,
-            // §5.8: an inert base type contributes no ι-rule, so two closed
-            // values of it are convertible iff they are the same constant. The
-            // host decides what "the same" means for its own data.
+            // §5.8 for a payload and constant-time counting for a numeral —
+            // both [`Constant`]'s own rule, stated once where the two arms are.
             (Self::Lit(left), Self::Lit(right)) => left == right,
-            // Constant time, and that is the representation earning its keep:
-            // two numerals are equal when they count the same far at the same
-            // family, where two towers would have been walked to the floor.
-            (Self::Numeral(left), Self::Numeral(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
             // Both halves: an indexed type *is* its type and its index, and two
             // indexed types at one type by two indices are two types. α-equality
@@ -400,29 +502,17 @@ impl PartialEq for Shape {
                 },
             ) => left_ty == right_ty && left_index == right_index,
             (
-                Self::Pi {
-                    filling: _,
+                Self::Bind {
                     name: _,
-                    domain: left_domain,
-                    codomain: left_codomain,
-                },
-                Self::Pi {
-                    filling: _,
-                    name: _,
-                    domain: right_domain,
-                    codomain: right_codomain,
-                },
-            ) => left_domain == right_domain && left_codomain == right_codomain,
-            (
-                Self::Lam {
-                    name: _,
+                    binder: left_binder,
                     body: left_body,
                 },
-                Self::Lam {
+                Self::Bind {
                     name: _,
+                    binder: right_binder,
                     body: right_body,
                 },
-            ) => left_body == right_body,
+            ) => left_binder == right_binder && left_body == right_body,
             (
                 Self::App {
                     function: left_function,
@@ -446,26 +536,12 @@ impl PartialEq for Shape {
                     field: right_field,
                 },
             ) => left_field == right_field && left_record == right_record,
-            (
-                Self::Let {
-                    name: _,
-                    ty: left_ty,
-                    value: left_value,
-                    body: left_body,
-                },
-                Self::Let {
-                    name: _,
-                    ty: right_ty,
-                    value: right_value,
-                    body: right_body,
-                },
-            ) => left_ty == right_ty && left_value == right_value && left_body == right_body,
             // Two different shapes. Every variant is spelled out on the left
             // rather than collapsed to `_`, so that adding one to `Shape` is a
             // non-exhaustive-match error here rather than a silent `false` for
             // the new form.
             (
-                Self::Hole(_)
+                Self::Meta(_)
                 | Self::Var(_)
                 | Self::Const(_)
                 | Self::Def(_)
@@ -473,15 +549,12 @@ impl PartialEq for Shape {
                 | Self::Lit(_)
                 | Self::Builtin(_)
                 | Self::Universe(_)
-                | Self::Pi { .. }
-                | Self::Lam { .. }
+                | Self::Bind { .. }
                 | Self::App { .. }
                 | Self::RecordType(_)
                 | Self::Record(_)
                 | Self::Project { .. }
-                | Self::Numeral(_)
-                | Self::Indexed { .. }
-                | Self::Let { .. },
+                | Self::Indexed { .. },
                 _,
             ) => false,
         }
@@ -527,7 +600,7 @@ impl Term {
     /// evaluated. An already-indexed type answers for *its own* head, not for
     /// the wrapper: `Pc(12)` is a `Pc`, and the wrapper is what the answer was
     /// used to build.
-    pub(crate) fn declared_index(&self) -> Option<&crate::family::Binder> {
+    pub(crate) fn declared_index(&self) -> Option<&crate::family::Parameter> {
         let mut head = self;
         while let Shape::App { function, .. } = head.shape() {
             head = function;
@@ -535,21 +608,18 @@ impl Term {
         match head.shape() {
             Shape::Const(constant) => constant.declared_index(),
             Shape::Base(base) => base.declared_index(),
-            Shape::Hole(_)
+            Shape::Meta(_)
             | Shape::Var(_)
             | Shape::Def(_)
-            | Shape::Numeral(_)
             | Shape::Lit(_)
             | Shape::Builtin(_)
             | Shape::Universe(_)
-            | Shape::Pi { .. }
-            | Shape::Lam { .. }
+            | Shape::Bind { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Indexed { .. }
-            | Shape::Let { .. } => None,
+            | Shape::Indexed { .. } => None,
         }
     }
 
@@ -566,10 +636,10 @@ impl Term {
         }
     }
 
-    /// A placeholder for an unwritten argument — see [`crate::meta::Hole`].
+    /// A placeholder for an unwritten argument — see [`crate::meta::Meta`].
     #[must_use]
-    pub(crate) fn hole(origin: Origin, hole: crate::meta::Hole) -> Self {
-        Self::new(origin, Shape::Hole(hole))
+    pub(crate) fn meta(origin: Origin, meta: crate::meta::Meta) -> Self {
+        Self::new(origin, Shape::Meta(meta))
     }
 
     /// A variable.
@@ -579,7 +649,7 @@ impl Term {
     }
 
     /// `count` steps above `family`'s floor, as one node. See
-    /// [`Shape::Numeral`].
+    /// [`Constant::Numeral`].
     ///
     /// Takes the family's constant rather than its name, because by the time a
     /// term is built the name has already been resolved and a second lookup
@@ -587,16 +657,16 @@ impl Term {
     pub(crate) fn numeral(origin: Origin, family: &crate::family::Constant, count: u64) -> Self {
         Self::new(
             origin,
-            Shape::Numeral(crate::family::Numeral {
+            Shape::Lit(Constant::Numeral(crate::family::Numeral {
                 family: family.clone(),
                 count,
-            }),
+            })),
         )
     }
 
     /// `Type level`.
     #[must_use]
-    pub fn universe(origin: Origin, level: Level) -> Self {
+    pub fn universe(origin: Origin, level: Sort) -> Self {
         Self::new(origin, Shape::Universe(level))
     }
 
@@ -612,28 +682,30 @@ impl Term {
     ///
     /// [`crate::Refusal::BeyondUniverses`] at a `Type 1` — a type of types of
     /// types is the third universe the calculus does not have.
-    pub fn level_of(term: &Self) -> Result<Level, crate::Refusal> {
+    pub fn level_of(term: &Self) -> Result<Sort, crate::Refusal> {
         match term.shape() {
             Shape::Universe(level) => level
                 .succ()
                 .ok_or(crate::Refusal::BeyondUniverses { at: term.origin() }),
-            Shape::Pi { domain, codomain, .. } => Ok(Self::level_of(domain)?.max(Self::level_of(codomain)?)),
+            Shape::Bind {
+                binder: Binder::Pi { ty, .. },
+                body,
+                ..
+            } => Ok(Self::level_of(ty)?.max(Self::level_of(body)?)),
             Shape::RecordType(fields) => fields
                 .iter()
-                .try_fold(Level::ZERO, |join, field| Ok(Self::level_of(&field.term)?.max(join))),
-            Shape::Hole(_)
+                .try_fold(Sort::ZERO, |join, field| Ok(Self::level_of(&field.term)?.max(join))),
+            Shape::Meta(_)
             | Shape::Var(_)
             | Shape::Const(_)
             | Shape::Def(_)
-            | Shape::Numeral(_)
             | Shape::Base(_)
             | Shape::Lit(_)
             | Shape::Builtin(_)
-            | Shape::Lam { .. }
+            | Shape::Bind { .. }
             | Shape::App { .. }
             | Shape::Record(_)
-            | Shape::Project { .. }
-            | Shape::Let { .. } => Ok(Level::ZERO),
+            | Shape::Project { .. } => Ok(Sort::ZERO),
             // An indexed type is at the level of what it refines. The index is a
             // value, not a type, so it contributes no level at all.
             Shape::Indexed { ty, .. } => Self::level_of(ty),
@@ -682,11 +754,10 @@ impl Term {
     ) -> Self {
         Self::new(
             origin,
-            Shape::Pi {
-                filling,
+            Shape::Bind {
                 name: name.into(),
-                domain,
-                codomain,
+                binder: Binder::Pi { filling, ty: domain },
+                body: codomain,
             },
         )
     }
@@ -696,8 +767,9 @@ impl Term {
     pub fn lam(origin: Origin, name: impl Into<Name>, body: Self) -> Self {
         Self::new(
             origin,
-            Shape::Lam {
+            Shape::Bind {
                 name: name.into(),
+                binder: Binder::Lam,
                 body,
             },
         )
@@ -744,10 +816,9 @@ impl Term {
     pub fn bind(origin: Origin, name: impl Into<Name>, ty: Self, value: Self, body: Self) -> Self {
         Self::new(
             origin,
-            Shape::Let {
+            Shape::Bind {
                 name: name.into(),
-                ty,
-                value,
+                binder: Binder::Let { ty, value },
                 body,
             },
         )
@@ -784,11 +855,14 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
+        | Shape::Meta(_)
         | Shape::Universe(_) => 0,
-        Shape::Pi { domain, codomain, .. } => deeper(domain, 0).saturating_add(deeper(codomain, 1)),
-        Shape::Lam { body, .. } => deeper(body, 1),
+        // One arm for three binders: whatever the binder carries is read
+        // outside it, and the body one deeper. That is the saving [`Binder`]
+        // exists for, and this is the smallest place it shows.
+        Shape::Bind { binder, body, .. } => binder
+            .outer()
+            .fold(deeper(body, 1), |total, term| total.saturating_add(deeper(term, 0))),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
         Shape::RecordType(fields) => fields.iter().enumerate().fold(0, |total, (which, field)| {
             total.saturating_add(deeper(&field.term, u32::try_from(which).unwrap_or(u32::MAX)))
@@ -797,36 +871,33 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
             .iter()
             .fold(0, |total, field| total.saturating_add(deeper(&field.term, 0))),
         Shape::Project { record, .. } => deeper(record, 0),
-        Shape::Let { ty, value, body, .. } => deeper(ty, 0)
-            .saturating_add(deeper(value, 0))
-            .saturating_add(deeper(body, 1)),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{DbLevel, Index, Term};
-    use crate::level::Level;
+    use super::{Index, Level, Term};
     use crate::origin::Origin;
+    use crate::sort::Sort;
 
     #[test]
     fn a_level_reads_back_as_the_index_that_names_it() {
         // Three binders in scope: levels 0, 1, 2 are indices 2, 1, 0.
-        assert_eq!(DbLevel(0).to_index(3), Some(Index(2)));
-        assert_eq!(DbLevel(1).to_index(3), Some(Index(1)));
-        assert_eq!(DbLevel(2).to_index(3), Some(Index(0)));
+        assert_eq!(Level(0).to_index(Level(3)), Some(Index(2)));
+        assert_eq!(Level(1).to_index(Level(3)), Some(Index(1)));
+        assert_eq!(Level(2).to_index(Level(3)), Some(Index(0)));
     }
 
     #[test]
     fn a_level_out_of_scope_has_no_index() {
-        assert_eq!(DbLevel(3).to_index(3), None);
-        assert_eq!(DbLevel(0).to_index(0), None);
+        assert_eq!(Level(3).to_index(Level(3)), None);
+        assert_eq!(Level(0).to_index(Level(0)), None);
     }
 
     #[test]
     fn two_terms_differing_only_in_origin_are_equal() {
-        let here = Term::universe(Origin::node(1), Level::ZERO);
-        let there = Term::universe(Origin::node(2), Level::ZERO);
+        let here = Term::universe(Origin::node(1), Sort::ZERO);
+        let there = Term::universe(Origin::node(2), Sort::ZERO);
         assert_eq!(here, there);
         assert_ne!(here.origin(), there.origin());
     }

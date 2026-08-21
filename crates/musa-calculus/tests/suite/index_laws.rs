@@ -25,8 +25,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_calculus::{
-    Base, Budget, Builtin, CoreError, Cx, Family, Index, Level, Literal, Operator, Origin, Payload, Raw, Refusal,
-    Registry, Term, check, convertible_types, infer, normalize_type,
+    Base, Budget, Builtin, CoreError, Cx, Family, Index, Literal, Operator, Origin, Payload, Raw, Refusal, Registry,
+    Sort, Term, check, convertible_types, infer, normalize_type,
 };
 
 use crate::programs::refusal;
@@ -63,7 +63,7 @@ impl Payload for Count {
 /// The whole of what registering an index domain takes: a base type and a
 /// `fn` pointer. Nothing in `src/` learns what a `Count` is.
 fn count() -> Base {
-    Base::new("Count", Term::universe(TYPES, Level::ZERO)).measuring(|literal| {
+    Base::new("Count", Term::universe(TYPES, Sort::ZERO)).measuring(|literal| {
         literal
             .payload()
             .as_any()
@@ -79,13 +79,13 @@ fn count() -> Base {
 /// would be, at the sort the declaration named, and a host declares that the
 /// same way a program does.
 fn row() -> Base {
-    Base::new("Row", Term::universe(TYPES, Level::ZERO)).indexed_by("n", count_type())
+    Base::new("Row", Term::universe(TYPES, Sort::ZERO)).indexed_by("n", count_type())
 }
 
 /// `Opaque : Type 0` — a base type that registered *no* measure, so a literal
 /// of it is not an index.
 fn opaque() -> Base {
-    Base::new("Opaque", Term::universe(TYPES, Level::ZERO))
+    Base::new("Opaque", Term::universe(TYPES, Sort::ZERO))
 }
 
 fn count_lit(value: i128) -> Literal {
@@ -376,7 +376,7 @@ fn two_variables_multiplied_are_refused_at_the_type() {
 /// has one to put it in.
 #[test]
 fn a_type_indexed_by_an_unmeasured_base_type_is_refused_at_the_registry() {
-    let unmeasured = Base::new("Bad", Term::universe(TYPES, Level::ZERO)).indexed_by("n", opaque().term(TYPES));
+    let unmeasured = Base::new("Bad", Term::universe(TYPES, Sort::ZERO)).indexed_by("n", opaque().term(TYPES));
     let Err(refusal) = Registry::new(vec![count(), opaque(), unmeasured], vec![]) else {
         panic!("a base type indexed by an unmeasured base type was registered");
     };

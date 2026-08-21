@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 use crate::eval::eval;
 use crate::family::Found;
-use crate::level::Level;
 use crate::origin::Origin;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
+use crate::sort::Sort;
 use crate::term::{Name, Shape, Term};
 use crate::value::{Env, Value};
 
@@ -94,7 +94,7 @@ impl Elaborator {
         // is always one whose goal is an ordinary type. The match compiler
         // computes its own from the goal (`case.rs`) and never comes through
         // here.
-        let level = Level::ZERO;
+        let level = Sort::ZERO;
         let constant = found.at(level);
         let ty = constant.ty(&mut self.meter)?;
         Ok(Typed {
@@ -122,7 +122,7 @@ impl Elaborator {
     /// Nothing is elaborated in order to be discarded. The filter compares two
     /// names, so the candidates cannot be reordered into a different answer.
     /// No `self`, for [`Self::namespaced`]'s reason and with more force: the
-    /// whole rule is a comparison of names, so it needs no meter, no holes, and
+    /// whole rule is a comparison of names, so it needs no meter, no metas, and
     /// no elaborator. A disambiguation that needed one would be a search.
     pub(super) fn member(
         scope: &Scope,
@@ -244,7 +244,7 @@ impl Elaborator {
         // §2.1's uniqueness rule: exactly one family in scope declares the
         // case, so the bare name *is* that constructor — written without its
         // family because there is nothing to disambiguate against. Its
-        // parameters are holes for the position to solve, which is what makes
+        // parameters are metas for the position to solve, which is what makes
         // `fold(Nothing, step)` an ordinary call rather than a guessing game.
         // Two families declaring the case is the ambiguity the qualified
         // spelling exists for, and that stays a refusal.
@@ -253,24 +253,21 @@ impl Elaborator {
             let built = self.constant(scope, here, &qualified)?;
             let params = match &built.term.shape() {
                 Shape::Const(constant) => constant.group.params(),
-                Shape::Hole(_)
+                Shape::Meta(_)
                 | Shape::Var(_)
                 | Shape::Def(_)
-                | Shape::Numeral(_)
                 | Shape::Base(_)
                 | Shape::Lit(_)
                 | Shape::Builtin(_)
                 | Shape::Universe(_)
-                | Shape::Pi { .. }
-                | Shape::Lam { .. }
+                | Shape::Bind { .. }
                 | Shape::App { .. }
                 | Shape::RecordType(_)
                 | Shape::Record(_)
                 | Shape::Project { .. }
-                | Shape::Indexed { .. }
-                | Shape::Let { .. } => 0,
+                | Shape::Indexed { .. } => 0,
             };
-            return self.holes(scope, here, built, params);
+            return self.metas(scope, here, built, params);
         }
         if !families.is_empty() {
             return Err(Refusal::BareConstructor {

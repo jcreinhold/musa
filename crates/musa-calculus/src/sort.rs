@@ -1,4 +1,4 @@
-//! Universe levels: the two there are.
+//! Universe sorts: the two there are.
 //!
 //! `02-core-calculus.md` §1: "Two universes, fixed. `Type 0 : Type 1`, and there
 //! is no `Type : Type`, no `Type 2`, and no level a program can write or a
@@ -11,12 +11,17 @@
 //! for the universe a `Type l` inhabits, and `max` for the join a record type or
 //! enumeration takes of its parts.
 
-/// A universe level: `0` or `1`, fixed.
+/// A universe: `Type 0` or `Type 1`, fixed.
 ///
-/// Ordered `Zero < One`. Conversion compares levels with `==`, never with `<`:
+/// Named `Sort` and not `Level` because [`crate::term::Level`] is a position in
+/// an environment, and one crate cannot spell two unrelated numberings the same
+/// way and expect the mix-up to be caught. Prompt 152 gives this type its
+/// contents; what it has today is the two points §1 fixes.
+///
+/// Ordered `Zero < One`. Conversion compares sorts with `==`, never with `<`:
 /// universes are predicative and not cumulative, so `Type 0` is not a `Type 1`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum Level {
+pub enum Sort {
     /// `Type 0` — where every type a program writes lives.
     Zero,
     /// `Type 1` — where a type of types stands: a record type constructor over
@@ -24,7 +29,7 @@ pub enum Level {
     One,
 }
 
-impl Level {
+impl Sort {
     /// The lowest universe, `Type 0`.
     pub const ZERO: Self = Self::Zero;
 
@@ -50,7 +55,7 @@ impl Level {
     }
 }
 
-impl core::fmt::Display for Level {
+impl core::fmt::Display for Sort {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         out.write_str(match self {
             Self::Zero => "0",

@@ -108,18 +108,17 @@ fn size(term: &Term) -> u32 {
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
+        | Shape::Meta(_)
         | Shape::Universe(_) => 0,
         Shape::Indexed { ty, index } => size(ty).saturating_add(size(index)),
-        Shape::Pi { domain, codomain, .. } => size(domain).saturating_add(size(codomain)),
-        Shape::Lam { body, .. } => size(body),
+        Shape::Bind { binder, body, .. } => binder
+            .outer()
+            .fold(size(body), |total, term| total.saturating_add(size(term))),
         Shape::App { function, argument } => size(function).saturating_add(size(argument)),
         Shape::RecordType(fields) | Shape::Record(fields) => fields
             .iter()
             .fold(0_u32, |total, field| total.saturating_add(size(&field.term))),
         Shape::Project { record, .. } => size(record),
-        Shape::Let { ty, value, body, .. } => size(ty).saturating_add(size(value)).saturating_add(size(body)),
     };
     inner.saturating_add(1)
 }

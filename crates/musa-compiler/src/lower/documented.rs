@@ -218,13 +218,16 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         // `A -> B` and only `A -> B`: a Π whose binder is named is one the
         // surface writes as a parameter list, and a parameter list belongs to a
         // declaration rather than to a type.
-        musa_calculus::Shape::Pi {
-            filling: musa_calculus::Filling::Written,
+        musa_calculus::Shape::Bind {
             ref name,
-            ref domain,
-            ref codomain,
+            binder:
+                musa_calculus::Binder::Pi {
+                    filling: musa_calculus::Filling::Written,
+                    ref ty,
+                },
+            ref body,
         } if arguments.is_empty() && &**name == musa_calculus::ARROW_BINDER => {
-            Some(format!("{} -> {}", spelled(domain)?, spelled(codomain)?))
+            Some(format!("{} -> {}", spelled(ty)?, spelled(body)?))
         }
         // `Row(12)` — the index is shown, because this spelling is what a
         // reader sees in documentation and in a hover, and the index is the
@@ -238,19 +241,16 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         // `crate::registry::machine`'s own discipline, and for its reason.
         musa_calculus::Shape::Indexed { .. }
         | musa_calculus::Shape::Universe(_)
-        | musa_calculus::Shape::Pi { .. }
+        | musa_calculus::Shape::Bind { .. }
         | musa_calculus::Shape::Var(_)
         | musa_calculus::Shape::Def(_)
-        | musa_calculus::Shape::Numeral(_)
         | musa_calculus::Shape::Lit(_)
         | musa_calculus::Shape::Builtin(_)
-        | musa_calculus::Shape::Lam { .. }
         | musa_calculus::Shape::App { .. }
         | musa_calculus::Shape::RecordType(_)
         | musa_calculus::Shape::Record(_)
         | musa_calculus::Shape::Project { .. }
-        | musa_calculus::Shape::Hole(_)
-        | musa_calculus::Shape::Let { .. } => None,
+        | musa_calculus::Shape::Meta(_) => None,
     }
 }
 
@@ -262,8 +262,7 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
 /// as nothing rather than as a guess.
 fn spelled_index(index: &musa_calculus::Term) -> Option<String> {
     match *index.shape() {
-        musa_calculus::Shape::Numeral(ref numeral) => Some(numeral.to_string()),
-        musa_calculus::Shape::Lit(ref literal) => Some(literal.to_string()),
+        musa_calculus::Shape::Lit(ref constant) => Some(constant.to_string()),
         _ => None,
     }
 }

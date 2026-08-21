@@ -1,8 +1,8 @@
-//! The unknown a use site leaves behind: what a [`Hole`] is, and which
+//! The unknown a use site leaves behind: what a [`Meta`] is, and which
 //! inference site it came from.
 //!
 //! This is what remains of the metavariable machinery after the course
-//! correction, and it is smaller than the word suggests. A hole is created by
+//! correction, and it is smaller than the word suggests. A meta is created by
 //! one instantiation walk, for one binder the author did not write, and it is
 //! solved by that same walk or by the expected type at its end. Nothing here
 //! postpones, retries, or generalizes. [`MetaSource`] survives beside it
@@ -52,22 +52,22 @@ use crate::value::Value;
 /// expression determines — `xs.fold_from_end(None, step)` reads `None` before
 /// `step`'s annotation says `Option` of what.
 ///
-/// Cloning shares the cell, which is the point: a hole embedded in ten terms
+/// Cloning shares the cell, which is the point: a meta embedded in ten terms
 /// is one unknown, and solving it there solves it in all ten.
 #[derive(Clone)]
-pub struct Hole(Arc<Cell>);
+pub struct Meta(Arc<Cell>);
 
 struct Cell {
     id: u32,
     origin: Origin,
-    /// Its type, closed: checked before the hole was made, and the reason
-    /// evaluation can answer a hole-headed neutral's type with no context.
+    /// Its type, closed: checked before the meta was made, and the reason
+    /// evaluation can answer a meta-headed neutral's type with no context.
     ty: Value,
     solution: OnceLock<Value>,
 }
 
-impl Hole {
-    /// A fresh hole, identified by `id`, standing at `ty`.
+impl Meta {
+    /// A fresh meta, identified by `id`, standing at `ty`.
     pub(crate) fn new(id: u32, origin: Origin, ty: Value) -> Self {
         Self(Arc::new(Cell {
             id,
@@ -109,21 +109,21 @@ impl Hole {
     }
 }
 
-impl PartialEq for Hole {
+impl PartialEq for Meta {
     fn eq(&self, other: &Self) -> bool {
         self.0.id == other.0.id
     }
 }
 
-impl Eq for Hole {}
+impl Eq for Meta {}
 
-impl core::fmt::Debug for Hole {
+impl core::fmt::Debug for Meta {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(out, "?{}", self.0.id)
     }
 }
 
-impl core::fmt::Display for Hole {
+impl core::fmt::Display for Meta {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(out, "?{}", self.0.id)
     }

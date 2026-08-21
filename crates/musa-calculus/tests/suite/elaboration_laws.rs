@@ -11,7 +11,7 @@
 //! As in the other suites, these are laws stated over a corpus and therefore
 //! discharged at the terms in it. Prompt 169 owes the metatheory matrix.
 
-use musa_calculus::{Cx, ElabError, Index, Level, Raw, Refusal, Term, check, infer, normalize};
+use musa_calculus::{Cx, ElabError, Index, Raw, Refusal, Sort, Term, check, infer, normalize};
 
 use crate::programs::{Program, Refused, WRITTEN, accepted, core_unit_type, refusal, refused, unit, unit_type};
 
@@ -37,20 +37,20 @@ fn elaboration_is_deterministic() {
     }
 }
 
-/// §2.1: every hole an accepted term still names is solved.
+/// §2.1: every meta an accepted term still names is solved.
 ///
 /// Not a stylistic preference — it is what lets the next stage treat the output
-/// as an ordinary core term whose `Hole` nodes are spelling, evaluated through
+/// as an ordinary core term whose `Meta` nodes are spelling, evaluated through
 /// their solutions. An *unsolved* one would be a gap every later pass had to
 /// know about, and [`Elaborator::settled`](musa_calculus) is what refuses it.
 #[test]
-fn an_accepted_terms_holes_are_all_solved() {
+fn an_accepted_terms_metas_are_all_solved() {
     for program in accepted() {
         let (term, ty) = elaborate(&program).unwrap_or_else(|error| panic!("{}: {error}", program.name));
         for (what, term) in [("the term", &term), ("its type", &ty)] {
             assert!(
-                holes_solved(term),
-                "{}: {what} still mentions an unsolved hole",
+                metas_solved(term),
+                "{}: {what} still mentions an unsolved meta",
                 program.name
             );
         }
@@ -89,7 +89,7 @@ fn a_program_with_no_implicits_elaborates_to_itself() {
             Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
             Some(Term::record_type(
                 WRITTEN,
-                [("ty", Term::universe(WRITTEN, Level::ZERO)), ("val", core_unit_type())],
+                [("ty", Term::universe(WRITTEN, Sort::ZERO)), ("val", core_unit_type())],
             )),
             record_literal,
         ),
@@ -235,7 +235,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         reached.insert(kind(&refusal));
     }
     // §1.6's one, which needs the container fixture: a traversal whose answer
-    // type nothing determines is an unsolved hole rather than a guess.
+    // type nothing determines is an unsolved meta rather than a guess.
     for (name, cx, raw, expected) in crate::collection_laws::refused_collections() {
         let Err(error) = infer(&cx, &raw) else {
             panic!("{name}: elaboration accepted a program §1.6 must refuse");
@@ -545,11 +545,11 @@ fn filling_is_not_part_of_conversion() {
 ///
 /// Written by walking the shape rather than by a `Debug` string, so that a new
 /// [`musa_calculus::Shape`] variant holding a term is a compile error here.
-fn holes_solved(term: &Term) -> bool {
+fn metas_solved(term: &Term) -> bool {
     use musa_calculus::Shape;
 
     match term.shape() {
-        Shape::Hole(hole) => hole.is_solved(),
+        Shape::Meta(meta) => meta.is_solved(),
         // A base type, a builtin, and a literal are all closed: each is a name
         // or a payload the host registered, and none of them holds a term.
         Shape::Var(_)
@@ -558,14 +558,11 @@ fn holes_solved(term: &Term) -> bool {
         | Shape::Def(_)
         | Shape::Base(_)
         | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Numeral(_) => true,
-        Shape::Indexed { ty, index } => holes_solved(ty) && holes_solved(index),
-        Shape::Pi { domain, codomain, .. } => holes_solved(domain) && holes_solved(codomain),
-        Shape::Lam { body, .. } => holes_solved(body),
-        Shape::App { function, argument } => holes_solved(function) && holes_solved(argument),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| holes_solved(&field.term)),
-        Shape::Project { record, .. } => holes_solved(record),
-        Shape::Let { ty, value, body, .. } => holes_solved(ty) && holes_solved(value) && holes_solved(body),
+        | Shape::Lit(_) => true,
+        Shape::Indexed { ty, index } => metas_solved(ty) && metas_solved(index),
+        Shape::Bind { binder, body, .. } => binder.outer().all(metas_solved) && metas_solved(body),
+        Shape::App { function, argument } => metas_solved(function) && metas_solved(argument),
+        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| metas_solved(&field.term)),
+        Shape::Project { record, .. } => metas_solved(record),
     }
 }

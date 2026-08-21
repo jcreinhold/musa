@@ -17,20 +17,20 @@ impl Elaborator {
     /// matching pass, and the report names the *earliest* unsolved parameter
     /// because that is the one the author's next edit is about.
     pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
-        // Constraints first: a `Storable` answered here is a hole solved, and
+        // Constraints first: a `Storable` answered here is a meta solved, and
         // the parameter audit below should not call a constructor's own
         // parameters undetermined for having answered one.
         let waiting = core::mem::take(&mut self.constraints);
-        for (constraint, scope, env, at, hole) in waiting {
+        for (constraint, scope, env, at, meta) in waiting {
             let cx = scope.cx().clone();
             let term = crate::storable::discharge(self, &cx, &constraint, &env, at)?;
             let value = crate::eval::eval(&mut self.meter, &env, &term)?;
-            hole.solve(value).map_err(crate::error::CoreError::from)?;
+            meta.solve(value).map_err(crate::error::CoreError::from)?;
         }
-        if let Some(hole) = self.created.iter().find(|hole| !hole.is_solved()) {
+        if let Some(meta) = self.created.iter().find(|meta| !meta.is_solved()) {
             return Err(Refusal::Unsolved {
                 site: MetaSource::TypeParameter,
-                created: hole.origin(),
+                created: meta.origin(),
                 blocked: None,
             }
             .into());
@@ -40,13 +40,13 @@ impl Elaborator {
 
     /// A placeholder for an implicit argument the walk has not solved yet.
     ///
-    /// Creation is where §2.1's discipline is cheap to state: the hole's type
+    /// Creation is where §2.1's discipline is cheap to state: the meta's type
     /// was checked before it was made, and solving is write-once, so the audit
     /// [`Self::settled`] runs is a walk of a list and not a query of a solver.
-    pub(crate) fn fresh_hole(&mut self, here: Origin, ty: &Value) -> crate::meta::Hole {
-        let hole = crate::meta::Hole::new(self.next_hole, here, ty.clone());
-        self.next_hole = self.next_hole.saturating_add(1);
-        self.created.push(hole.clone());
-        hole
+    pub(crate) fn fresh_meta(&mut self, here: Origin, ty: &Value) -> crate::meta::Meta {
+        let meta = crate::meta::Meta::new(self.next_meta, here, ty.clone());
+        self.next_meta = self.next_meta.saturating_add(1);
+        self.created.push(meta.clone());
+        meta
     }
 }

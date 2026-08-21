@@ -89,10 +89,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
-use crate::family::Binder;
+use crate::family::Parameter;
 use crate::origin::Origin;
 use crate::refuse::Refusal;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Binder, Constant, Name, Shape, Term};
 
 /// A base type: a name, and the kind it inhabits.
 ///
@@ -114,7 +114,7 @@ struct BaseDeclaration {
     storable: bool,
     accepts: Option<Accepts>,
     measures: Option<Measures>,
-    index: Option<Binder>,
+    index: Option<Parameter>,
 }
 
 /// Whether a position of an indexed base type accepts a value of it at a
@@ -225,13 +225,13 @@ impl Base {
     #[must_use]
     pub fn indexed_by(&self, name: impl Into<Name>, sort: Term) -> Self {
         Self(Arc::new(BaseDeclaration {
-            index: Some(Binder::written(name.into(), sort)),
+            index: Some(Parameter::written(name.into(), sort)),
             ..self.declaration()
         }))
     }
 
     /// The index it is declared to carry, if it declares one.
-    pub(crate) fn declared_index(&self) -> Option<&Binder> {
+    pub(crate) fn declared_index(&self) -> Option<&Parameter> {
         self.0.index.as_ref()
     }
 
@@ -454,7 +454,7 @@ impl Literal {
     /// This literal as a term.
     #[must_use]
     pub fn term(&self, origin: Origin) -> Term {
-        Term::new(origin, Shape::Lit(self.clone()))
+        Term::new(origin, Shape::Lit(Constant::Payload(self.clone())))
     }
 }
 
@@ -532,7 +532,7 @@ pub enum Datum {
     /// the core already holds it as a [`u64`]: expanding it into `count` nested
     /// [`Self::Case`]s so the rule could count them back down would allocate a
     /// node per unit, and dropping that tree recurses on the host stack — the
-    /// overflow [`Shape::Numeral`](crate::Shape::Numeral) exists to remove,
+    /// overflow [`Constant::Numeral`](crate::Constant::Numeral) exists to remove,
     /// reintroduced one layer out. A rule reads this arm the way it reads a
     /// literal.
     ///
@@ -988,9 +988,14 @@ impl Builtin {
 fn arity_of(ty: &Term) -> usize {
     let mut arity = 0usize;
     let mut rest = ty;
-    while let Shape::Pi { codomain, .. } = rest.shape() {
+    while let Shape::Bind {
+        binder: Binder::Pi { .. },
+        body,
+        ..
+    } = rest.shape()
+    {
         arity = arity.saturating_add(1);
-        rest = codomain;
+        rest = body;
     }
     arity
 }
@@ -1233,7 +1238,10 @@ impl Registry {
             // A Π keeps its own diagnostic: it is what a table author writes
             // when they reach for a higher-order operation, and "not finite
             // data" would be a true sentence about the wrong problem.
-            Shape::Pi { .. } => {
+            Shape::Bind {
+                binder: Binder::Pi { .. },
+                ..
+            } => {
                 return Err(Refusal::HigherOrderDelta {
                     name: Arc::clone(builtin.name()),
                     at: builtin.ty().origin(),
@@ -1258,16 +1266,15 @@ impl Registry {
             | Shape::Universe(_)
             | Shape::Const(_)
             | Shape::Def(_)
-            | Shape::Lam { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Let { .. }
+            // A λ or a `let`, the Π above having taken its own diagnostic.
+            | Shape::Bind { .. }
             | Shape::Builtin(_)
             | Shape::Lit(_)
-            | Shape::Numeral(_)
-            | Shape::Hole(_) => {
+            | Shape::Meta(_) => {
                 return Err(Refusal::NotFiniteData {
                     name: Arc::clone(builtin.name()),
                     at: head.origin(),
@@ -1317,9 +1324,14 @@ fn head_base(ty: &Term) -> Option<&Base> {
 fn signature_parts(ty: &Term) -> Vec<Term> {
     let mut parts = Vec::new();
     let mut rest = ty.clone();
-    while let Shape::Pi { domain, codomain, .. } = rest.shape() {
-        parts.push(domain.clone());
-        let next = codomain.clone();
+    while let Shape::Bind {
+        binder: Binder::Pi { ty, .. },
+        body,
+        ..
+    } = rest.shape()
+    {
+        parts.push(ty.clone());
+        let next = body.clone();
         rest = next;
     }
     parts.push(rest);

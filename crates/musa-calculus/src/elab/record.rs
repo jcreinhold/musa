@@ -5,11 +5,11 @@
 use std::sync::Arc;
 
 use crate::eval::{eval, field_type, opened};
-use crate::level::Level;
 use crate::origin::Origin;
 use crate::raw::{Raw, RawField, RawUpdate};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
+use crate::sort::Sort;
 use crate::term::{Field, Index, Name, Shape, Term};
 use crate::value::{Form, Telescope, Value};
 
@@ -18,7 +18,7 @@ use super::{Elaborator, Typed};
 impl Elaborator {
     /// `{ f : A, … } ⇒ Type (max …)`.
     pub(super) fn record_type(&mut self, scope: &Scope, here: Origin, fields: &[RawField]) -> Result<Typed, ElabError> {
-        let mut level = Level::ZERO;
+        let mut level = Sort::ZERO;
         let mut inner = scope.clone();
         let mut elaborated = Vec::with_capacity(fields.len());
         for (position, field) in fields.iter().enumerate() {

@@ -34,13 +34,13 @@ use crate::context::Cx;
 use crate::elab::Elaborator;
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::family::{Binder, Constructor, Counting, Declared, Group};
-use crate::level::Level;
+use crate::family::{Constructor, Counting, Declared, Group, Parameter};
 use crate::origin::Origin;
 use crate::raw::{RawBinder, RawConstructor, RawData, RawFamily};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Index, Name, Shape, Term};
+use crate::sort::Sort;
+use crate::term::{Binder, Index, Name, Shape, Term};
 use crate::value::{Form, Value};
 use crate::visibility::Visibility;
 
@@ -58,7 +58,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
 
     // Pass one: the signatures. The family binders stand at a type nothing may
     // use, and `Occurrence` is what makes that safe rather than merely quiet.
-    let opaque = Arc::new(Value::new(here, Form::Universe(Level::ZERO)));
+    let opaque = Arc::new(Value::new(here, Form::Universe(Sort::ZERO)));
     let outline = declaring(&Scope::new(&closed), data, |_| Arc::clone(&opaque));
     let arity = u32::try_from(data.families.len()).unwrap_or(u32::MAX);
     let (params, _under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
@@ -78,7 +78,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
         // The family's level is the join of what its constructors store; §1's
         // two universes make that join a check — every field small — rather
         // than an inference.
-        if built.level == Level::One {
+        if built.level == Sort::One {
             return Err(Refusal::BeyondUniverses { at: data.origin }.into());
         }
         uniform(family)?;
@@ -94,12 +94,12 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     }
 
     elaborator.settled()?;
-    // The signatures are stored, so the holes elaboration solved in them are
+    // The signatures are stored, so the metas elaboration solved in them are
     // written back as terms first — [`Elaborator::zonk`] gives the reason.
     let params = params
         .into_iter()
         .map(|binder| {
-            Ok::<_, ElabError>(crate::family::Binder {
+            Ok::<_, ElabError>(Parameter {
                 ty: elaborator.zonk(&binder.ty)?,
                 ..binder
             })
@@ -122,7 +122,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                         .fields
                         .iter()
                         .map(|field| {
-                            Ok::<_, ElabError>(crate::family::Binder {
+                            Ok::<_, ElabError>(Parameter {
                                 name: Arc::clone(&field.name),
                                 ty: elaborator.zonk(&field.ty)?,
                                 filling: field.filling.clone(),
@@ -151,7 +151,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     // these parameters, and the fields that decide it are all in hand exactly
     // once.
     let positive: Vec<bool> = (0..u32::try_from(params.len()).unwrap_or(u32::MAX))
-        .map(|which| parameter_is_positive(&families, arity, under_params.depth(), which))
+        .map(|which| parameter_is_positive(&families, arity, under_params.depth().0, which))
         .collect();
     let group = Arc::new(Group {
         origin: here,
@@ -214,7 +214,7 @@ fn telescope(
     scope: &Scope,
     raw: &[RawBinder],
     arity: u32,
-) -> Result<(Vec<Binder>, Scope), ElabError> {
+) -> Result<(Vec<Parameter>, Scope), ElabError> {
     let mut binders = Vec::with_capacity(raw.len());
     let mut inner = scope.clone();
     for binder in raw {
@@ -223,7 +223,7 @@ fn telescope(
         // signature the first pass stands the families at: a parameter whose type
         // is the family being declared has no meaning, and the first pass is
         // exactly where it would look like it did.
-        if let Some(at) = mentions(&ty, Watched::families(arity), inner.depth(), 0) {
+        if let Some(at) = mentions(&ty, Watched::families(arity), inner.depth().0, 0) {
             return Err(Refusal::NonPositive {
                 at,
                 family: Arc::clone(&binder.name),
@@ -232,7 +232,7 @@ fn telescope(
             .into());
         }
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &ty)?;
-        binders.push(Binder::written(Arc::clone(&binder.name), ty));
+        binders.push(Parameter::written(Arc::clone(&binder.name), ty));
     }
     Ok((binders, inner))
 }
@@ -262,7 +262,11 @@ fn telescope(
 ///
 /// [`Refusal::NotAnIndexSort`] for a binder at any other type, and otherwise as
 /// [`crate::check`].
-fn index_binder(elaborator: &mut Elaborator, closed: &Scope, family: &RawFamily) -> Result<Option<Binder>, ElabError> {
+fn index_binder(
+    elaborator: &mut Elaborator,
+    closed: &Scope,
+    family: &RawFamily,
+) -> Result<Option<Parameter>, ElabError> {
     let Some(binder) = family.index.as_ref() else {
         return Ok(None);
     };
@@ -276,11 +280,11 @@ fn index_binder(elaborator: &mut Elaborator, closed: &Scope, family: &RawFamily)
         }
         .into());
     }
-    Ok(Some(Binder::written(Arc::clone(&binder.name), ty)))
+    Ok(Some(Parameter::written(Arc::clone(&binder.name), ty)))
 }
 
 /// The scope with already-elaborated binders assumed.
-fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Binder]) -> Result<Scope, ElabError> {
+fn assumed(elaborator: &mut Elaborator, scope: &Scope, binders: &[Parameter]) -> Result<Scope, ElabError> {
     let mut inner = scope.clone();
     for binder in binders {
         inner = assume(elaborator, &inner, binder.ty.origin(), &binder.name, &binder.ty)?;
@@ -298,20 +302,20 @@ fn signatures(
     elaborator: &mut Elaborator,
     scope: &Scope,
     here: Origin,
-    params: &[Binder],
+    params: &[Parameter],
     data: &RawData,
 ) -> Result<Vec<Arc<Value>>, CoreError> {
     data.families
         .iter()
         .map(|_| {
-            let term = closed_over(here, params, Term::universe(here, Level::ZERO));
+            let term = closed_over(here, params, Term::universe(here, Sort::ZERO));
             Ok(Arc::new(eval(elaborator.meter(), scope.env(), &term)?))
         })
         .collect()
 }
 
 /// `(b₀ : B₀) → … → body`, each binder at the filling it was declared with.
-fn closed_over(here: Origin, binders: &[Binder], body: Term) -> Term {
+fn closed_over(here: Origin, binders: &[Parameter], body: Term) -> Term {
     binders.iter().rev().fold(body, |codomain, binder| {
         Term::function(
             here,
@@ -326,7 +330,7 @@ fn closed_over(here: Origin, binders: &[Binder], body: Term) -> Term {
 /// A family's constructors, and the level they force it to.
 struct Built {
     constructors: Vec<Constructor>,
-    level: Level,
+    level: Sort,
 }
 
 fn constructors(
@@ -337,7 +341,7 @@ fn constructors(
     arity: u32,
 ) -> Result<Built, ElabError> {
     let mut built = Vec::with_capacity(family.constructors.len());
-    let mut level = Level::ZERO;
+    let mut level = Sort::ZERO;
     for (position, constructor) in family.constructors.iter().enumerate() {
         // Checked here rather than at the group, because a name is only
         // ambiguous within the namespace that qualifies it: two families may
@@ -360,7 +364,7 @@ fn constructors(
         let mut recursive = Vec::new();
         for (position, binder) in fields.iter().enumerate() {
             let position = u32::try_from(position).unwrap_or(u32::MAX);
-            let depth = scope.depth().saturating_add(position);
+            let depth = scope.depth().0.saturating_add(position);
             match occurrence(&binder.ty, arity, depth) {
                 Ok(None) => {
                     if let Some(found) = levels.get(usize::try_from(position).unwrap_or(usize::MAX)) {
@@ -407,7 +411,7 @@ fn constructors(
 /// Deliberately silent when the shape does not match. A family that misses by
 /// one constructor is an ordinary family, not a mistake — there is nothing to
 /// refuse, only a representation not to use.
-fn counting(which: u32, params: &[Binder], constructors: &[Constructor]) -> Option<Counting> {
+fn counting(which: u32, params: &[Parameter], constructors: &[Constructor]) -> Option<Counting> {
     if !params.is_empty() {
         return None;
     }
@@ -426,14 +430,14 @@ fn telescope_fields(
     elaborator: &mut Elaborator,
     scope: &Scope,
     constructor: &RawConstructor,
-) -> Result<(Vec<Binder>, Vec<Level>, Scope), ElabError> {
+) -> Result<(Vec<Parameter>, Vec<Sort>, Scope), ElabError> {
     let mut binders = Vec::with_capacity(constructor.fields.len());
     let mut levels = Vec::with_capacity(constructor.fields.len());
     let mut inner = scope.clone();
     for field in &constructor.fields {
         let (ty, level) = elaborator.check_type(&inner, &field.ty)?;
         inner = assume(elaborator, &inner, field.ty.origin(), &field.name, &ty)?;
-        binders.push(Binder::written(Arc::clone(&field.name), ty));
+        binders.push(Parameter::written(Arc::clone(&field.name), ty));
         levels.push(level);
     }
     Ok((binders, levels, inner))
@@ -626,9 +630,14 @@ fn positive_in(ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) 
                 || (constant.group.positive_at(position) && positive_in(argument, watched, arity, depth, bound))
         });
     }
-    if let Shape::Pi { domain, codomain, .. } = head.shape() {
+    if let Shape::Bind {
+        binder: Binder::Pi { ty: domain, .. },
+        body,
+        ..
+    } = head.shape()
+    {
         return mentions(domain, watched, depth, bound).is_none()
-            && positive_in(codomain, watched, arity, depth, bound.saturating_add(1));
+            && positive_in(body, watched, arity, depth, bound.saturating_add(1));
     }
     mentions(ty, watched, depth, bound).is_none()
 }
@@ -677,13 +686,15 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
         | Shape::Base(_)
         | Shape::Builtin(_)
         | Shape::Lit(_)
-        | Shape::Numeral(_)
-        | Shape::Hole(_)
+        | Shape::Meta(_)
         | Shape::Universe(_) => None,
-        Shape::Pi { domain, codomain, .. } => {
-            mentions(domain, watched, depth, bound).or_else(|| mentions(codomain, watched, depth, under))
-        }
-        Shape::Lam { body, .. } => mentions(body, watched, depth, under),
+        // Whatever sits outside the binder is read where the binder is; the
+        // body is read one binder in. Which subterms those are is the
+        // `Binder`'s question, so the three forms share this arm.
+        Shape::Bind { binder, body, .. } => binder
+            .outer()
+            .find_map(|term| mentions(term, watched, depth, bound))
+            .or_else(|| mentions(body, watched, depth, under)),
         Shape::App { function, argument } => {
             mentions(function, watched, depth, bound).or_else(|| mentions(argument, watched, depth, bound))
         }
@@ -695,8 +706,5 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
             .iter()
             .find_map(|field| mentions(&field.term, watched, depth, bound)),
         Shape::Project { record, .. } => mentions(record, watched, depth, bound),
-        Shape::Let { ty, value, body, .. } => mentions(ty, watched, depth, bound)
-            .or_else(|| mentions(value, watched, depth, bound))
-            .or_else(|| mentions(body, watched, depth, under)),
     }
 }

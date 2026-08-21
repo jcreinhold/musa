@@ -33,7 +33,7 @@ use crate::base::{Answer, Builtin, Datum};
 use crate::budget::Meter;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
-use crate::term::{Field, Filling, Name, Shape, Term};
+use crate::term::{Binder, Constant, Field, Filling, Name, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
@@ -51,13 +51,13 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 .get(index.0)
                 .cloned()
                 .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
-            // A hole is closed, so the environment says nothing about it: it is
+            // A meta is closed, so the environment says nothing about it: it is
             // either its solution, with that solution's own origins (§7), or a
             // flexible head waiting for one.
-            Shape::Hole(hole) => Ok(hole
+            Shape::Meta(meta) => Ok(meta
                 .solution()
                 .cloned()
-                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Hole(hole.clone()))))),
+                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Meta(meta.clone()))))),
             // Resolved on the way in, so a value carries the level its arms
             // have already been solved to rather than the one written first.
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
@@ -71,7 +71,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // Nothing to do, and that is the point: a numeral of 384 is one node
             // here, so evaluating it charges one step and one nesting level
             // rather than 384 of each.
-            Shape::Numeral(numeral) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
             // δ on a top-level definition, *deferred*: the use evaluates to a
             // folded neutral that carries the value computed once at the
             // declaration, and [`unfold`] opens it where something needs it
@@ -88,20 +87,22 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // long enough. A literal is already canonical.
             Shape::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base.clone())))),
             Shape::Builtin(builtin) => Ok(Value::neutral(Neutral::head(here, Head::Builtin(builtin.clone())))),
-            Shape::Lit(literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
-            Shape::Pi {
-                filling,
-                name,
-                domain,
-                codomain,
-            } => pi(meter, env, here, filling.clone(), name, domain, codomain),
-            Shape::Lam { name: _, body } => Ok(Value::new(
-                here,
-                Form::Lam(Closure {
-                    env: env.clone(),
-                    body: body.clone(),
-                }),
-            )),
+            Shape::Lit(Constant::Payload(literal)) => Ok(Value::new(here, Form::Lit(literal.clone()))),
+            Shape::Lit(Constant::Numeral(numeral)) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
+            // §1's one binder node, read three ways. The written form shares a
+            // constructor; the value forms do not, because a Π and a λ are told
+            // apart by what eliminates them and nothing eliminates a `let`.
+            Shape::Bind { name, binder, body } => match binder {
+                Binder::Pi { filling, ty } => pi(meter, env, here, filling.clone(), name, ty, body),
+                Binder::Lam => Ok(Value::new(
+                    here,
+                    Form::Lam(Closure {
+                        env: env.clone(),
+                        body: body.clone(),
+                    }),
+                )),
+                Binder::Let { ty: _, value } => binding(meter, env, value, body),
+            },
             Shape::App { function, argument } => application(meter, env, here, function, argument),
             // An indexed type evaluates both halves and reduces neither: there is
             // no ι, no δ, and no β at one, because §1.5 gives it no elimination
@@ -123,12 +124,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             )),
             Shape::Record(fields) => literal(meter, env, here, fields),
             Shape::Project { record, field } => projection(meter, env, here, record, field),
-            Shape::Let {
-                name: _,
-                ty: _,
-                value,
-                body,
-            } => binding(meter, env, value, body),
         }
     })
 }
@@ -203,18 +198,18 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
     eval(meter, &env.push(value), body)
 }
 
-/// The value with a solved hole at its head seen through, or `None` when the
+/// The value with a solved meta at its head seen through, or `None` when the
 /// head is not one.
 ///
 /// A neutral is blocked on its *head*, and the head of `?α x y .f` is `?α`. Once
-/// that hole is solved the whole spine computes again, but the value already
+/// that meta is solved the whole spine computes again, but the value already
 /// built still says "blocked" — so every place that decides something by looking
 /// at a value's shape has to ask here first. Returning `None` rather than a
-/// clone keeps the common case, a value with no hole anywhere in it, free.
+/// clone keeps the common case, a value with no meta anywhere in it, free.
 ///
-/// A loop rather than a step: a solution can itself be headed by a hole that
+/// A loop rather than a step: a solution can itself be headed by a meta that
 /// has since been solved, and a caller that trusted one step would read a
-/// solved hole as an unsolved one — in [`crate::convert`] that is not a missed
+/// solved meta as an unsolved one — in [`crate::convert`] that is not a missed
 /// reduction but a wrong answer. Each pass is charged, so a chain is bounded
 /// by the budget rather than by a claim that chains are short.
 ///
@@ -225,10 +220,10 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
     let Form::Neutral(neutral) = &value.form else {
         return Ok(None);
     };
-    let Head::Hole(hole) = &neutral.head else {
+    let Head::Meta(meta) = &neutral.head else {
         return Ok(None);
     };
-    let Some(solution) = hole.solution().cloned() else {
+    let Some(solution) = meta.solution().cloned() else {
         return Ok(None);
     };
     let mut answer = replay(meter, solution, &neutral.spine)?;
@@ -236,10 +231,10 @@ pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, C
         let Form::Neutral(blocked) = &answer.form else {
             return Ok(Some(answer));
         };
-        let Head::Hole(hole) = &blocked.head else {
+        let Head::Meta(meta) = &blocked.head else {
             return Ok(Some(answer));
         };
-        let Some(solution) = hole.solution().cloned() else {
+        let Some(solution) = meta.solution().cloned() else {
             return Ok(Some(answer));
         };
         let blocked = Arc::clone(blocked);
@@ -330,7 +325,7 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
     let mut answer = match force(meter, value)? {
         Some(forced) => forced,
         None => match &value.form {
-            // Nothing to open. An indexed type holds no hole at its head and no
+            // Nothing to open. An indexed type holds no meta at its head and no
             // definition to unfold: §1.5 gives it no reduction at all.
             Form::Indexed { .. } => return Ok(None),
             Form::Neutral(neutral) => match unfold(meter, neutral)? {
@@ -748,9 +743,9 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
     meter.nested("neutral typing", |meter| {
         let mut ty = match &neutral.head {
             Head::Var(_, ty) => Value::clone(ty),
-            // A hole is closed and carries its own type, which is why creating
+            // A meta is closed and carries its own type, which is why creating
             // one has to build that type rather than remember a context.
-            Head::Hole(hole) => hole.ty().clone(),
+            Head::Meta(meta) => meta.ty().clone(),
             // The type travels in the head, as it does for a variable.
             Head::Def(_, ty, _) => Value::clone(ty),
             // A constant's type is its declaration's, assembled on demand
