@@ -364,6 +364,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 153 | metavariables-and-unification | 3 | Real metavariables, a constraint queue, pattern unification |
 | 154 | implicit-arguments | 3 | Implicit binders written, inserted, and named |
 | 155 | case-trees | 3 | Case trees replace generated recursors; the motive becomes dependent |
+| 155a | case-tree-bodies | 3 | A case tree becomes a definition body; ι and termination follow it |
 | 156 | indexed-families | 3 | A constructor may choose its index; `Equal` becomes library code |
 | 157 | records-leave-the-core | 3 | `record` as one-constructor data with generated projections |
 | 158 | recheck-the-whole-core | 3 | Audit every extension, close the re-checker, make it the gate |
@@ -389,7 +390,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 153c | dependency-law | 3 | The crate layering written down once and enforced by a manifest check |
 | 175 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 176 | exact-studio-values | 3 | Exact written quantities through audio preparation |
-| 155a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
+| 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
 | 177 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
 | 178 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
 | 179 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
