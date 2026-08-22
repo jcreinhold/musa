@@ -1,7 +1,7 @@
 ---
 id: 155
 slug: case-trees
-status: pending
+status: in-progress
 depends_on: [153]
 phase: 3
 ---
@@ -10,19 +10,44 @@ phase: 3
 
 ## Task
 
-`family/assemble.rs` generates a recursor per declaration and `case.rs` (1,191 lines) compiles `match` into an
-application of it. Replace both with case trees: a `Definition::Compiled(CaseTree)` as a function's body, ι as case-tree
-reduction, and coverage checking in place of the constructor-coverage rule. **This is where the eliminator stops being
-non-dependent**, which is the defect prompt 143's amendment named.
+`family/assemble.rs` generates a **non-dependent** recursor per declaration and `case.rs` (1,203 lines) compiles
+`match` straight into an application of it, with the goal itself as the motive. Reify the intermediate: a `CaseTree` the
+kernel holds, a `Definition::Compiled(CaseTree)` as a function's body, ι as case-tree reduction, and coverage decided on
+the tree. **This is where the eliminator stops being non-dependent**, which is the defect prompt 143's amendment named.
+
+**Corrected against the code and against §1.1.** The eliminator is not deleted — see the Design's first paragraph. What
+is deleted is its *non-dependence*, and the primitive ι rule that made a recursor a kernel constant rather than a
+generated definition.
 
 ## Read
 
-- `crates/musa-calculus/src/kernel/family/assemble.rs:140` — `motive_type`, and its own doc comment: *"A type, not a
-  family of them. §1.1's eliminator is non-dependent."* That is the sentence this prompt deletes.
+- `crates/musa-calculus/src/kernel/family/assemble.rs:154` — `motive_type`, and the doc comment on `motives` above it:
+  *"A *type*, not a family of them. §1.1's eliminator is non-dependent."* That is the sentence this prompt deletes.
+  `method_type` and `hypothesis` are the two places the sentence is *implemented*, and both change with it.
+- `docs/rules/language/02-core-calculus.md` §1 (the `Definition` list), §1.1 (*Elimination is dependent*), and §6.2 — the
+  three sentences that decide what survives, and they only agree under one design. §1 lists a name's reduction behaviour
+  as "undeclared, **a compiled case tree**, a constructor, a type constructor, a registered base type, or a compiler
+  builtin", with **no recursor in it**; §1.1 keeps "**the generated eliminator**" and makes its motive a family; §6.2
+  compiles `match` "to a case tree and then to nested applications of the generated eliminators". Prompt 156 says the
+  same from the other side: "a family's fold *is* its eliminator".
 - `/Users/jcreinhold/Code/Idris2/src/Core/Case/CaseBuilder.idr` and `Core/Case/CaseTree.idr` — the reference.
-- `crates/musa-calculus/src/kernel/rec.rs` — where structural descent is currently obtained *for free*.
+- `crates/musa-calculus/src/elaboration/rec.rs` — where structural descent is currently obtained *for free*, and the
+  file that says why it stops being free. `rec` rewrites a recursive call into a reference to `<field>#ih`, an
+  induction-hypothesis binder that `case.rs` gets from the recursor's method for nothing. The rewrite is on **raw
+  syntax** — deliberately, because the core has no substitution on terms — so it can only certify a definition an author
+  wrote. A tree the kernel generates and then reduces is not source, which is what this prompt owes a real check for.
 
 ## Design
+
+**The eliminator is still generated; what goes is the *primitive* recursor.** §1.1 keeps `N.elim` and makes its motive a
+family, §6.2 still compiles a `match` to applications of it, `Found::named` puts the spelling in the namespace, and
+`family_laws.rs` states fifteen laws over `Nat.elim`. Deleting the name would delete a language feature this prompt has
+no business touching, and §1.1 is post-amendment text that says the opposite. What §1's `Definition` list deletes is the
+recursor as a **kernel constant with its own ι rule** — the arm of `family/iota.rs` that fires at a recursor's arity,
+and the `Constant::recursor_type` that is non-dependent by construction. `N.elim` is generated instead with a dependent
+motive, and its reduction is the tree's. That is the single reading in which §1's list, §1.1's sentence, and §6.2's
+sentence are all true at once, and `docs/rules/language/README.md` is explicit that a contradiction between them would
+be a prompt defect to repair rather than a licence to pick one.
 
 **The tree, three nodes.** `Split { on, alternatives }`, `Answer(Term)`, `Impossible`. `Impossible` is the branch index
 unification ruled out — it is not a runtime error, because there is no runtime and totality means coverage cannot fail.
@@ -54,7 +79,13 @@ pattern-implicit solving lives in the case builder rather than falling out of el
 
 - `crates/musa-calculus/src/kernel/case_tree.rs`: the three nodes and their reduction.
 - `crates/musa-calculus/src/elaboration/case.rs`: the builder — matrix to tree, with index unification per split.
-- `crates/musa-calculus/src/kernel/family/assemble.rs`: the recursor generator **deleted**; `motive_type` with it.
+- `crates/musa-calculus/src/kernel/family/assemble.rs`: `motive_type` **deleted**, and `motives` rebuilt as the family
+  `(t : N p⃗) → Type ℓ` that §1.1 states. `method_type`'s result and `hypothesis` become the motive *applied* — to the
+  constructor form for the result, to the recursive field for the hypothesis — which is the whole of what dependence
+  means here.
+- `crates/musa-calculus/src/kernel/family/constant.rs` and `family/iota.rs`: `recursor_type` follows the dependent
+  motive, and the primitive ι arm gives way to tree reduction. The tower-avoiding numeral decrement stays, as the
+  Design says.
 - `crates/musa-calculus/src/kernel/terminate.rs`: structural descent over the tree, with the smaller-argument rule
   stated as a doc comment before it is implemented.
 - `crates/musa-calculus/tests/suite/`: the ported coverage corpus, the dependent-motive law, and a termination law with
@@ -73,8 +104,9 @@ git diff --stat crates/musa-calculus
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
-`git diff --stat` is recorded rather than gated: this prompt adds roughly 1,000–1,400 lines and deletes most of
-`family/`'s 1,800 and much of `case.rs`'s 1,191. A large positive number means the recursor machinery did not go.
+`git diff --stat` is recorded rather than gated, and it is a *record* rather than a signal: with the eliminator
+surviving, most of `family/`'s 1,823 lines survive with it, and the number this prompt moves is the tree, the dependent
+motive, and the termination check. It is written down so 156 and 157 can be read against it.
 
 **The re-checker's obligation for this prompt, and it is the second important one.** It must verify that each branch
 checks at the motive instantiated at that branch's pattern, that coverage is complete as re-derived from the family
