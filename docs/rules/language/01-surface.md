@@ -21,22 +21,17 @@ type-params  := "<" type-param ("," type-param)* ">"
 type-param   := IDENT | "{" IDENT (":" type)? "}"          % braces mark an inferred parameter
 index-params := "(" IDENT ":" type ("," IDENT ":" type)* ")"
 index-args   := "(" expr ("," expr)* ")"                    % a type applied to index arguments
-where-clause := "where" constraint ("," constraint)*
-constraint   := type-name type-args
 visibility   := "private"
 binding      := visibility? "let" IDENT (":" type)? "=" expr ";"
-function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type where-clause? block
+function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type block
 param        := IDENT (":" type)? ("=" expr)?
 data         := visibility? "data" IDENT type-params? index-params? "{" data-case ("," data-case)* ","? "}"
 data-case    := visibility? IDENT ("(" params? ")")? (":" type)?     % the result type names the indices it chooses
-record       := visibility? "record" IDENT type-params? where-clause? "{" field-decl* "}"
+record       := visibility? "record" IDENT type-params? "{" field-decl* "}"
 field-decl   := IDENT ":" type ";"
-enum         := visibility? "enum" IDENT type-params? where-clause? "{" (enum-case ("," enum-case)* ","?)? "}"
+enum         := visibility? "enum" IDENT type-params? "{" (enum-case ("," enum-case)* ","?)? "}"
 enum-case    := visibility? IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
-trait        := visibility? "trait" IDENT type-params where-clause? "{" trait-item* "}"
-trait-item   := "fn" IDENT type-params? "(" params? ")" "->" type where-clause? (";" | block)
-impl         := visibility? "impl" type-params? constraint where-clause? "{" function* "}"
-inherent     := "impl" type-params? type-name type-args? "{" function* "}"
+impl         := visibility? "impl" type "{" function* "}"          % the type's namespace, opened
 call         := expr "(" args? ")"
 args         := arg ("," arg)*
 arg          := expr | "_" | "{" IDENT "=" expr "}"          % a named inferred argument
@@ -74,7 +69,7 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 events-quote := "events" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" events-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | data | record | enum | trait | impl | inherent
+document     := (import | binding | function | data | record | enum | impl
                 | signature | structure | template | instance)*
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
@@ -246,7 +241,7 @@ for them has earned admission. The two list folds become the `Iterable` methods 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
 `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,
 lists, and arrows are the constructors described in `02-core-calculus.md`; `Option<A>` and `Result<A, E>` are enums
-declared in `std` rather than grammar (§1.3). A `record`, `enum`, or `trait` declaration adds a type of its own, so this
+declared in `std` rather than grammar (§1.3). A `data`, `record`, or `enum` declaration adds a type of its own, so this
 list is no longer closed by the compiler. Declaration kinds are not types. Every type is spelled with a capital and
 every music statement keyword is not, which is what lets `key c major;` set a key and `Key` name the type of what it set
 without either word looking the other up (prompt 113). Six of these words — `pitch`, `music`, `scale`, `key`, `degree`,
@@ -255,10 +250,10 @@ only paper over; a capital settles it in the lexer. `NoteName` is the letter and
 a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99), so a type in which C♯ and D♭ differ is a
 name rather than a class, and `Pc12` is the class it names.
 
-**A type parameter is angle-bracketed, and now users write them.** `record`, `enum`, `trait`, `impl`, and `fn` all take
-`<A, B>`, and a type is applied as `List<Pitch>` or `Vec<A, n>`. That is a real change: the previous rule said `Option`,
-`List`, and `Analysis` were the only parameterized types and there was no user-written type application at all. The
-argument for `<>` survives the change intact, and the ambiguity that makes it expensive elsewhere still cannot arise:
+**A type parameter is angle-bracketed, and now users write them.** `data`, `record`, `enum`, and `fn` all take `<A, B>`,
+and a type is applied as `List<Pitch>` or `Vec<A, n>`. That is a real change: the previous rule said `Option`, `List`,
+and `Analysis` were the only parameterized types and there was no user-written type application at all. The argument for
+`<>` survives the change intact, and the ambiguity that makes it expensive elsewhere still cannot arise:
 
 - **`<>` belongs to the type grammar and `[]` to the term grammar**, and the parser always knows which one it is in. So
   `[` is free to serve the list literal `[c4, d4]`, the list pattern `[x, ..xs]`, and indexing `xs[i]` — three spellings
@@ -488,10 +483,9 @@ one, and a stated answer for what its `match` coverage means.
 `enum`, `data`, or `structure` and hides the whole declaration; §4 of `04-templates-and-modules.md` states the boundary
 it hides behind and why it does not overlap with sealing. A marked declaration is nameable from a sibling definition in
 its own module and from nowhere else, including through an `import` alias and through a re-export, and marking one
-changes no program that did not name it. `trait` and `impl` take the marker in the grammar above for as long as those
-forms survive; §1.4 says who removes them. After prompt 146 the question the marker used to raise there does not arise,
-because a structure is an ordinary value with an ordinary name: marking it private hides that name and nothing else,
-exactly as it does for a `let`.
+changes no program that did not name it. `impl` takes the marker in the grammar above, and so does each `fn` inside one.
+After prompt 146 the question the marker used to raise for a `trait` does not arise, because a structure is an ordinary
+value with an ordinary name: marking it private hides that name and nothing else, exactly as it does for a `let`.
 
 Public by default is the opposite of Rust's choice and the opposite of what *A Philosophy of Software Design* ch. 5
 would argue for a fresh language, and the argument it loses to is specific rather than general: Musa's packages are
@@ -504,13 +498,13 @@ is what changes.
 There is one visibility boundary and it is the module. No `pub(crate)`, no `pub(super)`, no package-visible tier, and no
 export list: a second tier is a new decision that needs a program that wants it.
 
-### 1.4 Traits and impls — deprecated, owned by 146
+### 1.4 Traits and impls — removed by 146, and what replaced them
 
-**These forms are being removed and this section states what replaces them.** A `trait` declared methods over one or
-more type parameters and an `impl` supplied them at a type; the specification that owned coherence, the orphan rule,
-instance lookup, and dictionary elaboration is retired by prompt 145 with no successor, and prompt 146 deletes the
-mechanism. The grammar keeps `trait`, `impl`, and `where` until that prompt runs, so the corpus still validates against
-this document in the meantime.
+**These forms are gone and this section states what replaced them.** A `trait` declared methods over one or more type
+parameters and an `impl` supplied them at a type; the specification that owned coherence, the orphan rule, instance
+lookup, and dictionary elaboration was retired by prompt 145 with no successor, and prompt 146 deleted the mechanism.
+`trait` and `where` are no longer words: the grammar above has neither, and neither does the lexer. `impl` survives as
+the one form below.
 
 The measurement behind the removal is the whole argument: six traits, 82 call sites, and **zero** trait-constrained
 signatures — not one function in `stdlib/` or `examples/` is polymorphic over a trait — with `Eq`'s five instance bodies
@@ -528,19 +522,22 @@ Three things replace it, and each is smaller than what it replaces:
   type that ruled each out says more than "no instance found".
 - **Open dispatch, where anything genuinely wants it, is a macro's job** — `11-quotation.md`, and prompt 160.
 
-An `impl` block *without* a trait head declares inherent items in the type's namespace: `impl Duration { fn of(r: Ratio)
--> Result<Duration, RangeError> { … } }`. That form is **not** deprecated: it is a namespace, not a dispatch mechanism,
-and prompt 146 keeps it.
+An `impl` block declares items in the type's namespace: `impl Duration { fn of(r: Ratio) -> Result<Duration, RangeError>
+{ … } }`. That is what an `impl` is now and all it ever does — a namespace, not a dispatch mechanism. The block is a
+prefix and nothing more: a function written in it is a function written at the top level with one more word in its name,
+and `Duration.of` is that name.
 
 ### 1.5 Methods, paths, and operators
 
 `x.m(y)` resolves **by exact receiver and in one step**. The elaborator takes the head of `x`'s already-known concrete
-type, looks for `m` among that type's inherent items and among the methods of the traits whose dictionaries are in scope
-for that head, and finds exactly one candidate or reports the failure. Three things follow, and each is refused rather
-than left to a search:
+type, and `Head.m` is the name it looks up: `x.m(y)` and `Head::m(x, y)` are one term, reached by one lookup. There is
+one candidate by construction — the head names the namespace, the namespace and the member spell one name, and a name
+resolves to one definition — so the answer is that definition or the failure. Three things follow, and each is refused
+rather than left to a search:
 
-- A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the constraint or
-  the qualified path; otherwise adding a trait to a package would change what existing code means.
+- A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the qualified path,
+  or a signature that says what the type is; otherwise adding a definition to a package would change what existing code
+  means.
 - There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
 - Where the receiver's type is still undetermined after the spine walk, the method call is refused at the call, and the
   refusal names the qualified path to write instead. Nothing is postponed *here*: the constraint queue
@@ -550,11 +547,11 @@ than left to a search:
   used to need it — an argument the walk defers is checked after the arguments that decide it, so
   `applied(fn (p) { p.act(P8) }, c4)` resolves `.act` at `Pitch`.
 
-`T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
-`Trait::method(x)`. Explicit qualification is always available and always resolves, which is the escape hatch that makes
-the strictness above affordable. A `::` path is read left to right, and the capitalization rule §1 already fixed decides
-where the module prefix ends: lowercase segments are modules, the first capitalized segment names a type or a trait, and
-exactly one segment follows it. `std::tonal::TokenKind::PitchLiteral` has one reading.
+`T::x` names an item in `T`'s namespace: a constructor, or a function an `impl T` block declares. Explicit qualification
+is always available and always resolves, which is the escape hatch that makes the strictness above affordable. A `::`
+path is read left to right, and the capitalization rule §1 already fixed decides where the module prefix ends: lowercase
+segments are modules, the first capitalized segment names a type, and exactly one segment follows it.
+`std::tonal::TokenKind::PitchLiteral` has one reading.
 
 The `.` in an expression is projection or a method call. The `path` production's `.` — `bow.pressure`,
 `std.sound.basic_sine` — is a control address inside the sound declaration forms, which are staged rather than
@@ -1032,19 +1029,13 @@ is a rule nobody can implement, which is why the third column is not optional.
 | abstract elimination | inside the module, `match c { NamedChord(s, t) -> … }` ⇝ a case tree; outside it, whatever the package exports | the same `match` outside the module — *abstract match* (`abstract-match`), naming the type and its module rather than reporting an inexhaustive one |
 | misplaced marker | — | `private use x;` — *`private` does not mark this*, since only a declaration can be private |
 | redundant marker | — | `private` on a structure member — *this is already private*, naming the signature that hides everything it does not list |
-| trait declaration | `trait Eq<A> { fn equal(x: A, y: A) -> Bool; }` ⇝ `Eq : (A : Type 0) → Type 0` over a record type | a required method with no parameter mentioning a trait parameter — *method does not use the trait's parameter* |
-| impl | `impl Eq<Tying> { … }` ⇝ a definition of `Eq Tying` | an impl omitting a required method — *missing method*; an impl supplying a derived one — *derived methods are not replaceable* |
-| coherence | one impl per trait and head type | a second `impl Eq<Tying>` anywhere in the program — *duplicate instance*, naming both declarations |
-| orphan rule | an impl in the trait's package or the head type's | either package's impl for two foreign names — *orphan instance*, naming the two packages that could hold it |
-| lookup termination | an instance whose `where` constraints are smaller than its head | one that is not — *instance context does not decrease*, at the declaration and never at a use |
-| `where` on a generic | `fn same<A>(x: A, y: A) -> Bool where Eq<A>` ⇝ a dictionary parameter | the same signature without the clause — *missing constraint*, naming `==` as what needed it |
-| operator at a known head | `x == y` ⇝ `d.equal(x, y)` | `x == y` at an unconstrained parameter — *no instance*, naming the type and the trait |
+| operator at a known head | `x == y` ⇝ `x.equal(y)`, which is `Pitch::equal(x, y)` at `x : Pitch` | `x == y` where `x : A` is a parameter — *method on variable*, with `Pitch::equal(x, y)` as the fix |
 | failing operator shape | `a / b : Result<Ratio, ArithmeticError>` | an author treating it as a `Ratio` — the ordinary type error, and the `?` or `match` as the fix |
-| indexing | `xs[i] : Option<A>` ⇝ `Index::at(xs, i)` | indexing a type with no instance — *no instance*, naming `Index` |
-| method call | `xs.map(f)` ⇝ the derived method applied to the dictionary | `x.m(y)` where `x : A` is a parameter — *method lookup needs a concrete type*, with the `where` or `Trait::m(x, y)` as the fix |
+| indexing | `xs[i] : Option<A>` ⇝ `xs.at(i)`, which is `List::at(xs, i)` at a list | indexing a type whose namespace declares no `at` — *no method for type*, naming the type and `at` |
+| method call | `xs.map(f)` ⇝ `List::map(xs, f)`, one lookup on the receiver's head | `x.m(y)` where `x : A` is a parameter — *method on variable*, with `Head::m(x, y)` as the fix |
 | qualified path | `std::tonal::TokenKind::PitchLiteral` ⇝ that constructor | a lowercase segment after a capitalized one — *a type namespace holds one item*, pointing at the extra segment |
 | inherent constructor | `Duration::of(r) : Result<Duration, RangeError>` | an unqualified `of(r)` chosen by its result type — *unresolved name*, since return-type-directed overloading does not exist to find it |
 | list literal | `[c4, d4] : List<Pitch>` | `[]` in an inferring position — *element type unknown*, with the annotation as the fix |
 | `collect` | `let out: List<Nat> = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *type parameter not determined*, naming `D` |
 | comprehension | — | `[f(x) for x in xs]` — *no comprehension*, with `xs.map(f)` as the fix |
-| former `data` | — | `data D { … }` — *a product and a sum get different words*, with `record` or `enum` as the applicable fix |
+| `data` | `data Motive { Silence, Sounded(pitch: Pitch, held: Duration) }` ⇝ an inductive family | a constructor holding the family to the left of an arrow — *non-positive occurrence*, naming the constructor and the field |

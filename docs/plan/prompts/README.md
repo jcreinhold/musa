@@ -353,6 +353,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 144 | core-calculus-specification | 3 | Rewrite §§1–3 as one dependent presentation, before any code |
 | 145 | repair-the-dependent-rules | 3 | Repair quotation and surface; retire the trait specification outright |
 | 146 | delete-the-trait-system | 3 | Delete traits and dictionaries; type-directed disambiguation in their place |
+| 146a | finish-the-trait-deletion | 3 | The surface specification and the twenty diagnostic codes 146 left behind |
 | 147 | term-and-binder-collapse | 3 | Seventeen shapes to fourteen: one binder node, one literal node |
 | 147a | names-through-the-context | 3 | One `Named` node; a name's reduction behaviour becomes a `Definition` |
 | 148 | kernel-and-elaboration | 3 | `musa_calculus::{kernel, elaboration}`, with the direction enforced by a law |
