@@ -8,6 +8,7 @@
 
 pub(crate) mod base;
 pub(crate) mod budget;
+pub(crate) mod checked;
 pub(crate) mod context;
 pub(crate) mod error;
 pub(crate) mod eval;
@@ -18,6 +19,7 @@ pub(crate) mod meta;
 pub(crate) mod origin;
 pub(crate) mod program;
 pub(crate) mod quote;
+pub(crate) mod recheck;
 pub(crate) mod room;
 pub(crate) mod scope;
 pub(crate) mod sort;

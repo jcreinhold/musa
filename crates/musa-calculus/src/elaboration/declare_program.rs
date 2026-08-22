@@ -198,6 +198,20 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
             (scope.eval(elaborator.meter(), &ty)?, term)
         }
     };
+    // The kernel's own reading of what elaboration just built, in debug builds
+    // only. `TRUST.md` states the claim this enforces: elaboration is untrusted,
+    // so a term it produced and the kernel rejects is a defect in this compiler
+    // — reported here, at the declaration that caused it, rather than surfacing
+    // later as a program that means something nobody wrote.
+    #[cfg(debug_assertions)]
+    {
+        let fault = crate::kernel::recheck::disagreement(&inner, &ty, &value);
+        debug_assert!(
+            fault.is_none(),
+            "the kernel rejects the term elaboration built for `{}`: {fault:?}",
+            held.name
+        );
+    }
     // The body is opened to weak-head form before it is stored — the
     // strictness evaluation had when δ ran at the lookup. The work a top-level
     // definition stands for is paid at its declaration, once, and the budget

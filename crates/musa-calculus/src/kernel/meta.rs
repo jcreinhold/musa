@@ -77,6 +77,11 @@ impl Meta {
         }))
     }
 
+    /// Which meta this is, for a report that has to name one.
+    pub(crate) fn id(&self) -> u32 {
+        self.0.id
+    }
+
     /// Where the argument it stands for was used.
     pub(crate) fn origin(&self) -> Origin {
         self.0.origin

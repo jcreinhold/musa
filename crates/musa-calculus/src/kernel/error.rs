@@ -13,7 +13,7 @@
 //! three outcomes describes what happened.
 
 use crate::kernel::budget::ResourceError;
-use crate::kernel::term::{Index, Name};
+use crate::kernel::term::{Index, Name, Term};
 
 /// Why a core operation did not produce a term.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -84,6 +84,48 @@ pub enum Malformed {
     /// only mean levels and indices were confused somewhere above.
     #[error("quotation reached a variable outside the scope it was quoting in")]
     EscapedVariable,
+    /// A term reached the kernel still holding a metavariable nobody solved.
+    ///
+    /// §2.1 never defaults and never generalizes, so this is not an
+    /// under-determined program — the elaborator would have named it
+    /// [`crate::Refusal::Unsolved`] where it was written. It is a solution that
+    /// escaped its scope or a constraint left in a queue, which is why
+    /// [`Checked`](crate::Checked) is a type and not a convention.
+    #[error("metavariable ?{0} reached the kernel unsolved")]
+    UnsolvedMeta(u32),
+    /// A type of types of types was asked for, and §1.1 fixes two universes.
+    ///
+    /// The kernel's word for it, and deliberately not
+    /// [`crate::Refusal::BeyondUniverses`], which is the elaborator's: that one
+    /// refuses a `Type 1` an *author* wrote in domain position. Reaching this
+    /// one means a finished term already past elaboration asked for the third
+    /// universe, which is a term nobody should have built.
+    #[error("a type of types of types was asked for, and there are two universes")]
+    BeyondUniverses,
+    /// A term did not have the type the term around it required.
+    ///
+    /// The re-checker's one verdict, and the reason it is a [`Malformed`] and
+    /// not a refusal: elaboration accepted this term already, so the two
+    /// answers disagreeing is a defect in this compiler rather than a fault in
+    /// the program. `TRUST.md` is where that reading is written down.
+    #[error("re-checking derived a type the term around it does not accept")]
+    Mistyped {
+        /// Where the term whose type disagreed was written.
+        at: crate::kernel::origin::Origin,
+        /// The type the surrounding term required, as a normal form.
+        expected: Term,
+        /// The type the re-checker derived, as a normal form.
+        found: Term,
+    },
+    /// An introduction form was asked for a type it does not have.
+    ///
+    /// A λ carries no domain and a record literal no field types, so §2 makes
+    /// both checking forms: the type such a term "obviously" has is a guess. Not
+    /// a defect on its own, but a defect where it is raised — the re-checker
+    /// only ever infers a subterm whose surroundings gave it no type, and one of
+    /// these standing there means the term was assembled wrong.
+    #[error("a lambda or a record literal has no type of its own to derive")]
+    Uninferable,
     /// A metavariable was solved twice. Solutions are write-once (§2.1), so the
     /// second attempt is a conversion checker defect rather than a program's fault.
     #[error("metavariable ?{0} was solved twice")]

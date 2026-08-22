@@ -715,7 +715,7 @@ pub struct Mismatch {
     /// program, and "expected `Pitch`, found `Degree` at the argument" is a
     /// sentence about the machine's walk. Unification's entry points attach
     /// the pair they were handed; a comparison that began mid-term (a
-    /// retried constraint, the rechecker's two normal forms) leaves this
+    /// retried constraint, the re-checker's two normal forms) leaves this
     /// `None`, and a renderer falls back to the endpoints, which there are
     /// the whole types.
     pub whole: Option<Box<(Term, Term)>>,

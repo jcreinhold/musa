@@ -67,56 +67,8 @@ use crate::kernel::origin::Origin;
 use crate::kernel::quote::{quote, quote_type};
 use crate::kernel::scope::Scope;
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Binder, Index, Name, Shape, Term};
+use crate::kernel::term::{Index, Name, Shape, Term};
 use crate::kernel::value::{Form, Head, Value};
-
-/// [`Term::level_of`], which lives here rather than in the kernel.
-///
-/// It is a structural walk over a checked type and would be kernel work but
-/// for its one failure: `Type 1` has no universe above it, and what it says
-/// about that is a [`Refusal`], which is the elaborator's word. The method
-/// stays `Term::level_of` — an inherent `impl` may be written anywhere in the
-/// crate — so no caller and no public path moves.
-impl Term {
-    /// The universe a checked type inhabits, computed structurally.
-    ///
-    /// §1 fixes two universes, so this is a walk rather than an inference:
-    /// `Type l` inhabits `succ l` — and `Type 1`'s is the refusal there is no
-    /// level for — a function or record type joins its parts, and every other
-    /// shape a checked type can have stands at `Type 0`: an enumeration, a base
-    /// type, a variable of type `Type 0`, an application of either.
-    ///
-    /// # Errors
-    ///
-    /// [`crate::Refusal::BeyondUniverses`] at a `Type 1` — a type of types of
-    /// types is the third universe the calculus does not have.
-    pub fn level_of(term: &Self) -> Result<Sort, crate::Refusal> {
-        match term.shape() {
-            Shape::Universe(level) => level
-                .succ()
-                .ok_or(crate::Refusal::BeyondUniverses { at: term.origin() }),
-            Shape::Bind {
-                binder: Binder::Pi { ty, .. },
-                body,
-                ..
-            } => Ok(Self::level_of(ty)?.max(Self::level_of(body)?)),
-            Shape::RecordType(fields) => fields
-                .iter()
-                .try_fold(Sort::ZERO, |join, field| Ok(Self::level_of(&field.term)?.max(join))),
-            Shape::Meta(_)
-            | Shape::Var(_)
-            | Shape::Named { .. }
-            | Shape::Lit(_)
-            | Shape::Bind { .. }
-            | Shape::App { .. }
-            | Shape::Record(_)
-            | Shape::Project { .. } => Ok(Sort::ZERO),
-            // An indexed type is at the level of what it refines. The index is a
-            // value, not a type, so it contributes no level at all.
-            Shape::Indexed { ty, .. } => Self::level_of(ty),
-        }
-    }
-}
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
@@ -1096,8 +1048,9 @@ struct Motive {
 /// goal's, and asking is the only way to learn it.
 ///
 /// **Where the asking happens depends on whether the goal has syntax yet.** A
-/// goal with a head is read by [`universe_of`](crate::recheck::universe_of),
-/// which is the core rules answering about a finished term. A goal that is still
+/// goal with a head is read by
+/// [`recheck::universe_of`](crate::kernel::recheck::universe_of), which is the
+/// core rules answering about a finished term. A goal that is still
 /// a **metavariable** is not a finished term, and handing one to the re-checker
 /// would be asking it a question its own contract says it never receives — the
 /// answer is [`Malformed`](crate::kernel::error::Malformed), which is a defect report
@@ -1112,7 +1065,7 @@ struct Motive {
 /// anything the arms can see.
 fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Sort, ElabError> {
     let quoted = scope.quote_type(meter, goal)?;
-    Ok(Term::level_of(&quoted)?)
+    Ok(crate::kernel::recheck::universe_of(&quoted)?)
 }
 
 /// What reading a subject's type told the splitter.
@@ -1138,7 +1091,19 @@ impl Split {
         let _ = at;
         let depth = scope.depth();
         let meter = tree.elaborator.meter();
-        let ty = quote_type(meter, depth, crate::kernel::quote::Mode::Keep, &subject.ty)?;
+        // Forced first: a subject whose type is still headed by a metavariable
+        // the solver has since filled reads back as that metavariable, and the
+        // family's parameters would come off it as nothing at all — emitting a
+        // recursor spine short by exactly the parameters, which ι then never
+        // fires on. Forcing follows the solution without unfolding anything
+        // else, which is all this read needs.
+        let forced = crate::kernel::eval::force(meter, &subject.ty)?;
+        let ty = quote_type(
+            meter,
+            depth,
+            crate::kernel::quote::Mode::Keep,
+            forced.as_ref().unwrap_or(&subject.ty),
+        )?;
         let (_, arguments) = spine(&ty);
         let params = usize::try_from(found.group.params()).unwrap_or(usize::MAX);
         // Cheap because [`Subject`]'s value is a variable: this reads back a

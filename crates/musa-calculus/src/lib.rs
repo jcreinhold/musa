@@ -102,6 +102,7 @@ pub use crate::kernel::base::{
     Rule,
 };
 pub use crate::kernel::budget::{Budget, Metric, ResourceError, Spend};
+pub use crate::kernel::checked::Checked;
 pub use crate::kernel::context::Cx;
 pub use crate::kernel::error::{CoreError, Malformed};
 pub use crate::kernel::family::{Constructor, Declared, Group, canonical};
@@ -252,6 +253,34 @@ pub fn infer_metered(cx: &Cx, raw: &Raw) -> Result<((Term, Term), Spend), ElabEr
         let mut elaborator = Elaborator::new(cx);
         let inferred = elaborator.run_infer(&Scope::new(cx), raw)?;
         Ok((inferred, elaborator.spent()))
+    })
+}
+
+/// Re-derive `term`'s type with the kernel alone, and require it to be `ty`.
+///
+/// The operation `crates/musa-calculus/TRUST.md` is about. Elaboration is
+/// outside the trusted computing base, so what it produces is audited rather
+/// than believed: this walks the finished term with the kernel's rules, deriving
+/// a type for every subterm and comparing by `quote ∘ eval`. It runs behind a
+/// debug assertion on every elaborated declaration already, and a conformance
+/// suite runs it unconditionally.
+///
+/// It takes a [`Checked`] rather than a [`Term`] because "no unsolved
+/// metavariable crosses this line" is the first of the three acceptance
+/// invariants, and a signature is a better place to keep an invariant than a
+/// paragraph.
+///
+/// # Errors
+///
+/// [`CoreError::Malformed`] when the kernel does not agree — which is a defect
+/// in *this compiler*, not a verdict about the program — and
+/// [`CoreError::Exhausted`] when `cx`'s budget ends the derivation, which is no
+/// verdict at all.
+pub fn recheck(cx: &Cx, ty: &Term, term: &Checked) -> Result<(), CoreError> {
+    with_room(|| {
+        let mut meter = cx.meter();
+        let ty = eval(&mut meter, cx.env(), ty)?;
+        crate::kernel::recheck::recheck(cx, &ty, term)
     })
 }
 

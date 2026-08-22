@@ -1,7 +1,7 @@
 ---
 id: 149
 slug: the-trusted-kernel
-status: pending
+status: done
 depends_on: [148]
 phase: 3
 ---

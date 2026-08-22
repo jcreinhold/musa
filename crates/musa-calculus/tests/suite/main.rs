@@ -31,6 +31,7 @@ mod normalization_laws;
 mod numeral_laws;
 mod program_laws;
 mod provenance_laws;
+mod recheck_laws;
 mod record_laws;
 mod storable_laws;
 mod termination_laws;

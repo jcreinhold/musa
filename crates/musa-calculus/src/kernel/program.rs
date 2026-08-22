@@ -73,7 +73,8 @@ use crate::kernel::visibility::{ModuleId, Visibility};
 ///
 /// Its type and its value are [`Value`]s rather than [`Term`]s because that is
 /// all a use needs — [`crate::kernel::eval`] hands back the value and
-/// [`crate::recheck`] asks for the type — and because a stored term could hold
+/// [`recheck`](crate::kernel::recheck::recheck) asks for the type — and because
+/// a stored term could hold
 /// a [`Def`] pointing back at the group holding it. See the module
 /// documentation.
 pub(crate) struct Defined {
