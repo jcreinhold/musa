@@ -2,7 +2,7 @@
 id: 155a
 slug: case-tree-bodies
 status: pending
-depends_on: [155]
+depends_on: [155, 155aa]
 phase: 3
 ---
 
@@ -21,6 +21,11 @@ generated eliminator", and with `match` compiled to a tree "the checker walks th
 **Corrected against the code before implementing.** ι and the generated eliminator are *not* touched, and a tree body
 carries the binders it stands under. Both corrections are argued in the Design, and both are measurements rather than
 preferences.
+
+**And it waits on 155aa.** A definition that names itself is a name in the globals table, and a term-position `rec` —
+`prelude.rs`'s two folds — closes over binders rather than names, so it can never be one. Retiring the `#ih` rewrite
+before those are lifted leaves them with no compilation at all. 155aa lifts them; by the time this prompt runs, every
+recursion in the language is at a definition's top, which is the one place a tree body can be.
 
 **Why this is not part of 155.** Three measurements, taken while 155 was being prepared.
 
@@ -58,6 +63,8 @@ representable" and its `depends_on` names 146 and 156, not this prompt. A genera
 - `crates/musa-calculus/src/elaboration/rec.rs` — the `#ih` rewrite this prompt retires, and its module doc, which
   argues at length for why the rewrite is on raw syntax. That argument is what a termination check over a tree has to
   answer.
+- `docs/plan/prompts/155aa-lift-local-recursion.md` — why every `rec` is at a definition's top by the time this runs,
+  and the measurement that made the lift a prerequisite rather than a nicety.
 - `/Users/jcreinhold/Code/Idris2/src/Core/Case/CaseTree.idr` and `Core/Normalise.idr`'s case-tree evaluation — the
   reference for reducing a tree rather than an eliminator spine. Read `Core/Context.idr`'s `PMDef` with them: a
   tree-bodied definition there is `PMDef args tree`, the **arguments beside the tree**, which is the shape this prompt's
@@ -73,6 +80,10 @@ under a λ prefix and the arm cannot be a bare `CaseTree`. It cannot be a closur
 a tree lives in a `Definition` at all. So the arm carries the binders beside the tree, which is exactly Idris2's
 `PMDef args tree` and is what makes reduction statable: given as many arguments as there are binders, build the
 environment from them, force the scrutinee, take the alternative, evaluate that `Answer` in that environment.
+
+*A body that names itself must be a name.* See the Task: this is what 155aa is for, and it is why the `#ih` rewrite can
+be retired here rather than merely narrowed. After the lift, `rec::define`'s one caller is a definition's own body, so
+removing the rewrite removes a mechanism rather than half of one.
 
 *The generated eliminator keeps ι, and `family/iota.rs` stays.* Three measurements say so. **One:** an eliminator is not
 a definition. It is a `family::Constant` at `Role::Recursor(Sort)`, reached through `Definition::Declared`, and its

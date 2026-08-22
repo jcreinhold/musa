@@ -364,6 +364,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 153 | metavariables-and-unification | 3 | Real metavariables, a constraint queue, pattern unification |
 | 154 | implicit-arguments | 3 | Implicit binders written, inserted, and named |
 | 155 | case-trees | 3 | Case trees replace generated recursors; the motive becomes dependent |
+| 155aa | lift-local-recursion | 3 | A term-position `rec` becomes an auxiliary top-level definition |
 | 155a | case-tree-bodies | 3 | A definition body becomes a case tree, and termination is checked on it |
 | 156 | indexed-families | 3 | A constructor may choose its index; `Equal` becomes library code |
 | 157 | records-leave-the-core | 3 | `record` as one-constructor data with generated projections |
