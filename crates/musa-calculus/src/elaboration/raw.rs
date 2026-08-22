@@ -103,26 +103,6 @@ pub struct RawFamily {
     /// Independent of its cases': a public type with private cases is the shape
     /// `01-surface.md` §1.3 exists for.
     pub visibility: Visibility,
-    /// The index this family is declared to carry, if it declares one:
-    /// `data Pc(n: Nat)` (§1.5).
-    ///
-    /// Beside the group's parameters rather than among them, because the two
-    /// answer different questions and §1.5 spells them differently for that
-    /// reason. A parameter says *what this is a type of*, is written in angle
-    /// brackets, survives into the elaborated term, and is compared by §3's
-    /// ordinary conversion. An index says *how many*, is written in
-    /// parentheses, is decided by arithmetic, and is erased.
-    ///
-    /// Per family and not per group, because it is written at the family's own
-    /// name — `data Pc(n: Nat)` — while the parameters are shared by every
-    /// family a group declares. `None` is a family that takes no index, which
-    /// is every family declared before §1.5 existed and every family since
-    /// that had no reason to.
-    ///
-    /// At most one, because [`Term::indexed`](crate::Term::indexed) carries one
-    /// index and the use-site grammar reads one expression. A longer telescope
-    /// is a change to the term representation and to erasure.
-    pub index: Option<RawBinder>,
     /// Its constructors.
     pub constructors: Vec<RawConstructor>,
 }
@@ -310,27 +290,6 @@ pub enum RawShape {
         domain: Raw,
         /// `B`, under the binder.
         codomain: Raw,
-    },
-    /// `T(i)` — `T` refined by the index expression `i` (§1.5).
-    ///
-    /// A *wrapper*, not a family index: `Row(12)` is ordinary `Row` under a
-    /// index, so `family/` gains nothing, a value of `Row(12)` is a value
-    /// of `Row`, and [`crate::kernel::quote`] drops the wrapper and reads back `Row`
-    /// alone. What the index changes is which programs are accepted and
-    /// nothing else.
-    ///
-    /// The index is an ordinary [`Raw`], because §1.5 gives an index no binder
-    /// form of its own: an index variable is a parameter of index sort, bound
-    /// and solved exactly as a type parameter is. What is *not* ordinary is
-    /// what an index may say, and that is decided where two of them are
-    /// compared rather than where one is written — [`crate::elaboration::convert`] reads an
-    /// index position into the index language, or refuses it by naming the
-    /// expression.
-    Indexed {
-        /// `T`, the type being refined.
-        ty: Raw,
-        /// `i`, the index it carries.
-        index: Raw,
     },
     /// `λx. e`, with the binder's type written only when it is not already
     /// known.
@@ -728,12 +687,6 @@ impl Raw {
     /// λ — reads its types *from* the slot and has none to give back.
     pub(crate) fn annotates_its_binder(&self) -> bool {
         matches!(self.shape(), RawShape::Lam { domain: Some(_), .. })
-    }
-
-    /// `ty(index)` — `ty` refined by an index expression (§1.5).
-    #[must_use]
-    pub fn indexed(origin: Origin, ty: Self, index: Self) -> Self {
-        Self::new(origin, RawShape::Indexed { ty, index })
     }
 
     /// `function argument`.

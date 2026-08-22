@@ -8,7 +8,11 @@
 //! completeness of `NbE` against the declarative rules, decidability, subject
 //! reduction, canonicity — which no example-based suite can supply.
 
-use musa_calculus::{Budget, CoreError, Cx, Index, Origin, Sort, Term, convertible, convertible_types};
+use std::sync::Arc;
+
+use musa_calculus::{
+    Base, Budget, CoreError, Cx, Index, Literal, Origin, Payload, Registry, Sort, Term, convertible, convertible_types,
+};
 
 use crate::fixtures::{Sample, corpus, corpus_at};
 
@@ -301,4 +305,90 @@ fn conversion_agrees_with_the_naive_oracle() {
             "{name}: the type disagrees with itself"
         );
     }
+}
+
+// ---- a type constructor applied to a value ----------------------------------
+//
+// `Pc(12)` is written in the surface and reaches the core as the application
+// `Pc 12`. Prompt 151 deleted the index stratum that once gave it a shape of its
+// own, and the law below is what that deletion bought: §3 says `A ≡ B iff
+// quote(A) = quote(B)`, and the erasing wrapper made that equation false about
+// the implementation — `quote` dropped the index, so read-back could not tell
+// `Pc(12)` from `Pc(24)` and the two were kept apart by comparing values before
+// quoting. With no wrapper the equation holds as written.
+
+/// A whole number, as a host would carry one.
+#[derive(Debug)]
+struct Count(i128);
+
+impl Payload for Count {
+    fn same(&self, other: &dyn Payload) -> bool {
+        other.as_any().downcast_ref::<Self>().is_some_and(|it| it.0 == self.0)
+    }
+
+    fn shown(&self) -> String {
+        self.0.to_string()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+/// A host holding `Count : Type 0` and `Pc : Count → Type 0`.
+///
+/// # Panics
+///
+/// If the registry refuses its own signatures, which would be a defect here.
+fn counted() -> Cx {
+    let count = Base::new("Count", Term::universe(HERE, Sort::ZERO));
+    let pc = Base::new(
+        "Pc",
+        Term::pi(HERE, "n", count.term(HERE), Term::universe(HERE, Sort::ZERO)),
+    );
+    let registry = Registry::new(vec![count, pc], Vec::new()).expect("the two signatures are admissible");
+    Cx::with_budget(Budget::LANGUAGE).with_externs(Arc::new(registry))
+}
+
+/// `Pc n`, as a type.
+///
+/// # Panics
+///
+/// If the host above did not register the two names it says it does.
+fn pc_at(cx: &Cx, count: i128) -> Term {
+    let Some(musa_calculus::Extern::Base(counts)) = cx.extern_named("Count") else {
+        panic!("`Count` is registered");
+    };
+    let Some(musa_calculus::Extern::Base(pc)) = cx.extern_named("Pc") else {
+        panic!("`Pc` is registered");
+    };
+    let literal = Literal::new(counts.term(HERE), Arc::new(Count(count)));
+    Term::app(HERE, pc.term(HERE), literal.term(HERE))
+}
+
+/// §5.1 and §3: a type constructor at two different values is two types, and
+/// read-back is what says so.
+#[test]
+fn a_type_constructor_at_two_values_is_two_types() {
+    let cx = counted();
+    let twelve = pc_at(&cx, 12);
+    let twenty_four = pc_at(&cx, 24);
+
+    assert_eq!(
+        convertible_types(&cx, &twelve, &twelve),
+        Ok(true),
+        "`Pc 12` is the type it is"
+    );
+    assert_eq!(
+        convertible_types(&cx, &twelve, &twenty_four),
+        Ok(false),
+        "`Pc 12` and `Pc 24` are two types"
+    );
+
+    // The second half, and the one the deleted wrapper made false: §3 decides
+    // by read-back, so the two normal forms have to differ too. A `quote` that
+    // dropped the argument would pass the line above and fail this one.
+    let twelve = musa_calculus::normalize_type(&cx, &twelve).expect("`Pc 12` normalizes");
+    let twenty_four = musa_calculus::normalize_type(&cx, &twenty_four).expect("`Pc 24` normalizes");
+    assert_ne!(twelve, twenty_four, "read-back keeps `Pc 12` and `Pc 24` apart");
 }

@@ -38,15 +38,12 @@
 use std::sync::Arc;
 
 use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
-use crate::kernel::base::Operator;
 use crate::kernel::budget::Meter;
-use crate::kernel::context::Globals;
 use crate::kernel::error::CoreError;
 use crate::kernel::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
-use crate::kernel::index::{self, Exact, Expr, Sort, Verdict};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{Mode, quote, quote_type};
-use crate::kernel::term::{Constant, Definition, Field, Level, Shape, Term};
+use crate::kernel::term::{Field, Level, Term};
 use crate::kernel::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
@@ -87,15 +84,6 @@ pub(crate) struct Conversion {
     /// assignment rule, which a deciding pass never fires — a meta is an
     /// opaque head there, compared by identity like any other.
     deciding: bool,
-    /// The names the values being compared were read under.
-    ///
-    /// One reader wants it — [`measured`], which asks a base type's host how to
-    /// read one of its literals as an index value, and has only the literal's
-    /// *type* to find the base type from. A term names it (§6) and this is
-    /// where the answer comes from. What it needs is the host's registrations,
-    /// which a context fixes before anything is elaborated in it, so the table
-    /// a conversion is built with cannot go stale under it.
-    globals: Globals,
 }
 
 impl Conversion {
@@ -107,11 +95,8 @@ impl Conversion {
     /// [`crate::convertible`] is this constructor and not a second procedure:
     /// two implementations of one question are two things to keep in
     /// agreement.
-    pub(crate) fn deciding(globals: Globals) -> Self {
-        Self {
-            deciding: true,
-            globals,
-        }
+    pub(crate) fn deciding() -> Self {
+        Self { deciding: true }
     }
 
     /// A checker that may solve a meta it meets alone on one side.
@@ -119,11 +104,8 @@ impl Conversion {
     /// The elaborator's mode, and the only one that assigns. Named rather than
     /// left to [`Default`] so that the two modes read as a pair at every
     /// construction site.
-    pub(crate) fn solving(globals: Globals) -> Self {
-        Self {
-            deciding: false,
-            globals,
-        }
+    pub(crate) fn solving() -> Self {
+        Self { deciding: false }
     }
 
     /// Make `left` and `right` the same type.
@@ -371,11 +353,6 @@ impl Conversion {
                 // ones.
                 | Form::Lit(_)
                 | Form::Numeral(_) => {}
-                // An indexed type has whatever η what it refines has, and no η of
-                // its own: §1.5 gives it no elimination form, so there is
-                // nothing to expand. Left to the match below, which compares the
-                // two values directly and is where the index question is asked.
-                Form::Indexed { .. } => {}
                 // A type that is still a metavariable says nothing yet, and a λ
                 // under it would be one the elaborator has not pinned down. The
                 // match below reads both sides back, which is the honest answer
@@ -415,31 +392,6 @@ impl Conversion {
             (Form::RecordType(one), Form::RecordType(other)) => {
                 self.record_types(meter, depth, at, origin, left, right, one, other)
             }
-            // §1.5's one hook. The refined types are compared by §3 as any two
-            // types are; the indices are handed to the arithmetic decider, which
-            // is a different question with a different answer procedure.
-            (
-                Form::Indexed {
-                    ty: mine,
-                    index: my_index,
-                },
-                Form::Indexed {
-                    ty: theirs,
-                    index: their_index,
-                },
-            ) => {
-                self.step(meter, depth, At::Type, origin, mine, theirs)?;
-                self.indices(meter, depth, origin, left, right, my_index, their_index)
-            }
-            // An indexed type never converts with what it refines. `Row(12)` and
-            // `Row` are two types, and reading them back would print one word
-            // twice, because erasure is what quotation does — so the message is
-            // built here, where the index is still in hand.
-            (Form::Indexed { .. }, _) | (_, Form::Indexed { .. }) => Err(Failure::Mismatch {
-                expected: indexed_shown(meter, depth, left)?,
-                found: indexed_shown(meter, depth, right)?,
-                path: Vec::new(),
-            }),
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
             // Two different forms, which is a disagreement: reading both sides
             // back is how the message says so. The one pair that is not already
@@ -447,67 +399,6 @@ impl Conversion {
             // type is still unknown, and quotation refuses that rather than
             // guessing.
             _ => Self::by_reading_back(meter, depth, at, left, right),
-        }
-    }
-
-    /// Two index arguments of the same refined type (§1.5).
-    ///
-    /// The one place in this crate where a comparison is *not* answered by
-    /// normalization by evaluation. §1.5's design is that two questions get two
-    /// deciders: `Γ ⊢ T(a) ≡ T(b)` holds exactly when the solver decides `a = b`
-    /// in the index domain, and §3's machinery is not involved because it
-    /// decides terms and an index is not one.
-    ///
-    /// The exception is a flexible index, and it is not an exception to the
-    /// separation. An index variable is an *ordinary parameter of index sort*
-    /// (§1.5), solved at the call by §2.1's first-order matching from the
-    /// written arguments — the same binder and the same rule a type parameter
-    /// gets. So a side that still holds an unsolved meta is §2.1's question,
-    /// asked of the ordinary walk; only once both sides are rigid is there
-    /// arithmetic to decide.
-    fn indices(
-        &mut self,
-        meter: &mut Meter,
-        depth: Level,
-        origin: Origin,
-        left: &Value,
-        right: &Value,
-        mine: &Value,
-        theirs: &Value,
-    ) -> Step {
-        let disagree = |meter: &mut Meter| -> Result<Failure, CoreError> {
-            Ok(Failure::Mismatch {
-                expected: indexed_shown(meter, depth, left)?,
-                found: indexed_shown(meter, depth, right)?,
-                path: Vec::new(),
-            })
-        };
-        if mentions_unsolved(mine) || mentions_unsolved(theirs) {
-            return match self.step(meter, depth, At::Type, origin, mine, theirs) {
-                Err(Failure::Mismatch { .. }) => Err(disagree(meter)?),
-                decided => decided,
-            };
-        }
-        // Both sides are readable by construction. [`crate::Refusal::UnreadableIndex`]
-        // refuses an index outside §1.5's grammar where the type is *formed* —
-        // which is where §1.5 sites it ("named at the expression") and the one
-        // place the written expression still exists to be named — so an
-        // unreadable index never reaches a comparison.
-        //
-        // This arm is therefore a broken invariant and not a verdict. The code
-        // it replaces answered `disagree` here, and answering "different" for
-        // two indices nothing can read is what made `Row(mystery n)` fail to be
-        // the same type as itself. §1.5 still forbids a syntactic fallback, and
-        // this needs none: there is nothing left to fall back *for*.
-        let (Some(mine), Some(theirs)) = (
-            index_of(meter, &self.globals, mine)?,
-            index_of(meter, &self.globals, theirs)?,
-        ) else {
-            return Err(CoreError::Malformed(crate::kernel::error::Malformed::UnreadableIndex).into());
-        };
-        match index::decide(&mine, &theirs) {
-            Verdict::Same => Ok(()),
-            Verdict::Different => Err(disagree(meter)?),
         }
     }
 
@@ -715,14 +606,11 @@ impl ElabError {
     /// budget the comparison just spent, for one — leaves the refusal to its
     /// endpoints rather than spending a second refusal on the first.
     ///
-    /// **A pair that reads back equal is not attached.** Reading a type back is
-    /// erasure (§1.5), so two types that differ only in an index — `Row(3)` and
-    /// `Row(2)` — become one word twice, and a renderer that preferred the roots
-    /// would say "expected `Row`, found `Row`" over endpoints that had been
-    /// built by [`indexed_shown`] to say exactly which indices disagreed. The
-    /// roots earn their place by naming what was asked; a pair that names the
-    /// same thing on both sides names nothing, and the endpoints are left to
-    /// speak.
+    /// **A pair that reads back equal is not attached.** A renderer that
+    /// preferred the roots would then say "expected `T`, found `T`" over
+    /// endpoints that had said exactly what disagreed. The roots earn their
+    /// place by naming what was asked; a pair that names the same thing on both
+    /// sides names nothing, and the endpoints are left to speak.
     fn rooted(self, at: At<'_>, meter: &mut Meter, depth: Level, left: &Value, right: &Value) -> Self {
         let mut error = self;
         if let Self::Refused(Refusal::Mismatch(mismatch)) = &mut error
@@ -871,7 +759,6 @@ fn mentions_meta(value: &Value, target: &crate::kernel::meta::Meta) -> bool {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         // Both halves. `Row(?α)` mentions `?α`, and an occurs check that looked
         // past the index would let a meta be solved by a value that names it.
-        Form::Indexed { ty, index } => mentions_meta(ty, target) || mentions_meta(index, target),
         Form::Pi { domain, codomain, .. } => {
             mentions_meta(domain, target) || codomain.env.iter().any(|item| mentions_meta(item, target))
         }
@@ -906,7 +793,6 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         // Both halves, for [`mentions_meta`]'s reason read existentially: a
         // slot typed `Row(?n)` has not been determined by the call.
-        Form::Indexed { ty, index } => mentions_unsolved(ty) || mentions_unsolved(index),
         Form::Pi { domain, codomain, .. } => mentions_unsolved(domain) || codomain.env.iter().any(mentions_unsolved),
         Form::Lam(closure) => closure.env.iter().any(mentions_unsolved),
         Form::RecordType(telescope) => telescope.env.iter().any(mentions_unsolved),
@@ -927,182 +813,5 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
                     Elim::Project { .. } => false,
                 })
         }
-    }
-}
-
-/// A refined type as it was written, for a message that has to show the index.
-///
-/// [`quote_type`] cannot be used for the whole of it: erasure is what quotation
-/// does (§1.5), so reading `Row(12)` back answers `Row`, and a mismatch between
-/// two indexed types of one type would print the same word twice. So the wrapper
-/// is rebuilt here, where both halves are still values.
-///
-/// A value that is not an indexed type quotes ordinarily — this is the one arm of
-/// the pair where an indexed type met a bare type.
-fn indexed_shown(meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
-    let Form::Indexed { ty, index } = &value.form else {
-        return quote_type(meter, depth, Mode::Keep, value);
-    };
-    Ok(Term::indexed(
-        value.origin,
-        quote_type(meter, depth, Mode::Keep, ty)?,
-        index_shown(meter, depth, index)?,
-    ))
-}
-
-/// One index value, as a term a message can print.
-///
-/// The two canonical index forms are read back directly, because neither is a
-/// type and [`quote_type`] refuses both; everything else in the grammar — a
-/// variable, an open application of an arithmetic builtin — is a neutral and
-/// quotes as one.
-fn index_shown(meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
-    match &value.form {
-        Form::Numeral(numeral) => Ok(Term::new(value.origin, Shape::Lit(Constant::Numeral(numeral.clone())))),
-        Form::Lit(literal) => Ok(literal.term(value.origin)),
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Indexed { .. }
-        | Form::Neutral(_) => quote_type(meter, depth, Mode::Keep, value),
-    }
-}
-
-/// An index position read as §1.5's index expression, or `None` at the first
-/// thing outside the grammar.
-///
-/// This is the *only* function that knows the grammar, which is what keeps
-/// [`crate::kernel::index`] free of [`crate::kernel::value`]: it is handed a normalized
-/// expression and answers, and the reading happens at the one place a
-/// comparison meets an index.
-///
-/// `None` is a refusal and never an approximation. Two variables multiplied, a
-/// division, a call, a `match`, a projection, an overflow, and a variable of any
-/// sort but `Nat` and exact `Ratio` each land here, and the caller reports the
-/// written expression rather than anything about a linear form.
-/// Whether a value stands for an index `02-core-calculus.md` §1.5's grammar can
-/// read.
-///
-/// The one place type formation asks, and it is deliberately the *same* reader
-/// conversion uses rather than a second one that would have to be kept agreeing
-/// with it. §1.5 restricts what an index may say; asking here is what keeps an
-/// unreadable one out of every later comparison, so that [`crate::kernel::index::decide`]
-/// is total on what reaches it and `≡` is reflexive.
-pub(crate) fn reads_as_index(meter: &mut Meter, globals: &Globals, value: &Value) -> Result<bool, CoreError> {
-    Ok(index_of(meter, globals, value)?.is_some())
-}
-
-fn index_of(meter: &mut Meter, globals: &Globals, value: &Value) -> Result<Option<Expr>, CoreError> {
-    meter.nested("index reading", |meter| {
-        meter.step("index reading")?;
-        let opened = opened(meter, value)?;
-        let value = opened.as_ref().unwrap_or(value);
-        match &value.form {
-            // A counting family holds its count directly, so `Nat` needs no
-            // host reader: §5.8's opacity is about a base type's payload, and a
-            // numeral is not one.
-            Form::Numeral(numeral) => Ok(Some(Expr::literal(
-                Sort::Count,
-                Exact::whole(i128::from(numeral.count)),
-            ))),
-            Form::Lit(literal) => Ok(measured(globals, literal)),
-            Form::Neutral(neutral) => match (&neutral.head, neutral.spine.as_slice()) {
-                (Head::Var(Level(level), ty), []) => Ok(sort_of(ty).map(|sort| Expr::variable(sort, *level))),
-                (Head::Builtin(builtin, _), [Elim::App { argument: left, .. }, Elim::App { argument: right, .. }]) => {
-                    match builtin.indexes() {
-                        Some(operator) => arithmetic(meter, globals, operator, left, right),
-                        None => Ok(None),
-                    }
-                }
-                _ => Ok(None),
-            },
-            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => Ok(None),
-            // An indexed type is a type, and §1.5 refuses an index over one: that
-            // would be a universe by another name.
-            Form::Indexed { .. } => Ok(None),
-        }
-    })
-}
-
-/// One open application of an arithmetic builtin, read as a linear form.
-fn arithmetic(
-    meter: &mut Meter,
-    globals: &Globals,
-    operator: Operator,
-    left: &Value,
-    right: &Value,
-) -> Result<Option<Expr>, CoreError> {
-    let (Some(left), Some(right)) = (index_of(meter, globals, left)?, index_of(meter, globals, right)?) else {
-        return Ok(None);
-    };
-    match operator {
-        Operator::Add => left.add(meter, &right),
-        Operator::Subtract => left.subtract(meter, &right),
-        // §1.5 admits multiplication by a *literal*, so exactly one side has to
-        // be closed. Two open factors is the refusal the grammar names, and it
-        // is the refusal that keeps the form linear.
-        Operator::Multiply => match (left.as_constant(), right.as_constant()) {
-            (Some(factor), _) => right.scale(meter, factor),
-            (None, Some(factor)) => left.scale(meter, factor),
-            (None, None) => Ok(None),
-        },
-    }
-}
-
-/// A base literal read as an exact index value by its own type's host rule.
-///
-/// D1 keeps a payload opaque to this crate, so the party that put the number in
-/// is the only one that can take it out — [`crate::kernel::base::Measures`], registered
-/// on the base type. A literal at a base type that registered none is not an
-/// index, which is the intended default and the reason `Syntax<Cat>`'s category
-/// does not become one.
-fn measured(globals: &Globals, literal: &crate::kernel::base::Literal) -> Option<Expr> {
-    let mut head = literal.ty();
-    while let Shape::App { function, .. } = head.shape() {
-        head = function;
-    }
-    let Shape::Named { name, role } = head.shape() else {
-        return None;
-    };
-    let Definition::Base(base) = globals.definition(name, *role) else {
-        return None;
-    };
-    let (numerator, denominator) = base.measures()?(literal)?;
-    Exact::new(numerator, denominator).map(|value| Expr::literal(Sort::Rational, value))
-}
-
-/// Which index sort a variable's type puts it in, if any.
-///
-/// The two sorts a solver is wanted for, and no third: §1.5's finite literal
-/// enums are decided by [`crate::kernel::base::Payload::same`] at an ordinary base type
-/// and have nothing linear to normalize. A variable of any other type is
-/// outside the grammar, which is the refusal §1.5 names.
-/// Whether `ty` is one of `02-core-calculus.md` §1.5's index sorts.
-///
-/// [`crate::elaboration::declare`]'s check on an index telescope's binder, and [`sort_of`]
-/// with the sort thrown away — which is the point of writing it here rather
-/// than beside the declaration. The question "may an index be drawn from this
-/// type?" is answered once, by the module that has to read the values, so a
-/// declaration cannot admit a sort a comparison then cannot decide.
-///
-/// §1.5 names three sorts and this admits two shapes, which is the same set:
-/// `Nat` is a counting family, and exact `Ratio` and a finite literal enum are
-/// both base types whose owner registered [`crate::kernel::base::Measures`]. A finite
-/// enum is not a third mechanism — it is the second one at a bounded set of
-/// literals.
-pub(crate) fn is_index_sort(ty: &Value) -> bool {
-    sort_of(ty).is_some()
-}
-
-fn sort_of(ty: &Value) -> Option<Sort> {
-    let Form::Neutral(neutral) = &ty.form else {
-        return None;
-    };
-    match &neutral.head {
-        Head::Const(constant, _) => constant.counting().map(|_| Sort::Count),
-        Head::Base(base, _) => base.measures().map(|_| Sort::Rational),
-        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(..) | Head::Meta(_) => None,
     }
 }

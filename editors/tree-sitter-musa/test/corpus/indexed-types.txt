@@ -1,15 +1,10 @@
 ==================
-an index is written in parentheses, and a type parameter in angle brackets
+a type constructor is applied to a value in parentheses, and to a type in angle brackets
 ==================
 
 library {
-  data Pc(n: Nat) {
-    Zero,
-    Next(fewer: Pc),
-  }
-
-  data Grid<A>(m: Ratio) {
-    Cell(held: A),
+  data Cell<A> {
+    Held(value: A),
   }
 
   fn transpose(p: Pc(12)) -> Pc(12) { p }
@@ -21,30 +16,9 @@ library {
   (library_declaration
     (data_declaration
       (identifier)
-      (index_parameter
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier))))
-      (data_variant
-        (identifier))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (data_declaration
-      (identifier)
       (type_parameter_list
         (type_parameter
           (identifier)))
-      (index_parameter
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier))))
       (data_variant
         (identifier)
         (data_field

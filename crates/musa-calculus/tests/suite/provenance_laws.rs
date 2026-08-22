@@ -307,10 +307,6 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         },
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
         Shape::Universe(level) => Shape::Universe(*level),
-        Shape::Indexed { ty, index } => Shape::Indexed {
-            ty: restamp(ty, origin),
-            index: restamp(index, origin),
-        },
         Shape::Bind { name, binder, body } => Shape::Bind {
             name: Arc::clone(name),
             binder: match binder {
@@ -357,7 +353,6 @@ fn restamp_fields(fields: &[Field], origin: Origin) -> Arc<[Field]> {
 fn children(term: &Term) -> Vec<&Term> {
     match term.shape() {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => Vec::new(),
-        Shape::Indexed { ty, index } => vec![ty, index],
         Shape::Bind { binder, body, .. } => binder.outer().chain(std::iter::once(body)).collect(),
         Shape::App { function, argument } => vec![function, argument],
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().map(|field| &field.term).collect(),

@@ -131,7 +131,6 @@ fn furthest(term: &Term, under: u32) -> u32 {
             .max()
             .unwrap_or(0),
         Shape::Project { record, .. } => furthest(record, under),
-        Shape::Indexed { ty, index } => furthest(ty, under).max(furthest(index, under)),
     }
 }
 

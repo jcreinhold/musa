@@ -170,10 +170,6 @@ impl Lowering<'_> {
         let visibility = visibility_of(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        let index = match child(node, |kind| kind == SyntaxKind::IndexParam) {
-            Some(written) => Some(self.index_parameter(&written)?),
-            None => None,
-        };
         let mut constructors = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::DataVariant) {
             constructors.push(self.variant(&written, visibility)?);
@@ -187,7 +183,6 @@ impl Lowering<'_> {
             families: vec![RawFamily {
                 name,
                 visibility,
-                index,
                 constructors,
             }],
         })
@@ -228,10 +223,6 @@ impl Lowering<'_> {
             families: vec![RawFamily {
                 name,
                 visibility: visibility_of(node),
-                // `enum` writes no index: `01-surface.md` §1.3's `enum_decl`
-                // takes type parameters and nothing in parentheses, and §1.5's
-                // motivating declarations are all `data`.
-                index: None,
                 constructors,
             }],
         })
@@ -473,28 +464,6 @@ impl Lowering<'_> {
         Some(RawBinder {
             name,
             ty: self.ty(&written)?,
-        })
-    }
-
-    /// `(n: Nat)` — the index a declaration carries (`02-core-calculus.md`
-    /// §1.5), read from the `IndexParam` the caller found.
-    ///
-    /// Beside [`Lowering::type_parameters`] and not folded into it, because the
-    /// two are different questions written differently on purpose: a parameter
-    /// stands at `Type 0` and is supplied by a type, and an index stands at a
-    /// *sort* — which the declaration writes out, because only the declaration
-    /// knows whether its type counts whole numbers or exact fractions.
-    ///
-    /// Which sorts are admissible is not asked here. That is a question about
-    /// what a sort *is*, and `musa-calculus` answers it where the declaration is
-    /// elaborated; a lowering that also held the list would be a second place
-    /// obliged to agree.
-    fn index_parameter(&mut self, written: &SyntaxNode) -> Option<RawBinder> {
-        let name = declared_name(written)?;
-        let sort = child(written, is_type_node)?;
-        Some(RawBinder {
-            name,
-            ty: self.ty(&sort)?,
         })
     }
 

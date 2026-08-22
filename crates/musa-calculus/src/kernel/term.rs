@@ -482,44 +482,6 @@ pub enum Shape {
         /// The field's name.
         field: Name,
     },
-    /// `T(i)` — a type carrying an index expression (§1.5).
-    ///
-    /// **Indexing, not refinement.** A refinement type in Freeman and Pfenning's
-    /// sense is a subset carved by a predicate over the inhabitant, and it lives
-    /// on subtyping: `{v : Int | v > 0}` *is* an `Int`. This is neither. The
-    /// index is a parameter beside the type rather than a proposition about the
-    /// value, and conversion is invariant — `Row(12)` is not a `Row`, and there
-    /// is no coercion between them. What that makes this is Xi and Pfenning's
-    /// indexed type, and the name is where the code says so.
-    ///
-    /// A **wrapper**, not a parameter and not a family index. `Row(12)` is the
-    /// ordinary declared type `Row` under an index, so [`crate::kernel::family`] does
-    /// not grow by a line and a value of `Row(12)` is a value of `Row`. Three
-    /// consequences follow from that one choice, and each is what §1.5 asks for:
-    ///
-    /// - **Erasure is structural.** [`crate::kernel::quote`] drops the wrapper and reads
-    ///   back `ty` alone, so a read-back term carries no index and every stored
-    ///   artifact is byte-identical to what it was before the stratum existed.
-    ///   It is not a property a test watches; it is where the code sits.
-    /// - **Conversion has one arm.** Two indexed types agree when their types
-    ///   agree and [`crate::kernel::index::decide`] answers `Same`; an indexed type never
-    ///   agrees with a bare one, because `Row(12)` and `Row` are two types.
-    /// - **Nothing else changes.** Evaluation passes through, the eliminators
-    ///   are untouched, and no rule anywhere takes one apart.
-    ///
-    /// The index is an ordinary [`Term`] of index sort rather than an
-    /// [`crate::kernel::index::Expr`], and that is the repair §1.5 took at 142d: an
-    /// index variable is an ordinary parameter, so it is bound, substituted, and
-    /// solved by machinery that already exists. Reading a *value* of this
-    /// position into a linear form is [`crate::elaboration::convert::reads_as_index`]'s, and
-    /// prompt 142da moved the asking to type formation so that an index the
-    /// grammar cannot read never reaches a comparison.
-    Indexed {
-        /// The type being refined.
-        ty: Term,
-        /// The index it is refined by.
-        index: Term,
-    },
 }
 
 /// α-equality: the three things a core term carries that conversion does not
@@ -560,21 +522,6 @@ impl PartialEq for Shape {
             // both [`Constant`]'s own rule, stated once where the two arms are.
             (Self::Lit(left), Self::Lit(right)) => left == right,
             (Self::Universe(left), Self::Universe(right)) => left == right,
-            // Both halves: an indexed type *is* its type and its index, and two
-            // indexed types at one type by two indices are two types. α-equality
-            // is syntactic here, as everywhere in this impl; deciding whether
-            // two *different* index expressions denote one quantity is
-            // conversion's question and [`crate::kernel::index`]'s answer.
-            (
-                Self::Indexed {
-                    ty: left_ty,
-                    index: left_index,
-                },
-                Self::Indexed {
-                    ty: right_ty,
-                    index: right_index,
-                },
-            ) => left_ty == right_ty && left_index == right_index,
             (
                 Self::Bind {
                     name: _,
@@ -624,8 +571,7 @@ impl PartialEq for Shape {
                 | Self::App { .. }
                 | Self::RecordType(_)
                 | Self::Record(_)
-                | Self::Project { .. }
-                | Self::Indexed { .. },
+                | Self::Project { .. },
                 _,
             ) => false,
         }
@@ -654,39 +600,6 @@ impl Term {
     #[must_use]
     pub fn shape(&self) -> &Shape {
         &self.shape
-    }
-
-    /// The index this type is declared to carry, if its head declares one
-    /// (§1.5).
-    ///
-    /// A type is written applied to its parameters — `Row<Nat>` — so the head
-    /// is found by walking down [`Shape::App`], and both kinds of head can
-    /// declare an index: a family a program declared, and a base type its host
-    /// registered. Neither answers for the other, which is the whole content of
-    /// the question — `Nat(12)` is refused because `Nat` declares none, and
-    /// `Pc(12)` is admitted because `Pc` does.
-    ///
-    /// Asked of a [`Term`] rather than of a [`Value`](crate::Value) because the
-    /// elaborator asks it of what it has just built, before anything is
-    /// evaluated. An already-indexed type answers for *its own* head, not for
-    /// the wrapper: `Pc(12)` is a `Pc`, and the wrapper is what the answer was
-    /// used to build.
-    pub(crate) fn declared_index(
-        &self,
-        globals: &crate::kernel::context::Globals,
-    ) -> Option<crate::kernel::family::Parameter> {
-        let mut head = self;
-        while let Shape::App { function, .. } = head.shape() {
-            head = function;
-        }
-        let Shape::Named { name, role } = head.shape() else {
-            return None;
-        };
-        match globals.definition(name, *role) {
-            Definition::Declared(constant) => constant.declared_index().cloned(),
-            Definition::Base(base) => base.declared_index().cloned(),
-            Definition::Undeclared | Definition::Defined(_) | Definition::Builtin(_) => None,
-        }
     }
 
     /// The same term, said to have come from somewhere else.
@@ -811,12 +724,6 @@ impl Term {
         )
     }
 
-    /// `ty(index)` — `ty` refined by `index` (§1.5).
-    #[must_use]
-    pub fn indexed(origin: Origin, ty: Self, index: Self) -> Self {
-        Self::new(origin, Shape::Indexed { ty, index })
-    }
-
     /// `function argument`.
     #[must_use]
     pub fn app(origin: Origin, function: Self, argument: Self) -> Self {
@@ -880,10 +787,6 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
     let deeper = |term: &Term, by: u32| occurrences(term, depth.saturating_add(by), level);
     match term.shape() {
         Shape::Var(index) => u32::from(depth.checked_sub(index.0.saturating_add(1)) == Some(level)),
-        // Both halves. An index is an ordinary term, so a variable can occur
-        // in it exactly as it occurs anywhere else, and a count that skipped it
-        // would let β discard a binder the index still names.
-        Shape::Indexed { ty, index } => deeper(ty, 0).saturating_add(deeper(index, 0)),
         // Closed leaves: none of them can be a variable, so none of them can
         // hold an occurrence of one.
         Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 0,

@@ -482,7 +482,6 @@ impl TokenClass {
             | SyntaxKind::DataDecl
             | SyntaxKind::TypeParams
             | SyntaxKind::TypeParam
-            | SyntaxKind::IndexParam
             | SyntaxKind::DataVariant
             | SyntaxKind::DataField
             | SyntaxKind::RecordDecl

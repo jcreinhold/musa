@@ -77,7 +77,6 @@ fn depth(term: &Term) -> u32 {
             ref function,
             ref argument,
         } => deeper(function).max(deeper(argument)),
-        Shape::Indexed { ref ty, ref index } => deeper(ty).max(deeper(index)),
         Shape::Bind {
             ref binder, ref body, ..
         } => binder

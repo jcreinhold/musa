@@ -105,9 +105,9 @@ impl From<CoreError> for ElabError {
 /// found after that, with nothing left to point at, is addressed to whoever
 /// maintains this compiler and is a [`Malformed`].
 ///
-/// Seven of these are the elaborator's half of a claim the kernel also makes —
+/// Six of these are the elaborator's half of a claim the kernel also makes —
 /// `NotAFunction`, `NotARecord`, `NoSuchField`, `NotAType`, `Uninferable`,
-/// `BeyondUniverses`, `UnreadableIndex` — and [`Self::Mismatch`] stands beside
+/// `BeyondUniverses` — and [`Self::Mismatch`] stands beside
 /// [`Malformed::Mistyped`] the same way. Each pair is two sentences for two
 /// readers rather than one sentence written twice: this side names what the
 /// author wrote and where, and the kernel's side names a term nobody should
@@ -342,75 +342,6 @@ pub enum Refusal {
     #[error("this declaration needs a universe above Type 1, and there are two")]
     BeyondUniverses {
         /// The declaration.
-        at: Origin,
-    },
-    /// An index expression outside `02-core-calculus.md` §1.5's grammar, refused
-    /// at the type that carries it.
-    ///
-    /// Refused **here**, where the type is formed, and not where two types are
-    /// compared. §1.5 sites it at the written expression — "`Row(f(x))` … is the
-    /// refusal below, named at the expression" — and the site is what makes the
-    /// relation an equivalence: an index the solver cannot read, met at a
-    /// comparison, leaves that comparison with no sound answer, and answering
-    /// "different" makes a type inconvertible with *itself*. Refusing the type
-    /// instead means the unreadable index never reaches a comparison, so
-    /// [`crate::kernel::index::decide`] is total on what does.
-    ///
-    /// The expression is carried as it was written, because §1.5 asks for a
-    /// message naming `Row(f x)` rather than a word about a linear form.
-    #[error("`{shown}` is not an index this can read")]
-    UnreadableIndex {
-        /// The index expression, as written.
-        shown: String,
-        /// Where it was written.
-        at: Origin,
-    },
-    /// An index written on a type that declares none (§1.5).
-    ///
-    /// The refusal that makes `Nat(12)` an error rather than a second spelling
-    /// of `Nat`, and the one that gives erasure its teeth: a form nothing
-    /// declares is a form nothing can be erased from. It names the *type*,
-    /// because the type is what could have declared an index and did not — the
-    /// expression in the parentheses is fine and is not what is wrong.
-    #[error("`{ty}` takes no index")]
-    NotIndexed {
-        /// The type the index was written on, as its head is spelled.
-        ty: String,
-        /// Where the indexed type was written.
-        at: Origin,
-    },
-    /// A type that declares an index, standing in type position without one
-    /// (§1.5).
-    ///
-    /// The other half of [`Self::NotIndexed`]: the two together are what an
-    /// arity check is when the telescope is of length at most one. `Pc` is not
-    /// a type — it is a type still waiting for the number it was declared to
-    /// carry — and the message names the binder the declaration wrote, so the
-    /// author is told what to supply rather than that something is missing.
-    #[error("`{ty}` carries an index, and none is written")]
-    MissingIndex {
-        /// The type, as its head is spelled.
-        ty: String,
-        /// The index binder the declaration wrote, which is what to supply.
-        binder: Name,
-        /// Where the bare type was written.
-        at: Origin,
-    },
-    /// An index telescope's binder at a type §1.5 does not admit as a sort.
-    ///
-    /// §1.5's sorts are `Nat`, an exact `Ratio`, and a finite literal enum, and
-    /// what they share is that [`crate::kernel::index`] can read their values as
-    /// numbers. A binder at anything else declares an index no comparison could
-    /// decide, so it is refused where it is written rather than at the first
-    /// use that meets it.
-    #[error("`{binder}` is not an index sort, so `{ty}` cannot be indexed by it")]
-    NotAnIndexSort {
-        /// The binder's name.
-        binder: Name,
-        /// The type whose index telescope it is — a declared family, or a base
-        /// type its host registered.
-        ty: Name,
-        /// Where its type was written.
         at: Origin,
     },
     /// A term stood in type position whose own type is not a universe.

@@ -215,46 +215,6 @@ fn file(refusal: &Refusal) -> Filed {
                 ..one(Code::ConversionMismatch, mismatch.at)
             }
         }
-        // An index outside `02-core-calculus.md` §1.5's grammar, named at the
-        // expression it could not read. The help states the grammar rather than
-        // the linear form the solver would have built, because §1.5 asks for a
-        // message about `Row(f x)` and a reader fixes the expression.
-        Refusal::UnreadableIndex { shown, at } => Filed {
-            said: Some(format!("`{shown}` is not an index")),
-            label: Some("this stands in an index position".to_owned()),
-            help: Some(std::borrow::Cow::Borrowed(
-                "an index is a literal, an index variable, `+`, `-`, or `*` by a literal — a call, a `match`, a \
-                 projection, and two variables multiplied are each outside it",
-            )),
-            ..one(Code::TypeMismatch, *at)
-        },
-        // §1.5's arity, from the two sides an author can be on. Both name the
-        // *declaration* in their help, because that is what decides and what
-        // has to be looked at: an index is written where a declaration said one
-        // would be, and nowhere else.
-        Refusal::NotIndexed { ty, at } => Filed {
-            said: Some(format!("`{ty}` takes no index")),
-            label: Some("written with one here".to_owned()),
-            help: Some(std::borrow::Cow::Borrowed(
-                "a type carries an index only when its declaration writes one, as `data Pc(n: Nat)`",
-            )),
-            ..one(Code::IndexArity, *at)
-        },
-        Refusal::MissingIndex { ty, binder, at } => Filed {
-            said: Some(format!("`{ty}` carries an index, and none is written")),
-            label: Some(format!("write the `{binder}` it was declared with, as `{ty}(…)`")),
-            help: None,
-            ..one(Code::IndexArity, *at)
-        },
-        // And the declaration's own mistake, which no use site can repair.
-        Refusal::NotAnIndexSort { binder, ty, at } => Filed {
-            said: Some(format!("`{binder}` is not a sort an index can be drawn from")),
-            label: Some(format!("`{ty}` is declared to carry one of these")),
-            help: Some(std::borrow::Cow::Borrowed(
-                "an index is a whole number, an exact fraction, or one of a finite set of literals",
-            )),
-            ..one(Code::NotAnIndexSort, *at)
-        },
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
         Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),

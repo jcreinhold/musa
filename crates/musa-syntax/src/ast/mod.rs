@@ -289,8 +289,8 @@ pub use document::{
 pub use performance::{DynamicRule, GraceRule, GrooveRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
 
 pub use declarations::{
-    DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl, IndexParam,
-    LetDecl, Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl,
+    DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl, LetDecl,
+    Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl,
 };
 
 pub use types::{

@@ -77,13 +77,6 @@ impl Elaborator {
                 function: self.zonking(function, depth)?,
                 argument: self.zonking(argument, depth)?,
             },
-            // Both halves. An index is an ordinary term (§1.5), so a meta
-            // standing in one is solved and unfolded exactly as anywhere else —
-            // which is what `Row(n)` at a call that solved `n` depends on.
-            Shape::Indexed { ty, index } => Shape::Indexed {
-                ty: self.zonking(ty, depth)?,
-                index: self.zonking(index, depth)?,
-            },
             Shape::RecordType(fields) => {
                 let mut zonked = Vec::with_capacity(fields.len());
                 for (which, field) in fields.iter().enumerate() {

@@ -111,7 +111,6 @@ impl Elaborator {
             | RawShape::Lit(_)
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
-            | RawShape::Indexed { .. }
             | RawShape::Lam { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }

@@ -67,7 +67,6 @@ impl Elaborator {
                 domain,
                 codomain,
             } => self.function_type(scope, here, filling.clone(), name, domain, codomain),
-            RawShape::Indexed { ty, index } => self.indexed_type_formation(scope, here, ty, index),
             RawShape::Lam {
                 filling,
                 name,
@@ -131,96 +130,6 @@ impl Elaborator {
             // make the answer depend on which one was written first.
             RawShape::Match { .. } | RawShape::Rec { .. } => Err(Refusal::Uninferable { at: here }.into()),
         }
-    }
-
-    /// `T(i) ⇒ Type l` — a type refined by an index (§1.5).
-    ///
-    /// The refined type carries the whole thing's universe, because the
-    /// index adds no inhabitants and no size: `Row(12)` is `Row` under a
-    /// wrapper that quotation drops, so a universe read off the index would be
-    /// reading a level off something erased.
-    ///
-    /// **§1.5's grammar is checked here**, which is where §1.5 sites it: an
-    /// index position holding anything else "is the refusal below, named at the
-    /// expression". Prompt 142d checked it at the comparison instead, and the
-    /// cost was that `≡` stopped being reflexive — two indices nothing can read
-    /// were answered "different", so `Row(mystery n)` was not the same type as
-    /// itself and a term could fail to check against its own type.
-    ///
-    /// It is still read once. [`crate::elaboration::convert::reads_as_index`] is conversion's
-    /// own reader, asked one stage earlier rather than reimplemented, so there
-    /// is one grammar rather than two obliged to agree.
-    fn indexed_type_formation(
-        &mut self,
-        scope: &Scope,
-        here: Origin,
-        ty: &Raw,
-        index: &Raw,
-    ) -> Result<Typed, ElabError> {
-        // The *head*, so §1.5's arity check is not asked of a type whose index
-        // is one line away — [`Elaborator::formed_type`] is `check_type` without
-        // it, and this is its one caller.
-        let (ty, level) = self.formed_type(scope, ty)?;
-        // §1.5's other half of the arity check: an index written on a type that
-        // declares none. `Nat(12)` is refused here, and it has to be refused
-        // somewhere — a form nothing declares is a form nothing can be erased
-        // from, so admitting it would leave a type whose read-back is a
-        // different type for no reason anything recorded.
-        let Some(binder) = ty.declared_index(scope.cx().globals()) else {
-            return Err(Refusal::NotIndexed {
-                ty: crate::elaboration::show::head_spelled(&ty),
-                at: here,
-            }
-            .into());
-        };
-        // **Checked, never inferred, at the sort the head declares.** This is
-        // the bidirectional rule the rest of the elaborator follows, and the
-        // reason it matters here is `Pc(3/4)`: inferring answers "an exact
-        // fraction" and has nothing to compare that against, so a type declared
-        // over whole numbers silently carries a rational and two use sites that
-        // disagree about what `Pc` counts are both accepted.
-        //
-        // The sort is evaluated under this scope even though it was elaborated
-        // closed, which is sound because §1.5's sorts *are* closed —
-        // [`crate::elaboration::declare`]'s check on the telescope is what guarantees it.
-        let sort = scope.eval(&mut self.meter, &binder.ty)?;
-        let index = Typed {
-            term: self.check(scope, index, &sort)?,
-            ty: sort,
-        };
-        // §1.5's grammar is checked *here*, where the type is formed and the
-        // expression that broke it is still on the page. Two things follow, and
-        // both are the reason the check is not left to the comparison:
-        //
-        // - the message names `Row(f x)`, which is what §1.5 asks for and what
-        //   a comparison could not produce — by then there are two types and no
-        //   written expression;
-        // - an unreadable index never reaches [`crate::elaboration::convert`], so
-        //   `index::decide` is total on what does and a type is convertible with
-        //   itself. Refusing at the comparison instead answers "different" for
-        //   two indices nothing can read, which is not an answer about them.
-        //
-        // The reader is `convert`'s own, asked one stage earlier rather than
-        // reimplemented. A second reader would be two grammars obliged to agree.
-        let value = scope.eval(&mut self.meter, &index.term)?;
-        // A meta is §2.1's question and not this one: an index still mentioning
-        // one has not been determined by the call yet, and §2.1 already refuses
-        // an index variable no written argument determines. Refusing it here
-        // would be postponement's mirror image — a complaint raised before the
-        // information that answers it arrives.
-        if !crate::elaboration::convert::mentions_unsolved(&value)
-            && !crate::elaboration::convert::reads_as_index(&mut self.meter, scope.cx().globals(), &value)?
-        {
-            return Err(Refusal::UnreadableIndex {
-                shown: crate::elaboration::show::spelled(&index.term),
-                at: index.term.origin(),
-            }
-            .into());
-        }
-        Ok(Typed {
-            term: Term::indexed(here, ty, index.term),
-            ty: Value::new(here, Form::Universe(level)),
-        })
     }
 
     /// `(x : A) → B ⇒ Type (max l l')`.

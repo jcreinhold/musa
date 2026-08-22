@@ -79,7 +79,6 @@ impl Registry {
         let registry = Self { names };
         registry.check_delta_signatures()?;
         registry.check_structural_targets()?;
-        registry.check_index_sorts()?;
         Ok(registry)
     }
 
@@ -114,46 +113,6 @@ impl Registry {
                 return Err(Refusal::UnknownBase {
                     name: Arc::clone(base),
                     at: domain.origin(),
-                });
-            }
-        }
-        Ok(())
-    }
-
-    /// Every registered index telescope's sort, checked against §1.5's three.
-    ///
-    /// A host declares an index the way a program does — [`Base::indexed_by`] —
-    /// and the sort it names has to be one whose values [`crate::kernel::index`] can
-    /// read, or the type carries an index no comparison could decide. A base
-    /// type answers that with [`Base::measuring`], which is registered here, so
-    /// the check is a lookup in this table and needs no evaluation.
-    ///
-    /// A declared family is admitted too, and left to [`crate::elaboration::declare`] rather
-    /// than looked at: `Nat` is a family, families are not in this table, and a
-    /// registry that refused what it cannot see would refuse `Nat` for being
-    /// declared elsewhere. The counting condition is checked where a family is,
-    /// which is the same split every other question about a family takes here.
-    fn check_index_sorts(&self) -> Result<(), Refusal> {
-        for entry in self.names.values() {
-            let Extern::Base(base) = entry else {
-                continue;
-            };
-            let Some(binder) = base.declared_index() else {
-                continue;
-            };
-            let readable = match head_base(&binder.ty) {
-                Some(sort) => self
-                    .named(sort)
-                    .is_some_and(|found| matches!(found, Extern::Base(sort) if sort.measures().is_some())),
-                // Not a base type at all: a declared family, which this table
-                // cannot see and `declare` already checks.
-                None => true,
-            };
-            if !readable {
-                return Err(Refusal::NotAnIndexSort {
-                    binder: Arc::clone(&binder.name),
-                    ty: Arc::clone(base.name()),
-                    at: binder.ty.origin(),
                 });
             }
         }
@@ -228,11 +187,6 @@ impl Registry {
                 }
                 indexed = true;
             }
-            // Finite data exactly when what it refines is. The index is not
-            // checked and could not be: it is erased (§1.5), so no δ-rule ever
-            // receives one and a `Datum` cannot hold one. Early, because a
-            // indexed type has no arguments applied above it.
-            Shape::Indexed { ty, .. } => return self.check_finite_data(builtin, ty),
             Shape::Named {
                 role: Role::TypeConstructor,
                 ..

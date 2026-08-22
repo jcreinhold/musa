@@ -98,8 +98,7 @@ pub use crate::elaboration::raw::{
 pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::elaboration::storable::requiring_storable;
 pub use crate::kernel::base::{
-    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Measures, Operator, Payload, Registry, Rewrite,
-    Rule,
+    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
 };
 pub use crate::kernel::budget::{Budget, Metric, ResourceError, Spend};
 pub use crate::kernel::checked::Checked;
@@ -374,14 +373,8 @@ pub fn convertible_metered(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Res
         let ty = eval(&mut meter, cx.env(), ty)?;
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        let answer = decided(Conversion::deciding(cx.globals().clone()).unify(
-            &mut meter,
-            cx.depth(),
-            Origin::UNKNOWN,
-            &ty,
-            &left,
-            &right,
-        ))?;
+        let answer =
+            decided(Conversion::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))?;
         Ok((answer, meter.spent()))
     })
 }
@@ -396,13 +389,7 @@ pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, Cor
         let mut meter = cx.meter();
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        decided(Conversion::deciding(cx.globals().clone()).unify_types(
-            &mut meter,
-            cx.depth(),
-            Origin::UNKNOWN,
-            &left,
-            &right,
-        ))
+        decided(Conversion::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
     })
 }
 

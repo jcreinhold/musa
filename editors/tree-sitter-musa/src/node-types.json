@@ -689,10 +689,6 @@
           "named": true
         },
         {
-          "type": "index_parameter",
-          "named": true
-        },
-        {
           "type": "type_parameter_list",
           "named": true
         }
@@ -1873,32 +1869,6 @@
           },
           {
             "type": "syntax_region",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "index_parameter",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "sort": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "type_expression",
             "named": true
           }
         ]

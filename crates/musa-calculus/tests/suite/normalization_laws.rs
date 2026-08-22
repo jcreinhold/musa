@@ -213,7 +213,6 @@ fn is_normal(cx: &Cx, term: &Term) -> bool {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         // A refinement has no elimination form, so it is never a redex; both
         // halves still have to be normal.
-        Shape::Indexed { ty, index } => is_normal(cx, ty) && is_normal(cx, index),
         // A `let` is a redex on sight; a Π and a λ are normal when what they
         // bind and what they hold are.
         Shape::Bind {

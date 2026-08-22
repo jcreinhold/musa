@@ -220,32 +220,10 @@ impl DataDecl {
         children(&self.0)
     }
 
-    /// The index it is declared to carry, if it declares one
-    /// (`02-core-calculus.md` §1.5).
-    pub fn index(&self) -> Option<IndexParam> {
-        children(&self.0).into_iter().next()
-    }
-
     /// Whether it is marked `private`, and so nameable only inside the module
     /// that declares it (`01-surface.md` §1.3).
     pub fn is_private(&self) -> bool {
         is_private(&self.0)
-    }
-}
-
-/// `(n: Nat)` on a declaration — the index it carries.
-pub struct IndexParam(SyntaxNode);
-wrapper!(IndexParam, SyntaxKind::IndexParam);
-
-impl IndexParam {
-    /// The index's name, which is what a diagnostic tells an author to supply.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The sort it is drawn from, as the type node it was written as.
-    pub fn sort(&self) -> Option<SyntaxNode> {
-        self.0.children().find(|node| crate::ast::is_type(node.kind()))
     }
 }
 

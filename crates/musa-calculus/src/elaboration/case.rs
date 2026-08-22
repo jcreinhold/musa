@@ -1169,9 +1169,6 @@ fn subject(
 /// The de Bruijn level a value is, when it is a variable.
 fn variable(value: &Value) -> Option<u32> {
     match &value.form {
-        // An indexed type is not a variable, whatever it refines. `Row(n)` names
-        // no binder the case tree could descend on.
-        crate::kernel::value::Form::Indexed { .. } => None,
         // A *bare* variable: a spine means something was applied to it, and
         // `f x` is not the variable `f`.
         crate::kernel::value::Form::Neutral(neutral) if neutral.spine.is_empty() => match &neutral.head {

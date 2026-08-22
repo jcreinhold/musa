@@ -64,7 +64,6 @@ fn unsolved(term: &Term) -> Option<u32> {
         Shape::App { function, argument } => unsolved(function).or_else(|| unsolved(argument)),
         Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().find_map(|field| unsolved(&field.term)),
         Shape::Project { record, .. } => unsolved(record),
-        Shape::Indexed { ty, index } => unsolved(ty).or_else(|| unsolved(index)),
     }
 }
 

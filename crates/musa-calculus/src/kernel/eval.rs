@@ -86,17 +86,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 Binder::Let { ty: _, value } => binding(meter, env, value, body),
             },
             Shape::App { function, argument } => application(meter, env, here, function, argument),
-            // An indexed type evaluates both halves and reduces neither: there is
-            // no ι, no δ, and no β at one, because §1.5 gives it no elimination
-            // form. It is carried so that conversion can ask about it, and
-            // dropped by `quote` so that nothing downstream ever sees it.
-            Shape::Indexed { ty, index } => Ok(Value::new(
-                here,
-                Form::Indexed {
-                    ty: Arc::new(eval(meter, env, ty)?),
-                    index: Arc::new(eval(meter, env, index)?),
-                },
-            )),
             Shape::RecordType(fields) => Ok(Value::new(
                 here,
                 Form::RecordType(Telescope {
@@ -353,9 +342,6 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
     let mut answer = match force(meter, value)? {
         Some(forced) => forced,
         None => match &value.form {
-            // Nothing to open. An indexed type holds no meta at its head and no
-            // definition to unfold: §1.5 gives it no reduction at all.
-            Form::Indexed { .. } => return Ok(None),
             Form::Neutral(neutral) => match unfold(meter, neutral)? {
                 Some(unfolded) => unfolded,
                 None => return Ok(None),
@@ -425,7 +411,6 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
         Form::Lam(body) => apply_closure(meter, &body, argument),
         // Not a function, and not applied to anything: `Row(12) x` is what a
         // caller wrote when it meant `Row x`, and this is where it says so.
-        Form::Indexed { .. } => Err(Malformed::NotAFunction.into()),
         // A blocked application is where ι at an inductive family fires: the
         // recursor's target is its last argument, so this is the first moment the
         // elimination can know it has met a constructor.
@@ -556,7 +541,6 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
         let forced = opened(meter, value)?;
         match forced.as_ref().unwrap_or(value).form {
             // A type, not data. See `crate::kernel::family::canonical`.
-            Form::Indexed { .. } => Ok(None),
             Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
             // The count read back as the tower it stands for. See
             // [`crate::kernel::family::canonical`], which is the same answer one layer
@@ -664,9 +648,6 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     };
     let forced = opened(meter, subject)?;
     let rewritten = match forced.as_ref().unwrap_or(subject).form {
-        // A structural rule rewrites a *literal*; an indexed type is a type, and
-        // no builtin's target position holds one.
-        Form::Indexed { .. } => None,
         Form::Lit(ref literal) => {
             meter.step("structural reduction")?;
             rewrite(builtin, literal)
@@ -706,7 +687,6 @@ fn projecting(_meter: &mut Meter, here: Origin, record: Value, field: &Name) -> 
     match record.form {
         // Not a record, so there is no field to find — the same answer a
         // universe or a λ gets below.
-        Form::Indexed { .. } => Err(Malformed::NotARecord.into()),
         Form::Record(fields) => fields
             .iter()
             .find(|(name, _)| name == field)
@@ -815,7 +795,6 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Lit(_)
             | Form::Numeral(_)
-            | Form::Indexed { .. }
             | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
         },
         Elim::Project { field, .. } => match head.form {
@@ -829,7 +808,6 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
             | Form::Record(_)
             | Form::Lit(_)
             | Form::Numeral(_)
-            | Form::Indexed { .. }
             | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
     }

@@ -74,12 +74,11 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::MisfitAnswer(_) => "misfit-answer",
         Malformed::NotALiteral(_) => "not-a-literal",
         Malformed::UnregisteredCarrier(_) => "unregistered-carrier",
-        Malformed::UnreadableIndex => "unreadable-index",
     }
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 17] = [
+const ALL_MALFORMED: [&str; 16] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
@@ -96,7 +95,6 @@ const ALL_MALFORMED: [&str; 17] = [
     "misfit-answer",
     "not-a-literal",
     "unregistered-carrier",
-    "unreadable-index",
 ];
 
 /// The ones nothing here reaches, each with the argument for why.
@@ -339,15 +337,9 @@ impl Payload for Count {
     }
 }
 
-/// `Count : Type 0`, measured, so that a literal of it may stand as an index.
+/// `Count : Type 0`, the host domain every fixture below is written over.
 fn count() -> Base {
-    Base::new("Count", Term::universe(HERE, Sort::ZERO)).measuring(|literal| {
-        literal
-            .payload()
-            .as_any()
-            .downcast_ref::<Count>()
-            .map(|value| (value.0, 1))
-    })
+    Base::new("Count", Term::universe(HERE, Sort::ZERO))
 }
 
 fn count_type() -> Term {
@@ -375,16 +367,6 @@ fn arrow(domain: Term, codomain: Term) -> Term {
 fn row() -> Base {
     Base::new("Row", arrow(count_type(), Term::universe(HERE, Sort::ZERO)))
         .accepting(|_wanted, _held| Some("count_coerce"))
-}
-
-/// `Grid : Type 0`, carrying a §1.5 index rather than an argument.
-///
-/// A second base type and not a second use of [`row`], because the two shapes
-/// are two mechanisms: an acceptance rule reads a base *applied* to a literal,
-/// and §1.5's grammar reads a *refinement*. Spelling one fixture as the other
-/// would make whichever fault it reached an accident.
-fn grid() -> Base {
-    Base::new("Grid", Term::universe(HERE, Sort::ZERO)).indexed_by("n", count_type())
 }
 
 /// `count_add : Count → Count → Count`, and `checked_add` answers nothing at the
@@ -446,13 +428,6 @@ fn row_of() -> Builtin {
     )
 }
 
-/// `bump : Count → Count`, a constructor rather than a rule, so an application
-/// of it is stuck — and tagged as no [`musa_calculus::Operator`], so §1.5's
-/// grammar cannot read one as an index.
-fn bump() -> Builtin {
-    Builtin::constructor("bump", arrow(count_type(), count_type()), Family::Machine)
-}
-
 /// The host, registered.
 ///
 /// # Panics
@@ -460,11 +435,8 @@ fn bump() -> Builtin {
 /// If the registry refuses its own signatures. It does not: every fault below is
 /// a disagreement between a signature and a *rule*, and D1 reads signatures.
 fn host() -> Cx {
-    let registry = Registry::new(
-        vec![count(), row(), grid()],
-        vec![count_add(), count_tally(), row_of(), bump()],
-    )
-    .expect("the signatures are admissible; it is the rules that are wrong");
+    let registry = Registry::new(vec![count(), row()], vec![count_add(), count_tally(), row_of()])
+        .expect("the signatures are admissible; it is the rules that are wrong");
     Cx::with_budget(Budget::LANGUAGE).with_externs(Arc::new(registry))
 }
 
@@ -477,20 +449,15 @@ fn calls(function: &str, arguments: impl IntoIterator<Item = Raw>) -> Raw {
         })
 }
 
-/// `Row n`, as a type.
+/// `Row n`, as a type — a base type applied to a literal.
 fn row_at(index: i128) -> Term {
     Term::app(HERE, row().term(HERE), count_lit(index).term(HERE))
 }
 
-/// `Grid(n)`, as a type — a refinement, where [`row_at`] is an application.
-fn grid_at(index: Term) -> Term {
-    Term::indexed(HERE, grid().term(HERE), index)
-}
-
-/// The four a *registration* reaches, which no hand-built term alone can.
+/// The three a *registration* reaches, which no hand-built term alone can.
 ///
 /// Gathered here rather than beside the cases above because they need a registry
-/// rather than a term, and because they are one finding rather than four: a host
+/// rather than a term, and because they are one finding rather than three: a host
 /// that writes down two descriptions of itself can make them disagree, and the
 /// kernel's word for each disagreement is a [`Malformed`].
 ///
@@ -535,18 +502,6 @@ fn host_faults() -> Vec<(&'static str, Malformed)> {
     );
     assert!(matches!(fault, Malformed::UnregisteredCarrier(_)), "{fault}");
     found.push(("a carrier the registry does not hold", fault));
-
-    // A refined type carrying an index §1.5's grammar cannot read, met at a
-    // comparison. `Refusal::UnreadableIndex` refuses such a type where it is
-    // *formed*, so reaching this one takes a type built here rather than
-    // written: `bump 1` is stuck, and no operator tags it as arithmetic.
-    let unreadable = grid_at(Term::app(HERE, bump().term(HERE), count_lit(1).term(HERE)));
-    let fault = malformed(
-        "a comparison against an index nothing can read",
-        musa_calculus::convertible_types(&cx, &unreadable, &grid_at(count_lit(2).term(HERE))),
-    );
-    assert!(matches!(fault, Malformed::UnreadableIndex), "{fault}");
-    found.push(("a comparison against an index nothing can read", fault));
 
     found
 }

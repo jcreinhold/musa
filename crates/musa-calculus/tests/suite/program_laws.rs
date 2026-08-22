@@ -103,7 +103,6 @@ fn refused(name: &str, cx: &Cx, program: &RawProgram) -> Refusal {
 fn size(term: &Term) -> u32 {
     let inner = match term.shape() {
         Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 0,
-        Shape::Indexed { ty, index } => size(ty).saturating_add(size(index)),
         Shape::Bind { binder, body, .. } => binder
             .outer()
             .fold(size(body), |total, term| total.saturating_add(size(term))),

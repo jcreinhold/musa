@@ -29,7 +29,6 @@ mod graces;
 mod groove;
 mod higher_order_music_laws;
 mod import_laws;
-mod indexed_type_laws;
 mod inference_laws;
 mod inferred_core_laws;
 mod key_and_clef_changes;

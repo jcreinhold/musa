@@ -64,9 +64,6 @@ pub(crate) fn head_name(term: &Term) -> Option<Name> {
             name,
             role: Role::TypeConstructor | Role::Constructor | Role::Recursor(_) | Role::Base,
         } => Some(Arc::clone(name)),
-        // An indexed type shares its namespace with the type it indexes: the
-        // index is a refinement of the same type and not a second one.
-        Shape::Indexed { ty, .. } => head_name(ty),
         Shape::App { function, .. } => head_name(function),
         Shape::Named {
             role: Role::Defined | Role::Builtin,

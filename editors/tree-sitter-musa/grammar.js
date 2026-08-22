@@ -238,17 +238,10 @@ module.exports = grammar({
         'data',
         field('name', $.identifier),
         optional($.type_parameter_list),
-        optional($.index_parameter),
         '{',
         optional(seq($.data_variant, repeat(seq(',', $.data_variant)), optional(','))),
         '}',
       ),
-
-    // Parser::index_param — `02-core-calculus.md` §1.5's index, written in
-    // parentheses where a type parameter is written in angle brackets. Exactly
-    // one binder: a type carries one index, so there is no comma here.
-    index_parameter: ($) =>
-      seq('(', field('name', $.identifier), ':', field('sort', $.type_expression), ')'),
 
     data_variant: ($) =>
       seq(

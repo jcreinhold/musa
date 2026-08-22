@@ -13,7 +13,6 @@ pub(crate) mod context;
 pub(crate) mod error;
 pub(crate) mod eval;
 pub(crate) mod family;
-pub(crate) mod index;
 pub(crate) mod list;
 pub(crate) mod meta;
 pub(crate) mod origin;

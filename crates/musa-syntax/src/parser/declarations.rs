@@ -40,9 +40,6 @@ impl Parser<'_> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
-        if self.at(SyntaxKind::LParen) {
-            self.index_param();
-        }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::Identifier) {
@@ -56,30 +53,6 @@ impl Parser<'_> {
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
-        self.finish();
-    }
-
-    /// `(n: Nat)` after a declaration's name — the index it carries
-    /// (`02-core-calculus.md` §1.5).
-    ///
-    /// Exactly one binder, because a type carries exactly one index: the
-    /// elaborated form holds a single index term and `Pc(12)` writes a single
-    /// expression, so a comma here would parse a telescope nothing can
-    /// represent. A second binder is left to `expect` to report against the
-    /// `)` it was looking for, which points at the comma the author wrote.
-    ///
-    /// The binder's type is an ordinary type expression rather than one of
-    /// §1.5's three sorts spelled out. Which types may stand here is a question
-    /// about what a *sort* is — whether its values can be read as numbers — and
-    /// that is registered, not syntactic; a grammar that listed three names
-    /// would be a fourth place obliged to agree with the other three.
-    pub(super) fn index_param(&mut self) {
-        self.start(SyntaxKind::IndexParam);
-        self.bump(); // `(`
-        self.expect(SyntaxKind::Identifier, "an index name");
-        self.expect(SyntaxKind::Colon, "`:`");
-        self.type_expr();
-        self.expect(SyntaxKind::RParen, "`)`");
         self.finish();
     }
 

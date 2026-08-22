@@ -82,14 +82,12 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
             return Err(Refusal::BeyondUniverses { at: data.origin }.into());
         }
         uniform(family)?;
-        let index = index_binder(&mut elaborator, &Scope::new(&closed), family)?;
         let which = u32::try_from(which).unwrap_or(u32::MAX);
         families.push(Declared {
             counting: counting(which, &params, &built.constructors),
             name: Arc::clone(&family.name),
             visibility: family.visibility,
             constructors: Arc::from(built.constructors),
-            index,
         });
     }
 
@@ -113,7 +111,6 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 name,
                 visibility,
                 constructors,
-                index,
             } = declared;
             let constructors = constructors
                 .iter()
@@ -142,7 +139,6 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 name,
                 visibility,
                 constructors: Arc::from(constructors),
-                index,
             })
         })
         .collect::<Result<Vec<_>, ElabError>>()?;
@@ -235,52 +231,6 @@ fn telescope(
         binders.push(Parameter::written(Arc::clone(&binder.name), ty));
     }
     Ok((binders, inner))
-}
-
-/// Elaborate the index a family declares, and refuse a sort §1.5 does not admit.
-///
-/// # Why it is elaborated closed
-///
-/// An index sort is `Nat`, an exact `Ratio`, or a finite literal enum, and all
-/// three are *closed* types. So the binder is read with nothing in scope — not
-/// the group's parameters and not the families — and a sort that wanted either
-/// would be refused for naming something that is not there before it was
-/// refused for not being a sort. That is what lets a use site evaluate the
-/// stored type under whatever scope it happens to be in, which is what
-/// `indexed_type_formation` does.
-///
-/// # Why the check is `convert`'s own predicate
-///
-/// [`crate::elaboration::convert::is_index_sort`] is what decides, at a comparison, whether
-/// a variable standing in an index has a sort at all. Asking it here rather
-/// than listing the admissible types again means the declaration and the
-/// comparison cannot disagree about what a sort is: an index the declaration
-/// admitted is one [`crate::kernel::index`] can read, by construction rather than by
-/// two lists kept in step.
-///
-/// # Errors
-///
-/// [`Refusal::NotAnIndexSort`] for a binder at any other type, and otherwise as
-/// [`crate::check`].
-fn index_binder(
-    elaborator: &mut Elaborator,
-    closed: &Scope,
-    family: &RawFamily,
-) -> Result<Option<Parameter>, ElabError> {
-    let Some(binder) = family.index.as_ref() else {
-        return Ok(None);
-    };
-    let (ty, _) = elaborator.check_type(closed, &binder.ty)?;
-    let sort = closed.eval(elaborator.meter(), &ty)?;
-    if !crate::elaboration::convert::is_index_sort(&sort) {
-        return Err(Refusal::NotAnIndexSort {
-            binder: Arc::clone(&binder.name),
-            ty: Arc::clone(&family.name),
-            at: binder.ty.origin(),
-        }
-        .into());
-    }
-    Ok(Some(Parameter::written(Arc::clone(&binder.name), ty)))
 }
 
 /// The scope with already-elaborated binders assumed.
@@ -698,11 +648,6 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
     let under = bound.saturating_add(1);
     match term.shape() {
         Shape::Var(index) => watched.holds(depth.saturating_add(bound), *index).then_some(here),
-        // Both halves, for the reason `class::occurrences` gives: an index is an
-        // ordinary term and a declaration binder it mentions is mentioned.
-        Shape::Indexed { ty, index } => {
-            mentions(ty, watched, depth, bound).or_else(|| mentions(index, watched, depth, bound))
-        }
         Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => None,
         // Whatever sits outside the binder is read where the binder is; the
         // body is read one binder in. Which subterms those are is the

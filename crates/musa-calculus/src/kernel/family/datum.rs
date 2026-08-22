@@ -72,10 +72,6 @@ fn read(globals: &Globals, term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Meta(_) => None,
-        // An indexed type is a *type*, and a type is not data a δ-rule reads. It
-        // reaches here only in a signature, never in an argument position, and
-        // "not data" is this function's ordinary answer rather than an error.
-        Shape::Indexed { .. } => None,
         Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral),
         Shape::Named { ref name, role } => {

@@ -1,7 +1,7 @@
 ---
 id: 151
 slug: delete-the-index-stratum
-status: in-progress
+status: done
 depends_on: [147]
 phase: 3
 ---
@@ -63,20 +63,20 @@ gaining any.
 tracks, bindings, seed and options — never a core term — so no artifact contains a type and nothing was protected.
 Prompt 144 already wrote this down; this prompt is where it is relied on.
 
-**The two written forms are not one decision.** `git log -S` says both came in with the stratum —
-`IndexedType` at `d1b99d73` and `IndexParam` at `7cf258e0` — so neither is grammar that predates it, and "delete the
-stratum" reaches them both unless something else keeps one. Something does keep one, and nothing keeps the other.
+**The two written forms are not one decision.** `git log -S` says both came in with the stratum — `IndexedType` at
+`d1b99d73` and `IndexParam` at `7cf258e0` — so neither is grammar that predates it, and "delete the stratum" reaches
+them both unless something else keeps one. Something does keep one, and nothing keeps the other.
 
-- **`T(i)` at a use site stays, and lowers to an application.** Design's replacement is `Pc : Nat → Type 0` and
-  `Pc(12)` read as `Pc 12`, and `T(i)` is the only spelling in the surface that applies a type constructor to a
-  *value*: `Pc<A>` is the type-argument form and `applied_type` already owns it. Delete `IndexedType` and the
-  replacement this prompt argues for becomes unwritable. So `Lowering::indexed_type` produces `Raw::app` instead of
-  `Raw::indexed`, and the node keeps its name and its highlight class. What changes for an author is only which
-  sentence refuses a head that takes no argument.
+- **`T(i)` at a use site stays, and lowers to an application.** Design's replacement is `Pc : Nat → Type 0` and `Pc(12)`
+  read as `Pc 12`, and `T(i)` is the only spelling in the surface that applies a type constructor to a *value*: `Pc<A>`
+  is the type-argument form and `applied_type` already owns it. Delete `IndexedType` and the replacement this prompt
+  argues for becomes unwritable. So `Lowering::indexed_type` produces `Raw::app` instead of `Raw::indexed`, and the node
+  keeps its name and its highlight class. What changes for an author is only which sentence refuses a head that takes no
+  argument.
 - **`data Pc(n : Nat)` goes.** An index parameter declares a stratum that no longer exists, and there is no
   non-speculative reading left for it: making it an ordinary value parameter of the family is a decision about
-  parameterized families, which is prompt 156's and which Stop below forbids here. A parse node nothing can lower is
-  the drift this repo forbids, so `IndexParam` goes from the parser, the AST, the highlight and keyword tables, and
+  parameterized families, which is prompt 156's and which Stop below forbids here. A parse node nothing can lower is the
+  drift this repo forbids, so `IndexParam` goes from the parser, the AST, the highlight and keyword tables, and
   `editors/tree-sitter-musa/grammar.js`.
 
 The drift law stays green without being asked to, and that is checkable rather than hoped for: it writes the real

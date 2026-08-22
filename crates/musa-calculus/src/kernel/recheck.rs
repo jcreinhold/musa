@@ -127,9 +127,6 @@ pub(crate) fn universe_of(term: &Term) -> Result<Sort, CoreError> {
         | Shape::App { .. }
         | Shape::Record(_)
         | Shape::Project { .. } => Ok(Sort::ZERO),
-        // An indexed type is at the level of what it refines. The index is a
-        // value, not a type, so it contributes no level at all.
-        Shape::Indexed { ty, .. } => universe_of(ty),
     }
 }
 
@@ -284,7 +281,6 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
                 | Form::Record(_)
                 | Form::Lit(_)
                 | Form::Numeral(_)
-                | Form::Indexed { .. }
                 | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
             }
         }
@@ -329,13 +325,9 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
                 | Form::Record(_)
                 | Form::Lit(_)
                 | Form::Numeral(_)
-                | Form::Indexed { .. }
                 | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
             }
         }
-        // §1.5: the wrapper is not a parameter, so an indexed type stands where
-        // the type it refines stands.
-        Shape::Indexed { ty, .. } => infer(cx, meter, ty),
         // `Checked` is what stops one arriving; reaching this means a caller
         // went around it.
         Shape::Meta(meta) => Err(Malformed::UnsolvedMeta(meta.id()).into()),
@@ -428,7 +420,6 @@ fn universe(cx: &Cx, meter: &mut Meter, ty: &Term) -> Result<Sort, CoreError> {
         | Form::Record(_)
         | Form::Lit(_)
         | Form::Numeral(_)
-        | Form::Indexed { .. }
         | Form::Neutral(_) => Err(Malformed::NotAType.into()),
     }
 }

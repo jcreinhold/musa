@@ -166,8 +166,7 @@ impl Elaborator {
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
-            | Shape::Project { .. }
-            | Shape::Indexed { .. } => None,
+            | Shape::Project { .. } => None,
         };
         let head = match bare {
             Some(params) => self.metas(scope, here, head, params)?,

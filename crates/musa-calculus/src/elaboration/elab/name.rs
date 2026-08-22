@@ -264,8 +264,7 @@ impl Elaborator {
                 | Shape::App { .. }
                 | Shape::RecordType(_)
                 | Shape::Record(_)
-                | Shape::Project { .. }
-                | Shape::Indexed { .. } => 0,
+                | Shape::Project { .. } => 0,
             };
             return self.metas(scope, here, built, params);
         }

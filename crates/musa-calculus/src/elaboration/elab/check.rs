@@ -234,7 +234,6 @@ impl Elaborator {
             | RawShape::Numeral { .. }
             | RawShape::Universe(_)
             | RawShape::Pi { .. }
-            | RawShape::Indexed { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }
             | RawShape::RecordType(_)

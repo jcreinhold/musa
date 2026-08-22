@@ -270,13 +270,6 @@ fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[&Nam
             walk(function, bound);
             walk(argument, bound);
         }
-        // Both halves: a refined type may name a declaration on either side —
-        // `Row(n)` names `Row`, and an index expression may name a definition
-        // that computes one — and a missing edge is a missing dependency.
-        RawShape::Indexed { ty, index } => {
-            walk(ty, bound);
-            walk(index, bound);
-        }
         RawShape::Call { function, arguments } => {
             walk(function, bound);
             for argument in arguments.iter() {

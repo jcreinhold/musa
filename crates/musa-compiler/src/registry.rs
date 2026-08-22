@@ -102,9 +102,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, LazyLock};
 
-use musa_calculus::{
-    Base, Builtin, Cx, Datum, ElabError, Literal, Operator, Origin, Payload, Refusal, Registry, Sort, Term,
-};
+use musa_calculus::{Base, Builtin, Cx, Datum, ElabError, Literal, Origin, Payload, Refusal, Registry, Sort, Term};
 #[cfg(test)]
 use musa_calculus::{Index, Raw, RawArm, RawPattern};
 
@@ -159,22 +157,6 @@ where
     fn as_any(&self) -> &dyn Any {
         self
     }
-}
-
-/// One `Ratio` literal, as the exact fraction §1.5's index language works in.
-///
-/// [`musa_calculus::Measures`] registered on the `Ratio` base type. The
-/// downcast is the same one every δ-rule over a rational already does; `None`
-/// is a literal that is not one, which the core reads as "not an index".
-///
-/// `Nat` registers nothing, and needs to: a counting family holds its count in
-/// the core's own `Numeral`, so §5.8's opacity never arises for it.
-fn exact_index(literal: &Literal) -> Option<(i128, i128)> {
-    let value = literal
-        .payload()
-        .as_any()
-        .downcast_ref::<Domain<num_rational::Ratio<i64>>>()?;
-    Some((i128::from(*value.0.numer()), i128::from(*value.0.denom())))
 }
 
 /// The literal holding `value` at base type `ty`.
@@ -418,11 +400,7 @@ fn bases() -> Vec<Base> {
         // is δ; `Text` is opaque printable text, which is what lets it be the
         // error half of a `Result` without giving a builtin a second way to say
         // what went wrong.
-        // `Ratio` also carries the rule for reading one of its literals as an
-        // **index** (`02-core-calculus.md` §1.5). D1 keeps a payload opaque to
-        // the core, so the compiler that put the fraction in is the only party
-        // that can take it out, and `Bar(3/4)` is the program that asks.
-        storable("Ratio").measuring(exact_index),
+        storable("Ratio"),
         storable("Text"),
         // The index on the two tagged rationals: an enumeration in everything
         // but its representation, inert because nothing matches on it and a
@@ -948,44 +926,6 @@ fn syntax_carrier() -> Builtin {
 
 /// Every compiler-owned δ operation, as a core builtin.
 ///
-/// Which of `02-core-calculus.md` §1.5's index operators an operation spells.
-///
-/// Five rows, and the absences carry as much as the entries.
-///
-/// `nat_sub` is not here because it answers `Option<Nat>`: a subtraction that
-/// can fall off the floor is not a `Nat`, so it cannot stand in an index
-/// position at all, and tagging it would claim a reading the type never admits.
-/// `ratio_div` is not here because §1.5's grammar has no division —
-/// multiplication is *by a literal*, which is what keeps an index a linear form.
-/// `duration_add` and the rest of the tagged arithmetic are not here because a
-/// `Duration` carries a coordinate **parameter** and is a different type from
-/// the `Ratio` an index is drawn from.
-///
-/// Only an *open* application is ever read through one of these. A δ-rule fires
-/// as soon as its arguments are canonical, so `2 + 3` has already reduced to `5`
-/// before any index is compared; what stays stuck is `p + q` under a variable,
-/// which is §1.5's `follow(a: Bar(p), b: Bar(q)) -> Bar(p + q)`.
-///
-/// Written as three questions rather than as one match over every operation,
-/// because untagged is the *default* and not the leftover case: an operation
-/// added later is not an index operator until someone decides it is one, and a
-/// match that had to name all hundred-odd would make that decision look like an
-/// oversight whenever it went unmade.
-fn indexes(operation: crate::phase::Builtin) -> Option<Operator> {
-    use crate::phase::Builtin as Operation;
-
-    if matches!(operation, Operation::NatAdd | Operation::RatioAdd) {
-        return Some(Operator::Add);
-    }
-    if matches!(operation, Operation::RatioSub) {
-        return Some(Operator::Subtract);
-    }
-    if matches!(operation, Operation::NatMul | Operation::RatioMul) {
-        return Some(Operator::Multiply);
-    }
-    None
-}
-
 /// Two tables, kept two. `BUILTIN_OWNERSHIP` is the source language's and
 /// `SYNTAX_OWNERSHIP` is the expansion phase's, and §5.9 makes that separation
 /// load-bearing: nothing in the phase registry is looked up when ordinary source
@@ -1015,10 +955,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
             musa_calculus::Family::Delta,
             rule,
         );
-        built.push(match indexes(entry.operation) {
-            Some(operator) => declared.indexing(operator),
-            None => declared,
-        });
+        built.push(declared);
     }
     let mut minter = crate::infer::Minter::default();
     for entry in &SYNTAX_OWNERSHIP {

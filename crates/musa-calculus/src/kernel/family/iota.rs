@@ -231,13 +231,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
                 built.get(params..).unwrap_or_default().to_vec(),
             )
         }
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Indexed { .. }
-        | Form::Lit(_) => {
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) | Form::Lit(_) => {
             return Ok(None);
         }
     };

@@ -168,20 +168,6 @@ pub(crate) enum Form {
     /// this, and the two are unequal for the reason any two different normal
     /// forms are.
     Numeral(crate::kernel::family::Numeral),
-    /// `T(i)` — a type carrying an index (§1.5).
-    ///
-    /// Neither canonical nor neutral in the usual sense, and it does not need
-    /// to be either: nothing eliminates an indexed type, so it never blocks a
-    /// spine and never reduces. It exists in the semantic domain for one
-    /// reason — [`crate::elaboration::convert`] compares *values*, so an indexed type conversion
-    /// has to survive evaluation to be asked about — and [`crate::kernel::quote`] drops
-    /// it on the way back out, which is where §1.5's erasure lives.
-    Indexed {
-        /// The type being refined.
-        ty: Arc<Value>,
-        /// The index it is refined by.
-        index: Arc<Value>,
-    },
     Neutral(Arc<Neutral>),
 }
 
