@@ -57,7 +57,7 @@ impl Elaborator {
                     }
                     .into());
                 }
-                let def = crate::kernel::program::one(defined);
+                let def = crate::kernel::program::one(&defined);
                 return self.used(scope, here, &def);
             }
             // A namespaced member before the general report, and only after

@@ -201,11 +201,16 @@ impl Elaborator {
             RawShape::Match { subjects, arms } => {
                 crate::elaboration::case::compile(self, scope, here, subjects, arms, ty).map(Some)
             }
+            // A `rec` at a definition's top is compiled where it stands; a
+            // `rec` written *inside* a term closes over the binders around it,
+            // which is a thing no global name can be, so it is lifted out to
+            // one first (prompt 155aa). `lift` decides by the scope it is
+            // handed, which is the only place the difference shows.
             RawShape::Rec {
                 name,
                 ty: written,
                 body,
-            } => crate::elaboration::rec::define(self, scope, here, name, written, body, ty).map(Some),
+            } => crate::elaboration::rec::lift(self, scope, here, name, written, body, ty).map(Some),
             // §2.1's spine in a checking position, for the one call that
             // needs it: an argument the walk will defer has nothing inside the
             // call to type it, and the position the call stands in is the last

@@ -175,6 +175,13 @@ pub(crate) struct Elaborator {
     generalized_levels: Vec<crate::kernel::sort::SortVar>,
     /// The next level variable's identity, numbered per declaration.
     next_level: u32,
+    /// The definition being elaborated, when one is.
+    ///
+    /// Only [`crate::elaboration::rec::lift`] reads it, and only to name what it
+    /// lifts after the definition the `rec` was written inside — a lifted
+    /// definition with no enclosing name would be an anonymous member of a
+    /// program somebody has to read.
+    declaring: Option<crate::kernel::term::Name>,
 }
 
 impl Elaborator {
@@ -188,7 +195,19 @@ impl Elaborator {
             created_levels: Vec::new(),
             generalized_levels: Vec::new(),
             next_level: 0,
+            declaring: None,
         }
+    }
+
+    /// Record which definition is being elaborated, for
+    /// [`crate::elaboration::rec::lift`]'s naming.
+    pub(crate) fn declaring(&mut self, name: &crate::kernel::term::Name) {
+        self.declaring = Some(std::sync::Arc::clone(name));
+    }
+
+    /// The definition being elaborated, if the caller said.
+    pub(crate) fn declared_name(&self) -> Option<crate::kernel::term::Name> {
+        self.declaring.clone()
     }
 
     /// The meter this elaboration is spending.

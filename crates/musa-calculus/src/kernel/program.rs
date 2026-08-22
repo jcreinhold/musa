@@ -105,6 +105,13 @@ pub(crate) struct Defined {
     pub(crate) ty_term: Term,
     /// Its value as written, likewise.
     pub(crate) value_term: Term,
+    /// Whether the elaborator lifted this out of a term rather than an author
+    /// writing it (`02-core-calculus.md` §1, prompt 155aa).
+    ///
+    /// A flag rather than a spelling test, because a reader of a [`Program`]
+    /// must not have to know how a lifted name is punctuated in order to tell
+    /// the document's own members from the ones the elaborator added.
+    pub(crate) lifted: bool,
 }
 
 impl Defined {
@@ -142,6 +149,24 @@ impl Program {
     /// Every definition in the group, in the order they were written.
     pub(crate) fn members(&self) -> &[Arc<Defined>] {
         &self.members
+    }
+
+    /// The definitions the *elaborator* put here, in the order it lifted them:
+    /// what each is called, and whether it may be named outside the module its
+    /// parent was written in.
+    ///
+    /// A `rec` written inside a term is lifted to a top-level definition
+    /// (`crates/musa-calculus/src/elaboration/rec.rs`, prompt 155aa), so a
+    /// program may hold members no source line wrote. Reported from a flag the
+    /// lift set rather than from the shape of the name, because a caller
+    /// telling the two apart by looking for a `#` would be a second rule to
+    /// keep in step with the first.
+    pub fn lifted(&self) -> Vec<(Name, Visibility)> {
+        self.members
+            .iter()
+            .filter(|defined| defined.lifted)
+            .map(|defined| (Arc::clone(&defined.name), defined.visibility))
+            .collect()
     }
 }
 

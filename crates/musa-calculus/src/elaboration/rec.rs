@@ -85,6 +85,36 @@
 //! oversight: its hypotheses are the recursion *it* generated, over its own
 //! subject, and answer that match rather than this definition. Reading them as
 //! the definition's would be the one way this rewrite could be unsound.
+//!
+//! # A `rec` in a term is lifted first
+//!
+//! Everything above is [`define`], and a declaration's own body is what
+//! [`define`] was written for. A `rec` written *inside* a term — `let walk =
+//! rec walk : … = …` — closes over the binders around it, and
+//! `kernel/program.rs`'s module doc says why that has nowhere to go: a
+//! definition is a global name, a de Bruijn binder refers outward only, and
+//! §1.3 refuses the fixed point that would let a local recursion stand without
+//! a name.
+//!
+//! So [`lift`] makes it one. It runs [`define`] first, unchanged — this is a
+//! relocation and not a second way to compile a recursion — and then, when what
+//! it was handed is a term-position `rec`, abstracts the result over **the
+//! whole context**, declares that as an auxiliary definition, and leaves the
+//! expression as that definition applied to the binders it abstracted. Peyton
+//! Jones ch. 13, and ch. 14 for the recursive case — §14.0 is explicit that its
+//! subject is recursive supercombinators *without using Y*.
+//!
+//! Two choices in that sentence are load-bearing. **The whole context, not the
+//! body's free variables**: the narrower rule is the textbook one and costs a
+//! free-variable analysis over raw syntax that would have to agree with the
+//! elaborator's own scoping — a second resolver, which
+//! [`Globals::definition`](crate::kernel::context::Globals::definition) refuses
+//! for exactly this reason — while abstracting the context is decided by the
+//! scope and is the same walk [`crate::kernel::meta`] already performs. **And
+//! nothing is shifted**: a body elaborated under `n` binders already *is* the
+//! body of `n` λs, because de Bruijn indices are relative, which is what makes
+//! the whole transformation expressible in a crate with no substitution on
+//! terms (§3).
 
 use std::sync::Arc;
 
@@ -97,7 +127,130 @@ use crate::kernel::scope::Scope;
 use crate::kernel::term::{Filling, Name, Term};
 use crate::kernel::value::Value;
 
-/// Elaborate `rec name : ty = body` against `goal`.
+/// Elaborate a `rec` written inside a term, by lifting it out of that term.
+///
+/// The definition it becomes is abstracted over every binder in `scope`, and
+/// what this hands back is that definition applied to them — so the term the
+/// caller gets is an ordinary application of an ordinary name, and the
+/// recursion is somewhere a definition body can be. See the module docs.
+///
+/// **Where there is no document being declared, this is [`define`].** A
+/// `rec` elaborated by a bare [`crate::check`] has no [`Program`] to join, and
+/// a term naming a definition nobody installed would not evaluate. That path
+/// keeps the in-place compilation it has always had, which is the same term
+/// either way for as long as `#ih` is what compiles a recursion. Prompt 155a
+/// is where the two stop agreeing and the boundary has to be decided again.
+///
+/// [`Program`]: crate::kernel::program::Program
+///
+/// # Errors
+///
+/// [`Refusal::UncheckedRecursion`] as [`define`], which runs first, and
+/// otherwise as [`crate::check`].
+pub(crate) fn lift(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    here: Origin,
+    name: &Name,
+    ty: &Raw,
+    body: &Raw,
+    goal: &Value,
+) -> Result<Term, ElabError> {
+    let globals = scope.cx().globals().clone();
+    let inner = define(elaborator, scope, here, name, ty, body, goal)?;
+    if !globals.lifts() || own_body(elaborator, scope, name) {
+        return Ok(inner);
+    }
+    let telescope = scope.telescope();
+    let arity = u32::try_from(telescope.len()).unwrap_or(u32::MAX);
+    // The type is the goal under the same telescope of Πs the value is under
+    // λs, quoted binder by binder at the depth each one stands at — the walk
+    // `Elaborator::fresh_meta` performs to close an unknown over its context.
+    let mut ty_term = crate::kernel::quote::quote_type(
+        elaborator.meter(),
+        crate::kernel::term::Level(arity),
+        crate::kernel::quote::Mode::Keep,
+        goal,
+    )?;
+    let mut value_term = inner;
+    for (position, binder) in telescope.iter().enumerate().rev() {
+        let depth = crate::kernel::term::Level(u32::try_from(position).unwrap_or(0));
+        let domain =
+            crate::kernel::quote::quote_type(elaborator.meter(), depth, crate::kernel::quote::Mode::Keep, &binder.ty)?;
+        ty_term = Term::pi(here, Arc::clone(&binder.name), domain, ty_term);
+        value_term = Term::lam(here, Arc::clone(&binder.name), value_term);
+    }
+    // Zonked here as well as at the declaration, because the value stored now
+    // is what the term around this one will evaluate: a solution that arrived
+    // during this `rec` has to be in it already.
+    let ty_term = elaborator.zonk(&ty_term)?;
+    let value_term = elaborator.zonk(&value_term)?;
+    let env = crate::kernel::value::Env::under(globals.clone());
+    let evaluated_ty = crate::kernel::eval::eval(elaborator.meter(), &env, &ty_term)?;
+    let evaluated = crate::kernel::eval::eval(elaborator.meter(), &env, &value_term)?;
+    let lifted = Arc::new(crate::kernel::program::Defined {
+        name: lifted_name(elaborator, &globals, name),
+        // Unnameable by spelling and unnameable by rule: `#` is not an
+        // identifier character, and a lifted definition is nobody's export.
+        visibility: crate::kernel::visibility::Visibility::Private,
+        module: scope.cx().module(),
+        levels: Arc::from([]),
+        ty: Arc::new(evaluated_ty),
+        value: Arc::new(evaluated),
+        ty_term,
+        value_term,
+        lifted: true,
+    });
+    let mut term = Term::named_at(
+        here,
+        Arc::clone(&lifted.name),
+        crate::kernel::term::Role::Defined,
+        crate::kernel::sort::Levels::NONE,
+    );
+    globals.lift(&lifted);
+    // Outermost first, which is the order the λs were wrapped in, so binder `p`
+    // of the telescope is `arity - 1 - p` steps out from here.
+    for position in 0..arity {
+        let steps_out = arity.saturating_sub(position).saturating_sub(1);
+        term = Term::app(here, term, Term::var(here, crate::kernel::term::Index(steps_out)));
+    }
+    Ok(term)
+}
+
+/// Whether this `rec` **is** the definition being declared, rather than a term
+/// inside it.
+///
+/// `declare_program` gives a self-naming declaration its `rec` itself, so the
+/// arm this runs under is reached for both, and lifting the declaration's own
+/// body would produce a definition whose whole content is a second definition.
+/// The two are told apart by the only thing that distinguishes them: a `rec`
+/// standing under no binders and bearing the declared name is the one that was
+/// built rather than written.
+///
+/// A `rec` under no binders bearing some *other* name is a term like any other
+/// and is lifted, which costs an extra member and buys the invariant prompt
+/// 155a needs — that every recursion in a declared document is a definition.
+fn own_body(elaborator: &Elaborator, scope: &Scope, name: &Name) -> bool {
+    scope.depth().0 == 0 && elaborator.declared_name().is_some_and(|declared| *declared == **name)
+}
+
+/// What to call a lifted definition: the enclosing definition, then the name
+/// the author gave the `rec`.
+///
+/// `#` is what makes it safe — no source identifier holds one, so a lifted
+/// definition cannot be named, shadowed, or collided with by any program. The
+/// count is appended only when one definition lifts two `rec`s of the same
+/// name, which is the one way the pair can repeat.
+fn lifted_name(elaborator: &Elaborator, globals: &crate::kernel::context::Globals, name: &Name) -> Name {
+    let enclosing = elaborator.declared_name().unwrap_or_else(|| Arc::from("_"));
+    let first: Name = Arc::from(format!("{enclosing}#{name}"));
+    if globals.defined(&first).is_none() {
+        return first;
+    }
+    Arc::from(format!("{first}{}", globals.lifted().len()))
+}
+
+/// Elaborate `rec name : ty = body` against `goal`, at a definition's top.
 ///
 /// # Errors
 ///

@@ -397,7 +397,7 @@ impl Elaborator {
             }
             .into());
         }
-        let def = crate::kernel::program::one(defined);
+        let def = crate::kernel::program::one(&defined);
         self.used(scope, here, &def).map(Some)
     }
 

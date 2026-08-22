@@ -78,6 +78,25 @@ struct Tables {
     /// — a leaf calculus that enumerated the base types would make every new
     /// musical domain a core amendment.
     externs: Option<Arc<Registry>>,
+    /// The definitions [`crate::elaboration::rec::lift`] pulled out of terms
+    /// while this document was being declared.
+    ///
+    /// **The one table that is shared rather than persistent**, and the reason
+    /// is what a lifted definition *is*. Every other extension is branch-local
+    /// on purpose — an elaborator descends into two branches and neither may see
+    /// the other's declarations — but a lifted definition is created deep inside
+    /// a term and has to be nameable by the term *around* it, which is a scope
+    /// the lift has already returned from. Appending to a shared table is the
+    /// only way that reference resolves.
+    ///
+    /// It is safe here and would not be for any other table, because a lifted
+    /// name holds a `#` and no source identifier may: two branches cannot
+    /// collide, nothing shadows one, and the table only grows. It is created
+    /// per document by [`Cx::lifting`] and read once by
+    /// [`declare_program`](crate::declare_program), which moves what it holds
+    /// into the [`Program`](crate::Program) it returns; the table itself goes
+    /// out of scope with the declaration that made it.
+    lifted: Option<Arc<std::sync::RwLock<Vec<Arc<Defined>>>>>,
 }
 
 impl Globals {
@@ -88,6 +107,43 @@ impl Globals {
     /// scope.
     fn declaring(&self, group: &Arc<Group>) -> Self {
         self.extended(|tables| tables.declared = tables.declared.push(Arc::clone(group)))
+    }
+
+    /// This table with a fresh, empty table for lifted definitions.
+    ///
+    /// One per document. See [`Tables::lifted`] for why it is shared.
+    fn lifting(&self) -> Self {
+        self.extended(|tables| tables.lifted = Some(Arc::new(std::sync::RwLock::new(Vec::new()))))
+    }
+
+    /// Record a definition lifted out of a term, so the term around it can name
+    /// it.
+    ///
+    /// A no-op with no table, which is a context nobody is declaring a document
+    /// in. The elaborator asks [`Self::lifts`] first and does not lift there —
+    /// see [`lift`](crate::elaboration::rec::lift) — so this arm is reached only
+    /// by a caller that stopped asking.
+    pub(crate) fn lift(&self, defined: &Arc<Defined>) {
+        let Some(lifted) = self.0.as_deref().and_then(|tables| tables.lifted.as_deref()) else {
+            return;
+        };
+        if let Ok(mut held) = lifted.write() {
+            held.push(Arc::clone(defined));
+        }
+    }
+
+    /// Whether this context is declaring a document, and so can hold a lift.
+    pub(crate) fn lifts(&self) -> bool {
+        self.0.as_deref().is_some_and(|tables| tables.lifted.is_some())
+    }
+
+    /// Everything lifted so far, in the order it was lifted.
+    pub(crate) fn lifted(&self) -> Vec<Arc<Defined>> {
+        self.0
+            .as_deref()
+            .and_then(|tables| tables.lifted.as_deref())
+            .and_then(|lifted| lifted.read().ok().map(|held| held.clone()))
+            .unwrap_or_default()
     }
 
     /// This table with one more top-level definition in scope.
@@ -131,7 +187,7 @@ impl Globals {
                     .map_or(Definition::Undeclared, |found| Definition::Declared(found.at(level)))
             }
             Role::Defined => Self::defined_in(tables, name).map_or(Definition::Undeclared, |defined| {
-                Definition::Defined(crate::kernel::program::one(defined))
+                Definition::Defined(crate::kernel::program::one(&defined))
             }),
             Role::Base => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
                 Some(crate::kernel::base::Extern::Base(base)) => Definition::Base(base.clone()),
@@ -158,7 +214,7 @@ impl Globals {
     /// asks what a spelling *could* have meant rather than what it reduces to:
     /// the elaborator, which reports a private one rather than resolving past
     /// it.
-    pub(crate) fn defined(&self, name: &str) -> Option<&Arc<Defined>> {
+    pub(crate) fn defined(&self, name: &str) -> Option<Arc<Defined>> {
         Self::defined_in(self.0.as_deref()?, name)
     }
 
@@ -187,8 +243,15 @@ impl Globals {
         tables.declared.iter().find_map(|group| Found::named(group, name))
     }
 
-    fn defined_in<'a>(tables: &'a Tables, name: &str) -> Option<&'a Arc<Defined>> {
-        tables.definitions.iter().find(|defined| *defined.name == *name)
+    fn defined_in(tables: &Tables, name: &str) -> Option<Arc<Defined>> {
+        if let Some(found) = tables.definitions.iter().find(|defined| *defined.name == *name) {
+            return Some(Arc::clone(found));
+        }
+        // A lifted definition answers here and nowhere else: it is not among the
+        // document's written members until the declaration finishes, and the
+        // term that names it is being elaborated now.
+        let held = tables.lifted.as_deref()?.read().ok()?;
+        held.iter().find(|defined| *defined.name == *name).map(Arc::clone)
     }
 
     /// This table with one field changed.
@@ -402,8 +465,16 @@ impl Cx {
     }
 
     /// What `name` names among the definitions in scope, most recent first.
-    pub(crate) fn definition(&self, name: &str) -> Option<&Arc<Defined>> {
+    pub(crate) fn definition(&self, name: &str) -> Option<Arc<Defined>> {
         self.globals().defined(name)
+    }
+
+    /// This context with a fresh table for the definitions a lift produces.
+    ///
+    /// [`declare_program`](crate::declare_program) opens one per document. See
+    /// [`Tables::lifted`].
+    pub(crate) fn lifting(&self) -> Self {
+        self.under(self.globals().lifting())
     }
 
     /// This context extended by an assumption at type `ty`, written at

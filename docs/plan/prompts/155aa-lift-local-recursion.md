@@ -1,7 +1,7 @@
 ---
 id: 155aa
 slug: lift-local-recursion
-status: pending
+status: done
 depends_on: [155]
 phase: 3
 ---

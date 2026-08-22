@@ -57,7 +57,15 @@ use crate::kernel::value::Env;
 /// declaration is ordinary elaboration and fails in the ordinary ways.
 pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, crate::Spend), ElabError> {
     let nodes = graph(program);
-    let mut extended = cx.clone();
+    // The document's lifting table, opened here and nowhere else. A `rec`
+    // written inside a body becomes a definition
+    // ([`lift`](crate::elaboration::rec::lift)), and it has to answer a name
+    // lookup *during* that same body's elaboration — the parent's value is
+    // evaluated and re-checked before this loop moves on, and both read the
+    // name the lift installed. So the table is shared and appended to rather
+    // than threaded back out, which [`Globals`](crate::kernel::context::Globals)
+    // justifies where it is declared.
+    let mut extended = cx.lifting();
     // Positions rather than the values themselves, because the elaboration
     // order is not the written order and the written order is what comes back.
     let mut members: Vec<(usize, Arc<Defined>)> = Vec::with_capacity(program.definitions.len());
@@ -74,8 +82,16 @@ pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Prog
     // the document's own list, and the order the analysis found is a fact about
     // this call rather than about the group.
     members.sort_by_key(|&(index, _)| index);
+    // The lifted definitions come after the written ones, in the order they
+    // were lifted. They are members of the program a caller brings into scope
+    // — nothing else installs them, and the terms that name them are already
+    // in the bodies above.
     let declared = Arc::new(Program {
-        members: members.into_iter().map(|(_, defined)| defined).collect(),
+        members: members
+            .into_iter()
+            .map(|(_, defined)| defined)
+            .chain(extended.globals().lifted())
+            .collect(),
     });
     Ok((declared, spent))
 }
@@ -163,6 +179,9 @@ impl Written {
 fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, crate::Spend), ElabError> {
     let inner = held.module.map_or_else(|| cx.clone(), |module| cx.in_module(module));
     let mut elaborator = Elaborator::new(&inner);
+    // What a `rec` inside this body is lifted to is named after this
+    // definition, so the lift has to know which one it is in.
+    elaborator.declaring(&held.name);
     let scope = Scope::new(&inner);
     let (ty_term, value_term) = match &held.ty {
         Some(written) => {
@@ -241,6 +260,7 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
         value: Arc::new(value),
         ty_term,
         value_term,
+        lifted: false,
     };
     Ok((defined, elaborator.spent()))
 }
