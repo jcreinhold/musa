@@ -144,7 +144,7 @@ fn conversion_agrees_with_normalization() {
 fn conversion_at_universes_is_equality_and_not_inclusion() {
     let cx = Cx::new();
     let zero = Term::universe(HERE, Sort::ZERO);
-    let one = Term::universe(HERE, Sort::One);
+    let one = Term::universe(HERE, Sort::ONE);
     assert_eq!(convertible_types(&cx, &zero, &zero), Ok(true));
     assert_eq!(
         convertible_types(&cx, &zero, &one),

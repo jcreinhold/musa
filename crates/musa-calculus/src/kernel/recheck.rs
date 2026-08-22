@@ -94,31 +94,30 @@ pub(crate) fn disagreement(cx: &Cx, ty: &Value, term: &Term) -> Option<Malformed
 
 /// The universe a checked type inhabits.
 ///
-/// §1.1 fixes two universes, so this is a structural walk rather than an
-/// inference: `Type l` inhabits `succ l` — and `Type 1`'s is the level there is
-/// none of — a function or record type joins its parts, and every other shape a
-/// checked type can have stands at `Type 0`: an enumeration, a base type, a
-/// variable of type `Type 0`, an application of either.
+/// A structural walk rather than an inference: `Type ℓ` inhabits `ℓ+1`, a
+/// function or record type joins its parts, and every other shape a checked
+/// type can have stands at `Type 0`: an enumeration, a base type, a variable of
+/// type `Type 0`, an application of either.
 ///
-/// Prompt 148 filed this under the elaborator because the `Type 1` case
-/// answered a `Refusal`. It is the kernel's rule, and here it answers the
-/// kernel's word for a term nobody should have built.
+/// Prompt 148 filed this under the elaborator because the ceiling case answered
+/// a `Refusal`. Prompt 152 deleted the ceiling — `succ` is total — so what is
+/// left is the kernel's own rule, and it cannot fail.
 ///
 /// # Errors
 ///
-/// [`Malformed::BeyondUniverses`] at a `Type 1`: a type of types of types is
-/// the third universe the calculus does not have.
+/// None today. The signature keeps its `Result` because every caller is in one
+/// and because the shapes this walks are the shapes a `Term` can be.
 pub(crate) fn universe_of(term: &Term) -> Result<Sort, CoreError> {
     match term.shape() {
-        Shape::Universe(level) => level.succ().ok_or_else(|| Malformed::BeyondUniverses.into()),
+        Shape::Universe(level) => Ok(level.succ()),
         Shape::Bind {
             binder: Binder::Pi { ty, .. },
             body,
             ..
-        } => Ok(universe_of(ty)?.max(universe_of(body)?)),
+        } => Ok(universe_of(ty)?.max(&universe_of(body)?)),
         Shape::RecordType(fields) => fields
             .iter()
-            .try_fold(Sort::ZERO, |join, field| Ok(universe_of(&field.term)?.max(join))),
+            .try_fold(Sort::ZERO, |join, field| Ok(universe_of(&field.term)?.max(&join))),
         Shape::Meta(_)
         | Shape::Var(_)
         | Shape::Named { .. }
@@ -225,11 +224,16 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
         // The same four answers evaluation gives a name, asked for the type
         // rather than the value. Reading them here rather than evaluating and
         // asking the neutral keeps the rule readable as a rule.
-        Shape::Named { name, role } => {
+        Shape::Named { name, role, levels } => {
             let globals = cx.globals();
-            match globals.definition(name, *role) {
+            match globals.definition(name, role, levels) {
                 Definition::Declared(constant) => constant.ty(meter, globals),
-                Definition::Defined(def) => Ok(Value::clone(&def.ty())),
+                // The type *at the levels the term names*, which is this
+                // pass's universe-polymorphism obligation: a use that
+                // instantiated a declaration's parameters inconsistently
+                // derives a type the term around it does not accept, and the
+                // audit sees a [`Malformed::Mistyped`] rather than nothing.
+                Definition::Defined(def) => def.instance(meter, globals, levels).map(|(ty, _)| Value::clone(&ty)),
                 Definition::Base(base) => eval(meter, &crate::kernel::value::Env::under(globals.clone()), base.kind()),
                 Definition::Builtin(builtin) => {
                     eval(meter, &crate::kernel::value::Env::under(globals.clone()), builtin.ty())
@@ -238,10 +242,7 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
             }
         }
         Shape::Lit(constant) => literal_type(cx, meter, here, constant),
-        Shape::Universe(level) => Ok(Value::new(
-            here,
-            Form::Universe(level.succ().ok_or(Malformed::BeyondUniverses)?),
-        )),
+        Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.succ()))),
         Shape::Bind {
             binder: Binder::Pi { ty, .. },
             body,
@@ -251,7 +252,7 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
             let evaluated = Arc::new(eval(meter, cx.env(), ty)?);
             let under = cx.assumed(here, evaluated);
             let codomain = universe(&under, meter, body)?;
-            Ok(Value::new(here, Form::Universe(domain.max(codomain))))
+            Ok(Value::new(here, Form::Universe(domain.max(&codomain))))
         }
         Shape::Bind {
             binder: Binder::Let { ty, value },
@@ -288,7 +289,7 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
             let mut join = Sort::ZERO;
             let mut under = cx.clone();
             for Field { name: _, term: ty } in fields.iter() {
-                join = join.max(universe(&under, meter, ty)?);
+                join = join.max(&universe(&under, meter, ty)?);
                 let evaluated = Arc::new(eval(meter, under.env(), ty)?);
                 under = under.assumed(here, evaluated);
             }

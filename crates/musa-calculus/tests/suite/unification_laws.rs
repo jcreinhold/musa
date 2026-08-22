@@ -400,7 +400,7 @@ fn mentions_free_variable(term: &Term) -> bool {
 /// accepts, and nothing is solved or guessed to get there.
 #[test]
 fn a_universe_written_without_a_level_is_type_zero() {
-    let one = Term::universe(WRITTEN, Sort::One);
+    let one = Term::universe(WRITTEN, Sort::ONE);
     let term = check(&Cx::new(), &one, &Raw::any_universe(WRITTEN))
         .unwrap_or_else(|error| panic!("a bare universe checked at `Type 1`: {error}"));
     assert_eq!(

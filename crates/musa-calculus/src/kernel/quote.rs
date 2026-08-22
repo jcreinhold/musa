@@ -259,7 +259,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
         let value = unfolded.as_ref().unwrap_or(value);
         let here = value.origin;
         match &value.form {
-            Form::Universe(level) => Ok(Term::universe(here, *level)),
+            Form::Universe(level) => Ok(Term::universe(here, level.clone())),
             Form::Pi {
                 filling,
                 name,
@@ -322,7 +322,7 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
             // its normal form.
             Head::Def(which, _, _) => match which {
                 DefHead::Local(level) => Term::var(here, reading.index(*level)?),
-                DefHead::Global(def) => def.term(here),
+                DefHead::Global(def, levels) => def.term(here, levels.clone()),
             },
             // Reached only unsolved: a solved meta is forced before quotation,
             // and a spine whose head is solved forces whole.

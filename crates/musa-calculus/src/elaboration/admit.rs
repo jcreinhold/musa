@@ -178,7 +178,11 @@ impl Registry {
                     at: builtin.ty().origin(),
                 });
             }
-            Shape::Named { name, role: Role::Base } => {
+            Shape::Named {
+                name,
+                role: Role::Base,
+                ..
+            } => {
                 if self.named(name).is_none() {
                     return Err(Refusal::UnknownBase {
                         name: Arc::clone(name),
@@ -240,7 +244,10 @@ fn head_base(ty: &Term) -> Option<&Name> {
     while let Shape::App { function, .. } = head.shape() {
         head = function;
     }
-    if let Shape::Named { name, role: Role::Base } = head.shape() {
+    if let Shape::Named {
+        name, role: Role::Base, ..
+    } = head.shape()
+    {
         Some(name)
     } else {
         None

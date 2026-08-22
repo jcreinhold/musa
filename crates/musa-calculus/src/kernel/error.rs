@@ -41,8 +41,8 @@ use crate::kernel::term::{Index, Name, Term};
 ///
 /// A claim that is true on both sides of the line is stated on both sides, in
 /// each side's vocabulary, rather than moved down: `NotAFunction`,
-/// `NotARecord`, `NoSuchField`, `NotAType`, `Uninferable` and `BeyondUniverses`
-/// are each a [`Malformed`] *and* a [`crate::Refusal`], and
+/// `NotARecord`, `NoSuchField`, `NotAType` and `Uninferable` are each a
+/// [`Malformed`] *and* a [`crate::Refusal`], and
 /// [`Malformed::Mistyped`] stands beside [`crate::Refusal::Mismatch`] the same
 /// way. Two copies of a distinction that is genuinely two distinctions is
 /// not duplication.
@@ -128,15 +128,6 @@ pub enum Malformed {
     /// [`Checked`](crate::Checked) is a type and not a convention.
     #[error("metavariable ?{0} reached the kernel unsolved")]
     UnsolvedMeta(u32),
-    /// A type of types of types was asked for, and §1.1 fixes two universes.
-    ///
-    /// The kernel's word for it, and deliberately not
-    /// [`crate::Refusal::BeyondUniverses`], which is the elaborator's: that one
-    /// refuses a `Type 1` an *author* wrote in domain position. Reaching this
-    /// one means a finished term already past elaboration asked for the third
-    /// universe, which is a term nobody should have built.
-    #[error("a type of types of types was asked for, and there are two universes")]
-    BeyondUniverses,
     /// A term did not have the type the term around it required.
     ///
     /// The re-checker's one verdict, and the reason it is a [`Malformed`] and
@@ -212,4 +203,13 @@ pub enum Malformed {
     /// the table disagree, and the program that reached it was well typed.
     #[error("no builtin named `{0}` to carry a value into the position that accepts it")]
     UnregisteredCarrier(Name),
+    /// A use of a level-polymorphic definition named the wrong number of
+    /// levels.
+    ///
+    /// §1's parameters are generalized at the declaration and instantiated at
+    /// the use, so a term carrying some other count was assembled by something
+    /// that did not read the declaration it names — [`Self::UndeclaredName`]'s
+    /// defect one step later, and a caller defect for the same reason.
+    #[error("`{0}` was instantiated at the wrong number of universe levels")]
+    LevelArity(Name),
 }

@@ -544,7 +544,7 @@ impl Tree<'_, '_> {
         let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
         let motives = self.motives(scope, problem, &split)?;
 
-        let mut applied = Constant::recursor(&found.group, found.family, split.level).term(self.here);
+        let mut applied = Constant::recursor(&found.group, found.family, split.level.clone()).term(self.here);
         for param in &split.params {
             applied = Term::app(self.here, applied, param.clone());
         }

@@ -215,6 +215,15 @@ fn file(refusal: &Refusal) -> Filed {
                 ..one(Code::ConversionMismatch, mismatch.at)
             }
         }
+        // §1's hierarchy is non-cumulative, so two universes whose levels
+        // disagree are two types — the same code the conversion mismatch above
+        // files. The sentence spells the levels because nothing in the source
+        // does: an author writes `Type`, and which level it landed at was
+        // inferred rather than written.
+        Refusal::LevelMismatch { at, expected, found } => Filed {
+            said: Some(format!("expected universe level `{expected}`, found `{found}`")),
+            ..one(Code::ConversionMismatch, *at)
+        },
         Refusal::Private { at, .. } => one(Code::PrivateName, *at),
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
         Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),
@@ -237,7 +246,6 @@ fn file(refusal: &Refusal) -> Filed {
         Refusal::NotAFunction { at, .. }
         | Refusal::NotARecord { at, .. }
         | Refusal::NotAType { at, .. }
-        | Refusal::BeyondUniverses { at, .. }
         | Refusal::NotStorable { at, .. }
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
@@ -326,7 +334,8 @@ fn headed(term: &musa_calculus::Term) -> Option<(String, Vec<musa_calculus::Term
                 musa_calculus::Role::Base
                 | musa_calculus::Role::TypeConstructor
                 | musa_calculus::Role::Constructor
-                | musa_calculus::Role::Recursor(_),
+                | musa_calculus::Role::Recursor,
+            ..
         } => Some((name.to_string(), arguments)),
         _ => None,
     }

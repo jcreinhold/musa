@@ -164,7 +164,7 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
     let inner = held.module.map_or_else(|| cx.clone(), |module| cx.in_module(module));
     let mut elaborator = Elaborator::new(&inner);
     let scope = Scope::new(&inner);
-    let (ty, value) = match &held.ty {
+    let (ty_term, value_term) = match &held.ty {
         Some(written) => {
             let (ty, _) = elaborator.check_type(&scope, written)?;
             let expected = scope.eval(elaborator.meter(), &ty)?;
@@ -183,8 +183,8 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
             } else {
                 held.value.clone()
             };
-            let term = elaborator.run_check(&scope, &body, &expected)?;
-            (expected, term)
+            let term = elaborator.check_open(&scope, &body, &expected)?;
+            (ty, term)
         }
         None => {
             if recursive {
@@ -194,10 +194,18 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
                 }
                 .into());
             }
-            let (term, ty) = elaborator.run_infer(&scope, &held.value)?;
-            (scope.eval(elaborator.meter(), &ty)?, term)
+            elaborator.infer_written(&scope, &held.value)?
         }
     };
+    // The declaration boundary §1 generalizes at: what the type still mentions
+    // becomes a level parameter, and [`Elaborator::settled`] defaults the rest.
+    // Before the audit rather than after, because a parameter is not an unknown
+    // nothing determined — it is one every use site determines for itself.
+    let levels = elaborator.generalize_levels(&ty_term);
+    elaborator.settled()?;
+    let ty_term = elaborator.zonk(&ty_term)?;
+    let value_term = elaborator.zonk(&value_term)?;
+    let ty = scope.eval(elaborator.meter(), &ty_term)?;
     // The kernel's own reading of what elaboration just built, in debug builds
     // only. `TRUST.md` states the claim this enforces: elaboration is untrusted,
     // so a term it produced and the kernel rejects is a defect in this compiler
@@ -205,7 +213,7 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
     // later as a program that means something nobody wrote.
     #[cfg(debug_assertions)]
     {
-        let fault = crate::kernel::recheck::disagreement(&inner, &ty, &value);
+        let fault = crate::kernel::recheck::disagreement(&inner, &ty, &value_term);
         debug_assert!(
             fault.is_none(),
             "the kernel rejects the term elaboration built for `{}`: {fault:?}",
@@ -218,14 +226,21 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
     // laws keep the meaning they were calibrated with; uses of the definition
     // still evaluate to the folded reference, so nothing about sharing or
     // diagnostics changes.
-    let value = eval(elaborator.meter(), &Env::under(scope.cx().globals().clone()), &value)?;
+    let value = eval(
+        elaborator.meter(),
+        &Env::under(scope.cx().globals().clone()),
+        &value_term,
+    )?;
     let value = crate::kernel::eval::opened(elaborator.meter(), &value)?.unwrap_or(value);
     let defined = Defined {
         name: Arc::clone(&held.name),
         visibility: held.visibility,
         module: held.module,
+        levels,
         ty: Arc::new(ty),
         value: Arc::new(value),
+        ty_term,
+        value_term,
     };
     Ok((defined, elaborator.spent()))
 }

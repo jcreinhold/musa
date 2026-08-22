@@ -142,7 +142,7 @@ fn exhaustion_is_monotone_in_the_budget() {
 #[test]
 fn a_wide_term_is_not_a_deep_one() {
     let names: Vec<String> = (0..300).map(|field| format!("f{field}")).collect();
-    let one_up = Term::universe(HERE, Sort::One);
+    let one_up = Term::universe(HERE, Sort::ONE);
     let type0 = Term::universe(HERE, Sort::ZERO);
     let wide = Term::record_type(HERE, names.iter().map(|name| (name.as_str(), one_up.clone())));
 

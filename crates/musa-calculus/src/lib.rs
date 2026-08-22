@@ -108,7 +108,7 @@ pub use crate::kernel::family::{Constructor, Declared, Group, canonical};
 pub use crate::kernel::meta::MetaSource;
 pub use crate::kernel::origin::Origin;
 pub use crate::kernel::program::{Def, Program};
-pub use crate::kernel::sort::Sort;
+pub use crate::kernel::sort::{Levels, Sort, SortVar};
 pub use crate::kernel::term::Constraint;
 pub use crate::kernel::term::{Binder, Constant, Field, Filling, Index, Level, Name, Role, Shape, Term};
 pub use crate::kernel::visibility::{ModuleId, Visibility};

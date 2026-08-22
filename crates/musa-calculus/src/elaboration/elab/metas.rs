@@ -17,7 +17,19 @@ impl Elaborator {
     /// matching pass, and the report names the *earliest* unsolved parameter
     /// because that is the one the author's next edit is about.
     pub(crate) fn settled(&mut self) -> Result<(), ElabError> {
-        // Constraints first: a `Storable` answered here is a meta solved, and
+        // Levels first, and before the constraints below: a `Storable`
+        // discharged here evaluates a term, and a term whose levels are still
+        // open would carry an unknown into a stored value. See
+        // [`super::levels`] for the rule this runs.
+        self.default_levels()?;
+        // The level equations conversion could not answer on the spot, read
+        // once more now that defaulting has closed everything open. One place,
+        // one message: postponing and then reporting from two places would be
+        // two sentences about one disagreement.
+        for equation in self.conversion.postponed_levels() {
+            equation.settled()?;
+        }
+        // Constraints next: a `Storable` answered here is a meta solved, and
         // the parameter audit below should not call a constructor's own
         // parameters undetermined for having answered one.
         let waiting = core::mem::take(&mut self.constraints);

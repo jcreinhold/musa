@@ -231,6 +231,7 @@ pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, 
     let musa_calculus::Shape::Named {
         ref name,
         role: musa_calculus::Role::Base,
+        ..
     } = *head.shape()
     else {
         return None;
@@ -273,6 +274,7 @@ fn node(cx: &musa_calculus::Cx, term: &Term, nodes: &mut Vec<musa_score::machine
     let musa_calculus::Shape::Named {
         ref name,
         role: musa_calculus::Role::Builtin,
+        ..
     } = *head.shape()
     else {
         return None;
@@ -403,13 +405,15 @@ fn spelled(ty: &Term) -> Option<String> {
         musa_calculus::Shape::Named {
             ref name,
             role: musa_calculus::Role::Base,
+            ..
         } if arguments.is_empty() => Some(name.to_string()),
         musa_calculus::Shape::Named {
             ref name,
             role:
                 musa_calculus::Role::TypeConstructor
                 | musa_calculus::Role::Constructor
-                | musa_calculus::Role::Recursor(_),
+                | musa_calculus::Role::Recursor,
+            ..
         } => {
             let name = name.to_string();
             if name == "Pair" {

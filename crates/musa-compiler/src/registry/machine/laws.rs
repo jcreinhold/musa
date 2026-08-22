@@ -363,6 +363,7 @@ fn a_saturated_form_normalizes_to_itself() {
     let Shape::Named {
         name: ref before,
         role: musa_calculus::Role::Builtin,
+        ..
     } = *head.shape()
     else {
         panic!("`connect(identity, identity)` is not headed by a builtin: {head:?}");
@@ -370,6 +371,7 @@ fn a_saturated_form_normalizes_to_itself() {
     let Shape::Named {
         name: ref after,
         role: musa_calculus::Role::Builtin,
+        ..
     } = *settled.shape()
     else {
         panic!("`connect(identity, identity)` normalized to something else: {settled:?}");

@@ -10,7 +10,6 @@ use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::eval::{apply_closure, eval, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
-use crate::kernel::sort::Sort;
 use crate::kernel::term::{Binder, Filling, Name, Role, Shape, Term};
 use crate::kernel::value::{Env, Form, Value};
 
@@ -51,13 +50,12 @@ impl Elaborator {
             }),
             RawShape::Numeral { family, count } => self.numeral(scope, here, family, *count),
             RawShape::Universe(written) => {
-                // §1: two universes, and a bare `Type` is `Type 0`.
-                let level = written.as_ref().copied().unwrap_or(Sort::ZERO);
-                let Some(above) = level.succ() else {
-                    return Err(Refusal::BeyondUniverses { at: here }.into());
-                };
+                // §1: nobody writes a level, so a bare `Type` is `Type ?u` and
+                // the surrounding term determines it — or the defaulting rule
+                // in [`super::levels`] does when nothing else can.
+                let level = written.clone().unwrap_or_else(|| self.fresh_level(here));
                 Ok(Typed {
-                    ty: Value::new(here, Form::Universe(above)),
+                    ty: Value::new(here, Form::Universe(level.succ())),
                     term: Term::universe(here, level),
                 })
             }
@@ -148,7 +146,7 @@ impl Elaborator {
         let (codomain_term, codomain_level) = self.check_type(&inner, codomain)?;
         Ok(Typed {
             term: Term::function(here, filling, Arc::clone(name), domain_term, codomain_term),
-            ty: Value::new(here, Form::Universe(domain_level.max(codomain_level))),
+            ty: Value::new(here, Form::Universe(domain_level.max(&codomain_level))),
         })
     }
 
@@ -309,7 +307,7 @@ impl Elaborator {
             .into());
         };
         let qualified = crate::elaboration::namespace::qualified(&head, method);
-        let Some(found) = Self::namespaced(scope, here, &qualified)? else {
+        let Some(found) = self.namespaced(scope, here, &qualified)? else {
             return Err(Refusal::NoMethodForType {
                 at: here,
                 head,
@@ -329,7 +327,12 @@ impl Elaborator {
     /// against, which is the whole claim §1.5 makes about the mechanism. A rule
     /// that needed the elaborator would need metas, and a meta here would be
     /// the trial elaboration this design does not have.
-    pub(super) fn namespaced(scope: &Scope, here: Origin, qualified: &Name) -> Result<Option<Typed>, ElabError> {
+    pub(super) fn namespaced(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        qualified: &Name,
+    ) -> Result<Option<Typed>, ElabError> {
         let Some(defined) = scope.cx().definition(qualified) else {
             return Ok(None);
         };
@@ -342,11 +345,7 @@ impl Elaborator {
             .into());
         }
         let def = crate::kernel::program::one(defined);
-        let ty = Value::clone(&def.ty());
-        Ok(Some(Typed {
-            term: def.term(here),
-            ty,
-        }))
+        self.used(scope, here, &def).map(Some)
     }
 
     /// A method applied to the receiver it was found for.

@@ -189,6 +189,7 @@ fn is_delta_redex(cx: &Cx, term: &Term) -> bool {
     let Shape::Named {
         name,
         role: musa_calculus::Role::Builtin,
+        ..
     } = head.shape()
     else {
         return false;

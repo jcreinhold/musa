@@ -74,8 +74,12 @@ fn read(globals: &Globals, term: &Term) -> Option<Datum> {
         Shape::Meta(_) => None,
         Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral),
-        Shape::Named { ref name, role } => {
-            let Definition::Declared(constant) = globals.definition(name, role) else {
+        Shape::Named {
+            ref name,
+            ref role,
+            ref levels,
+        } => {
+            let Definition::Declared(constant) = globals.definition(name, role, levels) else {
                 return None;
             };
             let (constructor, params) = saturated(&constant, arguments.len())?;

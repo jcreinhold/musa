@@ -119,7 +119,7 @@ fn a_normal_form_carries_no_origin_the_question_did_not() {
 #[test]
 fn beta_answers_the_body_rather_than_the_application() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Sort::One);
+    let type1 = Term::universe(TYPE, Sort::ONE);
     let redex = Term::app(
         USE,
         Term::lam(USE, "z", Term::universe(DEFINITION, Sort::ZERO)),
@@ -139,7 +139,7 @@ fn beta_answers_the_body_rather_than_the_application() {
 #[test]
 fn delta_carries_the_definitions_origin() {
     let cx = Cx::new();
-    let type1 = Term::universe(TYPE, Sort::One);
+    let type1 = Term::universe(TYPE, Sort::ONE);
     let definition = Term::universe(DEFINITION, Sort::ZERO);
 
     let through_let = normalize(
@@ -177,7 +177,7 @@ fn an_assumptions_occurrences_point_at_its_binder() {
         .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
 
-    let normal = normalize(&a, &Term::universe(TYPE, Sort::One), &Term::var(USE, Index(0))).expect("normalizes");
+    let normal = normalize(&a, &Term::universe(TYPE, Sort::ONE), &Term::var(USE, Index(0))).expect("normalizes");
     assert_eq!(normal.origin(), BINDER_A, "A was written where A was assumed");
 }
 
@@ -301,12 +301,13 @@ fn origins(term: &Term, into: &mut BTreeSet<Origin>) {
 fn restamp(term: &Term, origin: Origin) -> Term {
     let shape = match term.shape() {
         Shape::Var(index) => Shape::Var(*index),
-        Shape::Named { name, role } => Shape::Named {
+        Shape::Named { name, role, levels } => Shape::Named {
             name: Arc::clone(name),
-            role: *role,
+            role: role.clone(),
+            levels: levels.clone(),
         },
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
-        Shape::Universe(level) => Shape::Universe(*level),
+        Shape::Universe(level) => Shape::Universe(level.clone()),
         Shape::Bind { name, binder, body } => Shape::Bind {
             name: Arc::clone(name),
             binder: match binder {

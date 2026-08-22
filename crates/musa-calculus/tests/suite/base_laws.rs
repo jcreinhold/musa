@@ -1275,7 +1275,7 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
         (
             "a universe",
             Raw::universe(TYPES, Sort::ZERO),
-            Term::universe(TYPES, Sort::One),
+            Term::universe(TYPES, Sort::ONE),
         ),
     ];
     for (name, written, ty) in questions {

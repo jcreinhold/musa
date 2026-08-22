@@ -86,17 +86,60 @@ family and a projection is a generated function whose body is a one-branch case 
 ℓ ::= 0  |  u  |  ℓ + 1  |  max ℓ ℓ
 ```
 
-`u` is a level parameter. Levels are generalized **per declaration**, as in Lean: a declaration's level parameters are
-collected when it is elaborated and instantiated at each use, so nothing is constrained from a distance and separate
-checking is unaffected. There is no global constraint graph, and there is no `imax`, which exists in other systems to
-support an impredicative sort musa does not have.
+`u` is a level parameter. Every level expression has a **normal form** `max(k, u₁+k₁, …, uₙ+kₙ)`: a constant and one
+term per variable, deduplicated, each variable at the largest offset it was written with. `max` and `+1` build that form
+as they go, so there is no separate normalization step and no un-normalized level to compare by mistake. Equality of
+normal forms is equality of levels for every valuation of the variables, which makes level equality *decidable and
+complete* — the incompleteness Lean lives with comes from `imax`, which is the next paragraph.
+
+Levels are generalized **per declaration**, as in Lean: a declaration's level parameters are collected when it is
+elaborated and instantiated at each use, so nothing is constrained from a distance and separate checking is unaffected.
+There is no global constraint graph, and no typical ambiguity across declarations. There is also no `imax`. Lean needs
+that former so `∀ x : A, B` lands in `Prop` when `B` does — impredicative `Prop` is what makes the level of a Π depend
+on whether its codomain's level is zero. Musa has no `Prop` and no impredicativity, so a Π takes the plain `max` of its
+parts, and the fourth former does not exist. A reader coming from Lean will look for it; this paragraph is why it is
+absent.
+
+**Three things travel under one word, and musa takes two of the three.**
+
+|  | What it is | Who does it |
+| --- | --- | --- |
+| **Hierarchy** | `Type 0 : Type 1 : Type 2 : …`, predicative | everyone, musa included |
+| **Cumulativity** | a *subtyping* rule: `A : Type i` implies `A : Type j` for `i ≤ j` | Coq; **not musa** |
+| **Polymorphism** | a definition abstracts over levels: `id : {u} → (A : Type u) → A → A` | Agda, Lean, Coq ≥ 8.5, musa |
 
 The hierarchy is **non-cumulative**: `A : Type i` does not make `A : Type i+1`. A definition that must work at several
 levels is written level-polymorphically, which says the same thing and says it in the type. Cumulativity would be
 subtyping — a directional `≼` where the calculus has a symmetric `≡` — and `../constitution.md` §9 refuses subtyping in
-every form, on the argument that acceptance must be decided by one relation. Agda and Lean 4 are both non-cumulative;
-the non-cumulative theory accepts strictly fewer terms than the cumulative one and so cannot be unsound where that one
-is sound.
+every form, on the argument that acceptance must be decided by one relation. Cumulativity and polymorphism are
+alternative answers to the same ergonomic problem, and polymorphism is the one that does not make conversion
+directional: under `≼` a metavariable's constraints have no most-general solution, which is Agda's own stated reason for
+avoiding it. Agda and Lean 4 are both non-cumulative; the non-cumulative theory accepts strictly fewer terms than the
+cumulative one and so cannot be unsound where that one is sound.
+
+Conversion compares levels with `=`, never with `<`. Only the *formation* rules take a `max`.
+
+**Nobody writes a level, and the defaulting rule says what happens when nothing determines one.** `Type` with no
+argument elaborates to `Type ?u` at a fresh level unknown. An equation between two levels is solved where exactly one
+level solves it — a variable standing alone takes what it met, and `max(k, u+j) = c` for a closed `c` above `k` gives
+`u = c − j`. Every other equation is **postponed**, because `max ?u ?v = 3` has several solutions and picking one would
+decide a program's meaning by the order its constraints arrived in. At the end of the declaration:
+
+- a level unknown that occurs in the declaration's **type** is *generalized* — it becomes a level parameter, and each
+  use site picks its own;
+- every other level unknown is *defaulted to `0`*, because a level the type does not mention cannot be chosen by a use
+  site, and refusing the program over an unknown no caller can observe would reject it for nothing;
+- the postponed equations are then read once more, and one that is still false is refused.
+
+**Where generalization applies.** At a *definition*'s boundary. An inductive family's own levels are inferred and then
+defaulted by the same rule, so a family lands at one level rather than being generic over several; whether the standard
+library needs a family that is level-polymorphic is a measurement rather than an assumption, and it is recorded here so
+that the two halves of "per declaration" are not read as one.
+
+The rule is stated here rather than left to fall out of solver order for §4's reason applied to levels: a program whose
+acceptance depends on the order constraints arrived in is a program two implementations disagree about. It is
+incomplete, deliberately — `max(?u+1, ?v+1) = 3` is refused although it has solutions — and Agda and Lean are incomplete
+in the same place.
 
 There is no `Type : Type`. A total language whose type theory is inconsistent is not total in any useful sense.
 

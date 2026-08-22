@@ -66,7 +66,6 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::NotAType => "not-a-type",
         Malformed::EscapedVariable => "escaped-variable",
         Malformed::UnsolvedMeta(_) => "unsolved-meta",
-        Malformed::BeyondUniverses => "beyond-universes",
         Malformed::Mistyped { .. } => "mistyped",
         Malformed::Uninferable => "uninferable",
         Malformed::AlreadySolved(_) => "already-solved",
@@ -74,6 +73,7 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::MisfitAnswer(_) => "misfit-answer",
         Malformed::NotALiteral(_) => "not-a-literal",
         Malformed::UnregisteredCarrier(_) => "unregistered-carrier",
+        Malformed::LevelArity(_) => "level-arity",
     }
 }
 
@@ -87,7 +87,6 @@ const ALL_MALFORMED: [&str; 16] = [
     "not-a-type",
     "escaped-variable",
     "unsolved-meta",
-    "beyond-universes",
     "mistyped",
     "uninferable",
     "already-solved",
@@ -95,6 +94,7 @@ const ALL_MALFORMED: [&str; 16] = [
     "misfit-answer",
     "not-a-literal",
     "unregistered-carrier",
+    "level-arity",
 ];
 
 /// The ones nothing here reaches, each with the argument for why.
@@ -263,19 +263,7 @@ fn reachable() -> Vec<(&'static str, Malformed)> {
     assert!(matches!(fault, Malformed::Uninferable), "{fault}");
     found.push(("a lambda projected at a field", fault));
 
-    // `Type 1`, asked what type *it* has. §1.1 fixes two universes, so there is
-    // no answer — and the elaborator would have refused a `Type 1` an author
-    // wrote in a position needing one, which is why reaching this word takes a
-    // finished term instead.
-    let fault = rechecking(
-        "the universe above the last one",
-        &cx,
-        &unit_type(),
-        &Term::universe(HERE, Sort::One),
-    );
-    assert!(matches!(fault, Malformed::BeyondUniverses), "{fault}");
-    found.push(("the universe above the last one", fault));
-
+    found.extend(crate::sort_laws::level_faults());
     found.extend(host_faults());
     found
 }

@@ -187,6 +187,7 @@ fn a_refusal_quotes_the_name_the_author_wrote() {
     let Shape::Named {
         name,
         role: musa_calculus::Role::Defined,
+        ..
     } = ty.shape()
     else {
         panic!("the refusal names the author's definition, got {ty:?}");

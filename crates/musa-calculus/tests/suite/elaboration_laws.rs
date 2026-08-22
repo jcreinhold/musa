@@ -323,6 +323,18 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
         reached.insert(kind(&refusal));
     }
+    // §1's one, which is reached by a *host-written* level: every level an
+    // author writes is an unknown, and an unknown nothing determines is
+    // defaulted rather than refused, so the corpus carries a core type with an
+    // explicit level in it. `sort_laws` argues that at length.
+    for (name, ty, raw, expected) in crate::sort_laws::refused_levels() {
+        let Err(error) = check(&cx, &ty, &raw) else {
+            panic!("{name}: elaboration accepted a program §1 must refuse");
+        };
+        let refusal = refusal(name, error);
+        assert!(expected(&refusal), "{name}: refused, but as `{refusal}`");
+        reached.insert(kind(&refusal));
+    }
     // And the two a *group* raises, which no single term can reach: §2.4's
     // graph rule is about how definitions name each other, so the smallest
     // program that reaches it is a program rather than a term.
@@ -341,7 +353,6 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 
 /// Every refusal this crate can answer with.
 const ALL_REFUSALS: [&str; 39] = [
-    "beyond-universes",
     "not-storable",
     "unknown-name",
     "mismatch",
@@ -380,6 +391,7 @@ const ALL_REFUSALS: [&str; 39] = [
     "not-finite-data",
     "builtin-refused",
     "not-a-numeral-family",
+    "level-mismatch",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -388,7 +400,7 @@ const ALL_REFUSALS: [&str; 39] = [
 /// missing entry in [`ALL_REFUSALS`], and then a missing program.
 fn kind(refusal: &Refusal) -> &'static str {
     match refusal {
-        Refusal::BeyondUniverses { .. } => "beyond-universes",
+        Refusal::LevelMismatch { .. } => "level-mismatch",
         Refusal::NotStorable { .. } => "not-storable",
         Refusal::UnknownName { .. } => "unknown-name",
         Refusal::Mismatch(_) => "mismatch",

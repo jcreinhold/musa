@@ -34,6 +34,7 @@ use crate::kernel::budget::Meter;
 use crate::kernel::context::Globals;
 use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::origin::Origin;
+use crate::kernel::sort::Levels;
 use crate::kernel::term::{Binder, Constant, Definition, Field, Filling, Name, Role, Shape, Term};
 use crate::kernel::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
@@ -61,11 +62,11 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Meta(meta.clone()))))),
             // Resolved on the way in, so a value carries the level its arms
             // have already been solved to rather than the one written first.
-            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
+            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.clone()))),
             // §1's one name node, resolved through the context (§6). What the
             // name reduces to is the table's answer and not the term's, which
             // is the whole of this arm.
-            Shape::Named { name, role } => named(env, here, name, *role),
+            Shape::Named { name, role, levels } => named(meter, env, here, name, role, levels),
             // Nothing to do, and that is the point: a numeral of 384 is one node
             // here, so evaluating it charges one step and one nesting level
             // rather than 384 of each.
@@ -145,14 +146,24 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
 /// elaborator resolved it once already, so this is a defect in whoever built or
 /// moved the term — never a silent resolution to a different declaration of the
 /// same spelling.
-fn named(env: &Env, here: Origin, name: &Name, role: Role) -> Result<Value, CoreError> {
+fn named(
+    meter: &mut Meter,
+    env: &Env,
+    here: Origin,
+    name: &Name,
+    role: &Role,
+    levels: &Levels,
+) -> Result<Value, CoreError> {
     let globals = env.globals();
-    match globals.definition(name, role) {
+    match globals.definition(name, role, levels) {
         Definition::Declared(constant) => Ok(constant.value(here, globals)),
-        Definition::Defined(def) => Ok(Value::neutral(Neutral::head(
-            here,
-            Head::Def(DefHead::Global(def.clone()), def.ty(), def.value()),
-        ))),
+        Definition::Defined(def) => {
+            let (ty, value) = def.instance(meter, globals, levels)?;
+            Ok(Value::neutral(Neutral::head(
+                here,
+                Head::Def(DefHead::Global(def.clone(), levels.clone()), ty, value),
+            )))
+        }
         Definition::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base, globals.clone())))),
         Definition::Builtin(builtin) => Ok(Value::neutral(Neutral::head(
             here,

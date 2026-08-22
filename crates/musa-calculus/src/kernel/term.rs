@@ -26,7 +26,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::kernel::origin::Origin;
-use crate::kernel::sort::Sort;
+use crate::kernel::sort::{Levels, Sort, SortVar};
 
 /// A binder's written name, and a record field's name.
 ///
@@ -51,7 +51,7 @@ pub type Name = Arc<str>;
 /// see, and [`crate::elaboration::elab`] reads a *registered* signature's arrow as its whole
 /// parameter list where a source definition's is a parameter list and a
 /// returned function.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Role {
     /// A top-level definition (§2.4) — the one global name δ unfolds.
     Defined,
@@ -59,14 +59,13 @@ pub enum Role {
     Constructor,
     /// A declared family, as the type constructor it is (§1.1).
     TypeConstructor,
-    /// A family's generated recursor, at the universe its motives land in.
+    /// A family's generated recursor.
     ///
-    /// The universe rides on the *use site* because §1.3 has no universe
-    /// polymorphism: an elimination's goal is a type at `Type 0` or a type of
-    /// types at `Type 1`, and two eliminations into different universes are two
-    /// terms. Prompt 152 makes recursors level-polymorphic and this arm loses
-    /// its payload.
-    Recursor(Sort),
+    /// The universe its motives land in used to ride here, because §1 had no
+    /// universe polymorphism to put it anywhere else. It is now the recursor's
+    /// own level parameter, so it rides where every other level argument does:
+    /// in the use site's [`Levels`].
+    Recursor,
     /// A base type the host registered (§5.8). Inert: no constructor, no
     /// eliminator, and no rule in this crate takes one apart.
     Base,
@@ -448,6 +447,15 @@ pub enum Shape {
         name: Name,
         /// What the elaborator resolved it to.
         role: Role,
+        /// The levels this use instantiates the declaration's level parameters
+        /// at (§1, *The hierarchy*).
+        ///
+        /// [`Levels::NONE`] for a name that is not level-polymorphic, which is
+        /// nearly all of them. Recorded in the term rather than re-inferred,
+        /// because a re-checker that inferred them again would not be checking
+        /// this program — it would be elaborating a second one and hoping the
+        /// two agreed.
+        levels: Levels,
     },
     /// A closed value written as one node: see [`Constant`].
     Lit(Constant),
@@ -512,12 +520,14 @@ impl PartialEq for Shape {
                 Self::Named {
                     name: left,
                     role: left_role,
+                    levels: left_levels,
                 },
                 Self::Named {
                     name: right,
                     role: right_role,
+                    levels: right_levels,
                 },
-            ) => left == right && left_role == right_role,
+            ) => left == right && left_role == right_role && left_levels == right_levels,
             // §5.8 for a payload and constant-time counting for a numeral —
             // both [`Constant`]'s own rule, stated once where the two arms are.
             (Self::Lit(left), Self::Lit(right)) => left == right,
@@ -602,6 +612,82 @@ impl Term {
         &self.shape
     }
 
+    /// The same term with every level variable `with` answers for replaced.
+    ///
+    /// One instantiation of a level-polymorphic declaration
+    /// (`docs/rules/language/02-core-calculus.md` §1). It is a *level*
+    /// substitution and not a term substitution — §3's "reduction is never
+    /// performed on syntax" is about the term's own binders, which this never
+    /// touches: indices, binders, and every subterm's shape come through
+    /// unchanged, and only the two places a [`Sort`] can hide are rewritten.
+    ///
+    /// Rebuilding rather than mutating shares nothing, which is why the two
+    /// leaf arms that cannot contain a level — a variable, a literal — hand the
+    /// term back whole.
+    pub(crate) fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
+        let shape = match self.shape() {
+            Shape::Meta(_) | Shape::Var(_) | Shape::Lit(_) => return self.clone(),
+            Shape::Named { name, role, levels } => Shape::Named {
+                name: Arc::clone(name),
+                role: role.clone(),
+                levels: levels.substitute(with),
+            },
+            Shape::Universe(level) => Shape::Universe(level.substitute(with)),
+            Shape::Bind { name, binder, body } => Shape::Bind {
+                name: Arc::clone(name),
+                binder: binder.substitute_levels(with),
+                body: body.substitute_levels(with),
+            },
+            Shape::App { function, argument } => Shape::App {
+                function: function.substitute_levels(with),
+                argument: argument.substitute_levels(with),
+            },
+            Shape::RecordType(fields) => Shape::RecordType(substitute_fields(fields, with)),
+            Shape::Record(fields) => Shape::Record(substitute_fields(fields, with)),
+            Shape::Project { record, field } => Shape::Project {
+                record: record.substitute_levels(with),
+                field: Arc::clone(field),
+            },
+        };
+        Self {
+            origin: self.origin,
+            shape: Arc::new(shape),
+        }
+    }
+
+    /// Every level variable this term mentions, in the order it mentions them,
+    /// each once.
+    ///
+    /// First-occurrence order rather than creation order because it is what a
+    /// declaration's level parameters are numbered by: the parameter list a
+    /// reader sees should follow the type they are reading, not the order the
+    /// elaborator happened to invent unknowns in.
+    pub(crate) fn level_vars(&self, found: &mut Vec<SortVar>) {
+        match self.shape() {
+            Shape::Meta(_) | Shape::Var(_) | Shape::Lit(_) => {}
+            Shape::Named { levels, .. } => {
+                for level in levels.as_slice() {
+                    note_vars(level, found);
+                }
+            }
+            Shape::Universe(level) => note_vars(level, found),
+            Shape::Bind { binder, body, .. } => {
+                binder.level_vars(found);
+                body.level_vars(found);
+            }
+            Shape::App { function, argument } => {
+                function.level_vars(found);
+                argument.level_vars(found);
+            }
+            Shape::RecordType(fields) | Shape::Record(fields) => {
+                for field in fields.iter() {
+                    field.term.level_vars(found);
+                }
+            }
+            Shape::Project { record, .. } => record.level_vars(found),
+        }
+    }
+
     /// The same term, said to have come from somewhere else.
     ///
     /// Shares the shape rather than copying it, so re-stamping a large term is
@@ -628,13 +714,23 @@ impl Term {
     }
 
     /// A name no binder introduced, at the role the elaborator resolved it to.
+    ///
+    /// At no levels: the overwhelming majority of names are not
+    /// level-polymorphic, and [`Self::named_at`] is where the ones that are go.
     #[must_use]
     pub fn named(origin: Origin, name: impl Into<Name>, role: Role) -> Self {
+        Self::named_at(origin, name, role, Levels::NONE)
+    }
+
+    /// The same, instantiated at `levels`.
+    #[must_use]
+    pub fn named_at(origin: Origin, name: impl Into<Name>, role: Role, levels: Levels) -> Self {
         Self::new(
             origin,
             Shape::Named {
                 name: name.into(),
                 role,
+                levels,
             },
         )
     }
@@ -765,6 +861,83 @@ impl Term {
                 body,
             },
         )
+    }
+}
+
+/// Every field, with its term's levels substituted.
+fn substitute_fields(fields: &Arc<[Field]>, with: &impl Fn(&SortVar) -> Option<Sort>) -> Arc<[Field]> {
+    fields
+        .iter()
+        .map(|field| Field {
+            name: Arc::clone(&field.name),
+            term: field.term.substitute_levels(with),
+        })
+        .collect()
+}
+
+/// Add `level`'s variables to `found`, each once, in first-occurrence order.
+fn note_vars(level: &Sort, found: &mut Vec<SortVar>) {
+    for var in level.vars() {
+        if !found.contains(&var) {
+            found.push(var);
+        }
+    }
+}
+
+impl Binder {
+    /// The same binder with every level variable `with` answers for replaced.
+    fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
+        match self {
+            Self::Lam => Self::Lam,
+            Self::Pi { filling, ty } => Self::Pi {
+                filling: filling.substitute_levels(with),
+                ty: ty.substitute_levels(with),
+            },
+            Self::Let { ty, value } => Self::Let {
+                ty: ty.substitute_levels(with),
+                value: value.substitute_levels(with),
+            },
+        }
+    }
+
+    /// Every level variable this binder mentions, added to `found`.
+    fn level_vars(&self, found: &mut Vec<SortVar>) {
+        match self {
+            Self::Lam => {}
+            Self::Pi { filling, ty } => {
+                filling.level_vars(found);
+                ty.level_vars(found);
+            }
+            Self::Let { ty, value } => {
+                ty.level_vars(found);
+                value.level_vars(found);
+            }
+        }
+    }
+}
+
+impl Filling {
+    /// The same filling with every level variable `with` answers for replaced.
+    fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
+        match self {
+            Self::Written => Self::Written,
+            Self::Parameter => Self::Parameter,
+            Self::Constraint(constraint) => Self::Constraint(Arc::new(
+                constraint.at(constraint.args.iter().map(|arg| arg.substitute_levels(with)).collect()),
+            )),
+        }
+    }
+
+    /// Every level variable this filling mentions, added to `found`.
+    fn level_vars(&self, found: &mut Vec<SortVar>) {
+        match self {
+            Self::Written | Self::Parameter => {}
+            Self::Constraint(constraint) => {
+                for arg in constraint.args.iter() {
+                    arg.level_vars(found);
+                }
+            }
+        }
     }
 }
 

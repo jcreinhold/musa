@@ -153,7 +153,8 @@ impl Elaborator {
             Shape::Named {
                 name,
                 role: role @ Role::Constructor,
-            } if arguments.is_empty() => match scope.cx().globals().definition(name, *role) {
+                levels,
+            } if arguments.is_empty() => match scope.cx().globals().definition(name, role, levels) {
                 Definition::Declared(constant) => Some(constant.group.params()),
                 Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => None,
             },

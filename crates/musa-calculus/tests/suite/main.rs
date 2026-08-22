@@ -33,6 +33,7 @@ mod program_laws;
 mod provenance_laws;
 mod recheck_laws;
 mod record_laws;
+mod sort_laws;
 mod storable_laws;
 mod termination_laws;
 mod unification_laws;
@@ -245,7 +246,7 @@ pub(crate) mod fixtures {
             Sample {
                 name: "universes are not cumulative",
                 cx: empty,
-                ty: Term::universe(TYPES, Sort::One),
+                ty: Term::universe(TYPES, Sort::ONE),
                 left: Term::universe(TERMS, Sort::ZERO),
                 right: Term::pi(TYPES, "_", type0(), type0()),
                 equal: false,
@@ -470,7 +471,7 @@ pub(crate) mod programs {
             Program {
                 name: "a universe",
                 raw: type0(),
-                ty: Some(Term::universe(WRITTEN, Sort::One)),
+                ty: Some(Term::universe(WRITTEN, Sort::ONE)),
             },
             Program {
                 name: "an implicit written against an implicit binder",
@@ -595,14 +596,6 @@ pub(crate) mod programs {
                 raw: Raw::pi(WRITTEN, "x", annotated_unit(), unit_type()),
                 ty: None,
                 expected: |refusal| matches!(refusal, Refusal::NotAType { .. }),
-            },
-            Refused {
-                name: "a function whose domain is the second universe",
-                // §1.1's two fixed universes: `Type 1` would have to be a term
-                // of a third, and there is no third.
-                raw: Raw::pi(WRITTEN, "x", Raw::universe(WRITTEN, Sort::One), unit_type()),
-                ty: None,
-                expected: |refusal| matches!(refusal, Refusal::BeyondUniverses { .. }),
             },
             Refused {
                 name: "a binder type nothing determines",

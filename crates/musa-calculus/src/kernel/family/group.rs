@@ -111,6 +111,13 @@ impl Counting {
 pub struct Declared {
     /// Its name.
     pub(crate) name: Name,
+    /// The universe it lands in: the join of what its constructors store.
+    ///
+    /// Inferred rather than fixed. The predecessor of this field was a *check*
+    /// that every field was small, because §1 had two universes and a family
+    /// above the first had nowhere to go; prompt 152's hierarchy has no
+    /// ceiling, so what the join says is what the family's signature says.
+    pub(crate) level: Sort,
     /// Whether the *type* may be named outside the module its group was
     /// declared in. Independent of its constructors': `01-surface.md` §1.3's
     /// whole point is a public type whose cases are package-maintained.

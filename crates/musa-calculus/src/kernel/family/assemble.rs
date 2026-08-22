@@ -142,10 +142,10 @@ impl<'a> Telescope<'a> {
     /// and nothing is applied to the value being eliminated. One per family
     /// rather than one overall because a mutual recursor eliminates into a
     /// different answer per family, which is what makes it statable at all.
-    pub(super) fn motives(&mut self, meter: &mut Meter, level: Sort) -> Result<Vec<At>, CoreError> {
+    pub(super) fn motives(&mut self, meter: &mut Meter, level: &Sort) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
-            let ty = self.motive_type(which, level);
+            let ty = self.motive_type(which, level.clone());
             introduced.push(self.assume(meter, "R", ty)?);
         }
         Ok(introduced)

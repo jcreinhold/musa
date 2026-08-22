@@ -105,9 +105,9 @@ impl From<CoreError> for ElabError {
 /// found after that, with nothing left to point at, is addressed to whoever
 /// maintains this compiler and is a [`Malformed`].
 ///
-/// Six of these are the elaborator's half of a claim the kernel also makes —
-/// `NotAFunction`, `NotARecord`, `NoSuchField`, `NotAType`, `Uninferable`,
-/// `BeyondUniverses` — and [`Self::Mismatch`] stands beside
+/// Five of these are the elaborator's half of a claim the kernel also makes —
+/// `NotAFunction`, `NotARecord`, `NoSuchField`, `NotAType` and `Uninferable`
+/// — and [`Self::Mismatch`] stands beside
 /// [`Malformed::Mistyped`] the same way. Each pair is two sentences for two
 /// readers rather than one sentence written twice: this side names what the
 /// author wrote and where, and the kernel's side names a term nobody should
@@ -337,12 +337,25 @@ pub enum Refusal {
         /// offer the qualified form the author meant.
         families: Vec<Name>,
     },
-    /// A declaration would need a universe above `Type 1`, which the calculus
-    /// does not have (§1: two universes, fixed).
-    #[error("this declaration needs a universe above Type 1, and there are two")]
-    BeyondUniverses {
-        /// The declaration.
+    /// Two universes met whose levels no assignment can make equal.
+    ///
+    /// §1's hierarchy is non-cumulative, so `Type ℓ` and `Type ℓ'` agree only
+    /// when the levels do. Distinct *closed* levels are an ordinary
+    /// [`Self::Mismatch`] — `Type 0` and `Type 1` are two types, and the report
+    /// that names them reads better than one about universes. This one is for
+    /// the case a level *variable* is involved and there is still no solution:
+    /// `u` against `u+1`, which fails the occurs check, or a variable already
+    /// fixed elsewhere in the declaration. The author's edit is to write the
+    /// definition polymorphically or to split it, and nothing about the term
+    /// standing there says so.
+    #[error("this needs universe level `{expected}`, and the level here is `{found}`")]
+    LevelMismatch {
+        /// Where the two met.
         at: Origin,
+        /// The level the surrounding term required.
+        expected: crate::kernel::sort::Sort,
+        /// The level the term standing there is at.
+        found: crate::kernel::sort::Sort,
     },
     /// A term stood in type position whose own type is not a universe.
     #[error("this stands where a type is needed, but it is not one")]

@@ -31,7 +31,7 @@ impl Elaborator {
                 .into());
             }
             let (term, field_level) = self.check_type(&inner, &field.term)?;
-            level = level.max(field_level);
+            level = level.max(&field_level);
             let value = inner.eval(&mut self.meter, &term)?;
             inner = inner.assume(Some(Arc::clone(&field.name)), field.term.origin(), Arc::new(value));
             elaborated.push(Field {

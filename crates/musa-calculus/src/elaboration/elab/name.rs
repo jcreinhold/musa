@@ -58,17 +58,13 @@ impl Elaborator {
                     .into());
                 }
                 let def = crate::kernel::program::one(defined);
-                let ty = Value::clone(&def.ty());
-                return Ok(Typed {
-                    term: def.term(here),
-                    ty,
-                });
+                return self.used(scope, here, &def);
             }
             // A namespaced member before the general report, and only after
             // binders and declarations: `Pitch.act` lives in `Pitch`'s
             // namespace, so nothing here can shadow a name an author declared
             // themselves.
-            if let Some(found) = Self::member(scope, here, name, wanted)? {
+            if let Some(found) = self.member(scope, here, name, wanted)? {
                 return Ok(found);
             }
             // Last, and last on purpose: the host's registry is consulted only
@@ -121,10 +117,12 @@ impl Elaborator {
     ///
     /// Nothing is elaborated in order to be discarded. The filter compares two
     /// names, so the candidates cannot be reordered into a different answer.
-    /// No `self`, for [`Self::namespaced`]'s reason and with more force: the
-    /// whole rule is a comparison of names, so it needs no meter, no metas, and
-    /// no elaborator. A disambiguation that needed one would be a search.
+    /// The disambiguation itself needs no elaborator: the whole rule is a
+    /// comparison of names, so it spends no meter and creates no unknown. Only
+    /// the answer does, because naming a definition instantiates its level
+    /// parameters.
     pub(super) fn member(
+        &mut self,
         scope: &Scope,
         here: Origin,
         member: &Name,
@@ -154,7 +152,29 @@ impl Elaborator {
             }
             .into());
         };
-        Self::namespaced(scope, here, &crate::elaboration::namespace::qualified(head, member))
+        self.namespaced(scope, here, &crate::elaboration::namespace::qualified(head, member))
+    }
+
+    /// A top-level definition, used: its level parameters instantiated at
+    /// fresh unknowns, and its type read at those.
+    ///
+    /// The one place a definition becomes a term, so the one place §1's "and a
+    /// use site instantiates them" is spelled. A definition with no level
+    /// parameters — which is every definition the language wrote before the
+    /// hierarchy had any — takes the stored type unchanged and costs exactly
+    /// what it cost before.
+    pub(super) fn used(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        def: &crate::kernel::program::Def,
+    ) -> Result<Typed, ElabError> {
+        let levels = self.instantiate_levels(here, def.levels().len());
+        let (ty, _) = def.instance(&mut self.meter, scope.cx().globals(), &levels)?;
+        Ok(Typed {
+            term: def.term(here, levels),
+            ty: Value::clone(&ty),
+        })
     }
 
     /// A registered builtin or base type, and nothing else.
@@ -185,7 +205,7 @@ impl Elaborator {
         }
         // A namespaced member, for the reason [`Self::constant`] gives: it
         // lives in its type's namespace, which is the host's here as well.
-        if let Some(found) = Self::member(scope, here, name, None)? {
+        if let Some(found) = self.member(scope, here, name, None)? {
             return Ok(found);
         }
         self.registered(scope, here, name)
@@ -252,7 +272,7 @@ impl Elaborator {
             let qualified: Name = Arc::clone(only);
             let built = self.constant(scope, here, &qualified)?;
             let params = match built.term.shape() {
-                Shape::Named { name, role } => match scope.cx().globals().definition(name, *role) {
+                Shape::Named { name, role, levels } => match scope.cx().globals().definition(name, role, levels) {
                     Definition::Declared(constant) => constant.group.params(),
                     Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => 0,
                 },

@@ -307,7 +307,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
             let mut hypothesis = Constant {
                 group: Arc::clone(group),
                 family: of_family,
-                role: Role::Recursor(reduction.level),
+                role: Role::Recursor(reduction.level.clone()),
             }
             .value(here, &reduction.globals);
             for argument in &reduction.prefix {

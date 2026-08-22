@@ -51,7 +51,17 @@ impl Elaborator {
                     &solution,
                 )?);
             }
-            Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => return Ok(term.clone()),
+            Shape::Var(_) | Shape::Lit(_) => return Ok(term.clone()),
+            // Levels are written back here too, for the same reason metas are:
+            // the stored term outlives the elaboration that solved them, and a
+            // variable left standing in it would be one nothing can force
+            // later. What survives is only what generalization claimed, which
+            // is what makes a stored term's open variables exactly the
+            // declaration's level parameters.
+            Shape::Universe(level) => return Ok(Term::universe(here, level.forced())),
+            Shape::Named { name, role, levels } => {
+                return Ok(Term::named_at(here, Arc::clone(name), role.clone(), levels.forced()));
+            }
             // One arm for all three binders: what differs between them is which
             // subterms sit outside the binder, and that is the `Binder`'s own
             // question rather than a reason for three copies of this walk.

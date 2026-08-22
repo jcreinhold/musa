@@ -280,15 +280,27 @@ impl Constant {
     /// the spellings already differ — `Vec`, `Vec.Cons`, `Vec.elim` — and the
     /// role is what a reader of the term can act on without a context.
     pub(crate) fn term(&self, origin: Origin) -> Term {
-        Term::named(origin, self.name(), self.written_role())
+        Term::named_at(origin, self.name(), self.written_role(), self.written_levels())
     }
 
     /// Which [`Role`](crate::Role) a term naming this constant carries.
     fn written_role(&self) -> crate::kernel::term::Role {
-        match self.role {
+        match &self.role {
             Role::Family => crate::kernel::term::Role::TypeConstructor,
             Role::Constructor(_) => crate::kernel::term::Role::Constructor,
-            Role::Recursor(level) => crate::kernel::term::Role::Recursor(level),
+            Role::Recursor(_) => crate::kernel::term::Role::Recursor,
+        }
+    }
+
+    /// The level arguments a term naming this constant carries.
+    ///
+    /// A recursor's one level parameter is the universe its motives land in, so
+    /// a term naming one says which universe this elimination is into; a family
+    /// and a constructor are monomorphic and say nothing.
+    fn written_levels(&self) -> crate::kernel::sort::Levels {
+        match &self.role {
+            Role::Family | Role::Constructor(_) => crate::kernel::sort::Levels::NONE,
+            Role::Recursor(level) => crate::kernel::sort::Levels::of([level.clone()]),
         }
     }
 
@@ -432,7 +444,7 @@ impl Constant {
         match &self.role {
             Role::Family => self.family_type(meter, &mut builder),
             Role::Constructor(which) => self.constructor_type(meter, builder, *which),
-            Role::Recursor(level) => self.recursor_type(meter, builder, *level),
+            Role::Recursor(level) => self.recursor_type(meter, builder, level),
         }
     }
 
@@ -467,7 +479,7 @@ impl Constant {
     }
 
     /// The recursor's type, at the universe its motives land in.
-    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: Sort) -> Result<Term, CoreError> {
+    fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: &Sort) -> Result<Term, CoreError> {
         let Some(_declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };

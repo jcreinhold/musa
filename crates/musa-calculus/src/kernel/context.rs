@@ -27,7 +27,7 @@ use crate::kernel::family::{Constant, Found, Group};
 use crate::kernel::list::List;
 use crate::kernel::origin::Origin;
 use crate::kernel::program::{Defined, Program};
-use crate::kernel::sort::Sort;
+use crate::kernel::sort::{Levels, Sort};
 use crate::kernel::term::{Definition, Level, Name, Role, Term};
 use crate::kernel::value::{Env, Value};
 use crate::kernel::visibility::ModuleId;
@@ -111,17 +111,18 @@ impl Globals {
     /// second resolver free to disagree with the first. The term records which
     /// kind of name it is; this answers with that kind or with nothing.
     ///
-    /// A recursor carries one thing more: the universe its motives land in,
-    /// which §1.3 puts on the use site because there is no universe polymorphism
-    /// to put it anywhere else.
-    pub(crate) fn definition(&self, name: &str, role: Role) -> Definition {
+    /// `levels` is the use site's instantiation of the declaration's level
+    /// parameters (§1). A recursor's one parameter is the universe its motives
+    /// land in, so that is what its first level argument says; every other
+    /// declared name is monomorphic today and passes none.
+    pub(crate) fn definition(&self, name: &str, role: &Role, levels: &Levels) -> Definition {
         let Some(tables) = self.0.as_deref() else {
             return Definition::Undeclared;
         };
-        match role {
-            Role::TypeConstructor | Role::Constructor | Role::Recursor(_) => {
-                let level = match role {
-                    Role::Recursor(level) => level,
+        match *role {
+            Role::TypeConstructor | Role::Constructor | Role::Recursor => {
+                let level = match *role {
+                    Role::Recursor => levels.as_slice().first().cloned().unwrap_or(Sort::ZERO),
                     Role::Defined | Role::Constructor | Role::TypeConstructor | Role::Base | Role::Builtin => {
                         Sort::ZERO
                     }

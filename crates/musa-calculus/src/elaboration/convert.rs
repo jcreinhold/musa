@@ -43,6 +43,7 @@ use crate::kernel::error::CoreError;
 use crate::kernel::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{Mode, quote, quote_type};
+use crate::kernel::sort::{Sort, SortVar};
 use crate::kernel::term::{Field, Level, Term};
 use crate::kernel::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
@@ -84,6 +85,62 @@ pub(crate) struct Conversion {
     /// assignment rule, which a deciding pass never fires — a meta is an
     /// opaque head there, compared by identity like any other.
     deciding: bool,
+    /// The universe-level equations no single assignment answered, kept until
+    /// the declaration's finish point.
+    ///
+    /// The one thing this module postpones, and §1's own reason for it:
+    /// `max ?u ?v ≡ 3` has several solutions, so a solver that picked one here
+    /// would decide a program's meaning on the order its constraints arrived
+    /// in. They are re-read once, after defaulting, by
+    /// [`Elaborator::settled`](crate::elaboration::elab::Elaborator) — which is
+    /// also why a *deciding* pass never fills this: it has no finish point to
+    /// drain it at, so it answers immediately or refuses.
+    levels: Vec<LevelEquation>,
+}
+
+/// Two levels that had to be equal, and what the two sides read back as.
+///
+/// The terms travel with the equation so that a failure discovered after
+/// defaulting can still be reported as the ordinary type mismatch it is when
+/// both sides turn out closed — `Type 0` against `Type 1` is two types, and the
+/// reader is better served by seeing them than by a sentence about levels.
+pub(crate) struct LevelEquation {
+    at: Origin,
+    expected: Sort,
+    found: Sort,
+    expected_term: Term,
+    found_term: Term,
+}
+
+impl LevelEquation {
+    /// Read this equation once more, after defaulting has closed every level
+    /// nothing determined.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::Mismatch`] when both sides came out closed and different,
+    /// which is the ordinary "these are two types" report; otherwise
+    /// [`Refusal::LevelMismatch`], which is the one a level variable earns.
+    pub(crate) fn settled(self) -> Result<(), Refusal> {
+        if self.expected == self.found {
+            return Ok(());
+        }
+        if self.expected.vars().is_empty() && self.found.vars().is_empty() {
+            let close = |term: &Term| term.substitute_levels(&|var: &SortVar| var.solution().cloned());
+            return Err(Refusal::Mismatch(Box::new(Mismatch {
+                at: self.at,
+                expected: close(&self.expected_term),
+                found: close(&self.found_term),
+                path: Vec::new(),
+                whole: None,
+            })));
+        }
+        Err(Refusal::LevelMismatch {
+            at: self.at,
+            expected: self.expected.forced(),
+            found: self.found.forced(),
+        })
+    }
 }
 
 impl Conversion {
@@ -96,7 +153,10 @@ impl Conversion {
     /// two implementations of one question are two things to keep in
     /// agreement.
     pub(crate) fn deciding() -> Self {
-        Self { deciding: true }
+        Self {
+            deciding: true,
+            levels: Vec::new(),
+        }
     }
 
     /// A checker that may solve a meta it meets alone on one side.
@@ -105,7 +165,15 @@ impl Conversion {
     /// left to [`Default`] so that the two modes read as a pair at every
     /// construction site.
     pub(crate) fn solving() -> Self {
-        Self { deciding: false }
+        Self {
+            deciding: false,
+            levels: Vec::new(),
+        }
+    }
+
+    /// The level equations this pass postponed, taken for their one re-reading.
+    pub(crate) fn postponed_levels(&mut self) -> Vec<LevelEquation> {
+        core::mem::take(&mut self.levels)
     }
 
     /// Make `left` and `right` the same type.
@@ -361,13 +429,8 @@ impl Conversion {
             }
         }
         match (&left.form, &right.form) {
-            // Two universes agree when their levels are the same: §1 fixes the
-            // levels at two, so this is an equality and never a search.
             (Form::Universe(one), Form::Universe(other)) => {
-                if one == other {
-                    return Ok(());
-                }
-                Self::by_reading_back(meter, depth, at, left, right)
+                self.universes(meter, depth, at, origin, left, right, one, other)
             }
             (
                 Form::Pi {
@@ -582,6 +645,91 @@ impl Conversion {
     /// Not a weaker rule — quotation is η-long, so this decides exactly what
     /// [`crate::convertible`] decides. It solves no metavariable, which is why
     /// it is only ever reached once neither side has one at its head.
+    /// Two universes, which agree when their levels do.
+    ///
+    /// §1's hierarchy is non-cumulative, so this is an *equality* on normal
+    /// forms and never a search for the smaller — the sentence `sort.rs` states
+    /// as "compared with `==`, never with `<`", enforced here because here is
+    /// the only place two levels meet.
+    ///
+    /// A solving pass may do two things beyond comparing. It may **assign**,
+    /// where exactly one level makes the equation true — [`Self::assign_level`]
+    /// says which shapes those are. Otherwise it **postpones**: `max ?u ?v`
+    /// against `3` has several solutions, and choosing one here would decide a
+    /// program's meaning by the order its constraints arrived in. The equation
+    /// is read once more after defaulting, at the declaration's finish point,
+    /// and that is where a level disagreement is reported.
+    fn universes(
+        &mut self,
+        meter: &mut Meter,
+        depth: Level,
+        at: At<'_>,
+        origin: Origin,
+        left: &Value,
+        right: &Value,
+        one: &Sort,
+        other: &Sort,
+    ) -> Step {
+        if one == other {
+            return Ok(());
+        }
+        // Two closed levels that differ are two types, and the report that
+        // reads back `Type 0` against `Type 1` says so better than a sentence
+        // about universe levels would.
+        if one.vars().is_empty() && other.vars().is_empty() {
+            return Self::by_reading_back(meter, depth, at, left, right);
+        }
+        if self.deciding {
+            return Err(Failure::Levels {
+                expected: one.forced(),
+                found: other.forced(),
+            });
+        }
+        if Self::assign_level(one, other) {
+            return Ok(());
+        }
+        self.levels.push(LevelEquation {
+            at: origin,
+            expected: one.clone(),
+            found: other.clone(),
+            expected_term: at.quote(meter, depth, left)?,
+            found_term: at.quote(meter, depth, right)?,
+        });
+        Ok(())
+    }
+
+    /// Solve one of two levels to the other, when exactly one assignment does
+    /// it.
+    ///
+    /// A variable standing alone on one side and not occurring in the other:
+    /// `?u ≡ ℓ` has the single solution `ℓ`. The occurs check is the same one
+    /// [`Self::assignment`] makes and refuses for the same reason — `?u ≡ ?u+1`
+    /// has no solution at all, and the level algebra has no ω to give it one.
+    fn assign_level(one: &Sort, other: &Sort) -> bool {
+        for (side, against) in [(one, other), (other, one)] {
+            if let Some(var) = side.as_var()
+                && !against.vars().contains(&var)
+                && var.solve(against.forced()).is_ok()
+            {
+                return true;
+            }
+            // `max(k, u+j) ≡ c` for a closed `c` strictly above `k`: the
+            // constant cannot reach `c`, so the variable term must, and
+            // `u = c - j` is the only level that does. At `c == k` the equation
+            // says `u + j ≤ c` instead, which has several answers below `c` and
+            // is left to the defaulting rule.
+            if let Some((floor, var, plus)) = side.as_single_var()
+                && let Some(closed) = against.as_constant()
+                && closed > floor
+                && closed >= plus
+                && var.solve(Sort::constant(closed.saturating_sub(plus))).is_ok()
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     fn by_reading_back(meter: &mut Meter, depth: Level, at: At<'_>, left: &Value, right: &Value) -> Step {
         let expected = at.quote(meter, depth, left)?;
         let found = at.quote(meter, depth, right)?;
@@ -639,6 +787,8 @@ enum Failure {
         /// is on the path when the frame beneath it fails.
         path: Vec<PathStep>,
     },
+    /// Two universes whose levels no assignment can make equal.
+    Levels { expected: Sort, found: Sort },
     /// Exhaustion, or a term the caller should not have handed over.
     Core(CoreError),
 }
@@ -654,6 +804,10 @@ impl Failure {
     fn under(self, step: PathStep) -> Self {
         match self {
             Self::Occurs => Self::Occurs,
+            // A level disagreement is about the two levels and not about where
+            // in a type they were reached: reading back `Type u` under six
+            // steps of path would name the path and bury the levels.
+            Self::Levels { expected, found } => Self::Levels { expected, found },
             Self::Mismatch {
                 expected,
                 found,
@@ -668,6 +822,7 @@ impl Failure {
 
     fn into_error(self, at: Origin) -> ElabError {
         match self {
+            Self::Levels { expected, found } => Refusal::LevelMismatch { at, expected, found }.into(),
             Self::Occurs => Refusal::Unsolved {
                 site: crate::kernel::meta::MetaSource::TypeParameter,
                 created: at,
@@ -740,10 +895,10 @@ fn folded_def(value: &Value) -> Option<FoldedDef<'_>> {
 /// mention the other. See [`Conversion::folded`].
 fn unfolds_first(one: &DefHead, other: &DefHead) -> bool {
     match (one, other) {
-        (DefHead::Local(_), DefHead::Global(_)) => true,
-        (DefHead::Global(_), DefHead::Local(_)) => false,
+        (DefHead::Local(_), DefHead::Global(..)) => true,
+        (DefHead::Global(..), DefHead::Local(_)) => false,
         (DefHead::Local(this), DefHead::Local(that)) => this.0 > that.0,
-        (DefHead::Global(this), DefHead::Global(that)) => this.name() > that.name(),
+        (DefHead::Global(this, _), DefHead::Global(that, _)) => this.name() > that.name(),
     }
 }
 

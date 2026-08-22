@@ -267,8 +267,14 @@ pub(crate) enum Head {
 pub(crate) enum DefHead {
     /// A `let` or context definition, named by the binder's level.
     Local(Level),
-    /// A top-level definition, named by the declaration itself.
-    Global(crate::kernel::program::Def),
+    /// A top-level definition, named by the declaration itself **and by the
+    /// levels it was instantiated at**.
+    ///
+    /// Both halves are identity. `id.{0}` and `id.{1}` unfold to two different
+    /// values, so a comparison that stopped at the name would call two folded
+    /// uses of one polymorphic definition equal without ever unfolding either
+    /// — which is the one way non-cumulativity could be lost by accident (§1).
+    Global(crate::kernel::program::Def, crate::kernel::sort::Levels),
 }
 
 /// One elimination applied to a blocked head.

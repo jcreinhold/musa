@@ -62,7 +62,8 @@ pub(crate) fn head_name(term: &Term) -> Option<Name> {
     match term.shape() {
         Shape::Named {
             name,
-            role: Role::TypeConstructor | Role::Constructor | Role::Recursor(_) | Role::Base,
+            role: Role::TypeConstructor | Role::Constructor | Role::Recursor | Role::Base,
+            ..
         } => Some(Arc::clone(name)),
         Shape::App { function, .. } => head_name(function),
         Shape::Named {

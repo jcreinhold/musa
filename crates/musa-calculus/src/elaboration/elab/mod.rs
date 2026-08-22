@@ -49,13 +49,16 @@
 //! that is solved is substituted away by [`Elaborator::zonk`]. That is what
 //! lets [`crate::check`] promise a term whose every argument is written.
 //!
-//! # Levels are not unknowns
+//! # Levels are unknowns too, in their own sort
 //!
-//! §2.1's third creation site was a level, and it is gone with universe
-//! polymorphism: there are two levels, `Type 0` and `Type 1`, and a bare
-//! `Type` elaborates at the one its use demands rather than at a level
-//! something has to solve. Nothing here creates a level unknown, and there is
-//! no level sort to unify in.
+//! §2.1's third creation site is a level, and universe polymorphism is what
+//! makes it one: a bare `Type` elaborates to `Type ?u`, and a use of a
+//! level-polymorphic definition instantiates its parameters at fresh unknowns.
+//! They are a *separate* sort — a [`Sort`] is not a [`Value`] and there is no
+//! `Level : Type` in the object language — so they are created, assigned, and
+//! finished by [`levels`] rather than by [`metas`], and the two lifecycles are
+//! deliberately not shared. Where they meet is the one finish point:
+//! [`Elaborator::settled`] defaults the levels before it audits the metas.
 //!
 //! # The rules, by file
 //!
@@ -75,6 +78,8 @@
 //!   arguments placed.
 //! - [`metas`] — an unknown's lifecycle: created, constrained, and audited at
 //!   the one finish point.
+//! - [`levels`] — the same, one sort up: universe levels created, generalized
+//!   at the declaration boundary, and defaulted.
 //! - [`zonk`] — solutions written back into the term that is stored.
 
 use std::sync::Arc;
@@ -96,6 +101,7 @@ use crate::kernel::value::{Env, Form, Value};
 mod check;
 mod construct;
 mod infer;
+mod levels;
 mod metas;
 mod name;
 mod record;
@@ -121,10 +127,11 @@ struct Bound {
 
 /// One elaboration.
 ///
-/// There is nothing in here but the budget and the fresh-variable counter: the
-/// calculus has no metavariables to track, no constraints to postpone, and no
-/// levels to solve — `02-core-calculus.md` §2.1's instantiation is one matching
-/// pass per application, and this struct is what a pass borrows.
+/// One *declaration's* worth of state, and the scope is the point: metas,
+/// constraints and level variables are all numbered from zero here, and none of
+/// them outlives the declaration that created them. `02-core-calculus.md` §1
+/// says the same thing about levels — generalized per declaration, no global
+/// graph — and §2.1 about metas, and this struct is where both are true.
 pub(crate) struct Elaborator {
     meter: Meter,
     /// The one matching table every pass in this elaboration shares.
@@ -159,6 +166,15 @@ pub(crate) struct Elaborator {
     created: Vec<crate::kernel::meta::Meta>,
     /// The next meta's identity.
     next_meta: u32,
+    /// Every level variable this declaration has created, in creation order.
+    ///
+    /// Kept for the defaulting rule [`levels`] states: what is neither solved
+    /// nor generalized when the declaration ends is `Type 0`.
+    created_levels: Vec<crate::kernel::sort::SortVar>,
+    /// The ones generalization claimed as this declaration's level parameters.
+    generalized_levels: Vec<crate::kernel::sort::SortVar>,
+    /// The next level variable's identity, numbered per declaration.
+    next_level: u32,
 }
 
 impl Elaborator {
@@ -169,6 +185,9 @@ impl Elaborator {
             constraints: Vec::new(),
             created: Vec::new(),
             next_meta: 0,
+            created_levels: Vec::new(),
+            generalized_levels: Vec::new(),
+            next_level: 0,
         }
     }
 
@@ -223,6 +242,24 @@ impl Elaborator {
         self.check(scope, raw, ty)
     }
 
+    /// Elaborate `raw` and answer it with its type **as a term**, without
+    /// finishing.
+    ///
+    /// [`Self::run_infer`] with the finish taken out, for the one caller that
+    /// has to do something between the judgment and the finish: a declaration,
+    /// which generalizes its level parameters in between. The type is read back
+    /// with definitions opened for [`Self::run_infer`]'s reason.
+    pub(crate) fn infer_written(&mut self, scope: &Scope, raw: &Raw) -> Result<(Term, Term), ElabError> {
+        let inferred = self.infer(scope, raw)?;
+        let ty = quote_type(
+            &mut self.meter,
+            scope.depth(),
+            crate::kernel::quote::Mode::Open,
+            &inferred.ty,
+        )?;
+        Ok((ty, inferred.term))
+    }
+
     /// Elaborate `raw` and answer its type as a **value**, without finishing.
     ///
     /// The type is not read back, unlike [`Self::run_infer`]'s: a `match`
@@ -251,6 +288,6 @@ impl Elaborator {
             }
             .into());
         };
-        Ok((inferred.term, *level))
+        Ok((inferred.term, level.clone()))
     }
 }

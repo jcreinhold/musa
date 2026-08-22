@@ -65,18 +65,28 @@
 use std::sync::Arc;
 
 use crate::kernel::origin::Origin;
+use crate::kernel::sort::{Levels, Sort, SortVar};
 use crate::kernel::term::{Name, Role, Term};
 use crate::kernel::value::Value;
 use crate::kernel::visibility::{ModuleId, Visibility};
 
 /// One elaborated top-level definition.
 ///
-/// Its type and its value are [`Value`]s rather than [`Term`]s because that is
-/// all a use needs — [`crate::kernel::eval`] hands back the value and
-/// [`recheck`](crate::kernel::recheck::recheck) asks for the type — and because
-/// a stored term could hold
-/// a [`Def`] pointing back at the group holding it. See the module
-/// documentation.
+/// Its type and its value are held twice, and the pair is the whole of what
+/// universe polymorphism costs here. The [`Value`]s are what a *monomorphic*
+/// use needs — [`crate::kernel::eval`] hands back the value and
+/// [`recheck`](crate::kernel::recheck::recheck) asks for the type, with no work
+/// in between. The [`Term`]s are what a *polymorphic* use needs, because
+/// instantiating `levels` is a substitution and a [`Value`] holds closures a
+/// substitution cannot reach without a second traversal of the whole semantic
+/// domain. So a definition with no level parameters costs exactly what it cost
+/// before, and one with parameters pays an evaluation per use, charged to the
+/// meter that asked.
+///
+/// Storing the terms does not re-open the [`Arc`] cycle the module
+/// documentation warns about: a use of a definition is
+/// [`Shape::Named`](crate::Shape) holding a [`Name`], never an [`Arc<Defined>`],
+/// so nothing a stored term holds can point back at the group.
 pub(crate) struct Defined {
     /// The name it binds.
     pub(crate) name: Name,
@@ -84,10 +94,17 @@ pub(crate) struct Defined {
     pub(crate) visibility: Visibility,
     /// The module it was written in, when the caller numbers modules.
     pub(crate) module: Option<ModuleId>,
-    /// Its type.
+    /// The level parameters generalization found, in the order the type
+    /// mentions them. Empty for all but a universe-polymorphic definition.
+    pub(crate) levels: Arc<[SortVar]>,
+    /// Its type, at the level parameters themselves.
     pub(crate) ty: Arc<Value>,
-    /// Its value.
+    /// Its value, likewise.
     pub(crate) value: Arc<Value>,
+    /// Its type as written, kept so `levels` can be instantiated.
+    pub(crate) ty_term: Term,
+    /// Its value as written, likewise.
+    pub(crate) value_term: Term,
 }
 
 impl Defined {
@@ -178,12 +195,22 @@ impl Def {
         &self.0.name
     }
 
-    /// This use as a term: the definition's name, at [`Role::Defined`].
+    /// This use as a term: the definition's name, at [`Role::Defined`], with
+    /// the levels it was instantiated at.
     ///
     /// The definition stays here and the term takes the name (§6), which is
-    /// what makes a use one node whatever the definition is.
-    pub(crate) fn term(&self, origin: Origin) -> Term {
-        Term::named(origin, Arc::clone(&self.0.name), Role::Defined)
+    /// what makes a use one node whatever the definition is. The levels ride
+    /// along rather than being re-inferred, because
+    /// [`recheck`](crate::kernel::recheck::recheck)'s obligation is to *verify*
+    /// that every use of a declaration instantiated its parameters
+    /// consistently, and a checker that re-derived them could not disagree.
+    pub(crate) fn term(&self, origin: Origin, levels: Levels) -> Term {
+        Term::named_at(origin, Arc::clone(&self.0.name), Role::Defined, levels)
+    }
+
+    /// The level parameters this definition was generalized over.
+    pub(crate) fn levels(&self) -> &[SortVar] {
+        &self.0.levels
     }
 
     /// The definition's type.
@@ -194,6 +221,44 @@ impl Def {
     /// The definition's value, which is what δ unfolds a use to.
     pub(crate) fn value(&self) -> Arc<Value> {
         Arc::clone(&self.0.value)
+    }
+
+    /// This definition's type and value with its level parameters replaced by
+    /// `levels`.
+    ///
+    /// The stored pair when there is nothing to instantiate, which is every
+    /// definition the language wrote before this one existed. Otherwise the
+    /// written terms, substituted and evaluated — see [`Defined`] for why the
+    /// terms are kept.
+    ///
+    /// # Errors
+    ///
+    /// [`Malformed::LevelArity`] when `levels` is not one level per parameter:
+    /// the term was assembled by something that did not read the declaration.
+    pub(crate) fn instance(
+        &self,
+        meter: &mut crate::kernel::budget::Meter,
+        globals: &crate::kernel::context::Globals,
+        levels: &Levels,
+    ) -> Result<(Arc<Value>, Arc<Value>), crate::kernel::error::CoreError> {
+        let parameters = self.levels();
+        if parameters.is_empty() && levels.is_empty() {
+            return Ok((self.ty(), self.value()));
+        }
+        let given = levels.as_slice();
+        if given.len() != parameters.len() {
+            return Err(crate::kernel::error::Malformed::LevelArity(Arc::clone(&self.0.name)).into());
+        }
+        let with = |var: &SortVar| -> Option<Sort> {
+            parameters
+                .iter()
+                .position(|parameter| parameter == var)
+                .and_then(|at| given.get(at).cloned())
+        };
+        let env = crate::kernel::value::Env::under(globals.clone());
+        let ty = crate::kernel::eval::eval(meter, &env, &self.0.ty_term.substitute_levels(&with))?;
+        let value = crate::kernel::eval::eval(meter, &env, &self.0.value_term.substitute_levels(&with))?;
+        Ok((Arc::new(ty), Arc::new(value)))
     }
 }
 

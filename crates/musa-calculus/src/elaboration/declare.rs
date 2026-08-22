@@ -75,15 +75,13 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     let mut families = Vec::with_capacity(data.families.len());
     for (which, family) in data.families.iter().enumerate() {
         let built = constructors(&mut elaborator, &under_params, data, family, arity)?;
-        // The family's level is the join of what its constructors store; §1's
-        // two universes make that join a check — every field small — rather
-        // than an inference.
-        if built.level == Sort::One {
-            return Err(Refusal::BeyondUniverses { at: data.origin }.into());
-        }
         uniform(family)?;
         let which = u32::try_from(which).unwrap_or(u32::MAX);
         families.push(Declared {
+            // The family's level is the join of what its constructors store —
+            // an inference now that §1's hierarchy has no ceiling to check it
+            // against, and the reason a `Declared` carries a level at all.
+            level: built.level,
             counting: counting(which, &params, &built.constructors),
             name: Arc::clone(&family.name),
             visibility: family.visibility,
@@ -110,6 +108,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 counting,
                 name,
                 visibility,
+                level,
                 constructors,
             } = declared;
             let constructors = constructors
@@ -138,6 +137,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 counting,
                 name,
                 visibility,
+                level,
                 constructors: Arc::from(constructors),
             })
         })
@@ -318,7 +318,7 @@ fn constructors(
             match occurrence(scope.cx().globals(), &binder.ty, arity, depth) {
                 Ok(None) => {
                     if let Some(found) = levels.get(usize::try_from(position).unwrap_or(usize::MAX)) {
-                        level = level.max(*found);
+                        level = level.max(found);
                     }
                 }
                 // A recursive field stands at the level being computed, so it
@@ -604,11 +604,12 @@ fn declared_family(globals: &Globals, head: &Term) -> Option<Constant> {
     let Shape::Named {
         name,
         role: role @ Role::TypeConstructor,
+        levels,
     } = head.shape()
     else {
         return None;
     };
-    let Definition::Declared(constant) = globals.definition(name, *role) else {
+    let Definition::Declared(constant) = globals.definition(name, role, levels) else {
         return None;
     };
     constant.is_family().then_some(constant)
