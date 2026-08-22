@@ -16,7 +16,7 @@
 //! a scope stored as data would need one. A solution read back where its meta
 //! was created is a term whose indices count from *that* depth; the occurrence
 //! it replaces may sit deeper, and making the two agree is a shift — which is
-//! substitution, which the NbE presentation §3 specifies does not exist here.
+//! substitution, which the `NbE` presentation §3 specifies does not exist here.
 //! Abstracting instead moves the whole question into β: the solution is closed,
 //! so it means the same thing at every depth, and the occurrence's own spine
 //! puts the variables back. Idris2 represents holes as top-level definitions

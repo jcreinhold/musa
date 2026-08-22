@@ -82,7 +82,7 @@ fn gain_and_pan_arithmetic() {
     // frequency = sr/4 → samples cycle exactly through 0, 1, 0, -1.
     let output = render(&voice_spec(12_000.0, 0.5, 0.0), 8);
     let expected = [0.0f32, 0.5, 0.0, -0.5, 0.0, 0.5, 0.0, -0.5];
-    for (i, (frame, mono)) in output.chunks_exact(2).zip(expected.iter()).enumerate() {
+    for (i, (frame, mono)) in output.as_chunks::<2>().0.iter().zip(expected.iter()).enumerate() {
         let value = mono * std::f32::consts::FRAC_1_SQRT_2;
         let both_ok = matches!(frame, [left, right] if (*left - value).abs() < 1e-6 && (*right - value).abs() < 1e-6);
         assert!(both_ok, "sample {i}: {frame:?} != {value}");
@@ -106,7 +106,13 @@ fn mixer_sums_inputs() {
     spec.set_output(mixer);
     let output = render(&spec, 4);
     // Two identical in-phase sr/4 sines sum to 0, 2, 0, -2.
-    for (i, (frame, expected)) in output.chunks_exact(2).zip([0.0f32, 2.0, 0.0, -2.0].iter()).enumerate() {
+    for (i, (frame, expected)) in output
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .zip([0.0f32, 2.0, 0.0, -2.0].iter())
+        .enumerate()
+    {
         let left = frame.first().copied().unwrap_or(f32::NAN);
         assert!((left - expected).abs() < 1e-6, "sample {i}: {left} != {expected}");
     }

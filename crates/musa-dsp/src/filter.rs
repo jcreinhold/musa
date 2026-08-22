@@ -96,7 +96,7 @@ impl Coefficients {
         let a0 = 1.0 + alpha;
         let (b0, b1, b2) = match kind {
             FilterKind::LowPass => ((1.0 - cos) * 0.5, 1.0 - cos, (1.0 - cos) * 0.5),
-            FilterKind::HighPass => ((1.0 + cos) * 0.5, -(1.0 + cos), (1.0 + cos) * 0.5),
+            FilterKind::HighPass => (f32::midpoint(1.0, cos), -(1.0 + cos), f32::midpoint(1.0, cos)),
         };
         Self {
             b0: b0 / a0,

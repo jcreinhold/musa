@@ -251,7 +251,9 @@ fn file(refusal: &Refusal) -> Filed {
         // Too many, too few, or the wrong kind of argument.
         Refusal::FillingMismatch { at, .. } | Refusal::Underapplied { at, .. } => one(Code::WrongArity, *at),
         // A name the declaration it is read against does not have.
-        Refusal::NoSuchField { at, .. } | Refusal::NoSuchConstructor { at, .. } => one(Code::UnknownName, *at),
+        Refusal::NoSuchField { at, .. }
+        | Refusal::NoSuchConstructor { at, .. }
+        | Refusal::NoSuchParameter { at, .. } => one(Code::UnknownName, *at),
         // One name written twice, in a record type, an enum, or a `with`.
         Refusal::DuplicateField { at, previous, .. }
         | Refusal::DuplicateCase { at, previous, .. }

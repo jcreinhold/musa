@@ -422,7 +422,9 @@ fn render_events(spec: &StudioGraphSpec, events: &[PerformanceEvent], frames: u6
 /// The left channel of an interleaved stereo render.
 fn left_channel(samples: &[f32]) -> Vec<f32> {
     samples
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|frame| frame.first().copied().unwrap_or(0.0))
         .collect()
 }

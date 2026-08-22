@@ -342,6 +342,19 @@ pub enum RawShape {
         function: Raw,
         /// `a₁ … aₙ`, in the order written.
         arguments: Arc<[Raw]>,
+        /// The type parameters the call supplies by name — `01-surface.md`
+        /// §1's `{ IDENT = expr }` argument form.
+        ///
+        /// Held apart from `arguments` rather than interleaved with them,
+        /// because a named argument does not have a *position*: it fills the
+        /// binder that bears its name, wherever in the callee's telescope that
+        /// binder stands. Keeping the written order among them would be
+        /// recording something that means nothing.
+        ///
+        /// The name is the **callee's** binder name, which is why this rides
+        /// this far rather than being translated away in the lowering: nothing
+        /// before the core knows what a function's inferred binders are called.
+        supplied: Arc<[RawField]>,
     },
     /// `{ f₁ : A₁, …, fₙ : Aₙ }`, a telescope: each field's type is read under
     /// binders for the fields before it.
@@ -714,6 +727,29 @@ impl Raw {
             RawShape::Call {
                 function,
                 arguments: arguments.into_iter().collect(),
+                supplied: Arc::from([]),
+            },
+        )
+    }
+
+    /// `function({n₁ = e₁}, …, a₁, …, aₙ)` — a call that supplies some of the
+    /// callee's type parameters by name.
+    ///
+    /// The named arguments are given separately from the positional ones
+    /// because that is what they are; see [`RawShape::Call`]'s `supplied`.
+    #[must_use]
+    pub fn call_supplying<'a>(
+        origin: Origin,
+        function: Self,
+        arguments: impl IntoIterator<Item = Self>,
+        supplied: impl IntoIterator<Item = (&'a str, Self)>,
+    ) -> Self {
+        Self::new(
+            origin,
+            RawShape::Call {
+                function,
+                arguments: arguments.into_iter().collect(),
+                supplied: collect(supplied),
             },
         )
     }

@@ -194,7 +194,13 @@ impl Parser<'_> {
         );
     }
 
-    /// `<A, B>` — the type parameters a declaration abstracts over.
+    /// `<A, B>`, `<{n : Nat}>` — the type parameters a declaration abstracts
+    /// over.
+    ///
+    /// `01-surface.md` §1's `type-param := IDENT | "{" IDENT (":" type)? "}"`.
+    /// Both spellings are inferred at every use site; the braced one is the
+    /// only way to say what the parameter's own type is, which a dependent
+    /// signature needs and `A` cannot express.
     pub(super) fn type_params(&mut self) {
         self.start(SyntaxKind::TypeParams);
         self.bump(); // `<`
@@ -203,13 +209,23 @@ impl Parser<'_> {
                 self.start(SyntaxKind::TypeParam);
                 self.bump();
                 self.finish();
-                if self.at(SyntaxKind::Comma) {
+            } else if self.at(SyntaxKind::LBrace) {
+                self.start(SyntaxKind::TypeParam);
+                self.bump(); // `{`
+                self.expect(SyntaxKind::Identifier, "a type parameter name");
+                if self.at(SyntaxKind::Colon) {
                     self.bump();
+                    self.type_expr();
                 }
+                self.expect(SyntaxKind::RBrace, "`}`");
+                self.finish();
             } else {
                 self.expected("a type parameter name, or `>`");
                 self.recover(&[SyntaxKind::Identifier, SyntaxKind::Greater, SyntaxKind::LBrace]);
                 break;
+            }
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
             }
         }
         self.expect(SyntaxKind::Greater, "`>`");

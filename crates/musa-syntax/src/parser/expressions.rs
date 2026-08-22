@@ -374,6 +374,14 @@ impl Parser<'_> {
         self.start(SyntaxKind::ExprArgList);
         self.bump();
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            if self.at_supplied_arg() {
+                self.supplied_arg();
+                if !self.at(SyntaxKind::Comma) {
+                    break;
+                }
+                self.bump();
+                continue;
+            }
             self.start(SyntaxKind::ExprArg);
             // A label is one colon, and `::` is two. `f(in: key c major)`
             // names an argument; `f(Delimiter::Layout)` writes a path, and
@@ -399,6 +407,30 @@ impl Parser<'_> {
             self.bump();
         }
         self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    /// Whether `{A = …}` starts here rather than a block or a record.
+    ///
+    /// Three tokens of lookahead and no more: `{` then a name then `=` is the
+    /// supplied-parameter form, and nothing else in an argument list begins
+    /// that way. A block's first statement cannot be `A =` — assignment is
+    /// `assign`, `01-surface.md` §1.4 — and a record literal writes its type
+    /// before the brace.
+    fn at_supplied_arg(&self) -> bool {
+        self.at(SyntaxKind::LBrace)
+            && self.nth_significant(1) == Some(SyntaxKind::Identifier)
+            && self.nth_significant(2) == Some(SyntaxKind::Equals)
+    }
+
+    /// `{A = Nat}` — one type parameter supplied by name.
+    fn supplied_arg(&mut self) {
+        self.start(SyntaxKind::SuppliedArg);
+        self.bump(); // `{`
+        self.bump(); // the binder's name
+        self.bump(); // `=`
+        self.expr();
+        self.expect(SyntaxKind::RBrace, "`}`");
         self.finish();
     }
 

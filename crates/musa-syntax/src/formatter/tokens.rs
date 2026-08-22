@@ -48,7 +48,25 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         return;
     }
     writer.prep_line();
-    if kind == SyntaxKind::LBrace {
+    // `01-surface.md` §1's two braced forms — `<{n : Nat}>` and `{A = Nat}` —
+    // are the only braces in the language that do not open a block. They hold
+    // one name and at most one type or expression, so they are written the way
+    // they were read: on the line, closed up to the `<` or the `(` in front of
+    // them. Taken before the general brace rule because that rule's whole job
+    // is to break the line, which is exactly what these must not do.
+    if matches!(parent, SyntaxKind::TypeParam | SyntaxKind::SuppliedArg)
+        && matches!(kind, SyntaxKind::LBrace | SyntaxKind::RBrace)
+    {
+        if kind == SyntaxKind::LBrace && writer.needs_word_space() {
+            writer.space();
+        }
+        writer.write(text);
+        writer.after_significant(kind);
+        if kind == SyntaxKind::LBrace {
+            writer.close_up();
+        }
+        return;
+    } else if kind == SyntaxKind::LBrace {
         writer.space();
         writer.write("{");
         writer.indent_more();

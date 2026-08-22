@@ -453,6 +453,7 @@ impl TokenClass {
             | SyntaxKind::PitchExpr
             | SyntaxKind::ExprArgList
             | SyntaxKind::ExprArg
+            | SyntaxKind::SuppliedArg
             | SyntaxKind::MatchExpr
             | SyntaxKind::MatchArm
             | SyntaxKind::IfExpr

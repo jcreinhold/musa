@@ -473,6 +473,32 @@ pub enum Refusal {
         /// The term.
         at: Origin,
     },
+    /// `f({A = …}, …)` naming a type parameter `f` does not have.
+    ///
+    /// `01-surface.md` §1's `arg := … | "{" IDENT "=" expr "}"` supplies an
+    /// inferred parameter *by the callee's binder name*, so a name that no
+    /// inferred binder bears is a name the author believed the signature had.
+    /// Reporting it needs both halves — the function, and the names it does
+    /// bear — because the mistake is almost always a spelling or a signature
+    /// the author is remembering from somewhere else.
+    #[error(
+        "`{function}` has no type parameter named `{name}`; it {}",
+        if borne.is_empty() {
+            "has none".to_owned()
+        } else {
+            format!("has {}", crate::elaboration::show::listed(.borne))
+        },
+    )]
+    NoSuchParameter {
+        /// Where the call was written.
+        at: Origin,
+        /// How the function was spelled, from the head of its own spine.
+        function: String,
+        /// The name the author wrote.
+        name: Name,
+        /// The inferred binders the walk met, in the order it met them.
+        borne: Vec<Name>,
+    },
     /// `x.m(…)` where `x`'s type is not a declared type constructor.
     ///
     /// §1.5: `x.m(…)` is `Head.m(x, …)` where `Head` is the rigid head of `x`'s

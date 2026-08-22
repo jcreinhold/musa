@@ -352,7 +352,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 39] = [
+const ALL_REFUSALS: [&str; 40] = [
     "not-storable",
     "unknown-name",
     "mismatch",
@@ -362,6 +362,7 @@ const ALL_REFUSALS: [&str; 39] = [
     "filling-mismatch",
     "not-a-record",
     "no-such-field",
+    "no-such-parameter",
     "record-shape",
     "not-a-type",
     "uninferable",
@@ -410,6 +411,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::FillingMismatch { .. } => "filling-mismatch",
         Refusal::NotARecord { .. } => "not-a-record",
         Refusal::NoSuchField { .. } => "no-such-field",
+        Refusal::NoSuchParameter { .. } => "no-such-parameter",
         Refusal::RecordShape { .. } => "record-shape",
         Refusal::NotAType { .. } => "not-a-type",
         Refusal::Uninferable { .. } => "uninferable",

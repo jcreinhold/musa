@@ -560,6 +560,11 @@ impl Queue {
 }
 
 #[cfg(test)]
+// A malformation that is not reached, or a reflexive pair the kernel refuses,
+// is a defect in this module rather than a program error: panicking is the
+// correct behaviour there.
+#[allow(clippy::panic)]
+#[allow(clippy::expect_used)]
 mod tests {
     //! The three malformations this module and [`crate::kernel::recheck`] can
     //! answer with, reached.

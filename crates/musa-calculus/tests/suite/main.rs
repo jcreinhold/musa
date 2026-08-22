@@ -24,6 +24,7 @@ mod coverage_laws;
 mod elaboration_laws;
 mod family_laws;
 mod glued_laws;
+mod implicit_laws;
 mod malformed_laws;
 mod namespace_laws;
 mod nesting_laws;
@@ -414,6 +415,29 @@ pub(crate) mod programs {
                 ty: None,
             },
             Program {
+                name: "an implicit supplied by the name of the binder it fills",
+                // `01-surface.md` §1's `{ IDENT = expr }`. In the re-checked
+                // term it is an ordinary application, which is the point: the
+                // name is a way of *writing* the argument and not a second
+                // kind of argument.
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::call_supplying(WRITTEN, var("id"), [unit()], [("X", unit_type())]),
+                ),
+                ty: Some(core_unit_type()),
+            },
+            Program {
+                name: "a scheme kept where its own type is expected",
+                // Prompt 154's stopping rule: neither insertion rule fires, so
+                // the term is the definition itself and the re-checker sees a
+                // Π where a λ would otherwise stand.
+                raw: Raw::annotated_bind(WRITTEN, "id", implicit_identity_type(), implicit_identity(), var("id")),
+                ty: Some(core_implicit_identity_type()),
+            },
+            Program {
                 name: "a term checked against an implicit Pi is abstracted, not switched",
                 raw: Raw::lam(WRITTEN, "x", var("x")),
                 ty: Some(Term::parameter_pi(
@@ -512,6 +536,21 @@ pub(crate) mod programs {
                 ),
                 ty: None,
                 expected: |refusal| matches!(refusal, Refusal::FillingMismatch { .. }),
+            },
+            Refused {
+                name: "a type parameter supplied by a name the callee does not bear",
+                // `01-surface.md` §1's `{ IDENT = expr }` names the *callee's*
+                // binder, so a name that matches none of them is a name the
+                // author believed the signature had.
+                raw: Raw::annotated_bind(
+                    WRITTEN,
+                    "id",
+                    implicit_identity_type(),
+                    implicit_identity(),
+                    Raw::call_supplying(WRITTEN, var("id"), [annotated_unit()], [("B", unit_type())]),
+                ),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::NoSuchParameter { .. }),
             },
             Refused {
                 name: "a universe checked one level too low",

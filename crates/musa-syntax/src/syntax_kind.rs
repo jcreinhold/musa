@@ -657,7 +657,18 @@ pub enum SyntaxKind {
     /// `<A, B>` on a declaration — the type parameters it abstracts over.
     TypeParams,
     /// One type parameter: a name, standing for a type inside the declaration.
+    ///
+    /// `A` or `{n : Nat}` — `01-surface.md` §1's two spellings. Both are
+    /// inferred; the braces are what lets one state the parameter's *type*,
+    /// which the bare form leaves at `Type 0`.
     TypeParam,
+    /// `{A = Nat}` in an argument list — a type parameter supplied by the name
+    /// of the binder it fills.
+    ///
+    /// Its own node rather than an [`SyntaxKind::ExprArg`] holding a record,
+    /// because it is not an argument in a *position*: the name is the callee's
+    /// binder name, so the elaborator places it wherever that binder stands.
+    SuppliedArg,
     /// `Sounded(pitch: Pitch, held: Duration)` — one constructor of a `data`
     /// declaration, with its fields.
     DataVariant,

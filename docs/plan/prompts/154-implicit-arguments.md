@@ -1,7 +1,7 @@
 ---
 id: 154
 slug: implicit-arguments
-status: in-progress
+status: done
 depends_on: [153]
 phase: 3
 ---
@@ -10,11 +10,11 @@ phase: 3
 
 ## Task
 
-An inferred binder is half real. An author writes `fn compose<A, B, C>(…)` and the lowering turns each type
-parameter into a `Filling::Parameter` Π, which `advance` fills with a metavariable at every use. What is missing is
-everything around it: the parameter's type cannot be stated, an argument cannot be supplied by the *name* of the binder
-it fills, and a value whose own type is an inferred Π loses that type the moment it is used as a value. Prompt 145 wrote
-the two spellings that close the first two gaps into `01-surface.md` §1's grammar and nothing implements them.
+An inferred binder is half real. An author writes `fn compose<A, B, C>(…)` and the lowering turns each type parameter
+into a `Filling::Parameter` Π, which `advance` fills with a metavariable at every use. What is missing is everything
+around it: the parameter's type cannot be stated, an argument cannot be supplied by the *name* of the binder it fills,
+and a value whose own type is an inferred Π loses that type the moment it is used as a value. Prompt 145 wrote the two
+spellings that close the first two gaps into `01-surface.md` §1's grammar and nothing implements them.
 
 **Corrected against the code, and each correction is measured.**
 
@@ -39,8 +39,8 @@ the measurement — so insertion at application keeps meeting it, unchanged.
 
 ## Read
 
-- `crates/musa-calculus/src/kernel/term.rs`, `Filling` — **three** arms, not the two 147 named: 149 added
-  `Constraint`, which carries `Storable` and no source program can write. This prompt adds no fourth.
+- `crates/musa-calculus/src/kernel/term.rs`, `Filling` — **three** arms, not the two 147 named: 149 added `Constraint`,
+  which carries `Storable` and no source program can write. This prompt adds no fourth.
 - `/Users/jcreinhold/Code/Idris2/src/TTImp/Elab/App.idr` — insertion at application, and where it stops. Read for the
   stopping rule; the surrounding design is Idris's and musa's `abstracted` differs, as `Task` records.
 - `docs/rules/language/01-surface.md` §1 — the two grammar lines prompt 145 added and left without prose:
@@ -54,8 +54,8 @@ the measurement — so insertion at application keeps meeting it, unchanged.
   `Raw::parameter_app`, the positional written implicit the host's schemes already use.
 - `crates/musa-syntax/src/parser/functions.rs` `type_params` and `crates/musa-syntax/src/parser/expressions.rs`
   `expr_arg_list` — the two parsers that reject the brace forms today.
-- `crates/musa-compiler/src/lower/items.rs` `type_parameters` and `crates/musa-compiler/src/lower/values.rs`
-  `arguments` — where each brace form has to arrive.
+- `crates/musa-compiler/src/lower/items.rs` `type_parameters` and `crates/musa-compiler/src/lower/values.rs` `arguments`
+  — where each brace form has to arrive.
 
 ## Design
 

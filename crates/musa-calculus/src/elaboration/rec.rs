@@ -407,13 +407,18 @@ impl Rewrite<'_> {
             // A call whose head is not the definition being defined: `spine`
             // read it as one and `self.call` declined it, so what is left is an
             // ordinary walk into the parts.
-            RawShape::Call { function, arguments } => RawShape::Call {
+            RawShape::Call {
+                function,
+                arguments,
+                supplied,
+            } => RawShape::Call {
                 function: self.term(function, bound)?,
                 arguments: arguments
                     .iter()
                     .map(|argument| self.term(argument, bound))
                     .collect::<Result<Vec<_>, _>>()?
                     .into(),
+                supplied: self.fields(supplied, bound, false)?,
             },
             RawShape::RecordType(fields) => RawShape::RecordType(self.fields(fields, bound, true)?),
             RawShape::Record(fields) => RawShape::Record(self.fields(fields, bound, false)?),
@@ -592,7 +597,10 @@ fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
     // A written call already *is* the spine, with its head and arguments told
     // apart by the author rather than by a walk. Read directly, so that a
     // recursive call reaches the measure check whichever form the reader built.
-    if let RawShape::Call { function, arguments } = raw.shape() {
+    if let RawShape::Call {
+        function, arguments, ..
+    } = raw.shape()
+    {
         return (function, arguments.iter().collect());
     }
     let mut arguments = Vec::new();

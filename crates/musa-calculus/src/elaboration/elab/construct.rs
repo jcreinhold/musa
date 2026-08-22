@@ -247,6 +247,7 @@ fn written_spine(raw: &Raw) -> Option<(&Raw, Vec<&Raw>)> {
         if let RawShape::Call {
             function,
             arguments: written,
+            ..
         } = head.shape()
         {
             arguments.extend(written.iter().rev());

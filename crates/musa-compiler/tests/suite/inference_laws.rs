@@ -214,3 +214,88 @@ fn an_annotation_still_decides_against_inference() {
     );
     assert!(compilation.has_errors(), "`Pitch` is not `Nat`");
 }
+
+/// `01-surface.md` §1's braced type parameter, with no type written, is the
+/// bare one: `<{A}>` and `<A>` declare the same inferred binder at `Type 0`.
+///
+/// Worth a law rather than a comment because the two spellings take different
+/// parser paths, and a grammar that admitted the second without meaning the
+/// first would be a second way to write a type parameter.
+#[test]
+fn a_braced_type_parameter_with_no_type_is_the_bare_one() {
+    let score = snapshot(
+        "piece \"braced\" {
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn unchanged<{A}>(value: A) -> A { value }
+            score { part p {
+                voice direct { use subject; }
+                voice braced { use unchanged(subject); }
+            } }
+        }",
+    );
+    let lanes = voices(&score);
+    assert_eq!(shape(&lanes[0]), shape(&lanes[1]));
+}
+
+/// The braces are what lets a parameter state its *type*, and that is the half
+/// the bare form cannot say: `{n : Nat}` abstracts over a natural number rather
+/// than over a type. §1's `type` has no universe in it, so `A` is the only
+/// spelling for a type parameter and this is the only spelling for anything
+/// else.
+///
+/// `n` is mentioned by nothing, so no argument determines it — which is exactly
+/// why the call writes it, and what the next law measures.
+#[test]
+fn an_inferred_parameter_may_be_a_value_and_is_then_supplied_by_name() {
+    let score = snapshot(
+        "piece \"named\" {
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            score { part p {
+                voice direct { use subject; }
+                voice tagged_use { use tagged({n = 0}, subject); }
+            } }
+        }",
+    );
+    let lanes = voices(&score);
+    assert_eq!(shape(&lanes[0]), shape(&lanes[1]));
+}
+
+/// And the same call without the name is refused, which is what makes the law
+/// above about the name rather than about the declaration.
+#[test]
+fn a_parameter_nothing_determines_and_nothing_names_is_refused() {
+    let compilation = compile_text(
+        "piece \"unnamed\" {
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            score { part p { voice v { use tagged(subject); } } }
+        }",
+    );
+    assert!(
+        compilation.has_errors(),
+        "a parameter nothing determines is reported, not defaulted"
+    );
+}
+
+/// A name no inferred binder bears names nothing, and the report says which
+/// names there are — the author is almost always remembering a signature.
+#[test]
+fn a_supplied_name_the_signature_does_not_bear_is_reported_with_the_ones_it_does() {
+    let compilation = compile_text(
+        "piece \"misnamed\" {
+            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
+            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            score { part p { voice v { use tagged({m = 0}, subject); } } }
+        }",
+    );
+    let reported = compilation
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.message.contains("has no type parameter named `m`"))
+        .unwrap_or_else(|| panic!("the name is reported: {:?}", compilation.diagnostics()));
+    assert!(
+        reported.message.contains('n') && reported.message.contains('A'),
+        "and the report lists the names the signature does bear: {reported:?}"
+    );
+}

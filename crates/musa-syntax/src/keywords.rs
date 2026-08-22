@@ -1047,6 +1047,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::PitchExpr
         | SyntaxKind::ExprArgList
         | SyntaxKind::ExprArg
+        | SyntaxKind::SuppliedArg
         | SyntaxKind::MatchExpr
         | SyntaxKind::MatchArm
         | SyntaxKind::IfExpr

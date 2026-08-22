@@ -445,7 +445,11 @@ impl Lowering<'_> {
     /// about the written head, not about any type.
     fn application(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let head = child(node, is_expr_node)?;
-        let Written { arguments, slots } = self.arguments(node)?;
+        let Written {
+            arguments,
+            slots,
+            supplied,
+        } = self.arguments(node)?;
         // The one call whose arguments are not exactly what was written.
         // §5.7 requires every constructed fact to carry an origin and a scope,
         // `BUILTIN_OWNERSHIP` already calls both of them `play`'s hidden
@@ -517,7 +521,12 @@ impl Lowering<'_> {
         {
             let receiver = Raw::var(self.origin(&head), receiver);
             return Some(sectioned(
-                Raw::call(origin, Raw::method(origin, receiver, method), arguments),
+                Raw::call_supplying(
+                    origin,
+                    Raw::method(origin, receiver, method),
+                    arguments,
+                    supplying(&supplied),
+                ),
                 slots,
             ));
         }
@@ -528,7 +537,10 @@ impl Lowering<'_> {
         // reader's own constructions above stay applications, because an arity
         // sentence about `play`'s four arguments would be about this reading
         // rather than about the two the composer wrote.
-        Some(sectioned(Raw::call(origin, head, arguments), slots))
+        Some(sectioned(
+            Raw::call_supplying(origin, head, arguments, supplying(&supplied)),
+            slots,
+        ))
     }
 
     /// The registered unit `primitive("name", version, …)` selects.
@@ -574,6 +586,13 @@ impl Lowering<'_> {
             return Some(Written::default());
         };
         let mut written = Written::default();
+        for supplied in children(&list, |kind| kind == SyntaxKind::SuppliedArg) {
+            let name = own_tokens(&supplied)
+                .find(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())?;
+            let value = self.value(&child(&supplied, is_expr_node)?)?;
+            written.supplied.push((name, value));
+        }
         for argument in children(&list, |kind| kind == SyntaxKind::ExprArg) {
             // A label at a *use* is refused rather than checked against the
             // declaration's field name, because checking it would need the
@@ -685,8 +704,15 @@ impl Lowering<'_> {
         let receiver = self.value(&child(node, is_expr_node)?)?;
         let named = own_tokens(node).find(|token| token.kind() == SyntaxKind::Identifier)?;
         let method = Raw::method(origin, receiver, named.text());
-        let Written { arguments, slots } = self.arguments(node)?;
-        Some(sectioned(Raw::call(origin, method, arguments), slots))
+        let Written {
+            arguments,
+            slots,
+            supplied,
+        } = self.arguments(node)?;
+        Some(sectioned(
+            Raw::call_supplying(origin, method, arguments, supplying(&supplied)),
+            slots,
+        ))
     }
 
     /// `xs[i]` — `xs.at(i)`, which is §1.5's last row.
@@ -1260,6 +1286,17 @@ struct Written {
     /// One binder per written `_`, left to right — so `g(_, b, _)` reads as
     /// `fn (x, y) { g(x, b, y) }` and not the other way round.
     slots: Vec<(Origin, String)>,
+    /// `{A = Nat}` — the type parameters this call supplies by name.
+    ///
+    /// Carried rather than placed, because the name is the *callee's* binder
+    /// name and nothing in this reading knows a callee's binders. The core
+    /// places each one at the binder that bears it.
+    supplied: Vec<(String, Raw)>,
+}
+
+/// A [`Written::supplied`] list as [`Raw::call_supplying`] wants it.
+fn supplying(supplied: &[(String, Raw)]) -> impl Iterator<Item = (&str, Raw)> {
+    supplied.iter().map(|(name, term)| (name.as_str(), term.clone()))
 }
 
 /// A call, wrapped in the binders its written `_`s stand for.

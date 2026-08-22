@@ -199,7 +199,7 @@ fn every_existing_transform_has_one_block_and_function_meaning() {
         }",
     );
     let lanes = voices(&score);
-    for pair in lanes.chunks_exact(2) {
+    for pair in lanes.as_chunks::<2>().0 {
         assert_eq!(shape(&pair[0]), shape(&pair[1]));
     }
 }

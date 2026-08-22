@@ -44,9 +44,12 @@
 //!   argument, so `same` quantifies implicitly and the core fills the binder
 //!   with a metavariable per use.
 //!
-//! Both stand at `Type 0`, which is the level a written signature lands in —
-//! §1 says the surface never writes a level, and every type the surface *can*
-//! write is small.
+//! A bare `<A>` stands at `Type 0`, which is the level a written signature
+//! lands in — §1 says the surface never writes a level, and every type the
+//! surface *can* write is small. `<{n : Nat}>` is §1's other spelling and
+//! stands at whatever it says: it is the only way to abstract over something
+//! that is not a type, and `A` is exactly `{A : Type 0}` with the type left
+//! out.
 
 use std::sync::Arc;
 
@@ -467,7 +470,12 @@ impl Lowering<'_> {
         })
     }
 
-    /// `<A, B>` — the parameters a declaration abstracts over, each at `Type 0`.
+    /// `<A, B>`, `<{n : Nat}>` — the parameters a declaration abstracts over.
+    ///
+    /// `01-surface.md` §1's two spellings, and the braced one is here for the
+    /// half the bare one cannot say: a parameter's own type. `A` means
+    /// `{A : Type 0}` and that is what it lowers to, so the bare form is not a
+    /// second rule — it is this one with the type left out.
     ///
     /// The filling is not decided here, because a [`RawBinder`] does not carry
     /// one: the caller writes them into a Π at the filling its own declaration
@@ -481,9 +489,13 @@ impl Lowering<'_> {
             .iter()
             .filter_map(|written| {
                 let at = self.origin(written);
+                let ty = match child(written, is_type_node) {
+                    Some(stated) => self.ty(&stated)?,
+                    None => Raw::universe(at, Sort::ZERO),
+                };
                 Some(RawBinder {
                     name: declared_name(written)?,
-                    ty: Raw::universe(at, Sort::ZERO),
+                    ty,
                 })
             })
             .collect()

@@ -220,14 +220,16 @@ impl Elaborator {
             // then `Switch`, where [`Self::carried`] gets its say. That is
             // where the guard earns its keep, since an acceptance rule needs
             // the mismatch to reach it rather than be unified away.
-            RawShape::Call { function, arguments } if arguments.iter().any(Raw::checks_only) => {
-                match self.abstracted(scope, raw, ty)? {
-                    Some(term) => Ok(Some(term)),
-                    None => self
-                        .complete_call(scope, here, function, arguments, Some(ty))
-                        .map(|typed| Some(typed.term)),
-                }
-            }
+            RawShape::Call {
+                function,
+                arguments,
+                supplied,
+            } if arguments.iter().any(Raw::checks_only) => match self.abstracted(scope, raw, ty)? {
+                Some(term) => Ok(Some(term)),
+                None => self
+                    .complete_call(scope, here, function, arguments, supplied, Some(ty))
+                    .map(|typed| Some(typed.term)),
+            },
             RawShape::Var(_)
             | RawShape::Hosted(_)
             | RawShape::Lit(_)
@@ -247,9 +249,18 @@ impl Elaborator {
     /// Wrap `raw` in a λ for an unwritten binder when the type it is checked
     /// against wants one, or answer `None` so that `Switch` runs.
     ///
-    /// The second half of parameter filling, and the reason `Switch` never
-    /// meets a parameter Π: a term whose own form does not abstract the binder
-    /// has one abstracted for it here.
+    /// The second half of parameter filling: a term whose own form does not
+    /// abstract the binder has one abstracted for it here.
+    ///
+    /// **Except when the term already quantifies the same way**, which is
+    /// prompt 154's stopping rule on this side of it. `Switch` does meet a
+    /// parameter Π, and it has to: wrapping a λ around a term that carries its
+    /// own scheme takes the expected binder away before the term's own
+    /// inferred one can be matched against it, and an implicit the body cannot
+    /// determine is then reported as undetermined. `{A} → {B} → A → A` checked
+    /// at that very type is the case, and [`super::spine::Keeping`] is the
+    /// other half — it is what stops `Switch`'s own walk from filling the
+    /// scheme back in.
     fn abstracted(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Option<Term>, ElabError> {
         let Form::Pi {
             filling,
@@ -261,6 +272,9 @@ impl Elaborator {
             return Ok(None);
         };
         if *filling == Filling::Written {
+            return Ok(None);
+        }
+        if self.quantifies_already(scope, raw)? {
             return Ok(None);
         }
         let (name, domain, codomain) = (Arc::clone(name), Arc::clone(domain), codomain.clone());
@@ -275,6 +289,45 @@ impl Elaborator {
         // body asks for the evidence by name.
         let inner = scope.assume(Some(Arc::clone(&name)), here, domain);
         Ok(Some(Term::lam(here, name, self.check(&inner, raw, &body_ty)?)))
+    }
+
+    /// Whether `raw`'s own type already begins with an inferred binder, so that
+    /// [`Self::abstracted`] must leave the expected one for it to meet.
+    ///
+    /// **Answered without elaborating anything.** `Switch` is the rule that
+    /// elaborates, and a peek that inferred `raw` here in order to decide
+    /// whether to throw the answer away would be the "try it and see" the
+    /// conversion checker is written to avoid — and for a declared name it
+    /// would mint a second set of level unknowns for a reading that never
+    /// happens. So the question is asked only of the two things a scope can
+    /// answer by looking: a binder's recorded type, and a definition's stored
+    /// one. A name that is neither — a constructor, a recursor, a registered
+    /// base, a namespaced member — answers `false` and is abstracted as before,
+    /// which is what those all did before this rule existed.
+    ///
+    /// Only [`RawShape::Var`] for the same reason. Every other form that
+    /// reaches [`Self::abstracted`] would have to be elaborated to have a type
+    /// at all, and a *call*'s result quantifying over an inferred binder is a
+    /// call §1.3 has already refused as under-applied.
+    fn quantifies_already(&mut self, scope: &Scope, raw: &Raw) -> Result<bool, ElabError> {
+        let RawShape::Var(name) = raw.shape() else {
+            return Ok(false);
+        };
+        let stated = match scope.lookup(name) {
+            Some(found) => found.ty,
+            None => match scope.cx().definition(name) {
+                Some(defined) => Arc::clone(&defined.ty),
+                None => return Ok(false),
+            },
+        };
+        let unfolded = opened(&mut self.meter, &stated)?;
+        Ok(matches!(
+            unfolded.as_ref().unwrap_or(&stated).form,
+            Form::Pi {
+                filling: Filling::Parameter,
+                ..
+            }
+        ))
     }
 
     /// `ty` made into a function type, when it is an unknown that has to be
@@ -356,7 +409,13 @@ impl Elaborator {
         let expanded;
         let ty = match ty.form {
             Form::Pi { .. } => ty,
-            _ => match self.expanded_unknown(scope, here, filling, name, ty)? {
+            Form::Universe(_)
+            | Form::Lam(_)
+            | Form::RecordType(_)
+            | Form::Record(_)
+            | Form::Lit(_)
+            | Form::Numeral(_)
+            | Form::Neutral(_) => match self.expanded_unknown(scope, here, filling, name, ty)? {
                 Some(pi) => {
                     expanded = pi;
                     &expanded

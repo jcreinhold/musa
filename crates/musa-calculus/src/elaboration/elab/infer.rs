@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use crate::elaboration::namespace;
-use crate::elaboration::raw::{Raw, RawShape};
+use crate::elaboration::raw::{Raw, RawField, RawShape};
 use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::eval::{apply_closure, eval, opened};
 use crate::kernel::origin::Origin;
@@ -13,7 +13,7 @@ use crate::kernel::scope::Scope;
 use crate::kernel::term::{Binder, Filling, Name, Role, Shape, Term};
 use crate::kernel::value::{Env, Form, Value};
 
-use super::spine::{Slot, Walk};
+use super::spine::{Keeping, Slot, Supplied, Walk};
 use super::{Elaborator, Typed};
 
 impl Elaborator {
@@ -83,9 +83,13 @@ impl Elaborator {
             // written with its fields is the form an author actually writes and
             // `Succ(fewer)` is one: `written_spine` reads both forms, so the
             // constructor rule sees the same head and the same arguments here.
-            RawShape::Call { function, arguments } => match self.constructed_open(scope, raw)? {
+            RawShape::Call {
+                function,
+                arguments,
+                supplied,
+            } => match self.constructed_open(scope, raw)? {
                 Some(built) => Ok(built),
-                None => self.complete_call(scope, here, function, arguments, None),
+                None => self.complete_call(scope, here, function, arguments, supplied, None),
             },
             RawShape::RecordType(fields) => self.record_type(scope, here, fields),
             // §2: a record literal is an introduction form, so it checks. The
@@ -217,6 +221,7 @@ impl Elaborator {
         here: Origin,
         function: &Raw,
         arguments: &[Raw],
+        supplied: &[RawField],
         expected: Option<&Value>,
     ) -> Result<Typed, ElabError> {
         let head = self.infer(scope, function)?;
@@ -232,7 +237,55 @@ impl Elaborator {
             }
             .into());
         }
-        self.apply_spine(scope, here, head, &arguments.iter().collect::<Vec<_>>(), expected)
+        let mut named = Supplied::of(supplied);
+        let typed = self.supplied_spine(
+            scope,
+            here,
+            head,
+            &arguments.iter().collect::<Vec<_>>(),
+            &mut named,
+            expected,
+        )?;
+        // Refused here rather than inside the walk: the walk knows which
+        // binders it met, and this knows what the author called the thing that
+        // was supposed to bear them. A refusal needs both halves.
+        if let Some((field, borne)) = named.unplaced() {
+            return Err(Refusal::NoSuchParameter {
+                at: field.term.origin(),
+                // The callee as the author *wrote* it when they wrote a name,
+                // because this refusal is about a name and the reply should be
+                // in the same vocabulary. `head_spelled` reads the elaborated
+                // head, which spells a local binder as its de Bruijn index.
+                function: match function.shape() {
+                    RawShape::Var(name) => name.to_string(),
+                    // Everything else is a head with no written name of its
+                    // own — a projection, a call's answer, a parenthesized
+                    // expression — and the elaborated spine is what can be
+                    // spelled at all.
+                    RawShape::Hosted(_)
+                    | RawShape::Numeral { .. }
+                    | RawShape::Lit(_)
+                    | RawShape::Universe(_)
+                    | RawShape::Pi { .. }
+                    | RawShape::Lam { .. }
+                    | RawShape::App { .. }
+                    | RawShape::Call { .. }
+                    | RawShape::RecordType(_)
+                    | RawShape::Record(_)
+                    | RawShape::Method { .. }
+                    | RawShape::Project { .. }
+                    | RawShape::Update { .. }
+                    | RawShape::Let { .. }
+                    | RawShape::Annot { .. }
+                    | RawShape::Match { .. }
+                    | RawShape::Rec { .. } => crate::elaboration::show::head_spelled(&typed.term),
+                },
+                name: Arc::clone(&field.name),
+                borne,
+            }
+            .into());
+        }
+        Ok(typed)
     }
 
     /// `f a ⇒ B[a]`.
@@ -365,7 +418,9 @@ impl Elaborator {
     ) -> Result<Typed, ElabError> {
         let mut walk = Walk::default();
         let mut ty = function.ty.clone();
-        self.advance(scope, &mut ty, &mut walk)?;
+        // [`Keeping::Nothing`]: a receiver is a written argument, so every
+        // inferred binder in front of it is one the walk has to get past.
+        self.advance(scope, &mut ty, &mut walk, &mut Supplied::none(), Keeping::Nothing)?;
         let unfolded = opened(&mut self.meter, &ty)?;
         let function_ty = unfolded.as_ref().unwrap_or(&ty);
         let Form::Pi { domain, codomain, .. } = &function_ty.form else {

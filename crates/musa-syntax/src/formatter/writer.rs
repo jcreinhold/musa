@@ -20,6 +20,13 @@ pub(super) struct Writer {
     pub(super) pending_newlines: usize,
     /// Kind of the last significant token written.
     pub(super) prev: Option<SyntaxKind>,
+    /// Whether the next token closes up to what was just written.
+    ///
+    /// A per-token override of [`Self::needs_word_space`], which answers from
+    /// the previous token's *kind* alone and so cannot tell `{` opening a
+    /// braced type parameter from `{` opening a run of notes. Cleared by
+    /// [`Self::after_significant`], so it survives exactly one token.
+    closed_up: bool,
     /// One entry per enclosing stacked chain: whether its continuation
     /// indent has been applied yet.
     pub(super) chains: Vec<bool>,
@@ -49,6 +56,7 @@ impl Writer {
             need_newline: false,
             pending_newlines: 0,
             prev: None,
+            closed_up: false,
             chains: Vec::new(),
             lists: Vec::new(),
             run: None,
@@ -321,7 +329,7 @@ impl Writer {
         let Some(prev) = self.prev else {
             return false;
         };
-        if self.at_line_start {
+        if self.at_line_start || self.closed_up {
             return false;
         }
         !matches!(
@@ -347,6 +355,14 @@ impl Writer {
     pub(super) fn after_significant(&mut self, kind: SyntaxKind) {
         self.prev = Some(kind);
         self.pending_newlines = 0;
+        self.closed_up = false;
+    }
+
+    /// The next token takes no space in front of it — see [`Self::closed_up`].
+    ///
+    /// Called *after* [`Self::after_significant`], which is what clears it.
+    pub(super) fn close_up(&mut self) {
+        self.closed_up = true;
     }
 
     pub(super) fn indent_more(&mut self) {

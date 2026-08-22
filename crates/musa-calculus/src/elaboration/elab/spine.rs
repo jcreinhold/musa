@@ -4,12 +4,12 @@
 
 use std::sync::Arc;
 
-use crate::elaboration::raw::Raw;
+use crate::elaboration::raw::{Raw, RawField};
 use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::eval::{apply_closure, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
-use crate::kernel::term::{Definition, Filling, Role, Shape, Term};
+use crate::kernel::term::{Definition, Filling, Name, Role, Shape, Term};
 use crate::kernel::value::{Form, Value};
 
 use super::{Elaborator, Typed};
@@ -160,6 +160,27 @@ impl Elaborator {
         arguments: &[&Raw],
         expected: Option<&Value>,
     ) -> Result<Typed, ElabError> {
+        self.supplied_spine(scope, here, head, arguments, &mut Supplied::none(), expected)
+    }
+
+    /// [`Self::apply_spine`] for a call that also supplies type parameters by
+    /// name — `01-surface.md` §1's `{ IDENT = expr }` argument form.
+    ///
+    /// `supplied` is threaded rather than consumed up front because a named
+    /// argument is placed *where its binder stands*, which only the walk knows:
+    /// the binder's domain may mention the parameters before it, so the
+    /// argument cannot be elaborated until the walk reaches it. What is left
+    /// unplaced when the walk ends is the caller's to refuse, since naming the
+    /// callee is the caller's knowledge and not the walk's.
+    pub(super) fn supplied_spine(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        head: Typed,
+        arguments: &[&Raw],
+        supplied: &mut Supplied<'_>,
+        expected: Option<&Value>,
+    ) -> Result<Typed, ElabError> {
         // A *bare* constructor reference — no written fields — has nothing
         // for its family parameters to be learned from, so each becomes a
         // meta (§2.1): `None` is `None<?>` wherever it stands, and the slot it
@@ -196,7 +217,12 @@ impl Elaborator {
         let mut walk = Walk::default();
         let mut waiting: Vec<Waiting<'_>> = Vec::new();
         let mut ty = head.ty.clone();
-        self.advance(scope, &mut ty, &mut walk)?;
+        // The stopping rule applies to the *last* advance only: a binder with a
+        // written argument still to its right is one the walk has to get past,
+        // whatever the call is checked against.
+        let ending = Keeping::at_the_end(expected);
+        let mut left = arguments.len();
+        self.advance(scope, &mut ty, &mut walk, supplied, Keeping::after(left, ending))?;
         for argument in arguments {
             let unfolded = opened(&mut self.meter, &ty)?;
             let current = unfolded.as_ref().unwrap_or(&ty);
@@ -249,7 +275,8 @@ impl Elaborator {
             };
             walk.slots.push(slot);
             ty = apply_closure(&mut self.meter, &codomain, value)?;
-            self.advance(scope, &mut ty, &mut walk)?;
+            left = left.saturating_sub(1);
+            self.advance(scope, &mut ty, &mut walk, supplied, Keeping::after(left, ending))?;
         }
         if let Some(expected) = expected {
             // Checking position: the rest of the type is matched against what
@@ -293,21 +320,56 @@ impl Elaborator {
     /// Skip the binders §2.1 fills rather than the author: an implicit
     /// parameter becomes a fresh meta, a constraint is noted for the walk's
     /// end.
-    pub(super) fn advance(&mut self, scope: &Scope, ty: &mut Value, walk: &mut Walk) -> Result<(), ElabError> {
+    ///
+    /// `keeping` is prompt 154's stopping rule, and it is why insertion is not
+    /// unconditional. A value used *as a value* at a type that quantifies the
+    /// same way keeps its own scheme: `identity` checked at `{X} → X → X` is
+    /// `identity`, not `λX. identity X`. Without it, an implicit the term's
+    /// type carries and its body cannot determine is refused rather than
+    /// matched — `{A} → {B} → A → A` at its own type reports that `B` could not
+    /// be determined, because the λ that was wrapped around the term took the
+    /// expected `B` away before the inserted `?B` could meet it.
+    pub(super) fn advance(
+        &mut self,
+        scope: &Scope,
+        ty: &mut Value,
+        walk: &mut Walk,
+        supplied: &mut Supplied<'_>,
+        keeping: Keeping,
+    ) -> Result<(), ElabError> {
         loop {
             let unfolded = opened(&mut self.meter, ty)?;
             let current = unfolded.as_ref().unwrap_or(ty);
             let Form::Pi {
                 filling,
+                name,
                 domain,
                 codomain,
-                ..
             } = &current.form
             else {
                 return Ok(());
             };
+            // Recorded before the arms decide anything, so a refusal can list
+            // the names the callee bears whichever way the walk then leaves.
+            if *filling == Filling::Parameter {
+                supplied.bears(name);
+            }
             match filling {
                 Filling::Written => return Ok(()),
+                // A written argument first, and before the stopping rule:
+                // keeping the scheme is what the *elaborator* does with a
+                // binder nobody spoke for, and this author spoke for it.
+                Filling::Parameter if supplied.holds(name) => {
+                    let Some(written) = supplied.take(name) else {
+                        return Ok(());
+                    };
+                    let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+                    let term = self.check(scope, written, &domain)?;
+                    let value = scope.eval(&mut self.meter, &term)?;
+                    walk.slots.push(Slot::Parameter(term));
+                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
+                }
+                Filling::Parameter if keeping == Keeping::TheScheme => return Ok(()),
                 Filling::Parameter => {
                     let (domain, codomain, origin) = (Arc::clone(domain), codomain.clone(), current.origin);
                     let unknown = self.fresh_meta(scope, origin, &domain)?;
@@ -351,6 +413,112 @@ impl Elaborator {
             term = Term::app(here, term, argument);
         }
         Typed { term, ty }
+    }
+}
+
+/// The type parameters a call supplies by name, and which of them the walk has
+/// placed.
+///
+/// A list rather than a map: a call writes one or two of these, the callee's
+/// telescope is walked once, and a hash of two entries costs more than the
+/// scan. The `placed` flags are kept beside the fields rather than removing
+/// entries, so [`Self::unplaced`] can report the *first written* leftover
+/// rather than whichever one a removal happened to leave behind.
+pub(super) struct Supplied<'raw> {
+    /// The named arguments, in the order written.
+    fields: &'raw [RawField],
+    /// Whether each has been placed at its binder yet.
+    placed: Vec<bool>,
+    /// Every inferred binder the walk has met, in order — the list a refusal
+    /// shows the author when a name matches none of them.
+    borne: Vec<Name>,
+}
+
+impl<'raw> Supplied<'raw> {
+    /// A call that supplies nothing, which is every call but the new form.
+    pub(super) const fn none() -> Self {
+        Self {
+            fields: &[],
+            placed: Vec::new(),
+            borne: Vec::new(),
+        }
+    }
+
+    /// The named arguments of one call.
+    pub(super) fn of(fields: &'raw [RawField]) -> Self {
+        Self {
+            fields,
+            placed: vec![false; fields.len()],
+            borne: Vec::new(),
+        }
+    }
+
+    /// Note that the callee's telescope bears `name`.
+    fn bears(&mut self, name: &Name) {
+        self.borne.push(Arc::clone(name));
+    }
+
+    /// Whether an unplaced argument names this binder.
+    fn holds(&self, name: &Name) -> bool {
+        self.fields
+            .iter()
+            .zip(&self.placed)
+            .any(|(field, placed)| !placed && field.name == *name)
+    }
+
+    /// The unplaced argument for `name`, marked placed.
+    fn take(&mut self, name: &Name) -> Option<&'raw Raw> {
+        let at = self
+            .fields
+            .iter()
+            .zip(&self.placed)
+            .position(|(field, placed)| !placed && field.name == *name)?;
+        *self.placed.get_mut(at)? = true;
+        self.fields.get(at).map(|field| &field.term)
+    }
+
+    /// The first named argument the walk never placed, and the binders it
+    /// could have named.
+    pub(super) fn unplaced(&self) -> Option<(&'raw RawField, Vec<Name>)> {
+        let at = self.placed.iter().position(|placed| !placed)?;
+        self.fields.get(at).map(|field| (field, self.borne.clone()))
+    }
+}
+
+/// Whether [`Elaborator::advance`] fills an inferred binder or leaves it.
+///
+/// Prompt 154's stopping rule, as a type rather than a `bool` because the two
+/// answers are asymmetric and a caller reading `false` cannot tell which one it
+/// asked for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Keeping {
+    /// Fill every inferred binder met, which is what an application does.
+    Nothing,
+    /// Leave the inferred binders standing: the position this call is checked
+    /// against quantifies the same way, so the scheme is the answer.
+    TheScheme,
+}
+
+impl Keeping {
+    /// What the *last* advance of a walk checked against `expected` does.
+    ///
+    /// The rule reads the expected type and nothing else: a call whose result
+    /// is asked for at an inferred Π is a call whose inferred binders the
+    /// position wants back.
+    fn at_the_end(expected: Option<&Value>) -> Self {
+        match expected.map(|ty| &ty.form) {
+            Some(Form::Pi {
+                filling: Filling::Parameter,
+                ..
+            }) => Self::TheScheme,
+            _ => Self::Nothing,
+        }
+    }
+
+    /// `ending` when no written argument is left, and [`Self::Nothing`] while
+    /// any still is.
+    const fn after(left: usize, ending: Self) -> Self {
+        if left == 0 { ending } else { Self::Nothing }
     }
 }
 

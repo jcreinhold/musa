@@ -285,10 +285,17 @@ fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[&Nam
             walk(function, bound);
             walk(argument, bound);
         }
-        RawShape::Call { function, arguments } => {
+        RawShape::Call {
+            function,
+            arguments,
+            supplied,
+        } => {
             walk(function, bound);
             for argument in arguments.iter() {
                 walk(argument, bound);
+            }
+            for field in supplied.iter() {
+                walk(&field.term, bound);
             }
         }
         RawShape::RecordType(fields) | RawShape::Record(fields) => {
