@@ -148,77 +148,27 @@ pub enum Code {
     MixedVisibility,
     /// A `match` on a type whose constructors are private here.
     AbstractMatch,
-    /// A `trait` named `Storable`, whose instances the elaborator generates.
-    ReservedClass,
-    /// A `trait` with no parameters, so nothing can be an instance of it.
-    HeadlessClass,
-    /// A `trait` whose *required* method carries a `where` clause.
-    ///
-    /// Distinct from [`Self::DuplicateConstraint`] and the other `where` codes,
-    /// which are about a clause that is wrong. This one is about a clause that
-    /// is in the wrong half of the declaration: `10-traits.md` §1 makes a
-    /// required method a field of the dictionary, and a field has nobody to
-    /// discharge a constraint.
-    ConstrainedField,
-    /// A trait may not declare a `where` clause: no supertraits.
-    SuperClass,
-    /// An `impl` may not declare a `where` clause: no recursive synthesis.
-    ConstrainedInstance,
-    /// An `enum` or `record` may not declare a `where` clause.
-    ConstrainedData,
-    /// A `trait` declaring one method name twice.
-    DuplicateMethod,
-    /// A trait applied to the wrong number of arguments.
-    ClassArity,
     /// A number written at a type that does not count.
     NotANumeralFamily,
-    /// A source `impl Storable`, behind any spelling.
-    HandWrittenStorable,
-    /// An `impl` whose head argument is a bare type variable.
-    BlanketInstance,
-    /// A second `impl` for a key another already answers.
-    DuplicateInstance,
-    /// An `impl` in a package that declares neither its trait nor its head.
-    OrphanInstance,
-    /// An `impl` supplying a method its trait derives.
-    DerivedMethod,
-    /// An `impl` supplying a method its trait does not declare.
-    NoSuchMethod,
-    /// An `impl` leaving a required method undefined.
-    MissingMethod,
-    /// A constraint no instance and no enclosing `where` answers.
-    UnresolvedInstance,
-    /// A constraint on a type variable no enclosing `where` supplies.
-    UnconstrainedVariable,
-    /// A constraint on a type no instance could ever be keyed on.
-    UnkeyedConstraint,
     /// `x.m(…)` where `x`'s type is not a declared type constructor.
     MethodOnVariable,
-    /// `x.m(…)` where no trait with a dictionary at `x`'s head declares `m`.
+    /// `x.m(…)` where nothing named `Head.m` is declared for `x`'s head.
     NoMethodForType,
-    /// `x.m(…)` where two traits with a dictionary at `x`'s head declare `m`.
+    /// A bare member spelling the expected type did not narrow to one
+    /// namespace — several declare it, or the type ruled every one of them out.
     AmbiguousMethod,
     /// A method, field, or case whose name repeats the declaration it belongs to.
     RedundantNamePrefix,
-    /// A `where` clause naming one constraint twice.
-    DuplicateConstraint,
-    /// A `::` path with more than one segment after the type or trait it names.
+    /// A `::` path with more than one segment after the type it names.
     ///
     /// `01-surface.md` §1.5 makes a path's reading a question about
     /// capitalization and nothing else — "lowercase segments are modules, the
-    /// first capitalized segment names a type or a trait, and exactly one
-    /// segment follows it" — so this is the one thing a *reading* can refuse
+    /// first capitalized segment names a type, and exactly one segment follows
+    /// it" — so this is the one thing a *reading* can refuse
     /// about a path without becoming a checker. A path whose prefix names no
     /// module and a path naming an item nothing declares are both
     /// [`Self::UnknownName`], answered where every other name is.
     QualifiedPath,
-    /// A `$…` splice whose value is not of the category its position demands.
-    ///
-    /// Distinct from [`Self::TypeMismatch`] because both sides are `Syntax`
-    /// and what differs is the index — a claim about how a tree parses, not a
-    /// type the author wrote out — so the report names two categories rather
-    /// than two types, and its repair is a parse rather than an annotation.
-    SpliceCategory,
     /// A `$..xs` written where the grammar admits one node and not a run.
     UnspreadSequence,
     /// A name written literally in a quote that the printer's own renaming
@@ -229,9 +179,10 @@ pub enum Code {
     AmbiguousSpread,
     /// A quote pattern written against a value that has no category.
     ///
-    /// Distinct from [`Self::SpliceCategory`], which is a splice of the wrong
-    /// category into a position that has one: here there is no category at
-    /// all, because the value being matched is not syntax.
+    /// Distinct from a splice of the wrong category into a position that has
+    /// one, which is an ordinary conversion failure between two applications
+    /// of `Syntax`: here there is no category at all, because the value being
+    /// matched is not syntax.
     PatternCategory,
     /// A name a quote pattern wrote literally, used in the arm as though the
     /// pattern had bound it.
@@ -327,32 +278,12 @@ code_table! {
     PrivateName => "private-name",
     MixedVisibility => "mixed-visibility",
     AbstractMatch => "abstract-match",
-    ReservedClass => "reserved-class",
-    HeadlessClass => "headless-class",
-    ConstrainedField => "constrained-field",
-    DuplicateMethod => "duplicate-method",
-    ClassArity => "class-arity",
     NotANumeralFamily => "not-a-numeral-family",
-    HandWrittenStorable => "hand-written-storable",
-    BlanketInstance => "blanket-instance",
-    DuplicateInstance => "duplicate-instance",
-    OrphanInstance => "orphan-instance",
-    ConstrainedInstance => "constrained-instance",
-    ConstrainedData => "constrained-data",
-    SuperClass => "super-class",
-    DerivedMethod => "derived-method",
-    NoSuchMethod => "no-such-method",
-    MissingMethod => "missing-method",
-    UnresolvedInstance => "unresolved-instance",
-    UnconstrainedVariable => "unconstrained-variable",
-    UnkeyedConstraint => "unkeyed-constraint",
     MethodOnVariable => "method-on-variable",
     NoMethodForType => "no-method-for-type",
     AmbiguousMethod => "ambiguous-method",
     RedundantNamePrefix => "redundant-name-prefix",
-    DuplicateConstraint => "duplicate-constraint",
     QualifiedPath => "qualified-path",
-    SpliceCategory => "splice-category",
     UnspreadSequence => "unspread-sequence",
     QuotedCapture => "quoted-capture",
     AmbiguousSpread => "ambiguous-spread",

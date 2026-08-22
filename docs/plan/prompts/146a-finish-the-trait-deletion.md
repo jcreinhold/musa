@@ -1,7 +1,7 @@
 ---
 id: 146a
 slug: finish-the-trait-deletion
-status: in-progress
+status: done
 depends_on: [146]
 phase: 3
 ---
