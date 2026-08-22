@@ -24,7 +24,7 @@ can be removed without what prompt 142 supplies — a top-level definition scope
 - Peyton Jones ch. 5 §5.4.1 (`unwieldy`: only the constructor rule duplicates right-hand sides), §5.5 (uniformity, and
   what it implies about order-independence), and ch. 6's let-bound right-hand side. The fat bar's _second_ job is what
   this prompt supplies; its first job stays declined, for the reason
-  [`case.rs`](../../../crates/musa-calculus/src/case.rs) already gives.
+  [`case.rs`](../../../crates/musa-calculus/src/elaboration/case.rs) already gives.
 - Note 24 §H5, [note 26 §2.4](../../notes/research/language-design-closure/26-language-design-decision.md), and note 29
   — this repo found Finding A twice before, chose join points in writing, and then lost the decision when note 42
   superseded that design line for an unrelated reason. What this prompt builds is that decision, spelled in a calculus

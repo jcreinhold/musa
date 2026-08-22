@@ -67,15 +67,15 @@ on it**. This prompt does not make nineteen million calls cheaper by two orders 
   ran first — and §4, the meter this prompt is measured on and does not move.
 - [Prompt 141n](141n-top-level-program.md) — the top-level program, which is what made a definition scope exist and so
   made Finding C real rather than hypothetical.
-- [`context.rs`](../../../crates/musa-calculus/src/context.rs)'s `Cx::defined`, `Cx::env`, and `Cx::assumed`, and
-  [`scope.rs`](../../../crates/musa-calculus/src/scope.rs)'s `define` — where a definition's _evaluated_ value is pushed
-  into `Env = List<Value>` today, and why a use of it is already its normal form before anything asks.
-- [`value.rs`](../../../crates/musa-calculus/src/value.rs)'s `Head` and `Neutral` — head plus `Vec<Elim>` since prompt
-  136b's Finding F, which is what makes adding one head a variant rather than a restructuring.
-- [`eval.rs`](../../../crates/musa-calculus/src/eval.rs)'s `apply`,
-  [`quote.rs`](../../../crates/musa-calculus/src/quote.rs), and
-  [`convert.rs`](../../../crates/musa-calculus/src/convert.rs) — the three places that ask "is this canonical yet",
-  which are the three places that will have to force δ.
+- [`context.rs`](../../../crates/musa-calculus/src/kernel/context.rs)'s `Cx::defined`, `Cx::env`, and `Cx::assumed`, and
+  [`scope.rs`](../../../crates/musa-calculus/src/kernel/scope.rs)'s `define` — where a definition's _evaluated_ value is
+  pushed into `Env = List<Value>` today, and why a use of it is already its normal form before anything asks.
+- [`value.rs`](../../../crates/musa-calculus/src/kernel/value.rs)'s `Head` and `Neutral` — head plus `Vec<Elim>` since
+  prompt 136b's Finding F, which is what makes adding one head a variant rather than a restructuring.
+- [`eval.rs`](../../../crates/musa-calculus/src/kernel/eval.rs)'s `apply`,
+  [`quote.rs`](../../../crates/musa-calculus/src/kernel/quote.rs), and
+  [`convert.rs`](../../../crates/musa-calculus/src/elaboration/convert.rs) — the three places that ask "is this
+  canonical yet", which are the three places that will have to force δ.
 - Peyton Jones **ch. 12 §12.1** — tree reduction against graph reduction, which is this same observation one machine
   down: an expression evaluated once and shared costs a sum where an expression rebuilt at each use costs a product.
   Take the analysis; musa has no graph reducer and this prompt does not build one.

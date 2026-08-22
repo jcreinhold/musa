@@ -16,8 +16,8 @@ families, then traits through `declare_trait`, then the definitions as one group
 `musa_calculus::declare_impl`.
 
 Because that loop is last, **no definition in a document can resolve a method by receiver against an instance the same
-document declares.** [`elab.rs::method`](../../../crates/musa-calculus/src/elab/mod.rs) filters the traits declaring a
-spelling by the ones with a dictionary at the receiver's head —
+document declares.** [`elab.rs::method`](../../../crates/musa-calculus/src/elaboration/elab/mod.rs) filters the traits
+declaring a spelling by the ones with a dictionary at the receiver's head —
 
 ```rust
 scope.discharged(&key).is_some() || classes.instance(&key).is_some()
@@ -63,9 +63,9 @@ other way. Neither kind comes first, so neither is declared first.
 - [`143`](164-builtin-collapse.md), which is the prompt that meets this at scale: it moves `nat_add`, `text_equal`, and
   `duration_of` behind traits whose `impl` bodies call library functions, in the same documents as the definitions that
   call those traits' methods. Every one of those is the shape above.
-- [`program.rs`](../../../crates/musa-calculus/src/program.rs)'s `free`, and its doc comment's warning — "a spurious
-  edge is a spurious *cycle*, and a cycle is refused". That sentence is the whole difficulty of this prompt, because the
-  definition-to-instance direction is the one direction that cannot be computed exactly.
+- [`program.rs`](../../../crates/musa-calculus/src/kernel/program.rs)'s `free`, and its doc comment's warning — "a
+  spurious edge is a spurious *cycle*, and a cycle is refused". That sentence is the whole difficulty of this prompt,
+  because the definition-to-instance direction is the one direction that cannot be computed exactly.
 - Peyton Jones **ch. 6 §6.2.8** and **ch. 8**, cited by 141n for the first half and load-bearing again here. §6.2.8's
   "minimal groups" is what the Design's two edge kinds protect: an analysis that puts a declaration into a recursive
   group it does not belong in may fail to type-check something that is perfectly well typed, and an edge that stands for

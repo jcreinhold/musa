@@ -1,0 +1,552 @@
+//! The typing context.
+//!
+//! A context is the list of binders a term is read under, and this one carries
+//! two things per binder: the type it was introduced at, and — for a binder
+//! introduced by a definition rather than an assumption — the value it stands
+//! for. That second half is δ. Looking a defined variable up finds its value
+//! rather than a variable, so unfolding a definition is what the environment
+//! already does and there is no separate unfolding rule.
+//!
+//! **Extending a context evaluates; conversion under it does not.** That split
+//! is why [`Cx`] holds a [`Budget`] rather than a meter. Limits are inherited by
+//! every operation under a context; a *spend* belongs to the operation that made
+//! it, and one meter shared across operations would make a conversion's answer
+//! depend on how many ran before it.
+//!
+//! Extension is persistent — [`Cx::assume`] and [`Cx::define`] answer a new
+//! context and leave the old one usable — because an elaborator descends into
+//! two branches from one context and neither may see the other's binders.
+
+use std::sync::Arc;
+
+use crate::kernel::base::Registry;
+use crate::kernel::budget::{Budget, Meter};
+use crate::kernel::error::CoreError;
+use crate::kernel::eval::eval;
+use crate::kernel::family::{Constant, Found, Group};
+use crate::kernel::list::List;
+use crate::kernel::origin::Origin;
+use crate::kernel::program::{Defined, Program};
+use crate::kernel::sort::Sort;
+use crate::kernel::term::{Definition, Level, Name, Role, Term};
+use crate::kernel::value::{Env, Value};
+use crate::kernel::visibility::ModuleId;
+
+/// Everything in scope that is not a binder: the declarations, the top-level
+/// definitions, and the host's registrations.
+///
+/// One value rather than three fields, and it lives in [`Env`] rather than
+/// beside it. A term names a constant, a definition, a base type, or a builtin
+/// and says which of the four it is (`02-core-calculus.md` §6); *what* that name
+/// reduces to is the context's answer, so reduction needs this table wherever it
+/// evaluates. Threading it as a parameter would touch every function in the
+/// crate and would still leave a closure applicable under a table other than the
+/// one it was built under. The environment is already handed to `eval` and
+/// already captured by every closure, so a closure resolves against the table it
+/// was *built* under — the only table that can be right.
+///
+/// [`None`] is the table that declares nothing, so a context that never declares
+/// anything pays a null check rather than an allocation.
+#[derive(Clone, Default)]
+pub(crate) struct Globals(Option<Arc<Tables>>);
+
+/// What a non-empty [`Globals`] holds.
+///
+/// Three lists rather than one, because three different operations extend them
+/// and a merged list could not say which kind a name was found as — which is the
+/// question [`Globals::definition`] answers.
+#[derive(Clone, Default)]
+struct Tables {
+    /// The declaration groups whose constants are in scope, most recent first.
+    ///
+    /// Beside the binders rather than among them, because a constant is not one:
+    /// it has no de Bruijn index, nothing shadows it, and it is in scope in its
+    /// own declaration. Keeping the two apart is what lets [`Cx::closed`] drop
+    /// every binder and keep every declaration, which is what a `data`
+    /// declaration is elaborated in.
+    declared: List<Arc<Group>>,
+    /// The top-level definitions in scope, most recent first.
+    ///
+    /// Beside the binders for `declared`'s reason and one of its own: §2.4 lets
+    /// a body name a definition written after it, and a de Bruijn binder refers
+    /// outward only, so a definition that lived among the locals could never be
+    /// seen by the definitions before it. See [`crate::kernel::program`].
+    definitions: List<Arc<Defined>>,
+    /// The host's base types and builtins (§5.8).
+    ///
+    /// The core never builds one. `crates/musa-calculus/src/base.rs` argues why
+    /// — a leaf calculus that enumerated the base types would make every new
+    /// musical domain a core amendment.
+    externs: Option<Arc<Registry>>,
+}
+
+impl Globals {
+    /// The table that declares nothing.
+    pub(crate) const EMPTY: Self = Self(None);
+
+    /// This table with `group`'s families, constructors, and recursors in
+    /// scope.
+    fn declaring(&self, group: &Arc<Group>) -> Self {
+        self.extended(|tables| tables.declared = tables.declared.push(Arc::clone(group)))
+    }
+
+    /// This table with one more top-level definition in scope.
+    fn defining(&self, defined: &Arc<Defined>) -> Self {
+        self.extended(|tables| tables.definitions = tables.definitions.push(Arc::clone(defined)))
+    }
+
+    /// This table with the host's registrations in scope.
+    fn with_externs(&self, externs: Arc<Registry>) -> Self {
+        self.extended(|tables| tables.externs = Some(externs))
+    }
+
+    /// What `name` refers to here.
+    ///
+    /// The [`Role`] chooses the table, and that is not a shortcut. Shadowing
+    /// between a declaration, a definition, and a registration that share a
+    /// spelling is `01-surface.md` §1.3's question, and the *elaborator* already
+    /// answered it when it turned the author's word into this term — sometimes
+    /// by resolving in the host's namespaces on purpose, which no ordering of
+    /// these three tables reproduces. Searching them again here would be a
+    /// second resolver free to disagree with the first. The term records which
+    /// kind of name it is; this answers with that kind or with nothing.
+    ///
+    /// A recursor carries one thing more: the universe its motives land in,
+    /// which §1.3 puts on the use site because there is no universe polymorphism
+    /// to put it anywhere else.
+    pub(crate) fn definition(&self, name: &str, role: Role) -> Definition {
+        let Some(tables) = self.0.as_deref() else {
+            return Definition::Undeclared;
+        };
+        match role {
+            Role::TypeConstructor | Role::Constructor | Role::Recursor(_) => {
+                let level = match role {
+                    Role::Recursor(level) => level,
+                    Role::Defined | Role::Constructor | Role::TypeConstructor | Role::Base | Role::Builtin => {
+                        Sort::ZERO
+                    }
+                };
+                Self::found_in(tables, name)
+                    .map_or(Definition::Undeclared, |found| Definition::Declared(found.at(level)))
+            }
+            Role::Defined => Self::defined_in(tables, name).map_or(Definition::Undeclared, |defined| {
+                Definition::Defined(crate::kernel::program::one(defined))
+            }),
+            Role::Base => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
+                Some(crate::kernel::base::Extern::Base(base)) => Definition::Base(base.clone()),
+                Some(crate::kernel::base::Extern::Builtin(_)) | None => Definition::Undeclared,
+            },
+            Role::Builtin => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
+                Some(crate::kernel::base::Extern::Builtin(builtin)) => Definition::Builtin(builtin.clone()),
+                Some(crate::kernel::base::Extern::Base(_)) | None => Definition::Undeclared,
+            },
+        }
+    }
+
+    /// What `name` names among the declared groups, if anything.
+    ///
+    /// [`Found`] rather than [`Definition`], for the caller that has no use site
+    /// to take a recursor's universe from: the elaborator, choosing one.
+    pub(crate) fn declared(&self, name: &str) -> Option<Found> {
+        Self::found_in(self.0.as_deref()?, name)
+    }
+
+    /// What `name` names among the definitions in scope, most recent first.
+    ///
+    /// [`Arc<Defined>`](Defined) rather than [`Definition`], for the caller that
+    /// asks what a spelling *could* have meant rather than what it reduces to:
+    /// the elaborator, which reports a private one rather than resolving past
+    /// it.
+    pub(crate) fn defined(&self, name: &str) -> Option<&Arc<Defined>> {
+        Self::defined_in(self.0.as_deref()?, name)
+    }
+
+    /// Every declared family in scope, most recent declaration first.
+    pub(crate) fn families(&self) -> impl Iterator<Item = &crate::kernel::family::Declared> {
+        self.0
+            .as_deref()
+            .into_iter()
+            .flat_map(|tables| tables.declared.iter().flat_map(|group| group.families.iter()))
+    }
+
+    /// The names of the top-level definitions in scope.
+    pub(crate) fn defined_names(&self) -> impl Iterator<Item = Name> + '_ {
+        self.0
+            .as_deref()
+            .into_iter()
+            .flat_map(|tables| tables.definitions.iter().map(|defined| Arc::clone(&defined.name)))
+    }
+
+    /// What `name` names among the host's registrations, if anything.
+    pub(crate) fn extern_named(&self, name: &str) -> Option<&crate::kernel::base::Extern> {
+        self.0.as_deref()?.externs.as_deref()?.named(name)
+    }
+
+    fn found_in(tables: &Tables, name: &str) -> Option<Found> {
+        tables.declared.iter().find_map(|group| Found::named(group, name))
+    }
+
+    fn defined_in<'a>(tables: &'a Tables, name: &str) -> Option<&'a Arc<Defined>> {
+        tables.definitions.iter().find(|defined| *defined.name == *name)
+    }
+
+    /// This table with one field changed.
+    ///
+    /// The copy is the point: extension is persistent, because an elaborator
+    /// descends into two branches from one context and neither may see the
+    /// other's declarations.
+    fn extended(&self, change: impl FnOnce(&mut Tables)) -> Self {
+        let mut tables = self.0.as_deref().cloned().unwrap_or_default();
+        change(&mut tables);
+        Self(Some(Arc::new(tables)))
+    }
+}
+
+/// The binders a term is read under, and the budget its conversions run in.
+#[derive(Clone)]
+pub struct Cx {
+    env: Env,
+    /// The type each binder was introduced at, innermost first.
+    ///
+    /// Kept rather than discarded, and that is not bookkeeping for its own sake:
+    /// both [`Self::assume`] and [`Self::define`] evaluate a type already, and a
+    /// context that threw the result away would force the elaborator — which
+    /// must abstract a metavariable over every binder in scope, at its type — to
+    /// evaluate all of them a second time. The environment answers this for an
+    /// *assumption*, whose variable value carries its type; it cannot for a
+    /// definition, whose value is the definition.
+    types: List<Arc<Value>>,
+    /// The module a term elaborated here is written in, when the caller named
+    /// one.
+    ///
+    /// `None` is inside *every* module, which is what keeps the visibility rule
+    /// invisible to a caller that has no packages — see
+    /// [`crate::kernel::visibility`]. This crate never mints one.
+    module: Option<ModuleId>,
+    depth: Level,
+    budget: Budget,
+}
+
+impl Cx {
+    /// The empty context, at the language budget.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::with_budget(Budget::LANGUAGE)
+    }
+
+    /// The empty context, at a stated budget.
+    ///
+    /// The compiler never calls this with anything but [`Budget::LANGUAGE`] —
+    /// see [`Budget::scaled`] for why the other caller exists and what it is
+    /// for.
+    #[must_use]
+    pub const fn with_budget(budget: Budget) -> Self {
+        Self {
+            env: Env::EMPTY,
+            types: List::EMPTY,
+            module: None,
+            depth: Level::ZERO,
+            budget,
+        }
+    }
+
+    /// This context's declarations, with none of its binders.
+    ///
+    /// What a `data` declaration is elaborated in: §1.1's parameters, indices,
+    /// and constructor types are read under the declaration's own binders and
+    /// nothing else, so a group elaborated inside a term would store terms whose
+    /// variables named binders the group does not carry. Rather than track an
+    /// offset nobody could check, a declaration is closed by construction.
+    #[must_use]
+    pub fn closed(&self) -> Self {
+        Self {
+            env: Env::under(self.globals().clone()),
+            types: List::EMPTY,
+            module: self.module,
+            depth: Level::ZERO,
+            budget: self.budget,
+        }
+    }
+
+    /// This context, elaborating inside the module the caller numbers
+    /// `module`.
+    ///
+    /// What a declaration group is stamped with when it is declared here, and
+    /// what a private name is checked against when it is read. A context that
+    /// never says this is inside every module, so nothing that does not have
+    /// packages has to care — the argument is in [`crate::kernel::visibility`].
+    #[must_use]
+    pub fn in_module(&self, module: ModuleId) -> Self {
+        Self {
+            module: Some(module),
+            ..self.clone()
+        }
+    }
+
+    /// The module terms elaborated here are written in, if the caller named one.
+    pub(crate) const fn module(&self) -> Option<ModuleId> {
+        self.module
+    }
+
+    /// This context, with the host's base types and builtins in scope.
+    ///
+    /// Registered once by the caller and then immutable, which is what keeps a
+    /// δ-rule's answer independent of when it was asked — see
+    /// [`Registry`](crate::Registry).
+    #[must_use]
+    pub fn with_externs(&self, externs: Arc<Registry>) -> Self {
+        self.under(self.globals().with_externs(externs))
+    }
+
+    /// What `name` names among the host's registrations, if anything.
+    ///
+    /// A term spells a registered name and says which kind of name it is; it no
+    /// longer carries the [`Base`](crate::Base) or [`Builtin`](crate::Builtin)
+    /// itself (§6's rule against a context entry inside a term). A reader that
+    /// wants the registration — its arity, its signature, its rule — asks the
+    /// context the name was written under, which is this.
+    #[must_use]
+    pub fn extern_named(&self, name: &str) -> Option<&crate::kernel::base::Extern> {
+        self.globals().extern_named(name)
+    }
+
+    /// The table this context resolves global names against.
+    pub(crate) const fn globals(&self) -> &Globals {
+        self.env.globals()
+    }
+
+    /// This context reading against `globals`, with the same binders.
+    fn under(&self, globals: Globals) -> Self {
+        Self {
+            env: self.env.reading(globals),
+            ..self.clone()
+        }
+    }
+
+    /// This context with `group`'s families, constructors, and recursors in
+    /// scope.
+    #[must_use]
+    pub fn declaring(&self, group: &Arc<Group>) -> Self {
+        self.under(self.globals().declaring(group))
+    }
+
+    /// What a declared name refers to here, most recent declaration first.
+    pub(crate) fn declared(&self, name: &str) -> Option<Found> {
+        self.globals().declared(name)
+    }
+
+    /// The family a qualified name reaches into that has no such member.
+    ///
+    /// `Tying.Tied` where `Tying` is declared and `Tied` is not one of its
+    /// cases. Told apart from an unknown name because the two are different
+    /// mistakes: one is a name nobody declared, the other is a case this type
+    /// does not have, and only the second can list the cases it does.
+    pub(crate) fn stranger(&self, name: &str) -> Option<Constant> {
+        let (family, case) = name.split_once('.')?;
+        if case.is_empty() || case.contains('.') || self.declared(name).is_some() {
+            return None;
+        }
+        match self.declared(family)? {
+            Found::Rigid(constant) if constant.is_family() => Some(constant),
+            Found::Rigid(_) | Found::Recursor(..) => None,
+        }
+    }
+
+    /// The families in scope that declare a case named `case`, most recent
+    /// declaration first.
+    ///
+    /// What a bare constructor could have meant. Plural because two enums may
+    /// share a case spelling — `01-surface.md` §1.3 makes that legal on purpose
+    /// — so the answer to "which did you mean" is a list and never a guess.
+    pub(crate) fn cases(&self, case: &str) -> Vec<Name> {
+        self.globals()
+            .families()
+            .filter(|declared| {
+                declared
+                    .constructors
+                    .iter()
+                    .any(|constructor| *constructor.name == *case)
+            })
+            .map(|declared| Arc::from(format!("{}.{case}", declared.name)))
+            .collect()
+    }
+
+    /// This context with `program`'s definitions in scope as global names.
+    ///
+    /// What a caller brings a declared program into scope with, so that the
+    /// next document — or the next `check` against a term the caller wrote by
+    /// hand — may name what it defined. The group arrives whole because that is
+    /// the unit [`declare_program`](crate::declare_program) answers: §2.4
+    /// collects signatures before bodies, so no member of a group is finished
+    /// until all of them are. A namespaced definition — `Pitch.act` — is a
+    /// member like any other, which is what makes `p.act(i)` and the definition
+    /// answering it visible to each other.
+    #[must_use]
+    pub fn defining(&self, program: &Program) -> Self {
+        let globals = program
+            .members()
+            .iter()
+            .fold(self.globals().clone(), |globals, defined| globals.defining(defined));
+        self.under(globals)
+    }
+
+    /// This context with one more definition in scope.
+    ///
+    /// The step [`declare_program`](crate::declare_program) takes between
+    /// members: dependency order means the definitions a body may name are
+    /// exactly those already elaborated, and this is how the next one sees
+    /// them.
+    pub(crate) fn defining_one(&self, defined: &Arc<Defined>) -> Self {
+        self.under(self.globals().defining(defined))
+    }
+
+    /// What `name` names among the definitions in scope, most recent first.
+    pub(crate) fn definition(&self, name: &str) -> Option<&Arc<Defined>> {
+        self.globals().defined(name)
+    }
+
+    /// This context extended by an assumption at type `ty`, written at
+    /// `binder`.
+    ///
+    /// The binder has no name here, and that is not an omission. α-equivalence
+    /// is decided by de Bruijn index, quotation takes the names it writes from
+    /// the Π and λ values it walks, and a name in the context would be a second
+    /// copy free to disagree with those. Prompt 134 attaches names where they
+    /// are read — in a diagnostic.
+    ///
+    /// It does have an [`Origin`], and that *is* load-bearing: an assumption has
+    /// no value to take one from, so unless the binder supplies it every
+    /// occurrence of the variable in a normal form would point nowhere.
+    /// [`Self::define`] needs no such argument, because its value already
+    /// carries origins of its own.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Exhausted`] or [`CoreError::Malformed`] from evaluating
+    /// `ty`, which is read in *this* context and so must be closed under it.
+    pub fn assume(&self, binder: Origin, ty: &Term) -> Result<Self, CoreError> {
+        crate::kernel::room::with_room(|| {
+            let mut meter = Meter::new(self.budget);
+            let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
+            Ok(self.assumed(binder, ty))
+        })
+    }
+
+    /// This context extended by a definition of `value` at type `ty`.
+    ///
+    /// The binder's value goes into the environment, so a later term that names
+    /// it sees the definition unfolded. That is δ, and it is the reason this is
+    /// a different operation from [`Self::assume`] rather than a flag on it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::assume`], for either term.
+    pub fn define(&self, ty: &Term, value: &Term) -> Result<Self, CoreError> {
+        crate::kernel::room::with_room(|| {
+            let mut meter = Meter::new(self.budget);
+            // Nothing in this crate checks that `value` inhabits `ty` — the
+            // elaborator does — but a type that cannot be evaluated is a defect
+            // worth reporting where it was written rather than at the first
+            // conversion that trips over it.
+            let ty = Arc::new(eval(&mut meter, &self.env, ty)?);
+            let value = eval(&mut meter, &self.env, value)?;
+            self.defined(&mut meter, ty, value)
+        })
+    }
+
+    /// How many binders are in scope, which is also the level the next one
+    /// will be assumed at — see [`Level`].
+    #[must_use]
+    pub(crate) const fn depth(&self) -> Level {
+        self.depth
+    }
+
+    /// The budget every operation under this context runs in.
+    #[must_use]
+    pub const fn budget(&self) -> Budget {
+        self.budget
+    }
+
+    /// This context extended by an assumption at an *already evaluated* type.
+    ///
+    /// What [`Self::assume`] is on top of, for the caller that has the type as
+    /// a value already. Sharing the [`Arc`] with the variable's own type is why
+    /// the two copies cannot disagree.
+    pub(crate) fn assumed(&self, binder: Origin, ty: Arc<Value>) -> Self {
+        let variable = Value::var(binder, self.depth, Arc::clone(&ty));
+        self.pushed(ty, variable)
+    }
+
+    /// This context extended by an already-evaluated definition.
+    ///
+    /// The value is first opened to weak-head form: the work a definition's
+    /// body stands for is paid at its declaration, once, which is the
+    /// strictness evaluation had when δ ran at the lookup and what the budget
+    /// laws are calibrated against. The binder's entry in the environment is
+    /// then the definition *folded*: a neutral headed by
+    /// [`Head::Def`](crate::kernel::value) that carries the opened value, so a use of
+    /// the definition is a reference to it rather than its value written out
+    /// again. δ opens it where something needs a canonical form — see
+    /// [`crate::kernel::eval::unfold`] — and conversion tries the folded comparison
+    /// first. The binder's level is the identity: a definition is already a
+    /// telescope entry, so no second numbering exists to disagree with this
+    /// one.
+    ///
+    /// # Errors
+    ///
+    /// As [`crate::kernel::eval::opened`]: opening the value is ordinary evaluation.
+    pub(crate) fn defined(&self, meter: &mut Meter, ty: Arc<Value>, value: Value) -> Result<Self, CoreError> {
+        let value = crate::kernel::eval::opened(meter, &value)?.unwrap_or(value);
+        let folded = Value::neutral(crate::kernel::value::Neutral::head(
+            value.origin,
+            crate::kernel::value::Head::Def(
+                crate::kernel::value::DefHead::Local(self.depth),
+                Arc::clone(&ty),
+                Arc::new(value),
+            ),
+        ));
+        Ok(self.pushed(ty, folded))
+    }
+
+    /// The type of every binder in scope, innermost first.
+    ///
+    /// Handed over whole rather than one lookup at a time, because the caller
+    /// that wants them — a metavariable abstracting over its context — wants all
+    /// of them in that order, and asking by index would make it recover the
+    /// depth arithmetic this already knows.
+    /// The names of the top-level definitions in scope.
+    ///
+    /// What an [`crate::Refusal::UnknownName`] offers as its candidates: the
+    /// answer to "what could this name have meant" is read off the context the
+    /// name failed in, not re-derived by whoever reports it.
+    pub(crate) fn defined_names(&self) -> impl Iterator<Item = Name> + '_ {
+        self.globals().defined_names()
+    }
+
+    pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
+        &self.types
+    }
+    pub(crate) const fn env(&self) -> &Env {
+        &self.env
+    }
+
+    pub(crate) fn meter(&self) -> Meter {
+        Meter::new(self.budget)
+    }
+
+    fn pushed(&self, ty: Arc<Value>, value: Value) -> Self {
+        Self {
+            env: self.env.push(value),
+            types: self.types.push(ty),
+            module: self.module,
+            depth: self.depth.deeper(),
+            budget: self.budget,
+        }
+    }
+}
+
+impl Default for Cx {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -16,6 +16,7 @@
 #![allow(clippy::panic)]
 
 mod base_laws;
+mod boundary_laws;
 mod budget_laws;
 mod collection_laws;
 mod conversion_laws;

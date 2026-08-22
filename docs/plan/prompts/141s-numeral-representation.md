@@ -51,10 +51,10 @@ adding a language feature under a migration diff, which is why it is a prompt of
 The cheap answer is to delete the family and register `Nat` as a base type with a `u64` literal, the way 141b did for
 `EventTrack` and `Origin`. It is the wrong answer three times over. 141b's own rule refuses destructuring at a
 base-typed column, so every `match n { Zero, Succ p }` in the corpus stops compiling.
-[`rec.rs`](../../../crates/musa-calculus/src/rec.rs) derives its measure from a constructor field, so no function could
-recurse on a number. And `Vec A n` indexes a family by a `Nat`, so a base-typed `Nat` would put the length outside the
-language that reasons about it. A base type is for something the core has no rules about; numbers are something the core
-has *every* rule about, and only their storage is at issue.
+[`rec.rs`](../../../crates/musa-calculus/src/elaboration/rec.rs) derives its measure from a constructor field, so no
+function could recurse on a number. And `Vec A n` indexes a family by a `Nat`, so a base-typed `Nat` would put the
+length outside the language that reasons about it. A base type is for something the core has no rules about; numbers are
+something the core has *every* rule about, and only their storage is at issue.
 
 ### A counting family, derived rather than nominated
 
@@ -88,9 +88,9 @@ neutral is not a closed numeral, so a numeral and a neutral are simply unequal. 
 
 Exactly at an elimination, one level at a time. ι on the generated recursor reads the count: zero takes the base arm,
 `k` takes the step arm applied to the numeral `k - 1` and to the hypothesis for it.
-[`case.rs`](../../../crates/musa-calculus/src/case.rs) splits a column at a counting family the same way. One unfold,
-one level, one step charged — so a fold over a numeral `n` costs what a fold over a tower of height `n` costs, and
-*nothing else does*.
+[`case.rs`](../../../crates/musa-calculus/src/elaboration/case.rs) splits a column at a counting family the same way.
+One unfold, one level, one step charged — so a fold over a numeral `n` costs what a fold over a tower of height `n`
+costs, and *nothing else does*.
 
 ### Cost, and the limit that stays
 
@@ -117,17 +117,18 @@ and not about numerals, so it is recorded rather than fixed here.
 ### A numeral crosses the δ boundary as a number
 
 `Datum` gains a `Count { family, count }` arm, and the readback answers it. The alternative — read a numeral back as the
-`count` nested [`Datum::Case`](../../../crates/musa-calculus/src/base.rs)s it denotes — is the same mistake one layer
-out and it is worse there than in the term. Worse because a `Datum` tower costs a node per unit *and* recurses on the
-host stack when it is **dropped**, so a host asking for a large `Nat` as data would abort where the term never could;
-and because [`rules::nat`](../../../crates/musa-compiler/src/registry/rules.rs) exists only to count that tower back
-down to the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we already computed" names exactly this.
-Note that before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the deepest
-readable `Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a feature.
+`count` nested [`Datum::Case`](../../../crates/musa-calculus/src/kernel/base.rs)s it denotes — is the same mistake one
+layer out and it is worse there than in the term. Worse because a `Datum` tower costs a node per unit *and* recurses on
+the host stack when it is **dropped**, so a host asking for a large `Nat` as data would abort where the term never
+could; and because [`rules::nat`](../../../crates/musa-compiler/src/registry/rules.rs) exists only to count that tower
+back down to the `u64` the core already had. `AGENTS.md`'s "hand a consumer what we already computed" names exactly
+this. Note that before this prompt the tree was capped: `canonical` charges §4.1's nesting metric per level, so the
+deepest readable `Datum` was 256 — a numeral that bypassed that charge would be a hole in the budget rather than a
+feature.
 
 Lean has no analogue because it has no such boundary: its event track literal *is* the host datum. Musa's δ-rules read
-[`Datum`](../../../crates/musa-calculus/src/base.rs) and never a value, which is roadmap §15.12's privacy boundary, so
-the count has to cross it as a count.
+[`Datum`](../../../crates/musa-calculus/src/kernel/base.rs) and never a value, which is roadmap §15.12's privacy
+boundary, so the count has to cross it as a count.
 
 ### Where Lean 4 agrees, and where this deliberately does not
 
@@ -151,10 +152,11 @@ a literal major premise exactly one level. Four differences remain, and each is 
 ### The raw layer names the family
 
 `Raw::numeral(origin, family, count)`, with `family` a name, the way
-[`Raw::var`](../../../crates/musa-calculus/src/raw.rs) already spells `Nat.Succ`. The compiler is what knows the numeral
-family is called `Nat`; the core does not, and should not guess in infer mode or search for a unique counting family in
-scope. Elaboration resolves the name and refuses `Refusal::NotANumeralFamily { name, reason }` when the family does not
-count, with `reason` naming which of the four conditions failed. `lower.rs::whole` becomes one call and loses its loop.
+[`Raw::var`](../../../crates/musa-calculus/src/elaboration/raw.rs) already spells `Nat.Succ`. The compiler is what knows
+the numeral family is called `Nat`; the core does not, and should not guess in infer mode or search for a unique
+counting family in scope. Elaboration resolves the name and refuses `Refusal::NotANumeralFamily { name, reason }` when
+the family does not count, with `reason` naming which of the four conditions failed. `lower.rs::whole` becomes one call
+and loses its loop.
 
 ### The governing document
 

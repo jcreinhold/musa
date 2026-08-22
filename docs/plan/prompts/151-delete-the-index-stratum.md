@@ -17,10 +17,12 @@ type constructor applied to a `Nat`, decided by ordinary NbE. Nothing is put in 
 ## Read
 
 - `docs/plan/prompts/142c-index-amendment.md` and [`142d`](142d-index-stratum.md) — what was admitted, and the count.
-- `crates/musa-calculus/src/convert.rs`, the `Form::Indexed` arm, and its comment: "reading them back would print one
-  word twice, because erasure is what quotation does."
-- `crates/musa-calculus/src/quote.rs`, `Form::Indexed { ty, .. } => read_type(meter, reading, ty)` — the index dropped.
-- `crates/musa-calculus/src/base.rs`, `kind: Term` — the machinery that already does what the stratum was added for.
+- `crates/musa-calculus/src/elaboration/convert.rs`, the `Form::Indexed` arm, and its comment: "reading them back would
+  print one word twice, because erasure is what quotation does."
+- `crates/musa-calculus/src/kernel/quote.rs`, `Form::Indexed { ty, .. } => read_type(meter, reading, ty)` — the index
+  dropped.
+- `crates/musa-calculus/src/kernel/base.rs`, `kind: Term` — the machinery that already does what the stratum was added
+  for.
 
 ## Design
 

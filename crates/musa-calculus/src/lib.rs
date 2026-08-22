@@ -48,9 +48,9 @@
 //!
 //! - **Terms are de Bruijn-indexed; values are de Bruijn-levelled.** α-
 //!   equivalence is structural equality on terms, and quotation names a fresh
-//!   variable without renaming anything. [`Index`](term::Index) and
-//!   [`Level`](term::Level) are separate types so that confusing them is a
-//!   compile error rather than the classic bug in this construction.
+//!   variable without renaming anything. [`Index`] and [`Level`] are separate
+//!   types so that confusing them is a compile error rather than the classic
+//!   bug in this construction.
 //! - **Reduction is never performed on syntax.** There is no substitution
 //!   function in this crate; β, δ, and ι are steps in the semantic domain.
 //! - **Universes are predicative and not cumulative.** `Type l : Type (succ l)`,
@@ -70,6 +70,14 @@
 //!   source. It is excluded from equality by [`Term`]'s own `PartialEq`, because
 //!   a compiler that type-checked differently after a file was moved would be
 //!   the alternative.
+//! - **The kernel does not know the elaborator exists.** `kernel/` decides
+//!   typing and definitional equality on finished [`Term`]s and answers
+//!   [`CoreError`]; `elaboration/` reads a [`Raw`] and answers [`Refusal`], and
+//!   reads the kernel to do it. The dependency is one-way. Rust cannot enforce
+//!   that between sibling modules — a descendant may always name `crate::`, and
+//!   the re-exports below put [`Refusal`] within reach of every file — so the
+//!   direction is a law rather than a keyword, checked over the source text by
+//!   `tests/suite/boundary_laws.rs`.
 //!
 //! # What this crate does not do
 //!
@@ -80,65 +88,39 @@
 //! on, because a total language that aborts has replaced a diagnostic with a
 //! crash.
 
-mod base;
-mod budget;
-mod case;
-mod context;
-mod convert;
-mod declare;
-mod elab;
-mod error;
-mod eval;
-mod family;
-mod index;
-mod list;
-mod meta;
-mod namespace;
-mod origin;
-mod program;
-mod quote;
-mod raw;
-mod rec;
-mod refuse;
-mod room;
-mod scope;
-mod show;
-mod sort;
-mod storable;
-mod term;
-mod value;
-mod visibility;
+mod elaboration;
+mod kernel;
 
-pub use crate::base::{
-    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Measures, Operator, Payload, Registry, Rewrite,
-    Rule,
-};
-pub use crate::budget::{Budget, Metric, ResourceError, Spend};
-pub use crate::context::Cx;
-pub use crate::error::{CoreError, Malformed};
-pub use crate::family::{Constructor, Declared, Group, canonical};
-pub use crate::meta::MetaSource;
-pub use crate::origin::Origin;
-pub use crate::program::{Def, Program};
-pub use crate::raw::{
+pub use crate::elaboration::raw::{
     ARROW_BINDER, Raw, RawArm, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawPattern,
     RawProgram, RawShape, RawTopLevel,
 };
-pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
-pub use crate::sort::Sort;
-pub use crate::storable::requiring_storable;
-pub use crate::term::Constraint;
-pub use crate::term::{Binder, Constant, Field, Filling, Index, Level, Name, Role, Shape, Term};
-pub use crate::visibility::{ModuleId, Visibility};
+pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
+pub use crate::elaboration::storable::requiring_storable;
+pub use crate::kernel::base::{
+    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Measures, Operator, Payload, Registry, Rewrite,
+    Rule,
+};
+pub use crate::kernel::budget::{Budget, Metric, ResourceError, Spend};
+pub use crate::kernel::context::Cx;
+pub use crate::kernel::error::{CoreError, Malformed};
+pub use crate::kernel::family::{Constructor, Declared, Group, canonical};
+pub use crate::kernel::meta::MetaSource;
+pub use crate::kernel::origin::Origin;
+pub use crate::kernel::program::{Def, Program};
+pub use crate::kernel::sort::Sort;
+pub use crate::kernel::term::Constraint;
+pub use crate::kernel::term::{Binder, Constant, Field, Filling, Index, Level, Name, Role, Shape, Term};
+pub use crate::kernel::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
 
-use crate::convert::Conversion;
-use crate::elab::Elaborator;
-use crate::eval::eval;
-use crate::quote::{Mode, quote, quote_type};
-use crate::room::with_room;
-use crate::scope::Scope;
+use crate::elaboration::convert::Conversion;
+use crate::elaboration::elab::Elaborator;
+use crate::kernel::eval::eval;
+use crate::kernel::quote::{Mode, quote, quote_type};
+use crate::kernel::room::with_room;
+use crate::kernel::scope::Scope;
 
 /// Elaborate a `data` declaration group, in context `cx`.
 ///
@@ -168,7 +150,7 @@ pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
 ///
 /// As [`declare`].
 pub fn declare_metered(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, Spend), ElabError> {
-    with_room(|| crate::declare::declare(cx, data))
+    with_room(|| crate::elaboration::declare::declare(cx, data))
 }
 
 /// Elaborate a document's top-level definitions, in context `cx`.
@@ -208,7 +190,7 @@ pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, El
 ///
 /// As [`declare_program`].
 pub fn declare_program_metered(cx: &Cx, program: &RawProgram) -> Result<(Arc<Program>, Spend), ElabError> {
-    with_room(|| crate::program::declare_program(cx, program))
+    with_room(|| crate::elaboration::declare_program::declare_program(cx, program))
 }
 
 /// Elaborate `raw` against the type `ty`, in context `cx`.

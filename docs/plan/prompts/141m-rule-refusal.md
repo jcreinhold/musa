@@ -11,9 +11,9 @@ phase: 3
 ## Task
 
 Give a δ-rule a way to say *the program is wrong*. Today its only "no" is `None`, which
-[`eval.rs`](../../../crates/musa-calculus/src/eval.rs) reports as `Malformed::BuiltinStuck` — restated to the composer
-as "a defect in the compiler rather than in the source" — so every registered operation with a real refusal had to
-answer `Result τ Text` instead and hand the composer's own mistake back as a value. Add the third answer, move the
+[`eval.rs`](../../../crates/musa-calculus/src/kernel/eval.rs) reports as `Malformed::BuiltinStuck` — restated to the
+composer as "a defect in the compiler rather than in the source" — so every registered operation with a real refusal had
+to answer `Result τ Text` instead and hand the composer's own mistake back as a value. Add the third answer, move the
 refusals that are program errors onto it, and take `Result` off the notation vocabulary, so that a notated block denotes
 `EventTrack ⟨written⟩` and `01-surface.md` §2's signatures are true as written.
 

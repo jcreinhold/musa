@@ -220,8 +220,8 @@ seen from the other side. So this prompt owes *both*: an adapter whose expansion
 evaluator frames deep, and one whose step count is inside 200,000. A rewrite that clears only the first will report the
 second and still be red.
 
-**The budget does not move.** `crates/musa-calculus/src/budget.rs` states that in as many words and this Check does not
-re-open it.
+**The budget does not move.** `crates/musa-calculus/src/kernel/budget.rs` states that in as many words and this Check
+does not re-open it.
 
 The tonal class this Check used to name — `diatonic-sequences` and `rule-of-the-octave` exhausting the step budget with
 no adapter involved — **closed itself**; neither appears in the measured failure list, and prompt 165's note records

@@ -18,11 +18,11 @@ phase: 3
 
 ## Task
 
-`musa-calculus` states its own layering and does not obey it. [`error.rs`](../../../crates/musa-calculus/src/error.rs)
-says of `CoreError::Refused` that it carries a sentence and a place "because this module is below that one:
-[`crate::ElabError`]'s conversion is where the two meet, and is the only lift." That is the right architecture and it is
-not the one in the code: `Refusal` has **70 variants** spanning two different jobs, and the files that decide conversion
-and hold the base registry reach straight for it.
+`musa-calculus` states its own layering and does not obey it.
+[`error.rs`](../../../crates/musa-calculus/src/kernel/error.rs) says of `CoreError::Refused` that it carries a sentence
+and a place "because this module is below that one: [`crate::ElabError`]'s conversion is where the two meet, and is the
+only lift." That is the right architecture and it is not the one in the code: `Refusal` has **70 variants** spanning two
+different jobs, and the files that decide conversion and hold the base registry reach straight for it.
 
 ```sh
 $ grep -n 'Refusal\|ElabError' crates/musa-calculus/src/{convert.rs,base.rs,term.rs} | head
@@ -40,11 +40,11 @@ lift `error.rs` already describes is the only crossing.
 
 ## Read
 
-- [`crates/musa-calculus/src/error.rs`](../../../crates/musa-calculus/src/error.rs) in full — the layering is written
-  there already, in the doc comment on `CoreError::Refused`. This prompt makes it true rather than deciding it.
-- [`crates/musa-calculus/src/refuse.rs`](../../../crates/musa-calculus/src/refuse.rs) — all 70 variants, read for which
-  ones a caller could reach _without writing a program_: a `Mismatch` between two terms, a level past the two universes,
-  a registry whose declarations do not agree with each other.
+- [`crates/musa-calculus/src/error.rs`](../../../crates/musa-calculus/src/kernel/error.rs) in full — the layering is
+  written there already, in the doc comment on `CoreError::Refused`. This prompt makes it true rather than deciding it.
+- [`crates/musa-calculus/src/refuse.rs`](../../../crates/musa-calculus/src/elaboration/refuse.rs) — all 70 variants,
+  read for which ones a caller could reach _without writing a program_: a `Mismatch` between two terms, a level past the
+  two universes, a registry whose declarations do not agree with each other.
 - [`crates/musa-calculus/src/lib.rs`](../../../crates/musa-calculus/src/lib.rs) — the facade's split between
   `Result<_, ElabError>` (elaboration) and `Result<_, CoreError>` (`normalize`, `convertible`). The signatures already
   say which side each operation is on; this prompt makes the _types they carry_ agree with them.

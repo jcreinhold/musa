@@ -38,12 +38,12 @@ The crate's public paths do not move. `musa-compiler` must not change by one lin
   in prose: `normalize` and `convertible` do not type-check what they are given, and typing is `check`/`infer`.
 - 142g's commit, which put the kernel's errors below the elaborator's. Without it every kernel file still names
   `Refusal` and no boundary can hold.
-- [`crates/musa-calculus/src/rec.rs`](../../../crates/musa-calculus/src/rec.rs) — 633 lines that take `&mut Elaborator`
-  and `&Raw`. Read it for the split described below: the recursor is one thing, elaborating a `rec` expression is
-  another.
-- [`crates/musa-calculus/src/base.rs`](../../../crates/musa-calculus/src/base.rs) — same shape at 1,327 lines: `Base`,
-  `Builtin`, `Datum`, and `Literal` are data a term can hold; `Registry::new`'s admission checks are a declaration-time
-  judgment.
+- [`crates/musa-calculus/src/rec.rs`](../../../crates/musa-calculus/src/elaboration/rec.rs) — 633 lines that take
+  `&mut Elaborator` and `&Raw`. Read it for the split described below: the recursor is one thing, elaborating a `rec`
+  expression is another.
+- [`crates/musa-calculus/src/base.rs`](../../../crates/musa-calculus/src/kernel/base.rs) — same shape at 1,327 lines:
+  `Base`, `Builtin`, `Datum`, and `Literal` are data a term can hold; `Registry::new`'s admission checks are a
+  declaration-time judgment.
 - `editors/tree-sitter-musa`'s drift law and `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` — the precedent
   for enforcing a structural rule Rust's type system cannot state, with a law suite that reads the source.
 - _Philosophy of Software Design_ ch. 7 on layers that add an abstraction, and ch. 8 on where complexity should be paid.

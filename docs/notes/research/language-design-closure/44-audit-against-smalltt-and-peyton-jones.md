@@ -10,8 +10,8 @@ writing — records and enums. Two references sit outside the repository that th
   an argument about _how to make elaboration fast_ rather than a specification of what to elaborate.
 - **Peyton Jones, _The Implementation of Functional Programming Languages_** (1987) — chapters 3–6: the enriched lambda
   calculus, structured types, the semantics of pattern matching, and its efficient compilation. Several prompts already
-  cite it by chapter, and [`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s module header names ch. 5 as its
-  source.
+  cite it by chapter, and [`case.rs`](../../../../crates/musa-calculus/src/elaboration/case.rs)'s module header names
+  ch. 5 as its source.
 
 This note asks whether the implementation, and the prompts still to come, actually follow them. Every divergence is
 classified: **backed** (the departure is argued, and the argument survives), or **ad hoc** (the departure was never
@@ -27,9 +27,9 @@ Nothing here governs. `docs/rules/` governs; this is evidence for a later repair
 The measurable one is not a micro-optimization. `match` duplicates an arm's body once per case-tree leaf the arm
 reaches, and elaboration re-typechecks each copy. Peyton Jones §5.4.1 names this exact failure — it is his `unwieldy`
 example — and the fix he gives (the fat bar) is the one thing
-[`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s header explicitly declines. The decline is correct; the
-_replacement_ was never supplied. Measured below: elaborated term size and elaboration time both grow by **2.2× per
-matched column**, reaching 14.9 MB and 45 ms at ten columns for a program whose source is eleven lines.
+[`case.rs`](../../../../crates/musa-calculus/src/elaboration/case.rs)'s header explicitly declines. The decline is
+correct; the _replacement_ was never supplied. Measured below: elaborated term size and elaboration time both grow by
+**2.2× per matched column**, reaching 14.9 MB and 45 ms at ten columns for a program whose source is eleven lines.
 
 The remaining four ad hoc divergences are all one design decision seen from four sides: **musa-calculus has no notion of
 a top-level definition, so it has no unfolding control**, and every technique smalltt spends its README on — glued
@@ -43,8 +43,8 @@ the standard library.
 
 ## §1 What is followed, and correctly
 
-[`case.rs`](../../../../crates/musa-calculus/src/case.rs) is a faithful ch. 5 pattern-matching compiler with two
-dependent extensions, and both extensions are argued in its header rather than assumed.
+[`case.rs`](../../../../crates/musa-calculus/src/elaboration/case.rs) is a faithful ch. 5 pattern-matching compiler with
+two dependent extensions, and both extensions are argued in its header rather than assumed.
 
 | ch. 5 | musa-calculus | Status |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ whose compilation contains `B xs ys` twice, and the observation that "only one r
 duplicated, the constructor rule". His fix is to replace each duplicated `E` with `FAIL` and hang the single copy of `E`
 off one `[]`.
 
-[`case.rs`](../../../../crates/musa-calculus/src/case.rs)'s header declines the fat bar with this reason:
+[`case.rs`](../../../../crates/musa-calculus/src/elaboration/case.rs)'s header declines the fat bar with this reason:
 
 > The fat-bar exists so an equation can fail into the next one, and Musa's arms do not fall through
 
@@ -247,10 +247,10 @@ _heuristic_, and Finding A's fix makes the residual cost linear rather than expo
 
 ## §4 ch. 3 and ch. 6 — the enriched calculus
 
-**Backed, and already load-bearing.** [`raw.rs`](../../../../crates/musa-calculus/src/raw.rs)'s `RawShape` is ch. 3's
-enriched lambda calculus almost item for item — `Let`, `Match`, `Rec`, constructors, and annotation — extended for
-dependency (`Pi`, `Id`, `J`, `RecordType`, `Update`) and missing only `FatBar`/`FAIL`, whose absence §2 has already
-argued. AGENTS.md's **"no sublanguage by subtraction"** standard is derived from ch. 3 and holds here: nothing
+**Backed, and already load-bearing.** [`raw.rs`](../../../../crates/musa-calculus/src/elaboration/raw.rs)'s `RawShape`
+is ch. 3's enriched lambda calculus almost item for item — `Let`, `Match`, `Rec`, constructors, and annotation —
+extended for dependency (`Pi`, `Id`, `J`, `RecordType`, `Update`) and missing only `FatBar`/`FAIL`, whose absence §2 has
+already argued. AGENTS.md's **"no sublanguage by subtraction"** standard is derived from ch. 3 and holds here: nothing
 downstream gets a stripped-down `Raw`.
 
 ch. 6's transformations (dependency analysis, let-floating, full laziness) mostly answer questions a total, finite,
@@ -264,8 +264,8 @@ call-by-value core does not ask. The one that transfers is the let-bound right-h
 
 Coquand's algorithm — elaboration into the semantic domain with NbE conversion, contextual metavariables, de Bruijn
 indices for terms and levels for values, pattern-fragment higher-order unification — is followed exactly.
-[`value.rs`](../../../../crates/musa-calculus/src/value.rs)'s header states the boundary argument, and `Value` genuinely
-never leaves the crate. That is smalltt's central structural decision and musa-calculus keeps it.
+[`value.rs`](../../../../crates/musa-calculus/src/kernel/value.rs)'s header states the boundary argument, and `Value`
+genuinely never leaves the crate. That is smalltt's central structural decision and musa-calculus keeps it.
 
 ## §6 Finding C — no glued evaluation, because there is nothing to glue
 
@@ -460,11 +460,12 @@ before 142 hands it a caller.
 
 **Backed, with a cost worth recording.**
 
-[`value.rs`](../../../../crates/musa-calculus/src/value.rs)'s header argues it: quotation is type-directed because it
-performs η at Π and at records, so quoting a blocked application's argument needs that argument's type, so a neutral
-must be able to say its type. Without it `f g` and `f (λx. g x)` quote differently and conversion answers `false` for
-two terms §3 calls equal. That argument is sound and the alternative — type-directed _conversion_ without quoting, as
-Agda does — is a larger change than it looks, because §7's origin obligations are stated over quoted normal forms.
+[`value.rs`](../../../../crates/musa-calculus/src/kernel/value.rs)'s header argues it: quotation is type-directed
+because it performs η at Π and at records, so quoting a blocked application's argument needs that argument's type, so a
+neutral must be able to say its type. Without it `f g` and `f (λx. g x)` quote differently and conversion answers
+`false` for two terms §3 calls equal. That argument is sound and the alternative — type-directed _conversion_ without
+quoting, as Agda does — is a larger change than it looks, because §7's origin obligations are stated over quoted normal
+forms.
 
 The cost is real and should be recorded rather than fixed: every neutral variable holds an `Arc<Value>` it usually does
 not need, and `neutral_type`/`head_type` recompute a spine's type on demand. Finding F's representation change would let

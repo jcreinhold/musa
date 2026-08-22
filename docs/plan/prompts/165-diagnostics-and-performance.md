@@ -48,7 +48,7 @@ says what the implementation owes instead. This prompt discharges it.
 - `crates/musa-compiler/src/phase/mod.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
   discharge of that obligation: a scoped thread of `NESTING × FRAME_CEILING`, derived rather than picked, with the wasm
   fallback beside it. `musa-calculus` has no equivalent, and the shape of the answer is probably this one moved.
-- `crates/musa-calculus/src/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above
+- `crates/musa-calculus/src/kernel/budget.rs` (`Budget::NESTING`, `Meter::nested`) and the frame-splitting note above
   `eval.rs`'s `fn pi` — the ~2 KiB per level that note records, and, more to the point, **what it is a measurement of**:
   `eval` recursing into itself. The chain a real program drives is `infer → check → eval → apply → infer`, and it costs
   five times that.
@@ -58,8 +58,8 @@ says what the implementation owes instead. This prompt discharges it.
   during 142 and explicitly declines to decide the number, because the number is this prompt's. Read it against
   `Budget::NESTING`'s own doc claim, "past anything a person writes and short of anything a host cannot hold", which was
   written about an evaluator that no longer exists.
-- `crates/musa-calculus/src/elab/mod.rs`'s `check` and `infer` — mutually recursive over the raw term, and charged
-  nothing for nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
+- `crates/musa-calculus/src/elaboration/elab/mod.rs`'s `check` and `infer` — mutually recursive over the raw term, and
+  charged nothing for nesting. `zonk` is the only thing in that file that calls `Meter::nested`.
 - `crates/musa-compiler/src/lower/notation/mod.rs`'s `notated`, at the line that writes
   `built = applied(origin, follow, [built, next])` — the voice fold's left-nested `follow` spine. One statement, one
   level of function position, one frame of elaboration; the depth of a voice's term is the number of notes in it.
@@ -76,7 +76,7 @@ says what the implementation owes instead. This prompt discharges it.
 - `~/Code/smalltt`'s README on glued evaluation, approximate conversion, the three quotation modes, and approximate
   occurs checking — the techniques the items below are, stated by the implementation this core was audited against.
 - Peyton Jones ch. 5 §5.4.1 and ch. 6's let-bound right-hand side, for Finding A, plus
-  [`crates/musa-calculus/src/case.rs`](../../../crates/musa-calculus/src/case.rs) and the law
+  [`crates/musa-calculus/src/case.rs`](../../../crates/musa-calculus/src/elaboration/case.rs) and the law
   `a_pattern_binder_is_a_definition_at_every_leaf_it_reaches` in `coverage_laws.rs`, which is the program that falsified
   the hoisting condition 136b was going to ship.
 - Peyton Jones ch. 12 §12.4 — the update of a shared redex's root with its result is what makes shared work happen once,
@@ -157,8 +157,8 @@ _Third, nothing arranges the room._ `musa-compiler` honours §4.1 for the *old* 
 > **Step 1 landed early, out of stack order.** Prompt 141s found the same defect from the other end — elaborating a
 > hand-built `Nat` tower of 220 aborted at about 215 levels while `Budget::NESTING` promised a refusal at 256 — and the
 > room was arranged then rather than left waiting for this prompt, because §4 does not admit an abort and the fix
-> touches no acceptance. `crates/musa-calculus/src/room.rs` is `with_room` at the `musa-calculus` seam, over `check`,
-> `infer`, `normalize`, `normalize_type`, `convertible`, `convertible_types`, `declare`, `declare_program`,
+> touches no acceptance. `crates/musa-calculus/src/kernel/room.rs` is `with_room` at the `musa-calculus` seam, over
+> `check`, `infer`, `normalize`, `normalize_type`, `convertible`, `convertible_types`, `declare`, `declare_program`,
 > `declare_trait`, `declare_impl`, `well_typed`, and `Cx::assume`/`define`, with `FRAME_CEILING` at 32 KiB against a
 > measured 10 KiB a level for the `infer → check → eval → quote` chain in a debug build on arm64 and under 3 KiB in a
 > release one. The law is `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused`, stated on a 2 MiB

@@ -18,9 +18,9 @@ edge to every free named declaration. **Non-recursive** declarations must form a
 `musa-calculus` cannot say any of it. [`musa_calculus::declare`](../../../crates/musa-calculus/src/lib.rs) takes a
 mutually recursive *data* group and is the model for what is missing; there is no second door for definitions.
 [`musa_calculus::check`](../../../crates/musa-calculus/src/lib.rs) takes one term. `Cx::define` pushes a binder that
-[`Scope::new`](../../../crates/musa-calculus/src/scope.rs) names `None`, deliberately — α-equivalence is decided by
-index — so nothing bound through it can be written by name. The only named binding the core offers is `RawShape::Let`,
-and a `let` scopes forward only.
+[`Scope::new`](../../../crates/musa-calculus/src/kernel/scope.rs) names `None`, deliberately — α-equivalence is decided
+by index — so nothing bound through it can be written by name. The only named binding the core offers is
+`RawShape::Let`, and a `let` scopes forward only.
 
 Give the core the program: one group of named definitions, every signature known before any body is elaborated.
 

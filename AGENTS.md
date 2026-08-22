@@ -49,7 +49,7 @@ let them drift silently.
 | --- | --- |
 | `crates/musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits |
 | `crates/musa-events` | finite event-track: exact time, typed occurrences, timeline/sequence/overlay, normalization |
-| `crates/musa-calculus` | the dependently typed core calculus a checked term lives in: NbE, elaboration, inductive families |
+| `crates/musa-calculus` | the dependently typed core calculus a checked term lives in: `kernel/` decides typing and equality (NbE, inductive families), `elaboration/` reads what an author wrote — one way, checked by a law |
 | `crates/musa-score` | the musical values: pitch, chords, scales, exact time, marks, score/performance snapshots, provenance, diagnostics, analysis |
 | `crates/musa-compiler` | resolution, units, imports, expansion, elaboration through the event track — the passes that compute those values |
 | `crates/musa-notation` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
