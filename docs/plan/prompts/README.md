@@ -364,7 +364,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 153 | metavariables-and-unification | 3 | Real metavariables, a constraint queue, pattern unification |
 | 154 | implicit-arguments | 3 | Implicit binders written, inserted, and named |
 | 155 | case-trees | 3 | Case trees replace generated recursors; the motive becomes dependent |
-| 155a | case-tree-bodies | 3 | A case tree becomes a definition body; ι and termination follow it |
+| 155a | case-tree-bodies | 3 | A definition body becomes a case tree, and termination is checked on it |
 | 156 | indexed-families | 3 | A constructor may choose its index; `Equal` becomes library code |
 | 157 | records-leave-the-core | 3 | `record` as one-constructor data with generated projections |
 | 158 | recheck-the-whole-core | 3 | Audit every extension, close the re-checker, make it the gate |
@@ -706,7 +706,7 @@ makes knowable. 164–170 survive with their tasks intact and their targets enla
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
 **175–181 build musical sound on that core.** 175 makes the primitive vocabulary discoverable from one catalogue; 176
-keeps written quantities exact; and 155a's payload rule is revised for the new storable-data boundary. 177 defines
+keeps written quantities exact; and 176a's payload rule is revised for the new storable-data boundary. 177 defines
 instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 178 makes an instrument a typed machine contract
 over private primitives. 179 preserves part identity through prepared routing, and 180 maps musical controls to private
 parameters only during preparation. 181 gives the surface one clear sound/profile choice while keeping expert machine
