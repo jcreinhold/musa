@@ -26,15 +26,17 @@
 //! **What it does not repair.** The room is derived from the nesting limit, so
 //! it bounds the stack only where the *charge* tracks the descent. Through
 //! `eval` and `quote` it does, at every depth: a chain of `let` a thousand deep
-//! is refused at the 257th level, because those two charge as they descend.
+//! is refused one level past the limit, because those two charge as they
+//! descend.
 //! Through the elaborator it does not. `Elaborator::check` and
 //! `Elaborator::infer` stand inside one another and are charged nothing, and
 //! they reach the bottom of a raw term before the values on the way back up
 //! charge anything — so the counter reaches the limit `NESTING` levels from the
 //! *bottom* of the term rather than from the top, and what the room buys is a
 //! term some way past the limit rather than one arbitrarily past it. Measured
-//! on a raw `let` chain in a debug build: 756 levels are refused and 1,256
-//! abort. A term deep in the elaborator without being deep in the evaluator —
+//! on a raw `let` chain in a debug build, at the 256-level limit that preceded
+//! prompt 155a's bump: 756 levels are refused and 1,256 abort. Both scale with
+//! the limit, because the room does. A term deep in the elaborator without being deep in the evaluator —
 //! the left-nested application spine
 //! `docs/plan/prompts/165-diagnostics-and-performance.md` measures, where
 //! `infer` stood 516 frames deep while the nesting counter read 2 — is bounded
@@ -43,8 +45,9 @@
 //! Both are one missing charge, and no amount of room substitutes for it: an
 //! unbounded descent outruns any fixed stack. Charging that recursion is prompt
 //! 144's third step, and it is a cost-table question rather than a stack one —
-//! at 256 it would refuse a 128-note voice, which is a version bump argued in
-//! §4 rather than a threshold moved to make a suite pass.
+//! at the limit as it stands it would refuse a voice of a few hundred notes,
+//! which is a version bump argued in §4 rather than a threshold moved to make a
+//! suite pass.
 
 use std::cell::Cell;
 

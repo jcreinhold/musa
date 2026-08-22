@@ -69,12 +69,24 @@ pub struct Budget {
 impl Budget {
     /// How many evaluator frames may stand inside one another (§4.1).
     ///
-    /// 256, the same constant the existing evaluator uses, and for the same
-    /// reason: past anything a person writes and short of anything a host
-    /// cannot hold. Normalization by evaluation adds a *second* descent to the
-    /// one §4.1 was written for — `quote` walks a value the way `eval` walks a
-    /// term — so this limit now bounds both.
-    pub const NESTING: u64 = 256;
+    /// Past anything a person writes and short of anything a host cannot hold.
+    /// Normalization by evaluation adds a *second* descent to the one §4.1 was
+    /// written for — `quote` walks a value the way `eval` walks a term — so
+    /// this limit bounds both.
+    ///
+    /// **512 since prompt 155a, raised from the 256 the previous evaluator
+    /// used.** A generated eliminator recursed at a constant nesting depth,
+    /// because ι builds a method's induction hypothesis before entering the
+    /// method, through [`crate::kernel::eval::apply`], which charges no level.
+    /// A compiled case-tree body evaluates its recursive call inside the
+    /// enclosing `eval` and spends one level per non-tail step, so this
+    /// counter now bounds recursion depth as well as term depth. Bisected on
+    /// the staff adapter, the deepest workload in the corpus: at most 240
+    /// levels through the eliminator, at most 272 through the tree. The bump
+    /// is a cost-table version bump argued in §4.1 and recorded in
+    /// `docs/notes/research/language-design-closure/54-the-nesting-limit.md`;
+    /// prompt 165a retires the conflation rather than moving it again.
+    pub const NESTING: u64 = 512;
 
     /// The language budget.
     ///

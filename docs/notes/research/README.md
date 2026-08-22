@@ -35,6 +35,7 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [51](language-design-closure/51-the-terseness-audit.md) | What the correction got right, and its three missteps — the stratified index, bounded argument reordering, and written sections |
 | [52](language-design-closure/52-the-musical-algebra.md) | The algebra the language has to be able to say: torsors, group actions, orbits, and laws decidable by enumeration |
 | [53](language-design-closure/53-one-theory.md) | The three partial mechanisms the core carried — an erased index stratum, a non-dependent eliminator, and first-order instantiation — and the one theory that replaces all three |
+| [54](language-design-closure/54-the-nesting-limit.md) | Why the nesting limit moved from 256 to 512, and what a case-tree body did to the metric |
 | [60](60-language-decision-record.md) | How the elaboration language was decided, and then corrected |
 | [61](61-core-boundary-decision-record.md) | How the core boundary was decided |
 | [62](62-course-correction-decision-record.md) | The course correction, and where each of its sections went |
