@@ -74,19 +74,24 @@ impl Budget {
     /// written for — `quote` walks a value the way `eval` walks a term — so
     /// this limit bounds both.
     ///
-    /// **512 since prompt 155a, raised from the 256 the previous evaluator
-    /// used.** A generated eliminator recursed at a constant nesting depth,
-    /// because ι builds a method's induction hypothesis before entering the
-    /// method, through [`crate::kernel::eval::apply`], which charges no level.
-    /// A compiled case-tree body evaluates its recursive call inside the
-    /// enclosing `eval` and spends one level per non-tail step, so this
-    /// counter now bounds recursion depth as well as term depth. Bisected on
-    /// the staff adapter, the deepest workload in the corpus: at most 240
-    /// levels through the eliminator, at most 272 through the tree. The bump
-    /// is a cost-table version bump argued in §4.1 and recorded in
+    /// **320 since prompt 155a, raised from 256.** The counter charges
+    /// recursion as well as term depth, because a recursive call is evaluated
+    /// inside the enclosing `eval` and holds its level until the steps beneath
+    /// it finish — one number deciding two unrelated questions, which predates
+    /// case trees. What 155a changed is the price: bisected, a recursive call
+    /// cost about 2.5 levels through the generated recursor and costs about
+    /// 3.0 through a compiled tree, and the staff adapter's peak moved from at
+    /// most 240 levels to at most 272, out of 256.
+    ///
+    /// Bounded above as well as below. A limit has to be *reachable*: the
+    /// language's step budget cannot afford a term deeper than 363
+    /// constructors, so at 363 a tower that deep is refused for steps rather
+    /// than for nesting, and the two laws that hold §4.1's room obligation to
+    /// account stop being statable at the language budget. 320 takes the
+    /// middle of `272 < n <= 362`. Argued in §4.1 and derived in
     /// `docs/notes/research/language-design-closure/54-the-nesting-limit.md`;
     /// prompt 165a retires the conflation rather than moving it again.
-    pub const NESTING: u64 = 512;
+    pub const NESTING: u64 = 320;
 
     /// The language budget.
     ///

@@ -14,8 +14,10 @@
 //! The three meter laws are gone, and the reason is one measurement rather
 //! than three. A collection is built by structural recursion now — `range` is
 //! `stdlib/src/list.musa`'s `counting_from`, one recursive call per element —
-//! and a recursive call costs about 2.5 nesting levels, so §4's 256-level
-//! limit refuses every list past about sixty elements. Nesting is therefore
+//! and a recursive call costs about three nesting levels, so §4's limit
+//! refuses every list past about a hundred elements — bisected at prompt 155a,
+//! which raised the limit to 320 and re-measured the per-call cost, up from the
+//! 2.5 levels the generated recursor spent. Nesting is therefore
 //! the *first* limit any large value meets, and §4's node limit (100,000) and
 //! byte limit (1,048,576) are unreachable by construction: no program can
 //! build 100,000 nodes without passing 256 levels on the way. A law probing
@@ -103,7 +105,8 @@ fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
         panic!("a list past the budget is refused: {:?}", refused.diagnostics())
     };
     assert!(
-        found.message.contains("nested evaluation levels") && found.message.contains("256"),
+        found.message.contains("nested evaluation levels")
+            && found.message.contains(&musa_calculus::Budget::NESTING.to_string()),
         "the refusal names its metric and limit: {}",
         found.message
     );

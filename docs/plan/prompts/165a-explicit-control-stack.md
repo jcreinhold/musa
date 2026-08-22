@@ -10,17 +10,18 @@ phase: 3
 
 ## Task
 
-`Budget::NESTING` bounds two unrelated quantities, and prompt 155a is why. The metric was derived to bound how deeply a
-*term* is written — §5.9's traversal descends through a transformer's branches, NbE's `quote` descends over a value —
-and recursion never entered that derivation, because the only recursion a checked program could perform was a generated
-eliminator's, and ι builds a method's induction hypothesis *before* entering the method, through an application that
-charges no level. A recursion of any depth stood at a constant nesting depth.
+`Budget::NESTING` bounds two unrelated quantities. The metric was derived to bound how deeply a *term* is written —
+§5.9's traversal descends through a transformer's branches, NbE's `quote` descends over a value — and recursion never
+entered that derivation. It is charged anyway: a recursive call is evaluated inside the enclosing evaluation and holds
+its level until the steps beneath it finish, so one number decides both how deeply a composer may write a term and how
+many times a definition may call itself.
 
-A definition whose body is a compiled case tree evaluates its recursive call inside the enclosing evaluation and spends
-one nesting level per non-tail step. Prompt 155a's bump to 512 bought headroom and moved the cliff from about 255
-non-tail steps to about 511; it repaired nothing, and
-[note 54](../../notes/research/language-design-closure/54-the-nesting-limit.md) says so in the sentence that names this
-prompt.
+The conflation is older than case trees — `resource_validation.rs` has recorded it since prompt 142 — and prompt 155a
+made it more expensive, from about 2.5 levels per recursive call to about 3.0, which pushed the standard library's staff
+adapter past the limit it had been sitting sixteen levels under. 155a's answer was to raise the limit to 320, which is
+bounded above by reachability at 362 and below by the corpus at 272; there is no third raise available.
+[Note 54](../../notes/research/language-design-closure/54-the-nesting-limit.md) derives all of that and names this
+prompt as what actually repairs it.
 
 Retire the conflation. Make the evaluator's pending work explicit data in its own state rather than a chain of Rust
 frames, so that a recursion's depth is bounded by the step budget — the counter that measures work done, which is what a
@@ -69,11 +70,11 @@ touches, and not of how many times any definition called itself.
 
 **Acceptance moves, in both directions, and both are one argued amendment.** A recursion that is no longer charged
 nesting is a program that was refused and is now accepted, and §4's sentences forbid that happening quietly. In the
-other direction, with recursion off the metric, 512 is no longer earned — the measurement that justified it was the
-staff adapter's recursion depth — and the limit should return to 256 unless the re-measured structural depth says
-otherwise. Land both as one paragraph in §4.1 replacing 155a's, with the re-measured numbers, and close note 54 with a
-line saying which of its §4 predictions held. Two version bumps recorded as one change is honest; either one landing
-silently is not.
+other direction, with recursion off the metric, 320 is no longer earned — the measurement that justified it was the
+staff adapter's recursion depth — and the limit should be re-derived from `quote`'s descent alone, which will argue for
+a smaller one. Land both as one paragraph in §4.1 replacing 155a's, with the re-measured numbers, and close note 54 with
+a line saying which of its §3 and §4 predictions held. Two version bumps recorded as one change is honest; either one
+landing silently is not.
 
 **The step budget has to actually bound it.** Moving recursion off the nesting metric is only sound if the step budget
 already charges every recursive step, so that an unbounded recursion is refused rather than run forever in a flat loop.
@@ -82,8 +83,8 @@ from what the evaluator would have charged is a silent acceptance change. Whatev
 to pin it against the frame-based reading, on a program small enough to count by hand.
 
 **Room follows the limit, not the other way round.** `kernel::room` reserves `NESTING × FRAME_CEILING`. If the limit
-comes back to 256 the reservation halves, and `FRAME_CEILING` should be re-measured rather than inherited, because the
-chain it was measured on has changed shape. Prompt 165's re-measurement is the method to reuse.
+comes down the reservation comes down with it, and `FRAME_CEILING` should be re-measured rather than inherited, because
+the chain it was measured on has changed shape. Prompt 165's re-measurement is the method to reuse.
 
 **No new refusal, and no new diagnostic vocabulary.** A recursion too deep for the step budget is exhausted at
 `reduction steps`, which is a diagnostic that already exists and already reads correctly. If it does not read correctly
@@ -103,7 +104,7 @@ for this case, that is prompt 165's standard to meet, not a new outcome to inven
   155a's, carrying the re-measured structural depth; §4's cost-table sentence updated to whatever limit that argues for.
 - `Budget::NESTING`'s doc comment re-earned on the new measurement, and `kernel::room`'s `FRAME_CEILING` re-measured
   with the command that produced the number beside it.
-- Note 54 closed: a line per prediction in its §4 and §5, saying which held.
+- Note 54 closed: a line per prediction in its §3 and §4, saying which held.
 - `docs/plan/code-map/` rows for whatever moved.
 
 ## Check

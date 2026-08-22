@@ -648,7 +648,7 @@ acceptance a property of the machine.
 A project whose next charge exceeds the deterministic budget is exhausted at that operation. The diagnostic names the
 operation, metric, attempted amount, and limit. The current defaults are 200,000 reduction steps, 100,000 constructed
 value nodes, 1,048,576 logical value bytes, 2,048 instantiated prelude entries, and 1,000,000 estimated occurrences,
-with 512 nested evaluation levels. These are language-version constants, not timeouts or machine-memory observations;
+with 320 nested evaluation levels. These are language-version constants, not timeouts or machine-memory observations;
 the course correction re-derives them against the simplified checker and records the derivation in its final report.
 Interactive cancellation remains an external compiler operation, not a language effect.
 
@@ -678,19 +678,23 @@ Shrinking the frame ceiling is welcome and changes nothing normative. Raising th
 because a program refused at one level count and accepted at another is a program two compilers disagree about. The
 limit has been raised once, and the paragraph below is that bump's record.
 
-**The limit was 256 and is 512, since prompt 155a.** The metric was derived when the only recursion a checked program
-could perform was the one a generated eliminator performed, and ι computes a method's induction hypothesis *before*
-entering the method, through an application that charges no level — so a recursion of any depth stood one level deep,
-and 256 bounded how deeply a *term* had been written. A definition whose body is a compiled case tree evaluates its
-recursive call inside the enclosing evaluation and spends one level per non-tail step, so the same metric now bounds
-recursion *depth* as well as term depth. That is not what the two clauses above derive it for. Measured by bisection on
-the deepest workload in the corpus, the standard library's staff adapter: at most 240 levels through the eliminator, at
-most 272 through the tree. 512 is past that with the margin 256 carried before, and costs 16 MiB of stack under the
-obligation above rather than 8. It buys headroom and does not repair the conflation — at 512 the deepest non-tail
-recursion a definition may perform is about 511 steps, one cliff further out. Retiring it needs an evaluator whose
-control stack is explicit data rather than the host's frames, so that recursion depth is bounded by the step budget it
-belongs to; `../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation and prompt
-165a carries the fix.
+**The limit was 256 and is 320, since prompt 155a.** The two clauses above derive the metric from how deeply a *term* is
+written, and the counter charges recursion as well, because a recursive call is evaluated inside the enclosing
+evaluation and holds its level until the steps beneath it finish. One number therefore decides two unrelated questions.
+That has been true since the surface moved onto a core program and is not 155a's doing; what 155a changed is the price.
+Measured by bisection: a recursive call cost about 2.5 levels through the generated recursor and costs about 3.0 through
+a compiled case-tree body, and the deepest workload in the corpus — the standard library's staff adapter — moved from a
+peak of at most 240 levels to a peak of at most 272. At 256 the corpus had sixteen levels of margin; at 272 it has none.
+
+320 is bounded on both sides. Above 272, because that is what the corpus measures. At or below 362, because a limit has
+to be reachable: the 200,000-step budget cannot afford to build a term deeper than 363 constructors, so a nesting limit
+above that would never fire on the term-depth path these two clauses derive it from. 320 takes the middle, at 10 MiB of
+stack under the obligation above rather than 8. It buys the corpus three times the margin it had and repairs nothing —
+the limit still answers two questions with one number, and the deepest recursion a definition may perform is about a
+hundred steps. Retiring that needs an evaluator whose control stack is explicit data rather than the host's frames, so
+that recursion depth is bounded by the step budget it belongs to;
+`../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation and prompt 165a carries
+the fix.
 
 ## 5. Metatheoretic obligations
 
