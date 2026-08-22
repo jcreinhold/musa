@@ -13,6 +13,11 @@ phase: 3
 > variants, 147 deletes the shape variants, and 148 draws the kernel/elaborator boundary this split was describing by
 > hand. The argument is unchanged and 150 cites it; only the list of variants is shorter.
 >
+> Prompt 150 also **revises this prompt's test**, not merely its variant list. "Reachable with no program in hand" does
+> not separate the two enums after 148 draws the module line — it selects nothing on one reading and everything on the
+> other. 150 states the test 146–149 actually used: who the sentence is addressed to, and whether the thing that was
+> written is still in hand when the mistake is found.
+>
 > This file is not executed. It stays because the ledger and the prompts above it link to it, and because prompt 150's
 > Read section cites it for the argument rather than repeating it.
 

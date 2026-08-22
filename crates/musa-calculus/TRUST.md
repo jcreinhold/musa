@@ -77,12 +77,12 @@ Neither is a δ-rule's refusal, which is a host rule answering about the author'
 
 ## What it caught on the first run
 
-The audit is not hypothetical. Turning it on rejected `stdlib/src/notation/staff.musa`, and the term it named was
-right: `Split::read` in `elaboration/case.rs` read a family's parameters off the subject's type *unforced*, so a
-subject whose type was still headed by a metavariable the solver had since filled read back as that metavariable, its
-parameters came off it as nothing at all, and the emitted recursor spine was short by exactly the parameters — a
-`match` ι would then never fire on. Nothing in the suite observed it, because nothing evaluated that `match`. The
-kernel observed it the first time it was asked.
+The audit is not hypothetical. Turning it on rejected `stdlib/src/notation/staff.musa`, and the term it named was right:
+`Split::read` in `elaboration/case.rs` read a family's parameters off the subject's type *unforced*, so a subject whose
+type was still headed by a metavariable the solver had since filled read back as that metavariable, its parameters came
+off it as nothing at all, and the emitted recursor spine was short by exactly the parameters — a `match` ι would then
+never fire on. Nothing in the suite observed it, because nothing evaluated that `match`. The kernel observed it the
+first time it was asked.
 
 That is the claim working: elaboration had a bug, the kernel rejected the artifact, and the defect surfaced at the
 declaration that caused it.
