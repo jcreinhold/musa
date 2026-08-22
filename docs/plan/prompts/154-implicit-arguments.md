@@ -10,10 +10,14 @@ phase: 3
 
 ## Task
 
-`Filling` exists in the term language and elaboration does not read it. Make it read it: an `Inferred` Π binder is
-solved at application by a metavariable rather than demanded from the author, an implicit binder may be *written* at a
-declaration, and an argument may be supplied by name where inference cannot reach it. Without this, dependent types are
-formally present and ergonomically unusable.
+`Filling` exists in the term language and only the elaborator writes it: `advance` inserts a metavariable for a
+`Parameter` binder the callee's own scheme declared, and no author can write one. Make the author's side real: an
+implicit binder may be *written* at a declaration, and an argument may be supplied by name where inference cannot reach
+it. Without this, dependent types are formally present and ergonomically unusable.
+
+Prompt 153's repair narrowed what is left here: insertion at application already exists and is not re-implemented, and
+it now stands on a real queue rather than on the two-pass deferral walk, so this prompt's insertion-at-check rule and
+its stopping rule are the new machinery.
 
 ## Read
 
@@ -23,9 +27,10 @@ formally present and ergonomically unusable.
 
 ## Design
 
-**Insertion is at application and at the end of checking, and nowhere else.** When a function's type is an `Inferred` Π
-and the next written argument is not that argument, insert a metavariable. When a checked term's type is an `Inferred` Π
-and the expected type is not, insert a λ. Two rules; everything else follows.
+**Insertion is at application and at the end of checking, and nowhere else.** When a function's type is an implicit Π
+and the next written argument is not that argument, insert a metavariable — `advance` does this already. When a checked
+term's type is an implicit Π and the expected type is not, insert a λ; that rule is missing and is this prompt's. Two
+rules; everything else follows.
 
 **Where insertion stops is the whole design.** It stops when the head is being applied to *no* further arguments and the
 expected type is itself an `Inferred` Π — otherwise `id` used as a value would eta-expand forever. This is the rule
