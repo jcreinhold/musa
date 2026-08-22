@@ -70,14 +70,14 @@ use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::budget::Meter;
 use crate::kernel::case_tree::{Alternative, CaseTree, Split as TreeSplit};
 use crate::kernel::error::CoreError;
-use crate::kernel::eval::{apply, eval, field_type, opened, project};
-use crate::kernel::family::{Constant, Element, element};
+use crate::kernel::eval::{apply, apply_closure, eval, field_type, opened, project};
+use crate::kernel::family::{Constant, Element, built_by, built_from, element};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{quote, quote_type};
 use crate::kernel::scope::Scope;
 use crate::kernel::sort::Sort;
 use crate::kernel::term::{Index, Level, Name, Shape, Term};
-use crate::kernel::value::{Form, Head, Value};
+use crate::kernel::value::{Env, Form, Head, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
 ///
@@ -95,7 +95,7 @@ pub(crate) fn compile(
     goal: &Value,
 ) -> Result<Term, ElabError> {
     let (tree, bound) = tree(elaborator, scope, here, subjects, arms, goal)?;
-    let mut term = tree.emitted()?;
+    let mut term = tree.emitted(here)?;
     for (name, ty, value) in bound.into_iter().rev() {
         term = Term::bind(here, name, ty, value, term);
     }
@@ -592,7 +592,8 @@ impl Tree<'_, '_> {
         }
         self.belong(scope, problem, column, &found)?;
         let split = Analysed::read(self, scope, subject, &found, &problem.goal, at)?;
-        let motives = self.motives(scope, problem, &split, subject)?;
+        let filtering = self.filtering(scope, &split)?;
+        let motives = self.motives(scope, problem, &split, subject, &filtering)?;
 
         let mut alternatives = Vec::new();
         for family in 0..found.group.arity() {
@@ -602,7 +603,9 @@ impl Tree<'_, '_> {
                 .map_or(0, |declared| declared.constructors.len());
             for which in 0..count {
                 let which = u32::try_from(which).unwrap_or(u32::MAX);
-                if let Some(alternative) = self.method(scope, problem, &split, &motives, column, family, which)? {
+                if let Some(alternative) =
+                    self.method(scope, problem, &split, &motives, &filtering, column, family, which)?
+                {
                     alternatives.push(alternative);
                 }
             }
@@ -612,6 +615,7 @@ impl Tree<'_, '_> {
             group: Arc::clone(&found.group),
             family: found.family,
             params: Arc::from(split.params.clone()),
+            indices: Arc::from(split.indices.clone()),
             motives: motives.iter().map(|motive| motive.term.clone()).collect(),
             level: split.level.clone(),
             on: split.target.clone(),
@@ -714,44 +718,60 @@ impl Tree<'_, '_> {
 
     /// One motive per family of the group, each a **family** of types.
     ///
-    /// The family being split gets `λ(t : N p⃗). G` — the goal with the subject
-    /// abstracted out, which is §1.1's dependent motive. Every other family
-    /// gets `λ(_ : M p⃗). G → G`, which is inhabited at the goal's universe by
-    /// the identity and says nothing about a value nobody matched.
+    /// The family being split gets `λ(i⃗). λ(t : N p⃗ i⃗). G` — the goal with the
+    /// subject *and the indices its type stands at* abstracted out, which is
+    /// §1.1's dependent motive. Every other family gets
+    /// `λ(i⃗). λ(_ : M p⃗ i⃗). G → G`, which is inhabited at the goal's universe
+    /// by the identity and says nothing about a value nobody matched.
+    ///
+    /// Each family binds **its own** index telescope, not the split family's:
+    /// a group may declare one family with indices and another without, and a
+    /// motive that took the wrong number of arguments would not be the type
+    /// [`crate::kernel::family`] assembles the recursor at.
     fn motives(
         &mut self,
         scope: &Scope,
         problem: &Problem<'_>,
         split: &Analysed,
         subject: &Subject,
+        filtering: &[usize],
     ) -> Result<Vec<Motive>, ElabError> {
         let depth = scope.depth();
         let mut built = Vec::new();
         for family in 0..split.element.group.arity() {
             let term = if family == split.element.family {
-                self.abstracted(scope, subject, &problem.goal)?
+                self.abstracted(scope, split, subject, &problem.goal, filtering)?
             } else {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
                 // One binder deeper than it used to be, because the motive is
                 // now a family and the Π sits under its subject binder.
+                let count = usize::try_from(split.element.group.indices(family)).unwrap_or(0);
+                let mut under = depth;
+                for _ in 0..count {
+                    under = under.deeper();
+                }
                 let domain = quote_type(
                     self.elaborator.meter(),
-                    depth.deeper(),
+                    under.deeper(),
                     crate::kernel::quote::Mode::Keep,
                     &problem.goal,
                 )?;
                 let codomain = quote_type(
                     self.elaborator.meter(),
-                    depth.deeper().deeper(),
+                    under.deeper().deeper(),
                     crate::kernel::quote::Mode::Keep,
                     &problem.goal,
                 )?;
-                Term::lam(
+                let mut term = Term::lam(
                     self.here,
                     "unmatched",
                     Term::pi(self.here, "impossible", domain, codomain),
-                )
+                );
+                for _ in 0..count {
+                    term = Term::lam(self.here, "index", term);
+                }
+                term
             };
             let value = scope.eval(self.elaborator.meter(), &term)?;
             built.push(Motive { term, value });
@@ -759,34 +779,366 @@ impl Tree<'_, '_> {
         Ok(built)
     }
 
-    /// The goal as a family: `λ(t : N p⃗). G`, with the subject abstracted out.
+    /// The goal as a family: `λ(i⃗). λ(t : N p⃗ i⃗). G`, with the subject and the
+    /// indices its type stands at abstracted out.
     ///
     /// Abstraction by re-evaluation, for the reason the module doc gives: the
-    /// goal is quoted at the splitting depth, the subject's binder is rebound to
-    /// a variable one level deeper, and re-evaluating puts that variable
-    /// wherever the subject stood. Quoting the answer one binder deeper reads it
-    /// back as index 0, which is the λ this returns.
+    /// goal is quoted at the splitting depth, each abstracted binder is rebound
+    /// to a variable one level deeper than the last, and re-evaluating puts
+    /// those variables wherever the originals stood. Quoting the answer that
+    /// many binders deeper reads them back as indices, which are the λs this
+    /// returns.
+    ///
+    /// **Abstracting the indices is what refinement is.** A subject of type
+    /// `Vect A n` with `n` a variable makes the motive `λn. λt. G`, so the arm
+    /// for `Nil` is checked at `G[n := zero]` and the arm for `Cons` at
+    /// `G[n := suc m]` — the goal each arm actually has to answer. An index that
+    /// is *not* a variable is not abstracted, because there is no binder to
+    /// abstract; a constructor whose own index then disagrees with it is the
+    /// refuted branch [`Self::refuted`] finds.
     ///
     /// **A goal that does not mention the subject is not a special case.** It
-    /// comes back unchanged, the λ ignores its argument, and the motive applied
-    /// to anything is `G` — exactly the non-dependent behaviour, reached by the
-    /// same path rather than by a branch that could disagree with it.
-    fn abstracted(&mut self, scope: &Scope, subject: &Subject, goal: &Value) -> Result<Term, ElabError> {
+    /// comes back unchanged, the λs ignore their arguments, and the motive
+    /// applied to anything is `G` — exactly the non-dependent behaviour, reached
+    /// by the same path rather than by a branch that could disagree with it.
+    fn abstracted(
+        &mut self,
+        scope: &Scope,
+        split: &Analysed,
+        subject: &Subject,
+        goal: &Value,
+        filtering: &[usize],
+    ) -> Result<Term, ElabError> {
+        let here = self.here;
         let depth = scope.depth();
+        let binders = self.index_binders(scope, &split.element)?;
         let meter = self.elaborator.meter();
-        let Some(level) = variable(&subject.value) else {
-            // [`subject`] names every subject that is not already a variable, so
-            // there is nothing here to abstract. Quoting one binder deeper is
-            // the weakening that puts the goal under the λ.
-            let body = quote_type(meter, depth.deeper(), crate::kernel::quote::Mode::Keep, goal)?;
-            return Ok(Term::lam(self.here, "t", body));
-        };
+        let mut env = scope.env().clone();
+        let mut at = depth;
+        for binder in &binders {
+            if let Some(level) = variable(&binder.value) {
+                env = env.rebinding(Level(level), Value::var(here, at, Arc::clone(&binder.ty)));
+            }
+            at = at.deeper();
+        }
+        if let Some(level) = variable(&subject.value) {
+            env = env.rebinding(Level(level), Value::var(here, at, Arc::clone(&subject.ty)));
+        }
         let quoted = quote_type(meter, depth, crate::kernel::quote::Mode::Keep, goal)?;
-        let standing = Value::var(self.here, depth, Arc::clone(&subject.ty));
-        let env = scope.env().rebinding(Level(level), standing);
-        let opened = eval(meter, &env, &quoted)?;
-        let body = quote_type(meter, depth.deeper(), crate::kernel::quote::Mode::Keep, &opened)?;
-        Ok(Term::lam(self.here, "t", body))
+        // Rigid positions, innermost binder first: the ones the subject stands
+        // at a constructor of and every constructor of the family chooses one
+        // at. [`Self::filtering`] decided which; this reads the values back.
+        let rigid: Vec<Rigid> = filtering
+            .iter()
+            .filter_map(|position| binders.get(*position).map(|binder| (*position, binder)))
+            .filter(|(_, binder)| variable(&binder.value).is_none())
+            .map(|(position, binder)| Rigid {
+                position,
+                value: binder.value.clone(),
+                ty: Arc::clone(&binder.ty),
+            })
+            .collect();
+        let mut body = self.filtered(scope, split, depth, at.deeper(), &env, &quoted, &rigid)?;
+        body = Term::lam(here, "t", body);
+        for binder in binders.iter().rev() {
+            body = Term::lam(here, Arc::clone(&binder.name), body);
+        }
+        Ok(body)
+    }
+
+    /// The motive's body: the goal where the indices agree with the subject's,
+    /// and `Π(_ : G). G` where they do not.
+    ///
+    /// **This is what discharges a refuted branch.** §6.2 emits a `match` as an
+    /// application of the generated eliminator, and an eliminator wants a method
+    /// for *every* constructor — including one no value of the subject's type
+    /// can be. A motive that ignored the index would give that method the goal's
+    /// own type, and there is nothing to put there: `head` of a `Vect A (suc n)`
+    /// has no `A` to answer `Nil` with. So the motive analyses the index instead,
+    /// and answers `Π(_ : G). G` off the subject's own case — a type the identity
+    /// inhabits, which is exactly what [`CaseTree::Impossible`] emits.
+    ///
+    /// `Π(_ : G). G` rather than the empty record for the reason the sibling
+    /// motive gives: universes are not cumulative (§1), so `{}` inhabits
+    /// `Type 0` and nothing above it, and the goal may stand anywhere.
+    ///
+    /// Nested, one elimination per rigid index, because two indices may each
+    /// rule a constructor out and the second's answer has to sit inside the
+    /// first's method — under that method's own binders, which is why the goal
+    /// is re-quoted at each depth rather than shifted (§3).
+    fn filtered(
+        &mut self,
+        scope: &Scope,
+        split: &Analysed,
+        depth: Level,
+        at: Level,
+        env: &Env,
+        quoted: &Term,
+        rigid: &[Rigid],
+    ) -> Result<Term, ElabError> {
+        let here = self.here;
+        let Some((first, rest)) = rigid.split_first() else {
+            let meter = self.elaborator.meter();
+            let goal = eval(meter, env, quoted)?;
+            return Ok(quote_type(meter, at, crate::kernel::quote::Mode::Keep, &goal)?);
+        };
+        let meter = self.elaborator.meter();
+        let (Some((of_family, of_which, of_fields)), Some(found)) =
+            (built_from(meter, &first.value)?, element(meter, &first.ty)?)
+        else {
+            return self.filtered(scope, split, depth, at, env, quoted, rest);
+        };
+        // The index's own type, read back where the motive stands, so that the
+        // eliminator's parameters and indices are the ones it was written at.
+        let spelled = quote_type(meter, at, crate::kernel::quote::Mode::Keep, &first.ty)?;
+        let (_, arguments) = spine(&spelled);
+        let params = found.params.len();
+        let group = Arc::clone(&found.group);
+        // The motive lands one universe above the goal's, because it *is* a
+        // type: `λ(δ⃗). λ(_ : E δ⃗). Type l` inhabits `Type (l + 1)`.
+        let mut applied = Constant::recursor(&group, found.family, split.level.succ()).term(here);
+        for argument in arguments.iter().take(params) {
+            applied = Term::app(here, applied, argument.clone());
+        }
+        for family in 0..group.arity() {
+            let mut motive = Term::lam(here, "unmatched", Term::universe(here, split.level.clone()));
+            for _ in 0..group.indices(family) {
+                motive = Term::lam(here, "index", motive);
+            }
+            applied = Term::app(here, applied, motive);
+        }
+        for family in 0..group.arity() {
+            let Some(declared) = group.family_at(family) else {
+                continue;
+            };
+            let count = declared.constructors.len();
+            for which in 0..count {
+                let which = u32::try_from(which).unwrap_or(u32::MAX);
+                let Some(rule) = group
+                    .family_at(family)
+                    .and_then(|declared| declared.constructor_at(which))
+                else {
+                    continue;
+                };
+                let bound: Vec<Name> = rule
+                    .fields
+                    .iter()
+                    .map(|binder| Arc::clone(&binder.name))
+                    .chain(rule.recursive.iter().map(|_| Arc::from("hypothesis")))
+                    .collect();
+                let mut under = at;
+                for _ in &bound {
+                    under = under.deeper();
+                }
+                let mut method = if (family, which) == (of_family, of_which) {
+                    let learned = self.learned(scope, &group, family, which, &found.params, at, env, &of_fields)?;
+                    self.filtered(scope, split, depth, under, &learned, quoted, rest)?
+                } else {
+                    let meter = self.elaborator.meter();
+                    let goal = eval(meter, env, quoted)?;
+                    let domain = quote_type(meter, under, crate::kernel::quote::Mode::Keep, &goal)?;
+                    let codomain = quote_type(meter, under.deeper(), crate::kernel::quote::Mode::Keep, &goal)?;
+                    Term::pi(here, "impossible", domain, codomain)
+                };
+                for name in bound.iter().rev() {
+                    method = Term::lam(here, Arc::clone(name), method);
+                }
+                applied = Term::app(here, applied, method);
+            }
+        }
+        for argument in arguments.iter().skip(params) {
+            applied = Term::app(here, applied, argument.clone());
+        }
+        // The index itself, as the variable the motive bound for it: `at` counts
+        // every index binder and the subject's, and this one stands `position`
+        // in from the splitting depth.
+        let steps_out = at.0.saturating_sub(1).saturating_sub(
+            depth
+                .0
+                .saturating_add(u32::try_from(first.position).unwrap_or(u32::MAX)),
+        );
+        Ok(Term::app(here, applied, Term::var(here, Index(steps_out))))
+    }
+
+    /// The environment inside the method for the constructor the rigid index
+    /// stands at, with what the match *learned* from that index bound.
+    ///
+    /// **This is the other half of index unification, and the half a refutation
+    /// does not need.** Splitting a `Row A (suc n)` against `Longer` rules
+    /// nothing out — but the goal mentions `n`, and the method has no `n`: it has
+    /// its own field, one binder deep, standing for the same number. Unifying
+    /// `suc n` with `suc k` is injective (§1.1 admits no confusion, so two
+    /// constructors are never equal and one constructor's arguments are
+    /// determined by its result), and the solution is `n := k`. Rebinding `n` to
+    /// the method's own variable *is* that solution, applied the only way this
+    /// module applies a substitution: by re-evaluation (§3), never by shifting.
+    ///
+    /// Only an argument that is a *variable* is learned from. An index
+    /// constructor applied to something rigid solves nothing here — the
+    /// disagreement, if there is one, is [`Self::refuted`]'s to find, and a
+    /// silent guess is what §1.1 forbids.
+    fn learned(
+        &mut self,
+        scope: &Scope,
+        group: &Arc<crate::kernel::family::Group>,
+        family: u32,
+        which: u32,
+        params: &[Value],
+        at: Level,
+        env: &Env,
+        fields: &[Value],
+    ) -> Result<Env, ElabError> {
+        let here = self.here;
+        let globals = scope.cx().globals();
+        let meter = self.elaborator.meter();
+        // The constructor's own telescope, instantiated at the parameters the
+        // index type was read at, so each learned variable stands at the type
+        // the declaration gave that field rather than at a guess.
+        let mut ty = Constant::constructor(group, family, which).ty(meter, globals)?;
+        for param in params {
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi { codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                return Ok(env.clone());
+            };
+            let codomain = codomain.clone();
+            ty = apply_closure(meter, &codomain, param.clone())?;
+        }
+        let mut learned = env.clone();
+        let mut standing = at;
+        for field in fields {
+            let meter = self.elaborator.meter();
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi { domain, codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                break;
+            };
+            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            let here_now = Value::var(here, standing, Arc::clone(&domain));
+            if let Some(level) = variable(field) {
+                learned = learned.rebinding(Level(level), here_now.clone());
+            }
+            ty = apply_closure(meter, &codomain, here_now)?;
+            standing = standing.deeper();
+        }
+        Ok(learned)
+    }
+
+    /// Which index positions the motive may analyse.
+    ///
+    /// Two conditions, and both are about not making the checker guess (§1.1).
+    /// The subject must stand at a *constructor* there, because a variable is
+    /// abstracted instead and needs no case analysis. And every constructor of
+    /// the family must choose a constructor there too — otherwise the
+    /// eliminator the motive is would be stuck at that constructor's own choice,
+    /// and an arm that is perfectly reachable would be checked against a type
+    /// that never computes.
+    fn filtering(&mut self, scope: &Scope, split: &Analysed) -> Result<Vec<usize>, ElabError> {
+        let count = split.element.indices.len();
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        let group = Arc::clone(&split.element.group);
+        let Some(declared) = group.family_at(split.element.family) else {
+            return Ok(Vec::new());
+        };
+        let mut chosen: Vec<Vec<Value>> = Vec::with_capacity(declared.constructors.len());
+        for which in 0..declared.constructors.len() {
+            let which = u32::try_from(which).unwrap_or(u32::MAX);
+            let Some(result) = self.result_of(scope, split, which)? else {
+                return Ok(Vec::new());
+            };
+            chosen.push(result.indices);
+        }
+        let mut built = Vec::new();
+        for position in 0..count {
+            let subject = split.element.indices.get(position);
+            if subject.is_none_or(|value| variable(value).is_some()) {
+                continue;
+            }
+            let mut every = true;
+            for indices in &chosen {
+                let meter = self.elaborator.meter();
+                let known = match indices.get(position) {
+                    Some(value) => built_by(meter, value)?.is_some(),
+                    None => false,
+                };
+                every = every && known;
+            }
+            if every {
+                built.push(position);
+            }
+        }
+        Ok(built)
+    }
+
+    /// A constructor's result type, `N p⃗ c⃗`, with its fields standing as fresh
+    /// variables.
+    ///
+    /// What the declaration says this constructor lands at, before any arm has
+    /// been elaborated. [`Self::built`] answers the same question of a method
+    /// that already has fields; this one is asked while the motive is still
+    /// being built, and only the *shape* of each chosen index is read off it.
+    fn result_of(&mut self, scope: &Scope, split: &Analysed, which: u32) -> Result<Option<Element>, ElabError> {
+        let here = self.here;
+        let globals = scope.cx().globals();
+        let meter = self.elaborator.meter();
+        let mut ty = Constant::constructor(&split.element.group, split.element.family, which).ty(meter, globals)?;
+        let mut at = scope.depth();
+        for param in &split.element.params {
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi { codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                return Ok(None);
+            };
+            let codomain = codomain.clone();
+            ty = apply_closure(meter, &codomain, param.clone())?;
+        }
+        loop {
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi { domain, codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                break;
+            };
+            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            ty = apply_closure(meter, &codomain, Value::var(here, at, domain))?;
+            at = at.deeper();
+        }
+        Ok(element(meter, &ty)?)
+    }
+
+    /// The subject's index arguments, each with the name and type the
+    /// declaration gave that position.
+    ///
+    /// Walked off the family's *own* type — `(p⃗ : P) → (i⃗ : I) → Type l`,
+    /// instantiated at the parameters the split read off the subject — rather
+    /// than recomputed here. A later index may mention an earlier one, and
+    /// [`crate::kernel::family`] has already assembled the telescope that says
+    /// how; a second computation of it could only disagree.
+    fn index_binders(&mut self, scope: &Scope, element: &Element) -> Result<Vec<IndexBinder>, ElabError> {
+        let here = self.here;
+        let depth = scope.depth();
+        let globals = scope.cx().globals();
+        let params = element.params.len();
+        let meter = self.elaborator.meter();
+        let mut ty = Constant::family(&element.group, element.family).ty(meter, globals)?;
+        let mut built = Vec::with_capacity(element.indices.len());
+        for (position, argument) in element.params.iter().chain(&element.indices).enumerate() {
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi {
+                name, domain, codomain, ..
+            } = &unfolded.as_ref().unwrap_or(&ty).form
+            else {
+                let ty = quote_type(meter, depth, crate::kernel::quote::Mode::Keep, &ty)?;
+                return Err(Refusal::NotAFunction { at: here, ty }.into());
+            };
+            let (name, domain, codomain) = (Arc::clone(name), Arc::clone(domain), codomain.clone());
+            if position >= params {
+                built.push(IndexBinder {
+                    value: argument.clone(),
+                    name,
+                    ty: domain,
+                });
+            }
+            ty = apply_closure(meter, &codomain, argument.clone())?;
+        }
+        Ok(built)
     }
 
     /// One alternative: the sub-matrix for a constructor, under its fields and
@@ -796,12 +1148,17 @@ impl Tree<'_, '_> {
     /// `match` did not cover. Reported by [`CaseTree::uncovered`] rather than
     /// here, so that the verdict comes from the declaration group and not from
     /// this loop's own place in it.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "one split's context, and every part of it is used"
+    )]
     fn method(
         &mut self,
         scope: &Scope,
         problem: &Problem<'_>,
         split: &Analysed,
         motives: &[Motive],
+        filtering: &[usize],
         column: usize,
         family: u32,
         which: u32,
@@ -866,7 +1223,16 @@ impl Tree<'_, '_> {
         // name something, and this is what it names.
         let built = self.built(scope, &group, family, which, &split.element.params, &fields)?;
 
-        let body = if family == split.element.family {
+        let body = if family != split.element.family {
+            // A sibling family's motive is `λi⃗. λ_. G → G`, so its method is the
+            // identity and says nothing about a value nobody matched.
+            CaseTree::Answer(Term::lam(self.here, "impossible", Term::var(self.here, Index(0))))
+        } else if self.refuted(split, filtering, &built)? {
+            // §1.1's unification refuted this branch: the subject's type stands
+            // at an index this constructor does not choose, and no value
+            // inhabits the difference. No body, and none needed.
+            CaseTree::Impossible
+        } else {
             let goal = self.method_goal(motives, family, &built)?;
             let rows = Self::narrowed(problem, column, family, which, &group, &fields, &built)?;
             if rows.is_empty() {
@@ -898,10 +1264,6 @@ impl Tree<'_, '_> {
                     goal: Arc::new(goal),
                 },
             )?
-        } else {
-            // A sibling family's motive is `λ_. G → G`, so its method is the
-            // identity and says nothing about a value nobody matched.
-            CaseTree::Answer(Term::lam(self.here, "impossible", Term::var(self.here, Index(0))))
         };
 
         // Fields first, then one hypothesis per recursive field: the order
@@ -929,7 +1291,7 @@ impl Tree<'_, '_> {
     }
 
     /// The type of the induction hypothesis for a recursive field: the field's
-    /// own motive **applied to the field**.
+    /// own motive **applied to the field's indices and then to the field**.
     ///
     /// Dependent, and that is what makes a recursive arm able to say something
     /// about the value it recursed on rather than merely produce an inhabitant
@@ -950,12 +1312,16 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        let applied = apply(
-            self.elaborator.meter(),
-            self.here,
-            motive.value.clone(),
-            field.value.clone(),
-        )?;
+        // The motive is a family over the *field's own* indices, so those come
+        // before the field itself. `found` read them off the field's type, which
+        // is where the declaration put them.
+        let here = self.here;
+        let meter = self.elaborator.meter();
+        let mut applied = motive.value.clone();
+        for index in &found.indices {
+            applied = apply(meter, here, applied, index.clone())?;
+        }
+        applied = apply(meter, here, applied, field.value.clone())?;
         Ok(Arc::new(applied))
     }
 
@@ -984,15 +1350,27 @@ impl Tree<'_, '_> {
             }
             .into());
         };
+        let here = self.here;
+        let depth = scope.depth();
         let globals = scope.cx().globals();
-        let mut value = Constant::constructor(group, family, which).value(self.here, globals);
-        let mut ty = Constant::family(group, family).value(self.here, globals);
-        for param in params {
-            value = apply(self.elaborator.meter(), self.here, value, param.clone())?;
-            ty = apply(self.elaborator.meter(), self.here, ty, param.clone())?;
-        }
-        for field in fields {
-            value = apply(self.elaborator.meter(), self.here, value, field.value.clone())?;
+        let constructor = Constant::constructor(group, family, which);
+        let mut value = constructor.value(here, globals);
+        let meter = self.elaborator.meter();
+        // The constructor's declared type, `(p⃗ : P) → (a⃗ : A) → N p⃗ c⃗`, walked
+        // one binder per argument. What falls out at the end is the result type
+        // the declaration wrote, with this method's own fields standing in the
+        // indices it chose — which is exactly what an indexed family made
+        // different and what a family applied to the parameters cannot say.
+        let mut ty = constructor.ty(meter, globals)?;
+        for argument in params.iter().chain(fields.iter().map(|field| &field.value)) {
+            value = apply(meter, here, value, argument.clone())?;
+            let unfolded = opened(meter, &ty)?;
+            let Form::Pi { codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                let ty = quote_type(meter, depth, crate::kernel::quote::Mode::Keep, &ty)?;
+                return Err(Refusal::NotAFunction { at: here, ty }.into());
+            };
+            let codomain = codomain.clone();
+            ty = apply_closure(meter, &codomain, argument.clone())?;
         }
         Ok(Built {
             value,
@@ -1020,7 +1398,60 @@ impl Tree<'_, '_> {
             .into());
         };
         let motive = motive.value.clone();
-        Ok(apply(self.elaborator.meter(), self.here, motive, built.value.clone())?)
+        let here = self.here;
+        let meter = self.elaborator.meter();
+        // The indices this constructor chose, read off the result type
+        // [`Self::built`] walked out of the declaration. `None` is a family with
+        // no indices, where the motive takes the subject alone.
+        let chosen = element(meter, &built.ty)?
+            .map(|found| found.indices)
+            .unwrap_or_default();
+        let mut applied = motive;
+        for index in chosen {
+            applied = apply(meter, here, applied, index)?;
+        }
+        Ok(apply(meter, here, applied, built.value.clone())?)
+    }
+
+    /// Whether index unification rules this constructor out of this split.
+    ///
+    /// §1.1: splitting `N i⃗` against a constructor whose result is `N c⃗`
+    /// unifies the two. Where an index of the subject is a *variable*,
+    /// [`Self::abstracted`] has already abstracted it and the unification is
+    /// solved by the motive — the arm is simply checked at the refined goal.
+    /// What is left is the rigid case: the subject stands at `suc n` and `Nil`
+    /// chooses `zero`, and no value inhabits that branch. Two distinct
+    /// constructors of one family are never convertible (§1.1 admits no
+    /// confusion), so this test refutes only where the declaration already did.
+    ///
+    /// Conservative by construction: anything it cannot tell apart it keeps, and
+    /// a kept branch is still well typed, because its goal is the motive applied
+    /// to the indices the constructor chose. Being wrong here costs coverage
+    /// diagnostics, never soundness.
+    ///
+    /// An arm the author *wrote* for a refuted constructor is dropped rather
+    /// than reported. It could not have been checked — its goal is uninhabited —
+    /// and a diagnostic for it is a vocabulary this prompt does not add.
+    fn refuted(&mut self, split: &Analysed, filtering: &[usize], built: &Built) -> Result<bool, ElabError> {
+        let meter = self.elaborator.meter();
+        let Some(found) = element(meter, &built.ty)? else {
+            return Ok(false);
+        };
+        for position in filtering {
+            let meter = self.elaborator.meter();
+            let (Some(subject), Some(chosen)) = (split.element.indices.get(*position), found.indices.get(*position))
+            else {
+                continue;
+            };
+            let (Some(left), Some(right)) = (built_by(meter, subject)?, built_by(meter, chosen)?) else {
+                continue;
+            };
+            if left == right {
+                continue;
+            }
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     /// The rows that survive a split, with the split column replaced by the
@@ -1117,8 +1548,32 @@ fn wildcard() -> &'static RawPattern {
 }
 
 /// What a method knows its subject to be: `c p⃗ a⃗`, and its type.
+///
+/// The type is the constructor's *result* type, `N p⃗ c⃗`, at the indices this
+/// constructor chose — not the family at the subject's indices. That is the
+/// difference an indexed family makes, and it is why [`Cases::method_goal`] can
+/// read the chosen indices back off it instead of recomputing them.
 struct Built {
     value: Value,
+    ty: Arc<Value>,
+}
+
+/// One of the subject's index arguments: the value it stands at, and the name
+/// and type the declaration gave that position.
+struct IndexBinder {
+    value: Value,
+    name: Name,
+    ty: Arc<Value>,
+}
+
+/// An index the subject stands at a *constructor* of, which is what the motive
+/// analyses — see [`Cases::filtered`].
+struct Rigid {
+    /// Which index of the family this is, counting from the first.
+    position: usize,
+    /// What the subject's type stands at there.
+    value: Value,
+    /// The type the declaration gave the position.
     ty: Arc<Value>,
 }
 
@@ -1161,6 +1616,8 @@ struct Analysed {
     element: Element,
     /// The parameters, as terms at the splitting depth.
     params: Vec<Term>,
+    /// The subject's indices, as terms at the splitting depth.
+    indices: Vec<Term>,
     /// The subject itself, as a term at the splitting depth.
     target: Term,
     /// The universe the motive lands in.
@@ -1209,8 +1666,12 @@ impl Analysed {
                 group: Arc::clone(&found.group),
                 family: found.family,
                 params: found.params.clone(),
+                indices: found.indices.clone(),
             },
+            // The subject's type reads back as `N p⃗ i⃗`, so the two lists come
+            // off one spine at one depth rather than being quoted twice.
             params: arguments.get(..params).unwrap_or_default().to_vec(),
+            indices: arguments.get(params..).unwrap_or_default().to_vec(),
             target,
             level,
         })

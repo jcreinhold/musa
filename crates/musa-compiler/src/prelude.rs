@@ -930,6 +930,7 @@ fn constructor(name: &str, fields: Vec<RawBinder>) -> RawConstructor {
         name: Arc::from(name),
         visibility: Visibility::Public,
         fields,
+        chosen: Vec::new(),
     }
 }
 
@@ -948,6 +949,7 @@ fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
         visibility: Visibility::Public,
+        indices: Vec::new(),
         constructors,
     }
 }

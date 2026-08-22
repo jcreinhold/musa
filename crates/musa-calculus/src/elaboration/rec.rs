@@ -303,7 +303,7 @@ pub(crate) fn tree_body(
 ///
 /// As [`CaseTree::emitted`], and as zonking.
 pub(crate) fn emission(elaborator: &mut Elaborator, here: Origin, compiled: &Compiled) -> Result<Term, ElabError> {
-    let emitted = compiled.tree.emitted()?;
+    let emitted = compiled.tree.emitted(here)?;
     let term = compiled
         .binders
         .iter()
@@ -344,6 +344,10 @@ fn zonked_tree(elaborator: &mut Elaborator, tree: &CaseTree, depth: Level) -> Re
             for param in split.params.iter() {
                 params.push(elaborator.zonk_at(param, depth)?);
             }
+            let mut indices = Vec::with_capacity(split.indices.len());
+            for index in split.indices.iter() {
+                indices.push(elaborator.zonk_at(index, depth)?);
+            }
             let mut motives = Vec::with_capacity(split.motives.len());
             for motive in split.motives.iter() {
                 motives.push(elaborator.zonk_at(motive, depth)?);
@@ -368,6 +372,7 @@ fn zonked_tree(elaborator: &mut Elaborator, tree: &CaseTree, depth: Level) -> Re
                 group: Arc::clone(&split.group),
                 family: split.family,
                 params: Arc::from(params),
+                indices: Arc::from(indices),
                 motives: Arc::from(motives),
                 level: split.level.clone(),
                 on: elaborator.zonk_at(&split.on, depth)?,

@@ -71,6 +71,11 @@ private to it.
 - `fn triad_is_present(refined: Triad) -> Bool` — The present case of `is_triad`: a refinement that exists is a triad, whichever of the two it turned out to be.
 - `fn is_major(refined: Triad) -> Bool` — Which of the two a triad is. Total, and a `bool` rather than a partial answer, because the refinement admitted exactly two chord classes: not major is minor here, and only here. Every transformation in `std::transformational` branches on this, since which way a voice moves is the whole content of the transformation.
 
+## `std::indexed`
+
+- `fn row_top<A>(size: Nat, held: Row<A>(Succ(size))) -> A` — The first element of a row that has one.  **Total, and with one arm.** `Empty` stands at `Zero` and this row stands at `Succ(size)`, so index unification rules that constructor out and there is no case to write for it — which is the difference between this and the `Option<A>` the same function returns today.
+- `fn row_later<A>(size: Nat, held: Row<A>(Succ(size))) -> Row<A>(size)` — Everything after the first element, one shorter.
+
 ## `std::list`
 
 - `fn counting_from(count: Nat, first: Nat) -> List<Nat>` — The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* "one more", so counting needs no arithmetic and no failure case.

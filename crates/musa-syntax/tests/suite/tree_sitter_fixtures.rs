@@ -348,6 +348,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::TypeParam
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
+        | SyntaxKind::DataIndices
+        | SyntaxKind::DataChosen
         | SyntaxKind::RecordDecl
         | SyntaxKind::FieldDecl
         | SyntaxKind::EnumDecl

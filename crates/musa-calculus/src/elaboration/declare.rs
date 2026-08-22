@@ -61,12 +61,21 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     let opaque = Arc::new(Value::new(here, Form::Universe(Sort::ZERO)));
     let outline = declaring(&Scope::new(&closed), data, |_| Arc::clone(&opaque));
     let arity = u32::try_from(data.families.len()).unwrap_or(u32::MAX);
-    let (params, _under_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
+    let (params, outline_params) = telescope(&mut elaborator, &outline, &data.params, arity)?;
+
+    // Each family's own index telescope, read under the declaration context and
+    // the parameters — the one place the two differ, and the reason this is a
+    // loop over families where the parameters were one call.
+    let mut indices = Vec::with_capacity(data.families.len());
+    for family in &data.families {
+        let (bound, _) = telescope(&mut elaborator, &outline_params, &family.indices, arity)?;
+        indices.push(bound);
+    }
 
     // Pass two: the constructors, with the families at their real types. §1: a
     // data family stores small types and so lands at `Type 0`, which is what
     // every signature says and what the constructor check enforces.
-    let signatures = signatures(&mut elaborator, &outline, here, &params, data)?;
+    let signatures = signatures(&mut elaborator, &outline, here, &params, &indices, data)?;
     let scope = declaring(&Scope::new(&closed), data, |which| {
         Arc::clone(signatures.get(which).unwrap_or(&opaque))
     });
@@ -74,15 +83,17 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
 
     let mut families = Vec::with_capacity(data.families.len());
     for (which, family) in data.families.iter().enumerate() {
-        let built = constructors(&mut elaborator, &under_params, data, family, arity)?;
+        let of_family = indices.get(which).map(Vec::as_slice).unwrap_or_default();
+        let built = constructors(&mut elaborator, &under_params, of_family, family, arity)?;
         uniform(family)?;
         let which = u32::try_from(which).unwrap_or(u32::MAX);
         families.push(Declared {
+            indices: Arc::from(of_family.to_vec()),
             // The family's level is the join of what its constructors store —
             // an inference now that §1's hierarchy has no ceiling to check it
             // against, and the reason a `Declared` carries a level at all.
             level: built.level,
-            counting: counting(which, &params, &built.constructors),
+            counting: counting(which, &params, of_family, &built.constructors),
             name: Arc::clone(&family.name),
             visibility: family.visibility,
             constructors: Arc::from(built.constructors),
@@ -109,8 +120,19 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 name,
                 visibility,
                 level,
+                indices,
                 constructors,
             } = declared;
+            let indices = indices
+                .iter()
+                .map(|index| {
+                    Ok::<_, ElabError>(Parameter {
+                        name: Arc::clone(&index.name),
+                        ty: elaborator.zonk(&index.ty)?,
+                        filling: index.filling.clone(),
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             let constructors = constructors
                 .iter()
                 .map(|constructor| {
@@ -125,10 +147,16 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
+                    let chosen = constructor
+                        .chosen
+                        .iter()
+                        .map(|index| elaborator.zonk(index))
+                        .collect::<Result<Vec<_>, _>>()?;
                     Ok(crate::kernel::family::Constructor {
                         name: Arc::clone(&constructor.name),
                         visibility: constructor.visibility,
                         fields: Arc::from(fields),
+                        chosen: Arc::from(chosen),
                         recursive: Arc::clone(&constructor.recursive),
                     })
                 })
@@ -138,6 +166,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
                 name,
                 visibility,
                 level,
+                indices: Arc::from(indices),
                 constructors: Arc::from(constructors),
             })
         })
@@ -253,12 +282,23 @@ fn signatures(
     scope: &Scope,
     here: Origin,
     params: &[Parameter],
+    indices: &[Vec<Parameter>],
     data: &RawData,
 ) -> Result<Vec<Arc<Value>>, CoreError> {
     data.families
         .iter()
-        .map(|_| {
-            let term = closed_over(here, params, Term::universe(here, Sort::ZERO));
+        .enumerate()
+        .map(|(which, _)| {
+            let of_family = indices.get(which).map(Vec::as_slice).unwrap_or_default();
+            // `(p⃗) → (i⃗) → Type 0`: the parameters the group shares and then
+            // the indices this family alone takes, which is the shape §1.1
+            // gives a family's signature and the reason the two lists are not
+            // one.
+            let term = closed_over(
+                here,
+                params,
+                closed_over(here, of_family, Term::universe(here, Sort::ZERO)),
+            );
             Ok(Arc::new(eval(elaborator.meter(), scope.env(), &term)?))
         })
         .collect()
@@ -286,7 +326,7 @@ struct Built {
 fn constructors(
     elaborator: &mut Elaborator,
     scope: &Scope,
-    _data: &RawData,
+    indices: &[Parameter],
     family: &RawFamily,
     arity: u32,
 ) -> Result<Built, ElabError> {
@@ -334,11 +374,12 @@ fn constructors(
                 }
             }
         }
-        let _ = &inner;
+        let chosen = chosen(elaborator, scope, &inner, indices, family, constructor, arity)?;
         built.push(Constructor {
             name: Arc::clone(&constructor.name),
             visibility: constructor.visibility,
             fields: Arc::from(fields),
+            chosen: Arc::from(chosen),
             recursive: Arc::from(recursive),
         });
     }
@@ -350,10 +391,16 @@ fn constructors(
 
 /// Whether family `which` counts, and by which two constructors.
 ///
-/// The three conditions of [`Counting`], read off the declaration that was just
-/// checked: no group parameters, exactly two constructors, and between them one
-/// with no fields and one whose single field is a recursive occurrence of *this*
-/// family. Recursion is read off
+/// The four conditions of [`Counting`], read off the declaration that was just
+/// checked: no group parameters, **no indices**, exactly two constructors, and
+/// between them one with no fields and one whose single field is a recursive
+/// occurrence of *this* family.
+///
+/// Indices are refused for the same reason parameters are, one step further in:
+/// a numeral is a count and nothing else, so two values of an indexed family
+/// that count the same far may still stand at different indices, and collapsing
+/// them to one [`u64`] would make conversion answer yes where the declaration
+/// says no. Recursion is read off
 /// [`Constructor::recursive`](crate::kernel::family::Constructor) rather than re-derived
 /// from the field's type, so the positivity check and this recognition cannot
 /// disagree about what a recursive field is: they are the same list.
@@ -361,8 +408,8 @@ fn constructors(
 /// Deliberately silent when the shape does not match. A family that misses by
 /// one constructor is an ordinary family, not a mistake — there is nothing to
 /// refuse, only a representation not to use.
-fn counting(which: u32, params: &[Parameter], constructors: &[Constructor]) -> Option<Counting> {
-    if !params.is_empty() {
+fn counting(which: u32, params: &[Parameter], indices: &[Parameter], constructors: &[Constructor]) -> Option<Counting> {
+    if !params.is_empty() || !indices.is_empty() {
         return None;
     }
     let [first, second] = constructors else {
@@ -391,6 +438,66 @@ fn telescope_fields(
         levels.push(level);
     }
     Ok((binders, levels, inner))
+}
+
+/// The indices a constructor's result chooses, checked against the telescope its
+/// family declared.
+///
+/// Three things happen here and they are one rule read three ways. The count
+/// has to match, because an index is chosen and not inferred. Each chosen term
+/// is checked at the *k*th index's type, which may name the indices before it —
+/// `data Frame : (n : Nat) -> (v : Vec<Nat>(n)) -> Type` is an ordinary
+/// telescope — so the type is evaluated under the choices already made rather
+/// than once at the declaration. And no chosen index may mention the
+/// declaration at all, which is positivity reaching the one place §1.1 added:
+/// the family is not yet a type when its own result is being written, so an
+/// occurrence there is not a recursion but a circularity.
+///
+/// `under_params` is the scope with the declaration context and the parameters,
+/// which is what an index binder's *type* was read under; `inner` also has the
+/// constructor's fields, which is what a chosen *value* may name.
+fn chosen(
+    elaborator: &mut Elaborator,
+    under_params: &Scope,
+    inner: &Scope,
+    indices: &[Parameter],
+    family: &RawFamily,
+    constructor: &RawConstructor,
+    arity: u32,
+) -> Result<Vec<Term>, ElabError> {
+    if constructor.chosen.len() != indices.len() {
+        return Err(Refusal::IndexCount {
+            at: constructor.origin,
+            family: Arc::clone(&family.name),
+            constructor: Arc::clone(&constructor.name),
+            written: constructor.chosen.len(),
+            declared: indices.len(),
+        }
+        .into());
+    }
+    let mut reading = under_params.clone();
+    let mut built = Vec::with_capacity(indices.len());
+    for (index, raw) in indices.iter().zip(&constructor.chosen) {
+        let ty = Arc::new(reading.eval(elaborator.meter(), &index.ty)?);
+        let term = elaborator.check_open(inner, raw, &ty)?;
+        if let Some(at) = mentions(&term, Watched::families(arity), inner.depth().0, 0) {
+            return Err(Refusal::NonPositive {
+                at,
+                family: Arc::clone(&family.name),
+                constructor: Arc::clone(&constructor.name),
+            }
+            .into());
+        }
+        // The next index's type reads this one's *value*, so the walk carries
+        // the choices forward as definitions — which is what makes the
+        // telescope a telescope. A fresh assumption here would say only that
+        // some `Nat` stands at the first index, and the second index's type
+        // needs the one this constructor actually chose.
+        let value = inner.eval(elaborator.meter(), &term)?;
+        reading = reading.define(elaborator.meter(), Arc::clone(&index.name), ty, value)?;
+        built.push(term);
+    }
+    Ok(built)
 }
 
 /// Whether a field type is a recursive occurrence, and where it is one §1.1 does

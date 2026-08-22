@@ -338,6 +338,9 @@ impl Constant {
         if !self.group.params.is_empty() {
             return Some("its declaration takes parameters, and a count does not say what they are");
         }
+        if !declared.indices.is_empty() {
+            return Some("its declaration takes indices, and a count does not say which one it stands at");
+        }
         if declared.constructors.len() != 2 {
             return Some("it does not have exactly two cases");
         }
@@ -393,14 +396,17 @@ impl Constant {
 
     /// How many arguments saturate it.
     ///
-    /// A family takes its parameters, a constructor takes the parameters and
-    /// its fields, and a recursor takes everything up to and including the
-    /// target. ι fires exactly at this count on a recursor, which is why it is
-    /// one number rather than a shape match at every application.
+    /// A family takes its parameters and its indices, a constructor takes the
+    /// parameters and its fields — never the indices, which it *chose* rather
+    /// than being handed — and a recursor takes everything up to and including
+    /// the target, with the eliminated value's indices standing just before it.
+    /// ι fires exactly at this count on a recursor, which is why it is one
+    /// number rather than a shape match at every application.
     pub(crate) fn arity(&self) -> u32 {
         let params = self.group.params();
+        let indices = self.group.indices(self.family);
         match &self.role {
-            Role::Family => params,
+            Role::Family => params.saturating_add(indices),
             Role::Constructor(which) => {
                 let fields = self.group.family_at(self.family).and_then(|declared| {
                     declared
@@ -412,6 +418,7 @@ impl Constant {
             Role::Recursor(_) => params
                 .saturating_add(self.group.arity())
                 .saturating_add(self.group.methods())
+                .saturating_add(indices)
                 .saturating_add(1),
         }
     }
@@ -450,10 +457,12 @@ impl Constant {
 
     /// `(p⃗ : Params) → (i⃗ : Indices) → Type l`.
     fn family_type(&self, meter: &mut Meter, builder: &mut Telescope<'_>) -> Result<Term, CoreError> {
-        let Some(_declared) = self.group.family_at(self.family) else {
+        let Some(declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
+        let indices = Arc::clone(&declared.indices);
         builder.extend(meter, &self.group.params)?;
+        builder.extend(meter, &indices)?;
         // §1: a data family stores small types, so it lands at `Type 0`; the
         // declaration check is what makes that a theorem rather than a hope.
         Ok(builder.finish(Term::universe(self.group.origin, Sort::ZERO)))
@@ -468,31 +477,43 @@ impl Constant {
         else {
             return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
+        let fields = Arc::clone(&constructor.fields);
         let params = builder.extend(meter, &self.group.params)?;
-        builder.extend(meter, &constructor.fields)?;
+        builder.extend(meter, &fields)?;
+        // The result is `N p⃗` at the indices *this* constructor chose, which is
+        // the one thing a constructor writes about its own result type and the
+        // whole of what an index is (§1.1).
+        let chosen = builder.chosen(meter, &params, self.family, which)?;
         let result = applied(
             self.group.origin,
             builder.family(self.family),
-            builder.references(&params),
+            builder.references(&params).into_iter().chain(chosen),
         );
         Ok(builder.close(result))
     }
 
     /// The recursor's type, at the universe its motives land in.
     fn recursor_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, level: &Sort) -> Result<Term, CoreError> {
-        let Some(_declared) = self.group.family_at(self.family) else {
+        let Some(declared) = self.group.family_at(self.family) else {
             return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
+        let indices_of = Arc::clone(&declared.indices);
         let params = builder.extend(meter, &self.group.params)?;
         let motives = builder.motives(meter, &params, level)?;
         builder.methods(meter, &motives, &params)?;
-        let subject = builder.applied_family(self.family, [&params, &[]]);
+        // The eliminated value's indices stand between the methods and the
+        // target, because the target's *type* names them: `elim … (i⃗) (t : N p⃗
+        // i⃗)`. A recursor that took them before the motives could not state
+        // that type at all.
+        let indices = builder.extend(meter, &indices_of)?;
+        let subject = builder.applied_family(self.family, [&params, &indices]);
         let target = builder.assume(meter, "t", subject)?;
         // Dependent (§1.1): the result is the motive *applied to* the value
         // being eliminated, which is what makes an elimination able to say
         // something about its subject rather than merely produce a value.
         let motive = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
-        let result = Term::app(self.group.origin, motive, builder.reference(Some(target)));
+        let at_indices = applied(self.group.origin, motive, builder.references(&indices));
+        let result = Term::app(self.group.origin, at_indices, builder.reference(Some(target)));
         Ok(builder.close(result))
     }
 }

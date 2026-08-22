@@ -249,7 +249,12 @@ fn file(refusal: &Refusal) -> Filed {
         | Refusal::NotStorable { at, .. }
         | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
-        Refusal::FillingMismatch { at, .. } | Refusal::Underapplied { at, .. } => one(Code::WrongArity, *at),
+        // A constructor standing at the wrong number of its family's indices
+        // is an arity mistake about the declaration, which is the same repair
+        // the two above ask for and so the same code.
+        Refusal::FillingMismatch { at, .. } | Refusal::Underapplied { at, .. } | Refusal::IndexCount { at, .. } => {
+            one(Code::WrongArity, *at)
+        }
         // A name the declaration it is read against does not have.
         Refusal::NoSuchField { at, .. }
         | Refusal::NoSuchConstructor { at, .. }

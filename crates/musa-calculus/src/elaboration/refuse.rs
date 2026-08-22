@@ -390,6 +390,32 @@ pub enum Refusal {
         /// The constructor whose field it occurs in.
         constructor: Name,
     },
+    /// A constructor's result stands at a different number of indices than its
+    /// family takes.
+    ///
+    /// Counted rather than inferred, and refused rather than padded. §1.1 makes
+    /// the index list the one thing a constructor writes about its own result,
+    /// so a missing index is a value the author has not chosen and there is
+    /// nothing to choose it for them: `Nil : Vec<A>` under `data Vec<A> : (n :
+    /// Nat) -> Type` is not `Nil : Vec<A>(0)` with the zero left implicit, it
+    /// is a length nobody said.
+    ///
+    /// One refusal for both directions because the repair is the same sentence
+    /// read either way — the result and the signature disagree, and the author
+    /// looks at both.
+    #[error("`{constructor}` stands at {written} of `{family}`'s {declared} indices")]
+    IndexCount {
+        /// Where the constructor was written.
+        at: Origin,
+        /// The family it belongs to.
+        family: Name,
+        /// The constructor itself.
+        constructor: Name,
+        /// How many indices its result wrote.
+        written: usize,
+        /// How many the family's signature declares.
+        declared: usize,
+    },
     /// A pattern named something that is not a constructor of the type the
     /// subject it stands against has.
     ///

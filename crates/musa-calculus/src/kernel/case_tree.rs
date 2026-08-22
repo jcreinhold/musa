@@ -70,7 +70,7 @@ use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::family::{Constant, Group, constructed};
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::{Sort, SortVar};
-use crate::kernel::term::{Binder, Name, Role, Shape, Term};
+use crate::kernel::term::{Binder, Index, Name, Role, Shape, Term};
 use crate::kernel::value::{Elim, Env, Form, Value};
 
 /// A `match`, compiled.
@@ -99,7 +99,15 @@ pub(crate) struct Split {
     pub(crate) family: u32,
     /// The family's parameters, as terms at the depth this split stands at.
     pub(crate) params: Arc<[Term]>,
-    /// One motive per family of the group, each `λ(t : N p⃗). …` (§1.1).
+    /// The **subject's** indices, as terms at the depth this split stands at.
+    ///
+    /// Not the family's index telescope, which is a list of binders: these are
+    /// the arguments the subject's own type stood at, and they are what the
+    /// eliminator is applied to just before the subject. Empty for a family
+    /// with no indices.
+    pub(crate) indices: Arc<[Term]>,
+    /// One motive per family of the group, each `λ(i⃗). λ(t : N p⃗ i⃗). …`
+    /// (§1.1).
     pub(crate) motives: Arc<[Term]>,
     /// The universe the motives land in, chosen per use site (§1.3).
     pub(crate) level: Sort,
@@ -161,14 +169,18 @@ impl CaseTree {
     /// The tree as a term: nested applications of the generated eliminators
     /// (§6.2).
     ///
-    /// # Errors
-    ///
-    /// [`Malformed::UnreachableAlternative`] for an [`Self::Impossible`] node,
-    /// which nothing builds until prompt 156 and which has no term to be.
-    pub(crate) fn emitted(&self) -> Result<Term, CoreError> {
+    /// An [`Self::Impossible`] node emits the **identity**, `λx. x`. That is not
+    /// a placeholder: since prompt 156 the motive of a split that refuted a
+    /// branch answers `Π(_ : G). G` off the subject's own index (see
+    /// `elaboration::case`'s `filtered`), so the refuted method's type *is* an
+    /// identity type, and the eliminator wants a term there like it wants one
+    /// for every other constructor. The branch is unreachable, so which
+    /// inhabitant it gets says nothing; that it has one is what lets §6.2's
+    /// emission stay total.
+    pub(crate) fn emitted(&self, origin: Origin) -> Result<Term, CoreError> {
         match self {
             Self::Answer(term) => Ok(term.clone()),
-            Self::Impossible => Err(Malformed::UnreachableAlternative.into()),
+            Self::Impossible => Ok(Term::lam(origin, "impossible", Term::var(origin, Index(0)))),
             Self::Split(split) => split.emitted(),
         }
     }
@@ -186,6 +198,7 @@ impl CaseTree {
                 group: Arc::clone(&split.group),
                 family: split.family,
                 params: split.params.iter().map(|term| term.substitute_levels(with)).collect(),
+                indices: split.indices.iter().map(|term| term.substitute_levels(with)).collect(),
                 motives: split.motives.iter().map(|term| term.substitute_levels(with)).collect(),
                 level: split.level.substitute(with),
                 on: split.on.substitute_levels(with),
@@ -234,6 +247,12 @@ impl Split {
         for alternative in self.alternatives.iter() {
             applied = Term::app(self.origin, applied, alternative.emitted(self.origin)?);
         }
+        // The subject's indices stand between the methods and the subject,
+        // which is the order the generated eliminator's own telescope puts them
+        // in — see `family::constant`'s `recursor_type`.
+        for index in self.indices.iter() {
+            applied = Term::app(self.origin, applied, index.clone());
+        }
         Ok(Term::app(self.origin, applied, self.on.clone()))
     }
 }
@@ -241,7 +260,7 @@ impl Split {
 impl Alternative {
     /// The method this alternative is: its body, under one λ per binder.
     fn emitted(&self, origin: Origin) -> Result<Term, CoreError> {
-        let body = self.body.emitted()?;
+        let body = self.body.emitted(origin)?;
         Ok(self
             .fields
             .iter()

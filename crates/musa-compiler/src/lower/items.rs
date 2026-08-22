@@ -160,9 +160,10 @@ impl Lowering<'_> {
 
     // ---- the nominal declarations ----
 
-    /// `data Motive<A> { Silence, Sounded(pitch: Pitch, held: Duration<C>) }`.
+    /// `data Motive<A> { Silence, Sounded(pitch: Pitch, held: Duration<C>) }`,
+    /// and `data Vect<A>(n: Nat) { … }` where the family is indexed.
     ///
-    /// One family, no indices, and every constructor at the declaration's own
+    /// One family, and every constructor at the declaration's own
     /// visibility. The last of those is the grammar's doing rather than a
     /// choice: `data` admits no marker on a variant, and
     /// [`RawConstructor::visibility`] says a family whose cases disagree is
@@ -173,6 +174,7 @@ impl Lowering<'_> {
         let visibility = visibility_of(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
+        let indices = self.index_telescope(node)?;
         let mut constructors = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::DataVariant) {
             constructors.push(self.variant(&written, visibility)?);
@@ -186,9 +188,45 @@ impl Lowering<'_> {
             families: vec![RawFamily {
                 name,
                 visibility,
+                indices,
                 constructors,
             }],
         })
+    }
+
+    /// `(n: Nat)` — the index telescope a `data` declaration writes, or nothing.
+    ///
+    /// Empty for a declaration that writes no parentheses, which is every
+    /// `data` in the corpus before this one: a family with no indices is a
+    /// family whose constructors all stand at the same type, and that is the
+    /// ordinary case rather than a degenerate one.
+    fn index_telescope(&mut self, node: &SyntaxNode) -> Option<Vec<RawBinder>> {
+        let Some(written) = child(node, |kind| kind == SyntaxKind::DataIndices) else {
+            return Some(Vec::new());
+        };
+        let mut built = Vec::new();
+        for binder in children(&written, |kind| kind == SyntaxKind::DataField) {
+            built.push(self.declared_field(&binder)?);
+        }
+        Some(built)
+    }
+
+    /// `: (n + 1)` — the indices a constructor chooses, or nothing.
+    ///
+    /// Read as ordinary expressions. Whether there are the right *number* of
+    /// them is the core's question, not this one's: it holds the declaration's
+    /// telescope and answers with
+    /// [`Refusal::IndexCount`](musa_calculus::Refusal::IndexCount) at this very
+    /// origin.
+    fn chosen_indices(&mut self, node: &SyntaxNode) -> Option<Vec<Raw>> {
+        let Some(written) = child(node, |kind| kind == SyntaxKind::DataChosen) else {
+            return Some(Vec::new());
+        };
+        let mut built = Vec::new();
+        for chosen in children(&written, is_expr_node) {
+            built.push(self.expr(&chosen)?);
+        }
+        Some(built)
     }
 
     /// One `data` constructor, whose fields are all named.
@@ -199,11 +237,13 @@ impl Lowering<'_> {
         for written in children(node, |kind| kind == SyntaxKind::DataField) {
             fields.push(self.declared_field(&written)?);
         }
+        let chosen = self.chosen_indices(node)?;
         Some(RawConstructor {
             origin,
             name,
             visibility,
             fields,
+            chosen,
         })
     }
 
@@ -226,6 +266,11 @@ impl Lowering<'_> {
             families: vec![RawFamily {
                 name,
                 visibility: visibility_of(node),
+                // `01-surface.md` §1.3's `enum` declares cases and not a
+                // signature, so no case chooses anything: an indexed family is
+                // written with `data`, where the index telescope has somewhere
+                // to be written down.
+                indices: Vec::new(),
                 constructors,
             }],
         })
@@ -254,6 +299,7 @@ impl Lowering<'_> {
             origin,
             name,
             visibility: visibility_of(node),
+            chosen: Vec::new(),
             fields,
         })
     }

@@ -10,7 +10,7 @@
 use musa_calculus::{Origin, Raw};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
-use super::{Lowering, applied, child, children, is_type_node, paired};
+use super::{Lowering, applied, child, children, is_expr_node, is_type_node, paired};
 use crate::phase::Coordinate;
 use musa_score::diagnose::{Code, Diagnostic};
 
@@ -93,10 +93,22 @@ impl Lowering<'_> {
     /// the only reader that knows what `Nat` is.
     fn indexed_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let head = child(node, is_type_node)?;
-        let written = node.children().find(|child| !is_type_node(child.kind()))?;
+        let indices: Option<Vec<Raw>> = children(node, is_expr_node)
+            .iter()
+            .map(|written| self.expr(written))
+            .collect();
+        let indices = indices?;
+        // `Vect<A>(n)` — a head that already took its *parameters* takes its
+        // indices in the same call. One call rather than a call inside an
+        // application, because §1.3 measures completeness on the declaration:
+        // `Vect A` alone is a prefix, and a prefix that claimed to be a whole
+        // call would be refused for the argument the parentheses were about to
+        // supply.
+        if head.kind() == SyntaxKind::AppliedType {
+            return self.applied_type_with(&head, origin, indices);
+        }
         let ty = self.ty(&head)?;
-        let argument = self.expr(&written)?;
-        Some(Raw::app(origin, ty, argument))
+        Some(applied(origin, ty, indices))
     }
 
     /// `Option<τ>` and `List<τ>`, which have their own node kinds because the
@@ -152,6 +164,12 @@ impl Lowering<'_> {
 
     /// A type applied to arguments.
     fn applied_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        self.applied_type_with(node, origin, Vec::new())
+    }
+
+    /// The same, with index arguments the enclosing
+    /// [`SyntaxKind::IndexedType`] already read, appended to the written ones.
+    fn applied_type_with(&mut self, node: &SyntaxNode, origin: Origin, indices: Vec<Raw>) -> Option<Raw> {
         // The head is the first type child and the arguments are the rest: an
         // argument may itself be a bare `TypeName`, so telling them apart by kind
         // would take `Pair<Nat>` for a `Pair` of nothing.
@@ -164,11 +182,17 @@ impl Lowering<'_> {
         // read from the argument node's own text. That is what keeps a coordinate
         // and a category out of the type argument position, so there is no way to
         // write `List<WrittenTime>`.
+        // The two position-restricted heads take no index of their own, and
+        // an index written after one is applied to what it denotes rather than
+        // dropped: `Duration<C>(3)` is refused by the core, which knows what
+        // `Duration` is, and not silently read as `Duration<C>`.
         if let Some((index, help)) = self.indexed_base(&written) {
-            return self.written_index(index, &written, node, arguments, help);
+            let base = self.written_index(index, &written, node, arguments, help)?;
+            return Some(applied(origin, base, indices));
         }
         if matches!(written.as_str(), "Machine" | "Primitive") {
-            return self.machine_type(node, origin, &written, head, arguments);
+            let base = self.machine_type(node, origin, &written, head, arguments)?;
+            return Some(applied(origin, base, indices));
         }
         let head = self.ty(head)?;
         let arguments: Option<Vec<Raw>> = arguments.iter().map(|child| self.ty(child)).collect();
@@ -180,7 +204,9 @@ impl Lowering<'_> {
         // otherwise reaches the annotation as a `Type 0 → Type 0` and is refused
         // as "not a type", which names neither the arity nor the argument left
         // out. §1.3's completeness rule reads both off the declaration.
-        Some(Raw::call(origin, head, arguments?))
+        let mut arguments = arguments?;
+        arguments.extend(indices);
+        Some(Raw::call(origin, head, arguments))
     }
 
     /// `Machine<K, A, B>` and `Primitive<K, A, B>`: a step tag, then two ports.

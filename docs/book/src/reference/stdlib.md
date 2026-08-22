@@ -14,6 +14,7 @@ The modules:
 | `std::context` | The `TonalContext` signature and its `CMajor` / `ANaturalMinor` modules |
 | `std::core` | Identity and composition combinators |
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
+| `std::indexed` | Families whose constructors choose their index: `Equal`, the length-carrying `Row`, and `Measure` |
 | `std::list` | Finite lists: `range`, `repeated`, `map`, `filter`, and the two folds |
 | `std::nat` | `nat_fold`: counting upward, told which repetition it is in |
 | `std::notation::staff` | Staff documents as data: written values, the items on a staff, and realizing them into exact time |

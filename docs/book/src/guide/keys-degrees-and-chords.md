@@ -189,7 +189,11 @@ such note — see `examples/serial-forms.musa`, and
 [What musa refuses to blur §2](../concepts/distinctions.md#2-a-pitch-class-is-not-a-residue-mod-12).
 
 The remaining bundled modules are the plumbing: `std::core` for exact rationals and the small total operations,
-`std::list` for finite lists, and `std::pitch` for the named written intervals.
+`std::list` for finite lists, and `std::pitch` for the named written intervals. `std::indexed` is a smaller and stranger
+one: its types carry a number or a duration *in the type*, so a `Row<PitchClass>(12)` is a twelve-tone row and nothing
+else can be written where one is asked for, and a `Measure` is a bar that already adds up. Reading the first element of
+a `Row` needs no case for the empty one, because an empty row cannot stand where a non-empty one was asked for. Most
+pieces never name it; the modules that do stop writing the check by hand.
 
 One of them is worth naming for what it is rather than for what it holds. `std::algebra` declares three traits —
 `Group`, `Action`, and `Torsor` — and every domain above is written over them. Written intervals are the group; a pitch

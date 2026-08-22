@@ -10,7 +10,7 @@ use crate::kernel::context::Globals;
 use crate::kernel::error::CoreError;
 use crate::kernel::eval::eval;
 use crate::kernel::origin::Origin;
-use crate::kernel::quote::quote_type;
+use crate::kernel::quote::{quote, quote_type};
 use crate::kernel::sort::Sort;
 use crate::kernel::term::{Filling, Index, Level, Name, Term};
 use crate::kernel::value::{Env, Value};
@@ -46,6 +46,10 @@ type Introduced = (At, Value);
 pub(super) struct Telescope<'a> {
     group: &'a Arc<Group>,
     origin: Origin,
+    /// The declaration context alone, kept because reading a family's index
+    /// telescope means starting from it again rather than from wherever this
+    /// walk has reached — see [`Self::index_terms`].
+    declarations: Env,
     /// Every binder introduced so far, matching [`Self::depth`].
     env: Env,
     /// Only the binders a stored term is read under.
@@ -63,6 +67,7 @@ impl<'a> Telescope<'a> {
         Self {
             group,
             origin: group.origin,
+            declarations: declarations.clone(),
             env: declarations.clone(),
             reading: declarations,
             depth: Level::ZERO,
@@ -80,6 +85,7 @@ impl<'a> Telescope<'a> {
         Telescope {
             group: self.group,
             origin: self.origin,
+            declarations: self.declarations.clone(),
             env: self.env.clone(),
             reading: self.reading.clone(),
             depth: self.depth,
@@ -135,6 +141,74 @@ impl<'a> Telescope<'a> {
         Ok(Filling::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
 
+    /// The index arguments of a family element, read back as terms at the depth
+    /// this telescope has reached.
+    ///
+    /// An index is an ordinary term at an ordinary type, so reading one back
+    /// needs its type, and the type of index `k` is the family's own `k`th
+    /// index binder — read under the declaration context, the parameters the
+    /// element was taken at, and the indices before it. That telescope is
+    /// rebuilt here from `params` rather than taken from this walk, because the
+    /// element may belong to a *different* family of the group than the one
+    /// being assembled, at parameters that are values rather than binders.
+    ///
+    /// The two vectors are expected to be the family's parameter and index
+    /// counts; a short one stops the walk rather than guessing, since a caller
+    /// that miscounted has a defect a fabricated argument would hide.
+    fn index_terms(
+        &self,
+        meter: &mut Meter,
+        family: u32,
+        params: &[Value],
+        indices: &[Value],
+    ) -> Result<Vec<Term>, CoreError> {
+        let Some(declared) = self.group.family_at(family) else {
+            return Ok(Vec::new());
+        };
+        let mut reading = self.declarations.clone();
+        for param in params {
+            reading = reading.push(param.clone());
+        }
+        let mut read = Vec::with_capacity(indices.len());
+        for (binder, value) in declared.indices.iter().zip(indices) {
+            let ty = eval(meter, &reading, &binder.ty)?;
+            read.push(quote(meter, self.depth, crate::kernel::quote::Mode::Open, &ty, value)?);
+            reading = reading.push(value.clone());
+        }
+        Ok(read)
+    }
+
+    /// The indices constructor `which` of `family` chose, as terms at this
+    /// depth.
+    ///
+    /// The stored terms are read in [`Self::reading`] — the declaration
+    /// context, the parameters, and the constructor's own fields, which is
+    /// exactly what a chosen index was written under — and then read back at
+    /// [`Self::depth`], which is where the method being assembled stands. The
+    /// two differ by the recursor's motives and methods, and that difference is
+    /// the whole reason this is an evaluation rather than a copy.
+    pub(super) fn chosen(
+        &self,
+        meter: &mut Meter,
+        params: &[Introduced],
+        family: u32,
+        which: u32,
+    ) -> Result<Vec<Term>, CoreError> {
+        let Some(constructor) = self
+            .group
+            .family_at(family)
+            .and_then(|declared| declared.constructor_at(which))
+        else {
+            return Ok(Vec::new());
+        };
+        let mut chosen = Vec::with_capacity(constructor.chosen.len());
+        for term in constructor.chosen.iter() {
+            chosen.push(eval(meter, &self.reading, term)?);
+        }
+        let params = introduced(self.origin, params);
+        self.index_terms(meter, family, &params, &chosen)
+    }
+
     /// One motive per family in the group: `R_j : (t : N_j p⃗) → Type ℓ`.
     ///
     /// A **family** of types, not a type. §1.1: "the generated eliminator's
@@ -164,8 +238,16 @@ impl<'a> Telescope<'a> {
         Ok(introduced)
     }
 
-    /// `(t : N_which p⃗) → Type ℓ`, assembled in a telescope of its own so that
-    /// the subject binder is inside the motive's Π and not in the recursor's.
+    /// `(i⃗ : Indices) → (t : N_which p⃗ i⃗) → Type ℓ`, assembled in a telescope
+    /// of its own so that the index and subject binders are inside the motive's
+    /// Π and not in the recursor's.
+    ///
+    /// The indices are bound **here** and not at the recursor, which is what
+    /// makes refinement possible: a method for a constructor that chose `0`
+    /// answers at the motive applied to `0`, and a method for one that chose
+    /// `n + 1` answers at the motive applied to `n + 1`. A motive that took its
+    /// indices outside would have to answer at one index for every case, which
+    /// is the non-dependent eliminator §1.1 replaced.
     fn motive_family(
         &self,
         meter: &mut Meter,
@@ -173,11 +255,13 @@ impl<'a> Telescope<'a> {
         params: &[Introduced],
         level: Sort,
     ) -> Result<Term, CoreError> {
-        if self.group.family_at(which).is_none() {
+        let Some(declared) = self.group.family_at(which) else {
             return Ok(Term::universe(self.origin, Sort::ZERO));
-        }
+        };
+        let indices = Arc::clone(&declared.indices);
         let mut inner = self.nested();
-        let subject = inner.applied_family(which, [params, &[]]);
+        let bound = inner.extend(meter, &indices)?;
+        let subject = inner.applied_family(which, [params, &bound]);
         inner.assume(meter, "t", subject)?;
         Ok(inner.close(Term::universe(self.origin, level)))
     }
@@ -230,10 +314,20 @@ impl<'a> Telescope<'a> {
             // A recursive position past the fields would be a defect in the
             // declaration rather than a hypothesis to invent, and skipping it
             // keeps this arity and [`super::iota`]'s in agreement.
-            let Some((at, _)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)) else {
+            let Some((at, ty)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)) else {
                 continue;
             };
-            let hypothesis = inner.hypothesis(motives, *of_family, *at);
+            // The hypothesis stands at the indices the *field's own type* was
+            // written at — `tail : Vec<A>(n)` earns `R n tail`, not `R tail` —
+            // and those are read off that type rather than guessed, so the
+            // hypothesis and the recursion [`super::iota`] fires agree by
+            // construction.
+            let element = super::group::element(meter, ty)?;
+            let indices = match &element {
+                Some(element) => inner.index_terms(meter, element.family, &element.params, &element.indices)?,
+                None => Vec::new(),
+            };
+            let hypothesis = inner.hypothesis(motives, *of_family, *at, indices);
             inner.assume(meter, "ih", hypothesis)?;
         }
         // The subject this method answers *for*, which is what the motive is
@@ -245,19 +339,25 @@ impl<'a> Telescope<'a> {
             inner.references(params).into_iter().chain(inner.references(&fields)),
         );
         let motive = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        Ok(inner.close(Term::app(self.origin, motive, built)))
+        // The motive at *this constructor's* indices, which is the refinement:
+        // `Nil`'s method answers at `R 0` and `Cons`'s at `R (n + 1)`, because
+        // that is what each of them chose.
+        let chosen = inner.chosen(meter, params, family, which)?;
+        let applied_motive = applied(self.origin, motive, chosen);
+        Ok(inner.close(Term::app(self.origin, applied_motive, built)))
     }
 
-    /// `R_j a`, the induction hypothesis for the recursive field at `at`.
+    /// `R_j i⃗ a`, the induction hypothesis for the recursive field at `at`.
     ///
     /// The field **does** appear in it, which is what dependent means: the
     /// hypothesis is the answer the recursion produced *about that field*, and
     /// not merely an inhabitant of a fixed answer type. The field is also what
     /// [`super::iota`] applies the recursor to when the hypothesis is forced,
     /// so the two agree by construction rather than by a rule that says so.
-    fn hypothesis(&self, motives: &[At], family: u32, at: At) -> Term {
+    fn hypothesis(&self, motives: &[At], family: u32, at: At, indices: Vec<Term>) -> Term {
         let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        Term::app(self.origin, motive, self.reference(Some(at)))
+        let at_indices = applied(self.origin, motive, indices);
+        Term::app(self.origin, at_indices, self.reference(Some(at)))
     }
 
     /// The variable naming the binder at `at`, seen from here.
@@ -310,6 +410,18 @@ impl<'a> Telescope<'a> {
                 Term::function(self.origin, filling, name, domain, codomain)
             })
     }
+}
+
+/// The variables a telescope introduced, as values standing at their own types.
+///
+/// [`Introduced`] pairs a position with the *type* the binder stands at, which
+/// is exactly what a variable value is made of, so this is the pairing read the
+/// other way round rather than a second source of truth.
+fn introduced(origin: Origin, binders: &[Introduced]) -> Vec<Value> {
+    binders
+        .iter()
+        .map(|(At(position), ty)| Value::var(origin, *position, Arc::new(ty.clone())))
+        .collect()
 }
 
 /// `head arg₀ … argₙ₋₁`.

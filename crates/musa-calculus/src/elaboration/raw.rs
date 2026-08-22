@@ -75,11 +75,13 @@ pub struct RawBinder {
 
 /// One constructor of a family, before elaboration.
 ///
-/// It does **not** write its result type: §1.1 says a parameter is fixed across
-/// the declaration, and a constructor that wrote `Motive B` in full could name
-/// another family of the group — so the result is supplied by the declaration
-/// and never written here. The rule is a property of the representation rather
-/// than a check that could be forgotten.
+/// It does not write its result type in full, and it does not need to: §1.1
+/// says a parameter is fixed across the declaration, and a constructor that
+/// wrote `Motive B` could name another family of the group — so the family and
+/// its parameters are supplied by the declaration, and the rule is a property
+/// of the representation rather than a check that could be forgotten. What a
+/// constructor *does* write is [`Self::chosen`], the indices its result stands
+/// at, because choosing those is the whole of what an index is.
 #[derive(Clone, Debug)]
 pub struct RawConstructor {
     /// Where it was written. A case may have no fields, so it is the only
@@ -92,6 +94,13 @@ pub struct RawConstructor {
     pub visibility: Visibility,
     /// Its arguments, read under the family names and the group's parameters.
     pub fields: Vec<RawBinder>,
+    /// The indices its result chooses, in the family's index order, read under
+    /// the family names, the group's parameters, and its own fields.
+    ///
+    /// Empty for a family that takes no indices, which is every family the
+    /// language had before prompt 156. A count that disagrees with the family's
+    /// index telescope is refused at the declaration.
+    pub chosen: Vec<Raw>,
 }
 
 /// One family of a declaration group, before elaboration.
@@ -103,6 +112,13 @@ pub struct RawFamily {
     /// Independent of its cases': a public type with private cases is the shape
     /// `01-surface.md` §1.3 exists for.
     pub visibility: Visibility,
+    /// Its index telescope, read under the family names and the group's
+    /// parameters: what stands after the `:` of `data Vec<A> : (n : Nat) ->
+    /// Type`.
+    ///
+    /// Per family rather than per group, because a parameter is shared and an
+    /// index is not — that is the difference §1.1 turns on.
+    pub indices: Vec<RawBinder>,
     /// Its constructors.
     pub constructors: Vec<RawConstructor>,
 }

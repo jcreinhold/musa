@@ -28,15 +28,33 @@ pub(crate) fn constructor(name: &str, fields: Vec<RawBinder>) -> RawConstructor 
         name: Arc::from(name),
         visibility: Visibility::Public,
         fields,
+        chosen: Vec::new(),
     }
+}
+
+/// A constructor that *chooses* what its family's indices stand at.
+///
+/// The combinator [`constructor`] is not, because a family with no indices is
+/// still the common case and writing `vec![]` at every one of them would say
+/// "no indices" a hundred times to state the default.
+pub(crate) fn choosing(mut case: RawConstructor, chosen: Vec<Raw>) -> RawConstructor {
+    case.chosen = chosen;
+    case
 }
 
 pub(crate) fn family(name: &str, constructors: Vec<RawConstructor>) -> RawFamily {
     RawFamily {
         name: Arc::from(name),
         visibility: Visibility::Public,
+        indices: Vec::new(),
         constructors,
     }
+}
+
+/// The same family, over an index telescope.
+pub(crate) fn indexed(mut declared: RawFamily, indices: Vec<RawBinder>) -> RawFamily {
+    declared.indices = indices;
+    declared
 }
 
 /// The same constructor, marked `private`.
@@ -782,4 +800,303 @@ pub(crate) fn core_constant(cx: &Cx, name: &str) -> Term {
     musa_calculus::infer(cx, &var(name))
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
+}
+
+// ---- §1.1's indices: a constructor chooses where it lands ----
+
+/// `data Vect (A : Type 0) (n : Nat) { Nil : Vect A 0, Cons(size, top, later) : Vect A (size + 1) }`.
+///
+/// The suite's indexed family, and the smallest one that is worth having: `A`
+/// is fixed across the declaration and `n` is chosen per constructor, which is
+/// the whole of §1.1's distinction in one page.
+///
+/// `size` is an ordinary field rather than something inferred. A constructor's
+/// chosen index is read under its own fields, so the length `Cons` steps from
+/// has to be one of them — which is what makes `Cons`'s index expression a
+/// thing the reader can point at.
+pub(crate) fn vect() -> RawData {
+    data(
+        vec![binder("A", type0())],
+        vec![indexed(
+            family(
+                "Vect",
+                vec![
+                    choosing(constructor("Nil", Vec::new()), vec![var("Nat.Zero")]),
+                    choosing(
+                        constructor(
+                            "Cons",
+                            vec![
+                                binder("size", var("Nat")),
+                                binder("top", var("A")),
+                                binder("later", apply(var("Vect"), [var("A"), var("size")])),
+                            ],
+                        ),
+                        vec![apply(var("Nat.Succ"), [var("size")])],
+                    ),
+                ],
+            ),
+            vec![binder("n", var("Nat"))],
+        )],
+    )
+}
+
+/// `Nat` and then `Vect`, declared in that order.
+///
+/// # Panics
+///
+/// If either declaration is refused, which would be a defect in this crate.
+fn vect_context() -> Cx {
+    let (cx, _) = nat_context();
+    let group = musa_calculus::declare(&cx, &vect()).expect("Vect is a declaration");
+    cx.declaring(&group)
+}
+
+/// `Vect A n`, as a raw type.
+fn raw_vect(element: Raw, length: Raw) -> Raw {
+    apply(var("Vect"), [element, length])
+}
+
+/// §1.1: "an index is chosen per constructor". Two constructors of one family
+/// land at two *different* types, and that is a fact the checker enforces
+/// rather than a comment on the declaration.
+#[test]
+fn a_constructor_lands_at_the_index_it_chose() {
+    let cx = vect_context();
+    let unit = Raw::record_type(WRITTEN, []);
+    let empty = checked_type(&cx, &raw_vect(unit.clone(), var("Nat.Zero")));
+    let one = checked_type(&cx, &raw_vect(unit.clone(), apply(var("Nat.Succ"), [var("Nat.Zero")])));
+
+    let nil = apply(var("Vect.Nil"), [unit.clone()]);
+    let single = apply(
+        var("Vect.Cons"),
+        [
+            unit.clone(),
+            var("Nat.Zero"),
+            Raw::record(WRITTEN, []),
+            apply(var("Vect.Nil"), [unit]),
+        ],
+    );
+    musa_calculus::check(&cx, &empty, &nil).expect("`Nil` stands at length zero");
+    musa_calculus::check(&cx, &one, &single).expect("`Cons` stands one longer than what it holds");
+
+    let refused = musa_calculus::check(&cx, &empty, &single).expect_err("a one-long vector is not the empty one");
+    assert!(
+        matches!(refusal("Cons at zero", refused), Refusal::Mismatch { .. }),
+        "the lengths disagree, and that is a type mismatch"
+    );
+}
+
+/// §1.1: splitting against a constructor unifies the subject's indices with the
+/// ones that constructor chose — so `head` is **total**, with no case for the
+/// empty vector because no empty vector stands at `Succ n`.
+///
+/// The arm the author did not write is the whole law. `Nil` is a constructor of
+/// the family being split, so the eliminator wants a method for it; index
+/// unification rules that branch out, and the motive answers it with a type the
+/// identity inhabits rather than with the `A` there is no way to produce.
+#[test]
+fn head_is_total_on_a_vector_that_is_not_empty() {
+    let cx = vect_context();
+    let unit = Raw::record_type(WRITTEN, []);
+    // `(n : Nat) → Vect {} (n + 1) → {}`
+    let ty = checked_type(
+        &cx,
+        &Raw::pi(
+            WRITTEN,
+            "n",
+            var("Nat"),
+            Raw::pi(
+                WRITTEN,
+                "held",
+                raw_vect(unit.clone(), apply(var("Nat.Succ"), [var("n")])),
+                unit,
+            ),
+        ),
+    );
+    let head = Raw::lam(
+        WRITTEN,
+        "n",
+        Raw::lam(
+            WRITTEN,
+            "held",
+            Raw::match_on(
+                WRITTEN,
+                [var("held")],
+                vec![RawArm {
+                    patterns: vec![RawPattern::constructor(
+                        WRITTEN,
+                        "Vect.Cons",
+                        [
+                            RawPattern::bind(WRITTEN, "size"),
+                            RawPattern::bind(WRITTEN, "top"),
+                            RawPattern::bind(WRITTEN, "later"),
+                        ],
+                    )],
+                    body: var("top"),
+                }],
+            ),
+        ),
+    );
+    musa_calculus::check(&cx, &ty, &head).expect("`head` covers every vector that can stand at `Succ`");
+}
+
+/// The other direction of the same unification: `tail` is total **and** its
+/// answer is one shorter, because the split *learned* the length.
+///
+/// `head` needs only the refutation — `Nil` cannot stand at `Succ n`. `tail`
+/// needs the solution as well: its result type is `Vect {} n`, the method has no
+/// `n`, and the two are reconciled only by reading `Succ n ≡ Succ k` as `n ≡ k`
+/// and putting the method's own field where `n` stood. Nothing in the arm says
+/// so; the motive does, which is the point.
+#[test]
+fn tail_is_one_shorter_than_the_vector_it_came_from() {
+    let cx = vect_context();
+    let unit = Raw::record_type(WRITTEN, []);
+    // `(n : Nat) → Vect {} (n + 1) → Vect {} n`
+    let ty = checked_type(
+        &cx,
+        &Raw::pi(
+            WRITTEN,
+            "n",
+            var("Nat"),
+            Raw::pi(
+                WRITTEN,
+                "held",
+                raw_vect(unit.clone(), apply(var("Nat.Succ"), [var("n")])),
+                raw_vect(unit, var("n")),
+            ),
+        ),
+    );
+    let tail = Raw::lam(
+        WRITTEN,
+        "n",
+        Raw::lam(
+            WRITTEN,
+            "held",
+            Raw::match_on(
+                WRITTEN,
+                [var("held")],
+                vec![RawArm {
+                    patterns: vec![RawPattern::constructor(
+                        WRITTEN,
+                        "Vect.Cons",
+                        [
+                            RawPattern::bind(WRITTEN, "size"),
+                            RawPattern::bind(WRITTEN, "top"),
+                            RawPattern::bind(WRITTEN, "later"),
+                        ],
+                    )],
+                    body: var("later"),
+                }],
+            ),
+        ),
+    );
+    musa_calculus::check(&cx, &ty, &tail).expect("`tail` answers at the length the split learned");
+}
+
+/// The other half: a `match` on a vector whose length is a *variable* refines
+/// the goal, so an arm may answer with a value whose type only that arm's
+/// index makes well typed.
+///
+/// Without refinement the `Nil` arm would be checked at `Vect {} n` and
+/// `Vect.Nil` would not fit it. The motive abstracts the index, so the arm is
+/// checked at `Vect {} 0`, which is exactly what `Nil` is.
+#[test]
+fn a_match_refines_the_goal_from_the_index_it_learned() {
+    let cx = vect_context();
+    let unit = Raw::record_type(WRITTEN, []);
+    let ty = checked_type(
+        &cx,
+        &Raw::pi(
+            WRITTEN,
+            "n",
+            var("Nat"),
+            Raw::pi(
+                WRITTEN,
+                "held",
+                raw_vect(unit.clone(), var("n")),
+                raw_vect(unit.clone(), var("n")),
+            ),
+        ),
+    );
+    let copied = Raw::lam(
+        WRITTEN,
+        "n",
+        Raw::lam(
+            WRITTEN,
+            "held",
+            Raw::match_on(
+                WRITTEN,
+                [var("held")],
+                vec![
+                    RawArm {
+                        patterns: vec![RawPattern::constructor(WRITTEN, "Vect.Nil", [])],
+                        body: apply(var("Vect.Nil"), [unit.clone()]),
+                    },
+                    RawArm {
+                        patterns: vec![RawPattern::constructor(
+                            WRITTEN,
+                            "Vect.Cons",
+                            [
+                                RawPattern::bind(WRITTEN, "size"),
+                                RawPattern::bind(WRITTEN, "top"),
+                                RawPattern::bind(WRITTEN, "later"),
+                            ],
+                        )],
+                        body: apply(var("Vect.Cons"), [unit, var("size"), var("top"), var("later")]),
+                    },
+                ],
+            ),
+        ),
+    );
+    musa_calculus::check(&cx, &ty, &copied).expect("each arm answers at the length its own constructor chose");
+}
+
+/// Positivity extends to indices: a constructor may not mention its own family
+/// in the index it chooses.
+///
+/// The control for the extension. An index is a value the *type* is built from,
+/// so a family that appeared there would be defining its own indexing — the
+/// same circularity a negative field is, one stratum up.
+#[test]
+fn a_family_in_the_index_it_chooses_is_refused() {
+    let (cx, _) = nat_context();
+    let circular = data(
+        Vec::new(),
+        vec![indexed(
+            family(
+                "Loop",
+                vec![choosing(
+                    constructor("Only", Vec::new()),
+                    vec![apply(var("Loop"), [Raw::record_type(WRITTEN, [])])],
+                )],
+            ),
+            vec![binder("i", type0())],
+        )],
+    );
+    let refused = musa_calculus::declare(&cx, &circular).expect_err("a family in its own index is refused");
+    let refused = refusal("Loop", refused);
+    assert!(
+        matches!(refused, Refusal::NonPositive { .. }),
+        "the occurrence is reported as the positivity failure it is, and not as {refused:?}"
+    );
+}
+
+/// A constructor that stands at the wrong number of indices is refused at the
+/// constructor, with both counts.
+#[test]
+fn a_constructor_that_chooses_too_few_indices_is_refused() {
+    let (cx, _) = nat_context();
+    let short = data(
+        Vec::new(),
+        vec![indexed(
+            family("Pair", vec![constructor("Only", Vec::new())]),
+            vec![binder("m", var("Nat")), binder("n", var("Nat"))],
+        )],
+    );
+    let refused = musa_calculus::declare(&cx, &short).expect_err("a constructor must choose every index");
+    assert!(
+        matches!(refusal("Pair", refused), Refusal::IndexCount { .. }),
+        "the count is what the refusal is about"
+    );
 }

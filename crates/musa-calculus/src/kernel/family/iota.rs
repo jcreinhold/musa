@@ -298,7 +298,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
     let mut built = Vec::new();
     for (position, field) in reduction.fields.iter().enumerate() {
         let position = u32::try_from(position).unwrap_or(u32::MAX);
-        let _ty = match rule.fields.get(usize::try_from(position).unwrap_or(usize::MAX)) {
+        let ty = match rule.fields.get(usize::try_from(position).unwrap_or(usize::MAX)) {
             Some(binder) => eval(meter, &reading, &binder.ty)?,
             None => break,
         };
@@ -312,6 +312,17 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
             .value(here, &reduction.globals);
             for argument in &reduction.prefix {
                 hypothesis = apply(meter, here, hypothesis, argument.clone())?;
+            }
+            // The field's own indices, which stand between the methods and the
+            // field in the recursor's telescope. Read off the field's *type*,
+            // because that is where the declaration put them: a recursive field
+            // of `Vect A n` is eliminated at `n`, and a hypothesis assembled
+            // without it would be the recursor one argument short of firing at
+            // the wrong place rather than at the right one.
+            if let Some(found) = super::element(meter, &ty)? {
+                for index in &found.indices {
+                    hypothesis = apply(meter, here, hypothesis, index.clone())?;
+                }
             }
             built.push(Pending {
                 recursor: hypothesis,

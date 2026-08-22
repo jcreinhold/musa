@@ -59,6 +59,18 @@ pub struct Constructor {
     /// Its arguments, a telescope read under the declaration context and the
     /// group's parameters.
     pub(crate) fields: Arc<[Parameter]>,
+    /// The indices its result chooses, in the family's index order, read under
+    /// the declaration context, the group's parameters, and its own fields.
+    ///
+    /// This is the whole of what an index adds (§1.1): a parameter is fixed
+    /// across the declaration and is not written here, while an index is
+    /// *chosen* per constructor and is. Empty for a family with no indices,
+    /// which is every family the language had before prompt 156, so the old
+    /// representation is the `chosen: []` case rather than a second shape.
+    ///
+    /// Read under the fields because a chosen index may name them — `Cons(head:
+    /// A, tail: Vec<A>(n)) : Vec<A>(n + 1)` names `n`, which the fields bound.
+    pub(crate) chosen: Arc<[Term]>,
     /// Which fields are recursive occurrences, as `(field, family)` pairs in
     /// field order.
     ///
@@ -122,6 +134,14 @@ pub struct Declared {
     /// declared in. Independent of its constructors': `01-surface.md` §1.3's
     /// whole point is a public type whose cases are package-maintained.
     pub(crate) visibility: Visibility,
+    /// Its indices: the telescope written after the `:` of its declaration,
+    /// read under the declaration context and the group's parameters.
+    ///
+    /// Per family rather than per group, which is the difference §1.1 turns on:
+    /// the group's [`Group::params`] are the same in every constructor's result,
+    /// and these are what each constructor chooses a value at. A mutual group
+    /// may pair a family with indices and one without.
+    pub(crate) indices: Arc<[Parameter]>,
     /// Its constructors, in declaration order.
     pub(crate) constructors: Arc<[Constructor]>,
     /// Which of them make it count, when its shape says it does — see
@@ -167,13 +187,19 @@ pub struct Group {
 
 /// A type that turned out to be a family applied to its arguments.
 ///
-/// What splitting a `match` subject needs and nothing more: which family, at
-/// which parameters. §1.1 admits no indices, so a family is completely
-/// described by that answer.
+/// What splitting a `match` subject needs: which family, at which parameters,
+/// and at which indices. The two argument lists are kept apart rather than
+/// concatenated because a split does different things with them — the
+/// parameters are passed through to every constructor unchanged, and the
+/// indices are *unified* against what the constructor chose, which is what
+/// refinement is and what rules a branch impossible.
 pub(crate) struct Element {
     pub(crate) group: Arc<Group>,
     pub(crate) family: u32,
     pub(crate) params: Vec<Value>,
+    /// The index arguments, in the family's index order. Empty for a family
+    /// that takes none.
+    pub(crate) indices: Vec<Value>,
 }
 
 impl Element {
@@ -220,14 +246,101 @@ pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, 
         return Ok(None);
     };
     let params = usize::try_from(constant.group.params()).unwrap_or(usize::MAX);
-    if arguments.len() != params {
+    let indices = usize::try_from(constant.group.indices(constant.family)).unwrap_or(usize::MAX);
+    if arguments.len() != params.saturating_add(indices) {
         return Ok(None);
     }
+    let mut arguments = arguments;
+    let chosen = arguments.split_off(params.min(arguments.len()));
     Ok(Some(Element {
         group: Arc::clone(&constant.group),
         family: constant.family,
         params: arguments,
+        indices: chosen,
     }))
+}
+
+/// Which constructor stands at the head of a value, where one does.
+///
+/// `(family, which)` for a constructor spine, and for a counting family's
+/// numeral too: a numeral is *definitionally* the tower it counts, so zero is
+/// the floor's case and anything above it the step's, and a caller that asks
+/// "which constructor is this" must get the same answer either way or the
+/// representation would stop being a conservative extension.
+///
+/// `None` for everything that is not a constructor at all — a variable, a
+/// metavariable, a stuck elimination, a λ, a record. The companion of
+/// [`element`], which reads a *type* of a family; this reads a *value* of one.
+pub(crate) fn built_by(meter: &mut Meter, value: &Value) -> Result<Option<(u32, u32)>, CoreError> {
+    let value = crate::kernel::eval::opened(meter, value)?.unwrap_or_else(|| value.clone());
+    match &value.form {
+        Form::Numeral(numeral) => Ok(numeral
+            .family
+            .counting()
+            .map(|counting| (numeral.family.family, counting.case_of(numeral.count)))),
+        Form::Neutral(neutral) => {
+            let Some((constant, _)) = spine(neutral) else {
+                return Ok(None);
+            };
+            match constant.role {
+                Role::Constructor(which) => Ok(Some((constant.family, which))),
+                Role::Family | Role::Recursor(_) => Ok(None),
+            }
+        }
+        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Record(_) | Form::RecordType(_) | Form::Lit(_) => {
+            Ok(None)
+        }
+    }
+}
+
+/// Which constructor built a value, **and what it was applied to**.
+///
+/// [`built_by`] answers the first half and is what a refutation needs; this
+/// answers both, and is what *learning* from an index needs. Splitting a
+/// subject whose index stands at `suc n` against the `Succ` case has to put the
+/// method's own field where `n` stood, and that substitution cannot be made
+/// without the arguments the index constructor was applied to.
+///
+/// The fields alone, with the parameters dropped: a parameter is fixed across
+/// the declaration (§1.1) and carries nothing a match could learn. A counting
+/// family's numeral answers the same way its tower would, one predecessor for
+/// the step case and nothing for the floor, so that the representation stays
+/// the conservative extension [`built_by`] describes.
+pub(crate) fn built_from(meter: &mut Meter, value: &Value) -> Result<Option<(u32, u32, Vec<Value>)>, CoreError> {
+    let value = crate::kernel::eval::opened(meter, value)?.unwrap_or_else(|| value.clone());
+    match &value.form {
+        Form::Numeral(numeral) => {
+            let Some(counting) = numeral.family.counting() else {
+                return Ok(None);
+            };
+            let below = numeral
+                .family
+                .below(numeral.count)
+                .map(|below| Value::new(value.origin, Form::Numeral(below)));
+            Ok(Some((
+                numeral.family.family,
+                counting.case_of(numeral.count),
+                below.into_iter().collect(),
+            )))
+        }
+        Form::Neutral(neutral) => {
+            let Some((constant, arguments)) = spine(neutral) else {
+                return Ok(None);
+            };
+            match constant.role {
+                Role::Constructor(which) => {
+                    let params = usize::try_from(constant.group.params()).unwrap_or(usize::MAX);
+                    let mut arguments = arguments;
+                    let fields = arguments.split_off(params.min(arguments.len()));
+                    Ok(Some((constant.family, which, fields)))
+                }
+                Role::Family | Role::Recursor(_) => Ok(None),
+            }
+        }
+        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Record(_) | Form::RecordType(_) | Form::Lit(_) => {
+            Ok(None)
+        }
+    }
 }
 
 /// Which of a declaration's three constants this is.
@@ -255,6 +368,18 @@ impl Group {
     /// How many parameters they share.
     pub(crate) fn params(&self) -> u32 {
         u32::try_from(self.params.len()).unwrap_or(u32::MAX)
+    }
+
+    /// How many indices family `which` takes, and zero for a family that is not
+    /// in this group.
+    ///
+    /// Zero for an absent family rather than an error, because every caller is
+    /// asking in order to *count arguments*, and a family that is not there
+    /// contributes none — the caller that cares which family it is has already
+    /// asked [`Self::family_at`].
+    pub(crate) fn indices(&self, which: u32) -> u32 {
+        self.family_at(which)
+            .map_or(0, |declared| u32::try_from(declared.indices.len()).unwrap_or(u32::MAX))
     }
 
     /// Whether a later declaration may put itself at parameter `which`.

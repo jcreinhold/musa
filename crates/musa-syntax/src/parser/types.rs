@@ -19,9 +19,38 @@ const MOVED_TYPE_KEYWORDS: &[SyntaxKind] = &[
 
 impl Parser<'_> {
     /// Right-associative arrow types; product/list/option types are atoms.
+    /// The arguments inside an index's parentheses, and the `)` that closes
+    /// them.
+    ///
+    /// Comma-separated because a family may declare more than one index, and
+    /// one pair of parentheses reads as one telescope filled — which is the
+    /// shape the declaration wrote it in.
+    fn index_arguments(&mut self) {
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.expr();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+    }
+
     pub(super) fn type_expr(&mut self) {
         let checkpoint = self.events.len();
         self.type_atom();
+        // `Vect<A>(n)` — an index applied to a type that already took its
+        // parameters. [`Parser::type_atom`] reads the bare-name form `Pc(12)`
+        // itself, because there the `(` is what tells the node apart from a
+        // plain name; here the atom is already decided and the `(` only adds an
+        // argument, so the two spellings meet at the same node kind.
+        while self.at(SyntaxKind::LParen) {
+            self.start_at(checkpoint, SyntaxKind::IndexedType);
+            self.bump();
+            self.index_arguments();
+            self.finish();
+        }
         if self.at(SyntaxKind::Arrow) {
             self.start_at(checkpoint, SyntaxKind::FunctionType);
             self.bump();
@@ -127,8 +156,7 @@ impl Parser<'_> {
             self.bump();
             self.finish();
             self.bump(); // `(`
-            self.expr();
-            self.expect(SyntaxKind::RParen, "`)`");
+            self.index_arguments();
             self.finish();
             return;
         }

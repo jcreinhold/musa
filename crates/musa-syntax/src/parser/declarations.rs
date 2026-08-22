@@ -40,6 +40,9 @@ impl Parser<'_> {
         if self.at(SyntaxKind::Less) {
             self.type_params();
         }
+        if self.at(SyntaxKind::LParen) {
+            self.data_indices();
+        }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::Identifier) {
@@ -273,6 +276,59 @@ impl Parser<'_> {
         self.finish();
     }
 
+    /// `(n: Nat)` after a `data` declaration's name — its index telescope.
+    ///
+    /// The same named-and-typed shape a constructor's field list has, because
+    /// it is the same kind of thing: a telescope, where a later binder's type
+    /// may mention an earlier one. What tells it from
+    /// [`Parser::type_params`] is the bracket, and the bracket is what
+    /// `02-core-calculus.md` §1.1 makes the difference between a parameter and
+    /// an index turn on.
+    pub(super) fn data_indices(&mut self) {
+        self.start(SyntaxKind::DataIndices);
+        self.bump(); // `(`
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            if self.at(SyntaxKind::Identifier) {
+                self.start(SyntaxKind::DataField);
+                self.bump();
+                self.expect(SyntaxKind::Colon, "`:`");
+                self.type_expr();
+                self.finish();
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                }
+            } else {
+                self.expected("an index name, or `)`");
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::RParen]);
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    /// `: (n + 1)` after a constructor's fields — the indices it chooses.
+    ///
+    /// Parenthesized so that the comma between two indices cannot be read as
+    /// the comma between two variants, and so that the list reads as the dual
+    /// of the declaration's own `(n: Nat)`: one names the positions, the other
+    /// fills them.
+    pub(super) fn data_chosen(&mut self) {
+        self.start(SyntaxKind::DataChosen);
+        self.bump(); // `:`
+        self.expect(SyntaxKind::LParen, "`(`");
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.expr();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            } else {
+                break;
+            }
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
     /// `Sounded(pitch: Pitch, held: Duration)` — one constructor.
     pub(super) fn data_variant(&mut self) {
         self.start(SyntaxKind::DataVariant);
@@ -296,6 +352,9 @@ impl Parser<'_> {
                 }
             }
             self.expect(SyntaxKind::RParen, "`)`");
+        }
+        if self.at(SyntaxKind::Colon) {
+            self.data_chosen();
         }
         self.finish();
     }

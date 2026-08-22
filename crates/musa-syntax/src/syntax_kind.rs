@@ -674,6 +674,20 @@ pub enum SyntaxKind {
     DataVariant,
     /// `pitch: Pitch` — one named field of one constructor.
     DataField,
+    /// `(n: Nat)` on a `data` declaration — the *index* telescope.
+    ///
+    /// Parenthesized rather than angle-bracketed because that is the
+    /// difference `02-core-calculus.md` §1.1 draws: `Vect<A>` abstracts a
+    /// parameter, fixed across the whole declaration, and `Vect<A>(n: Nat)`
+    /// declares an index each constructor chooses for itself. The same two
+    /// brackets already tell `Pc<A>` from `Pc(12)` at a *use*, and this is that
+    /// spelling at the declaration.
+    DataIndices,
+    /// `: (n + 1)` after a constructor's fields — the indices it chooses.
+    ///
+    /// A list of ordinary expressions, one per binder in the declaration's
+    /// [`SyntaxKind::DataIndices`], read under that constructor's own fields.
+    DataChosen,
     /// `record Pending { read: Reading; dots: Dots; }` — a declaration of
     /// named fields.
     ///

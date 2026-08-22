@@ -416,6 +416,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::NotAType { .. } => "not-a-type",
         Refusal::Uninferable { .. } => "uninferable",
         Refusal::NonPositive { .. } => "non-positive",
+        Refusal::IndexCount { .. } => "index-count",
         Refusal::NoSuchConstructor { .. } => "no-such-constructor",
         Refusal::IncompleteMatch { .. } => "incomplete-match",
         Refusal::UnreachableBranch { .. } => "unreachable-branch",
