@@ -214,8 +214,9 @@ succeeded with; where `e` fails, the answer around the `?` is that same `Err` va
 - The answer's type has to be a `Result`, and it is the type the enclosing function was *checked* against. A public
   signature is written, so in ordinary code that type is already known when the `?` is reached, and `?` is refused only
   when it turns out not to be a `Result` — the diagnostic naming the type it turned out to be. Where the answer's type
-  is not yet decided when the `?` is reached, the `?` is refused there rather than waiting: nothing is postponed
-  (`02-core-calculus.md` §2.1), and the refusal names the signature to write.
+  is not yet decided when the `?` is reached, the `?` is refused there rather than waiting: what `02-core-calculus.md`
+  §2.1 postpones is a *comparison*, and "is this a `Result`" is a question about the type's head rather than a
+  comparison, so there is nothing to wait for. The refusal names the signature to write.
 
 `?` is for `Result` and nothing else. An `Option` says only that a value is missing, not why, so there is no failure for
 `?` to carry; a caller that wants propagation matches and says what the absence means. There is no `Try`, no `Monad`, no
@@ -542,9 +543,11 @@ than left to a search:
   the qualified path; otherwise adding a trait to a package would change what existing code means.
 - There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
 - Where the receiver's type is still undetermined after the spine walk, the method call is refused at the call, and the
-  refusal names the qualified path to write instead. Nothing is postponed: postponement was deleted with the rest of the
-  constraint machinery, and `02-core-calculus.md` §2.1's two-pass spine is what now makes a receiver's type known in the
-  cases that used to need it — an argument the walk defers is checked after the arguments that decide it, so
+  refusal names the qualified path to write instead. Nothing is postponed *here*: the constraint queue
+  `02-core-calculus.md` §2.1 installs holds *comparisons* — a conversion that is not yet decidable, retried when an
+  unknown it mentions is solved — and a receiver at an unknown is not a comparison but a name that did not resolve,
+  which that queue has no way to hold. §2.1's two-pass spine is what makes a receiver's type known in the cases that
+  used to need it — an argument the walk defers is checked after the arguments that decide it, so
   `applied(fn (p) { p.act(P8) }, c4)` resolves `.act` at `Pitch`.
 
 `T::x` names an item in `T`'s namespace: a constructor, an inherent function, or a trait method under
