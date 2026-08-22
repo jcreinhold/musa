@@ -15,9 +15,11 @@ phase: 3
 implicit binder may be *written* at a declaration, and an argument may be supplied by name where inference cannot reach
 it. Without this, dependent types are formally present and ergonomically unusable.
 
-Prompt 153's repair narrowed what is left here: insertion at application already exists and is not re-implemented, and
-it now stands on a real queue rather than on the two-pass deferral walk, so this prompt's insertion-at-check rule and
-its stopping rule are the new machinery.
+Prompt 153's repairs narrowed what is left here: insertion at application already exists and is not re-implemented, and
+it now stands on a real constraint queue, so this prompt's insertion-at-check rule and its stopping rule are the new
+machinery. The two-pass deferral walk in `elab/spine.rs` stands alongside that queue rather than being replaced by it —
+`01-surface.md` §1.5 requires it and 153's second repair records the measurement — so insertion at application keeps
+meeting it, unchanged.
 
 ## Read
 
