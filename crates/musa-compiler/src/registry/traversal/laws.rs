@@ -200,7 +200,9 @@ fn recursing_descends_the_leftmost_spine_the_way_the_old_evaluator_does() {
         var("List.elim"),
         [
             step,
-            tree(),
+            // §1.1's motive is a *family*; this elimination refines nothing, so
+            // it is the constant one.
+            lambda(&["_"], tree()),
             leaf(),
             lambda(
                 &["first", "rest", "done"],

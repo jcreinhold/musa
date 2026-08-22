@@ -43,25 +43,30 @@
 //!
 //! ```text
 //! elim_i : (p⃗ : Params)
-//!        → (R_1 : Type ℓ) → … → (R_k : Type ℓ)
+//!        → (R_1 : (t : N_1 p⃗) → Type ℓ) → … → (R_k : (t : N_k p⃗) → Type ℓ)
 //!        → (methods, one per constructor of every family in the group)
-//!        → (t : N_i p⃗) → R_i
+//!        → (t : N_i p⃗) → R_i t
 //! ```
 //!
 //! and the method for a constructor `c` of family `N_j` is
 //!
 //! ```text
-//! m_c : (a⃗ : Fields_c) → (ih⃗) → R_j
+//! m_c : (a⃗ : Fields_c) → (ih⃗) → R_j (c p⃗ a⃗)
 //! ```
 //!
-//! with one induction hypothesis `R_{j'}` per recursive field.
+//! with one induction hypothesis `R_{j'} a` per recursive field `a`.
 //!
-//! **The eliminator is non-dependent.** A motive is a type, not a family of
-//! them, and neither a method's result nor an induction hypothesis mentions the
-//! value being eliminated. That is what `match` needs and all it needs: §2's
-//! `match` checks against the expected type, so every arm answers the one goal
-//! the expression was checked at, and a dependent motive would have nothing to
-//! refine.
+//! **The eliminator is dependent** (§1.1, and prompt 155). A motive is a
+//! *family* of types rather than a type: a method's result and each induction
+//! hypothesis are the motive **applied to** the value they are about. That is
+//! what lets a `match` arm be checked at the goal *refined by the pattern it
+//! matched* — the `Cons` arm at `G[Cons h t]` rather than at `G[xs]` — which is
+//! what `Vec`, `Equal`, and refinement by matching need and what the previous
+//! non-dependent eliminator could not express.
+//!
+//! A `match` that refines nothing is not a second rule: its motive is the
+//! constant family `λ_. G`, every arm's goal computes back to `G`, and the term
+//! is what it always was.
 //!
 //! Motives and methods sit *between* the parameters and the fields, so a field
 //! type stored at one depth appears in the method at another — and this crate

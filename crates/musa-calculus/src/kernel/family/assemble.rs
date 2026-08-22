@@ -1,5 +1,5 @@
 //! The telescope that assembles a constant's type semantically, which is
-//! where the recursor of §1.1 is generated.
+//! where the dependent eliminator of §1.1 is generated.
 //!
 //! One concern of the `family` module; see its docs for the calculus.
 
@@ -135,31 +135,60 @@ impl<'a> Telescope<'a> {
         Ok(Filling::Constraint(Arc::new(constraint.at(Arc::from(args)))))
     }
 
-    /// One result type per family in the group: `R_j : Type ℓ`.
+    /// One motive per family in the group: `R_j : (t : N_j p⃗) → Type ℓ`.
     ///
-    /// A *type*, not a family of them. §1.1's eliminator is non-dependent: a
-    /// method's result and an induction hypothesis are both the plain `R_j`,
-    /// and nothing is applied to the value being eliminated. One per family
-    /// rather than one overall because a mutual recursor eliminates into a
-    /// different answer per family, which is what makes it statable at all.
-    pub(super) fn motives(&mut self, meter: &mut Meter, level: &Sort) -> Result<Vec<At>, CoreError> {
+    /// A **family** of types, not a type. §1.1: "the generated eliminator's
+    /// motive is a family … so a method's result type and its induction
+    /// hypotheses are the motive *applied to* … the value being eliminated".
+    /// That application is the whole of what dependent elimination is, and it
+    /// is what lets a branch be checked at the goal *refined by the pattern it
+    /// matched*.
+    ///
+    /// One per family rather than one overall because a mutual recursor
+    /// eliminates into a different answer per family, which is what makes it
+    /// statable at all.
+    ///
+    /// `params` are the parameters already introduced, because the family a
+    /// motive stands over is the applied `N_j p⃗` and not the bare constant.
+    pub(super) fn motives(
+        &mut self,
+        meter: &mut Meter,
+        params: &[Introduced],
+        level: &Sort,
+    ) -> Result<Vec<At>, CoreError> {
         let mut introduced = Vec::with_capacity(self.group.families.len());
         for which in 0..self.group.arity() {
-            let ty = self.motive_type(which, level.clone());
+            let ty = self.motive_family(meter, which, params, level.clone())?;
             introduced.push(self.assume(meter, "R", ty)?);
         }
         Ok(introduced)
     }
 
-    fn motive_type(&self, which: u32, level: Sort) -> Term {
+    /// `(t : N_which p⃗) → Type ℓ`, assembled in a telescope of its own so that
+    /// the subject binder is inside the motive's Π and not in the recursor's.
+    fn motive_family(
+        &self,
+        meter: &mut Meter,
+        which: u32,
+        params: &[Introduced],
+        level: Sort,
+    ) -> Result<Term, CoreError> {
         if self.group.family_at(which).is_none() {
-            return Term::universe(self.origin, Sort::ZERO);
+            return Ok(Term::universe(self.origin, Sort::ZERO));
         }
-        Term::universe(self.origin, level)
+        let mut inner = self.nested();
+        let subject = inner.applied_family(which, [params, &[]]);
+        inner.assume(meter, "t", subject)?;
+        Ok(inner.close(Term::universe(self.origin, level)))
     }
 
     /// One method per constructor of every family in the group.
-    pub(super) fn methods(&mut self, meter: &mut Meter, motives: &[At]) -> Result<(), CoreError> {
+    pub(super) fn methods(
+        &mut self,
+        meter: &mut Meter,
+        motives: &[At],
+        params: &[Introduced],
+    ) -> Result<(), CoreError> {
         for family in 0..self.group.arity() {
             let names: Vec<Name> = self.group.family_at(family).map_or_else(Vec::new, |declared| {
                 declared
@@ -170,15 +199,22 @@ impl<'a> Telescope<'a> {
             });
             for (which, name) in names.into_iter().enumerate() {
                 let which = u32::try_from(which).unwrap_or(u32::MAX);
-                let ty = self.method_type(meter, motives, family, which)?;
+                let ty = self.method_type(meter, motives, params, family, which)?;
                 self.assume(meter, &name, ty)?;
             }
         }
         Ok(())
     }
 
-    /// `(a⃗ : Fields) → (ih⃗) → R_j`.
-    fn method_type(&self, meter: &mut Meter, motives: &[At], family: u32, which: u32) -> Result<Term, CoreError> {
+    /// `(a⃗ : Fields) → (ih⃗) → R_j (c p⃗ a⃗)`.
+    fn method_type(
+        &self,
+        meter: &mut Meter,
+        motives: &[At],
+        params: &[Introduced],
+        family: u32,
+        which: u32,
+    ) -> Result<Term, CoreError> {
         let Some(constructor) = self
             .group
             .family_at(family)
@@ -194,24 +230,34 @@ impl<'a> Telescope<'a> {
             // A recursive position past the fields would be a defect in the
             // declaration rather than a hypothesis to invent, and skipping it
             // keeps this arity and [`super::iota`]'s in agreement.
-            if fields.get(usize::try_from(*field).unwrap_or(usize::MAX)).is_none() {
+            let Some((at, _)) = fields.get(usize::try_from(*field).unwrap_or(usize::MAX)) else {
                 continue;
-            }
-            let hypothesis = inner.hypothesis(motives, *of_family);
+            };
+            let hypothesis = inner.hypothesis(motives, *of_family, *at);
             inner.assume(meter, "ih", hypothesis)?;
         }
-        let result = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
-        Ok(inner.close(result))
+        // The subject this method answers *for*, which is what the motive is
+        // applied to: not the eliminated value, which no method has, but the
+        // constructor form this method is the case of.
+        let built = applied(
+            self.origin,
+            Constant::constructor(self.group, family, which).term(self.origin),
+            inner.references(params).into_iter().chain(inner.references(&fields)),
+        );
+        let motive = inner.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
+        Ok(inner.close(Term::app(self.origin, motive, built)))
     }
 
-    /// `R_j`, the induction hypothesis for a recursive field.
+    /// `R_j a`, the induction hypothesis for the recursive field at `at`.
     ///
-    /// The field itself does not appear in it, which is what non-dependent
-    /// means: the hypothesis is the answer the recursion produced, not a
-    /// statement about the field. The field is still what [`super::iota`]
-    /// applies the recursor to when the hypothesis is forced.
-    fn hypothesis(&self, motives: &[At], family: u32) -> Term {
-        self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied())
+    /// The field **does** appear in it, which is what dependent means: the
+    /// hypothesis is the answer the recursion produced *about that field*, and
+    /// not merely an inhabitant of a fixed answer type. The field is also what
+    /// [`super::iota`] applies the recursor to when the hypothesis is forced,
+    /// so the two agree by construction rather than by a rule that says so.
+    fn hypothesis(&self, motives: &[At], family: u32, at: At) -> Term {
+        let motive = self.reference(motives.get(usize::try_from(family).unwrap_or(usize::MAX)).copied());
+        Term::app(self.origin, motive, self.reference(Some(at)))
     }
 
     /// The variable naming the binder at `at`, seen from here.

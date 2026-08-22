@@ -116,6 +116,33 @@ impl Env {
         &self.globals
     }
 
+    /// The same binders, with the one at `level` standing for `value` instead.
+    ///
+    /// **Substitution, done where §1 admits it.** The core has no substitution
+    /// function on terms, so the elaborator abstracts a subject out of a goal by
+    /// re-evaluating the goal in an environment where the subject's binder holds
+    /// something else — which is what substitution *is* in a levelled semantic
+    /// domain. `crate::elaboration::case` uses it once per split, to build the
+    /// dependent motive §1.1 asks for.
+    ///
+    /// A level this environment does not reach leaves it unchanged: an
+    /// environment that never bound the variable has nothing to rebind.
+    pub(crate) fn rebinding(&self, level: Level, value: Value) -> Self {
+        let Some(index) = level.to_index(self.depth()) else {
+            return self.clone();
+        };
+        // Innermost first, matching `locals`, and rebuilt outermost first
+        // because [`Self::push`] is the only way to extend a [`List`].
+        let mut held: Vec<Value> = self.locals.iter().cloned().collect();
+        let Some(slot) = held.get_mut(usize::try_from(index.0).unwrap_or(usize::MAX)) else {
+            return self.clone();
+        };
+        *slot = value;
+        held.into_iter()
+            .rev()
+            .fold(Self::under(self.globals.clone()), |env, held| env.push(held))
+    }
+
     /// The same binders, read under a different table.
     pub(crate) fn reading(&self, globals: Globals) -> Self {
         Self {

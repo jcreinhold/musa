@@ -299,10 +299,13 @@ fn a_declaration_brings_its_names_into_scope_at_their_types() {
 /// notice being subtly wrong — a motive at the wrong telescope still
 /// type-checks and eliminates into nothing useful.
 ///
-/// **Non-dependent.** §1.1's eliminator takes a motive that is a *type*, not a
-/// family of them: the `Succ` method answers `R` and its induction hypothesis
-/// is `R`, with the field appearing in neither. The negative below is the
-/// dependent shape, which must now be refused.
+/// **Dependent.** §1.1: "the generated eliminator's motive is a **family**, not
+/// a type: for `data N : Δ → Type` it is `(δ : Δ) → N δ → Type ℓ`, so a
+/// method's result type and its induction hypotheses are the motive *applied
+/// to* the indices that constructor chose and to the value being eliminated."
+/// The `Succ` method therefore answers `R (Succ n)` and its hypothesis is
+/// `R n`, with the field appearing in both. Two negatives below: the
+/// non-dependent shape this replaced, and the shape with no hypothesis at all.
 ///
 /// Asked as a *checking* question, not an inference: §1.3 admits no universe
 /// polymorphism, so a recursor's motive level is chosen per use site and a bare
@@ -315,9 +318,83 @@ fn the_generated_recursor_eliminates_into_the_motive() {
         Term::app(WRITTEN, Term::var(WRITTEN, musa_calculus::Index(function)), argument)
     };
     let succ = |argument: Term| Term::app(WRITTEN, core_constant(&cx, "Nat.Succ"), argument);
+    let family = |cx: &Cx| Term::pi(WRITTEN, "t", core_nat(cx), Term::universe(WRITTEN, Sort::ZERO));
 
-    // (R : Type 0) → R → ((n : Nat) → R → R) → (t : Nat) → R
+    // (R : (t : Nat) → Type 0)
+    //   → R Zero
+    //   → ((n : Nat) → R n → R (Succ n))
+    //   → (t : Nat) → R t
     let expected = Term::pi(
+        WRITTEN,
+        "R",
+        family(&cx),
+        Term::pi(
+            WRITTEN,
+            "Zero",
+            at(0, core_constant(&cx, "Nat.Zero")),
+            Term::pi(
+                WRITTEN,
+                "Succ",
+                Term::pi(
+                    WRITTEN,
+                    "n",
+                    core_nat(&cx),
+                    Term::pi(
+                        WRITTEN,
+                        "ih",
+                        at(2, Term::var(WRITTEN, musa_calculus::Index(0))),
+                        at(3, succ(Term::var(WRITTEN, musa_calculus::Index(1)))),
+                    ),
+                ),
+                Term::pi(
+                    WRITTEN,
+                    "t",
+                    core_nat(&cx),
+                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
+                ),
+            ),
+        ),
+    );
+    musa_calculus::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
+
+    // The same telescope with the induction hypothesis dropped: a *recursion*
+    // rule rather than an induction one, which is the mistake worth catching.
+    let without_hypothesis = Term::pi(
+        WRITTEN,
+        "R",
+        family(&cx),
+        Term::pi(
+            WRITTEN,
+            "Zero",
+            at(0, core_constant(&cx, "Nat.Zero")),
+            Term::pi(
+                WRITTEN,
+                "Succ",
+                Term::pi(
+                    WRITTEN,
+                    "n",
+                    core_nat(&cx),
+                    at(2, succ(Term::var(WRITTEN, musa_calculus::Index(0)))),
+                ),
+                Term::pi(
+                    WRITTEN,
+                    "t",
+                    core_nat(&cx),
+                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
+                ),
+            ),
+        ),
+    );
+    assert!(
+        musa_calculus::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
+        "a recursor with no induction hypothesis was accepted as this one"
+    );
+
+    // And the non-dependent shape §1.1 no longer generates: a motive that is a
+    // type, with the subject appearing in neither the method's result nor its
+    // hypothesis. This is what prompt 155 replaced, and a language that
+    // accepted both would have kept the defect prompt 143's amendment named.
+    let non_dependent = Term::pi(
         WRITTEN,
         "R",
         Term::universe(WRITTEN, Sort::ZERO),
@@ -338,67 +415,9 @@ fn the_generated_recursor_eliminates_into_the_motive() {
             ),
         ),
     );
-    musa_calculus::check(&cx, &expected, &var("Nat.elim")).expect("the recursor has the type §1.1 generates");
-
-    // The same telescope with the induction hypothesis dropped: a *recursion*
-    // rule rather than an induction one, which is the mistake worth catching.
-    let without_hypothesis = Term::pi(
-        WRITTEN,
-        "R",
-        Term::universe(WRITTEN, Sort::ZERO),
-        Term::pi(
-            WRITTEN,
-            "Zero",
-            motive(0),
-            Term::pi(
-                WRITTEN,
-                "Succ",
-                Term::pi(WRITTEN, "n", core_nat(&cx), motive(2)),
-                Term::pi(WRITTEN, "t", core_nat(&cx), motive(3)),
-            ),
-        ),
-    );
     assert!(
-        musa_calculus::check(&cx, &without_hypothesis, &var("Nat.elim")).is_err(),
-        "a recursor with no induction hypothesis was accepted as this one"
-    );
-
-    // And the dependent shape §1.1 no longer generates: a motive over the
-    // subject, which is what the excision removed.
-    let dependent = Term::pi(
-        WRITTEN,
-        "P",
-        Term::pi(WRITTEN, "_", core_nat(&cx), Term::universe(WRITTEN, Sort::ZERO)),
-        Term::pi(
-            WRITTEN,
-            "Zero",
-            at(0, core_constant(&cx, "Nat.Zero")),
-            Term::pi(
-                WRITTEN,
-                "Succ",
-                Term::pi(
-                    WRITTEN,
-                    "n",
-                    core_nat(&cx),
-                    Term::pi(
-                        WRITTEN,
-                        "_",
-                        at(2, Term::var(WRITTEN, musa_calculus::Index(0))),
-                        at(3, succ(Term::var(WRITTEN, musa_calculus::Index(1)))),
-                    ),
-                ),
-                Term::pi(
-                    WRITTEN,
-                    "t",
-                    core_nat(&cx),
-                    at(3, Term::var(WRITTEN, musa_calculus::Index(0))),
-                ),
-            ),
-        ),
-    );
-    assert!(
-        musa_calculus::check(&cx, &dependent, &var("Nat.elim")).is_err(),
-        "a dependent motive was accepted, and §1.1 generates none"
+        musa_calculus::check(&cx, &non_dependent, &var("Nat.elim")).is_err(),
+        "the non-dependent eliminator was accepted, and §1.1 generates a family"
     );
 }
 
@@ -414,7 +433,9 @@ fn iota_fires_when_the_target_becomes_a_constructor() {
         apply(
             var("Nat.elim"),
             [
-                var("Nat"),
+                // `λ_. Nat`, because §1.1's motive is a *family*: a `match` that
+                // refines nothing still hands the eliminator a constant one.
+                Raw::lam(WRITTEN, "_", var("Nat")),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
                 target,
@@ -451,7 +472,9 @@ fn a_recursor_blocked_on_a_variable_does_not_fire() {
         apply(
             var("Nat.elim"),
             [
-                var("Nat"),
+                // `λ_. Nat`, because §1.1's motive is a *family*: a `match` that
+                // refines nothing still hands the eliminator a constant one.
+                Raw::lam(WRITTEN, "_", var("Nat")),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "n", Raw::lam(WRITTEN, "ih", var("n"))),
                 var("m"),
@@ -555,8 +578,9 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
     let to_nat = apply(
         var("Even.elim"),
         [
-            var("Nat"),
-            var("Nat"),
+            // One motive per family of the group, each a constant family.
+            Raw::lam(WRITTEN, "_", var("Nat")),
+            Raw::lam(WRITTEN, "_", var("Nat")),
             var("Nat.Zero"),
             Raw::lam(
                 WRITTEN,

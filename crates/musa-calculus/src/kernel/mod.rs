@@ -8,6 +8,7 @@
 
 pub(crate) mod base;
 pub(crate) mod budget;
+pub(crate) mod case_tree;
 pub(crate) mod checked;
 pub(crate) mod context;
 pub(crate) mod error;

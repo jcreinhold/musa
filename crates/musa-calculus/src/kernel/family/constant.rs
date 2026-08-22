@@ -484,13 +484,15 @@ impl Constant {
             return Ok(Term::universe(self.group.origin, Sort::ZERO));
         };
         let params = builder.extend(meter, &self.group.params)?;
-        let motives = builder.motives(meter, level)?;
-        builder.methods(meter, &motives)?;
+        let motives = builder.motives(meter, &params, level)?;
+        builder.methods(meter, &motives, &params)?;
         let subject = builder.applied_family(self.family, [&params, &[]]);
-        builder.assume(meter, "t", subject)?;
-        // Non-dependent: the result is the answer type itself, with nothing
-        // applied to the value being eliminated.
-        let result = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
+        let target = builder.assume(meter, "t", subject)?;
+        // Dependent (§1.1): the result is the motive *applied to* the value
+        // being eliminated, which is what makes an elimination able to say
+        // something about its subject rather than merely produce a value.
+        let motive = builder.reference(motives.get(usize::try_from(self.family).unwrap_or(usize::MAX)).copied());
+        let result = Term::app(self.group.origin, motive, builder.reference(Some(target)));
         Ok(builder.close(result))
     }
 }

@@ -80,11 +80,12 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::Cyclic(_) => "cyclic-meta",
         Malformed::MetaTelescope(_) => "meta-telescope",
         Malformed::EscapedSolution(_) => "escaped-solution",
+        Malformed::UnreachableAlternative => "unreachable-alternative",
     }
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 19] = [
+const ALL_MALFORMED: [&str; 20] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
@@ -104,15 +105,24 @@ const ALL_MALFORMED: [&str; 19] = [
     "cyclic-meta",
     "meta-telescope",
     "escaped-solution",
+    "unreachable-alternative",
 ];
 
 /// The ones nothing here reaches, each with the argument for why.
 ///
 /// Read this as the gate's honest remainder rather than as a list of things to
-/// get to later. Six of the seven *cannot* be reached from outside this crate
-/// by construction, and saying so is the finding; the seventh is not this
-/// crate's to raise at all.
-const UNREACHED: [(&str, &str); 7] = [
+/// get to later. Six of the eight *cannot* be reached from outside this crate
+/// by construction, and saying so is the finding; one is not this crate's to
+/// raise at all, and one has nothing that builds it yet.
+const UNREACHED: [(&str, &str); 8] = [
+    (
+        "unreachable-alternative",
+        "an `Impossible` node reaching emission. Nothing builds one: with no indices \
+         (§1.1, and prompt 155's Stop) there is nothing for unification to refute, so \
+         `CaseTree::Impossible` has no producer until prompt 156 adds index unification. \
+         The variant is here because the node is, and the node is here because §6.2's \
+         third case is part of what a case tree *is*.",
+    ),
     (
         "escaped-variable",
         "quotation reaching a level its own depth does not name means levels and indices \

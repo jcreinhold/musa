@@ -1,7 +1,7 @@
 ---
 id: 155
 slug: case-trees
-status: in-progress
+status: done
 depends_on: [153]
 phase: 3
 ---
@@ -10,11 +10,11 @@ phase: 3
 
 ## Task
 
-`family/assemble.rs` generates a **non-dependent** recursor per declaration and `case.rs` (1,203 lines) compiles
-`match` straight into an application of it, with the goal itself as the motive. Reify the intermediate and make the motive a
-family: a `CaseTree` the kernel holds, the emission §6.2 names, and coverage decided on the tree rather than incidentally
-while it is emitted. **This is where the eliminator stops being non-dependent**, which is the defect prompt 143's
-amendment named.
+`family/assemble.rs` generates a **non-dependent** recursor per declaration and `case.rs` (1,203 lines) compiles `match`
+straight into an application of it, with the goal itself as the motive. Reify the intermediate and make the motive a
+family: a `CaseTree` the kernel holds, the emission §6.2 names, and coverage decided on the tree rather than
+incidentally while it is emitted. **This is where the eliminator stops being non-dependent**, which is the defect prompt
+143's amendment named.
 
 **Corrected against the code and against §1.1.** The eliminator is not deleted — see the Design's first paragraph. What
 is deleted is its *non-dependence*.
@@ -33,12 +33,12 @@ the same seam.
 - `crates/musa-calculus/src/kernel/family/assemble.rs:154` — `motive_type`, and the doc comment on `motives` above it:
   *"A *type*, not a family of them. §1.1's eliminator is non-dependent."* That is the sentence this prompt deletes.
   `method_type` and `hypothesis` are the two places the sentence is *implemented*, and both change with it.
-- `docs/rules/language/02-core-calculus.md` §1 (the `Definition` list), §1.1 (*Elimination is dependent*), and §6.2 — the
-  three sentences that decide what survives, and they only agree under one design. §1 lists a name's reduction behaviour
-  as "undeclared, **a compiled case tree**, a constructor, a type constructor, a registered base type, or a compiler
-  builtin", with **no recursor in it**; §1.1 keeps "**the generated eliminator**" and makes its motive a family; §6.2
-  compiles `match` "to a case tree and then to nested applications of the generated eliminators". Prompt 156 says the
-  same from the other side: "a family's fold *is* its eliminator".
+- `docs/rules/language/02-core-calculus.md` §1 (the `Definition` list), §1.1 (*Elimination is dependent*), and §6.2 —
+  the three sentences that decide what survives, and they only agree under one design. §1 lists a name's reduction
+  behaviour as "undeclared, **a compiled case tree**, a constructor, a type constructor, a registered base type, or a
+  compiler builtin", with **no recursor in it**; §1.1 keeps "**the generated eliminator**" and makes its motive a
+  family; §6.2 compiles `match` "to a case tree and then to nested applications of the generated eliminators". Prompt
+  156 says the same from the other side: "a family's fold *is* its eliminator".
 - `/Users/jcreinhold/Code/Idris2/src/Core/Case/CaseBuilder.idr` and `Core/Case/CaseTree.idr` — the reference.
 - `crates/musa-calculus/src/elaboration/rec.rs` — where structural descent is currently obtained *for free*, and the
   file that says why it stops being free. `rec` rewrites a recursive call into a reference to `<field>#ih`, an
@@ -97,8 +97,8 @@ pattern-implicit solving lives in the case builder rather than falling out of el
   constructor form for the result, to the recursive field for the hypothesis — which is the whole of what dependence
   means here.
 - `crates/musa-calculus/src/kernel/family/constant.rs` and `family/iota.rs`: `recursor_type` follows the dependent
-  motive, and the primitive ι arm gives way to tree reduction. The tower-avoiding numeral decrement stays, as the
-  Design says.
+  motive, and the primitive ι arm gives way to tree reduction. The tower-avoiding numeral decrement stays, as the Design
+  says.
 - `crates/musa-calculus/tests/suite/`: the dependent-motive law — a branch checked at the motive instantiated at that
   branch's pattern, with a negative control — and the coverage laws restated over the tree.
 

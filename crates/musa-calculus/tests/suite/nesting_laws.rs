@@ -233,7 +233,9 @@ fn the_recursor_hands_a_nested_field_no_hypothesis() {
         &apply(
             var("StaffRead.elim"),
             [
-                var("Nat"),
+                // §1.1's motive is a family; nothing here refines, so it is a
+                // constant one.
+                lam("_", var("Nat")),
                 var("Nat.Zero"),
                 lam("items", apply(var("Nat.Succ"), [var("Nat.Zero")])),
                 apply(var("StaffRead.Body"), [two_sung()]),

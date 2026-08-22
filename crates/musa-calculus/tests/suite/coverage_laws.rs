@@ -11,7 +11,7 @@
 use musa_calculus::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
 
 use crate::family_laws::{apply, core_constant, nat_context, type0, var, vec};
-use crate::programs::WRITTEN;
+use crate::programs::{WRITTEN, refusal};
 
 /// `Nat` and `Vec`, both declared.
 ///
@@ -113,7 +113,9 @@ fn a_match_is_the_recursor_it_compiles_to() {
         apply(
             var("Nat.elim"),
             [
-                var("Nat"),
+                // `λ_. Nat`, because §1.1's motive is a *family*: a `match` that
+                // refines nothing still hands the eliminator a constant one.
+                Raw::lam(WRITTEN, "_", var("Nat")),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "k", Raw::lam(WRITTEN, "ih", var("k"))),
                 var("n"),
@@ -188,7 +190,9 @@ fn a_variable_pattern_is_expanded_rather_than_deferred() {
         apply(
             var("Nat.elim"),
             [
-                var("Nat"),
+                // `λ_. Nat`, because §1.1's motive is a *family*: a `match` that
+                // refines nothing still hands the eliminator a constant one.
+                Raw::lam(WRITTEN, "_", var("Nat")),
                 var("Nat.Zero"),
                 Raw::lam(WRITTEN, "k", Raw::lam(WRITTEN, "ih", var("k"))),
                 var("n"),
@@ -472,4 +476,141 @@ fn a_match_whose_goal_is_a_metavariable_elaborates() {
         &applied,
         &number(2),
     );
+}
+
+/// §1.1: a branch is checked at the motive **instantiated at that branch's
+/// pattern**.
+///
+/// The law prompt 155 exists for, and the one the previous non-dependent
+/// eliminator could not state. `P` computes a *type* by recursion — `Nat → Nat`
+/// at `Zero`, `Nat` at `Succ` — so a function at `(n : Nat) → P n` has two arms
+/// that answer at two different types, and neither of them answers at `P n`.
+///
+/// Under a non-dependent motive the goal at both arms is `P n` with `n` a
+/// variable, which is a neutral type nothing here inhabits, and the program is
+/// refused. Under §1.1's motive `λt. P t` the `Zero` arm is checked at `P Zero`
+/// and the `Succ` arm at `P (Succ k)`, both of which compute. That difference
+/// is the whole of dependent elimination, stated as a program rather than as a
+/// property of a generated type.
+#[test]
+fn a_branch_is_checked_at_the_motive_instantiated_at_its_pattern() {
+    let cx = nat_vec_context();
+    let (predicate, ty) = refining(&cx);
+    // `λn. match n { Zero → λm. m ; Succ k → Zero }` — the `Zero` arm answers a
+    // function and the `Succ` arm answers a number, which is only well typed
+    // because each was checked at its own refined goal.
+    let refined = Raw::lam(
+        WRITTEN,
+        "n",
+        matching(
+            [var("n")],
+            vec![
+                arm(vec![con("Nat.Zero", [])], Raw::lam(WRITTEN, "m", var("m"))),
+                arm(vec![con("Nat.Succ", [bind("k")])], var("Nat.Zero")),
+            ],
+        ),
+    );
+    musa_calculus::check(&cx, &ty, &refined).expect("each arm checks at its own refined goal");
+
+    // And it computes what the arms say: at `Zero` the answer is the identity,
+    // so applying it to a number gives that number back. A motive that refined
+    // nothing could not have accepted the program, and one that refined the
+    // *wrong* way would type-check and answer something else.
+    let nat = core(&cx, "Nat", &var("Nat"));
+    let applied_at_zero = Raw::app(
+        WRITTEN,
+        Raw::app(
+            WRITTEN,
+            Raw::annot(WRITTEN, refined, written(&predicate)),
+            var("Nat.Zero"),
+        ),
+        number(2),
+    );
+    same(&cx, "the Zero arm is the identity", &nat, &applied_at_zero, &number(2));
+}
+
+/// The negative control: the same two arms, exchanged.
+///
+/// `Zero → Zero` is a number where the refined goal is `Nat → Nat`, so a
+/// checker that refined the goal per branch must refuse it. A checker that did
+/// not refine would refuse *both* spellings and this pair would say nothing —
+/// which is why the positive above and this share one predicate.
+#[test]
+fn a_branch_that_answers_another_branchs_goal_is_refused() {
+    let cx = nat_vec_context();
+    let (_, ty) = refining(&cx);
+    let exchanged = Raw::lam(
+        WRITTEN,
+        "n",
+        matching(
+            [var("n")],
+            vec![
+                arm(vec![con("Nat.Zero", [])], var("Nat.Zero")),
+                arm(vec![con("Nat.Succ", [bind("k")])], Raw::lam(WRITTEN, "m", var("m"))),
+            ],
+        ),
+    );
+    assert!(
+        musa_calculus::check(&cx, &ty, &exchanged).is_err(),
+        "an arm answering another arm's refined goal was accepted"
+    );
+}
+
+/// Coverage is decided on the finished tree, and the constructor it names comes
+/// from the **declaration group**.
+///
+/// `Refusal::IncompleteMatch` was raised by the loop that built the branches
+/// before prompt 155, so "which constructor is missing" was whichever one that
+/// loop reached first. Now the tree is walked afterwards and every constructor
+/// of the group is asked for, which is what makes the name evidence about the
+/// declaration rather than about the builder.
+#[test]
+fn a_missing_constructor_is_named_by_the_declaration_group() {
+    let cx = nat_vec_context();
+    let missing_succ = Raw::lam(
+        WRITTEN,
+        "n",
+        matching([var("n")], vec![arm(vec![con("Nat.Zero", [])], var("Nat.Zero"))]),
+    );
+    let ty = nat_to_nat(&cx);
+    let Err(error) = musa_calculus::check(&cx, &ty, &missing_succ) else {
+        panic!("a match missing a constructor was accepted");
+    };
+    let refusal = refusal("a constructor with no arm", error);
+    let Refusal::IncompleteMatch { ref constructor, .. } = refusal else {
+        panic!("reached `{refusal}` rather than an incomplete match");
+    };
+    assert_eq!(&**constructor, "Nat.Succ", "the refusal named the wrong constructor");
+}
+
+/// `P : Nat → Type 0`, and the dependent type `(n : Nat) → P n` it gives.
+///
+/// One predicate for both laws above, so that the positive and its control are
+/// asked at the same goal and the pair means something.
+fn refining(cx: &Cx) -> (Raw, Term) {
+    // `λn. match n { Zero → Nat → Nat ; Succ k → Nat }`, annotated because §2
+    // gives a bare λ no inference rule.
+    let predicate = Raw::annot(
+        WRITTEN,
+        Raw::lam(
+            WRITTEN,
+            "n",
+            matching(
+                [var("n")],
+                vec![
+                    arm(vec![con("Nat.Zero", [])], arrow(var("Nat"), var("Nat"))),
+                    arm(vec![con("Nat.Succ", [bind("k")])], var("Nat")),
+                ],
+            ),
+        ),
+        arrow(var("Nat"), type0()),
+    );
+    let written = Raw::pi(WRITTEN, "n", var("Nat"), Raw::app(WRITTEN, predicate.clone(), var("n")));
+    let ty = core(cx, "(n : Nat) → P n", &written);
+    (predicate, ty)
+}
+
+/// The dependent type `(n : Nat) → P n`, as written syntax.
+fn written(predicate: &Raw) -> Raw {
+    Raw::pi(WRITTEN, "n", var("Nat"), Raw::app(WRITTEN, predicate.clone(), var("n")))
 }

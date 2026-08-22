@@ -266,7 +266,7 @@ real program.
 
 ## Inductive families and match
 
-> Parameterized inductive families with strict positivity, generated non-dependent recursors, `match` compiled through
+> Parameterized inductive families with strict positivity, generated **dependent** eliminators, `match` compiled through
 > case trees with coverage, and the structural termination rule.
 
 `musa-calculus` · **implemented** · `02-core-calculus.md` §1.1, §6.2
@@ -290,16 +290,23 @@ fold *through* a container is not yet writable; that gap is asserted as a law ra
 arrow rule is untouched at any depth and under any container. Laws in
 `crates/musa-calculus/tests/suite/nesting_laws.rs`.
 
-### There are no indices, and the motive is not dependent
+### The motive is dependent; there are still no indices
 
-A family is completely described by its parameters (`family/mod.rs`), and the generated eliminator's motive is a plain
-`R_j : Type ℓ` — so a `match` checks against the goal it was handed, nothing is abstracted over the subject, and
-`case.rs` has no substitution and no index to refine, which is why it needs neither a solution rule nor a forced-index
-refusal.
+Prompt 155. The generated eliminator's motive is a **family** — `R_j : (t : N_j p⃗) → Type ℓ` — so a method's result is
+`R_j (c p⃗ a⃗)` and an induction hypothesis is `R_j a`, and a `match` arm is checked at the goal *refined by the pattern
+it matched*. `case.rs` builds the motive by abstracting the subject out of the goal, which it does by rebinding the
+subject's binder and re-evaluating (`Env::rebinding`): substitution in the semantic domain, because §1 gives the core
+none on terms. A `match` that refines nothing gets the constant family `λ_. G` and is the term it always was.
 
-Note 50 deleted the general indexed machine and the dependent motive together, and prompt 142d rebuilt a *different*
-mechanism — an erased index sort — in their place. Prompt 143 reversed that: both come back as one mechanism, and it
-belongs to [Inductive families with indices](#inductive-families-with-indices).
+The case tree is a value (`kernel/case_tree.rs`): `Answer`, `Split`, `Impossible`, with §6.2's emission to nested
+eliminator applications, and coverage asked of the finished tree against the declaration group rather than of the loop
+that built the branches. `Impossible` has no producer until indices arrive.
+
+What is still absent is **indices**: a family is completely described by its parameters (`family/mod.rs`), so there is
+nothing for unification to refute and no forced pattern to elaborate. Note 50 deleted the general indexed machine and
+the dependent motive together, and prompt 142d rebuilt a *different* mechanism — an erased index sort — in their place.
+Prompt 143 reversed that; the motive came back at 155 and the indices belong to
+[Inductive families with indices](#inductive-families-with-indices).
 
 Mutual recursion between _definitions_ is deferred.
 
@@ -1235,10 +1242,10 @@ it.
 
 `musa-calculus` · **absent** · `02-core-calculus.md` §1.1
 
-What exists is the non-indexed half: `family/` declares parameterized families and generates eliminators, and
-`family/assemble.rs`'s `motive_type` answers a *type* rather than a family, so a `match` refines nothing. `base.rs`
-already applies a base type to arguments — `Syntax` to a category literal, `EventTrack` to its coordinate — which is the
-shape an index takes, without the refinement.
+What exists is the non-indexed half: `family/` declares parameterized families and generates eliminators, and since
+prompt 155 the motive `family/assemble.rs` builds is a *family* — so a `match` refines by its pattern, and what is
+missing is only the index for a constructor to choose. `base.rs` already applies a base type to arguments — `Syntax` to
+a category literal, `EventTrack` to its coordinate — which is the shape an index takes, without the refinement.
 
 The erased index stratum that stood here is **reversed**. `index.rs` and its decision procedure were built at prompt
 142d against `02-core-calculus.md` §1.5, and prompt 143's amendment retired both: the erasure made §3's conversion rule
@@ -1247,9 +1254,9 @@ file. The row that described it is [`../prompts/142c-index-amendment.md`](../pro
 carries a reversal banner.
 
 **Owes.** Prompt 151 deletes `index.rs`, the `Indexed` shape, and the conversion hook, turning an indexed type into an
-ordinary applied type constructor. Prompt 155 builds case trees; prompt 156 gives constructors their indices and the
-eliminator its dependent motive. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the original amendment
-was granted on.
+ordinary applied type constructor. Prompt 155 reified the case tree and made the motive dependent; prompt 155a makes a
+tree a definition body; prompt 156 gives constructors their indices and the unification that decides which branches are
+reachable. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the original amendment was granted on.
 
 ---
 

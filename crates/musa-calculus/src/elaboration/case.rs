@@ -27,14 +27,22 @@
 //! an assumption. `coverage_laws.rs` holds the program that shows the
 //! difference, and prompt 165 owns the change.
 //!
-//! # The goal does not change as the tree descends
+//! # The goal is refined as the tree descends
 //!
 //! A split emits `N.elim`, and a recursor's methods are typed at a **motive**.
-//! §1.1's motive is a *type* and not a family of them, so the motive here is
-//! the goal itself: every method answers the same `G` the `match` was checked
-//! against, and nothing is abstracted over the subject. That is §1.3's
-//! elimination rule and the reason this file has no substitution — there is
-//! nothing to refine.
+//! §1.1's motive is a *family*: `λ(t : N p⃗). G`, the goal with the subject
+//! abstracted out of it. A method is then checked at that motive **applied to
+//! the constructor form it is the method for**, so an arm that matched `Cons`
+//! is checked at the goal with `Cons h t` where the subject stood — which is
+//! what refinement by matching means, and what the previous non-dependent
+//! eliminator could not do.
+//!
+//! Abstracting the subject is a substitution, and this crate has none on terms
+//! (§1). It is done in the semantic domain instead: the goal is quoted, then
+//! re-evaluated in the environment the subject's binder was *rebound* in
+//! ([`Env::rebinding`](crate::kernel::value::Env)). A goal that does not
+//! mention the subject comes back unchanged, so a non-dependent `match` emits
+//! the constant motive `λ_. G` and behaves exactly as it did.
 //!
 //! # Coverage is decided while the tree is built
 //!
@@ -60,6 +68,7 @@ use crate::elaboration::elab::Elaborator;
 use crate::elaboration::raw::{Raw, RawArm, RawPattern};
 use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::budget::Meter;
+use crate::kernel::case_tree::{Alternative, CaseTree, Split as TreeSplit};
 use crate::kernel::error::CoreError;
 use crate::kernel::eval::{apply, eval, field_type, opened, project};
 use crate::kernel::family::{Constant, Element, element};
@@ -67,7 +76,7 @@ use crate::kernel::origin::Origin;
 use crate::kernel::quote::{quote, quote_type};
 use crate::kernel::scope::Scope;
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Index, Name, Shape, Term};
+use crate::kernel::term::{Index, Level, Name, Shape, Term};
 use crate::kernel::value::{Form, Head, Value};
 
 /// Elaborate `match subjects… { arms… }` against `goal`.
@@ -120,7 +129,7 @@ pub(crate) fn compile(
         arms,
         selected: vec![false; arms.len()],
     };
-    let mut term = tree.solve(
+    let compiled = tree.solve(
         &inner,
         &Problem {
             columns,
@@ -128,9 +137,17 @@ pub(crate) fn compile(
             goal: Arc::new(goal.clone()),
         },
     )?;
+    // Coverage, re-derived from the declaration group rather than read off the
+    // builder's bookkeeping — see [`CaseTree::uncovered`]. Asked before
+    // reachability because a `match` missing a constructor is wrong about the
+    // type it is matching, and an arm nothing selected is wrong about the arms.
+    if let Some(constructor) = compiled.uncovered() {
+        return Err(Refusal::IncompleteMatch { at: here, constructor }.into());
+    }
     if let Some(arm) = tree.unselected() {
         return Err(Refusal::UnreachableBranch { at: arm }.into());
     }
+    let mut term = compiled.emitted()?;
     for (name, ty, value) in bound.into_iter().rev() {
         term = Term::bind(here, name, ty, value, term);
     }
@@ -203,7 +220,7 @@ impl Tree<'_, '_> {
     }
 
     /// Compile a matrix.
-    fn solve(&mut self, scope: &Scope, problem: &Problem<'_>) -> Result<Term, ElabError> {
+    fn solve(&mut self, scope: &Scope, problem: &Problem<'_>) -> Result<CaseTree, ElabError> {
         let Some(first) = problem.rows.first() else {
             // Reached only where a split found no arm for a constructor, which
             // names it; a matrix that starts empty is refused at `compile`.
@@ -458,7 +475,7 @@ impl Tree<'_, '_> {
     }
 
     /// Elaborate a row's body, with the names its patterns bound in scope.
-    fn leaf(&mut self, scope: &Scope, row: &Row<'_>, columns: &[Subject], goal: &Value) -> Result<Term, ElabError> {
+    fn leaf(&mut self, scope: &Scope, row: &Row<'_>, columns: &[Subject], goal: &Value) -> Result<CaseTree, ElabError> {
         let Some(arm) = self.arms.get(row.arm) else {
             return Err(Refusal::IncompleteMatch {
                 at: self.here,
@@ -507,12 +524,17 @@ impl Tree<'_, '_> {
         for (name, ty, value) in bound.into_iter().rev() {
             term = Term::bind(self.here, name, ty, value, term);
         }
-        Ok(term)
+        Ok(CaseTree::Answer(term))
     }
 
-    /// Split on one column: emit the family's recursor, one method per
-    /// constructor of every family in its group.
-    fn split(&mut self, scope: &Scope, problem: &Problem<'_>, column: usize) -> Result<Term, ElabError> {
+    /// Split on one column: a [`CaseTree::Split`] over the family, with one
+    /// alternative per constructor of every family in its group.
+    ///
+    /// Nothing is emitted here. A missing constructor leaves a hole in the
+    /// alternatives, and [`CaseTree::uncovered`] is what finds it — which is
+    /// what "coverage is decided on the tree" (§1.1) buys over deciding it in
+    /// the loop that happens to build the branches.
+    fn split(&mut self, scope: &Scope, problem: &Problem<'_>, column: usize) -> Result<CaseTree, ElabError> {
         let Some(subject) = problem.columns.get(column) else {
             return Err(Refusal::IncompleteMatch {
                 at: self.here,
@@ -541,16 +563,10 @@ impl Tree<'_, '_> {
             .into());
         }
         self.belong(scope, problem, column, &found)?;
-        let split = Split::read(self, scope, subject, &found, &problem.goal, at)?;
-        let motives = self.motives(scope, problem, &split)?;
+        let split = Analysed::read(self, scope, subject, &found, &problem.goal, at)?;
+        let motives = self.motives(scope, problem, &split, subject)?;
 
-        let mut applied = Constant::recursor(&found.group, found.family, split.level.clone()).term(self.here);
-        for param in &split.params {
-            applied = Term::app(self.here, applied, param.clone());
-        }
-        for motive in &motives {
-            applied = Term::app(self.here, applied, motive.term.clone());
-        }
+        let mut alternatives = Vec::new();
         for family in 0..found.group.arity() {
             let count = found
                 .group
@@ -558,11 +574,21 @@ impl Tree<'_, '_> {
                 .map_or(0, |declared| declared.constructors.len());
             for which in 0..count {
                 let which = u32::try_from(which).unwrap_or(u32::MAX);
-                let method = self.method(scope, problem, &split, &motives, column, family, which)?;
-                applied = Term::app(self.here, applied, method);
+                if let Some(alternative) = self.method(scope, problem, &split, &motives, column, family, which)? {
+                    alternatives.push(alternative);
+                }
             }
         }
-        Ok(Term::app(self.here, applied, split.target.clone()))
+        Ok(CaseTree::Split(Box::new(TreeSplit {
+            origin: self.here,
+            group: Arc::clone(&found.group),
+            family: found.family,
+            params: Arc::from(split.params.clone()),
+            motives: motives.iter().map(|motive| motive.term.clone()).collect(),
+            level: split.level.clone(),
+            on: split.target.clone(),
+            alternatives: Arc::from(alternatives),
+        })))
     }
 
     /// The refusal a subject whose type is not a family owes, named after the
@@ -658,38 +684,46 @@ impl Tree<'_, '_> {
         Ok(())
     }
 
-    /// One motive per family of the group.
+    /// One motive per family of the group, each a **family** of types.
     ///
-    /// The family being split gets the goal itself; every other family gets
-    /// `G → G`, which is inhabited at the goal's universe by the identity and
-    /// says nothing.
-    fn motives(&mut self, scope: &Scope, problem: &Problem<'_>, split: &Split) -> Result<Vec<Motive>, ElabError> {
+    /// The family being split gets `λ(t : N p⃗). G` — the goal with the subject
+    /// abstracted out, which is §1.1's dependent motive. Every other family
+    /// gets `λ(_ : M p⃗). G → G`, which is inhabited at the goal's universe by
+    /// the identity and says nothing about a value nobody matched.
+    fn motives(
+        &mut self,
+        scope: &Scope,
+        problem: &Problem<'_>,
+        split: &Analysed,
+        subject: &Subject,
+    ) -> Result<Vec<Motive>, ElabError> {
         let depth = scope.depth();
         let mut built = Vec::new();
         for family in 0..split.element.group.arity() {
             let term = if family == split.element.family {
-                quote_type(
-                    self.elaborator.meter(),
-                    depth,
-                    crate::kernel::quote::Mode::Keep,
-                    &problem.goal,
-                )?
+                self.abstracted(scope, subject, &problem.goal)?
             } else {
                 // `Π (_ : G). G`, not `{}`: universes are not cumulative (§1),
                 // so the empty record inhabits `Type 0` and nothing above it.
+                // One binder deeper than it used to be, because the motive is
+                // now a family and the Π sits under its subject binder.
                 let domain = quote_type(
-                    self.elaborator.meter(),
-                    depth,
-                    crate::kernel::quote::Mode::Keep,
-                    &problem.goal,
-                )?;
-                let codomain = quote_type(
                     self.elaborator.meter(),
                     depth.deeper(),
                     crate::kernel::quote::Mode::Keep,
                     &problem.goal,
                 )?;
-                Term::pi(self.here, "impossible", domain, codomain)
+                let codomain = quote_type(
+                    self.elaborator.meter(),
+                    depth.deeper().deeper(),
+                    crate::kernel::quote::Mode::Keep,
+                    &problem.goal,
+                )?;
+                Term::lam(
+                    self.here,
+                    "unmatched",
+                    Term::pi(self.here, "impossible", domain, codomain),
+                )
             };
             let value = scope.eval(self.elaborator.meter(), &term)?;
             built.push(Motive { term, value });
@@ -697,18 +731,53 @@ impl Tree<'_, '_> {
         Ok(built)
     }
 
-    /// One method: the sub-matrix for a constructor, under its fields and
+    /// The goal as a family: `λ(t : N p⃗). G`, with the subject abstracted out.
+    ///
+    /// Abstraction by re-evaluation, for the reason the module doc gives: the
+    /// goal is quoted at the splitting depth, the subject's binder is rebound to
+    /// a variable one level deeper, and re-evaluating puts that variable
+    /// wherever the subject stood. Quoting the answer one binder deeper reads it
+    /// back as index 0, which is the λ this returns.
+    ///
+    /// **A goal that does not mention the subject is not a special case.** It
+    /// comes back unchanged, the λ ignores its argument, and the motive applied
+    /// to anything is `G` — exactly the non-dependent behaviour, reached by the
+    /// same path rather than by a branch that could disagree with it.
+    fn abstracted(&mut self, scope: &Scope, subject: &Subject, goal: &Value) -> Result<Term, ElabError> {
+        let depth = scope.depth();
+        let meter = self.elaborator.meter();
+        let Some(level) = variable(&subject.value) else {
+            // [`subject`] names every subject that is not already a variable, so
+            // there is nothing here to abstract. Quoting one binder deeper is
+            // the weakening that puts the goal under the λ.
+            let body = quote_type(meter, depth.deeper(), crate::kernel::quote::Mode::Keep, goal)?;
+            return Ok(Term::lam(self.here, "t", body));
+        };
+        let quoted = quote_type(meter, depth, crate::kernel::quote::Mode::Keep, goal)?;
+        let standing = Value::var(self.here, depth, Arc::clone(&subject.ty));
+        let env = scope.env().rebinding(Level(level), standing);
+        let opened = eval(meter, &env, &quoted)?;
+        let body = quote_type(meter, depth.deeper(), crate::kernel::quote::Mode::Keep, &opened)?;
+        Ok(Term::lam(self.here, "t", body))
+    }
+
+    /// One alternative: the sub-matrix for a constructor, under its fields and
     /// induction hypotheses.
+    ///
+    /// `None` where no row survives the split, which is a constructor the
+    /// `match` did not cover. Reported by [`CaseTree::uncovered`] rather than
+    /// here, so that the verdict comes from the declaration group and not from
+    /// this loop's own place in it.
     fn method(
         &mut self,
         scope: &Scope,
         problem: &Problem<'_>,
-        split: &Split,
+        split: &Analysed,
         motives: &[Motive],
         column: usize,
         family: u32,
         which: u32,
-    ) -> Result<Term, ElabError> {
+    ) -> Result<Option<Alternative>, ElabError> {
         let group = Arc::clone(&split.element.group);
         let Some(rule) = group
             .family_at(family)
@@ -781,14 +850,10 @@ impl Tree<'_, '_> {
         let built = self.built(scope, &group, family, which, &split.element.params, &fields)?;
 
         let body = if family == split.element.family {
-            let goal = self.method_goal(motives, family)?;
+            let goal = self.method_goal(motives, family, &built)?;
             let rows = Self::narrowed(problem, column, family, which, &group, &fields, &hypotheses, &built)?;
             if rows.is_empty() {
-                return Err(Refusal::IncompleteMatch {
-                    at: self.here,
-                    constructor: Constant::constructor(&group, family, which).name(),
-                }
-                .into());
+                return Ok(None);
             }
             let mut columns = Vec::with_capacity(problem.columns.len().saturating_add(fields.len()));
             for (position, subject) in problem.columns.iter().enumerate() {
@@ -817,26 +882,36 @@ impl Tree<'_, '_> {
                 },
             )?
         } else {
-            // A sibling family's motive is `G → G`, so its method is the
+            // A sibling family's motive is `λ_. G → G`, so its method is the
             // identity and says nothing about a value nobody matched.
-            Term::lam(self.here, "impossible", Term::var(self.here, Index(0)))
+            CaseTree::Answer(Term::lam(self.here, "impossible", Term::var(self.here, Index(0))))
         };
 
-        let mut term = body;
-        for (position, _) in rule.recursive.iter().rev() {
-            let name = rule
-                .fields
-                .get(usize::try_from(*position).unwrap_or(usize::MAX))
-                .map_or_else(|| Arc::from("hypothesis"), |binder| hypothesis_name(&binder.name));
-            term = Term::lam(self.here, name, term);
+        // Fields first, then one hypothesis per recursive field: the order
+        // [`crate::kernel::family`] assembles the method type in, and the order
+        // [`Alternative`] wraps them back into λs in.
+        let mut binders: Vec<Name> = rule.fields.iter().map(|binder| Arc::clone(&binder.name)).collect();
+        for (position, _) in rule.recursive.iter() {
+            binders.push(
+                rule.fields
+                    .get(usize::try_from(*position).unwrap_or(usize::MAX))
+                    .map_or_else(|| Arc::from("hypothesis"), |binder| hypothesis_name(&binder.name)),
+            );
         }
-        for binder in rule.fields.iter().rev() {
-            term = Term::lam(self.here, Arc::clone(&binder.name), term);
-        }
-        Ok(term)
+        Ok(Some(Alternative {
+            constructor: Constant::constructor(&group, family, which).name(),
+            binders: Arc::from(binders),
+            body,
+        }))
     }
 
-    /// The type of the induction hypothesis for a recursive field.
+    /// The type of the induction hypothesis for a recursive field: the field's
+    /// own motive **applied to the field**.
+    ///
+    /// Dependent, and that is what makes a recursive arm able to say something
+    /// about the value it recursed on rather than merely produce an inhabitant
+    /// of a fixed answer type. [`crate::kernel::family`] assembles the method
+    /// type the same way, so the two agree by construction.
     fn hypothesis(&mut self, motives: &[Motive], field: &Subject) -> Result<Arc<Value>, ElabError> {
         let Some(found) = element(self.elaborator.meter(), &field.ty)? else {
             return Err(Refusal::IncompleteMatch {
@@ -852,7 +927,13 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        Ok(Arc::new(motive.value.clone()))
+        let applied = apply(
+            self.elaborator.meter(),
+            self.here,
+            motive.value.clone(),
+            field.value.clone(),
+        )?;
+        Ok(Arc::new(applied))
     }
 
     /// The subject a method is the method *for*: `c p⃗ a⃗`, at the parameters
@@ -896,12 +977,18 @@ impl Tree<'_, '_> {
         })
     }
 
-    /// The goal a constructor's method answers: the family's answer type.
+    /// The goal a constructor's method answers: the motive **applied to the
+    /// constructor form this method is the method for**.
     ///
-    /// Read off the motive rather than off `problem.goal`, which is the same
-    /// value: this is exactly the type [`crate::kernel::family`] assembled the method
-    /// at, and two computations of it could disagree where one cannot.
-    fn method_goal(&self, motives: &[Motive], family: u32) -> Result<Value, ElabError> {
+    /// This is the sentence §1.1 states and the whole of what this prompt
+    /// changed: an arm that matched `Cons h t` is checked at the goal with
+    /// `Cons h t` where the subject stood, so a `Vec`, an `Equal`, or any other
+    /// refinement by matching has somewhere to land.
+    ///
+    /// Read off the motive rather than off `problem.goal`: this is exactly the
+    /// type [`crate::kernel::family`] assembled the method at, and two
+    /// computations of it could disagree where one cannot.
+    fn method_goal(&mut self, motives: &[Motive], family: u32, built: &Built) -> Result<Value, ElabError> {
         let Some(motive) = motives.get(usize::try_from(family).unwrap_or(usize::MAX)) else {
             return Err(Refusal::IncompleteMatch {
                 at: self.here,
@@ -909,7 +996,8 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        Ok(motive.value.clone())
+        let motive = motive.value.clone();
+        Ok(apply(self.elaborator.meter(), self.here, motive, built.value.clone())?)
     }
 
     /// The rows that survive a split, with the split column replaced by the
@@ -1069,7 +1157,7 @@ fn motive_level(meter: &mut Meter, scope: &Scope, goal: &Value) -> Result<Sort, 
 }
 
 /// What reading a subject's type told the splitter.
-struct Split {
+struct Analysed {
     element: Element,
     /// The parameters, as terms at the splitting depth.
     params: Vec<Term>,
@@ -1079,7 +1167,7 @@ struct Split {
     level: Sort,
 }
 
-impl Split {
+impl Analysed {
     fn read(
         tree: &mut Tree<'_, '_>,
         scope: &Scope,
@@ -1134,18 +1222,18 @@ impl Split {
 ///
 /// Peyton Jones ch. 5 states the match algorithm over variables ("the `u_i` are
 /// variables") and §5.2.4 introduces exactly this `let` for the general case.
-/// Here the reason is sharper than presentation. [`Split::read`] hands the
-/// recursor its target as a *term*, and the only way to turn a value back into
+/// Here the reason is sharper than presentation. [`Analysed::read`] hands the
+/// split its target as a *term*, and the only way to turn a value back into
 /// a term is [`quote`], which writes a **normal form**: a subject that is a call
 /// would put that call's whole unfolding into the emitted tree, and the
 /// unfolding of a call into `stdlib/` is the transitive closure of everything it
 /// reaches. Naming it first is what keeps the tree the size of the program.
 ///
-/// The binder is an *assumption* and not a definition, and nothing is lost by
-/// that: [`Tree::motives`] specializes a subject by its de Bruijn level through
-/// [`rebound`], so a subject that was not a variable never had a dependent
-/// motive to lose. The `let` [`compile`] writes around the tree is δ, so the
-/// value is back before anything evaluates.
+/// **And it is what makes the motive dependent at all.** [`Tree::abstracted`]
+/// abstracts the subject out of the goal by rebinding *its binder*, so a subject
+/// that is not a variable has no binder to rebind and no refinement to gain. The
+/// `let` [`compile`] writes around the tree is δ, so the value is back before
+/// anything evaluates — the naming costs the program nothing and buys it §1.1.
 fn subject(
     elaborator: &mut Elaborator,
     scope: &Scope,

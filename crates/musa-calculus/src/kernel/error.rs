@@ -152,6 +152,15 @@ pub enum Malformed {
     /// these standing there means the term was assembled wrong.
     #[error("a lambda or a record literal has no type of its own to derive")]
     Uninferable,
+    /// An alternative index unification refuted was asked for a term.
+    ///
+    /// `docs/rules/language/02-core-calculus.md` §6.2 decides coverage on the
+    /// case tree, so an impossible branch is *not written* rather than filled
+    /// with an error value — there is no run time for one to be raised at. A
+    /// node that reaches emission is therefore a compiler defect: something
+    /// built a branch it had proved unreachable and then asked what it computes.
+    #[error("an alternative unification ruled out was asked for a term")]
+    UnreachableAlternative,
     /// A metavariable was solved twice. Solutions are write-once (§2.1), so the
     /// second attempt is a conversion checker defect rather than a program's fault.
     #[error("metavariable ?{0} was solved twice")]

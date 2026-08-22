@@ -59,9 +59,9 @@ whose body is a tree: one `Split` on the target, one `Answer` per constructor ap
 fields and to the eliminator at each recursive field. The tower-avoiding numeral decrement stays, because a `Nat` split
 still must not unfold a tower to decide which alternative it takes.
 
-**Termination becomes real work, and it belongs here.** A definition whose body is a tree may name itself, so the
-`#ih` rewrite is retired and a check over the finished tree takes its place: an argument is **smaller** when it is a
-field of the pattern the split bound, and a recursive call is admitted when some argument is smaller and none is larger.
+**Termination becomes real work, and it belongs here.** A definition whose body is a tree may name itself, so the `#ih`
+rewrite is retired and a check over the finished tree takes its place: an argument is **smaller** when it is a field of
+the pattern the split bound, and a recursive call is admitted when some argument is smaller and none is larger.
 **Structural descent is sufficient and is much smaller than size-change termination**; do not build the latter. What it
 costs is that a function whose recursion is not structural is refused, which is the same set `rec.rs` refuses today —
 and `rec.rs`'s own module doc enumerates that set, so it is the negative-control corpus this prompt inherits rather than
