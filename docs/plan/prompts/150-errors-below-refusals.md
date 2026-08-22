@@ -108,8 +108,13 @@ And the check that makes the Task's claim true rather than asserted:
 
 ```sh
 ! grep -rn 'Refusal\|ElabError' crates/musa-calculus/src/kernel --include='*.rs' \
-    | grep -v '///' | grep -v '//!'
+    | grep -v ':[0-9]*: *//'
 ```
+
+The second filter drops every comment line and not only the two doc spellings, which is what
+`tests/suite/boundary_laws.rs` means by "code lines only": the kernel explains who reads its outcomes in ordinary `//`
+comments as well as in `///` ones, and a link creates no dependency either way. A trailing comment on a real code line
+still fails, because the `//` is not where this pattern looks.
 
 ## Stop
 
