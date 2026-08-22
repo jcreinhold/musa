@@ -24,6 +24,7 @@ pub(crate) mod room;
 pub(crate) mod scope;
 pub(crate) mod sort;
 pub(crate) mod term;
+pub(crate) mod terminate;
 pub(crate) mod unify;
 pub(crate) mod value;
 pub(crate) mod visibility;

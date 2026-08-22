@@ -180,13 +180,18 @@ pub(crate) fn refused_definitions() -> Vec<RefusedDefinition> {
             nat_to_nat(),
         ),
         refused(
-            "a call whose arguments both changed",
-            // §2.4 admits a lexicographic measure and this checker supplies
-            // none, so a call that varies two arguments at once is named rather
-            // than guessed at.
+            "a call descending in a column that is not its own",
+            // `λa. λb. match a, b { Zero, y => Zero; x, Zero => Zero; Succ x,
+            // Succ y => stall y b }`. Every argument of that call is a name the
+            // tree bound, and `y` is genuinely smaller than `b` — but it is
+            // handed to the *first* position, whose own binder it did not come
+            // from, and the second position is handed `b` unchanged. `stall 1 2`
+            // therefore reduces to `stall 1 2`: a measure that accepted "some
+            // argument got smaller somewhere" would admit a loop, which is why
+            // the position is fixed across the whole definition.
             Raw::rec(
                 WRITTEN,
-                "both",
+                "stall",
                 arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
                 Raw::lam(
                     WRITTEN,
@@ -201,39 +206,7 @@ pub(crate) fn refused_definitions() -> Vec<RefusedDefinition> {
                                 arm(vec![bind("x"), con("Nat.Zero", [])], var("Nat.Zero")),
                                 arm(
                                     vec![con("Nat.Succ", [bind("x")]), con("Nat.Succ", [bind("y")])],
-                                    apply(var("both"), [var("x"), var("y")]),
-                                ),
-                            ],
-                        ),
-                    ),
-                ),
-            ),
-            arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
-        ),
-        refused(
-            "a call that changes an argument before the recursive one",
-            // `λa. λb. match b { Zero => a; Succ k => skew (Succ a) k }`. The
-            // hypothesis is the answer at the goal this match was split at, and
-            // everything abstracted before the subject is part of that goal — so
-            // there is no hypothesis standing at a different `a`, and asking for
-            // one is named rather than silently answered with the `a` there is.
-            Raw::rec(
-                WRITTEN,
-                "skew",
-                arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
-                Raw::lam(
-                    WRITTEN,
-                    "a",
-                    Raw::lam(
-                        WRITTEN,
-                        "b",
-                        matching(
-                            [var("b")],
-                            vec![
-                                arm(vec![con("Nat.Zero", [])], var("a")),
-                                arm(
-                                    vec![con("Nat.Succ", [bind("k")])],
-                                    apply(var("skew"), [apply(var("Nat.Succ"), [var("a")]), var("k")]),
+                                    apply(var("stall"), [var("y"), var("b")]),
                                 ),
                             ],
                         ),
@@ -372,6 +345,116 @@ fn a_recursion_that_accumulates_carries_the_argument_it_changed() {
         assert!(
             musa_calculus::convertible(&cx, &nat, &summed, &expected).unwrap_or_else(|error| panic!("{name}: {error}")),
             "{count} counted into {seed}"
+        );
+    }
+}
+
+/// A match on two subjects descends when *one* column descends, which is the
+/// case the `#ih` rewrite could not see.
+///
+/// `λa. λb. match a, b { Zero, y => Zero; x, Zero => Zero; Succ x, Succ y =>
+/// both x y }` reads to an author as one recursion on two arguments at once. The
+/// rewrite this prompt retired asked each recursive call to name a hypothesis
+/// standing at a single split subject, so a call that varied both columns had
+/// none to name and was refused; a compiled tree is walked instead, and the walk
+/// sees that position 0 is handed a field of the split on `a` at every call. The
+/// law is stated as a computation because a definition admitted and stuck would
+/// be worse than one refused.
+#[test]
+fn a_match_on_two_subjects_descends_in_one_of_its_columns() {
+    let cx = nat_vec_context();
+    let written = arrow(var("Nat"), arrow(var("Nat"), var("Nat")));
+    let both = Raw::rec(
+        WRITTEN,
+        "both",
+        written.clone(),
+        Raw::lam(
+            WRITTEN,
+            "a",
+            Raw::lam(
+                WRITTEN,
+                "b",
+                matching(
+                    [var("a"), var("b")],
+                    vec![
+                        arm(vec![con("Nat.Zero", []), bind("y")], var("Nat.Zero")),
+                        arm(vec![bind("x"), con("Nat.Zero", [])], var("Nat.Zero")),
+                        arm(
+                            vec![con("Nat.Succ", [bind("x")]), con("Nat.Succ", [bind("y")])],
+                            apply(var("both"), [var("x"), var("y")]),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    );
+    let ty = core(&cx, "Nat → Nat → Nat", &written);
+    musa_calculus::check(&cx, &ty, &both).expect("a two-column recursion is admitted");
+
+    let nat = core_constant(&cx, "Nat");
+    let zero = musa_calculus::check(&cx, &nat, &number(0)).expect("Zero");
+    for (left, right) in [(0, 0), (0, 2), (3, 0), (2, 3), (4, 4)] {
+        let name = "the shorter of two counts, run out";
+        let ran = musa_calculus::check(&cx, &nat, &applied(&both, &written, [number(left), number(right)]))
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert!(
+            musa_calculus::convertible(&cx, &nat, &ran, &zero).unwrap_or_else(|error| panic!("{name}: {error}")),
+            "{left} against {right}"
+        );
+    }
+}
+
+/// A recursive call may change an argument the definition is not descending on,
+/// which is the second case the `#ih` rewrite could not see.
+///
+/// `λa. λb. match b { Zero => a; Succ k => skew (Succ a) k }` is addition
+/// written to accumulate into the argument written *before* the one it recurses
+/// on. The retired rewrite handed each arm an induction hypothesis standing at
+/// this branch's `a`, so a call at a different `a` had nothing to name; a tree
+/// body's arm is an ordinary term and the call is an ordinary call, so only the
+/// descending position is constrained and the accumulator is the author's
+/// business. Stated as a sum, because a wrong hypothesis here returns `a`
+/// unchanged rather than failing.
+#[test]
+fn a_recursion_may_change_the_arguments_it_does_not_descend_on() {
+    let cx = nat_vec_context();
+    let written = arrow(var("Nat"), arrow(var("Nat"), var("Nat")));
+    let skew = Raw::rec(
+        WRITTEN,
+        "skew",
+        written.clone(),
+        Raw::lam(
+            WRITTEN,
+            "a",
+            Raw::lam(
+                WRITTEN,
+                "b",
+                matching(
+                    [var("b")],
+                    vec![
+                        arm(vec![con("Nat.Zero", [])], var("a")),
+                        arm(
+                            vec![con("Nat.Succ", [bind("k")])],
+                            apply(var("skew"), [apply(var("Nat.Succ"), [var("a")]), var("k")]),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    );
+    let ty = core(&cx, "Nat → Nat → Nat", &written);
+    musa_calculus::check(&cx, &ty, &skew).expect("an accumulator before the recursive argument is admitted");
+
+    let nat = core_constant(&cx, "Nat");
+    for (seed, count) in [(0, 0), (0, 3), (3, 0), (2, 4)] {
+        let name = "counting up out of a seed";
+        let summed = musa_calculus::check(&cx, &nat, &applied(&skew, &written, [number(seed), number(count)]))
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let expected =
+            musa_calculus::check(&cx, &nat, &number(seed + count)).unwrap_or_else(|error| panic!("{name}: {error}"));
+        assert!(
+            musa_calculus::convertible(&cx, &nat, &summed, &expected).unwrap_or_else(|error| panic!("{name}: {error}")),
+            "{seed} counted up by {count}"
         );
     }
 }

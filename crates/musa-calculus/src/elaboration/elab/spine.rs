@@ -199,7 +199,7 @@ impl Elaborator {
                 Definition::Declared(constant) => Some(constant.group.params()),
                 Definition::Undeclared
                 | Definition::Defined(_)
-                | Definition::Compiled(_, _)
+                | Definition::Compiled(_)
                 | Definition::Base(_)
                 | Definition::Builtin(_) => None,
             },

@@ -233,7 +233,7 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
                 // instantiated a declaration's parameters inconsistently
                 // derives a type the term around it does not accept, and the
                 // audit sees a [`Malformed::Mistyped`] rather than nothing.
-                Definition::Defined(def) | Definition::Compiled(def, _) => {
+                Definition::Defined(def) | Definition::Compiled(def) => {
                     def.instance(meter, globals, levels).map(|(ty, _)| Value::clone(&ty))
                 }
                 Definition::Base(base) => eval(meter, &crate::kernel::value::Env::under(globals.clone()), base.kind()),

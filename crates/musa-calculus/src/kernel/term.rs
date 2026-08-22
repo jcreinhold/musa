@@ -107,13 +107,16 @@ pub(crate) enum Definition {
     ///
     /// It reduces by matching rather than by unfolding: given the arguments its
     /// binders abstract, the tree forces the scrutinee and takes the
-    /// alternative that constructor names. `None` while the definition is being
-    /// elaborated, which is how a recursive body names itself — see
+    /// alternative that constructor names. A definition still being elaborated
+    /// answers here too, with nothing behind it yet — see
     /// [`Body::Pending`](crate::kernel::program::Body).
-    Compiled(
-        crate::kernel::program::Def,
-        Option<std::sync::Arc<crate::kernel::case_tree::Compiled>>,
-    ),
+    ///
+    /// The tree itself is not repeated in this arm. What a use reduces by is
+    /// the definition's [`Body`](crate::kernel::program::Body), read through
+    /// [`Def::instance`](crate::kernel::program::Def) so that level parameters
+    /// are instantiated on the way out; a copy here would be the same fact
+    /// twice, free to disagree, and free to be the *uninstantiated* one.
+    Compiled(crate::kernel::program::Def),
     /// A declared family, one of its constructors, or its recursor.
     Declared(crate::kernel::family::Constant),
     /// A base type the host registered (§5.8).

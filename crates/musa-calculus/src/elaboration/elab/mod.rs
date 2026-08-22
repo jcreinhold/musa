@@ -182,6 +182,33 @@ pub(crate) struct Elaborator {
     /// definition with no enclosing name would be an anonymous member of a
     /// program somebody has to read.
     declaring: Option<crate::kernel::term::Name>,
+    /// The `rec`s whose bodies are being elaborated, outermost first.
+    ///
+    /// What replaces the `#ih` binder prompt 155a retired: a recursive call is
+    /// a use of the definition the `rec` was lifted to
+    /// ([`crate::elaboration::rec::lift`]), and the definition is already in
+    /// the globals table at [`Body::Pending`](crate::kernel::program::Body)
+    /// when the body is read. This says which global a written name stands
+    /// for, and what it must be applied to — a lifted definition abstracts the
+    /// whole context, so a call inside its own body has to hand those binders
+    /// back.
+    ///
+    /// A stack, because a `rec` may be written inside a `rec`, and searched
+    /// innermost first for the same reason a scope is.
+    recursions: Vec<Recursion>,
+}
+
+/// One `rec` whose body is being elaborated: the name the author writes for it,
+/// the definition it became, and what a use of it re-applies.
+pub(crate) struct Recursion {
+    /// The name the `rec` bound.
+    written: crate::kernel::term::Name,
+    /// The lifted definition it stands for.
+    global: crate::kernel::term::Name,
+    /// The context the lift abstracted, outermost first — the values, not fresh
+    /// variables, for [`Scope::telescope`](crate::kernel::scope::Scope::telescope)'s
+    /// reason.
+    context: Vec<Value>,
 }
 
 impl Elaborator {
@@ -196,7 +223,57 @@ impl Elaborator {
             generalized_levels: Vec::new(),
             next_level: 0,
             declaring: None,
+            recursions: Vec::new(),
         }
+    }
+
+    /// Read `written` as a use of the lifted definition `global` while the
+    /// `rec`'s body is elaborated.
+    ///
+    /// Paired with [`Self::recursed`], which takes it back out again. See
+    /// [`Recursion`].
+    pub(crate) fn recursing(
+        &mut self,
+        written: &crate::kernel::term::Name,
+        global: &crate::kernel::term::Name,
+        context: Vec<Value>,
+    ) {
+        self.recursions.push(Recursion {
+            written: std::sync::Arc::clone(written),
+            global: std::sync::Arc::clone(global),
+            context,
+        });
+    }
+
+    /// The `rec` body just elaborated is finished.
+    pub(crate) fn recursed(&mut self) {
+        self.recursions.pop();
+    }
+
+    /// The innermost `rec` this name is the recursion of, if it is one.
+    pub(super) fn recursion(&self, name: &str) -> Option<&Recursion> {
+        self.recursions.iter().rev().find(|held| *held.written == *name)
+    }
+
+    /// Make `expected` and `found` the same type, as a checking rule does.
+    ///
+    /// Handed out for [`crate::elaboration::rec`], which elaborates a `rec`'s
+    /// written type itself — the goal has to be met by conversion, and the
+    /// annotation rule that would normally do it cannot, because a tree body is
+    /// peeled from the raw λs rather than checked through [`Self::check`].
+    ///
+    /// # Errors
+    ///
+    /// As conversion: the two types do not agree.
+    pub(crate) fn same_types(
+        &mut self,
+        scope: &Scope,
+        at: Origin,
+        expected: &Value,
+        found: &Value,
+    ) -> Result<(), ElabError> {
+        self.conversion
+            .unify_types(&mut self.meter, scope.depth(), at, expected, found)
     }
 
     /// Record which definition is being elaborated, for

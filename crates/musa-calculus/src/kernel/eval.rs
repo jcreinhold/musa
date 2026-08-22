@@ -210,11 +210,11 @@ fn named(
     let globals = env.globals();
     match globals.definition(name, role, levels) {
         Definition::Declared(constant) => Ok(constant.value(here, globals)),
-        Definition::Defined(def) | Definition::Compiled(def, _) => {
+        Definition::Defined(def) | Definition::Compiled(def) => {
             let (ty, body) = def.instance(meter, globals, levels)?;
             let folding = match body {
-                crate::kernel::program::Body::Value(value) => Folding::Value(value),
-                crate::kernel::program::Body::Compiled(compiled) => Folding::Compiled(compiled, globals.clone()),
+                crate::kernel::program::Body::Value { value, .. } => Folding::Value(value),
+                crate::kernel::program::Body::Compiled { tree, .. } => Folding::Compiled(tree, globals.clone()),
                 crate::kernel::program::Body::Pending => Folding::Pending,
             };
             Ok(Value::neutral(Neutral::head(
@@ -378,7 +378,7 @@ pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Valu
 ///
 /// As [`Compiled::reduce`](crate::kernel::case_tree::Compiled::reduce).
 fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Def(_, _, Folding::Compiled(compiled, globals)) = &neutral.head else {
+    let Head::Def(DefHead::Global(def, _), _, Folding::Compiled(compiled, globals)) = &neutral.head else {
         return Ok(None);
     };
     let mut arguments = Vec::with_capacity(neutral.spine.len());
@@ -388,7 +388,7 @@ fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreEr
         };
         arguments.push(Value::clone(argument));
     }
-    compiled.reduce(meter, globals, neutral.outer_origin(), &arguments)
+    compiled.reduce(meter, globals, neutral.outer_origin(), def.name(), &arguments)
 }
 
 /// [`unfold`] with the head question already answered: the caller matched the

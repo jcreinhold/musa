@@ -37,6 +37,20 @@ impl Elaborator {
         self.zonking(term, Level::ZERO)
     }
 
+    /// The same, for a term that does *not* carry the binders it stands under.
+    ///
+    /// A tree body is binders beside a tree
+    /// ([`Compiled`](crate::kernel::case_tree::Compiled)), so an `Answer` deep
+    /// in one is a term whose enclosing λs are somewhere else entirely — the
+    /// definition's own arguments, and the fields each alternative bound. Depth
+    /// is what a solution is quoted at, so zonking such a term as if it stood at
+    /// depth zero writes every solved unknown in as an index counted from the
+    /// wrong end. The caller that walks the tree knows the depth; this is how it
+    /// says so.
+    pub(crate) fn zonk_at(&mut self, term: &Term, depth: Level) -> Result<Term, ElabError> {
+        self.zonking(term, depth)
+    }
+
     /// The walk [`Self::zonk`] is the depth-0 case of.
     fn zonking(&mut self, term: &Term, depth: Level) -> Result<Term, ElabError> {
         let here = term.origin();

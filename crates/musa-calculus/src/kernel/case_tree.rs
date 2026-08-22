@@ -70,7 +70,7 @@ use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::family::{Constant, Group, constructed};
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::{Sort, SortVar};
-use crate::kernel::term::{Name, Term};
+use crate::kernel::term::{Binder, Name, Role, Shape, Term};
 use crate::kernel::value::{Elim, Env, Form, Value};
 
 /// A `match`, compiled.
@@ -82,11 +82,10 @@ pub(crate) enum CaseTree {
     /// most nodes are leaves.
     Split(Box<Split>),
     /// Index unification refuted this branch, so it has no body and needs none.
-    #[expect(
-        dead_code,
-        reason = "no producer until prompt 156: with no indices there is nothing for \
-                  unification to refute. The lint retires itself when 156 builds one."
-    )]
+    ///
+    /// **No producer until prompt 156**: with no indices there is nothing for
+    /// unification to refute. Every walk over a tree answers for it anyway,
+    /// because the arm that cannot happen is the one a reader checks last.
     Impossible,
 }
 
@@ -269,14 +268,29 @@ impl Compiled {
         self.binders.len()
     }
 
-    /// δ: reduce this body applied to `arguments`, or `None` when it stays
-    /// blocked.
+    /// δ: reduce this body, named `name`, applied to `arguments`, or `None`
+    /// when it stays blocked.
     ///
     /// Blocked for either of two reasons, and neither is an error: too few
     /// arguments have arrived, or the scrutinee of a split is not canonical. A
     /// definition applied to a variable is exactly as stuck as an eliminator
     /// applied to one, which is the property that keeps a body a *definition*
     /// rather than a runtime `switch`.
+    ///
+    /// **A tail call is a jump, and that is a measurement rather than a
+    /// flourish.** §4.1's nesting metric bounds what the machine spends stack
+    /// on, and a level is charged per evaluation. The generated eliminator this
+    /// replaces spent *no* levels on recursion depth: ι computes a method's
+    /// induction hypothesis before it enters the method, so the whole chain runs
+    /// through `apply`, which nests nothing. A tree whose arm evaluated its own
+    /// recursive call would spend one level per step, and
+    /// `crates/musa-compiler`'s staff package — a fold `walk rest (step built
+    /// first)`, which is the shape every forward fold in the language has —
+    /// needed 272 of the 256 levels §4.1 fixes. Recognizing the saturated
+    /// self-call at an arm's answer and looping instead of recursing spends no
+    /// stack, so nothing is charged and the same programs compile as before.
+    /// A recursion that is *not* in tail position still costs a level a step,
+    /// which is exactly what its evaluation costs the machine.
     ///
     /// # Errors
     ///
@@ -287,17 +301,23 @@ impl Compiled {
         meter: &mut Meter,
         globals: &Globals,
         here: Origin,
+        name: &Name,
         arguments: &[Value],
     ) -> Result<Option<Value>, CoreError> {
         let arity = self.arity();
         let Some(taken) = arguments.get(..arity) else {
             return Ok(None);
         };
-        let env = taken
-            .iter()
-            .fold(Env::under(globals.clone()), |env, argument| env.push(argument.clone()));
-        let Some(mut answer) = descend(meter, &env, &self.tree)? else {
-            return Ok(None);
+        let mut taken: Vec<Value> = taken.to_vec();
+        let mut answer = loop {
+            let env = taken
+                .iter()
+                .fold(Env::under(globals.clone()), |env, argument| env.push(argument.clone()));
+            match descend(meter, &env, &self.tree, name, arity)? {
+                None => return Ok(None),
+                Some(Descended::Answered(answer)) => break answer,
+                Some(Descended::Again(again)) => taken = again,
+            }
         };
         // A definition may be applied to more than it abstracts — `f x y` where
         // `f` splits on `x` and answers a function. The tree decided at `x`; the
@@ -323,13 +343,43 @@ impl Compiled {
     }
 }
 
+/// What walking the tree reached: an answer, or the next turn of a tail call.
+enum Descended {
+    /// The value the body answers with.
+    Answered(Value),
+    /// A saturated call to the same definition, and the arguments it passes.
+    /// See [`Compiled::reduce`] for why this is not simply evaluated.
+    Again(Vec<Value>),
+}
+
 /// Walk the tree in `env`, or `None` when a split is blocked.
-fn descend(meter: &mut Meter, env: &Env, tree: &CaseTree) -> Result<Option<Value>, CoreError> {
+fn descend(
+    meter: &mut Meter,
+    env: &Env,
+    tree: &CaseTree,
+    name: &Name,
+    arity: usize,
+) -> Result<Option<Descended>, CoreError> {
     match tree {
-        CaseTree::Answer(term) => Ok(Some(crate::kernel::eval::eval(meter, env, term)?)),
+        CaseTree::Answer(term) => answered(meter, env, term, name, arity).map(Some),
         CaseTree::Impossible => Err(Malformed::UnreachableAlternative.into()),
         CaseTree::Split(split) => {
-            let on = crate::kernel::eval::eval(meter, env, &split.on)?;
+            // A split's subject is a variable by construction: `case.rs` names
+            // anything else with a `let`, and a tree body refuses one that did.
+            // Read out of the environment rather than evaluated, because §4.1's
+            // nesting metric charges a level per `eval` and a chain of columns
+            // would otherwise pay one per column for a lookup that nests
+            // nothing. The generated eliminator paid nothing here either — it
+            // reached its subject through `apply`, which is not a nesting level
+            // — so this keeps the two reducers charging the same depth for the
+            // same program.
+            let on = if let Shape::Var(index) = split.on.shape() {
+                env.get(index.0)
+                    .cloned()
+                    .ok_or_else(|| CoreError::from(Malformed::UnboundVariable(*index)))?
+            } else {
+                crate::kernel::eval::eval(meter, env, &split.on)?
+            };
             let on = crate::kernel::eval::opened(meter, &on)?.unwrap_or(on);
             let Some((constructor, fields)) = analysed(&on) else {
                 return Ok(None);
@@ -351,9 +401,85 @@ fn descend(meter: &mut Meter, env: &Env, tree: &CaseTree) -> Result<Option<Value
             for _ in alternative.hypotheses.iter() {
                 inner = inner.push(Value::new(on.origin, Form::Universe(Sort::ZERO)));
             }
-            descend(meter, &inner, &alternative.body)
+            descend(meter, &inner, &alternative.body, name, arity)
         }
     }
+}
+
+/// An arm's answer: the value it evaluates to, or the tail call it *is*.
+///
+/// The `let`s are the ones `elaboration::case` wrapped the arm's pattern
+/// bindings in. They are peeled without being evaluated first, because peeling
+/// only decides whether the answer is a self-call; when it is not, the term is
+/// evaluated whole, exactly as it would have been.
+fn answered(meter: &mut Meter, env: &Env, term: &Term, name: &Name, arity: usize) -> Result<Descended, CoreError> {
+    let mut bindings = 0_usize;
+    let mut at = term;
+    while let Shape::Bind {
+        binder: Binder::Let { .. },
+        body,
+        ..
+    } = at.shape()
+    {
+        bindings = bindings.saturating_add(1);
+        at = body;
+    }
+    let (head, spine) = called(at);
+    let jumps = matches!(
+        head.shape(),
+        Shape::Named {
+            name: called,
+            role: Role::Defined,
+            ..
+        } if called == name
+    ) && spine.len() == arity;
+    if !jumps {
+        return Ok(Descended::Answered(crate::kernel::eval::eval(meter, env, term)?));
+    }
+    // The jump saves *stack*, and nothing else. Evaluating the answer whole
+    // would have charged §4's step metric for every node this path walks past
+    // instead of into — each `let`, each application in the spine, the head, and
+    // one [`crate::kernel::eval::apply`] per argument — so those steps are
+    // charged here, in the order that walk would have charged them. A reduction
+    // that got cheaper by being written differently would be a budget that
+    // decides acceptance by implementation detail, which is what §4 forbids.
+    let mut inner = env.clone();
+    let mut at = term;
+    for _ in 0..bindings {
+        let Shape::Bind {
+            binder: Binder::Let { value, .. },
+            body,
+            ..
+        } = at.shape()
+        else {
+            break;
+        };
+        meter.step("evaluation")?;
+        let value = crate::kernel::eval::eval(meter, &inner, value)?;
+        inner = inner.push(value);
+        at = body;
+    }
+    for _ in 0..spine.len().saturating_add(1) {
+        meter.step("evaluation")?;
+    }
+    let mut again = Vec::with_capacity(spine.len());
+    for argument in spine {
+        again.push(crate::kernel::eval::eval(meter, &inner, argument)?);
+        meter.step("function application")?;
+    }
+    Ok(Descended::Again(again))
+}
+
+/// A term's application spine: the head, and its arguments outermost first.
+fn called(term: &Term) -> (&Term, Vec<&Term>) {
+    let mut arguments = Vec::new();
+    let mut at = term;
+    while let Shape::App { function, argument } = at.shape() {
+        arguments.push(argument);
+        at = function;
+    }
+    arguments.reverse();
+    (at, arguments)
 }
 
 /// The constructor a canonical value was built by, and what it was applied to.
@@ -389,11 +515,8 @@ fn analysed(value: &Value) -> Option<(Name, Vec<Value>)> {
             }
             Some((name, fields))
         }
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Lit(_) => None,
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) | Form::Lit(_) => {
+            None
+        }
     }
 }

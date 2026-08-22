@@ -11,7 +11,7 @@ use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
 use crate::kernel::sort::Sort;
 use crate::kernel::term::{Definition, Name, Shape, Term};
-use crate::kernel::value::{Env, Value};
+use crate::kernel::value::{Env, Form, Value};
 
 use super::{Elaborator, Typed};
 
@@ -44,6 +44,13 @@ impl Elaborator {
         wanted: Option<&Name>,
     ) -> Result<Typed, ElabError> {
         let Some(found) = scope.declared(name) else {
+            // The `rec` whose body this is, before everything below it: a
+            // recursion is more local than any declaration, and its name is one
+            // the author bound. Prompt 155a — the recursive call *is* a use of
+            // the definition the `rec` was lifted to.
+            if self.recursion(name).is_some() {
+                return self.recursive_use(scope, here, name);
+            }
             // A top-level definition (§2.4), after declarations for the reason
             // declarations come after binders — the more local answer wins —
             // and before the two below because both of those are the host's
@@ -153,6 +160,54 @@ impl Elaborator {
             .into());
         };
         self.namespaced(scope, here, &crate::elaboration::namespace::qualified(head, member))
+    }
+
+    /// The recursion in progress, used: the lifted definition, applied to the
+    /// context the lift abstracted.
+    ///
+    /// This is what a recursive call elaborates to, and the whole of what
+    /// replaced the `#ih` rewrite. The definition stands at
+    /// [`Body::Pending`](crate::kernel::program::Body) while its own body is
+    /// read, so the spine is rigid: it type-checks, it carries the declared
+    /// type, and it cannot compute — which is exactly what elaborating a
+    /// recursive body needs and nothing more. Whether the call *descends* is
+    /// not asked here; [`crate::kernel::terminate`] asks it of the finished
+    /// tree.
+    ///
+    /// De Bruijn indices are relative, so the context binders are named from
+    /// *this* depth: binder `p` of a context of `n` is `depth - 1 - p` steps
+    /// out, wherever inside the body the call was written.
+    fn recursive_use(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
+        let Some(recursion) = self.recursion(name) else {
+            return self.unresolved(scope, here, name);
+        };
+        let global = Arc::clone(&recursion.global);
+        let context: Vec<Value> = recursion.context.clone();
+        let Some(defined) = scope.cx().definition(&global) else {
+            return self.unresolved(scope, here, name);
+        };
+        let def = crate::kernel::program::one(&defined);
+        let mut typed = self.used(scope, here, &def)?;
+        let depth = scope.depth().0;
+        for (position, argument) in context.into_iter().enumerate() {
+            let position = u32::try_from(position).unwrap_or(u32::MAX);
+            let opened = crate::kernel::eval::opened(&mut self.meter, &typed.ty)?;
+            let ty = opened.as_ref().unwrap_or(&typed.ty);
+            let Form::Pi { codomain, .. } = &ty.form else {
+                return Err(Refusal::UncheckedRecursion {
+                    at: here,
+                    name: Arc::clone(name),
+                }
+                .into());
+            };
+            let codomain = codomain.clone();
+            let steps_out = depth.saturating_sub(position).saturating_sub(1);
+            typed = Typed {
+                term: Term::app(here, typed.term, Term::var(here, crate::kernel::term::Index(steps_out))),
+                ty: crate::kernel::eval::apply_closure(&mut self.meter, &codomain, argument)?,
+            };
+        }
+        Ok(typed)
     }
 
     /// A top-level definition, used: its level parameters instantiated at
@@ -276,7 +331,7 @@ impl Elaborator {
                     Definition::Declared(constant) => constant.group.params(),
                     Definition::Undeclared
                     | Definition::Defined(_)
-                    | Definition::Compiled(_, _)
+                    | Definition::Compiled(_)
                     | Definition::Base(_)
                     | Definition::Builtin(_) => 0,
                 },

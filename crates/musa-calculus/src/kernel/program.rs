@@ -100,12 +100,10 @@ pub(crate) struct Defined {
     pub(crate) levels: Arc<[SortVar]>,
     /// Its type, at the level parameters themselves.
     pub(crate) ty: Arc<Value>,
-    /// What it reduces to.
+    /// What it reduces to, and how it was written.
     pub(crate) body: Body,
     /// Its type as written, kept so `levels` can be instantiated.
     pub(crate) ty_term: Term,
-    /// Its value as written, likewise.
-    pub(crate) value_term: Term,
     /// Whether the elaborator lifted this out of a term rather than an author
     /// writing it (`02-core-calculus.md` §1, prompt 155aa).
     ///
@@ -124,22 +122,59 @@ pub(crate) struct Defined {
 /// [`Compiled`] tree instead and reduces by matching, because a body that may
 /// name itself cannot be evaluated at the moment it is declared — there is
 /// nothing yet for the name to stand for.
+///
+/// **The written term travels with the first two and not with the third**, and
+/// that is why it lives here rather than beside [`Defined::ty_term`]. It is
+/// what instantiating `levels` substitutes into and what the re-checker reads,
+/// and a definition that has not been elaborated yet has neither — a
+/// [`Term`] field on [`Defined`] would have to be filled with something
+/// invented for that one state.
 #[derive(Clone)]
 pub(crate) enum Body {
     /// Evaluated at the declaration; δ unfolds a use to it.
-    Value(Arc<Value>),
+    Value {
+        /// What δ hands back.
+        value: Arc<Value>,
+        /// The same, as written.
+        term: Term,
+    },
     /// A compiled case tree (§1), reduced on demand by
     /// [`Compiled::reduce`](crate::kernel::case_tree::Compiled::reduce).
-    Compiled(Arc<Compiled>),
+    Compiled {
+        /// The binders and the tree.
+        tree: Arc<Compiled>,
+        /// The tree **emitted** — nested applications of the generated
+        /// eliminators (§6.2), under one λ per binder.
+        ///
+        /// Not what reduces: [`Folding::Compiled`](crate::kernel::value) is.
+        /// It is what a *reader* of the definition gets, and the reader that
+        /// matters is [`recheck`](crate::kernel::recheck::recheck) — checking
+        /// the emission is how the kernel re-derives, without knowing what a
+        /// tree is, that every alternative answers the motive instantiated at
+        /// its own pattern and that the alternatives are exactly the family's
+        /// constructors. Coverage and descent are asked of the tree itself,
+        /// where the emission cannot answer them.
+        term: Term,
+    },
     /// In scope during its own elaboration, so a recursive body may name
     /// itself.
     ///
     /// Rigid, and that is the point: a use of it is a blocked spine with the
     /// definition's type, which is everything elaborating the body needs and
-    /// nothing it could reduce with. Nothing outside
-    /// [`declare_program`](crate::declare_program) ever sees one, because the
-    /// finished definition replaces it before the table is handed on.
+    /// nothing it could reduce with. Nothing outside the elaboration that
+    /// installed one ever sees it, because the finished definition replaces it
+    /// before the table is handed on.
     Pending,
+}
+
+impl Body {
+    /// The definition as written, when it has been elaborated.
+    pub(crate) const fn term(&self) -> Option<&Term> {
+        match *self {
+            Self::Value { ref term, .. } | Self::Compiled { ref term, .. } => Some(term),
+            Self::Pending => None,
+        }
+    }
 }
 
 impl Defined {
@@ -311,14 +346,21 @@ impl Def {
         let env = crate::kernel::value::Env::under(globals.clone());
         let ty = crate::kernel::eval::eval(meter, &env, &self.0.ty_term.substitute_levels(&with))?;
         let body = match self.0.body {
-            Body::Value(_) => {
-                let value = crate::kernel::eval::eval(meter, &env, &self.0.value_term.substitute_levels(&with))?;
-                Body::Value(Arc::new(value))
+            Body::Value { ref term, .. } => {
+                let substituted = term.substitute_levels(&with);
+                let value = crate::kernel::eval::eval(meter, &env, &substituted)?;
+                Body::Value {
+                    value: Arc::new(value),
+                    term: substituted,
+                }
             }
             // The tree holds terms, so instantiation reaches them the same way
             // it reaches the written body: by substituting and leaving the
             // evaluation to whoever reduces it.
-            Body::Compiled(ref compiled) => Body::Compiled(Arc::new(compiled.substitute_levels(&with))),
+            Body::Compiled { ref tree, ref term } => Body::Compiled {
+                tree: Arc::new(tree.substitute_levels(&with)),
+                term: term.substitute_levels(&with),
+            },
             Body::Pending => Body::Pending,
         };
         Ok((Arc::new(ty), body))

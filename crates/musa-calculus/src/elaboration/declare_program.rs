@@ -25,7 +25,7 @@ use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::context::Cx;
 use crate::kernel::eval::eval;
 use crate::kernel::origin::Origin;
-use crate::kernel::program::{Defined, Program};
+use crate::kernel::program::{Body, Defined, Program};
 use crate::kernel::scope::Scope;
 use crate::kernel::term::Name;
 use crate::kernel::value::Env;
@@ -177,33 +177,17 @@ impl Written {
 /// computed: by the time this runs, every definition this one names has been
 /// through it already.
 fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, crate::Spend), ElabError> {
-    let inner = held.module.map_or_else(|| cx.clone(), |module| cx.in_module(module));
-    let mut elaborator = Elaborator::new(&inner);
+    let base = held.module.map_or_else(|| cx.clone(), |module| cx.in_module(module));
+    let mut elaborator = Elaborator::new(&base);
     // What a `rec` inside this body is lifted to is named after this
     // definition, so the lift has to know which one it is in.
     elaborator.declaring(&held.name);
-    let scope = Scope::new(&inner);
-    let (ty_term, value_term) = match &held.ty {
+    let written = match &held.ty {
         Some(written) => {
-            let (ty, _) = elaborator.check_type(&scope, written)?;
-            let expected = scope.eval(elaborator.meter(), &ty)?;
-            // A definition that names itself is `rec f : A = e`, which is the
-            // one form §2.4's measure is stated for. Building it here rather
-            // than asking the caller to means the surface never has to decide
-            // whether a `fn` is recursive — the dependency analysis already
-            // knows, and it knows it the same way for every definition.
-            let body = if recursive {
-                crate::elaboration::raw::Raw::rec(
-                    held.origin,
-                    Arc::clone(&held.name),
-                    written.clone(),
-                    held.value.clone(),
-                )
-            } else {
-                held.value.clone()
-            };
-            let term = elaborator.check_open(&scope, &body, &expected)?;
-            (ty, term)
+            let scope = Scope::new(&base);
+            let (ty_term, _) = elaborator.check_type(&scope, written)?;
+            let ty = scope.eval(elaborator.meter(), &ty_term)?;
+            Some((ty_term, ty))
         }
         None => {
             if recursive {
@@ -213,7 +197,61 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
                 }
                 .into());
             }
-            elaborator.infer_written(&scope, &held.value)?
+            None
+        }
+    };
+    // §2.4's recursive case: the definition is in scope during its own
+    // elaboration, at `Body::Pending`, so a call in the body resolves to the
+    // definition rather than to an induction hypothesis the elaborator
+    // manufactured. Rigid, so nothing can compute with it — see
+    // [`crate::elaboration::rec`], which is where the rewrite that used to do
+    // this was retired.
+    let inner = match (recursive, &written) {
+        (true, Some((ty_term, ty))) => base.defining_one(&Arc::new(Defined {
+            name: Arc::clone(&held.name),
+            visibility: held.visibility,
+            module: held.module,
+            levels: Arc::from([]),
+            ty: Arc::new(ty.clone()),
+            body: Body::Pending,
+            ty_term: ty_term.clone(),
+            lifted: false,
+        })),
+        _ => base,
+    };
+    let scope = Scope::new(&inner);
+    let (ty_term, elaborated) = match written {
+        Some((ty_term, ty)) if recursive => {
+            let Some(compiled) = crate::elaboration::rec::tree_body(&mut elaborator, &scope, &[], &held.value, &ty)?
+            else {
+                // Elaborated once more so that a body which is wrong about its
+                // *type* says so, rather than being reported as a recursion the
+                // measure could not see: a term with no `match` under its λs
+                // has no tree either way, and the reader is owed the first
+                // mistake rather than the second.
+                elaborator.check_open(&scope, &held.value, &ty)?;
+                return Err(Refusal::UncheckedRecursion {
+                    at: held.origin,
+                    name: Arc::clone(&held.name),
+                }
+                .into());
+            };
+            if let Some(undescending) = crate::kernel::terminate::descends(&compiled, &held.name) {
+                return Err(Refusal::UncheckedRecursion {
+                    at: undescending.0,
+                    name: Arc::clone(&held.name),
+                }
+                .into());
+            }
+            (ty_term, Elaborated::Tree(compiled))
+        }
+        Some((ty_term, ty)) => {
+            let term = elaborator.check_open(&scope, &held.value, &ty)?;
+            (ty_term, Elaborated::Term(term))
+        }
+        None => {
+            let (ty_term, term) = elaborator.infer_written(&scope, &held.value)?;
+            (ty_term, Elaborated::Term(term))
         }
     };
     // The declaration boundary §1 generalizes at: what the type still mentions
@@ -223,46 +261,75 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
     let levels = elaborator.generalize_levels(&ty_term);
     elaborator.settled()?;
     let ty_term = elaborator.zonk(&ty_term)?;
-    let value_term = elaborator.zonk(&value_term)?;
     let ty = scope.eval(elaborator.meter(), &ty_term)?;
+    let body = match elaborated {
+        Elaborated::Tree(compiled) => {
+            let compiled = crate::elaboration::rec::zonked(&mut elaborator, &compiled)?;
+            let term = crate::elaboration::rec::emission(&mut elaborator, held.origin, &compiled)?;
+            Body::Compiled {
+                tree: Arc::new(compiled),
+                term,
+            }
+        }
+        Elaborated::Term(term) => {
+            let term = elaborator.zonk(&term)?;
+            // The body is opened to weak-head form before it is stored — the
+            // strictness evaluation had when δ ran at the lookup. The work a
+            // top-level definition stands for is paid at its declaration, once,
+            // and the budget laws keep the meaning they were calibrated with;
+            // uses of the definition still evaluate to the folded reference, so
+            // nothing about sharing or diagnostics changes.
+            let value = eval(elaborator.meter(), &Env::under(scope.cx().globals().clone()), &term)?;
+            let value = crate::kernel::eval::opened(elaborator.meter(), &value)?.unwrap_or(value);
+            Body::Value {
+                value: Arc::new(value),
+                term,
+            }
+        }
+    };
     // The kernel's own reading of what elaboration just built, in debug builds
     // only. `TRUST.md` states the claim this enforces: elaboration is untrusted,
     // so a term it produced and the kernel rejects is a defect in this compiler
     // — reported here, at the declaration that caused it, rather than surfacing
     // later as a program that means something nobody wrote.
+    //
+    // A tree body is read through its *emission* (`Body::Compiled`), which is
+    // what makes the new acceptance surface checkable without teaching the
+    // re-checker what a tree is: the eliminator's method types are the motive
+    // instantiated at each pattern, and its arity is the family's constructor
+    // count. Coverage and descent were asked of the tree itself, above.
     #[cfg(debug_assertions)]
-    {
-        let fault = crate::kernel::recheck::disagreement(&inner, &ty, &value_term);
+    if let Some(term) = body.term() {
+        let fault = crate::kernel::recheck::disagreement(&inner, &ty, term);
         debug_assert!(
             fault.is_none(),
             "the kernel rejects the term elaboration built for `{}`: {fault:?}",
             held.name
         );
     }
-    // The body is opened to weak-head form before it is stored — the
-    // strictness evaluation had when δ ran at the lookup. The work a top-level
-    // definition stands for is paid at its declaration, once, and the budget
-    // laws keep the meaning they were calibrated with; uses of the definition
-    // still evaluate to the folded reference, so nothing about sharing or
-    // diagnostics changes.
-    let value = eval(
-        elaborator.meter(),
-        &Env::under(scope.cx().globals().clone()),
-        &value_term,
-    )?;
-    let value = crate::kernel::eval::opened(elaborator.meter(), &value)?.unwrap_or(value);
     let defined = Defined {
         name: Arc::clone(&held.name),
         visibility: held.visibility,
         module: held.module,
         levels,
         ty: Arc::new(ty),
-        value: Arc::new(value),
+        body,
         ty_term,
-        value_term,
         lifted: false,
     };
     Ok((defined, elaborator.spent()))
+}
+
+/// What one definition's body came out as, before the declaration is finished.
+///
+/// Two states rather than a [`Body`], because a body is not buildable until
+/// [`Elaborator::settled`] has run and the terms have been zonked, and the
+/// judgment that produced it has to happen before that.
+enum Elaborated {
+    /// An ordinary body, to be evaluated at the declaration.
+    Term(crate::kernel::term::Term),
+    /// A body that splits (§1), to be kept as the tree it is.
+    Tree(crate::kernel::case_tree::Compiled),
 }
 
 /// What `raw` names of the group around it, added to `found`.

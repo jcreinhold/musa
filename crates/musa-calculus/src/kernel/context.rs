@@ -91,12 +91,16 @@ struct Tables {
     ///
     /// It is safe here and would not be for any other table, because a lifted
     /// name holds a `#` and no source identifier may: two branches cannot
-    /// collide, nothing shadows one, and the table only grows. It is created
-    /// per document by [`Cx::lifting`] and read once by
-    /// [`declare_program`](crate::declare_program), which moves what it holds
-    /// into the [`Program`](crate::Program) it returns; the table itself goes
-    /// out of scope with the declaration that made it.
-    lifted: Option<Arc<std::sync::RwLock<Vec<Arc<Defined>>>>>,
+    /// collide, nothing shadows one, and an entry is only ever appended or
+    /// replaced by the finished form of the same definition.
+    /// [`declare_program`](crate::declare_program) opens a fresh one per
+    /// document with [`Cx::lifting`] and reads it once, moving what it holds
+    /// into the [`Program`](crate::Program) it returns. Every other context
+    /// gets the table its first extension made, which is what lets a bare
+    /// [`check`](crate::check) elaborate a `rec` at all: the term it hands back
+    /// names a definition, and the caller's own context is where that name has
+    /// to answer.
+    lifted: Arc<std::sync::RwLock<Vec<Arc<Defined>>>>,
 }
 
 impl Globals {
@@ -113,36 +117,49 @@ impl Globals {
     ///
     /// One per document. See [`Tables::lifted`] for why it is shared.
     fn lifting(&self) -> Self {
-        self.extended(|tables| tables.lifted = Some(Arc::new(std::sync::RwLock::new(Vec::new()))))
+        self.extended(|tables| tables.lifted = Arc::new(std::sync::RwLock::new(Vec::new())))
     }
 
     /// Record a definition lifted out of a term, so the term around it can name
     /// it.
     ///
-    /// A no-op with no table, which is a context nobody is declaring a document
-    /// in. The elaborator asks [`Self::lifts`] first and does not lift there —
-    /// see [`lift`](crate::elaboration::rec::lift) — so this arm is reached only
-    /// by a caller that stopped asking.
+    /// **Replaces an entry of the same name rather than shadowing it.** A lift
+    /// installs the definition twice: once at
+    /// [`Body::Pending`](crate::kernel::program::Body), so the body being
+    /// elaborated can name itself, and once finished. A table that held both
+    /// would answer with whichever it found first, and a `Pending` found after
+    /// the definition was complete is a body that never reduces.
+    ///
+    /// A no-op with no table at all, which is the context that declares
+    /// nothing. [`lift`](crate::elaboration::rec::lift) asks [`Self::lifts`]
+    /// first and refuses the recursion there rather than handing back a term
+    /// naming something no lookup can answer.
     pub(crate) fn lift(&self, defined: &Arc<Defined>) {
-        let Some(lifted) = self.0.as_deref().and_then(|tables| tables.lifted.as_deref()) else {
+        let Some(tables) = self.0.as_deref() else {
             return;
         };
-        if let Ok(mut held) = lifted.write() {
-            held.push(Arc::clone(defined));
+        if let Ok(mut held) = tables.lifted.write() {
+            match held.iter().position(|held| *held.name == *defined.name) {
+                Some(at) => {
+                    if let Some(slot) = held.get_mut(at) {
+                        *slot = Arc::clone(defined);
+                    }
+                }
+                None => held.push(Arc::clone(defined)),
+            }
         }
     }
 
-    /// Whether this context is declaring a document, and so can hold a lift.
+    /// Whether this context can hold a lift at all.
     pub(crate) fn lifts(&self) -> bool {
-        self.0.as_deref().is_some_and(|tables| tables.lifted.is_some())
+        self.0.is_some()
     }
 
     /// Everything lifted so far, in the order it was lifted.
     pub(crate) fn lifted(&self) -> Vec<Arc<Defined>> {
         self.0
             .as_deref()
-            .and_then(|tables| tables.lifted.as_deref())
-            .and_then(|lifted| lifted.read().ok().map(|held| held.clone()))
+            .and_then(|tables| tables.lifted.read().ok().map(|held| held.clone()))
             .unwrap_or_default()
     }
 
@@ -189,11 +206,10 @@ impl Globals {
             Role::Defined => Self::defined_in(tables, name).map_or(Definition::Undeclared, |defined| {
                 let def = crate::kernel::program::one(&defined);
                 match defined.body {
-                    crate::kernel::program::Body::Value(_) => Definition::Defined(def),
-                    crate::kernel::program::Body::Compiled(ref compiled) => {
-                        Definition::Compiled(def, Some(Arc::clone(compiled)))
+                    crate::kernel::program::Body::Value { .. } => Definition::Defined(def),
+                    crate::kernel::program::Body::Compiled { .. } | crate::kernel::program::Body::Pending => {
+                        Definition::Compiled(def)
                     }
-                    crate::kernel::program::Body::Pending => Definition::Compiled(def, None),
                 }
             }),
             Role::Base => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
@@ -257,7 +273,7 @@ impl Globals {
         // A lifted definition answers here and nowhere else: it is not among the
         // document's written members until the declaration finishes, and the
         // term that names it is being elaborated now.
-        let held = tables.lifted.as_deref()?.read().ok()?;
+        let held = tables.lifted.read().ok()?;
         held.iter().find(|defined| *defined.name == *name).map(Arc::clone)
     }
 

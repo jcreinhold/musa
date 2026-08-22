@@ -304,14 +304,6 @@ pub(crate) enum Head {
     Def(DefHead, Arc<Value>, Folding),
 }
 
-/// What a folded definition is known as.
-///
-/// One notion of identity with two disjoint constructors — disjoint is the
-/// soundness property: a binder level and a program position are two
-/// numberings that both start at zero, so a single constructor for both would
-/// equate a `let` with whichever top-level definition happened to share its
-/// number, and one such program plus one `let` is a constructible wrong
-/// answer. Two constructors of one enum cannot disagree with each other.
 /// What a folded definition can be unfolded *to*.
 ///
 /// A definition whose body was evaluated at its declaration carries the value,
@@ -334,6 +326,14 @@ pub(crate) enum Folding {
     Pending,
 }
 
+/// What a folded definition is known as.
+///
+/// One notion of identity with two disjoint constructors — disjoint is the
+/// soundness property: a binder level and a program position are two
+/// numberings that both start at zero, so a single constructor for both would
+/// equate a `let` with whichever top-level definition happened to share its
+/// number, and one such program plus one `let` is a constructible wrong
+/// answer. Two constructors of one enum cannot disagree with each other.
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum DefHead {
     /// A `let` or context definition, named by the binder's level.

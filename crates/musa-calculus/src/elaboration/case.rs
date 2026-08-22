@@ -94,6 +94,38 @@ pub(crate) fn compile(
     arms: &[RawArm],
     goal: &Value,
 ) -> Result<Term, ElabError> {
+    let (tree, bound) = tree(elaborator, scope, here, subjects, arms, goal)?;
+    let mut term = tree.emitted()?;
+    for (name, ty, value) in bound.into_iter().rev() {
+        term = Term::bind(here, name, ty, value, term);
+    }
+    Ok(term)
+}
+
+/// The same, stopping at the tree.
+///
+/// Handed out for the one caller that wants a tree rather than a term: a
+/// definition whose body splits holds the tree itself (§1's second `Definition`
+/// arm, prompt 155a), and emission is what a `match` standing *in* a term does
+/// instead (§6.2).
+///
+/// The second half of the answer is the `let` bindings [`subject`] introduced
+/// for subjects that were not already variables. A body that has any cannot be
+/// a tree body — a [`Compiled`](crate::kernel::case_tree::Compiled) is binders
+/// and a tree with nothing in between — so the caller reads the list and
+/// declines rather than this function pretending they are not there.
+///
+/// # Errors
+///
+/// As [`compile`].
+pub(crate) fn tree(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    here: Origin,
+    subjects: &[Raw],
+    arms: &[RawArm],
+    goal: &Value,
+) -> Result<(CaseTree, Vec<(Name, Term, Term)>), ElabError> {
     // Each subject is elaborated under the binders the ones before it needed,
     // so a term read at one depth is never used at another.
     let mut inner = scope.clone();
@@ -147,11 +179,7 @@ pub(crate) fn compile(
     if let Some(arm) = tree.unselected() {
         return Err(Refusal::UnreachableBranch { at: arm }.into());
     }
-    let mut term = compiled.emitted()?;
-    for (name, ty, value) in bound.into_iter().rev() {
-        term = Term::bind(here, name, ty, value, term);
-    }
-    Ok(term)
+    Ok((compiled, bound))
 }
 
 /// One subject, as the tree carries it.
@@ -818,30 +846,19 @@ impl Tree<'_, '_> {
             });
         }
         // The hypotheses come after every field, which is the order
-        // [`crate::kernel::family`] assembles the method type in. They are assumed
-        // without names for the reason the fields are: what a row's body may
-        // write is named after that row's own pattern, and [`Self::narrowed`]
-        // binds the two together — so `Succ k` gives `k#ih` and `Succ j` gives
-        // `j#ih` from the same method, and a `match` nested inside an arm
-        // cannot shadow an outer hypothesis except the way an author's own
-        // shadowing does.
-        let mut hypotheses = Vec::with_capacity(rule.recursive.len());
+        // [`crate::kernel::family`] assembles the method type in. They are
+        // assumed *unnamed*, and since prompt 155a retired the `#ih` rewrite
+        // nothing names one at all: an arm's recursion is the definition's own
+        // name (`terminate.rs`), so a hypothesis is a slot the arm's de Bruijn
+        // indices were read under and never a term an author or the elaborator
+        // writes.
         for (position, _) in rule.recursive.iter() {
             let position = usize::try_from(*position).unwrap_or(usize::MAX);
             let Some(field) = fields.get(position) else {
                 continue;
             };
             let ty = self.hypothesis(motives, field)?;
-            let value = inner.fresh_var(self.here, Arc::clone(&ty));
-            inner = inner.assume(None, self.here, Arc::clone(&ty));
-            hypotheses.push((
-                position,
-                Subject {
-                    value,
-                    ty,
-                    at: self.here,
-                },
-            ));
+            inner = inner.assume(None, self.here, ty);
         }
 
         // What this method knows its subject to be. §6.2's variable rule expands
@@ -851,7 +868,7 @@ impl Tree<'_, '_> {
 
         let body = if family == split.element.family {
             let goal = self.method_goal(motives, family, &built)?;
-            let rows = Self::narrowed(problem, column, family, which, &group, &fields, &hypotheses, &built)?;
+            let rows = Self::narrowed(problem, column, family, which, &group, &fields, &built)?;
             if rows.is_empty() {
                 return Ok(None);
             }
@@ -897,7 +914,10 @@ impl Tree<'_, '_> {
             hypothesised.push(
                 rule.fields
                     .get(usize::try_from(*position).unwrap_or(usize::MAX))
-                    .map_or_else(|| Arc::from("hypothesis"), |binder| Arc::from(format!("{}#ih", binder.name))),
+                    .map_or_else(
+                        || Arc::from("hypothesis"),
+                        |binder| Arc::from(format!("{}#ih", binder.name)),
+                    ),
             );
         }
         Ok(Some(Alternative {
@@ -1017,7 +1037,6 @@ impl Tree<'_, '_> {
         which: u32,
         group: &Arc<crate::kernel::family::Group>,
         fields: &[Subject],
-        hypotheses: &[(usize, Subject)],
         built: &Built,
     ) -> Result<Vec<Row<'a>>, ElabError> {
         let wanted = Constant::constructor(group, family, which).name();
@@ -1086,8 +1105,6 @@ fn selects(qualified: &str, written: &str) -> bool {
     qualified == written || qualified.rsplit_once('.').is_some_and(|(_, case)| case == written)
 }
 
-/// What the induction hypothesis for the field named `field` is called.
-///
 /// The pattern an expanded variable leaves in each field position.
 ///
 /// One shared value rather than one per position: a variable pattern names the

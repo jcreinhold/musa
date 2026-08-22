@@ -1,107 +1,22 @@
-//! `rec f : A = e`, and §2.4's structural rule.
+//! `rec f : A = e`: how a recursion becomes a definition, and §2.4's structural
+//! rule over the tree it leaves behind.
 //!
-//! # The check is the compilation
+//! # A recursion is a definition, and that is the whole mechanism
 //!
-//! §2.4 asks that every recursive call descend structurally, and structural
-//! descent is the case the elaborator supplies for free. Here it is not
-//! *checked* and then compiled — it is the compilation. A `match` on an argument already binds
-//! one induction hypothesis per recursive field (`case.rs`), and the hypothesis
-//! is exactly "the answer for a structurally smaller argument". So a recursive
-//! call becomes a reference to that hypothesis, and a call with no hypothesis to
-//! become has nowhere to go: it is [`Refusal::UncheckedRecursion`], naming the
-//! call. Nothing takes a definition on trust because there is no path by which a
-//! definition could be taken on trust — the core has no fixed point to emit.
+//! `02-core-calculus.md` §1's `Definition` list says a name's reduction
+//! behaviour may be **a compiled case tree**, and §2.4 says descent is checked
+//! over that tree. Put together, a recursive definition is one thing: a global
+//! name whose body is [`Compiled`] — the binders it abstracts, and the tree
+//! beneath them — admitted when [`descends`] can see every call get smaller.
 //!
-//! # Why the rewrite is on raw syntax
-//!
-//! Peyton Jones ch. 3 and ch. 6 transform *source* into a smaller calculus, and
-//! this is that transformation: `f n xs'` is replaced by `xs'#ih` before
-//! elaboration, and elaboration then does what it always does. Doing it after
-//! elaboration would mean rewriting core terms, which this crate deliberately
-//! cannot do (§1: no substitution function). Doing it during would mean
-//! `case.rs` knowing what a recursive definition is, which is a second thing to
-//! keep in step with this one.
-//!
-//! The generated name is `<field>#ih` — [`crate::elaboration::case::hypothesis_name`] — and
-//! `#` is not an identifier character, so no source program can shadow one or
-//! refer to one it was not given.
-//!
-//! # What decrease means here
-//!
-//! A definition recurses on **one** argument, and the `match` at the top of its
-//! body is what says which: the subject that is one of the definition's own
-//! arguments is the recursive position. A call is then a call on a *pattern
-//! binder in that column*, and the arguments **before** that one are fixed —
-//! the hypothesis is the answer at the goal this match was split at, and
-//! everything abstracted before the subject is part of that goal. `xs#ih` is
-//! the answer for this branch's tail at the indices that tail has, so a
-//! `count k ys` is `ys#ih` and the `k` is not a second thing to check but a
-//! consequence of the first.
-//!
-//! That last point is why "exactly one argument changed" is the wrong rule and
-//! was tried first: a recursion over `Vec A n` *must* change two arguments, the
-//! index and the vector, and under that rule no indexed family could be
-//! recursed over at all.
-//!
-//! # Why the later arguments move inside the match
-//!
-//! An argument the definition abstracts *after* the recursive one is a
-//! different matter, and getting it wrong is how a `fold` that accumulates
-//! forwards came out computing its seed. `λxs. λbuilt. match xs { … }` splits
-//! at the goal `B`, so the hypothesis is `B` — the answer for the tail *at this
-//! branch's own accumulator* — and a call that passes a new accumulator has
-//! nowhere to put it. Dropping it type-checks and means something else.
-//!
-//! So the binders after the recursive position are moved inside the arms before
-//! the match is elaborated. The goal at the split becomes `B → B`, the
-//! hypothesis becomes a function of the accumulator, and `walk t (step built h)`
-//! is `t#ih (step built h)` — the strong induction hypothesis, which is what an
-//! accumulating traversal has always needed. Authors write the natural
-//! `λxs. λbuilt. match xs`; the transformation is what makes it mean what it
-//! reads as. A binder is moved under a mangled name in an arm whose pattern
-//! already binds that name, so that the arm's occurrences keep resolving to the
-//! pattern's binder as they did before.
-//!
-//! What this refuses, and why each is genuinely out of reach:
-//!
-//! - A body whose top-level form is not a `match`: nothing split anything, so
-//!   there is no hypothesis. `λn. loop n` is the whole of this case.
-//! - A top-level `match` on two of the definition's arguments: the hypothesis
-//!   from one column holds the other column's subject *fixed*, so a call that
-//!   descends in both descends lexicographically. §2.4 admits no order but the
-//!   structural one, and this checker supplies none.
-//! - An argument in the recursive position that is not a binder of that
-//!   column's pattern: `f (Succ (Succ k))` is a call on something no match made
-//!   smaller.
-//! - A call that changes an argument *before* the recursive one. The hypothesis
-//!   holds those fixed, so `f (Succ m) k` is asking it a question it does not
-//!   answer. What is admitted there is the definition's own binder, unchanged,
-//!   or a binder this branch's pattern introduced — which is how an index
-//!   reaches the hypothesis.
-//! - The definition used as a value rather than called. A core with no fixed
-//!   point has nothing to hand over.
-//!
-//! A `match` nested inside an arm is not consulted, and that is not an
-//! oversight: its hypotheses are the recursion *it* generated, over its own
-//! subject, and answer that match rather than this definition. Reading them as
-//! the definition's would be the one way this rewrite could be unsound.
-//!
-//! # A `rec` in a term is lifted first
-//!
-//! Everything above is [`define`], and a declaration's own body is what
-//! [`define`] was written for. A `rec` written *inside* a term — `let walk =
-//! rec walk : … = …` — closes over the binders around it, and
-//! `kernel/program.rs`'s module doc says why that has nowhere to go: a
+//! A `rec` written *inside* a term is not a global name yet, and
+//! `kernel/program.rs`'s module doc says why it cannot be left where it is: a
 //! definition is a global name, a de Bruijn binder refers outward only, and
 //! §1.3 refuses the fixed point that would let a local recursion stand without
-//! a name.
-//!
-//! So [`lift`] makes it one. It runs [`define`] first, unchanged — this is a
-//! relocation and not a second way to compile a recursion — and then, when what
-//! it was handed is a term-position `rec`, abstracts the result over **the
-//! whole context**, declares that as an auxiliary definition, and leaves the
+//! a name. So [`lift`] makes it one — it abstracts the `rec` over **the whole
+//! context**, declares that as an auxiliary definition, and leaves the
 //! expression as that definition applied to the binders it abstracted. Peyton
-//! Jones ch. 13, and ch. 14 for the recursive case — §14.0 is explicit that its
+//! Jones ch. 13, and ch. 14 for the recursive case: §14.0 is explicit that its
 //! subject is recursive supercombinators *without using Y*.
 //!
 //! Two choices in that sentence are load-bearing. **The whole context, not the
@@ -115,17 +30,59 @@
 //! body of `n` λs, because de Bruijn indices are relative, which is what makes
 //! the whole transformation expressible in a crate with no substitution on
 //! terms (§3).
+//!
+//! # The definition is in scope during its own elaboration
+//!
+//! Before prompt 155a a recursive call was rewritten, on *raw syntax*, into
+//! `<field>#ih` — the induction hypothesis the generated eliminator's method
+//! supplies. That rewrite is gone, and what replaces it is smaller: the
+//! definition is installed at [`Body::Pending`] before its body is read, so a
+//! call resolves to the definition itself. The spine is rigid — a `Pending`
+//! body has nothing to unfold — so a body being elaborated can name itself,
+//! type-check against its declared type, and compute with nothing.
+//!
+//! That is why the *order* here matters and is not an implementation detail.
+//! The name has to be in the table before [`tree_body`] runs, and the finished
+//! definition has to **replace** it rather than shadow it, which is what
+//! [`Globals::lift`](crate::kernel::context::Globals::lift) does: a `Pending`
+//! found after the definition is complete is a body that never reduces.
+//!
+//! # What a tree body can be, and what it therefore refuses
+//!
+//! [`tree_body`] peels the λs of a body against the Π chain of its type and
+//! requires a `match` underneath them, because a [`Compiled`] is binders and a
+//! tree **with nothing in between**. Two consequences, and both are refusals a
+//! reader can act on:
+//!
+//! - A body whose top-level form is not a `match` has no tree, so a recursive
+//!   definition of that shape is [`Refusal::UncheckedRecursion`]. `λn. loop n`
+//!   is the whole of this case.
+//! - A `match` whose subject is not already a variable is named with a `let`
+//!   by [`case`](crate::elaboration::case), and a tree body has nowhere to put
+//!   one. `match f(x) { … }` at a definition's top is the case, and a
+//!   non-recursive definition of that shape keeps the evaluated body it has
+//!   always had.
+//!
+//! Everything else a recursion can get wrong is [`descends`]'s to say, and
+//! `kernel/terminate.rs` states that rule before implementing it.
 
 use std::sync::Arc;
 
-use crate::elaboration::case::hypothesis_name;
 use crate::elaboration::elab::Elaborator;
-use crate::elaboration::raw::{Raw, RawArm, RawField, RawPattern, RawShape};
+use crate::elaboration::raw::{Raw, RawField, RawPattern, RawShape, RawUpdate};
 use crate::elaboration::refuse::{ElabError, Refusal};
+use crate::kernel::case_tree::{Alternative, CaseTree, Compiled, Split};
+use crate::kernel::context::Globals;
+use crate::kernel::eval::{apply_closure, eval, opened};
 use crate::kernel::origin::Origin;
+use crate::kernel::program::{Body, Defined};
+use crate::kernel::quote::{Mode, quote_type};
 use crate::kernel::scope::Scope;
-use crate::kernel::term::{Filling, Name, Term};
-use crate::kernel::value::Value;
+use crate::kernel::sort::Levels;
+use crate::kernel::term::{Filling, Index, Level, Name, Role, Term};
+use crate::kernel::terminate::descends;
+use crate::kernel::value::{Env, Form, Value};
+use crate::kernel::visibility::Visibility;
 
 /// Elaborate a `rec` written inside a term, by lifting it out of that term.
 ///
@@ -134,19 +91,21 @@ use crate::kernel::value::Value;
 /// caller gets is an ordinary application of an ordinary name, and the
 /// recursion is somewhere a definition body can be. See the module docs.
 ///
-/// **Where there is no document being declared, this is [`define`].** A
-/// `rec` elaborated by a bare [`crate::check`] has no [`Program`] to join, and
-/// a term naming a definition nobody installed would not evaluate. That path
-/// keeps the in-place compilation it has always had, which is the same term
-/// either way for as long as `#ih` is what compiles a recursion. Prompt 155a
-/// is where the two stop agreeing and the boundary has to be decided again.
-///
-/// [`Program`]: crate::kernel::program::Program
+/// **A `rec` that never names itself is not lifted.** It is the term it wraps,
+/// at the type it declares, and a definition for it would be a member of the
+/// program that no recursion needed. The invariant prompt 155a rests on is
+/// about *recursions*, and this leaves it exact rather than approximating it
+/// upwards.
 ///
 /// # Errors
 ///
-/// [`Refusal::UncheckedRecursion`] as [`define`], which runs first, and
-/// otherwise as [`crate::check`].
+/// [`Refusal::UncheckedRecursion`] for a recursion §2.4's structural rule
+/// cannot see descend, for a body that is not a `match` under λs, and for a
+/// context with no table to lift into — a bare [`check`](crate::check) against
+/// the empty context, which has no [`Program`] a definition could join.
+/// Otherwise as [`crate::check`].
+///
+/// [`Program`]: crate::kernel::program::Program
 pub(crate) fn lift(
     elaborator: &mut Elaborator,
     scope: &Scope,
@@ -156,82 +115,266 @@ pub(crate) fn lift(
     body: &Raw,
     goal: &Value,
 ) -> Result<Term, ElabError> {
+    // The written type first, and the goal met by conversion: `rec` is a term
+    // of the type it declares, and a `rec` in checking position owes conversion
+    // like anything else.
+    let (ty_term, _) = elaborator.check_type(scope, ty)?;
+    let declared = scope.eval(elaborator.meter(), &ty_term)?;
+    elaborator.same_types(scope, here, goal, &declared)?;
+    if !names(body, name) {
+        return elaborator.check_open(scope, body, &declared);
+    }
+    let refuse = || -> ElabError {
+        Refusal::UncheckedRecursion {
+            at: here,
+            name: Arc::clone(name),
+        }
+        .into()
+    };
     let globals = scope.cx().globals().clone();
-    let inner = define(elaborator, scope, here, name, ty, body, goal)?;
-    if !globals.lifts() || own_body(elaborator, scope, name) {
-        return Ok(inner);
+    if !globals.lifts() {
+        return Err(refuse());
     }
     let telescope = scope.telescope();
-    let arity = u32::try_from(telescope.len()).unwrap_or(u32::MAX);
-    // The type is the goal under the same telescope of Πs the value is under
-    // λs, quoted binder by binder at the depth each one stands at — the walk
+    // The lifted type is the written one under a Π per binder, each domain
+    // quoted at the depth that binder stands at — the walk
     // `Elaborator::fresh_meta` performs to close an unknown over its context.
-    let mut ty_term = crate::kernel::quote::quote_type(
-        elaborator.meter(),
-        crate::kernel::term::Level(arity),
-        crate::kernel::quote::Mode::Keep,
-        goal,
-    )?;
-    let mut value_term = inner;
+    let mut lifted_ty = ty_term;
     for (position, binder) in telescope.iter().enumerate().rev() {
-        let depth = crate::kernel::term::Level(u32::try_from(position).unwrap_or(0));
-        let domain =
-            crate::kernel::quote::quote_type(elaborator.meter(), depth, crate::kernel::quote::Mode::Keep, &binder.ty)?;
-        ty_term = Term::pi(here, Arc::clone(&binder.name), domain, ty_term);
-        value_term = Term::lam(here, Arc::clone(&binder.name), value_term);
+        let depth = Level(u32::try_from(position).unwrap_or(0));
+        let domain = quote_type(elaborator.meter(), depth, Mode::Keep, &binder.ty)?;
+        lifted_ty = Term::pi(here, Arc::clone(&binder.name), domain, lifted_ty);
     }
-    // Zonked here as well as at the declaration, because the value stored now
-    // is what the term around this one will evaluate: a solution that arrived
-    // during this `rec` has to be in it already.
-    let ty_term = elaborator.zonk(&ty_term)?;
-    let value_term = elaborator.zonk(&value_term)?;
-    let env = crate::kernel::value::Env::under(globals.clone());
-    let evaluated_ty = crate::kernel::eval::eval(elaborator.meter(), &env, &ty_term)?;
-    let evaluated = crate::kernel::eval::eval(elaborator.meter(), &env, &value_term)?;
-    let lifted = Arc::new(crate::kernel::program::Defined {
-        name: lifted_name(elaborator, &globals, name),
+    let env = Env::under(globals.clone());
+    let lifted_ty = elaborator.zonk(&lifted_ty)?;
+    let ty_value = Arc::new(eval(elaborator.meter(), &env, &lifted_ty)?);
+    let lifted_name = lifted_name(elaborator, &globals, name);
+    let held = |body: Body, ty_term: Term| Defined {
+        name: Arc::clone(&lifted_name),
         // Unnameable by spelling and unnameable by rule: `#` is not an
         // identifier character, and a lifted definition is nobody's export.
-        visibility: crate::kernel::visibility::Visibility::Private,
+        visibility: Visibility::Private,
         module: scope.cx().module(),
         levels: Arc::from([]),
-        ty: Arc::new(evaluated_ty),
-        value: Arc::new(evaluated),
+        ty: Arc::clone(&ty_value),
+        body,
         ty_term,
-        value_term,
         lifted: true,
-    });
-    let mut term = Term::named_at(
-        here,
-        Arc::clone(&lifted.name),
-        crate::kernel::term::Role::Defined,
-        crate::kernel::sort::Levels::NONE,
+    };
+    globals.lift(&Arc::new(held(Body::Pending, lifted_ty.clone())));
+    let prefix: Vec<Name> = telescope.iter().map(|binder| Arc::clone(&binder.name)).collect();
+    elaborator.recursing(
+        name,
+        &lifted_name,
+        telescope.iter().map(|binder| binder.value.clone()).collect(),
     );
+    let compiled = tree_body(elaborator, scope, &prefix, body, &declared);
+    elaborator.recursed();
+    let Some(compiled) = compiled? else {
+        return Err(refuse());
+    };
+    if let Some(undescending) = descends(&compiled, &lifted_name) {
+        return Err(Refusal::UncheckedRecursion {
+            at: undescending.0,
+            name: Arc::clone(name),
+        }
+        .into());
+    }
+    let compiled = zonked(elaborator, &compiled)?;
+    let emitted = emission(elaborator, here, &compiled)?;
+    let lifted = Arc::new(held(
+        Body::Compiled {
+            tree: Arc::new(compiled),
+            term: emitted,
+        },
+        lifted_ty,
+    ));
     globals.lift(&lifted);
-    // Outermost first, which is the order the λs were wrapped in, so binder `p`
-    // of the telescope is `arity - 1 - p` steps out from here.
-    for position in 0..arity {
-        let steps_out = arity.saturating_sub(position).saturating_sub(1);
-        term = Term::app(here, term, Term::var(here, crate::kernel::term::Index(steps_out)));
+    // Outermost first, which is the order the Πs were wrapped in, so binder `p`
+    // of the telescope is `depth - 1 - p` steps out from here.
+    let depth = scope.depth().0;
+    let mut term = Term::named_at(here, Arc::clone(&lifted.name), Role::Defined, Levels::NONE);
+    for position in 0..u32::try_from(telescope.len()).unwrap_or(u32::MAX) {
+        let steps_out = depth.saturating_sub(position).saturating_sub(1);
+        term = Term::app(here, term, Term::var(here, Index(steps_out)));
     }
     Ok(term)
 }
 
-/// Whether this `rec` **is** the definition being declared, rather than a term
-/// inside it.
+/// A definition's body as binders and a tree, or `None` when it is not one.
 ///
-/// `declare_program` gives a self-naming declaration its `rec` itself, so the
-/// arm this runs under is reached for both, and lifting the declaration's own
-/// body would produce a definition whose whole content is a second definition.
-/// The two are told apart by the only thing that distinguishes them: a `rec`
-/// standing under no binders and bearing the declared name is the one that was
-/// built rather than written.
+/// `prefix` is the binders already standing in `scope` that the definition
+/// abstracts — the context a [`lift`] closed over, and nothing for a definition
+/// written at a document's top. The λs of `body` are peeled against the Π chain
+/// of `goal`, an unwritten parameter binder is abstracted exactly as
+/// [`check`](crate::check)'s own rule does, and what is left has to be a
+/// `match` that needed no `let`.
 ///
-/// A `rec` under no binders bearing some *other* name is a term like any other
-/// and is lifted, which costs an extra member and buys the invariant prompt
-/// 155a needs — that every recursion in a declared document is a definition.
-fn own_body(elaborator: &Elaborator, scope: &Scope, name: &Name) -> bool {
-    scope.depth().0 == 0 && elaborator.declared_name().is_some_and(|declared| *declared == **name)
+/// # Errors
+///
+/// As [`crate::elaboration::case::tree`] — a `match` that misses a
+/// constructor, names one twice, or fails to elaborate an arm. A body that is
+/// merely not a tree is `Ok(None)`, so that the caller can say what *that*
+/// means for the definition it is building.
+pub(crate) fn tree_body(
+    elaborator: &mut Elaborator,
+    scope: &Scope,
+    prefix: &[Name],
+    body: &Raw,
+    goal: &Value,
+) -> Result<Option<Compiled>, ElabError> {
+    let mut binders: Vec<Name> = prefix.to_vec();
+    let mut inner = scope.clone();
+    let mut goal = goal.clone();
+    let mut at = body;
+    loop {
+        let forced = opened(elaborator.meter(), &goal)?;
+        let Form::Pi {
+            filling: expected,
+            name: unwritten,
+            domain,
+            codomain,
+        } = &forced.as_ref().unwrap_or(&goal).form
+        else {
+            break;
+        };
+        let (expected, unwritten, domain, codomain) = (
+            expected.clone(),
+            Arc::clone(unwritten),
+            Arc::clone(domain),
+            codomain.clone(),
+        );
+        let written = if let RawShape::Lam {
+            filling,
+            name,
+            domain: annotation,
+            body: rest,
+        } = at.shape()
+            && *filling == expected
+        {
+            Some((Arc::clone(name), annotation.clone(), rest))
+        } else {
+            None
+        };
+        let name = match written {
+            Some((ref name, _, _)) => Arc::clone(name),
+            // A binder the type wants and the author did not write is
+            // abstracted for them, which is `check`'s `abstracted` rule.
+            None if expected == Filling::Written => break,
+            None => unwritten,
+        };
+        // An annotation on a binder whose type is already known is not ignored:
+        // it is elaborated and made to agree, so a wrong one is a refusal
+        // rather than dead text.
+        if let Some((_, Some(ref annotation), _)) = written {
+            let (term, _) = elaborator.check_type(&inner, annotation)?;
+            let stated = inner.eval(elaborator.meter(), &term)?;
+            elaborator.same_types(&inner, annotation.origin(), &domain, &stated)?;
+        }
+        let variable = inner.fresh_var(at.origin(), Arc::clone(&domain));
+        goal = apply_closure(elaborator.meter(), &codomain, variable)?;
+        inner = inner.assume(Some(Arc::clone(&name)), at.origin(), domain);
+        binders.push(name);
+        if let Some((_, _, rest)) = written {
+            at = rest;
+        }
+    }
+    let RawShape::Match { subjects, arms } = at.shape() else {
+        return Ok(None);
+    };
+    let (tree, bound) = crate::elaboration::case::tree(elaborator, &inner, at.origin(), subjects, arms, &goal)?;
+    // A subject the builder had to name is a `let` around the emitted term, and
+    // a tree body is binders and a tree with nothing in between.
+    if !bound.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(Compiled {
+        binders: Arc::from(binders),
+        tree,
+    }))
+}
+
+/// A tree body as the term a reader gets: the emission, under one λ per binder.
+///
+/// See [`Body::Compiled`]'s `term` for what it is for. Zonked, because it is
+/// stored and read again after this elaboration has ended.
+///
+/// # Errors
+///
+/// As [`CaseTree::emitted`], and as zonking.
+pub(crate) fn emission(elaborator: &mut Elaborator, here: Origin, compiled: &Compiled) -> Result<Term, ElabError> {
+    let emitted = compiled.tree.emitted()?;
+    let term = compiled
+        .binders
+        .iter()
+        .rev()
+        .fold(emitted, |built, name| Term::lam(here, Arc::clone(name), built));
+    elaborator.zonk(&term)
+}
+
+/// The same tree with every metavariable this elaboration solved written in.
+///
+/// The tree is stored and reduced long after the elaboration that built it, so
+/// what it holds has to be the solutions rather than the unknowns — the same
+/// reason a definition's written term is zonked before it is kept.
+pub(crate) fn zonked(elaborator: &mut Elaborator, compiled: &Compiled) -> Result<Compiled, ElabError> {
+    let depth = deeper(Level::ZERO, compiled.binders.len());
+    Ok(Compiled {
+        binders: Arc::clone(&compiled.binders),
+        tree: zonked_tree(elaborator, &compiled.tree, depth)?,
+    })
+}
+
+/// `depth` with `more` binders added to it.
+fn deeper(depth: Level, more: usize) -> Level {
+    (0..more).fold(depth, |level, _| level.deeper())
+}
+
+/// The walk [`zonked`] is the top of, carrying the depth each node stands at.
+///
+/// The depth is the whole reason this is not [`Elaborator::zonk`] applied to
+/// each term: a tree's binders are beside it rather than around it, so nothing
+/// in an `Answer` says how many λs enclose it. See [`Elaborator::zonk_at`].
+fn zonked_tree(elaborator: &mut Elaborator, tree: &CaseTree, depth: Level) -> Result<CaseTree, ElabError> {
+    match tree {
+        CaseTree::Answer(term) => Ok(CaseTree::Answer(elaborator.zonk_at(term, depth)?)),
+        CaseTree::Impossible => Ok(CaseTree::Impossible),
+        CaseTree::Split(split) => {
+            let mut params = Vec::with_capacity(split.params.len());
+            for param in split.params.iter() {
+                params.push(elaborator.zonk_at(param, depth)?);
+            }
+            let mut motives = Vec::with_capacity(split.motives.len());
+            for motive in split.motives.iter() {
+                motives.push(elaborator.zonk_at(motive, depth)?);
+            }
+            let mut alternatives = Vec::with_capacity(split.alternatives.len());
+            for alternative in split.alternatives.iter() {
+                // A method binds every field and then every hypothesis, which
+                // is the order `kernel::family` assembles its type in.
+                let inner = deeper(
+                    depth,
+                    alternative.fields.len().saturating_add(alternative.hypotheses.len()),
+                );
+                alternatives.push(Alternative {
+                    constructor: Arc::clone(&alternative.constructor),
+                    fields: Arc::clone(&alternative.fields),
+                    hypotheses: Arc::clone(&alternative.hypotheses),
+                    body: zonked_tree(elaborator, &alternative.body, inner)?,
+                });
+            }
+            Ok(CaseTree::Split(Box::new(Split {
+                origin: split.origin,
+                group: Arc::clone(&split.group),
+                family: split.family,
+                params: Arc::from(params),
+                motives: Arc::from(motives),
+                level: split.level.clone(),
+                on: elaborator.zonk_at(&split.on, depth)?,
+                alternatives: Arc::from(alternatives),
+            })))
+        }
+    }
 }
 
 /// What to call a lifted definition: the enclosing definition, then the name
@@ -241,7 +384,7 @@ fn own_body(elaborator: &Elaborator, scope: &Scope, name: &Name) -> bool {
 /// definition cannot be named, shadowed, or collided with by any program. The
 /// count is appended only when one definition lifts two `rec`s of the same
 /// name, which is the one way the pair can repeat.
-fn lifted_name(elaborator: &Elaborator, globals: &crate::kernel::context::Globals, name: &Name) -> Name {
+fn lifted_name(elaborator: &Elaborator, globals: &Globals, name: &Name) -> Name {
     let enclosing = elaborator.declared_name().unwrap_or_else(|| Arc::from("_"));
     let first: Name = Arc::from(format!("{enclosing}#{name}"));
     if globals.defined(&first).is_none() {
@@ -250,523 +393,106 @@ fn lifted_name(elaborator: &Elaborator, globals: &crate::kernel::context::Global
     Arc::from(format!("{first}{}", globals.lifted().len()))
 }
 
-/// Elaborate `rec name : ty = body` against `goal`, at a definition's top.
+/// Whether `raw` names `name` freely — whether, that is, the `rec` recurses.
 ///
-/// # Errors
-///
-/// [`Refusal::UncheckedRecursion`] for a call §2.4's structural rule cannot see
-/// descend, and otherwise as [`crate::check`].
-pub(crate) fn define(
-    elaborator: &mut Elaborator,
-    scope: &Scope,
-    here: Origin,
-    name: &Name,
-    ty: &Raw,
-    body: &Raw,
-    goal: &Value,
-) -> Result<Term, ElabError> {
-    let rewritten = Plan::read(name, body).rewritten(body)?;
-    // The written type is checked against the goal by the ordinary rule: `rec`
-    // is a term of the type it declares, and a `rec` in checking position owes
-    // conversion like anything else.
-    let annotated = Raw::annot(here, rewritten, ty.clone());
-    elaborator
-        .check_open(scope, &annotated, goal)
-        .map_err(|error| unavailable(name, error))
+/// Shadowing is respected, so a `rec walk` whose body binds its own `walk`
+/// somewhere inside is not made recursive by the inner one. Asked of raw syntax
+/// because the answer decides whether anything is elaborated at all.
+fn names(raw: &Raw, name: &Name) -> bool {
+    let mut bound = Vec::new();
+    free(raw, name, &mut bound)
 }
 
-/// A missing hypothesis, reported as the recursion it was.
-///
-/// The rewrite knows which *column* a call descends in but not which of that
-/// constructor's fields are recursive — that is the declaration's knowledge, one
-/// stage further in. So a call on a field nothing stores reaches elaboration as
-/// a name that is not in scope, and `xs#ih` is a name no author wrote. Naming
-/// the call instead is the honest report; the `#` is what makes the test sound,
-/// since no source identifier can hold one.
-fn unavailable(name: &Name, error: ElabError) -> ElabError {
-    let ElabError::Refused(Refusal::UnknownName { name: missing, at, .. }) = &error else {
-        return error;
-    };
-    if !missing.contains('#') {
-        return error;
-    }
-    Refusal::UncheckedRecursion {
-        at: *at,
-        name: Arc::clone(name),
-    }
-    .into()
-}
-
-/// How one definition's calls become hypotheses: the argument it recurses on,
-/// and the `match` column that argument is a subject of.
-struct Plan {
-    name: Name,
-    arguments: Vec<Name>,
-    recursion: Option<Recursion>,
-}
-
-/// The recursive position, as both a call's argument and a matrix's column.
-struct Recursion {
-    /// Which argument of a call has to be the smaller one.
-    position: usize,
-    /// Which subject of the top-level `match` that argument is, so that an arm's
-    /// pattern in *that* column says what "smaller" means in this branch.
-    column: usize,
-}
-
-impl Plan {
-    /// Read a definition's shape: its arguments, and what it recurses on.
-    fn read(name: &Name, body: &Raw) -> Self {
-        let arguments = abstracted(body);
-        let mut candidates = Vec::new();
-        if let RawShape::Match { subjects, .. } = under_lambdas(body).shape() {
-            for (column, subject) in subjects.iter().enumerate() {
-                let RawShape::Var(subject) = subject.shape() else {
-                    continue;
-                };
-                if let Some(position) = arguments.iter().position(|argument| argument == subject) {
-                    candidates.push(Recursion { position, column });
-                }
-            }
-        }
-        // Exactly one, or none: two of the definition's own arguments split in
-        // one matrix is the lexicographic case, and a hypothesis from either
-        // column holds the other column's subject fixed.
-        let recursion = match candidates.len() {
-            1 => candidates.pop(),
-            _ => None,
-        };
-        Self {
-            name: Arc::clone(name),
-            arguments,
-            recursion,
-        }
-    }
-
-    /// The body with every recursive call replaced by the hypothesis it is.
-    fn rewritten(&self, body: &Raw) -> Result<Raw, ElabError> {
-        let Some(recursion) = &self.recursion else {
-            // Nothing here can be a call, so every occurrence is refused — which
-            // is what a definition with no `match` to descend in deserves.
-            return Rewrite {
-                plan: self,
-                smaller: Vec::new(),
-                position: 0,
-            }
-            .term(body, &mut Vec::new());
-        };
-        let mut lambdas = Vec::new();
-        let mut at = body;
-        while let RawShape::Lam {
-            filling,
-            name,
-            domain,
-            body: inner,
-        } = at.shape()
-        {
-            lambdas.push((at.origin(), filling.clone(), Arc::clone(name), domain.clone()));
-            at = inner;
-        }
-        let RawShape::Match { subjects, arms } = at.shape() else {
-            return Rewrite {
-                plan: self,
-                smaller: Vec::new(),
-                position: 0,
-            }
-            .term(body, &mut Vec::new());
-        };
-
-        let outside = Rewrite {
-            plan: self,
-            smaller: Vec::new(),
-            position: 0,
-        };
-        let mut rebuilt = Vec::with_capacity(subjects.len());
-        for subject in subjects.iter() {
-            // A subject is evaluated before anything is split, so a call there
-            // has no hypothesis available and is refused like any other.
-            rebuilt.push(outside.term(subject, &mut Vec::new())?);
-        }
-        // Everything abstracted after the recursive argument is generalized by
-        // moving it inside the arms, so that the hypothesis is a function of it
-        // rather than a value at this branch's own copy of it.
-        let after = recursion.position.saturating_add(1).min(lambdas.len());
-        let hoisted = lambdas.split_off(after);
-        let mut built = Vec::with_capacity(arms.len());
-        for arm in arms.iter() {
-            let mut smaller = Vec::new();
-            if let Some(pattern) = arm.patterns.get(recursion.column) {
-                binders(pattern, &mut smaller);
-            }
-            let mut taken = Vec::new();
-            if !hoisted.is_empty() {
-                for pattern in &arm.patterns {
-                    binders(pattern, &mut taken);
-                }
-            }
-            let inside = Rewrite {
-                plan: self,
-                smaller,
-                position: recursion.position,
-            };
-            let mut body = inside.term(&arm.body, &mut Vec::new())?;
-            for (origin, filling, name, domain) in hoisted.iter().rev() {
-                // An arm whose pattern binds this name already answers to it,
-                // and did so before the move; the mangled binder takes the
-                // argument without taking those occurrences with it.
-                let name = if taken.contains(name) {
-                    Arc::from(format!("{name}#arg"))
-                } else {
-                    Arc::clone(name)
-                };
-                body = Raw::new(
-                    *origin,
-                    RawShape::Lam {
-                        filling: filling.clone(),
-                        name,
-                        domain: domain.clone(),
-                        body,
-                    },
-                );
-            }
-            built.push(RawArm {
-                patterns: arm.patterns.clone(),
-                body,
-            });
-        }
-        let mut rewritten = Raw::new(
-            at.origin(),
-            RawShape::Match {
-                subjects: Arc::from(rebuilt),
-                arms: Arc::from(built),
-            },
-        );
-        for (origin, filling, name, domain) in lambdas.into_iter().rev() {
-            rewritten = Raw::new(
-                origin,
-                RawShape::Lam {
-                    filling,
-                    name,
-                    domain,
-                    body: rewritten,
-                },
-            );
-        }
-        Ok(rewritten)
-    }
-}
-
-/// The λ-bound argument names of a definition's body, outermost first.
-///
-/// Read off the body rather than the type, because the body is what a recursive
-/// call inside it is written against: a definition may abstract fewer binders
-/// than its type has arrows, and the arguments a call has to repeat are the ones
-/// the author actually named.
-fn abstracted(body: &Raw) -> Vec<Name> {
-    let mut names = Vec::new();
-    let mut at = body;
-    while let RawShape::Lam { name, body: inner, .. } = at.shape() {
-        names.push(Arc::clone(name));
-        at = inner;
-    }
-    names
-}
-
-/// What a definition's λs abstract over.
-fn under_lambdas(body: &Raw) -> &Raw {
-    let mut at = body;
-    while let RawShape::Lam { body: inner, .. } = at.shape() {
-        at = inner;
-    }
-    at
-}
-
-/// One branch's recursive calls, being turned into hypotheses.
-struct Rewrite<'a> {
-    plan: &'a Plan,
-    /// The names this branch's pattern bound in the recursive column.
-    smaller: Vec<Name>,
-    /// Which argument of a call has to be one of them.
-    position: usize,
-}
-
-impl Rewrite<'_> {
-    /// `raw` with every recursive call replaced by the hypothesis it is.
-    ///
-    /// `bound` is the names a binder inside `raw` has taken over, so that a
-    /// program that shadows the definition's own name — or one of its arguments
-    /// — is read the way an author reads it.
-    fn term(&self, raw: &Raw, bound: &mut Vec<Name>) -> Result<Raw, ElabError> {
-        let here = raw.origin();
-        if let Some(rewritten) = self.call(raw, bound)? {
-            return Ok(rewritten);
-        }
-        let shape = match raw.shape() {
-            RawShape::Var(name) => {
-                if **name == *self.plan.name && !bound.contains(name) {
-                    // Every *call* was consumed above, so an occurrence reaching
-                    // here is the definition used as a value: partially applied,
-                    // passed along, or applied to arguments this rule cannot see
-                    // decrease.
-                    return Err(Refusal::UncheckedRecursion {
-                        at: here,
-                        name: Arc::clone(&self.plan.name),
-                    }
-                    .into());
-                }
-                return Ok(raw.clone());
-            }
-            // A universe and a literal are both closed: neither can hold a call,
-            // so neither needs rewriting. A hosted name is closed for the same
-            // purpose — it names the host, never the definition being measured.
-            RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) | RawShape::Numeral { .. } => {
-                return Ok(raw.clone());
-            }
-            RawShape::Pi {
-                filling,
-                name,
-                domain,
-                codomain,
-            } => RawShape::Pi {
-                filling: filling.clone(),
-                name: Arc::clone(name),
-                domain: self.term(domain, bound)?,
-                codomain: self.under(name, codomain, bound)?,
-            },
-            RawShape::Lam {
-                filling,
-                name,
-                domain,
-                body,
-            } => RawShape::Lam {
-                filling: filling.clone(),
-                name: Arc::clone(name),
-                domain: domain.as_ref().map(|ty| self.term(ty, bound)).transpose()?,
-                body: self.under(name, body, bound)?,
-            },
-            RawShape::Method { receiver, method } => RawShape::Method {
-                receiver: self.term(receiver, bound)?,
-                method: Arc::clone(method),
-            },
-            RawShape::App {
-                filling,
-                function,
-                argument,
-            } => RawShape::App {
-                filling: filling.clone(),
-                function: self.term(function, bound)?,
-                argument: self.term(argument, bound)?,
-            },
-            // A call whose head is not the definition being defined: `spine`
-            // read it as one and `self.call` declined it, so what is left is an
-            // ordinary walk into the parts.
-            RawShape::Call {
-                function,
-                arguments,
-                supplied,
-            } => RawShape::Call {
-                function: self.term(function, bound)?,
-                arguments: arguments
-                    .iter()
-                    .map(|argument| self.term(argument, bound))
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into(),
-                supplied: self.fields(supplied, bound, false)?,
-            },
-            RawShape::RecordType(fields) => RawShape::RecordType(self.fields(fields, bound, true)?),
-            RawShape::Record(fields) => RawShape::Record(self.fields(fields, bound, false)?),
-            RawShape::Project { record, field } => RawShape::Project {
-                record: self.term(record, bound)?,
-                field: Arc::clone(field),
-            },
-            RawShape::Update { record, updates } => {
-                let mut rewritten = Vec::with_capacity(updates.len());
-                for update in updates.iter() {
-                    rewritten.push(crate::elaboration::raw::RawUpdate {
-                        origin: update.origin,
-                        path: update.path.clone(),
-                        value: self.term(&update.value, bound)?,
-                    });
-                }
-                RawShape::Update {
-                    record: self.term(record, bound)?,
-                    updates: Arc::from(rewritten),
-                }
-            }
-            RawShape::Let { name, ty, value, body } => RawShape::Let {
-                name: Arc::clone(name),
-                ty: ty.as_ref().map(|written| self.term(written, bound)).transpose()?,
-                value: self.term(value, bound)?,
-                body: self.under(name, body, bound)?,
-            },
-            RawShape::Annot { term, ty } => RawShape::Annot {
-                term: self.term(term, bound)?,
-                ty: self.term(ty, bound)?,
-            },
-            RawShape::Match { subjects, arms } => {
-                let mut rewritten = Vec::with_capacity(subjects.len());
-                for subject in subjects.iter() {
-                    rewritten.push(self.term(subject, bound)?);
-                }
-                let mut built = Vec::with_capacity(arms.len());
-                for arm in arms.iter() {
-                    let depth = bound.len();
-                    for pattern in &arm.patterns {
-                        binders(pattern, bound);
-                    }
-                    let body = self.term(&arm.body, bound);
-                    bound.truncate(depth);
-                    built.push(RawArm {
-                        patterns: arm.patterns.clone(),
-                        body: body?,
-                    });
-                }
-                RawShape::Match {
-                    subjects: Arc::from(rewritten),
-                    arms: Arc::from(built),
-                }
-            }
-            // An inner `rec` binds its own name, and its calls are its own.
-            RawShape::Rec { name, ty, body } => RawShape::Rec {
-                name: Arc::clone(name),
-                ty: self.term(ty, bound)?,
-                body: self.under(name, body, bound)?,
-            },
-        };
-        Ok(Raw::new(here, shape))
-    }
-
-    /// `raw`, rewritten under a binder named `name`.
-    fn under(&self, name: &Name, raw: &Raw, bound: &mut Vec<Name>) -> Result<Raw, ElabError> {
-        bound.push(Arc::clone(name));
-        let rewritten = self.term(raw, bound);
-        bound.pop();
-        rewritten
-    }
-
-    /// A record telescope or literal.
-    ///
-    /// `telescope` says whether a field's name is in scope for the fields after
-    /// it, which is true of a record *type* and false of a literal.
-    fn fields(
-        &self,
-        fields: &[RawField],
-        bound: &mut Vec<Name>,
-        telescope: bool,
-    ) -> Result<Arc<[RawField]>, ElabError> {
+fn free(raw: &Raw, name: &Name, bound: &mut Vec<Name>) -> bool {
+    let under = |raw: &Raw, binders: &[Name], bound: &mut Vec<Name>| {
         let depth = bound.len();
-        let mut built = Vec::with_capacity(fields.len());
-        for field in fields {
-            let term = self.term(&field.term, bound);
-            if telescope {
-                bound.push(Arc::clone(&field.name));
-            }
-            built.push(RawField {
-                name: Arc::clone(&field.name),
-                term: term?,
-            });
-        }
+        bound.extend(binders.iter().map(Arc::clone));
+        let found = free(raw, name, bound);
         bound.truncate(depth);
-        Ok(Arc::from(built))
+        found
+    };
+    match raw.shape() {
+        RawShape::Var(written) => **written == **name && !bound.contains(written),
+        RawShape::Hosted(_) | RawShape::Universe(_) | RawShape::Lit(_) | RawShape::Numeral { .. } => false,
+        RawShape::Pi {
+            name: binder,
+            domain,
+            codomain,
+            ..
+        } => free(domain, name, bound) || under(codomain, std::slice::from_ref(binder), bound),
+        RawShape::Lam {
+            name: binder,
+            domain,
+            body,
+            ..
+        } => {
+            domain.as_ref().is_some_and(|written| free(written, name, bound))
+                || under(body, std::slice::from_ref(binder), bound)
+        }
+        RawShape::Method { receiver, .. } => free(receiver, name, bound),
+        RawShape::Project { record, .. } => free(record, name, bound),
+        RawShape::App { function, argument, .. } => free(function, name, bound) || free(argument, name, bound),
+        RawShape::Call {
+            function,
+            arguments,
+            supplied,
+        } => {
+            free(function, name, bound)
+                || arguments.iter().any(|argument| free(argument, name, bound))
+                || fields(supplied, name, bound)
+        }
+        RawShape::RecordType(written) | RawShape::Record(written) => fields(written, name, bound),
+        RawShape::Update { record, updates } => {
+            free(record, name, bound)
+                || updates
+                    .iter()
+                    .any(|update: &RawUpdate| free(&update.value, name, bound))
+        }
+        RawShape::Let {
+            name: binder,
+            ty,
+            value,
+            body,
+        } => {
+            ty.as_ref().is_some_and(|written| free(written, name, bound))
+                || free(value, name, bound)
+                || under(body, std::slice::from_ref(binder), bound)
+        }
+        RawShape::Annot { term, ty } => free(term, name, bound) || free(ty, name, bound),
+        RawShape::Match { subjects, arms } => {
+            subjects.iter().any(|subject| free(subject, name, bound))
+                || arms.iter().any(|arm| {
+                    let mut binders = Vec::new();
+                    for pattern in &arm.patterns {
+                        pattern_binders(pattern, &mut binders);
+                    }
+                    under(&arm.body, &binders, bound)
+                })
+        }
+        // An inner `rec` binds its own name, and its recursion is its own.
+        RawShape::Rec { name: binder, ty, body } => {
+            free(ty, name, bound) || under(body, std::slice::from_ref(binder), bound)
+        }
     }
+}
 
-    /// A recursive call, as the hypothesis it becomes.
-    ///
-    /// `None` when `raw` is not one, which is every other term.
-    fn call(&self, raw: &Raw, bound: &mut Vec<Name>) -> Result<Option<Raw>, ElabError> {
-        let (head, arguments) = spine(raw);
-        let RawShape::Var(name) = head.shape() else {
-            return Ok(None);
-        };
-        if **name != *self.plan.name || bound.contains(name) {
-            return Ok(None);
-        }
-        let here = raw.origin();
-        let refuse = || -> ElabError {
-            Refusal::UncheckedRecursion {
-                at: here,
-                name: Arc::clone(&self.plan.name),
-            }
-            .into()
-        };
-        let Some(argument) = arguments.get(self.position) else {
-            return Err(refuse());
-        };
-        let RawShape::Var(passed) = argument.shape() else {
-            return Err(refuse());
-        };
-        // `bound` holds only the binders *inside* this arm's body, so a name the
-        // pattern bound and an inner binder took over are told apart.
-        if bound.contains(passed) || !self.smaller.contains(passed) {
-            return Err(refuse());
-        }
-        // The arguments before the recursive one are part of the goal the match
-        // was split at, so the hypothesis already stands at them: a call may
-        // repeat the definition's own binder, or name what this branch's pattern
-        // bound, which is how an index reaches the hypothesis. Anything else is
-        // asking for an answer at something no hypothesis holds.
-        for (index, argument) in arguments.iter().enumerate().take(self.position) {
-            let RawShape::Var(passed) = argument.shape() else {
-                return Err(refuse());
-            };
-            let own = self.plan.arguments.get(index).is_some_and(|name| name == passed);
-            if bound.contains(passed) || !(own || self.smaller.contains(passed)) {
-                return Err(refuse());
-            }
-        }
-        // The arguments after it are what the hoist generalized, so they are
-        // applied rather than dropped — `t#ih` is a function of exactly them.
-        let mut rewritten = Raw::var(here, hypothesis_name(passed));
-        for argument in arguments.iter().skip(self.position.saturating_add(1)) {
-            rewritten = Raw::app(here, rewritten, self.term(argument, bound)?);
-        }
-        Ok(Some(rewritten))
-    }
+fn fields(written: &[RawField], name: &Name, bound: &mut Vec<Name>) -> bool {
+    written.iter().any(|field| free(&field.term, name, bound))
 }
 
 /// The names a pattern binds, appended in order.
-fn binders(pattern: &RawPattern, into: &mut Vec<Name>) {
+fn pattern_binders(pattern: &RawPattern, into: &mut Vec<Name>) {
     match pattern {
         RawPattern::Bind { name, .. } => into.push(Arc::clone(name)),
         RawPattern::Constructor { fields, .. } => {
             for field in fields {
-                binders(field, into);
+                pattern_binders(field, into);
             }
         }
         RawPattern::Record { fields, .. } => {
             for (_, field) in fields {
-                binders(field, into);
+                pattern_binders(field, into);
             }
         }
     }
-}
-
-/// The head of a written application spine, and what is applied to it.
-///
-/// Type arguments are not counted: they are filled by elaboration, and a
-/// recursive call that wrote one has written the same thing the definition's own
-/// binder did.
-fn spine(raw: &Raw) -> (&Raw, Vec<&Raw>) {
-    // A written call already *is* the spine, with its head and arguments told
-    // apart by the author rather than by a walk. Read directly, so that a
-    // recursive call reaches the measure check whichever form the reader built.
-    if let RawShape::Call {
-        function, arguments, ..
-    } = raw.shape()
-    {
-        return (function, arguments.iter().collect());
-    }
-    let mut arguments = Vec::new();
-    let mut head = raw;
-    while let RawShape::App {
-        filling: Filling::Written,
-        function,
-        argument,
-    } = head.shape()
-    {
-        arguments.push(argument);
-        head = function;
-    }
-    arguments.reverse();
-    (head, arguments)
 }

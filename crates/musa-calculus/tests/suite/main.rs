@@ -38,6 +38,7 @@ mod record_laws;
 mod sort_laws;
 mod storable_laws;
 mod termination_laws;
+mod tree_laws;
 mod unification_laws;
 mod unify_laws;
 mod visibility_laws;
