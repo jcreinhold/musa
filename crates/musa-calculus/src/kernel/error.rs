@@ -16,6 +16,41 @@ use crate::kernel::budget::ResourceError;
 use crate::kernel::term::{Index, Name, Term};
 
 /// Why a core operation did not produce a term.
+///
+/// # Which enum a case belongs to
+///
+/// This one and [`crate::Refusal`] divide by two questions, asked in order.
+///
+/// **Who is the sentence addressed to?** A [`crate::Refusal`] is addressed to
+/// someone who *wrote* something — an author writing `.musa`, or a host author
+/// writing a registration. A [`Malformed`] is addressed to whoever maintains
+/// this compiler: nobody wrote the term, it was assembled wrong.
+///
+/// **When was it discovered?** The same host mistake can be either, and the
+/// boundary is whether the thing that was written is still in hand. A δ
+/// signature that §5.8's D1 does not admit is caught at registration, where the
+/// registration can be named, so it is [`crate::Refusal::HigherOrderDelta`]. A δ
+/// *rule* that answers nothing at arguments it declared it accepts is caught
+/// mid-evaluation, long after D2's promise was accepted and with nothing left
+/// to point at, so it is [`Malformed::BuiltinStuck`].
+///
+/// [`Self::Exhausted`] is neither: §4 makes it the third outcome rather than a
+/// verdict. [`Self::Refused`] is a δ-rule's verdict on the author's own
+/// arguments, which is why it carries a sentence and a place, and why
+/// [`crate::ElabError`]'s conversion from this enum is the one crossing.
+///
+/// A claim that is true on both sides of the line is stated on both sides, in
+/// each side's vocabulary, rather than moved down: `NotAFunction`,
+/// `NotARecord`, `NoSuchField`, `NotAType`, `Uninferable`, `BeyondUniverses`
+/// and `UnreadableIndex` are each a [`Malformed`] *and* a [`crate::Refusal`],
+/// and [`Malformed::Mistyped`] stands beside [`crate::Refusal::Mismatch`] the
+/// same way. Two copies of a distinction that is genuinely two distinctions is
+/// not duplication.
+///
+/// Unification belongs here. *These two terms have no solution* and *this
+/// constraint is still blocked* are facts about two terms with no writer to
+/// address, discovered by the kernel, so the variants prompt 153 adds are
+/// [`Malformed`] cases rather than a third enum.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum CoreError {
     /// The deterministic budget ended the operation (§4).

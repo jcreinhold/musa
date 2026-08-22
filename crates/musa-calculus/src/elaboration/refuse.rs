@@ -62,6 +62,17 @@ impl From<Malformed> for ElabError {
     }
 }
 
+/// The one crossing.
+///
+/// Nothing under `kernel/` names this module, and `tests/suite/boundary_laws.rs`
+/// enforces that, so a kernel outcome reaches an author through here or not at
+/// all. Two of the three arms are carried rather than translated —
+/// [`ElabError`] has an [`ElabError::Exhausted`] and an [`ElabError::Malformed`]
+/// of its own because neither becomes a refusal on the way up: exhaustion is
+/// §4's third outcome, and a malformed term is this compiler's defect, and
+/// spelling either as a refusal would blame an author for it. The third arm is
+/// the lift proper, where a δ-rule's sentence meets the vocabulary that has a
+/// refusal for it.
 impl From<CoreError> for ElabError {
     fn from(error: CoreError) -> Self {
         match error {
@@ -82,6 +93,25 @@ impl From<CoreError> for ElabError {
 ///
 /// Every variant carries the [`Origin`] of the term it is about, because a
 /// refusal a reader cannot locate is barely a refusal.
+///
+/// # Which enum a case belongs to
+///
+/// [`CoreError`]'s own doc states the rule; this is its other half. A refusal
+/// is addressed to someone who **wrote** something and is raised while the
+/// thing they wrote is still in hand — an author writing `.musa`, and equally a
+/// host author writing a registration, which is why
+/// [`Registry::new`](crate::Registry::new)'s checks answer here and live in
+/// [`admit`](crate::elaboration::admit) rather than in the kernel. A mistake
+/// found after that, with nothing left to point at, is addressed to whoever
+/// maintains this compiler and is a [`Malformed`].
+///
+/// Seven of these are the elaborator's half of a claim the kernel also makes —
+/// `NotAFunction`, `NotARecord`, `NoSuchField`, `NotAType`, `Uninferable`,
+/// `BeyondUniverses`, `UnreadableIndex` — and [`Self::Mismatch`] stands beside
+/// [`Malformed::Mistyped`] the same way. Each pair is two sentences for two
+/// readers rather than one sentence written twice: this side names what the
+/// author wrote and where, and the kernel's side names a term nobody should
+/// have built.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Refusal {
     /// A name with no binder in scope.
