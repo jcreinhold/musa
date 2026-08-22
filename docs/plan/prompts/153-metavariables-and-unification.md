@@ -127,12 +127,20 @@ cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-! grep -rn 'fn subst' crates/musa-calculus/src
+! grep -rn 'fn subst' crates/musa-calculus/src | grep -v 'SortVar'
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
 The `grep` is not decoration: a substitution function appearing here means solutions were pushed into terms, which
 breaks the NbE presentation prompt 144 specified and makes `quote` no longer the only reader.
+
+**Why it filters on `SortVar`, corrected against the code.** Prompt 152 landed `Sort::substitute`,
+`Term::substitute_levels` and `substitute_fields` — level generalization, which replaces universe *level variables* in a
+term's sorts and never replaces a variable by a term. It is not what this check protects: `eval` still looks a solution
+up, and `quote` is still the only reader. The bare grep matches those three by name and would fail at prompt 152's own
+commit, so it is narrowed to what it always meant. Every `fn subst…` in the crate must be a level substitution, which is
+what naming `SortVar` in its signature says; a substitution of terms for variables would not, and would still fail
+here.
 
 **The re-checker's obligation for this prompt, and it is the important one.** `Checked::try_from` already rejects
 unsolved metavariables — prompt 149 built the newtype for this line, so the caller it was waiting for is the queue's
