@@ -383,7 +383,7 @@ impl Elaborator {
         walk.slots.push(Slot::Argument(receiver.term.clone()));
         let value = scope.eval(&mut self.meter, &receiver.term)?;
         let ty = apply_closure(&mut self.meter, &codomain, value)?;
-        Self::finish_walk(here, function.term, ty, &walk, Vec::new())
+        Ok(Self::finish_walk(here, function.term, ty, &walk, Vec::new()))
     }
 }
 

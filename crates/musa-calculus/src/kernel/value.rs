@@ -59,6 +59,13 @@ use crate::kernel::term::{Field, Filling, Level, Name, Term};
 #[derive(Clone)]
 pub(crate) struct Env {
     locals: List<Value>,
+    /// How many binders [`Self::locals`] holds.
+    ///
+    /// Carried rather than counted because [`crate::kernel::eval::eval`] asks
+    /// for it at every metavariable it meets: an unknown's occurrence names its
+    /// scope by *level* (`kernel::meta`), and a level is only an index once the
+    /// depth is known.
+    depth: u32,
     globals: Globals,
 }
 
@@ -66,6 +73,7 @@ impl Env {
     /// The environment with no binders and no names.
     pub(crate) const EMPTY: Self = Self {
         locals: List::EMPTY,
+        depth: 0,
         globals: Globals::EMPTY,
     };
 
@@ -73,6 +81,7 @@ impl Env {
     pub(crate) const fn under(globals: Globals) -> Self {
         Self {
             locals: List::EMPTY,
+            depth: 0,
             globals,
         }
     }
@@ -81,8 +90,15 @@ impl Env {
     pub(crate) fn push(&self, value: Value) -> Self {
         Self {
             locals: self.locals.push(value),
+            depth: self.depth.saturating_add(1),
             globals: self.globals.clone(),
         }
+    }
+
+    /// How many binders are in scope: the depth every [`Level`] here counts
+    /// from.
+    pub(crate) const fn depth(&self) -> Level {
+        Level(self.depth)
     }
 
     /// The value of the binder `index` steps out, if there is one.
@@ -104,6 +120,7 @@ impl Env {
     pub(crate) fn reading(&self, globals: Globals) -> Self {
         Self {
             locals: self.locals.clone(),
+            depth: self.depth,
             globals,
         }
     }

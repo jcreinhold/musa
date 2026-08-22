@@ -13,10 +13,13 @@
 //! it, and that is what the variant says. So the cases below hand the kernel
 //! terms no elaborator would produce.
 //!
-//! Four variants are reached by nothing here and say why in
+//! Seven variants are reached by nothing here and say why in
 //! [`UNREACHED`](self::UNREACHED). An entry there is an argument, not an
 //! exemption: it has to name what would have to go wrong for the variant to
-//! fire, and why no test can arrange that from outside the crate.
+//! fire, and why no test can arrange that from outside the crate. Three of
+//! them — the metavariable ones prompt 153 added — *are* reached, by unit tests
+//! inside `kernel/unify.rs`, and the argument each makes here is why they have
+//! to be reached from in there rather than from out here.
 
 use std::any::Any;
 use std::sync::Arc;
@@ -74,11 +77,14 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::NotALiteral(_) => "not-a-literal",
         Malformed::UnregisteredCarrier(_) => "unregistered-carrier",
         Malformed::LevelArity(_) => "level-arity",
+        Malformed::Cyclic(_) => "cyclic-meta",
+        Malformed::MetaTelescope(_) => "meta-telescope",
+        Malformed::EscapedSolution(_) => "escaped-solution",
     }
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 16] = [
+const ALL_MALFORMED: [&str; 19] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
@@ -95,15 +101,18 @@ const ALL_MALFORMED: [&str; 16] = [
     "not-a-literal",
     "unregistered-carrier",
     "level-arity",
+    "cyclic-meta",
+    "meta-telescope",
+    "escaped-solution",
 ];
 
 /// The ones nothing here reaches, each with the argument for why.
 ///
 /// Read this as the gate's honest remainder rather than as a list of things to
-/// get to later. Three of the four *cannot* be reached from outside this crate
-/// by construction, and saying so is the finding; the fourth is not this
+/// get to later. Six of the seven *cannot* be reached from outside this crate
+/// by construction, and saying so is the finding; the seventh is not this
 /// crate's to raise at all.
-const UNREACHED: [(&str, &str); 4] = [
+const UNREACHED: [(&str, &str); 7] = [
     (
         "escaped-variable",
         "quotation reaching a level its own depth does not name means levels and indices \
@@ -122,6 +131,25 @@ const UNREACHED: [(&str, &str); 4] = [
         "solutions are write-once, and the second write is the conversion checker \
          assigning a meta it had already assigned. Reaching it means editing `convert.rs` \
          to drop the check that makes it unreachable.",
+    ),
+    (
+        "cyclic-meta",
+        "the occurs check answers about two values held by the unifier, and reaching it needs \
+         a metavariable — which `unsolved-meta` above says no public constructor builds. \
+         `kernel::unify`'s own test module reaches it, being the one caller that can make one.",
+    ),
+    (
+        "meta-telescope",
+        "a metavariable whose type does not have the telescope its arity claims, or an \
+         occurrence standing where that scope does not reach. Both need a metavariable built \
+         wrong, which is not a thing a `Term` from out here can hold; `kernel::unify`'s test \
+         module builds both.",
+    ),
+    (
+        "escaped-solution",
+        "the re-checker's second scope check, over a solution the unifier would never have \
+         written. Arranging one means writing a solution directly, and `Meta::solve` is not \
+         public — `kernel::unify`'s test module holds the negative control prompt 153 owes.",
     ),
     (
         "not-a-literal",

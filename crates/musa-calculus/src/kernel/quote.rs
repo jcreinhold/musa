@@ -65,12 +65,21 @@ use crate::kernel::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value}
 
 /// Whether quotation opens a folded definition or keeps it.
 ///
-/// Two modes, because there are two callers. Diagnostics **keep**: a
-/// conversion mismatch should name `pitch_of`, not print its normal form.
-/// Metavariable solutions and the canonical readback **open**: a solution
-/// mentioning a definition that escapes its scope is unsound, and a musical
-/// value must be a value rather than a name for one. There is no third
-/// caller, so there is no third mode.
+/// Two modes, because there are two callers. **Keep** is for a term that will
+/// be read or evaluated again: a conversion mismatch should name `pitch_of`,
+/// not print its normal form, and an unknown's answer is stored to be applied
+/// later rather than shown, so normalizing it buys nothing and can cost
+/// everything — [`crate::kernel::unify`]'s `assign` says what it cost. **Open**
+/// is for a term that stands on its own afterwards: the stored program a
+/// declaration leaves behind, and the canonical readback, where a musical value
+/// must be a value rather than a name for one. There is no third caller, so
+/// there is no third mode.
+///
+/// Keeping a definition is not keeping a *name to be resolved later*: a folded
+/// local is written as the variable that names it, and is refused by
+/// [`Reading::index`] if it escapes, while a folded global is written as the
+/// definition itself. So keeping cannot carry anything out of the scope it was
+/// resolved in, which is why an unknown's answer is sound either way.
 ///
 /// The mode governs the *value* being read back. The *type* directing η is
 /// always opened — it is never written into the term, and a folded type
@@ -81,6 +90,36 @@ pub(crate) enum Mode {
     Keep,
     /// Unfold folded definitions.
     Open,
+}
+
+/// What a pair of values is being read back at.
+///
+/// Quotation is type-directed (§3, η), so a caller that has two values in hand
+/// has to say what they are *at* — and there is no way to say "a type" without
+/// inventing a level nobody wrote, which is the same reason [`quote_type`]
+/// stands beside [`quote`]. Every caller that compares, postpones, or reports a
+/// pair of values carries one of these rather than a pair of quotation
+/// functions.
+#[derive(Clone, Copy)]
+pub(crate) enum At<'a> {
+    /// Both sides are types.
+    Type,
+    /// Both sides inhabit this type.
+    Term(&'a Value),
+}
+
+impl At<'_> {
+    /// Read `value` back in this sort.
+    ///
+    /// # Errors
+    ///
+    /// As [`quote`] and [`quote_type`].
+    pub(crate) fn quote(self, meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, CoreError> {
+        match self {
+            Self::Type => quote_type(meter, depth, Mode::Keep, value),
+            Self::Term(ty) => quote(meter, depth, Mode::Keep, ty, value),
+        }
+    }
 }
 
 /// The depth, and — when the term being written is a metavariable's solution —
@@ -324,8 +363,10 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
                 DefHead::Local(level) => Term::var(here, reading.index(*level)?),
                 DefHead::Global(def, levels) => def.term(here, levels.clone()),
             },
-            // Reached only unsolved: a solved meta is forced before quotation,
-            // and a spine whose head is solved forces whole.
+            // Reached only unsolved in [`Mode::Open`]: a solved meta is forced
+            // before quotation, and a spine whose head is solved forces whole.
+            // [`Mode::Keep`] reaches a solved one too, and writes it, which is
+            // what "keep" means for an unknown as much as for a definition.
             Head::Meta(meta) => Term::meta(here, meta.clone()),
             Head::Const(constant, _) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
@@ -338,9 +379,22 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
         // of `f x y` reads back as three terms and each says where it was
         // written. The prefix is grown alongside, because an argument's type is
         // the type of the prefix it is applied to.
+        // An unknown's leading eliminations are its *scope* and not a
+        // computation: the binders that were in scope where it was made,
+        // applied in order (`kernel::meta`). [`Term::meta`] already means the
+        // occurrence with that scope applied — [`crate::kernel::eval`] puts it
+        // back from the environment — so writing it here would write it twice.
+        // Skipped rather than read, and still grown into the prefix, because a
+        // later argument's type is the type of everything applied before it.
+        let scope = match &neutral.head {
+            Head::Meta(meta) => meta.arity() as usize,
+            Head::Var(..) | Head::Const(..) | Head::Base(..) | Head::Builtin(..) | Head::Def(..) => 0,
+        };
         let mut prefix = Neutral::head(here, neutral.head.clone());
-        for elimination in &neutral.spine {
-            term = read_elimination(meter, reading, &prefix, term, elimination)?;
+        for (position, elimination) in neutral.spine.iter().enumerate() {
+            if position >= scope {
+                term = read_elimination(meter, reading, &prefix, term, elimination)?;
+            }
             prefix.spine.push(elimination.clone());
         }
         Ok(term)

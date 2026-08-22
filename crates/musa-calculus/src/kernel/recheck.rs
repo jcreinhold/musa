@@ -329,10 +329,74 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
                 | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
             }
         }
-        // `Checked` is what stops one arriving; reaching this means a caller
-        // went around it.
-        Shape::Meta(meta) => Err(Malformed::UnsolvedMeta(meta.id()).into()),
+        // `Checked` is what stops an *unsolved* one arriving; reaching this
+        // with one means a caller went around it. A solved one is a different
+        // fact, and the one this arm exists for — see [`solved`].
+        Shape::Meta(meta) => solved(cx, meter, meta),
     }
+}
+
+/// A solved unknown's type, and the second check that its solution stayed in
+/// scope.
+///
+/// **The scope check made twice, and the second time is this one.**
+/// `02-core-calculus.md` §2.1 admits a solution only when it "mentions no
+/// variable outside" the unknown's scope, and [`crate::kernel::unify::assign`]
+/// enforces that where it writes one — by reading the value back at the arity,
+/// where a variable from outside is a level the depth does not name. That is
+/// the check a *correct* unifier makes. Verification that trusts the pass it
+/// verifies verifies nothing, so this pass makes it again, over the solution
+/// that was actually stored and by whatever route it got there. Without it a
+/// capture is silent: the term re-checks, the program runs, and the variable it
+/// names is whichever binder happens to stand at that index.
+///
+/// The type is derived the same way and for the same reason: not read off
+/// anything the elaborator recorded, but walked out of the unknown's own
+/// telescope with the scope this context holds.
+///
+/// # Errors
+///
+/// [`Malformed::UnsolvedMeta`] when nothing solved it — `Checked` should have
+/// stopped that one — [`Malformed::EscapedSolution`] when the solution names a
+/// variable from outside the scope, and [`Malformed::MetaTelescope`] when the
+/// unknown's type does not have the telescope its arity claims or this context
+/// is shallower than that arity.
+fn solved(cx: &Cx, meter: &mut Meter, meta: &crate::kernel::meta::Meta) -> Result<Value, CoreError> {
+    if !meta.is_solved() {
+        return Err(Malformed::UnsolvedMeta(meta.id()).into());
+    }
+    let Some((body, goal)) = crate::kernel::unify::opened_solution(meter, meta)? else {
+        return Err(Malformed::UnsolvedMeta(meta.id()).into());
+    };
+    let scope = crate::kernel::term::Level(meta.arity());
+    // Only the escape is renamed. Reading a solution back can fail for the
+    // ordinary reasons any read-back fails — a budget, a term that does not fit
+    // the type it is read at — and answering all of them with one sentence
+    // about scope would be a diagnostic that is wrong most of the times it
+    // fires.
+    match crate::kernel::quote::quote(meter, scope, Mode::Open, &goal, &body) {
+        Ok(_) => {}
+        Err(CoreError::Malformed(Malformed::EscapedVariable)) => {
+            return Err(Malformed::EscapedSolution(meta.id()).into());
+        }
+        Err(other) => return Err(other),
+    }
+    let depth = cx.env().depth().0;
+    let mut ty = meta.ty().clone();
+    for level in 0..meta.arity() {
+        let index = depth
+            .checked_sub(level.saturating_add(1))
+            .ok_or(Malformed::MetaTelescope(meta.id()))?;
+        let argument = cx.env().get(index).ok_or(Malformed::MetaTelescope(meta.id()))?.clone();
+        let unfolded = opened(meter, &ty)?;
+        let current = unfolded.as_ref().unwrap_or(&ty);
+        let Form::Pi { codomain, .. } = &current.form else {
+            return Err(Malformed::MetaTelescope(meta.id()).into());
+        };
+        let codomain = codomain.clone();
+        ty = apply_closure(meter, &codomain, argument)?;
+    }
+    Ok(ty)
 }
 
 /// `cx` extended by a `let`'s binder, its stated type checked and its value

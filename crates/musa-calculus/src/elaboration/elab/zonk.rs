@@ -5,24 +5,32 @@
 use std::sync::Arc;
 
 use crate::elaboration::refuse::{ElabError, Refusal};
-use crate::kernel::meta::MetaSource;
+use crate::kernel::meta::{Meta, MetaSource};
 use crate::kernel::term::{Binder, Level, Shape, Term};
 
 use super::Elaborator;
 
 impl Elaborator {
-    /// `term` with every solved meta written back as the term it solved to.
+    /// `term` with every solved unknown written back as the term it solved to.
     ///
     /// Runs after [`Self::settled`] and before the term is *stored*, and that
-    /// ordering is the point, not hygiene: a meta's solution is a *value*, read
-    /// at the levels of the scope that created it, while the term it sits in is
-    /// evaluated later under other environments — a caller's, the normalizer's.
-    /// Only a term variable is re-read under a new environment, so the meta has
-    /// to become one here: quoting the solution at the binder depth the meta
-    /// sits at turns the value back into indices, which is exactly what makes
-    /// the stored term mean the same thing everywhere it is evaluated.
+    /// ordering is the point, not hygiene: an unknown's solution is a *value*,
+    /// while the term it sits in is evaluated later under other environments —
+    /// a caller's, the normalizer's. Only a term variable is re-read under a
+    /// new environment, so the unknown has to become one here.
     ///
-    /// An unsolved meta cannot reach here — [`Self::settled`] has already
+    /// **What is written in is the body, at the depth the occurrence sits at.**
+    /// An occurrence is the unknown applied to its whole scope
+    /// (`kernel::meta`) and its solution is a closed λ-chain over that same
+    /// scope, so writing the λ-chain in where the occurrence stood would leave
+    /// a β-redex — a term that says the right thing, reads like bookkeeping,
+    /// and that [`crate::kernel::recheck`] cannot infer a type for, a λ having
+    /// none of its own. Applying the solution to the variables it abstracted
+    /// reduces that redex away, and quoting the result at the walk's own depth
+    /// is what turns those variables back into indices that name the binders
+    /// standing here.
+    ///
+    /// An unsolved unknown cannot reach here — [`Self::settled`] has already
     /// refused it — so one found is the audit's bug, reported as the refusal
     /// the audit would have given rather than a panic.
     pub(crate) fn zonk(&mut self, term: &Term) -> Result<Term, ElabError> {
@@ -33,24 +41,7 @@ impl Elaborator {
     fn zonking(&mut self, term: &Term, depth: Level) -> Result<Term, ElabError> {
         let here = term.origin();
         let shape = match term.shape() {
-            Shape::Meta(meta) => {
-                let Some(solution) = meta.solution() else {
-                    return Err(Refusal::Unsolved {
-                        site: MetaSource::TypeParameter,
-                        created: meta.origin(),
-                        blocked: None,
-                    }
-                    .into());
-                };
-                let solution = solution.clone();
-                return Ok(crate::kernel::quote::quote(
-                    &mut self.meter,
-                    depth,
-                    crate::kernel::quote::Mode::Open,
-                    meta.ty(),
-                    &solution,
-                )?);
-            }
+            Shape::Meta(meta) => return self.filled(meta, depth),
             Shape::Var(_) | Shape::Lit(_) => return Ok(term.clone()),
             // Levels are written back here too, for the same reason metas are:
             // the stored term outlives the elaboration that solved them, and a
@@ -116,5 +107,37 @@ impl Elaborator {
             },
         };
         Ok(Term::new(here, shape))
+    }
+
+    /// The term a solved unknown stands for, at `depth`.
+    ///
+    /// The occurrence's own depth is what the answer is quoted at, and the
+    /// scope check falls out of that: the body mentions only the variables the
+    /// solution abstracted, every one of them a level below the arity, and
+    /// [`crate::kernel::quote`] refuses a level the depth does not name. So a
+    /// solution that escaped is an [`crate::kernel::error::Malformed`] here
+    /// rather than a capture nobody notices.
+    ///
+    /// # Errors
+    ///
+    /// [`Refusal::Unsolved`] when the unknown has no solution, which
+    /// [`Self::settled`] should already have reported; whatever opening the
+    /// solution and reading it back spends.
+    fn filled(&mut self, meta: &Meta, depth: Level) -> Result<Term, ElabError> {
+        let Some((body, goal)) = crate::kernel::unify::opened_solution(&mut self.meter, meta)? else {
+            return Err(Refusal::Unsolved {
+                site: MetaSource::TypeParameter,
+                created: meta.origin(),
+                blocked: None,
+            }
+            .into());
+        };
+        Ok(crate::kernel::quote::quote(
+            &mut self.meter,
+            depth,
+            crate::kernel::quote::Mode::Open,
+            &goal,
+            &body,
+        )?)
     }
 }

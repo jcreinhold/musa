@@ -33,6 +33,7 @@ use crate::kernel::base::{Answer, Builtin, Datum};
 use crate::kernel::budget::Meter;
 use crate::kernel::context::Globals;
 use crate::kernel::error::{CoreError, Malformed};
+use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
 use crate::kernel::term::{Binder, Constant, Definition, Field, Filling, Name, Role, Shape, Term};
@@ -53,13 +54,18 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 .get(index.0)
                 .cloned()
                 .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
-            // A meta is closed, so the environment says nothing about it: it is
-            // either its solution, with that solution's own origins (§7), or a
-            // flexible head waiting for one.
-            Shape::Meta(meta) => Ok(meta
-                .solution()
-                .cloned()
-                .unwrap_or_else(|| Value::neutral(Neutral::head(here, Head::Meta(meta.clone()))))),
+            // An unknown stands for a whole occurrence, spine and all: it is
+            // closed, and §2.1 writes it `?m[σ]` — applied to the scope it may
+            // mention (`kernel::meta`). The spine is *not* in the term, and
+            // reading it out of the environment here is the reason. A term
+            // moves: it is placed under further binders, put in a closure, and
+            // evaluated again in whatever environment that closure was built
+            // in. A spine written as indices would have to be shifted each
+            // time, which is the substitution this crate does not have; a spine
+            // read from the environment by *level* names the same binders
+            // wherever the term ends up, because every environment a term is
+            // re-read in extends the one it was written in.
+            Shape::Meta(meta) => occurrence(meter, env, here, meta),
             // Resolved on the way in, so a value carries the level its arms
             // have already been solved to rather than the one written first.
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.clone()))),
@@ -137,6 +143,53 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
 ///   is long enough (§5.8).
 ///
 /// The three rigid heads keep the table they were resolved under, because
+/// An occurrence of `meta` in `env`: the unknown applied to the scope it may
+/// mention, and then reduced if a solution has arrived.
+///
+/// The scope is levels `0 … arity-1` — the *outermost* binders, which is what
+/// makes this stable. A meta is created under some prefix of binders, and every
+/// environment the term is later evaluated in extends that prefix at the
+/// innermost end, so the outermost `arity` entries are still the very binders
+/// the unknown was created under.
+///
+/// # Errors
+///
+/// [`Malformed::MetaTelescope`] when the environment is shallower than the
+/// arity, which is a term moved somewhere its unknown's scope does not reach.
+pub(crate) fn occurrence(meter: &mut Meter, env: &Env, here: Origin, meta: &Meta) -> Result<Value, CoreError> {
+    let depth = env.depth().0;
+    let mut arguments = Vec::with_capacity(meta.arity() as usize);
+    for level in 0..meta.arity() {
+        let index = depth
+            .checked_sub(level.saturating_add(1))
+            .ok_or(Malformed::MetaTelescope(meta.id()))?;
+        let argument = env.get(index).ok_or(Malformed::MetaTelescope(meta.id()))?;
+        arguments.push(argument.clone());
+    }
+    match meta.solution() {
+        // Its own origins (§7): what the unknown stood for was written
+        // somewhere, and the occurrence is not that place.
+        Some(solution) => {
+            let mut value = solution.clone();
+            for argument in arguments {
+                value = apply(meter, here, value, argument)?;
+            }
+            Ok(value)
+        }
+        None => Ok(Value::neutral(Neutral {
+            origin: here,
+            head: Head::Meta(meta.clone()),
+            spine: arguments
+                .into_iter()
+                .map(|argument| Elim::App {
+                    origin: here,
+                    argument: Arc::new(argument),
+                })
+                .collect(),
+        })),
+    }
+}
+
 /// [`neutral_type`] answers their types by evaluating a declaration term and
 /// has no context to ask — see [`Head::Base`].
 ///

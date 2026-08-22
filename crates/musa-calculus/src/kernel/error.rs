@@ -203,6 +203,34 @@ pub enum Malformed {
     /// the table disagree, and the program that reached it was well typed.
     #[error("no builtin named `{0}` to carry a value into the position that accepts it")]
     UnregisteredCarrier(Name),
+    /// A metavariable would have had to occur in its own solution.
+    ///
+    /// The occurs check, and it is a defect rather than a program's fault for
+    /// this module's opening reason: two values with no author between them.
+    /// The *program* that produced the pair is refused by the elaborator with a
+    /// sentence about what it could not determine; this is what the check
+    /// itself answers.
+    #[error("metavariable ?{0} would have to occur in its own solution")]
+    Cyclic(u32),
+    /// A metavariable's type did not have the telescope its arity claims.
+    ///
+    /// `meta.rs` states the invariant: a meta created under `n` binders has a
+    /// closed type of `n` nested Π binders around its goal, and every
+    /// occurrence applies exactly those `n` variables. This is that invariant
+    /// broken — a meta assembled by something that did not build its type, or
+    /// an occurrence carrying a spine of the wrong length.
+    #[error("metavariable ?{0} does not have the scope its occurrences apply")]
+    MetaTelescope(u32),
+    /// A metavariable's solution named a variable from outside its scope.
+    ///
+    /// `02-core-calculus.md` §2.1 admits a solution only when it "mentions no
+    /// variable outside" the metavariable's scope, and
+    /// [`crate::kernel::unify`] enforces that where it writes one. This variant
+    /// is the *second* check, made by the re-checker over a finished term:
+    /// verification that trusts the pass it verifies verifies nothing, and this
+    /// prompt's failure mode is otherwise silent.
+    #[error("metavariable ?{0} was solved with a term that names a variable outside its scope")]
+    EscapedSolution(u32),
     /// A use of a level-polymorphic definition named the wrong number of
     /// levels.
     ///

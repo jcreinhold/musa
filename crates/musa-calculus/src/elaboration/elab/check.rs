@@ -277,6 +277,59 @@ impl Elaborator {
         Ok(Some(Term::lam(here, name, self.check(&inner, raw, &body_ty)?)))
     }
 
+    /// `ty` made into a function type, when it is an unknown that has to be
+    /// one — `None` when it is anything else.
+    ///
+    /// §2.1's fragment says a solution is unique when the spine is one, and it
+    /// says nothing about the shape of the value: `?m x⃗ ≟ (x : ?a) → ?b` is an
+    /// ordinary assignment with two fresh unknowns on the right. So this is not
+    /// a guess and not a default. It commits to the one thing a λ's type must
+    /// be and to nothing else — the domain and the codomain are unknowns like
+    /// any other, solved by the argument that determines them or reported at
+    /// declaration end.
+    ///
+    /// The codomain is a closure over the *scope's* environment with one more
+    /// binder, which is what makes the codomain unknown's own scope the inner
+    /// one: an occurrence names its scope by level and reads it out of the
+    /// environment it is evaluated in (`kernel::meta`), so applying the closure
+    /// to an argument is exactly what puts that argument in the codomain's
+    /// scope.
+    fn expanded_unknown(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        filling: &Filling,
+        name: &Name,
+        ty: &Value,
+    ) -> Result<Option<Value>, ElabError> {
+        if crate::kernel::unify::flexible_head(ty).is_none() {
+            return Ok(None);
+        }
+        let sort = self.fresh_level(here);
+        let domain_ty = Value::new(here, Form::Universe(sort));
+        let domain = self.fresh_meta(scope, here, &domain_ty)?;
+        let domain_value = Arc::new(domain.value);
+        let inner = scope.assume(Some(Arc::clone(name)), here, Arc::clone(&domain_value));
+        let sort = self.fresh_level(here);
+        let codomain_ty = Value::new(here, Form::Universe(sort));
+        let codomain = self.fresh_meta(&inner, here, &codomain_ty)?;
+        let pi = Value::new(
+            here,
+            Form::Pi {
+                filling: filling.clone(),
+                name: Arc::clone(name),
+                domain: domain_value,
+                codomain: crate::kernel::value::Closure {
+                    env: scope.env().clone(),
+                    body: codomain.term,
+                },
+            },
+        );
+        self.conversion
+            .unify_types(&mut self.meter, scope.depth(), here, ty, &pi)?;
+        Ok(Some(pi))
+    }
+
     /// `λx. e ⇐ (x : A) → B`, and the filling rules that go with it.
     fn lambda(
         &mut self,
@@ -289,6 +342,28 @@ impl Elaborator {
         ty: &Value,
     ) -> Result<Option<Term>, ElabError> {
         let here = raw.origin();
+        // A λ read against an unknown: the unknown is η-expanded into a Π over
+        // two fresh ones, and the λ is then read against that.
+        //
+        // This is what replaces prompt 153's deleted deferral. A λ describes
+        // nothing on its own, so before there was a queue the walk could not
+        // read one against a domain it had not yet determined and put the
+        // argument aside instead. The determination it was waiting for is the
+        // one made here, and it is *forced* rather than waited for: a value
+        // that has to accept a λ is a function type, whatever else is still
+        // unknown about it. Nothing is guessed — the domain and the codomain
+        // stay unknowns, to be solved by the same matching as any other.
+        let expanded;
+        let ty = match ty.form {
+            Form::Pi { .. } => ty,
+            _ => match self.expanded_unknown(scope, here, filling, name, ty)? {
+                Some(pi) => {
+                    expanded = pi;
+                    &expanded
+                }
+                None => ty,
+            },
+        };
         let Form::Pi {
             filling: expected,
             name: _,

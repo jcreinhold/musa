@@ -46,6 +46,20 @@ struct Binding {
     ty: Arc<Value>,
 }
 
+/// One binder a metavariable abstracts over: how the telescope names it, the
+/// type it stands at, and what its occurrences apply.
+///
+/// Three facts and not two, because the third is the one a caller would get
+/// wrong: see [`Scope::telescope`].
+pub(crate) struct Abstracted {
+    /// The name the Π binder is written with.
+    pub(crate) name: Name,
+    /// The type it was introduced at, read at its own depth.
+    pub(crate) ty: Arc<Value>,
+    /// What it stands for in this scope's environment.
+    pub(crate) value: Value,
+}
+
 /// What resolving a name found.
 pub(crate) struct Resolved {
     /// How many binders out it is, from here.
@@ -166,6 +180,52 @@ impl Scope {
             level: self.depth().0,
             ty,
         })
+    }
+
+    /// Every binder in scope, outermost first: its name where it has one, and
+    /// the type it was introduced at.
+    ///
+    /// What a metavariable abstracts over — the telescope this module's header
+    /// says a solution must bind. Outermost first because that is the order the
+    /// Π chain is built in, and because binder `i`'s type is read at depth `i`,
+    /// which is its own position in the list.
+    ///
+    /// A binder the caller's context already held has no name, and gets one
+    /// here rather than at the use site: the telescope is written into a type
+    /// that may be printed, and an unnamed Π binder has nothing to print.
+    pub(crate) fn telescope(&self) -> Vec<Abstracted> {
+        let mut binders: Vec<&Binding> = self.bindings.iter().collect();
+        binders.reverse();
+        binders
+            .iter()
+            .enumerate()
+            .map(|(position, binding)| {
+                let steps_out = binders.len().saturating_sub(position).saturating_sub(1);
+                let name = binding
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| Arc::from(format!("x{}", binding.level).as_str()));
+                Abstracted {
+                    name,
+                    ty: Arc::clone(&binding.ty),
+                    // The environment's own entry, not a variable built to
+                    // match it. A `let` binder stands in the environment as the
+                    // definition *folded* — `Cx::defined` says why — and an
+                    // occurrence whose spine held a fresh variable there would
+                    // evaluate to something the elaborator never reasoned
+                    // about, because evaluating the occurrence's term reads the
+                    // environment and gets the folded definition back.
+                    value: self
+                        .cx
+                        .env()
+                        .get(u32::try_from(steps_out).unwrap_or(u32::MAX))
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            Value::var(binding.ty.origin, Level(binding.level), Arc::clone(&binding.ty))
+                        }),
+                }
+            })
+            .collect()
     }
 
     /// The variable a binder introduced here would be.

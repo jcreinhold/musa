@@ -10,7 +10,7 @@ use crate::kernel::eval::{apply_closure, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
 use crate::kernel::term::{Definition, Filling, Role, Shape, Term};
-use crate::kernel::value::{Form, Neutral, Value};
+use crate::kernel::value::{Form, Value};
 
 use super::{Elaborator, Typed};
 
@@ -83,11 +83,10 @@ impl Elaborator {
                 .into());
             };
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-            let meta = self.fresh_meta(here, &domain);
-            let value = Value::neutral(Neutral::head(here, crate::kernel::value::Head::Meta(meta.clone())));
+            let unknown = self.fresh_meta(scope, here, &domain)?;
             built = Typed {
-                term: Term::app(here, built.term, Term::meta(here, meta)),
-                ty: apply_closure(&mut self.meter, &codomain, value)?,
+                term: Term::app(here, built.term, unknown.term),
+                ty: apply_closure(&mut self.meter, &codomain, unknown.value)?,
             };
         }
         Ok(built)
@@ -113,21 +112,42 @@ impl Elaborator {
     ///   domain.
     /// - **Still quantified, and the argument is a checking-only form that
     ///   describes nothing** — the argument is *deferred*. Nothing can infer a
-    ///   bare `λ`, and checking one against a domain that is still a meta would
-    ///   bind its parameter to that meta; so a placeholder stands in the slot,
-    ///   the rest of the spine is walked — which is what solves the domain —
-    ///   and the argument is checked afterwards against the type it turned out
-    ///   to have. A λ that annotates its own binder is not here: it says what
-    ///   its parameter is, so it is one of the arguments the deferred ones are
-    ///   waiting for rather than one of the ones waiting.
+    ///   bare `λ`, so a placeholder stands in the slot, the rest of the spine is
+    ///   walked — which is what solves the domain — and the argument is checked
+    ///   afterwards against the type it turned out to have. A λ that annotates
+    ///   its own binder is not here: it says what its parameter is, so it is one
+    ///   of the arguments the deferred ones are waiting for rather than one of
+    ///   the ones waiting.
+    ///
+    /// **Why the queue prompt 153 built does not replace this.** §2.1 says an
+    /// argument like that "is checked after the rest of the spine has
+    /// constrained its slot", and adds that with a real constraint queue this
+    /// needs no special discipline. The first sentence is what this walk does;
+    /// the second is true of everything a *comparison* can carry and false of
+    /// the thing that actually breaks. `01-surface.md` §1.5 names the breakage
+    /// in advance: a method resolves by exact receiver in one step, a receiver
+    /// still undetermined after the spine walk is *refused* rather than
+    /// postponed, and "§2.1's two-pass spine is what now makes a receiver's
+    /// type known in the cases that used to need it". Elaborating
+    /// `fn (p) { p.act(P8) }` against an undetermined domain binds `p` at an
+    /// unknown, and a receiver at an unknown has no method — "no method" is a
+    /// name that did not resolve rather than a constraint waiting on a
+    /// solution. There is nothing to postpone. The host's index-acceptance
+    /// rule, which reads two *literal* indices or does not apply, is the same
+    /// shape. What has to wait is therefore the argument's **elaboration**,
+    /// not its constraints, and that is what this is. Deleting the deferral
+    /// turns 57 of `musa-compiler`'s laws red;
+    /// `argument_order_laws::an_un_annotated_lambda_is_typed_by_an_argument_written_after_it`
+    /// and `quotation_laws::a_spliced_value_arrives_where_the_splice_stood` are
+    /// the two that name the mechanism, and prompt 153's repair records it.
     ///
     /// Deferral is not postponement. Each argument is elaborated exactly once,
     /// there is no queue and no retry, and both the deferred set and the order
     /// they are revisited in are fixed by the written argument order, so the
     /// answer cannot depend on which branch ran first. A domain that is *still*
-    /// unsolved when the walk ends is checked against anyway, which is what
-    /// happened before this rule existed: the worst case is the old behaviour,
-    /// and the author sees §2.1's [`Refusal::Unsolved`] at declaration end.
+    /// unsolved when the walk ends is checked against anyway, and prompt 153's
+    /// η-expansion is what that now means: a λ read against an unknown makes it
+    /// a function type rather than refusing.
     ///
     /// The emitted term is unaffected: the arguments are elaborated in one
     /// order and the spine is built in the written one, so evaluation order is
@@ -189,7 +209,7 @@ impl Elaborator {
             };
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
             let at = argument.origin();
-            let (slot, value) = if !crate::elaboration::convert::mentions_unsolved(&domain)
+            let (slot, value) = if !crate::kernel::unify::mentions_unsolved(&domain)
                 || (argument.checks_only() && argument.annotates_its_binder())
             {
                 // Checked: the argument is read against the domain, either
@@ -207,15 +227,14 @@ impl Elaborator {
                 // argument's *value* gets a value to read, and anything the
                 // walk learns about it is a solution the second pass then
                 // agrees with rather than overwrites.
-                let meta = self.fresh_meta(at, &domain);
-                let value = Value::neutral(Neutral::head(at, crate::kernel::value::Head::Meta(meta.clone())));
+                let unknown = self.fresh_meta(scope, at, &domain)?;
                 waiting.push(Waiting {
                     argument,
                     domain: Arc::clone(&domain),
-                    meta: meta.clone(),
+                    meta: unknown.meta,
                     at,
                 });
-                (Slot::Deferred(meta), value)
+                (Slot::Deferred(unknown.term), unknown.value)
             } else {
                 // Inferred — but an inferred head can still quantify over
                 // parameters the domain determines (`identity` used unapplied):
@@ -260,7 +279,7 @@ impl Elaborator {
         {
             let term = self.check(scope, argument, &domain)?;
             let value = scope.eval(&mut self.meter, &term)?;
-            let stood = Value::neutral(Neutral::head(at, crate::kernel::value::Head::Meta(meta)));
+            let (_, stood) = Self::occurrence(scope, &meta, at)?;
             // Assignment when the placeholder is still free, conversion when
             // the walk already decided what stood there — one call, because
             // those are the same procedure (see [`crate::elaboration::convert`]).
@@ -268,14 +287,13 @@ impl Elaborator {
                 .unify(&mut self.meter, scope.depth(), at, &domain, &stood, &value)?;
             deferred.push(term);
         }
-        Self::finish_walk(here, head.term, ty, &walk, deferred)
+        Ok(Self::finish_walk(here, head.term, ty, &walk, deferred))
     }
 
     /// Skip the binders §2.1 fills rather than the author: an implicit
     /// parameter becomes a fresh meta, a constraint is noted for the walk's
     /// end.
     pub(super) fn advance(&mut self, scope: &Scope, ty: &mut Value, walk: &mut Walk) -> Result<(), ElabError> {
-        let _ = scope;
         loop {
             let unfolded = opened(&mut self.meter, ty)?;
             let current = unfolded.as_ref().unwrap_or(ty);
@@ -291,27 +309,22 @@ impl Elaborator {
             match filling {
                 Filling::Written => return Ok(()),
                 Filling::Parameter => {
-                    let meta = self.fresh_meta(current.origin, domain);
-                    walk.slots.push(Slot::Parameter(meta.clone()));
-                    let value = Value::neutral(Neutral::head(current.origin, crate::kernel::value::Head::Meta(meta)));
-                    *ty = apply_closure(&mut self.meter, codomain, value)?;
+                    let (domain, codomain, origin) = (Arc::clone(domain), codomain.clone(), current.origin);
+                    let unknown = self.fresh_meta(scope, origin, &domain)?;
+                    walk.slots.push(Slot::Parameter(unknown.term));
+                    *ty = apply_closure(&mut self.meter, &codomain, unknown.value)?;
                 }
                 Filling::Constraint(constraint) => {
                     let constraint = Arc::clone(constraint);
+                    let (domain, codomain, origin) = (Arc::clone(domain), codomain.clone(), current.origin);
                     // The codomain reads the evidence off its binder; a meta
                     // stands for it, and [`Self::settled`] writes the computed
                     // evidence in — the one place a constraint is answered.
-                    let meta = self.fresh_meta(current.origin, domain);
-                    self.constraints.push((
-                        constraint,
-                        scope.clone(),
-                        codomain.env.clone(),
-                        current.origin,
-                        meta.clone(),
-                    ));
-                    walk.slots.push(Slot::Evidence(meta.clone()));
-                    let value = Value::neutral(Neutral::head(current.origin, crate::kernel::value::Head::Meta(meta)));
-                    *ty = apply_closure(&mut self.meter, codomain, value)?;
+                    let unknown = self.fresh_meta(scope, origin, &domain)?;
+                    self.constraints
+                        .push((constraint, scope.clone(), codomain.env.clone(), origin, unknown.meta));
+                    walk.slots.push(Slot::Evidence(unknown.term));
+                    *ty = apply_closure(&mut self.meter, &codomain, unknown.value)?;
                 }
             }
         }
@@ -320,13 +333,7 @@ impl Elaborator {
     /// The walk's end: build the spine, and leave the residual type with the
     /// metas it still mentions — solved or not, which [`Self::settled`]
     /// audits.
-    pub(super) fn finish_walk(
-        here: Origin,
-        head: Term,
-        ty: Value,
-        walk: &Walk,
-        deferred: Vec<Term>,
-    ) -> Result<Typed, ElabError> {
+    pub(super) fn finish_walk(here: Origin, head: Term, ty: Value, walk: &Walk, deferred: Vec<Term>) -> Typed {
         // Consumed in order, which is what makes the emitted spine the written
         // one: the deferred slots stand in `walk.slots` in the order they were
         // written, and the second pass checked them in that same order.
@@ -334,17 +341,16 @@ impl Elaborator {
         let mut term = head;
         for slot in &walk.slots {
             let argument = match slot {
-                Slot::Parameter(meta) | Slot::Evidence(meta) => Term::meta(here, meta.clone()),
-                Slot::Argument(term) => term.clone(),
+                Slot::Parameter(term) | Slot::Evidence(term) | Slot::Argument(term) => term.clone(),
                 // The placeholder is the fallback rather than a panic because
                 // it is a *correct* term: the second pass solved it to the
                 // argument's value, so a spine built from it says the same
                 // thing with the argument read back instead of as written.
-                Slot::Deferred(meta) => deferred.next().unwrap_or_else(|| Term::meta(here, meta.clone())),
+                Slot::Deferred(placeholder) => deferred.next().unwrap_or_else(|| placeholder.clone()),
             };
             term = Term::app(here, term, argument);
         }
-        Ok(Typed { term, ty })
+        Typed { term, ty }
     }
 }
 
@@ -376,15 +382,21 @@ struct Waiting<'raw> {
 }
 
 /// One spine slot of a [`Walk`].
+///
+/// Every arm holds a *term*, including the three that stand at an unknown: an
+/// unknown's occurrence is itself applied to its whole scope
+/// (`kernel::meta`), so there is no longer a spelling of it short enough to
+/// rebuild from the meta alone, and rebuilding it would be the second copy
+/// [`Elaborator::fresh_meta`] exists to prevent.
 pub(super) enum Slot {
-    /// An implicit parameter: the meta stands in the term whether or not the
+    /// An implicit parameter: the unknown stands in the term whether or not the
     /// walk solved it, and [`Elaborator::settled`] audits at declaration end.
-    Parameter(crate::kernel::meta::Meta),
+    Parameter(Term),
     /// A constraint's evidence, computed at declaration end.
-    Evidence(crate::kernel::meta::Meta),
+    Evidence(Term),
     /// An argument the author wrote, elaborated.
     Argument(Term),
     /// An argument the walk deferred, standing at the placeholder that held
     /// its slot. [`Elaborator::finish_walk`] fills it from the second pass.
-    Deferred(crate::kernel::meta::Meta),
+    Deferred(Term),
 }

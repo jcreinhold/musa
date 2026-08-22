@@ -37,6 +37,7 @@ mod sort_laws;
 mod storable_laws;
 mod termination_laws;
 mod unification_laws;
+mod unify_laws;
 mod visibility_laws;
 
 /// The terms every law suite is stated over.
