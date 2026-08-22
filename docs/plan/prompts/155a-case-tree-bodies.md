@@ -65,6 +65,8 @@ representable" and its `depends_on` names 146 and 156, not this prompt. A genera
   answer.
 - `docs/plan/prompts/155aa-lift-local-recursion.md` — why every `rec` is at a definition's top by the time this runs,
   and the measurement that made the lift a prerequisite rather than a nicety.
+- `crates/musa-calculus/src/elaboration/case.rs`, `leaf` — an arm's body is wrapped in a `let` per pattern binding. That
+  is what a descent walk actually reads at a recursive call, and it is why "smaller" has to see through an alias.
 - `crates/musa-compiler/src/prelude.rs`, `list_from_start` — `walk rest (step built first)`, the corpus evidence for the
   fixed descending position. Every forward fold in the language passes an accumulator it computed, and a termination
   rule that constrained the arguments other than the descending one would refuse all of them.
@@ -121,29 +123,45 @@ tree is the whole rule". A definition whose body is a tree may name itself, so t
 over the finished tree takes its place: an argument is **smaller** when it is a variable a split bound as a field of the
 pattern it matched, transitively along the path — which is §2.4's own sentence. **Structural descent is sufficient and
 is much smaller than size-change termination**; do not build the latter. What it costs is that a function whose
-recursion is not structural is refused, which is the same set `rec.rs` refuses today — and `rec.rs`'s own module doc
-enumerates that set, so it is the negative-control corpus this prompt inherits rather than invents.
+recursion is not structural is refused, and `rec.rs`'s own module doc enumerates the calls it refuses today, so the
+negative-control corpus is inherited rather than invented.
+
+*Inherited, and smaller than it was — which is a correction.* This prompt first said the refused set "is the same set
+`rec.rs` refuses today". It is a strict subset, and the two definitions that leave it leave it because the `#ih`
+rewrite's limits were the rewrite's and not termination's. **One:** `λa. λb. match a, b { Zero, y => Zero; x, Zero =>
+Zero; Succ x, Succ y => both x y }`, which the rewrite refused because a call varying both columns had no single
+hypothesis to name. A walk over the finished tree names nothing: it observes that position 0 is handed a field of the
+split on `a` at every call, and that is descent. **Two:** `λa. λb. match b { Zero => a; Succ k => skew (Succ a) k }`,
+refused because the hypothesis stood at *this* branch's `a` and the call wanted a different one. An arm of a tree is an
+ordinary term and a recursive call in it is an ordinary call, so only the descending position is constrained — which is
+the same fact `list_from_start` establishes below, arriving from the other side. Both become positive laws, stated as
+computations; a definition admitted and stuck would be worse than one refused.
 
 *The descending position is fixed for the definition, and that is a correction.* This prompt first said "some argument
 is smaller and none is larger", and two measurements say the rule has to be the narrower one.
 
-**One:** without a fixed position the rule accepts a definition that does not terminate. Written out, with the split on
-`x` in the first arm and on `y` in the second:
+**One:** without a fixed position the rule accepts a definition that does not terminate:
 
 ```text
-f x y = match x { Zero => match y { Zero => 0; Succ k => f y k }; Succ j => f j y }
+f a b = match a, b { Zero, y => Zero; x, Zero => Zero; Succ x, Succ y => f y b }
 ```
 
-Every call has an argument some split bound — `k` in the first, `j` in the second — and they descend in *different*
-positions, so `f 1 1` reaches `f 1 0`, `f 0 1`, and back. A checker that asks only "is one of them smaller" admits it.
-Requiring one position `p` such that **every** recursive call passes a smaller binding at `p` refuses it, and that is
-Coq's guarded-fixpoint condition rather than anything larger.
+Every argument of that call is a name in scope, and `y` is genuinely smaller than `b` — a field of the split on `b`. But
+it is handed to the *first* position, whose binder it did not come from, and the second position is handed `b`
+unchanged, so `f 1 2` reduces to `f 1 2`. A checker that asks only "is one of them smaller somewhere" admits a loop.
+Requiring one position `p` such that **every** recursive call passes, at `p`, a variable descending from binder `p`
+refuses it, and that is Coq's guarded-fixpoint condition rather than anything larger.
 
 **Two:** the "none is larger" clause has to go with it, because read strictly it refuses the corpus.
 `musa-compiler/src/prelude.rs`'s `list_from_start` calls `walk rest (step built first)` — the second argument is neither
 a binder nor a smaller binding, it is an accumulator the author computed, and every forward fold in the language is
 shaped that way. Under a fixed position the clause is unnecessary: what the other arguments are cannot matter when the
 measure is the size of the argument at `p` alone.
+
+*What "smaller" has to see through.* `case.rs` binds an arm's pattern variables with a `let` around that arm's body, so
+the argument of a recursive call is very often a `let`-bound name aliasing the field rather than the field's own
+variable. A `let` that names a smaller variable is that smaller variable; the walk carries the binding forward rather
+than losing descent at the alias.
 
 **A tree body is binders and a tree, with nothing in between.** `case.rs` names a subject that is not already a variable
 with a `let` around the emitted term, and a [`Compiled`] has nowhere to put one. So `match f(x) { … }` at a definition's
@@ -163,9 +181,11 @@ the body now names the lifted definition where it used to name a hypothesis.
 
 ## Target
 
-- `crates/musa-calculus/src/kernel/term.rs`: `Definition::Compiled`, carrying the tree **and the binders it stands
-  under**, in place of `Defined` for a definition whose body splits, with the note that named this prompt removed
-  because it has happened.
+- `crates/musa-calculus/src/kernel/term.rs`: `Definition::Compiled`, in place of `Defined` for a definition whose body
+  splits, with the note that named this prompt removed because it has happened. It carries the definition and not a
+  second copy of the tree: `Definition` is what the context answers *about a name*, the tree and the binders it stands
+  under live in the body that `program.rs` gets below, and a copy beside the definition would be the same fact twice —
+  free to disagree, and free to be the one that was never instantiated at the use site's levels.
 - `crates/musa-calculus/src/kernel/case_tree.rs`: reduction — a tree, an environment of arguments, a forced scrutinee,
   and the alternative it selects; a scrutinee that is not canonical leaves the name neutral.
 - `crates/musa-calculus/src/kernel/program.rs`: a definition's body as one of three things — evaluated at its
@@ -179,8 +199,9 @@ the body now names the lifted definition where it used to name a hypothesis.
 - `crates/musa-calculus/src/elaboration/rec.rs`: the `#ih` rewrite retired in favour of the check, with
   `Refusal::UncheckedRecursion` still naming the call it refused.
 - `crates/musa-calculus/tests/suite/`: a reduction law per node, a law that a split on a counting family costs bounded
-  steps, a termination law with a negative control, and `rec.rs`'s enumerated refusals ported so that none of them
-  quietly becomes accepted.
+  steps, a termination law with a negative control, and `rec.rs`'s enumerated refusals ported. Two of them are admitted
+  now, for the reason the Design's inherited-corpus correction gives; each of those becomes a positive law that
+  *computes*, and the corpus gains the looping definition above so that the position stays fixed.
 
 ## Check
 

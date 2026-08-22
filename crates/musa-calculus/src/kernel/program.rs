@@ -64,6 +64,7 @@
 
 use std::sync::Arc;
 
+use crate::kernel::case_tree::Compiled;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::{Levels, Sort, SortVar};
 use crate::kernel::term::{Name, Role, Term};
@@ -99,8 +100,8 @@ pub(crate) struct Defined {
     pub(crate) levels: Arc<[SortVar]>,
     /// Its type, at the level parameters themselves.
     pub(crate) ty: Arc<Value>,
-    /// Its value, likewise.
-    pub(crate) value: Arc<Value>,
+    /// What it reduces to.
+    pub(crate) body: Body,
     /// Its type as written, kept so `levels` can be instantiated.
     pub(crate) ty_term: Term,
     /// Its value as written, likewise.
@@ -112,6 +113,33 @@ pub(crate) struct Defined {
     /// must not have to know how a lifted name is punctuated in order to tell
     /// the document's own members from the ones the elaborator added.
     pub(crate) lifted: bool,
+}
+
+/// What a definition reduces to — `02-core-calculus.md` §1's second `Definition`
+/// arm, and the two states around it.
+///
+/// A definition whose body does not analyse anything is evaluated once at its
+/// declaration and δ hands the value back, which is what every definition did
+/// before prompt 155a. A definition whose body *splits* holds the
+/// [`Compiled`] tree instead and reduces by matching, because a body that may
+/// name itself cannot be evaluated at the moment it is declared — there is
+/// nothing yet for the name to stand for.
+#[derive(Clone)]
+pub(crate) enum Body {
+    /// Evaluated at the declaration; δ unfolds a use to it.
+    Value(Arc<Value>),
+    /// A compiled case tree (§1), reduced on demand by
+    /// [`Compiled::reduce`](crate::kernel::case_tree::Compiled::reduce).
+    Compiled(Arc<Compiled>),
+    /// In scope during its own elaboration, so a recursive body may name
+    /// itself.
+    ///
+    /// Rigid, and that is the point: a use of it is a blocked spine with the
+    /// definition's type, which is everything elaborating the body needs and
+    /// nothing it could reduce with. Nothing outside
+    /// [`declare_program`](crate::declare_program) ever sees one, because the
+    /// finished definition replaces it before the table is handed on.
+    Pending,
 }
 
 impl Defined {
@@ -243,9 +271,9 @@ impl Def {
         Arc::clone(&self.0.ty)
     }
 
-    /// The definition's value, which is what δ unfolds a use to.
-    pub(crate) fn value(&self) -> Arc<Value> {
-        Arc::clone(&self.0.value)
+    /// What the definition reduces to.
+    pub(crate) fn body(&self) -> Body {
+        self.0.body.clone()
     }
 
     /// This definition's type and value with its level parameters replaced by
@@ -265,10 +293,10 @@ impl Def {
         meter: &mut crate::kernel::budget::Meter,
         globals: &crate::kernel::context::Globals,
         levels: &Levels,
-    ) -> Result<(Arc<Value>, Arc<Value>), crate::kernel::error::CoreError> {
+    ) -> Result<(Arc<Value>, Body), crate::kernel::error::CoreError> {
         let parameters = self.levels();
         if parameters.is_empty() && levels.is_empty() {
-            return Ok((self.ty(), self.value()));
+            return Ok((self.ty(), self.body()));
         }
         let given = levels.as_slice();
         if given.len() != parameters.len() {
@@ -282,8 +310,18 @@ impl Def {
         };
         let env = crate::kernel::value::Env::under(globals.clone());
         let ty = crate::kernel::eval::eval(meter, &env, &self.0.ty_term.substitute_levels(&with))?;
-        let value = crate::kernel::eval::eval(meter, &env, &self.0.value_term.substitute_levels(&with))?;
-        Ok((Arc::new(ty), Arc::new(value)))
+        let body = match self.0.body {
+            Body::Value(_) => {
+                let value = crate::kernel::eval::eval(meter, &env, &self.0.value_term.substitute_levels(&with))?;
+                Body::Value(Arc::new(value))
+            }
+            // The tree holds terms, so instantiation reaches them the same way
+            // it reaches the written body: by substituting and leaving the
+            // evaluation to whoever reduces it.
+            Body::Compiled(ref compiled) => Body::Compiled(Arc::new(compiled.substitute_levels(&with))),
+            Body::Pending => Body::Pending,
+        };
+        Ok((Arc::new(ty), body))
     }
 }
 

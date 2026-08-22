@@ -296,7 +296,12 @@ pub(crate) enum Head {
     /// `&Env` and not a `Cx`, and a head that had to consult a context to
     /// unfold would make δ a lookup the evaluator cannot perform where it
     /// needs to.
-    Def(DefHead, Arc<Value>, Arc<Value>),
+    ///
+    /// **Flexible-rigid is the *body's* property, not the head's.** A definition
+    /// whose body is a compiled case tree does not unfold at all; it reduces
+    /// when its arguments arrive, exactly as a recursor does. [`Folding`] is
+    /// which of the two this one is.
+    Def(DefHead, Arc<Value>, Folding),
 }
 
 /// What a folded definition is known as.
@@ -307,6 +312,28 @@ pub(crate) enum Head {
 /// equate a `let` with whichever top-level definition happened to share its
 /// number, and one such program plus one `let` is a constructible wrong
 /// answer. Two constructors of one enum cannot disagree with each other.
+/// What a folded definition can be unfolded *to*.
+///
+/// A definition whose body was evaluated at its declaration carries the value,
+/// and δ replays the spine over it. A definition whose body is a compiled case
+/// tree (§1) carries the tree instead and is **rigid**: it does not unfold, it
+/// *reduces*, when [`crate::kernel::eval::apply`] sees its arguments arrive and
+/// the scrutinee of its first split become canonical — the same discipline a
+/// recursor is under, in the same arm.
+///
+/// The table travels with the tree for [`Head::Base`]'s reason: the tree holds
+/// terms, and evaluating one needs the names it was read in.
+#[derive(Clone)]
+pub(crate) enum Folding {
+    /// Evaluated at the declaration; δ replays the spine over it.
+    Value(Arc<Value>),
+    /// A compiled case tree, and the table its terms are read in.
+    Compiled(Arc<crate::kernel::case_tree::Compiled>, Globals),
+    /// A definition in scope during its own elaboration. Rigid, with nothing
+    /// behind it yet — see [`Body::Pending`](crate::kernel::program::Body).
+    Pending,
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum DefHead {
     /// A `let` or context definition, named by the binder's level.

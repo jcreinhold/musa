@@ -889,18 +889,21 @@ impl Tree<'_, '_> {
 
         // Fields first, then one hypothesis per recursive field: the order
         // [`crate::kernel::family`] assembles the method type in, and the order
-        // [`Alternative`] wraps them back into λs in.
-        let mut binders: Vec<Name> = rule.fields.iter().map(|binder| Arc::clone(&binder.name)).collect();
+        // [`Alternative`] wraps them back into λs in. Kept as two lists because
+        // reduction binds them differently — see [`Alternative`].
+        let bound: Vec<Name> = rule.fields.iter().map(|binder| Arc::clone(&binder.name)).collect();
+        let mut hypothesised: Vec<Name> = Vec::with_capacity(rule.recursive.len());
         for (position, _) in rule.recursive.iter() {
-            binders.push(
+            hypothesised.push(
                 rule.fields
                     .get(usize::try_from(*position).unwrap_or(usize::MAX))
-                    .map_or_else(|| Arc::from("hypothesis"), |binder| hypothesis_name(&binder.name)),
+                    .map_or_else(|| Arc::from("hypothesis"), |binder| Arc::from(format!("{}#ih", binder.name))),
             );
         }
         Ok(Some(Alternative {
             constructor: Constant::constructor(&group, family, which).name(),
-            binders: Arc::from(binders),
+            fields: Arc::from(bound),
+            hypotheses: Arc::from(hypothesised),
             body,
         }))
     }
@@ -1038,18 +1041,6 @@ impl Tree<'_, '_> {
                         }
                         .into());
                     }
-                    // One name per recursive field the row's pattern named, so
-                    // that a body may write the hypothesis for `xs` as `xs#ih`
-                    // without this module and [`crate::elaboration::rec`] sharing a counter.
-                    for (position, hypothesis) in hypotheses {
-                        if let Some(RawPattern::Bind { name, .. }) = sub.get(*position) {
-                            bindings.push((
-                                hypothesis_name(name),
-                                hypothesis.value.clone(),
-                                Arc::clone(&hypothesis.ty),
-                            ));
-                        }
-                    }
                     sub.iter().collect()
                 }
                 RawPattern::Bind { name, .. } => {
@@ -1097,14 +1088,6 @@ fn selects(qualified: &str, written: &str) -> bool {
 
 /// What the induction hypothesis for the field named `field` is called.
 ///
-/// Derived from the field's name rather than fresh, and spelled with a character
-/// no identifier may hold, so that [`crate::elaboration::rec`] can rewrite a recursive call
-/// into a reference to it without this module and that one agreeing on a
-/// counter. A name the source cannot write is a name a program cannot capture.
-pub(crate) fn hypothesis_name(field: &str) -> Name {
-    Arc::from(format!("{field}#ih"))
-}
-
 /// The pattern an expanded variable leaves in each field position.
 ///
 /// One shared value rather than one per position: a variable pattern names the

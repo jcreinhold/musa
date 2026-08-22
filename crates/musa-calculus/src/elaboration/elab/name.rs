@@ -274,7 +274,11 @@ impl Elaborator {
             let params = match built.term.shape() {
                 Shape::Named { name, role, levels } => match scope.cx().globals().definition(name, role, levels) {
                     Definition::Declared(constant) => constant.group.params(),
-                    Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => 0,
+                    Definition::Undeclared
+                    | Definition::Defined(_)
+                    | Definition::Compiled(_, _)
+                    | Definition::Base(_)
+                    | Definition::Builtin(_) => 0,
                 },
                 Shape::Meta(_)
                 | Shape::Var(_)

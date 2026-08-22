@@ -456,7 +456,11 @@ fn walk(value: &Value, seen: &mut impl FnMut(&Meta) -> bool) -> bool {
                 Head::Meta(meta) => seen(meta) || meta.solution().is_some_and(|solution| walk(solution, seen)),
                 Head::Var(_, ty) => walk(ty, seen),
                 Head::Const(..) | Head::Base(..) | Head::Builtin(..) => false,
-                Head::Def(_, ty, folded) => walk(ty, seen) || walk(folded, seen),
+                // A tree body holds *terms*, which are zonked before they are
+                // stored, so there is no value behind one for an occurrence to
+                // hide in.
+                Head::Def(_, ty, crate::kernel::value::Folding::Value(folded)) => walk(ty, seen) || walk(folded, seen),
+                Head::Def(_, ty, _) => walk(ty, seen),
             };
             head || neutral.spine.iter().any(|elimination| match elimination {
                 Elim::App { argument, .. } => walk(argument, seen),

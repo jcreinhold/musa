@@ -187,7 +187,14 @@ impl Globals {
                     .map_or(Definition::Undeclared, |found| Definition::Declared(found.at(level)))
             }
             Role::Defined => Self::defined_in(tables, name).map_or(Definition::Undeclared, |defined| {
-                Definition::Defined(crate::kernel::program::one(&defined))
+                let def = crate::kernel::program::one(&defined);
+                match defined.body {
+                    crate::kernel::program::Body::Value(_) => Definition::Defined(def),
+                    crate::kernel::program::Body::Compiled(ref compiled) => {
+                        Definition::Compiled(def, Some(Arc::clone(compiled)))
+                    }
+                    crate::kernel::program::Body::Pending => Definition::Compiled(def, None),
+                }
             }),
             Role::Base => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
                 Some(crate::kernel::base::Extern::Base(base)) => Definition::Base(base.clone()),
@@ -574,7 +581,7 @@ impl Cx {
             crate::kernel::value::Head::Def(
                 crate::kernel::value::DefHead::Local(self.depth),
                 Arc::clone(&ty),
-                Arc::new(value),
+                crate::kernel::value::Folding::Value(Arc::new(value)),
             ),
         ));
         Ok(self.pushed(ty, folded))

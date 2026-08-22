@@ -197,7 +197,11 @@ impl Elaborator {
                 levels,
             } if arguments.is_empty() => match scope.cx().globals().definition(name, role, levels) {
                 Definition::Declared(constant) => Some(constant.group.params()),
-                Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => None,
+                Definition::Undeclared
+                | Definition::Defined(_)
+                | Definition::Compiled(_, _)
+                | Definition::Base(_)
+                | Definition::Builtin(_) => None,
             },
             Shape::Named { .. }
             | Shape::Meta(_)

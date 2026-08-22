@@ -83,10 +83,13 @@ pub enum Role {
 /// by [`Globals::definition`](crate::kernel::context::Globals::definition), which is
 /// the one lookup reduction performs.
 ///
-/// Five arms where [`Role`] has six, because a family, a constructor, and a
-/// recursor are one [`Constant`](crate::kernel::family::Constant) — one lookup answers
-/// all three, and a second copy of the split would be free to disagree with the
-/// first.
+/// Six arms where [`Role`] has six, and they do not line up: a family, a
+/// constructor, and a recursor are one
+/// [`Constant`](crate::kernel::family::Constant) — one lookup answers all three,
+/// and a second copy of the split would be free to disagree with the first —
+/// while a *definition* answers as two, because §1 lists an evaluated body and a
+/// compiled case tree as different reduction behaviours and reduction has to
+/// tell them apart.
 #[derive(Clone)]
 pub(crate) enum Definition {
     /// Nothing in scope answers to this name.
@@ -96,9 +99,21 @@ pub(crate) enum Definition {
     /// [`Malformed`](crate::Malformed) refusal carrying the name, and never a
     /// silent resolution to a different declaration of the same spelling.
     Undeclared,
-    /// A top-level definition, held as the reference [`crate::kernel::program`]
-    /// describes. Prompt 155 replaces this with a compiled case tree.
+    /// A top-level definition whose body was evaluated at its declaration,
+    /// held as the reference [`crate::kernel::program`] describes.
     Defined(crate::kernel::program::Def),
+    /// A top-level definition whose body is **a compiled case tree** — §1's
+    /// second arm, delivered at prompt 155a.
+    ///
+    /// It reduces by matching rather than by unfolding: given the arguments its
+    /// binders abstract, the tree forces the scrutinee and takes the
+    /// alternative that constructor names. `None` while the definition is being
+    /// elaborated, which is how a recursive body names itself — see
+    /// [`Body::Pending`](crate::kernel::program::Body).
+    Compiled(
+        crate::kernel::program::Def,
+        Option<std::sync::Arc<crate::kernel::case_tree::Compiled>>,
+    ),
     /// A declared family, one of its constructors, or its recursor.
     Declared(crate::kernel::family::Constant),
     /// A base type the host registered (§5.8).

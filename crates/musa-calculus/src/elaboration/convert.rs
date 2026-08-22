@@ -878,7 +878,10 @@ fn folded_def(value: &Value) -> Option<FoldedDef<'_>> {
     let Form::Neutral(neutral) = &value.form else {
         return None;
     };
-    let Head::Def(identity, _, carried) = &neutral.head else {
+    // Only a definition with a value behind it is *folded*. One whose body is a
+    // compiled case tree is rigid, so it compares by name and spine exactly as a
+    // recursor does, and there is nothing to open it to.
+    let Head::Def(identity, _, crate::kernel::value::Folding::Value(carried)) = &neutral.head else {
         return None;
     };
     Some(FoldedDef {

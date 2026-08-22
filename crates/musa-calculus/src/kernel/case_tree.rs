@@ -31,14 +31,47 @@
 //! `Impossible` has **no producer until prompt 156**. With no indices there is
 //! nothing for unification to refute, so a tree this crate builds today holds
 //! none, and emission reports one as a defect rather than inventing a term.
+//!
+//! # A tree is also a body, and then it reduces
+//!
+//! §1's `Definition` list says a name's reduction behaviour may be "a compiled
+//! case tree". [`Compiled`] is that: the binders a definition abstracts, and the
+//! tree beneath them. Given as many arguments as there are binders, [reduction]
+//! builds the environment from them, forces the scrutinee, takes the
+//! alternative its constructor names, and evaluates that answer — and a
+//! scrutinee that is not canonical leaves the name neutral, which is what makes
+//! a body behave like the eliminator it stands beside rather than like a runtime
+//! `switch`.
+//!
+//! [reduction]: Compiled::reduce
+//!
+//! The binders ride *beside* the tree rather than around it because
+//! [`Form::Lam`](crate::kernel::value::Form) holds a closure over a **`Term`**,
+//! and a tree is not a term — §1's seven shapes have no case node, which is the
+//! whole reason a tree lives in a `Definition` at all. Idris2 writes the same
+//! pair as `PMDef args tree` (`Core/Context.idr`) for the same reason.
+//!
+//! An [`Alternative`] carries its fields and its hypotheses apart, and that is
+//! load-bearing here. Emission binds both, because a method's type is
+//! `(a⃗ : Fields) → (ih⃗) → R (c a⃗)` and the arms were elaborated under all of
+//! them. Reduction binds the fields to what the constructor was applied to and
+//! every hypothesis to a **placeholder**, because since prompt 155a retired the
+//! `#ih` rewrite no body can name one: recursion in a tree body is the
+//! definition's own name, not a bound hypothesis. That is `iota.rs`'s `unread`
+//! argument with its question settled statically rather than per call, and the
+//! placeholder is `Type 0` for `unread`'s reason — a universe standing where a
+//! proof belongs is wrong in a way the next conversion says out loud.
 
 use std::sync::Arc;
 
+use crate::kernel::budget::Meter;
+use crate::kernel::context::Globals;
 use crate::kernel::error::{CoreError, Malformed};
-use crate::kernel::family::{Constant, Group};
+use crate::kernel::family::{Constant, Group, constructed};
 use crate::kernel::origin::Origin;
-use crate::kernel::sort::Sort;
+use crate::kernel::sort::{Sort, SortVar};
 use crate::kernel::term::{Name, Term};
+use crate::kernel::value::{Elim, Env, Form, Value};
 
 /// A `match`, compiled.
 pub(crate) enum CaseTree {
@@ -83,10 +116,18 @@ pub(crate) struct Split {
 pub(crate) struct Alternative {
     /// The constructor this is the case for, qualified by its family.
     pub(crate) constructor: Name,
-    /// The binders the body stands under: one per field, then one per recursive
-    /// field. The names are for a reader of the emitted term; what a row's body
-    /// may *write* is bound by the builder from that row's own pattern.
-    pub(crate) binders: Arc<[Name]>,
+    /// One binder per field of the constructor, in declaration order.
+    ///
+    /// The names are for a reader of the emitted term; what a row's body may
+    /// *write* is bound by the builder from that row's own pattern.
+    pub(crate) fields: Arc<[Name]>,
+    /// One binder per recursive field, standing after every field.
+    ///
+    /// Kept apart from [`Self::fields`] because the two are bound differently:
+    /// emission binds both, since the arm was elaborated under a method's whole
+    /// telescope, and reduction binds these to a placeholder because no body can
+    /// name one. See the module documentation.
+    pub(crate) hypotheses: Arc<[Name]>,
     /// What this case answers.
     pub(crate) body: CaseTree,
 }
@@ -134,6 +175,36 @@ impl CaseTree {
     }
 }
 
+impl CaseTree {
+    /// This tree with its level parameters replaced — see
+    /// [`Compiled::substitute_levels`].
+    fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
+        match self {
+            Self::Answer(term) => Self::Answer(term.substitute_levels(with)),
+            Self::Impossible => Self::Impossible,
+            Self::Split(split) => Self::Split(Box::new(Split {
+                origin: split.origin,
+                group: Arc::clone(&split.group),
+                family: split.family,
+                params: split.params.iter().map(|term| term.substitute_levels(with)).collect(),
+                motives: split.motives.iter().map(|term| term.substitute_levels(with)).collect(),
+                level: split.level.substitute(with),
+                on: split.on.substitute_levels(with),
+                alternatives: split
+                    .alternatives
+                    .iter()
+                    .map(|alternative| Alternative {
+                        constructor: Arc::clone(&alternative.constructor),
+                        fields: Arc::clone(&alternative.fields),
+                        hypotheses: Arc::clone(&alternative.hypotheses),
+                        body: alternative.body.substitute_levels(with),
+                    })
+                    .collect(),
+            })),
+        }
+    }
+}
+
 impl Split {
     /// Every constructor of every family of the group, qualified, in the order
     /// the eliminator takes its methods in.
@@ -173,9 +244,156 @@ impl Alternative {
     fn emitted(&self, origin: Origin) -> Result<Term, CoreError> {
         let body = self.body.emitted()?;
         Ok(self
-            .binders
+            .fields
             .iter()
+            .chain(self.hypotheses.iter())
             .rev()
             .fold(body, |built, name| Term::lam(origin, Arc::clone(name), built)))
+    }
+}
+
+/// A definition's body: the binders it abstracts, and the tree beneath them.
+///
+/// §1's `Definition` list, second arm. See the module documentation for why the
+/// binders ride beside the tree rather than around it.
+pub(crate) struct Compiled {
+    /// The definition's own arguments, outermost first.
+    pub(crate) binders: Arc<[Name]>,
+    /// What it answers, once it has them.
+    pub(crate) tree: CaseTree,
+}
+
+impl Compiled {
+    /// How many arguments this body needs before it can decide anything.
+    pub(crate) fn arity(&self) -> usize {
+        self.binders.len()
+    }
+
+    /// δ: reduce this body applied to `arguments`, or `None` when it stays
+    /// blocked.
+    ///
+    /// Blocked for either of two reasons, and neither is an error: too few
+    /// arguments have arrived, or the scrutinee of a split is not canonical. A
+    /// definition applied to a variable is exactly as stuck as an eliminator
+    /// applied to one, which is the property that keeps a body a *definition*
+    /// rather than a runtime `switch`.
+    ///
+    /// # Errors
+    ///
+    /// [`Malformed::UnreachableAlternative`] for an [`CaseTree::Impossible`]
+    /// node reached by reduction, and otherwise as [`eval`].
+    pub(crate) fn reduce(
+        &self,
+        meter: &mut Meter,
+        globals: &Globals,
+        here: Origin,
+        arguments: &[Value],
+    ) -> Result<Option<Value>, CoreError> {
+        let arity = self.arity();
+        let Some(taken) = arguments.get(..arity) else {
+            return Ok(None);
+        };
+        let env = taken
+            .iter()
+            .fold(Env::under(globals.clone()), |env, argument| env.push(argument.clone()));
+        let Some(mut answer) = descend(meter, &env, &self.tree)? else {
+            return Ok(None);
+        };
+        // A definition may be applied to more than it abstracts — `f x y` where
+        // `f` splits on `x` and answers a function. The tree decided at `x`; the
+        // rest is ordinary application.
+        for argument in arguments.get(arity..).unwrap_or_default() {
+            answer = crate::kernel::eval::apply(meter, here, answer, argument.clone())?;
+        }
+        Ok(Some(answer))
+    }
+
+    /// This body with its level parameters replaced.
+    ///
+    /// A tree-bodied definition is generalized over the levels its type mentions
+    /// exactly as any other is, so instantiation has to reach the terms the tree
+    /// holds. It is a walk rather than a substitution on values for
+    /// [`Defined`](crate::kernel::program::Defined)'s reason: a closure is not
+    /// something a level substitution can see inside.
+    pub(crate) fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
+        Self {
+            binders: Arc::clone(&self.binders),
+            tree: self.tree.substitute_levels(with),
+        }
+    }
+}
+
+/// Walk the tree in `env`, or `None` when a split is blocked.
+fn descend(meter: &mut Meter, env: &Env, tree: &CaseTree) -> Result<Option<Value>, CoreError> {
+    match tree {
+        CaseTree::Answer(term) => Ok(Some(crate::kernel::eval::eval(meter, env, term)?)),
+        CaseTree::Impossible => Err(Malformed::UnreachableAlternative.into()),
+        CaseTree::Split(split) => {
+            let on = crate::kernel::eval::eval(meter, env, &split.on)?;
+            let on = crate::kernel::eval::opened(meter, &on)?.unwrap_or(on);
+            let Some((constructor, fields)) = analysed(&on) else {
+                return Ok(None);
+            };
+            let Some(alternative) = split
+                .alternatives
+                .iter()
+                .find(|alternative| *alternative.constructor == *constructor)
+            else {
+                return Ok(None);
+            };
+            let mut inner = env.clone();
+            for field in &fields {
+                inner = inner.push(field.clone());
+            }
+            // One placeholder per hypothesis binder. Nothing can name one — see
+            // the module documentation — and the arm's de Bruijn indices were
+            // read under them, so the slots have to be there.
+            for _ in alternative.hypotheses.iter() {
+                inner = inner.push(Value::new(on.origin, Form::Universe(Sort::ZERO)));
+            }
+            descend(meter, &inner, &alternative.body)
+        }
+    }
+}
+
+/// The constructor a canonical value was built by, and what it was applied to.
+///
+/// `None` for anything that is not canonical at a declared family, which is what
+/// leaves a split blocked.
+///
+/// A numeral answers from its **count** rather than by being unfolded into a
+/// spine, which is `iota.rs`'s tower-avoiding decrement restated as this
+/// reducer's own rule: the two reducers ask the question of different things and
+/// share no code, so a split on a large numeral would otherwise cost the number
+/// the author wrote.
+fn analysed(value: &Value) -> Option<(Name, Vec<Value>)> {
+    match value.form {
+        Form::Numeral(ref numeral) => {
+            let counting = numeral.family.counting()?;
+            let which = counting.case_of(numeral.count);
+            let below = numeral
+                .family
+                .below(numeral.count)
+                .map(|below| Value::new(value.origin, Form::Numeral(below)));
+            let name = Constant::constructor(&numeral.family.group, numeral.family.family, which).name();
+            Some((name, below.into_iter().collect()))
+        }
+        Form::Neutral(ref neutral) => {
+            let (name, params) = constructed(neutral)?;
+            let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
+            for elimination in neutral.spine.iter().skip(params) {
+                let Elim::App { ref argument, .. } = *elimination else {
+                    return None;
+                };
+                fields.push(Value::clone(argument));
+            }
+            Some((name, fields))
+        }
+        Form::Universe(_)
+        | Form::Pi { .. }
+        | Form::Lam(_)
+        | Form::RecordType(_)
+        | Form::Record(_)
+        | Form::Lit(_) => None,
     }
 }

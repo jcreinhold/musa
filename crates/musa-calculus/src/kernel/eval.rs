@@ -37,7 +37,7 @@ use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
 use crate::kernel::term::{Binder, Constant, Definition, Field, Filling, Name, Role, Shape, Term};
-use crate::kernel::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
+use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
 ///
@@ -210,11 +210,16 @@ fn named(
     let globals = env.globals();
     match globals.definition(name, role, levels) {
         Definition::Declared(constant) => Ok(constant.value(here, globals)),
-        Definition::Defined(def) => {
-            let (ty, value) = def.instance(meter, globals, levels)?;
+        Definition::Defined(def) | Definition::Compiled(def, _) => {
+            let (ty, body) = def.instance(meter, globals, levels)?;
+            let folding = match body {
+                crate::kernel::program::Body::Value(value) => Folding::Value(value),
+                crate::kernel::program::Body::Compiled(compiled) => Folding::Compiled(compiled, globals.clone()),
+                crate::kernel::program::Body::Pending => Folding::Pending,
+            };
             Ok(Value::neutral(Neutral::head(
                 here,
-                Head::Def(DefHead::Global(def.clone(), levels.clone()), ty, value),
+                Head::Def(DefHead::Global(def.clone(), levels.clone()), ty, folding),
             )))
         }
         Definition::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base, globals.clone())))),
@@ -354,10 +359,36 @@ fn replay(meter: &mut Meter, solution: Value, spine: &[Elim]) -> Result<Value, C
 ///
 /// As [`eval`]: replaying the spine is ordinary evaluation.
 pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Def(_, _, value) = &neutral.head else {
+    let Head::Def(_, _, Folding::Value(value)) = &neutral.head else {
         return Ok(None);
     };
     Ok(Some(unfold_spine(meter, value, &neutral.spine)?))
+}
+
+/// A definition whose body is a compiled case tree, reduced (§1), or `None`
+/// when it stays blocked.
+///
+/// The mirror of [`crate::kernel::family::iota`] and of [`delta`], in the same
+/// arm and for the same reason: an application is the first moment a rule can
+/// know its last argument has arrived. Blocked here means either too few
+/// arguments or a scrutinee that is not canonical, and both leave an ordinary
+/// neutral spine — which is what a definition applied to a variable *is*.
+///
+/// # Errors
+///
+/// As [`Compiled::reduce`](crate::kernel::case_tree::Compiled::reduce).
+fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Head::Def(_, _, Folding::Compiled(compiled, globals)) = &neutral.head else {
+        return Ok(None);
+    };
+    let mut arguments = Vec::with_capacity(neutral.spine.len());
+    for elimination in &neutral.spine {
+        let Elim::App { ref argument, .. } = *elimination else {
+            return Ok(None);
+        };
+        arguments.push(Value::clone(argument));
+    }
+    compiled.reduce(meter, globals, neutral.outer_origin(), &arguments)
 }
 
 /// [`unfold`] with the head question already answered: the caller matched the
@@ -497,6 +528,9 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
                 return Ok(counted);
             }
             if let Some(reduced) = delta(meter, &built)? {
+                return Ok(reduced);
+            }
+            if let Some(reduced) = matched(meter, &built)? {
                 return Ok(reduced);
             }
             match structural(meter, &built)? {
