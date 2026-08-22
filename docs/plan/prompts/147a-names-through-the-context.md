@@ -102,9 +102,15 @@ term fact and not a context fact — so carrying it here is the boundary holding
   reads without a context; the constant that carries the declaration is one thing, found once.
 
 `Globals::definition(name, role)` is the one lookup, and the three `Cx` already has — `declared`, `definition`,
-`extern_named` — are its three cases, in that order. The order is the shadowing rule `elab/name.rs` states today: a
-declaration always shadows a base type or a builtin of the same spelling, because a registry that won would let the host
-silently redefine a name in a program it never read.
+`extern_named` — are its three cases. **The role chooses which one; they are not searched in an order.** Shadowing
+between a declaration, a definition, and a registration that share a spelling is `01-surface.md` §1.3's question, and
+the elaborator answered it when it turned the author's word into this term. Asking it again at reduction time would be a
+second resolver, free to disagree with the first — and no ordering of the three tables reproduces the first, because
+`elab/name.rs`'s `registered` and `hosted` resolve in the *host's* namespaces on purpose, so that a binding which
+happens to spell `Nat` cannot change what a written number means. The stdlib already exercises this: it defines
+`sounded`, and this build also registers a builtin `sounded`, so a `Shape::Named { name: "sounded", role: Builtin }`
+that an order-based lookup answered from the definitions table applies a value that is not a function — which is what
+`serial_laws`, `lint_laws`, and `transformational_harmony_laws` report when the order is tried.
 
 **How the table reaches reduction, and why it is the environment.** Resolving a name at reduction time needs a table at
 `eval`, and therefore at `apply`, and therefore at every closure `quote` and `convert` force. Threading a parameter
