@@ -105,10 +105,17 @@ That is not a narrowing of §1's list — it is what the list says. `Definition`
 name, `Definition::Declared` is the arm an eliminator already has, and the arm this prompt adds is the one a top-level
 definition needs.
 
-**`Definition::Compiled`.** A definition with no `match` at its top is `Answer(body)` at zero binders and reduces
-exactly as `Defined` did. A definition whose body splits holds the tree, and δ becomes: look up the tree, force the
-scrutinee, and take the alternative its constructor names. A scrutinee that is not canonical leaves the name neutral,
-which is what makes a case tree behave like the eliminator it replaces rather than like a runtime `switch`.
+**`Definition::Compiled`.** A definition that holds a tree reduces by δ becoming: look up the tree, force the scrutinee,
+and take the alternative its constructor names. A scrutinee that is not canonical leaves the name neutral, which is what
+makes a case tree behave like the eliminator it replaces rather than like a runtime `switch`.
+
+*Which definitions hold one, and that is a correction.* This first said "a definition whose body splits", and a
+*recursive* definition whose body splits is the right narrowing. A tree body exists so that a definition which names
+itself has something the checker can walk; a non-recursive definition that splits already has exactly one reduction
+behaviour — §6.2's emission, evaluated at its declaration as it is today — and giving it a second is a second thing that
+can disagree with the first, bought for no observable gain. That is the same reason Stop forbids a tree body for an
+inline `match`, arriving one level up. So the body of a definition is one of three things and the first of them stays
+populated, which is what the Target below already says.
 
 **A split must not unfold a tower either.** ι's numeral decrement is the rule that a `Nat` scrutinee decides which
 alternative it takes from its count rather than by being unfolded into a spine, and a tree that splits on a counting
