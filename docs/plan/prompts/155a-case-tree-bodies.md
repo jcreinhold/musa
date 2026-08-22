@@ -1,7 +1,7 @@
 ---
 id: 155a
 slug: case-tree-bodies
-status: pending
+status: in-progress
 depends_on: [155, 155aa]
 phase: 3
 ---
@@ -65,6 +65,9 @@ representable" and its `depends_on` names 146 and 156, not this prompt. A genera
   answer.
 - `docs/plan/prompts/155aa-lift-local-recursion.md` — why every `rec` is at a definition's top by the time this runs,
   and the measurement that made the lift a prerequisite rather than a nicety.
+- `crates/musa-compiler/src/prelude.rs`, `list_from_start` — `walk rest (step built first)`, the corpus evidence for the
+  fixed descending position. Every forward fold in the language passes an accumulator it computed, and a termination
+  rule that constrained the arguments other than the descending one would refuse all of them.
 - `/Users/jcreinhold/Code/Idris2/src/Core/Case/CaseTree.idr` and `Core/Normalise.idr`'s case-tree evaluation — the
   reference for reducing a tree rather than an eliminator spine. Read `Core/Context.idr`'s `PMDef` with them: a
   tree-bodied definition there is `PMDef args tree`, the **arguments beside the tree**, which is the shape this prompt's
@@ -115,11 +118,45 @@ steps.
 outright: §2.4's second paragraph says descent "used to fall out of the generated eliminator" and that with `match`
 compiled to a tree "the checker walks the tree instead", and §1.3's refusal list says "Structural descent over the case
 tree is the whole rule". A definition whose body is a tree may name itself, so the `#ih` rewrite is retired and a check
-over the finished tree takes its place: an argument is **smaller** when it is a field of the pattern the split bound,
-and a recursive call is admitted when some argument is smaller and none is larger. **Structural descent is sufficient
-and is much smaller than size-change termination**; do not build the latter. What it costs is that a function whose
+over the finished tree takes its place: an argument is **smaller** when it is a variable a split bound as a field of the
+pattern it matched, transitively along the path — which is §2.4's own sentence. **Structural descent is sufficient and
+is much smaller than size-change termination**; do not build the latter. What it costs is that a function whose
 recursion is not structural is refused, which is the same set `rec.rs` refuses today — and `rec.rs`'s own module doc
 enumerates that set, so it is the negative-control corpus this prompt inherits rather than invents.
+
+*The descending position is fixed for the definition, and that is a correction.* This prompt first said "some argument
+is smaller and none is larger", and two measurements say the rule has to be the narrower one.
+
+**One:** without a fixed position the rule accepts a definition that does not terminate. Written out, with the split on
+`x` in the first arm and on `y` in the second:
+
+```text
+f x y = match x { Zero => match y { Zero => 0; Succ k => f y k }; Succ j => f j y }
+```
+
+Every call has an argument some split bound — `k` in the first, `j` in the second — and they descend in *different*
+positions, so `f 1 1` reaches `f 1 0`, `f 0 1`, and back. A checker that asks only "is one of them smaller" admits it.
+Requiring one position `p` such that **every** recursive call passes a smaller binding at `p` refuses it, and that is
+Coq's guarded-fixpoint condition rather than anything larger.
+
+**Two:** the "none is larger" clause has to go with it, because read strictly it refuses the corpus.
+`musa-compiler/src/prelude.rs`'s `list_from_start` calls `walk rest (step built first)` — the second argument is neither
+a binder nor a smaller binding, it is an accumulator the author computed, and every forward fold in the language is
+shaped that way. Under a fixed position the clause is unnecessary: what the other arguments are cannot matter when the
+measure is the size of the argument at `p` alone.
+
+**A tree body is binders and a tree, with nothing in between.** `case.rs` names a subject that is not already a variable
+with a `let` around the emitted term, and a [`Compiled`] has nowhere to put one. So `match f(x) { … }` at a definition's
+top is not a tree body: a non-recursive definition of that shape keeps the evaluated body it has today, and a
+*recursive* one is [`Refusal::UncheckedRecursion`], which is the same answer `rec.rs` gives it now under "a body whose
+top-level form is not a `match`".
+
+**A definition is in scope during its own elaboration, and that is what replaces the `#ih` binder.** A recursive call
+has to resolve to *something* while the body is being checked, and after this prompt that something is the definition
+itself — at its declared type, with no reduction behaviour yet, so a use of it is a blocked spine and nothing can
+compute with it. That third state belongs beside the two bodies rather than in a separate table. It also restructures
+prompt 155aa's `lift`: a term-position `rec` must be installed *before* its body is elaborated rather than after, since
+the body now names the lifted definition where it used to name a hypothesis.
 
 **`Impossible` gets its producer if 156 landed first, and stays unreachable otherwise.** This prompt does not depend on
 156 and must not assume it: a tree it builds has an `Impossible` alternative only where index unification put one.
@@ -131,11 +168,14 @@ enumerates that set, so it is the negative-control corpus this prompt inherits r
   because it has happened.
 - `crates/musa-calculus/src/kernel/case_tree.rs`: reduction — a tree, an environment of arguments, a forced scrutinee,
   and the alternative it selects; a scrutinee that is not canonical leaves the name neutral.
-- `crates/musa-calculus/src/kernel/program.rs`: a definition's body as a tree, answering the [`Value`]-and-[`Term`]
-  question its `Defined` doc poses.
+- `crates/musa-calculus/src/kernel/program.rs`: a definition's body as one of three things — evaluated at its
+  declaration as today, a compiled tree, or in scope during its own elaboration with neither — answering the
+  [`Value`]-and-[`Term`] question its `Defined` doc poses.
+- `crates/musa-calculus/src/elaboration/case.rs`: the builder hands back the tree as well as the term it emits, since a
+  tree body needs the first and a `match` in a term needs the second.
 - `crates/musa-calculus/src/kernel/family/iota.rs`: **unchanged**, for the reason the Design's second correction gives.
-- `crates/musa-calculus/src/kernel/terminate.rs`: structural descent over the tree, with the smaller-argument rule
-  stated as a doc comment before it is implemented.
+- `crates/musa-calculus/src/kernel/terminate.rs`: structural descent over the tree, with the smaller-argument rule and
+  the fixed descending position stated as a doc comment before either is implemented.
 - `crates/musa-calculus/src/elaboration/rec.rs`: the `#ih` rewrite retired in favour of the check, with
   `Refusal::UncheckedRecursion` still naming the call it refused.
 - `crates/musa-calculus/tests/suite/`: a reduction law per node, a law that a split on a counting family costs bounded
