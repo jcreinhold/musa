@@ -93,20 +93,11 @@ fn write(out: &mut String, term: &Term, at: Precedence, names: &mut Vec<Name>) {
                 }
             }
         }
-        Shape::Const(constant) => {
-            let _ = write!(out, "{constant}");
-        }
-        Shape::Def(def) => {
-            let _ = write!(out, "{def}");
-        }
-        Shape::Base(base) => {
-            let _ = write!(out, "{base}");
-        }
+        // One arm for the four kinds of name, because all four print the same
+        // thing: what the author would write.
+        Shape::Named { name, .. } => out.push_str(name),
         Shape::Lit(constant) => {
             let _ = write!(out, "{constant}");
-        }
-        Shape::Builtin(builtin) => {
-            let _ = write!(out, "{builtin}");
         }
         Shape::Universe(universe) => {
             let _ = write!(out, "Type {universe}");
@@ -274,12 +265,6 @@ fn occurs(term: &Term, depth: u32) -> bool {
         Shape::Project { record, .. } => occurs(record, depth),
         // Closed, or a leaf. A metavariable stands for a closed term applied to
         // the binders in scope (`term.rs`), so it holds no index of its own.
-        Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Lit(_)
-        | Shape::Meta(_)
-        | Shape::Builtin(_)
-        | Shape::Universe(_) => false,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => false,
     }
 }

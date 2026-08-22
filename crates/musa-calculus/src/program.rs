@@ -72,7 +72,7 @@ use crate::origin::Origin;
 use crate::raw::{RawPattern, RawProgram, RawShape, RawTopLevel};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Name, Role, Term};
 use crate::value::{Env, Value};
 use crate::visibility::{ModuleId, Visibility};
 
@@ -184,9 +184,12 @@ impl Def {
         &self.0.name
     }
 
-    /// This use as a term.
+    /// This use as a term: the definition's name, at [`Role::Defined`].
+    ///
+    /// The definition stays here and the term takes the name (§6), which is
+    /// what makes a use one node whatever the definition is.
     pub(crate) fn term(&self, origin: Origin) -> Term {
-        Term::new(origin, Shape::Def(self.clone()))
+        Term::named(origin, Arc::clone(&self.0.name), Role::Defined)
     }
 
     /// The definition's type.
@@ -369,7 +372,7 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
     // laws keep the meaning they were calibrated with; uses of the definition
     // still evaluate to the folded reference, so nothing about sharing or
     // diagnostics changes.
-    let value = eval(elaborator.meter(), &Env::EMPTY, &value)?;
+    let value = eval(elaborator.meter(), &Env::under(scope.cx().globals().clone()), &value)?;
     let value = crate::eval::opened(elaborator.meter(), &value)?.unwrap_or(value);
     let defined = Defined {
         name: Arc::clone(&held.name),

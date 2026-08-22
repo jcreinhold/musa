@@ -145,7 +145,7 @@ impl Elaborator {
         let Form::Neutral(ref neutral) = ty.form else {
             return Ok(None);
         };
-        let crate::value::Head::Base(ref base) = neutral.head else {
+        let crate::value::Head::Base(ref base, _) = neutral.head else {
             return Ok(None);
         };
         let [crate::value::Elim::App { ref argument, .. }] = neutral.spine[..] else {

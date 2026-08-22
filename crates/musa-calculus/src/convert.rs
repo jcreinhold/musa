@@ -39,13 +39,14 @@ use std::sync::Arc;
 
 use crate::base::Operator;
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::CoreError;
 use crate::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
 use crate::index::{self, Exact, Expr, Sort, Verdict};
 use crate::origin::Origin;
 use crate::quote::{Mode, quote, quote_type};
 use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
-use crate::term::{Constant, Field, Level, Shape, Term};
+use crate::term::{Constant, Definition, Field, Level, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
 
 /// What a pair of values is being compared at.
@@ -86,6 +87,15 @@ pub(crate) struct Conversion {
     /// assignment rule, which a deciding pass never fires — a meta is an
     /// opaque head there, compared by identity like any other.
     deciding: bool,
+    /// The names the values being compared were read under.
+    ///
+    /// One reader wants it — [`measured`], which asks a base type's host how to
+    /// read one of its literals as an index value, and has only the literal's
+    /// *type* to find the base type from. A term names it (§6) and this is
+    /// where the answer comes from. What it needs is the host's registrations,
+    /// which a context fixes before anything is elaborated in it, so the table
+    /// a conversion is built with cannot go stale under it.
+    globals: Globals,
 }
 
 impl Conversion {
@@ -97,8 +107,11 @@ impl Conversion {
     /// [`crate::convertible`] is this constructor and not a second procedure:
     /// two implementations of one question are two things to keep in
     /// agreement.
-    pub(crate) fn deciding() -> Self {
-        Self { deciding: true }
+    pub(crate) fn deciding(globals: Globals) -> Self {
+        Self {
+            deciding: true,
+            globals,
+        }
     }
 
     /// A checker that may solve a meta it meets alone on one side.
@@ -106,8 +119,11 @@ impl Conversion {
     /// The elaborator's mode, and the only one that assigns. Named rather than
     /// left to [`Default`] so that the two modes read as a pair at every
     /// construction site.
-    pub(crate) fn solving() -> Self {
-        Self { deciding: false }
+    pub(crate) fn solving(globals: Globals) -> Self {
+        Self {
+            deciding: false,
+            globals,
+        }
     }
 
     /// Make `left` and `right` the same type.
@@ -479,7 +495,10 @@ impl Conversion {
         // two indices nothing can read is what made `Row(mystery n)` fail to be
         // the same type as itself. §1.5 still forbids a syntactic fallback, and
         // this needs none: there is nothing left to fall back *for*.
-        let (Some(mine), Some(theirs)) = (index_of(meter, mine)?, index_of(meter, theirs)?) else {
+        let (Some(mine), Some(theirs)) = (
+            index_of(meter, &self.globals, mine)?,
+            index_of(meter, &self.globals, theirs)?,
+        ) else {
             return Err(CoreError::Malformed(crate::error::Malformed::UnreadableIndex).into());
         };
         match index::decide(&mine, &theirs) {
@@ -597,7 +616,7 @@ impl Conversion {
             (Head::Var(level, _), Head::Var(other_level, _)) => level.0 == other_level.0,
             // Rigid like a variable, and decided the same way: a constant is its
             // name, so there is nothing under it to unify.
-            (Head::Const(left), Head::Const(right)) => left == right,
+            (Head::Const(left, _), Head::Const(right, _)) => left == right,
             // Two metavariables reach this only in [`Self::deciding`] mode,
             // where §3 is being *asked* rather than made true and an unsolved
             // A meta is as rigid as a variable here: the same one is equal
@@ -610,8 +629,8 @@ impl Conversion {
             // under one could ever unblock it, and a builtin still headed here
             // has an argument that is not a literal. Both decide by name, like a
             // constant.
-            (Head::Base(left), Head::Base(right)) => left == right,
-            (Head::Builtin(left), Head::Builtin(right)) => left == right,
+            (Head::Base(left, _), Head::Base(right, _)) => left == right,
+            (Head::Builtin(left, _), Head::Builtin(right, _)) => left == right,
             // Reached only at one identity: [`Self::folded`] opens a definition
             // facing anything but itself, so two `Def` heads here are the same
             // definition and the spines decide.
@@ -620,9 +639,9 @@ impl Conversion {
             (
                 Head::Meta(_)
                 | Head::Var(_, _)
-                | Head::Const(_)
-                | Head::Base(_)
-                | Head::Builtin(_)
+                | Head::Const(..)
+                | Head::Base(..)
+                | Head::Builtin(..)
                 | Head::Def(_, _, _),
                 _,
             ) => false,
@@ -860,7 +879,7 @@ fn mentions_meta(value: &Value, target: &crate::meta::Meta) -> bool {
                 Head::Meta(meta) if meta == target => return true,
                 Head::Meta(meta) => meta.solution().is_some_and(|solution| mentions_meta(solution, target)),
                 Head::Var(_, ty) => mentions_meta(ty, target),
-                Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
+                Head::Const(..) | Head::Base(..) | Head::Builtin(..) => false,
                 Head::Def(_, ty, folded) => mentions_meta(ty, target) || mentions_meta(folded, target),
             };
             head_mentions
@@ -895,7 +914,7 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
                     None => true,
                 },
                 Head::Var(_, ty) => mentions_unsolved(ty),
-                Head::Const(_) | Head::Base(_) | Head::Builtin(_) => false,
+                Head::Const(..) | Head::Base(..) | Head::Builtin(..) => false,
                 Head::Def(_, ty, folded) => mentions_unsolved(ty) || mentions_unsolved(folded),
             };
             head_mentions
@@ -967,11 +986,11 @@ fn index_shown(meter: &mut Meter, depth: Level, value: &Value) -> Result<Term, C
 /// with it. §1.5 restricts what an index may say; asking here is what keeps an
 /// unreadable one out of every later comparison, so that [`crate::index::decide`]
 /// is total on what reaches it and `≡` is reflexive.
-pub(crate) fn reads_as_index(meter: &mut Meter, value: &Value) -> Result<bool, CoreError> {
-    Ok(index_of(meter, value)?.is_some())
+pub(crate) fn reads_as_index(meter: &mut Meter, globals: &Globals, value: &Value) -> Result<bool, CoreError> {
+    Ok(index_of(meter, globals, value)?.is_some())
 }
 
-fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError> {
+fn index_of(meter: &mut Meter, globals: &Globals, value: &Value) -> Result<Option<Expr>, CoreError> {
     meter.nested("index reading", |meter| {
         meter.step("index reading")?;
         let opened = opened(meter, value)?;
@@ -984,12 +1003,12 @@ fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError>
                 Sort::Count,
                 Exact::whole(i128::from(numeral.count)),
             ))),
-            Form::Lit(literal) => Ok(measured(literal)),
+            Form::Lit(literal) => Ok(measured(globals, literal)),
             Form::Neutral(neutral) => match (&neutral.head, neutral.spine.as_slice()) {
                 (Head::Var(Level(level), ty), []) => Ok(sort_of(ty).map(|sort| Expr::variable(sort, *level))),
-                (Head::Builtin(builtin), [Elim::App { argument: left, .. }, Elim::App { argument: right, .. }]) => {
+                (Head::Builtin(builtin, _), [Elim::App { argument: left, .. }, Elim::App { argument: right, .. }]) => {
                     match builtin.indexes() {
-                        Some(operator) => arithmetic(meter, operator, left, right),
+                        Some(operator) => arithmetic(meter, globals, operator, left, right),
                         None => Ok(None),
                     }
                 }
@@ -1004,8 +1023,14 @@ fn index_of(meter: &mut Meter, value: &Value) -> Result<Option<Expr>, CoreError>
 }
 
 /// One open application of an arithmetic builtin, read as a linear form.
-fn arithmetic(meter: &mut Meter, operator: Operator, left: &Value, right: &Value) -> Result<Option<Expr>, CoreError> {
-    let (Some(left), Some(right)) = (index_of(meter, left)?, index_of(meter, right)?) else {
+fn arithmetic(
+    meter: &mut Meter,
+    globals: &Globals,
+    operator: Operator,
+    left: &Value,
+    right: &Value,
+) -> Result<Option<Expr>, CoreError> {
+    let (Some(left), Some(right)) = (index_of(meter, globals, left)?, index_of(meter, globals, right)?) else {
         return Ok(None);
     };
     match operator {
@@ -1029,12 +1054,15 @@ fn arithmetic(meter: &mut Meter, operator: Operator, left: &Value, right: &Value
 /// on the base type. A literal at a base type that registered none is not an
 /// index, which is the intended default and the reason `Syntax<Cat>`'s category
 /// does not become one.
-fn measured(literal: &crate::base::Literal) -> Option<Expr> {
+fn measured(globals: &Globals, literal: &crate::base::Literal) -> Option<Expr> {
     let mut head = literal.ty();
     while let Shape::App { function, .. } = head.shape() {
         head = function;
     }
-    let Shape::Base(base) = head.shape() else {
+    let Shape::Named { name, role } = head.shape() else {
+        return None;
+    };
+    let Definition::Base(base) = globals.definition(name, *role) else {
         return None;
     };
     let (numerator, denominator) = base.measures()?(literal)?;
@@ -1069,8 +1097,8 @@ fn sort_of(ty: &Value) -> Option<Sort> {
         return None;
     };
     match &neutral.head {
-        Head::Const(constant) => constant.counting().map(|_| Sort::Count),
-        Head::Base(base) => base.measures().map(|_| Sort::Rational),
-        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Meta(_) => None,
+        Head::Const(constant, _) => constant.counting().map(|_| Sort::Count),
+        Head::Base(base, _) => base.measures().map(|_| Sort::Rational),
+        Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(..) | Head::Meta(_) => None,
     }
 }

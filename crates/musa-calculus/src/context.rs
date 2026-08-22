@@ -27,9 +27,180 @@ use crate::family::{Constant, Found, Group};
 use crate::list::List;
 use crate::origin::Origin;
 use crate::program::{Defined, Program};
-use crate::term::{Level, Name, Term};
+use crate::sort::Sort;
+use crate::term::{Definition, Level, Name, Role, Term};
 use crate::value::{Env, Value};
 use crate::visibility::ModuleId;
+
+/// Everything in scope that is not a binder: the declarations, the top-level
+/// definitions, and the host's registrations.
+///
+/// One value rather than three fields, and it lives in [`Env`] rather than
+/// beside it. A term names a constant, a definition, a base type, or a builtin
+/// and says which of the four it is (`02-core-calculus.md` §6); *what* that name
+/// reduces to is the context's answer, so reduction needs this table wherever it
+/// evaluates. Threading it as a parameter would touch every function in the
+/// crate and would still leave a closure applicable under a table other than the
+/// one it was built under. The environment is already handed to `eval` and
+/// already captured by every closure, so a closure resolves against the table it
+/// was *built* under — the only table that can be right.
+///
+/// [`None`] is the table that declares nothing, so a context that never declares
+/// anything pays a null check rather than an allocation.
+#[derive(Clone, Default)]
+pub(crate) struct Globals(Option<Arc<Tables>>);
+
+/// What a non-empty [`Globals`] holds.
+///
+/// Three lists rather than one, because three different operations extend them
+/// and a merged list could not say which kind a name was found as — which is the
+/// question [`Globals::definition`] answers.
+#[derive(Clone, Default)]
+struct Tables {
+    /// The declaration groups whose constants are in scope, most recent first.
+    ///
+    /// Beside the binders rather than among them, because a constant is not one:
+    /// it has no de Bruijn index, nothing shadows it, and it is in scope in its
+    /// own declaration. Keeping the two apart is what lets [`Cx::closed`] drop
+    /// every binder and keep every declaration, which is what a `data`
+    /// declaration is elaborated in.
+    declared: List<Arc<Group>>,
+    /// The top-level definitions in scope, most recent first.
+    ///
+    /// Beside the binders for `declared`'s reason and one of its own: §2.4 lets
+    /// a body name a definition written after it, and a de Bruijn binder refers
+    /// outward only, so a definition that lived among the locals could never be
+    /// seen by the definitions before it. See [`crate::program`].
+    definitions: List<Arc<Defined>>,
+    /// The host's base types and builtins (§5.8).
+    ///
+    /// The core never builds one. `crates/musa-calculus/src/base.rs` argues why
+    /// — a leaf calculus that enumerated the base types would make every new
+    /// musical domain a core amendment.
+    externs: Option<Arc<Registry>>,
+}
+
+impl Globals {
+    /// The table that declares nothing.
+    pub(crate) const EMPTY: Self = Self(None);
+
+    /// This table with `group`'s families, constructors, and recursors in
+    /// scope.
+    fn declaring(&self, group: &Arc<Group>) -> Self {
+        self.extended(|tables| tables.declared = tables.declared.push(Arc::clone(group)))
+    }
+
+    /// This table with one more top-level definition in scope.
+    fn defining(&self, defined: &Arc<Defined>) -> Self {
+        self.extended(|tables| tables.definitions = tables.definitions.push(Arc::clone(defined)))
+    }
+
+    /// This table with the host's registrations in scope.
+    fn with_externs(&self, externs: Arc<Registry>) -> Self {
+        self.extended(|tables| tables.externs = Some(externs))
+    }
+
+    /// What `name` refers to here.
+    ///
+    /// The [`Role`] chooses the table, and that is not a shortcut. Shadowing
+    /// between a declaration, a definition, and a registration that share a
+    /// spelling is `01-surface.md` §1.3's question, and the *elaborator* already
+    /// answered it when it turned the author's word into this term — sometimes
+    /// by resolving in the host's namespaces on purpose, which no ordering of
+    /// these three tables reproduces. Searching them again here would be a
+    /// second resolver free to disagree with the first. The term records which
+    /// kind of name it is; this answers with that kind or with nothing.
+    ///
+    /// A recursor carries one thing more: the universe its motives land in,
+    /// which §1.3 puts on the use site because there is no universe polymorphism
+    /// to put it anywhere else.
+    pub(crate) fn definition(&self, name: &str, role: Role) -> Definition {
+        let Some(tables) = self.0.as_deref() else {
+            return Definition::Undeclared;
+        };
+        match role {
+            Role::TypeConstructor | Role::Constructor | Role::Recursor(_) => {
+                let level = match role {
+                    Role::Recursor(level) => level,
+                    Role::Defined | Role::Constructor | Role::TypeConstructor | Role::Base | Role::Builtin => {
+                        Sort::ZERO
+                    }
+                };
+                Self::found_in(tables, name)
+                    .map_or(Definition::Undeclared, |found| Definition::Declared(found.at(level)))
+            }
+            Role::Defined => Self::defined_in(tables, name).map_or(Definition::Undeclared, |defined| {
+                Definition::Defined(crate::program::one(defined))
+            }),
+            Role::Base => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
+                Some(crate::base::Extern::Base(base)) => Definition::Base(base.clone()),
+                Some(crate::base::Extern::Builtin(_)) | None => Definition::Undeclared,
+            },
+            Role::Builtin => match tables.externs.as_deref().and_then(|registry| registry.named(name)) {
+                Some(crate::base::Extern::Builtin(builtin)) => Definition::Builtin(builtin.clone()),
+                Some(crate::base::Extern::Base(_)) | None => Definition::Undeclared,
+            },
+        }
+    }
+
+    /// What `name` names among the declared groups, if anything.
+    ///
+    /// [`Found`] rather than [`Definition`], for the caller that has no use site
+    /// to take a recursor's universe from: the elaborator, choosing one.
+    pub(crate) fn declared(&self, name: &str) -> Option<Found> {
+        Self::found_in(self.0.as_deref()?, name)
+    }
+
+    /// What `name` names among the definitions in scope, most recent first.
+    ///
+    /// [`Arc<Defined>`](Defined) rather than [`Definition`], for the caller that
+    /// asks what a spelling *could* have meant rather than what it reduces to:
+    /// the elaborator, which reports a private one rather than resolving past
+    /// it.
+    pub(crate) fn defined(&self, name: &str) -> Option<&Arc<Defined>> {
+        Self::defined_in(self.0.as_deref()?, name)
+    }
+
+    /// Every declared family in scope, most recent declaration first.
+    pub(crate) fn families(&self) -> impl Iterator<Item = &crate::family::Declared> {
+        self.0
+            .as_deref()
+            .into_iter()
+            .flat_map(|tables| tables.declared.iter().flat_map(|group| group.families.iter()))
+    }
+
+    /// The names of the top-level definitions in scope.
+    pub(crate) fn defined_names(&self) -> impl Iterator<Item = Name> + '_ {
+        self.0
+            .as_deref()
+            .into_iter()
+            .flat_map(|tables| tables.definitions.iter().map(|defined| Arc::clone(&defined.name)))
+    }
+
+    /// What `name` names among the host's registrations, if anything.
+    pub(crate) fn extern_named(&self, name: &str) -> Option<&crate::base::Extern> {
+        self.0.as_deref()?.externs.as_deref()?.named(name)
+    }
+
+    fn found_in(tables: &Tables, name: &str) -> Option<Found> {
+        tables.declared.iter().find_map(|group| Found::named(group, name))
+    }
+
+    fn defined_in<'a>(tables: &'a Tables, name: &str) -> Option<&'a Arc<Defined>> {
+        tables.definitions.iter().find(|defined| *defined.name == *name)
+    }
+
+    /// This table with one field changed.
+    ///
+    /// The copy is the point: extension is persistent, because an elaborator
+    /// descends into two branches from one context and neither may see the
+    /// other's declarations.
+    fn extended(&self, change: impl FnOnce(&mut Tables)) -> Self {
+        let mut tables = self.0.as_deref().cloned().unwrap_or_default();
+        change(&mut tables);
+        Self(Some(Arc::new(tables)))
+    }
+}
 
 /// The binders a term is read under, and the budget its conversions run in.
 #[derive(Clone)]
@@ -45,21 +216,6 @@ pub struct Cx {
     /// *assumption*, whose variable value carries its type; it cannot for a
     /// definition, whose value is the definition.
     types: List<Arc<Value>>,
-    /// The declaration groups whose constants are in scope, most recent first.
-    ///
-    /// Beside the binders rather than among them, because a constant is not one:
-    /// it has no de Bruijn index, nothing shadows it, and it is in scope in its
-    /// own declaration. Keeping the two lists apart is what lets [`Self::closed`]
-    /// drop every binder and keep every declaration, which is what a `data`
-    /// declaration is elaborated in.
-    declared: List<Arc<Group>>,
-    /// The top-level definitions in scope, most recent first.
-    ///
-    /// Beside the binders for `declared`'s reason and one of its own: §2.4 lets
-    /// a body name a definition written after it, and a de Bruijn binder refers
-    /// outward only, so a definition that lived in `env` could never be seen by
-    /// the definitions before it. See [`crate::program`].
-    definitions: List<Arc<Defined>>,
     /// The module a term elaborated here is written in, when the caller named
     /// one.
     ///
@@ -67,18 +223,6 @@ pub struct Cx {
     /// invisible to a caller that has no packages — see
     /// [`crate::visibility`]. This crate never mints one.
     module: Option<ModuleId>,
-    /// The host's base types and builtins (§5.8).
-    ///
-    /// Behind an [`Arc`] and optional because a context is cloned per binder,
-    /// and a caller that registers nothing pays a null check rather than an
-    /// allocation. `None` is the empty registry, so a
-    /// context that names no base type is the one every test written before
-    /// this rule existed already had.
-    ///
-    /// The core never builds one. `crates/musa-calculus/src/base.rs` argues why —
-    /// a leaf calculus that enumerated the base types would make every new
-    /// musical domain a core amendment.
-    externs: Option<Arc<Registry>>,
     depth: Level,
     budget: Budget,
 }
@@ -100,10 +244,7 @@ impl Cx {
         Self {
             env: Env::EMPTY,
             types: List::EMPTY,
-            declared: List::EMPTY,
-            definitions: List::EMPTY,
             module: None,
-            externs: None,
             depth: Level::ZERO,
             budget,
         }
@@ -119,12 +260,9 @@ impl Cx {
     #[must_use]
     pub fn closed(&self) -> Self {
         Self {
-            env: Env::EMPTY,
+            env: Env::under(self.globals().clone()),
             types: List::EMPTY,
-            declared: self.declared.clone(),
-            definitions: self.definitions.clone(),
             module: self.module,
-            externs: self.externs.clone(),
             depth: Level::ZERO,
             budget: self.budget,
         }
@@ -157,30 +295,44 @@ impl Cx {
     /// [`Registry`](crate::Registry).
     #[must_use]
     pub fn with_externs(&self, externs: Arc<Registry>) -> Self {
-        Self {
-            externs: Some(externs),
-            ..self.clone()
-        }
+        self.under(self.globals().with_externs(externs))
     }
 
     /// What `name` names among the host's registrations, if anything.
-    pub(crate) fn extern_named(&self, name: &str) -> Option<&crate::base::Extern> {
-        self.externs.as_deref()?.named(name)
+    ///
+    /// A term spells a registered name and says which kind of name it is; it no
+    /// longer carries the [`Base`](crate::Base) or [`Builtin`](crate::Builtin)
+    /// itself (§6's rule against a context entry inside a term). A reader that
+    /// wants the registration — its arity, its signature, its rule — asks the
+    /// context the name was written under, which is this.
+    #[must_use]
+    pub fn extern_named(&self, name: &str) -> Option<&crate::base::Extern> {
+        self.globals().extern_named(name)
+    }
+
+    /// The table this context resolves global names against.
+    pub(crate) const fn globals(&self) -> &Globals {
+        self.env.globals()
+    }
+
+    /// This context reading against `globals`, with the same binders.
+    fn under(&self, globals: Globals) -> Self {
+        Self {
+            env: self.env.reading(globals),
+            ..self.clone()
+        }
     }
 
     /// This context with `group`'s families, constructors, and recursors in
     /// scope.
     #[must_use]
     pub fn declaring(&self, group: &Arc<Group>) -> Self {
-        Self {
-            declared: self.declared.push(Arc::clone(group)),
-            ..self.clone()
-        }
+        self.under(self.globals().declaring(group))
     }
 
     /// What a declared name refers to here, most recent declaration first.
     pub(crate) fn declared(&self, name: &str) -> Option<Found> {
-        self.declared.iter().find_map(|group| Found::named(group, name))
+        self.globals().declared(name)
     }
 
     /// The family a qualified name reaches into that has no such member.
@@ -207,9 +359,8 @@ impl Cx {
     /// share a case spelling — `01-surface.md` §1.3 makes that legal on purpose
     /// — so the answer to "which did you mean" is a list and never a guess.
     pub(crate) fn cases(&self, case: &str) -> Vec<Name> {
-        self.declared
-            .iter()
-            .flat_map(|group| group.families.iter())
+        self.globals()
+            .families()
             .filter(|declared| {
                 declared
                     .constructors
@@ -232,16 +383,11 @@ impl Cx {
     /// answering it visible to each other.
     #[must_use]
     pub fn defining(&self, program: &Program) -> Self {
-        let extended = program
+        let globals = program
             .members()
             .iter()
-            .fold(self.definitions.clone(), |scope, defined| {
-                scope.push(Arc::clone(defined))
-            });
-        Self {
-            definitions: extended,
-            ..self.clone()
-        }
+            .fold(self.globals().clone(), |globals, defined| globals.defining(defined));
+        self.under(globals)
     }
 
     /// This context with one more definition in scope.
@@ -251,15 +397,12 @@ impl Cx {
     /// exactly those already elaborated, and this is how the next one sees
     /// them.
     pub(crate) fn defining_one(&self, defined: &Arc<Defined>) -> Self {
-        Self {
-            definitions: self.definitions.push(Arc::clone(defined)),
-            ..self.clone()
-        }
+        self.under(self.globals().defining(defined))
     }
 
     /// What `name` names among the definitions in scope, most recent first.
     pub(crate) fn definition(&self, name: &str) -> Option<&Arc<Defined>> {
-        self.definitions.iter().find(|defined| *defined.name == *name)
+        self.globals().defined(name)
     }
 
     /// This context extended by an assumption at type `ty`, written at
@@ -377,7 +520,7 @@ impl Cx {
     /// answer to "what could this name have meant" is read off the context the
     /// name failed in, not re-derived by whoever reports it.
     pub(crate) fn defined_names(&self) -> impl Iterator<Item = Name> + '_ {
-        self.definitions.iter().map(|defined| Arc::clone(&defined.name))
+        self.globals().defined_names()
     }
 
     pub(crate) const fn binder_types(&self) -> &List<Arc<Value>> {
@@ -395,10 +538,7 @@ impl Cx {
         Self {
             env: self.env.push(value),
             types: self.types.push(ty),
-            declared: self.declared.clone(),
-            definitions: self.definitions.clone(),
             module: self.module,
-            externs: self.externs.clone(),
             depth: self.depth.deeper(),
             budget: self.budget,
         }

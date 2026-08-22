@@ -448,10 +448,7 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         // `crate::registry::phase_type` gives: a variant added to `Shape` that
         // could hold a literal should stop here and be decided.
         musa_calculus::Shape::Var(_)
-        | musa_calculus::Shape::Const(_)
-        | musa_calculus::Shape::Def(_)
-        | musa_calculus::Shape::Base(_)
-        | musa_calculus::Shape::Builtin(_)
+        | musa_calculus::Shape::Named { .. }
         | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Lit(musa_calculus::Constant::Numeral(_))
         | musa_calculus::Shape::Bind { .. }

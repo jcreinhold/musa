@@ -371,7 +371,7 @@ impl Document {
                 Argued::Word(ref word) => word.clone(),
                 Argued::Value(ref raw) => {
                     let (normal, _) = self.term(raw)?;
-                    crate::registry::argument(*shape, &normal).ok_or_else(broken)?
+                    crate::registry::argument(&self.cx, *shape, &normal).ok_or_else(broken)?
                 }
             });
         }
@@ -401,13 +401,22 @@ impl Document {
                 let (term, ty) = musa_calculus::infer(&self.cx, &Raw::var(Origin::UNKNOWN, &**name)).ok()?;
                 let (step, input, output) = crate::registry::machine_ports(&ty)?;
                 let normal = musa_calculus::normalize(&self.cx, &ty, &term).ok()?;
-                let nodes = crate::registry::machine_nodes(&normal)?;
+                let nodes = crate::registry::machine_nodes(&self.cx, &normal)?;
                 Some((
                     name.to_string(),
                     musa_score::MachineSpec::new(step, input, output, nodes),
                 ))
             })
             .collect()
+    }
+
+    /// The context this document's terms were elaborated in.
+    ///
+    /// Exposed because a term names what it means and the context decides it
+    /// (`02-core-calculus.md` §6): a caller reading a normal form back as data
+    /// has to bring the table the term was written under.
+    pub(crate) const fn cx(&self) -> &musa_calculus::Cx {
+        &self.cx
     }
 
     /// The table that turns an [`Origin`] this document minted back into a span.

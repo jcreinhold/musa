@@ -37,6 +37,77 @@ use crate::sort::Sort;
 /// one by name.
 pub type Name = Arc<str>;
 
+/// What a term fixes about a name no binder introduced.
+///
+/// Idris2's `NameType` (`Core/TT/Term.idr`), with the two arms §5.8 adds and
+/// the payload §1.3 forces. A *tag*, not a declaration: one word where
+/// [`Shape`] used to carry an [`Arc`] to a whole declaration group, an
+/// elaborated definition, a base type's kind and host rules, or a δ-table.
+/// What the name reduces to is [`Definition`], which the context answers.
+///
+/// Six arms and not four, because three readers decide the merged pairs apart
+/// off a term with no context in hand: `base.rs`'s registration checks tell a
+/// base type this registry never registered from a declared family it cannot
+/// see, and [`crate::elab`] reads a *registered* signature's arrow as its whole
+/// parameter list where a source definition's is a parameter list and a
+/// returned function.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Role {
+    /// A top-level definition (§2.4) — the one global name δ unfolds.
+    Defined,
+    /// One of a declared family's constructors.
+    Constructor,
+    /// A declared family, as the type constructor it is (§1.1).
+    TypeConstructor,
+    /// A family's generated recursor, at the universe its motives land in.
+    ///
+    /// The universe rides on the *use site* because §1.3 has no universe
+    /// polymorphism: an elimination's goal is a type at `Type 0` or a type of
+    /// types at `Type 1`, and two eliminations into different universes are two
+    /// terms. Prompt 152 makes recursors level-polymorphic and this arm loses
+    /// its payload.
+    Recursor(Sort),
+    /// A base type the host registered (§5.8). Inert: no constructor, no
+    /// eliminator, and no rule in this crate takes one apart.
+    Base,
+    /// A compiler-owned operation the host registered (§5.8). Rigid until its
+    /// arguments are literals, at which point [`crate::eval::apply`] runs its
+    /// δ-rule — the same moment, and the same arm, at which ι fires for a
+    /// recursor.
+    Builtin,
+}
+
+/// What the *context* answers about a name.
+///
+/// [`Role`]'s counterpart and the other half of §6's boundary: the term says
+/// which kind of name this is, and this says what it stands for here. Reached
+/// by [`Globals::definition`](crate::context::Globals::definition), which is
+/// the one lookup reduction performs.
+///
+/// Five arms where [`Role`] has six, because a family, a constructor, and a
+/// recursor are one [`Constant`](crate::family::Constant) — one lookup answers
+/// all three, and a second copy of the split would be free to disagree with the
+/// first.
+#[derive(Clone)]
+pub(crate) enum Definition {
+    /// Nothing in scope answers to this name.
+    ///
+    /// A defect in whoever built or moved the term rather than in the program:
+    /// the elaborator resolved the name once already. It becomes a
+    /// [`Malformed`](crate::Malformed) refusal carrying the name, and never a
+    /// silent resolution to a different declaration of the same spelling.
+    Undeclared,
+    /// A top-level definition, held as the reference [`crate::program`]
+    /// describes. Prompt 155 replaces this with a compiled case tree.
+    Defined(crate::program::Def),
+    /// A declared family, one of its constructors, or its recursor.
+    Declared(crate::family::Constant),
+    /// A base type the host registered (§5.8).
+    Base(crate::base::Base),
+    /// A compiler-owned operation the host registered (§5.8).
+    Builtin(crate::base::Builtin),
+}
+
 /// How a use site fills a binder.
 ///
 /// A property of a *binder*. It rides on [`Shape::Pi`] and **no core rule reads
@@ -357,33 +428,29 @@ pub enum Shape {
     Meta(crate::meta::Meta),
     /// A variable, named by how many binders out its binder is.
     Var(Index),
-    /// A declared constant: an inductive family, one of its constructors, or its
-    /// generated recursor (§1.1).
+    /// A name no binder introduced, and what kind of thing it is (§1).
     ///
-    /// One variant rather than three saturated forms, because a family, a
-    /// constructor, and a recursor are all just *applied* — [`Self::App`] already
-    /// says what an argument is, and three spine-carrying variants would say it
-    /// three more times while making partial application a different term.
-    Const(crate::family::Constant),
-    /// A use of a top-level definition (§2.4).
+    /// One node for the four a declaration used to be smuggled through: a
+    /// declared family, one of its constructors, its generated recursor, a
+    /// top-level definition, a base type, and a compiler-owned operation are
+    /// all *a name*, and what any of them reduces to is what the context says
+    /// — [`Definition`], reached by
+    /// [`Globals::definition`](crate::context::Globals::definition). §6 is
+    /// where that boundary is stated as a rule, and this variant is where it
+    /// holds.
     ///
-    /// Separate from [`Self::Const`] rather than a fourth
-    /// [`Role`](crate::family::Role), because a declared constant is *rigid* —
-    /// a family, a constructor, and a recursor each stand for themselves — and
-    /// a definition is the one global name that δ unfolds. One node whatever
-    /// the definition is: see [`crate::program`] for why a use is a reference
-    /// rather than a copy of the body.
-    Def(crate::program::Def),
-    /// A base type: §5.8's conservative extension, registered by the host and
-    /// inert here. It has no constructor and no eliminator, so no rule in this
-    /// crate ever takes one apart — which is D1 stated as a representation.
-    Base(crate::base::Base),
+    /// Nothing here is applied: a family, a constructor, a recursor, and a
+    /// builtin all take their arguments through [`Self::App`], so partial
+    /// application is the same term either way.
+    Named {
+        /// The name, as the author could write it: `Vec`, `Vec.Cons`,
+        /// `Vec.elim`, `transpose`.
+        name: Name,
+        /// What the elaborator resolved it to.
+        role: Role,
+    },
     /// A closed value written as one node: see [`Constant`].
     Lit(Constant),
-    /// A compiler-owned operation. Rigid until its arguments are literals, at
-    /// which point [`crate::eval::apply`] runs its δ-rule — the same moment, and
-    /// the same arm, at which ι fires for a recursor.
-    Builtin(crate::base::Builtin),
     /// `Type l`. Predicative and not cumulative: `Type l : Type (succ l)`.
     Universe(Sort),
     /// `bind x. body` — a λ, a Π, or a `let`, at one node (§1).
@@ -474,14 +541,21 @@ impl PartialEq for Shape {
         match (self, other) {
             (Self::Meta(left), Self::Meta(right)) => left == right,
             (Self::Var(left), Self::Var(right)) => left == right,
-            (Self::Const(left), Self::Const(right)) => left == right,
-            // Two uses of one definition are one term. Conversion never gets
-            // this far — evaluation unfolds a definition before anything
-            // compares — so this is α-equality on *syntax*, which is what a
-            // semantic hash and a re-check are written against.
-            (Self::Def(left), Self::Def(right)) => left == right,
-            (Self::Base(left), Self::Base(right)) => left == right,
-            (Self::Builtin(left), Self::Builtin(right)) => left == right,
+            // Two uses of one name are one term — including two uses of one
+            // definition, where conversion never gets this far because
+            // evaluation unfolds a definition before anything compares. This is
+            // α-equality on *syntax*, which is what a semantic hash and a
+            // re-check are written against.
+            (
+                Self::Named {
+                    name: left,
+                    role: left_role,
+                },
+                Self::Named {
+                    name: right,
+                    role: right_role,
+                },
+            ) => left == right && left_role == right_role,
             // §5.8 for a payload and constant-time counting for a numeral —
             // both [`Constant`]'s own rule, stated once where the two arms are.
             (Self::Lit(left), Self::Lit(right)) => left == right,
@@ -543,11 +617,8 @@ impl PartialEq for Shape {
             (
                 Self::Meta(_)
                 | Self::Var(_)
-                | Self::Const(_)
-                | Self::Def(_)
-                | Self::Base(_)
+                | Self::Named { .. }
                 | Self::Lit(_)
-                | Self::Builtin(_)
                 | Self::Universe(_)
                 | Self::Bind { .. }
                 | Self::App { .. }
@@ -600,26 +671,18 @@ impl Term {
     /// evaluated. An already-indexed type answers for *its own* head, not for
     /// the wrapper: `Pc(12)` is a `Pc`, and the wrapper is what the answer was
     /// used to build.
-    pub(crate) fn declared_index(&self) -> Option<&crate::family::Parameter> {
+    pub(crate) fn declared_index(&self, globals: &crate::context::Globals) -> Option<crate::family::Parameter> {
         let mut head = self;
         while let Shape::App { function, .. } = head.shape() {
             head = function;
         }
-        match head.shape() {
-            Shape::Const(constant) => constant.declared_index(),
-            Shape::Base(base) => base.declared_index(),
-            Shape::Meta(_)
-            | Shape::Var(_)
-            | Shape::Def(_)
-            | Shape::Lit(_)
-            | Shape::Builtin(_)
-            | Shape::Universe(_)
-            | Shape::Bind { .. }
-            | Shape::App { .. }
-            | Shape::RecordType(_)
-            | Shape::Record(_)
-            | Shape::Project { .. }
-            | Shape::Indexed { .. } => None,
+        let Shape::Named { name, role } = head.shape() else {
+            return None;
+        };
+        match globals.definition(name, *role) {
+            Definition::Declared(constant) => constant.declared_index().cloned(),
+            Definition::Base(base) => base.declared_index().cloned(),
+            Definition::Undeclared | Definition::Defined(_) | Definition::Builtin(_) => None,
         }
     }
 
@@ -646,6 +709,18 @@ impl Term {
     #[must_use]
     pub fn var(origin: Origin, index: Index) -> Self {
         Self::new(origin, Shape::Var(index))
+    }
+
+    /// A name no binder introduced, at the role the elaborator resolved it to.
+    #[must_use]
+    pub fn named(origin: Origin, name: impl Into<Name>, role: Role) -> Self {
+        Self::new(
+            origin,
+            Shape::Named {
+                name: name.into(),
+                role,
+            },
+        )
     }
 
     /// `count` steps above `family`'s floor, as one node. See
@@ -697,11 +772,8 @@ impl Term {
                 .try_fold(Sort::ZERO, |join, field| Ok(Self::level_of(&field.term)?.max(join))),
             Shape::Meta(_)
             | Shape::Var(_)
-            | Shape::Const(_)
-            | Shape::Def(_)
-            | Shape::Base(_)
+            | Shape::Named { .. }
             | Shape::Lit(_)
-            | Shape::Builtin(_)
             | Shape::Bind { .. }
             | Shape::App { .. }
             | Shape::Record(_)
@@ -850,13 +922,7 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         Shape::Indexed { ty, index } => deeper(ty, 0).saturating_add(deeper(index, 0)),
         // Closed leaves: none of them can be a variable, so none of them can
         // hold an occurrence of one.
-        Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Meta(_)
-        | Shape::Universe(_) => 0,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 0,
         // One arm for three binders: whatever the binder carries is read
         // outside it, and the body one deeper. That is the saving [`Binder`]
         // exists for, and this is the smallest place it shows.

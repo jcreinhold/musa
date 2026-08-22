@@ -6,6 +6,7 @@
 use super::constant::{Constant, Numeral};
 use super::group::{Group, Role};
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::CoreError;
 use crate::eval::{apply, eval};
 use crate::origin::Origin;
@@ -16,7 +17,7 @@ use std::sync::Arc;
 
 /// The constant at the head of a blocked spine, and what has been applied to it.
 pub(super) fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
-    let Head::Const(constant) = &neutral.head else {
+    let Head::Const(constant, _) = &neutral.head else {
         return None;
     };
     let mut arguments = Vec::with_capacity(neutral.spine.len());
@@ -118,7 +119,7 @@ fn unread(method: &Value) -> Option<Value> {
 /// As [`opened`](crate::eval::opened), from looking through a solved
 /// metavariable or a folded definition at the argument.
 pub(crate) fn stepped(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Const(ref constructor) = neutral.head else {
+    let Head::Const(ref constructor, _) = neutral.head else {
         return Ok(None);
     };
     let Role::Constructor(which) = constructor.role else {
@@ -166,12 +167,18 @@ struct Reduction {
     which: u32,
     /// The universe the motives land in, which an induction hypothesis inherits.
     level: Sort,
+    /// The table the recursor's name was resolved under, which the hypothesis
+    /// it builds is read in — see [`Head::Base`](crate::value::Head::Base).
+    globals: Globals,
 }
 
 /// Decide whether `neutral` is a saturated recursor applied to a constructor,
 /// and take apart what it is applied to.
 fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, CoreError> {
     let Some((recursor, arguments)) = spine(neutral) else {
+        return Ok(None);
+    };
+    let Head::Const(_, ref globals) = neutral.head else {
         return Ok(None);
     };
     let Role::Recursor(level) = recursor.role.clone() else {
@@ -240,6 +247,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
         return Ok(None);
     };
     Ok(Some(Reduction {
+        globals: globals.clone(),
         method: method.clone(),
         fields,
         prefix: arguments.get(..prefix_len).unwrap_or_default().to_vec(),
@@ -288,7 +296,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
     // A stored field type is read in the declaration context, then the
     // parameters, then the fields before it — which is exactly the environment
     // this walk builds up.
-    let mut reading = Group::declarations(group);
+    let mut reading = Group::declarations(group, &reduction.globals);
     for param in reduction.prefix.iter().take(params) {
         reading = reading.push(param.clone());
     }
@@ -307,7 +315,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
                 family: of_family,
                 role: Role::Recursor(reduction.level),
             }
-            .value(here);
+            .value(here, &reduction.globals);
             for argument in &reduction.prefix {
                 hypothesis = apply(meter, here, hypothesis, argument.clone())?;
             }
@@ -334,7 +342,7 @@ fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec<Pending>, 
 /// blocked spine, which is exactly what a δ-builtin over an open term should
 /// stay.
 pub(crate) fn constructed(neutral: &Neutral) -> Option<(Name, usize)> {
-    let Head::Const(constant) = &neutral.head else {
+    let Head::Const(constant, _) = &neutral.head else {
         return None;
     };
     // A constructor's type is a Π chain, so anything but an application means

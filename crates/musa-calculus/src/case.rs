@@ -254,7 +254,7 @@ impl Tree<'_, '_> {
         let Form::Neutral(neutral) = &unfolded.as_ref().unwrap_or(&subject.ty).form else {
             return Ok(None);
         };
-        let Head::Base(base) = &neutral.head else {
+        let Head::Base(base, _) = &neutral.head else {
             return Ok(None);
         };
         let at = problem
@@ -713,7 +713,7 @@ impl Tree<'_, '_> {
 
         // The declaration context, the parameters, and then each field as it is
         // assumed: the environment a stored field type is read in.
-        let mut reading = crate::family::Group::declarations(&group);
+        let mut reading = crate::family::Group::declarations(&group, scope.cx().globals());
         for param in &split.element.params {
             reading = reading.push(param.clone());
         }
@@ -768,7 +768,7 @@ impl Tree<'_, '_> {
         // What this method knows its subject to be. §6.2's variable rule expands
         // rather than defers, so a variable pattern in the split column has to
         // name something, and this is what it names.
-        let built = self.built(&group, family, which, &split.element.params, &fields)?;
+        let built = self.built(scope, &group, family, which, &split.element.params, &fields)?;
 
         let body = if family == split.element.family {
             let goal = self.method_goal(motives, family)?;
@@ -853,6 +853,7 @@ impl Tree<'_, '_> {
     /// this is what it names.
     fn built(
         &mut self,
+        scope: &Scope,
         group: &Arc<crate::family::Group>,
         family: u32,
         which: u32,
@@ -869,8 +870,9 @@ impl Tree<'_, '_> {
             }
             .into());
         };
-        let mut value = Constant::constructor(group, family, which).value(self.here);
-        let mut ty = Constant::family(group, family).value(self.here);
+        let globals = scope.cx().globals();
+        let mut value = Constant::constructor(group, family, which).value(self.here, globals);
+        let mut ty = Constant::family(group, family).value(self.here, globals);
         for param in params {
             value = apply(self.elaborator.meter(), self.here, value, param.clone())?;
             ty = apply(self.elaborator.meter(), self.here, ty, param.clone())?;
@@ -1145,9 +1147,9 @@ fn variable(value: &Value) -> Option<u32> {
         // `f x` is not the variable `f`.
         crate::value::Form::Neutral(neutral) if neutral.spine.is_empty() => match &neutral.head {
             crate::value::Head::Var(level, _) => Some(level.0),
-            crate::value::Head::Const(_)
-            | crate::value::Head::Base(_)
-            | crate::value::Head::Builtin(_)
+            crate::value::Head::Const(..)
+            | crate::value::Head::Base(..)
+            | crate::value::Head::Builtin(..)
             | crate::value::Head::Meta(_)
             | crate::value::Head::Def(_, _, _) => None,
         },

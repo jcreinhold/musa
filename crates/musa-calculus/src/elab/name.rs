@@ -10,7 +10,7 @@ use crate::origin::Origin;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::sort::Sort;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Definition, Name, Shape, Term};
 use crate::value::{Env, Value};
 
 use super::{Elaborator, Typed};
@@ -96,7 +96,7 @@ impl Elaborator {
         // here.
         let level = Sort::ZERO;
         let constant = found.at(level);
-        let ty = constant.ty(&mut self.meter)?;
+        let ty = constant.ty(&mut self.meter, scope.cx().globals())?;
         Ok(Typed {
             term: constant.term(here),
             ty,
@@ -162,7 +162,7 @@ impl Elaborator {
         let Some(entry) = scope.cx().extern_named(name) else {
             return self.unresolved(scope, here, name);
         };
-        let ty = eval(&mut self.meter, &Env::EMPTY, entry.ty())?;
+        let ty = eval(&mut self.meter, &Env::under(scope.cx().globals().clone()), entry.ty())?;
         Ok(Typed {
             term: entry.term(here),
             ty,
@@ -211,7 +211,7 @@ impl Elaborator {
         let Some(reason) = constant.uncounted() else {
             return Ok(Typed {
                 term: Term::numeral(here, &constant, count),
-                ty: constant.value(here),
+                ty: constant.value(here, scope.cx().globals()),
             });
         };
         Err(Refusal::NotANumeralFamily {
@@ -231,7 +231,7 @@ impl Elaborator {
     /// declared.
     fn unresolved(&mut self, scope: &Scope, here: Origin, name: &Name) -> Result<Typed, ElabError> {
         if let Some(family) = scope.cx().stranger(name) {
-            let ty = family.ty_term(&mut self.meter)?;
+            let ty = family.ty_term(&mut self.meter, scope.cx().globals())?;
             return Err(Refusal::NoSuchConstructor {
                 at: here,
                 name: Arc::clone(name),
@@ -251,14 +251,14 @@ impl Elaborator {
         if let [only] = families.as_slice() {
             let qualified: Name = Arc::clone(only);
             let built = self.constant(scope, here, &qualified)?;
-            let params = match &built.term.shape() {
-                Shape::Const(constant) => constant.group.params(),
+            let params = match built.term.shape() {
+                Shape::Named { name, role } => match scope.cx().globals().definition(name, *role) {
+                    Definition::Declared(constant) => constant.group.params(),
+                    Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => 0,
+                },
                 Shape::Meta(_)
                 | Shape::Var(_)
-                | Shape::Def(_)
-                | Shape::Base(_)
                 | Shape::Lit(_)
-                | Shape::Builtin(_)
                 | Shape::Universe(_)
                 | Shape::Bind { .. }
                 | Shape::App { .. }

@@ -51,13 +51,7 @@ impl Elaborator {
                     &solution,
                 )?);
             }
-            Shape::Var(_)
-            | Shape::Const(_)
-            | Shape::Def(_)
-            | Shape::Base(_)
-            | Shape::Lit(_)
-            | Shape::Builtin(_)
-            | Shape::Universe(_) => return Ok(term.clone()),
+            Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => return Ok(term.clone()),
             // One arm for all three binders: what differs between them is which
             // subterms sit outside the binder, and that is the `Binder`'s own
             // question rather than a reason for three copies of this walk.

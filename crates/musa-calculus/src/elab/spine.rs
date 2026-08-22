@@ -9,7 +9,7 @@ use crate::origin::Origin;
 use crate::raw::Raw;
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
-use crate::term::{Filling, Shape, Term};
+use crate::term::{Definition, Filling, Role, Shape, Term};
 use crate::value::{Form, Neutral, Value};
 
 use super::{Elaborator, Typed};
@@ -143,27 +143,29 @@ impl Elaborator {
         // the slot would meet a function type where its data was. A written
         // field does the same job later in the walk, so this is the
         // no-arguments case only.
-        let head = match head.term.shape() {
-            Shape::Const(constant)
-                if arguments.is_empty() && matches!(constant.role, crate::family::Role::Constructor(_)) =>
-            {
-                let params = constant.group.params();
-                self.metas(scope, here, head, params)?
-            }
-            Shape::Meta(_)
+        let bare = match head.term.shape() {
+            Shape::Named {
+                name,
+                role: role @ Role::Constructor,
+            } if arguments.is_empty() => match scope.cx().globals().definition(name, *role) {
+                Definition::Declared(constant) => Some(constant.group.params()),
+                Definition::Undeclared | Definition::Defined(_) | Definition::Base(_) | Definition::Builtin(_) => None,
+            },
+            Shape::Named { .. }
+            | Shape::Meta(_)
             | Shape::Var(_)
-            | Shape::Const(_)
-            | Shape::Def(_)
-            | Shape::Base(_)
             | Shape::Lit(_)
-            | Shape::Builtin(_)
             | Shape::Universe(_)
             | Shape::Bind { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
-            | Shape::Indexed { .. } => head,
+            | Shape::Indexed { .. } => None,
+        };
+        let head = match bare {
+            Some(params) => self.metas(scope, here, head, params)?,
+            None => head,
         };
         let mut walk = Walk::default();
         let mut waiting: Vec<Waiting<'_>> = Vec::new();

@@ -1,7 +1,7 @@
 ---
 id: 147a
 slug: names-through-the-context
-status: in-progress
+status: done
 depends_on: [147]
 phase: 3
 ---

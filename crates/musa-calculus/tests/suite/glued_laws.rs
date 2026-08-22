@@ -184,8 +184,12 @@ fn a_refusal_quotes_the_name_the_author_wrote() {
     let musa_calculus::ElabError::Refused(Refusal::NotAFunction { ty, .. }) = error else {
         panic!("applying a Nat is NotAFunction, got {error}");
     };
-    let Shape::Def(def) = ty.shape() else {
+    let Shape::Named {
+        name,
+        role: musa_calculus::Role::Defined,
+    } = ty.shape()
+    else {
         panic!("the refusal names the author's definition, got {ty:?}");
     };
-    assert_eq!(def.to_string(), "MyNat");
+    assert_eq!(name.to_string(), "MyNat");
 }

@@ -61,7 +61,7 @@ fn a_normal_form_contains_no_redex() {
     {
         for term in [&left, &right] {
             let normal = normalize(&cx, &ty, term).expect("the corpus normalizes");
-            assert!(is_normal(&normal), "{name}: {normal:?} still contains a redex");
+            assert!(is_normal(&cx, &normal), "{name}: {normal:?} still contains a redex");
         }
     }
 }
@@ -173,7 +173,11 @@ fn definitions_are_unfolded() {
 /// them is stated where a registry exists to state it against: `base_laws.rs`'s
 /// worked traversal, which normalizes to itself exactly when its target has not
 /// become a literal.
-fn is_delta_redex(term: &Term) -> bool {
+///
+/// The arity comes from the context rather than from the term: a term spells the
+/// builtin's name and says it is one, and [`Cx::extern_named`] answers which
+/// registration that name reached.
+fn is_delta_redex(cx: &Cx, term: &Term) -> bool {
     let mut arguments = 0_usize;
     let mut every_argument_is_a_literal = true;
     let mut head = term;
@@ -182,8 +186,17 @@ fn is_delta_redex(term: &Term) -> bool {
         every_argument_is_a_literal &= matches!(*argument.shape(), Shape::Lit(_));
         head = function;
     }
-    matches!(head.shape(), Shape::Builtin(builtin)
-        if every_argument_is_a_literal && arguments >= builtin.arity())
+    let Shape::Named {
+        name,
+        role: musa_calculus::Role::Builtin,
+    } = head.shape()
+    else {
+        return false;
+    };
+    let Some(musa_calculus::Extern::Builtin(builtin)) = cx.extern_named(name) else {
+        return false;
+    };
+    every_argument_is_a_literal && arguments >= builtin.arity()
 }
 
 /// Whether a term has no redex anywhere inside it.
@@ -191,29 +204,23 @@ fn is_delta_redex(term: &Term) -> bool {
 /// Written out rather than matched with a wildcard: a variant added later must
 /// make this fail to compile, because a new form of redex that nobody taught
 /// this function about would silently pass every test above.
-fn is_normal(term: &Term) -> bool {
+fn is_normal(cx: &Cx, term: &Term) -> bool {
     match term.shape() {
         // A base type, a literal, and a builtin are leaves. §5.8's D1 gives a
         // base type no eliminator, so nothing built from one is a redex; a
         // builtin applied to enough literals is, and that is an `App` whose
         // function is this leaf, which the `App` arm below already reads.
-        Shape::Var(_)
-        | Shape::Universe(_)
-        | Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Lit(_)
-        | Shape::Builtin(_) => true,
+        Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         // A refinement has no elimination form, so it is never a redex; both
         // halves still have to be normal.
-        Shape::Indexed { ty, index } => is_normal(ty) && is_normal(index),
+        Shape::Indexed { ty, index } => is_normal(cx, ty) && is_normal(cx, index),
         // A `let` is a redex on sight; a Π and a λ are normal when what they
         // bind and what they hold are.
         Shape::Bind {
             binder: Binder::Let { .. },
             ..
         } => false,
-        Shape::Bind { binder, body, .. } => binder.outer().all(is_normal) && is_normal(body),
+        Shape::Bind { binder, body, .. } => binder.outer().all(|term| is_normal(cx, term)) && is_normal(cx, body),
         Shape::App { function, argument } => {
             !matches!(
                 *function.shape(),
@@ -221,12 +228,12 @@ fn is_normal(term: &Term) -> bool {
                     binder: Binder::Lam,
                     ..
                 }
-            ) && !is_delta_redex(term)
-                && is_normal(function)
-                && is_normal(argument)
+            ) && !is_delta_redex(cx, term)
+                && is_normal(cx, function)
+                && is_normal(cx, argument)
         }
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(&field.term)),
-        Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(record),
+        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(cx, &field.term)),
+        Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(cx, record),
         Shape::Meta(_) => false,
         // A normal form has none: elaboration either solved it or refused the
         // declaration that left it unsolved (§2.1). Reaching one here means a

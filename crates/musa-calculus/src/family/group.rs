@@ -6,8 +6,8 @@
 use super::constant::Constant;
 use super::iota::spine;
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::CoreError;
-use crate::list::List;
 use crate::origin::Origin;
 use crate::sort::Sort;
 use crate::term::{Filling, Name, Term};
@@ -286,8 +286,8 @@ impl Group {
     /// The `k` family constants, ordered so that the variable a stored term uses
     /// for family `i` finds family `i`. Every stored term is read in this
     /// environment, extended by whatever binders it stands under.
-    pub(crate) fn declarations(group: &Arc<Self>) -> Env {
-        let mut env = List::EMPTY;
+    pub(crate) fn declarations(group: &Arc<Self>, globals: &Globals) -> Env {
+        let mut env = Env::under(globals.clone());
         for family in 0..group.arity() {
             env = env.push(
                 Constant {
@@ -295,7 +295,7 @@ impl Group {
                     family,
                     role: Role::Family,
                 }
-                .value(group.origin),
+                .value(group.origin, globals),
             );
         }
         env

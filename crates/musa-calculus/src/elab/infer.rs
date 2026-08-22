@@ -11,7 +11,7 @@ use crate::raw::{Raw, RawShape};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::sort::Sort;
-use crate::term::{Binder, Filling, Name, Shape, Term};
+use crate::term::{Binder, Filling, Name, Role, Shape, Term};
 use crate::value::{Env, Form, Value};
 
 use super::spine::{Slot, Walk};
@@ -47,7 +47,7 @@ impl Elaborator {
             // what the host already said.
             RawShape::Lit(literal) => Ok(Typed {
                 term: literal.term(here),
-                ty: eval(&mut self.meter, &Env::EMPTY, literal.ty())?,
+                ty: eval(&mut self.meter, &Env::under(scope.cx().globals().clone()), literal.ty())?,
             }),
             RawShape::Numeral { family, count } => self.numeral(scope, here, family, *count),
             RawShape::Universe(written) => {
@@ -166,7 +166,7 @@ impl Elaborator {
         // somewhere — a form nothing declares is a form nothing can be erased
         // from, so admitting it would leave a type whose read-back is a
         // different type for no reason anything recorded.
-        let Some(binder) = ty.declared_index() else {
+        let Some(binder) = ty.declared_index(scope.cx().globals()) else {
             return Err(Refusal::NotIndexed {
                 ty: crate::show::head_spelled(&ty),
                 at: here,
@@ -208,7 +208,9 @@ impl Elaborator {
         // an index variable no written argument determines. Refusing it here
         // would be postponement's mirror image — a complaint raised before the
         // information that answers it arrives.
-        if !crate::convert::mentions_unsolved(&value) && !crate::convert::reads_as_index(&mut self.meter, &value)? {
+        if !crate::convert::mentions_unsolved(&value)
+            && !crate::convert::reads_as_index(&mut self.meter, scope.cx().globals(), &value)?
+        {
             return Err(Refusal::UnreadableIndex {
                 shown: crate::show::spelled(&index.term),
                 at: index.term.origin(),
@@ -507,7 +509,13 @@ impl Elaborator {
 /// shape of the table being the host's to state. That is why `transpose(P8)` is
 /// under-applied even though the host wrote its binders anonymously.
 fn declared_parameters(head: &Term, ty: &Term) -> Vec<Name> {
-    let registered = matches!(head.shape(), Shape::Builtin(_));
+    let registered = matches!(
+        head.shape(),
+        Shape::Named {
+            role: Role::Builtin,
+            ..
+        }
+    );
     let mut declared = Vec::new();
     let mut rest = ty;
     while let Shape::Bind {

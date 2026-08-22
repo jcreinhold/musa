@@ -360,8 +360,14 @@ fn headed(term: &musa_calculus::Term) -> Option<(String, Vec<musa_calculus::Term
     }
     arguments.reverse();
     match head.shape() {
-        musa_calculus::Shape::Base(base) => Some((base.to_string(), arguments)),
-        musa_calculus::Shape::Const(constant) => Some((constant.to_string(), arguments)),
+        musa_calculus::Shape::Named {
+            name,
+            role:
+                musa_calculus::Role::Base
+                | musa_calculus::Role::TypeConstructor
+                | musa_calculus::Role::Constructor
+                | musa_calculus::Role::Recursor(_),
+        } => Some((name.to_string(), arguments)),
         _ => None,
     }
 }

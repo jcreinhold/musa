@@ -360,10 +360,18 @@ fn a_saturated_form_normalizes_to_itself() {
     let (head, taken) = spine(&term);
     let normal = musa_calculus::normalize(&cx, &at, &term).expect("a machine normalizes");
     let (settled, left) = spine(&normal);
-    let Shape::Builtin(ref before) = *head.shape() else {
+    let Shape::Named {
+        name: ref before,
+        role: musa_calculus::Role::Builtin,
+    } = *head.shape()
+    else {
         panic!("`connect(identity, identity)` is not headed by a builtin: {head:?}");
     };
-    let Shape::Builtin(ref after) = *settled.shape() else {
+    let Shape::Named {
+        name: ref after,
+        role: musa_calculus::Role::Builtin,
+    } = *settled.shape()
+    else {
         panic!("`connect(identity, identity)` normalized to something else: {settled:?}");
     };
     assert_eq!(before, after, "the head is still `connect`");

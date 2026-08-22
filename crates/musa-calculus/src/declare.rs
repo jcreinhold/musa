@@ -30,17 +30,17 @@
 
 use std::sync::Arc;
 
-use crate::context::Cx;
+use crate::context::{Cx, Globals};
 use crate::elab::Elaborator;
 use crate::error::CoreError;
 use crate::eval::eval;
-use crate::family::{Constructor, Counting, Declared, Group, Parameter};
+use crate::family::{Constant, Constructor, Counting, Declared, Group, Parameter};
 use crate::origin::Origin;
 use crate::raw::{RawBinder, RawConstructor, RawData, RawFamily};
 use crate::refuse::{ElabError, Refusal};
 use crate::scope::Scope;
 use crate::sort::Sort;
-use crate::term::{Binder, Index, Name, Shape, Term};
+use crate::term::{Binder, Definition, Index, Name, Role, Shape, Term};
 use crate::value::{Form, Value};
 use crate::visibility::Visibility;
 
@@ -151,7 +151,7 @@ pub(crate) fn declare(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, crate::Spe
     // these parameters, and the fields that decide it are all in hand exactly
     // once.
     let positive: Vec<bool> = (0..u32::try_from(params.len()).unwrap_or(u32::MAX))
-        .map(|which| parameter_is_positive(&families, arity, under_params.depth().0, which))
+        .map(|which| parameter_is_positive(&families, arity, &under_params, which))
         .collect();
     let group = Arc::new(Group {
         origin: here,
@@ -365,7 +365,7 @@ fn constructors(
         for (position, binder) in fields.iter().enumerate() {
             let position = u32::try_from(position).unwrap_or(u32::MAX);
             let depth = scope.depth().0.saturating_add(position);
-            match occurrence(&binder.ty, arity, depth) {
+            match occurrence(scope.cx().globals(), &binder.ty, arity, depth) {
                 Ok(None) => {
                     if let Some(found) = levels.get(usize::try_from(position).unwrap_or(usize::MAX)) {
                         level = level.max(*found);
@@ -470,7 +470,7 @@ fn telescope_fields(
 /// would be a recursive field whose hypothesis is a function.
 type Occurrence = Result<Option<u32>, Origin>;
 
-fn occurrence(ty: &Term, arity: u32, depth: u32) -> Occurrence {
+fn occurrence(globals: &Globals, ty: &Term, arity: u32, depth: u32) -> Occurrence {
     let watched = Watched::families(arity);
     let (head, arguments) = spine(ty);
     if let Shape::Var(index) = head.shape()
@@ -487,7 +487,7 @@ fn occurrence(ty: &Term, arity: u32, depth: u32) -> Occurrence {
         }
         return Ok(Some(family));
     }
-    stored_positively(ty, watched, depth).map(|()| None)
+    stored_positively(globals, ty, watched, depth).map(|()| None)
 }
 
 /// Where a field type that is not a direct occurrence mentions the declaration
@@ -505,7 +505,7 @@ fn occurrence(ty: &Term, arity: u32, depth: u32) -> Occurrence {
 /// refused by the fall-through, which is what [`crate::family`]'s "recursive
 /// fields are direct" narrowing *is*. That narrowing is deliberately kept, so
 /// this walk widens exactly one rule rather than two.
-fn stored_positively(ty: &Term, watched: Watched, depth: u32) -> Result<(), Origin> {
+fn stored_positively(globals: &Globals, ty: &Term, watched: Watched, depth: u32) -> Result<(), Origin> {
     let (head, arguments) = spine(ty);
     // The occurrence itself, reached by descending into a positive parameter.
     // This is the arm that admits `List StaffRead`: the descent bottoms out on
@@ -522,9 +522,7 @@ fn stored_positively(ty: &Term, watched: Watched, depth: u32) -> Result<(), Orig
         }
         return Ok(());
     }
-    if let Shape::Const(constant) = head.shape()
-        && matches!(constant.role, crate::family::Role::Family)
-    {
+    if let Some(constant) = declared_family(globals, head) {
         for (position, argument) in arguments.iter().enumerate() {
             let Some(at) = mentions(argument, watched, depth, 0) else {
                 continue;
@@ -532,7 +530,7 @@ fn stored_positively(ty: &Term, watched: Watched, depth: u32) -> Result<(), Orig
             if !constant.group.positive_at(position) {
                 return Err(at);
             }
-            stored_positively(argument, watched, depth)?;
+            stored_positively(globals, argument, watched, depth)?;
         }
         return Ok(());
     }
@@ -585,13 +583,17 @@ impl Watched {
 /// — see [`Group::positive`]. Every constructor field of every family is walked,
 /// each at the depth its own binder stands at, which is the depth
 /// [`constructors`] hands [`occurrence`].
-fn parameter_is_positive(families: &[Declared], arity: u32, under_params: u32, which: u32) -> bool {
+fn parameter_is_positive(families: &[Declared], arity: u32, under_params: &Scope, which: u32) -> bool {
     let watched = Watched::parameter(arity, which);
+    let globals = under_params.cx().globals();
     families.iter().all(|declared| {
         declared.constructors.iter().all(|case| {
             case.fields.iter().enumerate().all(|(position, field)| {
-                let depth = under_params.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
-                positive_in(&field.ty, watched, arity, depth, 0)
+                let depth = under_params
+                    .depth()
+                    .0
+                    .saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
+                positive_in(globals, &field.ty, watched, arity, depth, 0)
             })
         })
     })
@@ -608,7 +610,7 @@ fn parameter_is_positive(families: &[Declared], arity: u32, under_params: u32, w
 /// polarity is being decided, so the alternative to assuming it positive is not
 /// answering at all. That optimism is the fixed point, and it is the same one
 /// [`crate::storable`] takes for the same reason one section over.
-fn positive_in(ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) -> bool {
+fn positive_in(globals: &Globals, ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) -> bool {
     let own = Watched::families(arity);
     let here = depth.saturating_add(bound);
     let (head, arguments) = spine(ty);
@@ -620,14 +622,13 @@ fn positive_in(ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) 
     {
         return arguments
             .iter()
-            .all(|argument| positive_in(argument, watched, arity, depth, bound));
+            .all(|argument| positive_in(globals, argument, watched, arity, depth, bound));
     }
-    if let Shape::Const(constant) = head.shape()
-        && matches!(constant.role, crate::family::Role::Family)
-    {
+    if let Some(constant) = declared_family(globals, head) {
         return arguments.iter().enumerate().all(|(position, argument)| {
             mentions(argument, watched, depth, bound).is_none()
-                || (constant.group.positive_at(position) && positive_in(argument, watched, arity, depth, bound))
+                || (constant.group.positive_at(position)
+                    && positive_in(globals, argument, watched, arity, depth, bound))
         });
     }
     if let Shape::Bind {
@@ -637,9 +638,30 @@ fn positive_in(ty: &Term, watched: Watched, arity: u32, depth: u32, bound: u32) 
     } = head.shape()
     {
         return mentions(domain, watched, depth, bound).is_none()
-            && positive_in(body, watched, arity, depth, bound.saturating_add(1));
+            && positive_in(globals, body, watched, arity, depth, bound.saturating_add(1));
     }
     mentions(ty, watched, depth, bound).is_none()
+}
+
+/// The declared family `head` names, when it names one.
+///
+/// The declaration is the context's (§6), so a positivity walk that wants to
+/// know whether `List` is positive in its element asks the table rather than the
+/// term. A name at any other role — a constructor, a recursor, a definition, a
+/// base type, a builtin — is not a family and answers `None`, which is the
+/// fall-through both callers already had.
+fn declared_family(globals: &Globals, head: &Term) -> Option<Constant> {
+    let Shape::Named {
+        name,
+        role: role @ Role::TypeConstructor,
+    } = head.shape()
+    else {
+        return None;
+    };
+    let Definition::Declared(constant) = globals.definition(name, *role) else {
+        return None;
+    };
+    constant.is_family().then_some(constant)
 }
 
 /// The head of an application spine, and what is applied to it.
@@ -681,13 +703,7 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
         Shape::Indexed { ty, index } => {
             mentions(ty, watched, depth, bound).or_else(|| mentions(index, watched, depth, bound))
         }
-        Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_)
-        | Shape::Meta(_)
-        | Shape::Universe(_) => None,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => None,
         // Whatever sits outside the binder is read where the binder is; the
         // body is read one binder in. Which subterms those are is the
         // `Binder`'s question, so the three forms share this arm.

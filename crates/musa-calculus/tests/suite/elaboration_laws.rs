@@ -552,13 +552,7 @@ fn metas_solved(term: &Term) -> bool {
         Shape::Meta(meta) => meta.is_solved(),
         // A base type, a builtin, and a literal are all closed: each is a name
         // or a payload the host registered, and none of them holds a term.
-        Shape::Var(_)
-        | Shape::Universe(_)
-        | Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_) => true,
+        Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         Shape::Indexed { ty, index } => metas_solved(ty) && metas_solved(index),
         Shape::Bind { binder, body, .. } => binder.outer().all(metas_solved) && metas_solved(body),
         Shape::App { function, argument } => metas_solved(function) && metas_solved(argument),

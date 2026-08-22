@@ -31,9 +31,10 @@ use std::sync::Arc;
 
 use crate::base::{Answer, Builtin, Datum};
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::{CoreError, Malformed};
 use crate::origin::Origin;
-use crate::term::{Binder, Constant, Field, Filling, Name, Shape, Term};
+use crate::term::{Binder, Constant, Definition, Field, Filling, Name, Role, Shape, Term};
 use crate::value::{Closure, DefHead, Elim, Env, Form, Head, Neutral, Telescope, Value};
 
 /// Evaluate `term` in `env`.
@@ -61,32 +62,13 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
             // Resolved on the way in, so a value carries the level its arms
             // have already been solved to rather than the one written first.
             Shape::Universe(level) => Ok(Value::new(here, Form::Universe(*level))),
-            // A constant is closed and rigid, so evaluating one is reading it.
-            // ι does not fire here: it needs the target, which arrives through
-            // [`apply`]. A counting family's floor is the one constant that is
-            // not rigid — [`Constant::value`](crate::family::Constant) turns it
-            // into the numeral zero, which is where that collapse lives so that
-            // it cannot be done twice or forgotten once.
-            Shape::Const(constant) => Ok(constant.value(here)),
+            // §1's one name node, resolved through the context (§6). What the
+            // name reduces to is the table's answer and not the term's, which
+            // is the whole of this arm.
+            Shape::Named { name, role } => named(env, here, name, *role),
             // Nothing to do, and that is the point: a numeral of 384 is one node
             // here, so evaluating it charges one step and one nesting level
             // rather than 384 of each.
-            // δ on a top-level definition, *deferred*: the use evaluates to a
-            // folded neutral that carries the value computed once at the
-            // declaration, and [`unfold`] opens it where something needs it
-            // open. The origins inside it are the definition's own, which is
-            // §7 working — the value came from where it was written, not from
-            // where it was named.
-            Shape::Def(def) => Ok(Value::neutral(Neutral::head(
-                here,
-                Head::Def(DefHead::Global(def.clone()), def.ty(), def.value()),
-            ))),
-            // §5.8's extension. A base type is rigid forever — nothing
-            // eliminates it — and a builtin is rigid until its arguments are
-            // literals, which is a question [`apply`] asks once the spine is
-            // long enough. A literal is already canonical.
-            Shape::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base.clone())))),
-            Shape::Builtin(builtin) => Ok(Value::neutral(Neutral::head(here, Head::Builtin(builtin.clone())))),
             Shape::Lit(Constant::Payload(literal)) => Ok(Value::new(here, Form::Lit(literal.clone()))),
             Shape::Lit(Constant::Numeral(numeral)) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
             // §1's one binder node, read three ways. The written form shares a
@@ -144,6 +126,52 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
 // `budget_laws.rs`'s `a_term_nested_past_the_limit_is_refused` is the test that
 // notices when this stops being true. Quotation walks values the same way and
 // costs about the same per level; nothing there needed splitting yet.
+
+/// What a name stands for here (§1, §6).
+///
+/// Five answers and one refusal, and each is what the removed variant did:
+///
+/// - a **declared constant** is closed and rigid, so evaluating one is reading
+///   it. ι does not fire here: it needs the target, which arrives through
+///   [`apply`]. A counting family's floor is the one constant that is not rigid
+///   — [`Constant::value`](crate::family::Constant) turns it into the numeral
+///   zero, which is where that collapse lives so that it cannot be done twice
+///   or forgotten once.
+/// - a **definition** is δ *deferred*: the use evaluates to a folded neutral
+///   carrying the value computed once at the declaration, and [`unfold`] opens
+///   it where something needs it open. The origins inside it are the
+///   definition's own, which is §7 working — the value came from where it was
+///   written, not from where it was named.
+/// - a **base type** is rigid forever, and a **builtin** is rigid until its
+///   arguments are literals, which is a question [`apply`] asks once the spine
+///   is long enough (§5.8).
+///
+/// The three rigid heads keep the table they were resolved under, because
+/// [`neutral_type`] answers their types by evaluating a declaration term and
+/// has no context to ask — see [`Head::Base`].
+///
+/// # Errors
+///
+/// [`Malformed::UndeclaredName`] when nothing in scope answers to the name. The
+/// elaborator resolved it once already, so this is a defect in whoever built or
+/// moved the term — never a silent resolution to a different declaration of the
+/// same spelling.
+fn named(env: &Env, here: Origin, name: &Name, role: Role) -> Result<Value, CoreError> {
+    let globals = env.globals();
+    match globals.definition(name, role) {
+        Definition::Declared(constant) => Ok(constant.value(here, globals)),
+        Definition::Defined(def) => Ok(Value::neutral(Neutral::head(
+            here,
+            Head::Def(DefHead::Global(def.clone()), def.ty(), def.value()),
+        ))),
+        Definition::Base(base) => Ok(Value::neutral(Neutral::head(here, Head::Base(base, globals.clone())))),
+        Definition::Builtin(builtin) => Ok(Value::neutral(Neutral::head(
+            here,
+            Head::Builtin(builtin, globals.clone()),
+        ))),
+        Definition::Undeclared => Err(Malformed::UndeclaredName(Arc::clone(name)).into()),
+    }
+}
 
 fn pi(
     meter: &mut Meter,
@@ -462,7 +490,7 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
 /// host's table rather than in the program — and [`Malformed::MisfitAnswer`]
 /// when what it answers does not fit its own declared result type.
 fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Builtin(builtin) = &built.head else {
+    let Head::Builtin(builtin, globals) = &built.head else {
         return Ok(None);
     };
     let Some(rule) = builtin.delta_rule() else {
@@ -498,8 +526,8 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
         // carries its own. Only a constructed answer pays for the walk below.
         Datum::Lit(literal) => Ok(Some(Value::new(here, Form::Lit(literal)))),
         Datum::Count { .. } | Datum::Case { .. } => {
-            let ty = result_type(meter, builtin, built)?;
-            crate::family::realize(meter, here, &answer, &ty).map(Some)
+            let ty = result_type(meter, builtin, globals, built)?;
+            crate::family::realize(meter, here, globals, &answer, &ty).map(Some)
         }
     }
 }
@@ -570,8 +598,8 @@ fn constructed(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Datum>, Co
 ///
 /// [`Malformed::NotAFunction`] when the signature runs out of Π before the spine
 /// runs out of arguments, which means the arity and the type disagree.
-fn result_type(meter: &mut Meter, builtin: &Builtin, built: &Neutral) -> Result<Value, CoreError> {
-    let mut ty = eval(meter, &Env::EMPTY, builtin.ty())?;
+fn result_type(meter: &mut Meter, builtin: &Builtin, globals: &Globals, built: &Neutral) -> Result<Value, CoreError> {
+    let mut ty = eval(meter, &Env::under(globals.clone()), builtin.ty())?;
     for elimination in &built.spine {
         let Elim::App { argument, .. } = elimination else {
             return Err(Malformed::NotAFunction.into());
@@ -613,7 +641,7 @@ fn result_type(meter: &mut Meter, builtin: &Builtin, built: &Neutral) -> Result<
 /// the rewrite answers nothing at a literal target and a full spine, and
 /// whatever evaluating the answer answers.
 fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Builtin(builtin) = &built.head else {
+    let Head::Builtin(builtin, globals) = &built.head else {
         return Ok(None);
     };
     let Some((target, rewrite)) = builtin.structural_rule() else {
@@ -658,7 +686,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     // binders over the same spine would have produced.
     let env = arguments
         .into_iter()
-        .fold(Env::EMPTY, |env, argument| env.push(argument));
+        .fold(Env::under(globals.clone()), |env, argument| env.push(argument));
     eval(meter, &env, &rewritten).map(Some)
 }
 
@@ -750,12 +778,12 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             Head::Def(_, ty, _) => Value::clone(ty),
             // A constant's type is its declaration's, assembled on demand
             // rather than stored beside it — `family.rs` says why.
-            Head::Const(constant) => constant.ty(meter)?,
-            // A base type's kind and a builtin's signature are closed terms the
-            // host registered, so the empty environment is the whole context
-            // either needs.
-            Head::Base(base) => eval(meter, &Env::EMPTY, base.kind())?,
-            Head::Builtin(builtin) => eval(meter, &Env::EMPTY, builtin.ty())?,
+            Head::Const(constant, globals) => constant.ty(meter, globals)?,
+            // A base type's kind and a builtin's signature are closed in
+            // *binders* and not in names, so the environment they are read in
+            // has no locals and the table the head was resolved under.
+            Head::Base(base, globals) => eval(meter, &Env::under(globals.clone()), base.kind())?,
+            Head::Builtin(builtin, globals) => eval(meter, &Env::under(globals.clone()), builtin.ty())?,
         };
         // The prefix each elimination is applied to, grown in place. A
         // projection's field type may mention the record it projects from, and

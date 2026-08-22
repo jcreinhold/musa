@@ -128,7 +128,7 @@ pub use crate::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::sort::Sort;
 pub use crate::storable::requiring_storable;
 pub use crate::term::Constraint;
-pub use crate::term::{Binder, Constant, Field, Filling, Index, Level, Name, Shape, Term};
+pub use crate::term::{Binder, Constant, Field, Filling, Index, Level, Name, Role, Shape, Term};
 pub use crate::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
@@ -363,8 +363,14 @@ pub fn convertible_metered(cx: &Cx, ty: &Term, left: &Term, right: &Term) -> Res
         let ty = eval(&mut meter, cx.env(), ty)?;
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        let answer =
-            decided(Conversion::deciding().unify(&mut meter, cx.depth(), Origin::UNKNOWN, &ty, &left, &right))?;
+        let answer = decided(Conversion::deciding(cx.globals().clone()).unify(
+            &mut meter,
+            cx.depth(),
+            Origin::UNKNOWN,
+            &ty,
+            &left,
+            &right,
+        ))?;
         Ok((answer, meter.spent()))
     })
 }
@@ -379,7 +385,13 @@ pub fn convertible_types(cx: &Cx, left: &Term, right: &Term) -> Result<bool, Cor
         let mut meter = cx.meter();
         let left = eval(&mut meter, cx.env(), left)?;
         let right = eval(&mut meter, cx.env(), right)?;
-        decided(Conversion::deciding().unify_types(&mut meter, cx.depth(), Origin::UNKNOWN, &left, &right))
+        decided(Conversion::deciding(cx.globals().clone()).unify_types(
+            &mut meter,
+            cx.depth(),
+            Origin::UNKNOWN,
+            &left,
+            &right,
+        ))
     })
 }
 

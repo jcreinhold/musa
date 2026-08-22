@@ -35,7 +35,7 @@
 use std::sync::Arc;
 
 use crate::scope::Scope;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Name, Role, Shape, Term};
 use crate::value::{Form, Head, Value};
 
 /// The separator between a namespace and one of its members.
@@ -60,20 +60,24 @@ pub(crate) fn split(name: &str) -> Option<(&str, &str)> {
 /// namespace off one would give two namespaces for one type.
 pub(crate) fn head_name(term: &Term) -> Option<Name> {
     match term.shape() {
-        Shape::Const(constant) => Some(constant.name()),
+        Shape::Named {
+            name,
+            role: Role::TypeConstructor | Role::Constructor | Role::Recursor(_) | Role::Base,
+        } => Some(Arc::clone(name)),
         // An indexed type shares its namespace with the type it indexes: the
         // index is a refinement of the same type and not a second one.
         Shape::Indexed { ty, .. } => head_name(ty),
-        Shape::Base(base) => Some(Arc::clone(base.name())),
         Shape::App { function, .. } => head_name(function),
-        Shape::Def(_)
+        Shape::Named {
+            role: Role::Defined | Role::Builtin,
+            ..
+        }
         | Shape::Var(_)
         | Shape::Universe(_)
         | Shape::Bind { .. }
         | Shape::RecordType(_)
         | Shape::Record(_)
         | Shape::Project { .. }
-        | Shape::Builtin(_)
         | Shape::Lit(_)
         | Shape::Meta(_) => None,
     }
@@ -139,8 +143,8 @@ pub(crate) fn head_of(ty: &Value) -> Option<Name> {
         return None;
     };
     match &neutral.head {
-        Head::Const(constant) => Some(constant.name()),
-        Head::Base(base) => Some(Arc::clone(base.name())),
-        Head::Var(..) | Head::Builtin(_) | Head::Meta(_) | Head::Def(..) => None,
+        Head::Const(constant, _) => Some(constant.name()),
+        Head::Base(base, _) => Some(Arc::clone(base.name())),
+        Head::Var(..) | Head::Builtin(..) | Head::Meta(_) | Head::Def(..) => None,
     }
 }

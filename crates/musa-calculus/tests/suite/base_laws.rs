@@ -1147,12 +1147,13 @@ fn a_constructor_over_an_open_field_leaves_the_spine_blocked() {
 /// A base literal is data, and is its own.
 #[test]
 fn a_literal_reads_back_as_itself() {
+    let cx = host();
     assert_eq!(
-        musa_calculus::canonical(&int_lit(3).term(TERMS)),
+        musa_calculus::canonical(&cx, &int_lit(3).term(TERMS)),
         Some(Datum::Lit(int_lit(3)))
     );
     assert_eq!(
-        musa_calculus::canonical(&text_lit("c").term(TERMS)),
+        musa_calculus::canonical(&cx, &text_lit("c").term(TERMS)),
         Some(Datum::Lit(text_lit("c")))
     );
 }
@@ -1180,7 +1181,7 @@ fn a_saturated_constructor_reads_back_without_its_parameters() {
     for (name, written, expected) in questions {
         let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(
-            musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
+            musa_calculus::canonical(&cx, &normalize_at(&cx, &ty, &term)),
             Some(expected),
             "{name}"
         );
@@ -1199,7 +1200,7 @@ fn nested_data_reads_back_nested() {
     let written = calls("Option.Some", [inner, some(Raw::lit(TERMS, int_lit(4)))]);
     let term = check(&cx, &ty, &written).expect("the nested value checks");
     assert_eq!(
-        musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
+        musa_calculus::canonical(&cx, &normalize_at(&cx, &ty, &term)),
         Some(case("Option.Some", [case("Option.Some", [Datum::Lit(int_lit(4))])]))
     );
 }
@@ -1220,7 +1221,7 @@ fn a_term_and_the_rule_that_fires_on_it_see_the_same_data() {
     let subject = some(Raw::lit(TERMS, int_lit(9)));
 
     let held = check(&cx, &ty, &subject).expect("the subject checks");
-    let read = musa_calculus::canonical(&normalize_at(&cx, &ty, &held)).expect("the term reads back as data");
+    let read = musa_calculus::canonical(&cx, &normalize_at(&cx, &ty, &held)).expect("the term reads back as data");
 
     let program = calls("option_or", [subject, Raw::lit(TERMS, int_lit(0))]);
     let fired = check(&cx, &int_ty, &program).expect("the application checks");
@@ -1280,7 +1281,7 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
     for (name, written, ty) in questions {
         let term = check(&cx, &ty, &written).unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_eq!(
-            musa_calculus::canonical(&normalize_at(&cx, &ty, &term)),
+            musa_calculus::canonical(&cx, &normalize_at(&cx, &ty, &term)),
             None,
             "{name} is not data"
         );

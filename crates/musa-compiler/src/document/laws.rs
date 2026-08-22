@@ -127,8 +127,8 @@ fn a_data_declaration_may_be_written_after_the_one_that_names_it() {
     );
     let (value, _) = document.value("held").expect("`held` is bound");
     let shown = format!("{value:?}");
-    assert!(shown.contains("\"Wrap\""), "the outer constructor: {shown}");
-    assert!(shown.contains("\"Only\""), "and the inner one: {shown}");
+    assert!(shown.contains("Held.Wrap"), "the outer constructor: {shown}");
+    assert!(shown.contains("Inner.Only"), "and the inner one: {shown}");
 }
 
 #[test]
@@ -182,7 +182,7 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
-        musa_calculus::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+        musa_calculus::canonical(document.cx(), &normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
     };
     let case = |name: &str, fields: Vec<musa_calculus::Datum>| musa_calculus::Datum::Case {
         constructor: std::sync::Arc::from(name),
@@ -255,7 +255,7 @@ fn a_prelude_container_folds_at_the_head_of_its_own_type() {
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
-        musa_calculus::canonical(&normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
+        musa_calculus::canonical(document.cx(), &normal).unwrap_or_else(|| panic!("`{name}` reads back as data"))
     };
     let whole = |count| musa_calculus::Datum::Count {
         family: std::sync::Arc::from("Nat"),

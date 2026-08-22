@@ -121,7 +121,7 @@ impl AdapterModule {
         // one of its constructors. A term that is not one is this crate's defect
         // rather than an adapter's, which is why the two callers report it as
         // "no answer" rather than as a refusal with the adapter's name on it.
-        let datum = musa_calculus::canonical(&normal).ok_or(Unrun::NoAnswer)?;
+        let datum = musa_calculus::canonical(self.read.cx(), &normal).ok_or(Unrun::NoAnswer)?;
         Ok((datum, spend))
     }
 }

@@ -56,6 +56,18 @@ pub enum Malformed {
     /// A variable named a binder that is not in scope.
     #[error("variable {0:?} is not bound in this context")]
     UnboundVariable(Index),
+    /// A term named something no declaration, definition, or registration in
+    /// scope answers to.
+    ///
+    /// A caller defect and not an unknown-name refusal: the elaborator resolved
+    /// every name once already (`02-core-calculus.md` §6), so a term that
+    /// reaches evaluation with an unresolvable name was built or moved wrong.
+    /// Reported rather than resolved past, because the alternative — falling
+    /// through to a different declaration of the same spelling — is the one way
+    /// a name reaching the context could change what a program means without a
+    /// test noticing.
+    #[error("nothing in scope is named `{0}`")]
+    UndeclaredName(Name),
     /// Something that is not a function was applied.
     #[error("applied a value that is not a function")]
     NotAFunction,

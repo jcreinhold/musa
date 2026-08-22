@@ -6,11 +6,12 @@
 use super::assemble::{Telescope, applied};
 use super::group::{Counting, Group, Role};
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::CoreError;
 use crate::eval::eval;
 use crate::origin::Origin;
 use crate::sort::Sort;
-use crate::term::{Name, Shape, Term};
+use crate::term::{Name, Term};
 use crate::value::{Env, Form, Head, Neutral, Value};
 use crate::visibility::{ModuleId, Visibility};
 use std::sync::Arc;
@@ -23,7 +24,7 @@ use std::sync::Arc;
 /// computed", applied to the one place it would otherwise cost a parameter on
 /// `eval`, `quote`, `apply`, and `Cx` alike.
 #[derive(Clone, Debug)]
-pub struct Constant {
+pub(crate) struct Constant {
     pub(crate) group: Arc<Group>,
     pub(crate) family: u32,
     pub(crate) role: Role,
@@ -272,9 +273,23 @@ impl Constant {
         }
     }
 
-    /// This constant as a term.
+    /// This constant as a term: its name, at the role it plays.
+    ///
+    /// The declaration stays here and the term takes the name (§6). Which of
+    /// the three constants this is survives as [`Role`](crate::Role), because
+    /// the spellings already differ — `Vec`, `Vec.Cons`, `Vec.elim` — and the
+    /// role is what a reader of the term can act on without a context.
     pub(crate) fn term(&self, origin: Origin) -> Term {
-        Term::new(origin, Shape::Const(self.clone()))
+        Term::named(origin, self.name(), self.written_role())
+    }
+
+    /// Which [`Role`](crate::Role) a term naming this constant carries.
+    fn written_role(&self) -> crate::term::Role {
+        match self.role {
+            Role::Family => crate::term::Role::TypeConstructor,
+            Role::Constructor(_) => crate::term::Role::Constructor,
+            Role::Recursor(level) => crate::term::Role::Recursor(level),
+        }
     }
 
     /// The two constructors that make this a counting family, when it is one and
@@ -347,13 +362,17 @@ impl Constant {
     /// unless it is a counting family's floor, which is the numeral zero.
     ///
     /// The collapse lives here rather than in [`crate::eval::eval`]'s arm for
-    /// [`Shape::Const`] so that there is one answer to "what value is this
-    /// constant": every path that turns the floor into a value gets the numeral,
-    /// and no second path can produce the spine form [`Numeral`]'s canonicity
-    /// says does not exist.
-    pub(crate) fn value(&self, origin: Origin) -> Value {
+    /// a name so that there is one answer to "what value is this constant":
+    /// every path that turns the floor into a value gets the numeral, and no
+    /// second path can produce the spine form [`Numeral`]'s canonicity says does
+    /// not exist.
+    ///
+    /// `globals` is the table the name was resolved under, which the rigid head
+    /// keeps so that [`crate::eval::neutral_type`] can read this constant's own
+    /// type — see [`Head::Base`](crate::value::Head::Base).
+    pub(crate) fn value(&self, origin: Origin, globals: &Globals) -> Value {
         self.floor().map_or_else(
-            || Value::neutral(Neutral::head(origin, Head::Const(self.clone()))),
+            || Value::neutral(Neutral::head(origin, Head::Const(self.clone(), globals.clone()))),
             |zero| Value::new(origin, Form::Numeral(zero)),
         )
     }
@@ -406,9 +425,9 @@ impl Constant {
     /// # Errors
     ///
     /// As [`eval`]: assembly evaluates every stored telescope it walks.
-    pub(crate) fn ty(&self, meter: &mut Meter) -> Result<Value, CoreError> {
-        let term = self.ty_term(meter)?;
-        eval(meter, &Env::EMPTY, &term)
+    pub(crate) fn ty(&self, meter: &mut Meter, globals: &Globals) -> Result<Value, CoreError> {
+        let term = self.ty_term(meter, globals)?;
+        eval(meter, &Env::under(globals.clone()), &term)
     }
 
     /// The same type, as a closed term.
@@ -420,8 +439,8 @@ impl Constant {
     /// # Errors
     ///
     /// As [`eval`].
-    pub(crate) fn ty_term(&self, meter: &mut Meter) -> Result<Term, CoreError> {
-        let mut builder = Telescope::new(&self.group);
+    pub(crate) fn ty_term(&self, meter: &mut Meter, globals: &Globals) -> Result<Term, CoreError> {
+        let mut builder = Telescope::new(&self.group, globals);
         match &self.role {
             Role::Family => self.family_type(meter, &mut builder),
             Role::Constructor(which) => self.constructor_type(meter, builder, *which),

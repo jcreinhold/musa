@@ -159,7 +159,7 @@ impl Elaborator {
     pub(crate) fn new(cx: &Cx) -> Self {
         Self {
             meter: cx.meter(),
-            conversion: Conversion::solving(),
+            conversion: Conversion::solving(cx.globals().clone()),
             constraints: Vec::new(),
             created: Vec::new(),
             next_meta: 0,
@@ -245,7 +245,7 @@ impl Elaborator {
         // which is holding the index this would say was missing; that caller
         // reads [`Self::formed_type`] instead.
         if !matches!(term.shape(), crate::term::Shape::Indexed { .. })
-            && let Some(binder) = term.declared_index()
+            && let Some(binder) = term.declared_index(scope.cx().globals())
         {
             return Err(Refusal::MissingIndex {
                 ty: crate::show::head_spelled(&term),

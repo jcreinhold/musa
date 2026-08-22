@@ -187,7 +187,7 @@ fn run_printer(
             )]));
         }
     };
-    answered(&printed).ok_or(PrintFailure::NoAnswer)?
+    answered(document.cx(), &printed).ok_or(PrintFailure::NoAnswer)?
 }
 
 /// The `Result<Text, Text>` a printer answered, as this module's own outcome.
@@ -199,11 +199,11 @@ fn run_printer(
 /// [`PrintFailure::Loss`] is what the error arm *means* — the printer read the
 /// value and said which part of it it could not spell — so the two arms are not
 /// success and failure here. They are the two answers §4 declares.
-fn answered(printed: &musa_calculus::Term) -> Option<Result<String, PrintFailure>> {
+fn answered(cx: &musa_calculus::Cx, printed: &musa_calculus::Term) -> Option<Result<String, PrintFailure>> {
     let musa_calculus::Datum::Case {
         ref constructor,
         ref fields,
-    } = musa_calculus::canonical(printed)?
+    } = musa_calculus::canonical(cx, printed)?
     else {
         return None;
     };

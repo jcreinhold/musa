@@ -301,10 +301,10 @@ fn origins(term: &Term, into: &mut BTreeSet<Origin>) {
 fn restamp(term: &Term, origin: Origin) -> Term {
     let shape = match term.shape() {
         Shape::Var(index) => Shape::Var(*index),
-        Shape::Const(constant) => Shape::Const(constant.clone()),
-        Shape::Def(def) => Shape::Def(def.clone()),
-        Shape::Base(base) => Shape::Base(base.clone()),
-        Shape::Builtin(builtin) => Shape::Builtin(builtin.clone()),
+        Shape::Named { name, role } => Shape::Named {
+            name: Arc::clone(name),
+            role: *role,
+        },
         Shape::Lit(literal) => Shape::Lit(literal.clone()),
         Shape::Universe(level) => Shape::Universe(*level),
         Shape::Indexed { ty, index } => Shape::Indexed {
@@ -356,13 +356,7 @@ fn restamp_fields(fields: &[Field], origin: Origin) -> Arc<[Field]> {
 /// A term's immediate subterms, in the order they were written.
 fn children(term: &Term) -> Vec<&Term> {
     match term.shape() {
-        Shape::Var(_)
-        | Shape::Universe(_)
-        | Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
-        | Shape::Lit(_) => Vec::new(),
+        Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => Vec::new(),
         Shape::Indexed { ty, index } => vec![ty, index],
         Shape::Bind { binder, body, .. } => binder.outer().chain(std::iter::once(body)).collect(),
         Shape::App { function, argument } => vec![function, argument],

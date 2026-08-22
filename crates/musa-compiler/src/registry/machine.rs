@@ -228,10 +228,14 @@ fn port(cx: &Cx, shape: musa_score::machine::PortShape) -> Result<Term, ElabErro
 /// is ever read back.
 pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, String)> {
     let (head, arguments) = spine(ty);
-    let musa_calculus::Shape::Base(ref base) = *head.shape() else {
+    let musa_calculus::Shape::Named {
+        ref name,
+        role: musa_calculus::Role::Base,
+    } = *head.shape()
+    else {
         return None;
     };
-    if &**base.name() != "Machine" {
+    if &**name != "Machine" {
         return None;
     }
     let [step, input, output] = arguments[..] else {
@@ -254,47 +258,51 @@ pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, 
 /// [`None`] when the spine is not one of those forms saturated — which, after
 /// [`ports`] has answered, means a compiler defect rather than a program's,
 /// since the term was checked at the machine type it is being read at.
-pub(crate) fn nodes(normal: &Term) -> Option<Vec<musa_score::machine::SpecNode>> {
+pub(crate) fn nodes(cx: &musa_calculus::Cx, normal: &Term) -> Option<Vec<musa_score::machine::SpecNode>> {
     let mut nodes = Vec::new();
-    node(normal, &mut nodes)?;
+    node(cx, normal, &mut nodes)?;
     Some(nodes)
 }
 
 /// Append one form's nodes to `nodes`, children first, and answer where its own
 /// node landed — [`musa_score::MachineSpec`]'s promised order.
-fn node(term: &Term, nodes: &mut Vec<musa_score::machine::SpecNode>) -> Option<usize> {
+fn node(cx: &musa_calculus::Cx, term: &Term, nodes: &mut Vec<musa_score::machine::SpecNode>) -> Option<usize> {
     use musa_score::machine::{SpecForm, SpecNode};
 
     let (head, arguments) = spine(term);
-    let musa_calculus::Shape::Builtin(ref builtin) = *head.shape() else {
+    let musa_calculus::Shape::Named {
+        ref name,
+        role: musa_calculus::Role::Builtin,
+    } = *head.shape()
+    else {
         return None;
     };
-    let built = match &**builtin.name() {
+    let built = match &**name {
         // `machine(p)` is not a node of its own. §2 gives it a typing rule
         // because a primitive is not yet a machine, and gives it nothing to do:
         // what the projection describes is the unit inside it.
-        "machine" => return node(written(&arguments, 1)?.first().copied()?, nodes),
+        "machine" => return node(cx, written(&arguments, 1)?.first().copied()?, nodes),
         "identity" => SpecNode::wiring(SpecForm::Identity, Vec::new()),
         "copy" => SpecNode::wiring(SpecForm::Copy, Vec::new()),
         "drop" => SpecNode::wiring(SpecForm::Drop, Vec::new()),
         "swap" => SpecNode::wiring(SpecForm::Swap, Vec::new()),
-        "connect" => joined(SpecForm::Connect, &arguments, nodes)?,
-        "beside" => joined(SpecForm::Beside, &arguments, nodes)?,
+        "connect" => joined(cx, SpecForm::Connect, &arguments, nodes)?,
+        "beside" => joined(cx, SpecForm::Beside, &arguments, nodes)?,
         "feedback" => {
             let written = written(&arguments, 2)?;
             // The stored value before the loop, because the loop's own node
             // reads it: `initialized` takes bytes and children, and building
             // the children first would leave nothing to fail on if the value
             // turned out not to be storable.
-            let initial = stored(written.first().copied()?)?;
-            let children = vec![node(written.get(1).copied()?, nodes)?];
+            let initial = stored(cx, written.first().copied()?)?;
+            let children = vec![node(cx, written.get(1).copied()?, nodes)?];
             SpecNode::initialized(SpecForm::Feedback, children, initial)
         }
         // The ninth form, whose spelling is a registration rather than a word:
         // see [`UNREGISTERED`].
         spelling => SpecNode::primitive(
             unit_named(spelling)?,
-            stored(written(&arguments, 1)?.first().copied()?)?,
+            stored(cx, written(&arguments, 1)?.first().copied()?)?,
         ),
     };
     nodes.push(built);
@@ -303,14 +311,15 @@ fn node(term: &Term, nodes: &mut Vec<musa_score::machine::SpecNode>) -> Option<u
 
 /// `connect` and `beside`, which differ only in which form they are.
 fn joined(
+    cx: &musa_calculus::Cx,
     form: musa_score::machine::SpecForm,
     arguments: &[&Term],
     nodes: &mut Vec<musa_score::machine::SpecNode>,
 ) -> Option<musa_score::machine::SpecNode> {
     let written = written(arguments, 2)?;
     let children = vec![
-        node(written.first().copied()?, nodes)?,
-        node(written.get(1).copied()?, nodes)?,
+        node(cx, written.first().copied()?, nodes)?,
+        node(cx, written.get(1).copied()?, nodes)?,
     ];
     Some(musa_score::machine::SpecNode::wiring(form, children))
 }
@@ -345,9 +354,9 @@ fn unit_named(spelling: &str) -> Option<&'static musa_score::machine::PrimitiveD
 /// held. Each case writes a distinguishing tag and every part is either fixed
 /// width or a known arity, so two different values cannot write one string —
 /// which is what makes a machine's digest an identity rather than a hint.
-fn stored(term: &Term) -> Option<Vec<u8>> {
+fn stored(cx: &musa_calculus::Cx, term: &Term) -> Option<Vec<u8>> {
     let mut bytes = Vec::new();
-    write_stored(&musa_calculus::canonical(term)?, &mut bytes)?;
+    write_stored(&musa_calculus::canonical(cx, term)?, &mut bytes)?;
     Some(bytes)
 }
 
@@ -391,9 +400,18 @@ fn write_stored(datum: &musa_calculus::Datum, bytes: &mut Vec<u8>) -> Option<()>
 fn spelled(ty: &Term) -> Option<String> {
     let (head, arguments) = spine(ty);
     match *head.shape() {
-        musa_calculus::Shape::Base(ref base) if arguments.is_empty() => Some(base.name().to_string()),
-        musa_calculus::Shape::Const(ref constant) => {
-            let name = constant.to_string();
+        musa_calculus::Shape::Named {
+            ref name,
+            role: musa_calculus::Role::Base,
+        } if arguments.is_empty() => Some(name.to_string()),
+        musa_calculus::Shape::Named {
+            ref name,
+            role:
+                musa_calculus::Role::TypeConstructor
+                | musa_calculus::Role::Constructor
+                | musa_calculus::Role::Recursor(_),
+        } => {
+            let name = name.to_string();
             if name == "Pair" {
                 let [first, second] = arguments[..] else {
                     return None;
@@ -411,11 +429,9 @@ fn spelled(ty: &Term) -> Option<String> {
         // the core has to be classified here before this crate builds again —
         // `musa_calculus::canonical`'s own discipline, and for its reason.
         musa_calculus::Shape::Indexed { .. }
-        | musa_calculus::Shape::Base(_)
+        | musa_calculus::Shape::Named { .. }
         | musa_calculus::Shape::Var(_)
-        | musa_calculus::Shape::Def(_)
         | musa_calculus::Shape::Lit(_)
-        | musa_calculus::Shape::Builtin(_)
         | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Bind { .. }
         // `App` cannot appear — the peel above ended because the head was not

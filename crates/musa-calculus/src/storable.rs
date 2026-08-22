@@ -159,7 +159,7 @@ fn stor(
             Ok(true)
         }
         Form::Neutral(neutral) => match &neutral.head {
-            Head::Base(base) => {
+            Head::Base(base, _) => {
                 // The flag is the *registry's*: a base type's term is written
                 // at many sites and `Base` compares by name, so the decorated
                 // copy is the registered one — the same authority the carrier
@@ -171,7 +171,7 @@ fn stor(
                 };
                 Ok(registered)
             }
-            Head::Const(constant) => match &constant.role {
+            Head::Const(constant, _) => match &constant.role {
                 Role::Family => {
                     let key = (Arc::as_ptr(&constant.group) as usize, constant.family);
                     if visiting.contains(&key) {
@@ -195,7 +195,7 @@ fn stor(
                         // type's variables name the group's families (a
                         // recursive occurrence most of all) and then its
                         // parameters, which the spine's arguments answer.
-                        let mut env = crate::family::Group::declarations(&constant.group);
+                        let mut env = crate::family::Group::declarations(&constant.group, cx.globals());
                         for argument in &arguments {
                             env = env.push(argument.clone());
                         }
@@ -224,7 +224,7 @@ fn stor(
             },
             // An unknown type could hold a function, and a definition or a
             // builtin stuck at the head of one is no more decidable: refused.
-            Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(_) | Head::Meta(_) => Ok(false),
+            Head::Var(_, _) | Head::Def(_, _, _) | Head::Builtin(..) | Head::Meta(_) => Ok(false),
         },
         // A checked type never evaluates to one of these; reaching one is a
         // compiler defect rather than a program's fault.

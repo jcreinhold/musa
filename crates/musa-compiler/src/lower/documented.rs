@@ -212,8 +212,18 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         })
     };
     match *head.shape() {
-        musa_calculus::Shape::Base(ref base) => Some(format!("{base}{}", spelled_arguments()?)),
-        musa_calculus::Shape::Const(ref constant) => Some(format!("{constant}{}", spelled_arguments()?)),
+        // A base type or a declared family: the name the term spells is the
+        // name a reader sees, and nothing about the registration behind it
+        // changes the spelling — which is why this reads the term rather than
+        // the context it was written under.
+        musa_calculus::Shape::Named {
+            ref name,
+            role:
+                musa_calculus::Role::Base
+                | musa_calculus::Role::TypeConstructor
+                | musa_calculus::Role::Constructor
+                | musa_calculus::Role::Recursor(_),
+        } => Some(format!("{name}{}", spelled_arguments()?)),
         musa_calculus::Shape::Universe(_) if arguments.is_empty() => Some("Type".to_owned()),
         // `A -> B` and only `A -> B`: a Π whose binder is named is one the
         // surface writes as a parameter list, and a parameter list belongs to a
@@ -243,9 +253,11 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Bind { .. }
         | musa_calculus::Shape::Var(_)
-        | musa_calculus::Shape::Def(_)
+        | musa_calculus::Shape::Named {
+            role: musa_calculus::Role::Defined | musa_calculus::Role::Builtin,
+            ..
+        }
         | musa_calculus::Shape::Lit(_)
-        | musa_calculus::Shape::Builtin(_)
         | musa_calculus::Shape::App { .. }
         | musa_calculus::Shape::RecordType(_)
         | musa_calculus::Shape::Record(_)

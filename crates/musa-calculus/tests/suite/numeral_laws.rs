@@ -88,14 +88,7 @@ fn depth(term: &Term) -> u32 {
             fields.iter().fold(1, |so_far, field| so_far.max(deeper(&field.term)))
         }
         // The leaves, and the numeral is one of them — which is the claim.
-        Shape::Var(_)
-        | Shape::Const(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Lit(_)
-        | Shape::Builtin(_)
-        | Shape::Meta(_)
-        | Shape::Universe(_) => 1,
+        Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 1,
     }
 }
 
@@ -235,7 +228,7 @@ fn a_numeral_of_fifty_thousand_neither_overflows_nor_deepens() {
     assert_eq!(depth(&term), 1, "the elaborated numeral is one node");
     assert_eq!(depth(&normal), 1, "and so is its normal form");
 
-    let datum = musa_calculus::canonical(&normal).expect("a closed numeral is canonical data");
+    let datum = musa_calculus::canonical(&cx, &normal).expect("a closed numeral is canonical data");
     assert_eq!(
         datum,
         musa_calculus::Datum::Count {

@@ -266,7 +266,11 @@ where
 /// is written and never reach here, and every other argument was checked at the
 /// type this shape declares before it was normalized. `None` is the belt to
 /// those braces.
-pub(crate) fn argument(shape: musa_score::assert::ParamType, normal: &Term) -> Option<musa_score::assert::Argument> {
+pub(crate) fn argument(
+    cx: &Cx,
+    shape: musa_score::assert::ParamType,
+    normal: &Term,
+) -> Option<musa_score::assert::Argument> {
     use musa_score::assert::{Argument, ParamType};
 
     match shape {
@@ -274,9 +278,9 @@ pub(crate) fn argument(shape: musa_score::assert::ParamType, normal: &Term) -> O
         ParamType::Chord => Some(Argument::Chord(
             *read_back::<musa_score::chord::ChordClass>(normal).ok()?,
         )),
-        ParamType::Count => Some(Argument::Count(rules::nat(&musa_calculus::canonical(normal)?)?)),
+        ParamType::Count => Some(Argument::Count(rules::nat(&musa_calculus::canonical(cx, normal)?)?)),
         ParamType::Ranges => {
-            let written = musa_calculus::canonical(normal)?;
+            let written = musa_calculus::canonical(cx, normal)?;
             let ranges = rules::items(&written)?
                 .into_iter()
                 .map(|range| {

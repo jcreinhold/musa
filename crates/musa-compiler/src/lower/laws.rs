@@ -295,8 +295,19 @@ fn a_literal_carries_the_base_type_that_registered_how_to_read_it() {
     let RawShape::Lit(literal) = raw.shape() else {
         panic!("`3/4` lowers to a literal, not to {:?}", raw.shape());
     };
-    let musa_calculus::Shape::Base(base) = literal.ty().shape() else {
+    let musa_calculus::Shape::Named {
+        name,
+        role: musa_calculus::Role::Base,
+    } = literal.ty().shape()
+    else {
         panic!("a `Ratio` literal stands at a base type");
+    };
+    // The registration is the context's, not the term's: the literal's type
+    // spells `Ratio` and says it is a base, and this crate's own registry is
+    // what says how a `Ratio` literal reads.
+    let cx = crate::registry::owned().expect("this crate's registry builds");
+    let Some(musa_calculus::Extern::Base(base)) = cx.extern_named(name) else {
+        panic!("`{name}` is a base type this crate registered");
     };
     assert!(
         base.reads_an_index(),

@@ -340,12 +340,12 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
             // Reached only unsolved: a solved meta is forced before quotation,
             // and a spine whose head is solved forces whole.
             Head::Meta(meta) => Term::meta(here, meta.clone()),
-            Head::Const(constant) => constant.term(here),
+            Head::Const(constant, _) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
             // a base type has no eliminator and a builtin whose arguments were
             // literals would have reduced before quotation saw it.
-            Head::Base(base) => base.term(here),
-            Head::Builtin(builtin) => builtin.term(here),
+            Head::Base(base, _) => base.term(here),
+            Head::Builtin(builtin, _) => builtin.term(here),
         };
         // Innermost first, and each node takes its *own* origin (§7): the spine
         // of `f x y` reads back as three terms and each says where it was

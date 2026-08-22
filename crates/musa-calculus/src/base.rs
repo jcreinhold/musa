@@ -92,7 +92,7 @@ use std::sync::Arc;
 use crate::family::Parameter;
 use crate::origin::Origin;
 use crate::refuse::Refusal;
-use crate::term::{Binder, Constant, Name, Shape, Term};
+use crate::term::{Binder, Constant, Name, Role, Shape, Term};
 
 /// A base type: a name, and the kind it inhabits.
 ///
@@ -361,10 +361,15 @@ impl Base {
         &self.0.kind
     }
 
-    /// This base type as a term.
+    /// This base type as a term: its name, at [`Role::Base`].
+    ///
+    /// The registration stays here and the term takes the name (§6). The role
+    /// is what a reader of the term still needs — a base type is not a declared
+    /// family, and `Registry`'s own checks decide the two apart without a
+    /// context to ask.
     #[must_use]
     pub fn term(&self, origin: Origin) -> Term {
-        Term::new(origin, Shape::Base(self.clone()))
+        Term::named(origin, Arc::clone(self.name()), Role::Base)
     }
 }
 
@@ -953,10 +958,15 @@ impl Builtin {
         &self.0.vocabulary
     }
 
-    /// This builtin as a term.
+    /// This builtin as a term: its name, at [`Role::Builtin`].
+    ///
+    /// The δ-table stays here and the term takes the name (§6). The role is
+    /// what a reader of the term still needs — `elab` reads a *registered*
+    /// signature's arrow as its whole parameter list, where a definition's is a
+    /// parameter list and a returned function.
     #[must_use]
     pub fn term(&self, origin: Origin) -> Term {
-        Term::new(origin, Shape::Builtin(self.clone()))
+        Term::named(origin, Arc::clone(self.name()), Role::Builtin)
     }
 
     /// Its δ-rule, if it reduces that way.
@@ -1138,9 +1148,9 @@ impl Registry {
                     at: domain.origin(),
                 });
             };
-            if self.named(base.name()).is_none() {
+            if self.named(base).is_none() {
                 return Err(Refusal::UnknownBase {
-                    name: Arc::clone(base.name()),
+                    name: Arc::clone(base),
                     at: domain.origin(),
                 });
             }
@@ -1171,7 +1181,7 @@ impl Registry {
             };
             let readable = match head_base(&binder.ty) {
                 Some(sort) => self
-                    .named(sort.name())
+                    .named(sort)
                     .is_some_and(|found| matches!(found, Extern::Base(sort) if sort.measures().is_some())),
                 // Not a base type at all: a declared family, which this table
                 // cannot see and `declare` already checks.
@@ -1247,10 +1257,10 @@ impl Registry {
                     at: builtin.ty().origin(),
                 });
             }
-            Shape::Base(base) => {
-                if self.named(base.name()).is_none() {
+            Shape::Named { name, role: Role::Base } => {
+                if self.named(name).is_none() {
                     return Err(Refusal::UnknownBase {
-                        name: Arc::clone(base.name()),
+                        name: Arc::clone(name),
                         at: head.origin(),
                     });
                 }
@@ -1261,18 +1271,19 @@ impl Registry {
             // receives one and a `Datum` cannot hold one. Early, because a
             // indexed type has no arguments applied above it.
             Shape::Indexed { ty, .. } => return self.check_finite_data(builtin, ty),
-            Shape::Const(constant) if constant.is_family() => {}
+            Shape::Named {
+                role: Role::TypeConstructor,
+                ..
+            } => {}
             Shape::Var(_)
             | Shape::Universe(_)
-            | Shape::Const(_)
-            | Shape::Def(_)
+            | Shape::Named { .. }
             | Shape::App { .. }
             | Shape::RecordType(_)
             | Shape::Record(_)
             | Shape::Project { .. }
             // A λ or a `let`, the Π above having taken its own diagnostic.
             | Shape::Bind { .. }
-            | Shape::Builtin(_)
             | Shape::Lit(_)
             | Shape::Meta(_) => {
                 return Err(Refusal::NotFiniteData {
@@ -1308,13 +1319,13 @@ fn claim(names: &mut HashMap<Name, Extern>, name: Name, entry: Extern) -> Result
 /// A base type may take parameters, so `Syntax Expr` is at `Syntax` and the
 /// spine says which one. Anything else — a variable, a declared family, a record
 /// type — is not a base type and has no answer here.
-fn head_base(ty: &Term) -> Option<&Base> {
+fn head_base(ty: &Term) -> Option<&Name> {
     let mut head = ty;
     while let Shape::App { function, .. } = head.shape() {
         head = function;
     }
-    if let Shape::Base(base) = head.shape() {
-        Some(base)
+    if let Shape::Named { name, role: Role::Base } = head.shape() {
+        Some(name)
     } else {
         None
     }

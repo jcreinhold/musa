@@ -8,10 +8,11 @@ use super::group::{Group, element};
 use super::iota::saturated;
 use crate::base::Datum;
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::{CoreError, Malformed};
 use crate::eval::{apply, eval};
 use crate::origin::Origin;
-use crate::term::{Constant as Written, Name, Shape, Term};
+use crate::term::{Constant as Written, Definition, Name, Shape, Term};
 use crate::value::{Form, Value};
 use std::sync::Arc;
 
@@ -41,11 +42,12 @@ pub(crate) fn counted(numeral: &Numeral) -> Option<Datum> {
 /// back is the one a δ-rule is already written against, so a host reads one
 /// vocabulary rather than two.
 ///
-/// Takes no context and cannot fail. A constructor spine carries its own
-/// [`Constant`], which carries the group that declared it, so where the fields
-/// begin is already in the term; and a normal form has nothing left to compute,
-/// which is what makes this a projection where
-/// [`realize`] — its inverse — must be type-directed.
+/// Cannot fail, and reads the context for one thing: where a constructor's
+/// fields begin, which is its family's parameter count. The term names the
+/// constructor and the context holds the declaration (§6), so the question is a
+/// lookup rather than a computation; and a normal form has nothing left to
+/// compute, which is what makes this a projection where [`realize`] — its
+/// inverse — must be type-directed.
 ///
 /// # What answers `None`
 ///
@@ -60,7 +62,13 @@ pub(crate) fn counted(numeral: &Numeral) -> Option<Datum> {
 /// Nothing here is an error, because "not data" is an ordinary answer: it is
 /// exactly what a blocked δ-spine reports, and a caller that wanted a `Nat` says
 /// so itself.
-pub fn canonical(term: &Term) -> Option<Datum> {
+pub fn canonical(cx: &crate::Cx, term: &Term) -> Option<Datum> {
+    read(cx.globals(), term)
+}
+
+/// [`canonical`] with the table already in hand, which is what the recursion
+/// and this crate's own callers pass.
+fn read(globals: &Globals, term: &Term) -> Option<Datum> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Meta(_) => None,
@@ -70,12 +78,15 @@ pub fn canonical(term: &Term) -> Option<Datum> {
         Shape::Indexed { .. } => None,
         Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
         Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral),
-        Shape::Const(ref constant) => {
-            let (constructor, params) = saturated(constant, arguments.len())?;
+        Shape::Named { ref name, role } => {
+            let Definition::Declared(constant) = globals.definition(name, role) else {
+                return None;
+            };
+            let (constructor, params) = saturated(&constant, arguments.len())?;
             let fields = arguments
                 .into_iter()
                 .skip(params)
-                .map(canonical)
+                .map(|field| read(globals, field))
                 .collect::<Option<Vec<_>>>()?;
             Some(Datum::Case { constructor, fields })
         }
@@ -88,9 +99,6 @@ pub fn canonical(term: &Term) -> Option<Datum> {
         // is a claim a later reader has to re-derive.
         Shape::Lit(_)
         | Shape::Var(_)
-        | Shape::Def(_)
-        | Shape::Base(_)
-        | Shape::Builtin(_)
         | Shape::Universe(_)
         | Shape::Bind { .. }
         | Shape::App { .. }
@@ -142,14 +150,20 @@ fn applied_spine(term: &Term) -> (&Term, Vec<&Term>) {
 ///
 /// [`Malformed::MisfitAnswer`] when the data and the type disagree, otherwise as
 /// [`eval`].
-pub(crate) fn realize(meter: &mut Meter, here: Origin, datum: &Datum, ty: &Value) -> Result<Value, CoreError> {
+pub(crate) fn realize(
+    meter: &mut Meter,
+    here: Origin,
+    globals: &Globals,
+    datum: &Datum,
+    ty: &Value,
+) -> Result<Value, CoreError> {
     meter.nested("data realization", |meter| match *datum {
         Datum::Lit(ref literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
         Datum::Count { ref family, count } => realize_count(meter, here, family, count, ty),
         Datum::Case {
             ref constructor,
             ref fields,
-        } => realize_case(meter, here, constructor, fields, ty),
+        } => realize_case(meter, here, globals, constructor, fields, ty),
     })
 }
 
@@ -181,6 +195,7 @@ fn realize_count(meter: &mut Meter, here: Origin, family: &Name, count: u64, ty:
 fn realize_case(
     meter: &mut Meter,
     here: Origin,
+    globals: &Globals,
     constructor: &Name,
     fields: &[Datum],
     ty: &Value,
@@ -214,18 +229,18 @@ fn realize_case(
         return Err(misfit());
     }
 
-    let mut reading = Group::declarations(&element.group);
+    let mut reading = Group::declarations(&element.group, globals);
     for param in &element.params {
         reading = reading.push(param.clone());
     }
-    let mut value =
-        Constant::constructor(&element.group, element.family, u32::try_from(which).unwrap_or(u32::MAX)).value(here);
+    let mut value = Constant::constructor(&element.group, element.family, u32::try_from(which).unwrap_or(u32::MAX))
+        .value(here, globals);
     for param in &element.params {
         value = apply(meter, here, value, param.clone())?;
     }
     for (binder, field) in rule.fields.iter().zip(fields) {
         let field_type = eval(meter, &reading, &binder.ty)?;
-        let built = realize(meter, here, field, &field_type)?;
+        let built = realize(meter, here, globals, field, &field_type)?;
         reading = reading.push(built.clone());
         value = apply(meter, here, value, built)?;
     }

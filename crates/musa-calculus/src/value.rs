@@ -41,18 +41,73 @@
 
 use std::sync::Arc;
 
+use crate::context::Globals;
 use crate::list::List;
 use crate::origin::Origin;
 use crate::sort::Sort;
 use crate::term::{Field, Filling, Level, Name, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
-/// first.
+/// first, and the names in scope that no binder introduced.
 ///
-/// An alias rather than a newtype: an environment is a [`List`] and nothing
-/// about it is more specific than that, so a wrapper here would be a type that
-/// only forwards.
-pub(crate) type Env = List<Value>;
+/// A pair rather than the bare [`List`] it used to be, because a term names two
+/// kinds of thing (`02-core-calculus.md` §1) and both have to be resolvable
+/// where reduction happens. The locals answer [`Term::var`](crate::Term::var);
+/// [`Globals`] answers [`Shape::Named`](crate::Shape::Named), and rides here
+/// rather than in a parameter so that a closure opens under the table it was
+/// *built* under — see [`Globals`].
+#[derive(Clone)]
+pub(crate) struct Env {
+    locals: List<Value>,
+    globals: Globals,
+}
+
+impl Env {
+    /// The environment with no binders and no names.
+    pub(crate) const EMPTY: Self = Self {
+        locals: List::EMPTY,
+        globals: Globals::EMPTY,
+    };
+
+    /// The environment with no binders, reading its names in `globals`.
+    pub(crate) const fn under(globals: Globals) -> Self {
+        Self {
+            locals: List::EMPTY,
+            globals,
+        }
+    }
+
+    /// This environment with one more binder, innermost.
+    pub(crate) fn push(&self, value: Value) -> Self {
+        Self {
+            locals: self.locals.push(value),
+            globals: self.globals.clone(),
+        }
+    }
+
+    /// The value of the binder `index` steps out, if there is one.
+    pub(crate) fn get(&self, index: u32) -> Option<&Value> {
+        self.locals.get(index)
+    }
+
+    /// The binders in scope, innermost first.
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Value> {
+        self.locals.iter()
+    }
+
+    /// The names in scope here that no binder introduced.
+    pub(crate) const fn globals(&self) -> &Globals {
+        &self.globals
+    }
+
+    /// The same binders, read under a different table.
+    pub(crate) fn reading(&self, globals: Globals) -> Self {
+        Self {
+            locals: self.locals.clone(),
+            globals,
+        }
+    }
+}
 
 /// A term paired with the environment its free variables are read in.
 #[derive(Clone)]
@@ -170,18 +225,28 @@ pub(crate) enum Head {
     ///
     /// It carries no type, unlike [`Self::Var`], because a constant's type is
     /// determined by its declaration and [`crate::family::Constant`] holds that.
-    Const(crate::family::Constant),
+    /// It does carry the table it was resolved under, for the reason spelled at
+    /// [`Self::Base`].
+    Const(crate::family::Constant, Globals),
     /// A base type, registered by the host. Rigid forever: §5.8 gives it no
     /// eliminator, so a spine headed by one is blocked with nothing that could
     /// unblock it. It is a head rather than a [`Form`] because a base type may
     /// take parameters — `Syntax Expr` is `Syntax` applied — and an applied
     /// canonical form would need an arm that says what applying it means.
-    Base(crate::base::Base),
+    ///
+    /// **It carries the table its own kind is written in.**
+    /// [`crate::eval::neutral_type`] answers a head's type with no context to
+    /// ask, and answers this one by *evaluating* the kind the host registered —
+    /// a closed term in locals, but not in names. So the table travels here,
+    /// exactly as the type travels on [`Self::Var`] and [`Self::Def`]. It is not
+    /// part of the head's identity and [`crate::convert`] does not compare it.
+    Base(crate::base::Base, Globals),
     /// A compiler-owned operation. Rigid until every argument is a literal:
     /// [`crate::eval::apply`] runs the δ-rule at that moment, in the same arm
     /// that fires ι for a recursor, so a spine still headed by one here is
-    /// genuinely blocked.
-    Builtin(crate::base::Builtin),
+    /// genuinely blocked. It carries the table its signature is written in, for
+    /// the reason spelled at [`Self::Base`].
+    Builtin(crate::base::Builtin, Globals),
     /// An unsolved placeholder for an unwritten argument. The one *flexible*
     /// head: a neutral headed by a variable can never compute, while this one
     /// computes the moment the meta is solved — which is exactly the

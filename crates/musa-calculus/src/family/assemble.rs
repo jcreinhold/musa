@@ -6,6 +6,7 @@
 use super::constant::Constant;
 use super::group::{Group, Parameter, Role};
 use crate::budget::Meter;
+use crate::context::Globals;
 use crate::error::CoreError;
 use crate::eval::eval;
 use crate::origin::Origin;
@@ -57,8 +58,8 @@ pub(super) struct Telescope<'a> {
 }
 
 impl<'a> Telescope<'a> {
-    pub(super) fn new(group: &'a Arc<Group>) -> Self {
-        let declarations = Group::declarations(group);
+    pub(super) fn new(group: &'a Arc<Group>, globals: &Globals) -> Self {
+        let declarations = Group::declarations(group, globals);
         Self {
             group,
             origin: group.origin,
