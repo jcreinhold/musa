@@ -1,0 +1,12 @@
+# The prompt stack's oracle is the failure list, not the first failure: several
+# Check sections in docs/plan/prompts/ compare `cargo nextest run --workspace
+# --run-ignored all` against a recorded baseline, and nextest's default
+# `fail-fast = true` is `{ max-fail = 1, terminate = "wait" }` — it cancels the
+# run at the first failure and reports however many of the tests still in
+# flight happened to fail too. The count is therefore scheduling-dependent, so
+# a truncated list does not even compare against itself.
+#
+# See docs/notes/toolchain/nextest-fail-fast.md. Pass `--fail-fast` (alias
+# `--ff`) to stop early for one interactive run.
+[profile.default]
+fail-fast = false

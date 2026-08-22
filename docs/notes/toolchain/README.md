@@ -11,6 +11,7 @@ new contributor would lose an afternoon rediscovering it.
 | Page | What it answers |
 | --- | --- |
 | [generated-files.md](generated-files.md) | Why a currency test says a fixture is stale when nobody changed the generator, and which formatter owns which files |
+| [nextest-fail-fast.md](nextest-fail-fast.md) | Why `--run-ignored all` reports a handful of failures instead of the whole list, and why the count moves between runs |
 | [slow-test-suite.md](slow-test-suite.md) | Why the test suite appears to hang on macOS at 0% CPU, and why `cargo clean` fixes it |
 | [tracing-in-tests.md](tracing-in-tests.md) | Why a logging law fails under `cargo test` but passes under `cargo nextest run`, and what to install instead of `with_default` |
 
