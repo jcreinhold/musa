@@ -22,7 +22,8 @@ which left five prompts' worth of new machinery running unguarded. It now extend
 ## Read
 
 - `crates/musa-calculus/src/lib.rs` — the invariants list this becomes the head of.
-- `crates/musa-calculus/src/kernel/` after 148's move — everything trusted is in there and nothing else is.
+- `crates/musa-calculus/src/kernel/` after 148's move — everything trusted is in there and nothing else is, and
+  `elaboration/case.rs`'s `Term::level_of`, which is the one kernel rule 148 had to leave outside.
 - Prompt [134](134-bidirectional-elaboration.md), which specified a re-checker, called it *"the single most valuable
   invariant in the whole crate"*, and did not build it. Four sites in the crate cite a `recheck` module that has never
   existed in this repository's history.
@@ -69,6 +70,17 @@ are arena-allocated behind a `'tcx` already and its kernel is nine crates rather
 run-time check sufficient. If scope corruption ever shows up in practice, the brand is the escalation, and this
 paragraph is where that is written down.
 
+**`universe_of` is `Term::level_of`, moved.** The method exists already and does exactly this job — the universe a
+checked type inhabits, by a structural walk. Prompt 148 filed it under `elaboration/case.rs` for one reason, recorded in
+its own doc comment: `Type 1` has no universe above it, and what it said about that was a `Refusal`, which is the
+elaborator's word. That reason dissolves here. The kernel is where the rule belongs, `CoreError::Malformed` is the
+kernel's word for a term nobody should have built, and `case.rs`'s citation of `recheck::universe_of` — written long
+before either module existed — becomes true rather than aspirational. `Term::level_of` goes; `motive_level` asks the
+kernel.
+
+Nothing about the walk changes, which is what keeps this inside the **Stop**: the same shapes answer the same sorts, and
+only the error type and the module differ.
+
 **What the minimal re-checker covers, and what it cannot yet.** After 148 the term language is seven constructors, so
 the pass is small: re-derive the type of `Var`, `Named`, `Bind`, `App`, `Lit` and `Universe` against a context, using
 `convert` for every equality. It cannot yet check a metavariable solution (153), a case-tree branch against an
@@ -88,8 +100,9 @@ function that returns `Ok`.
 - `crates/musa-calculus/TRUST.md`: the trusted half, the untrusted half, the three acceptance invariants, and the
   sentence about what a bug on each side costs. Linked from `AGENTS.md`'s navigation row.
 - `crates/musa-calculus/src/kernel/checked.rs`: `Checked` and its fallible conversion.
-- `crates/musa-calculus/src/kernel/recheck.rs`: the pass, and `universe_of`.
-- `crates/musa-calculus/src/elaboration/program.rs`: the debug-assertion call site, and the `Checked` boundary.
+- `crates/musa-calculus/src/kernel/recheck.rs`: the pass, and `universe_of` — which is `Term::level_of` moved into the
+  kernel.
+- `crates/musa-calculus/src/elaboration/declare_program.rs`: the debug-assertion call site, and the `Checked` boundary.
 - The four stale `recheck` citations repaired to point at the module that now exists.
 - `crates/musa-calculus/tests/suite/recheck_laws.rs`: every fixture in the suite re-checked, the scope-discipline law,
   and the negative control.
