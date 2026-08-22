@@ -63,12 +63,25 @@ gaining any.
 tracks, bindings, seed and options — never a core term — so no artifact contains a type and nothing was protected.
 Prompt 144 already wrote this down; this prompt is where it is relied on.
 
-**The `T(i)` spelling stays, and lowers to an application.** `IndexedType` is a parser node, an AST wrapper, a
-highlight class and a tree-sitter rule, and deleting it would spend this prompt on the grammar and the drift law for no
-semantic gain. It is also the spelling prompt 156 will want for a family with a `Nat` index, which is where Stop below
-sends anything that turns out to need arithmetic. So `Lowering::indexed_type` produces `Raw::app` instead of
-`Raw::indexed`, and `Pc(12)` *is* `Pc 12` — which is Design's sentence above, applied at the one place the spelling
-occurs. What changes for an author is only which sentence refuses a head that takes no argument.
+**The two written forms are not one decision.** `git log -S` says both came in with the stratum —
+`IndexedType` at `d1b99d73` and `IndexParam` at `7cf258e0` — so neither is grammar that predates it, and "delete the
+stratum" reaches them both unless something else keeps one. Something does keep one, and nothing keeps the other.
+
+- **`T(i)` at a use site stays, and lowers to an application.** Design's replacement is `Pc : Nat → Type 0` and
+  `Pc(12)` read as `Pc 12`, and `T(i)` is the only spelling in the surface that applies a type constructor to a
+  *value*: `Pc<A>` is the type-argument form and `applied_type` already owns it. Delete `IndexedType` and the
+  replacement this prompt argues for becomes unwritable. So `Lowering::indexed_type` produces `Raw::app` instead of
+  `Raw::indexed`, and the node keeps its name and its highlight class. What changes for an author is only which
+  sentence refuses a head that takes no argument.
+- **`data Pc(n : Nat)` goes.** An index parameter declares a stratum that no longer exists, and there is no
+  non-speculative reading left for it: making it an ordinary value parameter of the family is a decision about
+  parameterized families, which is prompt 156's and which Stop below forbids here. A parse node nothing can lower is
+  the drift this repo forbids, so `IndexParam` goes from the parser, the AST, the highlight and keyword tables, and
+  `editors/tree-sitter-musa/grammar.js`.
+
+The drift law stays green without being asked to, and that is checkable rather than hoped for: it writes the real
+lexer's token stream for every `examples/*.musa`, no example writes either form, and `editors/tree-sitter-musa/src/` is
+generated and untracked.
 
 **Four refusals and one malformation go with it.** `Refusal::UnreadableIndex`, `NotIndexed`, `MissingIndex` and
 `NotAnIndexSort`, their four `Code` entries and their four arms in `lower/refusals.rs`, and
@@ -88,6 +101,9 @@ rather than a violation of anything, because every one of these sentences is abo
 - `crates/musa-calculus/src/elaboration/refuse.rs`, `kernel/error.rs`: the four refusals and the one malformation
   removed.
 - `crates/musa-compiler/src/lower/types.rs`: `indexed_type` lowers to an application.
+- `crates/musa-syntax/src/{syntax_kind,keywords,highlight}.rs`, `parser/declarations.rs`, `ast/{declarations,mod}.rs`
+  and `editors/tree-sitter-musa/grammar.js`: `IndexParam` removed. `crates/musa-compiler/src/lower/items.rs` loses
+  `index_parameter` and the field it filled.
 - `crates/musa-compiler/src/lower/refusals.rs`, `diagnostic` codes: the four arms and their codes removed.
 - `crates/musa-compiler/src/registry.rs`: `measuring(exact_index)`, `exact_index` and `indexes` removed. `Pc12`,
   `PcSet12` and `Row12` are untouched — they are plain base types and 164 is what collapses them.
@@ -127,6 +143,6 @@ Commit as `Delete the index stratum`.
 - No collapse of the seventeen builtins (164), no universe change (152), no families (155).
 - No new solver of any kind. If an index turns out to need arithmetic, that is a family with a `Nat` index and prompt
   156's business — not a decision procedure beside conversion.
-- No grammar change. `IndexedType` stays a node, `editors/tree-sitter-musa` is untouched, and the drift law stays green
-  without being asked to.
+- No grammar change beyond `IndexParam`. `IndexedType` stays a node with its name and its highlight class, and no other
+  rule in `editors/tree-sitter-musa/grammar.js` is touched.
 - No reworded diagnostics. Sentences are deleted here, never rephrased.
