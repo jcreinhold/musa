@@ -116,9 +116,16 @@ cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-! grep -rn 'recheck' crates/musa-calculus/src | grep -v 'kernel/recheck.rs' | grep -v 'recheck::'
+! grep -rn 'crate::recheck' crates/musa-calculus/src   # the stale path
+! grep -rni 'rechecker' crates/musa-calculus/src      # the stale spelling
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
+
+The two `grep` lines are what "repaired" means, and they are narrower than the obvious version. `grep -v` over the word
+`recheck` cannot work once the module exists: `pub(crate) mod recheck;` in `kernel/mod.rs` is not a stale citation and
+neither is a facade function of that name. What is stale is a *path* that never resolved — `crate::recheck` — and a
+spelling nothing else in the crate uses. Both find nothing when every citation points at
+`crate::kernel::recheck::recheck`.
 
 The negative control is the check that matters and it is inside the suite rather than on this list: a run where the
 malformed fixture is *accepted* is a green suite over a re-checker that checks nothing.
