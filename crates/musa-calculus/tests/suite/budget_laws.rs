@@ -10,9 +10,10 @@
 //! protected — a timeout here would make acceptance a property of the host.
 
 use musa_calculus::{
-    Budget, CoreError, Cx, ElabError, Metric, Origin, Raw, Role, Sort, Term, convertible, convertible_types,
-    normalize_type,
+    Budget, Builtin, CoreError, Cx, Datum, ElabError, Family, Metric, Origin, Raw, Registry, Role, Sort, Term,
+    convertible, convertible_types, normalize_type,
 };
+use std::sync::Arc;
 
 use crate::fixtures::{Sample, corpus, corpus_at};
 
@@ -305,3 +306,177 @@ fn nested_raw_lets(depth: u32) -> Raw {
         Raw::bind(HERE, "z", value, Raw::var(HERE, "z"))
     })
 }
+
+/// The δ path a long list actually travels, as a context and two builtins.
+///
+/// `Vec` under `Nat`, `spun : Nat → Vec Nat` building a list of the length it is
+/// given, and `drained : Vec Nat → Nat` reading one back. Between them they are
+/// the two walks prompt 165b took off the nesting metric: `spun`'s answer is
+/// realized from a [`Datum`] into a value, and `drained`'s argument is read from
+/// a value into a [`Datum`].
+///
+/// **The length has to arrive as a number rather than as a term**, which is why
+/// `spun` exists at all. Writing the list out — `Vec.Cons Nat 0 (Vec.Cons …)` —
+/// would make it a *term* six hundred deep, and a term's depth is exactly what
+/// the nesting metric is derived to bound. What the staff adapter does, and what
+/// this fixture does, is build a deep value out of a shallow term.
+///
+/// # Panics
+///
+/// If the declarations or the registry are refused, which would be a defect in
+/// this crate rather than a property of any law.
+fn list_host() -> Cx {
+    let (cx, _) = crate::family_laws::nat_context();
+    let group = musa_calculus::declare(&cx, &crate::family_laws::vec()).expect("Vec is a declaration");
+    let cx = cx.declaring(&group);
+    let nat = crate::family_laws::core_constant(&cx, "Nat");
+    let vec_nat = Term::app(HERE, crate::family_laws::core_constant(&cx, "Vec"), nat.clone());
+    let arrow = |domain: Term, codomain: Term| Term::pi(HERE, "_", domain, codomain);
+    let registry = Registry::new(
+        Vec::new(),
+        vec![
+            Builtin::new(
+                "spun",
+                arrow(nat.clone(), vec_nat.clone()),
+                Family::Delta,
+                |arguments| match *arguments {
+                    [Datum::Count { count, .. }] => Some(
+                        (0..count)
+                            .fold(
+                                Datum::Case {
+                                    constructor: "Vec.Nil".into(),
+                                    fields: Vec::new(),
+                                },
+                                |rest, at| Datum::Case {
+                                    constructor: "Vec.Cons".into(),
+                                    fields: vec![
+                                        Datum::Count {
+                                            family: "Nat".into(),
+                                            count: at,
+                                        },
+                                        rest,
+                                    ],
+                                },
+                            )
+                            .into(),
+                    ),
+                    _ => None,
+                },
+            ),
+            Builtin::new("drained", arrow(vec_nat, nat), Family::Delta, |arguments| {
+                let [ref subject] = *arguments else { return None };
+                let mut count: u64 = 0;
+                let mut here = subject;
+                while let Datum::Case {
+                    ref constructor,
+                    ref fields,
+                } = *here
+                {
+                    let [_, ref rest] = *fields.as_slice() else { break };
+                    if **constructor != *"Vec.Cons" {
+                        break;
+                    }
+                    count = count.saturating_add(1);
+                    here = rest;
+                }
+                Some(
+                    Datum::Count {
+                        family: "Nat".into(),
+                        count,
+                    }
+                    .into(),
+                )
+            }),
+        ],
+    )
+    .expect("the two rules register");
+    cx.with_externs(Arc::new(registry))
+}
+
+/// `drained (spun n)` as a raw term: shallow, whatever `n` is.
+fn round_trip(count: u64) -> Raw {
+    crate::family_laws::apply(
+        crate::family_laws::var("drained"),
+        [crate::family_laws::apply(
+            crate::family_laws::var("spun"),
+            [Raw::numeral(HERE, "Nat", count)],
+        )],
+    )
+}
+
+/// §4.1, the metric counts descent through a term and through a value, and not
+/// through *data*.
+///
+/// A δ-rule handed a list two thousand long builds it and reads it back at a
+/// nesting limit of [`Budget::NESTING`], which is 320. Before prompt 165b the
+/// two walks charged one nesting level per level of the list, so this refused at
+/// the three hundred and twenty-first element — the size of one argument charged
+/// against a stack-safety guard.
+///
+/// Stated on [`on_the_smallest_host`], because the other half of the change is
+/// that the walks stopped using host frames as well as stopped charging for
+/// them. Removing the charge alone would have turned a refusal into an abort,
+/// and an abort is the one outcome §4.1 does not allow. A regression here shows
+/// up as `SIGABRT` rather than as a failed assertion, which is the honest report.
+#[test]
+fn data_far_past_the_nesting_limit_is_built_and_read() {
+    on_the_smallest_host(|| {
+        let cx = list_host();
+        let nat = crate::family_laws::core_constant(&cx, "Nat");
+        let checked = musa_calculus::check(&cx, &nat, &round_trip(2_000)).expect("the round trip checks");
+        let normal = musa_calculus::normalize(&cx, &nat, &checked).expect("two thousand is not two thousand levels");
+        assert_eq!(
+            musa_calculus::canonical(&cx, &normal),
+            Some(Datum::Count {
+                family: "Nat".into(),
+                count: 2_000,
+            }),
+            "what was built is what was read"
+        );
+    });
+}
+
+/// §4.1's other half: what replaced the charge is the step budget, one step a
+/// node, which is what the frame-based reading charged one level a node for.
+///
+/// Counted by hand rather than asserted from a recorded total. Each extra
+/// element of the list is one more node in `spun`'s answer and one more in
+/// `drained`'s reading, so the cost of the round trip is affine in the length
+/// and the slope is the per-element constant. Two differences pin both: they
+/// must be equal to each other — the walk charges per node and not per anything
+/// else — and their common value is the number of charges one element costs.
+///
+/// The slope is asserted exactly rather than bounded, because the point of the
+/// law is that the count did not quietly change when the metric did. If a later
+/// change to the walk moves it, that is a cost-table question for §4 and not a
+/// number to re-fit here.
+#[test]
+fn the_data_walk_charges_one_step_a_node() {
+    let cx = list_host();
+    let nat = crate::family_laws::core_constant(&cx, "Nat");
+    let spend = |count: u64| {
+        let checked = musa_calculus::check(&cx, &nat, &round_trip(count)).expect("the round trip checks");
+        let (_, spend) = musa_calculus::normalize_metered(&cx, &nat, &checked).expect("the round trip normalizes");
+        spend.steps
+    };
+    let (ten, twenty, thirty) = (spend(10), spend(20), spend(30));
+    let first = twenty.saturating_sub(ten);
+    let second = thirty.saturating_sub(twenty);
+    assert_eq!(first, second, "the walk charges per node: {first} then {second}");
+    assert_eq!(
+        first.checked_div(10),
+        Some(PER_ELEMENT),
+        "one element of the list costs {first} charges over ten elements"
+    );
+}
+
+/// What one element of the list above costs, in steps.
+///
+/// Twelve, measured. A handful rather than one because an element is more than
+/// a node: `realize` charges the `Vec.Cons` node and its `Nat` field, evaluates
+/// each of the two declared field types — `A` is one node and `Vec A` is three
+/// — and applies the constructor to each field, and `canonical` charges the two
+/// nodes again on the way back. What the law claims is not the twelve but that
+/// it is the *same* twelve for every element, which is what "one charge a node"
+/// means when the node is read once and written once.
+const PER_ELEMENT: u64 = 12;

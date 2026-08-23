@@ -177,6 +177,9 @@ pub(crate) fn occurrence(meter: &mut Meter, env: &Env, here: Origin, meta: &Meta
                     argument: Arc::new(argument),
                 })
                 .collect(),
+            // An unknown is not a definition: there is nothing folded here to
+            // unfold, so there is nothing to record.
+            unfolded: None,
         })),
     }
 }
@@ -340,7 +343,21 @@ pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Valu
     let Head::Def(_, _, Folding::Value(value)) = &neutral.head else {
         return Ok(None);
     };
-    Ok(Some(unfold_spine(meter, value, &neutral.spine)?))
+    let stamp = crate::kernel::meta::solutions();
+    if let Some(cell) = neutral.unfolded.as_ref()
+        && let Some(&(filled, ref answer)) = cell.get()
+        && filled == stamp
+    {
+        return Ok(Some(answer.clone()));
+    }
+    let answer = unfold_spine(meter, value, &neutral.spine)?;
+    if let Some(cell) = neutral.unfolded.as_ref() {
+        // `set` fails only where the cell already holds an answer at a stamp
+        // this one is not reading, which is a memo that has gone stale and
+        // stays stale. Recomputing is what the miss above already decided.
+        drop(cell.set((stamp, answer.clone())));
+    }
+    Ok(Some(answer))
 }
 
 /// A definition whose body is a compiled case tree, reduced (§1), or `None`
@@ -591,41 +608,101 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
 /// canonical, so looking says which shape it is, and η — the one thing that
 /// makes reading back type-directed — has nothing to expand here.
 ///
+/// # Why this is a loop and charges steps
+///
+/// It used to recurse per field and charge one **nesting** level per level of
+/// data, and that was two mistakes in one line. §4.1 derives the nesting metric
+/// from how deeply a *term* is written and how deeply `quote` walks a value
+/// back; reading a δ-builtin's argument is neither, and the depth it reached
+/// was the length of one list. Measured on `examples/staff-page.musa`, this
+/// walk and its inverse peaked at 672 of 320 levels between them, out of 679
+/// for the whole run — a limit on the size of an argument, wearing the name of
+/// a stack guard. So the descent is an explicit stack in this function's own
+/// frame, and the charge is one step a node against the budget that already
+/// prices how much work a run does.
+/// `../../../../docs/notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md`
+/// is the measurement and prompt 165b is the change.
+///
 /// # Errors
 ///
-/// As [`force`], plus §4.1's nesting limit at data nested deeper than the meter
-/// allows.
+/// As [`force`], plus the step budget at data larger than the meter allows.
 fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreError> {
-    meter.nested("canonical data", |meter| {
-        let forced = opened(meter, value)?;
-        match forced.as_ref().unwrap_or(value).form {
+    /// One constructor whose earlier fields are read and whose later ones are not.
+    struct Building {
+        constructor: Name,
+        /// The field values still to read, innermost last: [`Vec::pop`] takes
+        /// the next one, so the spine is pushed reversed.
+        rest: Vec<Arc<Value>>,
+        read: Vec<Datum>,
+    }
+
+    let mut stack: Vec<Building> = Vec::new();
+    let mut here = Arc::new(value.clone());
+    loop {
+        meter.step("canonical data")?;
+        let forced = opened(meter, &here)?;
+        let mut answer = match forced.as_ref().unwrap_or(&here).form {
             // A type, not data. See `crate::kernel::family::canonical`.
-            Form::Lit(ref literal) => Ok(Some(Datum::Lit(literal.clone()))),
+            Form::Lit(ref literal) => Datum::Lit(literal.clone()),
             // The count read back as the tower it stands for. See
             // [`crate::kernel::family::canonical`], which is the same answer one layer
             // up and carries the argument for building it with a loop.
-            Form::Numeral(ref numeral) => Ok(crate::kernel::family::counted(numeral)),
-            Form::Neutral(ref neutral) => constructed(meter, neutral),
-            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) => Ok(None),
-        }
-    })
-}
-
-/// A blocked spine as canonical data, when it is a saturated constructor whose
-/// fields are themselves data.
-fn constructed(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Datum>, CoreError> {
-    let Some((constructor, params)) = crate::kernel::family::constructed(neutral) else {
-        return Ok(None);
-    };
-    let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
-    for elimination in neutral.spine.iter().skip(params) {
-        let Elim::App { argument, .. } = elimination;
-        let Some(field) = canonical(meter, argument)? else {
-            return Ok(None);
+            Form::Numeral(ref numeral) => match crate::kernel::family::counted(numeral) {
+                Some(datum) => datum,
+                None => return Ok(None),
+            },
+            Form::Neutral(ref neutral) => {
+                let Some((constructor, params)) = crate::kernel::family::constructed(neutral) else {
+                    return Ok(None);
+                };
+                let mut rest: Vec<Arc<Value>> = neutral
+                    .spine
+                    .iter()
+                    .skip(params)
+                    .map(|elimination| {
+                        let Elim::App { ref argument, .. } = *elimination;
+                        Arc::clone(argument)
+                    })
+                    .collect();
+                rest.reverse();
+                match rest.pop() {
+                    Some(first) => {
+                        stack.push(Building {
+                            constructor,
+                            rest,
+                            read: Vec::new(),
+                        });
+                        here = first;
+                        continue;
+                    }
+                    None => Datum::Case {
+                        constructor,
+                        fields: Vec::new(),
+                    },
+                }
+            }
+            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) => return Ok(None),
         };
-        fields.push(field);
+        // Hand the field up, and keep handing completed constructors up until
+        // one still has a field waiting.
+        loop {
+            let Some(building) = stack.last_mut() else {
+                return Ok(Some(answer));
+            };
+            building.read.push(answer);
+            if let Some(next) = building.rest.pop() {
+                here = next;
+                break;
+            }
+            let Some(finished) = stack.pop() else {
+                return Ok(None);
+            };
+            answer = Datum::Case {
+                constructor: finished.constructor,
+                fields: finished.read,
+            };
+        }
     }
-    Ok(Some(Datum::Case { constructor, fields }))
 }
 
 /// The type a builtin answers at, given the arguments on its spine.
@@ -798,4 +875,162 @@ pub(crate) fn head_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, C
     // Opened rather than merely forced: the answer is matched against `Π`, and
     // a type that names a definition hides that while folded.
     Ok(opened(meter, &ty)?.unwrap_or(ty))
+}
+
+#[cfg(test)]
+// A kernel that refuses what this module built is a defect in this module, so
+// panicking is the correct report.
+#[allow(clippy::panic)]
+#[allow(clippy::expect_used)]
+mod tests {
+    //! The δ memo: `unfold`'s graph update, and the one condition that makes it
+    //! sound.
+    //!
+    //! In-crate rather than in `tests/suite/`, because the memo is a property of
+    //! a [`Neutral`] and no public constructor builds one. What is observable
+    //! from outside is only that a program is faster, which is not the law.
+
+    use super::unfold;
+    use crate::kernel::budget::Budget;
+    use crate::kernel::context::Cx;
+    use crate::kernel::meta::Meta;
+    use crate::kernel::origin::Origin;
+    use crate::kernel::sort::Sort;
+    use crate::kernel::term::{Level, Term};
+    use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Value};
+    use std::sync::Arc;
+
+    const HERE: Origin = Origin::node(921);
+
+    /// `Type 0`, the type and the argument everything below stands at.
+    fn type0() -> Value {
+        Value::new(HERE, Form::Universe(Sort::ZERO))
+    }
+
+    /// Whether a value is `Type 0`, which is what everything below unfolds to.
+    ///
+    /// A predicate rather than an equality because [`Value`] has neither
+    /// `PartialEq` nor `Debug`: conversion is the kernel's equality and it takes
+    /// a type, which is more machinery than a law about a universe needs.
+    fn universe(value: &Value) -> bool {
+        matches!(value.form, Form::Universe(ref sort) if *sort == Sort::ZERO)
+    }
+
+    /// A definition holding `λ_. let z … let z … Type 0`, `depth` lets deep,
+    /// applied to one argument.
+    ///
+    /// A shape whose *unfolding* costs real steps and whose neutral costs none,
+    /// which is the only way a spend can say whether the unfolding happened.
+    fn folded(depth: u32) -> Neutral {
+        let ty = Term::universe(HERE, Sort::ZERO);
+        let body = (0..depth).fold(ty.clone(), |inner, _| {
+            Term::bind(HERE, "z", ty.clone(), ty.clone(), inner)
+        });
+        let value = Value::new(HERE, Form::Lam(Closure { env: Env::EMPTY, body }));
+        let head = Head::Def(
+            DefHead::Local(Level(0)),
+            Arc::new(type0()),
+            Folding::Value(Arc::new(value)),
+        );
+        Neutral::eliminated(
+            &Neutral::head(HERE, head),
+            Elim::App {
+                origin: HERE,
+                argument: Arc::new(type0()),
+            },
+        )
+    }
+
+    /// The graph update, stated as the law it encodes: a folded neutral's
+    /// unfolding is a function of the definition's value and the spine, both of
+    /// which the neutral owns, so forcing it a second time answers the same
+    /// thing and does no work.
+    ///
+    /// Peyton Jones ch. 12 §12.4 overwrites a shared redex's root with its
+    /// result; this is that, on a value that is shared by `Arc` rather than by
+    /// a pointer into a heap.
+    #[test]
+    fn a_folded_neutral_unfolds_once_and_answers_the_same_thing() {
+        // Retried until the two forces sit inside one stamp. The guard is
+        // process-wide, `cargo test` runs this module's laws as threads of one
+        // process, and the law beneath this one solves a metavariable — so an
+        // unlucky interleaving invalidates the cell between the two forces and
+        // this would be measuring the guard rather than the memo. Retrying is
+        // the honest reading of "forced twice, with no solution in between".
+        for _ in 0..64 {
+            let cx = Cx::with_budget(Budget::LANGUAGE);
+            let mut meter = cx.meter();
+            let neutral = folded(120);
+            let stamp = crate::kernel::meta::solutions();
+
+            let first = unfold(&mut meter, &neutral)
+                .expect("a definition unfolds")
+                .expect("a definition");
+            let after_first = meter.spent().steps;
+            let second = unfold(&mut meter, &neutral)
+                .expect("a definition unfolds")
+                .expect("a definition");
+            let after_second = meter.spent().steps;
+
+            if crate::kernel::meta::solutions() != stamp {
+                continue;
+            }
+            assert!(
+                universe(&first) && universe(&second),
+                "the same neutral unfolds to the same value, and it is `Type 0`"
+            );
+            assert!(after_first >= 120, "the first force does the work: {after_first} steps");
+            assert_eq!(
+                after_second,
+                after_first,
+                "the second force reads the cell: {} steps",
+                after_second.saturating_sub(after_first)
+            );
+            return;
+        }
+        panic!("something in this process solves a metavariable on every attempt");
+    }
+
+    /// The soundness condition, stated as what it actually guards.
+    ///
+    /// A memo is unsound over an unsolved metavariable: the spine or the
+    /// definition's value may mention one, and the answer changes when the
+    /// solution arrives. The test is a process-wide stamp bumped in
+    /// [`Meta::solve`] — equal stamps mean no solution arrived in between —
+    /// which is conservative in the safe direction: *any* solution anywhere
+    /// invalidates *every* memo, and the only cost of being wrong is the work
+    /// being done again. That is what this pins: after a solution, the same
+    /// neutral is unfolded again rather than answered from the cell.
+    #[test]
+    fn a_solved_metavariable_makes_a_forced_value_unfold_again() {
+        let cx = Cx::with_budget(Budget::LANGUAGE);
+        let mut meter = cx.meter();
+        let neutral = folded(120);
+
+        let before = unfold(&mut meter, &neutral)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let first = meter.spent().steps;
+
+        // Unrelated to the neutral above, which is the point: the guard does
+        // not ask *which* metavariable, because asking would mean walking the
+        // value to find out.
+        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
+        meta.solve(type0()).expect("an unsolved metavariable takes a solution");
+
+        let after = unfold(&mut meter, &neutral)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let second = meter.spent().steps;
+
+        assert!(
+            universe(&before) && universe(&after),
+            "re-unfolding answers what the memo would have"
+        );
+        assert!(
+            second.saturating_sub(first) >= 120,
+            "the stale memo was not read: {} steps",
+            second.saturating_sub(first)
+        );
+    }
 }

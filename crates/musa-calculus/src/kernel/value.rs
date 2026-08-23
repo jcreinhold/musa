@@ -39,7 +39,7 @@
 //! the same shape as [`Term`] does — provenance in a wrapper, everything else in
 //! a [`Form`], a [`Head`], or an [`Elim`].
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::kernel::context::Globals;
 use crate::kernel::list::List;
@@ -230,6 +230,27 @@ pub(crate) struct Neutral {
     pub(crate) head: Head,
     /// What has been applied to the head, innermost first.
     pub(crate) spine: Vec<Elim>,
+    /// This neutral's δ-unfolding, once something has asked for it.
+    ///
+    /// Peyton Jones ch. 12 §12.4's update: what makes shared work happen once
+    /// is that the root of a shared redex is overwritten with its result. A
+    /// folded definition's unfolding is a function of the definition's value
+    /// and this spine, both of which are immutable, so the *first* consumer to
+    /// force this value may record the answer for every later one — and every
+    /// later one shares it, because a [`Value`] is `Arc`-shared and a clone of
+    /// this neutral clones the handle rather than the cell.
+    ///
+    /// `None` where there is nothing to record: a variable, a constant, a base
+    /// type, a builtin, a metavariable, a compiled case tree. Only
+    /// [`Folding::Value`] behind a [`Head::Def`] unfolds by replaying a spine,
+    /// and only those neutrals pay for the cell.
+    ///
+    /// The stamp is [`crate::kernel::meta::solutions`] at the moment the cell
+    /// was filled, and a hit is a hit only at the same stamp — see that
+    /// function for why. `Value` is not `PartialEq` and this field takes no
+    /// part in identity: two neutrals are the same neutral when their head and
+    /// spine agree, whatever either has been asked for.
+    pub(crate) unfolded: Option<Arc<OnceLock<(u64, Value)>>>,
 }
 
 /// What a blocked elimination is blocked on.
@@ -353,10 +374,20 @@ impl Elim {
     }
 }
 
+/// A fresh unfolding cell, for the one head shape that unfolds.
+///
+/// Allocating one per neutral would put an `Arc` behind every variable
+/// occurrence; allocating one per *foldable* head puts it behind exactly the
+/// neutrals [`crate::kernel::eval::unfold`] can answer about.
+fn memo_for(head: &Head) -> Option<Arc<OnceLock<(u64, Value)>>> {
+    matches!(*head, Head::Def(_, _, Folding::Value(_))).then(|| Arc::new(OnceLock::new()))
+}
+
 impl Neutral {
     /// A bare head with nothing applied to it.
-    pub(crate) const fn head(origin: Origin, head: Head) -> Self {
+    pub(crate) fn head(origin: Origin, head: Head) -> Self {
         Self {
+            unfolded: memo_for(&head),
             origin,
             head,
             spine: Vec::new(),
@@ -373,6 +404,7 @@ impl Neutral {
         spine.extend(neutral.spine.iter().cloned());
         spine.push(elimination);
         Self {
+            unfolded: memo_for(&neutral.head),
             origin: neutral.origin,
             head: neutral.head.clone(),
             spine,

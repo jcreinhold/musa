@@ -1,7 +1,7 @@
 ---
 id: 165b
 slug: graph-update-and-data-descent
-status: in-progress
+status: done
 depends_on: [162a]
 phase: 3
 ---

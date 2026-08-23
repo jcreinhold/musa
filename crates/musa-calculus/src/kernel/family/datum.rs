@@ -66,14 +66,91 @@ pub fn canonical(cx: &crate::Cx, term: &Term) -> Option<Datum> {
     read(cx.globals(), term)
 }
 
-/// [`canonical`] with the table already in hand, which is what the recursion
-/// and this crate's own callers pass.
+/// [`canonical`] with the table already in hand, which is what this crate's own
+/// callers pass.
+///
+/// A loop over a work stack rather than a recursion, for the reason
+/// [`realize`] is one: the depth here is the depth of the *data*, a
+/// six-hundred-element list is six hundred levels, and a walk that spends a
+/// host frame a level aborts on the data a δ-rule is handed rather than
+/// answering about it. Nothing is charged — this reads a normal form the caller
+/// already paid to compute, and §4's "a value is charged once, where it is
+/// constructed" is the sentence that says a projection of it is free.
 fn read(globals: &Globals, term: &Term) -> Option<Datum> {
+    /// One constructor whose earlier fields are read and whose later ones are not.
+    struct Reading<'a> {
+        constructor: Name,
+        /// The fields still to read, pushed reversed so `pop` takes the next.
+        rest: Vec<&'a Term>,
+        read: Vec<Datum>,
+    }
+    let mut stack: Vec<Reading<'_>> = Vec::new();
+    let mut here: &Term = term;
+    loop {
+        let mut answer = match one(globals, here)? {
+            Read::Leaf(datum) => datum,
+            Read::Case {
+                constructor,
+                mut fields,
+            } => {
+                fields.reverse();
+                match fields.pop() {
+                    Some(first) => {
+                        stack.push(Reading {
+                            constructor,
+                            rest: fields,
+                            read: Vec::new(),
+                        });
+                        here = first;
+                        continue;
+                    }
+                    None => Datum::Case {
+                        constructor,
+                        fields: Vec::new(),
+                    },
+                }
+            }
+        };
+        // Hand the field up, and keep handing finished constructors up until
+        // one still has a field waiting.
+        loop {
+            let Some(mut reading) = stack.pop() else {
+                return Some(answer);
+            };
+            reading.read.push(answer);
+            match reading.rest.pop() {
+                Some(next) => {
+                    stack.push(reading);
+                    here = next;
+                    break;
+                }
+                None => {
+                    answer = Datum::Case {
+                        constructor: reading.constructor,
+                        fields: reading.read,
+                    };
+                }
+            }
+        }
+    }
+}
+
+/// What one node of [`read`] is, before its fields have been read.
+enum Read<'a> {
+    Leaf(Datum),
+    Case { constructor: Name, fields: Vec<&'a Term> },
+}
+
+/// One node classified: the whole of the old `read`'s match, minus its
+/// recursion into the fields.
+fn one<'a>(globals: &Globals, term: &'a Term) -> Option<Read<'a>> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
         Shape::Meta(_) => None,
-        Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => Some(Datum::Lit(literal.clone())),
-        Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral),
+        Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => {
+            Some(Read::Leaf(Datum::Lit(literal.clone())))
+        }
+        Shape::Lit(Written::Numeral(ref numeral)) if arguments.is_empty() => counted(numeral).map(Read::Leaf),
         Shape::Named {
             ref name,
             ref role,
@@ -83,12 +160,10 @@ fn read(globals: &Globals, term: &Term) -> Option<Datum> {
                 return None;
             };
             let (constructor, params) = saturated(&constant, arguments.len())?;
-            let fields = arguments
-                .into_iter()
-                .skip(params)
-                .map(|field| read(globals, field))
-                .collect::<Option<Vec<_>>>()?;
-            Some(Datum::Case { constructor, fields })
+            Some(Read::Case {
+                constructor,
+                fields: arguments.into_iter().skip(params).collect(),
+            })
         }
         // Written out rather than left to a wildcard so that the list in the
         // doc comment above is checked by the compiler: a shape added to the
@@ -139,10 +214,25 @@ fn applied_spine(term: &Term) -> (&Term, Vec<&Term>) {
 /// against a table, which is why two occurrences of one family in a signature
 /// cannot be ambiguous about anything.
 ///
+/// # Why this is a loop and charges steps
+///
+/// The inverse walk of [`crate::kernel::eval`]'s `canonical` has the same two
+/// mistakes to unmake, and unmakes them the same way: the descent is an
+/// explicit stack in this function's own frame, and the charge is one step a
+/// node rather than one **nesting** level. §4.1 derives nesting from how deeply
+/// a term is written and how deeply `quote` walks a value back; building a
+/// δ-rule's answer is neither, and the depth it reached was the length of the
+/// list the rule answered with. See `canonical`'s own note, note 59, and
+/// prompt 165b.
+///
+/// The frame holds the group by `Arc` and the constructor by number rather than
+/// by reference, so that looking a field's declared type up is an index rather
+/// than a borrow the frame would have to outlive.
+///
 /// # Errors
 ///
 /// [`Malformed::MisfitAnswer`] when the data and the type disagree, otherwise as
-/// [`eval`].
+/// [`eval`], plus the step budget at data larger than the meter allows.
 pub(crate) fn realize(
     meter: &mut Meter,
     here: Origin,
@@ -150,13 +240,145 @@ pub(crate) fn realize(
     datum: &Datum,
     ty: &Value,
 ) -> Result<Value, CoreError> {
-    meter.nested("data realization", |meter| match *datum {
-        Datum::Lit(ref literal) => Ok(Value::new(here, Form::Lit(literal.clone()))),
-        Datum::Count { ref family, count } => realize_count(meter, here, family, count, ty),
-        Datum::Case {
-            ref constructor,
-            ref fields,
-        } => realize_case(meter, here, globals, constructor, fields, ty),
+    let mut stack: Vec<Building<'_>> = Vec::new();
+    let mut datum: &Datum = datum;
+    let mut ty: Value = ty.clone();
+    loop {
+        meter.step("data realization")?;
+        let mut answer = match *datum {
+            Datum::Lit(ref literal) => Value::new(here, Form::Lit(literal.clone())),
+            Datum::Count { ref family, count } => realize_count(meter, here, family, count, &ty)?,
+            Datum::Case {
+                ref constructor,
+                ref fields,
+            } => {
+                let building = entered(meter, here, globals, constructor, fields, &ty)?;
+                match waiting(meter, &building)? {
+                    Some((field, field_type)) => {
+                        stack.push(building);
+                        datum = field;
+                        ty = field_type;
+                        continue;
+                    }
+                    None => building.value,
+                }
+            }
+        };
+        // Hand the field up, and keep handing saturated constructors up until
+        // one still has a field waiting.
+        loop {
+            let Some(mut building) = stack.pop() else {
+                return Ok(answer);
+            };
+            building.reading = building.reading.push(answer.clone());
+            building.value = apply(meter, here, building.value, answer)?;
+            building.index = building.index.saturating_add(1);
+            match waiting(meter, &building)? {
+                Some((field, field_type)) => {
+                    stack.push(building);
+                    datum = field;
+                    ty = field_type;
+                    break;
+                }
+                None => answer = building.value,
+            }
+        }
+    }
+}
+
+/// One constructor whose earlier fields are built and whose later ones are not.
+struct Building<'a> {
+    group: Arc<Group>,
+    family: u32,
+    which: u32,
+    /// The data still to build, in the constructor's own field order.
+    fields: &'a [Datum],
+    index: usize,
+    /// The declaration context, the parameters, and the fields built so far —
+    /// the environment the next field's declared type is read in.
+    reading: crate::kernel::value::Env,
+    /// The constructor applied to the parameters and to the fields built so far.
+    value: Value,
+}
+
+/// The field this constructor is waiting on, at the type it is declared with,
+/// or `None` where every field is built.
+fn waiting<'a>(meter: &mut Meter, building: &Building<'a>) -> Result<Option<(&'a Datum, Value)>, CoreError> {
+    let Some(field) = building.fields.get(building.index) else {
+        return Ok(None);
+    };
+    let Some(binder) = building
+        .group
+        .family_at(building.family)
+        .and_then(|declared| declared.constructor_at(building.which))
+        .and_then(|rule| rule.fields.get(building.index))
+    else {
+        return Ok(None);
+    };
+    let field_type = eval(meter, &building.reading, &binder.ty)?;
+    Ok(Some((field, field_type)))
+}
+
+/// One constructor application resolved against the family type it stands at:
+/// which constructor it is, the environment its fields are read in, and the
+/// constant applied to the family's parameters.
+///
+/// Everything [`realize_case`] used to do before its field loop, which is now
+/// [`realize`]'s own loop.
+fn entered<'a>(
+    meter: &mut Meter,
+    here: Origin,
+    globals: &Globals,
+    constructor: &Name,
+    fields: &'a [Datum],
+    ty: &Value,
+) -> Result<Building<'a>, CoreError> {
+    let misfit = || CoreError::from(Malformed::MisfitAnswer(Arc::clone(constructor)));
+    let Some(element) = element(meter, ty)? else {
+        return Err(misfit());
+    };
+    let Some(declared) = element.group.family_at(element.family) else {
+        return Err(misfit());
+    };
+    // Qualified, the spelling `Constant::name` prints and `Found::named` reads,
+    // so the name a rule writes is the name a diagnostic would have shown it.
+    let Some(case) = constructor
+        .strip_prefix(&*declared.name)
+        .and_then(|rest| rest.strip_prefix('.'))
+    else {
+        return Err(misfit());
+    };
+    let Some(which) = declared
+        .constructors
+        .iter()
+        .position(|declared| *declared.name == *case)
+    else {
+        return Err(misfit());
+    };
+    let which = u32::try_from(which).unwrap_or(u32::MAX);
+    let Some(rule) = declared.constructor_at(which) else {
+        return Err(misfit());
+    };
+    if rule.fields.len() != fields.len() {
+        return Err(misfit());
+    }
+
+    let mut reading = Group::declarations(&element.group, globals);
+    for param in &element.params {
+        reading = reading.push(param.clone());
+    }
+    let mut value = Constant::constructor(&element.group, element.family, which).value(here, globals);
+    for param in &element.params {
+        value = apply(meter, here, value, param.clone())?;
+    }
+    Ok(Building {
+        group: Arc::clone(&element.group),
+        family: element.family,
+        which,
+        fields,
+        index: 0,
+        reading,
+        value,
     })
 }
 
@@ -182,60 +404,4 @@ fn realize_count(meter: &mut Meter, here: Origin, family: &Name, count: u64, ty:
             count,
         }),
     ))
-}
-
-/// One constructor application, at the family type it stands at.
-fn realize_case(
-    meter: &mut Meter,
-    here: Origin,
-    globals: &Globals,
-    constructor: &Name,
-    fields: &[Datum],
-    ty: &Value,
-) -> Result<Value, CoreError> {
-    let misfit = || CoreError::from(Malformed::MisfitAnswer(Arc::clone(constructor)));
-    let Some(element) = element(meter, ty)? else {
-        return Err(misfit());
-    };
-    let Some(declared) = element.group.family_at(element.family) else {
-        return Err(misfit());
-    };
-    // Qualified, the spelling `Constant::name` prints and `Found::named` reads,
-    // so the name a rule writes is the name a diagnostic would have shown it.
-    let Some(case) = constructor
-        .strip_prefix(&*declared.name)
-        .and_then(|rest| rest.strip_prefix('.'))
-    else {
-        return Err(misfit());
-    };
-    let Some(which) = declared
-        .constructors
-        .iter()
-        .position(|declared| *declared.name == *case)
-    else {
-        return Err(misfit());
-    };
-    let Some(rule) = declared.constructor_at(u32::try_from(which).unwrap_or(u32::MAX)) else {
-        return Err(misfit());
-    };
-    if rule.fields.len() != fields.len() {
-        return Err(misfit());
-    }
-
-    let mut reading = Group::declarations(&element.group, globals);
-    for param in &element.params {
-        reading = reading.push(param.clone());
-    }
-    let mut value = Constant::constructor(&element.group, element.family, u32::try_from(which).unwrap_or(u32::MAX))
-        .value(here, globals);
-    for param in &element.params {
-        value = apply(meter, here, value, param.clone())?;
-    }
-    for (binder, field) in rule.fields.iter().zip(fields) {
-        let field_type = eval(meter, &reading, &binder.ty)?;
-        let built = realize(meter, here, globals, field, &field_type)?;
-        reading = reading.push(built.clone());
-        value = apply(meter, here, value, built)?;
-    }
-    Ok(value)
 }

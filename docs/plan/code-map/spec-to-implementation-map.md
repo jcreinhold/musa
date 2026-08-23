@@ -117,6 +117,15 @@ was built — and a definition's body is still opened to weak-head form once at 
 the two laws the design owes: a body is paid for once however many uses it has, and a folded comparison's spend does not
 measure the definition's normal form.
 
+**And the unfold is recorded, since prompt 165b.** `Neutral` carries an `Option<Arc<OnceLock<(u64, Value)>>>`, allocated
+only for the one head shape that unfolds, filled by the first consumer that forces it and read by every later one. That
+is Peyton Jones ch. 12 §12.4's update of a shared redex's root, on a value shared by `Arc` rather than by a pointer into
+a heap, and it is the difference between an empty staff region costing 455,942 steps and costing 2,818. The `u64` is a
+process-wide stamp bumped in `Meta::solve`: equal stamps mean no metavariable was solved between the fill and the read,
+which is the soundness condition a memo over a value that may mention an unsolved meta needs, decided in one comparison
+and without walking anything. It is conservative in the safe direction — any solution anywhere invalidates every cell,
+and being wrong costs only the work being done again. `kernel::eval`'s own test module states both halves.
+
 ### §4.1's second half, discharged at the facade seam
 
 `room.rs` runs every entry point — `check`, `infer`, `normalize`, `normalize_type`, `convertible`, `convertible_types`,
@@ -380,6 +389,15 @@ arguments actually applied, which is where the parameters come from; the constru
 its stored field types are read in `Group::declarations` extended by the parameters and then by each field as it is
 built, and a name that is not a constructor of that family, or one at the wrong arity, is one `MisfitAnswer`.
 
+**Both directions walk an explicit stack and charge steps, since prompt 165b.** Reading a value into a `Datum`
+(`eval.rs`'s `canonical`), reading a *term* into one (`family::datum`'s `read`, behind the public `canonical`), and
+building a `Datum` back out (`family::datum`'s `realize`) were three recursions on the host stack, and the first and
+third charged one `Metric::Nesting` level per level of the data. The depth of a list a δ-rule is handed is the size of
+one argument, which is neither of the two descents §4.1 derives the metric from, and a six-hundred-element list was six
+hundred levels of a limit of 320. All three are loops over a frame stack now, and the two that are metered charge one
+step a node. `budget_laws.rs` states it from both ends: a list two thousand long is built and read on a 2 MiB thread,
+and the charge is one per node counted by hand.
+
 **The core learns no musical type**: the table is `musa-compiler`'s `BUILTIN_OWNERSHIP`, and the worked registry in
 `base_laws.rs` is `Int` and `Text` on purpose.
 
@@ -449,8 +467,9 @@ to nested recursors. So a fold over `n` costs the `n` steps it names, and *writi
 
 A count crosses as `Datum::Count { family, count }`, not as a `Datum` tower: a tower would cost a node per unit **and**
 recurse on `Drop`, and `canonical`'s per-level nesting charge capped it at 256, so the numeral would have been a hole in
-§4.1's budget. `realize_count` reads the element type off the signature and refuses a count at a family that does not
-count.
+§4.1's budget. (That charge is gone as of prompt 165b — see above — but the tower's other two costs are not, so a count
+still crosses as a count.) `realize_count` reads the element type off the signature and refuses a count at a family that
+does not count.
 
 Overflow past `u64::MAX` neither saturates nor refuses — the step stays an ordinary blocked spine, `module-design` rule
 5, and unreachable at 2⁶⁴ steps anyway. `Refusal::NotANumeralFamily` names the first condition of the counting rule the

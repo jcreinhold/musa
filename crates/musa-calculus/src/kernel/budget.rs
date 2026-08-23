@@ -40,6 +40,26 @@ pub enum Metric {
     QuotedNodes,
     /// How far inside itself an evaluation currently is. The one metric that
     /// goes back down.
+    ///
+    /// **Two descents, and only two.** §4.1 derives the metric from how deeply
+    /// a *term* is written and from `quote`'s walk back over a *value*: both
+    /// are the depth of the thing being walked, both spend a host frame a
+    /// level, and the limit is what turns a stack overflow into a refusal. A
+    /// third thing used to be charged here and is not: reading a δ-builtin's
+    /// argument into a [`Datum`](crate::Datum) and building its answer back
+    /// out walk *data*, whose depth is the length of one argument rather than
+    /// anything a composer wrote, and a six-hundred-element list was six
+    /// hundred levels. Those two walks now carry their own explicit stacks and
+    /// charge [`Self::Steps`], which is the metric that already prices how
+    /// much work a long argument is. See
+    /// `docs/notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md`
+    /// and prompt 165b.
+    ///
+    /// A third quantity is still charged here and does not belong either:
+    /// a recursive call is evaluated inside the enclosing evaluation and holds
+    /// its level until the call beneath it finishes, so the counter bounds how
+    /// many times a definition may call itself as well as how deeply a term is
+    /// written. That is prompt 165a's to retire; see [`Budget::NESTING`].
     Nesting,
 }
 
@@ -111,11 +131,21 @@ impl Budget {
     /// a folded application in a lazy position is re-unfolded by every
     /// consumer, because a pure `Arc`-shared value has no thunk to update, and
     /// the adapter reads shared partial applications nineteen million times.
-    /// The residual is the adapter's algorithm and prompt 166's to remove;
-    /// note 44 §6's closing records the mechanism. The budget does not move
-    /// for any of it.
     ///
-    /// limited.** §4 says so in as many words: "Conversion and metavariable
+    /// **That last sentence used to end "the residual is the adapter's
+    /// algorithm and prompt 166's to remove", and the measurement says it was
+    /// wrong.** A staff region with *nothing in it* cost 455,942 steps, which
+    /// is no algorithm at all: the re-unfolding was not a constant factor on
+    /// the adapter's work, it was the work. `unfold` now records its answer on
+    /// the neutral it was asked about — Peyton Jones ch. 12 §12.4's update of a
+    /// shared redex's root, on a value shared by `Arc` — and the same file,
+    /// with the same adapter and the same budget, costs 381,055. What is left
+    /// is a factor of 1.9 and *is* the adapter's, which is prompt 166's to
+    /// close. The numbers are note 59's; the mechanism was note 44 §6's,
+    /// recorded before the workload existed. The budget does not move for any
+    /// of it.
+    ///
+    /// **Two of the five metrics are un-limited.** §4 says so in as many words: "Conversion and metavariable
     /// metrics have no defaults yet: prompt 165 measures the new checker and
     /// sets them, and until it does, the checker charges them and reports them
     /// without a limit." The charge paths are live and tested through

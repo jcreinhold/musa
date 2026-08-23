@@ -652,13 +652,35 @@ with 320 nested evaluation levels. These are language-version constants, not tim
 the course correction re-derives them against the simplified checker and records the derivation in its final report.
 Interactive cancellation remains an external compiler operation, not a language effect.
 
+**The step count admits more programs since prompt 165b, and the reason is the paragraph above rather than a new
+number.** "A value is charged once, where it is constructed" is a claim about δ as much as about data. A use of a
+definition is folded — the head carries the value and the spine, and unfolding replays the spine over it — and the
+implementation replayed it once *per consumer*, because a pure value shared by `Arc` has no thunk to overwrite. The
+meter recorded every replay, so a definition read a thousand times was charged a thousand times for one construction,
+which is the multiplication this paragraph forbids. Recording the answer on the neutral, so that the replay happens once
+and every later consumer reads it, is therefore a defect repair and not a new policy; what makes it a cost-table version
+bump anyway is that the recorded count moves, and a program refused at 200,000 steps before and accepted after is a
+program two compilers disagree about. Measured: expanding an *empty* staff region cost 455,942 steps and costs 2,796,
+and `examples/staff-page.musa` cost more than 4×10⁹ and costs 381,055 — five orders of magnitude, on the workload the
+elaboration baseline is written against. Nothing that was accepted changes value; the widening is one-directional. The
+alternative reading, charging every consumer the recorded spend so that acceptance does not move at all, was considered
+and rejected: it is *by construction* the same total, so the wall this repair exists to remove would still stand, and
+the meter would be pricing a replay the machine no longer performs.
+
+**The same prompt narrows the count in one place, and it is the exchange §4.1 describes.** Reading a δ-builtin's
+argument as canonical data and building its answer back out charged nesting and charged no steps at all. They now charge
+one step a node, which is a charge where there was none, so a program close to the ceiling could exhaust where it did
+not. That is the honest half of the trade and it is stated here rather than left to be discovered: the walk is real work
+proportional to the size of one argument, and steps is the metric that prices work.
+
 ### 4.1 Nesting, and the room to reach the limit
 
 Nesting is the one metric that goes back down. Every other counter measures what a run has spent and never returns; this
 one measures how far in the run currently is, and a level is released when the work at that level finishes. A sequence
 of a million siblings is one level deep, not a million. The limit is charged wherever an evaluation can stand inside
 another one — evaluating an expression, eliminating a finite data value, descending into a syntax value, and quoting a
-value back during conversion — so what the counter bounds is exactly what the machine spends stack on.
+value back during conversion — so what the counter bounds is exactly what the machine spends stack on. Two walks that
+used to be on that list are not on it any more, and the paragraph at the end of this section says why.
 
 The metric exists because §5.9's traversal descends *through* the transformer's own branches: one level of a region's
 nesting costs a whole chain of evaluator frames rather than one, so a deep enough region could exhaust a host stack.
@@ -695,6 +717,21 @@ hundred steps. Retiring that needs an evaluator whose control stack is explicit 
 that recursion depth is bounded by the step budget it belongs to;
 `../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation and prompt 165a carries
 the fix.
+
+**The limit did not move at prompt 165b; what it counts did.** Reading a δ-builtin's argument into canonical data and
+building its answer back out are structural walks over *data*, and each charged one level per level of the data — so a
+six-hundred-element list was six hundred levels, and `examples/staff-page.musa` peaked at 679 of 320 with a data charge
+standing at 672 of them. Neither clause above derives the metric from that. The depth of a list a rule is handed is the
+size of one argument; it is not how deeply a composer wrote a term and it is not how far `quote` descends. So the two
+walks charge steps now, at one step a node, and the counter is back to bounding the two descents it was derived from.
+
+This is a widening — data past 320 levels is accepted where it was refused — and it is a cost-table version bump for the
+same reason a raise is. It came with the obligation this section states rather than around it: **removing the charge
+without removing the frames would have turned a refusal into an abort**, which is the one outcome §4 does not have, so
+both walks carry an explicit work stack in the same change and the room obligation above is satisfied by their not using
+host frames at all. `crates/musa-calculus/tests/suite/budget_laws.rs` states both halves: a list two thousand long is
+built and read on a 2 MiB thread, and the step charge is one per node counted by hand.
+`../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md` is the measurement.
 
 ## 5. Metatheoretic obligations
 

@@ -350,6 +350,8 @@ pub(crate) fn occurrence(meta: &Meta, here: Origin, arguments: &[Value]) -> Resu
                 argument: Arc::new(argument.clone()),
             })
             .collect(),
+        // As `crate::kernel::eval::occurrence`: an unknown has no folded value.
+        unfolded: None,
     });
     Ok((Term::meta(here, meta.clone()), value))
 }

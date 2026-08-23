@@ -136,6 +136,28 @@ Recursion is not what §4.1 derives the metric from either, and it is not this n
 the conflation since prompt 142. What is new is the *ordering* consequence, in §6 below: the staff class does not report
 a step count after 165b, because the nesting wall it hits after the data walk leaves is the recursion's.
 
+## 5a. Re-measured, with both halves landed
+
+Prompt 165b's code, on the same five workloads, at `Budget::LANGUAGE`'s unchanged 200,000 steps and `Budget::NESTING`'s
+unchanged 320. The `expand` run only; declaring the adapter module is charged separately and is not the wall.
+
+| region | before | §4's prediction | landed |
+| --- | --- | --- | --- |
+| nothing at all | 455,942 | 2,796 | 2,818 |
+| `clef treble` | > 20,000,000 | 10,168 | 10,414 |
+| three header words | > 200,000,000 | 28,406 | 28,570 |
+| three header words and a bar of one note | — | 49,010 | 60,791 |
+| `examples/staff-page.musa` | > 4×10⁹ | 381,055 | 391,353 |
+
+The landed numbers run a little above §4's probe because the probe memoized and nothing else: the step charge that
+replaced the data walk's nesting charge is the difference, which is the trade §4.1 of
+`../../../rules/language/02-core-calculus.md` now states. The fourth row is further above because the region written for
+this table is not byte-identical to the one the probe used; the three that are identical agree to within a percent.
+
+`examples/staff-page.musa` is still refused, and what it is refused for has changed twice over. At the unchanged limits
+it stops at 321 nesting levels — the recursion of §5, and prompt 165a's. With nesting lifted and nothing else changed it
+stops at 200,001 steps, and its whole expansion costs 391,353. **That is the factor of 1.9, and it is prompt 166's.**
+
 ## 6. What follows for the plan
 
 Four things, and the last is the one prompt 166 keeps.
