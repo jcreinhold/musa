@@ -371,7 +371,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 158 | recheck-the-whole-core | 3 | Audit every extension, close the re-checker, make it the gate |
 | 159 | delete-the-coercion-rule | 3 | The language's one coercion rule deleted, and forgetting written at the site |
 | 160 | macros-as-functions | 3 | The macro layer's eight claims gathered into one falsifiable law, and the chapter that teaches them |
-| 161 | one-declaration-form | 3 | `enum` and `record` become sugar over an indexed `data` |
+| 161 | one-declaration-form | 3 | `data` becomes the one form, and `enum` and `record` two shapes of it |
 | 162 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make` — all four go |
 | 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
