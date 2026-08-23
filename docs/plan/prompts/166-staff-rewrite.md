@@ -2,7 +2,7 @@
 id: 166
 slug: staff-rewrite
 status: pending
-depends_on: [164]
+depends_on: [142f, 162]
 phase: 3
 ---
 
@@ -68,10 +68,13 @@ A rather than an implementation.
 
 ## Design
 
-**This runs before 143 and 144.** The registry the anchor change lands in is the one prompt 141e translated,
-uncollapsed; the diagnostics are the ones the migrated checker already prints, not 144's improved ones; and the suite
-this prompt leaves green includes every staff budget test 142's Check names. Neither reordering changes the gate below:
-the rewrite is measured against 2,404 lines and prompt 132's prediction, whenever it runs.
+**This runs before the registry collapse, and — as it turned out — after 143 and 144.** The reordering the Read section
+records was granted and then only half kept: 143 and 144 ran anyway, so the diagnostics this rewrite is written against
+are 144's improved ones rather than the migrated checker's. What did survive is the half that matters here. The registry
+the anchor change lands in is the one prompt 141e translated, uncollapsed, because prompt 164 waits on this one: its
+Check asserts a green staff budget class, and the thirty staff budget tests 142's Check names are red until this prompt
+turns them green. Neither reordering changes the gate below: the rewrite is measured against 2,404 lines and prompt
+132's prediction, whenever it runs.
 
 **Five things must be gone, and each is checkable.** Zero `callN` helpers. Zero hand-allocated role integers. Zero
 string dispatch on token kinds or delimiters. `Pending` as a record with named fields rather than an eight-field

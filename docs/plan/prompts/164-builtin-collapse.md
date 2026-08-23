@@ -2,7 +2,7 @@
 id: 164
 slug: builtin-collapse
 status: pending
-depends_on: [156]
+depends_on: [156, 166]
 phase: 3
 ---
 
@@ -32,6 +32,12 @@ argument that those three builtins are one question asked three times.
 *Repaired ordering:* this prompt now follows the staff rewrite — prompt 166 was pulled ahead of it and of 144 when the
 step-budget measurement said the rewrite could not wait for the cost table. That is the order prompt 140 already assumed
 ("prompt 164 removes what is dead after 145"): the collapse audits a registry the rewritten adapter calls.
+
+*And the frontmatter now says so.* Until prompt 162a's run this prompt named only 156 while 166 named this one, so the
+two prompts each claimed to follow the other and the selector took whichever number was smaller. The prose above and
+166's own Read — the step-budget measurement, in full — are the record of which way the repair went, and `depends_on`
+has been made to agree with them. The consequence is checkable rather than editorial: the Check below asserts a green
+staff budget class, which is 166's to deliver.
 
 ## Read
 
@@ -122,7 +128,9 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 The two `nextest` lines still show the tonal budget class red — `diatonic-sequences` and `rule-of-the-octave`, named in
-prompt 142's Check and closed at 144 — and nothing else. The staff class is green since 145.
+prompt 142's Check and closed at 144 — and nothing else. The staff class is green because 166 ran first; the thirty
+staff budget failures the suite carried through 162a are that prompt's to close, and a red one here means this prompt
+was started out of order.
 
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.
