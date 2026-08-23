@@ -1,7 +1,7 @@
 ---
 id: 160
 slug: macros-as-functions
-status: pending
+status: done
 depends_on: [159]
 phase: 3
 ---

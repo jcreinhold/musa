@@ -1,24 +1,27 @@
 //! What a lowered quotation promises.
 //!
 //! Beside the lowering rather than in `tests/suite/`, and forced for the reason
-//! [`crate::registry::traversal::laws`] gives at greater length: the answer being
-//! agreed *with* is the old evaluator's, and `expand_region`, `read_region`, and
-//! [`Syntax`] are all private to this crate. A test outside it links against
-//! `parse`/`compile`/`render_notation` and can reach none of them.
+//! [`crate::registry::traversal::laws`] gives at greater length: `expand_region`,
+//! `read_region`, and [`Syntax`] are all private to this crate. A test outside it
+//! links against `parse`/`compile`/`render_notation` and can reach none of them.
 //!
 //! # The comparison
 //!
-//! One quote, written once, read twice. The old side runs it through
-//! `expand_region`, which is the whole of the existing checker and evaluator
-//! reached the way an adapter reaches them; the new side lowers the same text to
-//! a [`Raw`] and hands it to the core. Both answer a whole [`Syntax`] value, so
-//! nothing is summarized away: a disagreement about a derived path, a minted
-//! comma, a hygienic renaming, or the order of a group's children fails the law.
+//! One quote, written once, read twice. The **whole** side runs it through
+//! `expand_region` — an adapter module, elaborated and expanded exactly the way
+//! a piece's own region reaches the phase; the **direct** side lowers the same
+//! text to a [`Raw`] and hands it to `check`/`normalize`. Since prompt 142 both
+//! sides end in the one core, which is what the law is worth having for: the
+//! quotation counter, the anchor, the derived paths and the hygienic renaming
+//! are all decided by the machinery *around* the lowering, and the direct side
+//! has none of it. Both answer a whole [`Syntax`] value, so nothing is
+//! summarized away: a disagreement about a derived path, a minted comma, a
+//! hygienic renaming, or the order of a group's children fails the law.
 //!
 //! Both sides need a `NodePath` to anchor at, and an adapter's `expand` is handed
 //! a region rather than a path — so both go through
 //! `syntax_fold_from_leaves`, whose branches are the phase's own source of one.
-//! The old side writes the quote once, in a helper the four branches call,
+//! The whole side writes the quote once, in a helper the four branches call,
 //! because the quotation counter is per written quote (`11-quotation.md` §3) and
 //! four written quotes would be four different constructions.
 
@@ -64,14 +67,13 @@ fn subject() -> Syntax {
 
 // ---- the two sides ----------------------------------------------------------
 
-/// What the old checker and evaluator build for `quoted`, at every node of the
-/// region.
+/// What the whole phase builds for `quoted`, at every node of the region.
 ///
 /// The answer is the outermost group's, since that branch ignores the children
 /// it was handed. The three leaf branches are there because the fold demands
 /// four and every one of them has to have the same answer type, not because
 /// their answers are read.
-fn old(quoted: &str) -> Syntax {
+fn whole(quoted: &str) -> Syntax {
     let source = format!(
         "library {{
     let level = \"readable\";
@@ -91,11 +93,12 @@ fn old(quoted: &str) -> Syntax {
     );
     crate::phase::expand_syntax(&source, crate::phase::PhaseImports::bundled(), &subject())
         .0
-        .expect("the old evaluator runs the transformer")
+        .expect("the phase runs the transformer")
 }
 
-/// The same quote, lowered and run through the same fold on the core's side.
-fn new(cx: &Cx, quoted: &str) -> Syntax {
+/// The same quote, lowered and handed to the core directly, through the same
+/// fold.
+fn direct(cx: &Cx, quoted: &str) -> Syntax {
     let body = lowered(quoted);
     let branch = |names: &[&str]| {
         names
@@ -104,7 +107,7 @@ fn new(cx: &Cx, quoted: &str) -> Syntax {
             .fold(body.clone(), |built, name| Raw::lam(HERE, *name, built))
     };
     // `Answer` is an implicit parameter of the fold, so it is not written here
-    // any more than it is in `old`'s musa source — the checked result type
+    // any more than it is in `whole`'s musa source — the checked result type
     // solves it. Writing it lands a `Type 0` at the `missing` branch's position.
     let program = apply(
         Raw::var(HERE, "syntax_fold_from_leaves"),
@@ -248,8 +251,8 @@ fn a_quote_inhabits_the_expression_category_at_the_anchor_it_was_given() {
     musa_calculus::check(&cx, &ty, &program).unwrap_or_else(|why| panic!("a quote does not check: {why}"));
 }
 
-/// The law prompt 141ga exists for: the core builds the tree the old evaluator
-/// builds.
+/// The law prompt 141ga exists for: a quote handed straight to the core builds
+/// the tree the whole phase builds.
 ///
 /// Not "a tree of the same shape" — the same tree, so every derived path, every
 /// minted comma, and every hygienic renaming has to agree. That is the whole
@@ -257,7 +260,7 @@ fn a_quote_inhabits_the_expression_category_at_the_anchor_it_was_given() {
 /// reached a second way rather than reimplemented, and if it were not, identity
 /// is exactly where the disagreement would show.
 #[test]
-fn a_lowered_quote_builds_what_the_old_evaluator_builds() {
+fn a_lowered_quote_builds_what_the_whole_phase_builds() {
     let cx = owned().expect("the compiler's own context builds");
     for quoted in [
         "quote at here { together(a, b) }",
@@ -266,7 +269,11 @@ fn a_lowered_quote_builds_what_the_old_evaluator_builds() {
         "quote at here { [a, b, c] }",
         "quote at here { match a { x -> x } }",
     ] {
-        assert_eq!(new(&cx, quoted), old(quoted), "`{quoted}` builds two different trees");
+        assert_eq!(
+            direct(&cx, quoted),
+            whole(quoted),
+            "`{quoted}` builds two different trees"
+        );
     }
 }
 

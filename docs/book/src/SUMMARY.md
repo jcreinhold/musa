@@ -32,6 +32,7 @@
 - [Exact time](concepts/exact-time.md)
 - [Layer separation](concepts/layer-separation.md)
 - [Source and provenance](concepts/provenance.md)
+- [Adapters: macros as ordinary functions](concepts/macros.md)
 - [The desktop interface](concepts/interface.md)
 - [The style guide](concepts/style-guide.md)
 - [What musa refuses to blur](concepts/distinctions.md)

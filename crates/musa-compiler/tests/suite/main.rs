@@ -35,6 +35,7 @@ mod key_and_clef_changes;
 mod lint_laws;
 mod literal_pattern_laws;
 mod machine_laws;
+mod macro_closure_laws;
 mod marks;
 mod meter_changes;
 mod module_laws;

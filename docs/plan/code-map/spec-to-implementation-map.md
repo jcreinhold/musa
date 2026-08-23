@@ -38,7 +38,7 @@ unfulfilled. `partial` means some of it stands. `absent` means no code answers t
 | [The syntax index](#the-syntax-index) | `musa-compiler` | implemented | 139, 143, 145 |
 | [Quotation as a written form](#quotation-as-a-written-form) | `musa-syntax`/`musa-compiler` | implemented | 145 |
 | [Quote patterns](#quote-patterns) | `musa-syntax`/`musa-compiler` | implemented | 145 |
-| [Quotation in the core](#quotation-in-the-core) | `musa-compiler` | implemented, unreached | 142 |
+| [Quotation in the core](#quotation-in-the-core) | `musa-compiler` | implemented | 142 |
 | [A diagnostic carried whole](#a-diagnostic-carried-whole) | `musa-compiler` | implemented | 144 |
 | [Causes restated for the session](#causes-restated-for-the-session) | `musa-project` | implemented | 142 |
 | [Causes as related information](#causes-as-related-information) | `musa-lsp` | implemented | 144 |
@@ -1087,7 +1087,7 @@ form belongs, since a pattern is written in Musa and staff notation is not.
 
 > A quotation as a core term: the template a literal, instantiation and matching δ-rules.
 
-`musa-compiler` · **implemented, unreached** · `11-quotation.md` §2–§4, `02-core-calculus.md` §5.8
+`musa-compiler` · **implemented** · `11-quotation.md` §2–§4, `02-core-calculus.md` §5.8
 
 A `crate::quote::Template` is a **literal of an inert base type**, which is §5.8's D1 answered the way `Syntax` itself
 was: no eliminator, no source program takes one apart, and two agree exactly when the host says they do.
@@ -1113,9 +1113,11 @@ every coverage hole §6.2 demands.
 the two together: five bodies, lowered and normalized, build the *same* `Syntax` the old checker and evaluator build,
 path for path.
 
-**Owes.** Prompt 142 deletes `ExprKind::SyntaxQuote` and the checker's copy of the walk, and supplies §1's forgetting
-rule — an *acceptance* rule the core does not have, which this and all fourteen phase builders need, since each reads at
-`⟨tokentree⟩` and the core has no subtyping.
+**Reached, and the two prompts that reached it.** Prompt 142 deleted `ExprKind::SyntaxQuote` and the checker's copy
+of the walk — `ExprKind` has one mention left in the crate, inside a comment about its own removal. It also supplied
+§1's forgetting as an *acceptance* rule, which prompt 159 then deleted as the subtyping it was: forgetting is a
+`SyntaxOp` row spelled `forget`, written at each site where a category is dropped, and `lower/quotes.rs` writes it for
+`match_quote`'s scrutinee where the lowering used to have it inserted behind its back.
 
 ## A diagnostic carried whole
 

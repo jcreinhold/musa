@@ -820,8 +820,8 @@ fn arrow(arguments: Vec<Term>, result: Term) -> Term {
 ///
 /// # Why these are not table rows
 ///
-/// [`BUILTIN_OWNERSHIP`] and [`SYNTAX_OWNERSHIP`] are the *old* checker's name
-/// lookup, so a row in either would make `instantiate_quote` a word an adapter
+/// [`BUILTIN_OWNERSHIP`] and [`SYNTAX_OWNERSHIP`] are what an adapter may
+/// *name*, so a row in either would make `instantiate_quote` a word an adapter
 /// could write today — and what an adapter writes is `quote at here { … }`, whose
 /// whole point is that the anchor is the only number it supplies. They are
 /// counted instead by [`rules::BEYOND`], and the accounting law reads them back
