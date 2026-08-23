@@ -1,7 +1,7 @@
 ---
 id: 165a
 slug: explicit-control-stack
-status: pending
+status: in-progress
 depends_on: [165b]
 phase: 3
 ---

@@ -22,6 +22,15 @@
 //! `Vec<ScoreEvent>` per voice with one heterogeneous multiset per piece will
 //! show up there first, if it shows up at all.
 //!
+//! **A workload the compiler refuses is still timed, and the preamble says so.**
+//! Four of the eleven currently are — `large`, `core-pressure`,
+//! `template-pressure`, and `analysis-pressure` — so their P0–P7 rows price a
+//! refusal rather than a compilation, the way `finite_core_rejection` is kept
+//! apart from `finite_core_fold` for the same reason. Dropping them from
+//! `WORKLOADS` would lose the coverage silently; printing the compiler's own
+//! error beside the row does not. The preamble line is the one that says which
+//! rows those are, and it is not optional reading.
+//!
 //! Results are recorded in `docs/rules/events/09-pipeline-baseline.md` through the event track
 //! migration and in `docs/rules/language/06-elaboration-baseline.md` from prompt 93 on. Run
 //! with:
@@ -29,10 +38,6 @@
 //! ```sh
 //! cargo bench -p musa-compiler
 //! ```
-
-// Benchmarks index a fixed workload table and unwrap statically valid
-// fixtures: a failure is a bug in the benchmark, and panicking is correct.
-#![allow(clippy::expect_used)]
 
 use musa_compiler::{CompileOptions, SourceDocument, bench, compile};
 
@@ -306,9 +311,9 @@ mod editing {
 ///
 /// `S0` scales identical calls at distinct sites, which is the call-site gap;
 /// `S1` and `S2` are the same music written two ways, which is the
-/// full-laziness gap. All three report allocations, and the workload's own
-/// duplication is printed by `main` so a timing can be read against the size
-/// of the term behind it.
+/// full-laziness gap. All three report allocations, and `main` prints each
+/// workload's term size so a timing can be read against the size of the term
+/// behind it.
 mod sharing {
     use musa_compiler::bench::{Sharing, sharing_source};
     use musa_compiler::{CompileOptions, SourceDocument, compile};
@@ -377,24 +382,65 @@ fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
     bencher.bench_local(|| compile(divan::black_box(&source), &options));
 }
 
-/// How many bodies a piece's term binds, and how big the printed term is.
+/// How big the piece's printed term is.
 ///
-/// Duplication is what the sharing benchmarks are about, and it is visible in
-/// the term rather than in a timing: two identical `let shared` bindings are
-/// one body elaborated twice. Counted from the printed term because that is
-/// the compiler's own account of what it built, and it needs no new API.
+/// Term size is what a timing has to be read against: the same music written
+/// twice as large is not the same measurement, and the byte count is the
+/// compiler's own account of what it built, needing no new API.
 ///
-/// `None` where the interchange helper has no term to print. That helper
-/// resolves no imports by construction, so a workload that imports the
-/// standard library has no printed term here — which is a missing
-/// measurement, not a measurement of zero, and the caller says so.
-fn duplication(source: &SourceDocument) -> Option<(usize, usize)> {
-    musa_compiler::events_text(
-        source,
-        &musa_score::Realization::default(),
-        &musa_compiler::ImportSources::default(),
-    )
-    .map(|text| (text.matches("let shared").count(), text.len()))
+/// **The `let shared` count that stood beside it is gone, and it was not
+/// dropped for tidiness.** Prompt 142 put the surface on a core program, and
+/// the events text became a *projection* of the evaluated result rather than
+/// the shape elaboration was carried in — `piece_term` prints one literal per
+/// voice and binds nothing. `sharing_laws.rs` retired the same count for the
+/// same reason at the time; this benchmark did not, so every row it printed
+/// read `0 shared bindings`, which is not a measurement of no duplication but
+/// the absence of a measurement wearing its clothes.
+///
+/// Read under the workload's *own* import sources rather than an empty set.
+/// The helper used to pass `ImportSources::default()`, so `declaration-heavy`
+/// reported no term for a reason that was the benchmark's own doing; the
+/// options the timed benchmarks compile under are the ones this reads under
+/// too, and the two now agree about what the workload is.
+///
+/// `Err` where there is no term to print, carrying the compiler's own words
+/// for why. A refused workload has no term, and so does one whose imports
+/// were still not supplied; both are missing measurements rather than
+/// measurements of zero, and printing one cause for the other would record a
+/// reading nobody took.
+fn term_bytes(source: &SourceDocument, options: &CompileOptions) -> Result<usize, String> {
+    musa_compiler::events_text(source, &musa_score::Realization::default(), &options.imports)
+        .map(|text| text.len())
+        .ok_or_else(|| refusal(source, options))
+}
+
+/// Why a workload has no printed term, in the compiler's own words.
+///
+/// The first error it reported, and how many followed it. A benchmark cannot
+/// diagnose the compiler and should not try: it reports what the compiler
+/// said and leaves the judgement to whoever reads the row.
+fn refusal(source: &SourceDocument, options: &CompileOptions) -> String {
+    let compilation = compile(source, options);
+    let mut errors = compilation
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
+        .map(|diagnostic| diagnostic.message.as_str());
+    let Some(first) = errors.next() else {
+        return "the piece compiles and still prints no term".to_owned();
+    };
+    match errors.count() {
+        0 => first.to_owned(),
+        rest => format!("{first} (and {rest} more)"),
+    }
+}
+
+/// One workload's term as a preamble cell: its size, or why it has none.
+fn term_cell(source: &SourceDocument, options: &CompileOptions) -> String {
+    match term_bytes(source, options) {
+        Ok(bytes) => format!("{bytes}-byte term"),
+        Err(reason) => format!("term unavailable ({reason})"),
+    }
 }
 
 fn main() {
@@ -402,10 +448,7 @@ fn main() {
     // knowing the size of the workload behind it.
     for workload in WORKLOADS {
         let tracks = bench::tracks(&bench::parse(&source(workload)), &options(workload));
-        let term = duplication(&source(workload)).map_or_else(
-            || "term unavailable (the interchange helper resolves no imports)".to_owned(),
-            |(bindings, bytes)| format!("{bindings} shared bindings, {bytes}-byte term"),
-        );
+        let term = term_cell(&source(workload), &options(workload));
         println!("workload {workload}: {} occurrences, {term}", tracks.occurrences());
     }
     for shape in [
@@ -415,8 +458,8 @@ fn main() {
     ] {
         for calls in [8_usize, 32, 128, 512] {
             let document = SourceDocument::new(bench::sharing_source(shape, calls, 16), "benches/sharing.musa");
-            let (bindings, bytes) = duplication(&document).expect("a generated sharing piece imports nothing");
-            println!("sharing {shape:?} calls={calls}: {bindings} shared bindings, {bytes}-byte term");
+            let term = term_cell(&document, &CompileOptions::default());
+            println!("sharing {shape:?} calls={calls}: {term}");
         }
     }
     divan::main();
