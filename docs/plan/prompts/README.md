@@ -383,6 +383,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 165 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 165a | explicit-control-stack | 3 | Recursion depth leaves the nesting metric for the step budget it belongs to |
+| 165b | graph-update-and-data-descent | 3 | Memoize the unfold and take data descent off the nesting metric — before 166, which cannot run without it |
 | 166 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
 | 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
 | 167 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |

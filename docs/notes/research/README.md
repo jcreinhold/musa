@@ -40,6 +40,7 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [56](language-design-closure/56-the-macro-layer-is-already-one-thing.md) | Which prompt delivered each clause of prompt 160's Task, the two clauses that describe a language musa does not have, and the two things actually left |
 | [57](language-design-closure/57-three-declaration-forms.md) | The five capabilities `data`, `enum`, and `record` differ in, why `enum` is not a shape of `data` today, and what the corpus does and does not say about the spelling |
 | [58](language-design-closure/58-the-module-layer-and-its-make.md) | The fifteen module-and-template sites in the corpus, why `make` cannot go without `template`, and what a parameterized piece becomes |
+| [59](language-design-closure/59-the-staff-wall-is-the-evaluators.md) | That the staff adapter's two budget walls are the evaluator's — δ without graph update, and a nesting charge that counts data descent |
 | [60](60-language-decision-record.md) | How the elaboration language was decided, and then corrected |
 | [61](61-core-boundary-decision-record.md) | How the core boundary was decided |
 | [62](62-course-correction-decision-record.md) | The course correction, and where each of its sections went |
