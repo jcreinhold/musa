@@ -316,7 +316,7 @@ what the system will *search for*:
 - **No guards and no fall-through in `match`** — unchanged from before, restated here because this section is where the
   refusals live.
 - **No elaborator reflection.** Musa has one metaprogramming mechanism, typed quotation (`11-quotation.md`), and a macro
-  is an ordinary total function over the `Syntax` family rather than a program that inspects the elaborator's state.
+  is an ordinary total function over syntax values rather than a program that inspects the elaborator's state.
 
 Three refusals the previous statement of this section carried are **retired**, and are listed here so a reader meeting
 the old text is not confused. The identity type is now declarable (§1.4), because it is an ordinary family and refusing

@@ -442,8 +442,9 @@ the index in each branch (`02-core-calculus.md` §1.1). `enum` and `record` are 
 `enum` for several nullary or positional cases, `record` for one case with named fields. This reverses what this
 paragraph said before, which was that parameters-and-no-indices was final on the evidence that no committed program
 narrows a type by matching; prompt 143's amendment answers that evidence — the corpus was writing the workaround,
-seventeen compiler builtins spent on one modulus, rather than exhibiting no demand. `Syntax` is the immediate
-beneficiary and is now a family over `Cat` (`11-quotation.md` §1). `Option<A>` and `Result<A, E>` become ordinary enums
+seventeen compiler builtins spent on one modulus, rather than exhibiting no demand. `Syntax` is not among the beneficiaries, and
+`11-quotation.md` §1 measures why: it is indexed by `Cat` and stays a compiler-owned base type, because the thing that
+would make refining its index worth having is an eliminator it does not have. `Option<A>` and `Result<A, E>` become ordinary enums
 declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor
 rule, and `option_fold` is replaced by the `match` that was always underneath it.
 

@@ -369,7 +369,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 156 | indexed-families | 3 | A constructor may choose its index; `Equal` becomes library code |
 | 157 | records-leave-the-core | 3 | `record` as one-constructor data with generated projections |
 | 158 | recheck-the-whole-core | 3 | Audit every extension, close the re-checker, make it the gate |
-| 159 | syntax-as-a-family | 3 | `Syntax : Cat -> Type`, and the language's one coercion rule deleted |
+| 159 | delete-the-coercion-rule | 3 | The language's one coercion rule deleted, and forgetting written at the site |
 | 160 | macros-as-functions | 3 | Macros as ordinary total functions over one evaluator |
 | 161 | one-declaration-form | 3 | `enum` and `record` become sugar over an indexed `data` |
 | 162 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make` — all four go |

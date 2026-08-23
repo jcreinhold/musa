@@ -23,40 +23,55 @@ ordinary source: an adapter module is checked in a scope where these names resol
 they do not. Law 11 of the recursor — phase conservativity — is unchanged and is the reason that separation is stated
 rather than assumed.
 
-## 1. `Syntax` is an inductive family over `Cat`
+## 1. `Syntax` is indexed by `Cat`, and forgetting is written
 
-`Cat` is an ordinary two-case enum, and `Syntax` is a family indexed by it (`02-core-calculus.md` §1.1):
+`Cat` is a compiler-owned two-value type and `Syntax` is a base type indexed by it:
 
 ```text
-enum Cat { Expr, TokenTree }
-
+Cat                      -- Expr, TokenTree
 Syntax : Cat -> Type 0
 ```
 
-**This is a repair of what this section said, and the reason it said otherwise has expired.** The previous statement
-made `Syntax` a compiler-owned base type parameterized by a closed literal, on the argument that "a family would make
-`Cat` an index a `match` could unify, and would pull the indexed-family machine into the core for one type". After
-prompt 156 that machine is in the core for the musical domains anyway, so the cost of the family is zero and its benefit
-is real: matching a syntax value **refines its category**, and an adapter that inspects what it was handed learns the
-category rather than asserting it.
-
-Two things stop being compiler machinery as a consequence. `as_expression` becomes an ordinary function in the source
-rather than a builtin, because a function may now return `Option (Syntax Expr)` and have the category mean something
-inside the branch. And forgetting becomes a function, which is the subject of the next paragraph.
-
-**Forgetting is written, not inferred.** The previous statement of this section carried one acceptance rule: *a position
+**Forgetting is written, not inferred.** An earlier statement of this section carried one acceptance rule: *a position
 of category `TokenTree` accepts a value of any category*. That is subtyping — a rule that lets a value of one type stand
 where another is written, decided outside conversion — and `../constitution.md` §9 refuses it in every form, on the
 argument `../obligations.md` §17 states. It is replaced by a total function, written at the splice site:
 
 ```musa
-forget : (c : Cat) -> Syntax c -> Syntax TokenTree
+forget : Syntax Expr -> Syntax TokenTree
 ```
 
-The cost of writing it is measured rather than guessed: four call sites inside `elab/check.rs` and two projections in
-`stdlib/`. What is bought is that every place a category is dropped says so in the source, which is exactly the property
-the amendment exists to buy — an acceptance rule the conversion checker cannot see was the defect, and this is one of
-the two places musa had one. Prompt 159 is where the rule is deleted and the function replaces it.
+What is bought is that every place a category is dropped says so in the source, and — the sentence
+`02-core-calculus.md` states and this earns — that **no rule accepts a program that conversion would reject**. An
+acceptance rule the conversion checker cannot see was the defect, and this was one of the two places musa had one.
+Prompt 159 is where the rule is deleted and the function replaces it.
+
+One signature, because there are two categories: forgetting at `TokenTree` is the identity, so a dependent
+`(c : Cat) -> Syntax c -> Syntax TokenTree` would quantify over one case that does nothing and one this already covers.
+A third category is a second `forget` beside this one.
+
+**`Cat` is a base type with literal values, and that is measured rather than conceded.** Prompt 145 repaired this
+section to make `Cat` an `enum` and `Syntax` an inductive family over it, reversing an earlier refusal on the ground
+that prompt 156 had put the indexed-family machine in the core anyway. That clause is true and the conclusion does not
+follow, because the machine was never the cost. Two mechanisms hold `Cat` where it is:
+
+- **A δ-rule cannot write down a family's constructor.** A rule is a bare `fn` pointer, so that "the answer is a
+  function of the argument values alone" is a property of its type; the fourteen syntax rules answer a `Syntax`
+  *literal*, which carries its own type, and a family's constructor exists only inside a context a `fn` pointer cannot
+  reach. Freeing them needs a datum that is typed from the signature rather than from itself, the way a constructor
+  answer already is.
+- **A base type's kind is built with no context.** The registered bases are a process-global keyed by name — which is
+  what lets one host build its registry twice and keep two closed values convertible — and `Syntax`'s kind is written
+  out of it.
+
+And what the family was going to buy is empty. `as_expression` already returns `Option (Syntax Expr)` and already is an
+ordinary named operation; forgetting is a written function without it, above; and the third claim — that a `match` on a
+`Syntax c` refines `c` — cannot be written, because a syntax value has **no eliminator**, as this section says four
+paragraphs down. The record is
+[`../../notes/research/language-design-closure/55-cat-stays-a-base-type.md`](../../notes/research/language-design-closure/55-cat-stays-a-base-type.md).
+
+This re-opens on one condition, and it is not the family: a reason to take a syntax value *apart* and learn its category
+in the branch. That wants an eliminator first, and an index worth refining after it.
 
 The representation does not change. A syntax value is still the lossless token tree prompt 127da declared — `Missing`,
 `Token`, `Identifier`, `Group` over a `SourceInfo` with no eliminator — and `Syntax TokenTree` is that tree with nothing
@@ -90,11 +105,6 @@ brace group where a pitch belongs. `as_expression` is where that is decided, so 
 line instead of on the region after a malformed tree has reached `checked_expression`. This is also why splicing the
 composer's node is *preferable* to rebuilding one from its text: the spliced node keeps its `Original` source
 information (§3), so Origin, `edit`, and `print` all point back at what was written.
-
-**And now it buys a third thing, which is why the family is worth the repair.** A `match` on a `Syntax c` value refines
-`c` in each branch, so an adapter that takes syntax apart can write the branch where it holds an expression and the
-branch where it holds a raw tree, and the checker knows which is which. Under the base type, both branches had the same
-type and the distinction lived in the adapter's head.
 
 **The obligation the index creates**, owed by the prompts that implement it: every value of `Syntax Expr` prints as
 source that the parser reads back as an expression, and `as_expression` answers `Some` exactly when it does. The index
