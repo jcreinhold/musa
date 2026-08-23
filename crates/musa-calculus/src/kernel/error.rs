@@ -13,6 +13,7 @@
 //! three outcomes describes what happened.
 
 use crate::kernel::budget::ResourceError;
+use crate::kernel::origin::Origin;
 use crate::kernel::term::{Index, Name, Term};
 
 /// Why a core operation did not produce a term.
@@ -243,4 +244,27 @@ pub enum Malformed {
     /// defect one step later, and a caller defect for the same reason.
     #[error("`{0}` was instantiated at the wrong number of universe levels")]
     LevelArity(Name),
+    /// A compiled body left a constructor of the analysed family unanalysed.
+    ///
+    /// `02-core-calculus.md` §6.2 decides coverage on the case tree, and
+    /// [`CaseTree::uncovered`](crate::kernel::case_tree::CaseTree::uncovered)
+    /// decides it by asking the *declaration group* which constructors exist.
+    /// The elaborator asks that question where it builds a tree; the
+    /// re-checker asks it again over the finished body, so that a builder
+    /// which never asked is caught by something other than the emitted term
+    /// happening to type-check.
+    #[error("no alternative analyses constructor `{0}`")]
+    Uncovered(Name),
+    /// A compiled body holds a recursive call the structural rule cannot see
+    /// descend.
+    ///
+    /// [`Uncovered`](Self::Uncovered)'s companion, and it is here for the same
+    /// reason: the elaborator runs the descent rule where it lifts a recursion,
+    /// and a definition that reached the table without being asked would
+    /// otherwise be a non-terminating member of a total language. The
+    /// program's own fault is
+    /// [`Refusal::UncheckedRecursion`](crate::Refusal); this is the kernel
+    /// finding one that got past it.
+    #[error("a recursive call at {0:?} is not visibly structural")]
+    Undescending(Origin),
 }

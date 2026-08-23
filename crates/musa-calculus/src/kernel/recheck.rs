@@ -43,14 +43,17 @@
 use std::sync::Arc;
 
 use crate::kernel::budget::Meter;
+use crate::kernel::case_tree::Compiled;
 use crate::kernel::checked::Checked;
 use crate::kernel::context::Cx;
 use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::eval::{apply_closure, eval, opened};
 use crate::kernel::origin::Origin;
+use crate::kernel::program::{Body, Program};
 use crate::kernel::quote::{Mode, quote_type};
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Binder, Constant, Definition, Shape, Term};
+use crate::kernel::term::{Binder, Constant, Definition, Name, Shape, Term};
+use crate::kernel::terminate::{Undescending, descends};
 use crate::kernel::value::{Form, Value};
 
 /// Require the kernel to agree that `term` has type `ty` in `cx`.
@@ -69,6 +72,80 @@ use crate::kernel::value::{Form, Value};
 pub(crate) fn recheck(cx: &Cx, ty: &Value, term: &Checked) -> Result<(), CoreError> {
     let mut meter = cx.meter();
     check(cx, &mut meter, term.term(), ty)
+}
+
+/// Re-derive what a compiled body claims, from the declaration rather than
+/// from the builder that produced it.
+///
+/// **This is the half a term cannot answer.** A tree body is re-checked
+/// through its *emission* — nested applications of the generated eliminators —
+/// and that is what verifies the two hard invariants without teaching this
+/// module what a tree is: a method's type is the motive instantiated at that
+/// method's own pattern, so a branch answering the wrong thing is
+/// [`Malformed::Mistyped`]; and a refuted branch's motive is a *large
+/// elimination over the subject's index* rather than a flag copied from the
+/// decision that refuted it, so ι reduces it to an identity type exactly when
+/// the branch really is unreachable and to the real goal otherwise — which is
+/// why the `λx. x` an [`Impossible`](crate::kernel::case_tree::CaseTree::Impossible)
+/// node emits is checked and not merely emitted.
+///
+/// Two questions survive that, because the emitted term cannot be wrong about
+/// them: a *missing* alternative emits a shorter spine at a type that no longer
+/// mentions it, and a recursion that does not descend emits an application like
+/// any other. Both are decided here, from the group and from the finished tree.
+/// The elaborator asks them too, where it builds a tree — and that is the point:
+/// verification that trusts the pass it verifies verifies nothing, so the
+/// trusted side asks again over every body that reaches it, and a builder that
+/// never asked at all is caught rather than assumed.
+///
+/// # Errors
+///
+/// [`Malformed::Uncovered`] naming a constructor no alternative analyses, and
+/// [`Malformed::Undescending`] naming a recursive call the structural rule
+/// cannot see descend.
+pub(crate) fn compiled(name: &Name, body: &Compiled) -> Result<(), CoreError> {
+    if let Some(constructor) = body.tree.uncovered() {
+        return Err(Malformed::Uncovered(constructor).into());
+    }
+    if let Some(Undescending(at)) = descends(body, name) {
+        return Err(Malformed::Undescending(at).into());
+    }
+    Ok(())
+}
+
+/// Re-check every definition of a finished program, and audit every tree body.
+///
+/// The closed pass, and what makes `TRUST.md`'s claim testable over something
+/// larger than a hand-built term: a whole document's definitions, each read at
+/// the type its declaration claimed, in a context where all of them are in
+/// scope. Dependency order is not re-derived — the program is finished, so a
+/// body may name any member and the kernel's question is whether the term is
+/// well typed rather than whether it could have been elaborated in that order.
+///
+/// Each member contributes up to three answers: [`Checked::try_from`] for the
+/// first acceptance invariant, [`check`] against the member's own type for the
+/// second and third, and [`compiled`] for what a tree claims that its emission
+/// cannot be wrong about.
+///
+/// # Errors
+///
+/// The first disagreement, naming the member it was found in;
+/// [`CoreError::Exhausted`] when a member is large enough to end the
+/// derivation, which is not a verdict either way.
+pub(crate) fn program(cx: &Cx, program: &Program) -> Result<(), CoreError> {
+    let inner = cx.defining(program);
+    for member in program.members() {
+        if let Body::Compiled { ref tree, .. } = member.body {
+            compiled(&member.name, tree)?;
+        }
+        let Some(term) = member.body.term() else {
+            continue;
+        };
+        let checked = Checked::try_from(term.clone())?;
+        let mut meter = inner.meter();
+        check(&inner, &mut meter, checked.term(), &member.ty)?;
+    }
+    Ok(())
 }
 
 /// What the kernel disagrees with elaboration about, if anything.

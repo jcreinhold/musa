@@ -1,7 +1,7 @@
 ---
 id: 158
 slug: recheck-the-whole-core
-status: pending
+status: in-progress
 depends_on: [149, 157]
 phase: 3
 ---
@@ -23,6 +23,8 @@ prompts 147–157 replace, and which sat before all of them.
 - [`142i-core-re-checker.md`](142i-core-re-checker.md) — the argument and the four citing sites.
 - `crates/musa-calculus/TRUST.md` as prompt 149 wrote it — the three acceptance invariants this closes over.
 - The Check sections of 151–157, each of which names an extension owed here.
+- `docs/plan/roadmap.md` §15.10 (the closed development-dependency list) and §17.2 (`proptest` as the generator), which
+  decide the shape of the generated-program law — see the repair recorded in the Target.
 
 ## Design
 
@@ -58,14 +60,46 @@ that states a smaller one accurately.
 - `crates/musa-calculus/src/kernel/recheck.rs`: the closed pass and the audit's missing arms.
 - `crates/musa-calculus/TRUST.md`: the acceptance invariants extended to metavariables, case trees, families and levels;
   and the honest limit above.
-- `crates/musa-calculus/tests/suite/recheck_laws.rs`: one negative control per construct, and the standard library
-  re-checked end to end.
-- `fuzz/`: the workspace's first fuzz target, and it exists because of this prompt rather than beside it. **The
-  re-checker is an oracle**, which is what fuzzing needs and what musa has never had: generate a program, elaborate it,
-  and assert the kernel accepts whatever elaboration produced — a crash, a rejection, or a scope violation is a bug in
-  *us* by construction, with no expected output to write down. Hand-written negative controls cover the failures
-  somebody thought of; this covers the ones that make de Bruijn indices worth worrying about. `~/Code/kan` fuzzes its
-  kernel, frontend and binding layers separately; one target over the whole pipeline is the right size to start.
+- `crates/musa-calculus/tests/suite/recheck_laws.rs`: the audit table, one negative control per construct, and
+  [`recheck_program`](../../../crates/musa-calculus/src/lib.rs) run over every program the suite builds.
+- The standard library re-checked end to end, **in `musa-compiler`'s suite rather than this one**. *Repaired during
+  implementation.* The Target put it in `recheck_laws.rs`, and `musa-calculus` cannot read it: the standard library is
+  `.musa` source, the crate is a leaf with no parser, and giving it one would invert the dependency direction root
+  `AGENTS.md` states one-way. The gate goes where the source can be read, and the pass it runs is the same
+  `recheck_program` this prompt adds.
+- `crates/musa-calculus/tests/suite/generated_laws.rs`: a generated-program law, and it exists because of this prompt
+  rather than beside it. **The re-checker is an oracle**, which is what generative testing needs and what musa has never
+  had: generate a program, elaborate it, and assert the kernel accepts whatever elaboration produced — a crash, a
+  rejection, or a scope violation is a bug in *us* by construction, with no expected output to write down. Hand-written
+  negative controls cover the failures somebody thought of; this covers the ones that make de Bruijn indices worth
+  worrying about.
+
+  *Repaired during implementation.* This bullet read `fuzz/`, "the workspace's first fuzz target", citing `~/Code/kan`,
+  which fuzzes its kernel, frontend and binding layers separately. Three things say otherwise, and none of them touch
+  the argument above — which is about having an **oracle**, not about libFuzzer's scheduler.
+
+  First, the dependency is not available: roadmap §15.10 lists the workspace's development dependencies and says in as
+  many words that **the list is closed** — `insta`, `proptest`, `divan`. `libfuzzer-sys` and `arbitrary` are not on it,
+  and root `AGENTS.md` requires a new crate to come from a §15 list. §17.2 already names `proptest` as the generator
+  and shrinking is the property this prompt wants most: a counterexample to kernel acceptance is only useful if it is
+  small enough to read.
+
+  Second, a `fuzz/` directory is its own workspace, so it is outside `cargo build --workspace`, outside
+  `cargo nextest run`, outside clippy, and outside every command in this prompt's Check. Nothing here would ever run
+  it. That is precisely the failure the Design section names one paragraph earlier — a row with no negative control is
+  a row that has not been checked — committed against this prompt's own deliverable. A `proptest` law runs on every
+  `cargo nextest run --workspace`, which is where a gate belongs.
+
+  Third, byte-mutation is the wrong shape for this oracle. The interesting bug is scope corruption in a *well-typed*
+  program, so the generator has to produce programs elaboration accepts; a mutator over bytes spends nearly all of its
+  budget on programs elaboration refuses for uninteresting reasons, and the oracle says nothing about those. A
+  structured generator over `Raw` is what reaches the terms that make de Bruijn indices worth worrying about.
+
+  **What is given up, recorded rather than glossed:** coverage-guided mutation and a persistent corpus that grows
+  across runs. `proptest` explores what its generator was written to reach and nothing else, so a construct absent from
+  the generator is untested by it — which is why this bullet is a complement to the negative-control table and not a
+  replacement for it. If kernel acceptance ever fails in a way the generator could not have reached, a real fuzz
+  target is the escalation, and taking it means putting `libfuzzer-sys` on §15.10 deliberately rather than in passing.
 - `docs/plan/prompts/169-core-conformance.md`: the re-checker row added to the obligation matrix.
 - `142i-core-re-checker.md`: `status: superseded` and a banner naming this prompt.
 

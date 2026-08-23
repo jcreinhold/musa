@@ -285,6 +285,31 @@ pub fn recheck(cx: &Cx, ty: &Term, term: &Checked) -> Result<(), CoreError> {
     })
 }
 
+/// Re-check a whole elaborated program, and audit every tree body in it.
+///
+/// [`recheck`] closed over a document rather than a term. Every definition is
+/// read at the type its own declaration claimed, in a context where all of them
+/// are in scope, and a definition whose body is a compiled case tree is asked
+/// two further questions the emitted term cannot be wrong about: that no
+/// constructor of the analysed family goes unanalysed, and that every recursive
+/// call visibly descends. Both are re-derived from the declaration group and
+/// the finished tree, not read off the builder's bookkeeping.
+///
+/// This is what turns `TRUST.md`'s claim into a gate: the conformance suite
+/// runs it over the standard library and every fixture, so "elaboration cannot
+/// produce a term the kernel rejects" is a statement with a corpus behind it
+/// rather than a paragraph.
+///
+/// # Errors
+///
+/// [`CoreError::Malformed`] at the first member the kernel disagrees about,
+/// which is a defect in *this compiler* rather than a verdict about the
+/// program, and [`CoreError::Exhausted`] when `cx`'s budget ends a derivation,
+/// which is no verdict at all.
+pub fn recheck_program(cx: &Cx, program: &Program) -> Result<(), CoreError> {
+    with_room(|| crate::kernel::recheck::program(cx, program))
+}
+
 /// The normal form of `term` at type `ty`, in context `cx`.
 ///
 /// The result is η-long: `f : A → B` normalizes to `λx. f x`, and a value of a

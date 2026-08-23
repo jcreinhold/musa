@@ -307,6 +307,19 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
             held.name
         );
     }
+    // And the two questions the emission cannot answer, asked of the tree. This
+    // module already asked them where it built the body; asking again from the
+    // kernel is what makes them re-derivations rather than bookkeeping, and it
+    // is what catches a route into `Body::Compiled` that never asked at all.
+    #[cfg(debug_assertions)]
+    if let Body::Compiled { ref tree, .. } = body {
+        let fault = crate::kernel::recheck::compiled(&held.name, tree).err();
+        debug_assert!(
+            fault.is_none(),
+            "the kernel rejects the tree elaboration built for `{}`: {fault:?}",
+            held.name
+        );
+    }
     let defined = Defined {
         name: Arc::clone(&held.name),
         visibility: held.visibility,
