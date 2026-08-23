@@ -1,7 +1,7 @@
 ---
 id: 157
 slug: records-leave-the-core
-status: in-progress
+status: done
 depends_on: [146, 156]
 phase: 3
 ---
