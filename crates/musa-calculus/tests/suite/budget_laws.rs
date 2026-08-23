@@ -10,12 +10,14 @@
 //! protected — a timeout here would make acceptance a property of the host.
 
 use musa_calculus::{
-    Budget, Builtin, CoreError, Cx, Datum, ElabError, Family, Metric, Origin, Raw, Registry, Role, Sort, Term,
-    convertible, convertible_types, normalize_type,
+    Budget, Builtin, CoreError, Cx, Datum, ElabError, Family, Metric, Origin, Raw, RawArm, RawPattern, Registry, Role,
+    Sort, Term, convertible, convertible_types, normalize_type,
 };
 use std::sync::Arc;
 
+use crate::family_laws::{apply, nat_context, var};
 use crate::fixtures::{Sample, corpus, corpus_at};
+use crate::programs::WRITTEN;
 
 /// As in `conversion_laws.rs`: origins are this file's *input*, not its subject.
 const HERE: Origin = Origin::node(920);
@@ -240,6 +242,149 @@ fn elaborating_a_term_nested_past_the_limit_is_refused() {
     });
 }
 
+/// `rec add : Nat → Nat → Nat = λa. λb. match a { Zero => b; Succ k => Succ (add k b) }`.
+///
+/// `termination_laws.rs`'s definition, written again here because what these two
+/// laws measure is not whether it is admitted — that law is over there — but
+/// what running it *costs*. It is the smallest definition that recurses once per
+/// unit of its argument, so `add n 0` is exactly `n` recursive calls and nothing
+/// else, which is what makes the counts below countable.
+fn add() -> Raw {
+    let arrow = |domain: Raw, codomain: Raw| Raw::pi(WRITTEN, "_", domain, codomain);
+    Raw::rec(
+        WRITTEN,
+        "add",
+        arrow(var("Nat"), arrow(var("Nat"), var("Nat"))),
+        Raw::lam(
+            WRITTEN,
+            "a",
+            Raw::lam(
+                WRITTEN,
+                "b",
+                Raw::match_on(
+                    WRITTEN,
+                    [var("a")],
+                    vec![
+                        RawArm {
+                            patterns: vec![RawPattern::constructor(WRITTEN, "Nat.Zero", [])],
+                            body: var("b"),
+                        },
+                        RawArm {
+                            patterns: vec![RawPattern::constructor(
+                                WRITTEN,
+                                "Nat.Succ",
+                                [RawPattern::bind(WRITTEN, "k")],
+                            )],
+                            body: apply(var("Nat.Succ"), [apply(var("add"), [var("k"), var("b")])]),
+                        },
+                    ],
+                ),
+            ),
+        ),
+    )
+}
+
+/// `add count 0`, as a raw term with [`add`]'s type written down.
+fn adding(count: u64) -> Raw {
+    let arrow = |domain: Raw, codomain: Raw| Raw::pi(WRITTEN, "_", domain, codomain);
+    apply(
+        Raw::annot(WRITTEN, add(), arrow(var("Nat"), arrow(var("Nat"), var("Nat")))),
+        [Raw::numeral(WRITTEN, "Nat", count), Raw::numeral(WRITTEN, "Nat", 0)],
+    )
+}
+
+/// `Nat`, and a context that has it.
+///
+/// # Panics
+///
+/// If `Nat` is not a type, which would be a defect in this crate.
+fn nat() -> (Cx, Term) {
+    let (cx, _) = nat_context();
+    let nat = musa_calculus::infer(&cx, &var("Nat")).expect("`Nat` is a type").0;
+    (cx, nat)
+}
+
+/// §4.1, a definition calling itself is *work* and not *depth*.
+///
+/// The law prompt 165a exists to make statable. Until it ran, a recursive call
+/// was evaluated inside the enclosing evaluation and held its level until the
+/// call beneath it finished, so [`Budget::NESTING`] bounded recursion as well as
+/// term depth: measured at the commit before the change, `add 105 0` answered
+/// and `add 106 0` was refused at 321 of 320 nesting levels — about three levels
+/// a call, which is 155a's bisection seen from the other end.
+///
+/// Three thousand calls now, which is not a bigger limit but a different metric:
+/// the evaluator's pending work is heap data, so the depth a recursion reaches
+/// is a length rather than a stack. What bounds it is [`Metric::Steps`], and the
+/// companion law below is where that is stated.
+///
+/// **Eight nesting levels, and the number is the point.** Not "under the limit"
+/// — under a budget two orders of magnitude below the recursion's own depth, so
+/// that no reading of the result can be that 320 happened to be enough. Three is
+/// the measured minimum, and what refuses at two is *unification*, which is the
+/// elaborator's structural work on the definition's type and has nothing to do
+/// with how far the recursion went. The five levels between are slack for that
+/// structural work rather than for the recursion.
+#[test]
+fn a_definition_recursing_far_past_the_nesting_limit_is_accepted() {
+    let (cx, nat) = nat();
+    let narrow = Cx::with_budget(Budget::LANGUAGE.nesting(8)).declaring(&nat_context().1);
+    let calls = 3_000;
+    assert!(
+        calls > Budget::NESTING,
+        "the law is only a law if the recursion is past the limit"
+    );
+    let term = musa_calculus::check(&narrow, &nat, &adding(calls)).expect("three thousand calls elaborate");
+    let answer = musa_calculus::normalize(&narrow, &nat, &term).expect("and run, inside eight nesting levels");
+    assert_eq!(
+        answer,
+        musa_calculus::check(&cx, &nat, &Raw::numeral(WRITTEN, "Nat", calls)).expect("a numeral")
+    );
+}
+
+/// §4, what does bound a recursion: the step budget, at the price the frames
+/// charged.
+///
+/// The other half of the law above, and the one that keeps it from being a hole.
+/// Taking recursion off the nesting metric is only sound if every recursive step
+/// is still charged *something* that runs out, and if the explicit control stack
+/// charges what the host frames it replaced charged. Both are stated here as one
+/// number: `add n 0` costs `9 + 12n` reduction steps, exactly, for every `n`.
+///
+/// **The twelve is measured against the frame-based evaluator, not derived from
+/// the new one.** At commit `3846ec72`, the last before the control stack,
+/// `add 1 0` cost 21 steps, `add 2 0` cost 33, `add 10 0` cost 129 and
+/// `add 100 0` cost 1,209 — the four numbers below, byte for byte. A hand charge
+/// that drifted from what the frames charged would be a silent acceptance
+/// change, and this is what notices.
+///
+/// So the wall moved from a depth to a length: at the language budget's 200,000
+/// steps the last count that answers is 16,665, where the frame-based evaluator
+/// stopped at 105.
+#[test]
+fn a_recursion_costs_the_same_steps_the_frames_charged() {
+    let (cx, nat) = nat();
+    for (calls, steps) in [(1_u64, 21_u64), (2, 33), (10, 129), (100, 1_209)] {
+        let term = musa_calculus::check(&cx, &nat, &adding(calls)).expect("a call elaborates");
+        let (_, spend) = musa_calculus::normalize_metered(&cx, &nat, &term).expect("and runs");
+        assert_eq!(spend.steps, steps, "add {calls} 0");
+        assert_eq!(spend.steps, 9 + 12 * calls, "add {calls} 0 against the closed form");
+    }
+
+    let past = musa_calculus::check(&cx, &nat, &adding(20_000)).expect("twenty thousand calls elaborate");
+    match musa_calculus::normalize(&cx, &nat, &past) {
+        Err(CoreError::Exhausted(error)) => {
+            assert_eq!(
+                error.metric,
+                Metric::Steps,
+                "a recursion runs out of work, not of depth"
+            );
+            assert_eq!(error.limit, Budget::LANGUAGE.steps());
+        }
+        other => panic!("expected a step refusal, got {other:?}"),
+    }
+}
+
 /// [`Budget::NESTING`], as the `u32` a term's depth is counted in.
 const NESTING_LIMIT: u32 = if Budget::NESTING > u32::MAX as u64 {
     u32::MAX
@@ -279,15 +424,24 @@ fn on_the_smallest_host(law: impl FnOnce() + Send) {
     assert!(ran, "the law never ran");
 }
 
-/// `let z : Type 0 = Type 0 in … Type 0`, nested `depth` deep.
+/// `let z : Type 0 = (let z : Type 0 = … in Type 0) in Type 0`, nested `depth`
+/// deep **in the value**.
 ///
 /// A `let` is the cheapest term that costs one nesting level and one step
 /// without needing a context, which is what makes it the right shape for
 /// measuring the meter rather than the language.
+///
+/// The nest is in the value and not in the body because those are two different
+/// measurements now that the evaluator carries its own control stack. A `let`'s
+/// body is its *tail*: the value is already computed when the body is entered,
+/// so nothing of the enclosing term is still being descended into and the level
+/// is given back — a chain of a million lets in body position is a loop, and
+/// costs one level. The value is the descent, so it is the shape that measures
+/// depth.
 fn nested_lets(depth: u32) -> Term {
     let type0 = Term::universe(HERE, Sort::ZERO);
-    (0..depth).fold(type0.clone(), |body, _| {
-        Term::bind(HERE, "z", type0.clone(), type0.clone(), body)
+    (0..depth).fold(type0.clone(), |value, _| {
+        Term::bind(HERE, "z", type0.clone(), value, type0.clone())
     })
 }
 

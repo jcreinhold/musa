@@ -76,6 +76,32 @@ impl<T> List<T> {
     }
 }
 
+/// Reclaiming a list without one host frame per cell.
+///
+/// A cons chain's derived destructor is a recursion: freeing a cell frees its
+/// `rest`, which frees the next cell, so a context of ten thousand binders is
+/// ten thousand host frames spent on *freeing* it. That is the same defect as
+/// an evaluator written on the host's stack, arriving at the other end of a
+/// value's life, and it is repaired the same way — the pending work becomes a
+/// variable rather than a frame. Peyton Jones ch. 17 §17.2 is the observation
+/// behind it: reclamation is a traversal, and a traversal of a deep structure
+/// may not be written as host calls.
+///
+/// Nothing about ownership changes. Each cell is freed exactly when the last
+/// handle to it goes, in the same order; a cell that is still shared stops the
+/// walk, because everything beyond it is still reachable.
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        let mut next = self.0.take();
+        while let Some(shared) = next {
+            let Some(mut cell) = Arc::into_inner(shared) else {
+                break;
+            };
+            next = cell.rest.0.take();
+        }
+    }
+}
+
 /// [`List::iter`]'s iterator.
 pub(crate) struct Iter<'a, T>(Option<&'a Cell<T>>);
 

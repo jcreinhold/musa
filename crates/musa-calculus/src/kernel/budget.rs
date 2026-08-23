@@ -55,11 +55,14 @@ pub enum Metric {
     /// `docs/notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md`
     /// and prompt 165b.
     ///
-    /// A third quantity is still charged here and does not belong either:
-    /// a recursive call is evaluated inside the enclosing evaluation and holds
-    /// its level until the call beneath it finishes, so the counter bounds how
-    /// many times a definition may call itself as well as how deeply a term is
-    /// written. That is prompt 165a's to retire; see [`Budget::NESTING`].
+    /// A third quantity was charged here until prompt 165a and is not: a
+    /// recursive call used to be evaluated inside the enclosing evaluation and
+    /// to hold its level until the call beneath it finished, so one counter
+    /// bounded how many times a definition may call itself as well as how
+    /// deeply a term is written. The evaluator carries its own control stack
+    /// now, so a call is [`Self::Steps`] and nothing else — measured, `add`
+    /// three thousand deep runs inside three nesting levels. See
+    /// [`Budget::NESTING`].
     Nesting,
 }
 
@@ -94,23 +97,34 @@ impl Budget {
     /// written for — `quote` walks a value the way `eval` walks a term — so
     /// this limit bounds both.
     ///
-    /// **320 since prompt 155a, raised from 256.** The counter charges
-    /// recursion as well as term depth, because a recursive call is evaluated
-    /// inside the enclosing `eval` and holds its level until the steps beneath
-    /// it finish — one number deciding two unrelated questions, which predates
-    /// case trees. What 155a changed is the price: bisected, a recursive call
-    /// cost about 2.5 levels through the generated recursor and costs about
-    /// 3.0 through a compiled tree, and the staff adapter's peak moved from at
-    /// most 240 levels to at most 272, out of 256.
+    /// **320 since prompt 155a, and it now measures one quantity rather than
+    /// two.** Until prompt 165a a recursive call was evaluated inside the
+    /// enclosing `eval` and held its level until the steps beneath it
+    /// finished, so this number decided how many times a definition may call
+    /// itself as well as how deeply a term is written — bisected, about three
+    /// levels a call, which is why 155a had to raise it from 256 and why note
+    /// 54 could show there was no third raise available. The evaluator carries
+    /// its own control stack now. A recursion is charged [`Metric::Steps`],
+    /// which is the metric that prices work, and this one is back to the
+    /// structural descent §4.1 derives it from.
     ///
-    /// Bounded above as well as below. A limit has to be *reachable*: the
-    /// language's step budget cannot afford a term deeper than 363
-    /// constructors, so at 363 a tower that deep is refused for steps rather
-    /// than for nesting, and the two laws that hold §4.1's room obligation to
-    /// account stop being statable at the language budget. 320 takes the
-    /// middle of `272 < n <= 362`. Argued in §4.1 and derived in
-    /// `docs/notes/research/language-design-closure/54-the-nesting-limit.md`;
-    /// prompt 165a retires the conflation rather than moving it again.
+    /// **Re-earned on the measurement rather than inherited.** `add` recursing
+    /// three thousand times peaks at three nesting levels and answers under a
+    /// budget of eight; `stdlib/src/adapters/staff.musa` peaks at 62, the same
+    /// 62 for a region of nothing, of one item, of three, of four, and for
+    /// `examples/staff-page.musa`'s 77 lines — a number that is the depth of
+    /// the adapter's own source and does not move with what it reads. Against
+    /// 62 the limit is five times what the corpus needs.
+    ///
+    /// **So why not lower it.** Because the limit is not only a cost-table
+    /// entry: §4.1's room obligation derives the stack from it, and the
+    /// elaborator's `check` and `infer` still stand inside one another charged
+    /// nothing at all (prompt 165). While that is true this number is the only
+    /// thing keeping a deeply written term a refusal instead of an abort, and
+    /// lowering it lowers the room in step. Charging that recursion is what
+    /// makes a smaller limit arguable; until then, moving it would be a
+    /// cost-table version bump paid for nothing. Argued in §4.1 and derived in
+    /// `docs/notes/research/language-design-closure/54-the-nesting-limit.md`.
     pub const NESTING: u64 = 320;
 
     /// The language budget.
@@ -188,6 +202,39 @@ impl Budget {
             quoted_nodes: nodes,
             ..self
         }
+    }
+
+    /// This budget with at most `levels` of nesting allowed.
+    ///
+    /// The one metric that is a *depth* rather than a total, narrowed on its
+    /// own so that a law can say what a run's peak depth was without the meter
+    /// exposing a high-water mark it otherwise has no reason to keep. A run
+    /// that answers under this budget never stood more than `levels` deep, and
+    /// that is the whole of what the accessor is for: prompt 165a took
+    /// recursion off this metric, and the statement it owes is that a
+    /// definition calling itself three thousand times still peaks at the depth
+    /// of the *term*, which is a small number.
+    ///
+    /// Not a knob the compiler turns, for [`Self::scaled`]'s reason: the
+    /// pipeline runs at [`Self::LANGUAGE`] and a budget the caller could lower
+    /// would make acceptance a property of the invocation.
+    #[must_use]
+    pub const fn nesting(self, levels: u64) -> Self {
+        Self {
+            nesting: levels,
+            ..self
+        }
+    }
+
+    /// How many reduction steps this budget allows (§4's cost table).
+    ///
+    /// Read by the laws that state a refusal names its limit: §4 requires a
+    /// diagnostic to name "the operation, metric, attempted amount, and limit",
+    /// and a law checking that the message says so has to know the number
+    /// without writing it down a second time.
+    #[must_use]
+    pub const fn steps(self) -> u64 {
+        self.steps
     }
 
     /// The language budget with every limit divided by `divisor`.
@@ -342,6 +389,45 @@ impl Meter {
         let value = body(self);
         self.nesting = self.nesting.saturating_sub(1);
         value
+    }
+
+    /// Charge one evaluation level, with nothing to give it back.
+    ///
+    /// [`Self::nested`]'s pair, for a caller that keeps its pending work as
+    /// data rather than as host frames and so has no scope to hang the release
+    /// on: `kernel::eval`'s control stack releases the level when the frame
+    /// that took it is popped. A caller with a scope should use
+    /// [`Self::nested`], which cannot forget.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::Exhausted`] at the nesting limit.
+    pub(crate) fn enter(&mut self, operation: &'static str) -> Result<(), CoreError> {
+        self.nesting = self.charge(Metric::Nesting, operation, self.nesting)?;
+        Ok(())
+    }
+
+    /// Give one evaluation level back.
+    pub(crate) fn leave(&mut self) {
+        self.nesting = self.nesting.saturating_sub(1);
+    }
+
+    /// How far in the current evaluation stands.
+    pub(crate) const fn level(&self) -> u64 {
+        self.nesting
+    }
+
+    /// Stand at `level` again.
+    ///
+    /// The *dump* of Peyton Jones ch. 18 §18.8, as a number rather than as a
+    /// second stack: a nested evaluation — a λ body opened, a case arm chosen —
+    /// is a new term, and §4.1 measures how deeply a term is written. So the
+    /// enclosing depth is saved when one begins and stood at again when it
+    /// ends, which is what keeps a definition's own recursion off a metric
+    /// derived from structure. `kernel::eval`'s `Frame::Dump` is the only
+    /// caller and it saves with [`Self::level`].
+    pub(crate) const fn at(&mut self, level: u64) {
+        self.nesting = level;
     }
 
     /// What this meter has charged so far.

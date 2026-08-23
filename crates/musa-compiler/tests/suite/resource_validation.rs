@@ -38,6 +38,17 @@
 //! would keep the name and drop the subject; the shortfall is recorded where
 //! a reader will find it instead.
 //!
+//! **Prompt 165a named that descent and closed it, and both laws below moved
+//! with it.** It was the destructor. A value is a tree of `Arc`s and Rust's
+//! derived drop walks it with the host's stack, so freeing a list of a few
+//! thousand elements was a few thousand host frames with no musa frame among
+//! them — which is why no charge could see it and why the room it filled was
+//! whatever the room happened to be. `musa-calculus`'s `Neutral` reclaims its
+//! spine with an explicit worklist now. What is left is the metric that was
+//! always supposed to bind: a recursive call is [`Metric::Steps`] rather than
+//! nesting levels, and a list too long to build is refused at 200,000
+//! reduction steps.
+//!
 //! `monomorphization_has_its_own_finite_limit` is gone, and not quietly. It
 //! asserted that 2,049 declarations reading one prelude generic are refused at
 //! `WorkMeter`'s 2,048 "monomorphized prelude instances". They are accepted
@@ -77,11 +88,11 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
 /// threshold: a small aggregate is accepted, a larger one is *refused* — named,
 /// with its metric, attempted amount, and limit — and a refused compilation has
 /// no snapshot, so exhaustion publishes neither a partial value nor a partial
-/// score. Both counts are deliberately small. Sixty is near the largest list
-/// the nesting limit admits and five hundred is well inside the range where the
-/// refusal still arrives, which is the honest width of this law today and is
-/// why the number it does not reach is recorded above rather than asserted
-/// here.
+/// score. Neither count is small any more. Eight thousand elements is two
+/// orders of magnitude past the sixty the nesting limit used to admit, and
+/// fifty thousand is past the step budget by a factor of three; prompt 165a is
+/// what moved both, and the count that is now unreachable is recorded above
+/// rather than asserted here.
 ///
 /// The metric and the limit are read out of the message because that is where
 /// the new core puts them: a `ResourceLimit` from `musa-calculus` arrives with no
@@ -93,10 +104,10 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
 /// is asserted here as it is rather than as it should be.
 #[test]
 fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
-    let accepted = compile_declarations("let values: List<Nat> = range(60);");
+    let accepted = compile_declarations("let values: List<Nat> = range(8000);");
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
-    let refused = compile_declarations("let values: List<Nat> = range(500);");
+    let refused = compile_declarations("let values: List<Nat> = range(50000);");
     let diagnostic = refused
         .diagnostics()
         .iter()
@@ -105,12 +116,35 @@ fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
         panic!("a list past the budget is refused: {:?}", refused.diagnostics())
     };
     assert!(
-        found.message.contains("nested evaluation levels")
-            && found.message.contains(&musa_calculus::Budget::NESTING.to_string()),
+        found.message.contains(musa_calculus::Metric::Steps.name())
+            && found
+                .message
+                .contains(&musa_calculus::Budget::LANGUAGE.steps().to_string()),
         "the refusal names its metric and limit: {}",
         found.message
     );
     assert!(refused.snapshot().is_none());
+}
+
+/// §4.1's third outcome does not come back at the other end of a value's life.
+///
+/// The accepted half above is also a law about *freeing* eight thousand list
+/// cells, and it is stated separately because it fails differently: not as a
+/// wrong answer or a missing diagnostic but as `fatal runtime error: stack
+/// overflow`, with the whole process gone. A `Value` is a tree of `Arc`s, and
+/// while nesting refused every list past about sixty nobody could reach a value
+/// deep enough for its destructor to matter. Prompt 165a made those lists
+/// compile, and measured on the way: `range(4000)` compiled and `range(4500)`
+/// aborted, in `drop_glue<Value>`, with no musa frame on the stack.
+///
+/// The count is the same eight thousand, deliberately — a widening that is paid
+/// for with a crash is not a widening, and the two halves are one claim seen
+/// twice.
+#[test]
+fn a_value_deeper_than_the_host_stack_is_freed_rather_than_aborting() {
+    let built = compile_declarations("let values: List<Nat> = range(8000);");
+    assert!(!built.has_errors(), "{:?}", built.diagnostics());
+    drop(built);
 }
 
 #[test]

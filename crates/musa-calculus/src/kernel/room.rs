@@ -24,10 +24,13 @@
 //! differ in that either.
 //!
 //! **What it does not repair.** The room is derived from the nesting limit, so
-//! it bounds the stack only where the *charge* tracks the descent. Through
-//! `eval` and `quote` it does, at every depth: a chain of `let` a thousand deep
-//! is refused one level past the limit, because those two charge as they
-//! descend.
+//! it bounds the stack only where the *charge* tracks the descent. Through the
+//! traversal and `quote` it does, at every depth, because those two charge as
+//! they descend. Through `eval` the question no longer arises: prompt 165a gave
+//! the evaluator an explicit control stack, so its pending work is heap data
+//! and its depth costs no host frames at all — what a `let` chain a thousand
+//! deep now meets is the *step* budget, and only a chain nested in the values
+//! rather than in the bodies is a descent at all.
 //! Through the elaborator it does not. `Elaborator::check` and
 //! `Elaborator::infer` stand inside one another and are charged nothing, and
 //! they reach the bottom of a raw term before the values on the way back up
@@ -60,28 +63,31 @@ use crate::kernel::budget::Budget;
 /// *reached*. §4.1 says as much — shrinking it is free and changes nothing
 /// normative, while raising the *limit* is a cost-table version bump.
 ///
-/// Measured on the chain real programs drive, `infer → check → eval → quote`,
-/// rather than on `eval` recursing into itself — which is what the ~2 KiB note
-/// above `eval.rs`'s `fn pi` measures, and why that number reads five times too
-/// low for a program. A 256-level constructor tower elaborates on a thread of
-/// 2,560 KiB and overflows one of 2,304 KiB, so a level costs under 10 KiB in a
-/// debug build on arm64; the same tower wants between 512 and 768 KiB in a
-/// release build, under 3 KiB a level. A chain of `let` measures the same, and
-/// `eval` and `quote` alone measure under 4 KiB.
+/// **Re-measured at prompt 165a, and it went up.** The evaluator no longer
+/// descends on the host's stack, so a nesting level is no longer bought mostly
+/// by `eval` frames costing about 2 KiB each. It is bought by the descents that
+/// remain — §5.9's traversal, `quote`, and the elaborator's own uncharged
+/// `check`/`infer` — and those cost far more per level, so the *same* limit
+/// now needs three or four times the room. The counter got scarcer and each
+/// unit of it got more expensive; the product is what this constant tracks.
 ///
-/// The ceiling is a little over three times the debug measurement, because it
-/// has to hold for the deepest chain in the crate on targets and future arms
-/// nobody has measured. To re-measure, replace the room below with a fixed size
-/// and halve it until the law aborts rather than refuses:
+/// Measured by holding [`Budget::NESTING`] at 320 and bisecting this constant
+/// until the deepest law aborts rather than refuses. In a debug build on arm64
+/// the wall is between 60 and 64 KiB a level — 320 × 60 KiB overflows and
+/// 320 × 64 KiB does not — and in a release build between 8 and 16 KiB, the
+/// same four-to-one ratio the previous measurement found. The deepest law is
+/// `musa-compiler`'s `a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal`,
+/// which drives the traversal, rather than either of the two in `budget_laws.rs`:
 ///
 /// ```sh
-/// cargo nextest run -p musa-calculus -E 'test(elaborating_a_term_nested)'
-/// cargo nextest run -p musa-calculus --cargo-profile release -E 'test(elaborating_a_term_nested)'
+/// env -u RUST_MIN_STACK cargo nextest run -p musa-calculus -p musa-compiler -E 'test(nested_past_the_limit) or test(a_region_deeper_than_the_budget_allows)'
+/// env -u RUST_MIN_STACK cargo nextest run --cargo-profile release -p musa-calculus -p musa-compiler -E 'test(nested_past_the_limit) or test(a_region_deeper_than_the_budget_allows)'
 /// ```
 ///
-/// `budget_laws.rs`'s `elaborating_a_term_nested_past_the_limit_is_refused` is
-/// what notices when this stops being true, and it notices by aborting.
-const FRAME_CEILING: u64 = 32 * 1024;
+/// 128 KiB is a little over twice the debug wall, because it has to hold on
+/// targets and future arms nobody has measured. Those laws are what notice when
+/// it stops being true, and they notice by aborting.
+const FRAME_CEILING: u64 = 128 * 1024;
 
 thread_local! {
     /// Whether this thread is one [`with_room`] already made.

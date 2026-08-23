@@ -117,6 +117,21 @@ was built — and a definition's body is still opened to weak-head form once at 
 the two laws the design owes: a body is paid for once however many uses it has, and a folded comparison's spend does not
 measure the definition's normal form.
 
+**The evaluator is a machine, since prompt 165a.** `kernel/eval.rs` is a `Step`/`Frame` loop rather than a set of
+mutually recursive functions: `Frame` is the eleven shapes of pending work — an argument to evaluate, a function waiting
+for one, a spine to replay, a memo cell to fill, an induction hypothesis to run — and `Frame::Dump` is Peyton Jones ch.
+18 §18.8's saved level, pushed whenever the machine enters a *different* term so that the depth measured is the depth of
+one term. Nesting is charged only on the non-tail descents (`Frame::Argument`, `Frame::Body`, `Frame::Codomain`) and
+given back at the tail; a recursion is charged steps. The public shape of the module did not move: `eval`, `force`,
+`opened`, `unfold_spine`, `apply`, `applying`, `apply_closure`, `neutral_type` and `head_type` have the signatures they
+had. `family::iota` decides without evaluating and returns a `Fired`, and `Compiled::reduce` answers a `Matched` rather
+than evaluating a body, so that both feed the machine instead of re-entering it.
+
+Reclamation is a machine too, and for the same reason: `Neutral`'s `Drop` dismantles its spine with a worklist
+(`kernel/value.rs`) and `List`'s frees its cells in a loop (`kernel/list.rs`), because Rust's derived drop is one host
+frame per level of a value and a list of a few thousand elements aborted the process in `drop_glue<Value>` once the
+nesting limit stopped refusing it. Nothing about ownership changes; a still-shared child stops the walk.
+
 **And the unfold is recorded, since prompt 165b.** `Neutral` carries an `Option<Arc<OnceLock<(u64, Value)>>>`, allocated
 only for the one head shape that unfolds, filled by the first consumer that forces it and read by every later one. That
 is Peyton Jones ch. 12 §12.4's update of a shared redex's root, on a value shared by `Arc` rather than by a pointer into
@@ -129,17 +144,20 @@ and being wrong costs only the work being done again. `kernel::eval`'s own test 
 ### §4.1's second half, discharged at the facade seam
 
 `room.rs` runs every entry point — `check`, `infer`, `normalize`, `normalize_type`, `convertible`, `convertible_types`,
-the four `declare` doors, `Cx::assume`/`define` — on a scoped thread of `NESTING × FRAME_CEILING` bytes, 8 MiB, derived
+the four `declare` doors, `Cx::assume`/`define` — on a scoped thread of `NESTING × FRAME_CEILING` bytes, 40 MiB, derived
 from the published limit rather than picked. The wasm shell, and a host that will not give a thread, fall back to the
 caller's own stack.
 
 The budget does not move with it, so every host accepts and refuses the same programs and they differ only in what they
-survive. `FRAME_CEILING` is 32 KiB against a measured 10 KiB a level in a debug build on arm64 for the
-`infer → check → eval → quote` chain, and under 3 KiB in a release build.
+survive. `FRAME_CEILING` is 128 KiB since prompt 165a, against a measured 60–64 KiB a level in a debug build on arm64
+and 8–16 KiB in a release build. It went *up* when the evaluator's frames went away: a level used to be bought mostly by
+`eval` standing inside itself at about 2 KiB a frame, and is now bought by §5.9's traversal, by `quote`, and by the
+elaborator's uncharged descent, which cost far more each. The command that produced the number is beside the constant.
 
-It bounds what the *charge* bounds: `eval` and `quote` charge as they descend and are refused at any depth, while the
-elaborator's own recursion is charged nothing and reaches the bottom of a raw term before anything is charged — so a
-term far past the limit, 1,256 levels of raw `let`, measured, still aborts.
+It bounds what the *charge* bounds: the traversal and `quote` charge as they descend and are refused at any depth, while
+the elaborator's own recursion is charged nothing and reaches the bottom of a raw term before anything is charged — so a
+term far past the limit, 1,256 levels of raw `let`, measured, still aborts. `eval` is no longer on either side of that
+sentence: prompt 165a made its pending work heap data, so it spends no host frames at depth at all.
 
 **Owes.** Prompt 165: the elaborator's nesting charge and the spine walk that lets 256 stay 256, plus approximate
 conversion (note 44 §7; §6's glued evaluation landed at 141u). Prompt 169: the metatheory matrix.

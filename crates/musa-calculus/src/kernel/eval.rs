@@ -27,12 +27,14 @@
 //! the machine a second way to stand inside itself, and a total language may
 //! refuse but may not crash.
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::kernel::base::{Answer, Builtin, Datum};
 use crate::kernel::budget::Meter;
+use crate::kernel::case_tree::Matched;
 use crate::kernel::context::Globals;
 use crate::kernel::error::{CoreError, Malformed};
+use crate::kernel::family::{Fired, Pending, Reduction};
 use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
@@ -46,73 +48,375 @@ use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neu
 /// [`CoreError::Exhausted`] at a budget limit, [`CoreError::Malformed`] when
 /// the term's shape makes the next step meaningless.
 pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, CoreError> {
-    meter.nested("evaluation", |meter| {
-        meter.step("evaluation")?;
-        let here = term.origin();
-        match term.shape() {
-            Shape::Var(index) => env
-                .get(index.0)
-                .cloned()
-                .ok_or_else(|| Malformed::UnboundVariable(*index).into()),
-            // An unknown stands for a whole occurrence, spine and all: it is
-            // closed, and §2.1 writes it `?m[σ]` — applied to the scope it may
-            // mention (`kernel::meta`). The spine is *not* in the term, and
-            // reading it out of the environment here is the reason. A term
-            // moves: it is placed under further binders, put in a closure, and
-            // evaluated again in whatever environment that closure was built
-            // in. A spine written as indices would have to be shifted each
-            // time, which is the substitution this crate does not have; a spine
-            // read from the environment by *level* names the same binders
-            // wherever the term ends up, because every environment a term is
-            // re-read in extends the one it was written in.
-            Shape::Meta(meta) => occurrence(meter, env, here, meta),
-            // Resolved on the way in, so a value carries the level its arms
-            // have already been solved to rather than the one written first.
-            Shape::Universe(level) => Ok(Value::new(here, Form::Universe(level.clone()))),
-            // §1's one name node, resolved through the context (§6). What the
-            // name reduces to is the table's answer and not the term's, which
-            // is the whole of this arm.
-            Shape::Named { name, role, levels } => named(meter, env, here, name, role, levels),
-            // Nothing to do, and that is the point: a numeral of 384 is one node
-            // here, so evaluating it charges one step and one nesting level
-            // rather than 384 of each.
-            Shape::Lit(Constant::Payload(literal)) => Ok(Value::new(here, Form::Lit(literal.clone()))),
-            Shape::Lit(Constant::Numeral(numeral)) => Ok(Value::new(here, Form::Numeral(numeral.clone()))),
-            // §1's one binder node, read three ways. The written form shares a
-            // constructor; the value forms do not, because a Π and a λ are told
-            // apart by what eliminates them and nothing eliminates a `let`.
-            Shape::Bind { name, binder, body } => match binder {
-                Binder::Pi { filling, ty } => pi(meter, env, here, filling.clone(), name, ty, body),
-                Binder::Lam => Ok(Value::new(
-                    here,
-                    Form::Lam(Closure {
-                        env: env.clone(),
-                        body: body.clone(),
-                    }),
-                )),
-                Binder::Let { ty: _, value } => binding(meter, env, value, body),
+    run(meter, Step::Term(env.clone(), term.clone()))
+}
+
+/// What the evaluator does next.
+///
+/// Three of the four are a value arriving somewhere; the first is the only one
+/// that reads a term. Together with [`Frame`] they are the evaluator's whole
+/// state, which is the point — see [`run`].
+enum Step {
+    /// Evaluate this term in this environment.
+    Term(Env, Term),
+    /// Hand this value to the frame on top of the control stack, or answer with
+    /// it when there is none.
+    Value(Value),
+    /// Apply `function` to `argument`, with the bookkeeping charge already made
+    /// (or deliberately not made — see [`applying`]).
+    Apply {
+        here: Origin,
+        function: Value,
+        argument: Value,
+    },
+    /// Look through this value's head: solved metavariables always, folded
+    /// definitions when `definitions`.
+    Open { value: Value, definitions: bool },
+}
+
+/// One piece of work the evaluator is in the middle of.
+///
+/// # Why this is data and not a Rust frame
+///
+/// `docs/rules/language/02-core-calculus.md` §4.1 derives the nesting metric
+/// from how deeply a *term* is written and how far `quote` descends over a
+/// value. Neither clause mentions recursion, and a tree-walking evaluator
+/// charges it anyway: `f` calling itself is evaluated *inside* the enclosing
+/// evaluation, so the enclosing level is held until the steps beneath it
+/// finish, and one number then decides both how deeply a composer may write a
+/// term and how many times a definition may call itself. Prompt 165a retires
+/// that, and the only way to retire it is to stop spending host stack on the
+/// recursion: a charge removed without the frames removed would turn a refusal
+/// into an abort, which is the one outcome §4 does not have.
+///
+/// So the pending work lives here. Peyton Jones ch. 11 §11.6 is the shape —
+/// the applications a reducer is in the middle of are a stack in the machine's
+/// own store rather than a chain of host frames — and ch. 18 §18.8's *dump* is
+/// the second half, a nested evaluation returning without a host call. Musa
+/// needs neither the graph nor the thunk that come with them: the core is
+/// strict, finite and total, so what transfers is the control state and
+/// nothing else.
+///
+/// **What bounds it.** Every frame pushed is pushed on the way through
+/// [`Step::Term`] or an elimination, and both charge the step meter, so a
+/// runaway recursion is exhausted at `reduction steps` — the counter that
+/// measures work done, which is what a recursion spends. The stack is heap
+/// memory bounded by that count, not host stack bounded by nothing.
+enum Frame {
+    /// A nested evaluation is running; this is the level the enclosing one
+    /// stands at, to be stood at again when the nested one answers.
+    ///
+    /// Peyton Jones ch. 18 §18.8's *dump*. See [`Meter::at`].
+    Dump { level: u64 },
+    /// An application whose function is being evaluated; its argument waits.
+    Argument { env: Env, argument: Term, here: Origin },
+    /// An application whose argument is being evaluated; its function waits.
+    Applied { function: Value, here: Origin },
+    /// A `let` whose value is being evaluated; its body waits.
+    Body { env: Env, body: Term },
+    /// A Π whose domain is being evaluated; its codomain waits.
+    Codomain {
+        env: Env,
+        here: Origin,
+        filling: Filling,
+        name: Name,
+        codomain: Term,
+    },
+    /// The incoming value is a function; apply it to what is left here, last
+    /// entry first. `charged` is whether each application is charged a step —
+    /// false for a definition's spine being replayed, whose eliminations were
+    /// charged when they entered the spine.
+    Spine {
+        pending: Vec<(Origin, Value)>,
+        charged: bool,
+    },
+    /// The incoming value came through one δ or one solved metavariable; keep
+    /// looking through it until its head is neither.
+    ///
+    /// `forced` records that the value arriving is a metavariable *replay*, so
+    /// that a second one in a row is charged `forcing` and the first is not —
+    /// which is what the recursive `force` charged.
+    Opening { forced: bool, definitions: bool },
+    /// The incoming value is what a definition's spine replayed to; record it
+    /// on the neutral that asked, so the replay happens once.
+    Unfolding {
+        cell: Arc<OnceLock<(u64, Value)>>,
+        stamp: u64,
+    },
+    /// The incoming value is `built`'s last argument, opened; decide what the
+    /// elimination does now that it can be looked at.
+    Eliminating { built: Neutral },
+    /// The incoming value is a recursor's method applied to the constructor's
+    /// fields; the induction hypotheses are still to come.
+    Hypotheses { reduction: Box<Reduction>, here: Origin },
+    /// The same, with the hypotheses already assembled and `pending` the ones
+    /// left, last first.
+    Hypothesis { pending: Vec<Pending>, here: Origin },
+}
+
+/// Run the machine until the control stack is empty.
+///
+/// # Errors
+///
+/// [`CoreError::Exhausted`] at a budget limit, [`CoreError::Malformed`] when
+/// the term's shape makes the next step meaningless.
+fn run(meter: &mut Meter, start: Step) -> Result<Value, CoreError> {
+    running(meter, Vec::new(), start)
+}
+
+/// [`run`] with work already on the stack, for an entry point that is handed a
+/// spine rather than a term.
+///
+/// # Errors
+///
+/// As [`run`].
+fn running(meter: &mut Meter, mut stack: Vec<Frame>, start: Step) -> Result<Value, CoreError> {
+    let mut step = start;
+    loop {
+        step = match step {
+            Step::Term(env, term) => evaluating(meter, &mut stack, &env, &term)?,
+            Step::Apply {
+                here,
+                function,
+                argument,
+            } => applied(meter, &mut stack, here, function, argument)?,
+            Step::Open { value, definitions } => {
+                stack.push(Frame::Opening {
+                    forced: false,
+                    definitions,
+                });
+                Step::Value(value)
+            }
+            Step::Value(value) => match stack.pop() {
+                None => return Ok(value),
+                Some(frame) => resumed(meter, &mut stack, frame, value)?,
             },
-            Shape::App { function, argument } => application(meter, env, here, function, argument),
+        };
+    }
+}
+
+/// One term, read (§1) — the seven shapes, and what each one does next.
+fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term) -> Result<Step, CoreError> {
+    meter.step("evaluation")?;
+    let here = term.origin();
+    Ok(match term.shape() {
+        Shape::Var(index) => Step::Value(
+            env.get(index.0)
+                .cloned()
+                .ok_or_else(|| CoreError::from(Malformed::UnboundVariable(*index)))?,
+        ),
+        // An unknown stands for a whole occurrence, spine and all: it is
+        // closed, and §2.1 writes it `?m[σ]` — applied to the scope it may
+        // mention (`kernel::meta`). The spine is *not* in the term, and
+        // reading it out of the environment here is the reason. A term
+        // moves: it is placed under further binders, put in a closure, and
+        // evaluated again in whatever environment that closure was built
+        // in. A spine written as indices would have to be shifted each
+        // time, which is the substitution this crate does not have; a spine
+        // read from the environment by *level* names the same binders
+        // wherever the term ends up, because every environment a term is
+        // re-read in extends the one it was written in.
+        Shape::Meta(meta) => occurrence(stack, env, here, meta)?,
+        // Resolved on the way in, so a value carries the level its arms
+        // have already been solved to rather than the one written first.
+        Shape::Universe(level) => Step::Value(Value::new(here, Form::Universe(level.clone()))),
+        // §1's one name node, resolved through the context (§6). What the
+        // name reduces to is the table's answer and not the term's, which
+        // is the whole of this arm.
+        Shape::Named { name, role, levels } => Step::Value(named(meter, env, here, name, role, levels)?),
+        // Nothing to do, and that is the point: a numeral of 384 is one node
+        // here, so evaluating it charges one step rather than 384.
+        Shape::Lit(Constant::Payload(literal)) => Step::Value(Value::new(here, Form::Lit(literal.clone()))),
+        Shape::Lit(Constant::Numeral(numeral)) => Step::Value(Value::new(here, Form::Numeral(numeral.clone()))),
+        // §1's one binder node, read three ways. The written form shares a
+        // constructor; the value forms do not, because a Π and a λ are told
+        // apart by what eliminates them and nothing eliminates a `let`.
+        Shape::Bind { name, binder, body } => match binder {
+            Binder::Pi { filling, ty } => {
+                meter.enter("evaluation")?;
+                stack.push(Frame::Codomain {
+                    env: env.clone(),
+                    here,
+                    filling: filling.clone(),
+                    name: Arc::clone(name),
+                    codomain: body.clone(),
+                });
+                Step::Term(env.clone(), ty.clone())
+            }
+            Binder::Lam => Step::Value(Value::new(
+                here,
+                Form::Lam(Closure {
+                    env: env.clone(),
+                    body: body.clone(),
+                }),
+            )),
+            Binder::Let { ty: _, value } => {
+                meter.enter("evaluation")?;
+                stack.push(Frame::Body {
+                    env: env.clone(),
+                    body: body.clone(),
+                });
+                Step::Term(env.clone(), value.clone())
+            }
+        },
+        Shape::App { function, argument } => {
+            meter.enter("evaluation")?;
+            stack.push(Frame::Argument {
+                env: env.clone(),
+                argument: argument.clone(),
+                here,
+            });
+            Step::Term(env.clone(), function.clone())
         }
     })
 }
 
+/// A value arriving at the frame that was waiting for it.
+fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value) -> Result<Step, CoreError> {
+    Ok(match frame {
+        Frame::Dump { level } => {
+            meter.at(level);
+            Step::Value(value)
+        }
+        Frame::Argument { env, argument, here } => {
+            stack.push(Frame::Applied { function: value, here });
+            Step::Term(env, argument)
+        }
+        Frame::Applied { function, here } => {
+            // The application itself is a tail transition of this node: both
+            // subterms are values, so nothing of this term is still being
+            // descended into and the level goes back before the application
+            // runs. Peyton Jones ch. 21's tail case, at an application rather
+            // than at a call.
+            meter.leave();
+            meter.step("function application")?;
+            Step::Apply {
+                here,
+                function,
+                argument: value,
+            }
+        }
+        Frame::Body { env, body } => {
+            // The same: a `let`'s body is its tail, so the level the value was
+            // evaluated under is given back before the body is entered.
+            meter.leave();
+            Step::Term(env.push(value), body)
+        }
+        Frame::Codomain {
+            env,
+            here,
+            filling,
+            name,
+            codomain,
+        } => {
+            meter.leave();
+            Step::Value(Value::new(
+                here,
+                Form::Pi {
+                    filling,
+                    name,
+                    domain: Arc::new(value),
+                    codomain: Closure { env, body: codomain },
+                },
+            ))
+        }
+        Frame::Spine { pending, charged } => spined(meter, stack, pending, charged, value)?,
+        Frame::Opening { forced, definitions } => opening(meter, stack, value, forced, definitions)?,
+        Frame::Unfolding { cell, stamp } => {
+            // `set` fails only where the cell already holds an answer at a
+            // stamp this one is not reading, which is a memo that has gone
+            // stale and stays stale. Recomputing is what the miss already
+            // decided.
+            drop(cell.set((stamp, value.clone())));
+            Step::Value(value)
+        }
+        Frame::Eliminating { built } => eliminated(meter, stack, built, Some(&value))?,
+        Frame::Hypotheses { reduction, here } => {
+            let mut pending = crate::kernel::family::hypotheses(meter, &reduction)?;
+            pending.reverse();
+            hypothesis(meter, stack, pending, here, value)?
+        }
+        Frame::Hypothesis { pending, here } => hypothesis(meter, stack, pending, here, value)?,
+    })
+}
+
+/// The incoming value is a function; apply it to the next waiting argument.
+fn spined(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    mut pending: Vec<(Origin, Value)>,
+    charged: bool,
+    function: Value,
+) -> Result<Step, CoreError> {
+    let Some((here, argument)) = pending.pop() else {
+        return Ok(Step::Value(function));
+    };
+    if !pending.is_empty() {
+        stack.push(Frame::Spine { pending, charged });
+    }
+    if charged {
+        meter.step("function application")?;
+    }
+    Ok(Step::Apply {
+        here,
+        function,
+        argument,
+    })
+}
+
+/// One induction hypothesis, or the answer when there are none left.
+///
+/// `answer` is the method applied to everything before this hypothesis. A
+/// hypothesis the method provably never names is not computed — see
+/// [`unread`](crate::kernel::family::unread) — and one it does name is the
+/// recursor at the field, which is the descent, and which goes on the stack
+/// rather than on a host frame.
+fn hypothesis(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    mut pending: Vec<Pending>,
+    here: Origin,
+    answer: Value,
+) -> Result<Step, CoreError> {
+    let Some(next) = pending.pop() else {
+        return Ok(Step::Value(answer));
+    };
+    if !pending.is_empty() {
+        stack.push(Frame::Hypothesis { pending, here });
+    }
+    match crate::kernel::family::unread(&answer) {
+        Some(ignored) => {
+            meter.step("function application")?;
+            Ok(Step::Apply {
+                here,
+                function: answer,
+                argument: ignored,
+            })
+        }
+        None => {
+            let (recursor, field) = next.parts();
+            stack.push(Frame::Applied { function: answer, here });
+            meter.step("function application")?;
+            Ok(Step::Apply {
+                here,
+                function: recursor,
+                argument: field,
+            })
+        }
+    }
+}
+
 // Every arm that holds more than one intermediate value lives in its own
-// function, and that is a stack-depth decision rather than a stylistic one.
+// function, and that used to be a stack-depth decision: each arm was a host
+// call and a debug build gives a frame room for every arm's temporaries at
+// once, so one match holding all twelve cost about 9 KiB a level.
 //
-// §4.1's nesting limit exists so that `NbE` cannot overflow the host's stack: a
-// total language may refuse but may not crash. That guarantee is only real if
-// [`Budget::NESTING`](crate::Budget::NESTING) levels of this function actually
-// fit in one. A debug build gives a frame room for *every* arm's temporaries at
-// once, whether or not the term took that arm, so one match holding all twelve
-// cost about 9 KiB a level, and a term nested past 230 aborted the process
-// before the meter reached 256 and could refuse. Split this way it is about
-// 2 KiB — measured by halving `RUST_MIN_STACK` until the deepest accepted term
-// crashed — so the whole limit costs ~0.5 MiB of a 2 MiB test thread.
-//
-// `budget_laws.rs`'s `a_term_nested_past_the_limit_is_refused` is the test that
-// notices when this stops being true. Quotation walks values the same way and
-// costs about the same per level; nothing there needed splitting yet.
+// It is a legibility decision now. The machine above spends one frame however
+// deep the term is, so the frames a level of *this* file costs are no longer
+// what §4.1's room obligation has to hold. What it has to hold is the
+// traversal, quotation, and the elaborator, which still descend on the host's
+// stack because their depth is the depth of what they walk — see
+// [`crate::kernel::room`], where the ceiling is measured.
 
 /// What a name stands for here (§1, §6).
 ///
@@ -147,7 +451,7 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
 ///
 /// [`Malformed::MetaTelescope`] when the environment is shallower than the
 /// arity, which is a term moved somewhere its unknown's scope does not reach.
-pub(crate) fn occurrence(meter: &mut Meter, env: &Env, here: Origin, meta: &Meta) -> Result<Value, CoreError> {
+fn occurrence(stack: &mut Vec<Frame>, env: &Env, here: Origin, meta: &Meta) -> Result<Step, CoreError> {
     let depth = env.depth().0;
     let mut arguments = Vec::with_capacity(meta.arity() as usize);
     for level in 0..meta.arity() {
@@ -161,13 +465,15 @@ pub(crate) fn occurrence(meter: &mut Meter, env: &Env, here: Origin, meta: &Meta
         // Its own origins (§7): what the unknown stood for was written
         // somewhere, and the occurrence is not that place.
         Some(solution) => {
-            let mut value = solution.clone();
-            for argument in arguments {
-                value = apply(meter, here, value, argument)?;
+            let mut pending: Vec<(Origin, Value)> = arguments.into_iter().map(|argument| (here, argument)).collect();
+            pending.reverse();
+            if pending.is_empty() {
+                return Ok(Step::Value(solution.clone()));
             }
-            Ok(value)
+            stack.push(Frame::Spine { pending, charged: true });
+            Ok(Step::Value(solution.clone()))
         }
-        None => Ok(Value::neutral(Neutral {
+        None => Ok(Step::Value(Value::neutral(Neutral {
             origin: here,
             head: Head::Meta(meta.clone()),
             spine: arguments
@@ -180,7 +486,7 @@ pub(crate) fn occurrence(meter: &mut Meter, env: &Env, here: Origin, meta: &Meta
             // An unknown is not a definition: there is nothing folded here to
             // unfold, so there is nothing to record.
             unfolded: None,
-        })),
+        }))),
     }
 }
 
@@ -225,46 +531,6 @@ fn named(
     }
 }
 
-fn pi(
-    meter: &mut Meter,
-    env: &Env,
-    here: Origin,
-    filling: Filling,
-    name: &Name,
-    domain: &Term,
-    codomain: &Term,
-) -> Result<Value, CoreError> {
-    Ok(Value::new(
-        here,
-        Form::Pi {
-            filling,
-            name: Arc::clone(name),
-            domain: Arc::new(eval(meter, env, domain)?),
-            codomain: Closure {
-                env: env.clone(),
-                body: codomain.clone(),
-            },
-        },
-    ))
-}
-
-fn application(
-    meter: &mut Meter,
-    env: &Env,
-    here: Origin,
-    function: &Term,
-    argument: &Term,
-) -> Result<Value, CoreError> {
-    let function = eval(meter, env, function)?;
-    let argument = eval(meter, env, argument)?;
-    apply(meter, here, function, argument)
-}
-
-fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Value, CoreError> {
-    let value = eval(meter, env, value)?;
-    eval(meter, &env.push(value), body)
-}
-
 /// The value with a solved meta at its head seen through, or `None` when the
 /// head is not one.
 ///
@@ -274,90 +540,159 @@ fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Va
 /// at a value's shape has to ask here first. Returning `None` rather than a
 /// clone keeps the common case, a value with no meta anywhere in it, free.
 ///
-/// A loop rather than a step: a solution can itself be headed by a meta that
-/// has since been solved, and a caller that trusted one step would read a
-/// solved meta as an unsolved one — in [`crate::elaboration::convert`] that is not a missed
-/// reduction but a wrong answer. Each pass is charged, so a chain is bounded
-/// by the budget rather than by a claim that chains are short.
+/// A fixed point rather than a step: a solution can itself be headed by a meta
+/// that has since been solved, and a caller that trusted one step would read a
+/// solved meta as an unsolved one — in [`crate::elaboration::convert`] that is
+/// not a missed reduction but a wrong answer. Each pass after the first is
+/// charged, so a chain is bounded by the budget rather than by a claim that
+/// chains are short.
 ///
 /// # Errors
 ///
 /// As [`eval`]: replaying the spine is ordinary evaluation.
 pub(crate) fn force(meter: &mut Meter, value: &Value) -> Result<Option<Value>, CoreError> {
-    let Form::Neutral(neutral) = &value.form else {
+    if solution_of(value).is_none() {
         return Ok(None);
-    };
-    let Head::Meta(meta) = &neutral.head else {
-        return Ok(None);
-    };
-    let Some(solution) = meta.solution().cloned() else {
-        return Ok(None);
-    };
-    let mut answer = replay(meter, solution, &neutral.spine)?;
-    loop {
-        let Form::Neutral(blocked) = &answer.form else {
-            return Ok(Some(answer));
-        };
-        let Head::Meta(meta) = &blocked.head else {
-            return Ok(Some(answer));
-        };
-        let Some(solution) = meta.solution().cloned() else {
-            return Ok(Some(answer));
-        };
-        let blocked = Arc::clone(blocked);
-        meter.step("forcing")?;
-        answer = replay(meter, solution, &blocked.spine)?;
     }
+    run(
+        meter,
+        Step::Open {
+            value: value.clone(),
+            definitions: false,
+        },
+    )
+    .map(Some)
 }
 
-/// A solution with the blocked spine re-run over it, innermost first — the
-/// order the spine is stored in.
-fn replay(meter: &mut Meter, solution: Value, spine: &[Elim]) -> Result<Value, CoreError> {
-    let mut answer = solution;
-    for elimination in spine {
-        answer = eliminate(meter, answer, elimination)?;
-    }
-    Ok(answer)
-}
-
-/// The value with a folded definition at its head unfolded, or `None` when
-/// the head is not a definition.
+/// The value seen through solved metavariables *and* folded definitions at
+/// its head, or `None` when there was nothing to see through.
 ///
-/// δ on demand — the one operation all five kinds of forcing site share. The
-/// definition's value was computed once at the declaration; unfolding replays
-/// the spine over it, which is [`replay`] for a head that was never a
-/// metavariable. Neither the unfold nor the replay carries a bookkeeping
-/// charge: evaluation charged each elimination when it entered the spine, and
-/// charging again here would count every application of a definition twice —
-/// what changed is *when* the work runs, not what it costs. Termination needs
-/// no meter here: a definition's value names only what was declared before it
-/// (a local's carried heads sit at strictly smaller levels, a global's at
-/// earlier declarations, and a recursive definition's self-reference stands
-/// under a λ), so an unfold chain is finite, and the real work the replay
-/// runs — β bodies, ι steps, builtin rules — is charged by itself.
+/// The fixed point of [`force`] and δ, and the operation every place that asks
+/// "is this a canonical form yet" takes: conversion on a folded disagreement, ι
+/// at a recursor target, δ at a builtin's arguments, quotation in the opening
+/// mode, and the elaborator wherever it already forced a value before matching
+/// its form. [`force`] alone remains what conversion's folded comparison and
+/// quotation's keeping mode use, because both exist to *not* open definitions.
+///
+/// The postcondition is the fixed point — the head of what comes back is
+/// neither a solved metavariable nor a folded definition.
 ///
 /// # Errors
 ///
-/// As [`eval`]: replaying the spine is ordinary evaluation.
-pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
-    let Head::Def(_, _, Folding::Value(value)) = &neutral.head else {
+/// As [`eval`].
+pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, CoreError> {
+    if solution_of(value).is_none() && folded(value).is_none() {
         return Ok(None);
+    }
+    run(
+        meter,
+        Step::Open {
+            value: value.clone(),
+            definitions: true,
+        },
+    )
+    .map(Some)
+}
+
+/// One pass of [`force`] or [`opened`], as a transition.
+///
+/// δ carries no bookkeeping charge and a metavariable replay does: evaluation
+/// charged each elimination when it entered the spine, so charging a
+/// definition's replay again would count every application of a definition
+/// twice, while a spine behind a metavariable was waiting for the solution and
+/// its replay is where that work finally runs. `forced` is what keeps the
+/// second and later passes of a metavariable chain charged `forcing` while the
+/// first is not, which is what the recursion this replaced charged.
+fn opening(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    value: Value,
+    forced: bool,
+    definitions: bool,
+) -> Result<Step, CoreError> {
+    if let Some((solution, spine)) = solution_of(&value) {
+        if forced {
+            meter.step("forcing")?;
+        }
+        stack.push(Frame::Opening {
+            forced: true,
+            definitions,
+        });
+        push_spine(stack, &spine, true);
+        return Ok(Step::Value(solution));
+    }
+    if !definitions {
+        return Ok(Step::Value(value));
+    }
+    let Some((body, spine, cell)) = folded(&value) else {
+        return Ok(Step::Value(value));
     };
     let stamp = crate::kernel::meta::solutions();
-    if let Some(cell) = neutral.unfolded.as_ref()
+    if let Some(cell) = cell.as_ref()
         && let Some(&(filled, ref answer)) = cell.get()
         && filled == stamp
     {
-        return Ok(Some(answer.clone()));
+        stack.push(Frame::Opening {
+            forced: false,
+            definitions,
+        });
+        return Ok(Step::Value(answer.clone()));
     }
-    let answer = unfold_spine(meter, value, &neutral.spine)?;
-    if let Some(cell) = neutral.unfolded.as_ref() {
-        // `set` fails only where the cell already holds an answer at a stamp
-        // this one is not reading, which is a memo that has gone stale and
-        // stays stale. Recomputing is what the miss above already decided.
-        drop(cell.set((stamp, answer.clone())));
+    stack.push(Frame::Opening {
+        forced: false,
+        definitions,
+    });
+    if let Some(cell) = cell {
+        stack.push(Frame::Unfolding { cell, stamp });
     }
-    Ok(Some(answer))
+    push_spine(stack, &spine, false);
+    Ok(Step::Value(body))
+}
+
+/// The solution a value's head metavariable has, and the spine waiting on it.
+fn solution_of(value: &Value) -> Option<(Value, Vec<Elim>)> {
+    let Form::Neutral(ref neutral) = value.form else {
+        return None;
+    };
+    let Head::Meta(ref meta) = neutral.head else {
+        return None;
+    };
+    Some((meta.solution().cloned()?, neutral.spine.clone()))
+}
+
+/// A folded definition's value, the spine over it, and the cell that records
+/// the replay.
+///
+/// The memo is what makes δ cost once rather than once per consumer: a `Value`
+/// is `Arc`-shared and pure, so without it every reader of the same neutral
+/// re-ran the whole replay. See prompt 165b and
+/// `../../../../docs/notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md`.
+#[expect(clippy::type_complexity, reason = "one destructuring, read at one call site")]
+fn folded(value: &Value) -> Option<(Value, Vec<Elim>, Option<Arc<OnceLock<(u64, Value)>>>)> {
+    let Form::Neutral(ref neutral) = value.form else {
+        return None;
+    };
+    let Head::Def(_, _, Folding::Value(ref body)) = neutral.head else {
+        return None;
+    };
+    Some((Value::clone(body), neutral.spine.clone(), neutral.unfolded.clone()))
+}
+
+/// Put a spine on the control stack, innermost first — the order it is stored
+/// in, and so the order it is replayed in.
+fn push_spine(stack: &mut Vec<Frame>, spine: &[Elim], charged: bool) {
+    if spine.is_empty() {
+        return;
+    }
+    let mut pending: Vec<(Origin, Value)> = spine
+        .iter()
+        .map(|elimination| {
+            let Elim::App { origin, ref argument } = *elimination;
+            (origin, Value::clone(argument))
+        })
+        .collect();
+    pending.reverse();
+    stack.push(Frame::Spine { pending, charged });
 }
 
 /// A definition whose body is a compiled case tree, reduced (§1), or `None`
@@ -372,7 +707,7 @@ pub(crate) fn unfold(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Valu
 /// # Errors
 ///
 /// As [`Compiled::reduce`](crate::kernel::case_tree::Compiled::reduce).
-fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Matched>, CoreError> {
     let Head::Def(DefHead::Global(def, _), _, Folding::Compiled(compiled, globals)) = &neutral.head else {
         return Ok(None);
     };
@@ -381,81 +716,21 @@ fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreEr
         let Elim::App { ref argument, .. } = *elimination;
         arguments.push(Value::clone(argument));
     }
-    compiled.reduce(meter, globals, neutral.outer_origin(), def.name(), &arguments)
+    compiled.reduce(meter, globals, def.name(), &arguments)
 }
 
-/// [`unfold`] with the head question already answered: the caller matched the
-/// `Def` head itself, so the value and the spine are what it holds.
-pub(crate) fn unfold_spine(meter: &mut Meter, value: &Value, spine: &[Elim]) -> Result<Value, CoreError> {
-    let mut answer = value.clone();
-    // Innermost first, which is the order the spine is stored in.
-    for elimination in spine {
-        answer = eliminate_replayed(meter, answer, elimination)?;
-    }
-    Ok(answer)
-}
-
-/// One elimination replayed over a definition's value at an unfold, uncharged
-/// — see [`unfold`]'s doc for the accounting. [`eliminate`] is the charging
-/// twin the metavariable replay keeps, because a spine behind a metavariable
-/// is charged when it is built *and* its replay is where the waiting work
-/// finally runs; a spine behind a definition waited behind nothing.
-fn eliminate_replayed(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
-    match elimination {
-        Elim::App { origin, argument } => applying(meter, *origin, target, Value::clone(argument)),
-    }
-}
-
-/// The value seen through solved metavariables *and* folded definitions at
-/// its head, or `None` when there was nothing to see through.
+/// A definition's value with a spine replayed over it, uncharged.
 ///
-/// The fixed point of [`force`] and [`unfold`], and the operation every place
-/// that asks "is this a canonical form yet" takes: conversion on a folded
-/// disagreement, ι at a recursor target, δ at a builtin's arguments, quotation
-/// in the opening mode, and the elaborator wherever it already forced a value
-/// before matching its form. [`force`] alone remains what conversion's folded
-/// comparison and quotation's keeping mode use, because both exist to *not*
-/// open definitions.
-///
-/// The loop, as [`force`]'s: unfolding a definition can answer a value headed
-/// by another one (a definition whose value is an earlier definition), and
-/// the postcondition is the fixed point — the head of what comes back is
-/// neither a solved metavariable nor a folded definition.
+/// The caller matched the `Def` head itself, so the value and the spine are
+/// what it holds.
 ///
 /// # Errors
 ///
-/// As [`force`] and [`unfold`].
-pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, CoreError> {
-    let mut answer = match force(meter, value)? {
-        Some(forced) => forced,
-        None => match &value.form {
-            Form::Neutral(neutral) => match unfold(meter, neutral)? {
-                Some(unfolded) => unfolded,
-                None => return Ok(None),
-            },
-            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => return Ok(None),
-        },
-    };
-    loop {
-        if let Some(forced) = force(meter, &answer)? {
-            answer = forced;
-            continue;
-        }
-        let Form::Neutral(neutral) = &answer.form else {
-            return Ok(Some(answer));
-        };
-        match unfold(meter, neutral)? {
-            Some(unfolded) => answer = unfolded,
-            None => return Ok(Some(answer)),
-        }
-    }
-}
-
-/// Apply one elimination to a value that is no longer blocked.
-fn eliminate(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
-    match elimination {
-        Elim::App { origin, argument } => apply(meter, *origin, target, Value::clone(argument)),
-    }
+/// As [`eval`].
+pub(crate) fn unfold_spine(meter: &mut Meter, value: &Value, spine: &[Elim]) -> Result<Value, CoreError> {
+    let mut stack: Vec<Frame> = Vec::new();
+    push_spine(&mut stack, spine, false);
+    running(meter, stack, Step::Value(value.clone()))
 }
 
 /// Open a closure at `argument`.
@@ -487,8 +762,30 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 /// The work inside — a β body, an ι step, a builtin's rule — carries its own
 /// charges either way.
 fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
+    run(
+        meter,
+        Step::Apply {
+            here,
+            function,
+            argument,
+        },
+    )
+}
+
+/// One application, as a transition.
+///
+/// β is the whole reason the machine exists: the closure's body becomes the
+/// control, and the enclosing work stays on the stack. A host call here is a
+/// host frame per turn of every fold in the program.
+fn applied(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    here: Origin,
+    function: Value,
+    argument: Value,
+) -> Result<Step, CoreError> {
     match function.form {
-        Form::Lam(body) => apply_closure(meter, &body, argument),
+        Form::Lam(body) => Ok(entering(meter, stack, body.env.push(argument), body.body)),
         // Not a function, and not applied to anything: `Row(12) x` is what a
         // caller wrote when it meant `Row x`, and this is where it says so.
         // A blocked application is where ι at an inductive family fires: the
@@ -502,28 +799,103 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
                     argument: Arc::new(argument),
                 },
             );
-            if let Some(reduced) = crate::kernel::family::iota(meter, &built)? {
-                return Ok(reduced);
-            }
-            // The other direction: not an elimination firing but a construction
-            // collapsing, so that a counting family's values stay numerals and
-            // never accumulate a spine. Here rather than in `eval` because a
-            // constructor meets its argument at an application and nowhere else.
-            if let Some(counted) = crate::kernel::family::stepped(meter, &built)? {
-                return Ok(counted);
-            }
-            if let Some(reduced) = delta(meter, &built)? {
-                return Ok(reduced);
-            }
-            if let Some(reduced) = matched(meter, &built)? {
-                return Ok(reduced);
-            }
-            match structural(meter, &built)? {
-                Some(reduced) => Ok(reduced),
-                None => Ok(Value::neutral(built)),
-            }
+            eliminating(meter, stack, built)
         }
         Form::Universe(_) | Form::Pi { .. } | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
+    }
+}
+
+/// A freshly blocked spine, with the one argument three of the five rules
+/// below have to look through opened first.
+///
+/// ι at a projection, ι at a recursor, and a counting constructor's collapse
+/// each read exactly one value — the last argument — and each used to open it
+/// from inside the rule, which put a host frame under every level of the data
+/// they walk. [`opens_last`](crate::kernel::family::opens_last) asks the
+/// question separately so that the opening is a transition of this machine,
+/// and the rules themselves decide without evaluating anything.
+fn eliminating(meter: &mut Meter, stack: &mut Vec<Frame>, built: Neutral) -> Result<Step, CoreError> {
+    if crate::kernel::family::opens_last(&built)
+        && let Some(Elim::App { argument, .. }) = built.spine.last()
+    {
+        let subject = Value::clone(argument);
+        stack.push(Frame::Eliminating { built });
+        return Ok(Step::Open {
+            value: subject,
+            definitions: true,
+        });
+    }
+    eliminated(meter, stack, built, None)
+}
+
+/// Begin a *nested* evaluation: a λ's body opened, a case tree's arm chosen.
+///
+/// The one place §4.1's metric is given back rather than spent. What is being
+/// entered is a different term from the one the frames below were descending,
+/// and the metric measures how deeply a term is written — so the enclosing
+/// depth is saved and the new term starts at the bottom, which is exactly what
+/// stops a definition calling itself from being charged as though the composer
+/// had written a deeper term. Peyton Jones ch. 11's observation that a nested
+/// evaluation "needs a brand new stack", with ch. 18 §18.8's dump holding the
+/// old one.
+fn entering(meter: &mut Meter, stack: &mut Vec<Frame>, env: Env, term: Term) -> Step {
+    stack.push(Frame::Dump { level: meter.level() });
+    meter.at(0);
+    Step::Term(env, term)
+}
+
+/// The five rules a blocked spine is offered to, in the order they were always
+/// tried, with `subject` the last argument opened when one of them asked.
+fn eliminated(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    built: Neutral,
+    subject: Option<&Value>,
+) -> Result<Step, CoreError> {
+    if let Some(fired) = crate::kernel::family::iota(&built, subject) {
+        return Ok(match fired {
+            Fired::Field(field) => Step::Value(field),
+            Fired::Method(reduction) => {
+                let here = built.origin;
+                let mut fields: Vec<(Origin, Value)> =
+                    reduction.fields.iter().map(|field| (here, field.clone())).collect();
+                fields.reverse();
+                let method = reduction.method.clone();
+                stack.push(Frame::Hypotheses { reduction, here });
+                if !fields.is_empty() {
+                    stack.push(Frame::Spine {
+                        pending: fields,
+                        charged: true,
+                    });
+                }
+                Step::Value(method)
+            }
+        });
+    }
+    // The other direction: not an elimination firing but a construction
+    // collapsing, so that a counting family's values stay numerals and never
+    // accumulate a spine.
+    if let Some(counted) = crate::kernel::family::stepped(&built, subject) {
+        return Ok(Step::Value(counted));
+    }
+    if let Some(reduced) = delta(meter, &built)? {
+        return Ok(Step::Value(reduced));
+    }
+    if let Some(chosen) = matched(meter, &built)? {
+        let here = built.outer_origin();
+        let mut rest: Vec<(Origin, Value)> = chosen.rest.into_iter().map(|argument| (here, argument)).collect();
+        rest.reverse();
+        if !rest.is_empty() {
+            stack.push(Frame::Spine {
+                pending: rest,
+                charged: true,
+            });
+        }
+        return Ok(entering(meter, stack, chosen.env, chosen.term));
+    }
+    match structural(meter, &built)? {
+        Some(reduced) => Ok(Step::Value(reduced)),
+        None => Ok(Step::Value(Value::neutral(built))),
     }
 }
 
@@ -792,7 +1164,15 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     let env = arguments
         .into_iter()
         .fold(Env::under(globals.clone()), |env, argument| env.push(argument));
-    eval(meter, &env, &rewritten).map(Some)
+    // The one nesting charge evaluation still makes, and §4.1's first clause is
+    // exactly it: "§5.9's traversal descends *through* the transformer's own
+    // branches, so one level of a region's nesting costs a whole chain of
+    // evaluator frames rather than one." A rewrite that names its own builtin
+    // again is a host call from here, so the depth of a traversal is the depth
+    // of this chain, and a region nested past the limit has to be refused
+    // rather than abort the process. Every other descent evaluation makes is on
+    // the control stack above and charges steps.
+    meter.nested("traversal", |meter| eval(meter, &env, &rewritten).map(Some))
 }
 
 /// The type of a blocked elimination.
@@ -890,7 +1270,7 @@ mod tests {
     //! a [`Neutral`] and no public constructor builds one. What is observable
     //! from outside is only that a program is faster, which is not the law.
 
-    use super::unfold;
+    use super::opened;
     use crate::kernel::budget::Budget;
     use crate::kernel::context::Cx;
     use crate::kernel::meta::Meta;
@@ -963,11 +1343,12 @@ mod tests {
             let neutral = folded(120);
             let stamp = crate::kernel::meta::solutions();
 
-            let first = unfold(&mut meter, &neutral)
+            let held = Value::neutral(neutral);
+            let first = opened(&mut meter, &held)
                 .expect("a definition unfolds")
                 .expect("a definition");
             let after_first = meter.spent().steps;
-            let second = unfold(&mut meter, &neutral)
+            let second = opened(&mut meter, &held)
                 .expect("a definition unfolds")
                 .expect("a definition");
             let after_second = meter.spent().steps;
@@ -1005,9 +1386,9 @@ mod tests {
     fn a_solved_metavariable_makes_a_forced_value_unfold_again() {
         let cx = Cx::with_budget(Budget::LANGUAGE);
         let mut meter = cx.meter();
-        let neutral = folded(120);
+        let held = Value::neutral(folded(120));
 
-        let before = unfold(&mut meter, &neutral)
+        let before = opened(&mut meter, &held)
             .expect("a definition unfolds")
             .expect("a definition");
         let first = meter.spent().steps;
@@ -1018,7 +1399,7 @@ mod tests {
         let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
         meta.solve(type0()).expect("an unsolved metavariable takes a solution");
 
-        let after = unfold(&mut meter, &neutral)
+        let after = opened(&mut meter, &held)
             .expect("a definition unfolds")
             .expect("a definition");
         let second = meter.spent().steps;

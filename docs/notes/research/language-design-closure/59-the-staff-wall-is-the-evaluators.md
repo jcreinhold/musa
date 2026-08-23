@@ -181,3 +181,24 @@ Four things, and the last is the one prompt 166 keeps.
 Of these, (1) and (2) are prompt 165's by ownership and neither can wait for it. They are cut out into prompt
 [`165b`](../../../plan/prompts/165b-graph-update-and-data-descent.md), which runs before 166 and leaves 165 its
 diagnostics, its P1/P2 gate, and the four smalltt items. (3) is 165a's already and only moves.
+
+## 7. After prompt 165a: the first wall is gone and only §6's fourth item is left
+
+§5's 471 nesting levels are **62**, and the same 62 for a region of nothing, of one item, of three, of four, and for
+`examples/staff-page.musa` — the peak is the depth of the adapter's own source and no longer moves with what it reads.
+The table §5 ends on now reads:
+
+| operation | before 165b | after 165b | after 165a |
+| --- | --- | --- | --- |
+| `evaluation` | 679 | 471 | 62 |
+| `quotation` | 54 | 54 | 54 |
+| `neutral typing` | 54 | 54 | 54 |
+| `re-checking` | 48 | 48 | 48 |
+| `unification` | 4 | 6 | 4 |
+| `traversal` | — | — | 2 |
+
+So §6's third item is done, and its consequence is the one it predicted: **46 of the 47 staff laws now pass at the
+unchanged 200,000-step budget against the unrewritten adapter**, and the forty-seventh is
+`a_tuplet_that_plays_nothing_in_the_time_of_some_is_refused_at_the_tuplet` — §4's `NotATransformer`, which is not a
+budget failure. What is still refused is `examples/staff-page.musa` itself, at steps rather than at nesting, for §5a's
+factor of 1.9. That is §6's fourth item, unchanged, and it is prompt 166's.

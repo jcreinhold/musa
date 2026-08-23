@@ -1,7 +1,7 @@
 ---
 id: 165a
 slug: explicit-control-stack
-status: in-progress
+status: done
 depends_on: [165b]
 phase: 3
 ---
@@ -76,10 +76,10 @@ like the answer, because that is where 155a's level goes, and the mitigations al
 split on a bare variable reads the environment and calls nothing, and a saturated self-call in tail position is already
 trampolined in `Compiled::reduce`, charging by hand the steps the whole-term evaluation would have charged, in the same
 order. Measured on `examples/staff-page.musa` at the wall, the cycle is not the case tree at all. It is ι firing on a
-generated recursor and the δ-unfold replaying its spine —
-`eval → application → apply → applying → iota → ready → opened → unfold → unfold_spine → eliminate_replayed → applying
-→ apply_closure → eval`, about seven nesting levels and thirty host frames per recursive call. Those are the frames to
-move; the case tree rides along because `Compiled::reduce` sits inside the same cycle.
+generated recursor and the δ-unfold replaying its spine — `eval → application → apply → applying → iota → ready → opened
+→ unfold → unfold_spine → eliminate_replayed → applying → apply_closure → eval`, about seven nesting levels and thirty
+host frames per recursive call. Those are the frames to move; the case tree rides along because `Compiled::reduce` sits
+inside the same cycle.
 
 **What stays on Rust frames.** `quote`'s descent over a value and the traversal's descent through a term are structural:
 their depth is the depth of the thing being walked, they are what §4.1 derives the metric from, and they keep charging
@@ -108,8 +108,8 @@ room with it, and `elaborating_a_term_nested_past_the_limit_is_refused` stops be
 Charging that recursion is prompt 165's and this prompt's Stop forbids it, so the limit stays where 155a put it and what
 gets re-derived is the *room* — the frame ceiling, measured on the chain as it is now shaped. Land the widening as one
 paragraph in §4.1 replacing 155a's, saying which programs it accepts that were refused, and close note 54 with a line
-saying which of its §3 and §4 predictions held. A version bump recorded as one argued change is honest; landing
-silently is not.
+saying which of its §3 and §4 predictions held. A version bump recorded as one argued change is honest; landing silently
+is not.
 
 **The step budget has to actually bound it.** Moving recursion off the nesting metric is only sound if the step budget
 already charges every recursive step, so that an unbounded recursion is refused rather than run forever in a flat loop.

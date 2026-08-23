@@ -680,7 +680,13 @@ one measures how far in the run currently is, and a level is released when the w
 of a million siblings is one level deep, not a million. The limit is charged wherever an evaluation can stand inside
 another one — evaluating an expression, eliminating a finite data value, descending into a syntax value, and quoting a
 value back during conversion — so what the counter bounds is exactly what the machine spends stack on. Two walks that
-used to be on that list are not on it any more, and the paragraph at the end of this section says why.
+used to be on that list are not on it any more, and the paragraph at the end of this section says why. "Stands inside"
+is meant literally, and two things follow from it that a reader would otherwise have to discover. A subterm in *tail*
+position — a `let`'s body, an application's result — is not stood inside: the enclosing term has nothing left to descend
+into when it is reached, so the level is given back first, and a chain of a million tail-nested `let` is one level and a
+million steps. And a level counts depth *within* one term: entering a different term, such as a function's body or a
+case arm, saves the enclosing depth and starts again from zero. Without that second rule the counter would still be
+measuring how many times a definition called itself, one term at a time.
 
 The metric exists because §5.9's traversal descends *through* the transformer's own branches: one level of a region's
 nesting costs a whole chain of evaluator frames rather than one, so a deep enough region could exhaust a host stack.
@@ -700,23 +706,35 @@ Shrinking the frame ceiling is welcome and changes nothing normative. Raising th
 because a program refused at one level count and accepted at another is a program two compilers disagree about. The
 limit has been raised once, and the paragraph below is that bump's record.
 
-**The limit was 256 and is 320, since prompt 155a.** The two clauses above derive the metric from how deeply a *term* is
-written, and the counter charges recursion as well, because a recursive call is evaluated inside the enclosing
-evaluation and holds its level until the steps beneath it finish. One number therefore decides two unrelated questions.
-That has been true since the surface moved onto a core program and is not 155a's doing; what 155a changed is the price.
-Measured by bisection: a recursive call cost about 2.5 levels through the generated recursor and costs about 3.0 through
-a compiled case-tree body, and the deepest workload in the corpus — the standard library's staff adapter — moved from a
-peak of at most 240 levels to a peak of at most 272. At 256 the corpus had sixteen levels of margin; at 272 it has none.
+**The limit was 256, was raised to 320 by prompt 155a, and stops charging recursion at prompt 165a.** The two clauses
+above derive the metric from how deeply a *term* is written, and until 165a the counter charged recursion as well,
+because a recursive call was evaluated inside the enclosing evaluation and held its level until the steps beneath it
+finished. One number decided two unrelated questions. That was not 155a's doing — it had been true since the surface
+moved onto a core program — and what 155a changed was only the price, from about 2.5 levels a call through the generated
+recursor to about 3.0 through a compiled case-tree body, which took the staff adapter's peak from 240 to 272 and left a
+limit of 256 with no margin. 320 bought margin and repaired nothing: a definition could still call itself only about a
+hundred times, and 362 was the ceiling above which no raise could ever fire, so there was no third raise available.
+Prompt 165a gave the evaluator an explicit control stack, so its pending work is heap data and a recursion's depth costs
+no host frames and no levels. **This is a widening: a recursion refused past about a hundred calls is now accepted to
+sixteen thousand, and what stops it is the step budget it always belonged to.** Measured on the smallest definition that
+recurses once per unit of its argument, `rec add : Nat → Nat → Nat`, which costs `9 + 12n` steps for `n` calls both
+before and after — the same charge, so nothing that was accepted has changed value — the last count that answers moved
+from 105 to 16,665, and the refusal moved from 321 of 320 nesting levels to 200,001 of 200,000 reduction steps. Read
+from the other end, the corpus now needs almost none of the limit: the standard library's staff adapter peaks at 62
+levels, and at the *same* 62 for a region of nothing, a region of one item, a region of four, and `staff-page.musa`'s 77
+lines, because the peak is the depth of the adapter's own source and no longer moves with what it reads.
 
-320 is bounded on both sides. Above 272, because that is what the corpus measures. At or below 362, because a limit has
-to be reachable: the 200,000-step budget cannot afford to build a term deeper than 363 constructors, so a nesting limit
-above that would never fire on the term-depth path these two clauses derive it from. 320 takes the middle, at 10 MiB of
-stack under the obligation above rather than 8. It buys the corpus three times the margin it had and repairs nothing —
-the limit still answers two questions with one number, and the deepest recursion a definition may perform is about a
-hundred steps. Retiring that needs an evaluator whose control stack is explicit data rather than the host's frames, so
-that recursion depth is bounded by the step budget it belongs to;
-`../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation and prompt 165a carries
-the fix.
+**The limit stays at 320 all the same, and that is a decision rather than an omission.** The corpus argues for something
+far smaller — five times smaller — and the argument against lowering it is the obligation above rather than the cost
+table. The elaborator's own `check` and `infer` still stand inside one another charged nothing, so this counter is the
+only thing that turns a deeply written term into a refusal instead of an abort, and because the room is *derived* from
+the limit, lowering the limit lowers the stack that backstop runs on. Charging that recursion is what makes a smaller
+limit arguable; until then, moving it would be a version bump paid for nothing. What was re-derived instead is the frame
+ceiling, and it went up rather than down: with the evaluator's cheap frames gone, a level is now bought by the
+traversal, by `quote`, and by that uncharged elaborator descent, and a level costs between 60 and 64 KiB in a debug
+build where it used to cost about 10. `crates/musa-calculus/src/kernel/room.rs` carries the measurement and the command
+that produced it. `../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation this
+closes.
 
 **The limit did not move at prompt 165b; what it counts did.** Reading a δ-builtin's argument into canonical data and
 building its answer back out are structural walks over *data*, and each charged one level per level of the data — so a

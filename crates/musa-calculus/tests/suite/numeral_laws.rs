@@ -151,9 +151,15 @@ fn narrow_nat_context() -> Cx {
 ///
 /// Past the nesting limit the tower is not a term the calculus can evaluate:
 /// `eval` charges one level per level of the term, so a tower of depth `n` costs
-/// `n` levels and a count is not a small number. The pair here is not two terms
-/// to compare — it is one term and one exhaustion, and the exhaustion is what
-/// `repeat 384` used to be.
+/// `n - 1` levels and a count is not a small number. The pair here is not two
+/// terms to compare — it is one term and one exhaustion, and the exhaustion is
+/// what `repeat 384` used to be.
+///
+/// The missing level is the outermost node's, and it is missing because the
+/// elaborator applies the head to the argument's *value* rather than evaluating
+/// the written application, so the deepest term the evaluator ever descends is
+/// the argument. Two past the limit rather than one, therefore, and the extra
+/// one is arithmetic rather than slack.
 ///
 /// The two counts are an order of magnitude apart in the direction that makes
 /// the point: the *smaller* one is the one that cannot be written.
@@ -170,7 +176,7 @@ fn a_tower_past_the_nesting_limit_exhausts_where_the_numeral_answers() {
     let counted = musa_calculus::check(&cx, &nat, &numeral(5_000)).expect("a numeral is one node at any count");
     musa_calculus::normalize(&cx, &nat, &counted).expect("and evaluating one is reading it");
 
-    let past = Budget::NESTING.saturating_add(1);
+    let past = Budget::NESTING.saturating_add(2);
     match musa_calculus::check(&cx, &nat, &tower(past)) {
         Err(ElabError::Exhausted(exhausted)) => {
             assert_eq!(

@@ -117,4 +117,4 @@ pub(crate) use datum::{counted, realize};
 pub(crate) use group::Parameter;
 pub use group::{Constructor, Declared, Group};
 pub(crate) use group::{Counting, Element, Product, Role, built_by, built_from, element, product, projecting_from};
-pub(crate) use iota::{constructed, iota, stepped};
+pub(crate) use iota::{Fired, Pending, Reduction, constructed, hypotheses, iota, opens_last, stepped, unread};

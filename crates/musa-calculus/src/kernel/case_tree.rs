@@ -319,32 +319,35 @@ impl Compiled {
         &self,
         meter: &mut Meter,
         globals: &Globals,
-        here: Origin,
         name: &Name,
         arguments: &[Value],
-    ) -> Result<Option<Value>, CoreError> {
+    ) -> Result<Option<Matched>, CoreError> {
         let arity = self.arity();
         let Some(taken) = arguments.get(..arity) else {
             return Ok(None);
         };
         let mut taken: Vec<Value> = taken.to_vec();
-        let mut answer = loop {
+        loop {
             let env = taken
                 .iter()
                 .fold(Env::under(globals.clone()), |env, argument| env.push(argument.clone()));
             match descend(meter, &env, &self.tree, name, arity)? {
                 None => return Ok(None),
-                Some(Descended::Answered(answer)) => break answer,
+                Some(Descended::Answered { env, term }) => {
+                    return Ok(Some(Matched {
+                        env,
+                        term,
+                        // A definition may be applied to more than it
+                        // abstracts — `f x y` where `f` splits on `x` and
+                        // answers a function. The tree decided at `x`; the rest
+                        // is ordinary application, and the evaluator's own
+                        // control stack carries it.
+                        rest: arguments.get(arity..).unwrap_or_default().to_vec(),
+                    }));
+                }
                 Some(Descended::Again(again)) => taken = again,
             }
-        };
-        // A definition may be applied to more than it abstracts — `f x y` where
-        // `f` splits on `x` and answers a function. The tree decided at `x`; the
-        // rest is ordinary application.
-        for argument in arguments.get(arity..).unwrap_or_default() {
-            answer = crate::kernel::eval::apply(meter, here, answer, argument.clone())?;
         }
-        Ok(Some(answer))
     }
 
     /// This body with its level parameters replaced.
@@ -362,10 +365,26 @@ impl Compiled {
     }
 }
 
+/// A tree body that has chosen its arm: the term to evaluate, the environment
+/// the splits above it built, and whatever the definition was over-applied to.
+///
+/// The arm is handed back **unevaluated**. Evaluating it here would put one
+/// host frame per turn of a recursion under the evaluator, which is the charge
+/// §4.1 no longer wants to make and the stack it no longer wants to spend; the
+/// machine in [`crate::kernel::eval`] evaluates it in place instead.
+pub(crate) struct Matched {
+    /// The environment the arm's de Bruijn indices are read in.
+    pub(crate) env: Env,
+    /// The arm.
+    pub(crate) term: Term,
+    /// Arguments past the definition's arity, outermost first.
+    pub(crate) rest: Vec<Value>,
+}
+
 /// What walking the tree reached: an answer, or the next turn of a tail call.
 enum Descended {
-    /// The value the body answers with.
-    Answered(Value),
+    /// The arm the tree chose, and where to read it.
+    Answered { env: Env, term: Term },
     /// A saturated call to the same definition, and the arguments it passes.
     /// See [`Compiled::reduce`] for why this is not simply evaluated.
     Again(Vec<Value>),
@@ -379,48 +398,56 @@ fn descend(
     name: &Name,
     arity: usize,
 ) -> Result<Option<Descended>, CoreError> {
-    match tree {
-        CaseTree::Answer(term) => answered(meter, env, term, name, arity).map(Some),
-        CaseTree::Impossible => Err(Malformed::UnreachableAlternative.into()),
-        CaseTree::Split(split) => {
-            // A split's subject is a variable by construction: `case.rs` names
-            // anything else with a `let`, and a tree body refuses one that did.
-            // Read out of the environment rather than evaluated, because §4.1's
-            // nesting metric charges a level per `eval` and a chain of columns
-            // would otherwise pay one per column for a lookup that nests
-            // nothing. The generated eliminator paid nothing here either — it
-            // reached its subject through `apply`, which is not a nesting level
-            // — so this keeps the two reducers charging the same depth for the
-            // same program.
-            let on = if let Shape::Var(index) = split.on.shape() {
-                env.get(index.0)
-                    .cloned()
-                    .ok_or_else(|| CoreError::from(Malformed::UnboundVariable(*index)))?
-            } else {
-                crate::kernel::eval::eval(meter, env, &split.on)?
-            };
-            let on = crate::kernel::eval::opened(meter, &on)?.unwrap_or(on);
-            let Some((constructor, fields)) = analysed(&on) else {
-                return Ok(None);
-            };
-            let Some(alternative) = split
-                .alternatives
-                .iter()
-                .find(|alternative| *alternative.constructor == *constructor)
-            else {
-                return Ok(None);
-            };
-            let mut inner = env.clone();
-            for field in &fields {
-                inner = inner.push(field.clone());
+    // A loop and not a recursion: walking into an alternative is a tail call,
+    // and a tree deep in columns would otherwise cost one host frame a column
+    // for a walk that stands inside nothing.
+    let mut env = env.clone();
+    let mut tree = tree;
+    loop {
+        match tree {
+            CaseTree::Answer(term) => return answered(meter, &env, term, name, arity).map(Some),
+            CaseTree::Impossible => return Err(Malformed::UnreachableAlternative.into()),
+            CaseTree::Split(split) => {
+                // A split's subject is a variable by construction: `case.rs` names
+                // anything else with a `let`, and a tree body refuses one that did.
+                // Read out of the environment rather than evaluated, because §4.1's
+                // nesting metric charges a level per `eval` and a chain of columns
+                // would otherwise pay one per column for a lookup that nests
+                // nothing. The generated eliminator paid nothing here either — it
+                // reached its subject through `apply`, which is not a nesting level
+                // — so this keeps the two reducers charging the same depth for the
+                // same program.
+                let on = if let Shape::Var(index) = split.on.shape() {
+                    env.get(index.0)
+                        .cloned()
+                        .ok_or_else(|| CoreError::from(Malformed::UnboundVariable(*index)))?
+                } else {
+                    crate::kernel::eval::eval(meter, &env, &split.on)?
+                };
+                let on = crate::kernel::eval::opened(meter, &on)?.unwrap_or(on);
+                let Some((constructor, fields)) = analysed(&on) else {
+                    return Ok(None);
+                };
+                let Some(alternative) = split
+                    .alternatives
+                    .iter()
+                    .find(|alternative| *alternative.constructor == *constructor)
+                else {
+                    return Ok(None);
+                };
+                let mut inner = env.clone();
+                for field in &fields {
+                    inner = inner.push(field.clone());
+                }
+                // One placeholder per hypothesis binder. Nothing can name one — see
+                // the module documentation — and the arm's de Bruijn indices were
+                // read under them, so the slots have to be there.
+                for _ in alternative.hypotheses.iter() {
+                    inner = inner.push(Value::new(on.origin, Form::Universe(Sort::ZERO)));
+                }
+                env = inner;
+                tree = &alternative.body;
             }
-            // One placeholder per hypothesis binder. Nothing can name one — see
-            // the module documentation — and the arm's de Bruijn indices were
-            // read under them, so the slots have to be there.
-            for _ in alternative.hypotheses.iter() {
-                inner = inner.push(Value::new(on.origin, Form::Universe(Sort::ZERO)));
-            }
-            descend(meter, &inner, &alternative.body, name, arity)
         }
     }
 }
@@ -453,7 +480,10 @@ fn answered(meter: &mut Meter, env: &Env, term: &Term, name: &Name, arity: usize
         } if called == name
     ) && spine.len() == arity;
     if !jumps {
-        return Ok(Descended::Answered(crate::kernel::eval::eval(meter, env, term)?));
+        return Ok(Descended::Answered {
+            env: env.clone(),
+            term: term.clone(),
+        });
     }
     // The jump saves *stack*, and nothing else. Evaluating the answer whole
     // would have charged §4's step metric for every node this path walks past

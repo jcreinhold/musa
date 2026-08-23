@@ -418,6 +418,86 @@ impl Neutral {
     }
 }
 
+/// Reclaiming a value without one host frame per level of it.
+///
+/// A value is a tree of [`Arc`]s and the derived destructor walks it with the
+/// host's stack: freeing `Cons 0 (Cons 1 (…))` frees the outer neutral, which
+/// frees its spine, which frees the argument, which frees the next neutral. So
+/// a list of a few thousand elements is a few thousand host frames spent on
+/// *freeing* it — measured before this impl existed, `range(4000)` compiled and
+/// `range(4500)` aborted the process in `drop_glue<Value>` with no musa frame on
+/// the stack at all.
+///
+/// That is the same defect as an evaluator written on the host's stack, arriving
+/// at the other end of a value's life, and §4.1 forbids the outcome just as
+/// firmly at this end: a total language may refuse but may not crash, and a
+/// refusal this crate lifted must not be paid for with an abort. Peyton Jones
+/// ch. 17 §17.2 is the analysis — reclamation is a traversal, and a traversal of
+/// a deep structure may not be written as host calls — and the repair is the one
+/// this whole prompt is about: the pending work becomes a `Vec` this function
+/// owns.
+///
+/// **This is not a collector and changes nothing about ownership.** Every
+/// allocation is still freed by `Arc` at the moment its last handle goes, in the
+/// same order. What the loop does is take a child *out* of the node before the
+/// node is dropped, so the node's own destructor finds nothing left to descend
+/// into. A child that is still shared is left alone: [`Arc::into_inner`] answers
+/// `None`, and everything beneath it is still reachable from somewhere else.
+///
+/// **The chain that had to be flattened is the spine.** A neutral's arguments —
+/// and its unfolding memo, which holds a value of the same depth — are what a
+/// structurally recursive definition builds thousands of levels of. A head's
+/// types and a closure's environment are freed by their own destructors, one
+/// frame down, because their depth is the depth of a *type* or of a binder
+/// context, which is charged nesting and so is bounded by §4.1 already.
+impl Drop for Neutral {
+    fn drop(&mut self) {
+        let spine = std::mem::take(&mut self.spine);
+        let unfolded = self.unfolded.take();
+        if spine.is_empty() && unfolded.is_none() {
+            return;
+        }
+        let mut work = Vec::new();
+        loosen(&mut work, spine, unfolded);
+        while let Some(value) = work.pop() {
+            match value.form {
+                Form::Neutral(shared) => {
+                    if let Some(mut inner) = Arc::into_inner(shared) {
+                        let spine = std::mem::take(&mut inner.spine);
+                        let unfolded = inner.unfolded.take();
+                        loosen(&mut work, spine, unfolded);
+                    }
+                }
+                Form::Pi { domain, .. } => {
+                    if let Some(inner) = Arc::into_inner(domain) {
+                        work.push(inner);
+                    }
+                }
+                Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => {}
+            }
+        }
+    }
+}
+
+/// The values a neutral owned alone, moved onto the worklist.
+///
+/// A value still shared elsewhere is not ours to dismantle and is dropped here
+/// as a handle, which is what [`Arc::into_inner`] answering `None` means.
+fn loosen(work: &mut Vec<Value>, spine: Vec<Elim>, unfolded: Option<Arc<OnceLock<(u64, Value)>>>) {
+    for elimination in spine {
+        let Elim::App { argument, .. } = elimination;
+        if let Some(value) = Arc::into_inner(argument) {
+            work.push(value);
+        }
+    }
+    if let Some(cell) = unfolded
+        && let Some(lock) = Arc::into_inner(cell)
+        && let Some((_, value)) = lock.into_inner()
+    {
+        work.push(value);
+    }
+}
+
 impl Value {
     /// A value of form `form`, from a term that came from `origin`.
     pub(crate) const fn new(origin: Origin, form: Form) -> Self {
