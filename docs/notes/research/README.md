@@ -37,6 +37,7 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [53](language-design-closure/53-one-theory.md) | The three partial mechanisms the core carried — an erased index stratum, a non-dependent eliminator, and first-order instantiation — and the one theory that replaces all three |
 | [54](language-design-closure/54-the-nesting-limit.md) | Why the nesting limit moved from 256 to 320, and the two things it counts |
 | [55](language-design-closure/55-cat-stays-a-base-type.md) | Why `Cat` stays a base type with literals, what the family was going to buy, and why forgetting becomes a written function anyway |
+| [56](language-design-closure/56-the-macro-layer-is-already-one-thing.md) | Which prompt delivered each clause of prompt 160's Task, the two clauses that describe a language musa does not have, and the two things actually left |
 | [60](60-language-decision-record.md) | How the elaboration language was decided, and then corrected |
 | [61](61-core-boundary-decision-record.md) | How the core boundary was decided |
 | [62](62-course-correction-decision-record.md) | The course correction, and where each of its sections went |
