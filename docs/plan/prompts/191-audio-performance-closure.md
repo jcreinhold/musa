@@ -80,7 +80,7 @@ cargo bench -p musa-compiler
 cargo bench -p musa-dsp
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 cd apps/musa-desktop/ui && npx playwright test --project=budgets

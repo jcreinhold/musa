@@ -72,7 +72,7 @@ evaluators. A red row repairs its owning prompt and stops this audit.
 cargo nextest run --workspace
 cargo nextest run --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cargo insta test --workspace --unreferenced=reject
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check

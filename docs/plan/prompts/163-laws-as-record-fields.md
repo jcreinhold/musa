@@ -71,7 +71,7 @@ fields, not more apparatus. Record which way it went.
 cargo nextest run --workspace
 cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo run -p musa -- check stdlib/src/*.musa
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```

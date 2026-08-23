@@ -54,7 +54,7 @@ custom controls; raw MIDI controller numbers and generator ids remain adapter-pr
 ```sh
 cargo nextest run -p musa-dsp -p musa-project -p musa -p musa-lsp
 cargo clippy --all-targets -p musa-dsp -p musa-project -p musa -p musa-lsp -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cargo insta test --workspace --unreferenced=reject
 ```

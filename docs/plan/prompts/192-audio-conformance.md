@@ -81,7 +81,7 @@ amendment procedure; this audit may not weaken the rule. This prompt does not ye
 ./scripts/check-audio-language-conformance.sh
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit

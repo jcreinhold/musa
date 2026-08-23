@@ -75,7 +75,7 @@ minimum immutable lane/control information required by MIDI and `musa-dsp`. `Par
 ```sh
 cargo nextest run -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --all-targets -p musa-compiler -p musa-notation -p musa-project -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cargo bench -p musa-compiler
 ```

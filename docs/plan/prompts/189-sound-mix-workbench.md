@@ -58,7 +58,7 @@ preservation on recompile, narrow layouts, stale/last-valid plan indication, and
 ```sh
 cargo nextest run -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-project -p musa-lsp -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 cd apps/musa-desktop/ui && npx playwright test
 cargo insta test --workspace --unreferenced=reject

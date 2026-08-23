@@ -68,7 +68,7 @@ uses typed declarations.
 ```sh
 cargo nextest run -p musa-syntax -p musa-events -p musa-compiler -p musa-notation -p musa-project
 cargo clippy --all-targets -p musa-syntax -p musa-events -p musa-compiler -p musa-notation -p musa-project -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test
 ```

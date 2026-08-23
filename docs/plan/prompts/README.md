@@ -74,7 +74,12 @@ Body sections (a prompt omits a section when it has nothing to add):
     - `cargo nextest run -p <crate>` (fall back to `cargo test -p <crate>` if nextest is not installed);
     - `cargo clippy --all-targets -p <crate> -- -D warnings` — the workspace lints are strict on purpose; fix the code,
       don't allow-list the lint;
-    - `cargo fmt --check`;
+    - `cargo fmt --check` — but `make fmt-check` instead whenever the prompt writes Markdown, TOML, `packages/`, or
+      `apps/musa-desktop/ui`, which for a documentation or specification prompt means always. `cargo fmt` reads only the
+      Rust half; root `AGENTS.md` requires all four formatters green before a commit, and a prompt whose Check names
+      only the Rust one is how prompts 158 through 161 each shipped Markdown that `mdwright` would rewrap, ten files'
+      worth by the time commit `9904677a` swept them. `make fmt-check` runs `cargo fmt --all --check` itself, so it
+      replaces the line rather than joining it;
     - the prompt's behavior checks on `examples/*.musa` fixtures.
 5. If a prompt turns out to be mis-scoped (two independent features, or a missing prerequisite), repair the prompt files
    first, run `python3 scripts/renumber-prompts.py audit`, commit that repair, then implement.

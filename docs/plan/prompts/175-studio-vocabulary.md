@@ -61,7 +61,7 @@ entry and compatible audio descriptor.
 ```sh
 cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 rg -n "resonance|quality factor|builtin" docs/rules/language crates/musa-lsp apps/musa-desktop

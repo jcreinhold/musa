@@ -60,7 +60,7 @@ and generated table is checked.
 ```sh
 cargo nextest run -p musa-syntax -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ./scripts/check-docs.sh
 cd editors/tree-sitter-musa && tree-sitter test
 git -C ../vscode-musa diff --check
