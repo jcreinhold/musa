@@ -59,6 +59,9 @@ recursion spends — and `nesting` goes back to bounding structural descent, whi
 - Peyton Jones ch. 18 §18.8 — the *dump*: the G-machine saves the old stack pointer and return address on a second stack
   so that a nested evaluation returns without a host call. That is the mechanism, minus the graph.
 - Peyton Jones ch. 21 — generalized tail calls, and why the tail case is worth separating from the general one.
+- Peyton Jones ch. 17 §17.2 — reclaiming a structure without a stack proportional to its depth. Musa has no collector
+  and needs none: `Arc` already reclaims. What ch. 17 supplies is the observation that *reclamation is a traversal*, and
+  a traversal of a deep structure written as host calls is the same defect as an evaluation written as host calls.
 
 **Take the analysis, not the machine.** Musa's core is strict, finite, and total: there is no laziness to manage, no
 thunk to update, no graph to garbage-collect. Ch. 12–17's machinery answers questions musa does not have. What transfers
@@ -67,12 +70,16 @@ book shows it being saved and restored.
 
 ## Design
 
-**The frames that grow with recursion are the ones to move.** Profile first and name them: reducing a compiled case tree
-is the expected answer, because that is where 155a's level goes, and the mitigations already there say which parts do
-not. A split on a bare variable reads the environment and calls nothing. A saturated self-call in tail position is
-already trampolined in `Compiled::reduce`, charging by hand the steps the whole-term evaluation would have charged, in
-the same order. The remaining growth is the non-tail recursive call — the shape a fold is written in — and that is what
-this prompt makes flat.
+**The frames that grow with recursion are the ones to move.** Profile first and name them, and do not trust this
+paragraph's guess over the measurement — the first version of it guessed wrong. Reducing a compiled case tree looked
+like the answer, because that is where 155a's level goes, and the mitigations already there say which parts do not: a
+split on a bare variable reads the environment and calls nothing, and a saturated self-call in tail position is already
+trampolined in `Compiled::reduce`, charging by hand the steps the whole-term evaluation would have charged, in the same
+order. Measured on `examples/staff-page.musa` at the wall, the cycle is not the case tree at all. It is ι firing on a
+generated recursor and the δ-unfold replaying its spine —
+`eval → application → apply → applying → iota → ready → opened → unfold → unfold_spine → eliminate_replayed → applying
+→ apply_closure → eval`, about seven nesting levels and thirty host frames per recursive call. Those are the frames to
+move; the case tree rides along because `Compiled::reduce` sits inside the same cycle.
 
 **What stays on Rust frames.** `quote`'s descent over a value and the traversal's descent through a term are structural:
 their depth is the depth of the thing being walked, they are what §4.1 derives the metric from, and they keep charging
@@ -80,13 +87,29 @@ nesting and keep using host frames. Converting two closures likewise. This is no
 is that after this prompt, the nesting counter's maximum over a run is a function of the *terms and values* the run
 touches, and not of how many times any definition called itself.
 
+**Destruction is a traversal too, and this prompt is what makes it reachable.** A `Value` is a tree of `Arc`s and its
+destructor is Rust's, which is one host frame per level. That was invisible while nesting refused the programs that
+build deep values; with recursion off the metric they are accepted, and a list of a few thousand elements is a value a
+few thousand deep whose *drop* aborts the process — measured, `range(4000)` compiles and `range(4500)` overflows the
+stack in `drop_glue<Value>` with no musa frame on the stack at all. Trading a refusal for an abort is the one outcome
+§4.1 forbids, so the destructor becomes explicit data by the same move as the evaluator: take the children out into a
+worklist and dismantle them in a loop. This is not a collector and not a change to how anything is owned — `Arc` still
+reclaims, at the same moment, in the same order — it is ch. 17's observation that a deep traversal must not be written
+as host calls. It also closes a shortfall `resource_validation.rs` has recorded since prompt 142, where a fold over
+50,000 elements aborted "past about 1,256 elements" and the descent was recorded as unidentified; this is the descent.
+
 **Acceptance moves, in both directions, and both are one argued amendment.** A recursion that is no longer charged
 nesting is a program that was refused and is now accepted, and §4's sentences forbid that happening quietly. In the
-other direction, with recursion off the metric, 320 is no longer earned — the measurement that justified it was the
-staff adapter's recursion depth — and the limit should be re-derived from `quote`'s descent alone, which will argue for
-a smaller one. Land both as one paragraph in §4.1 replacing 155a's, with the re-measured numbers, and close note 54 with
-a line saying which of its §3 and §4 predictions held. Two version bumps recorded as one change is honest; either one
-landing silently is not.
+other direction, 320 looks unearned once recursion is off the metric — the measurement that justified it was the staff
+adapter's recursion depth — and this paragraph used to say the limit should therefore come down to whatever `quote`'s
+descent alone argues for. It must not, and the evidence is three laws: while nesting is the *only* charge standing
+between the elaborator's own uncharged `check`/`infer` recursion and the host's stack, lowering the limit lowers the
+room with it, and `elaborating_a_term_nested_past_the_limit_is_refused` stops being a refusal and becomes an abort.
+Charging that recursion is prompt 165's and this prompt's Stop forbids it, so the limit stays where 155a put it and what
+gets re-derived is the *room* — the frame ceiling, measured on the chain as it is now shaped. Land the widening as one
+paragraph in §4.1 replacing 155a's, saying which programs it accepts that were refused, and close note 54 with a line
+saying which of its §3 and §4 predictions held. A version bump recorded as one argued change is honest; landing
+silently is not.
 
 **The step budget has to actually bound it.** Moving recursion off the nesting metric is only sound if the step budget
 already charges every recursive step, so that an unbounded recursion is refused rather than run forever in a flat loop.
@@ -113,6 +136,8 @@ for this case, that is prompt 165's standard to meet, not a new outcome to inven
   past the old limit is accepted if it fits the step budget, and the nesting counter's peak over that run is bounded by
   the term's depth rather than by the recursion's.
 - A law pinning the step charge against the frame-based reading, on a program whose steps can be counted by hand.
+- A value's destructor iterative rather than recursive, and a law building a value far deeper than the host stack could
+  hold and dropping it — so that the widening above cannot be paid for with a crash.
 - The two acceptance changes landed as one argued paragraph in `docs/rules/language/02-core-calculus.md` §4.1, replacing
   155a's, carrying the re-measured structural depth; §4's cost-table sentence updated to whatever limit that argues for.
 - `Budget::NESTING`'s doc comment re-earned on the new measurement, and `kernel::room`'s `FRAME_CEILING` re-measured
@@ -144,7 +169,9 @@ Commit as `Give the evaluator an explicit control stack`.
 - No explicit stack for the *elaborator*. `check` and `infer` standing inside one another is a different missing charge
   in a different recursion, and [165](165-diagnostics-and-performance.md) owns it.
 - No graph reduction, no thunk update, no laziness, no garbage collector. Musa's core is strict, finite, and total, and
-  importing a mechanism because the book has it is the opposite of a designed step.
+  importing a mechanism because the book has it is the opposite of a designed step. The iterative destructor above is
+  not an exception to this: nothing changes about what owns what or when it is freed, only about how many host frames
+  the freeing stands on.
 - No rewrite of `quote`, conversion, or the traversal into the same style. Their depth is the depth of what they walk,
   which is the metric working as derived.
 - No `RUST_MIN_STACK`, in a test command, a `.cargo/config.toml`, a CI file, or a doc.
