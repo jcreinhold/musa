@@ -1,7 +1,7 @@
 ---
 id: 165b
 slug: graph-update-and-data-descent
-status: pending
+status: in-progress
 depends_on: [162a]
 phase: 3
 ---
@@ -26,9 +26,11 @@ library's staff adapter impossible to run. Note 59 measures both, on the adapter
   changed, those become 2,796 and 10,168.
 - **The nesting metric counts data.** `eval.rs`'s `canonical` and `family/datum.rs`'s `realize` are structural walks
   over data — reading a δ-builtin's argument, and building its answer — and each charges one nesting level per level of
-  the data. A `List` of six hundred is six hundred deep, so `examples/staff-page.musa` peaks at 672 of 320 levels in
-  those two walks alone, out of 679 in the whole run. That is the size of one argument charged against a stack-safety
-  guard.
+  the data. A `List` of six hundred is six hundred deep, and `examples/staff-page.musa` peaks at 679 of 320 levels with
+  a data charge standing at 672 of them. That is the size of one argument charged against a stack-safety guard.
+  *(Measured by removal during this prompt: the data walk is worth 208 of those levels and the adapter's own recursion
+  the other 471. Note 59 §5 carries the corrected reading; the second half below is still the fix for the 208, and 165a
+  is the fix for the 471.)*
 
 Fix both, and say in `02-core-calculus.md` §4 what each does to acceptance.
 
@@ -36,7 +38,7 @@ Fix both, and say in `02-core-calculus.md` §4 what each does to acceptance.
 
 - [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) in full — the method,
   the two tables, the per-definition tally, and the peak-nesting table. It is the evidence this prompt exists on, and
-  its §6 is the three-item verdict this prompt takes two of.
+  its §6 is the four-item verdict this prompt takes two of.
 - [`44-audit-against-smalltt-and-peyton-jones.md`](../../notes/research/language-design-closure/44-audit-against-smalltt-and-peyton-jones.md)
   §6's closing — the mechanism, recorded before the workload existed: "glued evaluation without graph update is laziness
   without memoization … a pure `Arc`-shared value has no thunk to overwrite."
@@ -112,11 +114,19 @@ half of this prompt; it is a regression.
 what §4.1 derives the metric from, and keep charging nesting on host frames. Recursion is 165a's. The step budget and
 the nesting limit are the numbers they are; this prompt changes what is counted, not what the count is compared to.
 
-**The staff class is the workload, and it is the honest way to state the result.** After both halves, note 59's
-measurement predicts `examples/staff-page.musa` expands in 381,055 steps against 200,000 — still red, and *correctly*
-red, because closing the remaining factor of 1.9 is what prompt 166's rewrite is for. This prompt therefore does not
-promise a green staff class. What it promises is a measured one: every failure in the class reports a step count rather
-than a nesting level, and the number is inside one order of magnitude of the budget rather than five.
+**The staff class is the workload, and it is the honest way to state the result.** After both halves,
+`examples/staff-page.musa` expands in 381,055 steps against 200,000 — still red, and *correctly* red, because closing
+the remaining factor of 1.9 is what prompt 166's rewrite is for. This prompt does not promise a green staff class.
+
+*Repaired mid-implementation, by the second half's own measurement.* This paragraph used to promise more than that: that
+every failure in the class would report a step count rather than a nesting level. It does not, and the reason is a
+misreading of note 59 §5 that implementing the second half caught. `Meter::nested` charges one shared counter, so a peak
+recorded under an operation is the combined depth at that moment and not that operation's own contribution; reading
+`canonical data`'s 672 as 672 levels of data was reading a total as a part. Measured by removal, the data walk is worth
+208 of the 679 levels and **471 are the adapter's own recursion**, at about seven nesting levels per call. So after this
+prompt the class is still refused at `nested evaluation levels` — at 471 of 320 rather than 679 of 320 — and what closes
+that is [165a](165a-explicit-control-stack.md), whose `depends_on` note 59 §6 moves in front of 166 for exactly this
+reason. Note 59 §5 and §6 carry the corrected reading, taken with this prompt's code in the tree.
 
 ## Target
 
@@ -131,6 +141,8 @@ than a nesting level, and the number is inside one order of magnitude of the bud
 - A law pinning that: data of a depth far past `Budget::NESTING` is read and built without a nesting refusal and without
   an abort, on the default 2 MiB test thread; and the step charge for that walk is what the frame-based reading charged,
   on a case small enough to count by hand.
+- Note 59 §5 and §6 repaired with the shared-counter reading and the measured decomposition, and 165a and 166 reordered
+  to match. *(Landed ahead of the rest as its own repair commit, per the operating procedure.)*
 - `Budget::LANGUAGE`'s doc comment repaired: its closing paragraph assigns the staff residual to prompt 166, which note
   59 measures as wrong, and the numbers in it are re-taken after this prompt.
 - `Metric::Nesting`'s doc and `02-core-calculus.md` §4.1 saying which descents the metric counts, now that one has left.
@@ -153,9 +165,10 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 `--run-ignored all` still carries the staff budget class, and that is the expected result rather than a failure of this
-prompt — see the Design's last paragraph. What must be true of it is stated and checkable: **no member of the class
-reports `nested evaluation levels` any more**, every one that still fails reports `reduction steps`, and the count of
-failures does not grow. Record the step count each one reports; prompt 166 is measured against those numbers.
+prompt — see the Design's last paragraph, which was repaired mid-implementation and now states what is actually owed:
+**the nesting peak on `examples/staff-page.musa` falls from 679 to 471, no charge in it is made by a data walk, and the
+count of failures does not grow.** The class is still refused at `nested evaluation levels`, from the adapter's own
+recursion, and 165a is what closes that. Record the peak, so 165a is measured against it.
 
 P1 and P2 move here, and they should move downwards. Report them against `06-elaboration-baseline.md`'s baseline under
 its 10% gate; a memo that makes the pipeline *slower* has been built wrong and the number says so.

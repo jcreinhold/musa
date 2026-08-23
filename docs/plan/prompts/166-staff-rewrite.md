@@ -2,7 +2,7 @@
 id: 166
 slug: staff-rewrite
 status: pending
-depends_on: [142f, 162, 165b]
+depends_on: [142f, 162, 165a, 165b]
 phase: 3
 ---
 

@@ -2,11 +2,23 @@
 id: 165a
 slug: explicit-control-stack
 status: pending
-depends_on: [165]
+depends_on: [165b]
 phase: 3
 ---
 
 # Give the Evaluator an Explicit Control Stack
+
+> **Moved ahead of 165 — and ahead of 166 — by the measurement in
+> [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) §5.** Nothing below
+> changed; only `depends_on` did. This prompt used to follow 165 because it was written as the second of the evaluator's
+> two performance repairs, and 165 follows 164, which follows 166. Prompt 165b was cut out of 165 for that deadlock;
+> implementing 165b's second half showed the deadlock also holds this prompt. With data descent charged in steps,
+> `examples/staff-page.musa` still peaks at 471 nesting levels of 320, and every one of them is the adapter's own
+> recursion at about seven levels a call — so the staff class stays red on `nested evaluation levels` until this prompt
+> runs, and prompt 166 cannot be measured, or usefully developed, before it. This prompt never needed 165: its Read
+> cites 165 once, to say the elaborator's own missing charge is a different recursion this prompt must not absorb, and
+> its Stop says the same. The one thing it borrowed forward is the `FRAME_CEILING` re-measurement method, which is
+> written down in 165's Design and can be read there without 165 having run.
 
 ## Task
 
@@ -84,7 +96,8 @@ to pin it against the frame-based reading, on a program small enough to count by
 
 **Room follows the limit, not the other way round.** `kernel::room` reserves `NESTING × FRAME_CEILING`. If the limit
 comes down the reservation comes down with it, and `FRAME_CEILING` should be re-measured rather than inherited, because
-the chain it was measured on has changed shape. Prompt 165's re-measurement is the method to reuse.
+the chain it was measured on has changed shape. The method is written out in prompt 165's Design and is reused here
+ahead of it, which is what the reordering above costs.
 
 **No new refusal, and no new diagnostic vocabulary.** A recursion too deep for the step budget is exhausted at
 `reduction steps`, which is a diagnostic that already exists and already reads correctly. If it does not read correctly

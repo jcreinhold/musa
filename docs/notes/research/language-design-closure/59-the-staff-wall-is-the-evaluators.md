@@ -90,7 +90,7 @@ With that memo in place and `Budget::NESTING` raised, **23 of the 24 `staff_expa
 `a_tuplet_that_plays_nothing_in_the_time_of_some_is_refused_at_the_tuplet`, reports `NotATransformer` rather than a
 resource limit, which is a separate question and is not a budget failure.
 
-## 5. The second wall is data descent, not evaluator descent
+## 5. The second wall is two walls, and only the smaller one is data
 
 With the memo in place, `examples/staff-page.musa`'s peak nesting, by the operation each charge is made under:
 
@@ -104,30 +104,58 @@ With the memo in place, `examples/staff-page.musa`'s peak nesting, by the operat
 | `re-checking` | 48 |
 | `unification` | 4 |
 
-Six hundred and seventy-two of the six hundred and seventy-nine levels are `canonical data`: `eval.rs` charges one
-nesting level per level of *data* structure, and the emitted expression is a right-nested list some six hundred long.
-Nothing an adapter does changes that number except emitting less music. This is exactly the reading prompt 165's own
-note proposed — "`Metric::Nesting` is documented as 'how far inside itself an evaluation currently is', a *stack-safety*
-guard, and `eval.rs`'s `canonical` charges it once per level of **data** structure, so a long right-nested value costs
-nesting the way deep recursion does. Whether those are the same quantity is this prompt's measurement to make" — and it
-is the answer to the question that note asked prompt 166 to settle: the wall was not the adapter's shape.
+**Read once, this table says the data walk is the whole of it. That reading is wrong, and prompt 165b's implementation
+is what caught it.** `Meter::nested` charges *one* counter for every operation, so a peak recorded under an operation is
+the combined depth at the moment that operation charged — not that operation's own contribution. `canonical data` at 672
+means the counter stood at 672 while a data charge was made, and the evaluator frames underneath it are inside that
+number. The two quantities can only be separated by removing one and re-measuring.
+
+Removed: with data descent charged in steps rather than in nesting levels — 165b's second half, and nothing else in this
+table changed — the same file re-measures as
+
+| operation | before | after |
+| --- | --- | --- |
+| `evaluation` | 679 | 471 |
+| `data realization` | 672 | — |
+| `canonical data` | 672 | — |
+| `quotation` | 54 | 54 |
+| `neutral typing` | 54 | 54 |
+| `re-checking` | 48 | 48 |
+| `unification` | 4 | 6 |
+
+So the data walk was worth about 208 levels, and **471 of the 679 are the evaluator standing inside itself.** Dumping
+the term shape at each level between 330 and 400 says what those are: a seven-frame cycle, one `Bind { name: "match
+subject", … }` followed by six `App` frames, at the same five origins over and over. That is the adapter's own recursion
+unrolling — a definition calling itself, holding its level until the call beneath it finishes — at roughly seven nesting
+levels per call. The single-note law `a_note_states_its_own_pitch_and_its_own_written_value` peaks at 421 the same way,
+against a limit of 320.
+
+Recursion is not what §4.1 derives the metric from either, and it is not this note's discovery: prompt
+[`165a`](../../../plan/prompts/165a-explicit-control-stack.md) exists to take it off, note
+[`54`](54-the-nesting-limit.md) derives why 320 cannot be raised a third time, and `resource_validation.rs` has recorded
+the conflation since prompt 142. What is new is the *ordering* consequence, in §6 below: the staff class does not report
+a step count after 165b, because the nesting wall it hits after the data walk leaves is the recursion's.
 
 ## 6. What follows for the plan
 
-Three things, and the third is the one prompt 166 keeps.
+Four things, and the last is the one prompt 166 keeps.
 
 1. **The unfold memo is not an optimization to be weighed against its complexity; it is what makes the adapter path run
    at all.** Prompt 165's Design assigns the verdict to itself and prices it as a judgement call between a memo and the
    numbers. The numbers are above, and they are five orders of magnitude on the workload that the pass's own acceptance
    gate is written against.
-2. **The nesting metric must distinguish evaluator descent from data descent**, or the staff class cannot go green at
-   any adapter length. 165 names this too, as the repair to make "if the staff rewrite does not make `core-pressure`
-   green". It does not, and could not: the charge is not about the adapter.
-3. **The rewrite is still load-bearing, and now it has a real target.** After the memo, `examples/staff-page.musa`'s
+2. **The nesting metric must distinguish evaluator descent from data descent.** 165 names this too, as the repair to
+   make "if the staff rewrite does not make `core-pressure` green". It does not, and could not: the charge is not about
+   the adapter. It is worth 208 of 679 levels — real, and on its own not enough.
+3. **And recursion must leave the metric in the same pass, or the class stays red on nesting rather than on steps.**
+   §5's after-table is the evidence: 471 levels remain, all of them one definition calling itself. That work is
+   [`165a`](../../../plan/prompts/165a-explicit-control-stack.md)'s and is fully specified there; what this note changes
+   is where it sits. 165a followed 165, 165 follows 164, 164 follows 166 — the same deadlock that cut 165b out, for the
+   same reason and with the same answer. 165a's `depends_on` becomes 165b, and 166's gains 165a.
+4. **The rewrite is still load-bearing, and now it has a real target.** After the memo, `examples/staff-page.musa`'s
    expansion costs 381,055 steps against 200,000 — a factor of 1.9, not 20,000. That is a number a shorter adapter can
    close, and closing it is prompt 166's, measured against the budget that does not move.
 
-Both of (1) and (2) are prompt 165's by ownership and neither can wait for it, because 165 follows 164, 164 follows 166,
-and 166 cannot be *developed* — let alone measured — while every compile of the file under rewrite dies at a resource
-limit. They are cut out into prompt [`165b`](../../../plan/prompts/165b-graph-update-and-data-descent.md), which runs
-before 166 and leaves 165 its diagnostics, its P1/P2 gate, and the four smalltt items.
+Of these, (1) and (2) are prompt 165's by ownership and neither can wait for it. They are cut out into prompt
+[`165b`](../../../plan/prompts/165b-graph-update-and-data-descent.md), which runs before 166 and leaves 165 its
+diagnostics, its P1/P2 gate, and the four smalltt items. (3) is 165a's already and only moves.
