@@ -1,7 +1,7 @@
 ---
 id: 166
 slug: staff-rewrite
-status: pending
+status: in-progress
 depends_on: [142f, 162]
 phase: 3
 ---
@@ -165,9 +165,10 @@ possible way to make the number look worse for a good reason and better for a ba
 - Mechanical checks in the Check section for the five eliminations.
 - The rendered corpus for every staff example byte-identical.
 - `syntax_anchor` at two arguments: the registry entry, declared type, doc comment, and evaluator arm in
-  `crates/musa-compiler/src/phase/mod.rs`, with the site index drawn from `Resolver::next_quotation`;
-  `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand/mod.rs`'s two anchor unit tests
-  rewritten at the new arity with the law they hold unchanged.
+  `crates/musa-compiler/src/phase/mod.rs`, with the site index the reserved `u32::MAX` the Design section argues for —
+  **not** `Resolver::next_quotation`, which this line asked for until the Design's own repair note said why a δ rule
+  cannot reach a counter; `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand/mod.rs`'s
+  two anchor unit tests rewritten at the new arity with the law they hold unchanged.
 - `stdlib/src/adapters/doubled.musa`'s call site moved to the new arity, and nothing else in that file touched.
 - `tests/fixtures/staff-construction.musa`'s `anchored` written the way prompt 132's trial wrote it, and its header note
   (lines 28–41) reduced to whatever workaround genuinely remains after prompt 142 and this prompt.
