@@ -1,7 +1,7 @@
 ---
 id: 161
 slug: one-declaration-form
-status: pending
+status: done
 depends_on: [157]
 phase: 3
 ---
@@ -30,7 +30,7 @@ readability rather than for meaning.
 
 **The measurement first.** The three forms differ in five capabilities, and no two of them differ the same way:
 
-| | index telescope | chosen indices | per-variant `private` | positional fields | named fields |
+|  | index telescope | chosen indices | per-variant `private` | positional fields | named fields |
 | --- | --- | --- | --- | --- | --- |
 | `data` | ✓ | ✓ | ✗ | ✗ | ✓ |
 | `enum` | ✗ | ✗ | ✓ | ✓ | ✓ |
@@ -62,10 +62,10 @@ sentences did not survive contact with the code.
 
 - *"Give `data` index syntax at the surface (prompt 156 gave it to the core)"* — 156 gave it to **both**. `DataIndices`
   and `DataChosen` are in the parser, and `Lowering::index_telescope` and `Lowering::chosen_indices` read them.
-- *"`enum` is `data` where every constructor is nullary … refused where a constructor takes a field"* — that
-  contradicts `01-surface.md` §1.3, which is governing and which shows `enum Reading<A> { Done(A), Refused { at:
-  NodePath, why: Text } }` and `enum Chord { private NamedChord(ChordSymbol, List<Spelling>), … }`. The precedence
-  ladder settles it: the rules win, and this Design now states §1.3's rule instead.
+- *"`enum` is `data` where every constructor is nullary … refused where a constructor takes a field"* — that contradicts
+  `01-surface.md` §1.3, which is governing and which shows `enum Reading<A> { Done(A), Refused { at: NodePath, why: Text
+  } }` and `enum Chord { private NamedChord(ChordSymbol, List<Spelling>), … }`. The precedence ladder settles it: the
+  rules win, and this Design now states §1.3's rule instead.
 - *"`record` … refused with more than one constructor"* — `record_decl` reads fields and nothing else, so there is no
   such program to refuse. The refusal each spelling actually owes is the index telescope, above.
 
@@ -104,8 +104,8 @@ Commit as `Collapse the declaration forms to one`.
 
 ## Stop
 
-- No removal of the `enum` or `record` keywords. This prompt removes a *semantics*, not a spelling — even though note
-  57 §3 records that no `.musa` file in the repository declares an `enum`, which is a fact about the corpus before the
-  two adapter rewrites and not yet an argument for deleting a word §1.3 specifies at length.
+- No removal of the `enum` or `record` keywords. This prompt removes a *semantics*, not a spelling — even though note 57
+  §3 records that no `.musa` file in the repository declares an `enum`, which is a fact about the corpus before the two
+  adapter rewrites and not yet an argument for deleting a word §1.3 specifies at length.
 - No change to what a `record` literal, pattern, projection, or `with` means. §1.2's five rules stand.
 - No module-layer work — 162.

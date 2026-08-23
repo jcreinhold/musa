@@ -187,6 +187,36 @@ fail and there is nothing to distinguish it from.
 There are no arithmetic operators. `a + b` is not written in this language; the operations above are named because the
 grammar has no binary-expression form, and `-` and `/` already spell durations and pitches.
 
+## Declaring types
+
+There is one declaration form and three words for it. `data` is the form; `enum` and `record` are shapes of it that read
+better when a type is a sum of several cases or a product of named fields.
+
+```musa
+data Chord {
+    private NamedChord(ChordSymbol, List<Spelling>),
+    Anonymous(root: Pitch, quality: Quality),
+    Silence,
+}
+
+enum Tying { Untied, TiedOn(Nat), Held { when: Nat; why: Text; } }
+
+record Pending { read: Reading; length: Length; dots: Dots; }
+```
+
+A case carries nothing, a list of types, or named fields; a case may be marked `private`, which hides the constructor
+and leaves the type public. All three words accept all three, and each declaration generates its own family — `enum
+Beats { Beats(Nat) }` and `enum Bars { Bars(Nat) }` are two types, and so are two records with the same fields.
+Constructors live in the type's namespace, so `Tying::Untied` is the qualified spelling and the bare `Untied` is
+accepted wherever the expected type is already known.
+
+The one thing the three words do not share is the index telescope. `data Vect<A>(n: Nat) { … }` declares a family whose
+constructors say which index each one stands at; writing the same parentheses after an `enum` or a `record` is refused,
+and the refusal says that an indexed family is written with `data`.
+
+Fields of a record end in `;` and cases of a sum are separated by `,`, which is how a declaration says at a glance which
+of the two it is.
+
 ## Writing a value down
 
 A text is built in exactly one way, and taken apart in none:

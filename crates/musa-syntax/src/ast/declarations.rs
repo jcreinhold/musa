@@ -326,8 +326,12 @@ impl EnumCase {
 
     /// The types a positional case carries, in source order. Empty for an
     /// empty case and for one that names its fields.
-    pub fn positional(&self) -> Vec<TypeExpr> {
-        children(&self.0)
+    ///
+    /// Read by [`is_type`] rather than as a [`TypeExpr`], because `TiedOn(Nat)`
+    /// writes a [`SyntaxKind::TypeName`] and only a parenthesized type is a
+    /// `TypeExpr`: a positional list holds whatever the type grammar produced.
+    pub fn positional(&self) -> Vec<SyntaxNode> {
+        self.0.children().filter(|node| is_type(node.kind())).collect()
     }
 
     /// The fields a named case declares, in source order.
@@ -413,7 +417,7 @@ pub(crate) fn type_parameters(node: &SyntaxNode) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// `Sounded(pitch: Pitch, held: Duration)` — one constructor.
+/// `private Sounded(pitch: Pitch, Duration)` — one constructor.
 pub struct DataVariant(SyntaxNode);
 wrapper!(DataVariant, SyntaxKind::DataVariant);
 
@@ -423,9 +427,27 @@ impl DataVariant {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
-    /// Its fields, in source order. A constructor with no fields has none.
+    /// Its named fields, in source order. A constructor with no fields, and one
+    /// that writes its arguments positionally, has none.
     pub fn fields(&self) -> Vec<DataField> {
         children(&self.0)
+    }
+
+    /// The types it carries positionally, in source order.
+    ///
+    /// The other half of [`Self::fields`], and both may be written in one
+    /// constructor: `01-surface.md` §1.3's positional form names types and not
+    /// fields, so what a reader gets back from it is a type and nothing else.
+    /// Read the way [`EnumCase::positional`] is read, and for the same reason.
+    pub fn positional(&self) -> Vec<SyntaxNode> {
+        self.0.children().filter(|node| is_type(node.kind())).collect()
+    }
+
+    /// Whether the constructor is marked `private`, so that the *type* stays
+    /// public and the case is the declaring module's to build
+    /// (`01-surface.md` §1.3).
+    pub fn is_private(&self) -> bool {
+        is_private(&self.0)
     }
 }
 

@@ -25,13 +25,16 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `data Motive { Silence, Sounded(pitch: Pitch, held: Duration), }` —
-    /// one finite nominal declaration.
+    /// `data Motive { Silence, private Sounded(pitch: Pitch, held: Duration), }`
+    /// — the one nominal declaration form.
     ///
     /// A variant with no fields writes no parentheses, because there are no
-    /// fields to name; a variant with fields names every one of them, because
-    /// a field a reader cannot name is a field the record case could not
-    /// project.
+    /// fields to name. A variant with fields writes them named or positional,
+    /// and a variant may be marked `private`: those are the two capabilities
+    /// `enum` had and this form did not, and prompt 161 gave them here rather
+    /// than leaving `enum` a third form. `01-surface.md` §1.3's rule for both
+    /// is unchanged — a field a reader is meant to name is written named, and
+    /// the positional form names types and not fields.
     pub(super) fn data_decl(&mut self) {
         self.start(SyntaxKind::DataDecl);
         self.visibility();
@@ -45,14 +48,14 @@ impl Parser<'_> {
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::Identifier) {
+            if self.opens(SyntaxKind::Identifier) {
                 self.data_variant();
                 if self.at(SyntaxKind::Comma) {
                     self.bump();
                 }
             } else {
                 self.expected("a constructor name, or `}`");
-                self.recover(&[SyntaxKind::Identifier, SyntaxKind::RBrace]);
+                self.recover(&[SyntaxKind::Identifier, SyntaxKind::PrivateKw, SyntaxKind::RBrace]);
             }
         }
         self.expect(SyntaxKind::RBrace, "`}`");
@@ -152,6 +155,12 @@ impl Parser<'_> {
     /// declaration and every other one in this language ends in `;`. An enum's
     /// *cases* are comma-separated, which is the visible difference between
     /// reading a record and reading a sum.
+    ///
+    /// An index telescope is *read* here and refused by the lowerer, which is
+    /// the one place left where a spelling could lie: `record Pending(n: Nat)
+    /// { … }` is not a program, and a parser that stopped at the `(` would
+    /// report the brace it wanted — rather than where an indexed
+    /// family is written.
     pub(super) fn record_decl(&mut self) {
         self.start(SyntaxKind::RecordDecl);
         self.visibility();
@@ -159,6 +168,9 @@ impl Parser<'_> {
         self.expect(SyntaxKind::Identifier, "a type name");
         if self.at(SyntaxKind::Less) {
             self.type_params();
+        }
+        if self.at(SyntaxKind::LParen) {
+            self.data_indices();
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
@@ -187,10 +199,11 @@ impl Parser<'_> {
     /// a nominal sum whose cases live in its namespace.
     ///
     /// A case may carry nothing, a positional list of types, or named fields.
-    /// The positional form names types and not fields, which is the difference
-    /// from `data`: `data` made every constructor argument a projectable field,
-    /// and §1.3 does not, because a case with fields worth naming is written in
-    /// the named form where the names are the interface.
+    /// The positional form names types and not fields, and since prompt 161
+    /// [`Parser::data_variant`] reads that form too — the two words are one
+    /// declaration written two ways, and this one is the way that reads as a
+    /// sum. Its index telescope is read and refused by the lowerer, for the
+    /// reason [`Parser::record_decl`] gives.
     pub(super) fn enum_decl(&mut self) {
         self.start(SyntaxKind::EnumDecl);
         self.visibility();
@@ -198,6 +211,9 @@ impl Parser<'_> {
         self.expect(SyntaxKind::Identifier, "a type name");
         if self.at(SyntaxKind::Less) {
             self.type_params();
+        }
+        if self.at(SyntaxKind::LParen) {
+            self.data_indices();
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         // An enum with no cases at all is admitted, and deliberately: `enum
@@ -276,7 +292,7 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `(n: Nat)` after a `data` declaration's name — its index telescope.
+    /// `(n: Nat)` after a declaration's name — its index telescope.
     ///
     /// The same named-and-typed shape a constructor's field list has, because
     /// it is the same kind of thing: a telescope, where a later binder's type
@@ -329,25 +345,34 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `Sounded(pitch: Pitch, held: Duration)` — one constructor.
+    /// `private Sounded(pitch: Pitch, held: Duration)`, `Done(A)` — one
+    /// constructor.
+    ///
+    /// Each argument is named or positional, decided by one token of
+    /// lookahead: an identifier followed by `:` opens a named field and
+    /// anything else is a type. The two forms may stand in one list because
+    /// refusing the mixture would be a rule the core does not have — a
+    /// constructor is a telescope either way, and the names are the only thing
+    /// at stake.
     pub(super) fn data_variant(&mut self) {
         self.start(SyntaxKind::DataVariant);
+        self.visibility();
         self.bump(); // the constructor's name
         if self.at(SyntaxKind::LParen) {
             self.bump();
             while !self.at(SyntaxKind::RParen) && self.current().is_some() {
-                if self.at(SyntaxKind::Identifier) {
+                if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
                     self.start(SyntaxKind::DataField);
                     self.bump();
                     self.expect(SyntaxKind::Colon, "`:`");
                     self.type_expr();
                     self.finish();
-                    if self.at(SyntaxKind::Comma) {
-                        self.bump();
-                    }
                 } else {
-                    self.expected("a field name, or `)`");
-                    self.recover(&[SyntaxKind::Identifier, SyntaxKind::RParen]);
+                    self.type_expr();
+                }
+                if self.at(SyntaxKind::Comma) {
+                    self.bump();
+                } else {
                     break;
                 }
             }

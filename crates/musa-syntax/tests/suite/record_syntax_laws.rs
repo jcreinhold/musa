@@ -7,7 +7,7 @@
 //! and the reason §1.3 namespaces constructors at all. A law that held only for
 //! the snippet it was written next to would be a law about that snippet.
 
-use musa_syntax::ast::{AstNode, EnumDecl};
+use musa_syntax::ast::{AstNode, DataVariant, EnumCase, EnumDecl};
 use musa_syntax::{BarSpacing, SyntaxElement, SyntaxKind, format, parse};
 
 /// The program every layout law here is stated over.
@@ -286,4 +286,108 @@ fn an_enum_with_no_cases_is_admitted() {
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
     assert_eq!(count(&parsed, SyntaxKind::EnumDecl), 1);
     assert_eq!(count(&parsed, SyntaxKind::EnumCase), 0);
+}
+
+/// The two capabilities prompt 161 moved onto `data`, written with `data`.
+///
+/// Before 161 a `private` case and a positional field list were `enum`'s alone,
+/// which made `enum` a third declaration form rather than a second spelling of
+/// one. They are here so that the general form is general — root `AGENTS.md`'s
+/// rule about sublanguages, one level up — and §1.3's rule for each is
+/// unchanged: the positional form names types and not fields, and a `private`
+/// case leaves the type public.
+const VARIANTS: &str = r#"piece "Variants" {
+    data Chord {
+        private NamedChord(Text, Nat),
+        Anonymous(root: Nat, quality: Nat),
+        Silence,
+    }
+}
+"#;
+
+#[test]
+fn a_data_variant_writes_a_marker_and_a_positional_field() {
+    let parsed = parse(VARIANTS);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    let variants: Vec<DataVariant> = parsed.syntax().descendants().filter_map(DataVariant::cast).collect();
+    let read: Vec<(String, bool, usize, usize)> = variants
+        .iter()
+        .map(|variant| {
+            (
+                variant.name().unwrap_or_default(),
+                variant.is_private(),
+                variant.positional().len(),
+                variant.fields().len(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        read,
+        vec![
+            ("NamedChord".to_owned(), true, 2, 0),
+            ("Anonymous".to_owned(), false, 0, 2),
+            ("Silence".to_owned(), false, 0, 0),
+        ],
+        "a `data` case writes a marker, a positional list, or named fields"
+    );
+
+    // The same case under the other word, read through the other wrapper: two
+    // spellings, one shape.
+    let twin = parse("piece \"x\" {\n    enum Chord {\n        private NamedChord(Text, Nat),\n    }\n}\n");
+    assert!(twin.errors().is_empty(), "{:?}", twin.errors());
+    let cases: Vec<(String, bool, usize)> = twin
+        .syntax()
+        .descendants()
+        .filter_map(EnumCase::cast)
+        .map(|case| {
+            (
+                case.name().unwrap_or_default(),
+                case.is_private(),
+                case.positional().len(),
+            )
+        })
+        .collect();
+    assert_eq!(cases, vec![("NamedChord".to_owned(), true, 2)]);
+}
+
+#[test]
+fn the_variant_forms_round_trip_and_format_to_a_fixpoint() {
+    let parsed = parse(VARIANTS);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    let before = significant_shape(&parsed);
+    assert_eq!(parsed.syntax().text().to_string(), VARIANTS, "parsing is lossless");
+
+    let once = format(&parsed, BarSpacing::Compact).to_string();
+    let reparsed = parse(&once);
+    assert!(reparsed.errors().is_empty(), "{:?}\n{once}", reparsed.errors());
+    assert_eq!(
+        significant_shape(&reparsed),
+        before,
+        "formatting changed the tree:\n{once}"
+    );
+    assert_eq!(
+        format(&reparsed, BarSpacing::Compact).to_string(),
+        once,
+        "formatting is not a fixpoint:\n{once}"
+    );
+}
+
+/// An index telescope parses under all three words, and only `data` keeps it.
+///
+/// The grammar admits what it cannot mean so that the refusal can be about
+/// indexed families: a parser that stopped at the `(` would report the brace it
+/// wanted, and the author would be left to guess. Where the refusal is stated
+/// is `crates/musa-compiler/src/lower/items.rs`, and what it says is
+/// `lower::laws::an_index_telescope_is_refused_by_the_word_that_wrote_it`.
+#[test]
+fn an_index_telescope_parses_under_every_word_and_is_refused_later() {
+    for source in [
+        "piece \"x\" {\n    data Vect<A>(n: Nat) {\n        Nil : (0),\n    }\n}\n",
+        "piece \"x\" {\n    record Pending(n: Nat) {\n        read: Nat;\n    }\n}\n",
+        "piece \"x\" {\n    enum Reading(n: Nat) {\n        Done,\n    }\n}\n",
+    ] {
+        let parsed = parse(source);
+        assert!(parsed.errors().is_empty(), "{source}\n{:?}", parsed.errors());
+        assert_eq!(count(&parsed, SyntaxKind::DataIndices), 1, "one telescope in {source}");
+    }
 }

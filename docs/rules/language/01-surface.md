@@ -26,10 +26,14 @@ binding      := visibility? "let" IDENT (":" type)? "=" expr ";"
 function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type block
 param        := IDENT (":" type)? ("=" expr)?
 data         := visibility? "data" IDENT type-params? index-params? "{" data-case ("," data-case)* ","? "}"
-data-case    := visibility? IDENT ("(" params? ")")? (":" type)?     % the result type names the indices it chooses
-record       := visibility? "record" IDENT type-params? "{" field-decl* "}"
+data-case    := visibility? IDENT ("(" data-field ("," data-field)* ")")? (":" type)?
+                                                             % the result type names the indices it chooses
+data-field   := IDENT ":" type | type                        % named, or positional: the latter names a type and no field
+record       := visibility? "record" IDENT type-params? index-params? "{" field-decl* "}"
+                                                             % a telescope parses here and §1.3 refuses it by this word
 field-decl   := IDENT ":" type ";"
-enum         := visibility? "enum" IDENT type-params? "{" (enum-case ("," enum-case)* ","?)? "}"
+enum         := visibility? "enum" IDENT type-params? index-params? "{" (enum-case ("," enum-case)* ","?)? "}"
+                                                             % and here
 enum-case    := visibility? IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
 impl         := visibility? "impl" type "{" function* "}"          % the type's namespace, opened
 call         := expr "(" args? ")"
@@ -381,7 +385,8 @@ Five rules fix it.
   to a one-constructor family, a literal to that constructor applied to its fields, a projection to a generated function
   whose body is a one-branch case tree, a pattern to the case tree of `02-core-calculus.md` §6.2, and `with` to the
   `let`-and-literal rule of §1. The core has no record former, no record introduction, and no projection form; `record`
-  is a spelling, and prompt 161 is where that is stated as one declaration form with two conveniences.
+  is a spelling. Prompt 161 states which: `data` is the one declaration form, and a `record` is `data` with one case,
+  named after the type, whose fields are named and whose family carries no index telescope.
 
 The measurement this is answering is in the file above. `stdlib/src/adapters/staff.musa` declares `Pending` as an
 eight-field product with the only spelling the language had — a single-constructor `data` — and then destructures all
@@ -404,6 +409,15 @@ enum Reading<A> {
     Refused { at: NodePath, why: Text },
 }
 ```
+
+**One declaration, three spellings.** `data` is the form and `enum` and `record` are shapes of it. Since prompt 161 a
+`data` variant may be marked `private` and may write its arguments positionally, which were the two things only an
+`enum` could say, so what is left between the three words is *where* the cases are written and whether an index
+telescope may stand after the name — and neither is semantic. Each declaration is one family with its own constructors
+whichever word wrote it, and `crates/musa-compiler/src/lower/items.rs` reads all three down one path;
+`lower::laws::the_three_spellings_of_one_declaration_are_one_family` is the check. The direction is the point: `data`
+gained the two capabilities rather than `enum` losing them, because a form that is the general one minus two things is a
+second abstraction, and every convenience it drops is paid by every author who writes in it (root `AGENTS.md`).
 
 **Constructors live in the type's namespace**: `Tying::Untied`, `TokenKind::PitchLiteral`,
 `Reading::Refused { at = p, why = w }`. A bare constructor name is accepted exactly where the expected type is already
@@ -428,9 +442,9 @@ constructors arrive with it, so two imported enums with a case of the same name 
 **Both are nominal, and both are the same declaration underneath.** Each `enum` declaration generates its own inductive
 family with its own constructors (`02-core-calculus.md` §1.1), so `enum Beats { Beats(Nat) }` and
 `enum Bars { Bars(Nat) }` are two types — and after prompt 157 so is every `record`, for the same reason (§1.2). The
-choice between the two spellings is therefore about **arity and field names** rather than about identity: `enum` where
-there are several cases, `record` where there is one and its fields want names. Prompt 161 makes that exact statement
-the rule, with `data` as the form both desugar to.
+choice between the three spellings is therefore about **arity and field names** rather than about identity: `enum` where
+there are several cases, `record` where there is one and its fields want names, `data` where the family carries indices
+or where neither of the other two reads better.
 
 **An enum may have no cases at all.** `enum Empty {}` declares the type with no closed inhabitant, which is the type
 `02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
@@ -439,14 +453,18 @@ value of it has no arms, and every arm it does not have is covered.
 **A declaration may carry indices, and `data` is where they are written.** A constructor's result type names the indices
 it chooses — `Nil : Vec<A>(0)`, `Cons(head: A, tail: Vec<A>(n)) : Vec<A>(n + 1)` — and matching on such a value refines
 the index in each branch (`02-core-calculus.md` §1.1). `enum` and `record` are the two spellings that do not write one:
-`enum` for several nullary or positional cases, `record` for one case with named fields. This reverses what this
-paragraph said before, which was that parameters-and-no-indices was final on the evidence that no committed program
-narrows a type by matching; prompt 143's amendment answers that evidence — the corpus was writing the workaround,
-seventeen compiler builtins spent on one modulus, rather than exhibiting no demand. `Syntax` is not among the beneficiaries, and
-`11-quotation.md` §1 measures why: it is indexed by `Cat` and stays a compiler-owned base type, because the thing that
-would make refining its index worth having is an eliminator it does not have. `Option<A>` and `Result<A, E>` become ordinary enums
-declared in `std` rather than grammar; `Some`, `None`, `Ok`, and `Err` read exactly as before under the bare-constructor
-rule, and `option_fold` is replaced by the `match` that was always underneath it.
+`enum` for several nullary or positional cases, `record` for one case with named fields. A telescope written after
+either of their names *parses* and is then refused, naming the word the author wrote and saying that an indexed family
+is written with `data`. The grammar admits what it cannot mean on purpose: a parser that stopped at the `(` would report
+the brace it wanted rather than where indices go, which is the one place a spelling could still lie once `data` is the
+union of the three. This reverses what this paragraph said before, which was that parameters-and-no-indices was final on
+the evidence that no committed program narrows a type by matching; prompt 143's amendment answers that evidence — the
+corpus was writing the workaround, seventeen compiler builtins spent on one modulus, rather than exhibiting no demand.
+`Syntax` is not among the beneficiaries, and `11-quotation.md` §1 measures why: it is indexed by `Cat` and stays a
+compiler-owned base type, because the thing that would make refining its index worth having is an eliminator it does not
+have. `Option<A>` and `Result<A, E>` become ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`,
+and `Err` read exactly as before under the bare-constructor rule, and `option_fold` is replaced by the `match` that was
+always underneath it.
 
 The dispatch table is the other measurement. `text_equal(kind, "PitchLiteral")` appears in the staff adapter at
 twenty-one sites over thirteen distinct string literals, and a misspelling in any of them is a comparison that is
@@ -464,6 +482,9 @@ enum Chord {
 
 fn build(symbol: ChordSymbol) -> Chord { Chord::NamedChord(symbol, tones_of(symbol)) }
 ```
+
+The marker stands before a `data` variant too and means exactly this there — it is one of the two capabilities prompt
+161 moved onto the general form, so the declaration above is the same declaration with `data` in place of `enum`.
 
 Inside `Chord`'s own module the constructor is an ordinary name with no ceremony, which is what makes `build` writable.
 Outside it, three things are refused and each names the module rather than falling through to "no such name": the
@@ -1022,6 +1043,8 @@ is a rule nobody can implement, which is why the third column is not optional.
 | path update | `state with { read.refusal = e }` ⇝ one `let` and one literal per segment | `state with { read = x, read.refusal = e }` — *one path is a prefix of the other*, pointing at both |
 | two records, same fields | one is accepted where the other is expected, by §1.2 | — (this is the priced consequence, and the fix a diagnostic would offer is `enum`) |
 | enum declaration | `enum Tying { Untied, TiedOn }` ⇝ an inductive family | a case named twice — *duplicate case*, pointing at both |
+| one declaration, three words | `data`, `enum`, and `record` write the same family, and a `data` case may be marked `private` and may write its arguments positionally | — (all three are read down one path, so there is no third form left for a diagnostic to be about) |
+| index telescope | `data Vect<A>(n: Nat) { Nil : (0), … }` ⇝ an indexed family | `record Pending(n: Nat) { … }` or `enum Reading(n: Nat) { … }` — *a `record`/`enum` declaration takes no index telescope* (`misplaced`), saying an indexed family is written with `data` |
 | qualified constructor | `Tying::Untied` ⇝ the family's constructor | `Tying::Tied` — *no such case*, listing the declared cases |
 | bare constructor, checking | `let t: Tying = Untied;` ⇝ the same constructor | `let t = Untied;` — *bare constructor needs an expected type*, with the qualified form as the fix |
 | enum pattern | `match t { Untied -> …, TiedOn -> … }` ⇝ a case tree | a missing case — *non-exhaustive match*, naming the cases left out; an arm no constraint reaches — *unreachable arm* |

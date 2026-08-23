@@ -512,6 +512,36 @@ fn cases(data: &RawData) -> Vec<(String, Vec<String>)> {
         .collect()
 }
 
+/// Everything a declaration tells the core, as text.
+///
+/// Origins are deliberately absent: three spellings of one family are written
+/// at three places, and a comparison that included those would be comparing
+/// where they were written rather than what they said.
+fn shape(data: &RawData) -> String {
+    let family = data.families.first().expect("one family");
+    format!(
+        "{} {:?} params={} indices={} {:?}",
+        family.name,
+        family.visibility,
+        data.params.len(),
+        family.indices.len(),
+        family
+            .constructors
+            .iter()
+            .map(|case| {
+                (
+                    case.name.to_string(),
+                    case.visibility,
+                    case.fields
+                        .iter()
+                        .map(|field| field.name.to_string())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect::<Vec<_>>()
+    )
+}
+
 /// A definition's value, checked at the type its declaration wrote.
 ///
 /// The whole property a declaration lowering can have, and the same one the
@@ -575,6 +605,145 @@ fn a_record_lowers_to_a_family_with_one_constructor() {
     );
     assert!(data.params.is_empty(), "and it takes no parameters");
     musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
+}
+
+/// Prompt 161: `data`, `enum`, and `record` are one declaration, so the same
+/// family written three ways is the same family.
+///
+/// Compared through [`shape`] rather than by deriving equality on
+/// [`RawData`], because a [`Raw`] carries an [`Origin`](musa_calculus::Origin)
+/// and three declarations written in three files are at three of them. What is
+/// left after the origins is everything the core is told: the family's name and
+/// visibility, its index telescope, its parameters, and each case's name,
+/// visibility, and field names.
+#[test]
+fn the_three_spellings_of_one_declaration_are_one_family() {
+    let named = [
+        ("data Pending { Pending(read: Nat, dots: Nat) }", SyntaxKind::DataDecl),
+        ("record Pending { read: Nat; dots: Nat; }", SyntaxKind::RecordDecl),
+        (
+            "enum Pending { Pending { read: Nat; dots: Nat; } }",
+            SyntaxKind::EnumDecl,
+        ),
+    ];
+    let read: Vec<String> = named
+        .iter()
+        .map(|(written, kind)| shape(&declaration(written, *kind)))
+        .collect();
+    assert_eq!(
+        read,
+        vec![read.first().expect("three spellings").clone(); 3],
+        "three words, one declaration: {read:?}"
+    );
+
+    // And the positional form, which `data` could not write before 161 and
+    // which is the other half of what made `enum` a third form.
+    let positional = [
+        ("data Reading<A> { Done(A), Refused(Text) }", SyntaxKind::DataDecl),
+        ("enum Reading<A> { Done(A), Refused(Text) }", SyntaxKind::EnumDecl),
+    ];
+    let read: Vec<String> = positional
+        .iter()
+        .map(|(written, kind)| shape(&declaration(written, *kind)))
+        .collect();
+    assert_eq!(
+        read,
+        vec![read.first().expect("two spellings").clone(); 2],
+        "and a positional case reads the same under either word: {read:?}"
+    );
+}
+
+/// The other capability 161 moved to `data`: `01-surface.md` §1.3's public type
+/// whose cases are the declaring module's to build.
+#[test]
+fn a_data_case_may_be_marked_private_and_the_type_stay_public() {
+    let written = "data Chord { private NamedChord(Text), private AnonymousChord(Nat) }";
+    let data = declaration(written, SyntaxKind::DataDecl);
+    let family = data.families.first().expect("one family");
+    assert_eq!(
+        family.visibility,
+        musa_calculus::Visibility::Public,
+        "the type is public"
+    );
+    assert!(
+        family
+            .constructors
+            .iter()
+            .all(|case| case.visibility == musa_calculus::Visibility::Private),
+        "and every case is not"
+    );
+    musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
+}
+
+/// An unmarked case answers with its declaration's marker rather than with
+/// `public`, because [`musa_calculus::RawConstructor::visibility`] is
+/// all-or-none: a family whose cases disagree is refused at its declaration, so
+/// the declaration's is the one answer that is the same for every case however
+/// the declaration was spelled.
+#[test]
+fn an_unmarked_case_takes_the_declarations_marker_under_every_spelling() {
+    let hidden = [
+        ("private data Tuning { Equal, Just }", SyntaxKind::DataDecl),
+        ("private enum Tuning { Equal, Just }", SyntaxKind::EnumDecl),
+    ];
+    for (written, kind) in hidden {
+        let data = declaration(written, kind);
+        let family = data.families.first().expect("one family");
+        assert_eq!(
+            family.visibility,
+            musa_calculus::Visibility::Private,
+            "`{written}` hides the type"
+        );
+        assert!(
+            family
+                .constructors
+                .iter()
+                .all(|case| case.visibility == musa_calculus::Visibility::Private),
+            "`{written}` hides its cases with it"
+        );
+        musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
+    }
+}
+
+/// The one place a spelling can still lie, and what it is told.
+///
+/// The grammar reads the telescope under all three words so that the refusal
+/// can be about indexed families instead of about the brace the parser wanted,
+/// and the refusal names the word the author actually wrote.
+#[test]
+fn an_index_telescope_is_refused_by_the_word_that_wrote_it() {
+    for (written, kind, word) in [
+        (
+            "record Pending(n: Nat) { read: Nat; }",
+            SyntaxKind::RecordDecl,
+            "record",
+        ),
+        ("enum Reading(n: Nat) { Done }", SyntaxKind::EnumDecl, "enum"),
+    ] {
+        let (item, complaints) = lowered_item(written, kind);
+        assert!(item.is_none(), "`{written}` is refused");
+        let complaint = complaints.first().expect("one complaint");
+        assert!(
+            complaint.message.contains(&format!("`{word}`")),
+            "the refusal names the word the author wrote: {}",
+            complaint.message
+        );
+        assert!(
+            complaint
+                .note
+                .as_ref()
+                .is_some_and(|note| note.contains("written with `data`")),
+            "and says where an indexed family goes: {:?}",
+            complaint.note
+        );
+    }
+    // And `data`, which is the word that may: the same telescope is read.
+    let data = declaration("data Vect<A>(n: Nat) { Nil : (0) }", SyntaxKind::DataDecl);
+    assert_eq!(
+        data.families.first().expect("one family").indices.len(),
+        1,
+        "`data` is where an indexed family is written"
+    );
 }
 
 /// A parameterized `record` puts its parameter on the *group*, which is what

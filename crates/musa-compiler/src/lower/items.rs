@@ -9,21 +9,18 @@
 //!
 //! # Which surface declaration becomes which raw one
 //!
-//! Four of the five words the surface declares with produce three core shapes,
-//! and the odd one out is the interesting one:
+//! Five of the six words the surface declares with produce two core shapes,
+//! and the interesting one is that three of the five are the same shape:
 //!
-//! - **`data` and `enum` are nominal**, so each becomes a [`RawData`] of one
-//!   family. `01-surface.md` §1.3: "each declaration generates its own family".
-//!   The difference between the two words is entirely in how a case writes its
-//!   fields — `data` names every one, an enum's positional case names none —
-//!   and not in what either denotes.
-//! - **`record` is nominal too**, so it becomes a [`RawData`] of one family
-//!   with one constructor. `01-surface.md` §1.2 after prompt 157: "a record is
-//!   a declaration, and two of them are two types". The rule it replaces was
-//!   the opposite one — a record *was* its fields — and it existed to make
-//!   trait dictionaries convertible, which prompt 146 deleted along with the
-//!   traits. What is left is one declaration form spelled two ways, which is
-//!   what prompt 161 states outright.
+//! - **`data`, `enum`, and `record` are one declaration**, spelled three ways,
+//!   and each becomes a [`RawData`] of one family. `01-surface.md` §1.3: "each
+//!   declaration generates its own family". [`Lowering::declaration`] is that
+//!   one path: the word decides only where the cases are read from — a `data`'s
+//!   variants, an `enum`'s cases, or the single case a `record` is — and
+//!   nothing about what the declaration denotes. Prompt 161 made it one by
+//!   giving `data` the two things only `enum` could say, a `private` marker on
+//!   a case and a positional field list, rather than by taking either away:
+//!   root `AGENTS.md`'s rule about sublanguages, one level up.
 //! - **`impl` is a namespace**, so `impl Pitch { fn act(…) { … } }` becomes the
 //!   ordinary definition `Pitch.act`. §1.5: a member is reached by taking the
 //!   head of the receiver's type and looking up one dotted name, so an `impl`
@@ -71,9 +68,9 @@ use musa_score::diagnose::{Code, Diagnostic};
 /// source used.
 #[derive(Debug)]
 pub(crate) enum Item {
-    /// A `data` or an `enum`.
+    /// A `data`, an `enum`, or a `record` — the one declaration, however spelled.
     Data(RawData),
-    /// A `let`, a `fn`, or a `record`.
+    /// A `let` or a `fn`.
     Definition(Definition),
     /// An `impl` — every `fn` inside it, under the type's name, beside the node
     /// each was written at.
@@ -145,9 +142,9 @@ impl Lowering<'_> {
     pub(crate) fn item(&mut self, node: &SyntaxNode) -> Declared {
         let read = |item: Option<Item>| item.map_or(Declared::Refused, Declared::Item);
         match node.kind() {
-            SyntaxKind::DataDecl => read(self.nominal(node).map(Item::Data)),
-            SyntaxKind::EnumDecl => read(self.enumeration(node).map(Item::Data)),
-            SyntaxKind::RecordDecl => read(self.structural(node).map(Item::Data)),
+            SyntaxKind::DataDecl | SyntaxKind::EnumDecl | SyntaxKind::RecordDecl => {
+                read(self.declaration(node).map(Item::Data))
+            }
             SyntaxKind::ImplDecl => read(self.namespace(node).map(Item::Namespace)),
             SyntaxKind::FnDecl => read(self.function(node).map(Item::Definition)),
             SyntaxKind::LetDecl => read(self.binding(node).map(Item::Definition)),
@@ -160,30 +157,28 @@ impl Lowering<'_> {
         }
     }
 
-    // ---- the nominal declarations ----
+    // ---- the one declaration ----
 
-    /// `data Motive<A> { Silence, Sounded(pitch: Pitch, held: Duration<C>) }`,
-    /// and `data Vect<A>(n: Nat) { … }` where the family is indexed.
+    /// `data Motive<A> { Silence, private Sounded(pitch: Pitch, Duration) }`,
+    /// `enum Reading<A> { Done(A) }`, `record Pending { read: Reading; }` —
+    /// one declaration, whichever of the three words wrote it.
     ///
-    /// One family, and every constructor at the declaration's own
-    /// visibility. The last of those is the grammar's doing rather than a
-    /// choice: `data` admits no marker on a variant, and
-    /// [`RawConstructor::visibility`] says a family whose cases disagree is
-    /// refused at its declaration — so taking the declaration's is the one
-    /// reading that cannot disagree with it.
-    fn nominal(&mut self, node: &SyntaxNode) -> Option<RawData> {
+    /// One family, one visibility rule, one telescope, one constructor reader.
+    /// The word decides exactly two things and neither is semantic: *where* the
+    /// cases are written, which [`Lowering::cases`] answers, and whether an
+    /// index telescope may stand after the name, which [`Lowering::index_telescope`]
+    /// refuses by that word's own spelling. A bug in `enum` handling is not
+    /// possible here because there is no `enum` handling.
+    fn declaration(&mut self, node: &SyntaxNode) -> Option<RawData> {
         let origin = self.origin(node);
         let visibility = visibility_of(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
         let indices = self.index_telescope(node)?;
-        let mut constructors = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::DataVariant) {
-            constructors.push(self.variant(&written, visibility)?);
-        }
-        // `data` has no `where` clause to read: `01-surface.md` §1's
-        // `where_clause` is called from `record`, `enum`, `trait`, `impl`,
-        // and a `fn` signature, and `data_decl` is not among them.
+        let constructors = self.cases(node, &name, visibility)?;
+        // No `where` clause is read here: `01-surface.md` §1's `where_clause`
+        // is called from `trait`, `impl`, and a `fn` signature, and none of the
+        // three type declarations is among them.
         Some(RawData {
             origin,
             params,
@@ -196,16 +191,101 @@ impl Lowering<'_> {
         })
     }
 
-    /// `(n: Nat)` — the index telescope a `data` declaration writes, or nothing.
+    /// Every constructor of a declaration, in source order.
     ///
-    /// Empty for a declaration that writes no parentheses, which is every
-    /// `data` in the corpus before this one: a family with no indices is a
-    /// family whose constructors all stand at the same type, and that is the
-    /// ordinary case rather than a degenerate one.
+    /// The three words put their cases in three places and that is the whole of
+    /// the difference: a `data` writes [`SyntaxKind::DataVariant`]s, an `enum`
+    /// writes [`SyntaxKind::EnumCase`]s, and a `record` writes its fields
+    /// directly, which makes the declaration itself the one case — spelled the
+    /// same as the family, since `01-surface.md` §1.2 is a declaration of one
+    /// shape and there is no second name for it to take.
+    fn cases(&mut self, node: &SyntaxNode, name: &Name, declared: Visibility) -> Option<Vec<RawConstructor>> {
+        let written = match node.kind() {
+            SyntaxKind::DataDecl => children(node, |kind| kind == SyntaxKind::DataVariant),
+            SyntaxKind::EnumDecl => children(node, |kind| kind == SyntaxKind::EnumCase),
+            // A record is its own case, so the node the fields hang off is the
+            // declaration and the constructor is read straight from it.
+            _ => return Some(vec![self.constructor(node, Arc::clone(name), declared)?]),
+        };
+        let mut built = Vec::new();
+        for case in &written {
+            let case_name = declared_name(case)?;
+            built.push(self.constructor(case, case_name, declared)?);
+        }
+        Some(built)
+    }
+
+    /// One constructor, from whichever node carries its arguments.
+    ///
+    /// The argument list is read in source order and each argument is named or
+    /// it is not: a [`SyntaxKind::DataField`] and a [`SyntaxKind::FieldDecl`]
+    /// both write a name, and a bare type does not. An unnamed one is called
+    /// `_0`, `_1`, … by its position among *all* the arguments, because
+    /// `01-surface.md` §1.3 says the positional form "names types and not
+    /// fields": the names exist only to be distinct, and a leading underscore
+    /// cannot collide with a written one because §1's identifiers do not start
+    /// with one.
+    ///
+    /// Visibility is the case's own marker where it wrote one and the
+    /// declaration's where it did not. [`RawConstructor::visibility`] is
+    /// all-or-none — a family whose cases disagree is refused at its
+    /// declaration — so an unmarked case has to answer the same as its
+    /// neighbours, and the declaration's marker is the one answer that is the
+    /// same for all of them.
+    fn constructor(&mut self, node: &SyntaxNode, name: Name, declared: Visibility) -> Option<RawConstructor> {
+        let origin = self.origin(node);
+        let mut fields = Vec::new();
+        for written in node.children() {
+            let binder = match written.kind() {
+                SyntaxKind::DataField | SyntaxKind::FieldDecl => self.declared_field(&written)?,
+                kind if is_type_node(kind) => RawBinder {
+                    name: Arc::from(format!("_{}", fields.len()).as_str()),
+                    ty: self.ty(&written)?,
+                },
+                _ => continue,
+            };
+            fields.push(binder);
+        }
+        Some(RawConstructor {
+            origin,
+            name,
+            visibility: if writes(node, SyntaxKind::PrivateKw) {
+                Visibility::Private
+            } else {
+                declared
+            },
+            fields,
+            chosen: self.chosen_indices(node)?,
+        })
+    }
+
+    /// `(n: Nat)` — the index telescope a declaration writes, or nothing.
+    ///
+    /// Empty for a declaration that writes no parentheses, which is the
+    /// ordinary case: a family with no indices is a family whose constructors
+    /// all stand at the same type.
+    ///
+    /// Only `data` may write one, and the other two words are refused *here*
+    /// rather than in the grammar. §1.2 declares fields and §1.3 declares
+    /// cases; neither writes a signature, so neither has anywhere to say what
+    /// a case's result is indexed by. A parser that stopped at the `(` would
+    /// report what it wanted — ``expected `{}` `` — and this says where an
+    /// indexed family is written instead.
     fn index_telescope(&mut self, node: &SyntaxNode) -> Option<Vec<RawBinder>> {
         let Some(written) = child(node, |kind| kind == SyntaxKind::DataIndices) else {
             return Some(Vec::new());
         };
+        if let Some(word) = other_than_data(node) {
+            return self.refuse(
+                Diagnostic::error(
+                    Code::Misplaced,
+                    format!("a `{word}` declaration takes no index telescope"),
+                )
+                .at(trimmed_span(&written), "written here")
+                .note("an indexed family is written with `data`, where a case says which indices it chooses")
+                .help(format!("write `data` in place of `{word}`, or drop the parentheses")),
+            );
+        }
         let mut built = Vec::new();
         for binder in children(&written, |kind| kind == SyntaxKind::DataField) {
             built.push(self.declared_field(&binder)?);
@@ -229,125 +309,6 @@ impl Lowering<'_> {
             built.push(self.expr(&chosen)?);
         }
         Some(built)
-    }
-
-    /// One `data` constructor, whose fields are all named.
-    fn variant(&mut self, node: &SyntaxNode, visibility: Visibility) -> Option<RawConstructor> {
-        let origin = self.origin(node);
-        let name = declared_name(node)?;
-        let mut fields = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::DataField) {
-            fields.push(self.declared_field(&written)?);
-        }
-        let chosen = self.chosen_indices(node)?;
-        Some(RawConstructor {
-            origin,
-            name,
-            visibility,
-            fields,
-            chosen,
-        })
-    }
-
-    /// `enum Reading<A> { Done(A), private Refused { at: NodePath, why: Text } }`.
-    ///
-    /// The same shape as [`Lowering::nominal`] and a different visibility rule:
-    /// a case writes its own marker, so `01-surface.md` §1.3's public type with
-    /// private cases is a thing an enum can say and a `data` cannot.
-    fn enumeration(&mut self, node: &SyntaxNode) -> Option<RawData> {
-        let origin = self.origin(node);
-        let name = declared_name(node)?;
-        let params = self.type_parameters(node);
-        let mut constructors = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::EnumCase) {
-            constructors.push(self.case(&written)?);
-        }
-        Some(RawData {
-            origin,
-            params,
-            families: vec![RawFamily {
-                name,
-                visibility: visibility_of(node),
-                // `01-surface.md` §1.3's `enum` declares cases and not a
-                // signature, so no case chooses anything: an indexed family is
-                // written with `data`, where the index telescope has somewhere
-                // to be written down.
-                indices: Vec::new(),
-                constructors,
-            }],
-        })
-    }
-
-    /// One enum case: empty, positional, or named.
-    ///
-    /// A positional case's fields are named `_0`, `_1`, …, because §1.3 says the
-    /// positional form "names types and not fields": the names exist only to be
-    /// distinct, and a leading underscore cannot collide with one a `record`
-    /// wrote because `01-surface.md`'s identifiers do not start with one.
-    fn case(&mut self, node: &SyntaxNode) -> Option<RawConstructor> {
-        let origin = self.origin(node);
-        let name = declared_name(node)?;
-        let mut fields = Vec::new();
-        for (index, written) in children(node, is_type_node).iter().enumerate() {
-            fields.push(RawBinder {
-                name: Arc::from(format!("_{index}").as_str()),
-                ty: self.ty(written)?,
-            });
-        }
-        for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
-            fields.push(self.declared_field(&written)?);
-        }
-        Some(RawConstructor {
-            origin,
-            name,
-            visibility: visibility_of(node),
-            chosen: Vec::new(),
-            fields,
-        })
-    }
-
-    // ---- the one-case declaration ----
-
-    /// `record Pending<A> { read: Reading; taken: A; }`.
-    ///
-    /// One family with one constructor, spelled the same as the family, whose
-    /// fields are the declaration's. `01-surface.md` §1.2 after prompt 157: a
-    /// record is a declaration, so `Pending` and another eight-field record
-    /// with the same field names are two types, and reading a field is the
-    /// generated accessor `Pending.read` rather than a shape in the core.
-    ///
-    /// The constructor takes the declaration's visibility for
-    /// [`Lowering::nominal`]'s reason: `record` admits no marker on the case,
-    /// and a family whose cases disagree with each other is refused at its
-    /// declaration, so the declaration's own marker is the one reading that
-    /// cannot disagree.
-    fn structural(&mut self, node: &SyntaxNode) -> Option<RawData> {
-        let origin = self.origin(node);
-        let visibility = visibility_of(node);
-        let name = declared_name(node)?;
-        let params = self.type_parameters(node);
-        let mut fields = Vec::new();
-        for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
-            fields.push(self.declared_field(&written)?);
-        }
-        Some(RawData {
-            origin,
-            params,
-            families: vec![RawFamily {
-                name: Arc::clone(&name),
-                visibility,
-                // §1.2 declares fields and not a signature: an indexed family is
-                // written with `data`, where the telescope has somewhere to go.
-                indices: Vec::new(),
-                constructors: vec![RawConstructor {
-                    origin,
-                    name,
-                    visibility,
-                    fields,
-                    chosen: Vec::new(),
-                }],
-            }],
-        })
     }
 
     // ---- namespaces ----
@@ -580,6 +541,19 @@ pub(super) fn written_parameters(node: &SyntaxNode) -> Vec<SyntaxNode> {
     child(node, |kind| kind == SyntaxKind::ParamList)
         .map(|list| children(&list, |kind| kind == SyntaxKind::Param))
         .unwrap_or_default()
+}
+
+/// The word a declaration was written with, when it is not `data`.
+///
+/// For diagnostics only, and never for typing: the three words denote the same
+/// thing, so the one thing left for a spelling to decide is which spelling a
+/// refusal about it uses.
+fn other_than_data(node: &SyntaxNode) -> Option<&'static str> {
+    match node.kind() {
+        SyntaxKind::EnumDecl => Some("enum"),
+        SyntaxKind::RecordDecl => Some("record"),
+        _ => None,
+    }
 }
 
 /// Whether `private` was written on this declaration.
