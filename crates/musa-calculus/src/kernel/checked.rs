@@ -62,8 +62,6 @@ fn unsolved(term: &Term) -> Option<u32> {
         Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => None,
         Shape::Bind { binder, body, .. } => binder_unsolved(binder).or_else(|| unsolved(body)),
         Shape::App { function, argument } => unsolved(function).or_else(|| unsolved(argument)),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().find_map(|field| unsolved(&field.term)),
-        Shape::Project { record, .. } => unsolved(record),
     }
 }
 

@@ -121,7 +121,7 @@ fn level_equality_is_decidable() {
 /// would make this pass in one direction, so both directions are asked.
 #[test]
 fn a_universe_is_not_the_one_above_it() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let u = Sort::var(u());
     let below = Term::universe(HERE, u.clone());
     let above = Term::universe(HERE, u.succ());
@@ -152,7 +152,7 @@ fn a_universe_is_not_the_one_above_it() {
 /// pick `0` and `1` for themselves, and the terms record which.
 #[test]
 fn a_polymorphic_identity_is_used_at_two_levels() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let program = declared(&cx);
     let inside = cx.defining(&program);
 
@@ -181,10 +181,10 @@ fn a_polymorphic_identity_is_used_at_two_levels() {
 /// on the term — so this is a verification and not a second elaboration.
 #[test]
 fn the_rechecker_reads_the_levels_a_use_names() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let program = declared(&cx);
     let inside = cx.defining(&program);
-    let core_unit = Term::record_type(WRITTEN, []);
+    let core_unit = crate::programs::core_unit_type();
     let identity_on_unit = Term::pi(WRITTEN, "_", core_unit.clone(), core_unit.clone());
 
     let at = |level: Sort| {
@@ -282,7 +282,7 @@ pub(crate) fn refused_levels() -> Vec<(&'static str, Term, Raw, fn(&Refusal) -> 
 ///
 /// When the kernel accepts the term, or answers something else.
 pub(crate) fn level_faults() -> Vec<(&'static str, Malformed)> {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let program = declared(&cx);
     let inside = cx.defining(&program);
     // `id` has one level parameter and this use names none, which no

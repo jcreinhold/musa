@@ -58,10 +58,11 @@ use std::sync::Arc;
 
 use crate::kernel::budget::Meter;
 use crate::kernel::error::{CoreError, Malformed};
-use crate::kernel::eval::{apply, apply_closure, field_type, head_type, opened, project};
+use crate::kernel::eval::{apply, apply_closure, head_type, opened};
+use crate::kernel::family::{product, projecting_from};
 use crate::kernel::origin::Origin;
-use crate::kernel::term::{Constant, Field, Index, Level, Term};
-use crate::kernel::value::{DefHead, Elim, Form, Head, Neutral, Telescope, Value};
+use crate::kernel::term::{Constant, Index, Level, Term};
+use crate::kernel::value::{DefHead, Elim, Form, Head, Neutral, Value};
 
 /// Whether quotation opens a folded definition or keeps it.
 ///
@@ -244,26 +245,21 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
                     read(meter, reading.under_binder(), &body_type, &body)?,
                 ))
             }
-            // η at records: a literal holding every projection.
-            Form::RecordType(telescope) => {
-                let mut fields = Vec::with_capacity(telescope.fields.len());
-                for Field { name, term: _ } in telescope.fields.iter() {
-                    let field_ty = field_type(meter, telescope, value, name)?;
-                    let field_value = project(meter, here, value.clone(), name)?;
-                    fields.push(Field {
-                        name: Arc::clone(name),
-                        term: read(meter, reading, &field_ty, &field_value)?,
-                    });
-                }
-                Ok(Term::new(here, crate::kernel::term::Shape::Record(fields.into())))
-            }
             Form::Universe(_) => read_type(meter, reading, value),
             // A neutral type has no η, so whatever inhabits it is neutral too —
             // with one exception, and it is the one §5.8 adds. A base type
             // evaluates to a spine headed by [`Head::Base`], so *every* literal
             // is quoted here, and a literal is already its own normal form.
             Form::Neutral(_) => match &value.form {
-                Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
+                // η at a one-constructor family, which is what a `record`
+                // elaborates to (`01-surface.md` §1.2) and where the record η
+                // this replaced used to fire. A family type is a blocked spine,
+                // so the rule sits here rather than beside η at Π — the shape
+                // of the *type* is what directs it either way.
+                Form::Neutral(neutral) => match rebuilt(meter, reading, ty, value)? {
+                    Some(term) => Ok(term),
+                    None => read_neutral(meter, reading, neutral),
+                },
                 Form::Lit(literal) => Ok(literal.term(here)),
                 // Already its own normal form, and one node rather than `count`
                 // of them — which is what keeps quotation's node charge
@@ -272,11 +268,9 @@ fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Resul
                     here,
                     crate::kernel::term::Shape::Lit(Constant::Numeral(numeral.clone())),
                 )),
-                Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => {
-                    read_type(meter, reading, value)
-                }
+                Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) => read_type(meter, reading, value),
             },
-            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
@@ -315,32 +309,53 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
                     read_type(meter, reading.under_binder(), &opened)?,
                 ))
             }
-            Form::RecordType(telescope) => read_telescope(meter, here, reading, telescope),
             Form::Neutral(neutral) => read_neutral(meter, reading, neutral),
-            Form::Lam(_) | Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
+            Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAType.into()),
         }
     })
 }
 
-/// Read a record type's telescope back, binding each field as it goes.
+/// η at a one-constructor family: the constructor applied to every field read
+/// off `value`, or `None` where the rule does not apply.
 ///
-/// Unlike [`quote`]'s record case, the earlier fields become *variables* rather
-/// than projections, because a record type binds them and a record value only
-/// has them.
-fn read_telescope(meter: &mut Meter, here: Origin, reading: Reading, telescope: &Telescope) -> Result<Term, Escape> {
-    let mut env = telescope.env.clone();
-    let mut at = reading;
-    let mut fields = Vec::with_capacity(telescope.fields.len());
-    for Field { name, term } in telescope.fields.iter() {
-        let field_ty = crate::kernel::eval::eval(meter, &env, term)?;
-        fields.push(Field {
-            name: Arc::clone(name),
-            term: read_type(meter, at, &field_ty)?,
-        });
-        env = env.push(Value::var(Origin::UNKNOWN, at.fresh(), Arc::new(field_ty)));
-        at = at.under_binder();
+/// §7's η is stated at the *type*, and a record type is now a family type
+/// (`01-surface.md` §1.2), so this is the same rule at its new spelling — a
+/// value of a family with exactly one constructor and no indices is
+/// definitionally that constructor applied to its own projections, and two
+/// values agreeing field by field therefore read back to one term. The guard
+/// against a recursive family is [`Product::expandable`](crate::kernel::family::Product::expandable)'s.
+fn rebuilt(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Result<Option<Term>, Escape> {
+    let Some(product) = product(meter, ty)? else {
+        return Ok(None);
+    };
+    if !product.expandable() {
+        return Ok(None);
     }
-    Ok(Term::new(here, crate::kernel::term::Shape::RecordType(fields.into())))
+    let here = value.origin;
+    let mut built = product.constructor().term(here);
+    for param in &product.params {
+        built = Term::app(here, built, read_type(meter, reading, param)?);
+    }
+    // The constructor's telescope, walked semantically: field `i`'s type is its
+    // stored term evaluated under the fields before it. Assembling the
+    // constructor's Π through `Constant::ty` would answer the same question and
+    // quote a term per binder to do it, which η performs often enough for that
+    // to be the difference between reading a record back and reading its
+    // declaration back with it.
+    let mut telescope = product.reading();
+    let fields = Arc::clone(&product.fields);
+    for (position, declared) in fields.iter().enumerate() {
+        let position = u32::try_from(position).unwrap_or(u32::MAX);
+        let mut field = product.projection(position).value(here, &product.globals);
+        for param in &product.params {
+            field = apply(meter, here, field, param.clone())?;
+        }
+        let field = apply(meter, here, field, value.clone())?;
+        let field_ty = crate::kernel::eval::eval(meter, &telescope, &declared.ty)?;
+        built = Term::app(here, built, read(meter, reading, &field_ty, &field)?);
+        telescope = telescope.push(field);
+    }
+    Ok(Some(built))
 }
 
 /// Read a blocked elimination back.
@@ -413,16 +428,25 @@ fn read_elimination(
         Elim::App { origin, argument } => {
             let domain = match head_type(meter, prefix)?.form {
                 Form::Pi { domain, .. } => domain,
-                Form::Universe(_)
-                | Form::Lam(_)
-                | Form::RecordType(_)
-                | Form::Record(_)
-                | Form::Lit(_)
-                | Form::Numeral(_)
-                | Form::Neutral(_) => return Err(Malformed::NotAFunction.into()),
+                Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
+                    return Err(Malformed::NotAFunction.into());
+                }
             };
-            Ok(Term::app(*origin, quoted, read(meter, reading, &domain, argument)?))
+            // η at a record is the one rule that has to be *not* applied here:
+            // see [`projecting_from`].
+            let read_back = if projecting_from(prefix) {
+                let seen = reading.seen(meter, argument)?;
+                let subject = seen.as_ref().unwrap_or(argument);
+                match &subject.form {
+                    Form::Neutral(neutral) => read_neutral(meter, reading, neutral)?,
+                    Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => {
+                        read(meter, reading, &domain, subject)?
+                    }
+                }
+            } else {
+                read(meter, reading, &domain, argument)?
+            };
+            Ok(Term::app(*origin, quoted, read_back))
         }
-        Elim::Project { origin, field } => Ok(Term::project(*origin, quoted, Arc::clone(field))),
     }
 }

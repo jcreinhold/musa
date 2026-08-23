@@ -73,7 +73,7 @@
 //!   item, a numeral.
 //! - [`construct`] — a constructor applied, with or without an expected type
 //!   naming its family.
-//! - [`record`] — record types, projection, and update.
+//! - [`record`] — the one-constructor family a `record` is: projection and update.
 //! - [`spine`] — one instantiation walk: parameters filled, constraints noted,
 //!   arguments placed.
 //! - [`metas`] — an unknown's lifecycle: created, constrained, and audited at
@@ -105,6 +105,8 @@ mod levels;
 mod metas;
 mod name;
 mod record;
+
+pub(crate) use record::read as read_field;
 mod spine;
 mod zonk;
 

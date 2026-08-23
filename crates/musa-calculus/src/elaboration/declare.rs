@@ -374,6 +374,28 @@ fn constructors(
                 }
             }
         }
+        // A one-constructor family generates one accessor per field (§1.2), so
+        // two fields of one name would generate two constants of one name. In a
+        // family with several constructors nothing is generated and the second
+        // binder shadows the first, which is what a telescope does and what a de
+        // Bruijn index is for.
+        if family.constructors.len() == 1 {
+            for (position, field) in constructor.fields.iter().enumerate() {
+                if let Some(previous) = constructor
+                    .fields
+                    .iter()
+                    .take(position)
+                    .find(|earlier| earlier.name == field.name)
+                {
+                    return Err(Refusal::DuplicateField {
+                        at: field.ty.origin(),
+                        previous: previous.ty.origin(),
+                        field: Arc::clone(&field.name),
+                    }
+                    .into());
+                }
+            }
+        }
         let chosen = chosen(elaborator, scope, &inner, indices, family, constructor, arity)?;
         built.push(Constructor {
             name: Arc::clone(&constructor.name),
@@ -767,13 +789,5 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
         Shape::App { function, argument } => {
             mentions(function, watched, depth, bound).or_else(|| mentions(argument, watched, depth, bound))
         }
-        Shape::RecordType(fields) => fields.iter().enumerate().find_map(|(position, field)| {
-            let inside = bound.saturating_add(u32::try_from(position).unwrap_or(u32::MAX));
-            mentions(&field.term, watched, depth, inside)
-        }),
-        Shape::Record(fields) => fields
-            .iter()
-            .find_map(|field| mentions(&field.term, watched, depth, bound)),
-        Shape::Project { record, .. } => mentions(record, watched, depth, bound),
     }
 }

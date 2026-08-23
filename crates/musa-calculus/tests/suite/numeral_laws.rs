@@ -82,10 +82,6 @@ fn depth(term: &Term) -> u32 {
         } => binder
             .outer()
             .fold(deeper(body), |so_far, term| so_far.max(deeper(term))),
-        Shape::Project { ref record, .. } => deeper(record),
-        Shape::RecordType(ref fields) | Shape::Record(ref fields) => {
-            fields.iter().fold(1, |so_far, field| so_far.max(deeper(&field.term)))
-        }
         // The leaves, and the numeral is one of them — which is the claim.
         Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 1,
     }

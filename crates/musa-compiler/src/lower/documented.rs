@@ -222,7 +222,8 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
                 musa_calculus::Role::Base
                 | musa_calculus::Role::TypeConstructor
                 | musa_calculus::Role::Constructor
-                | musa_calculus::Role::Recursor,
+                | musa_calculus::Role::Recursor
+                | musa_calculus::Role::Projection,
             ..
         } => Some(format!("{name}{}", spelled_arguments()?)),
         musa_calculus::Shape::Universe(_) if arguments.is_empty() => Some("Type".to_owned()),
@@ -252,9 +253,6 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         }
         | musa_calculus::Shape::Lit(_)
         | musa_calculus::Shape::App { .. }
-        | musa_calculus::Shape::RecordType(_)
-        | musa_calculus::Shape::Record(_)
-        | musa_calculus::Shape::Project { .. }
         | musa_calculus::Shape::Meta(_) => None,
     }
 }

@@ -107,10 +107,6 @@ fn size(term: &Term) -> u32 {
             .outer()
             .fold(size(body), |total, term| total.saturating_add(size(term))),
         Shape::App { function, argument } => size(function).saturating_add(size(argument)),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields
-            .iter()
-            .fold(0_u32, |total, field| total.saturating_add(size(&field.term))),
-        Shape::Project { record, .. } => size(record),
     };
     inner.saturating_add(1)
 }

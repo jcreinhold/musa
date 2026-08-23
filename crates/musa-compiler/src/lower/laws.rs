@@ -561,30 +561,47 @@ fn an_enum_lowers_a_positional_case_by_position_and_a_named_one_by_name() {
     musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
 }
 
-/// A `record` is its fields (`01-surface.md` §1.2), so it is a *definition* of a
-/// type and not a family: a `RawData` here would have made it nominal.
+/// A `record` is a one-constructor family (`01-surface.md` §1.2 after prompt
+/// 157), so it is a *declaration* and not a definition of the type its fields
+/// are: `Pending` and another two-field record of two `Nat`s are two types.
 #[test]
-fn a_record_lowers_to_a_definition_of_the_type_its_fields_are() {
-    let cx = host();
+fn a_record_lowers_to_a_family_with_one_constructor() {
     let written = "record Pending { read: Nat; dots: Nat; }";
-    let defined = definition(written, SyntaxKind::RecordDecl);
-    assert_eq!(&*defined.name, "Pending", "the declared name is what diagnostics say");
-    inhabits_its_written_type(&cx, written, &defined);
+    let data = declaration(written, SyntaxKind::RecordDecl);
+    assert_eq!(
+        cases(&data),
+        vec![("Pending".to_owned(), vec!["read".to_owned(), "dots".to_owned()])],
+        "one case, spelled the same as the family, whose fields are the declaration's"
+    );
+    assert!(data.params.is_empty(), "and it takes no parameters");
+    musa_calculus::declare(&host(), &data).expect("the core declares what the surface wrote");
 }
 
+/// A parameterized `record` puts its parameter on the *group*, which is what
+/// makes a written `Cell<Nat>` the application `Cell Nat`.
 #[test]
-fn a_parameterized_record_lowers_to_a_function_to_a_type() {
-    let cx = host();
+fn a_parameterized_record_puts_its_parameter_on_the_family() {
     let written = "record Cell<A> { index: Nat; value: A; }";
-    let defined = definition(written, SyntaxKind::RecordDecl);
-    inhabits_its_written_type(&cx, written, &defined);
+    let data = declaration(written, SyntaxKind::RecordDecl);
+    assert_eq!(
+        cases(&data),
+        vec![("Cell".to_owned(), vec!["index".to_owned(), "value".to_owned()])],
+        "the case is the family's own name"
+    );
+    assert_eq!(data.params.len(), 1, "and the parameter is the group's, not the case's");
+    let cx = host();
+    let group = musa_calculus::declare(&cx, &data).expect("the core declares it");
+    let cx = cx.declaring(&group);
+    // `Cell : Type 0 → Type 0`: the parameter is explicit, because a written
+    // `Cell<Nat>` elaborates to an application and not to an implicit solve.
     let expected = Term::pi(
         musa_calculus::Origin::UNKNOWN,
         "A",
         type0(),
         Term::universe(musa_calculus::Origin::UNKNOWN, Sort::ZERO),
     );
-    let (declared, _) = musa_calculus::infer(&cx, defined.ty.as_ref().expect("a written type")).expect("it is a type");
+    let (_, declared) = musa_calculus::infer(&cx, &Raw::var(musa_calculus::Origin::UNKNOWN, "Cell"))
+        .expect("`Cell` is in scope once the group is declared");
     assert!(
         musa_calculus::convertible_types(&cx, &declared, &expected).expect("both are types"),
         "a record's parameter is explicit, because a written `Cell<Nat>` is `Cell Nat`"

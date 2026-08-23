@@ -102,17 +102,21 @@ fn at(depth: usize, position: usize) -> Term {
 
 /// Elaborate, expecting acceptance.
 fn elaborate(name: &str, raw: &Raw) -> Term {
-    infer(&Cx::new(), raw)
+    infer(&crate::programs::cx(), raw)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
 
 /// Elaborate, expecting a refusal, and answer it.
 fn refuse(name: &'static str, raw: &Raw, ty: Option<&Term>) -> Refusal {
-    let cx = Cx::new();
+    refuse_in(&crate::programs::cx(), name, raw, ty)
+}
+
+/// The same, in a context the caller extended.
+fn refuse_in(cx: &Cx, name: &'static str, raw: &Raw, ty: Option<&Term>) -> Refusal {
     let outcome = match ty {
-        Some(ty) => check(&cx, ty, raw).map(|term| (term, ty.clone())),
-        None => infer(&cx, raw),
+        Some(ty) => check(cx, ty, raw).map(|term| (term, ty.clone())),
+        None => infer(cx, raw),
     };
     let Err(error) = outcome else {
         panic!("{name}: elaboration accepted a program it must refuse");
@@ -147,7 +151,7 @@ fn an_inserted_implicit_is_solved_to_the_argument_that_determines_it() {
             WRITTEN,
             // The inserted implicit, solved to the unit type and read back.
             Term::app(WRITTEN, Term::var(WRITTEN, Index(0)), core_unit_type()),
-            Term::record(WRITTEN, []),
+            Term::named(WRITTEN, "Unit.Unit", musa_calculus::Role::Constructor),
         ),
         "the implicit is filled by the type the explicit argument had"
     );
@@ -212,7 +216,7 @@ fn a_metavariable_determined_twice_must_be_determined_the_same_way() {
 #[test]
 fn a_solution_that_is_itself_a_metavariable_is_followed_to_the_end() {
     // `connect identity identity : Wire {} {} {}`
-    let cx = Cx::new().with_externs(wired());
+    let cx = crate::programs::cx().with_externs(wired());
     let at = check(
         &cx,
         &Term::universe(WRITTEN, Sort::ZERO),
@@ -271,27 +275,79 @@ fn a_mismatch_reports_the_smallest_pair_that_disagrees() {
     assert_eq!(mismatch.found, core_unit_type());
     assert_eq!(
         mismatch.to_string(),
-        "type mismatch at the result type: expected `Type 0`, found `{ }`"
+        "type mismatch at the result type: expected `Type 0`, found `Unit`"
     );
 }
 
-/// The same policy one step further in: a field of a record type.
+/// The same policy one step further in: a field of a record.
+///
+/// Reached through a family *parameterized by* a record, because that is what a
+/// record is after prompt 157 — a value of a one-constructor family. Two of them
+/// disagreeing is a disagreement inside an argument, and the step past that
+/// names the field, which is the sentence this test is here to hold.
 #[test]
-fn a_mismatch_inside_a_record_type_names_the_field() {
-    // `let r : { a : {} } = { a = {} } in r`, checked at `{ a : Type 0 }`.
-    let mismatch = mismatch(
+fn a_mismatch_inside_a_record_names_the_field() {
+    use crate::family_laws::{binder, constructor, data, family};
+
+    let cx = crate::programs::cx();
+    let two = musa_calculus::declare(
+        &cx,
+        &data(
+            Vec::new(),
+            vec![family(
+                "Two",
+                vec![constructor("A", Vec::new()), constructor("B", Vec::new())],
+            )],
+        ),
+    )
+    .expect("Two is a declaration");
+    let cx = cx.declaring(&two);
+    let tagged = musa_calculus::declare(
+        &cx,
+        &data(
+            vec![binder("c", var("Cell"))],
+            vec![family("Tagged", vec![constructor("Tagged", Vec::new())])],
+        ),
+    )
+    .expect("Tagged is a declaration");
+    let cx = cx.declaring(&tagged);
+
+    let cell = |ty: Raw, val: Raw| Raw::app(WRITTEN, Raw::app(WRITTEN, var("Cell.Cell"), ty), val);
+    // `let t : Tagged (Cell Unit Unit.Unit) = Tagged.Tagged … in t`, checked at
+    // `Tagged (Cell Two Two.A)`.
+    let held = cell(unit_type(), unit());
+    let refusal = refuse_in(
+        &cx,
         "a field that disagrees",
         &Raw::annotated_bind(
             WRITTEN,
-            "r",
-            Raw::record_type(WRITTEN, [("a", unit_type())]),
-            Raw::record(WRITTEN, [("a", unit())]),
-            var("r"),
+            "t",
+            Raw::app(WRITTEN, var("Tagged"), held.clone()),
+            Raw::app(WRITTEN, var("Tagged.Tagged"), held),
+            var("t"),
         ),
-        &Term::record_type(WRITTEN, [("a", Term::universe(WRITTEN, Sort::ZERO))]),
+        Some(&Term::app(
+            WRITTEN,
+            Term::named(WRITTEN, "Tagged", musa_calculus::Role::TypeConstructor),
+            Term::app(
+                WRITTEN,
+                Term::app(
+                    WRITTEN,
+                    Term::named(WRITTEN, "Cell.Cell", musa_calculus::Role::Constructor),
+                    Term::named(WRITTEN, "Two", musa_calculus::Role::TypeConstructor),
+                ),
+                Term::named(WRITTEN, "Two.A", musa_calculus::Role::Constructor),
+            ),
+        )),
     );
-    assert_eq!(mismatch.path, vec![PathStep::Field("a".into())]);
-    assert_eq!(mismatch.expected, Term::universe(WRITTEN, Sort::ZERO));
+    let Refusal::Mismatch(mismatch) = refusal else {
+        panic!("a field that disagrees: expected a conversion mismatch, got `{refusal}`");
+    };
+    assert_eq!(mismatch.path, vec![PathStep::Argument, PathStep::Field("ty".into())]);
+    assert_eq!(
+        mismatch.expected,
+        Term::named(WRITTEN, "Two", musa_calculus::Role::TypeConstructor)
+    );
     assert_eq!(mismatch.found, core_unit_type());
 }
 
@@ -333,7 +389,7 @@ fn a_solution_that_would_escape_its_scope_is_refused_rather_than_captured() {
     );
     // Whatever the unifier does here, it may not silently accept a solution that
     // names `y`: either it finds the closed one, or it says it could not.
-    match infer(&Cx::new(), &program) {
+    match infer(&crate::programs::cx(), &program) {
         Ok((term, _)) => assert!(
             !mentions_free_variable(&term),
             "a solution naming a binder it was created outside of was read back"
@@ -384,12 +440,6 @@ fn mentions_free_variable(term: &Term) -> bool {
                 binder.outer().any(|term| walk(term, depth)) || walk(body, depth.saturating_add(1))
             }
             Shape::App { function, argument } => walk(function, depth) || walk(argument, depth),
-            Shape::RecordType(fields) => fields
-                .iter()
-                .enumerate()
-                .any(|(position, field)| walk(&field.term, depth.saturating_add(u32::try_from(position).unwrap_or(0)))),
-            Shape::Record(fields) => fields.iter().any(|field| walk(&field.term, depth)),
-            Shape::Project { record, .. } => walk(record, depth),
         }
     }
 
@@ -401,7 +451,7 @@ fn mentions_free_variable(term: &Term) -> bool {
 #[test]
 fn a_universe_written_without_a_level_is_type_zero() {
     let one = Term::universe(WRITTEN, Sort::ONE);
-    let term = check(&Cx::new(), &one, &Raw::any_universe(WRITTEN))
+    let term = check(&crate::programs::cx(), &one, &Raw::any_universe(WRITTEN))
         .unwrap_or_else(|error| panic!("a bare universe checked at `Type 1`: {error}"));
     assert_eq!(
         term,

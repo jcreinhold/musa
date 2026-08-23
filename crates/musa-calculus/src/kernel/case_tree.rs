@@ -527,15 +527,11 @@ fn analysed(value: &Value) -> Option<(Name, Vec<Value>)> {
             let (name, params) = constructed(neutral)?;
             let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
             for elimination in neutral.spine.iter().skip(params) {
-                let Elim::App { ref argument, .. } = *elimination else {
-                    return None;
-                };
+                let Elim::App { ref argument, .. } = *elimination;
                 fields.push(Value::clone(argument));
             }
             Some((name, fields))
         }
-        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) | Form::Lit(_) => {
-            None
-        }
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) => None,
     }
 }

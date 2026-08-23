@@ -719,12 +719,17 @@ fn a_context_without_a_registry_names_no_base_type() {
 #[test]
 fn a_binder_shadows_a_registered_name() {
     let cx = host();
-    let program = Raw::annotated_lam(TERMS, "Int", Raw::record_type(TERMS, []), Raw::var(TERMS, "Int"));
+    let program = Raw::annotated_lam(TERMS, "Int", Raw::universe(TERMS, Sort::ZERO), Raw::var(TERMS, "Int"));
     let (_, ty) = infer(&cx, &program).expect("the binder resolves");
     assert_eq!(
         ty,
-        Term::pi(TYPES, "Int", Term::record_type(TERMS, []), Term::record_type(TERMS, [])),
-        "the binder won, so the answer is `{{}} → {{}}` rather than anything about `Int`"
+        Term::pi(
+            TYPES,
+            "Int",
+            Term::universe(TERMS, Sort::ZERO),
+            Term::universe(TERMS, Sort::ZERO)
+        ),
+        "the binder won, so the answer is `Type 0 → Type 0` rather than anything about `Int`"
     );
 }
 
@@ -1243,8 +1248,12 @@ fn a_term_and_the_rule_that_fires_on_it_see_the_same_data() {
 /// One law rather than eight, because the answer is one word and listing them
 /// apart would say eight times that `None` means `None`. What matters is that
 /// each of these is a *well-typed* term the core will happily hand a caller —
-/// a partial constructor, a λ, a record, a universe — so the reading refuses
+/// a partial constructor, a family, a λ, a universe — so the reading refuses
 /// them on their shape rather than on their having been rejected earlier.
+///
+/// A record is not on the list any more, and that is prompt 157 rather than an
+/// omission: a record literal is a saturated constructor application now, so it
+/// reads back as the data it is.
 #[test]
 fn what_is_not_canonical_data_reads_back_as_nothing() {
     let cx = host();
@@ -1264,13 +1273,6 @@ fn what_is_not_canonical_data_reads_back_as_nothing() {
             "a λ",
             Raw::annotated_lam(TERMS, "n", Raw::var(TERMS, "Int"), Raw::var(TERMS, "n")),
             arrow(int_ty.clone(), int_ty),
-        ),
-        (
-            "a record",
-            Raw::record(TERMS, [("held", Raw::lit(TERMS, int_lit(1)))]),
-            infer(&cx, &Raw::record_type(TYPES, [("held", Raw::var(TYPES, "Int"))]))
-                .expect("the record type is a type")
-                .0,
         ),
         (
             "a universe",
@@ -1758,8 +1760,8 @@ pub(crate) fn refused_registries() -> Vec<RefusedRegistry> {
             outcome: Registry::new(
                 vec![int()],
                 vec![Builtin::structural(
-                    "record_walk",
-                    arrow(Term::record_type(TYPES, []), int().term(TYPES)),
+                    "universe_walk",
+                    arrow(Term::universe(TYPES, Sort::ZERO), int().term(TYPES)),
                     0,
                     |_, _| None,
                 )],
@@ -1771,8 +1773,8 @@ pub(crate) fn refused_registries() -> Vec<RefusedRegistry> {
             outcome: Registry::new(
                 vec![int()],
                 vec![Builtin::new(
-                    "int_of_record",
-                    arrow(Term::record_type(TYPES, []), int().term(TYPES)),
+                    "int_of_universe",
+                    arrow(Term::universe(TYPES, Sort::ZERO), int().term(TYPES)),
                     Family::Delta,
                     |_| None,
                 )],

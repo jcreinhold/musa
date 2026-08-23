@@ -92,33 +92,6 @@ impl Elaborator {
                 function: self.zonking(function, depth)?,
                 argument: self.zonking(argument, depth)?,
             },
-            Shape::RecordType(fields) => {
-                let mut zonked = Vec::with_capacity(fields.len());
-                for (which, field) in fields.iter().enumerate() {
-                    zonked.push(crate::kernel::term::Field {
-                        name: Arc::clone(&field.name),
-                        term: self.zonking(
-                            &field.term,
-                            Level(depth.0.saturating_add(u32::try_from(which).unwrap_or(0))),
-                        )?,
-                    });
-                }
-                Shape::RecordType(Arc::from(zonked))
-            }
-            Shape::Record(fields) => {
-                let mut zonked = Vec::with_capacity(fields.len());
-                for field in fields.iter() {
-                    zonked.push(crate::kernel::term::Field {
-                        name: Arc::clone(&field.name),
-                        term: self.zonking(&field.term, depth)?,
-                    });
-                }
-                Shape::Record(Arc::from(zonked))
-            }
-            Shape::Project { record, field } => Shape::Project {
-                record: self.zonking(record, depth)?,
-                field: Arc::clone(field),
-            },
         };
         Ok(Term::new(here, shape))
     }

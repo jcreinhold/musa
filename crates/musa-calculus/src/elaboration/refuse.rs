@@ -280,12 +280,14 @@ pub enum Refusal {
         /// The fields the literal writes, in the order written.
         found: Vec<Name>,
     },
-    /// A record type declares one field name twice.
+    /// A one-constructor family declares one field name twice.
     ///
-    /// A telescope with two `f`s is not merely confusing: the second shadows the
-    /// first, so one of the two is a field no projection can ever reach and no
-    /// literal can decline to write.
-    #[error("this record type declares `{field}` twice")]
+    /// A telescope with two `f`s is not merely confusing where a projection is
+    /// generated per field (§1.2): the two would generate two accessors of one
+    /// name, and one of the fields would be one no projection can reach and no
+    /// literal can decline to write. A family with several constructors
+    /// generates nothing and is left to shadow, which is what a telescope does.
+    #[error("this record declares `{field}` twice")]
     DuplicateField {
         /// The second declaration.
         at: Origin,

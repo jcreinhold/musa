@@ -551,9 +551,9 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
     let group = musa_calculus::declare(&cx, &vec()).expect("Vec is a declaration");
     let cx = cx.declaring(&group);
 
-    // `Vec.Cons A x Nil : Vec A`, with `A := {}` and `x := {}`.
-    let unit_type = Raw::record_type(WRITTEN, []);
-    let unit = Raw::record(WRITTEN, []);
+    // `Vec.Cons A x Nil : Vec A`, with `A := Nat` and `x := Nat.Zero`.
+    let unit_type = var("Nat");
+    let unit = var("Nat.Zero");
     let singleton = apply(
         var("Vec.Cons"),
         [unit_type.clone(), unit, apply(var("Vec.Nil"), [unit_type.clone()])],
@@ -563,7 +563,7 @@ fn a_parameterized_family_declares_over_an_earlier_one() {
         &Term::universe(WRITTEN, Sort::ZERO),
         &apply(var("Vec"), [unit_type]),
     )
-    .expect("`Vec {}` is a type");
+    .expect("`Vec Nat` is a type");
     musa_calculus::check(&cx, &ty, &singleton).expect("a one-element vector inhabits it");
 }
 
@@ -671,19 +671,6 @@ pub(crate) fn refused_declarations() -> Vec<RefusedData> {
                     vec![constructor(
                         "sup",
                         vec![binder("f", Raw::pi(WRITTEN, "_", var("Nat"), var("Inf")))],
-                    )],
-                )],
-            ),
-        ),
-        positive(
-            "an occurrence inside a record field",
-            data(
-                Vec::new(),
-                vec![family(
-                    "Boxed",
-                    vec![constructor(
-                        "wrap",
-                        vec![binder("r", Raw::record_type(WRITTEN, [("here", var("Boxed"))]))],
                     )],
                 )],
             ),
@@ -862,7 +849,7 @@ fn raw_vect(element: Raw, length: Raw) -> Raw {
 #[test]
 fn a_constructor_lands_at_the_index_it_chose() {
     let cx = vect_context();
-    let unit = Raw::record_type(WRITTEN, []);
+    let unit = var("Nat");
     let empty = checked_type(&cx, &raw_vect(unit.clone(), var("Nat.Zero")));
     let one = checked_type(&cx, &raw_vect(unit.clone(), apply(var("Nat.Succ"), [var("Nat.Zero")])));
 
@@ -872,7 +859,7 @@ fn a_constructor_lands_at_the_index_it_chose() {
         [
             unit.clone(),
             var("Nat.Zero"),
-            Raw::record(WRITTEN, []),
+            var("Nat.Zero"),
             apply(var("Vect.Nil"), [unit]),
         ],
     );
@@ -897,8 +884,8 @@ fn a_constructor_lands_at_the_index_it_chose() {
 #[test]
 fn head_is_total_on_a_vector_that_is_not_empty() {
     let cx = vect_context();
-    let unit = Raw::record_type(WRITTEN, []);
-    // `(n : Nat) → Vect {} (n + 1) → {}`
+    let unit = var("Nat");
+    // `(n : Nat) → Vect Nat (n + 1) → Nat`
     let ty = checked_type(
         &cx,
         &Raw::pi(
@@ -951,8 +938,8 @@ fn head_is_total_on_a_vector_that_is_not_empty() {
 #[test]
 fn tail_is_one_shorter_than_the_vector_it_came_from() {
     let cx = vect_context();
-    let unit = Raw::record_type(WRITTEN, []);
-    // `(n : Nat) → Vect {} (n + 1) → Vect {} n`
+    let unit = var("Nat");
+    // `(n : Nat) → Vect Nat (n + 1) → Vect Nat n`
     let ty = checked_type(
         &cx,
         &Raw::pi(
@@ -998,13 +985,13 @@ fn tail_is_one_shorter_than_the_vector_it_came_from() {
 /// the goal, so an arm may answer with a value whose type only that arm's
 /// index makes well typed.
 ///
-/// Without refinement the `Nil` arm would be checked at `Vect {} n` and
+/// Without refinement the `Nil` arm would be checked at `Vect Nat n` and
 /// `Vect.Nil` would not fit it. The motive abstracts the index, so the arm is
-/// checked at `Vect {} 0`, which is exactly what `Nil` is.
+/// checked at `Vect Nat 0`, which is exactly what `Nil` is.
 #[test]
 fn a_match_refines_the_goal_from_the_index_it_learned() {
     let cx = vect_context();
-    let unit = Raw::record_type(WRITTEN, []);
+    let unit = var("Nat");
     let ty = checked_type(
         &cx,
         &Raw::pi(
@@ -1068,7 +1055,7 @@ fn a_family_in_the_index_it_chooses_is_refused() {
                 "Loop",
                 vec![choosing(
                     constructor("Only", Vec::new()),
-                    vec![apply(var("Loop"), [Raw::record_type(WRITTEN, [])])],
+                    vec![apply(var("Loop"), [var("Nat")])],
                 )],
             ),
             vec![binder("i", type0())],

@@ -106,12 +106,6 @@ pub enum Malformed {
     /// Something that is not a function was applied.
     #[error("applied a value that is not a function")]
     NotAFunction,
-    /// Something that is not a record was projected.
-    #[error("projected a value that is not a record")]
-    NotARecord,
-    /// A record was projected at a field it does not have.
-    #[error("record has no field named `{0}`")]
-    NoSuchField(Name),
     /// A value stood where a type was needed.
     #[error("a value that is not a type stood in type position")]
     NotAType,

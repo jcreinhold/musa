@@ -285,9 +285,9 @@ fn a_shadowing_binder_is_not_a_recursive_call() {
     );
     musa_calculus::check(&cx, &ty, &shadowed).expect("a shadowed name is not the definition");
 
-    // `Type 0` in a definition that never calls itself: the rewrite leaves a
+    // `Nat` in a definition that never calls itself: the rewrite leaves a
     // non-recursive body alone rather than demanding a match.
-    let constant = Raw::rec(WRITTEN, "unused", type0(), Raw::record_type(WRITTEN, []));
+    let constant = Raw::rec(WRITTEN, "unused", type0(), Raw::var(WRITTEN, "Nat"));
     musa_calculus::check(&cx, &core(&cx, "Type 0", &type0()), &constant)
         .expect("a definition that does not recurse is an ordinary term");
 }

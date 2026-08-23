@@ -3,9 +3,8 @@
 //! no other Musa crate and knows nothing about pitch, time, notation, or audio.
 //!
 //! Owns: core terms, typing contexts, two fixed universes, dependent function
-//! types, primitive dependent records with η, non-recursive `let`, and
-//! definitional equality decided by normalization by evaluation under a
-//! deterministic budget (prompt 133); bidirectional elaboration with
+//! types, non-recursive `let`, and definitional equality decided by
+//! normalization by evaluation under a deterministic budget (prompt 133); bidirectional elaboration with
 //! first-order metas and type parameters (prompt 134); and parameterized
 //! inductive families with strict positivity, generated non-dependent
 //! recursors, `match` compiled to them through case trees with coverage, and
@@ -37,8 +36,9 @@
 //!
 //! # Why the facade is type-directed
 //!
-//! §3 says η at Π and at records is performed by quotation rather than by a
-//! conversion rule. Quotation therefore needs the type: without one there is
+//! §3 says η at Π and at a one-constructor family is performed by quotation
+//! rather than by a conversion rule. Quotation therefore needs the type:
+//! without one there is
 //! nothing to η-expand *against*, and `f` and `λx. f x` would read back
 //! differently even though §3 calls them equal. That is why every operation
 //! here takes the type its terms are at, and why §15.12's sketch already spells
@@ -56,9 +56,11 @@
 //! - **Universes are predicative and not cumulative.** `Type l : Type (succ l)`,
 //!   conversion compares [`Sort`]s for equality, and there is no subtyping
 //!   inside conversion.
-//! - **Records are primitive with η**, not Σ sugar, so two records with the same
-//!   projections are convertible without a rule that inspects both at once.
-//!   Prompt 157 turns records into data and this is what it must preserve.
+//! - **A record is a one-constructor inductive family, and η is a rule about
+//!   that family** (prompt 157). Two values of one such family are convertible
+//!   field by field, without a rule that inspects both at once — but they are
+//!   values of *one* family: records are nominal, and two declarations with the
+//!   same fields at the same types are two types.
 //! - **One evaluator.** The one that decides conversion and the one that will
 //!   run an accepted program are the same, because a second would be a second
 //!   semantics obliged to agree with the first by a law nobody could state.
@@ -110,7 +112,7 @@ pub use crate::kernel::origin::Origin;
 pub use crate::kernel::program::{Def, Program};
 pub use crate::kernel::sort::{Levels, Sort, SortVar};
 pub use crate::kernel::term::Constraint;
-pub use crate::kernel::term::{Binder, Constant, Field, Filling, Index, Level, Name, Role, Shape, Term};
+pub use crate::kernel::term::{Binder, Constant, Filling, Index, Level, Name, Role, Shape, Term};
 pub use crate::kernel::visibility::{ModuleId, Visibility};
 
 use std::sync::Arc;
@@ -222,10 +224,10 @@ pub fn check(cx: &Cx, ty: &Term, raw: &Raw) -> Result<Term, ElabError> {
 /// Elaborate `raw`, answering it and the type it was found to have.
 ///
 /// Not every term has one. §2 gives the introduction forms — a record literal
-/// above all — a rule that *reads* a type rather than producing one, because the
-/// type such a term "obviously" has is a guess and not a principal type:
-/// `{ ty = {}, val = {} }` inhabits `{ ty : Type 0, val : ty }` and
-/// `{ ty : Type 0, val : {} }` equally. Those are [`Refusal::Uninferable`] here,
+/// above all — a rule that *reads* a type rather than producing one, because a
+/// literal names no family: `{ ty = Unit, val = Unit.Unit }` is a value of every
+/// declared family whose telescope it fits. Those are [`Refusal::Uninferable`]
+/// here,
 /// and the answer is [`check`] with the type the author meant.
 ///
 /// # Errors
@@ -285,8 +287,9 @@ pub fn recheck(cx: &Cx, ty: &Term, term: &Checked) -> Result<(), CoreError> {
 
 /// The normal form of `term` at type `ty`, in context `cx`.
 ///
-/// The result is η-long: `f : A → B` normalizes to `λx. f x`, and a record
-/// normalizes to a literal holding all of its projections. That is what makes
+/// The result is η-long: `f : A → B` normalizes to `λx. f x`, and a value of a
+/// one-constructor family normalizes to that constructor applied to all of its
+/// projections. That is what makes
 /// [`convertible`] an α-comparison of normal forms rather than a second
 /// algorithm — and what makes "conversion agrees with normalization" a law
 /// rather than an approximation.
@@ -336,8 +339,8 @@ pub fn normalize_type(cx: &Cx, ty: &Term) -> Result<Term, CoreError> {
 
 /// Whether `left` and `right` are definitionally equal at type `ty`.
 ///
-/// β, η at Π and at records, δ, and ι (§3), decided by the same procedure the
-/// checker's `Switch` rule calls — a type-directed walk over both values that
+/// β, η at Π and at a one-constructor family, δ, and ι (§3), decided by the
+/// same procedure the checker's `Switch` rule calls — a type-directed walk over both values that
 /// stops at the first node they disagree on, with every metavariable treated as
 /// an opaque head rather than an unknown to solve for. Normalizing both sides
 /// and comparing was the same answer computed the most expensive way available,

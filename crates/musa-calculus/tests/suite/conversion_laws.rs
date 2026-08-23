@@ -187,13 +187,13 @@ fn a_malformed_term_is_reported_rather_than_aborting() {
     );
 
     let a = cx.assume(HERE, &type0).expect("A : Type 0");
-    let projected_function = Term::project(HERE, Term::lam(HERE, "z", Term::var(HERE, Index(0))), "fst");
+    let applied_universe = Term::app(HERE, Term::universe(HERE, Sort::ZERO), Term::var(HERE, Index(0)));
     assert!(
         matches!(
-            musa_calculus::normalize(&a, &Term::var(HERE, Index(0)), &projected_function),
+            musa_calculus::normalize(&a, &Term::var(HERE, Index(0)), &applied_universe),
             Err(CoreError::Malformed(_))
         ),
-        "a function has no fields"
+        "a universe is not a function"
     );
 }
 
@@ -218,35 +218,54 @@ fn exhaustion_is_not_a_negative_answer() {
     );
 }
 
+/// A fixed quotation allowance, for the samples over a declaration.
+///
+/// Fixed is the whole point: it is written here rather than derived from the
+/// corpus, so a conversion whose read-back grew with the terms it was handed
+/// would cross it as soon as a sample got bigger.
+const READING_A_DECLARATION: u64 = 512;
+
 /// §3's conversion decides by walking values, and reading back is the failure
-/// path's job — so a conversion that says `true` never quoted a node.
+/// path's job — so a conversion that says `true` quotes nothing of the terms it
+/// was given.
 ///
 /// Stated with the budget rather than with a counter, which is what makes it a
 /// law about the language's own accounting instead of an assertion about one
-/// implementation's call graph. Before this prompt `convertible` normalized both
+/// implementation's call graph. Before prompt 143 `convertible` normalized both
 /// sides and compared, so every sample here would have exhausted; the ones that
 /// disagree still read back, because a mismatch's message *is* the two normal
 /// forms and §4's report is not optional.
+///
+/// The samples over a declared family read back one more thing, and it is not
+/// the terms: a constant's type is assembled from its declaration on demand
+/// (`family.rs` says why it is not stored), and applying one asks for it. Those
+/// are held to [`READING_A_DECLARATION`] instead — a *fixed* allowance, so the
+/// law still says the read-back does not grow with the question.
 #[test]
 fn a_conversion_that_agrees_reads_nothing_back() {
-    let samples = corpus_at(Budget::LANGUAGE.without_quotation()).expect("the corpus builds without quoting");
-    for Sample {
-        name,
-        cx,
-        ty,
-        left,
-        right,
-        equal,
-    } in samples
-    {
+    let strict = corpus_at(Budget::LANGUAGE.without_quotation()).expect("the corpus builds without quoting");
+    let allowed = corpus_at(Budget::LANGUAGE.quoting(READING_A_DECLARATION)).expect("and at a fixed allowance");
+    for (sample, spare) in strict.into_iter().zip(allowed) {
+        let Sample {
+            name,
+            cx,
+            ty,
+            left,
+            right,
+            equal,
+        } = sample;
         if !equal {
             continue;
         }
-        assert_eq!(
-            convertible(&cx, &ty, &left, &right),
-            Ok(true),
-            "{name}: deciding this took a quoted node"
-        );
+        match convertible(&cx, &ty, &left, &right) {
+            Ok(answer) => assert!(answer, "{name}: the corpus says these agree"),
+            Err(CoreError::Exhausted(_)) => assert_eq!(
+                convertible(&spare.cx, &spare.ty, &spare.left, &spare.right),
+                Ok(true),
+                "{name}: deciding this read back more than the declarations it names"
+            ),
+            Err(fault @ (CoreError::Malformed(_) | CoreError::Refused { .. })) => panic!("{name}: {fault}"),
+        }
     }
 }
 

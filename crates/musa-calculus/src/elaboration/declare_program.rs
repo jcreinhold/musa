@@ -385,7 +385,7 @@ fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[&Nam
                 walk(&field.term, bound);
             }
         }
-        RawShape::RecordType(fields) | RawShape::Record(fields) => {
+        RawShape::Record(fields) => {
             for field in fields.iter() {
                 walk(&field.term, bound);
             }

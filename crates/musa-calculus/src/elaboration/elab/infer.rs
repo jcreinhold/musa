@@ -91,7 +91,6 @@ impl Elaborator {
                 Some(built) => Ok(built),
                 None => self.complete_call(scope, here, function, arguments, supplied, None),
             },
-            RawShape::RecordType(fields) => self.record_type(scope, here, fields),
             // §2: a record literal is an introduction form, so it checks. The
             // type it "obviously" has is a guess rather than a principal type —
             // `{ ty = {}, val = {} }` inhabits both `{ ty : Type 0, val : ty }`
@@ -270,7 +269,6 @@ impl Elaborator {
                     | RawShape::Lam { .. }
                     | RawShape::App { .. }
                     | RawShape::Call { .. }
-                    | RawShape::RecordType(_)
                     | RawShape::Record(_)
                     | RawShape::Method { .. }
                     | RawShape::Project { .. }

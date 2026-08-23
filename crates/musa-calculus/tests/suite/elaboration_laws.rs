@@ -18,7 +18,7 @@ use crate::programs::{Program, Refused, WRITTEN, accepted, core_unit_type, refus
 /// Elaborate a program the way its corpus entry asks, answering the term and
 /// the type it ended up at.
 fn elaborate(program: &Program) -> Result<(Term, Term), ElabError> {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     match &program.ty {
         Some(ty) => check(&cx, ty, &program.raw).map(|term| (term, ty.clone())),
         None => infer(&cx, &program.raw),
@@ -66,13 +66,19 @@ fn an_accepted_terms_metas_are_all_solved() {
 /// would be the same walk under test.
 #[test]
 fn a_program_with_no_implicits_elaborates_to_itself() {
-    let cx = Cx::new();
-    let record_literal = Term::record(
+    let cx = crate::programs::cx();
+    // `Cell.Cell Unit Unit.Unit`. "Itself" is read up to prompt 157's
+    // translation: a record literal is the family's constructor applied to the
+    // fields the author wrote, in the order the declaration fixes, and nothing
+    // else about it moved.
+    let record_literal = Term::app(
         WRITTEN,
-        [
-            ("ty", Term::record_type(WRITTEN, [])),
-            ("val", Term::record(WRITTEN, [])),
-        ],
+        Term::app(
+            WRITTEN,
+            Term::named(WRITTEN, "Cell.Cell", musa_calculus::Role::Constructor),
+            core_unit_type(),
+        ),
+        Term::named(WRITTEN, "Unit.Unit", musa_calculus::Role::Constructor),
     );
     let pairs = [
         (
@@ -87,10 +93,7 @@ fn a_program_with_no_implicits_elaborates_to_itself() {
             // author wrote comes back unchanged.
             "a record literal",
             Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
-            Some(Term::record_type(
-                WRITTEN,
-                [("ty", Term::universe(WRITTEN, Sort::ZERO)), ("val", core_unit_type())],
-            )),
+            Some(crate::programs::core_cell_type()),
             record_literal,
         ),
         (
@@ -119,7 +122,7 @@ fn a_program_with_no_implicits_elaborates_to_itself() {
 /// nobody has read.
 #[test]
 fn each_refusal_is_reached_by_the_program_it_is_about() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let mut reached = std::collections::BTreeSet::new();
     for Refused {
         name,
@@ -344,6 +347,15 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
         };
         reached.insert(kind(&refusal(name, error)));
     }
+    // And §1.2's duplicate field, which no term reaches at all: after prompt 157
+    // a record is a one-constructor family, so two fields of one name are two
+    // generated accessors of one name and the declaration is where that is
+    // caught.
+    let (name, cx, twice) = crate::record_laws::one_field_twice();
+    let Err(error) = musa_calculus::declare(&cx, &twice) else {
+        panic!("{name}: the family was declared, and §1.2 refuses it");
+    };
+    reached.insert(kind(&refusal(name, error)));
     assert_eq!(
         reached,
         ALL_REFUSALS.iter().copied().collect(),
@@ -455,7 +467,7 @@ fn kind(refusal: &Refusal) -> &'static str {
 /// binder and asks later — the refusal says to write it.
 #[test]
 fn an_undetermined_binder_is_told_to_write_its_type() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let Err(error) = infer(&cx, &Raw::lam(WRITTEN, "x", Raw::var(WRITTEN, "x"))) else {
         panic!("a binder whose type nothing determines must be refused");
     };
@@ -477,13 +489,17 @@ fn an_undetermined_binder_is_told_to_write_its_type() {
 /// means.
 #[test]
 fn a_narrow_budget_exhausts_rather_than_refusing() {
+    // A budget this narrow cannot even declare a family, so the program is
+    // written in the one type that needs no declaration: `Type 0`, which is a
+    // term of `Type 1` and an identity function's domain as well as any other.
     let cx = Cx::with_budget(musa_calculus::Budget::LANGUAGE.scaled(4096));
+    let universe = || Raw::universe(WRITTEN, Sort::ZERO);
     let program = Raw::annotated_bind(
         WRITTEN,
         "id",
-        Raw::pi(WRITTEN, "_", unit_type(), unit_type()),
-        Raw::annotated_lam(WRITTEN, "x", unit_type(), Raw::var(WRITTEN, "x")),
-        Raw::app(WRITTEN, Raw::var(WRITTEN, "id"), unit()),
+        Raw::pi(WRITTEN, "_", universe(), universe()),
+        Raw::annotated_lam(WRITTEN, "x", universe(), Raw::var(WRITTEN, "x")),
+        Raw::app(WRITTEN, Raw::var(WRITTEN, "id"), universe()),
     );
     match infer(&cx, &program) {
         Err(ElabError::Exhausted(_)) | Ok(_) => {}
@@ -504,7 +520,7 @@ fn a_narrow_budget_exhausts_rather_than_refusing() {
 /// are one type to equality and one type to normalization.
 #[test]
 fn filling_is_not_part_of_conversion() {
-    let cx = Cx::new();
+    let cx = crate::programs::cx();
     let explicit = Term::pi(WRITTEN, "x", core_unit_type(), core_unit_type());
     let implicit = Term::parameter_pi(WRITTEN, "y", core_unit_type(), core_unit_type());
     assert_eq!(
@@ -532,7 +548,5 @@ fn metas_solved(term: &Term) -> bool {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         Shape::Bind { binder, body, .. } => binder.outer().all(metas_solved) && metas_solved(body),
         Shape::App { function, argument } => metas_solved(function) && metas_solved(argument),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| metas_solved(&field.term)),
-        Shape::Project { record, .. } => metas_solved(record),
     }
 }

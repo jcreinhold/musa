@@ -401,6 +401,38 @@ impl<'a> Telescope<'a> {
             })
     }
 
+    /// Bind the next *stored* binder to a value that is not a binder of this
+    /// telescope.
+    ///
+    /// The one thing [`Self::extend`] cannot do. A field accessor reads field
+    /// `i`'s stored type, which was written under the fields before it — and
+    /// those fields are not binders here, because the accessor takes the whole
+    /// value and not its parts. Each earlier field therefore stands at *its own
+    /// accessor applied to that value*, which is the substitution
+    /// `01-surface.md` §1.2's dependent record needs and the only reason the
+    /// two environments are separate.
+    pub(super) fn standing(&mut self, value: Value) {
+        self.reading = self.reading.push(value);
+    }
+
+    /// The environment every binder introduced so far stands in.
+    pub(super) const fn under(&self) -> &Env {
+        &self.env
+    }
+
+    /// The environment a *stored* term is read in — the declaration context and
+    /// the binders that term was written under, and nothing this walk
+    /// synthesized.
+    pub(super) const fn reading_env(&self) -> &Env {
+        &self.reading
+    }
+
+    /// How deep this telescope has reached, which is where a term it assembles
+    /// is quoted.
+    pub(super) const fn reached(&self) -> Level {
+        self.depth
+    }
+
     /// [`Self::close`], for a caller holding the telescope by reference.
     pub(super) fn finish(&mut self, result: Term) -> Term {
         std::mem::take(&mut self.binders)

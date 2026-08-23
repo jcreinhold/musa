@@ -120,8 +120,6 @@ fn names(term: &Term, wanted: &str) -> bool {
         Shape::Var(_) | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => false,
         Shape::Bind { binder, body, .. } => names(body, wanted) || binder.outer().any(|term| names(term, wanted)),
         Shape::App { function, argument } => names(function, wanted) || names(argument, wanted),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().any(|field| names(&field.term, wanted)),
-        Shape::Project { record, .. } => names(record, wanted),
     }
 }
 

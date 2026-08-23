@@ -45,7 +45,9 @@ mod visibility_laws;
 
 /// The terms every law suite is stated over.
 pub(crate) mod fixtures {
-    use musa_calculus::{Budget, CoreError, Cx, Index, Origin, Sort, Term};
+    use musa_calculus::{Budget, Cx, ElabError, Index, Origin, Role, Sort, Term};
+
+    use crate::family_laws::{binder, constructor, data, family, var as raw_var};
 
     /// The origin every node of a sample's *type* carries.
     ///
@@ -69,9 +71,9 @@ pub(crate) mod fixtures {
     /// One question the laws are asked at: a context, the type the question is
     /// asked at, two terms, and whether §3 calls them equal.
     ///
-    /// The type is not decoration. §3 performs η at Π and at records during
-    /// quotation, so "are these two terms equal" is not a question that can be
-    /// asked without saying equal *at what*.
+    /// The type is not decoration. §3 performs η at Π and at a one-constructor
+    /// family during quotation, so "are these two terms equal" is not a question
+    /// that can be asked without saying equal *at what*.
     pub(crate) struct Sample {
         /// The rule this sample exists to exercise.
         pub(crate) name: &'static str,
@@ -101,6 +103,30 @@ pub(crate) mod fixtures {
         Term::pi(TYPES, "z", domain, codomain)
     }
 
+    /// `Pair A`, the corpus's one-constructor family at a parameter.
+    fn pair_of(argument: Term) -> Term {
+        Term::app(TYPES, Term::named(TYPES, "Pair", Role::TypeConstructor), argument)
+    }
+
+    /// `Pair.<field> A r` — the generated accessor, applied to the parameter it
+    /// takes before its subject.
+    ///
+    /// A projection is a constant and not a shape after prompt 157, so reading a
+    /// field is an ordinary two-argument application. That is exactly what makes
+    /// the η sample below a statement about a *family* rather than about a term
+    /// former the core no longer has.
+    fn field_of(field: &str, parameter: Term, subject: Term) -> Term {
+        Term::app(
+            TERMS,
+            Term::app(
+                TERMS,
+                Term::named(TERMS, format!("Pair.{field}"), Role::Projection),
+                parameter,
+            ),
+            subject,
+        )
+    }
+
     /// The corpus at the language budget.
     ///
     /// # Panics
@@ -121,10 +147,46 @@ pub(crate) mod fixtures {
     ///
     /// # Errors
     ///
-    /// [`CoreError::Exhausted`] when `budget` cannot evaluate one of the types a
-    /// context is extended by.
-    pub(crate) fn corpus_at(budget: Budget) -> Result<Vec<Sample>, CoreError> {
+    /// [`ElabError::Exhausted`] when `budget` cannot evaluate one of the types a
+    /// context is extended by, or declare one of the two families the η samples
+    /// are stated over.
+    pub(crate) fn corpus_at(budget: Budget) -> Result<Vec<Sample>, ElabError> {
         let empty = Cx::with_budget(budget);
+        // `data Pair (A : Type 0) { Pair(fst: A, snd: A) }` and
+        // `data Dep { Dep(ty: Type 0, val: ty) }`: the two families η is stated
+        // over, the second one so that a later field standing under an earlier
+        // one is in the corpus rather than only in `record_laws.rs`.
+        let pairs = musa_calculus::declare(
+            &empty,
+            &data(
+                vec![binder("A", musa_calculus::Raw::universe(TYPES, Sort::ZERO))],
+                vec![family(
+                    "Pair",
+                    vec![constructor(
+                        "Pair",
+                        vec![binder("fst", raw_var("A")), binder("snd", raw_var("A"))],
+                    )],
+                )],
+            ),
+        )?;
+        let empty = empty.declaring(&pairs);
+        let deps = musa_calculus::declare(
+            &empty,
+            &data(
+                Vec::new(),
+                vec![family(
+                    "Dep",
+                    vec![constructor(
+                        "Dep",
+                        vec![
+                            binder("ty", musa_calculus::Raw::universe(TYPES, Sort::ZERO)),
+                            binder("val", raw_var("ty")),
+                        ],
+                    )],
+                )],
+            ),
+        )?;
+        let empty = empty.declaring(&deps);
         // A : Type 0
         let a = empty.assume(BINDERS, &type0())?;
         // A : Type 0, x : A
@@ -145,13 +207,10 @@ pub(crate) mod fixtures {
         // A : Type 0, g : A → A, f : A → A
         let two_functions = g.assume(BINDERS, &arrow(type_var(1), type_var(2)))?;
 
-        // A : Type 0, r : { fst : A, snd : A }
-        let pair = a.assume(
-            BINDERS,
-            &Term::record_type(TYPES, [("fst", type_var(0)), ("snd", type_var(1))]),
-        )?;
-        // r : { ty : Type 0, val : ty }
-        let dependent_pair_type = Term::record_type(TYPES, [("ty", type0()), ("val", type_var(0))]);
+        // A : Type 0, r : Pair A
+        let pair = a.assume(BINDERS, &pair_of(type_var(0)))?;
+        // d : Dep
+        let dependent_pair_type = Term::named(TYPES, "Dep", Role::TypeConstructor);
         let dependent_pair = empty.assume(BINDERS, &dependent_pair_type)?;
 
         Ok(vec![
@@ -196,38 +255,62 @@ pub(crate) mod fixtures {
                 equal: true,
             },
             Sample {
-                name: "η at a record",
+                name: "η at a one-constructor family",
                 cx: pair.clone(),
-                ty: Term::record_type(TYPES, [("fst", type_var(1)), ("snd", type_var(2))]),
+                ty: pair_of(type_var(1)),
                 left: var(0),
-                right: Term::record(
+                right: Term::app(
                     TERMS,
-                    [
-                        ("fst", Term::project(TERMS, var(0), "fst")),
-                        ("snd", Term::project(TERMS, var(0), "snd")),
-                    ],
+                    Term::app(
+                        TERMS,
+                        Term::app(
+                            TERMS,
+                            Term::named(TERMS, "Pair.Pair", Role::Constructor),
+                            Term::var(TERMS, Index(1)),
+                        ),
+                        field_of("fst", Term::var(TERMS, Index(1)), var(0)),
+                    ),
+                    field_of("snd", Term::var(TERMS, Index(1)), var(0)),
                 ),
                 equal: true,
             },
             Sample {
-                name: "η at a record whose later field depends on an earlier one",
+                name: "η at a family whose later field depends on an earlier one",
                 cx: dependent_pair,
                 ty: dependent_pair_type,
                 left: var(0),
-                right: Term::record(
+                right: Term::app(
                     TERMS,
-                    [
-                        ("ty", Term::project(TERMS, var(0), "ty")),
-                        ("val", Term::project(TERMS, var(0), "val")),
-                    ],
+                    Term::app(
+                        TERMS,
+                        Term::named(TERMS, "Dep.Dep", Role::Constructor),
+                        Term::app(TERMS, Term::named(TERMS, "Dep.ty", Role::Projection), var(0)),
+                    ),
+                    Term::app(TERMS, Term::named(TERMS, "Dep.val", Role::Projection), var(0)),
                 ),
                 equal: true,
             },
             Sample {
-                name: "projection",
+                name: "ι at a generated accessor",
                 cx: a_x,
                 ty: type_var(1),
-                left: Term::project(TERMS, Term::record(TERMS, [("fst", var(0)), ("snd", var(0))]), "fst"),
+                left: field_of(
+                    "fst",
+                    Term::var(TERMS, Index(1)),
+                    Term::app(
+                        TERMS,
+                        Term::app(
+                            TERMS,
+                            Term::app(
+                                TERMS,
+                                Term::named(TERMS, "Pair.Pair", Role::Constructor),
+                                Term::var(TERMS, Index(1)),
+                            ),
+                            var(0),
+                        ),
+                        var(0),
+                    ),
+                ),
                 right: var(0),
                 equal: true,
             },
@@ -264,11 +347,11 @@ pub(crate) mod fixtures {
                 equal: true,
             },
             Sample {
-                name: "a record type is a term like any other",
+                name: "a family's type is a term like any other",
                 cx: pair,
                 ty: type0(),
-                left: Term::record_type(TYPES, [("fst", type_var(1)), ("snd", type_var(2))]),
-                right: Term::record_type(TYPES, [("fst", type_var(1)), ("snd", type_var(2))]),
+                left: pair_of(type_var(1)),
+                right: pair_of(type_var(1)),
                 equal: true,
             },
         ])
@@ -281,13 +364,20 @@ pub(crate) mod fixtures {
 /// resolves names against binders it introduced itself, and a binder the caller's
 /// context already held has no name for it to resolve to (§2, and `scope.rs`).
 ///
-/// The corpus has no `data` and no primitives, because prompt 134 has neither.
-/// What stands in for them is the **empty record**: `{}` as a type is the
-/// smallest thing in `Type 0`, `{}` as a literal is its one inhabitant, and
-/// `Id (Type 1) (Type 0) (Type 0)` supplies a second family with a constructor.
-/// Everything below is built from those.
+/// What stands in for primitives is two declarations, in [`cx`]. `Unit` is the
+/// smallest thing in `Type 0` and `Unit.Unit` is its one inhabitant; `Cell` is a
+/// one-constructor family whose second field stands under its first, which is
+/// what a record is after prompt 157. Before that prompt the same two roles were
+/// played by the empty record and `{ ty : Type 0, val : ty }`, written inline
+/// because the core had shapes for them; the terms below are the same programs
+/// against the declarations that replaced those shapes.
+///
+/// A program here is closed *given those two declarations*: a constant is a name
+/// and not an index, so `recheck_laws.rs`'s closure law still reads.
 pub(crate) mod programs {
-    use musa_calculus::{ElabError, Origin, Raw, Refusal, Sort, Term};
+    use musa_calculus::{Cx, ElabError, Origin, Raw, RawData, Refusal, Role, Sort, Term};
+
+    use crate::family_laws::{binder, constructor, data, family};
 
     /// Where every raw term in the corpus says it was written.
     ///
@@ -313,28 +403,63 @@ pub(crate) mod programs {
         pub(crate) expected: fn(&Refusal) -> bool,
     }
 
-    /// `{}` as a type: the unit of this corpus, in `Type 0`.
-    pub(crate) fn unit_type() -> Raw {
-        Raw::record_type(WRITTEN, [])
+    /// `data Unit { Unit }` and `data Cell { Cell(ty: Type 0, val: ty) }`.
+    pub(crate) fn declarations() -> [RawData; 2] {
+        [
+            data(Vec::new(), vec![family("Unit", vec![constructor("Unit", Vec::new())])]),
+            data(
+                Vec::new(),
+                vec![family(
+                    "Cell",
+                    vec![constructor(
+                        "Cell",
+                        vec![binder("ty", type0()), binder("val", var("ty"))],
+                    )],
+                )],
+            ),
+        ]
     }
 
-    /// `{}` as a value: unit's one inhabitant.
+    /// The context every program in this corpus is elaborated in.
+    ///
+    /// # Panics
+    ///
+    /// If either declaration is refused, which would be a defect in this crate.
+    pub(crate) fn cx() -> Cx {
+        declarations().iter().fold(Cx::new(), |cx, declared| {
+            let group = musa_calculus::declare(&cx, declared).expect("the corpus declares two families");
+            cx.declaring(&group)
+        })
+    }
+
+    /// `Unit`: the smallest thing in `Type 0`.
+    pub(crate) fn unit_type() -> Raw {
+        var("Unit")
+    }
+
+    /// `Unit.Unit`: its one inhabitant.
     pub(crate) fn unit() -> Raw {
-        Raw::record(WRITTEN, [])
+        var("Unit.Unit")
     }
 
     /// The same type as a core term, for a checking question.
     pub(crate) fn core_unit_type() -> Term {
-        Term::record_type(WRITTEN, [])
+        Term::named(WRITTEN, "Unit", Role::TypeConstructor)
     }
 
-    /// `({} : {})` — the unit value where a type has to be *inferred* from it.
+    /// `Cell` as a core term.
+    pub(crate) fn core_cell_type() -> Term {
+        Term::named(WRITTEN, "Cell", Role::TypeConstructor)
+    }
+
+    /// `(Unit.Unit : Unit)` — the unit value where a type has to be *inferred*
+    /// from it.
     ///
     /// An argument filling an explicit binder whose type is still a
     /// metavariable is checked against that metavariable, and §2 gives a record
     /// literal no rule there: the literal is an introduction form, and a
-    /// metavariable is not a record type it could check field by field. Writing
-    /// the annotation is what an author does, and it is what determines the
+    /// metavariable is not a family it could check field by field. Writing the
+    /// annotation is what an author does, and it is what determines the
     /// implicit.
     pub(crate) fn annotated_unit() -> Raw {
         Raw::annot(WRITTEN, unit(), unit_type())
@@ -455,31 +580,27 @@ pub(crate) mod programs {
                 )),
             },
             Program {
-                name: "a dependent record type",
-                raw: Raw::record_type(WRITTEN, [("ty", type0()), ("val", var("ty"))]),
+                name: "a one-constructor family's type",
+                raw: var("Cell"),
                 ty: None,
             },
             Program {
-                name: "a dependent record literal",
+                name: "a record literal at a dependent one-constructor family",
                 raw: Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
-                ty: Some(Term::record_type(
-                    WRITTEN,
-                    [
-                        ("ty", Term::universe(WRITTEN, Sort::ZERO)),
-                        ("val", Term::var(WRITTEN, musa_calculus::Index(0))),
-                    ],
-                )),
+                ty: Some(core_cell_type()),
             },
             Program {
                 name: "a projection",
                 // Through a `let` rather than straight out of the literal,
                 // because §2 gives a record literal no inference rule: the
                 // author names the type once and both the projection and the
-                // re-checker read it from there.
+                // re-checker read it from there. This is prompt 157's
+                // re-checker obligation — the generated accessor has to survive
+                // `recheck_laws.rs` like any other constant.
                 raw: Raw::annotated_bind(
                     WRITTEN,
                     "r",
-                    Raw::record_type(WRITTEN, [("ty", type0()), ("val", var("ty"))]),
+                    var("Cell"),
                     Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
                     Raw::project(WRITTEN, var("r"), "val"),
                 ),
@@ -603,12 +724,12 @@ pub(crate) mod programs {
                 expected: |refusal| matches!(refusal, Refusal::NotARecord { .. }),
             },
             Refused {
-                name: "projecting a field the record type does not have",
+                name: "projecting a field the family does not declare",
                 raw: Raw::annotated_bind(
                     WRITTEN,
                     "r",
-                    Raw::record_type(WRITTEN, [("a", unit_type())]),
-                    Raw::record(WRITTEN, [("a", unit())]),
+                    var("Cell"),
+                    Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
                     Raw::project(WRITTEN, var("r"), "b"),
                 ),
                 ty: None,
@@ -616,18 +737,18 @@ pub(crate) mod programs {
             },
             Refused {
                 name: "a record literal with no type to check against",
-                // §2: introduction forms check. The type such a literal
-                // "obviously" has is a guess — this one inhabits both
-                // `{ ty : Type 0, val : ty }` and `{ ty : Type 0, val : {} }` —
-                // so elaboration asks rather than picks.
+                // §2: introduction forms check. Which family a literal belongs
+                // to is not written anywhere in it — after prompt 157 two
+                // declarations may name the same fields at the same types and
+                // still be two types — so elaboration asks rather than picks.
                 raw: Raw::record(WRITTEN, [("ty", unit_type()), ("val", unit())]),
                 ty: None,
                 expected: |refusal| matches!(refusal, Refusal::Uninferable { .. }),
             },
             Refused {
-                name: "a record literal whose fields are not the type's",
+                name: "a record literal whose fields are not the family's",
                 raw: Raw::record(WRITTEN, [("b", unit())]),
-                ty: Some(Term::record_type(WRITTEN, [("a", core_unit_type())])),
+                ty: Some(core_cell_type()),
                 expected: |refusal| matches!(refusal, Refusal::RecordShape { .. }),
             },
             Refused {

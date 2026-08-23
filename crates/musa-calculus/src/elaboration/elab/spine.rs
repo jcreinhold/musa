@@ -209,10 +209,7 @@ impl Elaborator {
             | Shape::Lit(_)
             | Shape::Universe(_)
             | Shape::Bind { .. }
-            | Shape::App { .. }
-            | Shape::RecordType(_)
-            | Shape::Record(_)
-            | Shape::Project { .. } => None,
+            | Shape::App { .. } => None,
         };
         let head = match bare {
             Some(params) => self.metas(scope, here, head, params)?,

@@ -45,7 +45,7 @@ use crate::kernel::context::Globals;
 use crate::kernel::list::List;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Field, Filling, Level, Name, Term};
+use crate::kernel::term::{Filling, Level, Name, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
 /// first, and the names in scope that no binder introduced.
@@ -160,14 +160,6 @@ pub(crate) struct Closure {
     pub(crate) body: Term,
 }
 
-/// A record type as a telescope: the fields in order, read in one environment,
-/// where field `i`'s type may mention fields `0..i`.
-#[derive(Clone)]
-pub(crate) struct Telescope {
-    pub(crate) fields: Arc<[Field]>,
-    pub(crate) env: Env,
-}
-
 /// A semantic value: what it is, and where the term that produced it came from.
 #[derive(Clone)]
 pub(crate) struct Value {
@@ -192,8 +184,6 @@ pub(crate) enum Form {
     /// is quoting at, never from the λ, so a name here would be a second copy
     /// free to disagree with the one that gets printed.
     Lam(Closure),
-    RecordType(Telescope),
-    Record(Arc<[(Name, Value)]>),
     /// A closed value of a base type. Canonical, not neutral: §5.8's
     /// inertness is that nothing eliminates it rather than that it is stuck.
     Lit(crate::kernel::base::Literal),
@@ -352,14 +342,13 @@ pub(crate) enum DefHead {
 #[derive(Clone)]
 pub(crate) enum Elim {
     App { origin: Origin, argument: Arc<Value> },
-    Project { origin: Origin, field: Name },
 }
 
 impl Elim {
     /// Where this elimination was written.
     pub(crate) const fn origin(&self) -> Origin {
         match self {
-            Self::App { origin, .. } | Self::Project { origin, .. } => *origin,
+            Self::App { origin, .. } => *origin,
         }
     }
 }

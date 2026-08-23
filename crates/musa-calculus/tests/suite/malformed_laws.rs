@@ -32,13 +32,22 @@ use musa_calculus::{
 /// Where every term this file builds says it was written.
 const HERE: musa_calculus::Origin = musa_calculus::Origin::node(900);
 
-/// `{}` as a type, and as its one inhabitant.
+/// `Type 0 → Type 0` as a type, and `λx. x` as its inhabitant.
+///
+/// Every closed inhabited type this file can write is one the *core* can write,
+/// and after prompt 157 that is a function type: the empty record used to be
+/// smaller, and there is no record shape left to write it with.
 fn unit_type() -> Term {
-    Term::record_type(HERE, [])
+    Term::pi(
+        HERE,
+        "x",
+        Term::universe(HERE, Sort::ZERO),
+        Term::universe(HERE, Sort::ZERO),
+    )
 }
 
 fn unit() -> Term {
-    Term::record(HERE, [])
+    Term::lam(HERE, "x", Term::var(HERE, Index(0)))
 }
 
 /// The malformation `outcome` carries, or a panic naming what arrived instead.
@@ -64,8 +73,6 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::UnboundVariable(_) => "unbound-variable",
         Malformed::UndeclaredName(_) => "undeclared-name",
         Malformed::NotAFunction => "not-a-function",
-        Malformed::NotARecord => "not-a-record",
-        Malformed::NoSuchField(_) => "no-such-field",
         Malformed::NotAType => "not-a-type",
         Malformed::EscapedVariable => "escaped-variable",
         Malformed::UnsolvedMeta(_) => "unsolved-meta",
@@ -85,12 +92,10 @@ fn kind(fault: &Malformed) -> &'static str {
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 20] = [
+const ALL_MALFORMED: [&str; 18] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
-    "not-a-record",
-    "no-such-field",
     "not-a-type",
     "escaped-variable",
     "unsolved-meta",
@@ -228,41 +233,22 @@ fn reachable() -> Vec<(&'static str, Malformed)> {
     assert!(matches!(fault, Malformed::UndeclaredName(_)), "{fault}");
     found.push(("a name no declaration answers to", fault));
 
-    // `{} {}` — a record literal applied to one.
+    // `(Type 0) (Type 0)` — a universe applied to one.
     let fault = malformed(
-        "applying a record literal",
-        musa_calculus::normalize(&cx, &unit_type(), &Term::app(HERE, unit(), unit())),
+        "applying a universe",
+        musa_calculus::normalize(
+            &cx,
+            &unit_type(),
+            &Term::app(HERE, Term::universe(HERE, Sort::ZERO), Term::universe(HERE, Sort::ZERO)),
+        ),
     );
     assert!(matches!(fault, Malformed::NotAFunction), "{fault}");
-    found.push(("applying a record literal", fault));
+    found.push(("applying a universe", fault));
 
-    // `(Type 0).f` — a universe projected at a field.
-    let fault = malformed(
-        "projecting a universe",
-        musa_calculus::normalize(
-            &cx,
-            &unit_type(),
-            &Term::project(HERE, Term::universe(HERE, Sort::ZERO), "f"),
-        ),
-    );
-    assert!(matches!(fault, Malformed::NotARecord), "{fault}");
-    found.push(("projecting a universe", fault));
-
-    // `{ a = {} }.b` — a field the literal does not have.
-    let fault = malformed(
-        "projecting a field the literal does not have",
-        musa_calculus::normalize(
-            &cx,
-            &unit_type(),
-            &Term::project(HERE, Term::record(HERE, [("a", unit())]), "b"),
-        ),
-    );
-    assert!(matches!(fault, Malformed::NoSuchField(_)), "{fault}");
-    found.push(("projecting a field the literal does not have", fault));
-
-    // `let u : {} = {} in (x : u) → {}` — a value standing as a domain. The
-    // `let` is what gives the domain a type at all: a bare `{}` is an
-    // introduction form and would be refused one step earlier.
+    // `let u : (Type 0 → Type 0) = λx. x in (x : u) → Type 0 → Type 0` — a
+    // value standing as a domain. The `let` is what gives the domain a type at
+    // all: a bare λ is an introduction form and would be refused one step
+    // earlier.
     let fault = rechecking(
         "a value standing in domain position",
         &cx,
@@ -289,17 +275,25 @@ fn reachable() -> Vec<(&'static str, Malformed)> {
     assert!(matches!(fault, Malformed::Mistyped { .. }), "{fault}");
     found.push(("a universe one level too low", fault));
 
-    // `(λx. x).f` — a λ in inference position. §2 makes a λ a checking form
-    // because it carries no domain, so the term around this one gave it no
-    // type and there is none to derive.
+    // `(_ : λx. x) -> Type 0` — a λ where a type belongs. §2 makes a λ a
+    // checking form because it carries no domain, so the term around this one
+    // gave it no type and there is none to derive. It sits in a Π's domain and
+    // not in a function position, because an applied λ is a β-redex and the
+    // re-checker reads a β-redex as the `let` it is; asking a Π's domain what
+    // universe it inhabits is a place a λ is asked to infer and cannot.
     let fault = rechecking(
-        "a lambda projected at a field",
+        "a lambda where a type belongs",
         &cx,
-        &unit_type(),
-        &Term::project(HERE, Term::lam(HERE, "x", Term::var(HERE, Index(0))), "f"),
+        &Term::universe(HERE, Sort::ONE),
+        &Term::pi(
+            HERE,
+            "_",
+            Term::lam(HERE, "x", Term::var(HERE, Index(0))),
+            Term::universe(HERE, Sort::ZERO),
+        ),
     );
     assert!(matches!(fault, Malformed::Uninferable), "{fault}");
-    found.push(("a lambda projected at a field", fault));
+    found.push(("a lambda where a type belongs", fault));
 
     found.extend(crate::sort_laws::level_faults());
     found.extend(host_faults());

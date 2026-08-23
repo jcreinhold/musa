@@ -446,7 +446,7 @@ fn free(raw: &Raw, name: &Name, bound: &mut Vec<Name>) -> bool {
                 || arguments.iter().any(|argument| free(argument, name, bound))
                 || fields(supplied, name, bound)
         }
-        RawShape::RecordType(written) | RawShape::Record(written) => fields(written, name, bound),
+        RawShape::Record(written) => fields(written, name, bound),
         RawShape::Update { record, updates } => {
             free(record, name, bound)
                 || updates

@@ -9,7 +9,7 @@
 //! obligation and prompt 135's termination checker owes for the recursive
 //! definitions this crate does not yet have.
 
-use musa_calculus::{Binder, Cx, Index, Origin, Shape, Sort, Term, normalize, normalize_type};
+use musa_calculus::{Binder, Cx, Index, Origin, Role, Shape, Sort, Term, normalize, normalize_type};
 
 use crate::fixtures::{Sample, corpus};
 
@@ -67,7 +67,8 @@ fn a_normal_form_contains_no_redex() {
 }
 
 /// §3, η is performed by quotation, so a normal form at a Π *is* a lambda and a
-/// normal form at a record type *is* a literal — whatever the input looked like.
+/// normal form at a one-constructor family *is* that constructor applied to the
+/// fields — whatever the input looked like.
 #[test]
 fn normal_forms_are_eta_long() {
     let cx = Cx::new();
@@ -88,20 +89,48 @@ fn normal_forms_are_eta_long() {
         "a variable at a function type reads back as a lambda, not as itself"
     );
 
-    let pair_type = Term::record_type(
+    // `data Pair (A : Type 0) { Pair(fst: A, snd: A) }`, declared under `A`'s
+    // binder rather than over it: a declaration is closed, and the parameter is
+    // what carries the element type in.
+    let group = musa_calculus::declare(&cx, &crate::record_laws::pair()).expect("Pair is a declaration");
+    let a = cx.declaring(&group);
+    let a = a.assume(HERE, &Term::universe(HERE, Sort::ZERO)).expect("A : Type 0");
+    let pair_type = Term::app(
         HERE,
-        [("fst", Term::var(HERE, Index(0))), ("snd", Term::var(HERE, Index(1)))],
+        Term::named(HERE, "Pair", Role::TypeConstructor),
+        Term::var(HERE, Index(0)),
     );
-    let r = a.assume(HERE, &pair_type).expect("r : { fst : A, snd : A }");
-    let pair_in_r = Term::record_type(
+    let r = a.assume(HERE, &pair_type).expect("r : Pair A");
+    let pair_in_r = Term::app(
         HERE,
-        [("fst", Term::var(HERE, Index(1))), ("snd", Term::var(HERE, Index(2)))],
+        Term::named(HERE, "Pair", Role::TypeConstructor),
+        Term::var(HERE, Index(1)),
     );
     let record = normalize(&r, &pair_in_r, &Term::var(HERE, Index(0))).expect("r normalizes");
-    assert!(
-        matches!(*record.shape(), Shape::Record(_)),
-        "a variable at a record type reads back as a literal holding its projections"
+    assert_eq!(
+        head_of(&record),
+        Some(("Pair.Pair".to_owned(), 3)),
+        "a variable at a one-constructor family reads back as that constructor over its projections"
     );
+}
+
+/// The name at the head of an application spine, and how many arguments it took.
+fn head_of(term: &Term) -> Option<(String, usize)> {
+    let mut head = term;
+    let mut arguments = 0_usize;
+    while let Shape::App { function, .. } = head.shape() {
+        arguments = arguments.saturating_add(1);
+        head = function;
+    }
+    match head.shape() {
+        Shape::Named { name, .. } => Some((name.to_string(), arguments)),
+        Shape::Meta(_)
+        | Shape::Var(_)
+        | Shape::Lit(_)
+        | Shape::Universe(_)
+        | Shape::Bind { .. }
+        | Shape::App { .. } => None,
+    }
 }
 
 /// §3, α-equivalent inputs have *identical* normal forms.
@@ -232,8 +261,6 @@ fn is_normal(cx: &Cx, term: &Term) -> bool {
                 && is_normal(cx, function)
                 && is_normal(cx, argument)
         }
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| is_normal(cx, &field.term)),
-        Shape::Project { record, field: _ } => !matches!(*record.shape(), Shape::Record(_)) && is_normal(cx, record),
         Shape::Meta(_) => false,
         // A normal form has none: elaboration either solved it or refused the
         // declaration that left it unsolved (§2.1). Reaching one here means a

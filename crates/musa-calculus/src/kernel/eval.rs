@@ -36,8 +36,8 @@ use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
-use crate::kernel::term::{Binder, Constant, Definition, Field, Filling, Name, Role, Shape, Term};
-use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Telescope, Value};
+use crate::kernel::term::{Binder, Constant, Definition, Filling, Name, Role, Shape, Term};
+use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Value};
 
 /// Evaluate `term` in `env`.
 ///
@@ -93,15 +93,6 @@ pub(crate) fn eval(meter: &mut Meter, env: &Env, term: &Term) -> Result<Value, C
                 Binder::Let { ty: _, value } => binding(meter, env, value, body),
             },
             Shape::App { function, argument } => application(meter, env, here, function, argument),
-            Shape::RecordType(fields) => Ok(Value::new(
-                here,
-                Form::RecordType(Telescope {
-                    fields: Arc::clone(fields),
-                    env: env.clone(),
-                }),
-            )),
-            Shape::Record(fields) => literal(meter, env, here, fields),
-            Shape::Project { record, field } => projection(meter, env, here, record, field),
         }
     })
 }
@@ -266,19 +257,6 @@ fn application(
     apply(meter, here, function, argument)
 }
 
-fn literal(meter: &mut Meter, env: &Env, here: Origin, fields: &[Field]) -> Result<Value, CoreError> {
-    let mut built = Vec::with_capacity(fields.len());
-    for field in fields {
-        built.push((Arc::clone(&field.name), eval(meter, env, &field.term)?));
-    }
-    Ok(Value::new(here, Form::Record(built.into())))
-}
-
-fn projection(meter: &mut Meter, env: &Env, here: Origin, record: &Term, field: &Name) -> Result<Value, CoreError> {
-    let record = eval(meter, env, record)?;
-    project(meter, here, record, field)
-}
-
 fn binding(meter: &mut Meter, env: &Env, value: &Term, body: &Term) -> Result<Value, CoreError> {
     let value = eval(meter, env, value)?;
     eval(meter, &env.push(value), body)
@@ -383,9 +361,7 @@ fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreEr
     };
     let mut arguments = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
-        let Elim::App { ref argument, .. } = *elimination else {
-            return Ok(None);
-        };
+        let Elim::App { ref argument, .. } = *elimination;
         arguments.push(Value::clone(argument));
     }
     compiled.reduce(meter, globals, neutral.outer_origin(), def.name(), &arguments)
@@ -410,7 +386,6 @@ pub(crate) fn unfold_spine(meter: &mut Meter, value: &Value, spine: &[Elim]) -> 
 fn eliminate_replayed(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
     match elimination {
         Elim::App { origin, argument } => applying(meter, *origin, target, Value::clone(argument)),
-        Elim::Project { origin, field } => projecting(meter, *origin, target, field),
     }
 }
 
@@ -441,13 +416,7 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
                 Some(unfolded) => unfolded,
                 None => return Ok(None),
             },
-            Form::Universe(_)
-            | Form::Pi { .. }
-            | Form::Lam(_)
-            | Form::RecordType(_)
-            | Form::Record(_)
-            | Form::Lit(_)
-            | Form::Numeral(_) => return Ok(None),
+            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) => return Ok(None),
         },
     };
     loop {
@@ -469,7 +438,6 @@ pub(crate) fn opened(meter: &mut Meter, value: &Value) -> Result<Option<Value>, 
 fn eliminate(meter: &mut Meter, target: Value, elimination: &Elim) -> Result<Value, CoreError> {
     match elimination {
         Elim::App { origin, argument } => apply(meter, *origin, target, Value::clone(argument)),
-        Elim::Project { origin, field } => project(meter, *origin, target, field),
     }
 }
 
@@ -538,12 +506,7 @@ fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -
                 None => Ok(Value::neutral(built)),
             }
         }
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Lit(_)
-        | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
+        Form::Universe(_) | Form::Pi { .. } | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
     }
 }
 
@@ -584,9 +547,7 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
     }
     let mut arguments = Vec::with_capacity(built.spine.len());
     for elimination in &built.spine {
-        let Elim::App { argument, .. } = elimination else {
-            return Ok(None);
-        };
+        let Elim::App { argument, .. } = elimination;
         let Some(datum) = canonical(meter, argument)? else {
             return Ok(None);
         };
@@ -645,7 +606,7 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
             // up and carries the argument for building it with a loop.
             Form::Numeral(ref numeral) => Ok(crate::kernel::family::counted(numeral)),
             Form::Neutral(ref neutral) => constructed(meter, neutral),
-            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) => Ok(None),
+            Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) => Ok(None),
         }
     })
 }
@@ -658,9 +619,7 @@ fn constructed(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Datum>, Co
     };
     let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
     for elimination in neutral.spine.iter().skip(params) {
-        let Elim::App { argument, .. } = elimination else {
-            return Ok(None);
-        };
+        let Elim::App { argument, .. } = elimination;
         let Some(field) = canonical(meter, argument)? else {
             return Ok(None);
         };
@@ -683,9 +642,7 @@ fn constructed(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Datum>, Co
 fn result_type(meter: &mut Meter, builtin: &Builtin, globals: &Globals, built: &Neutral) -> Result<Value, CoreError> {
     let mut ty = eval(meter, &Env::under(globals.clone()), builtin.ty())?;
     for elimination in &built.spine {
-        let Elim::App { argument, .. } = elimination else {
-            return Err(Malformed::NotAFunction.into());
-        };
+        let Elim::App { argument, .. } = elimination;
         let Form::Pi { codomain, .. } = ty.form else {
             return Err(Malformed::NotAFunction.into());
         };
@@ -734,9 +691,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     }
     let mut arguments = Vec::with_capacity(built.spine.len());
     for elimination in &built.spine {
-        let Elim::App { argument, .. } = elimination else {
-            return Ok(None);
-        };
+        let Elim::App { argument, .. } = elimination;
         arguments.push(Value::clone(argument));
     }
     // Registration checked that the target names an argument, so this indexes a
@@ -750,13 +705,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
             meter.step("structural reduction")?;
             rewrite(builtin, literal)
         }
-        Form::Universe(_)
-        | Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Numeral(_)
-        | Form::Neutral(_) => return Ok(None),
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Numeral(_) | Form::Neutral(_) => return Ok(None),
     };
     let Some(rewritten) = rewritten else {
         return Err(Malformed::BuiltinStuck(Arc::clone(builtin.name())).into());
@@ -767,66 +716,6 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
         .into_iter()
         .fold(Env::under(globals.clone()), |env, argument| env.push(argument));
     eval(meter, &env, &rewritten).map(Some)
-}
-
-/// Projection, or a blocked projection.
-///
-/// # Errors
-///
-/// [`Malformed::NotARecord`] when `record` is neither a record nor neutral, and
-/// [`Malformed::NoSuchField`] when it is a record without that field.
-pub(crate) fn project(meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
-    meter.step("field projection")?;
-    projecting(meter, here, record, field)
-}
-
-/// [`project`] without the bookkeeping charge — see [`applying`].
-fn projecting(_meter: &mut Meter, here: Origin, record: Value, field: &Name) -> Result<Value, CoreError> {
-    match record.form {
-        // Not a record, so there is no field to find — the same answer a
-        // universe or a λ gets below.
-        Form::Record(fields) => fields
-            .iter()
-            .find(|(name, _)| name == field)
-            .map(|(_, value)| value.clone())
-            .ok_or_else(|| Malformed::NoSuchField(Arc::clone(field)).into()),
-        Form::Neutral(record) => Ok(Value::neutral(Neutral::eliminated(
-            &record,
-            Elim::Project {
-                origin: here,
-                field: Arc::clone(field),
-            },
-        ))),
-        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Lit(_) | Form::Numeral(_) => {
-            Err(Malformed::NotARecord.into())
-        }
-    }
-}
-
-/// The type of field `field` of `subject`, a value of record type `telescope`.
-///
-/// The telescope's earlier binders are filled with the *subject's own*
-/// projections, which is what makes a later field's type able to mention an
-/// earlier field's value.
-///
-/// # Errors
-///
-/// [`Malformed::NoSuchField`] when the telescope has no such field, otherwise
-/// as [`eval`].
-pub(crate) fn field_type(
-    meter: &mut Meter,
-    telescope: &Telescope,
-    subject: &Value,
-    field: &Name,
-) -> Result<Value, CoreError> {
-    let mut env = telescope.env.clone();
-    for Field { name, term } in telescope.fields.iter() {
-        if name == field {
-            return eval(meter, &env, term);
-        }
-        env = env.push(project(meter, subject.origin, subject.clone(), name)?);
-    }
-    Err(Malformed::NoSuchField(Arc::clone(field)).into())
 }
 
 /// The type of a blocked elimination.
@@ -863,10 +752,9 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             Head::Base(base, globals) => eval(meter, &Env::under(globals.clone()), base.kind())?,
             Head::Builtin(builtin, globals) => eval(meter, &Env::under(globals.clone()), builtin.ty())?,
         };
-        // The prefix each elimination is applied to, grown in place. A
-        // projection's field type may mention the record it projects from, and
-        // `J`'s result type mentions the proof, so the walk has to be able to
-        // name what it has consumed so far.
+        // The prefix each elimination is applied to, grown in place: `J`'s
+        // result type mentions the proof, so the walk has to be able to name
+        // what it has consumed so far.
         let mut prefix = Neutral::head(neutral.origin, neutral.head.clone());
         for elimination in &neutral.spine {
             // A type written as a metavariable is blocked until that meta is
@@ -874,7 +762,7 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
             // opened; matching it as either would answer `NotAFunction` for a
             // term the elaborator had just proved well typed.
             let head = opened(meter, &ty)?.unwrap_or(ty);
-            ty = eliminated_type(meter, head, &prefix, elimination)?;
+            ty = eliminated_type(meter, head, elimination)?;
             prefix.spine.push(elimination.clone());
         }
         Ok(ty)
@@ -883,30 +771,13 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
 
 /// The type of `prefix` eliminated by `elimination`, given the prefix's own
 /// type already forced.
-fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination: &Elim) -> Result<Value, CoreError> {
+fn eliminated_type(meter: &mut Meter, head: Value, elimination: &Elim) -> Result<Value, CoreError> {
     match elimination {
         Elim::App { argument, .. } => match head.form {
             Form::Pi { codomain, .. } => apply_closure(meter, &codomain, Value::clone(argument)),
-            Form::Universe(_)
-            | Form::Lam(_)
-            | Form::RecordType(_)
-            | Form::Record(_)
-            | Form::Lit(_)
-            | Form::Numeral(_)
-            | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
-        },
-        Elim::Project { field, .. } => match head.form {
-            Form::RecordType(telescope) => {
-                let subject = Value::neutral(prefix.clone());
-                field_type(meter, &telescope, &subject, field)
+            Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
+                Err(Malformed::NotAFunction.into())
             }
-            Form::Universe(_)
-            | Form::Pi { .. }
-            | Form::Lam(_)
-            | Form::Record(_)
-            | Form::Lit(_)
-            | Form::Numeral(_)
-            | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
         },
     }
 }
@@ -914,17 +785,17 @@ fn eliminated_type(meter: &mut Meter, head: Value, prefix: &Neutral, elimination
 /// The type of a blocked elimination, unfolded far enough to be matched on.
 ///
 /// A caller decides what an elimination is legal by matching this against
-/// [`Form::Pi`] or [`Form::RecordType`], and a type that was itself written as a
-/// metavariable is [`Form::Neutral`] until that meta is solved. Matching without
-/// forcing would answer [`Malformed::NotAFunction`] for a term the elaborator
-/// had just proved well typed.
+/// [`Form::Pi`], and a type that was itself written as a metavariable is
+/// [`Form::Neutral`] until that meta is solved. Matching without forcing would
+/// answer [`Malformed::NotAFunction`] for a term the elaborator had just proved
+/// well typed.
 ///
 /// # Errors
 ///
 /// As [`neutral_type`].
 pub(crate) fn head_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value, CoreError> {
     let ty = neutral_type(meter, neutral)?;
-    // Opened rather than merely forced: the answer is matched against `Π` and
-    // record types, and a type that names a definition hides both while folded.
+    // Opened rather than merely forced: the answer is matched against `Π`, and
+    // a type that names a definition hides that while folded.
     Ok(opened(meter, &ty)?.unwrap_or(ty))
 }

@@ -22,11 +22,7 @@ pub(super) fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
     };
     let mut arguments = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
-        // A recursor is applied, never projected from and never eliminated at
-        // the identity type, so anything else means this is not a reduction.
-        let Elim::App { argument, .. } = elimination else {
-            return None;
-        };
+        let Elim::App { argument, .. } = elimination;
         arguments.push(Value::clone(argument));
     }
     Some((constant.clone(), arguments))
@@ -64,6 +60,9 @@ pub(super) fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
 ///
 /// As [`apply`].
 pub(crate) fn iota(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+    if let Some(field) = projected(meter, neutral)? {
+        return Ok(Some(field));
+    }
     let Some(reduction) = ready(meter, neutral)? else {
         return Ok(None);
     };
@@ -80,6 +79,56 @@ pub(crate) fn iota(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>
         answer = apply(meter, here, answer, hypothesis)?;
     }
     Ok(Some(answer))
+}
+
+/// ι at a generated field accessor: `f_i p⃗ (C p⃗ a⃗) ⟶ a_i`.
+///
+/// The one-constructor case of the rule above, and it is a rule of its own
+/// because an accessor is not a recursor: it takes the parameters and the value
+/// and nothing else, so there is no motive to instantiate and no method to
+/// find. What it steps to is the argument the constructor was applied to, which
+/// is what makes `01-surface.md` §1.2's projection compute.
+///
+/// Blocked on anything but a constructor spine, which is the ordinary case for
+/// a variable and is what η at [`crate::kernel::quote`] then reads.
+///
+/// # Errors
+///
+/// As [`opened`](crate::kernel::eval::opened), from looking through a solved
+/// metavariable or a folded definition at the value read from.
+fn projected(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Value>, CoreError> {
+    let Some((accessor, arguments)) = spine(neutral) else {
+        return Ok(None);
+    };
+    let Role::Projection(field) = accessor.role else {
+        return Ok(None);
+    };
+    if u32::try_from(arguments.len()).unwrap_or(u32::MAX) != accessor.arity() {
+        return Ok(None);
+    }
+    let Some(subject) = arguments.last() else {
+        return Ok(None);
+    };
+    let subject = crate::kernel::eval::opened(meter, subject)?.unwrap_or_else(|| subject.clone());
+    let Form::Neutral(ref built) = subject.form else {
+        return Ok(None);
+    };
+    let Some((constructor, applied)) = spine(built) else {
+        return Ok(None);
+    };
+    // The family is not asked for: a group declares one accessor per field of
+    // one constructor, so a spine that reached here at all was built by the
+    // constructor this accessor reads. What *is* asked for is that the head is
+    // a constructor and that the spine is saturated, since a partially applied
+    // one holds no field to answer with.
+    if !matches!(constructor.role, Role::Constructor(_))
+        || u32::try_from(applied.len()).unwrap_or(u32::MAX) != constructor.arity()
+    {
+        return Ok(None);
+    }
+    let params = usize::try_from(accessor.group.params()).unwrap_or(usize::MAX);
+    let position = params.saturating_add(usize::try_from(field).unwrap_or(usize::MAX));
+    Ok(applied.get(position).cloned())
 }
 
 /// The value to hand a binder that is provably absent from the body it binds.
@@ -231,9 +280,7 @@ fn ready(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Reduction>, Core
                 built.get(params..).unwrap_or_default().to_vec(),
             )
         }
-        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::RecordType(_) | Form::Record(_) | Form::Lit(_) => {
-            return Ok(None);
-        }
+        Form::Universe(_) | Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) => return Ok(None),
     };
     let motives = usize::try_from(group.arity()).unwrap_or(usize::MAX);
     let position = usize::try_from(group.method_position(family, which)).unwrap_or(usize::MAX);

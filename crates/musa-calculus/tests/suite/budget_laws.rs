@@ -10,7 +10,8 @@
 //! protected — a timeout here would make acceptance a property of the host.
 
 use musa_calculus::{
-    Budget, CoreError, Cx, ElabError, Metric, Origin, Raw, Sort, Term, convertible, convertible_types, normalize_type,
+    Budget, CoreError, Cx, ElabError, Metric, Origin, Raw, Role, Sort, Term, convertible, convertible_types,
+    normalize_type,
 };
 
 use crate::fixtures::{Sample, corpus, corpus_at};
@@ -142,15 +143,37 @@ fn exhaustion_is_monotone_in_the_budget() {
 #[test]
 fn a_wide_term_is_not_a_deep_one() {
     let names: Vec<String> = (0..300).map(|field| format!("f{field}")).collect();
-    let one_up = Term::universe(HERE, Sort::ONE);
     let type0 = Term::universe(HERE, Sort::ZERO);
-    let wide = Term::record_type(HERE, names.iter().map(|name| (name.as_str(), one_up.clone())));
-
+    // `data Wide { Wide(f0: Type 0, …, f299: Type 0) }`. A record after prompt
+    // 157, so the width that used to sit in one `RecordType` node now sits in a
+    // 300-argument constructor application — and η at a one-constructor family
+    // still reads all 300 fields back.
+    let declared = crate::family_laws::data(
+        Vec::new(),
+        vec![crate::family_laws::family(
+            "Wide",
+            vec![crate::family_laws::constructor(
+                "Wide",
+                names
+                    .iter()
+                    .map(|name| crate::family_laws::binder(name, Raw::universe(HERE, Sort::ZERO)))
+                    .collect(),
+            )],
+        )],
+    );
     let cx = Cx::new();
+    let group = musa_calculus::declare(&cx, &declared).expect("width is not depth in a declaration either");
+    let cx = cx.declaring(&group);
+
+    let wide = Term::named(HERE, "Wide", Role::TypeConstructor);
     let normal = normalize_type(&cx, &wide).expect("width is not depth");
     assert_eq!(normal, wide);
 
-    let value = Term::record(HERE, names.iter().map(|name| (name.as_str(), type0.clone())));
+    let value = names
+        .iter()
+        .fold(Term::named(HERE, "Wide.Wide", Role::Constructor), |built, _| {
+            Term::app(HERE, built, type0.clone())
+        });
     assert_eq!(convertible(&cx, &wide, &value, &value), Ok(true));
 }
 

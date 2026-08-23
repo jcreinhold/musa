@@ -11,7 +11,7 @@ use crate::kernel::error::CoreError;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Sort;
 use crate::kernel::term::{Filling, Name, Term};
-use crate::kernel::value::{Env, Form, Value};
+use crate::kernel::value::{Env, Form, Head, Value};
 use crate::kernel::visibility::{ModuleId, Visibility};
 use std::sync::Arc;
 
@@ -185,6 +185,112 @@ pub struct Group {
     pub(crate) module: Option<ModuleId>,
 }
 
+/// Whether the next argument applied to `prefix` is a projection's subject.
+///
+/// Asked by [`crate::kernel::quote`] and by nothing else, for the one rule that
+/// keeps η at a record terminating: a blocked `N.f p⃗ s` must read its subject
+/// back **as a neutral** rather than at its type. Expanding it there would
+/// write `N.f p⃗ (N.C p⃗ (N.f p⃗ s) …)`, whose own subject expands again, and the
+/// expansion is pointless besides — a projection whose subject were a
+/// constructor would have ι-reduced before quotation saw it.
+pub(crate) fn projecting_from(prefix: &crate::kernel::value::Neutral) -> bool {
+    let Head::Const(constant, _) = &prefix.head else {
+        return false;
+    };
+    let Role::Projection(_) = constant.role else {
+        return false;
+    };
+    prefix.spine.len() == usize::try_from(constant.group.params()).unwrap_or(usize::MAX)
+}
+
+/// A one-constructor family, at the parameters a type of it stands at.
+///
+/// The reading [`Group::projects`] licenses, held together rather than looked
+/// up three times. Exactly one thing in this crate answers "is this a record",
+/// so η at [`crate::kernel::quote`], conversion's field-by-field rule, and the
+/// elaborator's projection and update all fire for the same types and reach for
+/// the same generated constants.
+pub(crate) struct Product {
+    pub(crate) group: Arc<Group>,
+    pub(crate) family: u32,
+    /// The parameters the subject's type stands at, which every generated
+    /// constant of the family takes first.
+    pub(crate) params: Vec<Value>,
+    /// The table the family constant was resolved in, which is what assembling
+    /// a generated constant's type needs.
+    pub(crate) globals: Globals,
+    /// The one constructor's fields, in declaration order.
+    pub(crate) fields: Arc<[Parameter]>,
+}
+
+impl Product {
+    /// The one constructor, as a constant.
+    pub(crate) fn constructor(&self) -> Constant {
+        Constant::constructor(&self.group, self.family, 0)
+    }
+
+    /// The generated accessor for the field at `position`, as a constant.
+    pub(crate) fn projection(&self, position: u32) -> Constant {
+        Constant::projection(&self.group, self.family, position)
+    }
+
+    /// The environment the one constructor's stored field types are read in:
+    /// the declaration context, then the parameters this type stands at.
+    ///
+    /// A walk down the telescope pushes each field's *value* as it goes, so
+    /// field `i`'s type is `eval` of its stored term in the environment the
+    /// first `i` fields left behind. That is the whole of what a dependent
+    /// record needs, and it costs no quotation — which matters, because
+    /// [`crate::convertible`] promises to read nothing back when it agrees and
+    /// assembling a constant's type through
+    /// [`Constant::ty`](super::Constant) would break that promise for every
+    /// record η it performs.
+    pub(crate) fn reading(&self) -> Env {
+        self.params
+            .iter()
+            .fold(Group::declarations(&self.group, &self.globals), |env, param| {
+                env.push(param.clone())
+            })
+    }
+
+    /// Whether η may expand a value of this family into its own projections.
+    ///
+    /// **Not for a recursive one.** `record Stream { head: Nat; rest: Stream; }`
+    /// declares a type with no closed values, and expanding one would ask for
+    /// `rest`'s expansion for ever. [`Constructor::recursive`] already lists
+    /// every direct occurrence of every family of the group — computed once by
+    /// the positivity check — so the guard is that list being empty rather than
+    /// a second traversal free to disagree with it.
+    pub(crate) fn expandable(&self) -> bool {
+        self.group
+            .family_at(self.family)
+            .and_then(|declared| declared.constructors.first())
+            .is_some_and(|only| only.recursive.is_empty())
+    }
+}
+
+/// The one-constructor family `ty` is an element of, or `None`.
+///
+/// # Errors
+///
+/// As [`element`].
+pub(crate) fn product(meter: &mut Meter, ty: &Value) -> Result<Option<Product>, CoreError> {
+    let Some(found) = element(meter, ty)? else {
+        return Ok(None);
+    };
+    let Some(fields) = found.group.projects(found.family) else {
+        return Ok(None);
+    };
+    let fields = Arc::clone(fields);
+    Ok(Some(Product {
+        group: found.group,
+        family: found.family,
+        params: found.params,
+        globals: found.globals,
+        fields,
+    }))
+}
+
 /// A type that turned out to be a family applied to its arguments.
 ///
 /// What splitting a `match` subject needs: which family, at which parameters,
@@ -200,6 +306,10 @@ pub(crate) struct Element {
     /// The index arguments, in the family's index order. Empty for a family
     /// that takes none.
     pub(crate) indices: Vec<Value>,
+    /// The table the family constant was resolved in, carried because a caller
+    /// that wants a *generated* constant of this family needs one to assemble
+    /// its type and has no other way to reach the table the type came from.
+    pub(crate) globals: Globals,
 }
 
 impl Element {
@@ -242,6 +352,9 @@ pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, 
     let Some((constant, arguments)) = spine(neutral) else {
         return Ok(None);
     };
+    let Head::Const(_, globals) = &neutral.head else {
+        return Ok(None);
+    };
     let Role::Family = constant.role else {
         return Ok(None);
     };
@@ -257,6 +370,7 @@ pub(crate) fn element(meter: &mut Meter, ty: &Value) -> Result<Option<Element>, 
         family: constant.family,
         params: arguments,
         indices: chosen,
+        globals: globals.clone(),
     }))
 }
 
@@ -284,12 +398,10 @@ pub(crate) fn built_by(meter: &mut Meter, value: &Value) -> Result<Option<(u32, 
             };
             match constant.role {
                 Role::Constructor(which) => Ok(Some((constant.family, which))),
-                Role::Family | Role::Recursor(_) => Ok(None),
+                Role::Family | Role::Recursor(_) | Role::Projection(_) => Ok(None),
             }
         }
-        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Record(_) | Form::RecordType(_) | Form::Lit(_) => {
-            Ok(None)
-        }
+        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Lit(_) => Ok(None),
     }
 }
 
@@ -334,16 +446,14 @@ pub(crate) fn built_from(meter: &mut Meter, value: &Value) -> Result<Option<(u32
                     let fields = arguments.split_off(params.min(arguments.len()));
                     Ok(Some((constant.family, which, fields)))
                 }
-                Role::Family | Role::Recursor(_) => Ok(None),
+                Role::Family | Role::Recursor(_) | Role::Projection(_) => Ok(None),
             }
         }
-        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Record(_) | Form::RecordType(_) | Form::Lit(_) => {
-            Ok(None)
-        }
+        Form::Lam(_) | Form::Pi { .. } | Form::Universe(_) | Form::Lit(_) => Ok(None),
     }
 }
 
-/// Which of a declaration's three constants this is.
+/// Which of a declaration's generated constants this is.
 #[derive(Clone, Debug)]
 pub(crate) enum Role {
     /// The family itself, `N p⃗`.
@@ -357,6 +467,19 @@ pub(crate) enum Role {
     /// or a type of types at `Type 1` — the use site knows which, and the
     /// declaration does not.
     Recursor(Sort),
+    /// One generated field accessor of a family with exactly one constructor.
+    ///
+    /// A `record` is a one-constructor family and `r.f` is an application of
+    /// this (`01-surface.md` §1.2), which is why the core has no projection
+    /// form. Generated rather than declared, for the recursor's reason: what it
+    /// does is decided entirely by the declaration, so writing it out would be
+    /// a second statement of the same thing that could disagree with the first.
+    ///
+    /// Only where [`Group::projects`] says so. A family with two constructors
+    /// has no total accessor — that is what `match` is for — and one with
+    /// indices could not state the accessor's result type without saying which
+    /// index the subject stands at.
+    Projection(u32),
 }
 
 impl Group {
@@ -389,6 +512,28 @@ impl Group {
     /// that refuses a declaration rather than admitting one on a guess.
     pub(crate) fn positive_at(&self, which: usize) -> bool {
         self.positive.get(which).copied().unwrap_or(false)
+    }
+
+    /// The fields family `which` projects, in declaration order, or `None`
+    /// where it projects nothing.
+    ///
+    /// Exactly the families a `record` declares: one constructor, so every
+    /// value of the family was built by it and reading a field is total; and no
+    /// indices, so the accessor's result type does not have to say which index
+    /// its subject stands at. A family that fails either test is read by
+    /// `match` and by nothing else.
+    ///
+    /// Parameters are fine and change nothing: the accessor takes them the way
+    /// every other generated constant does.
+    pub(crate) fn projects(&self, which: u32) -> Option<&Arc<[Parameter]>> {
+        let declared = self.family_at(which)?;
+        if !declared.indices.is_empty() {
+            return None;
+        }
+        let [only] = &*declared.constructors else {
+            return None;
+        };
+        Some(&only.fields)
     }
 
     /// How many methods a recursor over this group takes: one per constructor of

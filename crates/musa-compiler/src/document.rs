@@ -789,7 +789,19 @@ impl Read {
                 lowering.naming(Naming::at_root(modules).under(aliases)).item(&node)
             };
             match item {
-                Declared::Item(Item::Data(data)) => self.types.push((node, TypeDecl::Family(data))),
+                Declared::Item(Item::Data(data)) => {
+                    for family in &data.families {
+                        record(
+                            resolver,
+                            &node,
+                            &family.name,
+                            source.from.as_ref().map(|from| from.path.as_str()),
+                        );
+                        self.declaring
+                            .push(Declaring::named(&node, &family.name, data.origin, source));
+                    }
+                    self.types.push((node, TypeDecl::Family(data)));
+                }
                 // An `impl`'s definitions are filed flat and never under an
                 // alias, for the reason the paragraph above gives: the block
                 // names a *type's* namespace, which the importing document does
@@ -1047,10 +1059,21 @@ struct Declaring {
 impl Declaring {
     /// One declaration, as this walk found it in `source`.
     fn at(node: &SyntaxNode, definition: &Definition, source: &Source) -> Self {
+        Self::named(node, &definition.name, definition.origin, source)
+    }
+
+    /// The same, for a declaration that names a *type* rather than a value.
+    ///
+    /// A `record` is a one-constructor family after prompt 157, so what it
+    /// declares no longer arrives here as a [`Definition`] — and a reader who
+    /// hovers `Group` is asking the question they always were. The type comes
+    /// off the family constant by the same inference every other declaration's
+    /// does, so the record a reader is shown is the one they were shown before.
+    fn named(node: &SyntaxNode, name: &Name, origin: Origin, source: &Source) -> Self {
         Self {
             node: node.clone(),
-            name: Arc::clone(&definition.name),
-            origin: definition.origin,
+            name: Arc::clone(name),
+            origin,
             uri: source.from.as_ref().map(|from| from.path.clone()),
         }
     }

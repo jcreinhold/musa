@@ -70,7 +70,7 @@ use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::budget::Meter;
 use crate::kernel::case_tree::{Alternative, CaseTree, Split as TreeSplit};
 use crate::kernel::error::CoreError;
-use crate::kernel::eval::{apply, apply_closure, eval, field_type, opened, project};
+use crate::kernel::eval::{apply, apply_closure, eval, opened};
 use crate::kernel::family::{Constant, Element, built_by, built_from, element};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{quote, quote_type};
@@ -378,26 +378,33 @@ impl Tree<'_, '_> {
         if let Some(refusal) = self.not_matchable(problem, column)? {
             return Err(refusal);
         }
-        let meter = self.elaborator.meter();
-        let unfolded = opened(meter, &subject.ty)?;
-        let record_ty = Value::clone(unfolded.as_ref().unwrap_or(&subject.ty));
-        let Form::RecordType(telescope) = &record_ty.form else {
+        let record_ty = Value::clone(&subject.ty);
+        let Some(product) = self.elaborator.product(&subject.ty)? else {
+            let meter = self.elaborator.meter();
             return Err(Refusal::NotARecord {
                 at,
                 ty: scope.quote_type(meter, &subject.ty)?,
             }
             .into());
         };
-        let telescope = telescope.clone();
-        let names = Self::opening(problem, column, &telescope)?;
+        let opening = Self::opening(problem, column, &product)?;
+        let names: Vec<Name> = opening.iter().map(|(_, name)| Arc::clone(name)).collect();
 
+        let globals = scope.cx().globals().clone();
         let mut columns = Vec::with_capacity(problem.columns.len().saturating_add(names.len()));
         let mut opened = Vec::with_capacity(names.len());
-        for name in &names {
-            let meter = self.elaborator.meter();
+        for (position, _) in &opening {
+            let (value, ty) = crate::elaboration::elab::read_field(
+                &product,
+                self.elaborator,
+                subject.at,
+                &globals,
+                *position,
+                &subject.value,
+            )?;
             opened.push(Subject {
-                value: project(meter, subject.at, subject.value.clone(), name)?,
-                ty: Arc::new(field_type(meter, &telescope, &subject.value, name)?),
+                value,
+                ty: Arc::new(ty),
                 at: subject.at,
             });
         }
@@ -466,18 +473,19 @@ impl Tree<'_, '_> {
         })
     }
 
-    /// The fields a record column opens, in telescope order.
+    /// The fields a record column opens, each with its position in the
+    /// declaration, in declaration order.
     fn opening(
         problem: &Problem<'_>,
         column: usize,
-        telescope: &crate::kernel::value::Telescope,
-    ) -> Result<Vec<Name>, ElabError> {
+        product: &crate::kernel::family::Product,
+    ) -> Result<Vec<(u32, Name)>, ElabError> {
         for row in &problem.rows {
             let Some(RawPattern::Record { origin, fields }) = row.patterns.get(column).copied() else {
                 continue;
             };
             for (field, _) in fields {
-                if !telescope.fields.iter().any(|declared| declared.name == *field) {
+                if !product.fields.iter().any(|declared| declared.name == *field) {
                     return Err(Refusal::NoSuchField {
                         at: *origin,
                         field: Arc::clone(field),
@@ -486,14 +494,15 @@ impl Tree<'_, '_> {
                 }
             }
         }
-        // Telescope order, not the order the first pattern happened to write:
+        // Declaration order, not the order the first pattern happened to write:
         // a later field's type may mention an earlier field's value, so the
-        // columns have to stand in the order the type does.
-        Ok(telescope
+        // columns have to stand in the order the declaration does.
+        Ok(product
             .fields
             .iter()
-            .map(|declared| Arc::clone(&declared.name))
-            .filter(|name| {
+            .enumerate()
+            .map(|(position, declared)| (u32::try_from(position).unwrap_or(u32::MAX), Arc::clone(&declared.name)))
+            .filter(|(_, name)| {
                 problem.rows.iter().any(|row| {
                     matches!(row.patterns.get(column), Some(RawPattern::Record { fields, .. })
                         if fields.iter().any(|(field, _)| field == name))
@@ -1667,6 +1676,7 @@ impl Analysed {
                 family: found.family,
                 params: found.params.clone(),
                 indices: found.indices.clone(),
+                globals: found.globals.clone(),
             },
             // The subject's type reads back as `N p⃗ i⃗`, so the two lists come
             // off one spine at one depth rather than being quoted twice.
@@ -1732,8 +1742,6 @@ fn variable(value: &Value) -> Option<u32> {
         crate::kernel::value::Form::Universe(_)
         | crate::kernel::value::Form::Pi { .. }
         | crate::kernel::value::Form::Lam { .. }
-        | crate::kernel::value::Form::RecordType(_)
-        | crate::kernel::value::Form::Record(_)
         | crate::kernel::value::Form::Lit(_)
         | crate::kernel::value::Form::Numeral(_) => None,
     }

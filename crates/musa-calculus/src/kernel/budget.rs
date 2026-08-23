@@ -128,16 +128,34 @@ impl Budget {
 
     /// This budget with quotation forbidden outright.
     ///
-    /// §3's conversion decides by walking two *values*, and the only thing that
-    /// reads a value back is the path that builds a mismatch's message. This
-    /// exists so that can be stated as a law rather than left as a comment: a
-    /// conversion that answers `true` under this budget read nothing back, and
-    /// one that exhausts did. `conversion_laws.rs` is the caller, and prompt 165
-    /// is the one that turns the measurement into a real limit.
+    /// §3's conversion decides by walking two *values*, and two things read a
+    /// value back: the path that builds a mismatch's message, and the assembly
+    /// of a declared constant's type, which `family.rs` computes on demand
+    /// rather than storing. This exists so that can be stated as a law rather
+    /// than left as a comment — a conversion that answers `true` under this
+    /// budget read nothing back — with [`Self::quoting`] carrying the second
+    /// half for the conversions that must read a declaration back to decide at
+    /// all. `conversion_laws.rs` is the caller, and prompt 165 is the one that
+    /// turns the measurement into a real limit.
     #[must_use]
     pub const fn without_quotation(self) -> Self {
         Self {
             quoted_nodes: 0,
+            ..self
+        }
+    }
+
+    /// This budget with quotation allowed up to `nodes`.
+    ///
+    /// The other half of [`Self::without_quotation`]'s law. A conversion over a
+    /// declared family assembles that family's constants' types, so it cannot
+    /// read *nothing* back; what it must not do is read back an amount that
+    /// grows with the terms it was handed. A fixed allowance is how that is
+    /// said with the accounting the budget already has.
+    #[must_use]
+    pub const fn quoting(self, nodes: u64) -> Self {
+        Self {
+            quoted_nodes: nodes,
             ..self
         }
     }

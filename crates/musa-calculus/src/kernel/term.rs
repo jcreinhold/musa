@@ -28,13 +28,13 @@ use std::sync::Arc;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::{Levels, Sort, SortVar};
 
-/// A binder's written name, and a record field's name.
+/// A binder's written name, and a declared field's name.
 ///
 /// Binder names carry no meaning: α-equivalence is decided by [`Index`], so two
 /// terms differing only in a binder name are equal. What names are for is the
-/// diagnostic prompt 134 prints and the source the formatter writes back. Field
-/// names *are* meaningful — a record is its fields, and [`Shape::Project`] finds
-/// one by name.
+/// diagnostic prompt 134 prints and the source the formatter writes back. A
+/// field name is meaningful in a *declaration*, where it is what the generated
+/// accessor at [`Role::Projection`] is spelled after; it reaches no term.
 pub type Name = Arc<str>;
 
 /// What a term fixes about a name no binder introduced.
@@ -66,6 +66,15 @@ pub enum Role {
     /// own level parameter, so it rides where every other level argument does:
     /// in the use site's [`Levels`].
     Recursor,
+    /// One generated field accessor of a one-constructor family (§1.2).
+    ///
+    /// Its own role and not [`Self::Recursor`], because the two take different
+    /// arguments and reduce by different rules, and a reader of the term has to
+    /// be able to tell them apart without a context. Its own role and not
+    /// [`Self::Defined`] for the reason a recursor is not one either: nothing
+    /// declared it, so there is no body to unfold — the declaration decides
+    /// what it does.
+    Projection,
     /// A base type the host registered (§5.8). Inert: no constructor, no
     /// eliminator, and no rule in this crate takes one apart.
     Base,
@@ -350,20 +359,6 @@ impl Binder {
     }
 }
 
-/// One field of a record type or a record value.
-///
-/// A record *type*'s fields form a telescope: the type of a later field may
-/// mention the values of earlier ones, which is why the order is part of the
-/// type and why [`Shape::RecordType`] is a slice rather than a map.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Field {
-    /// The field's name, which is how it is projected.
-    pub name: Name,
-    /// A field type in a [`Shape::RecordType`], or a field value in a
-    /// [`Shape::Record`].
-    pub term: Term,
-}
-
 /// A core term: what it is, and where it came from.
 ///
 /// Shared through [`Arc`] rather than owned through [`Box`]: normalization by
@@ -496,18 +491,6 @@ pub enum Shape {
         /// `a`.
         argument: Term,
     },
-    /// `{ f₁ : A₁, …, fₙ : Aₙ }` — a dependent record type, primitive rather
-    /// than Σ sugar (§1), whose later field types may mention earlier fields.
-    RecordType(Arc<[Field]>),
-    /// `{ f₁ = e₁, …, fₙ = eₙ }`.
-    Record(Arc<[Field]>),
-    /// `e.f`.
-    Project {
-        /// The record being projected.
-        record: Term,
-        /// The field's name.
-        field: Name,
-    },
 }
 
 /// α-equality: the three things a core term carries that conversion does not
@@ -520,10 +503,6 @@ pub enum Shape {
 /// it. Written out rather than derived because a derive would look at all three:
 /// `(x : A) → B` and `(y : A) → B` are the same function type, and so are
 /// `{x : A} → B` and `(x : A) → B`.
-///
-/// Field names are not on that list. A record *is* its fields, and
-/// [`Shape::Project`] finds one by name, so two record types differing in a
-/// field name are different types.
 impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -572,19 +551,6 @@ impl PartialEq for Shape {
                     argument: right_argument,
                 },
             ) => left_function == right_function && left_argument == right_argument,
-            (Self::RecordType(left), Self::RecordType(right)) | (Self::Record(left), Self::Record(right)) => {
-                left == right
-            }
-            (
-                Self::Project {
-                    record: left_record,
-                    field: left_field,
-                },
-                Self::Project {
-                    record: right_record,
-                    field: right_field,
-                },
-            ) => left_field == right_field && left_record == right_record,
             // Two different shapes. Every variant is spelled out on the left
             // rather than collapsed to `_`, so that adding one to `Shape` is a
             // non-exhaustive-match error here rather than a silent `false` for
@@ -596,10 +562,7 @@ impl PartialEq for Shape {
                 | Self::Lit(_)
                 | Self::Universe(_)
                 | Self::Bind { .. }
-                | Self::App { .. }
-                | Self::RecordType(_)
-                | Self::Record(_)
-                | Self::Project { .. },
+                | Self::App { .. },
                 _,
             ) => false,
         }
@@ -660,12 +623,6 @@ impl Term {
                 function: function.substitute_levels(with),
                 argument: argument.substitute_levels(with),
             },
-            Shape::RecordType(fields) => Shape::RecordType(substitute_fields(fields, with)),
-            Shape::Record(fields) => Shape::Record(substitute_fields(fields, with)),
-            Shape::Project { record, field } => Shape::Project {
-                record: record.substitute_levels(with),
-                field: Arc::clone(field),
-            },
         };
         Self {
             origin: self.origin,
@@ -697,12 +654,6 @@ impl Term {
                 function.level_vars(found);
                 argument.level_vars(found);
             }
-            Shape::RecordType(fields) | Shape::Record(fields) => {
-                for field in fields.iter() {
-                    field.term.level_vars(found);
-                }
-            }
-            Shape::Project { record, .. } => record.level_vars(found),
         }
     }
 
@@ -844,30 +795,6 @@ impl Term {
         Self::new(origin, Shape::App { function, argument })
     }
 
-    /// `record.field`.
-    #[must_use]
-    pub fn project(origin: Origin, record: Self, field: impl Into<Name>) -> Self {
-        Self::new(
-            origin,
-            Shape::Project {
-                record,
-                field: field.into(),
-            },
-        )
-    }
-
-    /// `{ … }` as a record type, from `(name, type)` pairs in telescope order.
-    #[must_use]
-    pub fn record_type<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
-        Self::new(origin, Shape::RecordType(collect_fields(fields)))
-    }
-
-    /// `{ … }` as a record value, from `(name, value)` pairs.
-    #[must_use]
-    pub fn record<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
-        Self::new(origin, Shape::Record(collect_fields(fields)))
-    }
-
     /// `let name : ty = value in body`.
     #[must_use]
     pub fn bind(origin: Origin, name: impl Into<Name>, ty: Self, value: Self, body: Self) -> Self {
@@ -880,17 +807,6 @@ impl Term {
             },
         )
     }
-}
-
-/// Every field, with its term's levels substituted.
-fn substitute_fields(fields: &Arc<[Field]>, with: &impl Fn(&SortVar) -> Option<Sort>) -> Arc<[Field]> {
-    fields
-        .iter()
-        .map(|field| Field {
-            name: Arc::clone(&field.name),
-            term: field.term.substitute_levels(with),
-        })
-        .collect()
 }
 
 /// Add `level`'s variables to `found`, each once, in first-occurrence order.
@@ -959,16 +875,6 @@ impl Filling {
     }
 }
 
-fn collect_fields<'a>(fields: impl IntoIterator<Item = (&'a str, Term)>) -> Arc<[Field]> {
-    fields
-        .into_iter()
-        .map(|(name, term)| Field {
-            name: Arc::from(name),
-            term,
-        })
-        .collect()
-}
-
 /// How many times the variable at `level` occurs in `term`.
 ///
 /// A structural count and nothing cleverer. Its one caller is
@@ -988,13 +894,6 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
             .outer()
             .fold(deeper(body, 1), |total, term| total.saturating_add(deeper(term, 0))),
         Shape::App { function, argument, .. } => deeper(function, 0).saturating_add(deeper(argument, 0)),
-        Shape::RecordType(fields) => fields.iter().enumerate().fold(0, |total, (which, field)| {
-            total.saturating_add(deeper(&field.term, u32::try_from(which).unwrap_or(u32::MAX)))
-        }),
-        Shape::Record(fields) => fields
-            .iter()
-            .fold(0, |total, field| total.saturating_add(deeper(&field.term, 0))),
-        Shape::Project { record, .. } => deeper(record, 0),
     }
 }
 

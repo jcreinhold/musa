@@ -1,17 +1,36 @@
 //! `01-surface.md` §1.2's records and §1.3's enums: what a field update means,
 //! what a record pattern binds, and how a bare constructor is read.
 //!
-//! The two are one suite because they are one mechanism seen twice. A record is
-//! structural — two record types with the same fields at the same types are the
-//! same type, and nothing declares them — while an enum is nominal, each `data`
-//! generating its own family whose constructors live in its own namespace. Every
-//! law below turns on exactly that difference, so separating them into two files
-//! would put each half of a contrast in a different place.
+//! The two are one suite because after prompt 157 they are one mechanism spelled
+//! two ways. A record is a `data` family with one constructor, its fields are
+//! that constructor's telescope, and `r.f` is a generated accessor; an enum is a
+//! `data` family with several and no accessors at all. Both are nominal, and the
+//! laws below are what survives of the structural reading: η holds at the one
+//! that has a single constructor, `with` is the literal it desugars to, and a
+//! record pattern is the projections it stands for.
 
-use musa_calculus::{Cx, Raw, RawArm, RawPattern, Refusal, Term};
+use musa_calculus::{Cx, Raw, RawArm, RawData, RawPattern, Refusal, Term};
 
-use crate::family_laws::{apply, binder, constructor, data, family, nat_context, var, vec};
+use crate::family_laws::{apply, binder, constructor, data, family, nat_context, type0, var, vec};
 use crate::programs::WRITTEN;
+
+/// `data Pair (A : Type 0) { Pair(fst: A, snd: A) }`.
+///
+/// The smallest one-constructor family there is over a parameter, and the one
+/// `normalization_laws.rs` and `provenance_laws.rs` state η at: both are about
+/// what quotation *writes*, so they want a record with nothing else in it.
+pub(crate) fn pair() -> RawData {
+    data(
+        vec![binder("A", type0())],
+        vec![family(
+            "Pair",
+            vec![constructor(
+                "Pair",
+                vec![binder("fst", var("A")), binder("snd", var("A"))],
+            )],
+        )],
+    )
+}
 
 /// `Nat`, `Vec`, and two enums that both declare `Untied`.
 ///
@@ -51,25 +70,58 @@ pub(crate) fn tying_context() -> Cx {
         ),
     )
     .expect("Slur is a declaration");
-    cx.declaring(&slur)
+    let cx = cx.declaring(&slur);
+    // The records the laws below are stated over, declared here for the reason
+    // every other type in this context is: after prompt 157 a record type is not
+    // something a term can write inline.
+    [
+        data(
+            Vec::new(),
+            vec![family(
+                "Reading",
+                vec![constructor(
+                    "Reading",
+                    vec![binder("refusal", var("Nat")), binder("count", var("Nat"))],
+                )],
+            )],
+        ),
+        data(
+            Vec::new(),
+            vec![family(
+                "Pending",
+                vec![constructor(
+                    "Pending",
+                    vec![binder("tie", var("Tying")), binder("read", var("Reading"))],
+                )],
+            )],
+        ),
+        data(
+            Vec::new(),
+            vec![family(
+                "Counted",
+                vec![constructor(
+                    "Counted",
+                    vec![binder("A", type0()), binder("x", var("A"))],
+                )],
+            )],
+        ),
+        pair(),
+    ]
+    .iter()
+    .fold(cx, |cx, declared| {
+        let group = musa_calculus::declare(&cx, declared).expect("the record laws' declarations are declarations");
+        cx.declaring(&group)
+    })
 }
 
-/// `{ tie : Tying, read : { refusal : Nat, count : Nat } }`.
+/// `record Pending { tie : Tying, read : Reading }`, declared in
+/// [`tying_context`].
 ///
 /// The staff adapter's `Pending`, cut down to the shape the laws need: one field
 /// at a declared type and one nested record, so a path update has somewhere to
 /// go and a carried-over field has something to carry.
 fn pending() -> Raw {
-    Raw::record_type(
-        WRITTEN,
-        [
-            ("tie", var("Tying")),
-            (
-                "read",
-                Raw::record_type(WRITTEN, [("refusal", var("Nat")), ("count", var("Nat"))]),
-            ),
-        ],
-    )
+    var("Pending")
 }
 
 fn arrow(domain: Raw, codomain: Raw) -> Raw {
@@ -240,40 +292,123 @@ fn an_update_is_the_literal_it_desugars_to() {
     );
 }
 
-/// §1.2: two record types with the same fields at the same types are one type.
+/// §1.2 after prompt 157: two records with the same fields are **two** types.
 ///
-/// Structural, not nominal — the distinguishing property, and the one that
-/// cannot be observed by writing the same type twice in one place. The question
-/// is asked where it bites: a function's domain is one written record type and
-/// its argument's annotation is another, and nothing relates them but their
-/// fields.
+/// The sentence this file used to state the other way round. A record was
+/// structural while it was a shape in the core; it is a `data` family now, and a
+/// family is nominal for the reason §1.3 gives — the declaration is what the
+/// type *is*. The question is asked where it bites: two declarations, field for
+/// field identical, and a value of one handed to a function that takes the
+/// other.
+///
+/// Nothing depended on the old reading. It existed so that trait dictionaries
+/// were convertible without being declared, and prompt 146 deleted the traits.
 #[test]
-fn two_records_with_the_same_fields_are_one_type() {
+fn two_records_with_the_same_fields_are_two_types() {
     let cx = tying_context();
-    let nat = core(&cx, "Nat", &var("Nat"));
-    let applied = Raw::annotated_bind(
-        WRITTEN,
-        "r",
-        // Written a second time, field for field. A nominal record would make
-        // this a different type from the λ's domain below.
-        Raw::record_type(WRITTEN, [("here", var("Nat"))]),
-        Raw::record(WRITTEN, [("here", var("Nat.Zero"))]),
-        apply(
-            Raw::annotated_lam(
-                WRITTEN,
-                "q",
-                Raw::record_type(WRITTEN, [("here", var("Nat"))]),
-                Raw::project(WRITTEN, var("q"), "here"),
-            ),
-            [var("r")],
-        ),
+    let holding = |name: &str| {
+        data(
+            Vec::new(),
+            vec![family(name, vec![constructor(name, vec![binder("here", var("Nat"))])])],
+        )
+    };
+    let cx = [holding("Here"), holding("Also")].iter().fold(cx, |cx, declared| {
+        let group = musa_calculus::declare(&cx, declared).expect("each is a declaration");
+        cx.declaring(&group)
+    });
+    let also = core(&cx, "Also", &var("Also"));
+    let Err(error) = musa_calculus::check(&cx, &also, &apply(var("Here.Here"), [var("Nat.Zero")])) else {
+        panic!("a `Here` must not inhabit `Also`, however alike they are written");
+    };
+    let refusal = crate::programs::refusal("one record's value at the other's type", error);
+    assert!(matches!(refusal, Refusal::Mismatch(_)), "refused, but as `{refusal}`");
+}
+
+/// §1.2's η, kept: a record is its fields, read back and put together again.
+///
+/// The rule prompt 157 was free to drop and chose to keep, so this is the law
+/// that says the choice was made. It is stated over a *variable*, because that
+/// is the only place η can be observed: a literal is already the constructor
+/// applied to its fields, and the question is whether something that is not one
+/// is convertible with the one it would expand to.
+#[test]
+fn a_record_is_its_fields_put_back_together() {
+    let cx = tying_context();
+    let ty = core(&cx, "Pending → Pending", &arrow(pending(), pending()));
+    let expanded = apply(
+        var("Pending.Pending"),
+        [
+            Raw::project(WRITTEN, var("p"), "tie"),
+            Raw::project(WRITTEN, var("p"), "read"),
+        ],
     );
     same(
         &cx,
-        "a record built at one written type, used at another",
-        &nat,
-        &applied,
-        &var("Nat.Zero"),
+        "a variable against the literal η expands it to",
+        &ty,
+        &of_pending(var("p")),
+        &of_pending(expanded),
+    );
+}
+
+/// The same rule where the second field's type mentions the first.
+///
+/// The case a field-by-field comparison gets wrong by walking a fixed telescope
+/// instead of the one the earlier fields decided: `x`'s type is whatever `A`
+/// stood at, so reading `x` back means knowing what was read back for `A`.
+#[test]
+fn eta_holds_where_a_later_field_depends_on_an_earlier_one() {
+    let cx = tying_context();
+    let ty = core(&cx, "Counted → Counted", &arrow(counted(), counted()));
+    let of_counted = |body: Raw| Raw::annotated_lam(WRITTEN, "v", counted(), body);
+    let expanded = apply(
+        var("Counted.Counted"),
+        [
+            Raw::project(WRITTEN, var("v"), "A"),
+            Raw::project(WRITTEN, var("v"), "x"),
+        ],
+    );
+    same(
+        &cx,
+        "a dependent record against the literal η expands it to",
+        &ty,
+        &of_counted(var("v")),
+        &of_counted(expanded),
+    );
+}
+
+/// §1.2: a one-constructor family with a *recursive* field admits no η.
+///
+/// The guard on the rule above, and the reason it is a guard rather than a
+/// special case: expanding `r` into `Wrap (r.next)` writes a term that expands
+/// again, so η at a recursive record does not terminate. The two are still
+/// convertible when they are the same term, which is what this checks — the
+/// point is that the checker answers at all.
+#[test]
+fn a_recursive_one_constructor_family_is_left_alone() {
+    let (cx, _) = nat_context();
+    let group = musa_calculus::declare(
+        &cx,
+        &data(
+            Vec::new(),
+            vec![family(
+                "Stream",
+                vec![constructor(
+                    "Stream",
+                    vec![binder("head", var("Nat")), binder("tail", var("Stream"))],
+                )],
+            )],
+        ),
+    )
+    .expect("Stream is a declaration");
+    let cx = cx.declaring(&group);
+    let ty = core(&cx, "Stream → Stream", &arrow(var("Stream"), var("Stream")));
+    same(
+        &cx,
+        "a recursive record against itself",
+        &ty,
+        &Raw::annotated_lam(WRITTEN, "s", var("Stream"), var("s")),
+        &Raw::annotated_lam(WRITTEN, "s", var("Stream"), var("s")),
     );
 }
 
@@ -371,15 +506,6 @@ pub(crate) struct RefusedRecord {
 pub(crate) fn refused_records() -> Vec<RefusedRecord> {
     vec![
         RefusedRecord {
-            name: "a record type declaring one field twice",
-            raw: Raw::record_type(WRITTEN, [("a", var("Nat")), ("a", var("Tying"))]),
-            // §1.1: two fixed universes, and the second is not itself a type —
-            // the expectation is elaborated by being inferred, so the largest
-            // writable one is the first, which this record's small fields meet.
-            ty: Raw::universe(WRITTEN, musa_calculus::Sort::ZERO),
-            expected: |refusal| matches!(refusal, Refusal::DuplicateField { .. }),
-        },
-        RefusedRecord {
             name: "an update whose paths cover one another",
             raw: of_pending(Raw::update(
                 WRITTEN,
@@ -459,7 +585,7 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
                 WRITTEN,
                 "v",
                 counted(),
-                Raw::update(WRITTEN, var("v"), [(&["A"][..], Raw::record_type(WRITTEN, []))]),
+                Raw::update(WRITTEN, var("v"), [(&["A"][..], var("Tying"))]),
             ),
             ty: arrow(counted(), counted()),
             expected: |refusal| matches!(refusal, Refusal::Mismatch(_)),
@@ -467,16 +593,50 @@ pub(crate) fn refused_records() -> Vec<RefusedRecord> {
     ]
 }
 
-/// `{ A : Type 0, x : A }` — a record whose second field's type mentions its
-/// first, with the dependency a parameter rather than an index: §1's value
-/// dependency needs nothing more.
+/// `record Counted { A : Type 0, x : A }` — a record whose second field's type
+/// mentions its first, with the dependency a parameter rather than an index:
+/// §1's value dependency needs nothing more.
 fn counted() -> Raw {
-    Raw::record_type(
-        WRITTEN,
-        [
-            ("A", Raw::universe(WRITTEN, musa_calculus::Sort::ZERO)),
-            ("x", var("A")),
-        ],
+    var("Counted")
+}
+
+/// §1.2: a record declaring one field twice is refused at the declaration.
+///
+/// Not in [`refused_records`] with the rest, because it is not a program: a
+/// record is a declaration now, so the mistake is made — and has to be caught —
+/// where the accessors are generated. Two fields of one name would be two
+/// constants of one name, and one of the fields would be unreachable.
+#[test]
+fn a_record_declaring_one_field_twice_is_refused() {
+    let (name, cx, twice) = one_field_twice();
+    let Err(error) = musa_calculus::declare(&cx, &twice) else {
+        panic!("a record with two `a`s must not declare");
+    };
+    let refusal = crate::programs::refusal(name, error);
+    assert!(
+        matches!(refusal, Refusal::DuplicateField { .. }),
+        "refused, but as `{refusal}`"
+    );
+}
+
+/// The declaration above, so `elaboration_laws` can count the refusal it
+/// reaches: §1.2's duplicate field is the one refusal in this file no *term*
+/// can reach, because after prompt 157 the mistake is made where the accessors
+/// are generated.
+pub(crate) fn one_field_twice() -> (&'static str, Cx, RawData) {
+    (
+        "a record declaring one field twice",
+        tying_context(),
+        data(
+            Vec::new(),
+            vec![family(
+                "Twice",
+                vec![constructor(
+                    "Twice",
+                    vec![binder("a", var("Nat")), binder("a", var("Tying"))],
+                )],
+            )],
+        ),
     )
 }
 

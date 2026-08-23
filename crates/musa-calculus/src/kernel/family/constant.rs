@@ -46,8 +46,10 @@ impl PartialEq for Constant {
         }
         match (&self.role, &other.role) {
             (Role::Recursor(one), Role::Recursor(two)) => one == two,
-            (Role::Family, Role::Family) | (Role::Constructor(_), Role::Constructor(_)) => true,
-            (Role::Family | Role::Constructor(_) | Role::Recursor(_), _) => false,
+            (Role::Family, Role::Family)
+            | (Role::Constructor(_), Role::Constructor(_))
+            | (Role::Projection(_), Role::Projection(_)) => true,
+            (Role::Family | Role::Constructor(_) | Role::Recursor(_) | Role::Projection(_), _) => false,
         }
     }
 }
@@ -141,14 +143,29 @@ impl Found {
             if member == "elim" {
                 return Some(Self::Recursor(Arc::clone(group), family));
             }
-            let which = declared
+            if let Some(which) = declared
                 .constructors
                 .iter()
-                .position(|constructor| *constructor.name == *member)?;
+                .position(|constructor| *constructor.name == *member)
+            {
+                return Some(Self::Rigid(Constant {
+                    group: Arc::clone(group),
+                    family,
+                    role: Role::Constructor(u32::try_from(which).unwrap_or(u32::MAX)),
+                }));
+            }
+            // A field, and only where the family projects: `Pending.read` is a
+            // name a program may write (§1.2), and it is looked for *after* the
+            // cases so that a family whose one case is spelled like a field
+            // still answers with the case.
+            let field = group
+                .projects(family)?
+                .iter()
+                .position(|declared| *declared.name == *member)?;
             return Some(Self::Rigid(Constant {
                 group: Arc::clone(group),
                 family,
-                role: Role::Constructor(u32::try_from(which).unwrap_or(u32::MAX)),
+                role: Role::Projection(u32::try_from(field).unwrap_or(u32::MAX)),
             }));
         }
         None
@@ -200,6 +217,13 @@ impl Found {
                     ..
                 })
                 | Self::Recursor(_, _) => sees_cases(),
+                // A projection reads a field, which is exactly what a private
+                // case hides, so it is hidden with the cases for the recursor's
+                // reason: leaving it in scope would leave the type transparent.
+                Self::Rigid(Constant {
+                    role: Role::Projection(_),
+                    ..
+                }) => sees_cases(),
                 Self::Rigid(Constant { role: Role::Family, .. }) => true,
             };
         (!visible).then_some(home)
@@ -231,6 +255,20 @@ impl Constant {
             group: Arc::clone(group),
             family,
             role: Role::Recursor(level),
+        }
+    }
+
+    /// A family's generated accessor for its `field`th field.
+    ///
+    /// Only meaningful where [`Group::projects`](super::Group::projects) says
+    /// the family has one; a caller that mints one anywhere else gets a
+    /// constant whose type is `Type 0` and whose ι rule never fires, which is
+    /// the same defensive answer every other assembly here gives.
+    pub(crate) fn projection(group: &Arc<Group>, family: u32, field: u32) -> Self {
+        Self {
+            group: Arc::clone(group),
+            family,
+            role: Role::Projection(field),
         }
     }
 
@@ -270,6 +308,14 @@ impl Constant {
                 None => Arc::from("?"),
             },
             Role::Recursor(_) => Arc::from(format!("{}.elim", declared.name)),
+            Role::Projection(field) => match self
+                .group
+                .projects(self.family)
+                .and_then(|fields| fields.get(usize::try_from(*field).unwrap_or(usize::MAX)))
+            {
+                Some(declared_field) => Arc::from(format!("{}.{}", declared.name, declared_field.name)),
+                None => Arc::from("?"),
+            },
         }
     }
 
@@ -289,6 +335,7 @@ impl Constant {
             Role::Family => crate::kernel::term::Role::TypeConstructor,
             Role::Constructor(_) => crate::kernel::term::Role::Constructor,
             Role::Recursor(_) => crate::kernel::term::Role::Recursor,
+            Role::Projection(_) => crate::kernel::term::Role::Projection,
         }
     }
 
@@ -299,7 +346,7 @@ impl Constant {
     /// and a constructor are monomorphic and say nothing.
     fn written_levels(&self) -> crate::kernel::sort::Levels {
         match &self.role {
-            Role::Family | Role::Constructor(_) => crate::kernel::sort::Levels::NONE,
+            Role::Family | Role::Constructor(_) | Role::Projection(_) => crate::kernel::sort::Levels::NONE,
             Role::Recursor(level) => crate::kernel::sort::Levels::of([level.clone()]),
         }
     }
@@ -420,6 +467,9 @@ impl Constant {
                 .saturating_add(self.group.methods())
                 .saturating_add(indices)
                 .saturating_add(1),
+            // The parameters and the value read from. No indices: a family that
+            // takes any does not project (`Group::projects`).
+            Role::Projection(_) => params.saturating_add(1),
         }
     }
 
@@ -452,6 +502,7 @@ impl Constant {
             Role::Family => self.family_type(meter, &mut builder),
             Role::Constructor(which) => self.constructor_type(meter, builder, *which),
             Role::Recursor(level) => self.recursor_type(meter, builder, level),
+            Role::Projection(field) => self.projection_type(meter, builder, *field),
         }
     }
 
@@ -489,6 +540,51 @@ impl Constant {
             builder.family(self.family),
             builder.references(&params).into_iter().chain(chosen),
         );
+        Ok(builder.close(result))
+    }
+
+    /// `(p⃗ : Params) → (t : N p⃗) → A_i`, the type of a generated field
+    /// accessor.
+    ///
+    /// **The result type is the field's, and a field's type may name the fields
+    /// before it.** `record Frame { n: Nat; held: Vect<Nat>(n); }` writes
+    /// `held`'s type over `n`, and an accessor taking the whole frame has no
+    /// `n` to put there — it has `Frame.n t`. So each earlier field is bound,
+    /// while field `i`'s stored type is read, to that field's own accessor
+    /// applied to this one's subject. Where no field type names an earlier one,
+    /// every one of those bindings goes unused and the result is the plain
+    /// field type, which is the ordinary case.
+    ///
+    /// This is the same eval-then-quote the rest of the module weakens by:
+    /// nothing is shifted, and the accessor terms are built at the depth the
+    /// walk has reached rather than re-indexed afterwards.
+    fn projection_type(&self, meter: &mut Meter, mut builder: Telescope<'_>, field: u32) -> Result<Term, CoreError> {
+        let Some(fields) = self.group.projects(self.family) else {
+            return Ok(Term::universe(self.group.origin, Sort::ZERO));
+        };
+        let fields = Arc::clone(fields);
+        let Some(declared) = fields.get(usize::try_from(field).unwrap_or(usize::MAX)) else {
+            return Ok(Term::universe(self.group.origin, Sort::ZERO));
+        };
+        let params = builder.extend(meter, &self.group.params)?;
+        // No indices: `Group::projects` refused a family that takes any, which
+        // is why the subject's type is the family at its parameters alone.
+        let subject = builder.applied_family(self.family, [&params, &[]]);
+        let target = builder.assume(meter, "t", subject)?;
+        for earlier in 0..field {
+            let read = applied(
+                self.group.origin,
+                Self::projection(&self.group, self.family, earlier).term(self.group.origin),
+                builder
+                    .references(&params)
+                    .into_iter()
+                    .chain([builder.reference(Some(target))]),
+            );
+            let value = eval(meter, builder.under(), &read)?;
+            builder.standing(value);
+        }
+        let ty = eval(meter, builder.reading_env(), &declared.ty)?;
+        let result = crate::kernel::quote::quote_type(meter, builder.reached(), crate::kernel::quote::Mode::Open, &ty)?;
         Ok(builder.close(result))
     }
 

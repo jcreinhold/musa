@@ -19,7 +19,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_calculus::{Binder, Cx, Field, Index, Name, Origin, Shape, Sort, Term, convertible, normalize};
+use musa_calculus::{Binder, Cx, Index, Origin, Role, Shape, Sort, Term, convertible, normalize};
 
 use crate::fixtures::{BINDERS, Sample, corpus};
 
@@ -220,40 +220,55 @@ fn eta_at_a_function_type_carries_the_expanded_terms_origin() {
     );
 }
 
-/// §7's η clause again, at a record type.
+/// §7's η clause again, at a one-constructor family.
 ///
-/// Both cases are tested because they are two code paths, and the record one is
-/// where the type is most tempting to reach for: quotation is walking the
-/// telescope's fields when it writes each projection.
+/// Both cases are tested because they are two code paths, and this one is where
+/// the type is most tempting to reach for: quotation is walking the
+/// constructor's telescope when it writes each projection.
 #[test]
-fn eta_at_a_record_type_carries_the_expanded_terms_origin() {
+fn eta_at_a_one_constructor_family_carries_the_expanded_terms_origin() {
     let cx = Cx::new();
+    let group = musa_calculus::declare(&cx, &crate::record_laws::pair()).expect("Pair is a declaration");
+    let cx = cx.declaring(&group);
     let a = cx
         .assume(BINDER_A, &Term::universe(TYPE, Sort::ZERO))
         .expect("A : Type 0");
-    let pair_type = Term::record_type(
+    let pair_type = Term::app(
         TYPE,
-        [("fst", Term::var(TYPE, Index(0))), ("snd", Term::var(TYPE, Index(1)))],
+        Term::named(TYPE, "Pair", Role::TypeConstructor),
+        Term::var(TYPE, Index(0)),
     );
-    let r = a.assume(BINDER_R, &pair_type).expect("r : { fst : A, snd : A }");
+    let r = a.assume(BINDER_R, &pair_type).expect("r : Pair A");
 
-    let pair_in_r = Term::record_type(
+    let pair_in_r = Term::app(
         TYPE,
-        [("fst", Term::var(TYPE, Index(1))), ("snd", Term::var(TYPE, Index(2)))],
+        Term::named(TYPE, "Pair", Role::TypeConstructor),
+        Term::var(TYPE, Index(1)),
     );
     let normal = normalize(&r, &pair_in_r, &Term::var(USE, Index(0))).expect("normalizes");
 
-    assert_eq!(normal.origin(), BINDER_R, "the literal η wrote points at r");
-    let Shape::Record(fields) = normal.shape() else {
-        panic!("a variable at a record type reads back as a literal, got {normal:?}")
-    };
-    for Field { name, term } in fields.iter() {
-        assert_eq!(term.origin(), BINDER_R, "the projection written for {name} points at r");
-        let Shape::Project { record, field: _ } = term.shape() else {
-            panic!("η writes a projection per field, got {term:?}")
-        };
-        assert_eq!(record.origin(), BINDER_R);
+    assert_eq!(normal.origin(), BINDER_R, "the application η wrote points at r");
+    // `Pair.Pair A (Pair.fst A r) (Pair.snd A r)`, read innermost-first: the
+    // parameter, then one projection per field.
+    let mut spine = Vec::new();
+    let mut head = &normal;
+    while let Shape::App { function, argument } = head.shape() {
+        spine.push(argument);
+        head = function;
     }
+    spine.reverse();
+    assert_eq!(spine.len(), 3, "the constructor takes the parameter and both fields");
+    let (parameter, fields) = spine.split_at(1);
+    // The parameter is not part of the expansion — it came out of `r`'s *type*,
+    // whose `A` is the assumption, so §7's substitution clause puts it where `A`
+    // was bound. Everything η actually wrote points at `r`.
+    for supplied in parameter {
+        assert_eq!(supplied.origin(), BINDER_A, "the parameter points where `A` was bound");
+    }
+    for field in fields {
+        assert_eq!(field.origin(), BINDER_R, "η's projections point at r");
+    }
+    assert_eq!(head.origin(), BINDER_R, "and so does the constructor it applied");
 }
 
 /// §7, a blocked elimination keeps its *own* origin.
@@ -327,27 +342,11 @@ fn restamp(term: &Term, origin: Origin) -> Term {
             function: restamp(function, origin),
             argument: restamp(argument, origin),
         },
-        Shape::RecordType(fields) => Shape::RecordType(restamp_fields(fields, origin)),
-        Shape::Record(fields) => Shape::Record(restamp_fields(fields, origin)),
-        Shape::Project { record, field } => Shape::Project {
-            record: restamp(record, origin),
-            field: Name::clone(field),
-        },
         // A meta has no subterms to restamp, and its identity is the cell rather
         // than anything written here — cloning it keeps the same unknown.
         Shape::Meta(meta) => Shape::Meta(meta.clone()),
     };
     Term::new(origin, shape)
-}
-
-fn restamp_fields(fields: &[Field], origin: Origin) -> Arc<[Field]> {
-    fields
-        .iter()
-        .map(|Field { name, term }| Field {
-            name: Arc::clone(name),
-            term: restamp(term, origin),
-        })
-        .collect()
 }
 
 /// A term's immediate subterms, in the order they were written.
@@ -356,8 +355,6 @@ fn children(term: &Term) -> Vec<&Term> {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => Vec::new(),
         Shape::Bind { binder, body, .. } => binder.outer().chain(std::iter::once(body)).collect(),
         Shape::App { function, argument } => vec![function, argument],
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().map(|field| &field.term).collect(),
-        Shape::Project { record, field: _ } => vec![record],
         Shape::Meta(_) => Vec::new(),
     }
 }

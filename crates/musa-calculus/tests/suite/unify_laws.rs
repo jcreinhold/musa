@@ -99,14 +99,12 @@ fn holds_no_unknown(term: &Term) -> bool {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         Shape::Bind { binder, body, .. } => binder.outer().all(holds_no_unknown) && holds_no_unknown(body),
         Shape::App { function, argument } => holds_no_unknown(function) && holds_no_unknown(argument),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().all(|field| holds_no_unknown(&field.term)),
-        Shape::Project { record, .. } => holds_no_unknown(record),
     }
 }
 
 /// Elaborate, expecting acceptance, and answer the term.
 fn accept(name: &str, raw: &Raw) -> Term {
-    let term = infer(&Cx::new(), raw)
+    let term = infer(&crate::programs::cx(), raw)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0;
     assert!(
@@ -118,7 +116,7 @@ fn accept(name: &str, raw: &Raw) -> Term {
 
 /// Elaborate, expecting a refusal, and answer it.
 fn reject(name: &'static str, raw: &Raw) -> Refusal {
-    let Err(error) = infer(&Cx::new(), raw) else {
+    let Err(error) = infer(&crate::programs::cx(), raw) else {
         panic!("{name}: elaboration accepted a program it must refuse");
     };
     refusal(name, error)
@@ -210,7 +208,7 @@ fn a_queue_that_keeps_retrying_exhausts_the_budget_rather_than_hanging() {
     // The same question at the language budget is answered, so the law above is
     // about the budget and not about the program.
     assert!(
-        infer(&Cx::new(), &program).is_ok(),
+        infer(&crate::programs::cx(), &program).is_ok(),
         "the same program is accepted at the language budget"
     );
 }
@@ -222,7 +220,7 @@ fn a_queue_that_keeps_retrying_exhausts_the_budget_rather_than_hanging() {
 fn the_queue_is_drained_for_a_checking_question_too() {
     let program = with_use(used_identity());
     let outcome = check(
-        &Cx::new(),
+        &crate::programs::cx(),
         &Term::pi(WRITTEN, "_", core_unit_type(), core_unit_type()),
         &program,
     );

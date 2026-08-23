@@ -372,9 +372,6 @@ pub enum RawShape {
         /// before the core knows what a function's inferred binders are called.
         supplied: Arc<[RawField]>,
     },
-    /// `{ f₁ : A₁, …, fₙ : Aₙ }`, a telescope: each field's type is read under
-    /// binders for the fields before it.
-    RecordType(Arc<[RawField]>),
     /// `{ f₁ = e₁, …, fₙ = eₙ }`, in the order the record type declares.
     Record(Arc<[RawField]>),
     /// `x.m(…)` before its arguments — `01-surface.md` §1.5's method syntax.
@@ -782,12 +779,6 @@ impl Raw {
                 argument,
             },
         )
-    }
-
-    /// `{ … }` as a record type, from `(name, type)` pairs in telescope order.
-    #[must_use]
-    pub fn record_type<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
-        Self::new(origin, RawShape::RecordType(collect(fields)))
     }
 
     /// `{ … }` as a record literal, from `(name, value)` pairs.

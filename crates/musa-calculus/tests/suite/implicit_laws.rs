@@ -13,7 +13,7 @@
 //! lands on `abstracted` as well as on the spine walk, and both halves are
 //! tested here.
 
-use musa_calculus::{Cx, Raw, Refusal, Sort, Term, infer};
+use musa_calculus::{Raw, Refusal, Sort, Term, infer};
 
 use crate::programs::{WRITTEN, annotated_unit, refusal, unit_type};
 
@@ -64,13 +64,13 @@ fn with_identity(body: Raw) -> Raw {
 }
 
 fn accept(name: &str, raw: &Raw) -> Term {
-    infer(&Cx::new(), raw)
+    infer(&crate::programs::cx(), raw)
         .unwrap_or_else(|error| panic!("{name}: {error}"))
         .0
 }
 
 fn reject(name: &'static str, raw: &Raw) -> Refusal {
-    let Err(error) = infer(&Cx::new(), raw) else {
+    let Err(error) = infer(&crate::programs::cx(), raw) else {
         panic!("{name}: elaboration accepted a program it must refuse");
     };
     refusal(name, error)

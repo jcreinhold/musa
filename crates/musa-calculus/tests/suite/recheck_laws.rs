@@ -81,7 +81,7 @@ fn elaborated(cx: &Cx, name: &str, raw: &musa_calculus::Raw, ty: Option<&Term>) 
 
 #[test]
 fn the_kernel_agrees_with_every_program_elaboration_accepts() {
-    let cx = Cx::new();
+    let cx = programs::cx();
     for programs::Program { name, raw, ty } in programs::accepted() {
         let (term, found) = elaborated(&cx, name, &raw, ty.as_ref());
         agrees(name, &cx, &found, &term);
@@ -94,7 +94,7 @@ fn every_index_in_a_checked_term_names_a_binder_that_encloses_it() {
     // knowing a context's depth: the accepted programs are closed (`programs`
     // says why they have to be), so *every* index in what they elaborate to
     // must land on a binder the term itself introduced.
-    let cx = Cx::new();
+    let cx = programs::cx();
     for programs::Program { name, raw, ty } in programs::accepted() {
         let (term, found) = elaborated(&cx, name, &raw, ty.as_ref());
         for (what, checked) in [("the term", &term), ("its type", &found)] {
@@ -122,22 +122,13 @@ fn furthest(term: &Term, under: u32) -> u32 {
             inside.max(beside)
         }
         Shape::App { function, argument } => furthest(function, under).max(furthest(argument, under)),
-        // A record type's later fields stand under its earlier ones; a literal's
-        // do not. Counting the type's the same way as the literal's is the
-        // conservative direction — it can only make the reach look longer.
-        Shape::RecordType(fields) | Shape::Record(fields) => fields
-            .iter()
-            .map(|field| furthest(&field.term, under))
-            .max()
-            .unwrap_or(0),
-        Shape::Project { record, .. } => furthest(record, under),
     }
 }
 
 #[test]
 fn the_kernel_rejects_an_index_that_names_no_binder() {
-    let cx = Cx::new();
-    let unit = Term::record_type(programs::WRITTEN, []);
+    let cx = programs::cx();
+    let unit = programs::core_unit_type();
     // `λx. y`, where `y` is three binders further out than anything exists.
     let escaped = Term::lam(programs::WRITTEN, "x", Term::var(programs::WRITTEN, Index(3)));
     let ty = Term::pi(programs::WRITTEN, "x", unit.clone(), unit);

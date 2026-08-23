@@ -160,36 +160,6 @@ fn write(out: &mut String, term: &Term, at: Precedence, names: &mut Vec<Name>) {
             write(out, body, Precedence::Outer, names);
             names.pop();
         }),
-        Shape::RecordType(fields) => {
-            out.push_str("{ ");
-            for (position, field) in fields.iter().enumerate() {
-                if position > 0 {
-                    out.push_str(", ");
-                }
-                let _ = write!(out, "{} : ", field.name);
-                write(out, &field.term, Precedence::Outer, names);
-                names.push(Arc::clone(&field.name));
-            }
-            for _ in fields.iter() {
-                names.pop();
-            }
-            out.push_str(if fields.is_empty() { "}" } else { " }" });
-        }
-        Shape::Record(fields) => {
-            out.push_str("{ ");
-            for (position, field) in fields.iter().enumerate() {
-                if position > 0 {
-                    out.push_str(", ");
-                }
-                let _ = write!(out, "{} = ", field.name);
-                write(out, &field.term, Precedence::Outer, names);
-            }
-            out.push_str(if fields.is_empty() { "}" } else { " }" });
-        }
-        Shape::Project { record, field } => {
-            write(out, record, Precedence::Argument, names);
-            let _ = write!(out, ".{field}");
-        }
         Shape::Bind {
             name,
             binder: Binder::Let { .. },
@@ -246,12 +216,6 @@ fn occurs(term: &Term, depth: u32) -> bool {
             };
             constrains || binder.outer().any(|term| occurs(term, depth)) || occurs(body, depth.saturating_add(1))
         }
-        Shape::RecordType(fields) => fields
-            .iter()
-            .enumerate()
-            .any(|(position, field)| occurs(&field.term, depth.saturating_add(u32::try_from(position).unwrap_or(0)))),
-        Shape::Record(fields) => fields.iter().any(|field| occurs(&field.term, depth)),
-        Shape::Project { record, .. } => occurs(record, depth),
         // Closed, or a leaf. A metavariable stands for a closed term applied to
         // the binders in scope (`term.rs`), so it holds no index of its own.
         Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => false,

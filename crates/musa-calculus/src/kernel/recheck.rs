@@ -14,9 +14,9 @@
 //!
 //! Not a second type-checker with rules of its own. Every rule here is one the
 //! evaluator already implements: a Π's codomain comes from
-//! [`apply_closure`](crate::kernel::eval::apply_closure), a field's type from
-//! [`field_type`](crate::kernel::eval::field_type), a name's type from the same
-//! [`Definition`](crate::kernel::term::Definition) evaluation reaches for. A
+//! [`apply_closure`](crate::kernel::eval::apply_closure), a name's type from
+//! the same [`Definition`](crate::kernel::term::Definition) evaluation reaches
+//! for. A
 //! rule this pass needed and the kernel lacked would mean the kernel is what is
 //! wrong, and that is a different prompt.
 //!
@@ -46,11 +46,11 @@ use crate::kernel::budget::Meter;
 use crate::kernel::checked::Checked;
 use crate::kernel::context::Cx;
 use crate::kernel::error::{CoreError, Malformed};
-use crate::kernel::eval::{apply_closure, eval, field_type, opened};
+use crate::kernel::eval::{apply_closure, eval, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{Mode, quote_type};
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Binder, Constant, Definition, Field, Shape, Term};
+use crate::kernel::term::{Binder, Constant, Definition, Shape, Term};
 use crate::kernel::value::{Form, Value};
 
 /// Require the kernel to agree that `term` has type `ty` in `cx`.
@@ -115,17 +115,12 @@ pub(crate) fn universe_of(term: &Term) -> Result<Sort, CoreError> {
             body,
             ..
         } => Ok(universe_of(ty)?.max(&universe_of(body)?)),
-        Shape::RecordType(fields) => fields
-            .iter()
-            .try_fold(Sort::ZERO, |join, field| Ok(universe_of(&field.term)?.max(&join))),
         Shape::Meta(_)
         | Shape::Var(_)
         | Shape::Named { .. }
         | Shape::Lit(_)
         | Shape::Bind { .. }
-        | Shape::App { .. }
-        | Shape::Record(_)
-        | Shape::Project { .. } => Ok(Sort::ZERO),
+        | Shape::App { .. } => Ok(Sort::ZERO),
     }
 }
 
@@ -157,21 +152,6 @@ fn check(cx: &Cx, meter: &mut Meter, term: &Term, expected: &Value) -> Result<()
                 let variable = Value::var(term.origin(), cx.depth(), Arc::clone(domain));
                 let inside = apply_closure(meter, codomain, variable)?;
                 check(&under, meter, body, &inside)
-            }
-            (Shape::Record(written), Form::RecordType(telescope)) => {
-                let subject = eval(meter, cx.env(), term)?;
-                for Field { name, term: field } in written.iter() {
-                    let at = field_type(meter, telescope, &subject, name)?;
-                    check(cx, meter, field, &at)?;
-                }
-                // A literal missing one of the telescope's fields would have
-                // been caught above only if the field it *does* have is the one
-                // asked for, so the count is asked separately.
-                if written.len() == telescope.fields.len() {
-                    Ok(())
-                } else {
-                    Err(mistyped(meter, cx, term, want, want)?)
-                }
             }
             // A `let` is transparent to the direction the term is read in: what
             // it binds is checked against the type it states, and its body is
@@ -278,57 +258,9 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
                     let supplied = eval(meter, cx.env(), argument)?;
                     apply_closure(meter, &codomain, supplied)
                 }
-                Form::Universe(_)
-                | Form::Lam(_)
-                | Form::RecordType(_)
-                | Form::Record(_)
-                | Form::Lit(_)
-                | Form::Numeral(_)
-                | Form::Neutral(_) => Err(Malformed::NotAFunction.into()),
-            }
-        }
-        Shape::RecordType(fields) => {
-            let mut join = Sort::ZERO;
-            let mut under = cx.clone();
-            for Field { name: _, term: ty } in fields.iter() {
-                join = join.max(&universe(&under, meter, ty)?);
-                let evaluated = Arc::new(eval(meter, under.env(), ty)?);
-                under = under.assumed(here, evaluated);
-            }
-            Ok(Value::new(here, Form::Universe(join)))
-        }
-        // A record literal inhabits every record type its fields fit, so §2
-        // gives it no inference rule and neither does this.
-        Shape::Record(_) => Err(Malformed::Uninferable.into()),
-        // `{f = a, …}.f` is `a`: the projection rule, not a new one. A record
-        // literal has no type of its own — §2 makes it a checking form because
-        // the type it "obviously" has is a guess — so reducing the projection is
-        // the only way in, and it is the way the evaluator goes too.
-        Shape::Project { record, field } if matches!(record.shape(), Shape::Record(_)) => {
-            let Shape::Record(fields) = record.shape() else {
-                return Err(Malformed::Uninferable.into());
-            };
-            fields
-                .iter()
-                .find(|written| &written.name == field)
-                .ok_or_else(|| CoreError::from(Malformed::NoSuchField(Arc::clone(field))))
-                .and_then(|written| infer(cx, meter, &written.term))
-        }
-        Shape::Project { record, field } => {
-            let of = infer(cx, meter, record)?;
-            let of = opened(meter, &of)?.unwrap_or(of);
-            match of.form {
-                Form::RecordType(telescope) => {
-                    let subject = eval(meter, cx.env(), record)?;
-                    field_type(meter, &telescope, &subject, field)
+                Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
+                    Err(Malformed::NotAFunction.into())
                 }
-                Form::Universe(_)
-                | Form::Pi { .. }
-                | Form::Lam(_)
-                | Form::Record(_)
-                | Form::Lit(_)
-                | Form::Numeral(_)
-                | Form::Neutral(_) => Err(Malformed::NotARecord.into()),
             }
         }
         // `Checked` is what stops an *unsolved* one arriving; reaching this
@@ -481,13 +413,9 @@ fn universe(cx: &Cx, meter: &mut Meter, ty: &Term) -> Result<Sort, CoreError> {
     let of = opened(meter, &of)?.unwrap_or(of);
     match of.form {
         Form::Universe(level) => Ok(level),
-        Form::Pi { .. }
-        | Form::Lam(_)
-        | Form::RecordType(_)
-        | Form::Record(_)
-        | Form::Lit(_)
-        | Form::Numeral(_)
-        | Form::Neutral(_) => Err(Malformed::NotAType.into()),
+        Form::Pi { .. } | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
+            Err(Malformed::NotAType.into())
+        }
     }
 }
 

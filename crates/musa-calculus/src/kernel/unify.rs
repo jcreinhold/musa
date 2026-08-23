@@ -141,9 +141,7 @@ pub(crate) fn fragment(value: &Value) -> Option<Fragment> {
     }
     let mut levels = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
-        let Elim::App { argument, .. } = elimination else {
-            return None;
-        };
+        let Elim::App { argument, .. } = elimination;
         let Form::Neutral(applied) = &argument.form else {
             return None;
         };
@@ -409,8 +407,6 @@ pub(crate) fn occurs(term: &Term, target: &Meta) -> bool {
             in_binder || occurs(body, target)
         }
         Shape::App { function, argument } => occurs(function, target) || occurs(argument, target),
-        Shape::RecordType(fields) | Shape::Record(fields) => fields.iter().any(|field| occurs(&field.term, target)),
-        Shape::Project { record, .. } => occurs(record, target),
     }
 }
 
@@ -449,8 +445,6 @@ fn walk(value: &Value, seen: &mut impl FnMut(&Meta) -> bool) -> bool {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,
         Form::Pi { domain, codomain, .. } => walk(domain, seen) || codomain.env.iter().any(|item| walk(item, seen)),
         Form::Lam(closure) => closure.env.iter().any(|item| walk(item, seen)),
-        Form::RecordType(telescope) => telescope.env.iter().any(|item| walk(item, seen)),
-        Form::Record(fields) => fields.iter().any(|(_, item)| walk(item, seen)),
         Form::Neutral(neutral) => {
             let head = match &neutral.head {
                 Head::Meta(meta) => seen(meta) || meta.solution().is_some_and(|solution| walk(solution, seen)),
@@ -462,10 +456,10 @@ fn walk(value: &Value, seen: &mut impl FnMut(&Meta) -> bool) -> bool {
                 Head::Def(_, ty, crate::kernel::value::Folding::Value(folded)) => walk(ty, seen) || walk(folded, seen),
                 Head::Def(_, ty, _) => walk(ty, seen),
             };
-            head || neutral.spine.iter().any(|elimination| match elimination {
-                Elim::App { argument, .. } => walk(argument, seen),
-                Elim::Project { .. } => false,
-            })
+            head || neutral
+                .spine
+                .iter()
+                .any(|Elim::App { argument, .. }| walk(argument, seen))
         }
     }
 }
@@ -589,22 +583,16 @@ mod tests {
 
     const HERE: Origin = Origin::node(910);
 
-    /// `{}` as a value, standing at `Type 0`.
+    /// `Type 0` as a value, which is what these unknowns stand at.
     fn unit_type() -> Value {
-        Value::new(
-            HERE,
-            Form::RecordType(crate::kernel::value::Telescope {
-                fields: Arc::from([]),
-                env: Env::EMPTY,
-            }),
-        )
+        Value::new(HERE, Form::Universe(Sort::ZERO))
     }
 
-    /// `(x : {}) → Type 0` as a value: the telescope of an arity-one unknown
-    /// standing for a type. Its goal is a universe rather than `{}` so that a
-    /// read-back of its solution is *structural* — at a record type quotation
-    /// η-expands, and a solution that names a variable would be replaced by
-    /// `{}` before anything could notice the name.
+    /// `(x : Type 0) → Type 0` as a value: the telescope of an arity-one
+    /// unknown standing for a type. Its goal is a universe so that a read-back
+    /// of its solution is *structural* — at a type with η quotation expands,
+    /// and a solution that names a variable would be rewritten before anything
+    /// could notice the name.
     fn one_binder() -> Value {
         Value::new(
             HERE,
@@ -649,7 +637,7 @@ mod tests {
             HERE,
             crate::kernel::value::Head::Meta(meta.clone()),
         ));
-        // `?0 ≟ (x : ?0) → {}` — a pattern spine on the left, and the right
+        // `?0 ≟ (x : ?0) → Type 0` — a pattern spine on the left, and the right
         // names the very unknown being solved.
         let cyclic = Value::new(
             HERE,
@@ -659,7 +647,7 @@ mod tests {
                 domain: Arc::new(occurrence.clone()),
                 codomain: Closure {
                     env: Env::EMPTY,
-                    body: Term::record_type(HERE, []),
+                    body: Term::universe(HERE, Sort::ZERO),
                 },
             },
         );
@@ -718,7 +706,7 @@ mod tests {
             HERE,
             Form::Lam(Closure {
                 env: Env::EMPTY,
-                body: Term::record_type(HERE, []),
+                body: Term::universe(HERE, Sort::ZERO),
             }),
         ))
         .expect("a fresh unknown is unsolved");

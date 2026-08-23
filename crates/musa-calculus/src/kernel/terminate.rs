@@ -213,20 +213,6 @@ impl Measure<'_> {
             Shape::App { function, argument } => self
                 .term(function, depth, from)
                 .or_else(|| self.term(argument, depth, from)),
-            Shape::RecordType(fields) => {
-                // A record *type* is a telescope: a later field's type stands
-                // one binder deeper than the one before it.
-                let mut at = depth;
-                for field in fields.iter() {
-                    if let Some(refused) = self.term(&field.term, at, from) {
-                        return Some(refused);
-                    }
-                    at = at.deeper();
-                }
-                None
-            }
-            Shape::Record(fields) => fields.iter().find_map(|field| self.term(&field.term, depth, from)),
-            Shape::Project { record, .. } => self.term(record, depth, from),
         }
     }
 

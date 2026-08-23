@@ -97,14 +97,7 @@ fn read(globals: &Globals, term: &Term) -> Option<Datum> {
         // `App` cannot appear — the peel above ended because the head was not
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
-        Shape::Lit(_)
-        | Shape::Var(_)
-        | Shape::Universe(_)
-        | Shape::Bind { .. }
-        | Shape::App { .. }
-        | Shape::RecordType(_)
-        | Shape::Record(_)
-        | Shape::Project { .. } => None,
+        Shape::Lit(_) | Shape::Var(_) | Shape::Universe(_) | Shape::Bind { .. } | Shape::App { .. } => None,
     }
 }
 

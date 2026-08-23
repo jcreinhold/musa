@@ -17,11 +17,13 @@
 //!   The difference between the two words is entirely in how a case writes its
 //!   fields — `data` names every one, an enum's positional case names none —
 //!   and not in what either denotes.
-//! - **`record` is structural**, so it becomes a *definition* whose value is a
-//!   core record type. §1.2: "a record is its fields", and two declarations with
-//!   the same fields at the same types denote the same type. A `RawData` here
-//!   would have made `record` nominal by construction and quietly contradicted
-//!   the sentence the whole feature rests on.
+//! - **`record` is nominal too**, so it becomes a [`RawData`] of one family
+//!   with one constructor. `01-surface.md` §1.2 after prompt 157: "a record is
+//!   a declaration, and two of them are two types". The rule it replaces was
+//!   the opposite one — a record *was* its fields — and it existed to make
+//!   trait dictionaries convertible, which prompt 146 deleted along with the
+//!   traits. What is left is one declaration form spelled two ways, which is
+//!   what prompt 161 states outright.
 //! - **`impl` is a namespace**, so `impl Pitch { fn act(…) { … } }` becomes the
 //!   ordinary definition `Pitch.act`. §1.5: a member is reached by taking the
 //!   head of the receiver's type and looking up one dotted name, so an `impl`
@@ -145,7 +147,7 @@ impl Lowering<'_> {
         match node.kind() {
             SyntaxKind::DataDecl => read(self.nominal(node).map(Item::Data)),
             SyntaxKind::EnumDecl => read(self.enumeration(node).map(Item::Data)),
-            SyntaxKind::RecordDecl => read(self.structural(node).map(Item::Definition)),
+            SyntaxKind::RecordDecl => read(self.structural(node).map(Item::Data)),
             SyntaxKind::ImplDecl => read(self.namespace(node).map(Item::Namespace)),
             SyntaxKind::FnDecl => read(self.function(node).map(Item::Definition)),
             SyntaxKind::LetDecl => read(self.binding(node).map(Item::Definition)),
@@ -304,38 +306,47 @@ impl Lowering<'_> {
         })
     }
 
-    // ---- the structural declaration ----
+    // ---- the one-case declaration ----
 
     /// `record Pending<A> { read: Reading; taken: A; }`.
     ///
-    /// A definition rather than a declaration, because §1.2 makes a record its
-    /// fields: `Pending` *is* `{ read : Reading, taken : A }`, so what the
-    /// surface declared is a name for a type — and for a parameterized record, a
-    /// function to one. The declared name still stands in every diagnostic,
-    /// which is what §1.2 asks of the arrangement, because the core resolves
-    /// `Pending` by name before it unfolds it.
-    fn structural(&mut self, node: &SyntaxNode) -> Option<Definition> {
+    /// One family with one constructor, spelled the same as the family, whose
+    /// fields are the declaration's. `01-surface.md` §1.2 after prompt 157: a
+    /// record is a declaration, so `Pending` and another eight-field record
+    /// with the same field names are two types, and reading a field is the
+    /// generated accessor `Pending.read` rather than a shape in the core.
+    ///
+    /// The constructor takes the declaration's visibility for
+    /// [`Lowering::nominal`]'s reason: `record` admits no marker on the case,
+    /// and a family whose cases disagree with each other is refused at its
+    /// declaration, so the declaration's own marker is the one reading that
+    /// cannot disagree.
+    fn structural(&mut self, node: &SyntaxNode) -> Option<RawData> {
         let origin = self.origin(node);
+        let visibility = visibility_of(node);
         let name = declared_name(node)?;
         let params = self.type_parameters(node);
-        let mut names = Vec::new();
-        let mut types = Vec::new();
+        let mut fields = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FieldDecl) {
-            let field = self.declared_field(&written)?;
-            names.push(field.name);
-            types.push(field.ty);
+            fields.push(self.declared_field(&written)?);
         }
-        let mut value = Raw::record_type(origin, names.iter().map(|name| &**name).zip(types));
-        let mut ty = Raw::universe(origin, Sort::ZERO);
-        for parameter in params.iter().rev() {
-            value = Raw::lam(origin, Arc::clone(&parameter.name), value);
-            ty = Raw::pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
-        }
-        Some(Definition {
+        Some(RawData {
             origin,
-            name,
-            ty: Some(ty),
-            value,
+            params,
+            families: vec![RawFamily {
+                name: Arc::clone(&name),
+                visibility,
+                // §1.2 declares fields and not a signature: an indexed family is
+                // written with `data`, where the telescope has somewhere to go.
+                indices: Vec::new(),
+                constructors: vec![RawConstructor {
+                    origin,
+                    name,
+                    visibility,
+                    fields,
+                    chosen: Vec::new(),
+                }],
+            }],
         })
     }
 

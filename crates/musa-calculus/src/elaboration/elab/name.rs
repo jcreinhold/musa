@@ -340,10 +340,7 @@ impl Elaborator {
                 | Shape::Lit(_)
                 | Shape::Universe(_)
                 | Shape::Bind { .. }
-                | Shape::App { .. }
-                | Shape::RecordType(_)
-                | Shape::Record(_)
-                | Shape::Project { .. } => 0,
+                | Shape::App { .. } => 0,
             };
             return self.metas(scope, here, built, params);
         }

@@ -34,11 +34,15 @@ pub(crate) const STORABLE: &str = "Storable";
 /// `Storable argument` as a constrained Π over `codomain` — the way a machine
 /// constructor's scheme states that a port stores data.
 ///
-/// The evidence the constraint would hold is the empty record: the check itself
-/// is the evidence, and there is nothing for a use site to pass.  [`discharge`]
-/// answers the constraint by computing [`is_storable`], which is why this one
-/// constraint survived the deletion of the mechanism that once carried it —
-/// nothing about it was ever a table lookup.
+/// The evidence the constraint would hold is the identity on `Type 0`: the
+/// check itself is the evidence, so what a use site passes only has to be a
+/// closed term of a type with exactly one of them. That used to be the empty
+/// record; with records out of the core (prompt 157) the smallest thing the
+/// term language still writes is `Type 0 → Type 0`, and [`witness`] is the only
+/// inhabitant anything constructs. [`discharge`] answers the constraint by
+/// computing [`is_storable`], which is why this one constraint survived the
+/// deletion of the mechanism that once carried it — nothing about it was ever a
+/// table lookup.
 #[must_use]
 pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Term {
     let constraint = Arc::new(Constraint {
@@ -46,13 +50,24 @@ pub fn requiring_storable(origin: Origin, argument: Term, codomain: Term) -> Ter
         class: Arc::from(STORABLE),
         args: Arc::from(vec![argument]),
     });
-    Term::constrained_pi(
+    Term::constrained_pi(origin, constraint, STORABLE, evidence_type(origin), codomain)
+}
+
+/// `Type 0 → Type 0`, the type a discharged `Storable` constraint's evidence
+/// stands at.
+fn evidence_type(origin: Origin) -> Term {
+    Term::function(
         origin,
-        constraint,
-        STORABLE,
-        Term::record_type(origin, core::iter::empty()),
-        codomain,
+        crate::kernel::term::Filling::Written,
+        Arc::from("_"),
+        Term::universe(origin, crate::kernel::sort::Sort::ZERO),
+        Term::universe(origin, crate::kernel::sort::Sort::ZERO),
     )
+}
+
+/// `λ_. _`, the evidence itself.
+fn witness(at: Origin) -> Term {
+    Term::lam(at, Arc::from("_"), Term::var(at, crate::kernel::term::Index(0)))
 }
 
 /// Answer a `Storable` constraint: compute it, and hand back the evidence.
@@ -96,7 +111,7 @@ pub(crate) fn discharge(
         .into());
     }
     if is_storable(elaborator.meter(), cx, &ty)? {
-        Ok(Term::record(at, core::iter::empty()))
+        Ok(witness(at))
     } else {
         Err(crate::elaboration::refuse::Refusal::NotStorable { at, ty: written }.into())
     }
@@ -140,19 +155,6 @@ fn stor(
         // A function is never storable, and neither is a type standing where
         // data should: §1.2's two negative rules.
         Form::Pi { .. } | Form::Lam(_) | Form::Universe(_) => Ok(false),
-        Form::RecordType(telescope) => {
-            let mut env = telescope.env.clone();
-            for field in telescope.fields.iter() {
-                let field_ty = crate::kernel::eval::eval(meter, &env, &field.term)?;
-                if !stor(meter, cx, &field_ty, visiting, depth)? {
-                    return Ok(false);
-                }
-                let fresh = Value::var(ty.origin, *depth, Arc::new(field_ty));
-                *depth = depth.deeper();
-                env = env.push(fresh);
-            }
-            Ok(true)
-        }
         Form::Neutral(neutral) => match &neutral.head {
             Head::Base(base, _) => {
                 // The flag is the *registry's*: a base type's term is written
@@ -178,9 +180,7 @@ fn stor(
                     let params = constant.group.params.len();
                     let mut arguments = Vec::with_capacity(params);
                     for elimination in neutral.spine.iter().take(params) {
-                        let Elim::App { argument, .. } = elimination else {
-                            return Ok(false);
-                        };
+                        let Elim::App { argument, .. } = elimination;
                         arguments.push(Value::clone(argument));
                     }
                     visiting.push(key);
@@ -214,7 +214,7 @@ fn stor(
                 // A stuck elimination in type position cannot be shown to hold
                 // no function, and a constructor is not a type at all. Both are
                 // the conservative answer; the second is a compiler defect.
-                Role::Recursor(_) => Ok(false),
+                Role::Recursor(_) | Role::Projection(_) => Ok(false),
                 Role::Constructor(_) => Err(crate::kernel::error::Malformed::NotAType.into()),
             },
             // An unknown type could hold a function, and a definition or a
@@ -223,6 +223,6 @@ fn stor(
         },
         // A checked type never evaluates to one of these; reaching one is a
         // compiler defect rather than a program's fault.
-        Form::Record(_) | Form::Lit(_) | Form::Numeral(_) => Err(crate::kernel::error::Malformed::NotAType.into()),
+        Form::Lit(_) | Form::Numeral(_) => Err(crate::kernel::error::Malformed::NotAType.into()),
     }
 }

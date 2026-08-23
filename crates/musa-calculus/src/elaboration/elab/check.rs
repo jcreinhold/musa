@@ -7,11 +7,11 @@ use std::sync::Arc;
 use crate::elaboration::raw::{Raw, RawField, RawShape};
 use crate::elaboration::refuse::{ElabError, Refusal};
 use crate::kernel::error::Malformed;
-use crate::kernel::eval::{apply_closure, eval, opened};
+use crate::kernel::eval::{apply_closure, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
-use crate::kernel::term::{Field, Filling, Name, Shape, Term};
-use crate::kernel::value::{Form, Telescope, Value};
+use crate::kernel::term::{Filling, Name, Term};
+use crate::kernel::value::{Form, Value};
 
 use super::{Bound, Elaborator, Typed};
 
@@ -170,13 +170,10 @@ impl Elaborator {
                 domain,
                 body,
             } => self.lambda(scope, raw, filling, name, domain.as_ref(), body, ty),
-            RawShape::Record(fields) => {
-                let Form::RecordType(telescope) = &ty.form else {
-                    return self.abstracted(scope, raw, ty);
-                };
-                let telescope = telescope.clone();
-                self.literal(scope, here, fields, &telescope).map(Some)
-            }
+            RawShape::Record(fields) => match self.product(ty)? {
+                Some(product) => self.literal(scope, here, fields, &product).map(Some),
+                None => self.abstracted(scope, raw, ty),
+            },
             // A `let` checks by checking its body: the definition is elaborated
             // either way, and its binder is what the body is read under.
             RawShape::Let {
@@ -243,7 +240,6 @@ impl Elaborator {
             | RawShape::Pi { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }
-            | RawShape::RecordType(_)
             | RawShape::Method { .. }
             | RawShape::Project { .. }
             | RawShape::Update { .. }
@@ -414,19 +410,15 @@ impl Elaborator {
         let expanded;
         let ty = match ty.form {
             Form::Pi { .. } => ty,
-            Form::Universe(_)
-            | Form::Lam(_)
-            | Form::RecordType(_)
-            | Form::Record(_)
-            | Form::Lit(_)
-            | Form::Numeral(_)
-            | Form::Neutral(_) => match self.expanded_unknown(scope, here, filling, name, ty)? {
-                Some(pi) => {
-                    expanded = pi;
-                    &expanded
+            Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
+                match self.expanded_unknown(scope, here, filling, name, ty)? {
+                    Some(pi) => {
+                        expanded = pi;
+                        &expanded
+                    }
+                    None => ty,
                 }
-                None => ty,
-            },
+            }
         };
         let Form::Pi {
             filling: expected,
@@ -471,45 +463,64 @@ impl Elaborator {
         )))
     }
 
-    /// `{ f = e, … } ⇐ { f : A, … }`.
+    /// `R { f = e, … } ⇐ R p⃗`, as the family's one constructor applied to its
+    /// fields.
     ///
-    /// The literal must give the telescope's fields in its order, because a
+    /// The literal must give the declaration's fields in its order, because a
     /// later field's type may mention an earlier field's *value* — so the order
     /// is part of the type rather than a formatting preference.
+    ///
+    /// The constructor's own type is what the fields are checked against, one Π
+    /// at a time, rather than a telescope re-read here: it is the same walk
+    /// [`crate::kernel::family`] does to give the constructor a type, so a
+    /// literal and the constructor it elaborates to cannot disagree about what
+    /// field `i` stands at.
     fn literal(
         &mut self,
         scope: &Scope,
         here: Origin,
         fields: &[RawField],
-        telescope: &Telescope,
+        product: &crate::kernel::family::Product,
     ) -> Result<Term, ElabError> {
-        if fields.len() != telescope.fields.len()
+        if fields.len() != product.fields.len()
             || fields
                 .iter()
-                .zip(telescope.fields.iter())
+                .zip(product.fields.iter())
                 .any(|(written, declared)| written.name != declared.name)
         {
             return Err(Refusal::RecordShape {
                 at: here,
-                expected: telescope.fields.iter().map(|field| Arc::clone(&field.name)).collect(),
+                expected: product.fields.iter().map(|field| Arc::clone(&field.name)).collect(),
                 found: fields.iter().map(|field| Arc::clone(&field.name)).collect(),
             }
             .into());
         }
-        let mut env = telescope.env.clone();
-        let mut elaborated = Vec::with_capacity(fields.len());
-        for (written, declared) in fields.iter().zip(telescope.fields.iter()) {
-            let field_ty = eval(&mut self.meter, &env, &declared.term)?;
+        let globals = scope.cx().globals().clone();
+        let constructor = crate::kernel::family::Constant::constructor(&product.group, product.family, 0);
+        let mut built = constructor.term(here);
+        let mut ty = constructor.ty(&mut self.meter, &globals)?;
+        for param in &product.params {
+            built = Term::app(here, built, scope.quote_type(&mut self.meter, param)?);
+            ty = crate::kernel::eval::apply(&mut self.meter, here, ty, param.clone())?;
+        }
+        for written in fields {
+            let unfolded = opened(&mut self.meter, &ty)?;
+            let Form::Pi { domain, codomain, .. } = &unfolded.as_ref().unwrap_or(&ty).form else {
+                return Err(Refusal::NotAFunction {
+                    at: here,
+                    ty: scope.quote_type(&mut self.meter, &ty)?,
+                }
+                .into());
+            };
+            let (field_ty, codomain) = (Value::clone(domain), codomain.clone());
             let term = self.check(scope, &written.term, &field_ty)?;
             // The telescope proceeds under this field's own value, which is what
             // makes a later field's type able to mention it.
-            env = env.push(scope.eval(&mut self.meter, &term)?);
-            elaborated.push(Field {
-                name: Arc::clone(&written.name),
-                term,
-            });
+            let value = scope.eval(&mut self.meter, &term)?;
+            ty = crate::kernel::eval::apply_closure(&mut self.meter, &codomain, value)?;
+            built = Term::app(here, built, term);
         }
-        Ok(Term::new(here, Shape::Record(elaborated.into())))
+        Ok(built)
     }
 
     /// Elaborate a `let`'s definition and answer the scope its body is read in.

@@ -67,15 +67,12 @@ pub(crate) fn head_name(term: &Term) -> Option<Name> {
         } => Some(Arc::clone(name)),
         Shape::App { function, .. } => head_name(function),
         Shape::Named {
-            role: Role::Defined | Role::Builtin,
+            role: Role::Defined | Role::Builtin | Role::Projection,
             ..
         }
         | Shape::Var(_)
         | Shape::Universe(_)
         | Shape::Bind { .. }
-        | Shape::RecordType(_)
-        | Shape::Record(_)
-        | Shape::Project { .. }
         | Shape::Lit(_)
         | Shape::Meta(_) => None,
     }

@@ -40,13 +40,14 @@ use std::sync::Arc;
 use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 use crate::kernel::budget::Meter;
 use crate::kernel::error::CoreError;
-use crate::kernel::eval::{apply, apply_closure, eval, field_type, force, head_type, opened, project};
+use crate::kernel::eval::{apply, apply_closure, force, head_type, opened};
+use crate::kernel::family::{Product, product};
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{At, Mode, quote_type};
 use crate::kernel::sort::{Sort, SortVar};
-use crate::kernel::term::{Field, Level, Term};
+use crate::kernel::term::{Level, Term};
 use crate::kernel::unify::{self, Outcome, Postponed, Queue};
-use crate::kernel::value::{Closure, DefHead, Elim, Form, Head, Neutral, Telescope, Value};
+use crate::kernel::value::{Closure, DefHead, Elim, Form, Head, Neutral, Value};
 
 /// The conversion checker's state: which variables a matching pass may solve,
 /// and what it has solved them to.
@@ -396,31 +397,37 @@ impl Conversion {
         left: &Value,
         right: &Value,
     ) -> Step {
-        // η first, and read off the *type*, because §3 puts η at Π and at record
-        // types — so it is the type that decides, whatever forms the two sides
-        // happen to have. This is what makes `f` and `λx. f x` agree without
-        // either being quoted, and it is why a λ or a record literal never
+        // η first, and read off the *type*, because §3 puts η at Π and at a
+        // one-constructor family — so it is the type that decides, whatever
+        // forms the two sides happen to have. This is what makes `f` and
+        // `λx. f x` agree without either being quoted, and it is why a λ never
         // reaches the match below on a well-typed pair.
         //
-        // Two neutrals are the one pair this skips. Expanding them adds the same
+        // Two neutrals are the pair η at Π skips. Expanding them adds the same
         // elimination to both spines and then compares the spines, which is the
         // answer [`Self::neutrals`] gives directly — with a message that names
         // the heads that disagreed rather than the expansion.
-        if let At::Term(ty) = at
-            && !matches!((&left.form, &right.form), (Form::Neutral(_), Form::Neutral(_)))
-        {
+        if let At::Term(ty) = at {
             let unfolded = opened(meter, ty)?;
             let ty = unfolded.as_ref().unwrap_or(ty);
+            let both_blocked = matches!((&left.form, &right.form), (Form::Neutral(_), Form::Neutral(_)));
             match &ty.form {
-                Form::Pi { domain, codomain, .. } => {
+                Form::Pi { domain, codomain, .. } if !both_blocked => {
                     return self.under_binder(meter, depth, origin, domain, codomain, left, right);
                 }
-                Form::RecordType(telescope) => {
-                    return self.field_by_field(meter, depth, origin, telescope, left, right);
+                // A family type is itself a blocked spine, so η at a record
+                // lands here rather than beside η at Π — and a constructor
+                // application is blocked too, which is why `both_blocked` cannot
+                // be the test. [`Self::expanded`] asks the sharper question:
+                // whether either side was *built* by the one constructor.
+                Form::Neutral(_) => {
+                    if let Some(answer) = self.expanded(meter, depth, origin, ty, left, right)? {
+                        return answer;
+                    }
                 }
-                Form::Universe(_)
+                Form::Pi { .. }
+                | Form::Universe(_)
                 | Form::Lam(_)
-                | Form::Record(_)
                 // A base type has no η, because η is a rule about a type's
                 // eliminations and §5.8 gives it none. Neither of the two below
                 // is a type at all; they are here because this match is over
@@ -428,11 +435,6 @@ impl Conversion {
                 // ones.
                 | Form::Lit(_)
                 | Form::Numeral(_) => {}
-                // A type that is still a metavariable says nothing yet, and a λ
-                // under it would be one the elaborator has not pinned down. The
-                // match below reads both sides back, which is the honest answer
-                // and not a success path.
-                Form::Neutral(_) => {}
             }
         }
         match (&left.form, &right.form) {
@@ -458,9 +460,6 @@ impl Conversion {
                 let right_body = apply_closure(meter, right_codomain, variable)?;
                 self.step(meter, depth.deeper(), At::Type, origin, &left_body, &right_body)
                     .map_err(|failure| failure.under(PathStep::Codomain))
-            }
-            (Form::RecordType(one), Form::RecordType(other)) => {
-                self.record_types(meter, depth, at, origin, left, right, one, other)
             }
             (Form::Neutral(one), Form::Neutral(other)) => self.neutrals(meter, depth, origin, one, other),
             // Two different forms, which is a disagreement: reading both sides
@@ -503,66 +502,68 @@ impl Conversion {
         .map_err(|failure| failure.under(PathStep::Body))
     }
 
-    /// Both sides at a record type: compare their projections, in telescope
-    /// order, stopping at the first field that disagrees.
+    /// η at a one-constructor family, when this pair calls for it.
     ///
-    /// The `Record`/`Record` case is *this* case — [`project`] answers a literal
-    /// by reading the field out — so a literal, a neutral, and one of each are
-    /// all decided here.
+    /// `Some` with the comparison's answer where the rule fired, `None` where
+    /// the two sides are left to [`Self::neutrals`]. The rule fires when the
+    /// type is a non-recursive one-constructor family *and* at least one side
+    /// is a constructor application: two values blocked at anything else are
+    /// compared as spines, so a disagreement names the heads rather than a
+    /// field, and two identical variables cost no projections at all.
+    fn expanded(
+        &mut self,
+        meter: &mut Meter,
+        depth: Level,
+        origin: Origin,
+        ty: &Value,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<Step>, Failure> {
+        let Some(product) = product(meter, ty)? else {
+            return Ok(None);
+        };
+        if !product.expandable() {
+            return Ok(None);
+        }
+        let built = crate::kernel::family::built_by(meter, left)?.is_some()
+            || crate::kernel::family::built_by(meter, right)?.is_some();
+        if !built {
+            return Ok(None);
+        }
+        Ok(Some(self.field_by_field(meter, depth, origin, &product, left, right)))
+    }
+
+    /// Both sides at a one-constructor family: compare their projections, in
+    /// declaration order, stopping at the first field that disagrees.
+    ///
+    /// η at a record, now that a record is a family (`01-surface.md` §1.2).
+    /// Unlike η at Π this cannot be read off the two *values*: a constructor
+    /// application is a blocked spine, so `f` and `Frame f.span f.held` are both
+    /// [`Form::Neutral`] and the head comparison below would call them
+    /// different. [`Self::step`] therefore asks for this rule whenever the type
+    /// admits it and either side was actually built by the constructor; two
+    /// values blocked at something else are left to [`Self::neutrals`], which
+    /// answers with the heads that disagreed rather than with a field.
     fn field_by_field(
         &mut self,
         meter: &mut Meter,
         depth: Level,
         origin: Origin,
-        telescope: &Telescope,
+        product: &Product,
         left: &Value,
         right: &Value,
     ) -> Step {
-        for Field { name, term: _ } in telescope.fields.iter() {
-            // The field's type is read off the *left* subject, as it is in
-            // [`Self::record_types`] and for the same reason: every earlier
-            // field has just been made equal, so either subject gives the same
-            // type.
-            let ty = field_type(meter, telescope, left, name)?;
-            let mine = project(meter, left.origin, left.clone(), name)?;
-            let theirs = project(meter, right.origin, right.clone(), name)?;
-            self.step(meter, depth, At::Term(&ty), origin, &mine, &theirs)
-                .map_err(|failure| failure.under(PathStep::Field(Arc::clone(name))))?;
-        }
-        Ok(())
-    }
-
-    fn record_types(
-        &mut self,
-        meter: &mut Meter,
-        depth: Level,
-        at: At<'_>,
-        origin: Origin,
-        left: &Value,
-        right: &Value,
-        one: &Telescope,
-        other: &Telescope,
-    ) -> Step {
-        if one.fields.len() != other.fields.len() {
-            return Self::by_reading_back(meter, depth, at, left, right);
-        }
-        let mut left_env = one.env.clone();
-        let mut right_env = other.env.clone();
-        let mut under = depth;
-        for (mine, theirs) in one.fields.iter().zip(other.fields.iter()) {
-            if mine.name != theirs.name {
-                return Self::by_reading_back(meter, depth, at, left, right);
-            }
-            let left_ty = eval(meter, &left_env, &mine.term)?;
-            let right_ty = eval(meter, &right_env, &theirs.term)?;
-            self.step(meter, under, At::Type, origin, &left_ty, &right_ty)
-                .map_err(|failure| failure.under(PathStep::Field(Arc::clone(&mine.name))))?;
-            // Both telescopes proceed under the *same* variable, because the
-            // field types have just been made equal.
-            let variable = Value::var(Origin::UNKNOWN, under, Arc::new(left_ty));
-            left_env = left_env.push(variable.clone());
-            right_env = right_env.push(variable);
-            under = under.deeper();
+        let mut reading = product.reading();
+        for (position, field) in product.fields.iter().enumerate() {
+            let position = u32::try_from(position).unwrap_or(u32::MAX);
+            let mine = read_field(meter, product, position, left)?;
+            let theirs = read_field(meter, product, position, right)?;
+            let field_ty = crate::kernel::eval::eval(meter, &reading, &field.ty)?;
+            self.step(meter, depth, At::Term(&field_ty), origin, &mine, &theirs)
+                .map_err(|failure| failure.under(PathStep::Field(Arc::clone(&field.name))))?;
+            // The telescope proceeds under the *left* subject's field, because
+            // it has just been made equal to the right one's.
+            reading = reading.push(mine);
         }
         Ok(())
     }
@@ -618,30 +619,21 @@ impl Conversion {
         }
         let mut prefix = Neutral::head(one.origin, one.head.clone());
         for (mine, theirs) in one.spine.iter().zip(other.spine.iter()) {
-            match (mine, theirs) {
-                (
-                    Elim::App {
-                        argument: left_argument,
-                        ..
-                    },
-                    Elim::App {
-                        argument: right_argument,
-                        ..
-                    },
-                ) => {
-                    let Form::Pi { domain, .. } = head_type(meter, &prefix)?.form else {
-                        return Err(blocked_mismatch(meter, depth, one, other)?);
-                    };
-                    self.step(meter, depth, At::Term(&domain), origin, left_argument, right_argument)
-                        .map_err(|failure| failure.under(PathStep::Argument))?;
-                }
-                (Elim::Project { field: left_field, .. }, Elim::Project { field: right_field, .. })
-                    if left_field == right_field => {}
-
-                (Elim::App { .. } | Elim::Project { .. }, _) => {
-                    return Err(blocked_mismatch(meter, depth, one, other)?);
-                }
-            }
+            let (
+                Elim::App {
+                    argument: left_argument,
+                    ..
+                },
+                Elim::App {
+                    argument: right_argument,
+                    ..
+                },
+            ) = (mine, theirs);
+            let Form::Pi { domain, .. } = head_type(meter, &prefix)?.form else {
+                return Err(blocked_mismatch(meter, depth, one, other)?);
+            };
+            self.step(meter, depth, At::Term(&domain), origin, left_argument, right_argument)
+                .map_err(|failure| failure.under(PathStep::Argument))?;
             prefix.spine.push(mine.clone());
         }
         Ok(())
@@ -780,6 +772,21 @@ impl ElabError {
 
 /// What one step of unification answers.
 type Step = Result<(), Failure>;
+
+/// Field `position` of `subject`, as the generated accessor applied to the
+/// family's parameters and then to the subject.
+///
+/// The same application [`crate::kernel::quote`]'s η builds, so a comparison
+/// that agrees field by field and a read-back that expands both sides cannot
+/// disagree about what a field is.
+fn read_field(meter: &mut Meter, product: &Product, position: u32, subject: &Value) -> Result<Value, CoreError> {
+    let here = subject.origin;
+    let mut read = product.projection(position).value(here, &product.globals);
+    for param in &product.params {
+        read = apply(meter, here, read, param.clone())?;
+    }
+    apply(meter, here, read, subject.clone())
+}
 
 /// Why a step did not succeed.
 enum Failure {

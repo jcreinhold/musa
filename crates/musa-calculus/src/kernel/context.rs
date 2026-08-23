@@ -193,12 +193,15 @@ impl Globals {
             return Definition::Undeclared;
         };
         match *role {
-            Role::TypeConstructor | Role::Constructor | Role::Recursor => {
+            Role::TypeConstructor | Role::Constructor | Role::Recursor | Role::Projection => {
                 let level = match *role {
                     Role::Recursor => levels.as_slice().first().cloned().unwrap_or(Sort::ZERO),
-                    Role::Defined | Role::Constructor | Role::TypeConstructor | Role::Base | Role::Builtin => {
-                        Sort::ZERO
-                    }
+                    Role::Defined
+                    | Role::Constructor
+                    | Role::TypeConstructor
+                    | Role::Projection
+                    | Role::Base
+                    | Role::Builtin => Sort::ZERO,
                 };
                 Self::found_in(tables, name)
                     .map_or(Definition::Undeclared, |found| Definition::Declared(found.at(level)))

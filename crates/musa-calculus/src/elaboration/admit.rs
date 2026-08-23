@@ -199,9 +199,6 @@ impl Registry {
             | Shape::Universe(_)
             | Shape::Named { .. }
             | Shape::App { .. }
-            | Shape::RecordType(_)
-            | Shape::Record(_)
-            | Shape::Project { .. }
             // A λ or a `let`, the Π above having taken its own diagnostic.
             | Shape::Bind { .. }
             | Shape::Lit(_)
