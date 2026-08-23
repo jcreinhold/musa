@@ -257,11 +257,19 @@ impl Lowering<'_> {
         };
         let mut built = built;
         for (at, literal, body) in tests.into_iter().rev() {
-            let matches = applied(
-                at,
-                Raw::hosted(at, "match_quote"),
-                [Raw::var(at, bound.as_str()), Raw::lit(at, literal)],
-            );
+            // `match_quote` reads a `Syntax ⟨tokentree⟩`, and an expression
+            // scrutinee reaches it through §1's `forget` — written here, at the
+            // one place the category is dropped. Prompt 159 deleted the
+            // acceptance rule that used to insert it silently, so the lowering
+            // says what it does. The *holes* still bind at the scrutinee's own
+            // category: what is forgotten is the subject of the shape test, not
+            // the value the arm's bindings are read out of.
+            let subject = if at_expression {
+                applied(at, Raw::hosted(at, "forget"), [Raw::var(at, bound.as_str())])
+            } else {
+                Raw::var(at, bound.as_str())
+            };
+            let matches = applied(at, Raw::hosted(at, "match_quote"), [subject, Raw::lit(at, literal)]);
             built = Raw::match_on(
                 at,
                 [matches],

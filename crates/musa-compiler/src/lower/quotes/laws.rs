@@ -79,13 +79,13 @@ fn old(quoted: &str) -> Syntax {
     let quoting = fn (here: NodePath) -> Syntax<Expr> {{ {quoted} }};
 
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{
-        Ok(syntax_fold_from_leaves(
+        Ok(forget(syntax_fold_from_leaves(
             fn (here) {{ quoting(here) }},
             fn (here, kind, spelling) {{ quoting(here) }},
             fn (here, name) {{ quoting(here) }},
             fn (here, delimiter, children) {{ quoting(here) }},
             region,
-        ))
+        )))
     }};
 }}"
     );

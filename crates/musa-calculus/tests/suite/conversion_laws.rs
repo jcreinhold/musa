@@ -11,7 +11,8 @@
 use std::sync::Arc;
 
 use musa_calculus::{
-    Base, Budget, CoreError, Cx, Index, Literal, Origin, Payload, Registry, Sort, Term, convertible, convertible_types,
+    Base, Budget, Builtin, CoreError, Cx, Family, Index, Literal, Origin, Payload, Raw, Registry, Sort, Term,
+    convertible, convertible_types,
 };
 
 use crate::fixtures::{Sample, corpus, corpus_at};
@@ -354,7 +355,9 @@ impl Payload for Count {
     }
 }
 
-/// A host holding `Count : Type 0` and `Pc : Count → Type 0`.
+/// A host holding `Count : Type 0`, `Pc : Count → Type 0`, and one constructor
+/// `pc_of : (n : Count) → Pc n` so that a value at a known index can be written
+/// at all.
 ///
 /// # Panics
 ///
@@ -365,8 +368,31 @@ fn counted() -> Cx {
         "Pc",
         Term::pi(HERE, "n", count.term(HERE), Term::universe(HERE, Sort::ZERO)),
     );
-    let registry = Registry::new(vec![count, pc], Vec::new()).expect("the two signatures are admissible");
+    let pc_of = Builtin::constructor(
+        "pc_of",
+        Term::pi(
+            HERE,
+            "n",
+            count.term(HERE),
+            Term::app(HERE, pc.term(HERE), Term::var(HERE, Index(0))),
+        ),
+        Family::Machine,
+    );
+    let registry = Registry::new(vec![count, pc], vec![pc_of]).expect("the three signatures are admissible");
     Cx::with_budget(Budget::LANGUAGE).with_externs(Arc::new(registry))
+}
+
+/// `pc_of n`, as a raw term — the one inhabitant of `Pc n` this host can write.
+///
+/// # Panics
+///
+/// If the host above did not register the name it says it does.
+fn pc_of(cx: &Cx, count: i128) -> Raw {
+    let Some(musa_calculus::Extern::Base(counts)) = cx.extern_named("Count") else {
+        panic!("`Count` is registered");
+    };
+    let literal = Literal::new(counts.term(HERE), Arc::new(Count(count)));
+    Raw::app(HERE, Raw::var(HERE, "pc_of"), Raw::lit(HERE, literal))
 }
 
 /// `Pc n`, as a type.
@@ -410,4 +436,39 @@ fn a_type_constructor_at_two_values_is_two_types() {
     let twelve = musa_calculus::normalize_type(&cx, &twelve).expect("`Pc 12` normalizes");
     let twenty_four = musa_calculus::normalize_type(&cx, &twenty_four).expect("`Pc 24` normalizes");
     assert_ne!(twelve, twenty_four, "read-back keeps `Pc 12` and `Pc 24` apart");
+}
+
+/// §5.1 and prompt 159: acceptance and conversion are the same relation.
+///
+/// The language held exactly one exception until this test's prompt. A base type
+/// could carry an `Accepts` rule, and `elab/check.rs` fired it *after* conversion
+/// had already said no, inserting a δ-builtin to carry the value across. It was
+/// subtyping scoped to base-type index literals — kept out of conversion on
+/// purpose, because conversion is symmetric and a rule that certifies both
+/// directions certifies nothing. Deleting it makes one sentence true with no
+/// exception: **no rule accepts a program that conversion would reject.**
+///
+/// The negative control is the whole test, and it is the general shape of the
+/// case the rule existed for. `Pc 12` and `Pc 24` are two types by the law
+/// above, so a value written at one is refused at the other — and refused as a
+/// mismatch, rather than silently carried. Musa's own instance is `Syntax Expr`
+/// standing where `Syntax TokenTree` is wanted; `musa-compiler` now bridges it
+/// with a `forget` the author writes, because this crate holds the rule and not
+/// the vocabulary.
+#[test]
+fn nothing_is_accepted_where_conversion_says_no() {
+    let cx = counted();
+    let twelve = pc_at(&cx, 12);
+    let twenty_four = pc_at(&cx, 24);
+
+    assert_eq!(
+        convertible_types(&cx, &twelve, &twenty_four),
+        Ok(false),
+        "conversion says `Pc 12` is not `Pc 24`"
+    );
+
+    musa_calculus::check(&cx, &twelve, &pc_of(&cx, 12)).expect("`pc_of 12` stands at the type it is written at");
+
+    let refused = musa_calculus::check(&cx, &twenty_four, &pc_of(&cx, 12));
+    assert!(refused.is_err(), "nothing carries `Pc 12` into `Pc 24`: {refused:?}");
 }

@@ -110,33 +110,7 @@ struct BaseDeclaration {
     name: Name,
     kind: Term,
     storable: bool,
-    accepts: Option<Accepts>,
 }
-
-/// Whether a position of an indexed base type accepts a value of it at a
-/// *different* index, and the operation that carries the value across.
-///
-/// The host's rule, because the core has no opinion about what an index means:
-/// `Syntax ⟨expr⟩` standing where `Syntax ⟨token-tree⟩` is asked for is
-/// `docs/rules/language/11-quotation.md` §1's forgetting rule, and only the
-/// compiler that registered `Cat` knows which way it runs. Answering with a
-/// *name* rather than with a [`Builtin`] is what keeps this a `fn` pointer:
-/// nothing here captures, so the rule is fixed at registration exactly as a
-/// [`Rule`] is, and D3's order-independence needs no second argument.
-///
-/// Called only when the two indices are literals of the same base type, and only
-/// from the elaborator's one directional site — [`crate::elaboration::elab`]'s `check` —
-/// never from conversion. That is the difference between an acceptance rule and
-/// a definitional equality, and it is the whole difference: conversion is
-/// symmetric, so a rule living there would admit the reverse direction too, and
-/// an index that certifies both ways certifies nothing. Answer `None` when the
-/// indices are the same; ordinary conversion decides that case.
-///
-/// The name must be a δ-[`Builtin`] of the same registry, taking one argument of
-/// the found type and answering at the expected one. A name that is not is
-/// [`crate::Malformed::UnregisteredCarrier`] — a table defect, like every other
-/// disagreement between a host's rule and its own signature.
-pub type Accepts = fn(expected: &Literal, found: &Literal) -> Option<&'static str>;
 
 /// Two base types are the same when they have the same name.
 ///
@@ -177,7 +151,6 @@ impl Base {
             name: name.into(),
             kind,
             storable: false,
-            accepts: None,
         }))
     }
 
@@ -202,40 +175,18 @@ impl Base {
         }))
     }
 
-    /// The same base type, with the host's rule for when one of its index
-    /// positions accepts a value of it at another index.
-    ///
-    /// Beside [`Self::storable`] rather than a parameter of [`Self::new`] for
-    /// the same reason: almost no base type has one — a base type with no index
-    /// cannot — and a constructor that made every caller write `None` would
-    /// spell the absence more often than the presence. See [`Accepts`] for what
-    /// the rule may say and where it is asked.
-    #[must_use]
-    pub fn accepting(&self, accepts: Accepts) -> Self {
-        Self(Arc::new(BaseDeclaration {
-            accepts: Some(accepts),
-            ..self.declaration()
-        }))
-    }
-
     /// This declaration's fields, for a method that replaces one of them.
     fn declaration(&self) -> BaseDeclaration {
         BaseDeclaration {
             name: Arc::clone(&self.0.name),
             kind: self.0.kind.clone(),
             storable: self.0.storable,
-            accepts: self.0.accepts,
         }
     }
 
     /// Whether its owner guaranteed it storable.
     pub(crate) fn is_storable(&self) -> bool {
         self.0.storable
-    }
-
-    /// Its owner's acceptance rule, if it has one.
-    pub(crate) fn accepts(&self) -> Option<Accepts> {
-        self.0.accepts
     }
 
     /// Its name.

@@ -124,18 +124,19 @@ fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
 
 #[test]
 fn a_token_tree_position_accepts_a_certified_expression() {
-    // §1's forgetting rule, in the direction it holds. `as_expression` hands
-    // back a `Syntax<Expr>`, and every position an adapter can put it in
-    // wants a `Syntax<TokenTree>` — the answer of `expand` among them. If the
-    // rule were an operation an author writes, this program would need one;
-    // it needs none.
+    // §1's forgetting, in the direction it holds, and as prompt 159 makes it:
+    // an operation the author writes. `as_expression` hands back a
+    // `Syntax<Expr>`, and every position an adapter can put it in wants a
+    // `Syntax<TokenTree>` — the answer of `expand` among them — so the program
+    // says `forget` at each place a category is dropped, and the checker
+    // inserts nothing behind its back.
     let module = probe(
         r"
     let kept = fn (node: Syntax<TokenTree>) -> Syntax<TokenTree> { node };
 
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match as_expression(rebuilt(region)) {
-            Some(node) -> Ok(kept(node)),
+            Some(node) -> Ok(kept(forget(node))),
             None -> Ok(rebuilt(region)),
         }
     };
@@ -213,7 +214,7 @@ fn the_checked_parse_answers_exactly_when_the_tree_parses_as_an_expression() {
         r#"
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
         match as_expression(rebuilt(region)) {
-            Some(node) -> Ok(node),
+            Some(node) -> Ok(forget(node)),
             None -> Err((region, "this region does not parse as an expression")),
         }
     };

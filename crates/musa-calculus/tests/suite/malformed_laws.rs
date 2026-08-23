@@ -25,8 +25,8 @@ use std::any::Any;
 use std::sync::Arc;
 
 use musa_calculus::{
-    Base, Budget, Builtin, Checked, CoreError, Cx, Datum, ElabError, Family, Index, Literal, Malformed, Payload, Raw,
-    Registry, Role, Sort, Term,
+    Base, Budget, Builtin, Checked, CoreError, Cx, Datum, Family, Index, Literal, Malformed, Payload, Raw, Registry,
+    Role, Sort, Term,
 };
 
 /// Where every term this file builds says it was written.
@@ -82,7 +82,6 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::BuiltinStuck(_) => "builtin-stuck",
         Malformed::MisfitAnswer(_) => "misfit-answer",
         Malformed::NotALiteral(_) => "not-a-literal",
-        Malformed::UnregisteredCarrier(_) => "unregistered-carrier",
         Malformed::LevelArity(_) => "level-arity",
         Malformed::Cyclic(_) => "cyclic-meta",
         Malformed::MetaTelescope(_) => "meta-telescope",
@@ -94,7 +93,7 @@ fn kind(fault: &Malformed) -> &'static str {
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 20] = [
+const ALL_MALFORMED: [&str; 19] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
@@ -107,7 +106,6 @@ const ALL_MALFORMED: [&str; 20] = [
     "builtin-stuck",
     "misfit-answer",
     "not-a-literal",
-    "unregistered-carrier",
     "level-arity",
     "cyclic-meta",
     "meta-telescope",
@@ -333,33 +331,14 @@ fn rechecking(name: &str, cx: &Cx, ty: &Term, term: &Term) -> Malformed {
     malformed(name, musa_calculus::recheck(cx, ty, &checked))
 }
 
-/// The malformation an *elaborated* outcome carries.
-///
-/// [`Malformed::UnregisteredCarrier`] is raised while a program is being
-/// checked, so it arrives inside an [`ElabError`] rather than a [`CoreError`].
-/// Which enum carries it does not change which enum it *is*: the sentence is
-/// addressed to whoever maintains this compiler, and the host's own rule named
-/// the thing that is missing.
-///
-/// # Panics
-///
-/// When the outcome is not a malformation.
-fn refused<T>(name: &str, outcome: Result<T, ElabError>) -> Malformed {
-    match outcome {
-        Ok(_) => panic!("{name}: elaboration accepted a program the registry cannot serve"),
-        Err(ElabError::Malformed(fault)) => fault,
-        Err(other) => panic!("{name}: reached `{other}` rather than a malformation"),
-    }
-}
-
 // ---- a host whose table and its own signatures disagree ---------------------
 //
-// Four malformations are reachable only through a *registration*, and each is
+// Two malformations are reachable only through a *registration*, and each is
 // the same defect at a different moment: the host's rule and the host's
 // signature say different things, and the program that met them was well typed.
 // So this section registers a small host that is wrong on purpose. It is not
-// Musa's, for `index_laws.rs`'s reason — `Count` is an index domain and `Row` is
-// a type that carries one, and neither is a musical word.
+// Musa's, for `index_laws.rs`'s reason — `Count` is an index domain, and it is
+// not a musical word.
 
 /// A whole number, as a host would carry one.
 #[derive(Debug)]
@@ -398,17 +377,6 @@ fn as_count(literal: &Literal) -> Option<i128> {
 
 fn arrow(domain: Term, codomain: Term) -> Term {
     Term::pi(HERE, "_", domain, codomain)
-}
-
-/// `Row : Count → Type 0`, naming a carrier nobody registered.
-///
-/// The [`musa_calculus::Accepts`] rule is the defect: the host says a `Row` at
-/// one index may stand where a `Row` at another was wanted, and names
-/// `count_coerce` to carry it across — and the registry below does not hold a
-/// builtin by that name.
-fn row() -> Base {
-    Base::new("Row", arrow(count_type(), Term::universe(HERE, Sort::ZERO)))
-        .accepting(|_wanted, _held| Some("count_coerce"))
 }
 
 /// `count_add : Count → Count → Count`, and `checked_add` answers nothing at the
@@ -455,21 +423,6 @@ fn count_tally() -> Builtin {
     )
 }
 
-/// `row_of : (n : Count) → Row n` — a constructor, so a `Row` at a known index
-/// can be written at all.
-fn row_of() -> Builtin {
-    Builtin::constructor(
-        "row_of",
-        Term::pi(
-            HERE,
-            "n",
-            count_type(),
-            Term::app(HERE, row().term(HERE), Term::var(HERE, Index(0))),
-        ),
-        Family::Machine,
-    )
-}
-
 /// The host, registered.
 ///
 /// # Panics
@@ -477,7 +430,7 @@ fn row_of() -> Builtin {
 /// If the registry refuses its own signatures. It does not: every fault below is
 /// a disagreement between a signature and a *rule*, and D1 reads signatures.
 fn host() -> Cx {
-    let registry = Registry::new(vec![count(), row()], vec![count_add(), count_tally(), row_of()])
+    let registry = Registry::new(vec![count()], vec![count_add(), count_tally()])
         .expect("the signatures are admissible; it is the rules that are wrong");
     Cx::with_budget(Budget::LANGUAGE).with_externs(Arc::new(registry))
 }
@@ -491,15 +444,10 @@ fn calls(function: &str, arguments: impl IntoIterator<Item = Raw>) -> Raw {
         })
 }
 
-/// `Row n`, as a type — a base type applied to a literal.
-fn row_at(index: i128) -> Term {
-    Term::app(HERE, row().term(HERE), count_lit(index).term(HERE))
-}
-
-/// The three a *registration* reaches, which no hand-built term alone can.
+/// The two a *registration* reaches, which no hand-built term alone can.
 ///
 /// Gathered here rather than beside the cases above because they need a registry
-/// rather than a term, and because they are one finding rather than three: a host
+/// rather than a term, and because they are one finding rather than two: a host
 /// that writes down two descriptions of itself can make them disagree, and the
 /// kernel's word for each disagreement is a [`Malformed`].
 ///
@@ -534,16 +482,6 @@ fn host_faults() -> Vec<(&'static str, Malformed)> {
     );
     assert!(matches!(fault, Malformed::MisfitAnswer(_)), "{fault}");
     found.push(("a rule answering at the wrong type", fault));
-
-    // A base type that says one index accepts a value at another, and names
-    // nothing that can carry it across.
-    let program = calls("row_of", [Raw::lit(HERE, count_lit(1))]);
-    let fault = refused(
-        "a carrier the registry does not hold",
-        musa_calculus::check(&cx, &row_at(2), &program),
-    );
-    assert!(matches!(fault, Malformed::UnregisteredCarrier(_)), "{fault}");
-    found.push(("a carrier the registry does not hold", fault));
 
     found
 }

@@ -6,14 +6,13 @@ use std::sync::Arc;
 
 use crate::elaboration::raw::{Raw, RawField, RawShape};
 use crate::elaboration::refuse::{ElabError, Refusal};
-use crate::kernel::error::Malformed;
 use crate::kernel::eval::{apply_closure, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
 use crate::kernel::term::{Filling, Name, Term};
 use crate::kernel::value::{Form, Value};
 
-use super::{Bound, Elaborator, Typed};
+use super::{Bound, Elaborator};
 
 impl Elaborator {
     /// `Γ ⊢ raw ⇐ ty ⇝ t`.
@@ -45,12 +44,6 @@ impl Elaborator {
                         _ => self.infer(scope, raw)?,
                     },
                 };
-                // The host's index-acceptance rule answers before conversion
-                // is asked: it is a *carrying*, not an equality, and a unify
-                // that ran first would only report the pair as disagreeing.
-                if let Some(carried) = self.carried(scope, ty, &inferred)? {
-                    return Ok(carried);
-                }
                 // §2.1 at the one place it can fire from below: a term whose
                 // inferred type still quantifies over parameters the expected
                 // type can determine — a bare constructor, a generic's name —
@@ -61,102 +54,6 @@ impl Elaborator {
                 Ok(inferred.term)
             }
         }
-    }
-
-    /// `inferred`, carried into a position of type `ty` that accepts it at a
-    /// different index — or `None` when no host rule applies and conversion
-    /// decides.
-    ///
-    /// The core's one subsumption rule, and it is the host's rather than the
-    /// core's: see [`Accepts`]. Two things about *where* it stands are the whole
-    /// of why it is sound.
-    ///
-    /// **It is here and not in [`Conversion`].** Conversion is symmetric, so a rule
-    /// living there would let a value stand at either index and the index would
-    /// certify nothing. `check`'s `Switch` is the only place in the elaborator
-    /// where one type is *expected* and another *found*, which is exactly the
-    /// asymmetry an acceptance rule needs — `11-quotation.md` §1 states its
-    /// forgetting rule directionally for the same reason.
-    ///
-    /// **It elaborates to a coercion rather than to bare acceptance.** The
-    /// alternative — return `inferred.term` unchanged and skip unification — is
-    /// what the replaced checker did, and it would leave a term whose type is
-    /// `Syntax ⟨expr⟩` standing where the elaborated program says
-    /// `Syntax ⟨token-tree⟩`. [`crate::well_typed`] would then refuse a term
-    /// this elaborator produced, which is the one invariant prompt 134 called
-    /// the most valuable in the crate. So the checker inserts the carrier, the
-    /// author never writes it, and the core keeps no notion of subtyping at all.
-    ///
-    /// # Errors
-    ///
-    /// [`Malformed::UnregisteredCarrier`] when the host's rule names an
-    /// operation its own registry does not hold, and whatever forcing the two
-    /// indices costs.
-    fn carried(&mut self, scope: &Scope, ty: &Value, inferred: &Typed) -> Result<Option<Term>, ElabError> {
-        let (Some((expected, wanted)), Some((found, held))) =
-            (self.at_a_literal_index(ty)?, self.at_a_literal_index(&inferred.ty)?)
-        else {
-            return Ok(None);
-        };
-        if expected != found {
-            return Ok(None);
-        }
-        // The rule is the *registry's*, not the one carried by whichever `Base`
-        // this type was built from. A host writes a base type's term at many
-        // sites — `Base` compares by name for exactly that reason — so reading
-        // the rule off the embedded declaration reads it off whichever copy the
-        // type happened to be built from, and only the copy in the registry was
-        // decorated. Storability is already read this way, off the registered
-        // bases and never off a type's own; this is the same authority.
-        let Some(crate::kernel::base::Extern::Base(declared)) = scope.cx().extern_named(expected.name()) else {
-            return Ok(None);
-        };
-        let Some(carrier) = declared.accepts().and_then(|accepts| accepts(&wanted, &held)) else {
-            return Ok(None);
-        };
-        let Some(crate::kernel::base::Extern::Builtin(builtin)) = scope.cx().extern_named(carrier) else {
-            return Err(Malformed::UnregisteredCarrier(carrier.into()).into());
-        };
-        let here = inferred.term.origin();
-        let builtin = builtin.term(here);
-        Ok(Some(Term::app(here, builtin, inferred.term.clone())))
-    }
-
-    /// The base type and index of `ty`, when it is one applied to one literal.
-    ///
-    /// The shape [`Accepts`] is asked about and the only one: a base type at no
-    /// index has no second position to accept from, and one whose index is a
-    /// variable or a metavariable is not settled enough to ask about — the rule
-    /// reads two literals, so both sides must have got that far.
-    fn at_a_literal_index(
-        &mut self,
-        ty: &Value,
-    ) -> Result<Option<(crate::kernel::base::Base, crate::kernel::base::Literal)>, ElabError> {
-        // Forced first, and not only at the index. `check` forces the type it
-        // was handed, but the *inferred* type reaching this arrives straight out
-        // of `infer` — and for a call whose result is a type parameter that
-        // is a metavariable, solved by the first argument that mentions it. A
-        // solved metavariable is a neutral with no spine, so reading the head
-        // without forcing sees `Head::Meta` and answers that this is not a type
-        // at a literal index, one layer of indirection away from the type that
-        // plainly is.
-        let unfolded = opened(&mut self.meter, ty)?;
-        let ty = unfolded.as_ref().unwrap_or(ty);
-        let Form::Neutral(ref neutral) = ty.form else {
-            return Ok(None);
-        };
-        let crate::kernel::value::Head::Base(ref base, _) = neutral.head else {
-            return Ok(None);
-        };
-        let [crate::kernel::value::Elim::App { ref argument, .. }] = neutral.spine[..] else {
-            return Ok(None);
-        };
-        let unfolded = opened(&mut self.meter, argument)?;
-        let index = unfolded.as_ref().unwrap_or(argument);
-        let Form::Lit(ref literal) = index.form else {
-            return Ok(None);
-        };
-        Ok(Some((base.clone(), literal.clone())))
     }
 
     /// The checking rule for `raw` at `ty`, or `None` when it has none and §2's
@@ -219,9 +116,7 @@ impl Elaborator {
             // out to defer, so the question is decided before anything is
             // elaborated: a call with no checking-only argument can never
             // defer, and takes exactly the path it always took — inferred,
-            // then `Switch`, where [`Self::carried`] gets its say. That is
-            // where the guard earns its keep, since an acceptance rule needs
-            // the mismatch to reach it rather than be unified away.
+            // then `Switch`.
             RawShape::Call {
                 function,
                 arguments,

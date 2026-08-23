@@ -44,7 +44,7 @@ fn module(emit: &str) -> String {
         "library {{
     let level = \"readable\";
 {emit}
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(

@@ -100,7 +100,7 @@ pub use crate::elaboration::raw::{
 pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::elaboration::storable::requiring_storable;
 pub use crate::kernel::base::{
-    Accepts, Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
+    Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
 };
 pub use crate::kernel::budget::{Budget, Metric, ResourceError, Spend};
 pub use crate::kernel::checked::Checked;

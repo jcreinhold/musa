@@ -1,7 +1,7 @@
 ---
 id: 159
 slug: delete-the-coercion-rule
-status: pending
+status: done
 depends_on: [156]
 phase: 3
 ---

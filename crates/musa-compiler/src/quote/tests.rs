@@ -388,7 +388,7 @@ fn the_gate_is_reachable_from_inside_a_transformer() {
     // other sum in the language is taken apart by.
     let gated = r#"syntax_group(syntax_built(here, 3, 0), delimiter,
         [match checked_expression(syntax_token(syntax_built(here, 4, 0), TokenKind.Integer, "1")) {
-            Ok(node) -> node,
+            Ok(node) -> forget(node),
             Err(message) -> syntax_token(syntax_built(here, 5, 0), TokenKind.Error, message),
          }])"#;
     let produced = run(&transformer(

@@ -62,10 +62,10 @@
 //! than by a signature, which [`machine::UNREGISTERED`] argues and prompt 142
 //! owns.
 //!
-//! `SYNTAX_OWNERSHIP` has 17 rows and sixteen are registered: fourteen δ builders
+//! `SYNTAX_OWNERSHIP` has 18 rows and seventeen are registered: fifteen δ builders
 //! here, and the two traversals in [`traversal`], which are §5.8's *second*
 //! family — a structural eliminator over `Syntax`, which is a base type. The
-//! seventeenth, `run_syntax_step`, is [`run_syntax_step`]: a projection, not a
+//! eighteenth, `run_syntax_step`, is [`run_syntax_step`]: a projection, not a
 //! compiler-owned operation, and its target is a declared family that
 //! [`Registry::new`] would refuse. [`crate::registry::rules::UNREGISTERED`]
 //! counts what is left, and the suite counts it again off the tables themselves.
@@ -494,12 +494,12 @@ fn bases() -> Vec<Base> {
         // what §5.9 keeps separate is the *operations*, and those are two tables
         // in [`builtins`].
         plain("Cat"),
-        // The one base type with an acceptance rule. `11-quotation.md` §1's
-        // forgetting rule is stated as the checker's and not as an operation an
-        // author writes, so it is registered *with the type it is about* and the
-        // elaborator asks it where a direction exists — see [`rules::forgets`]
-        // and [`syntax_carrier`].
-        indexed("Syntax", "Cat").accepting(rules::forgets),
+        // Indexed and nothing more. It used to carry an acceptance rule —
+        // `11-quotation.md` §1's forgetting, stated as the checker's rather
+        // than as an operation an author writes — and prompt 159 deleted it:
+        // that rule was subtyping, and the carrier it inserted is now the
+        // ordinary `forget` row in `SYNTAX_OWNERSHIP`.
+        indexed("Syntax", "Cat"),
         plain("TokenKind"),
         plain("Delimiter"),
         plain("NodePath"),
@@ -838,8 +838,8 @@ fn arrow(arguments: Vec<Term>, result: Term) -> Term {
 /// picks from the scrutinee's written annotation (prompt 142's repair; the
 /// lowering runs before types exist, and the annotation is the category the
 /// author stated). `match_quote` needs no twin: a `Syntax ⟨expr⟩` scrutinee
-/// reaches its `⟨tokentree⟩` parameter through §1's forgetting rule, which
-/// prompt 142 supplied as [`FORGOTTEN`](rules::FORGOTTEN) below.
+/// reaches its `⟨tokentree⟩` parameter through §1's `forget`, which prompt 159
+/// made an operation the caller writes rather than one the checker inserts.
 ///
 /// # Errors
 ///
@@ -894,36 +894,6 @@ fn quotation(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
     ])
 }
 
-/// `forget_category : Syntax ⟨expr⟩ → Syntax ⟨token-tree⟩`.
-///
-/// What `11-quotation.md` §1's acceptance rule elaborates to. The section calls
-/// it "one acceptance rule in the checker rather than a `forget` an author
-/// writes", and both halves of that are here: the rule is
-/// [`rules::forgets`], carried on the `Syntax` registration and asked by
-/// `musa-calculus`'s one directional site, and this operation is what the *checker*
-/// inserts — it is in neither ownership table, so no name resolves to it and no
-/// adapter can write it.
-///
-/// It is a δ-builtin and not bare acceptance because an elaborated term has to
-/// re-check in the core. Without it the term the elaborator produced would hold
-/// a `Syntax ⟨expr⟩` where its own type says `Syntax ⟨token-tree⟩`, and
-/// [`musa_calculus::well_typed`] would refuse a term this compiler had accepted.
-///
-/// One direction and one signature, because [`crate::quote::Cat`] has two
-/// cases. A third category is a case in [`rules::forgets`] and a second
-/// registration here.
-fn syntax_carrier() -> Builtin {
-    Builtin::new(
-        rules::FORGOTTEN,
-        arrow(
-            vec![syntax_type(crate::quote::Cat::Expr)],
-            syntax_type(crate::quote::Cat::TokenTree),
-        ),
-        musa_calculus::Family::Delta,
-        rules::FORGET,
-    )
-}
-
 /// Every compiler-owned δ operation, as a core builtin.
 ///
 /// Two tables, kept two. `BUILTIN_OWNERSHIP` is the source language's and
@@ -975,7 +945,6 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
         ));
     }
     built.extend(traversal::eliminators(cx)?);
-    built.push(syntax_carrier());
     built.extend(quotation(cx)?);
     built.extend(track::builtins(cx)?);
     built.extend(notation::builtins(cx)?);

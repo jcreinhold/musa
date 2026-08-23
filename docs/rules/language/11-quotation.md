@@ -143,8 +143,9 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
 ```
 
 - `${ e }` splices the value of one expression where one node stands, and `$x` is its shorthand for the case where that
-  expression is a name. The position's category must accept the value's (§1), and a mismatch is a compile-time error
-  naming both categories and pointing at the splice.
+  expression is a name. The position's category and the value's must be the *same* category — §1 leaves no rule that
+  bridges them, so a `Syntax<Expr>` reaching a token-tree position goes through a `forget` written at the splice — and a
+  mismatch is a compile-time error naming both categories and pointing at the splice.
 - The expression form is not a convenience. A block holds exactly one expression and there is no `let` inside it
   (`01-surface.md` §1), so a splice argument that is *computed* — `${ dot_count(here, dots) }`,
   `${ stated_field(region, here, read.head.beats, "…")? } ` — has nowhere else to be written. Fifteen of the twenty

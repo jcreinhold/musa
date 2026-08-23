@@ -65,7 +65,7 @@ fn probe(body: &str) -> String {
 fn folding(emit: &str) -> String {
     probe(&format!(
         "{emit}
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(built(region)) }};
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
         syntax_fold_from_leaves(
@@ -192,7 +192,7 @@ fn a_spread_arrives_with_the_separators_its_position_supplies() {
         r#"
     let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -236,7 +236,7 @@ fn an_empty_spread_leaves_no_separator_behind() {
 
     let empty = fn (here: NodePath) -> Syntax<Expr> { quote at here { [$..nothing] } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -384,7 +384,7 @@ fn a_quote_takes_its_identity_from_the_anchor_it_is_evaluated_with() {
         r"
     let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { (1, 1) } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -424,7 +424,7 @@ fn what_a_quote_builds_is_charged() {
         r"
     let narrow = fn (here: NodePath) -> Syntax<Expr> { quote at here { [1] } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -477,7 +477,7 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
         quote at here { [$..items] }
     };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(built(region)) };
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
 
     let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
         syntax_fold_from_leaves(
@@ -512,20 +512,22 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
 fn a_quote_in_an_inferring_position_builds_at_expr() {
     // §2, as the registry fixes it: a quote's category is never searched for,
     // because construction is always at `Expr` — an inferring position infers
-    // `Syntax<Expr>`, and a token-tree position receives the same value by
-    // §1's forgetting. What can fail is the certificate, not the category.
+    // `Syntax<Expr>`, and a token-tree position receives the same value through
+    // the `forget` the author writes — §1's forgetting, which prompt 159 made an
+    // operation rather than a rule. What can fail is the certificate, not the
+    // category.
     let module = probe(
         r"
     let unannotated = fn (here: NodePath) { quote at here { 1 } };
 
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
-        Ok(syntax_fold_from_leaves(
+        Ok(forget(syntax_fold_from_leaves(
             fn (here) { unannotated(here) },
             fn (here, kind, text) { unannotated(here) },
             fn (here, name) { unannotated(here) },
             fn (here, delimiter, children) { unannotated(here) },
             region,
-        ))
+        )))
     };
 ",
     );

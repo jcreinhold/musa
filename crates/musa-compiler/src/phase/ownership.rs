@@ -162,6 +162,19 @@ pub(crate) enum SyntaxOp {
     /// `checked_expression(subject)` — the gate, answering with the value or
     /// with what is wrong with it.
     Checked,
+    /// `forget(subject)` — the same tree, no longer claiming how it parses.
+    ///
+    /// `../rules/language/11-quotation.md` §1's forgetting, and the reason it
+    /// is a row here rather than a rule in the checker. It used to be both: the
+    /// operation existed and nothing could name it, because the elaborator
+    /// inserted it wherever a `Syntax Expr` stood in a `TokenTree` position.
+    /// That is subtyping, `../rules/constitution.md` §9 refuses it, and prompt
+    /// 159 deleted it. What is left is an ordinary total function, and this row
+    /// is what makes it callable.
+    ///
+    /// One direction and one signature: forgetting at `TokenTree` is the
+    /// identity, so a third category is a second row beside this one.
+    Forget,
 }
 
 /// What kind of phase-local operation a [`SyntaxOp`] is.
@@ -302,6 +315,9 @@ impl SyntaxOp {
                 vec![syntax()],
                 Box::new(Type::Sum(Box::new(expression()), Box::new(Type::Text))),
             ),
+            // The only row whose *argument* is at `Expr`. Everything else reads
+            // a tree nobody parsed; this one takes a claim away.
+            Self::Forget => Type::Function(vec![expression()], Box::new(syntax())),
         }
     }
 }
@@ -322,7 +338,7 @@ pub(crate) struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17] = [
+pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 18] = [
     BuiltinOwnership {
         operation: SyntaxOp::Recurse,
         spelling: "recurse_syntax",
@@ -425,6 +441,13 @@ pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 17]
         spelling: "as_expression",
         hidden_information: "the real parser, run over a tree the adapter holds, which is the only thing that can \
                              establish that the tree parses as an expression",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Forget,
+        spelling: "forget",
+        hidden_information: "that a `Syntax Expr` and a `Syntax TokenTree` hold the same tree, so that dropping the \
+                             claim is a rebuild at the wider type rather than an identity a caller could write",
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {

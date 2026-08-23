@@ -52,7 +52,7 @@
 
 use std::sync::Arc;
 
-use musa_calculus::{Answer, Datum, Literal, Rule};
+use musa_calculus::{Answer, Datum, Rule};
 use num_rational::Ratio;
 
 use super::{domain, literal, plain_type, syntax_type, tagged_type};
@@ -64,15 +64,15 @@ use musa_score::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 16 of `SYNTAX_OWNERSHIP`'s 17. The rows
-/// past this module's 96 and fourteen are registered where their reduction is:
+/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 17 of `SYNTAX_OWNERSHIP`'s 18. The rows
+/// past this module's 96 and fifteen are registered where their reduction is:
 /// the two traversals in [`super::traversal`], the eight track builtins in
 /// [`super::track`], and the eight machine forms in [`super::machine`], which
 /// are §5.8's second, third, and fourth families rather than its first. A
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 129;
+pub(super) const REGISTERED: usize = 130;
 
 /// The operations the core has that neither ownership table names.
 ///
@@ -83,31 +83,26 @@ pub(super) const REGISTERED: usize = 129;
 /// instantiating one. There is now, and it is deliberately not a name an adapter
 /// can write: [`super::quotation`] says why.
 ///
-/// [`FORGOTTEN`] is the fifth, and the strongest case of the same argument: it
-/// is what `11-quotation.md` §1's acceptance rule *elaborates to*, so a row
-/// naming it would hand an author the `forget` the section says they do not
-/// write.
+/// **`forget_category` used to be the seventh entry here, and prompt 159 moved
+/// it out.** It was a registration with no row for the strongest version of the
+/// argument above: it was what `11-quotation.md` §1's *acceptance rule*
+/// elaborated to, so giving it a row would have handed an author the `forget`
+/// the section then said they do not write. §1 now says the opposite — the
+/// acceptance rule was subtyping and is deleted — so the operation is an
+/// ordinary row in `SYNTAX_OWNERSHIP`, spelled `forget`, and this list is one
+/// shorter.
 ///
 /// Named rather than counted for [`super::traversal::SPELLINGS`]'s reason —
 /// "which" is the claim, and the accounting law reads each of them back out of
 /// the built registry and checks it against both tables.
-pub(super) const BEYOND: [&str; 7] = [
+pub(super) const BEYOND: [&str; 6] = [
     "instantiate_quote",
     "match_quote",
     "quote_hole",
     "quote_holes",
     "quote_hole_expr",
     "quote_holes_expr",
-    FORGOTTEN,
 ];
-
-/// The name of the operation that carries a parsed tree into a position that
-/// has forgotten how it parses.
-///
-/// One constant because two places have to agree on it and neither can read the
-/// other: [`super::syntax_carrier`] registers the builtin under it, and
-/// [`forgets`] answers it to `musa-calculus`'s elaborator.
-pub(super) const FORGOTTEN: &str = "forget_category";
 
 /// The rows that do not, by family and by count.
 ///
@@ -1213,42 +1208,16 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 Err(refusal) => errored(&refusal.to_string()),
             })
         },
+        // The tree is rebuilt at the wider type rather than answered
+        // unchanged, which is the content of a forgetting: the value does not
+        // change and its *type* does, and a literal carries its own type. See
+        // [`FORGET`].
+        SyntaxOp::Forget => |arguments| reduced(built(node(arguments.first()?)?)),
         // Prompt 141f's three. A traversal takes a function argument, so it is
         // §5.8's second family and not this one.
         SyntaxOp::Recurse | SyntaxOp::Run | SyntaxOp::Fold => return None,
     })
 }
-
-// ---- the forgetting rule ----
-
-/// Whether a `Syntax ⟨wanted⟩` position accepts a `Syntax ⟨held⟩`, and what
-/// carries it there.
-///
-/// `11-quotation.md` §1's forgetting rule, as `musa-calculus` asks it: a token-tree
-/// position accepts a tree of any category, because a token-tree position is
-/// precisely one that has not been parsed as anything more specific, and every
-/// other position requires its own category exactly. Directional on purpose —
-/// the reverse, a `Syntax ⟨expr⟩` position taking a tree nobody parsed, is the
-/// uncertified splice the index exists to refuse, and the core asks this only
-/// where a direction exists.
-///
-/// `None` at two equal categories, which is [`musa_calculus::Accepts`]'s contract:
-/// there is nothing to carry, and ordinary conversion says so more cheaply than
-/// a coercion nobody would read.
-pub(super) fn forgets(wanted: &Literal, held: &Literal) -> Option<&'static str> {
-    let (wanted, held) = (super::held::<Cat>(wanted)?, super::held::<Cat>(held)?);
-    (*wanted == Cat::TokenTree && *held != Cat::TokenTree).then_some(FORGOTTEN)
-}
-
-/// `forget_category(subject)` — the same tree, no longer claiming how it parses.
-///
-/// The value does not change and the *type* does, which is the content of a
-/// forgetting rule: [`tree`] rebuilds the literal at `Syntax ⟨token-tree⟩` so
-/// that what the position holds afterwards is a value of the type the position
-/// asked for. Answering the argument unchanged would leave a `Syntax ⟨expr⟩`
-/// standing where the elaborated term says otherwise, which the re-checker would
-/// then be right to refuse.
-pub(super) const FORGET: Rule = |arguments| reduced(built(node(arguments.first()?)?));
 
 // ---- quotation ----
 
