@@ -379,7 +379,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 161 | one-declaration-form | 3 | `data` becomes the one form, and `enum` and `record` two shapes of it |
 | 162 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make`, and the `template` that shares `make` — all five go |
 | 162a | module-privacy-for-source | 3 | A source file gets a `ModuleId`, so `private` is refused across files instead of carried |
-| 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed |
+| 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed — after 164 builds them |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind traits and namespaces |
 | 165 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
 | 165a | explicit-control-stack | 3 | Recursion depth leaves the nesting metric for the step budget it belongs to |
