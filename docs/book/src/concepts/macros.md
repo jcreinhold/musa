@@ -76,9 +76,9 @@ what keeps every node it builds attached to a node the composer wrote. A quote b
 node, `$x` is its shorthand when the expression is a name, and `$..xs` splices a run.
 
 Names inside a quote are hygienic. A binder the quote writes is renamed on the way out, so it cannot capture a name
-spliced into it, and a name spliced in still means what it meant where it was written. The one cost to an author is
-that a quote may not itself write a name the renaming could produce — `item_g0` and the like are the compiler's, and
-writing one is refused where the quote is, not where it expands.
+spliced into it, and a name spliced in still means what it meant where it was written. The one cost to an author is that
+a quote may not itself write a name the renaming could produce — `item_g0` and the like are the compiler's, and writing
+one is refused where the quote is, not where it expands.
 
 ## Provenance is carried and never read
 

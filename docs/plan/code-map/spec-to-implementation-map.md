@@ -1113,10 +1113,10 @@ every coverage hole §6.2 demands.
 the two together: five bodies, lowered and normalized, build the *same* `Syntax` the old checker and evaluator build,
 path for path.
 
-**Reached, and the two prompts that reached it.** Prompt 142 deleted `ExprKind::SyntaxQuote` and the checker's copy
-of the walk — `ExprKind` has one mention left in the crate, inside a comment about its own removal. It also supplied
-§1's forgetting as an *acceptance* rule, which prompt 159 then deleted as the subtyping it was: forgetting is a
-`SyntaxOp` row spelled `forget`, written at each site where a category is dropped, and `lower/quotes.rs` writes it for
+**Reached, and the two prompts that reached it.** Prompt 142 deleted `ExprKind::SyntaxQuote` and the checker's copy of
+the walk — `ExprKind` has one mention left in the crate, inside a comment about its own removal. It also supplied §1's
+forgetting as an *acceptance* rule, which prompt 159 then deleted as the subtyping it was: forgetting is a `SyntaxOp`
+row spelled `forget`, written at each site where a category is dropped, and `lower/quotes.rs` writes it for
 `match_quote`'s scrutinee where the lowering used to have it inserted behind its back.
 
 ## A diagnostic carried whole

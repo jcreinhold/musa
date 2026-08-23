@@ -5,11 +5,11 @@ the measurement behind prompt 161's repair. Written at prompt 161, before a line
 
 ## 1. The matrix
 
-`data`, `record`, and `enum` are three parsers in
-`crates/musa-syntax/src/parser/declarations.rs` and three readers in `crates/musa-compiler/src/lower/items.rs`. Read off
-the grammar rather than off the prose, they differ in five capabilities:
+`data`, `record`, and `enum` are three parsers in `crates/musa-syntax/src/parser/declarations.rs` and three readers in
+`crates/musa-compiler/src/lower/items.rs`. Read off the grammar rather than off the prose, they differ in five
+capabilities:
 
-| | index telescope | chosen indices | per-variant `private` | positional fields | named fields |
+|  | index telescope | chosen indices | per-variant `private` | positional fields | named fields |
 | --- | --- | --- | --- | --- | --- |
 | `data` | ✓ `data_indices` | ✓ `data_chosen` | ✗ | ✗ | ✓ |
 | `enum` | ✗ | ✗ | ✓ `enum_case` calls `visibility` | ✓ | ✓ |
@@ -21,9 +21,9 @@ indices at prompt 156. `enum` got per-case `private` from §1.3's abstract-type 
 
 ## 2. `record` is a shape of `data`; `enum` is not
 
-**Derived.** `record`'s capability set is a subset of `data`'s, so every `record` declaration has a `data` spelling
-with the same meaning: one variant, named for the type, with the declaration's fields. `Lowering::structural` already
-builds exactly that `RawData`.
+**Derived.** `record`'s capability set is a subset of `data`'s, so every `record` declaration has a `data` spelling with
+the same meaning: one variant, named for the type, with the declaration's fields. `Lowering::structural` already builds
+exactly that `RawData`.
 
 **`enum`'s is not a subset.** Two capabilities — a `private` marker on a case, and the positional field form — have no
 `data` spelling at all. So "`enum` desugars to `data`" is false today in the strong sense: there is no `data`
@@ -39,10 +39,10 @@ every author who reaches for the general form pays for the subtraction.
 
 ## 3. The corpus, which says something else
 
-**No `.musa` file in the repository declares an `enum`.** Not `stdlib/src/`, not `examples/`, not
-`tests/fixtures/`. Twenty-nine `data` declarations and eight `record`s, and the one occurrence of the word is a comment
-in `tests/fixtures/staff-dispatch.musa` explaining that the trial wrote `enum StaffWord` and the fixture spells it
-`data` instead.
+**No `.musa` file in the repository declares an `enum`.** Not `stdlib/src/`, not `examples/`, not `tests/fixtures/`.
+Twenty-nine `data` declarations and eight `record`s, and the one occurrence of the word is a comment in
+`tests/fixtures/staff-dispatch.musa` explaining that the trial wrote `enum StaffWord` and the fixture spells it `data`
+instead.
 
 That is worth writing down and it is not yet an argument. Three things it could mean, and the repository cannot
 currently tell them apart:
@@ -55,21 +55,21 @@ currently tell them apart:
 - The corpus is writing the workaround. That is what prompt 143 found for indices, and the same shape of evidence would
   be `data` declarations with a hand-written namespace prefix or a comment saying which cases are meant to be private.
 
-Prompt 161's Stop keeps the keyword for the second reason, and the measurement to take after 166 and 167 is the one
-that decides between the three: count the `enum` declarations in the two rewritten adapters. Zero there, after the
-programs §1.3 was written for have been written, is an argument. Zero here is a schedule.
+Prompt 161's Stop keeps the keyword for the second reason, and the measurement to take after 166 and 167 is the one that
+decides between the three: count the `enum` declarations in the two rewritten adapters. Zero there, after the programs
+§1.3 was written for have been written, is an argument. Zero here is a schedule.
 
 ## 4. What "one declaration path" then means
 
 One description and one builder, with three shape-normalizers over the CST. Concretely: `nominal`, `enumeration`, and
 `structural` stop constructing `RawData`, `RawFamily`, and `RawConstructor` independently — three places that each
-decide visibility, field naming, and index handling for themselves — and instead answer with the same description,
-which one function turns into the `RawData`.
+decide visibility, field naming, and index handling for themselves — and instead answer with the same description, which
+one function turns into the `RawData`.
 
 The check that it worked is not a line count. It is that the three readers can no longer *disagree*: today `nominal`
 takes a constructor's visibility from the declaration because `data` admits no marker, `enumeration` takes it from the
-case, and `structural` takes it from the declaration for a third reason written out separately. After the collapse
-there is one rule, and each reader supplies a marker or does not.
+case, and `structural` takes it from the declaration for a third reason written out separately. After the collapse there
+is one rule, and each reader supplies a marker or does not.
 
 ## 5. Where a spelling can still lie
 

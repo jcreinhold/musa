@@ -41,10 +41,10 @@ argument `../obligations.md` §17 states. It is replaced by a total function, wr
 forget : Syntax Expr -> Syntax TokenTree
 ```
 
-What is bought is that every place a category is dropped says so in the source, and — the sentence
-`02-core-calculus.md` states and this earns — that **no rule accepts a program that conversion would reject**. An
-acceptance rule the conversion checker cannot see was the defect, and this was one of the two places musa had one.
-Prompt 159 is where the rule is deleted and the function replaces it.
+What is bought is that every place a category is dropped says so in the source, and — the sentence `02-core-calculus.md`
+states and this earns — that **no rule accepts a program that conversion would reject**. An acceptance rule the
+conversion checker cannot see was the defect, and this was one of the two places musa had one. Prompt 159 is where the
+rule is deleted and the function replaces it.
 
 One signature, because there are two categories: forgetting at `TokenTree` is the identity, so a dependent
 `(c : Cat) -> Syntax c -> Syntax TokenTree` would quantify over one case that does nothing and one this already covers.

@@ -57,10 +57,10 @@ and teaching it.
 **A claim spread over six files is not checkable.** Eight laws each true about its own construct is not the same
 artifact as "the macro layer is one thing, and here is how you would falsify that". The evaluator claim especially: it
 is asserted in a module doc, and nothing fails if a second evaluation path is added tomorrow. One law file gathers the
-eight, each stated as the property rather than the mechanism, each with the negative control that makes it falsifiable
-— and the evaluator claim gets a *structural* control, over the source text, in the shape `boundary_laws.rs` already
-uses in `musa-calculus`: expansion reaches the core through `document::elaborate` and `musa_calculus::normalize`, and
-no other evaluation entry point exists for it to reach.
+eight, each stated as the property rather than the mechanism, each with the negative control that makes it falsifiable —
+and the evaluator claim gets a *structural* control, over the source text, in the shape `boundary_laws.rs` already uses
+in `musa-calculus`: expansion reaches the core through `document::elaborate` and `musa_calculus::normalize`, and no
+other evaluation entry point exists for it to reach.
 
 **Hygiene, stated as a property rather than a mechanism.** A name introduced inside a quotation is distinct from any
 name at the splice site, and a name captured from the splice site resolves there. The laws exist; what the gathering
@@ -108,6 +108,6 @@ Commit as `Make macros ordinary total functions`.
 
 - No elaborator reflection, no `Elab` monad, no Reify/Reflect, no quoting of core terms.
 - No macro that can fail to terminate, and no annotation that would let one.
-- **No `Syntax` family and no category refinement.** Note 55 measured both and note 55 §5 names what would re-open
-  them; neither is this prompt.
+- **No `Syntax` family and no category refinement.** Note 55 measured both and note 55 §5 names what would re-open them;
+  neither is this prompt.
 - No new quotation vocabulary, in `stdlib/` or anywhere. The eighteen rows and two traversals are what there is.

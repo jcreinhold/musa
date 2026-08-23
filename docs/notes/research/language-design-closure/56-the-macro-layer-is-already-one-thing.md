@@ -1,7 +1,7 @@
 # 56. The macro layer is already one thing, and what prompt 160 has left to do
 
-**Status: governs nothing.** `../../../rules/language/11-quotation.md` holds the decisions; this page holds the
-audit behind prompt 160's repair. Written at prompt 160, before a line of it was implemented.
+**Status: governs nothing.** `../../../rules/language/11-quotation.md` holds the decisions; this page holds the audit
+behind prompt 160's repair. Written at prompt 160, before a line of it was implemented.
 
 ## 1. What 160 was written to deliver
 
@@ -47,15 +47,15 @@ smaller, and nothing in `expand/` was left holding a builtin it no longer needs.
 
 Two things, and they are both real.
 
-**The claim is not checkable in one place.** Eight laws in six files, each true about its own construct, is not the
-same artifact as "the macro layer is one thing, and here is how you would falsify that". The evaluator claim in
-particular is *asserted* in prose — `phase/mod.rs`'s module doc says "the core this lowers into is `musa-calculus`" —
-and nothing fails if a second evaluation path is added tomorrow.
+**The claim is not checkable in one place.** Eight laws in six files, each true about its own construct, is not the same
+artifact as "the macro layer is one thing, and here is how you would falsify that". The evaluator claim in particular is
+*asserted* in prose — `phase/mod.rs`'s module doc says "the core this lowers into is `musa-calculus`" — and nothing
+fails if a second evaluation path is added tomorrow.
 
 **There is no chapter.** `docs/book/` has `concepts/`, `guide/`, `how-to/`, `reference/`, and `tutorials/`, and not one
-page about writing an adapter. The one production adapter, `stdlib/src/adapters/staff.musa`, is 
-read today by reading its source. `docs/README.md` gives `docs/book/` the teaching role, so this is a gap in the
-directory that owns it rather than a nicety.
+page about writing an adapter. The one production adapter, `stdlib/src/adapters/staff.musa`, is read today by reading
+its source. `docs/README.md` gives `docs/book/` the teaching role, so this is a gap in the directory that owns it rather
+than a nicety.
 
 ## 5. The prose the cutover falsified
 
@@ -66,9 +66,9 @@ Three places still describe the state before prompt 142, and a reader checking t
   *acceptance* rule the core does not have". `ExprKind` has one mention left in the whole crate, inside a comment about
   its own removal; the acceptance rule was supplied by 142 and deleted again by 159.
 - `crates/musa-compiler/src/lower/quotes/laws.rs` — calls one side of its comparison "the old checker and evaluator".
-  Both sides are the core. The law still discriminates, because one side goes through whole-document elaboration and
-  the expansion machine while the other hands a hand-assembled program to `check`/`normalize` directly, but that is not
-  what its prose says it is doing.
+  Both sides are the core. The law still discriminates, because one side goes through whole-document elaboration and the
+  expansion machine while the other hands a hand-assembled program to `check`/`normalize` directly, but that is not what
+  its prose says it is doing.
 - `crates/musa-compiler/src/registry.rs` — "`BUILTIN_OWNERSHIP` and `SYNTAX_OWNERSHIP` are the *old* checker's name
   lookup". They are tables translated into the core registry by `registry::builtins`.
 

@@ -71,8 +71,8 @@ re-checker derives for it comes from `Def::instance` *at those levels*. A use th
 
 **7. Coverage is complete, and every recursion descends.** The two questions an emitted term cannot be wrong about: a
 missing alternative emits a shorter spine at a type that no longer mentions it, and a call that does not descend emits
-an application like any other. Both are re-derived — coverage from the declaration group, descent from the finished
-tree — and since prompt 158 the *kernel* is what asks them. The elaborator asks too, where it builds a tree; that is
+an application like any other. Both are re-derived — coverage from the declaration group, descent from the finished tree
+— and since prompt 158 the *kernel* is what asks them. The elaborator asks too, where it builds a tree; that is
 bookkeeping, and this is the audit.
 
 The third is why the re-checker exists in the shape it does. **Idris2 gets it for free**: `Term vars` is indexed by its
@@ -119,18 +119,18 @@ declaration that caused it.
 
 ## What the re-checker does not cover yet
 
-**The pass is closed.** Prompt 158 audited each extension prompts 151–157 owed, and the result — construct by
-construct, with the negative control that proves each can reject — is the table in `tests/suite/recheck_laws.rs`. Two
-obligations turned out to be answered by machinery nothing trusted was asking (coverage and descent), one turned out to
-be discharged by the emission for a reason worth writing down (156's refuted branch), and the rest were met where their
-own prompts said.
+**The pass is closed.** Prompt 158 audited each extension prompts 151–157 owed, and the result — construct by construct,
+with the negative control that proves each can reject — is the table in `tests/suite/recheck_laws.rs`. Two obligations
+turned out to be answered by machinery nothing trusted was asking (coverage and descent), one turned out to be
+discharged by the emission for a reason worth writing down (156's refuted branch), and the rest were met where their own
+prompts said.
 
 **What it cannot catch, stated rather than glossed.** This pass shares the kernel's `eval` and `quote`, and its
-conversion is `quote ∘ eval` compared by `Term`'s `PartialEq`. So it **cannot** catch a bug *in* `eval` or in
-quotation: it would re-derive the wrong answer using the wrong instrument and agree with itself. What it catches is
-elaboration producing a term the kernel would reject — which is the overwhelming majority of what can go wrong here,
-and is exactly the split this file draws. A trusted base that overstated its guarantee would be worse than one that
-states a smaller guarantee accurately.
+conversion is `quote ∘ eval` compared by `Term`'s `PartialEq`. So it **cannot** catch a bug *in* `eval` or in quotation:
+it would re-derive the wrong answer using the wrong instrument and agree with itself. What it catches is elaboration
+producing a term the kernel would reject — which is the overwhelming majority of what can go wrong here, and is exactly
+the split this file draws. A trusted base that overstated its guarantee would be worse than one that states a smaller
+guarantee accurately.
 
 Two techniques would reach further and neither is this pass: a second evaluator written from the specification, which
 `lib.rs`'s **"One evaluator"** invariant forbids for a stated reason, and a proof about `eval` itself, which is a
@@ -147,8 +147,8 @@ Two laws, both in `tests/suite/`:
 - `recheck_laws.rs` — the audit over every fixture in the suite, the scope-discipline law, the audit table, and a
   negative control per construct. A re-checker nobody has seen reject anything is a function that returns `Ok`.
 - `elaboration/audit_laws.rs` — the three controls that stage a *broken* `Compiled`. They sit on the untrusted side
-  because `boundary_laws.rs` forbids `kernel/` to name anything here and building one means writing raw syntax, and
-  they exist at all because elaboration refuses both defects at the front door: the audit is for the case where
-  something got past it.
+  because `boundary_laws.rs` forbids `kernel/` to name anything here and building one means writing raw syntax, and they
+  exist at all because elaboration refuses both defects at the front door: the audit is for the case where something got
+  past it.
 - `generated_laws.rs` — the claim over programs nobody wrote. The re-checker is an oracle, so a generated program needs
   no expected output: if elaboration accepted it, the kernel must accept what elaboration produced.

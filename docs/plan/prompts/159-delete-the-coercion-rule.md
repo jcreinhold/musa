@@ -48,18 +48,18 @@ deleted a working operation.
 And `Cat` cannot become a family here. Two mechanisms hold it: a δ-rule is a bare `fn` pointer and cannot write down a
 family's constructor, which the fourteen syntax rules need because a `Syntax` literal carries its own type; and the
 registered base types are a process-global keyed by name, out of which `Syntax`'s kind is written. Both are argued in
-the code by name as D3 decisions. The family therefore costs a new `Datum` arm in the core and a registry rewrite —
-and buys nothing, because its three claimed benefits are respectively already had, deliverable without it, and
-unwritable (a `match` on a syntax value, which §1 elsewhere says has no eliminator). `11-quotation.md` §1 is repaired
-in this prompt's commit and note 55 records the measurement.
+the code by name as D3 decisions. The family therefore costs a new `Datum` arm in the core and a registry rewrite — and
+buys nothing, because its three claimed benefits are respectively already had, deliverable without it, and unwritable (a
+`match` on a syntax value, which §1 elsewhere says has no eliminator). `11-quotation.md` §1 is repaired in this prompt's
+commit and note 55 records the measurement.
 
 What survives is the half that was always the point, and it is the half the title names.
 
 ## Target
 
 - `crates/musa-calculus/src/kernel/base.rs`: `Accepts`, `Base::accepting`, `Base::accepts` and the `accepts` field
-  removed. *The Target also read "and the `index: Option<Binder>` field" — there is no such field in `Base` and there
-  is none anywhere under `crates/musa-calculus/src`; it belongs to a shape of `Base` that no longer exists.*
+  removed. *The Target also read "and the `index: Option<Binder>` field" — there is no such field in `Base` and there is
+  none anywhere under `crates/musa-calculus/src`; it belongs to a shape of `Base` that no longer exists.*
 - `crates/musa-calculus/src/elaboration/elab/check.rs`: `carried` and `at_a_literal_index` removed, and the `Switch`
   call site with them. *One call site, not four: §1's "four call sites inside `elab/check.rs`" counted the rule's
   clauses rather than its callers.*
