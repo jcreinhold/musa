@@ -111,12 +111,39 @@ cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa -- check stdlib/src/*.musa examples/*.musa
+cargo nextest run -p musa-compiler the_kernel_rechecks
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
 
 The audit table is a deliverable and its absence is a failed Check: a construct with no negative control has not been
 re-checked, whatever the suite says.
+
+**The corpus gate is a test, not a CLI run.** *Repaired during implementation.* The line read
+`cargo run -p musa -- check stdlib/src/*.musa examples/*.musa`, and it could not test this prompt's deliverable for a
+reason that is structural rather than incidental: **the audit is not in a release build.** `TRUST.md` says so and this
+prompt's own Design repeats it — the re-checker doubles the cost of checking, so it runs behind `debug_assertions` and,
+now, in test builds. `cargo run -p musa` executes neither, so the command would have compiled the corpus with the
+re-checker switched off and reported green whatever the kernel thought. A gate pointed at a pass that is not running is
+the exact failure the Design section names one paragraph earlier.
+
+The replacement runs the two laws the Target asks for, in `musa-compiler`'s `document::laws`:
+`the_kernel_rechecks_the_standard_library` reads all fourteen library files as one document and runs `recheck_program`
+over it, and `the_kernel_rechecks_every_example` puts all fifty-five `examples/` fixtures through the whole pipeline,
+where a `#[cfg(test)]` call in `elaborate/mod.rs` audits each document as it is elaborated — including the second
+document a `make` or a staff region produces, which is why the law compiles rather than elaborating directly.
+
+**And the command it replaces fails today, at HEAD, for three reasons none of which are this prompt's.** Measured on a
+clean worktree at `7396cb2c` and byte-identically in this prompt's tree — 3 errors:
+
+| File | What it says | Whose it is |
+| --- | --- | --- |
+| `stdlib/src/lib.musa` | `this file declares no piece` | the glob's. `lib.musa` is the package's module tree — twenty-four lines of `mod` — so it is neither a piece nor a library and `musa check` will always refuse it. The Check as written could never pass. |
+| `examples/diatonic-sequences.musa` | reduction steps at 200001 of 200000 | the tonal budget class. Prompt [166](166-staff-rewrite.md)'s Check records that class as having "closed itself" — and it did, for `nextest`. It did not close for a whole-file check, which is a gap in 166's measurement rather than a defect here. |
+| `examples/staff-page.musa` | `expanding this region with std::adapters::staff crossed a compilation limit` | prompt [166](166-staff-rewrite.md)'s, named in its Check's thirty-test table. |
+
+The two `examples/` entries are recorded in the law itself, as `BUDGET_WALL` in `document/laws.rs`, with the argument
+that exhaustion is not a disagreement: a fixture that ran out of steps was never judged, so the kernel was never asked.
+They are still required to fail *only* that way, so a real refusal from either one fails the build.
 
 Commit as `Close the re-checker over the whole core`.
 
