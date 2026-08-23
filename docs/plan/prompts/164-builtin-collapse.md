@@ -128,9 +128,10 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 The two `nextest` lines still show the tonal budget class red — `diatonic-sequences` and `rule-of-the-octave`, named in
-prompt 142's Check and closed at 144 — and nothing else. The staff class is green because 166 ran first; the thirty
-staff budget failures the suite carried through 162a are that prompt's to close, and a red one here means this prompt
-was started out of order.
+prompt 142's Check and closed at 144 — and nothing else. The staff class is green because
+[165b](165b-graph-update-and-data-descent.md) and then 166 ran first; the thirty staff budget failures the suite carried
+through 162a are those two prompts' to close between them, and a red one here means this prompt was started out of
+order.
 
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.

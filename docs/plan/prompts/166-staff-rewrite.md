@@ -1,8 +1,8 @@
 ---
 id: 166
 slug: staff-rewrite
-status: in-progress
-depends_on: [142f, 162]
+status: pending
+depends_on: [142f, 162, 165b]
 phase: 3
 ---
 
@@ -33,8 +33,11 @@ A rather than an implementation.
   `stdlib/src/notation/staff.musa` whose elaborated terms carry the context elaboration glued on. So caching caps below
   a fifth of the spend and never fires where the spend is, a specified cache would be a cost-table version bump besides
   (`02-core-calculus.md` §4: it changes what the meter charges), and the spend itself is the call count this rewrite
-  deletes. The rewrite therefore lands before the registry collapse and the cost table, and it is what turns prompt
-  142's staff budget failures green.
+  deletes. The rewrite therefore lands before the registry collapse and the cost table. What that bullet got wrong is
+  the last clause of its own conclusion — that the rewrite is *what* turns prompt 142's staff budget failures green. Two
+  of the three orders of magnitude were the evaluator's, and
+  [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) measures them;
+  [165b](165b-graph-update-and-data-descent.md) takes them and runs first.
 - `docs/notes/research/language-design-closure/42-dependent-core-decision.md` — the failing program and the measurements
   it recorded, which are the "before" side of this comparison.
 - Prompt 132's trial and its **predicted** line and byte count. That number was written before any code existed and is
@@ -50,18 +53,16 @@ A rather than an implementation.
   the adapter's meaning or the tests were coupled to internals — and which one it is has to be established, not assumed.
 - `docs/notes/research/language-design-closure/41-staff-on-the-repaired-interface.md` — the last time this file was
   rewritten and measured, and the method that measurement used.
-- **The open question this prompt closes**: `syntax_anchor`'s third argument. `crates/musa-compiler/src/phase/mod.rs`'s
-  `SyntaxOp::Anchor` still takes `(subject, path, here)`, and `stdlib/src/adapters/staff.musa`'s `anchored` supplies the
-  place as `syntax_built(here, 33, 0)`. `docs/rules/language/11-quotation.md` §5 and
-  `docs/notes/research/language-design-closure/45-phase-registry-survey.md`'s row both say the argument goes and both
-  name prompt 139 — but 139 deferred every phase-operation deletion to the prompt that removes the last caller, which
-  for the anchor is this one. Meanwhile prompt 132's trial (`43-dependent-language-trial.md` §1.1) already wrote
-  `syntax_anchor(region, here)` with two arguments, and `tests/fixtures/staff-construction.musa`'s header (lines 28–41)
-  records the workaround it had to run under instead: pass `here` for the place and put the answer through
-  `as_expression`, which is sound only for one call per node — two `anchored` calls at one anchor would build two tokens
-  at one path and `check_expression`'s duplicate-path gate would refuse the expansion. An author writing quotes has no
-  operation that mints a fresh place, because `syntax_built` is exactly what quotation removed. The Design section
-  decides the shape; it is not a change to make quietly inside the rewrite.
+- **The open question this prompt was written to close is already closed, and the Read section says so rather than
+  sending a reader looking.** `syntax_anchor`'s third argument — the place, supplied as `syntax_built(here, 33, 0)` —
+  went at prompt **145**, not here: `crates/musa-compiler/src/phase/ownership.rs` declares
+  `syntax_anchor(subject, path)`, `crates/musa-compiler/src/registry/rules.rs`'s `SyntaxOp::Anchor` derives the place as
+  `crate::quote::anchor_place(&wanted)` at the reserved site `crate::quote::path::DELTA_QUOTATION` (`u32::MAX`), and
+  `stdlib/src/adapters/staff.musa`, `stdlib/src/adapters/doubled.musa`, and `tests/fixtures/staff-construction.musa` all
+  call it at two arguments already. `45-phase-registry-survey.md`'s row records the prompt correctly and
+  `11-quotation.md` §5 names this one, which is the remaining half-sentence to repair. What was this prompt's about the
+  anchor is therefore done, and the Design paragraph below is kept as the record of *why* the shape is the one it is —
+  the argument, not an instruction.
 - `crates/musa-compiler/src/quote/mod.rs`'s `Derived` and `check_expression`, and
   `crates/musa-compiler/src/phase/mod.rs`'s `syntax_quote` — how a quote mints provenance without an author supplying a
   number, which is the mechanism the anchor either adopts or argues against.
@@ -71,42 +72,35 @@ A rather than an implementation.
 **This runs before the registry collapse, and — as it turned out — after 143 and 144.** The reordering the Read section
 records was granted and then only half kept: 143 and 144 ran anyway, so the diagnostics this rewrite is written against
 are 144's improved ones rather than the migrated checker's. What did survive is the half that matters here. The registry
-the anchor change lands in is the one prompt 141e translated, uncollapsed, because prompt 164 waits on this one: its
-Check asserts a green staff budget class, and the thirty staff budget tests 142's Check names are red until this prompt
-turns them green. Neither reordering changes the gate below: the rewrite is measured against 2,404 lines and prompt
-132's prediction, whenever it runs.
+this rewrite calls is the one prompt 141e translated, uncollapsed, because prompt 164 waits on this one: its Check
+asserts a green staff budget class, and the staff budget tests 142's Check names are red until 165b and then this prompt
+close them — 165b takes the two walls that were the evaluator's, and this prompt takes the factor of 1.9 that is left.
+Neither reordering changes the gate below: the rewrite is measured against 2,404 lines and prompt 132's prediction,
+whenever it runs.
 
 **Five things must be gone, and each is checkable.** Zero `callN` helpers. Zero hand-allocated role integers. Zero
 string dispatch on token kinds or delimiters. `Pending` as a record with named fields rather than an eight-field
 destructure. And the reading algorithm running forwards, because prompt 141 gave it a way to accumulate. Write each as a
 test or a grep in the Check, not as a claim in the commit message.
 
-**`syntax_anchor` loses its place argument, and the evaluator derives it the way a quote does.** Of the two shapes the
-Read section names, only one survives its own consequences. Keeping the argument means giving authors an operation that
-mints a fresh place — and that operation is `syntax_built` under a new name, which `11-quotation.md` §5 deletes and
-`43-dependent-language-trial.md` §13 records as a falsifier the pass did *not* fire ("a hand-written provenance path, or
-a role integer by another name — no"). Re-introducing one to serve a single builtin would reverse the pass's own result
-in the last prompt that could still be said to have measured it. So the shape becomes `syntax_anchor(subject, path)`,
-answering the anchor of the input node at `path` as before, and the place its answer stands at is
-`Derived { origin: path, quotation: <a reserved site>, path: [0] }` — the origin being the node the anchor is *about*,
-and `[0]` because a site's outermost node is `[0]` and this site builds exactly one node.
-
-    *Repaired during implementation.* The sentence this replaces drew the site index from `Resolver::next_quotation`,
-    "the same counter `syntax_quote` draws from". The code said no: the anchor executes as a δ rule,
-    `musa_calculus::Rule` is `fn(&[Datum]) -> Option<Answer>` with no compiler state by design (D3 is a property of the
-    type), and since prompt 142 the adapter's calls never pass through the lowering that owns the counter. The
-    mechanism is the one `48-the-anchors-place-without-a-name-supply.md` argues from Peyton Jones ch. 9 and Idris2's
-    `UST.nextName`: the place derives from the arguments alone — `origin` is the anchored node's path, already unique
-    per node, and `quotation` is `u32::MAX`, a reservation the upward-counting quote counters never draw. Disjointness
-    by construction rather than by allocation; `PhaseFamily::Builder`'s "no counter, no clock, no compiler state"
-    stays true of the anchor, and that Target item's doc repair falls out.
+**`syntax_anchor` lost its place argument, and the evaluator derives it the way a quote does — at prompt 145, not
+here.** The argument is kept because it is the record of why the shape is the one the code now has, and because prompt
+139's deferral pointed at this number. Of the two shapes, only one survives its own consequences. Keeping the argument
+means giving authors an operation that mints a fresh place — and that operation is `syntax_built` under a new name,
+which `11-quotation.md` §5 deletes and `43-dependent-language-trial.md` §13 records as a falsifier the pass did *not*
+fire ("a hand-written provenance path, or a role integer by another name — no"). So the shape is
+`syntax_anchor(subject, path)`, answering the anchor of the input node at `path` as before, and the place its answer
+stands at derives from the arguments alone: `origin` is the anchored node's path, already unique per node, and
+`quotation` is `u32::MAX`, a reservation the upward-counting quote counters never draw. Disjointness by construction
+rather than by allocation, which is what keeps `PhaseFamily::Builder`'s "no counter, no clock, no compiler state" true
+of the anchor — a δ rule is `fn(&[Datum]) -> Option<Answer>` and cannot reach a counter, which is why an earlier version
+of this paragraph, drawing the site index from `Resolver::next_quotation`, was wrong.
 
 **That does not remove the one-call-per-anchor obligation; it makes it the obligation every quote already carries.** Two
 calls of one anchor site at one `here` still mint one path, exactly as calling a helper whose body is
-`quote at here { … }` twice with one `here` does. What changes is that this stops being a fact an author has to know
-about one builtin and becomes the derived-identity law of `11-quotation.md` §3, reported by the same duplicate-path gate
-in the same words. Two *different* call sites at one `here` no longer collide at all, which the hand-allocated role
-could only achieve by the author keeping twenty-seven numbers apart by hand.
+`quote at here { … }` twice with one `here` does. What changed is that this stopped being a fact an author has to know
+about one builtin and became the derived-identity law of `11-quotation.md` §3, reported by the same duplicate-path gate
+in the same words.
 
 **The answer stays at `Syntax<TokenTree>` and the call site keeps its `as_expression`.** The trial's §1.1 assumed both
 changes at once and wrote `anchored` as if the anchor arrived at `Syntax<Expr>`; the fixture's note is right against it.
@@ -115,17 +109,11 @@ checked parse — the same route the composer's own spliced pitch takes, which i
 special case. Making the builtin answer at `Expr` would put a parse inside a builtin to save one `match` in one helper.
 This prompt changes the arity and nothing else about the signature.
 
-**What moves with it, and each of these is a Target item, not a side effect.** The registry entry, declared type, doc
-comment, and evaluator arm in `crates/musa-compiler/src/phase/mod.rs`; `PhaseFamily::Builder`'s doc comment, which
-currently says every builder is "a function of its displayed arguments and nothing else — no counter, no clock, no
-compiler state", and is no longer true of the anchor — repair it the way `CheckedSyntaxQuote` is already argued, since
-which site wrote a node is a fact about the *program* and two runs of one program still agree exactly; the two
-`syntax_anchor` unit tests in `crates/musa-compiler/src/expand/mod.rs` around lines 1628–1652, which hold the law that a
-derived path anchors to nothing; `stdlib/src/adapters/doubled.musa`'s one call site, which no other prompt owns and
-which is a mechanical two-line edit rather than a rewrite — `doubled` keeps its `syntax_built` calls, because it is the
-flat fixture and is not being moved onto quotation; `tests/fixtures/staff-construction.musa`'s `anchored` and its header
-note, whose recorded workaround is discharged here; and the two documents that name the wrong prompt,
-`docs/rules/language/11-quotation.md` §5 and `45-phase-registry-survey.md`'s `syntax_anchor` row.
+**What is left of that, and it is one line of prose.** The registry entry, the declared type, the doc comment, the
+evaluator arm, `PhaseFamily::Builder`'s doc, the two anchor unit tests in `crates/musa-compiler/src/expand/tests.rs`,
+`stdlib/src/adapters/doubled.musa`'s call site, and `tests/fixtures/staff-construction.musa`'s `anchored` and header
+note are all already at the new arity. What is not is `docs/rules/language/11-quotation.md` §5, which still says "prompt
+166 owns the anchor's arity". Repair it to name 145, and check `45-phase-registry-survey.md`'s row against it.
 
 **The compatibility oracle: check it, and expect it not to move.** An anchor *number* is a node's position in the
 region's reading order and this changes nothing about reading order, so every anchor the staff adapter emits is the
@@ -164,16 +152,10 @@ possible way to make the number look worse for a good reason and better for a ba
 - `crates/musa-compiler/tests/suite/staff_writing_laws.rs` and every existing staff test passing **unchanged**.
 - Mechanical checks in the Check section for the five eliminations.
 - The rendered corpus for every staff example byte-identical.
-- `syntax_anchor` at two arguments: the registry entry, declared type, doc comment, and evaluator arm in
-  `crates/musa-compiler/src/phase/mod.rs`, with the site index the reserved `u32::MAX` the Design section argues for —
-  **not** `Resolver::next_quotation`, which this line asked for until the Design's own repair note said why a δ rule
-  cannot reach a counter; `PhaseFamily::Builder`'s doc comment repaired; and `crates/musa-compiler/src/expand/mod.rs`'s
-  two anchor unit tests rewritten at the new arity with the law they hold unchanged.
-- `stdlib/src/adapters/doubled.musa`'s call site moved to the new arity, and nothing else in that file touched.
-- `tests/fixtures/staff-construction.musa`'s `anchored` written the way prompt 132's trial wrote it, and its header note
-  (lines 28–41) reduced to whatever workaround genuinely remains after prompt 142 and this prompt.
-- `docs/rules/language/11-quotation.md` §5 and `docs/notes/research/language-design-closure/45-phase-registry-survey.md`
-  repaired to name the prompt that actually removes the argument.
+- `docs/rules/language/11-quotation.md` §5 repaired to name prompt 145 as the prompt that removed `syntax_anchor`'s
+  place argument, and `docs/notes/research/language-design-closure/45-phase-registry-survey.md`'s row checked against
+  it. Everything else the anchor change touched is already at the new arity, and this prompt confirms that rather than
+  redoing it.
 - The oracle check recorded: manifest, rendered corpus, and snapshots compared, and the result stated rather than
   assumed.
 - **Every test in the staff budget class prompt 142's Check names, green.** That class is the reason this prompt moved;
@@ -216,24 +198,32 @@ class and one was an unrelated orphan since deleted:
 | `musa::cli wav_export_is_deterministic_for_all_examples` | the same example, exported |
 | `elaboration_fixture_generators::the_pressure_workloads_compile_and_denote_what_they_claim` | `core-pressure.musa`, no adapter involved |
 
-**There are two walls, and the near one is nesting, not steps.** The failure reported today is `evaluation exceeded the
-budget for nested evaluation levels at 257 of 256` — `Budget::NESTING`, not `Budget::LANGUAGE`'s step count. Raising
-only the nesting limit does not make the class green: the compile then runs past 2×10¹⁰ reduction steps without
-finishing, which is `budget.rs`'s own recorded measurement ("the staff adapter's expansion run exceeds 4×10⁹ steps")
-seen from the other side. So this prompt owes *both*: an adapter whose expansion is shallow enough not to stand 257
-evaluator frames deep, and one whose step count is inside 200,000. A rewrite that clears only the first will report the
-second and still be red.
+**There were two walls and neither of them was this prompt's**, which is
+[note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) and the reason
+[165b](165b-graph-update-and-data-descent.md) now runs first. Measured before any rewrite: a staff region with *nothing
+in it* cost 455,942 steps against a budget of 200,000, because δ had no graph update and every consumer of a folded
+value re-ran the whole unfold; and `examples/staff-page.musa` peaked at 672 of 320 nesting levels inside
+`canonical`/`realize`, which charge one level per level of *data*. There was no algorithm in an empty region for a
+rewrite to remove. With those two fixed and the adapter untouched, 23 of the 24 `staff_expansion_laws` pass at the
+unchanged 200,000-step budget.
+
+**What is left is this prompt's, and it is a factor of 1.9.** After 165b, `examples/staff-page.musa`'s expansion costs
+381,055 steps against 200,000 — about 2,800 of fixed cost and 9,000 an item, straight-line. That is the number the
+rewrite closes, and it is the honest form of "the class goes green here": every remaining member of the class reports
+`reduction steps`, 165b recorded the count each one reports, and this prompt is measured against those numbers rather
+than against a wall it did not build.
 
 **The budget does not move.** `crates/musa-calculus/src/kernel/budget.rs` states that in as many words and this Check
 does not re-open it.
 
 The tonal class this Check used to name — `diatonic-sequences` and `rule-of-the-octave` exhausting the step budget with
 no adapter involved — **closed itself**; neither appears in the measured failure list, and prompt 165's note records
-that. What stands in its place is `core-pressure`, which is prompt 165's own pressure fixture and hits the *nesting*
-wall at the same 257 of 256. It is listed above because it is the one member of the class the staff adapter does not
-explain: if the rewrite makes `core-pressure` green too, the wall was the checker's notion of a nesting level and 144
-should say so; if it does not, `core-pressure` is 144's to carry and every other row here must be green. Any other red
-means this prompt is not done.
+that. What stands in its place is `core-pressure`, which is prompt 165's own pressure fixture and hit the *nesting* wall
+at 257 of 256. Prompt 165's note asked this prompt to settle it: "if the staff rewrite makes `core-pressure` green as a
+side effect, the wall was the adapter's shape after all; if it does not, the notion of a nesting level is what needs
+repairing." Note 59 answered it before the rewrite — the wall was not the adapter's shape, and 165b is the repair. So
+`core-pressure` is not this prompt's, and every other row above must be green. Any other red means this prompt is not
+done.
 
 The oracle stays fixed: a rewrite of a library file has no business changing a semantic hash or a rendered corpus file,
 and the Design section's analysis says the anchor's derived path is not observable in any of them. If one moves, stop
@@ -245,9 +235,10 @@ Commit as `Rewrite the staff adapter on the new language`.
 
 - No new notation coverage, no new diagnostic, no changed anchor, no changed conformance level. The adapter does the
   same job.
-- No change to `crates/` beyond `syntax_anchor`'s arity, which the Design section argues in advance and the Target
-  lists. Anything else a library rewrite turns out to force is a finding worth reporting rather than a quiet commit —
-  the whole claim is that this file is ordinary unprivileged Musa.
+- **No change to `crates/` at all.** The one change this prompt used to carry — `syntax_anchor`'s arity — landed at
+  prompt 145, and the two evaluator repairs the budget class turned out to need are
+  [165b](165b-graph-update-and-data-descent.md)'s. Anything a library rewrite turns out to force is a finding worth
+  reporting rather than a quiet commit; the whole claim is that this file is ordinary unprivileged Musa.
 - No operation that mints a `NodePath` — not a renamed `syntax_built`, not a `here` that an author derives, not a "fresh
   place" helper in `stdlib/`. If the rewrite needs one, the argument in the Design section is wrong and this prompt says
   so rather than adding it.

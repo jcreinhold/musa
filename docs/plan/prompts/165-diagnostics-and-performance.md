@@ -239,6 +239,14 @@ and Peyton Jones and found seven divergences. 136b removed the ad hoc ones; thes
 reason is the same for all four: none of them can be _priced_ until prompt 142 points the standard library at this
 checker, and each of them waits on a top-level definition scope held folded.
 
+> **The first of those two obligations left this prompt, with a number attached.** The unfold-memo verdict below is now
+> [165b](165b-graph-update-and-data-descent.md)'s, and so is the *data*-descent half of step 2, because
+> [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) measured them at prompt
+> 166 and found they are not a judgement call: an empty staff region costs 455,942 steps of a 200,000 budget without
+> them, and 2,796 with them. Neither can wait for this prompt, which follows 164, which follows 166. What is left here
+> is the diagnostics, the P1/P2 gate, the four smalltt items, and steps 2–4 as they bear on the *elaborator* and the
+> voice spine. The paragraph below is kept as the record of how the verdict was framed before the measurement arrived.
+
 *Repaired before the prompt opens: two obligations it already owned were named nowhere in it.* The first is the decision
 141u's measurement left standing. Note 44 §6's closing records the mechanism — glued evaluation without graph update is
 laziness without memoization; a folded application in a lazy position is re-unfolded by every consumer, because a pure
@@ -281,6 +289,12 @@ What neither may do is stay unnamed.
 > rewrite makes `core-pressure` green as a side effect, the wall was the adapter's shape after all; if it does not, the
 > notion of a nesting level is what needs repairing, and the repair is a charge that distinguishes evaluator descent
 > from data descent rather than a larger constant.
+>
+> **Answered, before the rewrite rather than after it.** Note 59 measured `examples/staff-page.musa`'s peak nesting with
+> the unfold memo in place: 672 of 679 levels are `canonical data` and `data realization` — reading a
+> six-hundred-element list into a `Datum` and building one back — so the wall is not the adapter's shape and could not
+> have been. The repair is the one this paragraph named, and it is [165b](165b-graph-update-and-data-descent.md)'s.
+> `core-pressure` stays this prompt's to re-measure once that lands.
 
 > **Finding C landed early, out of stack order.** The audit's first two items — glued evaluation and its representation,
 > `Head::Def` with both forms — were this prompt's until the migration measured them. Elaborating
