@@ -117,6 +117,21 @@ first time it was asked.
 That is the claim working: elaboration had a bug, the kernel rejected the artifact, and the defect surfaced at the
 declaration that caused it.
 
+## What the generated law caught, and why it was the kernel's turn to be wrong
+
+`generated_laws.rs` found a disagreement on `(let u : Unit = unit in fn (x : Unit) { x }) unit`, and that one was the
+audit's own defect rather than elaboration's. `recheck`'s `peeled` reads a β-redex spine as the nested `let` the
+evaluator reduces it to — that is how a Curry-style λ, which carries no domain, gets one at all: from the argument. It
+walked the spine to the head and required the head to be a λ *exactly*, so a `let` written in front of the λ stopped the
+walk, the audit fell back to inferring the λ, and a λ has no type of its own to derive. `check` had the corresponding
+arm and had had it since prompt 149; `peeled` did not, and the shape reaches it only when a `let` stands in a function
+position — which nothing hand-written in the corpus did.
+
+The fix peels `let` and λ together, which is what the evaluator does anyway. Worth naming as a pattern rather than as an
+incident: the two hypotheses were "the audit is incomplete" and "elaboration emits a term the audit is right to refuse",
+and they are told apart by asking whether the term is one `eval` reduces. This one was, so the audit was short a rule.
+Had it not been, the fix would have belonged on the other side of this file.
+
 ## What the re-checker does not cover yet
 
 **The pass is closed.** Prompt 158 audited each extension prompts 151–157 owed, and the result — construct by construct,

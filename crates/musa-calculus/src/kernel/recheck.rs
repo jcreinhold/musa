@@ -454,6 +454,17 @@ fn bound(cx: &Cx, meter: &mut Meter, ty: &Term, value: &Term) -> Result<Cx, Core
 /// under: `a₂` was written outside `x`, and reading it in the extended context
 /// would read its indices one binder off. So every argument is read in `cx`,
 /// and only the body descends.
+///
+/// **A `let` standing between the λ and its application is peeled with it.**
+/// `(let x = v in λy. b) a` is `let x = v in let y = a in b`: the binding stays
+/// where it was written, and the λ underneath still meets the argument that
+/// determines its domain. Elaboration produces that shape whenever a
+/// function-position expression was written as a `let` — it had the domain,
+/// from the annotation the author wrote, and a core λ has nowhere to keep it.
+/// Stopping the walk at the `let` would leave the audit *inferring* a λ, which
+/// is [`Malformed::Uninferable`] on a term that is perfectly well typed. This
+/// is the same transparency [`check`] already gives a `let`, stated on the
+/// side of the spine where the type flows outward.
 fn peeled<'t>(cx: &Cx, meter: &mut Meter, term: &'t Term) -> Result<Option<(Cx, &'t Term)>, CoreError> {
     let mut arguments = Vec::new();
     let mut head = term;
@@ -463,15 +474,7 @@ fn peeled<'t>(cx: &Cx, meter: &mut Meter, term: &'t Term) -> Result<Option<(Cx, 
     }
     // A λ with nothing applied to it is not a redex, and answering with the
     // term itself would be an answer that never gets smaller.
-    if arguments.is_empty()
-        || !matches!(
-            head.shape(),
-            Shape::Bind {
-                binder: Binder::Lam,
-                ..
-            }
-        )
-    {
+    if arguments.is_empty() || !abstraction(head) {
         return Ok(None);
     }
     // The spine was walked from the outside in, so the argument applied first
@@ -479,25 +482,73 @@ fn peeled<'t>(cx: &Cx, meter: &mut Meter, term: &'t Term) -> Result<Option<(Cx, 
     arguments.reverse();
     let mut under = cx.clone();
     let mut body = head;
-    for argument in arguments {
-        let Shape::Bind {
-            binder: Binder::Lam,
-            body: inside,
-            ..
-        } = body.shape()
-        else {
+    let mut supplied = 0_usize;
+    while let Some(argument) = arguments.get(supplied) {
+        match body.shape() {
+            // A `let` in the way binds where it stands and consumes no
+            // argument. Its own type and value are read under the bindings
+            // already pushed, because that is where they were written.
+            Shape::Bind {
+                binder: Binder::Let { ty, value },
+                body: inside,
+                ..
+            } => {
+                under = bound(&under, meter, ty, value)?;
+                body = inside;
+            }
+            Shape::Bind {
+                binder: Binder::Lam,
+                body: inside,
+                ..
+            } => {
+                let stated = Arc::new(infer(cx, meter, argument)?);
+                let evaluated = eval(meter, cx.env(), argument)?;
+                under = under.defined(meter, stated, evaluated)?;
+                body = inside;
+                supplied = supplied.saturating_add(1);
+            }
             // More arguments than the head has binders. What is left applies a
             // term that now stands under the bindings to arguments that do not,
             // which is not a term this pass can read — and not one elaboration
             // builds, since the λs it applies are the ones it wrote.
-            return Ok(None);
-        };
-        let stated = Arc::new(infer(cx, meter, argument)?);
-        let evaluated = eval(meter, cx.env(), argument)?;
-        under = under.defined(meter, stated, evaluated)?;
-        body = inside;
+            Shape::Meta(_)
+            | Shape::Var(_)
+            | Shape::Named { .. }
+            | Shape::Lit(_)
+            | Shape::Universe(_)
+            | Shape::Bind { .. }
+            | Shape::App { .. } => return Ok(None),
+        }
     }
     Ok(Some((under, body)))
+}
+
+/// Whether a spine's head is a λ, read through the `let`s in front of it.
+///
+/// Asked before any argument is inferred and before any binding is pushed, so a
+/// spine that is not a redex — which is nearly every application in a program —
+/// costs this walk and nothing else.
+fn abstraction(head: &Term) -> bool {
+    let mut at = head;
+    loop {
+        match at.shape() {
+            Shape::Bind {
+                binder: Binder::Lam, ..
+            } => return true,
+            Shape::Bind {
+                binder: Binder::Let { .. },
+                body,
+                ..
+            } => at = body,
+            Shape::Meta(_)
+            | Shape::Var(_)
+            | Shape::Named { .. }
+            | Shape::Lit(_)
+            | Shape::Universe(_)
+            | Shape::Bind { .. }
+            | Shape::App { .. } => return false,
+        }
+    }
 }
 
 /// The universe `ty` inhabits, having first required that it is a type.

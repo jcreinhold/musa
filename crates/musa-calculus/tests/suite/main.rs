@@ -608,6 +608,60 @@ pub(crate) mod programs {
                 ty: None,
             },
             Program {
+                name: "a lambda applied through the let in front of it",
+                // What `generated_laws.rs` found. Elaboration reads the domain
+                // off `fn (x : Unit)`'s annotation and a core λ has nowhere to
+                // keep it, so the audit has to recover the domain from the
+                // argument — which it can only do by reading the `let` and the
+                // λ as the one nested binding the evaluator reduces them to.
+                raw: Raw::app(
+                    WRITTEN,
+                    Raw::annotated_bind(
+                        WRITTEN,
+                        "u",
+                        unit_type(),
+                        unit(),
+                        Raw::annotated_lam(WRITTEN, "x", unit_type(), var("x")),
+                    ),
+                    unit(),
+                ),
+                ty: None,
+            },
+            Program {
+                name: "a lambda applied through the lets interleaved with its binders",
+                // The same shape with the two kinds of binder alternating, so
+                // the peel is exercised where a `let` stands *under* a binder
+                // an argument already filled and the later argument still does
+                // not stand under either.
+                raw: Raw::app(
+                    WRITTEN,
+                    Raw::app(
+                        WRITTEN,
+                        Raw::annotated_bind(
+                            WRITTEN,
+                            "u",
+                            unit_type(),
+                            unit(),
+                            Raw::annotated_lam(
+                                WRITTEN,
+                                "x",
+                                unit_type(),
+                                Raw::annotated_bind(
+                                    WRITTEN,
+                                    "v",
+                                    unit_type(),
+                                    var("x"),
+                                    Raw::annotated_lam(WRITTEN, "y", unit_type(), var("v")),
+                                ),
+                            ),
+                        ),
+                        unit(),
+                    ),
+                    unit(),
+                ),
+                ty: None,
+            },
+            Program {
                 name: "an annotation re-entering checking mode",
                 raw: Raw::annot(WRITTEN, unit(), unit_type()),
                 ty: None,

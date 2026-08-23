@@ -59,6 +59,17 @@
 //! hand would have re-implemented `refuted` in the kernel and audited it with a
 //! copy of itself.
 //!
+//! **The last row has since fired, and against the kernel.** `generated_laws`
+//! found `(let u : Unit = unit in fn (x : Unit) { x }) unit` — a λ applied
+//! through the `let` written in front of it. `recheck`'s `peeled` reads a
+//! β-redex as the `let` the evaluator reduces it to, which is the only way a
+//! core λ gets a domain at all, and it stopped that walk at the first binder
+//! that was not a λ. So the audit inferred a λ and refused a term elaboration
+//! was right to build. `programs::accepted` now carries that shape and one with
+//! the two kinds of binder alternating, so the row has fixtures under it rather
+//! than only a generator; `TRUST.md` records why the defect was the audit's and
+//! not the elaborator's.
+//!
 //! The corpus is not this file's: `fixtures::corpus` and `programs::accepted`
 //! are what the conversion and elaboration suites are stated over, and reusing
 //! them is deliberate. A re-checker that agreed only with the terms its own file
