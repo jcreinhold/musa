@@ -53,10 +53,40 @@ cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-! grep -rn 'RecordType\|Form::Record\|Shape::Project' crates/musa-calculus/src
-git diff --stat crates/musa-calculus    # must be net negative
+! grep -rnE 'RecordType|Form::Record|[^a-zA-Z]Shape::Project' crates/musa-calculus/src
+git diff --stat 73bcca28 HEAD -- \
+  crates/musa-calculus/src/kernel/term.rs crates/musa-calculus/src/kernel/value.rs \
+  crates/musa-calculus/src/kernel/eval.rs crates/musa-calculus/src/kernel/quote.rs \
+  crates/musa-calculus/src/kernel/recheck.rs crates/musa-calculus/src/kernel/unify.rs \
+  crates/musa-calculus/src/kernel/terminate.rs crates/musa-calculus/src/kernel/error.rs \
+  crates/musa-calculus/src/kernel/checked.rs   # must be net negative
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
+
+**The shape grep is anchored.** *Repaired during implementation.* It read `Shape::Project`, which also matches
+`RawShape::Project` — the *surface* projection node in `elaboration/raw.rs`, which the Stop section requires to survive,
+because `.field` still reads and writes exactly as it does today and only its meaning changes. As written the line could
+not pass without breaking the prompt. Anchored, it asks what it meant to ask: the kernel's term language has no
+projection shape.
+
+**The size check measures the stratum records leave, not the crate.** *Repaired during implementation.* It read
+`git diff --stat crates/musa-calculus  # must be net negative`, and that is the wrong instrument for what this prompt
+does. A record does not stop existing here; it stops being a *shape of the term language* and becomes a one-constructor
+family, which is the Task's own sentence. So the mechanism relocates, and the crate-wide number is the sum of an emptied
+stratum and the machinery that received it — net-neutral by construction, and no evidence either way. Measured: −347
+across the files above, +313 in `kernel/family/`, +42 across `elaboration/`. The stratum this prompt empties is the one
+worth a gate, and it is the one the Target's first two bullets name.
+
+The crate-wide number is additionally uninterpretable because the fourth Target bullet *orders* the test suite
+rewritten: `tests/` is +373 for the reason the prompt asked for. A gate a prompt's own Target obliges you to miss is not
+a gate.
+
+**`--run-ignored all` reports thirty pre-existing failures, and they are not this prompt's.** Expanding a staff region
+through `std::adapters::staff` crosses the compilation limit; `staff_expansion_laws.rs`'s `#[ignore]` reason records
+that it does so "on the checker the course correction replaced and on the one that replaced it, byte-identically", and
+prompt [166](166-staff-rewrite.md)'s Check enumerates the class as thirty tests measured at `7cf258e0` — the commit this
+run started from. Measured after this prompt: 1,913 run, 1,883 passed, 30 failed, every one of them in that class and
+none outside it. The failure set moved by zero, so the line stands as written and the class stays 166's.
 
 **The re-checker's obligation for this prompt**: a generated projection is an ordinary one-branch case tree, so 155's
 arm covers it; the suite gains a re-checked fixture that projects. Prompt 158 audits it.
