@@ -16,12 +16,10 @@ use text_size::{TextRange, TextSize};
 
 /// What a file's lexical root turned out to be, as far as the parser can tell.
 ///
-/// Both flags answer the same question — whether the file still owes a piece.
-/// A `make` may *be* the piece, and a file that declares a module tree is a
+/// Whether the file still owes a piece: a file that declares a module tree is a
 /// package's own bookkeeping and is not music at all.
 #[derive(Clone, Copy, Default)]
 pub(super) struct RootShape {
-    pub(super) made: bool,
     pub(super) declares_modules: bool,
 }
 
@@ -153,16 +151,14 @@ impl<'a> Parser<'a> {
         // rule someone has to remember.
         //
         // What may precede it is the file's lexical root: imports, values,
-        // functions, signatures, modules, and templates, plus every `make`
-        // they are instantiated by. A `make` of a piece template stands in
-        // the piece's place and is that piece — one file is still one piece,
-        // whether it is written out or made.
+        // functions, and type declarations. One file is one piece.
         let shape = self.root_preamble();
         if self.at(SyntaxKind::LibraryKw) {
             self.library_decl();
-        } else if self.at(SyntaxKind::PieceKw) || !(shape.made || shape.declares_modules) {
-            // A file that made nothing still owes a piece, and saying so here
-            // is how `piece_decl` reports the one it cannot find.
+        } else if self.at(SyntaxKind::PieceKw) || !shape.declares_modules {
+            // A file that declares no module tree still owes a piece, and
+            // saying so here is how `piece_decl` reports the one it cannot
+            // find.
             self.piece_decl();
         }
         self.eat_trivia();

@@ -110,9 +110,9 @@ pub(super) const SPELLINGS: [&str; 8] = [
 ///
 /// `instanced` is the same argument about provenance rather than about pitch.
 /// The expansion path it stamps is minted by the reading that resolved the site
-/// — a `make`'s structural address in [`crate::template`], or a `${…}`'s locus
-/// in [`crate::lower::events`] — and Origin view reads that path to tell a
-/// composer's notes from generated ones. A source word for it would let a
+/// — a `use`'s site in [`crate::lower::notation`], or a `${…}`'s locus in
+/// [`crate::lower::events`] — and Origin view reads that path to tell a
+/// composer's notes from material folded in from elsewhere. A source word for it would let a
 /// program claim its notes were made by an expansion that never made them.
 ///
 /// `spliced` is the third because the source already spells the whole operation,
@@ -636,36 +636,33 @@ const PLAY: Rule = |arguments| {
 /// `instanced(origin, t)` — every fact in `t` recorded as having been produced
 /// inside the expansion `origin` names.
 ///
-/// The one rule that writes the *front* of an expansion path, and the reason an
-/// instance site needs a builtin at all rather than a reading that stamps as it
-/// walks. A template's body is a term; the facts it answers are made when that
+/// The one rule that writes the *front* of an expansion path, and the reason a
+/// use site needs a builtin at all rather than a reading that stamps as it
+/// walks. Reusable material is a term; the facts it answers are made when that
 /// term is evaluated, and some of them come out of definitions elaborated long
-/// before any site made anything. Stamping while reading would reach the notes
-/// written inside the template body and miss every note a function it calls
-/// produced.
+/// before any use folded anything in. Stamping while reading would reach the
+/// notes written inside the material's own body and miss every note a function
+/// it calls produced.
 ///
-/// A fact keeps its own `definition_span` and its own declaration, because an
-/// instance does not relocate text: what an editor points at inside a template
-/// body is the line the author wrote, once, for every instance of it
-/// (`04-templates-and-modules.md` §1) — see [`crate::template`], whose expansion
-/// is a binding and never a rewrite.
+/// A fact keeps its own `definition_span` and its own declaration, because a use
+/// does not relocate text: what an editor points at inside a fragment is the
+/// line the author wrote, once, for every use of it.
 ///
 /// `source_span` is the one field that *does* move, and only where the reading
 /// left it unset. Material read as usable at several places carries
 /// [`crate::elaborate::SHARED_ORIGIN`] there, because "where this event came
 /// from" is a question about the use and a shared body has no one answer; this
 /// is the use, so this is where it is answered. A body read at one place
-/// already holds its own span and keeps it, so a template instance relocates
-/// nothing and a `use` of a fragment relocates exactly the field that was
-/// waiting to be filled. The fill is conditional for the reason [`SCOPED`]'s is:
+/// already holds its own span and keeps it, so a `use` of a fragment relocates
+/// exactly the field that was waiting to be filled, and nothing else. The fill is conditional for the reason [`SCOPED`]'s is:
 /// the innermost use answers, and a use of material that already used something
 /// else does not overwrite the answer that use gave.
 ///
-/// In front rather than behind, which is why this cannot be [`rewritten`]:
-/// [`ExpansionStep::TemplateInstance`] is the *first* step of anything a `make`
-/// produced, and everything a transform appends happened inside the instance.
-/// Nested sites compose without knowing it — the inner `instanced` has already
-/// run by the time the outer one prepends.
+/// In front rather than behind, which is why this cannot be [`rewritten`]: the
+/// step a use site mints is the *first* step of anything that use folded in, and
+/// everything a transform appends happened inside it. Nested sites compose
+/// without knowing it — the inner `instanced` has already run by the time the
+/// outer one prepends.
 ///
 /// An event track quote's hole is the second caller and the same claim in different
 /// words: the material a `${…}` splices was produced inside that splice, so

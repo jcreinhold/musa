@@ -340,18 +340,6 @@
     "keyword"
   ],
   [
-    "template",
-    "keyword"
-  ],
-  [
-    "signature",
-    "keyword"
-  ],
-  [
-    "structure",
-    "keyword"
-  ],
-  [
     "data",
     "keyword"
   ],
@@ -364,10 +352,6 @@
     "keyword"
   ],
   [
-    "module",
-    "keyword"
-  ],
-  [
     "mod",
     "keyword"
   ],
@@ -377,10 +361,6 @@
   ],
   [
     "impl",
-    "keyword"
-  ],
-  [
-    "make",
     "keyword"
   ],
   [

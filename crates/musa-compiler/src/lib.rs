@@ -58,7 +58,6 @@ mod lint;
 /// than an `allow` is the point — prompt 142 calling it makes this unfulfilled,
 /// and the compiler says so.
 mod lower;
-mod module;
 mod package;
 mod phase;
 mod phase_budget;
@@ -77,7 +76,6 @@ mod reference;
 mod registry;
 mod resolve;
 mod studio;
-mod template;
 
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};

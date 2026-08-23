@@ -35,7 +35,6 @@ pub(super) fn elaborate_score(
     resolver: &mut Resolver,
     elaborated: &mut crate::document::Document,
     piece: &PieceDecl,
-    namespace: &str,
     snapshot: &mut ScoreSnapshot,
 ) -> musa_events::SemanticHash {
     let Some(score) = piece.score() else {
@@ -45,7 +44,7 @@ pub(super) fn elaborate_score(
     // cello can be answered by the violin above it — or refused, if the answer
     // comes first. Either way the name exists.
     resolve::register_bars(resolver, snapshot, &score);
-    let Some(read) = elaborated.piece(resolver, piece.syntax(), namespace) else {
+    let Some(read) = elaborated.piece(resolver, piece.syntax()) else {
         return musa_events::SemanticHash::default();
     };
     let Some(sounding) = evaluated(resolver, elaborated, &read.track) else {
@@ -292,7 +291,7 @@ pub(super) fn elaborate_material(
         .map(|(from, imported)| crate::document::Source::imported(imported.syntax(), from))
         .chain(std::iter::once(crate::document::Source::own(library.syntax())))
         .collect();
-    drop(crate::document::elaborate(resolver, &sources, None));
+    drop(crate::document::elaborate(resolver, &sources));
     if resolver
         .diagnostics
         .iter()

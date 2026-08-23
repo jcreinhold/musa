@@ -3,9 +3,6 @@
 [
   (piece_declaration)
   (library_declaration)
-  (template_declaration)
-  (signature_declaration)
-  (structure_declaration)
   (data_declaration)
   (record_declaration)
   (enum_declaration)

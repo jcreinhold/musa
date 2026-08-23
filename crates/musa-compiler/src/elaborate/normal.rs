@@ -58,20 +58,7 @@ pub(crate) fn piece_term(
     let root = document.syntax();
     let mut resolver = Resolver::new();
     resolver.realization = realization.clone();
-    // A made piece is this document's piece, so the term of a document whose
-    // piece is an instance is the term of what the instance makes.
-    let mut templates = crate::template::Templates::collect(&mut resolver, &root);
-    let made = musa_syntax::ast::MakeStmt::from_root(&root).and_then(|site| {
-        templates.instance(
-            &mut resolver,
-            &site,
-            "piece",
-            crate::template::Kind::Piece,
-            None,
-            source.name(),
-        )
-    });
-    let piece = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))?;
+    let piece = PieceDecl::from_root(&root)?;
     let mut snapshot = ScoreSnapshot::default();
     // The same closure full compilation reads: a `use` of imported material
     // is the piece's own music, and an export that could not name it would be
@@ -80,11 +67,11 @@ pub(crate) fn piece_term(
     wanted.extend(piece.imports());
     let libraries = crate::imports::load(&mut resolver, source.name(), &wanted, imports);
     let sources = declaring(&root, &libraries, piece.syntax());
-    let mut elaborated = crate::document::elaborate(&mut resolver, &sources, made.as_ref())?;
+    let mut elaborated = crate::document::elaborate(&mut resolver, &sources)?;
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
     resolve::register_bars(&mut resolver, &mut snapshot, &score);
-    let read = elaborated.piece(&mut resolver, piece.syntax(), source.name())?;
+    let read = elaborated.piece(&mut resolver, piece.syntax())?;
     let sounding = elaborated.track(&read.track).ok()?;
     // The barlines, and only because the markers below are placed in them: this
     // helper answers a term rather than a diagnosis, so the meters are folded for

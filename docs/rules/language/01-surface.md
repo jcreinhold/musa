@@ -73,14 +73,8 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 events-quote := "events" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" events-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | data | record | enum | impl
-                | signature | structure | template | instance)*
-                (piece | library | instance)
-signature    := "signature" IDENT "{" member* "}"
-member       := "let" IDENT ":" type ";"
-structure    := visibility? "structure" IDENT params? ":" IDENT "{" (binding | function)* "}"
-template     := "template" decl-kind IDENT "(" params? ")" decl-body
-instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
+document     := (import | binding | function | data | record | enum | impl)*
+                (piece | library)
 path         := IDENT "." IDENT
 sound-bind   := "sound" expr "using" expr ";"
 instrument   := "instrument" IDENT ("from" STRING)? "conforms" path
@@ -502,12 +496,13 @@ worse thing to explain than a refusal. Re-opening this needs a program with a ge
 one, and a stated answer for what its `match` coverage means.
 
 **`private` marks a declaration, and public is the default.** The same word stands before a `let`, `fn`, `record`,
-`enum`, `data`, or `structure` and hides the whole declaration; §4 of `04-templates-and-modules.md` states the boundary
-it hides behind and why it does not overlap with sealing. A marked declaration is nameable from a sibling definition in
-its own module and from nowhere else, including through an `import` alias and through a re-export, and marking one
-changes no program that did not name it. `impl` takes the marker in the grammar above, and so does each `fn` inside one.
-After prompt 146 the question the marker used to raise for a `trait` does not arise, because a structure is an ordinary
-value with an ordinary name: marking it private hides that name and nothing else, exactly as it does for a `let`.
+`enum`, or `data` and hides the whole declaration; §1 of `04-templates-and-modules.md` states the boundary it hides
+behind. Since prompt 162 it is the *only* way anything is hidden — §6.1 is what sealing became. A marked declaration is
+nameable from a sibling definition in its own module and from nowhere else, including through an `import` alias and
+through a re-export, and marking one changes no program that did not name it. `impl` takes the marker in the grammar
+above, and so does each `fn` inside one. After prompt 146 the question the marker used to raise for a `trait` does not
+arise, because a structure is an ordinary value with an ordinary name: marking it private hides that name and nothing
+else, exactly as it does for a `let`.
 
 Public by default is the opposite of Rust's choice and the opposite of what *A Philosophy of Software Design* ch. 5
 would argue for a fresh language, and the argument it loses to is specific rather than general: Musa's packages are
@@ -785,14 +780,30 @@ register; `stack c major7/2` is rejected, because a pitch class chooses no regis
 `Pc12` exactly once; symmetry may make fewer than 48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error.
 Row-form naming always states a convention.
 
-## 6. Declaration templates — deprecated, owned by 162
+## 6. Declaration templates and the module layer — removed by 162
 
-**`template`, `signature`, `structure`, `template structure`, and `make` are being removed, and prompt 162 removes
-them.** They are the module layer, and after prompt 146 a structure is an ordinary record and a functor an ordinary
-function, so the layer describes a second way to say what the term language already says. The forms stay in the grammar
-and in this specification until that prompt runs, so `stdlib/` and `examples/` still validate against this document in
-the meantime; nothing new should be written in them, and §6 and §6.1 below record what they mean rather than what they
-are for.
+**`template`, `signature`, `structure`, `template structure`, and `make` were the module layer, and prompt 162 removed
+all five.** After prompt 146 a structure is an ordinary record and a functor an ordinary function, so the layer was a
+second way to say what the term language already says — a sublanguage by *addition*, with its own scoping, its own
+matching rule, and its own diagnostics, none of which composed with the rest.
+
+The translation, in four lines and one paragraph:
+
+| Was | Is |
+| --- | --- |
+| `signature S { … }` | `record S { … }` |
+| `structure X : S { … }` | `let X : S = S { … }` |
+| `template structure F(A: S): T { … }` | `fn F(a: S) -> T { … }` |
+| `make F(X) as Y` | `let Y : T = F(X);` |
+
+A piece is not a value, so the fifth word reduces to what was already true about files rather than to an expression. A
+`template voice V(…) { … }` with `make V(a) as n` is `fn V(…) -> EventTrack[WrittenTime, ScoreFact] { … }` with
+`voice n { use V(a); }`, because a voice template's body is a sequence of music statements and that is an event track
+and nothing else. A `template piece P(…) "T" { … }` with `make P(a, b) as n` is the piece written out, each parameter a
+binding at the file's lexical root: a file is one piece however the piece got there, and a template made once was a
+piece written with ceremony. A body wanted at two different arguments is two files over one shared function — what is
+reusable about a parameterized piece is its *material*, a function of a `Key` and a `Scale` returning an event track,
+and that is ordinary source any number of pieces may import.
 
 ```musa
 fn theme() -> EventTrack[WrittenTime, ScoreFact] { music {
@@ -800,69 +811,42 @@ fn theme() -> EventTrack[WrittenTime, ScoreFact] { music {
     d4/4
 } }
 
-template voice answer(subject: EventTrack[WrittenTime, ScoreFact], transform: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact]) {
-    use transform(subject);
-}
+fn answer(
+    subject: EventTrack[WrittenTime, ScoreFact],
+    transform: EventTrack[WrittenTime, ScoreFact] -> EventTrack[WrittenTime, ScoreFact],
+) -> EventTrack[WrittenTime, ScoreFact] { transform(subject) }
 
-template piece study(k: Key, mode: Scale, subject: EventTrack[WrittenTime, ScoreFact]) "Study" {
-    key k;
+let mode: Scale = scale g mixolydian;
+
+let subject: EventTrack[WrittenTime, ScoreFact] = theme();
+
+piece "Study" {
+    key g major;
     score {
         part piano {
             voice right { in scale mode { use subject; } }
-            make answer(subject, fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P8, line) }) as follower;
+            voice follower {
+                use answer(subject, fn (line: EventTrack[WrittenTime, ScoreFact]) -> EventTrack[WrittenTime, ScoreFact] { transpose(P8, line) });
+            }
         }
     }
 }
-
-make study(key g major, scale g mixolydian, theme()) as study_in_g;
 ```
 
-`template` and `make` are structural syntax, not expressions. The `as` name is mandatory and participates in stable
-generative identity. `piece`, `voice`, or `structure` with parameters but without `template` is rejected.
+A file is one piece or one library, and whatever precedes it — imports, bindings, functions, type declarations — is the
+file's lexical root. Identity comes from the site the way it always did: two calls of one function at two sites are two
+declarations at two origins, for the same reason two `make`s were.
 
-A file is still one piece or one library, so an instance is placed by the kind it makes: a `make` of a piece template
-stands at the file root and *is* that file's piece, and a `make` of a voice template stands among a part's voices.
-Whatever precedes the file's piece or library — imports, bindings, functions, templates — is the file's lexical root. A
-template body reads that root and its own parameters and nothing from the site that instantiates it; the arguments at a
-site are evaluated in the site's own scope, which is why `subject` above can be passed on from `study` to `answer`.
+## 6.1 What sealing became
 
-## 6.1 Signatures and structures — deprecated, owned by 162
+A `signature` bought one thing a record does not: a constructor could be withheld, because a member the signature did
+not list was private to the structure that defined it. That is **sealing by listing**, and its replacement is **sealing
+by marking** — §1.3's `private`, which is one rule instead of a layer.
 
-A signature names what a bundle of values must provide; a structure provides them; a `template structure` is a functor
-from structures to a structure. All three are deprecated on §6's terms: a record type is the signature, a record value
-is the structure, and a function from one to another is the functor.
-
-```musa
-signature TonalContext {
-    let tonic: Key;
-    let collection: Scale;
-    let spell: Degree -> Option<Pitch>;
-}
-
-structure CMajor: TonalContext {
-    let tonic: Key = key c major;
-    let collection: Scale = scale c ionian;
-    let spell: Degree -> Option<Pitch> = degree_in_c;
-}
-
-template structure Sequences(C: TonalContext, gap: Duration): TonalContext {
-    let tonic: Key = C.tonic;
-    let collection: Scale = C.collection;
-    let spell: Degree -> Option<Pitch> = C.spell;
-    let delay: Duration = gap;
-}
-
-make Sequences(CMajor, 1/2) as CSequences;
-```
-
-A signature member is a `let` without its definition: a name and the type the structure must give it. Matching is by
-name and exact type — a missing member and a member of the wrong type are both errors, each labelled at the signature
-and at the structure. A member the signature does not mention stays private to the structure: it is what the structure's
-own definitions may use and what nothing outside may name.
-
-Members are read as `Structure.member`. Inside a structure, a sibling member is read by its bare name. There is no
-structure value, no structure argument to a function, no unpacking, and no recursion: `structure`, `signature`, and
-`template structure` are structural syntax that has finished before any value exists.
+The replacement is specified here and not yet enforced. `Visibility` and `ModuleId` exist in the core, but
+`musa-compiler` does not give a source file a module, so a `private` declaration is nameable by every file that imports
+it. Prompt 162a wires it and states the law; until then this section says what `private` means and the compiler does
+less than it says.
 
 ## 7. Events documents and quotation
 
@@ -1013,7 +997,7 @@ recorded duration remains seconds and is never manufactured into a written-time 
 | major/dorian rebinding | Reader-style `in_scale` | `≈music` per environment; uses differ under `≈facts` |
 | canon | `together(subject, shift(gap, answer(subject)))` | `≈material` |
 | harmonizer | controlled pitch traversal | `≈music` |
-| key-parameterized piece / parameterized voice | declaration-template expansion | full facts retain distinct instance Origin; `≈facts` after erasure |
+| key-parameterized piece / parameterized voice | one function of a `Key` and a `Scale`, called per file | full facts retain distinct call Origin; `≈facts` after erasure |
 | one chord class, two voicings | `play(voice(...))` | intentionally unequal under `≈facts` |
 | generic/symmetric row | finite row constructor and transforms | value equality; distinct-form count is observed |
 | assertion | `checked(predicate, body)` | successful body `≈music`; failure has no value |

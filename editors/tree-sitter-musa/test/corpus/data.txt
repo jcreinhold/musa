@@ -13,11 +13,6 @@ library {
     Both(left: A, right: B),
   }
 
-  signature Voicing {
-    data Spacing;
-    let close: Spacing;
-  }
-
   fn describe(shape: Shape) -> Nat {
     match shape {
       Silence -> 0,
@@ -80,15 +75,6 @@ library {
           (type_expression
             (type_name
               (identifier))))))
-    (signature_declaration
-      (identifier)
-      (data_member
-        (identifier))
-      (signature_member
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier)))))
     (function_declaration
       (identifier)
       (parameter_list

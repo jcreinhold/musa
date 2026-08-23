@@ -19,7 +19,7 @@ A package module that declares a level and an `expand`:
 ```
 
 An ordinary `let`, at an ordinary function type, inside an ordinary `library`. It may declare its own data and its own
-helpers, and it does, because it is a module and not a template:
+helpers, and it does, because it is an ordinary library and not a dialect:
 
 ```musa
     data Refusal {

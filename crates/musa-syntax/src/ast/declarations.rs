@@ -9,7 +9,7 @@ use super::is_type;
 use super::token_text;
 use super::wrapper;
 use crate::SyntaxKind;
-use crate::language::{SyntaxElement, SyntaxNode};
+use crate::language::SyntaxNode;
 
 /// A declared motif parameter: `name: kind`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,114 +25,6 @@ pub(crate) fn params_of(node: &SyntaxNode) -> Vec<FnParam> {
     node.children()
         .find_map(ParamList::cast)
         .map_or_else(Vec::new, |list| children(&list.0))
-}
-
-/// `signature TonalContext { let key: key; }` — the members a module must
-/// provide, and their types.
-pub struct SignatureDecl(SyntaxNode);
-wrapper!(SignatureDecl, SyntaxKind::SignatureDecl);
-
-impl SignatureDecl {
-    /// Every signature declared at a document's lexical root, in source
-    /// order.
-    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
-        children(node)
-    }
-
-    /// The name modules and template parameters refer to it by.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// Its members, in source order.
-    pub fn members(&self) -> Vec<SignatureMember> {
-        children(&self.0)
-    }
-}
-
-/// `let key: key;` — one member of a signature: a name and the type a
-/// module's definition of it must have.
-pub struct SignatureMember(SyntaxNode);
-wrapper!(SignatureMember, SyntaxKind::SignatureMember);
-
-impl SignatureMember {
-    /// The member's name.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The type a module's definition of it must have.
-    ///
-    /// A written type is one of several node kinds rather than one wrapper,
-    /// so this answers with the node itself, the way every other reader of a
-    /// type annotation takes it — through [`is_type`], so that a kind added to
-    /// the type grammar is a type here too. Spelling the list again is how
-    /// `EventTrack<WrittenTime>` came to be unreadable in a signature and
-    /// nowhere else.
-    pub fn ty(&self) -> Option<SyntaxNode> {
-        self.0.children().find(|node| is_type(node.kind()))
-    }
-}
-
-/// `structure CMajor : TonalContext { ... }` — a named group of declarations,
-/// reached from outside as `CMajor.member`.
-///
-/// A `template structure` parameterizes one over other structures; the
-/// parameter list is the only difference in the node, and [`TemplateDecl`] is
-/// what says which of the two this is.
-pub struct StructureDecl(SyntaxNode);
-wrapper!(StructureDecl, SyntaxKind::StructureDecl);
-
-impl StructureDecl {
-    /// Every structure declared directly at a document's lexical root, in
-    /// source order — not the ones a `template structure` parameterizes.
-    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
-        children(node)
-    }
-
-    /// The structure's name: the qualifier its members are reached through.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The name of the signature it claims to provide.
-    ///
-    /// The second identifier, because `structure M : S { ... }` writes the
-    /// structure's own name first and the parameters, when there are any, live
-    /// inside a [`ParamList`] rather than among these tokens.
-    pub fn signature(&self) -> Option<String> {
-        self.0
-            .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| token.kind() == SyntaxKind::Identifier)
-            .nth(1)
-            .map(|token| token.text().to_string())
-    }
-
-    /// Its parameters, in source order — empty unless a `template` wraps it.
-    pub fn params(&self) -> Vec<FnParam> {
-        params_of(&self.0)
-    }
-
-    /// The values it defines, in source order.
-    pub fn lets(&self) -> Vec<LetDecl> {
-        children(&self.0)
-    }
-
-    /// The functions it defines, in source order.
-    pub fn fns(&self) -> Vec<FnDecl> {
-        children(&self.0)
-    }
-
-    /// Whether it is marked `private`, and so nameable only inside the module
-    /// that declares it (`01-surface.md` §1.3).
-    ///
-    /// About the structure itself and not about its members: a member the
-    /// signature does not list is already private *to the structure*, which is
-    /// sealing by listing rather than by marking, and the two do not overlap.
-    pub fn is_private(&self) -> bool {
-        is_private(&self.0)
-    }
 }
 
 /// `let name = expression;`, with an optional `: type` before the `=`.
@@ -386,24 +278,7 @@ pub(crate) fn written_type(node: &SyntaxNode) -> Option<SyntaxNode> {
     node.children().find(|child| is_type(child.kind()))
 }
 
-/// `data Motive;` — a signature member naming a type without its
-/// constructors.
-pub struct DataMember(SyntaxNode);
-wrapper!(DataMember, SyntaxKind::DataMember);
-
-impl DataMember {
-    /// The type's name.
-    pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The names of its type parameters, in source order.
-    pub fn parameters(&self) -> Vec<String> {
-        type_parameters(&self.0)
-    }
-}
-
-/// The type parameters written on a declaration or a signature member.
+/// The type parameters written on a declaration.
 pub(crate) fn type_parameters(node: &SyntaxNode) -> Vec<String> {
     node.children()
         .find(|child| child.kind() == SyntaxKind::TypeParams)

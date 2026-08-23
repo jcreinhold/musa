@@ -197,10 +197,7 @@ fn category(cat: Cat) -> Raw {
 /// dropped, because `crate::quote::matched` drops it too: §4 matches on shape,
 /// and a group of one child is not a shape a pattern can write.
 fn spliceable(source: &str, at: u64) -> Syntax {
-    let mut node = read_region(
-        &musa_syntax::parse(source).syntax(),
-        ExpansionPath::at(vec![u32::try_from(at).unwrap_or(u32::MAX)]),
-    );
+    let mut node = crate::quote::read_written(source, ExpansionPath::at(vec![u32::try_from(at).unwrap_or(u32::MAX)]));
     while let Syntax::Group {
         delimiter: Delimiter::Layout,
         ref children,

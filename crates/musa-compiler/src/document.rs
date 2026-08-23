@@ -59,7 +59,6 @@ use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Declared, Definition, Item};
 use crate::lower::notation::{Argued, Claimed};
 use crate::lower::{Lowering, Naming, Sites, refusals};
-use crate::module::{MemberItem, Modules};
 use crate::resolve::Resolver;
 use musa_score::diagnose::{Code, Diagnostic};
 
@@ -184,19 +183,6 @@ pub(crate) struct Document {
     #[cfg_attr(not(test), expect(dead_code, reason = "the audit that reads it is a test build's"))]
     definitions: Arc<Program>,
     names: Vec<Name>,
-    /// This document's modules, kept because a *piece* is read after
-    /// elaboration and reads names the same way a declaration does: a voice
-    /// that writes `key Away.tonic;` is naming a module member, and a walk
-    /// that had forgotten the modules would read it as a projection.
-    modules: Modules,
-    /// The expansion a root `make` put this document's whole piece behind, when
-    /// the file writes one instead of a piece.
-    ///
-    /// A property of the *document* rather than an argument to
-    /// [`Document::piece`], because it is the same answer for every reading this
-    /// document can be asked for: the file is the template's body, so everything
-    /// in it was produced by the one site that made it.
-    standing: Option<musa_score::origin::Origin>,
     /// What elaborating the declarations charged.
     ///
     /// Kept because one caller has a budget of its own to answer for: the
@@ -438,21 +424,8 @@ impl Document {
     /// declarations have to be in scope before the structure is a term, and the
     /// origins the structure mints have to be numbered by the table the
     /// declarations were.
-    /// `namespace` is the document's own name, which is what a template
-    /// instance's generated identity is minted in (`04-templates-and-modules.md`
-    /// §2). It cannot be read off the tree, and two documents that made the same
-    /// template at the same structural address would otherwise mint one identity
-    /// between them.
-    pub(crate) fn piece(
-        &mut self,
-        resolver: &mut Resolver,
-        node: &SyntaxNode,
-        namespace: &str,
-    ) -> Option<crate::lower::piece::Piece> {
-        let standing = self.standing.clone();
-        Lowering::new(resolver, &mut self.sites)
-            .naming(Naming::at_root(&self.modules))
-            .piece(node, namespace, standing.as_ref())
+    pub(crate) fn piece(&mut self, resolver: &mut Resolver, node: &SyntaxNode) -> Option<crate::lower::piece::Piece> {
+        Lowering::new(resolver, &mut self.sites).piece(node)
     }
 }
 
@@ -461,11 +434,6 @@ impl Document {
 /// [`None`] with diagnostics reported when anything was refused. Every refusal
 /// is restated at the node it is about, so a caller neither sees an
 /// [`ElabError`] nor has to know what an [`Origin`] is.
-///
-/// `made` is the site that made this document's piece, when the file writes
-/// `make N(…) as I;` at its root rather than a piece. Its arguments are
-/// definitions of this document like any other — see [`instantiated`] — which is
-/// why they arrive here and not at [`Document::piece`].
 /// Every definition this document elaborated, read again by the kernel.
 ///
 /// `musa-calculus`'s [`recheck_program`](musa_calculus::recheck_program) closed
@@ -490,13 +458,8 @@ pub(crate) fn audit(document: &Document) {
     }
 }
 
-pub(crate) fn elaborate(
-    resolver: &mut Resolver,
-    sources: &[Source],
-    made: Option<&crate::template::Instance>,
-) -> Option<Document> {
+pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<Document> {
     let mut sites = Sites::default();
-    let modules = modules_in(resolver, sources);
     let aliases: Vec<String> = sources
         .iter()
         .filter_map(|source| source.from.as_ref()?.alias.clone())
@@ -515,8 +478,8 @@ pub(crate) fn elaborate(
     for source in sources {
         let already = read.definitions.len();
         let numbered = sites.counted();
-        read.gather(resolver, &mut sites, source, &modules, &aliases);
-        read.barred(resolver, &mut sites, source, &modules);
+        read.gather(resolver, &mut sites, source, &aliases);
+        read.barred(resolver, &mut sites, source);
         // Which file this source's sites came out of, recorded now because this
         // is the walk that knows. A refusal about one of them is restated at the
         // `import` below rather than at a span in a document nobody here has —
@@ -535,19 +498,13 @@ pub(crate) fn elaborate(
             Some(_) => {}
         }
     }
-    read.flatten(resolver, &mut sites, &modules);
     // Here rather than beside the core's own refusals below, because a
     // declaration that could not be read leaves the *list* short: every use of
     // the missing name would be checked against a context that never bound it
     // and reported as an unknown name, burying the refusal already stated at
-    // the declaration. [`instantiated`] refuses a document for the same reason
-    // one line down.
+    // the declaration.
     if read.refused {
         return None;
-    }
-    if let Some(instance) = made {
-        read.definitions
-            .extend(instantiated(resolver, &mut sites, instance, &modules)?);
     }
     // Standing *somewhere*, which is what makes the phase's `private` bite: the
     // compiler's own context stands nowhere and is inside every module, and a
@@ -639,8 +596,6 @@ pub(crate) fn elaborate(
         sites,
         definitions: declared,
         names,
-        modules,
-        standing: made.map(|instance| crate::lower::expansion(instance.span(), instance.step())),
         spend,
     })
 }
@@ -791,14 +746,7 @@ impl Read {
     /// section reports is between names in "the current **flat** value
     /// namespace". Qualifying a type as well would be a namespace rule nothing
     /// asks for and no source writes.
-    fn gather(
-        &mut self,
-        resolver: &mut Resolver,
-        sites: &mut Sites,
-        source: &Source,
-        modules: &Modules,
-        aliases: &[String],
-    ) {
+    fn gather(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source, aliases: &[String]) {
         let alias = source.from.as_ref().and_then(|from| from.alias.as_deref());
         for node in source.root.children() {
             if source.leaves(&node) {
@@ -816,7 +764,7 @@ impl Read {
                 } else {
                     lowering
                 };
-                lowering.naming(Naming::at_root(modules).under(aliases)).item(&node)
+                lowering.naming(Naming::under(aliases)).item(&node)
             };
             match item {
                 Declared::Item(Item::Data(data)) => {
@@ -850,7 +798,7 @@ impl Read {
                 }
                 Declared::Item(Item::Definition(mut definition)) => {
                     if let Some(alias) = alias {
-                        definition.name = Name::from(format!("{alias}{}{}", crate::module::DOT, definition.name));
+                        definition.name = Name::from(format!("{alias}{}{}", crate::lower::DOT, definition.name));
                     }
                     record(
                         resolver,
@@ -882,8 +830,8 @@ impl Read {
     /// any `use` below can answer, so it is both a statement and a declaration —
     /// [`crate::lower::Lowering::bar`] reads the first and
     /// [`crate::lower::Lowering::named_bar`] the second. Beside [`Self::gather`]
-    /// rather than inside it for [`Self::flatten`]'s reason: a walk of a source's
-    /// children finds the `score`, not the bars three levels under it.
+    /// rather than inside it, because a walk of a source's children finds the
+    /// `score`, not the bars three levels under it.
     ///
     /// Only from a `piece`. A document root has the piece among its children and
     /// the piece is a source of its own, so a descendant walk from both would
@@ -893,7 +841,7 @@ impl Read {
     /// An anonymous bar declares nothing and is passed over: it is a measure,
     /// which is ordinary structure, and giving it a name here would be inventing
     /// one the source did not write.
-    fn barred(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source, modules: &Modules) {
+    fn barred(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source) {
         if source.root.kind() != SyntaxKind::PieceDecl {
             return;
         }
@@ -901,9 +849,7 @@ impl Read {
             let Some(name) = musa_syntax::ast::BarStmt::cast(node.clone()).and_then(|bar| bar.name()) else {
                 continue;
             };
-            let read = Lowering::new(resolver, sites)
-                .naming(Naming::at_root(modules))
-                .named_bar(&node, &name);
+            let read = Lowering::new(resolver, sites).named_bar(&node, &name);
             match read {
                 // Private because a score is not an interface: a bar is written
                 // inside a voice, and no `import` reaches in there to name it.
@@ -915,140 +861,6 @@ impl Read {
             }
         }
     }
-
-    /// Every module member and every functor argument, as definitions of this
-    /// document.
-    ///
-    /// `04-templates-and-modules.md` §4's whole claim, discharged: a module is
-    /// a name for a group of declarations and not a thing, so a member is an
-    /// *ordinary definition* filed under a qualified name, and an instance is
-    /// the same declaration read a second time in a scope where the functor's
-    /// parameters name what the site passed. Nothing here is a second kind of
-    /// item and nothing crosses into [`musa_calculus`] that a `let` at a root does
-    /// not.
-    ///
-    /// Filed after [`Self::gather`] rather than during it, because a member is
-    /// not written where it is checked: `Modules` has already flattened the
-    /// tree, and a walk of a source's children would find the `structure` and
-    /// not its members. Order does not otherwise matter —
-    /// [`musa_calculus::declare_program`] computes the dependency order over the
-    /// whole list.
-    fn flatten(&mut self, resolver: &mut Resolver, sites: &mut Sites, modules: &Modules) {
-        for member in modules.members() {
-            let written = match &member.item {
-                MemberItem::Let(declaration) => declaration.syntax().clone(),
-                MemberItem::Function(declaration) => declaration.syntax().clone(),
-            };
-            let lowering = Lowering::new(resolver, sites).naming(Naming::inside(modules, &member.scope));
-            let read = if member.source.is_some() {
-                lowering.elsewhere()
-            } else {
-                lowering
-            }
-            .item(&written);
-            match read {
-                Declared::Item(Item::Definition(mut definition)) => {
-                    // The one thing the walk cannot know: a member is written
-                    // as `tonic` and named `CMajor.tonic`, and for an instance
-                    // it is the *functor's* declaration filed under the
-                    // instance's name. Public because what a structure hides is
-                    // enforced where a name is read (`Modules::resolve`), and a
-                    // member the core refused to look up would be hidden from
-                    // its own siblings too.
-                    definition.name = Name::from(member.name.as_str());
-                    record(resolver, &written, &definition.name, member.source.as_deref());
-                    self.declaring.push(Declaring {
-                        node: written.clone(),
-                        name: Arc::clone(&definition.name),
-                        origin: definition.origin,
-                        uri: member.source.clone(),
-                    });
-                    self.definitions.push(top_level(definition, Visibility::Public));
-                }
-                Declared::Item(_) | Declared::Elsewhere => {}
-                Declared::Refused => self.refused = true,
-            }
-        }
-        for argument in modules.arguments() {
-            let mut lowering = Lowering::new(resolver, sites).naming(Naming::at_root(modules));
-            let origin = lowering.origin(&argument.expr);
-            match (lowering.ty(&argument.ty), lowering.expr(&argument.expr)) {
-                (Some(ty), Some(value)) => self.definitions.push(RawTopLevel {
-                    origin,
-                    name: Name::from(argument.holder.as_str()),
-                    // Private for [`instantiated`]'s reason: the holder is a
-                    // name this document minted for a value the site wrote, and
-                    // it is unspellable anyway.
-                    visibility: Visibility::Private,
-                    module: None,
-                    ty: Some(ty),
-                    value,
-                }),
-                _ => self.refused = true,
-            }
-        }
-    }
-}
-
-/// Everything this document's `signature`, `structure`, `template structure`,
-/// and module-`make` declarations mean.
-///
-/// Empty, and read at no cost, for a document that writes none — which is
-/// nearly all of them. See [`Modules::written_in`].
-fn modules_in(resolver: &mut Resolver, sources: &[Source]) -> Modules {
-    if !Modules::written_in(sources.iter().map(|source| &source.root)) {
-        return Modules::default();
-    }
-    Modules::read(
-        resolver,
-        sources
-            .iter()
-            .map(|source| (source.from.as_ref().map(|from| from.path.as_str()), source.root.clone())),
-    )
-}
-
-/// The arguments a root `make` gives its template, as definitions of this
-/// document.
-///
-/// A file that writes `make study(…) as …;` where a piece would *is* the
-/// template's body, so the template's parameters are that document's own names
-/// and the site's arguments are what they are bound to. `04-templates-and-modules.md`
-/// §1's "expansion is a binding, never a rewrite" again, and at this level the
-/// binding a core has for it is a top-level definition rather than a λ: a piece
-/// is not one term but many — the whole, each voice, and each claim's two — and
-/// abstracting every one of them over the same parameters would be the same
-/// binding written as many times as a score has parts.
-///
-/// Private, because a parameter is a name inside this document and an importer
-/// that could see it would be reading a name the template declared for itself.
-///
-/// [`None`] with the refusal reported when an argument or a declared parameter
-/// type could not be read; the piece is refused either way, and a half-bound
-/// document would report every use of the missing name as well.
-fn instantiated(
-    resolver: &mut Resolver,
-    sites: &mut Sites,
-    instance: &crate::template::Instance,
-    modules: &Modules,
-) -> Option<Vec<RawTopLevel>> {
-    let mut lowering = Lowering::new(resolver, sites).naming(Naming::at_root(modules));
-    let mut bound = Vec::new();
-    let mut whole = true;
-    for parameter in instance.bound() {
-        let origin = lowering.origin(parameter.argument);
-        match (lowering.ty(parameter.ty), lowering.expr(parameter.argument)) {
-            (Some(ty), Some(value)) => bound.push(RawTopLevel {
-                origin,
-                name: Name::from(parameter.name),
-                visibility: Visibility::Private,
-                module: None,
-                ty: Some(ty),
-                value,
-            }),
-            _ => whole = false,
-        }
-    }
-    whole.then_some(bound)
 }
 
 /// One lowered definition, as the member of a program `musa-calculus` reads.

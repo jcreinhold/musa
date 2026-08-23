@@ -278,6 +278,6 @@ fn order(found: Vec<String>, manifest: &[String]) -> Vec<String> {
 fn title_of(path: &Path) -> Option<String> {
     let source = std::fs::read_to_string(path).ok()?;
     let document = musa_syntax::parse(&source);
-    let title = musa_syntax::ast::PieceDecl::of_document(&document.syntax())?.name()?;
+    let title = musa_syntax::ast::PieceDecl::from_root(&document.syntax())?.name()?;
     (!title.trim().is_empty()).then_some(title)
 }

@@ -42,8 +42,7 @@ use crate::resolve::NameKind;
 ///
 /// [`None`] for a node that is not a declaration this records — a `data`, a
 /// `trait`, an `impl`, and an `import` are not values and are documented by
-/// whoever declares them, and a `signature` and a `structure` are
-/// `crate::module`'s.
+/// whoever declares them.
 pub(crate) fn documented(
     node: &SyntaxNode,
     name: &str,

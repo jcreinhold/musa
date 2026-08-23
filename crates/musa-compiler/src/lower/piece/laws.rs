@@ -31,13 +31,6 @@ use crate::document::{Document, Source, elaborate};
 use crate::elaborate::{FactKind, VoiceTrack};
 use crate::resolve::Resolver;
 
-/// The document name every law below reads its piece under.
-///
-/// One name for all of them, because the only thing it decides is what a
-/// template instance's generated identity is minted in, and a law that varied
-/// it would be varying a digest nothing here reads.
-const DOCUMENT: &str = "law";
-
 // ---- reading a written piece back out of a parse ----
 
 /// The `piece … { … }` node `source` writes, with a loud failure when it does
@@ -75,42 +68,22 @@ fn checked(node: &SyntaxNode) -> (Option<musa_calculus::Term>, Vec<String>) {
 /// would — [`every_example_elaborates`] passes the standard library, because a
 /// survey that reported `harmonize` missing would be measuring its own harness.
 ///
-/// The document's own root goes in beside the piece, and a root `make` is read
-/// before either — the two halves of [`crate::elaborate`]'s `declaring`. Both
-/// matter to the same file: `examples/template-study.musa` writes `fn theme()`
-/// at the root and its piece is a *template's* body, whose parameters no source
-/// binds and the instance does. A harness that read the body without the `make`
-/// standing under it would report `subject` unbound — which is a fault of the
-/// reading rather than of the file, and the compiler accepts that file.
-///
-/// Which piece is read follows from the same two: a document's piece is the one
-/// written at its root, or the one its root `make` names, and only when it has
-/// neither is it the node the caller handed over. The distinction is not
-/// pedantic — `examples/module-functor-study.musa` declares two template pieces
-/// and makes the *second*, so the first `piece` node under the root is a
-/// template nothing in that file instantiates.
+/// The document's own root goes in beside the piece — the two halves of
+/// [`crate::elaborate`]'s `declaring`. Both matter to the same file:
+/// `examples/template-study.musa` writes `fn theme()` at the root and its piece
+/// reads it, so a harness that read the body without the root standing under it
+/// would report `subject` unbound.
 fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_calculus::Term>, Vec<String>) {
     let mut resolver = Resolver::new();
     let root = node.ancestors().last().unwrap_or_else(|| node.clone());
-    let made = musa_syntax::ast::MakeStmt::from_root(&root).and_then(|site| {
-        crate::template::Templates::collect(&mut resolver, &root).instance(
-            &mut resolver,
-            &site,
-            "piece",
-            crate::template::Kind::Piece,
-            None,
-            DOCUMENT,
-        )
-    });
-    let declared = musa_syntax::ast::PieceDecl::from_root(&root)
-        .or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
-        .map_or_else(|| node.clone(), |piece| piece.syntax().clone());
+    let declared =
+        musa_syntax::ast::PieceDecl::from_root(&root).map_or_else(|| node.clone(), |piece| piece.syntax().clone());
     let mut sources = libraries.to_vec();
     if root != declared {
         sources.push(Source::own(&root));
     }
     sources.push(Source::own(&declared));
-    let elaborated = elaborate(&mut resolver, &sources, made.as_ref());
+    let elaborated = elaborate(&mut resolver, &sources);
     let answer = read(&mut resolver, elaborated, &declared);
     let mut said: Vec<String> = resolver
         .diagnostics
@@ -132,10 +105,10 @@ fn checked_with(node: &SyntaxNode, libraries: &[Source]) -> (Option<musa_calculu
 fn read(resolver: &mut Resolver, elaborated: Option<Document>, node: &SyntaxNode) -> Option<musa_calculus::Term> {
     let Some(mut document) = elaborated else {
         let mut sites = crate::lower::Sites::default();
-        crate::lower::Lowering::new(resolver, &mut sites).piece(node, DOCUMENT, None);
+        crate::lower::Lowering::new(resolver, &mut sites).piece(node);
         return None;
     };
-    let piece = document.piece(resolver, node, DOCUMENT)?;
+    let piece = document.piece(resolver, node)?;
     match document.term(&piece.track) {
         Ok((normal, _)) => Some(normal),
         Err(error) => {
@@ -161,8 +134,8 @@ fn sounding(source: &str) -> (VoiceTrack, Vec<(String, VoiceTrack)>) {
     let node = written(source);
     let mut resolver = Resolver::new();
     let sources = [Source::own(&node)];
-    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
     let lanes = read
         .parts
         .iter()
@@ -187,8 +160,8 @@ fn claimed(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, String)> {
     let node = written(source);
     let mut resolver = Resolver::new();
     let sources = [Source::own(&node)];
-    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
     read.parts
         .iter()
         .flat_map(|part| part.voices.iter())
@@ -371,8 +344,8 @@ fn a_value_argument_is_checked_at_the_shape_the_claim_declares() {
     );
     let mut resolver = Resolver::new();
     let sources = [Source::own(&node)];
-    let mut document = elaborate(&mut resolver, &sources, None).expect("the document elaborates");
-    let read = document.piece(&mut resolver, &node, DOCUMENT).expect("the piece reads");
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
     let claim = read
         .parts
         .iter()
@@ -512,7 +485,7 @@ fn structure(source: &str) -> (Option<super::Piece>, Vec<String>) {
     let node = written(source);
     let mut resolver = Resolver::new();
     let mut sites = crate::lower::Sites::default();
-    let held = crate::lower::Lowering::new(&mut resolver, &mut sites).piece(&node, DOCUMENT, None);
+    let held = crate::lower::Lowering::new(&mut resolver, &mut sites).piece(&node);
     let mut said: Vec<String> = resolver
         .diagnostics
         .iter()
@@ -545,77 +518,6 @@ fn a_voice_is_read_at_its_own_scope() {
     assert!(
         shown.contains("Voice { part: 1, voice: 0 }"),
         "and the second part's, numbered within its own part: {shown}"
-    );
-}
-
-/// An instance site makes a voice where it stands, named by its `as` name.
-///
-/// The other half of the positional rule this module's header states: the
-/// written voice *after* a site keeps the number it would have had, which is
-/// what "the numbering counts every item" was for. The site's own voice is
-/// numbered where it was written, so a `make` between two voices makes a voice
-/// there and nothing renumbers.
-#[test]
-fn an_instance_site_makes_a_voice_where_it_stands() {
-    let (held, said) = structure(
-        "template voice echo(root: Pitch) { root/4 }
-        piece \"numbered\" {
-            score {
-                part strings {
-                    voice first { c4/4 }
-                    make echo(e4) as second;
-                    voice third { g4/4 }
-                }
-            }
-        }",
-    );
-    let held = held.unwrap_or_else(|| panic!("the piece reads: {said:?}"));
-    let voices: Vec<(u32, &str)> = held
-        .parts
-        .first()
-        .expect("the score writes one part")
-        .voices
-        .iter()
-        .map(|voice| (voice.id, voice.name.as_str()))
-        .collect();
-    assert_eq!(
-        voices,
-        [(0, "first"), (1, "second"), (2, "third")],
-        "the instance is the part's second voice, and the written one after it is still its third"
-    );
-}
-
-/// What an instance sounds is the template's body with the site's arguments
-/// bound, and every fact of it says which site made it.
-///
-/// Both halves of what a `make` is, in one piece. The binding half is what makes
-/// two instances of one template two different tracks; the provenance half is
-/// what makes Origin view able to tell either of them from a note a composer
-/// wrote, and it is *first* in the path because everything a transform appends
-/// happened inside the instance.
-#[test]
-fn an_instance_sounds_the_template_bound_to_its_own_arguments() {
-    let (_, lanes) = sounding(
-        "template voice echo(root: Pitch) { root/4 }
-        piece \"twice\" {
-            score {
-                part strings {
-                    make echo(e4) as high;
-                    make echo(c4) as low;
-                }
-            }
-        }",
-    );
-    let named: Vec<&str> = lanes.iter().map(|(name, _)| name.as_str()).collect();
-    assert_eq!(named, ["strings.high", "strings.low"], "two instances, two voices");
-    let shown = format!("{:?}", lanes.first().expect("the part writes two voices").1);
-    assert!(
-        shown.contains("letter: E") && !shown.contains("letter: C"),
-        "the argument the site gave, not the one the other site gave: {shown}"
-    );
-    assert!(
-        shown.contains("expansion_path: [TemplateInstance { template: \"echo\", alias: \"high\""),
-        "and every fact of it came from this site: {shown}"
     );
 }
 
@@ -931,25 +833,21 @@ fn a_parts_own_meter_is_a_fact_at_the_parts_scope() {
 /// rather than after them, so `10-traits.md` §6's exact-receiver lookup finds
 /// the instance at the head where the reading always said it should.
 ///
-/// Five classes were here and are gone. The **events quote** —
+/// Four classes were here and are gone. The **events quote** —
 /// `events EventTrack[WrittenTime, ScoreFact] { … }`, which
 /// [`crate::lower::events`] reads: the reading answers everything the quote can
 /// be wrong about, the term rides in a literal, and one builtin binds the holes
-/// and evaluates. The **instance site** — a `make` among
-/// a part's items — went with the whole of what a `make` is: the template's
-/// body read once at the site's own scope, its parameters λ-bound to the
-/// argument expressions the site wrote, and the result wrapped in `instanced`
-/// so that every fact it produces carries the site's step first. The expansion
-/// path 141k's Stop left to this prompt turned out not to need a number `Sites`
-/// hands out, because provenance is stamped where the facts are *made* rather
-/// than where the term is read.
+/// and evaluates. Provenance turned out not to need a number `Sites` hands out,
+/// because it is stamped where the facts are *made* rather than where the term
+/// is read.
 ///
 /// A notation statement whose argument is
-/// a *name* — `root/4` in `motif turn(root: Pitch)`, `key k;` and `in scale
-/// mode` in a `template piece` — which 141k's fold reported as though a literal
-/// had been misspelled, because it folded to a value while it walked and a
-/// parameter has no value until an instance site supplies one; 142 answers it by
-/// reading those three positions as terms (see [`crate::lower::notation`]). The
+/// a *name* — `root/4` in `motif turn(root: Pitch)`, and `key k;` and `in scale
+/// mode` in a function that builds material — which 141k's fold reported as
+/// though a literal had been misspelled, because it folded to a value while it
+/// walked and a parameter has no value until a caller supplies one; 142 answers
+/// it by reading those three positions as terms (see
+/// [`crate::lower::notation`]). The
 /// anonymous product, where only the *type* half was ever missing: `(a, b)` has
 /// lowered since 141g, and both halves now read the `Pair` the prelude declares,
 /// so a written product is canonical data rather than a structural record.

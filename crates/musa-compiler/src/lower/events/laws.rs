@@ -53,8 +53,8 @@ fn assembled(quote: &str) -> (Option<VoiceTrack>, Vec<String>) {
         .expect("the source writes a piece");
     let mut resolver = Resolver::new();
     let sources = [Source::own(&node)];
-    let track = elaborate(&mut resolver, &sources, None).and_then(|mut elaborated| {
-        let read = elaborated.piece(&mut resolver, &node, "law")?;
+    let track = elaborate(&mut resolver, &sources).and_then(|mut elaborated| {
+        let read = elaborated.piece(&mut resolver, &node)?;
         elaborated.track(&read.track).ok()
     });
     let mut said: Vec<String> = resolver

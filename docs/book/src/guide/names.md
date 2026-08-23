@@ -1,14 +1,13 @@
 # When you need a name
 
-Musa has four ways to write something once and use it more than once. They are not interchangeable, and picking the
+Musa has three ways to write something once and use it more than once. They are not interchangeable, and picking the
 right one is mostly a matter of noticing what varies.
 
 | What varies | Reach for |
 | --- | --- |
 | nothing — the same phrase, repeated | a `motif` |
 | a pitch, an interval, a duration | a `fn` returning `EventTrack<WrittenTime>` |
-| a whole declaration: a piece, a voice | a `template` |
-| a *bundle* of facts that must travel together | a `signature` and a `structure` |
+| a *bundle* of facts that must travel together | a `record`, and a `fn` over it |
 
 ## 1. Functions over music
 
@@ -69,123 +68,122 @@ The restriction is what keeps a function from becoming a second score model. A h
 barlines, key signatures, chord symbols, or the temporal structure — it sees the pitches, which is what a harmonizer
 needs.
 
-## 2. Templates: a declaration with parameters
+## 2. Reusable material: a function that answers music
 
-A function returns a value. A template parameterizes a *declaration* — a piece, a voice, or a structure — so the whole
-thing can be made more than once. From `examples/template-study.musa`:
+A function returns a value, and an event track is a value, so material a piece wants more than once is an ordinary
+function. From `examples/template-study.musa`:
 
 ```musa
 // A voice that answers a subject through whatever transformation it is
-// handed. Twice below: the same body, two instances, two identities.
-template voice answer(
+// handed. Twice below: the same function, two voices, two identities.
+fn answer(
     subject: EventTrack<WrittenTime>,
     transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-) {
-    use transform(subject);
-}
+) -> EventTrack<WrittenTime> { transform(subject) }
 ```
 
-and a whole piece can be one:
+A voice folds one in with `use`, and calling the same function twice makes two voices:
 
 ```musa
-// The piece itself is the template. Its key and scale arrive as arguments,
-// so the study exists in whatever key it is made in.
-template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Study" {
-    meter 4/4;
-    key k;
+            voice upper {
+                use answer(
+                    subject,
+                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                        transpose(P8, line)
+                    },
+                );
+            }
+            voice higher {
+                use answer(
+                    subject,
+                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                        transpose(P15, line)
+                    },
+                );
+            }
 ```
 
-A template is instantiated with `make ... as ...`:
+Two rules make this predictable.
+
+**A function reads only its own parameters and the file's lexical root** — never the place it is called from. A call
+therefore means the same thing wherever it stands, and moving one cannot change what it answers.
+
+**Identity is the declaration you wrote.** `upper` and `higher` above are two voices, not one voice mentioned twice, and
+the editor can tell you which notes came from which — the origin of every note names the `use` that folded it in.
+
+A whole piece is not reusable, because a file is one piece however the piece got there. What was reusable about a piece
+written in several keys is its material and its parameters, and both are ordinary declarations at the file's root:
 
 ```musa
-make answer(
-    subject,
-    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
-        transpose(P8, line)
-    },
-) as upper;
-make answer(
-    subject,
-    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
-        transpose(P15, line)
-    },
-) as higher;
+// What was a template's parameter list is the file's lexical root. The study
+// exists in whatever key these say.
+let mode: Scale = scale g mixolydian;
 ```
 
-Two rules make instances predictable.
-
-**A template body reads only its own parameters and the file's lexical root** — never the site that made it. An instance
-therefore means the same thing wherever it stands, and moving a `make` cannot change what it makes.
-
-**Identity is generative and comes from the site.** Making the same template twice with equal arguments still produces
-two declarations. `upper` and `higher` above are two voices, not one voice mentioned twice, and the editor can tell you
-which notes came from which.
-
-## 3. Signatures and structures: facts that travel together
+## 3. Records: facts that travel together
 
 Sometimes what you want to pass is not one value but a small bundle that is useless when separated: a key, the
 collection it steps through, how a degree gets spelled in register, how a chord class gets voiced. Passing them one at a
 time is how they drift apart.
 
-A `signature` names what such a bundle must provide. `std::context` declares one:
+A `record` names such a bundle. `std::context` declares one:
 
 ```musa
-signature TonalContext {
-    // The key the passage is written in. A key is a signature and a
-    // tonic, never a scale.
-    let tonic: Key;
+    record TonalContext {
+        // The key the passage is written in. A key is a signature and a
+        // tonic, never a scale.
+        tonic: Key;
 
-    // The collection stepwise motion reads. A default, not a claim: a
-    // passage may still name another collection where it wants one.
-    let collection: Scale;
+        // The collection stepwise motion reads. A default, not a claim: a
+        // passage may still name another collection where it wants one.
+        collection: Scale;
 ```
 
-A `structure` provides one. `std::context` ships `CMajor` and `ANaturalMinor`, and either may be handed anywhere a
+A value of it is a context. `std::context` ships `c_major` and `a_natural_minor`, and either may be handed anywhere a
 `TonalContext` is asked for.
 
-A `template structure` is a function from structures to a structure. From `examples/module-functor-study.musa`:
+A function from one record to another is what a functor was. From `examples/module-functor-study.musa`:
 
 ```musa
-template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
-    // The subject steps through whatever collection the context named.
-    let subject: EventTrack<WrittenTime> = music {
-        in scale C.collection {
+// The subject steps through whatever collection the context named. It reads
+// the context through `TonalContext` and nothing else: a record's fields are
+// its whole interface, so there is nothing else here to read by accident.
+fn canon_subject(context: TonalContext) -> EventTrack<WrittenTime> {
+    music {
+        in scale context.collection {
             c5/4
             d5/4
             e5/4
             f5/4
         }
-    };
+    }
+}
 ```
 
 ```musa
-// Two instances, two structures. Identity is generative and comes from the
-// *site*: making the same functor twice with equal arguments would still be
-// two declarations, and here the arguments differ as well.
-make Canon(CMajor, duration_of(1/1)) as MajorCanon;
-make Canon(ANaturalMinor, duration_of(2/1)) as MinorCanon;
+// Two values, two identities. Identity comes from the site the way it always
+// did: two calls are two `let`s at two origins, and here the arguments differ
+// as well.
+let major_canon: CanonMaterial = canon(c_major, duration_of(1/1));
+
+let minor_canon: CanonMaterial = canon(a_natural_minor, duration_of(2/1));
 ```
 
 Two properties are worth knowing.
 
-**A signature seals.** The functor above reads `C` through `TonalContext` and nothing else; whatever else `CMajor`
-happens to define is private to `CMajor`. The same rule runs the other way:
+**A record's fields are its whole interface.** `canon_subject` reads its argument through `TonalContext`, so whatever
+else the value's *maker* knows is not reachable through it. What a module wants to keep is marked instead:
 
 ```musa
-// Private. `CanonMaterial` does not list it, so nothing outside this
-// structure may name `MajorCanon.stretto` — which is what sealing means.
-let stretto: EventTrack<WrittenTime> = together(
-    subject,
-    shift(duration_of(1/2), answer(subject)),
-);
+    // The register C major's degrees are spelled in. Private: a context
+    // promises spelled pitches, not the frame it spells them from, so moving
+    // this one changes nothing anyone outside can name. That is what sealing
+    // was, written with the visibility the language already had.
+    private let c_major_home: Option<Frame> = frame_on(scale c ionian, c4);
 ```
 
-This is also why the generated reference lists a structure's signature members and not the rest: a private member is not
-a name anyone can write.
-
-**Expansion is binding, not rewriting.** The functor body is checked once per instance with `C` naming the structure the
-site passed. No syntax is copied, so every span an editor points at is the one you wrote, and an error inside a functor
-is reported where the functor is written rather than at four instantiation sites.
+**A call is a call.** The function's body is checked once, where it is written, so every span an editor points at is the
+one you wrote, and an error inside it is reported there rather than at each of its callers.
 
 ## 4. Importing
 

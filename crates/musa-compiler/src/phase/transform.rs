@@ -29,7 +29,7 @@ pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
     }
     let library = musa_syntax::ast::LibraryDecl::from_root(&parsed.syntax())?;
     let mut resolver = Resolver::new();
-    let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(library.syntax())], None)?;
+    let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(library.syntax())])?;
     let (normal, _ty) = document
         .term(&musa_calculus::Raw::var(musa_calculus::Origin::UNKNOWN, "it"))
         .ok()?;

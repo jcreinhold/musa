@@ -1215,8 +1215,8 @@ fn symbols_list_the_declarations_written_here_and_no_others() {
     let symbols = flat_symbols(&mut server, &uri);
     let names: Vec<&str> = symbols.iter().map(|symbol| symbol.name.as_str()).collect();
     for expected in [
-        "signature Centred",
-        "structure Home: Centred",
+        "record Centred: Type",
+        "let home: Centred",
         "fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>",
         "let subject: EventTrack<WrittenTime>",
     ] {
@@ -1249,11 +1249,10 @@ fn symbols_list_the_declarations_written_here_and_no_others() {
 }
 
 #[test]
-fn navigation_crosses_a_template_and_the_structures_it_makes() {
-    // A functor's name at a `make` site is the template's, not the module's:
-    // the bug this pins recorded it as a module, so a jump from `Canon(…)`
-    // landed on the instance it produced rather than on the template that
-    // produced it.
+fn navigation_crosses_a_function_and_the_values_it_builds() {
+    // A function that answers a record is reached from every call site, and a
+    // jump from a call lands on the function rather than on the binding the
+    // call fills.
     let study = std::fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/module-functor-study.musa"),
     )
@@ -1265,7 +1264,7 @@ fn navigation_crosses_a_template_and_the_structures_it_makes() {
     let definition = server
         .client
         .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
-            text_document_position_params: position_params(&uri, at(&study, "Canon(CMajor")),
+            text_document_position_params: position_params(&uri, at(&study, "canon(c_major")),
             work_done_progress_params: WorkDoneProgressParams::default(),
             partial_result_params: PartialResultParams::default(),
         });
@@ -1273,25 +1272,22 @@ fn navigation_crosses_a_template_and_the_structures_it_makes() {
     let GotoDefinitionResponse::Scalar(location) = definition else {
         panic!("expected one location: {definition:?}");
     };
-    assert_eq!(location.range.start.line, at(&study, "template structure Canon").line);
+    assert_eq!(location.range.start.line, at(&study, "fn canon(context").line);
 
-    // Both `make` sites use the one template.
+    // Both bindings call the one function.
     let references = server
         .client
-        .request::<References>(reference_params(&uri, at(&study, "Canon(CMajor"), true));
+        .request::<References>(reference_params(&uri, at(&study, "canon(c_major"), true));
     let references: Vec<Location> = serde_json::from_value(references).expect("references");
-    assert_eq!(references.len(), 3, "declaration and two makes: {references:?}");
+    assert_eq!(references.len(), 3, "declaration and two calls: {references:?}");
 
     let symbols: Vec<String> = flat_symbols(&mut server, &uri)
         .into_iter()
         .map(|symbol| symbol.name)
         .collect();
+    assert!(symbols.iter().any(|name| name.starts_with("fn canon(")), "{symbols:?}");
     assert!(
-        symbols.iter().any(|name| name.starts_with("template Canon")),
-        "{symbols:?}"
-    );
-    assert!(
-        symbols.iter().any(|name| name == "signature CanonMaterial"),
+        symbols.iter().any(|name| name.starts_with("record CanonMaterial")),
         "{symbols:?}"
     );
     server.stop();

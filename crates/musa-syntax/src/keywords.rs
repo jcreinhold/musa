@@ -681,33 +681,6 @@ static STACK: KeywordDoc = doc!(
      no octave.\n\n\
      ```musa\nstack c4 major7/2\n```"
 );
-static TEMPLATE: KeywordDoc = doc!(
-    "template",
-    "parameterize a piece or a voice",
-    "`template piece study(k: Key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are \
-     ordinary typed values — a `Key`, a `Scale`, a `EventTrack<WrittenTime>`, or a `EventTrack<WrittenTime> -> EventTrack<WrittenTime>` — and a template body reads them and \
-     the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or \
-     ask what is inside it.\n\n\
-     ```musa\ntemplate voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {\n    use transform(subject);\n}\n```"
-);
-static MAKE: KeywordDoc = doc!(
-    "make",
-    "instantiate a template here",
-    "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the \
-     template into an ordinary declaration at this place. A piece instance stands at the file's root and is that \
-     file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from \
-     the site, so two instances with equal arguments remain two declarations.\n\n\
-     ```musa\nmake answer(subject, transpose(P8)) as follower;\n```"
-);
-static SIGNATURE: KeywordDoc = doc!(
-    "signature",
-    "name what a module must provide",
-    "`signature TonalContext { let key: key; let scale: scale; }` fixes the members a module has to define, and \
-     their types. Matching is by name and exact type: a module that satisfies it may define more, and everything \
-     unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside \
-     it.\n\n\
-     ```musa\nsignature TonalContext {\n    let key: Key;\n    let scale: Scale;\n}\n```"
-);
 static MOD: KeywordDoc = doc!(
     "mod",
     "declare one child of a package's module tree",
@@ -716,29 +689,12 @@ static MOD: KeywordDoc = doc!(
      a `.musa` file no `mod` reaches is not part of the package, and saying so is an error rather than a silence.\n\n\
      ```musa\nmod core;\nmod tonal;\n```"
 );
-static STRUCTURE: KeywordDoc = doc!(
-    "structure",
-    "group declarations behind a signature",
-    "`structure CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, \
-     reached from outside as `CMajor.key`. `template structure` parameterizes one over other structures, and `make` \
-     applies it. Structures are static: they hold no state, cross no boundary as values, and disappear into ordinary \
-     declarations once made.\n\n\
-     ```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
-);
-static MODULE: KeywordDoc = doc!(
-    "module",
-    "the old spelling of `structure`",
-    "`module` no longer declares anything. What it used to declare is a `structure` — the thing that provides a \
-     `signature` — and `module` now means only a node of a package's tree, which is declared with `mod`. The two \
-     were one letter apart and unrelated, so the rarer one took the name ML has used for it since 1984.\n\n\
-     ```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n}\n```"
-);
 static AS: KeywordDoc = doc!(
     "as",
-    "name what an instance makes",
-    "The mandatory second half of `make`. It is the source address other declarations refer to, and renaming it \
-     changes what can be written, not what the instance is.\n\n\
-     ```musa\nmake study(key g major) as study_in_g;\n```"
+    "give an import a qualifier",
+    "The optional second half of `import`. `import std::scale as scale;` files everything the file supplies under \
+     `scale.name`, which is how two files exporting the same name are told apart.\n\n\
+     ```musa\nimport std::scale as scale;\n```"
 );
 
 static DATA: KeywordDoc = doc!(
@@ -817,17 +773,12 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::StepKw => &STEP,
         SyntaxKind::ChordKw => &CHORD,
         SyntaxKind::StackKw => &STACK,
-        SyntaxKind::TemplateKw => &TEMPLATE,
-        SyntaxKind::SignatureKw => &SIGNATURE,
-        SyntaxKind::StructureKw => &STRUCTURE,
         SyntaxKind::DataKw => &DATA,
         SyntaxKind::RecordKw => &RECORD,
         SyntaxKind::EnumKw => &ENUM,
-        SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
         SyntaxKind::PrivateKw => &PRIVATE,
         SyntaxKind::ImplKw => &IMPL,
-        SyntaxKind::MakeKw => &MAKE,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
         SyntaxKind::LibraryKw => &LIBRARY,
@@ -1078,11 +1029,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::InScaleStmt
         | SyntaxKind::ChordExpr
         | SyntaxKind::StackStmt
-        | SyntaxKind::TemplateDecl
-        | SyntaxKind::MakeStmt
-        | SyntaxKind::SignatureDecl
-        | SyntaxKind::SignatureMember
-        | SyntaxKind::StructureDecl
         | SyntaxKind::ModDecl
         | SyntaxKind::DataDecl
         | SyntaxKind::TypeParams
@@ -1093,7 +1039,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::DataChosen
         | SyntaxKind::AppliedType
         | SyntaxKind::IndexedType
-        | SyntaxKind::DataMember
         | SyntaxKind::EqualsEquals
         | SyntaxKind::Plus
         | SyntaxKind::Star
@@ -1137,11 +1082,9 @@ mod tests {
             SyntaxKind::UseKw,
             SyntaxKind::ImportKw,
             SyntaxKind::ModKw,
-            SyntaxKind::StructureKw,
             SyntaxKind::DataKw,
             SyntaxKind::RecordKw,
             SyntaxKind::EnumKw,
-            SyntaxKind::ModuleKw,
             SyntaxKind::PrivateKw,
             SyntaxKind::ImplKw,
             SyntaxKind::TransposeKw,

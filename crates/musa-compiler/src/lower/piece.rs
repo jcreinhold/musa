@@ -22,23 +22,10 @@
 //! voice's body is `notated(node, Reading::at(Scope::Voice { … }))` and nothing
 //! else. Everything the fold already knew it still knows.
 //!
-//! # The numbering is positional and counts every item
+//! # The numbering is positional
 //!
-//! A part's id is a running count over the score; a voice's is its position
-//! among the part's items, and an instance site is an item like any other.
-//! `PartDecl::items` says why the grammar keeps them interleaved — "a `make`
-//! between two voices makes a voice *there*".
-//!
-//! # An instance is a binding, and its provenance is a builtin
-//!
-//! `make N(…) as I;` reads `N`'s body once, at the scope of the voice the site
-//! stands in, and applies λs over its parameters to the argument expressions the
-//! site wrote. That is `04-templates-and-modules.md` §1's "expansion is a
-//! binding, never a rewrite", written in the core's own λ. What the site adds is
-//! provenance, and that is [`crate::registry`]'s `instanced` rather than
-//! anything this walk does: the facts do not exist until the term is evaluated,
-//! and the ones a function the body calls produced were read in another
-//! declaration entirely.
+//! A part's id is a running count over the score, and a voice's is its position
+//! among the part's voices, in the order the source writes them.
 //!
 //! # A region is the longest voice
 //!
@@ -65,7 +52,7 @@ use musa_syntax::SyntaxNode;
 use musa_syntax::ast::AstNode as _;
 
 use super::notation::{Context, Reading};
-use super::{Lowering, applied, expansion};
+use super::{Lowering, applied};
 use musa_score::diagnose::{Code, Diagnostic};
 
 /// A piece, read.
@@ -151,23 +138,10 @@ impl Lowering<'_> {
     /// reason one level up: a piece missing a voice is a different piece, not a
     /// shorter one. Every part and every voice is read even after one is
     /// refused, so a score with three bad voices reports three diagnostics.
-    ///
-    /// `standing` is the expansion a `make … as …;` at the document's root put
-    /// this whole piece behind, when the file writes one instead of a piece. It
-    /// is applied per *voice* and not to [`Piece::track`], because a voice is
-    /// what a made piece produces: a context fact keeps the empty path the
-    /// replaced walk gave it, since a header states what it states wherever the
-    /// piece was made.
-    pub(crate) fn piece(
-        &mut self,
-        node: &SyntaxNode,
-        namespace: &str,
-        standing: Option<&musa_score::origin::Origin>,
-    ) -> Option<Piece> {
+    pub(crate) fn piece(&mut self, node: &SyntaxNode) -> Option<Piece> {
         let declaration = musa_syntax::ast::PieceDecl::cast(node.clone())?;
         let origin = self.origin(node);
         let mut whole = true;
-        let mut instances = Instances::of(self.resolver, node, namespace);
         let mut context = self.header(&declaration, &mut whole);
         // The meter and the collection every voice starts in. Read off the
         // header rather than carried out of [`Lowering::header`], because a
@@ -201,25 +175,14 @@ impl Lowering<'_> {
             let (stated, counted) = self.part_context(&written, id, &mut whole);
             context.extend(stated);
             let mut voices: Vec<Voice> = Vec::new();
-            for (index, item) in written.items().into_iter().enumerate() {
+            for (index, item) in written.voices().into_iter().enumerate() {
                 let voice = u32::try_from(index).unwrap_or(u32::MAX);
-                // Both kinds of item name a voice before anything of it is
-                // read: a written one by its own identifier, an instance by
-                // the `as` name at the site. Asked here rather than in either
-                // branch because "this part already has a voice called that"
-                // is one question about both.
-                let (voice_name, span, named_at) = match item {
-                    musa_syntax::ast::PartItem::Voice(ref held) => (
-                        held.name().unwrap_or_default(),
-                        crate::resolve::trimmed_span(held.syntax()),
-                        crate::resolve::token_span(held.syntax(), musa_syntax::SyntaxKind::Identifier),
-                    ),
-                    musa_syntax::ast::PartItem::Make(ref site) => (
-                        site.alias().unwrap_or_default(),
-                        crate::resolve::trimmed_span(site.syntax()),
-                        Some(crate::resolve::trimmed_span(site.syntax())),
-                    ),
-                };
+                // Named before anything of it is read, because "this part
+                // already has a voice called that" is a question about the name
+                // alone.
+                let voice_name = item.name().unwrap_or_default();
+                let span = crate::resolve::trimmed_span(item.syntax());
+                let named_at = crate::resolve::token_span(item.syntax(), musa_syntax::SyntaxKind::Identifier);
                 if voices.iter().any(|earlier| earlier.name == voice_name) {
                     self.repeated(
                         &mut whole,
@@ -238,29 +201,10 @@ impl Lowering<'_> {
                     Some(key) => read_under.keyed(key),
                     None => read_under,
                 };
-                let read = match item {
-                    musa_syntax::ast::PartItem::Voice(held) => self.plain(&held, voice, voice_name, named_at, held_at),
-                    musa_syntax::ast::PartItem::Make(site) => self.made(
-                        &mut instances,
-                        &site,
-                        &format!("score/part[{name}]/{index}"),
-                        voice,
-                        named_at,
-                        held_at,
-                    ),
-                };
-                let Some(mut read) = read else {
+                let Some(read) = self.plain(&item, voice, voice_name, named_at, held_at) else {
                     whole = false;
                     continue;
                 };
-                if let Some(made) = standing {
-                    let at = self.origin(node);
-                    read.track = applied(
-                        at,
-                        Raw::hosted(at, "instanced"),
-                        [Raw::lit(at, crate::registry::origin_literal(made.clone())), read.track],
-                    );
-                }
                 tracks.push(read.track.clone());
                 voices.push(read);
             }
@@ -433,10 +377,8 @@ impl Lowering<'_> {
 
     /// A voice written out among a part's items.
     ///
-    /// [`None`] when its body was refused, and when it takes parameters: a voice
-    /// with parameters is a template, and a template standing among a part's
-    /// items is one declared in the wrong place rather than an instance of
-    /// anything.
+    /// [`None`] when its body was refused: a piece missing a voice is a
+    /// different piece, not a shorter one.
     fn plain(
         &mut self,
         held: &musa_syntax::ast::VoiceDecl,
@@ -445,16 +387,6 @@ impl Lowering<'_> {
         name_span: Option<musa_score::origin::SourceSpan>,
         reading: Reading,
     ) -> Option<Voice> {
-        if held.is_template() {
-            return self.refuse(
-                Diagnostic::error(Code::Misplaced, "a voice with parameters needs `template`")
-                    .at(
-                        crate::resolve::trimmed_span(held.syntax()),
-                        "this voice takes parameters",
-                    )
-                    .help("write it as `template voice …` at the top of the file, and `make` it here"),
-            );
-        }
         self.restart_sites();
         let track = self.notated(held.syntax(), reading)?;
         Some(Voice {
@@ -466,88 +398,6 @@ impl Lowering<'_> {
             // thing being read: the walk is shared across the score, so leaving
             // them would give the next voice this one's bars.
             claims: self.claimed(),
-        })
-    }
-
-    /// A `make` standing where a voice would, as the voice it makes.
-    ///
-    /// Expansion is a **binding** and never a rewrite
-    /// (`04-templates-and-modules.md` §1), and in a core with λ that sentence is
-    /// the implementation: the template's body is read once, at the scope of the
-    /// voice the site stands in, and its parameters become λs applied to the
-    /// argument expressions the site wrote. λ rather than `let` because every
-    /// argument then elaborates in the scope the *site* stands in — a chain of
-    /// `let`s would put the first parameter in scope of the second argument, so
-    /// a site inside a template that passed on its own `subject` would silently
-    /// pass the template's parameter of that name instead. No syntax is copied
-    /// and no span moves, so a refusal inside a template body points at the text
-    /// the author wrote once, however many instances there are.
-    ///
-    /// The reading needs no re-scoping afterwards for the same reason: a
-    /// `Reading` carries the scope down, and the one handed here is the voice's
-    /// own. What the site adds beyond the binding is provenance, and that is
-    /// `instanced` rather than anything this walk could do — the facts do not
-    /// exist until the term is evaluated, and the ones a function the body calls
-    /// produced were read in another declaration entirely.
-    fn made(
-        &mut self,
-        instances: &mut Instances,
-        site: &musa_syntax::ast::MakeStmt,
-        path: &str,
-        voice: u32,
-        name_span: Option<musa_score::origin::SourceSpan>,
-        reading: Reading,
-    ) -> Option<Voice> {
-        let instance = instances.templates.instance(
-            self.resolver,
-            site,
-            path,
-            crate::template::Kind::Voice,
-            instances.enclosing.as_deref(),
-            &instances.namespace,
-        )?;
-        let held = instance.voice()?;
-        let at = self.sites.at(instance.span());
-        self.restart_sites();
-        let read = self.notated(held.syntax(), reading);
-        let claims = self.claimed();
-        // Every parameter is read even after one is refused, for the reason the
-        // score walk reads every voice: a site with two bad arguments is two
-        // mistakes.
-        let mut whole = read.is_some();
-        let mut bound = Vec::new();
-        for parameter in instance.bound() {
-            let origin = self.origin(parameter.argument);
-            match (self.ty(parameter.ty), self.expr(parameter.argument)) {
-                (Some(ty), Some(argument)) => bound.push((parameter.name.to_owned(), origin, ty, argument)),
-                _ => whole = false,
-            }
-        }
-        let stamped = applied(
-            at,
-            Raw::hosted(at, "instanced"),
-            [
-                Raw::lit(
-                    at,
-                    crate::registry::origin_literal(expansion(instance.span(), instance.step())),
-                ),
-                read?,
-            ],
-        );
-        let abstracted = bound.iter().rev().fold(stamped, |body, (name, origin, ty, _)| {
-            Raw::annotated_lam(*origin, name.clone(), ty.clone(), body)
-        });
-        let track = bound
-            .into_iter()
-            .fold(abstracted, |function, (_, origin, _, argument)| {
-                Raw::app(origin, function, argument)
-            });
-        whole.then(|| Voice {
-            id: voice,
-            name: instance.alias().to_owned(),
-            name_span,
-            track: joined(at, track),
-            claims,
         })
     }
 }
@@ -567,39 +417,6 @@ impl Lowering<'_> {
 /// marked.
 fn joined(origin: Origin, track: Raw) -> Raw {
     Raw::app(origin, Raw::hosted(origin, "joined"), track)
-}
-
-/// What every `make` in one piece is resolved against.
-///
-/// One per piece, because all three are the same for every site and none of
-/// them can be read off a part item: the templates a document declares stand at
-/// its lexical root, the namespace a generated identity is minted in is the
-/// document's own name, and the template whose body this piece is — when it is
-/// one — is the one name a site inside it may not write.
-struct Instances {
-    templates: crate::template::Templates,
-    namespace: String,
-    enclosing: Option<String>,
-}
-
-impl Instances {
-    /// The templates `node`'s document declares, and the two facts about `node`
-    /// every site inside it is resolved with.
-    ///
-    /// Collected whether or not the piece contains a site, because a template
-    /// declared twice is reported here and that is where the mistake is: the
-    /// second declaration is the error and a site that calls it is innocent.
-    fn of(resolver: &mut crate::resolve::Resolver, node: &SyntaxNode, namespace: &str) -> Self {
-        let root = node.ancestors().last().unwrap_or_else(|| node.clone());
-        Self {
-            templates: crate::template::Templates::collect(resolver, &root),
-            namespace: namespace.to_owned(),
-            enclosing: node
-                .parent()
-                .and_then(musa_syntax::ast::TemplateDecl::cast)
-                .and_then(|template| template.name()),
-        }
-    }
 }
 
 /// `together` over `tracks`, right-nested, seeded with the empty track.

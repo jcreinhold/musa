@@ -122,16 +122,11 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Hash => "#",
         SyntaxKind::Dollar => "$",
         SyntaxKind::Question => "?",
-        SyntaxKind::TemplateKw => "template",
-        SyntaxKind::SignatureKw => "signature",
-        SyntaxKind::StructureKw => "structure",
         SyntaxKind::DataKw => "data",
         SyntaxKind::RecordKw => "record",
         SyntaxKind::EnumKw => "enum",
-        SyntaxKind::ModuleKw => "module",
         SyntaxKind::PrivateKw => "private",
         SyntaxKind::ImplKw => "impl",
-        SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
         SyntaxKind::PieceKw => "piece",
         SyntaxKind::TempoKw => "tempo",
@@ -336,11 +331,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::InScaleStmt
         | SyntaxKind::ChordExpr
         | SyntaxKind::StackStmt
-        | SyntaxKind::TemplateDecl
-        | SyntaxKind::MakeStmt
-        | SyntaxKind::SignatureDecl
-        | SyntaxKind::SignatureMember
-        | SyntaxKind::StructureDecl
         | SyntaxKind::BlockExpr
         | SyntaxKind::ModDecl
         | SyntaxKind::DataDecl
@@ -361,7 +351,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::FieldPattern
         | SyntaxKind::FieldPath
         | SyntaxKind::AppliedType
-        | SyntaxKind::DataMember
         | SyntaxKind::PitchExpr
         | SyntaxKind::EventsQuote
         | SyntaxKind::EventsHole

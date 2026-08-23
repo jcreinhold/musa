@@ -42,21 +42,6 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::ImplKw,
 ];
 
-/// What ends a broken declaration at the file's lexical root.
-const ROOT_RECOVERY: &[SyntaxKind] = &[
-    SyntaxKind::Semicolon,
-    SyntaxKind::TemplateKw,
-    SyntaxKind::MakeKw,
-    SyntaxKind::SignatureKw,
-    SyntaxKind::StructureKw,
-    SyntaxKind::DataKw,
-    SyntaxKind::RecordKw,
-    SyntaxKind::EnumKw,
-    SyntaxKind::ImplKw,
-    SyntaxKind::PieceKw,
-    SyntaxKind::LibraryKw,
-];
-
 /// The four front-matter keywords, which open statements of one shape.
 const FRONT_MATTER: &[SyntaxKind] = &[
     SyntaxKind::SubtitleKw,
@@ -84,25 +69,12 @@ impl Parser<'_> {
                 self.let_decl();
             } else if self.opens(SyntaxKind::FnKw) {
                 self.fn_decl();
-            } else if self.at(SyntaxKind::TemplateKw) {
-                self.template_decl();
-            } else if self.at(SyntaxKind::SignatureKw) {
-                self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
             } else if self.at_impl() {
                 self.impl_decl();
-            } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
-                self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
-            } else if self.at(SyntaxKind::MakeKw) {
-                // Every `make` a file's root writes is read here, whether it
-                // makes a module or the piece itself. Which one is the piece
-                // is a question about what the names mean, and the parser
-                // does not know what anything means.
-                self.make_stmt();
-                shape.made = true;
             } else {
                 break;
             }
@@ -128,17 +100,10 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `piece "name" { ... }`, or `piece study(k: key) "Study" { ... }` for
-    /// the piece a `template` parameterizes.
+    /// `piece "name" { ... }`
     pub(super) fn piece_decl(&mut self) {
         self.start(SyntaxKind::PieceDecl);
         self.expect(SyntaxKind::PieceKw, "`piece`");
-        // A template's piece is named twice: once as the template, in code,
-        // and once as the piece, on the page. The identifier is the first.
-        if self.at(SyntaxKind::Identifier) {
-            self.bump();
-            self.param_list();
-        }
         self.expect(SyntaxKind::String, "a piece name");
         self.expect(SyntaxKind::LBrace, "`{`");
         loop {
@@ -280,27 +245,12 @@ impl Parser<'_> {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
-            } else if self.at(SyntaxKind::SignatureKw) {
-                self.signature_decl();
             } else if self.at_type_decl() {
                 self.type_decl();
             } else if self.at_impl() {
                 self.impl_decl();
-            } else if self.opens_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
-                self.structure_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
-            } else if self.at(SyntaxKind::TemplateKw)
-                && matches!(
-                    self.nth_significant(1),
-                    Some(SyntaxKind::StructureKw | SyntaxKind::ModuleKw)
-                )
-            {
-                // A piece or a voice belongs to a piece, so the one template
-                // a library may hold is the one that makes a module.
-                self.template_decl();
-            } else if self.at(SyntaxKind::MakeKw) {
-                self.make_stmt();
             } else {
                 // A library holds what can be shared. Music belongs to a
                 // piece, which is why `score` is not in this list.
@@ -421,7 +371,6 @@ impl Parser<'_> {
         }
         self.finish();
     }
-
     /// The one complaint a file written against the old spelling gets.
     ///
     /// Located at the word itself and carrying the word that replaces it, so
@@ -444,74 +393,5 @@ impl Parser<'_> {
             .with_help("`use` writes out a motif where it stands; `import` brings another file's names into this one")
             .with_fix("write `import`", "import"),
         );
-    }
-
-    /// The one complaint a file written against the old spelling gets.
-    ///
-    /// Located at the word itself and carrying the word that replaces it, so
-    /// the migration is an accepted fix rather than a search. `module` is
-    /// still a word in this language — it names a node of a package's tree —
-    /// which is exactly why the thing it used to declare needed its own.
-    pub(super) fn moved_to_structure(&mut self) {
-        if self.cascading() {
-            return;
-        }
-        let Some(token) = self.significant() else {
-            return;
-        };
-        self.errors.push(
-            SyntaxError::new(
-                token.range,
-                "`module` no longer declares one",
-                "this provides a signature, so it is a `structure`",
-            )
-            .with_help(
-                "a `module` is a node of a package's tree, declared with `mod`; a `structure` provides a `signature`",
-            )
-            .with_fix("write `structure`", "structure"),
-        );
-    }
-
-    /// `make study(key g major) as study_in_g;` — one instance site.
-    pub(super) fn make_stmt(&mut self) {
-        self.start(SyntaxKind::MakeStmt);
-        self.bump(); // make
-        self.expect(SyntaxKind::Identifier, "a template name");
-        if self.at(SyntaxKind::LParen) {
-            self.expr_arg_list();
-        } else {
-            self.expected("`(`");
-        }
-        self.expect(SyntaxKind::AsKw, "`as`");
-        self.expect(SyntaxKind::Identifier, "a name for what is made");
-        self.expect(SyntaxKind::Semicolon, "`;`");
-        self.finish();
-    }
-
-    /// `template piece study(k: key) "Study" { ... }`, or the same for a
-    /// voice.
-    ///
-    /// The node wraps an ordinary [`SyntaxKind::PieceDecl`] or
-    /// [`SyntaxKind::VoiceDecl`] carrying a parameter list, so a template
-    /// body is read by exactly the accessors a written-out declaration is.
-    /// The only thing `template` adds is the word that says the declaration
-    /// is a pattern rather than a thing.
-    pub(super) fn template_decl(&mut self) {
-        self.start(SyntaxKind::TemplateDecl);
-        self.bump(); // template
-        if self.at(SyntaxKind::PieceKw) {
-            self.piece_decl();
-        } else if self.at(SyntaxKind::VoiceKw) {
-            self.voice_decl();
-        } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
-            self.structure_decl();
-        } else {
-            self.expected_with_help(
-                "`piece`, `voice`, or `structure`",
-                "a template parameterizes a declaration, and those are the three kinds it may parameterize",
-            );
-            self.recover(ROOT_RECOVERY);
-        }
-        self.finish();
     }
 }

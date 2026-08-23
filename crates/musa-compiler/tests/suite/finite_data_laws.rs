@@ -12,15 +12,6 @@ fn compile_data(declarations: &str) -> musa_compiler::Compilation {
     )
 }
 
-/// A library, for the declarations a piece cannot hold: signatures and the
-/// structures that seal a declaration behind one.
-fn compile_library(declarations: &str) -> musa_compiler::Compilation {
-    compile(
-        &SourceDocument::new(format!("library {{ {declarations} }}"), "finite-data-library.musa"),
-        &CompileOptions::default(),
-    )
-}
-
 /// Every error message, joined — what a rejection test actually asserts is
 /// *which* rejection happened, not that something went wrong. Labels and notes
 /// are part of it: the field a declaration was rejected at is named in a label,
@@ -213,15 +204,6 @@ fn a_non_positive_declaration_is_rejected_at_its_field() {
 fn a_declaration_that_stores_a_function_is_a_type_with_no_storable_instance() {
     let compilation = compile_data("data Held { Keeps(action: Nat -> Nat) } fn kept(h: Held) -> Held { h }");
     assert_eq!(errors(&compilation), "");
-}
-
-/// A signature member the structure never declares is the same failure read
-/// from the other side: the type is promised and not provided.
-#[test]
-fn a_structure_that_declares_no_such_type_does_not_match_its_signature() {
-    let compilation = compile_library("signature Owner { data Hidden; } structure Keep: Owner { let count: Nat = 1; }");
-    let reported = errors(&compilation);
-    assert!(reported.contains("`Keep` does not declare `Hidden`"), "{reported}");
 }
 
 /// A declaration's arity is fixed by the declaration, so instantiating it at

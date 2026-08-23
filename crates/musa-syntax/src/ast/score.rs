@@ -1,20 +1,17 @@
 //! See `ast` module docs; the items parsed in this family.
 
 use super::AssertStmt;
-use super::AstNode;
 use super::BarStmt;
 use super::ChordStmt;
 use super::ClefStmt;
 use super::DynamicStmt;
 use super::EndingStmt;
-use super::FnParam;
 use super::GraceStmt;
 use super::HairpinStmt;
 use super::HarmonyDecl;
 use super::InScaleStmt;
 use super::InvertStmt;
 use super::KeyStmt;
-use super::MakeStmt;
 use super::MarkStmt;
 use super::MeterStmt;
 use super::NoteStmt;
@@ -35,7 +32,6 @@ use super::UseStmt;
 use super::child;
 use super::children;
 use super::duration_text;
-use super::params_of;
 use super::token_text;
 use super::unquote;
 use super::voice_items;
@@ -135,26 +131,6 @@ impl PartDecl {
         children(&self.0)
     }
 
-    /// The part's voices and instance sites, interleaved in source order.
-    ///
-    /// Order is the whole point: a `make` between two voices makes a voice
-    /// *there*, and the numbering a part gives its voices is positional.
-    pub fn items(&self) -> Vec<PartItem> {
-        self.0
-            .children()
-            .filter_map(|node| {
-                let kind = node.kind();
-                if kind == SyntaxKind::VoiceDecl {
-                    VoiceDecl::cast(node).map(PartItem::Voice)
-                } else if kind == SyntaxKind::MakeStmt {
-                    MakeStmt::cast(node).map(PartItem::Make)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     /// The performance profile named for this part, if declared.
     pub fn profile(&self) -> Option<ProfileStmt> {
         child(&self.0)
@@ -174,15 +150,6 @@ impl PartDecl {
     pub fn tempo(&self) -> Option<TempoStmt> {
         child(&self.0)
     }
-}
-
-/// One thing a part holds that becomes a voice: a written one, or a site
-/// that makes one.
-pub enum PartItem {
-    /// A voice the part writes out.
-    Voice(VoiceDecl),
-    /// A `make` of a voice template.
-    Make(MakeStmt),
 }
 
 /// `profile violin;` inside a part.
@@ -209,17 +176,6 @@ impl VoiceDecl {
     /// The voice's items, in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
-    }
-
-    /// The template parameters this voice is written against, in source
-    /// order. Empty for a part's own voice.
-    pub fn params(&self) -> Vec<FnParam> {
-        params_of(&self.0)
-    }
-
-    /// Whether a parameter list was written, empty or not.
-    pub fn is_template(&self) -> bool {
-        self.0.children().any(|node| node.kind() == SyntaxKind::ParamList)
     }
 }
 

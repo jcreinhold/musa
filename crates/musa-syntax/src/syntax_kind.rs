@@ -293,25 +293,14 @@ pub enum SyntaxKind {
     ChordKw,
     /// `stack`
     StackKw,
-    /// `template`
-    TemplateKw,
-    /// `make`
-    MakeKw,
     /// `as`
     AsKw,
-    /// `signature`
-    SignatureKw,
-    /// `structure`
-    StructureKw,
     /// `data`
     DataKw,
     /// `record`
     RecordKw,
     /// `enum`
     EnumKw,
-    /// `module`, which no longer declares one. Lexed so the migration
-    /// diagnostic can point at the word and carry the word that replaces it.
-    ModuleKw,
     /// `private`, the one visibility marker (`01-surface.md` §1.3).
     PrivateKw,
     /// `impl`
@@ -633,21 +622,6 @@ pub enum SyntaxKind {
     /// `stack c4 major7/2` — the close-position sugar, which is an event and
     /// not a value.
     StackStmt,
-    /// `template piece study(k: key) "Study" { ... }` — a parameterized
-    /// declaration. The declaration it parameterizes is its only child node,
-    /// so every accessor an ordinary `piece` or `voice` has still reads it.
-    TemplateDecl,
-    /// `make study(key g major) as study_in_g;` — one instance site.
-    MakeStmt,
-    /// `signature TonalContext { let tonic: key; }` — what a module must
-    /// provide, and nothing about how.
-    SignatureDecl,
-    /// `let tonic: key;` — one member of a signature: a `let` with its
-    /// definition left to the module.
-    SignatureMember,
-    /// `module CMajor : TonalContext { ... }` — a static named collection of
-    /// values. With a parameter list and `template` in front, a functor.
-    StructureDecl,
     /// `mod tonal;` — one child of a package's module tree.
     ModDecl,
     /// `data Motive { Silence, Sounded(pitch: Pitch), }` — one finite,
@@ -761,10 +735,6 @@ pub enum SyntaxKind {
     /// the refusal that names the expression belongs to the checker and reaches
     /// the author with the comparison that could not be made.
     IndexedType,
-    /// `data Motive;` — one member of a signature naming a type without its
-    /// constructors, which is what makes the constructors private to the
-    /// structure that declares them.
-    DataMember,
     /// `syntax staff { ... }` — one named, delimited adapter region.
     ///
     /// Its contents are *not* ordinary expression syntax: they are read by the

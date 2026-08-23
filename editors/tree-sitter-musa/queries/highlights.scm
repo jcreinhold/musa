@@ -24,11 +24,7 @@
 [
   "piece"
   "library"
-  "template"
-  "signature"
-  "structure"
   "mod"
-  "make"
   "as"
   "tempo"
   "meter"
@@ -243,8 +239,7 @@
 ; --- Types: cyan --------------------------------------------------------------
 ;
 ; The language's own type words are builtins; what the composer declares as
-; structure — parts, patches, buses, signatures, structures — is a type in
-; the editor's vocabulary.
+; structure — parts, patches, buses — is a type in the editor's vocabulary.
 
 ; A type is an identifier — a capital is what makes it one — so there is no
 ; keyword to capture here and the position does all the work.
@@ -253,14 +248,10 @@
 (part_declaration name: (identifier) @type)
 (patch_declaration name: (identifier) @type)
 (bus_declaration name: (identifier) @type)
-(signature_declaration name: (identifier) @type)
-(structure_declaration name: (identifier) @type)
-(structure_declaration signature: (identifier) @type)
 
-; A declaration names a type, in the body and in the signature that withholds
-; it; the parameters it abstracts over are types the same way.
+; A declaration names a type, and the parameters it abstracts over are types
+; the same way.
 (data_declaration name: (identifier) @type)
-(data_member name: (identifier) @type)
 (type_parameter (identifier) @type)
 
 ; §1.2 and §1.3's two declarations name types the same way, and so does the
@@ -291,10 +282,6 @@
 (motif_declaration name: (identifier) @function)
 (fragment_declaration name: (identifier) @function)
 (function_declaration name: (identifier) @function)
-; A template's own name, and the template a `make` is made from.
-(piece_declaration template_name: (identifier) @function)
-(make_statement template: (identifier) @function)
-
 (application_expression (name_expression (identifier) @function))
 
 ; A method call paints its method like the function it resolves to. The node
@@ -315,11 +302,9 @@
 ; --- Fields and arguments: red ---------------------------------------------------
 ;
 ; Rust paints struct fields red; musa's fields are the named parts of a
-; statement or expression: settings keys, signature members, and named
-; arguments.
+; statement or expression: settings keys and named arguments.
 
 (setting_statement name: (identifier) @property)
-(signature_member name: (identifier) @property)
 (data_field name: (identifier) @property)
 ; A record's fields, everywhere one is written: declared, initialised, matched,
 ; and named on the left of an update. The update's left is a *path*, so every

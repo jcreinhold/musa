@@ -174,7 +174,7 @@ fn run_printer(
     }
     sources.push(crate::document::Source::own(&root));
     sources.push(crate::document::Source::own(piece.syntax()));
-    let Some(document) = crate::document::elaborate(&mut resolver, &sources, None) else {
+    let Some(document) = crate::document::elaborate(&mut resolver, &sources) else {
         return Err(print_failure(resolver.diagnostics));
     };
     let printed = match document.value("printed") {

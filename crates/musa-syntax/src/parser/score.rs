@@ -20,7 +20,6 @@ const PART_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TempoKw,
     SyntaxKind::ProfileKw,
     SyntaxKind::VoiceKw,
-    SyntaxKind::MakeKw,
 ];
 
 /// What recovery anchors a broken voice body.
@@ -244,10 +243,8 @@ impl Parser<'_> {
                 self.profile_stmt();
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
-            } else if self.at(SyntaxKind::MakeKw) {
-                self.make_stmt();
             } else {
-                self.expected("`clef`, `meter`, `tempo`, `profile`, `voice`, or `make`");
+                self.expected("`clef`, `meter`, `tempo`, `profile`, or `voice`");
                 self.recover(PART_RECOVERY);
             }
         }
@@ -277,11 +274,6 @@ impl Parser<'_> {
         self.start(SyntaxKind::VoiceDecl);
         self.bump(); // voice
         self.expect(SyntaxKind::Identifier, "a voice name");
-        // A parameter list is what makes this a template's voice rather than
-        // a part's; `template` in front of it is what says so out loud.
-        if self.at(SyntaxKind::LParen) {
-            self.param_list();
-        }
         self.expect(SyntaxKind::LBrace, "`{`");
         self.voice_items();
         self.expect(SyntaxKind::RBrace, "`}`");

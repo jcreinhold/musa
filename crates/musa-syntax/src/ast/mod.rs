@@ -282,15 +282,15 @@ pub(crate) use voice::{duration_text, voice_items};
 // ---------------------------------------------------------------------------
 
 pub use document::{
-    ClefStmt, FrontMatterRole, FrontMatterStmt, ImportStmt, KeyStmt, LibraryDecl, MakeStmt, MeterStmt, ModDecl,
-    PieceDecl, TemplateDecl, TempoStmt,
+    ClefStmt, FrontMatterRole, FrontMatterStmt, ImportStmt, KeyStmt, LibraryDecl, MeterStmt, ModDecl, PieceDecl,
+    TempoStmt,
 };
 
 pub use performance::{DynamicRule, GraceRule, GrooveRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};
 
 pub use declarations::{
-    DataDecl, DataField, DataMember, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl, LetDecl,
-    Param, ParamList, RecordDecl, SignatureDecl, SignatureMember, StructureDecl,
+    DataDecl, DataField, DataVariant, EnumCase, EnumDecl, FieldDecl, FnDecl, FnParam, ImplDecl, LetDecl, Param,
+    ParamList, RecordDecl,
 };
 
 pub use types::{
@@ -304,8 +304,8 @@ pub use expressions::{
 };
 
 pub use score::{
-    FragmentDecl, ImproviseStmt, MobileStmt, MotifDecl, PartDecl, PartItem, ProfileStmt, ScoreDecl, SectionStmt,
-    VoiceDecl, VoiceItem,
+    FragmentDecl, ImproviseStmt, MobileStmt, MotifDecl, PartDecl, ProfileStmt, ScoreDecl, SectionStmt, VoiceDecl,
+    VoiceItem,
 };
 
 pub use voice::{

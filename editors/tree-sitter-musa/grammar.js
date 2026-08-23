@@ -75,7 +75,7 @@ const VOICE_ITEMS = ($) => [
 // the drift law in `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs`
 // is what keeps this list honest.
 const SYNTAX_WORDS = [
-  'template', 'signature', 'structure', 'data', 'module', 'make', 'as', 'piece',
+  'data', 'as', 'piece',
   'tempo', 'meter', 'key', 'subtitle', 'composer', 'arranger', 'copyright', 'motif',
   'score', 'part', 'voice', 'clef', 'use', 'import', 'syntax', 'mod',
   'transpose', 'down', 'up', 'rest', 'repeat', 'slur', 'dynamic', 'tuplet',
@@ -130,8 +130,7 @@ module.exports = grammar({
 
   rules: {
     // Parser::run — a file is a piece or a library, written at the top,
-    // behind whatever its lexical root declares. A `make` of a piece
-    // template stands where the piece would: one file is still one piece.
+    // behind whatever its lexical root declares. One file is one piece.
     // A module file is the exception: `src/lib.musa` and a directory's
     // `mod.musa` declare a package's children and nothing else, so they carry
     // no piece and no library (Parser::root_preamble).
@@ -148,13 +147,9 @@ module.exports = grammar({
               $.record_declaration,
               $.enum_declaration,
                 $.impl_declaration,
-              $.template_declaration,
-              $.signature_declaration,
-              $.structure_declaration,
-              $.make_statement,
             ),
           ),
-          choice($.piece_declaration, $.library_declaration, $.make_statement),
+          choice($.piece_declaration, $.library_declaration),
         ),
         repeat1($.mod_declaration),
       ),
@@ -181,51 +176,6 @@ module.exports = grammar({
     // nothing else: what the name reaches is a fact about the package's
     // files, which no parser has.
     mod_declaration: ($) => seq('mod', field('name', $._module_name), ';'),
-
-    // Parser::template_decl — the word that says a declaration is a pattern.
-    // The declaration it parameterizes is its only child, so every query
-    // written for a piece or a voice still matches inside one.
-    template_declaration: ($) =>
-      seq('template', choice($.piece_declaration, $.voice_declaration, $.structure_declaration)),
-
-    // Parser::signature_decl — what a structure must provide. A member is a
-    // `let` with its definition left out, because a function is a value of
-    // arrow type and one member form covers all of them.
-    signature_declaration: ($) =>
-      seq('signature', field('name', $.identifier), '{', repeat(choice($.signature_member, $.data_member)), '}'),
-
-    signature_member: ($) => seq('let', field('name', $.identifier), ':', field('type', $.type_expression), ';'),
-
-    // Parser::data_member — a signature names a type and withholds its
-    // constructors. That withholding is what seals a structure's
-    // representation, so the member is a declaration with its body left out
-    // in the same way a `let` member is a `let` with its value left out.
-    data_member: ($) =>
-      seq('data', field('name', $.identifier), optional($.type_parameter_list), ';'),
-
-    // Parser::structure_decl — a named group of declarations, reached from
-    // outside as `M.member`. The parameter list is what a
-    // `template structure` adds, and nothing else about the node changes.
-    structure_declaration: ($) =>
-      seq(
-        optional('private'),
-        'structure',
-        field('name', $.identifier),
-        optional($.parameter_list),
-        ':',
-        field('signature', $.identifier),
-        '{',
-        repeat(
-          choice(
-            $.let_declaration,
-            $.function_declaration,
-            $.data_declaration,
-            $.record_declaration,
-            $.enum_declaration,
-          ),
-        ),
-        '}',
-      ),
 
     // Parser::data_decl — one finite nominal declaration: a name, whatever
     // types it abstracts over, and its constructors. A constructor with no
@@ -325,25 +275,11 @@ module.exports = grammar({
 
     type_parameter: ($) => $.identifier,
 
-    // Parser::make_stmt — one instance site.
-    make_statement: ($) =>
-      seq(
-        'make',
-        field('template', $.identifier),
-        $.expression_argument_list,
-        'as',
-        field('name', $.identifier),
-        ';',
-      ),
-
     // --- Piece level (Parser::piece_decl) -------------------------------
 
     piece_declaration: ($) =>
       seq(
         'piece',
-        // A template's piece is named twice: once as the template, in code,
-        // and once as the piece, on the page.
-        optional(seq(field('template_name', $.identifier), $.parameter_list)),
         field('name', $.string),
         '{',
         repeat(
@@ -387,10 +323,6 @@ module.exports = grammar({
             $.impl_declaration,
             $.performance_declaration,
             $.studio_declaration,
-            $.signature_declaration,
-            $.structure_declaration,
-            $.template_declaration,
-            $.make_statement,
           ),
         ),
         '}',
@@ -1086,7 +1018,6 @@ module.exports = grammar({
             $.tempo_statement,
             $.profile_statement,
             $.voice_declaration,
-            $.make_statement,
           ),
         ),
         '}',
@@ -1103,7 +1034,6 @@ module.exports = grammar({
       seq(
         'voice',
         field('name', $.identifier),
-        optional($.parameter_list),
         '{',
         repeat(choice(...VOICE_ITEMS($))),
         '}',

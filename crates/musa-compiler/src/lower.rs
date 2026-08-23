@@ -73,7 +73,6 @@ use num_rational::Ratio;
 use musa_calculus::{Origin, Raw};
 use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
 
-use crate::module::{Modules, NameScope};
 use crate::resolve::Resolver;
 use musa_score::diagnose::Diagnostic;
 use musa_score::origin::SourceSpan;
@@ -368,29 +367,27 @@ pub(crate) struct Lowering<'a> {
     holds: HashMap<musa_score::origin::SourceSpan, Ratio<i64>>,
 }
 
-/// How a written name reads here, when something above ordinary scoping has a
-/// say in it.
+/// The separator between a namespace and one of its members.
 ///
-/// Two authorities can, and both belong to the *document* rather than to the
-/// walk. `04-templates-and-modules.md` §4's modules are read once per pass, and
-/// a scope is one member's entry in that reading; `01-surface.md` §1's import
-/// aliases are what the file's own `import … as …;` statements wrote. What the
-/// walk contributes is only which module entry it is in.
+/// A dot, because that is what the source writes. Names in the core's flat
+/// namespace are plain identifiers, so no member name can ever collide with a
+/// qualified one. Two rules build a dotted name — an `impl` block's prefix
+/// ([`items::Lowering::namespace`]) and an import's `as` qualifier
+/// ([`crate::document`]) — and this is what both write.
+pub(crate) const DOT: char = '.';
+
+/// Which whole spellings this walk reads as one name.
 ///
-/// One type and one question rather than two, because the caller has one
-/// question: [`values::Lowering::name`] is deciding whether `low.rise` is a
-/// name it should write through or a projection out of a record, and asking two
-/// oracles in sequence would make the *caller* responsible for the order they
-/// have to be asked in.
+/// One type and one question, because the caller has one question:
+/// [`values::Lowering::name`] is deciding whether `low.rise` is a name it
+/// should write through or a projection out of a record, and the answer is
+/// yes exactly when an import aliased something to `low`.
 ///
-/// The default is a walk of ordinary source, where neither decides anything —
-/// which is every walk in every document that writes no module and aliases no
-/// import, and is why this is [`Default`] rather than a parameter every caller
-/// passes.
-#[derive(Clone, Copy)]
+/// The default is a walk of ordinary source, where nothing decides anything —
+/// which is every walk in every document that aliases no import, and is why
+/// this is [`Default`] rather than a parameter every caller passes.
+#[derive(Clone, Copy, Default)]
 pub(crate) struct Naming<'a> {
-    modules: Option<&'a Modules>,
-    scope: &'a NameScope,
     /// The `as` qualifiers this document's imports wrote, in no order.
     ///
     /// A slice rather than a set: an alias is required exactly where two
@@ -399,66 +396,24 @@ pub(crate) struct Naming<'a> {
     aliases: &'a [String],
 }
 
-impl Default for Naming<'_> {
-    fn default() -> Self {
-        Self {
-            modules: None,
-            scope: NameScope::empty(),
-            aliases: &[],
-        }
-    }
-}
-
 impl<'a> Naming<'a> {
-    /// Names as they read at a document's root: its modules are nameable, and
-    /// no name is a sibling of anything.
-    pub(crate) fn at_root(modules: &'a Modules) -> Self {
-        Self {
-            modules: Some(modules),
-            ..Self::default()
-        }
+    /// Names as they read in a document whose imports wrote these `as`
+    /// qualifiers.
+    pub(crate) fn under(aliases: &'a [String]) -> Self {
+        Self { aliases }
     }
 
-    /// Names as they read inside one module member, where a bare name may
-    /// reach a sibling and a functor's parameters name what the site passed.
-    pub(crate) fn inside(modules: &'a Modules, scope: &'a NameScope) -> Self {
-        Self {
-            modules: Some(modules),
-            scope,
-            ..Self::default()
-        }
-    }
-
-    /// The same names, in a document whose imports wrote these `as` qualifiers.
+    /// Whether `written` is one name rather than a projection out of its first
+    /// segment.
     ///
-    /// Separate from the two constructors because it is a property of the
-    /// document and they are about where in it the walk is: a member of a
-    /// structure and the root it is written at read the same aliases.
-    pub(crate) fn under(mut self, aliases: &'a [String]) -> Self {
-        self.aliases = aliases;
-        self
-    }
-
-    /// What `written` names here, when a module or an import alias decides it.
-    ///
-    /// The alias answers second because it can only be right: a module reading
-    /// is the one that could be *wrong* about a spelling — see
-    /// [`Modules::resolve`] — while an alias head is a name no declaration can
-    /// have, `as` having taken it. What it answers is the written name itself,
-    /// because that is the name [`crate::document::Read::gather`] filed the
-    /// definition under.
-    fn read(&self, written: &str) -> Option<crate::module::Reading> {
-        if let Some(reading) = self.modules.and_then(|modules| modules.resolve(self.scope, written)) {
-            return Some(reading);
-        }
-        let (head, _) = written.split_once(crate::module::DOT)?;
-        self.aliases
-            .iter()
-            .any(|alias| alias == head)
-            .then(|| crate::module::Reading {
-                name: written.to_owned(),
-                sealed_by: None,
-            })
+    /// An alias head is a name no declaration can have, `as` having taken it,
+    /// so this cannot be wrong about a spelling. What it answers is the written
+    /// name itself, because that is the name [`crate::document::Read::gather`]
+    /// filed the definition under.
+    fn reads_whole(&self, written: &str) -> bool {
+        written
+            .split_once(DOT)
+            .is_some_and(|(head, _)| self.aliases.iter().any(|alias| alias == head))
     }
 }
 
@@ -697,10 +652,11 @@ fn paired<T>(mut members: Vec<T>, pair: impl Fn(T, T) -> T) -> Option<T> {
 /// and the spans are the site's because an origin without one is a value no
 /// diagnostic could restate.
 ///
-/// Two readings mint one, and they are the two ways facts get made somewhere
-/// other than where they were written: [`piece`] at an instance site, whose step
-/// is the site's structural address, and [`events`] at a `${…}`, whose step is
-/// the locus the hole stands at.
+/// Three readings mint one, and they are the ways facts get made somewhere
+/// other than where they were written: [`events`] at a `${…}`, whose step is the
+/// locus the hole stands at; [`notation::raw`] at a `use`, whose step is the use
+/// site; and [`notation::materials`] at a spelling override, whose step is the
+/// note the override names.
 pub(crate) fn expansion(at: SourceSpan, step: musa_score::origin::ExpansionStep) -> musa_score::origin::Origin {
     musa_score::origin::Origin {
         source_span: at,
@@ -757,9 +713,8 @@ fn children(node: &SyntaxNode, wanted: impl Fn(SyntaxKind) -> bool + Copy) -> Ve
 
 /// Whether a node kind is one of the written expression forms.
 ///
-/// The list `crate::phase`'s own `is_expr_node` holds, plus the five forms
-/// prompts 136 and 137 added to the grammar and the old checker never learned to
-/// read. That the two lists differ is the shape of what this module is for.
+/// Every form an expression may be written as, including the five prompts 136
+/// and 137 added to the grammar and the old checker never learned to read.
 fn is_expr_node(kind: SyntaxKind) -> bool {
     matches!(
         kind,

@@ -48,7 +48,7 @@ form, and `01-surface.md`'s type grammar has a multi-parameter function type.
 | `01-surface.md` | settled surface grammar, desugarings, and acceptance corpus |
 | `02-core-calculus.md` | the one total source language, and the obligations it owes |
 | `03-musical-domains.md` | typed theory domains, definitions, sources, and counterexamples |
-| `04-templates-and-modules.md` | declaration templates, stable identity, signatures, static functors |
+| `04-templates-and-modules.md` | packages, the module tree, and what the declaration templates became |
 | `05-verification.md` | invariants, assertions, analyses, laws, and implementation gates |
 | `06-elaboration-baseline.md` | the pre-migration performance and compatibility baseline this candidate is measured against |
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |

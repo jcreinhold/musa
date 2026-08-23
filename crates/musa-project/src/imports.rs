@@ -52,7 +52,7 @@ fn written_imports(text: &str) -> Vec<String> {
     // The file's lexical root imports too, and a document whose piece is
     // made by a template has its `import` statements only there.
     let mut statements = ImportStmt::all_at_root(&root);
-    statements.extend(PieceDecl::of_document(&root).map_or_else(
+    statements.extend(PieceDecl::from_root(&root).map_or_else(
         || {
             LibraryDecl::from_root(&root)
                 .map(|library| library.imports())

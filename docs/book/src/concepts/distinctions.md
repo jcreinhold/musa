@@ -93,12 +93,12 @@ well-formedness would make most of the repertoire invalid. This is why the rule 
 
 ## 9. A declaration is not its occurrences
 
-A `motif`, a template, or a music value is written once. Each `use` or `make` is a separate occurrence with its own
+A `motif`, a function over music, or a music value is written once. Each `use` is a separate occurrence with its own
 place in time, its own context, and its own identity.
 
 **Falsifier.** `use sigh();` twice in one voice is two placements of one phrase. If they were the same object, Origin
-could not tell you which note came from which, an edit to the second would change the first, and a template made twice
-with equal arguments would collapse into one declaration instead of two.
+could not tell you which note came from which, an edit to the second would change the first, and one function called
+twice with equal arguments would collapse into one voice instead of two.
 
 ## 10. Notated time is not performed time
 

@@ -1,13 +1,11 @@
 // What a piece needs to know about where it lives.
-signature Centred {
-    let tonic: NoteName;
+record Centred {
+    // The note name the piece is centred on.
+    tonic: NoteName;
 }
 
 // The home this study is written from.
-structure Home: Centred {
-    // The note name the piece is centred on.
-    let tonic: NoteName = chord_root(chord c major);
-}
+let home: Centred = Centred { tonic = chord_root(chord c major) };
 
 piece "Tooling" {
     meter 4/4;
@@ -24,7 +22,7 @@ piece "Tooling" {
     // deprecated: write `subject` instead.
     let theme: EventTrack<WrittenTime> = music { c4/1 };
 
-    let centre: NoteName = Home.tonic;
+    let centre: NoteName = home.tonic;
     let raised: EventTrack<WrittenTime> = lifted(subject, P4);
 
     score {

@@ -105,17 +105,12 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("step", SyntaxKind::StepKw),
     ("chord", SyntaxKind::ChordKw),
     ("stack", SyntaxKind::StackKw),
-    ("template", SyntaxKind::TemplateKw),
-    ("signature", SyntaxKind::SignatureKw),
-    ("structure", SyntaxKind::StructureKw),
     ("data", SyntaxKind::DataKw),
     ("record", SyntaxKind::RecordKw),
     ("enum", SyntaxKind::EnumKw),
-    ("module", SyntaxKind::ModuleKw),
     ("mod", SyntaxKind::ModKw),
     ("private", SyntaxKind::PrivateKw),
     ("impl", SyntaxKind::ImplKw),
-    ("make", SyntaxKind::MakeKw),
     ("as", SyntaxKind::AsKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
@@ -301,15 +296,10 @@ impl TokenClass {
             | SyntaxKind::SectionKw
             | SyntaxKind::HarmonyKw
             | SyntaxKind::LibraryKw
-            | SyntaxKind::TemplateKw
-            | SyntaxKind::MakeKw
             | SyntaxKind::AsKw
-            | SyntaxKind::SignatureKw
-            | SyntaxKind::StructureKw
             | SyntaxKind::DataKw
             | SyntaxKind::RecordKw
             | SyntaxKind::EnumKw
-            | SyntaxKind::ModuleKw
             | SyntaxKind::ModKw
             | SyntaxKind::PrivateKw
             | SyntaxKind::ImplKw
@@ -474,11 +464,6 @@ impl TokenClass {
             | SyntaxKind::InScaleStmt
             | SyntaxKind::ChordExpr
             | SyntaxKind::StackStmt
-            | SyntaxKind::TemplateDecl
-            | SyntaxKind::MakeStmt
-            | SyntaxKind::SignatureDecl
-            | SyntaxKind::SignatureMember
-            | SyntaxKind::StructureDecl
             | SyntaxKind::ModDecl
             | SyntaxKind::DataDecl
             | SyntaxKind::TypeParams
@@ -498,8 +483,7 @@ impl TokenClass {
             | SyntaxKind::FieldPattern
             | SyntaxKind::FieldPath
             | SyntaxKind::AppliedType
-            | SyntaxKind::IndexedType
-            | SyntaxKind::DataMember => return None,
+            | SyntaxKind::IndexedType => return None,
         };
         Some(class)
     }

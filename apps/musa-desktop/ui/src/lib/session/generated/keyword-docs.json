@@ -425,21 +425,6 @@
     "doc": "`stack c4 major7/2` is sugar for the close-position voicing of that chord rooted at that written pitch, held for that long. The pitch is what fixes the register, so `stack c major7/2` is refused: a pitch class chooses no octave.\n\n```musa\nstack c4 major7/2\n```"
   },
   {
-    "spelling": "template",
-    "summary": "parameterize a piece or a voice",
-    "doc": "`template piece study(k: Key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are ordinary typed values — a `Key`, a `Scale`, a `EventTrack<WrittenTime>`, or a `EventTrack<WrittenTime> -> EventTrack<WrittenTime>` — and a template body reads them and the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or ask what is inside it.\n\n```musa\ntemplate voice answer(subject: EventTrack<WrittenTime>, transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) {\n    use transform(subject);\n}\n```"
-  },
-  {
-    "spelling": "signature",
-    "summary": "name what a module must provide",
-    "doc": "`signature TonalContext { let key: key; let scale: scale; }` fixes the members a module has to define, and their types. Matching is by name and exact type: a module that satisfies it may define more, and everything unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside it.\n\n```musa\nsignature TonalContext {\n    let key: Key;\n    let scale: Scale;\n}\n```"
-  },
-  {
-    "spelling": "structure",
-    "summary": "group declarations behind a signature",
-    "doc": "`structure CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, reached from outside as `CMajor.key`. `template structure` parameterizes one over other structures, and `make` applies it. Structures are static: they hold no state, cross no boundary as values, and disappear into ordinary declarations once made.\n\n```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
-  },
-  {
     "spelling": "data",
     "summary": "declare a finite type of your own",
     "doc": "A `data` declaration is a finite, strictly positive type with named constructors and named fields. It is how a package owns its own data instead of asking the compiler for another built-in type: the constructors are the only way in, `match` is how a reader takes one apart, and the generated fold — `motive_fold` for `data Motive` — is how a total traversal is written.\n\nA field may not be a function, at any depth, and the declared type may not appear to the left of an arrow in its own group. Those two rules are what make the type finite and its fold terminating.\n\n```musa\ndata Motive {\n    Silence,\n    Sounded(pitch: Pitch, held: Duration),\n}\n```"
@@ -453,11 +438,6 @@
     "spelling": "enum",
     "summary": "declare a type of alternatives",
     "doc": "An `enum` declares alternatives, one case at a time. A case may carry nothing, a positional list of types, or named fields, and `match` over the declared cases is how a reader takes one apart with coverage checked.\n\nCases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type says which namespace the word is read in.\n\n```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading<A> {\n    Done(A),\n    Refused { at: NodePath, why: Text },\n}\n```"
-  },
-  {
-    "spelling": "module",
-    "summary": "the old spelling of `structure`",
-    "doc": "`module` no longer declares anything. What it used to declare is a `structure` — the thing that provides a `signature` — and `module` now means only a node of a package's tree, which is declared with `mod`. The two were one letter apart and unrelated, so the rarer one took the name ML has used for it since 1984.\n\n```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n}\n```"
   },
   {
     "spelling": "mod",
@@ -475,13 +455,8 @@
     "doc": "`impl T { … }` opens `T`'s namespace: each function in it is the definition `T.f`, reached as `T::f(x)`, as `x.f(…)` where `x`'s type is a `T`, and through whichever operator spells it. The block is a prefix and nothing more — there is no dispatch, and a function written here is a function written at the top level with one more word in its name.\n\n```musa\nimpl Pitch {\n    fn act(subject: Pitch, operation: Interval) -> Pitch { … }\n}\n```"
   },
   {
-    "spelling": "make",
-    "summary": "instantiate a template here",
-    "doc": "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the template into an ordinary declaration at this place. A piece instance stands at the file's root and is that file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from the site, so two instances with equal arguments remain two declarations.\n\n```musa\nmake answer(subject, transpose(P8)) as follower;\n```"
-  },
-  {
     "spelling": "as",
-    "summary": "name what an instance makes",
-    "doc": "The mandatory second half of `make`. It is the source address other declarations refer to, and renaming it changes what can be written, not what the instance is.\n\n```musa\nmake study(key g major) as study_in_g;\n```"
+    "summary": "give an import a qualifier",
+    "doc": "The optional second half of `import`. `import std::scale as scale;` files everything the file supplies under `scale.name`, which is how two files exporting the same name are told apart.\n\n```musa\nimport std::scale as scale;\n```"
   }
 ]

@@ -423,24 +423,14 @@ enum RawToken {
     ChordKw,
     #[token("stack", priority = 3)]
     StackKw,
-    #[token("template", priority = 3)]
-    TemplateKw,
-    #[token("make", priority = 3)]
-    MakeKw,
     #[token("as", priority = 3)]
     AsKw,
-    #[token("signature", priority = 3)]
-    SignatureKw,
-    #[token("structure", priority = 3)]
-    StructureKw,
     #[token("data", priority = 3)]
     DataKw,
     #[token("record", priority = 3)]
     RecordKw,
     #[token("enum", priority = 3)]
     EnumKw,
-    #[token("module", priority = 3)]
-    ModuleKw,
     #[token("mod", priority = 3)]
     ModKw,
     #[token("private", priority = 3)]
@@ -582,15 +572,10 @@ impl RawToken {
             | Self::StepKw
             | Self::ChordKw
             | Self::StackKw
-            | Self::TemplateKw
-            | Self::MakeKw
             | Self::AsKw
-            | Self::SignatureKw
-            | Self::StructureKw
             | Self::DataKw
             | Self::RecordKw
             | Self::EnumKw
-            | Self::ModuleKw
             | Self::ModKw
             | Self::PrivateKw
             | Self::ImplKw => None,
@@ -726,15 +711,10 @@ impl RawToken {
             Self::StepKw => SyntaxKind::StepKw,
             Self::ChordKw => SyntaxKind::ChordKw,
             Self::StackKw => SyntaxKind::StackKw,
-            Self::TemplateKw => SyntaxKind::TemplateKw,
-            Self::MakeKw => SyntaxKind::MakeKw,
             Self::AsKw => SyntaxKind::AsKw,
-            Self::SignatureKw => SyntaxKind::SignatureKw,
-            Self::StructureKw => SyntaxKind::StructureKw,
             Self::DataKw => SyntaxKind::DataKw,
             Self::RecordKw => SyntaxKind::RecordKw,
             Self::EnumKw => SyntaxKind::EnumKw,
-            Self::ModuleKw => SyntaxKind::ModuleKw,
             Self::ModKw => SyntaxKind::ModKw,
             Self::PrivateKw => SyntaxKind::PrivateKw,
             Self::ImplKw => SyntaxKind::ImplKw,

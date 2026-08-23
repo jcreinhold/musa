@@ -3,19 +3,6 @@
 (piece_declaration
   name: (string) @name) @item
 
-; A template is named where it is declared, and again where it is made.
-(piece_declaration
-  template_name: (identifier) @name) @item
-
-(make_statement
-  name: (identifier) @name) @item
-
-(signature_declaration
-  name: (identifier) @name) @item
-
-(structure_declaration
-  name: (identifier) @name) @item
-
 (data_declaration
   name: (identifier) @name) @item
 

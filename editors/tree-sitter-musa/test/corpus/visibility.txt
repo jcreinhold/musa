@@ -75,41 +75,6 @@ library {
         (identifier)))))
 
 ==================
-the marker is a token of the declaration, so the node is the same one
-==================
-
-library {
-  private structure Common : Chords {
-    let unison = 0;
-  }
-
-  structure Open : Chords {
-    let unison = 1;
-  }
-}
-
----
-
-(source_file
-  (library_declaration
-    (structure_declaration
-      (identifier)
-      (identifier)
-      (let_declaration
-        (identifier)
-        (expression
-          (literal_expression
-            (integer)))))
-    (structure_declaration
-      (identifier)
-      (identifier)
-      (let_declaration
-        (identifier)
-        (expression
-          (literal_expression
-            (integer)))))))
-
-==================
 a marker on something that is not a declaration does not parse
 ==================
 

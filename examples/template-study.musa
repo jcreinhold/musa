@@ -1,8 +1,9 @@
-// A template is a declaration with parameters: the same piece, or the same
-// voice, written once and made as often as it is wanted. What a template
-// body may read is its own parameters and the file's lexical root — never
-// the site that makes it — so an instance means the same thing wherever it
-// stands (docs/rules/language/04-templates-and-modules.md §3).
+// A piece written once and made in whatever key it is wanted was a
+// `template piece`. What was reusable about it is its *material* — a function
+// of a key and a collection returning an event track — and that is ordinary
+// source any number of pieces may import and call. The piece itself never was
+// reusable, because a file is one piece however the piece got there
+// (docs/rules/language/01-surface.md §6).
 fn theme() -> EventTrack<WrittenTime> {
     music {
         c4/4
@@ -13,19 +14,21 @@ fn theme() -> EventTrack<WrittenTime> {
 }
 
 // A voice that answers a subject through whatever transformation it is
-// handed. Twice below: the same body, two instances, two identities.
-template voice answer(
+// handed. Twice below: the same function, two voices, two identities.
+fn answer(
     subject: EventTrack<WrittenTime>,
     transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-) {
-    use transform(subject);
-}
+) -> EventTrack<WrittenTime> { transform(subject) }
 
-// The piece itself is the template. Its key and scale arrive as arguments,
-// so the study exists in whatever key it is made in.
-template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Study" {
+// What was a template's parameter list is the file's lexical root. The study
+// exists in whatever key these say.
+let mode: Scale = scale g mixolydian;
+
+let subject: EventTrack<WrittenTime> = theme();
+
+piece "Study" {
     meter 4/4;
-    key k;
+    key g major;
 
     score {
         part piano {
@@ -34,22 +37,22 @@ template piece study(k: Key, mode: Scale, subject: EventTrack<WrittenTime>) "Stu
                     use subject;
                 }
             }
-            make answer(
-                subject,
-                fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
-                    transpose(P8, line)
-                },
-            ) as upper;
-            make answer(
-                subject,
-                fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
-                    transpose(P15, line)
-                },
-            ) as higher;
+            voice upper {
+                use answer(
+                    subject,
+                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                        transpose(P8, line)
+                    },
+                );
+            }
+            voice higher {
+                use answer(
+                    subject,
+                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                        transpose(P15, line)
+                    },
+                );
+            }
         }
     }
 }
-
-// One file is one piece, made or written out. This `make` stands where the
-// piece would, and is this file's piece.
-make study(key g major, scale g mixolydian, theme()) as study_in_g;

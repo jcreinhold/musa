@@ -146,19 +146,13 @@ impl Lowering<'_> {
 
     /// A written name.
     ///
-    /// Four readings, and only one of them asks anything to be resolved:
+    /// Three readings, and only one of them asks anything to be resolved:
     ///
     /// - `TokenKind.Comma` and `Delimiter.Parentheses` are **literals** of the
     ///   phase's own enumerations, readable only where an adapter is read
     ///   (`02-core-calculus.md` §5.9). They are compiler-owned constants whose
     ///   spelling happens to contain a dot, so nothing an adapter declares can
     ///   collide with one and ordinary source cannot reach them at all.
-    /// - `Away.tonic`, where `Away` is a module, is that module's **member**,
-    ///   which `04-templates-and-modules.md` §4 flattened into `Away.tonic` in
-    ///   the one namespace the core has. The module reading goes first because
-    ///   it is the only one that can be *wrong* about a spelling: it answers
-    ///   only where a module really decides the name, and the two readings
-    ///   below take everything else.
     /// - `x.f` is a **projection**. `10-traits.md` §6 gives `::` to namespaces,
     ///   which leaves `.` meaning one thing in an expression rather than two.
     /// - Anything else is a variable, written through for the core to resolve.
@@ -182,27 +176,20 @@ impl Lowering<'_> {
         {
             return Some(Raw::lit(origin, literal));
         }
-        if let Some(reading) = self.naming.read(&written) {
-            let span = crate::resolve::trimmed_span(node);
-            if let Some((signature, ascription)) = reading.sealed_by {
-                return self.refuse(
-                    Diagnostic::error(Code::UnknownName, format!("`{written}` is private"))
-                        .at(span, "named from outside the structure that defines it")
-                        .also(ascription, format!("`{signature}` does not export it"))
-                        .help("a structure exports exactly what its signature lists; everything else is its own"),
-                );
-            }
+        if self.naming.reads_whole(&written) {
             if self.here {
-                self.resolver.references.speak(&reading.name, span);
+                self.resolver
+                    .references
+                    .speak(&written, crate::resolve::trimmed_span(node));
             }
-            return Some(Raw::var(origin, reading.name.as_str()));
+            return Some(Raw::var(origin, written.as_str()));
         }
         // Every segment after the first, and not just the second: §1.2 lets a
         // record hold a record, so `moved.region.anchor` is two projections and
         // reading it as one field named `region.anchor` would look for a field
         // no declaration has. The parser already declined to say where a path
         // stops and a projection starts — this is where the answer is, and the
-        // module reading above is the half that had to go first.
+        // alias reading above is the half that had to go first.
         let mut segments = written.split('.');
         let subject = segments.next()?;
         if subject.len() == written.len() {
@@ -504,19 +491,16 @@ impl Lowering<'_> {
         // be a different form — a record field that happened to be a function —
         // and would not find a trait's method at all.
         //
-        // Unless [`Naming`](crate::lower::Naming) decides the whole spelling, in
-        // which case it is one name and there is no receiver: `Away.tonic(x)`
-        // calls a module member and `low.rise()` calls what an aliased import
-        // brought in. That reading goes first here for the reason
-        // [`Self::name`] gives for putting it first there — it is the only one
-        // that can be *wrong* about a spelling, so it answers where it decides
-        // and stays out of everything else. Falling through hands the head to
-        // [`Self::value`], which asks the same question and is the one place the
-        // answer is turned into a term.
+        // Unless [`Naming`](crate::lower::Naming) reads the whole spelling as one
+        // name, in which case there is no receiver: `low.rise()` calls what an
+        // aliased import brought in. That reading goes first here for the reason
+        // [`Self::name`] gives for putting it first there. Falling through hands
+        // the head to [`Self::value`], which asks the same question and is the
+        // one place the answer is turned into a term.
         if head.kind() == SyntaxKind::NameExpr
             && let Some(written) = written_name(&head)
             && let Some((receiver, method)) = written.split_once('.')
-            && self.naming.read(&written).is_none()
+            && !self.naming.reads_whole(&written)
             && !(self.in_phase && phase_literal(&written).is_some())
         {
             let receiver = Raw::var(self.origin(&head), receiver);

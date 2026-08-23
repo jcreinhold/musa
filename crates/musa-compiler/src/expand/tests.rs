@@ -48,8 +48,7 @@ fn module(expand: &str) -> String {
 
 /// Expand one region's worth of text through `transformer`, and print it.
 fn answer(transformer: &str, region: &str) -> Result<crate::quote::Printed, crate::phase::ExpansionFailure> {
-    let read = musa_syntax::parse(region);
-    let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
+    let subject = crate::quote::read_written(region, crate::quote::ExpansionPath::at(vec![0]));
     crate::phase::expand_syntax(&module(transformer), crate::phase::PhaseImports::bundled(), &subject)
         .0
         .map(|output| crate::quote::print(&output))
@@ -974,8 +973,7 @@ fn printed(transformer: &str, region: &str) -> String {
 
 /// What one transformer charged, over one region.
 fn charged(transformer: &str, region: &str) -> u64 {
-    let read = musa_syntax::parse(region);
-    let subject = crate::quote::read_region(&read.syntax(), crate::quote::ExpansionPath::at(vec![0]));
+    let subject = crate::quote::read_written(region, crate::quote::ExpansionPath::at(vec![0]));
     let (answered, work) =
         crate::phase::expand_syntax(&module(transformer), crate::phase::PhaseImports::bundled(), &subject);
     if let Err(fault) = answered {
@@ -1282,7 +1280,7 @@ fn law_10_capture_and_repetition_are_charged_for_what_they_cost() {
                }"#,
     );
     assert!(
-        charged(&one_level, "a b c d") > charged(&one_level, "a"),
+        charged(&one_level, "together(a, b, c)") > charged(&one_level, "a"),
         "minting a step is charged even where the step is never run"
     );
 }

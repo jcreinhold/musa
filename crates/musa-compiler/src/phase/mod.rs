@@ -23,7 +23,7 @@ pub(crate) use edit::{EditFailure, PhaseWork, edit_syntax, region, said};
 #[cfg(test)]
 pub(crate) use expand::expand_region;
 pub(crate) use expand::{ExpansionFailure, refusal_of};
-pub(crate) use nodes::{expr_node_of, phase_type, type_node_of};
+pub(crate) use nodes::phase_type;
 #[cfg(test)]
 pub(crate) use ownership::PhaseFamily;
 pub(crate) use ownership::{BUILTIN_OWNERSHIP, Eliminator, MachineOp, SYNTAX_OWNERSHIP, SyntaxOp};

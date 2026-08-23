@@ -1,96 +1,75 @@
-// A signature names what a bundle of declarations must provide; a structure
-// provides it; a `template structure` is a functor from structures to a
-// structure.
-// The one thing this adds over an ordinary typed parameter is that the facts
-// travel *together*: a key, its collection, and how the two spell a degree
-// are useless apart, and passing them one at a time is how they drift
-// (docs/rules/language/04-templates-and-modules.md §4).
+// A bundle of facts that must travel together is a record; a value of it is
+// what a `structure` was; a function over it is what a `template structure`
+// was. The one thing this gives that a bag of parameters does not is that the
+// facts travel *together*: a key, its collection, and how the two spell a
+// degree are useless apart, and passing them one at a time is how they drift
+// (docs/rules/language/01-surface.md §1.2).
 import std::context;
 
-// What a canon needs, gathered once. Members are `let` without their
-// definition — a function is a value of arrow type, so one member form
-// covers values, functions, and music alike.
-signature CanonMaterial {
-    let subject: EventTrack<WrittenTime>;
-    let answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
-    let canon: EventTrack<WrittenTime>;
+// What a canon needs, gathered once. Fields, not members — a function is a
+// value of arrow type, so one field form covers values, functions, and music
+// alike.
+record CanonMaterial {
+    subject: EventTrack<WrittenTime>;
+    answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
+    canon: EventTrack<WrittenTime>;
 }
 
-// The functor. It reads a tonal context through `TonalContext` and nothing
-// else: whatever else `CMajor` happens to define is private to `CMajor`, and
-// naming it here would be an error rather than a coincidence that works.
-//
-// Expansion is binding, not rewriting: this body is checked once per
-// instance with `C` naming the structure the site passed, so no syntax is
-// copied and every span an editor points at is the one written here.
-template structure Canon(C: TonalContext, gap: Duration<WrittenTime>): CanonMaterial {
-    // The subject steps through whatever collection the context named.
-    let subject: EventTrack<WrittenTime> = music {
-        in scale C.collection {
+// The subject steps through whatever collection the context named. It reads
+// the context through `TonalContext` and nothing else: a record's fields are
+// its whole interface, so there is nothing else here to read by accident.
+fn canon_subject(context: TonalContext) -> EventTrack<WrittenTime> {
+    music {
+        in scale context.collection {
             c5/4
             d5/4
             e5/4
             f5/4
         }
-    };
-
-    // The answer, a fifth above. Ordinary music functions: a structure exports
-    // values, and a value of arrow type is a function.
-    fn answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P5, line) }
-
-    // The canon itself: subject against its own answer, delayed by whatever
-    // the site asked for.
-    let canon: EventTrack<WrittenTime> = together(subject, shift(gap, answer(subject)));
-
-    // Private. `CanonMaterial` does not list it, so nothing outside this
-    // structure may name `MajorCanon.stretto` — which is what sealing means.
-    let stretto: EventTrack<WrittenTime> = together(
-        subject,
-        shift(duration_of(1/2), answer(subject)),
-    );
-}
-
-// Two instances, two structures. Identity is generative and comes from the
-// *site*: making the same functor twice with equal arguments would still be
-// two declarations, and here the arguments differ as well.
-make Canon(CMajor, duration_of(1/1)) as MajorCanon;
-make Canon(ANaturalMinor, duration_of(2/1)) as MinorCanon;
-
-// One piece template reads a single canon.
-template piece study(material: EventTrack<WrittenTime>, home: Key) "Canon Study" {
-    meter 4/4;
-    key home;
-
-    score {
-        part piano {
-            voice right {
-                use material;
-            }
-        }
     }
 }
 
-// Another reads two, which is the point of exporting ordinary music values
-// rather than a structure object: what leaves a structure is a value like any
-// other, and the template that takes it never learns where it came from.
-template piece duet(
-    major: EventTrack<WrittenTime>,
-    minor: EventTrack<WrittenTime>,
-    home: Key,
-) "Canon Duet" {
+// The answer, a fifth above. An ordinary music function, and a value of arrow
+// type is what the record's second field holds.
+fn canon_answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P5, line) }
+
+// The canon itself: subject against its own answer, delayed by whatever the
+// caller asked for. The subject arrives as a parameter rather than as a local
+// binding, which is what a `let` in a body would have been anyway.
+fn canon_over(subject: EventTrack<WrittenTime>, gap: Duration<WrittenTime>) -> CanonMaterial {
+    CanonMaterial {
+        subject = subject,
+        answer = canon_answer,
+        canon = together(subject, shift(gap, canon_answer(subject))),
+    }
+}
+
+// The functor, which is a function.
+fn canon(context: TonalContext, gap: Duration<WrittenTime>) -> CanonMaterial {
+    canon_over(canon_subject(context), gap)
+}
+
+// Two values, two identities. Identity comes from the site the way it always
+// did: two calls are two `let`s at two origins, and here the arguments differ
+// as well.
+let major_canon: CanonMaterial = canon(c_major, duration_of(1/1));
+
+let minor_canon: CanonMaterial = canon(a_natural_minor, duration_of(2/1));
+
+// One file is one piece, and this is it. What a piece reads out of a canon is
+// an ordinary event track, and the piece never learns where it came from.
+piece "Canon Duet" {
     meter 4/4;
-    key home;
+    key c_major.tonic;
 
     score {
         part piano {
             voice upper {
-                use major;
+                use major_canon.canon;
             }
             voice lower {
-                use minor;
+                use minor_canon.canon;
             }
         }
     }
 }
-
-make duet(MajorCanon.canon, MinorCanon.canon, CMajor.tonic) as canon_duet;

@@ -1,30 +1,9 @@
-//! Type-like declarations: signature, data, record, enum, trait, impl, and the structure of their members.
+//! Type-like declarations: data, record, enum, trait, impl, and the structure of their members.
 
 use super::engine::Parser;
 use crate::{SyntaxError, SyntaxKind};
 
 impl Parser<'_> {
-    /// `signature TonalContext { let tonic: key; }` — the members a module
-    /// must provide, each a `let` with its definition left out.
-    pub(super) fn signature_decl(&mut self) {
-        self.start(SyntaxKind::SignatureDecl);
-        self.bump(); // signature
-        self.expect(SyntaxKind::Identifier, "a signature name");
-        self.expect(SyntaxKind::LBrace, "`{`");
-        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::LetKw) {
-                self.signature_member();
-            } else if self.at(SyntaxKind::DataKw) {
-                self.data_member();
-            } else {
-                self.expected("`let`, `data`, or `}`");
-                self.recover(&[SyntaxKind::LetKw, SyntaxKind::DataKw, SyntaxKind::RBrace]);
-            }
-        }
-        self.expect(SyntaxKind::RBrace, "`}`");
-        self.finish();
-    }
-
     /// `data Motive { Silence, private Sounded(pitch: Pitch, held: Duration), }`
     /// — the one nominal declaration form.
     ///
@@ -104,32 +83,6 @@ impl Parser<'_> {
             );
         }
         self.bump(); // the marker, so the next dispatch sees what follows it
-    }
-
-    /// A `private` on a member of a structure, which its signature already
-    /// hides.
-    ///
-    /// The two mechanisms do not overlap and do not conflict: a structure seals
-    /// by *listing* — the signature is the interface, and everything else is
-    /// already private to the structure — while a module hides by *marking*. A
-    /// marker that means nothing is worth saying so, because a reader who wrote
-    /// one believes it is doing something.
-    pub(super) fn sealed_already(&mut self) {
-        if !self.cascading()
-            && let Some(token) = self.significant()
-        {
-            self.errors.push(
-                SyntaxError::new(
-                    token.range,
-                    "this is already private",
-                    "a structure's signature is its interface",
-                )
-                .with_help(
-                    "a member the signature does not list is private to the structure, so the marker adds nothing",
-                )
-                .with_fix("remove `private`", ""),
-            );
-        }
     }
 
     /// Whichever of `data`, `record`, and `enum` opens here.
@@ -381,72 +334,6 @@ impl Parser<'_> {
         if self.at(SyntaxKind::Colon) {
             self.data_chosen();
         }
-        self.finish();
-    }
-
-    /// `data Motive;` — one signature member naming a type and not its
-    /// constructors.
-    pub(super) fn data_member(&mut self) {
-        self.start(SyntaxKind::DataMember);
-        self.bump(); // data
-        self.expect(SyntaxKind::Identifier, "a type name");
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
-        self.expect(SyntaxKind::Semicolon, "`;`");
-        self.finish();
-    }
-
-    /// `let tonic: key;` — one signature member.
-    pub(super) fn signature_member(&mut self) {
-        self.start(SyntaxKind::SignatureMember);
-        self.bump(); // let
-        self.expect(SyntaxKind::Identifier, "a member name");
-        self.expect(SyntaxKind::Colon, "`:`");
-        self.type_expr();
-        self.expect(SyntaxKind::Semicolon, "`;`");
-        self.finish();
-    }
-
-    /// `structure CMajor : TonalContext { ... }`, or the same with a
-    /// parameter list for the structure a `template` parameterizes.
-    pub(super) fn structure_decl(&mut self) {
-        self.start(SyntaxKind::StructureDecl);
-        self.visibility();
-        if self.at(SyntaxKind::ModuleKw) {
-            self.moved_to_structure();
-        }
-        self.bump(); // `structure`, or the `module` that should have been one
-        self.expect(SyntaxKind::Identifier, "a structure name");
-        if self.at(SyntaxKind::LParen) {
-            self.param_list();
-        }
-        self.expect(SyntaxKind::Colon, "`:`");
-        self.expect(SyntaxKind::Identifier, "the signature this structure provides");
-        self.expect(SyntaxKind::LBrace, "`{`");
-        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
-            if self.at(SyntaxKind::PrivateKw) {
-                self.sealed_already();
-            }
-            if self.opens(SyntaxKind::LetKw) {
-                self.let_decl();
-            } else if self.opens(SyntaxKind::FnKw) {
-                self.fn_decl();
-            } else if self.at_type_decl() {
-                self.type_decl();
-            } else {
-                self.expected("`let`, `fn`, `data`, `record`, `enum`, or `}`");
-                self.recover(&[
-                    SyntaxKind::LetKw,
-                    SyntaxKind::FnKw,
-                    SyntaxKind::DataKw,
-                    SyntaxKind::RecordKw,
-                    SyntaxKind::EnumKw,
-                    SyntaxKind::RBrace,
-                ]);
-            }
-        }
-        self.expect(SyntaxKind::RBrace, "`}`");
         self.finish();
     }
 }

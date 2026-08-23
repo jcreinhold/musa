@@ -8,16 +8,14 @@
 //!
 //! That matters more than it sounds. The generator this replaces scanned the
 //! `.musa` files line by line, and so it published a function's *body* as its
-//! signature, truncated any declaration whose parameters wrapped, and leaked
-//! private structure members. Each of those is a second reader of Musa source
-//! disagreeing with the compiler — the exact failure `crate::docs` exists to
-//! remove.
+//! signature and truncated any declaration whose parameters wrapped. Each of
+//! those is a second reader of Musa source disagreeing with the compiler — the
+//! exact failure `crate::docs` exists to remove.
 //!
-//! What is listed is what an importing document may name: every declaration at
-//! a bundled module's root, every member a `signature` requires, and, under a
-//! `structure`, only the members its signature exports. A member the signature
-//! does not list is private (`docs/rules/language/04-templates-and-modules.md` §4),
-//! and documenting it would advertise a name that does not resolve.
+//! What is listed is every declaration a bundled module writes under its own
+//! name, in module order. A name reached through a trait — `Interval.compose`,
+//! written inside an `impl` — is not one of them: it is documented by the trait
+//! that requires it, and repeating it here would state the contract twice.
 
 use std::fmt::Write as _;
 
@@ -67,17 +65,6 @@ pub(crate) fn recorded_items() -> Vec<ItemDoc> {
     compilation.items().to_vec()
 }
 
-/// Whatever `structure X: S` ascribes, or `None` for anything else.
-///
-/// Read back off the signature line that `crate::module` wrote a few hundred
-/// lines away, because the ascription is not otherwise a fact a record
-/// carries — and it need not be, since nothing but this file has ever wanted
-/// it. The three spellings `crate::module` emits all end in `: <signature>`.
-fn ascribes(item: &ItemDoc) -> Option<&str> {
-    let rest = item.signature.strip_prefix("structure ")?;
-    rest.rsplit(": ").next()
-}
-
 /// The reference, as `stdlib/reference.md` holds it.
 ///
 /// Generated rather than written: the checked-in copy makes the library
@@ -87,30 +74,8 @@ fn ascribes(item: &ItemDoc) -> Option<&str> {
 pub fn standard_library_reference() -> String {
     let items = recorded_items();
 
-    // Which qualified names a signature requires. That set is what a structure
-    // ascribing the signature exports; everything else it defines is private.
-    let signatures: std::collections::HashSet<&str> = items
-        .iter()
-        .filter(|item| item.signature.starts_with("signature "))
-        .map(|item| item.name.as_str())
-        .collect();
-    // Keyed by the member's qualified name, holding the sentence the signature
-    // wrote about it. A structure that answers the requirement without saying
-    // anything new inherits that sentence rather than repeating it: the
-    // contract is stated once, where it is required, and every structure
-    // meeting it is a projection of that one statement.
-    let required: std::collections::HashMap<&str, Option<&str>> = items
-        .iter()
-        .filter(|item| {
-            item.name
-                .split_once('.')
-                .is_some_and(|(owner, _)| signatures.contains(owner))
-        })
-        .map(|item| (item.name.as_str(), item.summary.as_deref()))
-        .collect();
-
     let mut out = String::from(
-        "# Musa standard library 1\n\nThis reference is generated from what the compiler records about each bundled declaration — the same record an\neditor shows on hover. Standard definitions are ordinary Musa definitions; importing a module is explicit and never\nsearches the filesystem. Under a `structure`, only the members its signature exports are listed, because the rest are\nprivate to it.\n",
+        "# Musa standard library 1\n\nThis reference is generated from what the compiler records about each bundled declaration — the same record an\neditor shows on hover. Standard definitions are ordinary Musa definitions; importing a module is explicit and never\nsearches the filesystem.\n",
     );
 
     for (uri, _) in crate::imports::standard_library_modules() {
@@ -131,35 +96,19 @@ pub fn standard_library_reference() -> String {
         // The module path, not its URI: a reader of this file writes
         // `import std::tonal::harmony;` and never sees where the file sits.
         let _ = write!(out, "\n## `std::{module}`\n\n");
-        for item in here.iter().filter(|item| !item.name.contains('.')) {
-            entry(&mut out, item, "", item.summary.as_deref());
-            let prefix = format!("{}.", item.name);
-            let exported = ascribes(item);
-            for member in here.iter().filter(|member| member.name.starts_with(&prefix)) {
-                match exported {
-                    // A structure exports what its signature required, and
-                    // borrows the sentence written there when it wrote none.
-                    Some(signature) => {
-                        let short = member.name.trim_start_matches(&prefix);
-                        if let Some(stated) = required.get(format!("{signature}.{short}").as_str()) {
-                            entry(&mut out, member, "  ", member.summary.as_deref().or(*stated));
-                        }
-                    }
-                    // A signature requires everything listed under it.
-                    None => entry(&mut out, member, "  ", member.summary.as_deref()),
-                }
-            }
+        // A dotted name is an `impl` block's, reached as `Interval.compose`
+        // through the trait it implements rather than written by a reader of
+        // this file, and `10-traits.md` §6 documents it where the trait is.
+        for item in here.iter().filter(|item| !item.name.contains(crate::lower::DOT)) {
+            entry(&mut out, item, item.summary.as_deref());
         }
     }
     out
 }
 
 /// One list line: the signature, and the sentence that explains it.
-///
-/// The sentence is passed in rather than read off `item`, because a structure
-/// member may be explained by the signature that required it.
-fn entry(out: &mut String, item: &ItemDoc, indent: &str, summary: Option<&str>) {
-    let _ = write!(out, "{indent}- `{}`", item.signature);
+fn entry(out: &mut String, item: &ItemDoc, summary: Option<&str>) {
+    let _ = write!(out, "- `{}`", item.signature);
     if let Some(deprecated) = &item.deprecation {
         let _ = write!(out, " — **deprecated**: {deprecated}");
     } else if let Some(summary) = summary {
@@ -221,22 +170,17 @@ mod tests {
         assert!(undocumented.is_empty(), "{undocumented:#?}");
     }
 
-    /// Ownership, as the reference must show it: a structure publishes what
-    /// its signature asked for, and keeps the rest.
+    /// What a bundled context looks like now that it is a record and two
+    /// ordinary bindings: the type and its values, each on its own line, and
+    /// nothing published under a dot.
     #[test]
-    fn a_structure_publishes_its_signatures_members_and_no_others() {
+    fn a_bundled_record_and_its_values_are_published() {
         let reference = standard_library_reference();
+        assert!(reference.contains("`record TonalContext: Type`"), "{reference}");
+        assert!(reference.contains("`let c_major: TonalContext`"), "{reference}");
         assert!(
-            reference.contains("`fn CMajor.spell(ordinal: Nat) -> Option<Pitch>`"),
-            "{reference}"
-        );
-        assert!(
-            reference.contains("`let TonalContext.spell: Nat -> Option<Pitch>`"),
-            "{reference}"
-        );
-        assert!(
-            !reference.contains("CMajor.home"),
-            "`home` is private to the structure, so nothing outside may name it"
+            !reference.contains("CMajor."),
+            "the structure layer is gone, so nothing is reached through one"
         );
     }
 

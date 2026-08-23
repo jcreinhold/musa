@@ -255,7 +255,7 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
                 .without(printer.iter().flat_map(Printer::left_to_it)),
         ))
         .collect();
-    let Some(read) = crate::document::elaborate(&mut resolver, &sources, None) else {
+    let Some(read) = crate::document::elaborate(&mut resolver, &sources) else {
         return Err(module_fault(resolver.diagnostics));
     };
     // A document that came back is not yet a module that checks: `elaborate`

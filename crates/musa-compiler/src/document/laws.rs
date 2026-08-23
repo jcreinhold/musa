@@ -61,7 +61,7 @@ fn elaborated(source: &str) -> (Option<Document>, Vec<String>) {
 /// The same for a document already assembled out of several sources.
 fn faults(sources: &[Source]) -> (Option<Document>, Vec<String>) {
     let mut resolver = Resolver::new();
-    let document = elaborate(&mut resolver, sources, None);
+    let document = elaborate(&mut resolver, sources);
     let mut said: Vec<String> = resolver
         .diagnostics
         .iter()

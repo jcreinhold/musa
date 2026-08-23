@@ -2,8 +2,7 @@
 
 This reference is generated from what the compiler records about each bundled declaration — the same record an
 editor shows on hover. Standard definitions are ordinary Musa definitions; importing a module is explicit and never
-searches the filesystem. Under a `structure`, only the members its signature exports are listed, because the rest are
-private to it.
+searches the filesystem.
 
 ## `std::algebra`
 
@@ -33,21 +32,15 @@ private to it.
 
 ## `std::context`
 
-- `signature TonalContext` — A tonal context is the small bundle of facts that always travel together: what key a passage is in, which collection it steps through, how a numbered degree is spelled in register, and how a chord class is voiced. Passing them one at a time is how they drift apart, which is the whole reason a signature exists — Open Music Theory `105-diatonic-modes.md` names the collection, `017-triads.md` the chords, and neither is meaningful without the other.
-  - `let TonalContext.tonic: Key` — The key the passage is written in. A key is a signature and a tonic, never a scale.
-  - `let TonalContext.collection: Scale` — The collection stepwise motion reads. A default, not a claim: a passage may still name another collection where it wants one.
-  - `let TonalContext.spell: Nat -> Option<Pitch>` — The written pitch a numbered degree names, in this context's own register. Absent when the context has no register to spell in.
-  - `let TonalContext.voicing_for: ChordClass -> Option<Voicing>` — How this context voices a chord class. Absent when the class cannot be voiced from the register it chose.
-- `structure CMajor: TonalContext` — C major, spelled from middle C.
-  - `let CMajor.tonic: Key` — The key the passage is written in. A key is a signature and a tonic, never a scale.
-  - `let CMajor.collection: Scale` — The collection stepwise motion reads. A default, not a claim: a passage may still name another collection where it wants one.
-  - `fn CMajor.spell(ordinal: Nat) -> Option<Pitch>` — The written pitch a numbered degree names, in this context's own register. Absent when the context has no register to spell in.
-  - `fn CMajor.voicing_for(content: ChordClass) -> Option<Voicing>` — How this context voices a chord class. Absent when the class cannot be voiced from the register it chose.
-- `structure ANaturalMinor: TonalContext` — A natural minor, spelled from the A below middle C. The same four members, answered differently — which is what makes the two structures interchangeable everywhere `TonalContext` is asked for.
-  - `let ANaturalMinor.tonic: Key` — The key the passage is written in. A key is a signature and a tonic, never a scale.
-  - `let ANaturalMinor.collection: Scale` — The collection stepwise motion reads. A default, not a claim: a passage may still name another collection where it wants one.
-  - `fn ANaturalMinor.spell(ordinal: Nat) -> Option<Pitch>` — The written pitch a numbered degree names, in this context's own register. Absent when the context has no register to spell in.
-  - `fn ANaturalMinor.voicing_for(content: ChordClass) -> Option<Voicing>` — How this context voices a chord class. Absent when the class cannot be voiced from the register it chose.
+- `record TonalContext: Type` — A tonal context is the small bundle of facts that always travel together: what key a passage is in, which collection it steps through, how a numbered degree is spelled in register, and how a chord class is voiced. Passing them one at a time is how they drift apart — Open Music Theory `105-diatonic-modes.md` names the collection, `017-triads.md` the chords, and neither is meaningful without the other.  A record, because a record is all a `signature` ever was: the fields are the members, a value of the type is the structure, and a function that takes one is the functor.
+- `let c_major_home: Option<Frame>` — The register C major's degrees are spelled in. Private: a context promises spelled pitches, not the frame it spells them from, so moving this one changes nothing anyone outside can name. That is what sealing was, written with the visibility the language already had.
+- `fn c_major_spell(ordinal: Nat) -> Option<Pitch>` — C major's degree spelling, read out of the register above. Private for the same reason the register is: what a context promises is the function's answers, not which function it happens to be.
+- `fn c_major_voicing(content: ChordClass) -> Option<Voicing>` — C major's close-position voicing, from middle C upward.
+- `let c_major: TonalContext` — C major, spelled from middle C.
+- `let a_minor_home: Option<Frame>` — The register A natural minor's degrees are spelled in, an octave and a third below C major's.
+- `fn a_minor_spell(ordinal: Nat) -> Option<Pitch>` — A natural minor's degree spelling, read out of its own register.
+- `fn a_minor_voicing(content: ChordClass) -> Option<Voicing>` — A natural minor's close-position voicing, from the A below middle C.
+- `let a_natural_minor: TonalContext` — A natural minor, spelled from the A below middle C. The same four fields, answered differently — which is what makes the two values interchangeable everywhere a `TonalContext` is asked for.
 
 ## `std::core`
 

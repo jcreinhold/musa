@@ -108,34 +108,19 @@ pub(crate) fn elaborate_parsed(
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let root = document.syntax();
-    let mut templates = crate::template::Templates::collect(resolver, &root);
-    // The piece a document declares: written out, or made by an instance
-    // standing where it would be. Both are one piece, and everything after
-    // this line reads the same `PieceDecl` either way.
-    let made = musa_syntax::ast::MakeStmt::from_root(&root)
-        .and_then(|site| templates.instance(resolver, &site, "piece", crate::template::Kind::Piece, None, name));
-    let Some(piece) = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
-    else {
+    // A file is one piece however the piece got there, so the piece is the one
+    // `PieceDecl` at the root and there is nothing else it could be.
+    let Some(piece) = PieceDecl::from_root(&root) else {
         if let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) {
             return elaborate_material(resolver, &library, name, options);
         }
-        if musa_syntax::ast::MakeStmt::from_root(&root).is_none() {
-            resolver.report(
-                Diagnostic::error(Code::Misplaced, "this file declares no piece")
-                    .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
-                    .help("every musa file is one piece, or a `library { … }` for others to import"),
-            );
-        }
-        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
-    };
-    if piece.is_template() && made.is_none() {
         resolver.report(
-            Diagnostic::error(Code::Misplaced, "a piece with parameters needs `template`")
-                .at(resolve::trimmed_span(piece.syntax()), "this piece takes parameters")
-                .help("write `template piece …` and a `make … as …;` for each instance"),
+            Diagnostic::error(Code::Misplaced, "this file declares no piece")
+                .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
+                .help("every musa file is one piece, or a `library { … }` for others to import"),
         );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
-    }
+    };
 
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
@@ -143,7 +128,7 @@ pub(crate) fn elaborate_parsed(
     imports.extend(piece.imports());
     let libraries = crate::imports::load(resolver, name, &imports, &options.imports);
     let sources = declaring(&root, &libraries, piece.syntax());
-    let Some(mut elaborated) = crate::document::elaborate(resolver, &sources, made.as_ref()) else {
+    let Some(mut elaborated) = crate::document::elaborate(resolver, &sources) else {
         tracing::debug!(
             phase = "check",
             diagnostics = resolver.diagnostics.len(),
@@ -165,7 +150,7 @@ pub(crate) fn elaborate_parsed(
     let machines = elaborated.machines();
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
-    let identity = elaborate_score(resolver, &mut elaborated, &piece, name, &mut snapshot);
+    let identity = elaborate_score(resolver, &mut elaborated, &piece, &mut snapshot);
     // The identity hash is the one fact that says *which* piece was produced,
     // and it is what two runs that should agree are compared on.
     tracing::debug!(phase = "elaborate", %identity, "elaborated");

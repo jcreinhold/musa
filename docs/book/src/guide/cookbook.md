@@ -101,11 +101,11 @@ applied to one class.
 
 ## Structure
 
-**Make the same piece in several keys.** `examples/template-study.musa`: a `template piece` whose key, collection, and
-subject arrive as arguments.
+**Write a study whose key and material are stated once.** `examples/template-study.musa`: the key and the subject are
+root bindings, and the answering voices are two calls of one function.
 
-**Pass a bundle of facts that belong together.** `examples/module-functor-study.musa`: a `signature`, two structures
-from `std::context`, and a `template structure` over them.
+**Pass a bundle of facts that belong together.** `examples/module-functor-study.musa`: a `record`, two values of it from
+`std::context`, and a function over them.
 
 ## Checking and reading
 

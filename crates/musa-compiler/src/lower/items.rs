@@ -340,7 +340,7 @@ impl Lowering<'_> {
         let mut declared = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
             let mut definition = self.function(&written)?;
-            definition.name = Name::from(format!("{head}{}{}", crate::module::DOT, definition.name));
+            definition.name = Name::from(format!("{head}{}{}", crate::lower::DOT, definition.name));
             declared.push((written, definition));
         }
         Some(declared)

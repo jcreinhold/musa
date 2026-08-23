@@ -1,21 +1,14 @@
 //! See `ast` module docs; the items parsed in this family.
 
-use super::AstNode;
-use super::ExprArg;
-use super::ExprArgList;
 use super::FnDecl;
-use super::FnParam;
 use super::FragmentDecl;
 use super::LetDecl;
 use super::MotifDecl;
 use super::PerformanceDecl;
 use super::ScoreDecl;
-use super::StructureDecl;
 use super::StudioDecl;
-use super::VoiceDecl;
 use super::child;
 use super::children;
-use super::params_of;
 use super::token_text;
 use super::unquote;
 use super::wrapper;
@@ -32,47 +25,9 @@ impl PieceDecl {
         child(node)
     }
 
-    /// The piece a document *has*: written at its root, or the one a root
-    /// `make` names among the templates above it.
-    ///
-    /// A document is one piece either way, so a reader that only wants the
-    /// declaration — its title, its parts — asks for it here and never has
-    /// to know which of the two spellings it was written in. What the
-    /// instance was *given* is a semantic question, and this cannot answer
-    /// it: [`MakeStmt`] is where that reading starts.
-    pub fn of_document(node: &SyntaxNode) -> Option<Self> {
-        if let Some(piece) = Self::from_root(node) {
-            return Some(piece);
-        }
-        let made = MakeStmt::from_root(node)?.template()?;
-        TemplateDecl::all_at_root(node)
-            .into_iter()
-            .find(|template| template.name().as_deref() == Some(made.as_str()))
-            .and_then(|template| template.piece())
-    }
-
     /// The piece title from its string literal (without quotes).
     pub fn name(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
-    }
-
-    /// The name the template gives this piece in code, present exactly when
-    /// a `template` parameterizes it. Distinct from [`Self::name`], which is
-    /// the title on the page and is shared by every instance.
-    pub fn template_name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The template parameters this piece is written against, in source
-    /// order. Empty for an ordinary piece, which has no parameter list at
-    /// all — see [`PieceDecl::is_template`].
-    pub fn params(&self) -> Vec<FnParam> {
-        params_of(&self.0)
-    }
-
-    /// Whether a parameter list was written, empty or not.
-    pub fn is_template(&self) -> bool {
-        self.0.children().any(|node| node.kind() == SyntaxKind::ParamList)
     }
 
     /// The `tempo` statement in the header: the tempo the piece starts in.
@@ -430,117 +385,5 @@ impl FrontMatterStmt {
     /// The line as written, without its quotes.
     pub fn text(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
-    }
-}
-
-/// `template piece study(k: key) "Study" { ... }` — a parameterized
-/// declaration.
-///
-/// The declaration it parameterizes is an ordinary [`PieceDecl`] or
-/// [`VoiceDecl`] node, so a template body is read by the same accessors a
-/// written-out declaration is, and nothing downstream needs a second way to
-/// walk one.
-pub struct TemplateDecl(SyntaxNode);
-wrapper!(TemplateDecl, SyntaxKind::TemplateDecl);
-
-impl TemplateDecl {
-    /// Every template declared at a document's lexical root, in source
-    /// order.
-    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
-        children(node)
-    }
-
-    /// The piece this parameterizes, if it parameterizes a piece.
-    pub fn piece(&self) -> Option<PieceDecl> {
-        child(&self.0)
-    }
-
-    /// The voice this parameterizes, if it parameterizes a voice.
-    pub fn voice(&self) -> Option<VoiceDecl> {
-        child(&self.0)
-    }
-
-    /// The structure this parameterizes, if it parameterizes a structure.
-    pub fn structure(&self) -> Option<StructureDecl> {
-        child(&self.0)
-    }
-
-    /// The name instance sites call it by.
-    pub fn name(&self) -> Option<String> {
-        self.piece()
-            .and_then(|piece| piece.template_name())
-            .or_else(|| self.voice().and_then(|voice| voice.name()))
-            .or_else(|| self.structure().and_then(|structure| structure.name()))
-    }
-
-    /// Its parameters, in source order.
-    pub fn params(&self) -> Vec<FnParam> {
-        self.piece().map_or_else(
-            || {
-                self.voice().map_or_else(
-                    || self.structure().map(|structure| structure.params()).unwrap_or_default(),
-                    |voice| voice.params(),
-                )
-            },
-            |piece| piece.params(),
-        )
-    }
-}
-
-/// `make study(key g major) as study_in_g;` — one instance site.
-pub struct MakeStmt(SyntaxNode);
-wrapper!(MakeStmt, SyntaxKind::MakeStmt);
-
-impl MakeStmt {
-    /// Every instance site at a document's lexical root, in source order.
-    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
-        children(node)
-    }
-
-    /// The instance site standing where a document's piece would be, if the
-    /// document makes its piece rather than writing it out.
-    ///
-    /// Root sites also make modules, so which one this is cannot be read
-    /// from position alone: it is the first site that does not make a module.
-    /// Asking it that way rather than asking for a piece template keeps a
-    /// template of the wrong kind written here visible, which is what makes
-    /// misplacement reportable instead of silently absent.
-    pub fn from_root(node: &SyntaxNode) -> Option<Self> {
-        let modules: Vec<_> = TemplateDecl::all_at_root(node)
-            .into_iter()
-            .filter(|template| template.structure().is_some())
-            .filter_map(|template| template.name())
-            .collect();
-        Self::all_at_root(node).into_iter().find(|site| {
-            site.template()
-                .is_none_or(|made| !modules.iter().any(|name| name == &made))
-        })
-    }
-
-    /// The template being instantiated.
-    pub fn template(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
-    }
-
-    /// The `as` name: the source address of what this site makes.
-    ///
-    /// The second identifier, because `make N(...) as I;` writes the
-    /// template's name first. It is an address and not an identity — two
-    /// sites with the same arguments stay two declarations.
-    pub fn alias(&self) -> Option<String> {
-        self.0
-            .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| token.kind() == SyntaxKind::Identifier)
-            .nth(1)
-            .map(|token| token.text().to_string())
-    }
-
-    /// The argument expressions, in source order.
-    pub fn args(&self) -> Vec<ExprArg> {
-        self.0
-            .children()
-            .find_map(ExprArgList::cast)
-            .map_or_else(Vec::new, |list| children(list.syntax()))
     }
 }

@@ -633,24 +633,6 @@ fn the_old_bundled_import_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// The static layer was once spelled `module`. The old spelling is refused
-/// where it stood, with the fix, so
-/// that `module` can mean one thing: a node of a package's tree.
-#[test]
-fn the_old_static_layer_spelling_is_a_migration_error() {
-    let doc = parse("module CMajor : TonalContext { let tonic: Key = key c major; }\npiece \"P\" { }");
-    insta::assert_snapshot!(print_errors(&doc));
-}
-
-/// The parameterized form is the same refusal at the same word: `template`
-/// did not move, so only the word after it is wrong.
-#[test]
-fn the_old_functor_spelling_is_a_migration_error() {
-    let doc =
-        parse("template module Shift(C: TonalContext) : TonalContext { let tonic: Key = C.tonic; }\npiece \"P\" { }");
-    insta::assert_snapshot!(print_errors(&doc));
-}
-
 /// `fn f() -> τ = e;` was the old unbraced function body. The old spelling
 /// is refused where it stood, and the fix is
 /// the body written back between braces.
@@ -988,70 +970,6 @@ fn a_stray_semicolon_carries_the_edit_that_removes_it() {
         repaired.replace_range(start..end, "");
     }
     assert_eq!(print_errors(&parse(&repaired)), "", "{repaired}");
-}
-
-#[test]
-fn a_signature_and_a_structure_parse_into_their_own_nodes() {
-    let source = "\
-signature TonalContext {
-    let tonic: Key;
-}
-
-structure CMajor: TonalContext {
-    let tonic: Key = key c major;
-}
-
-template structure Shift(C: TonalContext, gap: Duration): TonalContext {
-    let tonic: Key = C.tonic;
-}
-
-make Shift(CMajor, 1/4) as Shifted;
-
-piece \"Study\" {
-}
-";
-    let parsed = musa_syntax::parse(source);
-    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
-    let root = parsed.syntax();
-
-    let signatures = musa_syntax::ast::SignatureDecl::all_at_root(&root);
-    let [signature] = signatures.as_slice() else {
-        panic!("one signature, found {}", signatures.len());
-    };
-    assert_eq!(signature.name().as_deref(), Some("TonalContext"));
-    let members = signature.members();
-    let [member] = members.as_slice() else {
-        panic!("one member, found {}", members.len());
-    };
-    assert_eq!(member.name().as_deref(), Some("tonic"));
-    assert!(member.ty().is_some());
-
-    let structures = musa_syntax::ast::StructureDecl::all_at_root(&root);
-    let [structure] = structures.as_slice() else {
-        panic!(
-            "a `template structure` is not a root structure, found {}",
-            structures.len()
-        );
-    };
-    assert_eq!(structure.name().as_deref(), Some("CMajor"));
-    assert_eq!(structure.signature().as_deref(), Some("TonalContext"));
-    assert_eq!(structure.lets().len(), 1);
-    assert!(structure.params().is_empty());
-
-    let templates = musa_syntax::ast::TemplateDecl::all_at_root(&root);
-    let [template] = templates.as_slice() else {
-        panic!("one template, found {}", templates.len());
-    };
-    let shift = template.structure().expect("a template structure");
-    assert_eq!(template.name().as_deref(), Some("Shift"));
-    assert_eq!(shift.signature().as_deref(), Some("TonalContext"));
-    assert_eq!(template.params().len(), 2);
-
-    assert_eq!(musa_syntax::ast::MakeStmt::all_at_root(&root).len(), 1);
-    assert!(
-        musa_syntax::ast::MakeStmt::from_root(&root).is_none(),
-        "a structure instance is not the document's piece"
-    );
 }
 
 /// A type annotation is written where it says something the expression does

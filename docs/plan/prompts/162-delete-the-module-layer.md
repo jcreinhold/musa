@@ -1,7 +1,7 @@
 ---
 id: 162
 slug: delete-the-module-layer
-status: in-progress
+status: done
 depends_on: [161]
 phase: 3
 ---

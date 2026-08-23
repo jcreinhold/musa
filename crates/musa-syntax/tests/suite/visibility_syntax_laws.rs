@@ -8,15 +8,11 @@
 //! layout laws see it in every position at once.
 #![allow(clippy::expect_used, clippy::indexing_slicing, clippy::panic)]
 
-use musa_syntax::ast::{AstNode, EnumDecl, FnDecl, LetDecl, RecordDecl, StructureDecl};
+use musa_syntax::ast::{AstNode, EnumDecl, FnDecl, LetDecl, RecordDecl};
 use musa_syntax::{BarSpacing, ParsedDocument, SyntaxElement, SyntaxKind, format, parse};
 
 /// The program every law here is stated over.
 const HIDDEN: &str = r"library {
-    signature Chords {
-        let unison: Nat;
-    }
-
     private let concert_a = 440;
 
     private fn dotted_factor(dots: Nat) -> Nat { dots }
@@ -32,12 +28,6 @@ const HIDDEN: &str = r"library {
 
     private enum Tuning {
         Equal,
-    }
-
-    private structure Common : Chords {
-        let unison = 0;
-
-        fn double(n: Nat) -> Nat { n }
     }
 
     fn build(sym: Symbol) -> Chord { Chord::NamedChord(sym) }
@@ -100,18 +90,6 @@ fn a_marked_declaration_is_the_same_node_and_says_it_is_private() {
     assert_eq!(pending.name().as_deref(), Some("Pending"));
     assert!(pending.is_private());
     assert_eq!(pending.fields().len(), 1, "the marker is not read as a field");
-
-    let structures = StructureDecl::all_at_root(&root);
-    let [common] = structures.as_slice() else {
-        panic!("expected one structure, found {}", structures.len());
-    };
-    assert_eq!(common.name().as_deref(), Some("Common"));
-    assert_eq!(
-        common.signature().as_deref(),
-        Some("Chords"),
-        "the marker is not read as the structure's name"
-    );
-    assert!(common.is_private());
 }
 
 /// §1.3: the two positions are independent. An enum may hide its cases and keep
@@ -188,18 +166,15 @@ fn the_marker_leads_the_line_it_marks() {
     ] {
         assert!(lines.contains(&wanted), "expected a line `{wanted}`:\n{once}");
     }
-    for wanted in [
-        "private fn dotted_factor(dots: Nat)",
-        "private structure Common: Chords",
-    ] {
-        assert!(
-            lines.iter().any(|line| line.starts_with(wanted)),
-            "expected a line starting `{wanted}`:\n{once}"
-        );
-    }
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.starts_with("private fn dotted_factor(dots: Nat)")),
+        "expected a line starting `private fn dotted_factor(dots: Nat)`:\n{once}"
+    );
 }
 
-/// §1.3: `private` marks a declaration, and an `import` or a `make` is not one.
+/// §1.3: `private` marks a declaration, and an `import` is not one.
 /// The complaint points at the marker rather than at the word after it.
 #[test]
 fn a_marker_on_something_that_is_not_a_declaration_is_refused() {
@@ -214,28 +189,6 @@ fn a_marker_on_something_that_is_not_a_declaration_is_refused() {
     assert_eq!(
         parsed.syntax().text().to_string(),
         "library {\n    private use x;\n}\n",
-        "a refused program is still read losslessly"
-    );
-}
-
-/// The non-overlap with sealing, said where a reader would otherwise believe
-/// the marker was doing something: a structure's signature already hides
-/// everything it does not list.
-#[test]
-fn a_marker_inside_a_structure_says_the_signature_already_hides_it() {
-    let source = "library {\n    signature S {\n        let a: Nat;\n    }\n\n    structure M : S {\n        private \
-                  let b = 1;\n    }\n}\n";
-    let parsed = parse(source);
-    let messages: Vec<String> = parsed.errors().iter().map(ToString::to_string).collect();
-    assert!(
-        messages
-            .iter()
-            .any(|message| message.contains("this is already private")),
-        "expected the redundant-marker complaint, got {messages:?}"
-    );
-    assert_eq!(
-        parsed.syntax().text().to_string(),
-        source,
         "a refused program is still read losslessly"
     );
 }

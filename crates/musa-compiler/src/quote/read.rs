@@ -93,6 +93,41 @@ pub(crate) fn read_expression(text: &str) -> musa_syntax::ParsedDocument {
     musa_syntax::parse(&format!("piece \"expansion\" {{\n    let it = {text};\n}}\n"))
 }
 
+/// Read one written expression the way a region is read.
+///
+/// A law's region is a fragment — `together(a)` — and a fragment is not a
+/// document. Parsing one at a file's root leaves the parser reporting the piece
+/// the file never wrote, and [`read_node`] answers `Missing` for what it could
+/// not read, so a law written that way compares two empty strings and passes
+/// without measuring anything. The wrapping is [`read_expression`]'s, minus the
+/// space after the `=`, and what is read back is the fragment's own node:
+/// nothing of the wrapper reaches the value, so the printed answer is the
+/// fragment's.
+#[cfg(test)]
+#[expect(
+    clippy::panic,
+    reason = "a law whose own region does not parse has no verdict to give"
+)]
+pub(crate) fn read_written(text: &str, expansion: ExpansionPath) -> Syntax {
+    // No space after the `=`, so the wrapper contributes no trivia to the
+    // fragment's own node: rowan attaches leading whitespace to what follows
+    // it, and a law about a one-name region would otherwise read a two-child
+    // group where the region has one child.
+    let parsed = musa_syntax::parse(&format!("piece \"expansion\" {{\n    let it ={text};\n}}\n"));
+    assert!(
+        parsed.errors().is_empty(),
+        "a law's own region parses: {:?}",
+        parsed.errors()
+    );
+    let written = parsed
+        .syntax()
+        .descendants()
+        .find(|node| node.kind() == musa_syntax::SyntaxKind::LetDecl)
+        .and_then(|declaration| declaration.children().last())
+        .unwrap_or_else(|| panic!("`{text}` stands where an expression stands"));
+    read_region(&written, expansion)
+}
+
 /// Whether `node` stands where an expression stands.
 ///
 /// This is `as_expression`'s whole content, and it is deliberately not a

@@ -52,5 +52,7 @@ pub(crate) use path::{BindingPath, Derived, ExpansionPath, NodePath, anchor_plac
 #[cfg(test)]
 pub(crate) use print::Printed;
 pub(crate) use print::print;
+#[cfg(test)]
+pub(crate) use read::read_written;
 pub(crate) use read::{parses_as_expression, read_expression, read_region};
 pub(crate) use tree::{SourceInfo, Syntax};
