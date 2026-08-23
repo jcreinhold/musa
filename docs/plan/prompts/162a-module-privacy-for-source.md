@@ -1,7 +1,7 @@
 ---
 id: 162a
 slug: module-privacy-for-source
-status: pending
+status: done
 depends_on: [162]
 phase: 3
 ---

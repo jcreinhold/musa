@@ -70,7 +70,7 @@ use std::collections::HashMap;
 
 use num_rational::Ratio;
 
-use musa_calculus::{Origin, Raw};
+use musa_calculus::{ModuleId, Origin, Raw};
 use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::resolve::Resolver;
@@ -113,6 +113,20 @@ pub(crate) struct Sites {
     /// and the use are in the *same* file, which the site numbers know and
     /// the spans alone do not.
     quoted_arms: Vec<(Origin, SourceSpan, Vec<String>)>,
+    /// Which file each [`ModuleId`] this document minted stands for.
+    ///
+    /// [`crate::document::elaborate`] numbers one module per file it reads from
+    /// (`01-surface.md` §1.3: a Musa module is a file), and the core carries
+    /// only the number — `musa-calculus` is a leaf that must not learn what a
+    /// file is, exactly as it must not learn what a span is. So this is the
+    /// other half of the same arrangement the span table already is, and it is
+    /// what lets [`refusals::restate`] tell a reader *where* a private name
+    /// lives rather than only that it is out of reach.
+    ///
+    /// A short list scanned linearly, because a document reads a handful of
+    /// files and a map would be a data structure for a lookup that happens once
+    /// per refusal.
+    modules: Vec<(ModuleId, String)>,
     /// How many blocks of notation this document has entered.
     ///
     /// Beside the span table because it is the other thing a document numbers
@@ -238,6 +252,27 @@ impl Sites {
             .and_then(|index| usize::try_from(index).ok())
             .and_then(|index| self.spans.get(index))
             .copied()
+    }
+
+    /// Record that `module` is the number this document gave `path`.
+    ///
+    /// Called by the document walk as it mints the ids, for the reason
+    /// [`Sites::imported`] is called there: that walk is the one thing that
+    /// knows which file a source came out of.
+    pub(crate) fn in_file(&mut self, module: ModuleId, path: &str) {
+        self.modules.push((module, path.to_owned()));
+    }
+
+    /// The file `module` numbers, when this document minted it.
+    ///
+    /// [`None`] for a module this document did not number — the phase's own and
+    /// the prelude's, which are written nowhere in particular and have no file
+    /// to name.
+    pub(crate) fn file_of(&self, module: ModuleId) -> Option<&str> {
+        self.modules
+            .iter()
+            .find(|(numbered, _)| *numbered == module)
+            .map(|(_, path)| path.as_str())
     }
 
     /// The next block of notation this document reads, numbered.

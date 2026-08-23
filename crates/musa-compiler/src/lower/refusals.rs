@@ -111,7 +111,7 @@ pub(crate) fn restate(sites: &Sites, error: &ElabError) -> Diagnostic {
                     None => upgraded,
                 };
             }
-            let filed = file(refusal);
+            let filed = file(sites, refusal);
             let (also, text) = match filed.also {
                 Some((origin, text)) => (sites.span(origin), text),
                 None => (None, ""),
@@ -163,7 +163,11 @@ fn imported(path: &str, at: SourceSpan, refusal: Diagnostic) -> Diagnostic {
 /// share a *family* — a thing a reader looks up once — and the doc comment on
 /// each such arm says which family, since that is the judgment and not the
 /// mechanics.
-fn file(refusal: &Refusal) -> Filed {
+///
+/// [`Sites`] is here for the one refusal that names a *module*: the core holds
+/// a number it was handed and cannot say what it stands for, so the sentence
+/// that names the file has to be written on this side.
+fn file(sites: &Sites, refusal: &Refusal) -> Filed {
     let one = |code: Code, at: Origin| Filed {
         code,
         at,
@@ -224,7 +228,24 @@ fn file(refusal: &Refusal) -> Filed {
             said: Some(format!("expected universe level `{expected}`, found `{found}`")),
             ..one(Code::ConversionMismatch, *at)
         },
-        Refusal::Private { at, .. } => one(Code::PrivateName, *at),
+        // The point of `01-surface.md` §1.3's refusal is that the name is real
+        // and maintained somewhere else, so the sentence says *where*: "private
+        // to `stdlib/src/context.musa`" sends a reader to a file, and "private
+        // to the module that declares it" sends them nowhere. The file is
+        // absent only for a module this document did not number — the prelude's
+        // and the phase's, which are written nowhere in particular — and then
+        // the core's own sentence stands.
+        Refusal::Private { name, module, at } => Filed {
+            said: sites
+                .file_of(*module)
+                .map(|path| format!("`{name}` is private to `{path}`")),
+            help: sites.file_of(*module).map(|path| {
+                std::borrow::Cow::Owned(format!(
+                    "`{path}` marks it `private`, so only that file may name it; use what the file exports instead"
+                ))
+            }),
+            ..one(Code::PrivateName, *at)
+        },
         Refusal::MixedVisibility { at, .. } => one(Code::MixedVisibility, *at),
         Refusal::AbstractMatch { at, .. } => one(Code::AbstractMatch, *at),
         // The three ways elaboration can fail to *determine* something the

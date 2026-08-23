@@ -366,3 +366,166 @@ fn a_qualified_import_does_not_also_bind_flat() {
         "expected the bare name to be gone, got {messages:?}"
     );
 }
+
+/// A document with `head` above its piece, so a law can write root
+/// declarations that the [`piece`] helper's body position cannot hold.
+fn document(head: &str) -> String {
+    format!(
+        "{head}\npiece \"P\" {{ tempo 1/4 = 60; meter 4/4; key c major; score {{ part p {{ voice v {{ c5/1 }} }} }} }}\n"
+    )
+}
+
+/// `private` is a marker the compiler carries all the way to the kernel's
+/// visibility rule, and the rule is about *files*: `01-surface.md` §1.3 makes a
+/// marked declaration "nameable from a sibling definition in its own module and
+/// from nowhere else", and a Musa module is a file.
+///
+/// The file is in the sentence on purpose. The point of refusing here rather
+/// than answering "cannot find" is to tell a reader the name is real and
+/// maintained somewhere else, which is worth nothing unless the report says
+/// where.
+#[test]
+fn a_private_definition_is_out_of_reach_across_an_import_and_the_refusal_names_the_file() {
+    let compilation = compile_with(
+        "p.musa",
+        &document("import \"lib.musa\";\nlet borrowed: Nat = held;"),
+        &[("lib.musa", "library { private let held: Nat = 3; }")],
+    );
+    let messages = errors(&compilation);
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("`held` is private to `lib.musa`")),
+        "expected the refusal to name the file, got {messages:?}"
+    );
+    assert!(
+        messages.iter().all(|message| !message.contains("cannot find `held`")),
+        "the name exists and the report must not say otherwise, got {messages:?}"
+    );
+}
+
+/// The same rule over a `data` family, which is what sealing became: the type
+/// crosses the import and its constructors do not, so a client writes the type
+/// in a signature and receives a value from what the file exports.
+///
+/// All the cases or none of them (§1.3's `mixed-visibility`), so the family
+/// below marks its one case and the type stays public.
+#[test]
+fn a_private_case_lets_the_type_cross_the_import_and_keeps_the_constructor_home() {
+    const SEALED: &str = "library {
+        enum Register { private Made(Nat) }
+        fn made(count: Nat) -> Register { Register::Made(count) }
+        fn count_of(register: Register) -> Nat { match register { Register::Made(count) -> count } }
+    }";
+    let reached = compile_with(
+        "p.musa",
+        &document("import \"lib.musa\";\nlet mine: Register = made(3);\nlet counted: Nat = count_of(mine);"),
+        &[("lib.musa", SEALED)],
+    );
+    assert_eq!(
+        errors(&reached),
+        Vec::<String>::new(),
+        "the type and the functions over it are public"
+    );
+
+    let minted = compile_with(
+        "p.musa",
+        &document("import \"lib.musa\";\nlet mine: Register = Register::Made(3);"),
+        &[("lib.musa", SEALED)],
+    );
+    let messages = errors(&minted);
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("`Register.Made`") && message.contains("`lib.musa`")),
+        "expected the constructor refused and the file named, got {messages:?}"
+    );
+}
+
+/// And inside its own file the marker changes nothing: a sibling definition
+/// names it with no ceremony, which is what makes the sealed file writable at
+/// all.
+#[test]
+fn a_private_declaration_is_an_ordinary_name_inside_its_own_file() {
+    let compilation = compile_with(
+        "p.musa",
+        &document("import \"lib.musa\";\nlet borrowed: Nat = doubled;"),
+        &[(
+            "lib.musa",
+            "library { private let held: Nat = 3; let doubled: Nat = held; }",
+        )],
+    );
+    assert_eq!(errors(&compilation), Vec::<String>::new());
+}
+
+/// A document's lexical root and the `piece` inside it are two sources of one
+/// file, so a voice reaches the file's own `private` declarations. A number
+/// keyed on the source rather than the file would break exactly this.
+#[test]
+fn a_voice_names_the_private_declarations_of_its_own_file() {
+    let source = "private fn hidden() -> EventTrack<WrittenTime> { music { c5/2 d5/2 } }\n\
+         piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; \
+         score { part p { voice v { use hidden(); } } } }\n";
+    let compilation = compile_with("p.musa", source, &[]);
+    assert_eq!(errors(&compilation), Vec::<String>::new());
+    let snapshot = snapshot(compilation);
+    let sounded: usize = snapshot
+        .parts()
+        .iter()
+        .flat_map(|(_, part)| part.voices())
+        .map(|(_, voice)| voice.events().len())
+        .sum();
+    assert_eq!(sounded, 2, "the private function's two notes are the voice's");
+}
+
+/// An alias is a spelling and not a scope. `import p::q as alias;` files the
+/// names under `alias.name`, and a `private` one is refused under the qualified
+/// spelling for the reason it is refused under the bare one.
+#[test]
+fn an_aliased_import_hides_what_the_bare_one_hides() {
+    let compilation = compile_with(
+        "p.musa",
+        &document("import \"lib.musa\" as low;\nlet borrowed: Nat = low.held;"),
+        &[("lib.musa", "library { private let held: Nat = 3; }")],
+    );
+    let messages = errors(&compilation);
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("`low.held` is private to `lib.musa`")),
+        "expected the alias to reach the same refusal, got {messages:?}"
+    );
+}
+
+/// The corpus this prompt is measured on. `stdlib/src/context.musa` was
+/// rewritten by 162 to seal by marking rather than by listing, and its
+/// registers and spelling functions are the three declarations that sealing was
+/// protecting.
+#[test]
+fn the_standard_context_keeps_its_registers_and_spellings_to_itself() {
+    for hidden in ["c_major_home", "c_major_spell", "c_major_voicing"] {
+        let compilation = compile_with(
+            "p.musa",
+            &document(&format!("import std::context;\nlet borrowed = {hidden};")),
+            &[],
+        );
+        let messages = errors(&compilation);
+        assert!(
+            messages
+                .iter()
+                .any(|message| message.contains(&format!("`{hidden}` is private to"))
+                    && message.contains("context.musa")),
+            "expected `{hidden}` refused and its file named, got {messages:?}"
+        );
+    }
+    let published = compile_with(
+        "p.musa",
+        &document("import std::context;\nlet home: TonalContext = c_major;"),
+        &[],
+    );
+    assert_eq!(
+        errors(&published),
+        Vec::<String>::new(),
+        "what the file publishes is still reachable"
+    );
+}

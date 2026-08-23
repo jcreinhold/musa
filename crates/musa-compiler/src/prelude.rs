@@ -429,7 +429,7 @@ fn syntax_step_data() -> RawData {
 /// is an `Option` in a context — is never confused with this one by arithmetic.
 pub(crate) const PHASE: ModuleId = ModuleId::new(1);
 
-/// The module every *written* document stands in.
+/// The module the file being compiled is written in.
 ///
 /// A context standing nowhere is inside every module, which is right for this
 /// compiler's own — [`crate::registry::owned`] declares the phase's families and
@@ -439,13 +439,24 @@ pub(crate) const PHASE: ModuleId = ModuleId::new(1);
 /// says only the recursor mints. Naming a module for source is what turns
 /// [`syntax_step_data`]'s `private` from a word into a check.
 ///
-/// **One number for every document, not one per file.** What this identity
-/// decides is the boundary between the phase's declarations and written ones,
-/// which is a single boundary; privacy *between* two written files is a
-/// different question, and the import filter — which carries only the public
-/// names of a module it read — is what answers it. A per-document number would
-/// answer the second question twice and the first no better.
+/// This is the *home* document's number, and prompt 162a is why it is only one
+/// of several. `01-surface.md` §1.3 scopes `private` to "the module that
+/// declares it" and a Musa module is a file, so each file a document reads from
+/// gets an id of its own — [`crate::document::elaborate`] mints them from
+/// [`IMPORTED`] as it walks. The file being compiled keeps this constant
+/// because it is also the *viewer*: the question `private` answers is "may this
+/// file name it", and this file is the one under the compiler.
 pub(crate) const SOURCE: ModuleId = ModuleId::new(2);
+
+/// The first number a document may mint for a file it imported.
+///
+/// The three reserved ids are stated together on purpose: `0` is a context
+/// standing nowhere, [`PHASE`] is the expansion phase's own declarations, and
+/// [`SOURCE`] is the file being compiled. Everything from here up is minted per
+/// elaboration by [`crate::document::elaborate`] and means nothing outside it —
+/// nothing persists one, nothing compares two documents' ids, and no hash,
+/// snapshot, or export ever sees one.
+pub(crate) const IMPORTED: u32 = 3;
 
 /// The families the expansion phase declares, in the module that seals them.
 ///

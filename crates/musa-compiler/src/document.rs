@@ -51,7 +51,9 @@ pub(crate) mod laws;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_calculus::{Cx, ElabError, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility};
+use musa_calculus::{
+    Cx, ElabError, ModuleId, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility,
+};
 use musa_syntax::ast::AstNode as _;
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
@@ -458,6 +460,62 @@ pub(crate) fn audit(document: &Document) {
     }
 }
 
+/// The module number each file this document reads from was given.
+///
+/// `01-surface.md` §1.3 scopes `private` to "the module that declares it", and a
+/// Musa module is a *file*: `mod tonal;` names `tonal.musa`. So the unit here is
+/// the file, and the numbers are private to one elaboration — nothing persists
+/// one, nothing compares two documents' numbers, and no hash, snapshot, or
+/// export ever sees one. [`crate::prelude::IMPORTED`] states where they start
+/// and which three are reserved.
+///
+/// # Why the key is the file and not the [`Source`]
+///
+/// A document is walked as several sources of which two are one file: the
+/// lexical root and the `piece` node inside it are both written in the document
+/// being compiled — see [`crate::elaborate`], which pushes `Source::own(root)`
+/// and `Source::own(piece)` — and a number keyed on the source would make a
+/// voice unable to name a `private` declaration three lines above the piece it
+/// is in. Both take [`crate::prelude::SOURCE`], which is also where the context
+/// stands, because the file being compiled is the one viewer.
+#[derive(Default)]
+struct Files {
+    /// Each imported path beside its number, in the order they were read.
+    ///
+    /// A list rather than a map: a document imports a handful of files, and the
+    /// same path asked for twice has to answer the same number — two `Source`s
+    /// of one library are one module however they were reached.
+    imported: Vec<(String, ModuleId)>,
+}
+
+impl Files {
+    /// The module `source` was written in, minting a number for a file this
+    /// walk has not seen before.
+    fn of(&mut self, sites: &mut Sites, source: &Source) -> ModuleId {
+        let Some(import) = &source.from else {
+            return crate::prelude::SOURCE;
+        };
+        if let Some((_, module)) = self.imported.iter().find(|(path, _)| *path == import.path) {
+            return *module;
+        }
+        // Saturating rather than wrapping to [`crate::prelude::SOURCE`], on a
+        // count no document reaches: a file that shared the home file's number
+        // would be *more* visible than it should be, and a hiding rule may only
+        // ever fail closed.
+        let next = ModuleId::new(
+            u32::try_from(self.imported.len())
+                .ok()
+                .and_then(|read| read.checked_add(crate::prelude::IMPORTED))
+                .unwrap_or(u32::MAX),
+        );
+        self.imported.push((import.path.clone(), next));
+        // So a refusal can say which file the name is maintained in: the core
+        // carries the number and only this side knows what it stands for.
+        sites.in_file(next, &import.path);
+        next
+    }
+}
+
 pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<Document> {
     let mut sites = Sites::default();
     let aliases: Vec<String> = sources
@@ -475,11 +533,13 @@ pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<D
     // is not on the list because it cannot collide: its names all begin with a
     // qualifier `as` took out of circulation.
     let mut brought: Vec<(Name, &Import)> = Vec::new();
+    let mut files = Files::default();
     for source in sources {
         let already = read.definitions.len();
         let numbered = sites.counted();
-        read.gather(resolver, &mut sites, source, &aliases);
-        read.barred(resolver, &mut sites, source);
+        let module = files.of(&mut sites, source);
+        read.gather(resolver, &mut sites, source, module, &aliases);
+        read.barred(resolver, &mut sites, source, module);
         // Which file this source's sites came out of, recorded now because this
         // is the walk that knows. A refusal about one of them is restated at the
         // `import` below rather than at a span in a document nobody here has —
@@ -536,7 +596,7 @@ pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<D
     let mut structural = Vec::new();
     for (_, declared) in order_types(resolver, read.types)? {
         match declared {
-            TypeDecl::Family(group) => match musa_calculus::declare_metered(&cx, &group) {
+            TypeDecl::Family(group, module) => match musa_calculus::declare_metered(&cx.in_module(module), &group) {
                 Ok((declared, spent)) => {
                     spend = spend.and(spent);
                     cx = cx.declaring(&declared);
@@ -746,7 +806,14 @@ impl Read {
     /// section reports is between names in "the current **flat** value
     /// namespace". Qualifying a type as well would be a namespace rule nothing
     /// asks for and no source writes.
-    fn gather(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source, aliases: &[String]) {
+    fn gather(
+        &mut self,
+        resolver: &mut Resolver,
+        sites: &mut Sites,
+        source: &Source,
+        module: ModuleId,
+        aliases: &[String],
+    ) {
         let alias = source.from.as_ref().and_then(|from| from.alias.as_deref());
         for node in source.root.children() {
             if source.leaves(&node) {
@@ -778,7 +845,7 @@ impl Read {
                         self.declaring
                             .push(Declaring::named(&node, &family.name, data.origin, source));
                     }
-                    self.types.push((node, TypeDecl::Family(data)));
+                    self.types.push((node, TypeDecl::Family(data, module)));
                 }
                 // An `impl`'s definitions are filed flat and never under an
                 // alias, for the reason the paragraph above gives: the block
@@ -793,7 +860,7 @@ impl Read {
                             source.from.as_ref().map(|from| from.path.as_str()),
                         );
                         self.declaring.push(Declaring::at(&written, &definition, source));
-                        self.definitions.push(top_level(definition, visibility));
+                        self.definitions.push(top_level(definition, visibility, module));
                     }
                 }
                 Declared::Item(Item::Definition(mut definition)) => {
@@ -807,7 +874,7 @@ impl Read {
                         source.from.as_ref().map(|from| from.path.as_str()),
                     );
                     self.declaring.push(Declaring::at(&node, &definition, source));
-                    let held = top_level(definition, visibility);
+                    let held = top_level(definition, visibility, module);
                     // A `record` declares a *type*, so it goes through the type
                     // door even though it is written as a definition — see
                     // [`TypeDecl`].
@@ -841,7 +908,7 @@ impl Read {
     /// An anonymous bar declares nothing and is passed over: it is a measure,
     /// which is ordinary structure, and giving it a name here would be inventing
     /// one the source did not write.
-    fn barred(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source) {
+    fn barred(&mut self, resolver: &mut Resolver, sites: &mut Sites, source: &Source, module: ModuleId) {
         if source.root.kind() != SyntaxKind::PieceDecl {
             return;
         }
@@ -855,7 +922,8 @@ impl Read {
                 // inside a voice, and no `import` reaches in there to name it.
                 Some(definition) => {
                     self.declaring.push(Declaring::at(&node, &definition, source));
-                    self.definitions.push(top_level(definition, Visibility::Private));
+                    self.definitions
+                        .push(top_level(definition, Visibility::Private, module));
                 }
                 None => self.refused = true,
             }
@@ -869,12 +937,20 @@ impl Read {
 /// the reason `crate::lower::items` gives for leaving it off: a caller has the
 /// declaration node in hand when it asks for the item, and a field answering a
 /// question its own consumers could not pass on would be a field for nobody.
-fn top_level(definition: Definition, visibility: Visibility) -> RawTopLevel {
+/// The module comes from the *walk*, for the mirrored reason: a definition does
+/// not know which file it was read out of and the walk over the sources does.
+///
+/// `01-surface.md` §1.3: "A marked declaration is nameable from a sibling
+/// definition in its own module and from nowhere else." The module written here
+/// is the whole of what makes that sentence true — a [`RawTopLevel`] carrying
+/// [`None`] is `visibility.rs`'s "written nowhere in particular", which hides
+/// from nobody, and that is what every source definition was until 162a.
+fn top_level(definition: Definition, visibility: Visibility, module: ModuleId) -> RawTopLevel {
     RawTopLevel {
         origin: definition.origin,
         name: definition.name,
         visibility,
-        module: None,
+        module: Some(module),
         ty: definition.ty,
         value: definition.value,
     }
@@ -1020,8 +1096,16 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
 /// first unwritable. So the two travel in one list, in one dependency order —
 /// see [`order_types`].
 enum TypeDecl {
-    /// A `data` or `enum` group, declared by [`musa_calculus::declare_metered`].
-    Family(RawData),
+    /// A `data` or `enum` group, declared by [`musa_calculus::declare_metered`]
+    /// under the file that wrote it.
+    ///
+    /// The module rides beside the group rather than inside it, because a
+    /// [`RawData`] takes its module from the *context* it is declared in — see
+    /// [`musa_calculus::declare`] — and the context this walk holds stands in
+    /// the file being compiled. A `private` case of an imported family is
+    /// private to the imported file, so the group is declared in that file's
+    /// module and the walk steps back out again.
+    Family(RawData, ModuleId),
     /// A `record`, declared by defining its Σ under the record's name.
     Record(RawTopLevel),
 }
@@ -1031,7 +1115,7 @@ impl TypeDecl {
     /// family for a group.
     fn names(&self) -> Vec<&str> {
         match self {
-            Self::Family(data) => data.families.iter().map(|family| &*family.name).collect(),
+            Self::Family(data, _) => data.families.iter().map(|family| &*family.name).collect(),
             Self::Record(held) => vec![&held.name],
         }
     }
