@@ -55,6 +55,21 @@ completeness; termination soundness — every accepted recursive definition deno
 evaluation and of elaboration; and the three-outcome budget law, including that exhaustion never becomes acceptance or
 rejection.
 
+**And the re-checker, which is a row rather than a method.** Prompt [158](158-recheck-the-whole-core.md) closed
+`musa-calculus`'s kernel audit over the whole core and stated it as
+[`recheck_program`](../../../crates/musa-calculus/src/lib.rs). Its row says: *elaboration produces only terms the kernel
+accepts* — owned by `kernel/recheck.rs`, evidenced by `recheck_laws.rs`'s per-construct table, `generated_laws.rs`'s
+oracle over programs nobody wrote, and the two corpus gates in `musa-compiler`'s `document::laws` that run the pass over
+the standard library and every `examples/` fixture. The failure it catches is elaboration emitting an ill-typed,
+uncovered, non-descending, or scope-corrupt term.
+
+The row also carries this matrix's own honest limit, and putting it here rather than only in `TRUST.md` is deliberate:
+**the re-checker is not evidence for any other row.** It shares `eval` and `quote` with the thing it checks, so it
+cannot witness NbE soundness, strong normalization, or determinism — a bug in the evaluator would be re-derived
+identically and agree with itself. Reading it as general evidence is exactly the "green because a related test passes"
+failure this prompt's Read section names, and it is the easiest one to commit here because the pass is broad and its
+name sounds like it covers everything.
+
 **Two carried-forward obligations, re-derived.** §5.7's track-construction safety and §5.9's expansion-phase laws were
 proved over rank-1 inference and a sealed-step recursor. Both statements survive; neither proof does. Re-derive them
 over the dependent core, and where a proof gets *easier* — a `Storable` constraint is a more tractable object than a `d`

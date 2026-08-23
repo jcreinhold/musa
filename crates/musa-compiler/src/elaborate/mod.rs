@@ -151,6 +151,13 @@ pub(crate) fn elaborate_parsed(
         );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
+    // The kernel's own reading of the whole document, in test builds. The
+    // per-declaration audit `declare_program` runs is a debug assertion about
+    // one member; this is prompt 158's closed pass over the finished program,
+    // and running it here is what puts `examples/` and every fixture the crate
+    // compiles behind the same gate as the standard library.
+    #[cfg(test)]
+    crate::document::audit(&elaborated);
     tracing::debug!(phase = "check", diagnostics = resolver.diagnostics.len(), "checked");
     // Before the piece is read, because reading it mutates the site table and
     // a machine is a *declaration*: what this answers is the same either way,

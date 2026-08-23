@@ -88,11 +88,13 @@ fn kind(fault: &Malformed) -> &'static str {
         Malformed::MetaTelescope(_) => "meta-telescope",
         Malformed::EscapedSolution(_) => "escaped-solution",
         Malformed::UnreachableAlternative => "unreachable-alternative",
+        Malformed::Uncovered(_) => "uncovered",
+        Malformed::Undescending(_) => "undescending",
     }
 }
 
 /// Every malformation this crate can answer with.
-const ALL_MALFORMED: [&str; 18] = [
+const ALL_MALFORMED: [&str; 20] = [
     "unbound-variable",
     "undeclared-name",
     "not-a-function",
@@ -111,22 +113,27 @@ const ALL_MALFORMED: [&str; 18] = [
     "meta-telescope",
     "escaped-solution",
     "unreachable-alternative",
+    "uncovered",
+    "undescending",
 ];
 
 /// The ones nothing here reaches, each with the argument for why.
 ///
 /// Read this as the gate's honest remainder rather than as a list of things to
-/// get to later. Six of the eight *cannot* be reached from outside this crate
-/// by construction, and saying so is the finding; one is not this crate's to
-/// raise at all, and one has nothing that builds it yet.
-const UNREACHED: [(&str, &str); 8] = [
+/// get to later. Nine of the ten *cannot* be reached from outside this crate
+/// by construction, and saying so is the finding; the tenth is not this crate's
+/// to raise at all. Every one of the nine names the in-crate test module that
+/// does hold its control, so "unreached here" never means "unchecked".
+const UNREACHED: [(&str, &str); 10] = [
     (
         "unreachable-alternative",
-        "an `Impossible` node reaching emission. Nothing builds one: with no indices \
-         (§1.1, and prompt 155's Stop) there is nothing for unification to refute, so \
-         `CaseTree::Impossible` has no producer until prompt 156 adds index unification. \
-         The variant is here because the node is, and the node is here because §6.2's \
-         third case is part of what a case tree *is*.",
+        "an `Impossible` node reaching *reduction*. Prompt 156 gave the node a producer \
+         — `elaboration::case`'s `refuted` builds one where index unification rules a \
+         branch out — so what is unreachable is no longer the node but the path that \
+         asks it to compute: emission answers the identity, which the refuted branch's \
+         motive makes an identity *type*, so ι never selects a method that has no body. \
+         Prompt 158 audited that and left the variant where it is: it reports the day \
+         some other route reaches `reduce` with one.",
     ),
     (
         "escaped-variable",
@@ -165,6 +172,21 @@ const UNREACHED: [(&str, &str); 8] = [
         "the re-checker's second scope check, over a solution the unifier would never have \
          written. Arranging one means writing a solution directly, and `Meta::solve` is not \
          public — `kernel::unify`'s test module holds the negative control prompt 153 owes.",
+    ),
+    (
+        "uncovered",
+        "a compiled body that leaves a constructor unanalysed. It answers about a \
+         `Compiled`, which is `pub(crate)`, and elaboration refuses an uncovered `match` \
+         where it builds one — so the tree a broken builder would have produced can only \
+         be assembled inside the crate. `elaboration::audit_laws` holds the control prompt \
+         155 owes; it sits on the untrusted side because `boundary_laws` forbids `kernel/` \
+         to name the raw syntax staging one takes.",
+    ),
+    (
+        "undescending",
+        "the same, for a recursive call the structural rule cannot see descend. \
+         `elaboration::audit_laws` holds the control prompt 155a owes, beside `uncovered`'s \
+         and for the same reason.",
     ),
     (
         "not-a-literal",

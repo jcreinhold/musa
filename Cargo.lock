@@ -2335,6 +2335,7 @@ dependencies = [
 name = "musa-calculus"
 version = "0.1.0"
 dependencies = [
+ "proptest",
  "thiserror 2.0.20",
 ]
 

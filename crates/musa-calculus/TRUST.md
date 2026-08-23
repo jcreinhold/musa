@@ -50,6 +50,31 @@ implementation's search order — the same argument `budget.rs` already makes ab
 
 **3. Scope discipline holds.** Every de Bruijn index in a checked term names a binder that encloses it.
 
+**4. A metavariable's solution stays in its scope.** §2.1 admits a solution only when it mentions no variable outside
+the unknown's scope, and `unify::assign` enforces that where it writes one. The re-checker enforces it again, over the
+solution that was actually stored and by whatever route it got there — because verification that trusts the pass it
+verifies verifies nothing, and this one's failure mode is otherwise silent.
+
+**5. A case tree's branches answer the motive its own pattern instantiates.** The invariant that makes dependent
+elimination sound, and nothing else in the crate re-states it. It is checked without the kernel knowing what a tree is:
+a tree body is read through its *emission*, and a generated eliminator's method type **is** the motive at that method's
+pattern. A branch answering anything else is `Malformed::Mistyped`.
+
+That is also what settles a refuted branch. `elaboration::case`'s `filtered` builds the motive of a branch that index
+unification ruled out by *eliminating over the subject's index*, not by recording that it refuted — so ι reduces it to
+an identity type exactly when the branch really is unreachable, and the `λx. x` the tree emits there is checked against
+a type computed independently of the decision it is evidence for.
+
+**6. A declaration's level parameters are instantiated consistently.** A use carries its own `Levels`, and the type the
+re-checker derives for it comes from `Def::instance` *at those levels*. A use that named the wrong number of them is
+`Malformed::LevelArity`; one that named the wrong levels derives a type the term around it does not accept.
+
+**7. Coverage is complete, and every recursion descends.** The two questions an emitted term cannot be wrong about: a
+missing alternative emits a shorter spine at a type that no longer mentions it, and a call that does not descend emits
+an application like any other. Both are re-derived — coverage from the declaration group, descent from the finished
+tree — and since prompt 158 the *kernel* is what asks them. The elaborator asks too, where it builds a tree; that is
+bookkeeping, and this is the audit.
+
 The third is why the re-checker exists in the shape it does. **Idris2 gets it for free**: `Term vars` is indexed by its
 scope, so an index that escapes its binder does not typecheck in Idris2 itself. Prompt 147 chose plain de Bruijn indices
 knowing that, and the re-checker is the mitigation that decision was taken against.
@@ -71,6 +96,11 @@ Behind `#[cfg(debug_assertions)]` on every elaborated declaration (`elaboration/
 unconditionally over the whole fixture corpus in `tests/suite/recheck_laws.rs`. Not in release builds: it roughly
 doubles the cost of checking, and its job is to catch *our* bugs rather than an author's.
 
+Since prompt 158 there is also a closed entry point, `recheck_program`, which reads a whole document's definitions
+rather than one term. `musa-compiler`'s suite runs it over the standard library, which is the gate that makes the claim
+above a statement with a corpus behind it. It lives there rather than here because the standard library is `.musa`
+source and this crate is a leaf with no parser.
+
 Exhaustion is not a disagreement. The audit runs on its own meter at the context's budget, so a large declaration may
 run out of steps — and turning that into a panic would make a debug build reject programs a release build accepts.
 Neither is a δ-rule's refusal, which is a host rule answering about the author's own arguments.
@@ -89,18 +119,23 @@ declaration that caused it.
 
 ## What the re-checker does not cover yet
 
-The pass covers the term language as prompt 147 left it. Each of these prompts owes it an extension, and each says so in
-its own **Check** section rather than leaving it to be remembered:
+**The pass is closed.** Prompt 158 audited each extension prompts 151–157 owed, and the result — construct by
+construct, with the negative control that proves each can reject — is the table in `tests/suite/recheck_laws.rs`. Two
+obligations turned out to be answered by machinery nothing trusted was asking (coverage and descent), one turned out to
+be discharged by the emission for a reason worth writing down (156's refuted branch), and the rest were met where their
+own prompts said.
 
-| Prompt | What it adds that the re-checker must learn |
-| --- | --- |
-| 151 | the index stratum's removal — one arm fewer |
-| 152 | a level parameter instantiated consistently |
-| 153 | a metavariable solution, and `Checked::try_from`'s first real rejection |
-| 154 | the elaborated form of a trait method |
-| 155 | a case-tree branch against an instantiated motive |
-| 156 | an index chosen by a constructor |
-| 157 | records as data |
+**What it cannot catch, stated rather than glossed.** This pass shares the kernel's `eval` and `quote`, and its
+conversion is `quote ∘ eval` compared by `Term`'s `PartialEq`. So it **cannot** catch a bug *in* `eval` or in
+quotation: it would re-derive the wrong answer using the wrong instrument and agree with itself. What it catches is
+elaboration producing a term the kernel would reject — which is the overwhelming majority of what can go wrong here,
+and is exactly the split this file draws. A trusted base that overstated its guarantee would be worse than one that
+states a smaller guarantee accurately.
+
+Two techniques would reach further and neither is this pass: a second evaluator written from the specification, which
+`lib.rs`'s **"One evaluator"** invariant forbids for a stated reason, and a proof about `eval` itself, which is a
+different discipline. Until then, `eval` and `quote` are trusted in the strong sense — they are the part of the trusted
+base with nothing behind them.
 
 ## Enforcement
 
@@ -109,5 +144,11 @@ Two laws, both in `tests/suite/`:
 - `boundary_laws.rs` — no code line under `kernel/` names the module `elaboration`, any type it declares, or any name
   the crate root re-exports from it. Rust cannot say "a module may not see its sibling", so the direction is checked
   over the source text.
-- `recheck_laws.rs` — the audit over every fixture in the suite, the scope-discipline law, and a negative control. A
-  re-checker nobody has seen reject anything is a function that returns `Ok`.
+- `recheck_laws.rs` — the audit over every fixture in the suite, the scope-discipline law, the audit table, and a
+  negative control per construct. A re-checker nobody has seen reject anything is a function that returns `Ok`.
+- `elaboration/audit_laws.rs` — the three controls that stage a *broken* `Compiled`. They sit on the untrusted side
+  because `boundary_laws.rs` forbids `kernel/` to name anything here and building one means writing raw syntax, and
+  they exist at all because elaboration refuses both defects at the front door: the audit is for the case where
+  something got past it.
+- `generated_laws.rs` — the claim over programs nobody wrote. The re-checker is an oracle, so a generated program needs
+  no expected output: if elaboration accepted it, the kernel must accept what elaboration produced.

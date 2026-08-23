@@ -427,6 +427,216 @@ fn the_standard_library_elaborates() {
     assert!(said.is_empty(), "the standard library elaborates whole: {said:?}");
 }
 
+/// And the kernel agrees with every term elaborating it produced.
+///
+/// Prompt 158's gate. `TRUST.md`'s claim — elaboration is untrusted because the
+/// kernel re-checks what it builds — is only a claim about this compiler if
+/// something asks it over the code this compiler actually runs on, and the
+/// standard library is the largest such corpus that is not a fixture somebody
+/// wrote to pass.
+///
+/// It lives here rather than in `musa-calculus`'s own suite for the reason the
+/// prompt records as a repair: the library is `.musa` source, that crate is a
+/// leaf with no parser, and giving it one to reach its own corpus would invert
+/// the dependency direction. The pass is the same
+/// [`recheck_program`](musa_calculus::recheck_program) either way.
+#[test]
+fn the_kernel_rechecks_the_standard_library() {
+    let (document, said) = faults(&library_sources());
+    let document = document.unwrap_or_else(|| panic!("the standard library elaborates: {said:?}"));
+    super::audit(&document);
+}
+
+/// Every fixture in `examples/`, elaborated and re-checked.
+///
+/// The other half of prompt 158's gate, and the reason its body is short: the
+/// audit runs inside [`crate::elaborate::elaborate`] in test builds, so this
+/// law's job is to *reach* every fixture rather than to check one. Through
+/// [`crate::compile::compile`] and not that entry directly, because a fixture
+/// that writes `make` or a staff region is elaborated *twice* — once as
+/// written, once as what expansion produced — and only the whole pipeline
+/// reaches the second. A fixture
+/// that stops compiling fails here too, which is deliberate — a corpus the gate
+/// cannot elaborate is a corpus the gate did not cover, and silence about that
+/// is the failure mode the prompt's Design names.
+///
+/// # Exhaustion is not a disagreement
+///
+/// `TRUST.md` says so about the audit and it is true of the corpus too: a
+/// fixture that runs out of steps was never judged, so the kernel was never
+/// asked and there is nothing for it to have disagreed with. [`BUDGET_WALL`] is
+/// the exact list, and those two are still required to fail *only* that way — a
+/// `ResourceLimit` is a deferral, and any other code from one of them is a real
+/// failure this law reports like any other.
+#[test]
+fn the_kernel_rechecks_every_example() {
+    for &(name, source) in EXAMPLES {
+        let compilation = crate::compile::compile(
+            &crate::compile::SourceDocument::new(source, name),
+            &crate::CompileOptions::default(),
+        );
+        let said: Vec<(musa_score::Code, String)> = compilation
+            .diagnostics()
+            .iter()
+            .filter(|complaint| complaint.severity == musa_score::diagnose::Severity::Error)
+            .map(|complaint| (complaint.code, complaint.message.clone()))
+            .collect();
+        if BUDGET_WALL.contains(&name) {
+            let unexpected: Vec<&(musa_score::Code, String)> = said
+                .iter()
+                .filter(|&&(code, _)| code != musa_score::Code::ResourceLimit)
+                .collect();
+            assert!(
+                unexpected.is_empty(),
+                "`{name}` is on the budget wall, so a fault that is not a limit is a real one: {unexpected:?}"
+            );
+            assert!(
+                !said.is_empty(),
+                "`{name}` no longer meets the budget wall — strike it from BUDGET_WALL"
+            );
+            continue;
+        }
+        assert!(said.is_empty(), "`{name}` compiles: {said:?}");
+    }
+}
+
+/// The fixtures that exhaust a budget before the kernel is asked anything.
+///
+/// Exact, and each entry is owed elsewhere rather than here. `staff-page`
+/// expands a region through `std::adapters::staff`, which prompt
+/// [166](../../../../docs/plan/prompts/166-staff-rewrite.md) measures as thirty
+/// failing tests and owns the rewrite of; `diatonic-sequences` runs past the
+/// 200,000-step reduction budget with no adapter involved, which is the tonal
+/// class 166's Check records as having "closed itself" for `nextest` — it did
+/// not close for a whole-file check, and this list is where that is written
+/// down rather than assumed.
+///
+/// Striking an entry is the commit that fixes it. Adding one needs the same
+/// argument these two carry: which prompt owns the wall, and why the fixture
+/// cannot be judged rather than merely being inconvenient.
+const BUDGET_WALL: &[&str] = &["diatonic-sequences", "staff-page"];
+
+/// Every `.musa` fixture the gate above covers.
+///
+/// Spelled out rather than read off the directory, for [`STANDARD_LIBRARY`]'s
+/// reason: a list in the source fails the build when a file is added and nobody
+/// decided whether it belongs, and a `read_dir` silently covers whatever is
+/// there.
+const EXAMPLES: &[(&str, &str)] = &[
+    ("annotated", include_str!("../../../../examples/annotated.musa")),
+    (
+        "anonymous-functions",
+        include_str!("../../../../examples/anonymous-functions.musa"),
+    ),
+    ("bulgarian", include_str!("../../../../examples/bulgarian.musa")),
+    ("cadenza", include_str!("../../../../examples/cadenza.musa")),
+    ("canon", include_str!("../../../../examples/canon.musa")),
+    (
+        "canon-functions",
+        include_str!("../../../../examples/canon-functions.musa"),
+    ),
+    ("canon-x", include_str!("../../../../examples/canon-x.musa")),
+    ("changes", include_str!("../../../../examples/changes.musa")),
+    (
+        "changing-meter",
+        include_str!("../../../../examples/changing-meter.musa"),
+    ),
+    ("chant", include_str!("../../../../examples/chant.musa")),
+    (
+        "chord-voicings",
+        include_str!("../../../../examples/chord-voicings.musa"),
+    ),
+    ("clef-change", include_str!("../../../../examples/clef-change.musa")),
+    (
+        "contextual-music",
+        include_str!("../../../../examples/contextual-music.musa"),
+    ),
+    ("counterpoint", include_str!("../../../../examples/counterpoint.musa")),
+    (
+        "diatonic-sequences",
+        include_str!("../../../../examples/diatonic-sequences.musa"),
+    ),
+    ("doubled", include_str!("../../../../examples/doubled.musa")),
+    ("drum-chart", include_str!("../../../../examples/drum-chart.musa")),
+    ("events-splice", include_str!("../../../../examples/events-splice.musa")),
+    ("gesture-data", include_str!("../../../../examples/gesture-data.musa")),
+    (
+        "glass-mountain",
+        include_str!("../../../../examples/glass-mountain.musa"),
+    ),
+    ("graces", include_str!("../../../../examples/graces.musa")),
+    (
+        "graces-reordered",
+        include_str!("../../../../examples/graces-reordered.musa"),
+    ),
+    (
+        "harmonize-function",
+        include_str!("../../../../examples/harmonize-function.musa"),
+    ),
+    ("hemiola", include_str!("../../../../examples/hemiola.musa")),
+    ("house", include_str!("../../../../examples/house.musa")),
+    ("in-c", include_str!("../../../../examples/in-c.musa")),
+    ("invention", include_str!("../../../../examples/invention.musa")),
+    ("loop-lengths", include_str!("../../../../examples/loop-lengths.musa")),
+    ("mobile", include_str!("../../../../examples/mobile.musa")),
+    ("modulation", include_str!("../../../../examples/modulation.musa")),
+    (
+        "module-functor-study",
+        include_str!("../../../../examples/module-functor-study.musa"),
+    ),
+    ("named-answer", include_str!("../../../../examples/named-answer.musa")),
+    (
+        "neo-riemannian",
+        include_str!("../../../../examples/neo-riemannian.musa"),
+    ),
+    ("ornaments", include_str!("../../../../examples/ornaments.musa")),
+    ("pitch-algebra", include_str!("../../../../examples/pitch-algebra.musa")),
+    (
+        "pitch-arithmetic",
+        include_str!("../../../../examples/pitch-arithmetic.musa"),
+    ),
+    (
+        "profile-fixture",
+        include_str!("../../../../examples/profile-fixture.musa"),
+    ),
+    ("refrain", include_str!("../../../../examples/refrain.musa")),
+    ("repeats", include_str!("../../../../examples/repeats.musa")),
+    ("riser", include_str!("../../../../examples/riser.musa")),
+    ("rubato", include_str!("../../../../examples/rubato.musa")),
+    (
+        "rule-of-the-octave",
+        include_str!("../../../../examples/rule-of-the-octave.musa"),
+    ),
+    ("scale-context", include_str!("../../../../examples/scale-context.musa")),
+    ("serial-forms", include_str!("../../../../examples/serial-forms.musa")),
+    ("shuffle", include_str!("../../../../examples/shuffle.musa")),
+    ("staff-page", include_str!("../../../../examples/staff-page.musa")),
+    ("stdlib-basics", include_str!("../../../../examples/stdlib-basics.musa")),
+    (
+        "template-study",
+        include_str!("../../../../examples/template-study.musa"),
+    ),
+    ("tempo-changes", include_str!("../../../../examples/tempo-changes.musa")),
+    (
+        "theory-assertions",
+        include_str!("../../../../examples/theory-assertions.musa"),
+    ),
+    (
+        "tonal-construction",
+        include_str!("../../../../examples/tonal-construction.musa"),
+    ),
+    (
+        "tuplet-fixture",
+        include_str!("../../../../examples/tuplet-fixture.musa"),
+    ),
+    ("twinkle", include_str!("../../../../examples/twinkle.musa")),
+    (
+        "unicode-fixture",
+        include_str!("../../../../examples/unicode-fixture.musa"),
+    ),
+    ("variation", include_str!("../../../../examples/variation.musa")),
+];
+
 /// `stdlib/src/adapters/doubled.musa`, elaborated in phase scope.
 ///
 /// Whole, with nothing left over. What it took was the annotation on `expand`

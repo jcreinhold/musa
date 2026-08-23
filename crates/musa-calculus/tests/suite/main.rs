@@ -23,6 +23,7 @@ mod conversion_laws;
 mod coverage_laws;
 mod elaboration_laws;
 mod family_laws;
+mod generated_laws;
 mod glued_laws;
 mod implicit_laws;
 mod lifting_laws;

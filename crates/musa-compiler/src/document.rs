@@ -175,8 +175,14 @@ pub(crate) struct Document {
     cx: Cx,
     sites: Sites,
     /// Kept so that the context this answers in is the context the definitions
-    /// were elaborated into. Nothing reads the handle itself.
-    _definitions: Arc<Program>,
+    /// were elaborated into.
+    ///
+    /// [`audit`] reads it, and nothing else does: a caller asks this document
+    /// what a name *means*, and the program is the elaborator's own record of
+    /// how it found out. The kernel is the one reader entitled to that record,
+    /// because re-deriving it is the whole of what `TRUST.md` claims.
+    #[cfg_attr(not(test), expect(dead_code, reason = "the audit that reads it is a test build's"))]
+    definitions: Arc<Program>,
     names: Vec<Name>,
     /// This document's modules, kept because a *piece* is read after
     /// elaboration and reads names the same way a declaration does: a voice
@@ -460,6 +466,30 @@ impl Document {
 /// `make N(…) as I;` at its root rather than a piece. Its arguments are
 /// definitions of this document like any other — see [`instantiated`] — which is
 /// why they arrive here and not at [`Document::piece`].
+/// Every definition this document elaborated, read again by the kernel.
+///
+/// `musa-calculus`'s [`recheck_program`](musa_calculus::recheck_program) closed
+/// over the whole core in prompt 158, and this is where the standard library and
+/// `examples/` meet it: the crate that owns the pass is a leaf with no parser,
+/// so the corpus it most wants to be stated over can only be read here.
+///
+/// Loud rather than a diagnostic, and only in test builds. Loud because a
+/// disagreement is *this crate's* defect and there is no repair an author could
+/// make — `TRUST.md` says elaboration is untrusted precisely so that a term it
+/// built and the kernel rejects is a bug report about us. Test builds only
+/// because it re-derives every definition a second time, and the release
+/// compiler already pays for the per-declaration audit
+/// `elaboration::declare_program` runs behind `debug_assertions`.
+#[cfg(test)]
+pub(crate) fn audit(document: &Document) {
+    if let Err(fault) = musa_calculus::recheck_program(&document.cx, &document.definitions) {
+        #[expect(clippy::panic, reason = "a gate that cannot fail loudly is not a gate")]
+        {
+            panic!("the kernel rejects what elaboration built for this document: {fault}");
+        }
+    }
+}
+
 pub(crate) fn elaborate(
     resolver: &mut Resolver,
     sources: &[Source],
@@ -607,7 +637,7 @@ pub(crate) fn elaborate(
     Some(Document {
         cx,
         sites,
-        _definitions: declared,
+        definitions: declared,
         names,
         modules,
         standing: made.map(|instance| crate::lower::expansion(instance.span(), instance.step())),

@@ -74,6 +74,22 @@ pub(crate) fn recheck(cx: &Cx, ty: &Value, term: &Checked) -> Result<(), CoreErr
     check(cx, &mut meter, term.term(), ty)
 }
 
+/// [`check`] as the rest of the crate may reach it.
+///
+/// The audit's own controls live on the elaboration side — `boundary_laws.rs`
+/// forbids `kernel/` to name anything there, and staging a broken tree means
+/// writing raw syntax. So the one function they need is named here rather than
+/// duplicated: checking a term against a type is what the whole module is, and
+/// a control that could not ask it would be testing something else.
+///
+/// # Errors
+///
+/// As [`recheck`].
+#[cfg(test)]
+pub(crate) fn checking(cx: &Cx, meter: &mut Meter, term: &Term, expected: &Value) -> Result<(), CoreError> {
+    check(cx, meter, term, expected)
+}
+
 /// Re-derive what a compiled body claims, from the declaration rather than
 /// from the builder that produced it.
 ///

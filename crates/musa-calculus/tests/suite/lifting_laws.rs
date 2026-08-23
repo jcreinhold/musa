@@ -99,7 +99,7 @@ fn bump() -> RawTopLevel {
 /// # Panics
 ///
 /// When the group refuses, which every law here says it does not.
-fn declared() -> (Cx, std::sync::Arc<musa_calculus::Program>) {
+pub(crate) fn declared() -> (Cx, std::sync::Arc<musa_calculus::Program>) {
     let cx = nat_vec_context();
     let program = musa_calculus::declare_program(
         &cx,

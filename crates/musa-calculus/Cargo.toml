@@ -11,3 +11,6 @@ workspace = true
 
 [dependencies]
 thiserror = "2"
+
+[dev-dependencies]
+proptest = "1"

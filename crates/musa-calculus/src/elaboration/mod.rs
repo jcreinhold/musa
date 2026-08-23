@@ -5,6 +5,8 @@
 //! [`crate::kernel`]. The kernel may name nothing here.
 
 pub(crate) mod admit;
+#[cfg(test)]
+mod audit_laws;
 pub(crate) mod case;
 pub(crate) mod convert;
 pub(crate) mod declare;

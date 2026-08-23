@@ -1,7 +1,7 @@
 ---
 id: 158
 slug: recheck-the-whole-core
-status: in-progress
+status: done
 depends_on: [149, 157]
 phase: 3
 ---
@@ -144,6 +144,10 @@ clean worktree at `7396cb2c` and byte-identically in this prompt's tree — 3 er
 The two `examples/` entries are recorded in the law itself, as `BUDGET_WALL` in `document/laws.rs`, with the argument
 that exhaustion is not a disagreement: a fixture that ran out of steps was never judged, so the kernel was never asked.
 They are still required to fail *only* that way, so a real refusal from either one fails the build.
+
+**`--run-ignored all` reports the same thirty pre-existing failures prompt 157 measured.** 1,922 run, 1,892 passed, 30
+failed, every one in prompt [166](166-staff-rewrite.md)'s staff-budget class and none outside it. The failure set moved
+by zero across this prompt, which is what a pass that only *reads* elaborated terms should do.
 
 Commit as `Close the re-checker over the whole core`.
 
