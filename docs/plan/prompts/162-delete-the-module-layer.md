@@ -1,7 +1,7 @@
 ---
 id: 162
 slug: delete-the-module-layer
-status: pending
+status: in-progress
 depends_on: [161]
 phase: 3
 ---
@@ -29,7 +29,9 @@ sites, three files.**
 - `crates/musa-compiler/src/template.rs`, and `docs/book/src/guide/names.md` §2 and §3, whose fences are quoted verbatim
   from the two examples and so move with them.
 - [`58-the-module-layer-and-its-make.md`](../../notes/research/language-design-closure/58-the-module-layer-and-its-make.md)
-  — the measurement this prompt's scope was repaired against.
+  — the measurement this prompt's scope was repaired against, §8 being the sealing gap found while implementing it.
+- `crates/musa-calculus/src/kernel/visibility.rs` and `crates/musa-compiler/src/document.rs`'s `top_level`, which
+  together are why a `private` at a file's root is not enforced today.
 
 ## Design
 
@@ -63,9 +65,14 @@ A record field of type `Type` carries the same information — and it is exactly
 needed. If the stdlib after this rewrite never needs a third level, say so in the commit; if it does, that is 152 paying
 for itself.
 
-**Sealing is module privacy, not a second mechanism.** What `signature` bought that a record does not is that a
-constructor could be withheld. Musa already has module-private definitions and `Refusal::Private` already fires for
-them; sealing becomes "do not export the constructor," which is one rule instead of a layer.
+**Sealing is module privacy, not a second mechanism — and the compiler does not wire it yet.** What `signature` bought
+that a record does not is that a constructor could be withheld. The replacement is one rule instead of a layer: do not
+export the constructor. `Visibility` and `ModuleId` exist in the kernel (136a), every member of a group carries one
+(141n), and `Refusal::Private` fires on the rule. What no prompt ever asked for is `musa-compiler` giving a source
+definition a module: `document.rs`'s `top_level` writes `module: None`, which the kernel reads as "written nowhere in
+particular and hides from nobody". So a `private` at a file's root is nameable by everything that imports it, measured
+in note 58 §8. Deleting the layer therefore *loses* sealing rather than restating it, and losing it silently is the one
+thing this prompt may not do. Prompt 162a owns the wiring and the law; this prompt names the gap and stops there.
 
 **Why the layer was wrong in the first place, recorded so it does not return.** *No sublanguage by subtraction* —
 AGENTS.md's standing rule — cuts both ways. The module layer was a sublanguage by *addition*: a second, weaker
@@ -87,6 +94,11 @@ sentences did not survive contact with the corpus.
   them are prose, mostly "key signature" and "time signature". It cannot pass, and deleting every declaration does not
   make it pass. Anchored to declaration position it matches the fifteen and nothing else.
 
+*Repaired again during implementation, on the evidence in note 58 §8.* A fourth sentence did not survive: *"the sealing
+law restated as a module-privacy law over a `data` declaration"*. Module privacy is not enforced for source
+declarations, so the law would assert behaviour the compiler does not have. The Target now deletes the two law suites
+and hands the law to 162a with the wiring it needs.
+
 **The two examples keep their filenames.** `examples/module-functor-study.musa` and `examples/template-study.musa` are
 named for the mechanism they demonstrate, and both names go stale — but the tree-sitter fixtures, the book's verbatim
 fences, `lsp_laws`, `session_laws`, and the wav-export determinism test are all keyed on the path. A rename is a second
@@ -106,8 +118,9 @@ replacement: a record bundling facts that travel together, and a function over i
 - `docs/rules/language/01-surface.md` §6, §6.1 and §9's declaration-template row;
   `docs/rules/language/04-templates-and-modules.md` §§1–4 and §6; `docs/book/src/guide/names.md` §2 and §3 and
   `docs/book/src/guide/cookbook.md`'s two recipes: the sections removed and what replaced them stated once.
-- `crates/musa-compiler/tests/suite/`: `module_laws.rs` and `template_laws.rs` deleted; the sealing law restated as a
-  module-privacy law over a `data` declaration, which is the form that will still exist.
+- `crates/musa-compiler/tests/suite/`: `module_laws.rs` and `template_laws.rs` deleted. No sealing law here — see the
+  Design and note 58 §8: sealing's replacement is not wired, and [`162a`](162a-module-privacy-for-source.md) restates
+  the law once it is.
 
 ## Check
 
@@ -131,7 +144,9 @@ Commit as `Delete the ML module layer`.
 
 ## Stop
 
-- No new visibility mechanism. Module privacy exists; use it.
+- No new visibility mechanism, and no wiring of the one that exists. Giving a source file a `ModuleId` is 162a's whole
+  Target, and it needs its own answers about aliased imports and about a document whose root and piece are two sources
+  of one file.
 - No functor-like abstraction added back under another name, and no expression form for a declaration.
 - No rename of the two example files, and no rename of `04-templates-and-modules.md`. Both are cheap later.
 - No work on the package tree, `mod`, or `import` — that is the module *tree*, and `04-templates-and-modules.md`'s own

@@ -128,3 +128,46 @@ fences, `lsp_laws`, `session_laws`, and the wav-export determinism test are all 
 a second change wearing this one's clothes. What they demonstrate after the rewrite is the replacement — a record
 bundling facts that travel together, and a function over it — which is the same lesson with the layer taken out from
 under it.
+
+## 8. Found during implementation: sealing has no replacement yet
+
+The prompt's Design says sealing "becomes 'do not export the constructor,'" on the grounds that "Musa already has
+module-private definitions and `Refusal::Private` already fires for them." The first half is true of the *kernel*. The
+second is not true of any program a composer can write.
+
+`Visibility::visible_from` in `crates/musa-calculus/src/kernel/visibility.rs` reads:
+
+```rust
+(Self::Public, _, _) | (Self::Private, None, _) | (Self::Private, Some(_), None) => true,
+(Self::Private, Some(home), Some(viewer)) => home == viewer,
+```
+
+A declaration with no module "was written nowhere in particular and hides from nobody". And every definition
+`musa-compiler` hands the core is written nowhere in particular: `document.rs`'s `top_level` sets `module: None`, and it
+is the one constructor of a source definition. The compiler owns exactly two `ModuleId`s — `prelude::PHASE` and
+`prelude::SOURCE` — and `SOURCE` is where the *context* stands, not where a definition lives. So the third arm never
+fires for source code, and a `private` at a file's root is nameable by everything that imports it.
+
+Measured rather than argued. With `stdlib/src/context.musa` rewritten as this prompt asks, a file that writes
+
+```musa
+import std::context;
+
+let mine: Option<Frame> = c_major_home;
+```
+
+checks `ok`, and `c_major_home` is marked `private` three lines above the value that reads it.
+
+Two consequences.
+
+- **The law this prompt's Target asks for cannot be written.** "The sealing law restated as a module-privacy law over a
+  `data` declaration" would be a law about behaviour the compiler does not have. Writing it to pass would mean asserting
+  that a private name *is* reachable, which is the opposite of the sentence it is restating.
+- **Deleting the layer loses a capability.** `structure` sealed by listing, and `crate::module`'s resolver enforced it —
+  that is what `module_laws.rs`'s `a_member_the_signature_does_not_list_is_private` was about. Nothing enforces it after
+  the deletion, and `stdlib/src/context.musa`'s three `private` members are the first to notice.
+
+The gap is in `musa-compiler`, not in the core: 136a built `Visibility` and `ModuleId`, 141n gave every member of a
+group one, and `musa-calculus`'s own laws cover the rule. What no prompt ever asked for is the compiler assigning a
+module to each source file it declares from. Prompt 162a is that prompt, and 162's Target now says so instead of asking
+for a law about a mechanism that is not wired.
