@@ -481,6 +481,9 @@ fn named_itself(name: &Name) -> impl FnOnce(ElabError) -> ElabError + use<'_> {
             }
             .into()
         }
-        other => other,
+        // Spelled out rather than left to `_`: a fourth outcome added to
+        // `ElabError` should have to say here whether a `let` naming itself is
+        // one of the things it can be.
+        other @ (ElabError::Refused(_) | ElabError::Exhausted(_) | ElabError::Malformed(_)) => other,
     }
 }

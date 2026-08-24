@@ -4,7 +4,7 @@
 //! One concern of the `formatter` module; see its docs for the rules.
 
 use super::bars::{beat_group_starts, drawn_to_scale, wrap_at_beat_groups};
-use super::lists::{breakable_list, continues_past_a_branch, list_breaks, opens_a_further_rung};
+use super::lists::{breakable_list, continues_past_a_body, list_breaks, opens_a_further_rung};
 use super::tokens::format_token;
 use super::writer::Writer;
 use super::{BarSpacing, Layout, MEASURE};
@@ -71,16 +71,13 @@ pub(super) fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layou
                     writer.indent
                 };
                 if let Some(lines) = inline_run(&child, start, layout).filter(|_| !opens_a_further_rung(node, &child)) {
-                    // A lambda's body is the last thing in an expression, not
-                    // the last thing on a line: `map(fn (x) { f(x) }, xs)`
-                    // continues with a comma. A conditional's branches are the
-                    // same — `else` follows one and the enclosing `,` or `;`
-                    // follows the other, so neither may end the line it is
-                    // written on. A record pattern is a third: the `->` of its
-                    // arm follows it.
-                    let inline = node.kind() == SyntaxKind::LambdaExpr
-                        || continues_past_a_branch(node)
-                        || child.kind() == SyntaxKind::RecordPattern;
+                    // A lambda's body, a match arm's body, and a conditional's
+                    // branches are each the last thing in an *expression* and
+                    // not the last thing on a line, so none of them may end the
+                    // line it is written on — see [`continues_past_a_body`]. A
+                    // record pattern is a fourth: the `->` of its arm follows
+                    // it.
+                    let inline = continues_past_a_body(node) || child.kind() == SyntaxKind::RecordPattern;
                     let last = lines.len().saturating_sub(1);
                     for (index, line) in lines.iter().enumerate() {
                         if inline && index == last {

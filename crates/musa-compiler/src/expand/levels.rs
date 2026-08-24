@@ -114,12 +114,12 @@ pub(crate) fn level_of(
     };
     let module = crate::phase::read_adapter_module(adapter_source, crate::phase::PhaseImports::at(document, sources))
         .map_err(|fault| match fault {
-        crate::phase::ModuleFault::Stopped => LevelFault {
-            message: format!("reading `{path}` crossed a compilation limit"),
+        crate::phase::ModuleFault::Stopped(limit) => LevelFault {
+            message: format!("reading `{path}` crossed a compilation limit: {limit}"),
             help: "an adapter is total, so this is a limit rather than a loop",
             code: Code::ResourceLimit,
-            // A read that ran out of budget said nothing about the module, so
-            // there is nothing to carry.
+            // A read that ran out of budget said nothing about the module
+            // beyond the limit it crossed, which is in the message.
             causes: Vec::new(),
         },
         // The wrapper's own sentence, and not a word of the module's spliced

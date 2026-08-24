@@ -74,8 +74,17 @@ repeats itself and the evidence is that the repetition goes away.
 - `editors/tree-sitter-musa` reads it, with a corpus entry.
 - Laws: a `let` means what substituting the value means; a nested `let` scopes rightward; an inner `let` shadows an
   outer binder; a self-naming `let` is refused; a `let` in a `match` arm and in a `quote at here { … }` both parse.
-- Two conversions as the evidence — one in `stdlib/src/notation/staff.musa` and one in `stdlib/src/tonal/schemas.musa` —
-  with before and after line counts in the commit message.
+- Two conversions as the evidence, both in `stdlib/src/notation/staff.musa`, with before and after line counts in the
+  commit message. That file carries two private helpers whose own comments say they exist only because a block cannot
+  name a value — `dotted_by` ("`dotted_span`'s step has no `let` to name it with") and `placed_span` ("a parameter is
+  how this language names a value used twice"). Both go.
+
+  `stdlib/src/tonal/schemas.musa` was named here and is not a conversion. It is a file of table literals: every schema
+  is one `degrees_of([…])` call, and the only repeated subexpression in it is the `degree_of(1)` that
+  `rule_ascending_chord` and `rule_descending_chord` each write twice. Hoisting that into a `let` costs a line and
+  evaluates a chord for every bass degree that is not a tonic — which is prompt [162f](162f-lazy-methods.md)'s problem,
+  not evidence for this one. A conversion that made a file worse would not be evidence that a block should name a
+  value.
 
 ## Check
 
@@ -111,4 +120,5 @@ Commit as `Let a block name a value`.
 - No new core term. If the implementation reaches for one, that is evidence the design is wrong and the prompt needs
   repair, not a term.
 - No sweep of `stdlib/`. Two conversions are the evidence; the adapters are prompts [166](166-staff-rewrite.md) and
-  [167](167-studio-rewrite.md)'s.
+  [167](167-studio-rewrite.md)'s. `stdlib/reference.md` is generated (`UPDATE_FIXTURES=1`) and is regenerated, not
+  edited.

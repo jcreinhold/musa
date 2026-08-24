@@ -113,7 +113,12 @@ fn a_binding_that_names_itself_is_refused() {
         .diagnostics()
         .iter()
         .find(|diagnostic| diagnostic.code == musa_score::Code::RecursiveBinding)
-        .unwrap_or_else(|| panic!("the self-naming binding was not refused: {:?}", compilation.diagnostics()));
+        .unwrap_or_else(|| {
+            panic!(
+                "the self-naming binding was not refused: {:?}",
+                compilation.diagnostics()
+            )
+        });
     assert!(
         refusal.message.contains("held"),
         "the refusal names the binder: {}",

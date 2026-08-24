@@ -133,8 +133,8 @@ nothing above is weakened: a `let` is not a second expression, and `{ e1; e2 }` 
 Several bindings are several `let`s nested rightward, `let a = …; let b = …; e` meaning `let a = … in (let b = … in e)`,
 which is `02-core-calculus.md` §2's term and not a new one — §9.1's path update has elaborated to that term since before
 the surface could spell it. The annotation is optional and inference is the ordinary one. The binding is **not**
-recursive: its value is read outside the binder, so a value that names the binder is refused (`recursive-binding`) and
-a recursion is written with `rec`, which is lifted to a definition of its own. An outer binding of the same name is
+recursive: its value is read outside the binder, so a value that names the binder is refused (`recursive-binding`) and a
+recursion is written with `rec`, which is lifted to a definition of its own. An outer binding of the same name is
 shadowed rather than refused, because there the value has something to mean. `return` and the bare sequence stay
 forbidden for the reason they always were: each would be a statement whose value is decided by where control left it,
 and this language has no control to leave — a `let` adds a name, not a step.

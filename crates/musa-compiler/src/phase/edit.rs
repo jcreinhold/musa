@@ -109,7 +109,7 @@ fn run_editor(
     spent: &mut musa_calculus::Spend,
 ) -> Result<Vec<AdapterPatch>, EditFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
-        ModuleFault::Stopped => EditFailure::Stopped,
+        ModuleFault::Stopped(_) => EditFailure::Stopped,
         ModuleFault::Broken(diagnostics) => EditFailure::NotAnEditor(diagnostics),
     })?;
     *spent = spent.and(module.spend());
@@ -130,7 +130,7 @@ fn run_editor(
         )
         .map_err(|unrun| match unrun {
             Unrun::Undeclared => EditFailure::NotAnEditor(vec![not_the_operation("edit")]),
-            Unrun::Stopped => EditFailure::Stopped,
+            Unrun::Stopped(_) => EditFailure::Stopped,
             Unrun::Refused(diagnostics) => EditFailure::NotAnEditor(diagnostics),
             Unrun::NoAnswer => EditFailure::NoAnswer,
         })?;

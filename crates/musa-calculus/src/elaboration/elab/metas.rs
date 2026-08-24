@@ -60,7 +60,8 @@ impl Elaborator {
             // a value already standing at the occurrence's depth, and opening it
             // later would apply a non-function.
             let value = crate::kernel::unify::abstracted(&mut self.meter, &meta, term)?;
-            meta.solve(value).map_err(crate::kernel::error::CoreError::from)?;
+            meta.solve(&mut self.meter, value)
+                .map_err(crate::kernel::error::CoreError::from)?;
         }
         self.drain()?;
         // Whatever is still waiting is §2.1's error, and it is reported before

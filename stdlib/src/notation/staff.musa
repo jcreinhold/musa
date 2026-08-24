@@ -418,19 +418,11 @@ library {
         )
     }
 
-    // One more dot: half of what the dot before it added, added on.
-    //
-    // The half is passed in rather than computed twice, which is what this
-    // function is for — `dotted_span`'s step has no `let` to name it with.
-    private fn dotted_by(reached: Dotted, half: Ratio) -> Dotted {
-        Dotted {
-            total = ratio_add(reached.total, half),
-            added = half
-        }
-    }
-
     // What a value covers once its dots are added: each dot adds half of what
     // the dot before it added.
+    //
+    // The half is named because it is wanted twice — added on, and kept as
+    // what the next dot halves — and naming it is all `dotted_by` ever was.
     fn dotted_span(base: Ratio, dots: Nat) -> Ratio {
         match range(dots).fold_from_start(
             Dotted {
@@ -438,7 +430,11 @@ library {
                 added = base
             },
             fn (sofar: Dotted, step_index: Nat) -> Dotted {
-                dotted_by(sofar, ratio_div(sofar.added, 2/1))
+                let half = ratio_div(sofar.added, 2/1);
+                Dotted {
+                    total = ratio_add(sofar.total, half),
+                    added = half
+                }
             },
         ) {
             Dotted { total, added } -> total,
@@ -539,30 +535,13 @@ library {
         }
     }
 
-    // One span, already measured, starting here.
-    //
-    // The measuring is one call up rather than here, because the span is
-    // needed twice — once to say where what follows begins, once to record
-    // what was written — and a parameter is how this language names a value
-    // used twice.
-    private fn placed_span(
-        anchor: Nat,
-        span: Duration<WrittenTime>,
-        tied: Tie,
-        here: Position<WrittenTime>,
-        after: (Position<WrittenTime> -> Result<Realization, Text>),
-    ) -> Result<Realization, Text> {
-        match after(position_shift(here, span)) {
-            Ok(later) -> Ok(Realization {
-                spans = Span(anchor, here, span, tied, later.spans),
-                at_end = later.at_end,
-            }),
-            Err(why) -> Err(why),
-        }
-    }
-
     // One sounding item: its span starts here, and what follows starts after
     // it.
+    //
+    // The span is measured once and named, because it is wanted twice — once
+    // to say where what follows begins, once to record what was written.
+    // Naming it is all `placed_span` ever was: a parameter used to be how this
+    // language named a value used twice, and a `let` is how it is now.
     fn placed(
         anchor: Nat,
         held: WrittenDuration,
@@ -570,8 +549,12 @@ library {
         here: Position<WrittenTime>,
         after: (Position<WrittenTime> -> Result<Realization, Text>),
     ) -> Result<Realization, Text> {
-        match written_span(held) {
-            Ok(span) -> placed_span(anchor, span, tied, here, after),
+        let span = written_span(held)?;
+        match after(position_shift(here, span)) {
+            Ok(later) -> Ok(Realization {
+                spans = Span(anchor, here, span, tied, later.spans),
+                at_end = later.at_end,
+            }),
             Err(why) -> Err(why),
         }
     }

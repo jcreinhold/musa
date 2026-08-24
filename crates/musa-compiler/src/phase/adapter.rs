@@ -111,7 +111,7 @@ impl AdapterModule {
         let here = musa_calculus::Origin::UNKNOWN;
         let call = Raw::call(here, Raw::var(here, name), arguments);
         let ((normal, _), spend) = self.read.term_metered(&call).map_err(|error| match error {
-            musa_calculus::ElabError::Exhausted(_) => Unrun::Stopped,
+            musa_calculus::ElabError::Exhausted(exhausted) => Unrun::Stopped(exhausted.to_string()),
             error @ (musa_calculus::ElabError::Refused(_) | musa_calculus::ElabError::Malformed(_)) => {
                 Unrun::Refused(vec![crate::lower::refusals::restate(self.read.sites(), &error)])
             }
@@ -136,8 +136,9 @@ impl AdapterModule {
 pub(crate) enum Unrun {
     /// The module declares nothing under that name.
     Undeclared,
-    /// A compilation limit was crossed before the run finished.
-    Stopped,
+    /// A compilation limit was crossed before the run finished, and the
+    /// limit's own sentence about it — see [`ExpansionFailure::Stopped`].
+    Stopped(String),
     /// The application did not elaborate.
     Refused(Vec<Diagnostic>),
     /// It elaborated and its normal form was not canonical, which is a defect
@@ -280,12 +281,12 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
 /// Read off the diagnostics rather than off a meter, because the meter is
 /// [`musa_calculus`]'s now and it reports exhaustion the way it reports everything
 /// else — as a refusal, filed under [`Code::ResourceLimit`] by
-/// [`crate::lower::refusals::restate`].
+/// [`crate::lower::refusals::restate`]. The stop keeps that refusal's own
+/// sentence, which is where the four numbers §4 requires already are.
 fn module_fault(diagnostics: Vec<Diagnostic>) -> ModuleFault {
-    if diagnostics.iter().any(|it| it.code == Code::ResourceLimit) {
-        ModuleFault::Stopped
-    } else {
-        ModuleFault::Broken(diagnostics)
+    match diagnostics.iter().find(|it| it.code == Code::ResourceLimit) {
+        Some(limit) => ModuleFault::Stopped(limit.message.clone()),
+        None => ModuleFault::Broken(diagnostics),
     }
 }
 
@@ -296,8 +297,10 @@ fn module_fault(diagnostics: Vec<Diagnostic>) -> ModuleFault {
 /// module, and reporting it as a broken adapter would make a narrowed budget
 /// look like a package that does not compile.
 pub(crate) enum ModuleFault {
-    /// A compilation limit was crossed before the module finished checking.
-    Stopped,
+    /// A compilation limit was crossed before the module finished checking,
+    /// and the limit's own sentence about it — see
+    /// [`ExpansionFailure::Stopped`].
+    Stopped(String),
     /// It is not an adapter module, and these say why.
     Broken(Vec<Diagnostic>),
 }

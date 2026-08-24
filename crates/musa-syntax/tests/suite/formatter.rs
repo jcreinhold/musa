@@ -524,6 +524,56 @@ fn a_function_body_keeps_its_line_until_it_cannot() {
     assert_eq!(fmt(&formatted), formatted, "idempotent");
 }
 
+/// A match arm's braced body does not end the arm's line — the arm's comma
+/// does.
+///
+/// A body written `Treble -> { … }` is an *expression* in the middle of an
+/// arm, not the last thing on a line, so the `}` that closes it leaves the
+/// line open for the `,` that separates this arm from the next. A brace that
+/// ended the line first would strand that comma on a line of its own, which is
+/// neither what was written nor a thing the formatter would then leave alone.
+/// Both widths are here because a body is laid out two ways — one line when it
+/// fits, stacked when it does not — and the comma follows either one.
+///
+/// The last arm is the same rule read from the other side: nothing follows its
+/// body but the `}` of the `match`, and holding the line open for a comma that
+/// was never written would close the match onto the arm. So the match's own
+/// brace takes the line back.
+#[test]
+fn a_match_arms_braced_body_keeps_its_comma_on_its_line() {
+    let source = concat!(
+        "library {\n",
+        "fn plain(written: Clef) -> Text {\n",
+        "match written {\n",
+        "Treble -> { text_join([\"a\", \"b\"]) },\n",
+        "Tenor -> {\n",
+        "let opening = \"a rather long piece of text indeed\";\n",
+        "text_join([opening, \"b\", \"c\", \"d\", \"and one more after that\"])\n",
+        "},\n",
+        "Bass -> { text_join([\"c\", \"d\"]) }\n",
+        "}\n}\n}\n",
+    );
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("            Treble -> { text_join([\"a\", \"b\"]) },\n"),
+        "a body that fits keeps its comma:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("            },\n            Bass ->"),
+        "and so does one that stacked:\n{formatted}"
+    );
+    assert!(
+        !formatted.contains("\n            ,"),
+        "no comma is stranded on a line of its own:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("            Bass -> { text_join([\"c\", \"d\"]) }\n        }\n"),
+        "the last arm has no comma, so the match's brace takes the line:\n{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+    assert_semantics_preserved(source, &formatted);
+}
+
 /// Notation stays vertical. A `music` value in a body is a voice's worth of
 /// statements, and this language writes only a *bar* horizontally.
 #[test]

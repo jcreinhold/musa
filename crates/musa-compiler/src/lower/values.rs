@@ -25,8 +25,8 @@ use num_rational::Ratio;
 
 use super::items::declared_name;
 use super::{
-    Lowering, Question, applied, child, children, is_expr_node, is_type_node, listed, own_tokens,
-    paired, significant_tokens, whole, writes,
+    Lowering, Question, applied, child, children, is_expr_node, is_type_node, listed, own_tokens, paired,
+    significant_tokens, whole, writes,
 };
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;

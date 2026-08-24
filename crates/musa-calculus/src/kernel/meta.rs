@@ -59,31 +59,12 @@ impl MetaSource {
     }
 }
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
+use crate::kernel::budget::Meter;
 use crate::kernel::context::Globals;
 use crate::kernel::error::Malformed;
 use crate::kernel::value::Value;
-
-/// How many metavariables have been solved in this process.
-///
-/// Not bookkeeping about metas: it is the invalidation stamp
-/// [`crate::kernel::eval::unfold`]'s memo is guarded by. A folded definition
-/// unfolds to a value that may contain an occurrence of an unsolved unknown,
-/// and reducing the same neutral after that unknown is solved may answer
-/// something further reduced — so a memo filled before a solution arrived must
-/// not be read after one. A counter answers that with one comparison and no
-/// walk: **equal stamps mean no solution arrived in between**, which is
-/// exactly the premise the memo needs, and it is conservative in the safe
-/// direction because a solution anywhere invalidates every memo rather than
-/// only the ones that mention it.
-static SOLUTIONS: AtomicU64 = AtomicU64::new(0);
-
-/// The current value of that stamp.
-pub(crate) fn solutions() -> u64 {
-    SOLUTIONS.load(Ordering::Relaxed)
-}
 
 /// A placeholder for a term the elaborator cannot yet determine, carrying the
 /// scope it may mention.
@@ -182,12 +163,21 @@ impl Meta {
     /// constraints arrived in. A second write is therefore a compiler defect
     /// and is reported as one — [`crate::kernel::unify::assign`] is the only
     /// caller, and it decides before it writes.
-    pub(crate) fn solve(&self, value: Value) -> Result<(), Malformed> {
+    ///
+    /// **It takes the meter to write it down.** A folded definition unfolds to
+    /// a value that may contain an occurrence of an unsolved unknown, and
+    /// reducing the same neutral after that unknown is solved may answer
+    /// something further reduced — so `kernel::eval`'s memo of an unfolding is
+    /// valid only until a solution arrives, and
+    /// [`Stamp`](crate::kernel::budget::Stamp) is how it finds out. Solving
+    /// through the meter is what keeps a solution and the invalidation it owes
+    /// one act rather than two a caller could do only half of.
+    pub(crate) fn solve(&self, meter: &mut Meter, value: Value) -> Result<(), Malformed> {
         self.0
             .solution
             .set(value)
             .map_err(|_| Malformed::AlreadySolved(self.0.id))?;
-        SOLUTIONS.fetch_add(1, Ordering::Relaxed);
+        meter.solved();
         Ok(())
     }
 

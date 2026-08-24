@@ -112,6 +112,20 @@ thread_local! {
 /// with, where the room is a link-time setting instead; so does a host that
 /// would not give us one. `work` is `Fn` rather than `FnOnce` for exactly that
 /// path: the fallback has to be able to do work the thread never took.
+///
+/// **The two are not the same event and only one of them is silent.** The wasm
+/// shell is a host that never had threads and whose room is arranged
+/// elsewhere, so taking that path says nothing. A threaded host refusing us a
+/// thread is §4.1's obligation going unmet: the work runs anyway, because most
+/// terms are nowhere near the limit and failing them all would be a worse
+/// answer than the risk, but a term deep enough to earn a refusal will now
+/// abort instead of printing one — and an abort with nothing said beforehand
+/// is indistinguishable from a compiler that crashed. So it is traced. This is
+/// the one thing this crate learns and cannot return: roadmap §15.12 gives it
+/// `tracing` and observes that "a crate whose every failure is a returned
+/// diagnostic has nothing left to trace", which is true of all of it but this
+/// — a host resource that went missing is not one of §4's three outcomes and
+/// has no diagnostic to be.
 pub(crate) fn with_room<T: Send>(work: impl Fn() -> T + Send + Sync) -> T {
     if cfg!(target_family = "wasm") || ROOMY.with(Cell::get) {
         return work();
@@ -123,10 +137,20 @@ pub(crate) fn with_room<T: Send>(work: impl Fn() -> T + Send + Sync) -> T {
             ROOMY.with(|roomy| roomy.set(true));
             answer = Some(work());
         };
-        if let Ok(running) = std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run)
-            && let Err(panic) = running.join()
-        {
-            std::panic::resume_unwind(panic);
+        match std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run) {
+            Ok(running) => {
+                if let Err(panic) = running.join() {
+                    std::panic::resume_unwind(panic);
+                }
+            }
+            Err(refused) => tracing::warn!(
+                room,
+                nesting = Budget::NESTING,
+                error = %refused,
+                "the host would not give us the stack §4.1 derives from the nesting limit; \
+                 checking and evaluation run on the caller's own stack, where a term deep enough \
+                 to be refused may abort the process instead of earning the refusal"
+            ),
         }
     });
     answer.unwrap_or_else(work)

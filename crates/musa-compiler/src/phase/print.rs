@@ -55,7 +55,7 @@ pub(crate) fn print_value(
     value: &str,
 ) -> Result<String, PrintFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
-        ModuleFault::Stopped => PrintFailure::Stopped,
+        ModuleFault::Stopped(_) => PrintFailure::Stopped,
         ModuleFault::Broken(diagnostics) => PrintFailure::NotAPrinter(diagnostics),
     })?;
     let Some(printer) = module.printer() else {

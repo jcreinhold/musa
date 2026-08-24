@@ -322,6 +322,59 @@ impl Spend {
     }
 }
 
+/// Which run a δ-unfolding memo was filled by, and how much of that run's
+/// solving had happened when it was.
+///
+/// [`crate::kernel::eval`]'s memo is sound only while no metavariable
+/// *reachable from the neutral it is on* has been solved since the cell was
+/// filled, and this pair is how that premise is decided in one comparison.
+/// Equal stamps mean the same run filled and read the cell and solved nothing
+/// in between, which implies the premise and is what the memo needs.
+///
+/// **Both halves, and the run half is the one that was missing.** Until this
+/// type existed the stamp was a single process-wide count of every solution
+/// anywhere, which decides the premise correctly and decides much more besides:
+/// a metavariable solved by an *unrelated* run — a second document compiled on
+/// another thread of the same process — invalidated memos it could not reach,
+/// so how much work a program cost depended on what else the process happened
+/// to be doing. That is the one thing this module's own header forbids: "the
+/// same terms exhaust at the same operation on every host — which is what makes
+/// acceptance a property of the language rather than of the machine that ran
+/// it." Measured, it was not a nuisance but a wall. Compiling
+/// `examples/staff-page.musa` alone took 4,434 memo hits and no stale reads,
+/// and peaked at 191,781 of [`Budget::LANGUAGE`]'s 200,000 steps; the same
+/// compile run beside `musa-compiler`'s other library tests took 2,745 hits
+/// and 2,043 stale reads, and the re-unfolding those cost is far more than the
+/// four percent of margin the file has — so `cargo test -p musa-compiler
+/// --lib` refused a file that `cargo nextest`, which gives every law its own
+/// process, compiles.
+///
+/// **Scoping it to the run costs nothing.** Of those 4,434 hits, the number
+/// that read a cell some *other* meter had filled is zero: a memo pays for
+/// itself inside the run that fills it, so a stamp that only sees its own run's
+/// solutions keeps every hit the process-wide one kept.
+///
+/// **What it rests on.** A cell is only ever read by the run that filled it, so
+/// the only way a solution could go unnoticed is for a second run to be live
+/// over the same values at the same time and to solve a metavariable one of
+/// those cells depends on. It cannot: a cell shared between two runs is on a
+/// neutral built entirely by the elaboration that produced the shared values —
+/// `Neutral::eliminated` gives a neutral a fresh cell for every spine, so a
+/// cell a later run could reach is never one that run put its own arguments
+/// into — and that elaboration's metavariables were all solved or reported when
+/// it ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Stamp {
+    run: u64,
+    solved: u64,
+}
+
+/// How many meters this process has built.
+///
+/// Only ever read to name one, so wrapping would need 2⁶⁴ facade calls in one
+/// process before two live runs could share a number.
+static RUNS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// One operation's spend.
 ///
 /// Built per facade call rather than carried in the context: limits are
@@ -333,16 +386,47 @@ pub(crate) struct Meter {
     steps: u64,
     quoted_nodes: u64,
     nesting: u64,
+    /// Which run this is, for [`Stamp`].
+    run: u64,
+    /// How many metavariables this run has solved, for [`Stamp`].
+    ///
+    /// Here rather than in a process-wide counter for the reason this struct's
+    /// own doc comment gives about spends, one level down: a run's memos must
+    /// be invalidated by that run's solutions and by nothing else.
+    solved: u64,
 }
 
 impl Meter {
-    pub(crate) const fn new(budget: Budget) -> Self {
+    pub(crate) fn new(budget: Budget) -> Self {
         Self {
             budget,
             steps: 0,
             quoted_nodes: 0,
             nesting: 0,
+            run: RUNS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            solved: 0,
         }
+    }
+
+    /// Where this run stands in its own solving history.
+    ///
+    /// `kernel::eval` fills a memo with this and reads one back only at the
+    /// same value; see [`Stamp`] for what that decides.
+    pub(crate) const fn stamp(&self) -> Stamp {
+        Stamp {
+            run: self.run,
+            solved: self.solved,
+        }
+    }
+
+    /// Record that this run solved a metavariable.
+    ///
+    /// [`Meta::solve`](crate::kernel::meta::Meta::solve) is the only caller and
+    /// it takes a meter for that reason: a solution that did not move the stamp
+    /// would leave every memo standing over a value that has since reduced
+    /// further, and the two halves must not be able to drift apart.
+    pub(crate) const fn solved(&mut self) {
+        self.solved = self.solved.saturating_add(1);
     }
 
     /// Charge one reduction.

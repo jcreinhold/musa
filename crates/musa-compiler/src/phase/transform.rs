@@ -73,6 +73,17 @@ pub(crate) fn expand_syntax(
 /// the stack it was linked with, where the room is a link-time setting instead.
 /// The budget does not move, so both hosts accept and refuse exactly the same
 /// programs; they differ only in what they survive.
+///
+/// **A threaded host that refuses us a thread is a third thing, and it is
+/// traced rather than passed over.** The wasm shell never had threads and
+/// arranges its room elsewhere, so taking that path says nothing; a spawn that
+/// *fails* is this obligation going unmet, and the expansion that follows runs
+/// on a stack it was not promised. It still runs — most regions are nowhere
+/// near the limit, and refusing them all would be a worse answer than the risk
+/// — but a region deep enough to earn a refusal will abort the process instead
+/// of printing one, and an abort nothing warned about reads as a compiler that
+/// crashed. `kernel::room` in `musa-calculus` carries the same event for the
+/// same reason.
 fn with_room(
     adapter_source: &str,
     imports: PhaseImports<'_>,
@@ -85,13 +96,23 @@ fn with_room(
     if !cfg!(target_family = "wasm") {
         std::thread::scope(|scope| {
             let run = || answer = Some(run_transformer(adapter_source, imports, subject.clone(), spent));
-            if let Ok(running) = std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run)
-                && let Err(panic) = running.join()
-            {
-                // A panic inside is a compiler fault. Resuming it on this side
-                // keeps it looking like one, rather than like a phase that
-                // quietly answered nothing.
-                std::panic::resume_unwind(panic);
+            match std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run) {
+                Ok(running) => {
+                    if let Err(panic) = running.join() {
+                        // A panic inside is a compiler fault. Resuming it on
+                        // this side keeps it looking like one, rather than like
+                        // a phase that quietly answered nothing.
+                        std::panic::resume_unwind(panic);
+                    }
+                }
+                Err(refused) => tracing::warn!(
+                    room,
+                    nesting = crate::phase_budget::NESTING,
+                    error = %refused,
+                    "the host would not give us the stack the nesting limit derives; this expansion \
+                     runs on the caller's own stack, where a region deep enough to be refused may \
+                     abort the process instead of earning the refusal"
+                ),
             }
         });
     }
@@ -105,7 +126,7 @@ fn run_transformer(
     spent: &mut musa_calculus::Spend,
 ) -> Result<crate::quote::Syntax, ExpansionFailure> {
     let module = read_adapter_module(adapter_source, imports).map_err(|fault| match fault {
-        ModuleFault::Stopped => ExpansionFailure::Stopped,
+        ModuleFault::Stopped(limit) => ExpansionFailure::Stopped(limit),
         ModuleFault::Broken(diagnostics) => ExpansionFailure::NotATransformer(diagnostics),
     })?;
     *spent = spent.and(module.spend());
@@ -113,7 +134,7 @@ fn run_transformer(
         .run("expand", vec![region(subject)])
         .map_err(|unrun| match unrun {
             Unrun::Undeclared => ExpansionFailure::NotATransformer(vec![not_the_operation("expand")]),
-            Unrun::Stopped => ExpansionFailure::Stopped,
+            Unrun::Stopped(limit) => ExpansionFailure::Stopped(limit),
             Unrun::Refused(diagnostics) => ExpansionFailure::NotATransformer(diagnostics),
             Unrun::NoAnswer => ExpansionFailure::NoAnswer,
         })?;

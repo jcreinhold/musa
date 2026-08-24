@@ -790,7 +790,9 @@ fn adapter(source: &str) -> Vec<String> {
             said.dedup();
             said
         }
-        Err(crate::phase::ModuleFault::Stopped) => vec!["Stopped: a compilation limit was crossed".to_owned()],
+        Err(crate::phase::ModuleFault::Stopped(limit)) => {
+            vec![format!("Stopped: a compilation limit was crossed: {limit}")]
+        }
     }
 }
 

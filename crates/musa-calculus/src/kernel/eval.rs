@@ -30,7 +30,7 @@
 use std::sync::{Arc, OnceLock};
 
 use crate::kernel::base::{Answer, Builtin, Datum};
-use crate::kernel::budget::Meter;
+use crate::kernel::budget::{Meter, Stamp};
 use crate::kernel::case_tree::Matched;
 use crate::kernel::context::Globals;
 use crate::kernel::error::{CoreError, Malformed};
@@ -140,8 +140,8 @@ enum Frame {
     /// The incoming value is what a definition's spine replayed to; record it
     /// on the neutral that asked, so the replay happens once.
     Unfolding {
-        cell: Arc<OnceLock<(u64, Value)>>,
-        stamp: u64,
+        cell: Arc<OnceLock<(Stamp, Value)>>,
+        stamp: Stamp,
     },
     /// The incoming value is `built`'s last argument, opened; decide what the
     /// elimination does now that it can be looked at.
@@ -627,7 +627,7 @@ fn opening(
     let Some((body, spine, cell)) = folded(&value) else {
         return Ok(Step::Value(value));
     };
-    let stamp = crate::kernel::meta::solutions();
+    let stamp = meter.stamp();
     if let Some(cell) = cell.as_ref()
         && let Some(&(filled, ref answer)) = cell.get()
         && filled == stamp
@@ -668,7 +668,7 @@ fn solution_of(value: &Value) -> Option<(Value, Vec<Elim>)> {
 /// re-ran the whole replay. See prompt 165b and
 /// `../../../../docs/notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md`.
 #[expect(clippy::type_complexity, reason = "one destructuring, read at one call site")]
-fn folded(value: &Value) -> Option<(Value, Vec<Elim>, Option<Arc<OnceLock<(u64, Value)>>>)> {
+fn folded(value: &Value) -> Option<(Value, Vec<Elim>, Option<Arc<OnceLock<(Stamp, Value)>>>)> {
     let Form::Neutral(ref neutral) = value.form else {
         return None;
     };
@@ -1331,57 +1331,43 @@ mod tests {
     /// a pointer into a heap.
     #[test]
     fn a_folded_neutral_unfolds_once_and_answers_the_same_thing() {
-        // Retried until the two forces sit inside one stamp. The guard is
-        // process-wide, `cargo test` runs this module's laws as threads of one
-        // process, and the law beneath this one solves a metavariable — so an
-        // unlucky interleaving invalidates the cell between the two forces and
-        // this would be measuring the guard rather than the memo. Retrying is
-        // the honest reading of "forced twice, with no solution in between".
-        for _ in 0..64 {
-            let cx = Cx::with_budget(Budget::LANGUAGE);
-            let mut meter = cx.meter();
-            let neutral = folded(120);
-            let stamp = crate::kernel::meta::solutions();
+        let cx = Cx::with_budget(Budget::LANGUAGE);
+        let mut meter = cx.meter();
+        let held = Value::neutral(folded(120));
 
-            let held = Value::neutral(neutral);
-            let first = opened(&mut meter, &held)
-                .expect("a definition unfolds")
-                .expect("a definition");
-            let after_first = meter.spent().steps;
-            let second = opened(&mut meter, &held)
-                .expect("a definition unfolds")
-                .expect("a definition");
-            let after_second = meter.spent().steps;
+        let first = opened(&mut meter, &held)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let after_first = meter.spent().steps;
+        let second = opened(&mut meter, &held)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let after_second = meter.spent().steps;
 
-            if crate::kernel::meta::solutions() != stamp {
-                continue;
-            }
-            assert!(
-                universe(&first) && universe(&second),
-                "the same neutral unfolds to the same value, and it is `Type 0`"
-            );
-            assert!(after_first >= 120, "the first force does the work: {after_first} steps");
-            assert_eq!(
-                after_second,
-                after_first,
-                "the second force reads the cell: {} steps",
-                after_second.saturating_sub(after_first)
-            );
-            return;
-        }
-        panic!("something in this process solves a metavariable on every attempt");
+        assert!(
+            universe(&first) && universe(&second),
+            "the same neutral unfolds to the same value, and it is `Type 0`"
+        );
+        assert!(after_first >= 120, "the first force does the work: {after_first} steps");
+        assert_eq!(
+            after_second,
+            after_first,
+            "the second force reads the cell: {} steps",
+            after_second.saturating_sub(after_first)
+        );
     }
 
     /// The soundness condition, stated as what it actually guards.
     ///
     /// A memo is unsound over an unsolved metavariable: the spine or the
     /// definition's value may mention one, and the answer changes when the
-    /// solution arrives. The test is a process-wide stamp bumped in
-    /// [`Meta::solve`] — equal stamps mean no solution arrived in between —
-    /// which is conservative in the safe direction: *any* solution anywhere
-    /// invalidates *every* memo, and the only cost of being wrong is the work
-    /// being done again. That is what this pins: after a solution, the same
-    /// neutral is unfolded again rather than answered from the cell.
+    /// solution arrives. The test is
+    /// [`Stamp`](crate::kernel::budget::Stamp), moved in [`Meta::solve`] —
+    /// equal stamps mean this run solved nothing in between — which is
+    /// conservative in the safe direction: *any* solution this run makes
+    /// invalidates *every* memo it holds, and the only cost of being wrong is
+    /// the work being done again. That is what this pins: after a solution,
+    /// the same neutral is unfolded again rather than answered from the cell.
     #[test]
     fn a_solved_metavariable_makes_a_forced_value_unfold_again() {
         let cx = Cx::with_budget(Budget::LANGUAGE);
@@ -1397,7 +1383,8 @@ mod tests {
         // not ask *which* metavariable, because asking would mean walking the
         // value to find out.
         let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
-        meta.solve(type0()).expect("an unsolved metavariable takes a solution");
+        meta.solve(&mut meter, type0())
+            .expect("an unsolved metavariable takes a solution");
 
         let after = opened(&mut meter, &held)
             .expect("a definition unfolds")
@@ -1411,6 +1398,56 @@ mod tests {
         assert!(
             second.saturating_sub(first) >= 120,
             "the stale memo was not read: {} steps",
+            second.saturating_sub(first)
+        );
+    }
+
+    /// The other half of that condition, and the half a process-wide stamp got
+    /// wrong.
+    ///
+    /// *Any* solution invalidating *every* memo is only conservative while
+    /// "every memo" means this run's. Counted across the process it also meant
+    /// the memos of runs that cannot reach the metavariable at all, so a
+    /// compile paid for whatever else the process was doing — which is
+    /// `budget.rs`'s "the same terms exhaust at the same operation on every
+    /// host", broken. It broke it in practice too: this crate's laws run as
+    /// threads of one process under `cargo test`, and the solutions they made
+    /// while `musa-compiler`'s corpus law was compiling
+    /// `examples/staff-page.musa` re-unfolded enough of it to cross
+    /// [`Budget::LANGUAGE`] and refuse a file that compiles. `cargo nextest`,
+    /// which this repository runs by default, gives every law its own process
+    /// and so never showed it.
+    #[test]
+    fn another_runs_solution_leaves_this_runs_memo_alone() {
+        let cx = Cx::with_budget(Budget::LANGUAGE);
+        let mut meter = cx.meter();
+        let held = Value::neutral(folded(120));
+
+        let before = opened(&mut meter, &held)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let first = meter.spent().steps;
+
+        // A second run, solving an unknown of its own — what another document
+        // being compiled beside this one amounts to.
+        let mut elsewhere = cx.meter();
+        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
+        meta.solve(&mut elsewhere, type0())
+            .expect("an unsolved metavariable takes a solution");
+
+        let after = opened(&mut meter, &held)
+            .expect("a definition unfolds")
+            .expect("a definition");
+        let second = meter.spent().steps;
+
+        assert!(
+            universe(&before) && universe(&after),
+            "the memo answers what re-unfolding would"
+        );
+        assert_eq!(
+            second,
+            first,
+            "another run's solution is not this run's: {} steps",
             second.saturating_sub(first)
         );
     }

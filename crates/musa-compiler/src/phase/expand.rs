@@ -30,14 +30,24 @@ pub(crate) enum ExpansionFailure {
         /// has no text under it.
         at: Option<SourceSpan>,
     },
-    /// A compilation limit was crossed before the run finished.
+    /// A compilation limit was crossed before the run finished, and the
+    /// limit's own sentence about it.
     ///
     /// Not a fault in the adapter and not a fault in the region: a transformer
     /// is total, so this is the meter stopping a run rather than a run that
     /// would not have stopped. It is its own case because
     /// `docs/rules/language/00-semantics.md` §2 makes the difference matter —
     /// a stop must not read as a file that is not well-typed.
-    Stopped,
+    ///
+    /// **It carries the sentence because §4 requires one.**
+    /// `docs/rules/language/02-core-calculus.md` §4 says a refusal names "the
+    /// operation, metric, attempted amount, and limit", and
+    /// [`ResourceError`](musa_calculus::ResourceError) is built holding all
+    /// four — then this variant used to drop them and leave the reader a bare
+    /// "crossed a compilation limit". Which limit, and by how much, is the
+    /// difference between a file that wants one fewer bar and a file that
+    /// wants a different adapter.
+    Stopped(String),
     /// The transformer did not check as `Syntax -> Syntax`.
     NotATransformer(Vec<Diagnostic>),
     /// It checked and then did not answer — a budget crossed, or the evaluator

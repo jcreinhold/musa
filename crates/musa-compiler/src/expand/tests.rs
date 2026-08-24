@@ -371,7 +371,11 @@ fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
         "std::adapters::doubled",
         site,
     );
-    let stopped = stopped_or_refused(&crate::phase::ExpansionFailure::Stopped, "std::adapters::doubled", site);
+    let stopped = stopped_or_refused(
+        &crate::phase::ExpansionFailure::Stopped("exceeded the budget for reduction steps at 8 of 7".to_owned()),
+        "std::adapters::doubled",
+        site,
+    );
     assert_eq!(refused.code, Code::Expansion);
     assert_eq!(broken.code, Code::Expansion);
     assert_eq!(stopped.code, Code::ResourceLimit, "a stop is a limit and says so");
@@ -1026,19 +1030,33 @@ fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
         crate::phase::PhaseImports::bundled(),
         &nested_region(1_000),
     );
+    let crossed: Option<String> = match answered {
+        Err(crate::phase::ExpansionFailure::Stopped(ref limit)) => Some(limit.clone()),
+        Ok(_) | Err(_) => None,
+    };
     assert!(
-        matches!(answered, Err(crate::phase::ExpansionFailure::Stopped)),
+        crossed.is_some(),
         "a region too deep to read is a limit crossed, not a crash and not a malformed adapter"
     );
     // And the phase says so where the region stands, with the code that
     // means a limit rather than the one that means a broken adapter.
+    let limit = crossed.unwrap_or_default();
     let complaint = stopped_or_refused(
-        &crate::phase::ExpansionFailure::Stopped,
+        &crate::phase::ExpansionFailure::Stopped(limit.clone()),
         "std::adapters::doubled",
         SourceSpan::new(4, 9),
     );
     assert_eq!(complaint.code, Code::ResourceLimit);
     assert_eq!(complaint.primary_span(), Some(SourceSpan::new(4, 9)));
+    // §4 requires a refusal to name "the operation, metric, attempted amount,
+    // and limit". The meter builds all four; this is where they have to
+    // survive, because a bare "crossed a compilation limit" leaves a composer
+    // with nothing to act on.
+    assert!(
+        complaint.message.contains(&limit) && limit.contains(" of "),
+        "a stop carries the limit's own sentence: {}",
+        complaint.message
+    );
 }
 
 /// The limit is set where honest work still fits under it.
@@ -1066,7 +1084,7 @@ fn a_region_nested_deeper_than_anyone_writes_still_expands() {
         &nested_region(16),
     );
     assert!(
-        !matches!(answered, Err(crate::phase::ExpansionFailure::Stopped)),
+        !matches!(answered, Err(crate::phase::ExpansionFailure::Stopped(_))),
         "a region forty-eight groups deep was refused: the nesting limit is below what adapters meet"
     );
 }

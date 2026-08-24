@@ -41,6 +41,7 @@
 
 use std::sync::{Arc, OnceLock};
 
+use crate::kernel::budget::Stamp;
 use crate::kernel::context::Globals;
 use crate::kernel::list::List;
 use crate::kernel::origin::Origin;
@@ -245,12 +246,13 @@ pub(crate) struct Neutral {
     /// [`Folding::Value`] behind a [`Head::Def`] unfolds by replaying a spine,
     /// and only those neutrals pay for the cell.
     ///
-    /// The stamp is [`crate::kernel::meta::solutions`] at the moment the cell
-    /// was filled, and a hit is a hit only at the same stamp — see that
-    /// function for why. `Value` is not `PartialEq` and this field takes no
-    /// part in identity: two neutrals are the same neutral when their head and
-    /// spine agree, whatever either has been asked for.
-    pub(crate) unfolded: Option<Arc<OnceLock<(u64, Value)>>>,
+    /// The stamp is [`Meter::stamp`](crate::kernel::budget::Meter::stamp) at
+    /// the moment the cell was filled, and a hit is a hit only at the same
+    /// stamp — see [`Stamp`](crate::kernel::budget::Stamp) for why. `Value` is
+    /// not `PartialEq` and this field takes no part in identity: two neutrals
+    /// are the same neutral when their head and spine agree, whatever either
+    /// has been asked for.
+    pub(crate) unfolded: Option<Arc<OnceLock<(Stamp, Value)>>>,
 }
 
 /// What a blocked elimination is blocked on.
@@ -379,7 +381,7 @@ impl Elim {
 /// Allocating one per neutral would put an `Arc` behind every variable
 /// occurrence; allocating one per *foldable* head puts it behind exactly the
 /// neutrals [`crate::kernel::eval::unfold`] can answer about.
-fn memo_for(head: &Head) -> Option<Arc<OnceLock<(u64, Value)>>> {
+fn memo_for(head: &Head) -> Option<Arc<OnceLock<(Stamp, Value)>>> {
     matches!(*head, Head::Def(_, _, Folding::Value(_))).then(|| Arc::new(OnceLock::new()))
 }
 
@@ -483,7 +485,7 @@ impl Drop for Neutral {
 ///
 /// A value still shared elsewhere is not ours to dismantle and is dropped here
 /// as a handle, which is what [`Arc::into_inner`] answering `None` means.
-fn loosen(work: &mut Vec<Value>, spine: Vec<Elim>, unfolded: Option<Arc<OnceLock<(u64, Value)>>>) {
+fn loosen(work: &mut Vec<Value>, spine: Vec<Elim>, unfolded: Option<Arc<OnceLock<(Stamp, Value)>>>) {
     for elimination in spine {
         let Elim::App { argument, .. } = elimination;
         if let Some(value) = Arc::into_inner(argument) {

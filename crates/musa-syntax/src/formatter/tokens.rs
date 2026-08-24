@@ -3,7 +3,7 @@
 //! One concern of the `formatter` module; see its docs for the rules.
 
 use super::lists::{
-    binding_ends_its_line, breakable_list, carries_a_trailing_comma, continues_past_a_branch, ends_its_list,
+    binding_ends_its_line, breakable_list, carries_a_trailing_comma, continues_past_a_body, ends_its_list,
     halves_a_path_separator,
 };
 use super::writer::Writer;
@@ -20,14 +20,11 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
     // list's.
     let stacked = breakable_list(parent) && writer.list_breaks();
     // A lambda's braces close an expression that has more after it, so its
-    // `}` does not end the line the way a declaration's body does. A
-    // conditional's branches close the same way: what follows the consequent is
-    // `else`, and what follows the alternative is whatever the `if` was written
-    // into. Either way the brace leaves the line open for it.
-    let held = parent == SyntaxKind::BlockExpr
-        && node
-            .parent()
-            .is_some_and(|owner| owner.kind() == SyntaxKind::LambdaExpr || continues_past_a_branch(&owner));
+    // `}` does not end the line the way a declaration's body does. A match
+    // arm's body and a conditional's branches close the same way — see
+    // [`continues_past_a_body`] for what follows each. Either way the brace
+    // leaves the line open for it.
+    let held = parent == SyntaxKind::BlockExpr && node.parent().is_some_and(|owner| continues_past_a_body(&owner));
     if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
         writer.comment(text);
         return;
@@ -77,10 +74,13 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         // A block's one expression ends with no `;` to end its line, so the
         // brace that closes it asks for the line itself. A declaration's last
         // variant may be written without its trailing comma, which leaves the
-        // same brace stranded after it.
+        // same brace stranded after it — and so does a match whose last arm is
+        // a braced body, because that body holds its line open for a comma
+        // that was never written.
         if matches!(
             parent,
             SyntaxKind::BlockExpr
+                | SyntaxKind::MatchExpr
                 | SyntaxKind::QuoteExpr
                 | SyntaxKind::QuotePattern
                 | SyntaxKind::DataDecl

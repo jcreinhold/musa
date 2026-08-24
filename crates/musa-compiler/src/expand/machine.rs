@@ -201,10 +201,10 @@ pub(crate) fn stopped_or_refused(failure: &crate::phase::ExpansionFailure, path:
                 .help("the adapter pointed at a node it built rather than at one it was given, so the whole region is as close as the report can get"),
         };
     }
-    if matches!(*failure, crate::phase::ExpansionFailure::Stopped) {
+    if let crate::phase::ExpansionFailure::Stopped(ref limit) = *failure {
         return Diagnostic::error(
             Code::ResourceLimit,
-            format!("expanding this region with `{path}` crossed a compilation limit"),
+            format!("expanding this region with `{path}` crossed a compilation limit: {limit}"),
         )
         .at(site, "this region")
         .help("the adapter is total, so this is a limit rather than a loop: give the region less to read");
@@ -213,7 +213,9 @@ pub(crate) fn stopped_or_refused(failure: &crate::phase::ExpansionFailure, path:
         site,
         format!("`{path}` did not expand this region"),
         match *failure {
-            crate::phase::ExpansionFailure::Stopped | crate::phase::ExpansionFailure::Refused { .. } => "handled above",
+            crate::phase::ExpansionFailure::Stopped(_) | crate::phase::ExpansionFailure::Refused { .. } => {
+                "handled above"
+            }
             crate::phase::ExpansionFailure::NotATransformer(_) => {
                 "the adapter's `expand` is not a transformer — it must take one region and answer with one"
             }

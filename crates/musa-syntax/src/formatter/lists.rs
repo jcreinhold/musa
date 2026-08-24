@@ -268,16 +268,25 @@ fn line_tail(list: &SyntaxNode, enclosing: &[bool], layout: &Layout) -> usize {
     width
 }
 
-/// Whether a branch of `owner` continues the line it is written on rather than
-/// ending it.
+/// Whether a braced body written directly under `owner` continues the line it
+/// is written on rather than ending it.
 ///
-/// Neither branch of a conditional ends anything: `else` follows the consequent
-/// and closes back onto its brace, and whatever the whole `if` was written into
-/// — a `,`, a `;`, nothing — follows the alternative. A ladder therefore reads
-/// `} else if … {` down one column instead of putting each `else` on a line of
-/// its own, and the comma after a conditional arm stays on the arm.
-pub(super) fn continues_past_a_branch(owner: &SyntaxNode) -> bool {
-    owner.kind() == SyntaxKind::IfExpr
+/// Three owners, and one reason. A lambda's body is the last thing in an
+/// *expression*, not the last thing on a line: `map(fn (x) { f(x) }, xs)`
+/// continues with a comma. A match arm's body is that same expression in that
+/// same position — what follows its `}` is the arm's own `,`, and it is the
+/// `MatchExpr` that ends the line there, so a brace that ended it first would
+/// strand the comma on a line by itself. And neither branch of a conditional
+/// ends anything: `else` follows the consequent and closes back onto its
+/// brace, and whatever the whole `if` was written into — a `,`, a `;`, nothing
+/// — follows the alternative. A ladder therefore reads `} else if … {` down one
+/// column instead of putting each `else` on a line of its own, and the comma
+/// after a conditional arm stays on the arm.
+pub(super) fn continues_past_a_body(owner: &SyntaxNode) -> bool {
+    matches!(
+        owner.kind(),
+        SyntaxKind::LambdaExpr | SyntaxKind::MatchArm | SyntaxKind::IfExpr
+    )
 }
 
 /// Whether `child` is a consequent of the conditional `owner` — a branch that

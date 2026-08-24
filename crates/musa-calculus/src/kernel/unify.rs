@@ -248,7 +248,7 @@ pub(crate) fn assign(meter: &mut Meter, one: &Value, other: &Value) -> Result<Ou
         return Err(Malformed::Cyclic(pattern.meta.id()).into());
     }
     let solution = abstracted(meter, &pattern.meta, body)?;
-    pattern.meta.solve(solution)?;
+    pattern.meta.solve(meter, solution)?;
     Ok(Outcome::Solved)
 }
 
@@ -683,13 +683,16 @@ mod tests {
         // `λ_. y`, where `y` is a variable at a level the unknown's scope does
         // not reach. Applying it to the scope's own binder leaves `y` standing.
         let escapee = Value::var(HERE, Level(7), Arc::new(Value::new(HERE, Form::Universe(Sort::ZERO))));
-        meta.solve(Value::new(
-            HERE,
-            Form::Lam(Closure {
-                env: Env::EMPTY.push(escapee),
-                body: Term::var(HERE, Index(1)),
-            }),
-        ))
+        meta.solve(
+            &mut cx.meter(),
+            Value::new(
+                HERE,
+                Form::Lam(Closure {
+                    env: Env::EMPTY.push(escapee),
+                    body: Term::var(HERE, Index(1)),
+                }),
+            ),
+        )
         .expect("a fresh unknown is unsolved");
         let under = cx.assumed(HERE, Arc::new(unit_type()));
         let goal = Value::new(HERE, Form::Universe(Sort::ZERO));
@@ -704,13 +707,16 @@ mod tests {
     fn an_occurrence_outside_the_scope_its_unknown_claims_is_refused() {
         let cx = Cx::new();
         let meta = Meta::new(3, HERE, one_binder(), 1, cx.globals().clone());
-        meta.solve(Value::new(
-            HERE,
-            Form::Lam(Closure {
-                env: Env::EMPTY,
-                body: Term::universe(HERE, Sort::ZERO),
-            }),
-        ))
+        meta.solve(
+            &mut cx.meter(),
+            Value::new(
+                HERE,
+                Form::Lam(Closure {
+                    env: Env::EMPTY,
+                    body: Term::universe(HERE, Sort::ZERO),
+                }),
+            ),
+        )
         .expect("a fresh unknown is unsolved");
         // The context has no binders at all, and the unknown's scope claims one.
         let goal = Value::new(HERE, Form::Universe(Sort::ZERO));
