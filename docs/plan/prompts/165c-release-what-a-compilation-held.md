@@ -1,7 +1,7 @@
 ---
 id: 165c
 slug: release-what-a-compilation-held
-status: pending
+status: done
 depends_on: [165b, 166b]
 phase: 3
 ---

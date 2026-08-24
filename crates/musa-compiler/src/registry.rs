@@ -293,6 +293,37 @@ pub(crate) fn argument(
 /// than panicked on for the reason `musa-calculus` returns
 /// [`musa_calculus::Malformed`].
 pub(crate) fn owned() -> Result<Cx, ElabError> {
+    /// The prelude, built once.
+    ///
+    /// **Not a speed cache: a leak fix.** [`build`] is a pure function of this
+    /// compiler's own tables, so a second call answers a second context equal to
+    /// the first — and that second context is never freed. `Globals` is an
+    /// `Arc<Tables>`; `Tables` holds an `Arc<Defined>`; a `Defined`'s type is a
+    /// `Value`; a `Value` that is a `Pi` captures an `Env` in its codomain
+    /// closure; and an `Env` carries the same `Globals`. Every definition whose
+    /// type is a function type closes that loop, which is nearly all of them,
+    /// and `Arc` does not collect cycles. Measured before this cache: 257,208
+    /// live bytes retained per `compile` call, the same figure for a ninety-byte
+    /// piece as for `tests/fixtures/events-pressure.musa`, and zero for a source
+    /// that does not parse.
+    ///
+    /// Building it once turns a per-compilation leak into a process-lifetime
+    /// table, which is what a prelude is. Weakening the back-edge instead would
+    /// mean naming an owner that outlives every value built under the table, and
+    /// `musa_calculus`'s own doc comment argues at length that a closure must
+    /// resolve against the table it was *built* under — see prompt 165c.
+    ///
+    /// Sharing the prelude's values across compilations is only sound because
+    /// their δ-unfolding memo cells are stamped per run rather than per process
+    /// (prompt 166b): a cell one compilation fills is never a hit for another,
+    /// whatever the two are doing at the time.
+    static PRELUDE: LazyLock<Result<Cx, ElabError>> = LazyLock::new(build);
+
+    PRELUDE.clone()
+}
+
+/// The prelude, built. [`owned`] is the caller, once per process.
+fn build() -> Result<Cx, ElabError> {
     let mut cx = Cx::new();
     for declaration in crate::prelude::structural() {
         let group = musa_calculus::declare(&cx, &declaration)?;

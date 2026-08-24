@@ -59,6 +59,7 @@ mod ramps;
 mod realize;
 mod record_literal_laws;
 mod resource_validation;
+mod retention_laws;
 mod scale_context_laws;
 mod schema_generation_laws;
 mod serial_laws;
