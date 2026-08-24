@@ -13,10 +13,10 @@ phase: 3
 Prompt [162h](162h-literal-parts.md) gives `c#5`, `M3` and `3/8` the parts the lexer found, in the CST, and stops at the
 expansion phase's door — because the phase's `Syntax` has four shapes and none of them is *a node that is one lexeme*. A
 group is written back with one space between siblings, so a composite literal grouped as one prints as `c # 5`, and
-`as_expression` refuses the composer's own pitch. That is not a hypothetical: 162h left `quote at here { c5/4 }`
-building a layout group of three parts, and no adapter writes one today, which is the only reason the suite is green.
-Give the phase the fifth shape, and the gate that keeps it honest: a fused group's text must lex as exactly one token of
-one of the three composite kinds.
+`as_expression` refuses the composer's own pitch. That is not a hypothetical: 162h left `quote at here { c#5 }` building
+a layout group of its three parts, and no adapter writes one today, which is the only reason the suite is green. Give
+the phase the fifth shape, and the gate that keeps it honest: a fused group's text must lex as exactly one token of one
+of the three composite kinds.
 
 **The reading side is [162hb](162hb-a-region-arrives-in-parts.md)'s**, and the Design below says why: a region's literal
 cannot become a group until the adapter that reads regions can read one.
@@ -72,9 +72,9 @@ now representable for exactly the three literals whose lexeme has parts.
 
 **A quote body that holds a literal builds one, and that is what this prompt turns on.** The template walk and the
 region reader ask one function what a node's delimiter is, and it answers `Fused` for the three kinds. On the template
-side that repairs a live regression: since 162h, `quote at here { c5/4 }` builds a layout group of `c`, `5`, `/`, `4`
-and prints `c 5 / 4`, which the parser reads as four things. Nothing in `stdlib/` quotes a literal today, so nothing
-caught it; a law here does.
+side that repairs a live regression: since 162h, `quote at here { c#5 }` builds a layout group of `c`, `#` and `5` and
+prints `c # 5`, which the parser reads as three things. Nothing in `stdlib/` quotes a literal today, so nothing caught
+it; a law here does.
 
 **Reading waits for the reader that must read it.** `read_node` keeps handing a region's composite literal over as one
 token. Turning it over is one line and it was tried: 37 tests fail, because `staff.musa`'s `entering` answers `Ignoring`
@@ -113,10 +113,10 @@ the third answer, beside `is_composite_literal`, and a law in `musa-syntax` hold
   it now checks; the same law in `crates/musa-compiler/tests/suite/quote_category_laws.rs` has an adapter write one.
 - `docs/rules/language/11-quotation.md` §2 gains the fifth shape and the gate, written as §2 writes its other rules —
   what it is, what it is for, and what it does not re-open.
-- Laws in `musa-compiler`: `quote at here { c5/4 }` builds a fused group and prints back the four characters it was
-  written with, for a pitch, an interval and a rational; a built fused group that assembles `c#x5` is refused and the
-  message names it; a fused group assembling `abc` is refused *because `Identifier` is not one of the three*, which is
-  §2's rule restated as a test; a fused group built from the parts of a real pitch passes `as_expression`.
+- Laws in `musa-compiler`: `quote at here { c#5 }` builds a fused group and prints back the characters it was written
+  with, for a pitch, an interval and a rational; a built fused group that assembles `c#x5` is refused and the message
+  names it; a fused group assembling `abc` is refused *because `Identifier` is not one of the three*, which is §2's rule
+  restated as a test; a fused group built from the parts of a real pitch passes `as_expression`.
 
 ## Check
 
