@@ -387,6 +387,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 162f | lazy-methods | 3 | An `if` evaluates both branches, so the staff adapter has a classifier the domain never asked for |
 | 162g | value-literals-as-syntax | 3 | `dot_count` is four quotes for four numbers, and `doubled` hand-allocates thirteen roles |
 | 162h | literal-parts | 3 | `c#5` and `3/8` are one token each, so a consumer re-parses what the lexer already found |
+| 162ha | a-literal-is-one-lexeme | 3 | The phase has four node shapes and none is one lexeme, so a spliced `c#5` prints as `c # 5` |
 | 162i | a-field-is-a-member | 3 | `g.compose(a, b)` is refused because `.` changes meaning when a `(` follows it |
 | 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed — after 164 builds them |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind methods and namespaces |
