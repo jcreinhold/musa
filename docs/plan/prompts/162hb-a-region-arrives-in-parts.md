@@ -15,7 +15,8 @@ Prompt [162h](162h-literal-parts.md) gave `c#5`, `M3` and `3/8` the parts the le
 back with nothing between its children. What neither did is hand a *region's* literal over in parts, because the one
 adapter that reads regions dispatches on `TokenKind.PitchLiteral` and would stop recognizing a note the day the token
 became a group. Turn the reading over and move `stdlib/src/adapters/staff.musa` onto it in the same commit, which is
-what makes `time 4/4` writable and the tie comparable by what was written rather than by a reduced value.
+what makes `time 4/4` writable: the numerator and the denominator arrive apart, so `4/4` is no longer the `1/1` it
+reduces to.
 
 ## Read
 
@@ -58,18 +59,35 @@ already answers `Fused` for a composite literal — 162ha put it there for the q
 accidental and the octave as ordinary token children with ordinary paths. No new operation, and nothing the fold did not
 already reveal.
 
-**The adapter meets a lexeme where it met a token.** `entering` grows the case it lacks, and a fused group is *not*
-ignored: its parts are read into the spelling the adapter already dispatches on, so the note path is the note path it
-already is. What changes underneath is what the adapter may then ask — a pitch's letter apart from its accidental, and a
-rational's numerator apart from its denominator — and two places take it up:
+**The adapter meets a lexeme where it met a token.** A fused group arrives at the traversal's group branch with its
+parts as children, and it is intercepted there *before* that branch decides anything else: the parts are folded into the
+kind and the spelling the adapter already dispatches on, and what comes out is handed to the very path a token took, so
+the note path is the note path it already is. The kind comes from the parts' own kinds — a `PitchLetter` means a pitch,
+a `RationalNumerator` means a rational — because a fused group has no kind of its own and its parts are what the lexer's
+own pattern found.
+
+The interception cannot live in `entering`. That function is consulted only in a body, and a chord's brackets hold
+pitches while a form's parentheses hold a rational, so all three states meet a fused group and all three have to meet it
+as a lexeme. What changes underneath is what the adapter may then ask — a pitch's letter apart from its accidental, and
+a rational's numerator apart from its denominator — and one place takes it up:
 
 1. **`time 4/4`.** The file-head's own note says why `time (4, 4)` is two numbers, and the reason was that
    `syntax_number` hands back a reduced `Ratio`, so `4/4` and `1/1` are one value. The numerator and the denominator
    arrive apart now, so the written form is readable, and `time (4, 4)` stays admitted beside it rather than being
    replaced — a staff already written is a staff that still reads.
-2. **The tie.** A tie compares the note it joins to the note that sounds next, and it compares spellings because a
-   spelling was all the adapter could see. With the parts it compares letter, accidental and octave, so `f5` tied to
-   `f#5` is refused for the reason it is wrong — a different accidental — and the diagnostic says which part differs.
+
+   Reading them apart needs one thing of the reading operation: a `RationalNumerator` spells a numeral and
+   `SyntaxOp::Number` refused it, because the operation asked whether the *lexer* called the lexeme a number and a part
+   is minted by the parser. It answers for a part that spells one, by the same argument that put the part kinds in the
+   phase's `TokenKind` — an adapter that can reach a numerator and cannot read the number it spells has been handed half
+   an operation. The question is self-limiting rather than a list: a part whose text is not a numeral answers `None` by
+   failing to parse, so `PitchLetter` needs no case of its own.
+
+The tie is **not** the second place, though it reads like one. A tie compares the note it joins to the note that sounds
+next by their spellings, and the comment says that is "all this adapter can see". The parts partition the lexeme, so
+comparing the two whole spellings *is* comparing their parts, and the verdict was already right: `f5` tied to `f#5` is
+refused, for the reason it is wrong. What parts would buy is a *message* naming which part differs, and that is a
+sentence, not a verdict — Stop keeps it out. The comment is corrected; the code is not.
 
 **What the parts do not buy.** They do not make a splice able to stand inside a literal: `$letter#5` is four tokens to
 the lexer and there is no `PitchLiteral` for the parser to split, which 162ha measured and recorded. They do not give
@@ -84,7 +102,8 @@ gate honest about what has happened to the file since it ran.
 
 - `read_node` reads the three composite literal nodes as fused groups, and 162ha's deferral comment comes out.
 - `read_region`'s doc comment says what an adapter now receives.
-- `SyntaxOp::Number` reads a fused group as the lexeme its parts spell, so `c5(3/8)` still names an exact span.
+- `SyntaxOp::Number` reads a fused group as the lexeme its parts spell, so `c5(3/8)` still names an exact span, and
+  reads a part that spells a numeral as that numeral, so `4/4`'s two numbers are two numbers.
 - `stdlib/src/adapters/staff.musa` reads a fused group in all three of its states, and every existing law in
   `crates/musa-compiler/tests/suite/staff_expansion_laws.rs` and `staff_writing_laws.rs` passes **unchanged**.
 - `time 4/4` is admitted by the staff adapter, beside `time (4, 4)`, and the file-head's paragraph about why it could
