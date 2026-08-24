@@ -8,7 +8,7 @@
 //! the representation; these check that the checker, the evaluator, and the
 //! expansion gate all agree with them on a program.
 //!
-//! Four laws, and they are different in kind:
+//! Five laws, and they are different in kind:
 //!
 //! - **Forgetting is directional.** A `Syntax<TokenTree>` position accepts a
 //!   certified expression, and a `Syntax<Expr>` position refuses a tree
@@ -17,13 +17,17 @@
 //!   exactly when the tree prints as source the ordinary parser reads as an
 //!   expression — measured against `musa_syntax::parse` itself rather than
 //!   against a second opinion about what an expression is.
-//! - **The phase can name every token kind the lexer produces.** Generated
-//!   from `musa-syntax`'s own table, so a kind the lexer gains and the
-//!   phase does not is a failure here rather than a silent gap in an
-//!   adapter's dispatch.
+//! - **The phase can name every kind a token can have.** Generated from
+//!   `musa-syntax`'s own table, so a kind the lexer gains and the phase does
+//!   not is a failure here rather than a silent gap in an adapter's dispatch —
+//!   and the parts the parser mints from a composite literal's spelling are
+//!   nameable beside them.
 //! - **A derived place is its three components.** Two construction sites
 //!   reading one input node are two places; one construction site used twice
 //!   is one place, and the gate says so.
+//! - **A group that says it is one lexeme is held to it.** The gate lexes what
+//!   a fused group spells, and its refusal names the text and what the reader
+//!   made of it.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -248,8 +252,13 @@ fn the_phase_can_name_every_token_kind_the_lexer_produces() {
     // `musa-syntax` gains is a name an adapter may write the day it appears,
     // because the phase's case set is generated from that table and not
     // maintained next to it.
+    //
+    // A part the parser mints from a composite literal's spelling is nameable
+    // too, and for the same reason it is a name at all: an adapter that can
+    // reach a numerator and cannot say `TokenKind.RationalNumerator` about it
+    // has been handed half an operation.
     let named: Vec<String> = musa_syntax::SyntaxKind::all()
-        .filter(|kind| musa_syntax::TokenClass::of(*kind).is_some())
+        .filter(|kind| musa_syntax::TokenClass::of(*kind).is_some() || kind.is_literal_part())
         .map(|kind| format!("    let {}_ = TokenKind.{kind:?};", format!("{kind:?}").to_lowercase()))
         .collect();
     let module = probe(&format!(
@@ -325,5 +334,41 @@ fn one_construction_site_used_twice_is_one_place() {
     assert!(
         found.iter().any(|error| error.contains("not a well-formed expression")),
         "two nodes at one derived place went unreported: {found:?}"
+    );
+}
+
+#[test]
+fn a_group_that_says_it_is_one_lexeme_is_told_what_it_actually_spells() {
+    // `11-quotation.md` §2's fused group, refused from the outside, and the
+    // half a typed refusal exists for: the message has to say which mistake was
+    // made. `c#x5` is a letter, an accidental and something that is not an
+    // octave, so the reader makes three tokens of it and the diagnostic says
+    // both the text and the count — the sentence a transformer author needs in
+    // order to look at the part that is wrong.
+    let module = probe(
+        r##"
+    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+        Ok(syntax_fold_from_leaves(
+            fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
+            fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
+            fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), name) },
+            fn (here, delimiter, children) {
+                syntax_group(syntax_built(here, 3, 0), Delimiter.Fused, [
+                    syntax_token(syntax_built(here, 4, 0), TokenKind.PitchLetter, "c"),
+                    syntax_token(syntax_built(here, 5, 0), TokenKind.PitchAccidental, "#"),
+                    syntax_token(syntax_built(here, 6, 0), TokenKind.PitchOctave, "x5"),
+                ])
+            },
+            region,
+        ))
+    };
+"##,
+    );
+    let found = errors("c4", &module);
+    assert!(
+        found
+            .iter()
+            .any(|error| error.contains("`c#x5`") && error.contains("3 tokens")),
+        "a fused group that is not one lexeme was not told what it spells: {found:?}"
     );
 }

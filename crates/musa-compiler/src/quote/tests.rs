@@ -265,6 +265,96 @@ fn a_conflicting_binder_is_refused_by_name() {
     );
 }
 
+/// A fused group whose children spell one lexeme is admitted, and the three
+/// kinds are the three.
+///
+/// Built here rather than read, because a read region still hands its literals
+/// over whole (prompt 162hb) and the claim is about what a *transformer* may
+/// assemble. `as_expression`'s own reader is asked afterwards, so the law says
+/// both halves: the gate admits it, and the parser reads back the pitch that
+/// was written.
+#[test]
+fn a_fused_group_that_spells_one_lexeme_is_one_lexeme() {
+    for (written, parts) in [
+        (
+            "c#5",
+            vec![("PitchLetter", "c"), ("PitchAccidental", "#"), ("PitchOctave", "5")],
+        ),
+        ("M3", vec![("IntervalQuality", "M"), ("IntervalSize", "3")]),
+        (
+            "3/8",
+            vec![("RationalNumerator", "3"), ("Slash", "/"), ("RationalDenominator", "8")],
+        ),
+    ] {
+        let root = NodePath::root(expansion());
+        let children = parts
+            .into_iter()
+            .enumerate()
+            .map(|(index, (kind, text))| {
+                let at = root.child(u32::try_from(index).unwrap_or(u32::MAX));
+                let kind = token_kind_named(kind).unwrap_or_else(|| panic!("`{kind}` names a token kind"));
+                token(at, kind, text.to_owned())
+            })
+            .collect();
+        let built = group(root, Delimiter::Fused, children);
+        assert_eq!(check_expression(&built), Ok(()), "`{written}` was refused");
+        assert_eq!(
+            print(&built).text,
+            written,
+            "`{written}` did not print back as one word"
+        );
+        assert!(
+            parses_as_expression(&built),
+            "`{written}` does not stand where an expression stands"
+        );
+    }
+}
+
+/// A fused group that is not one lexeme is refused, and the message says what
+/// the reader made of it.
+///
+/// The second case is `11-quotation.md` §2's splice rule, restated as a test.
+/// A fused group of `a` and `bc` assembles `abc`, which *does* lex as exactly
+/// one token — and its kind is `Identifier`, which is not one of the three, so
+/// there is still no way to build a name out of pieces.
+#[test]
+fn a_fused_group_that_is_not_one_lexeme_is_refused() {
+    for (parts, text, lexed) in [
+        (
+            r##"syntax_token(syntax_built(here, 4, 0), TokenKind.PitchLetter, "c"),
+               syntax_token(syntax_built(here, 5, 0), TokenKind.PitchAccidental, "#"),
+               syntax_token(syntax_built(here, 6, 0), TokenKind.PitchOctave, "x5")"##,
+            "c#x5",
+            "3 tokens",
+        ),
+        (
+            r#"syntax_identifier(syntax_built(here, 4, 0), "a"),
+               syntax_token(syntax_built(here, 5, 0), TokenKind.Identifier, "bc")"#,
+            "abc",
+            "one `Identifier`",
+        ),
+    ] {
+        let written = expand_region(
+            &transformer(
+                r#"syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "")"#,
+                r"syntax_token(syntax_built(here, 1, 0), kind, text)",
+                r"syntax_identifier(syntax_built(here, 2, 0), name)",
+                &format!("syntax_group(syntax_built(here, 3, 0), Delimiter.Fused, [{parts}])"),
+            ),
+            REGION,
+            expansion(),
+        );
+        assert_eq!(
+            written,
+            Err(ExpansionFailure::NotAnExpression(NotAnExpression::NotOneLexeme {
+                text: text.to_owned(),
+                lexed: lexed.to_owned(),
+            })),
+            "`{text}` was not refused as the lexeme it is not"
+        );
+    }
+}
+
 #[test]
 fn a_group_that_names_no_real_delimiter_does_not_check() {
     // The question moved. It used to be asked of a finished expansion, by
@@ -312,12 +402,23 @@ fn every_token_kind_the_lexer_produces_is_nameable() {
     // cannot disagree about what a kind means; what a hand-written list can
     // still do is fall behind, and a kind the lexer produces that the phase
     // cannot name would be a silent gap in an adapter's dispatch.
+    //
+    // The partition has three parts and not two. A kind the lexer emits is
+    // nameable; a kind the parser mints from a composite literal's spelling is
+    // nameable too, because an adapter that can reach a numerator and cannot
+    // say `TokenKind.RationalNumerator` about it has been handed half an
+    // operation; and a parser *node* kind is not, because no token ever has it.
     for kind in musa_syntax::SyntaxKind::all() {
         let named = TOKEN_KINDS.iter().any(|(_, candidate)| *candidate == kind);
+        let is_token = musa_syntax::TokenClass::of(kind).is_some();
         assert_eq!(
             named,
-            musa_syntax::TokenClass::of(kind).is_some(),
-            "`{kind:?}` is a token kind the phase cannot name, or a node kind it can"
+            is_token || kind.is_literal_part(),
+            "`{kind:?}` is a kind a token can have that the phase cannot name, or a node kind it can"
+        );
+        assert!(
+            !(is_token && kind.is_literal_part()),
+            "`{kind:?}` claims to be both a lexer token and a part the parser mints"
         );
     }
 }

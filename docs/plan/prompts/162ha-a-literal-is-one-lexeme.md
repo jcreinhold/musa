@@ -1,7 +1,7 @@
 ---
 id: 162ha
 slug: a-literal-is-one-lexeme
-status: in-progress
+status: done
 depends_on: [162h]
 phase: 3
 ---

@@ -843,6 +843,28 @@ impl SyntaxKind {
         matches!(self, Self::PitchLiteral | Self::IntervalLiteral | Self::Rational)
     }
 
+    /// Whether this kind is one the parser mints from a composite literal's
+    /// spelling, rather than one the lexer emits.
+    ///
+    /// The seven of `parser/literals.rs`. `Slash` is not one of them: it is
+    /// under a `Rational` as well, and it is a token the lexer produces in its
+    /// own right. So this is the third answer a consumer that partitions the
+    /// kinds needs — a lexer token, a parser node, or a part — and the reason
+    /// it is a question at all is that a part answers `None` to
+    /// [`crate::TokenClass::of`] while still standing over real text.
+    pub fn is_literal_part(self) -> bool {
+        matches!(
+            self,
+            Self::PitchLetter
+                | Self::PitchAccidental
+                | Self::PitchOctave
+                | Self::IntervalQuality
+                | Self::IntervalSize
+                | Self::RationalNumerator
+                | Self::RationalDenominator
+        )
+    }
+
     /// Every kind, in declaration order.
     ///
     /// The enum is the list: `FromPrimitive` answers [`Self::Error`] for a

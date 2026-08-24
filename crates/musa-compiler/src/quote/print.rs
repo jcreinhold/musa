@@ -28,7 +28,11 @@ pub(crate) struct Printed {
 ///
 /// The spacing is uniform, one space between siblings, because nothing reads
 /// this text for its shape: a diagnostic that would have landed in it is moved
-/// to the region's use site by the source map instead.
+/// to the region's use site by the source map instead. The one exception is the
+/// delimiter that says so — a [`super::category::Delimiter::Fused`] group's children are the
+/// parts of one lexeme, and `c # 5` is three things to the reader that reads
+/// this text back where `c#5` is one. Which groups may claim that is the gate's
+/// question ([`super::check_expression`]) and not the printer's.
 ///
 /// **Hygiene crosses here by renaming.** A generated binder and its references
 /// carry a [`Scope`], which the ordinary flat namespace has no notion of, so
@@ -82,9 +86,10 @@ fn write_syntax(node: &Syntax, marks: &mut Vec<Vec<u8>>, out: &mut Printed) {
         } => {
             let (open, close) = delimiter.pair();
             out.text.push_str(open);
+            let separator = delimiter.separator();
             for (index, child) in children.iter().enumerate() {
                 if index > 0 {
-                    out.text.push(' ');
+                    out.text.push_str(separator);
                 }
                 write_syntax(child, marks, out);
             }

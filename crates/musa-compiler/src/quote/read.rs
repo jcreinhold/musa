@@ -17,7 +17,8 @@ use musa_score::origin::SourceSpan;
 /// its children. A node whose first and last tokens are a matched delimiter
 /// pair becomes a group of that delimiter; every other node is a layout group,
 /// which is what the fixed grouper does with a line that opens a block. The
-/// three composite literals are the exception, and [`read_node`] says why.
+/// three composite literals are the exception, and [`read_node`] says why they
+/// arrive whole here while a quote body builds them out of their parts.
 pub(crate) fn read_region(node: &musa_syntax::SyntaxNode, expansion: ExpansionPath) -> Syntax {
     read_node(node, &NodePath::root(expansion))
 }
@@ -35,11 +36,12 @@ fn read_node(node: &musa_syntax::SyntaxNode, path: &NodePath) -> Syntax {
     }
     // A composite literal — `c#5`, `M3`, `3/8` — is a node over the parts the
     // lexer's pattern found (`musa-syntax`'s `parser/literals.rs`), and one
-    // token to the lexer. The phase's `Syntax` has no shape for "a node that
-    // is one lexeme": a group is written back with one space between its
-    // children, and `c # 5` is three things to the reader that would read it
-    // again. So the parts stop here and the phase sees the token it has always
-    // seen. Giving the phase that shape is prompt 162ha's.
+    // token to the lexer. [`crate::quote::Delimiter::Fused`] is the shape that
+    // holds those parts, and a quote body builds one; a *region* still hands
+    // its literals over whole, because the one adapter that reads regions
+    // dispatches on `TokenKind.PitchLiteral` and would stop recognizing a note
+    // the day the token became a group. Turning this over is prompt 162hb's,
+    // together with the adapter that has to read it.
     if node.kind().is_composite_literal() {
         return Syntax::Token {
             info: SourceInfo::Original {
@@ -50,7 +52,7 @@ fn read_node(node: &musa_syntax::SyntaxNode, path: &NodePath) -> Syntax {
             text: node.text().to_string(),
         };
     }
-    let (delimiter, pieces) = delimited(node.children_with_tokens().collect());
+    let (delimiter, pieces) = delimited(node.kind(), node.children_with_tokens().collect());
     let children = pieces
         .iter()
         .enumerate()

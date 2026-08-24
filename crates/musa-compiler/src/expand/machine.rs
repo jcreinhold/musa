@@ -209,22 +209,23 @@ pub(crate) fn stopped_or_refused(failure: &crate::phase::ExpansionFailure, path:
         .at(site, "this region")
         .help("the adapter is total, so this is a limit rather than a loop: give the region less to read");
     }
-    refusal(
-        site,
-        format!("`{path}` did not expand this region"),
-        match *failure {
-            crate::phase::ExpansionFailure::Stopped(_) | crate::phase::ExpansionFailure::Refused { .. } => {
-                "handled above"
-            }
-            crate::phase::ExpansionFailure::NotATransformer(_) => {
-                "the adapter's `expand` is not a transformer — it must take one region and answer with one"
-            }
-            crate::phase::ExpansionFailure::NoAnswer => "the adapter did not answer",
-            crate::phase::ExpansionFailure::NotAnExpression(_) => {
-                "the adapter answered with something that is not a well-formed expression"
-            }
-        },
-    )
+    // The gate's own sentence is carried through rather than summarized away:
+    // each of its cases is a different mistake, and a transformer author
+    // reading this has to be told which one they made — which of two nodes sat
+    // at one path, or what a group that says it is one lexeme actually spells.
+    let why = match *failure {
+        crate::phase::ExpansionFailure::Stopped(_) | crate::phase::ExpansionFailure::Refused { .. } => {
+            "handled above".to_owned()
+        }
+        crate::phase::ExpansionFailure::NotATransformer(_) => {
+            "the adapter's `expand` is not a transformer — it must take one region and answer with one".to_owned()
+        }
+        crate::phase::ExpansionFailure::NoAnswer => "the adapter did not answer".to_owned(),
+        crate::phase::ExpansionFailure::NotAnExpression(ref refused) => {
+            format!("the adapter answered with something that is not a well-formed expression: {refused}")
+        }
+    };
+    refusal(site, format!("`{path}` did not expand this region"), &why)
 }
 
 /// Step 5: the answer is one ordinary expression, or it is refused.

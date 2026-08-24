@@ -3,7 +3,9 @@
 //!
 //! One concern of the `syntax` module; see its docs for the calculus.
 
+use super::category::Delimiter;
 use super::path::NodePath;
+use super::print::print;
 use super::tree::{SourceInfo, Syntax};
 
 /// Why a transformer's output was refused.
@@ -19,6 +21,15 @@ pub(crate) enum NotAnExpression {
     /// Two binders were declared at one binding path, so one name would have
     /// two declarations and every reference would be ambiguous.
     ConflictingBinder,
+    /// A fused group's children do not spell one lexeme of one of the three
+    /// composite kinds, so the text it prints to would be read back as
+    /// something else — or as several things.
+    NotOneLexeme {
+        /// What the group's children spell, together.
+        text: String,
+        /// What the reader made of that text.
+        lexed: String,
+    },
 }
 
 impl std::fmt::Display for NotAnExpression {
@@ -26,22 +37,35 @@ impl std::fmt::Display for NotAnExpression {
         match self {
             Self::DuplicatePath => out.write_str("two nodes were built at one path"),
             Self::ConflictingBinder => out.write_str("two binders were declared at one binding path"),
+            Self::NotOneLexeme { text, lexed } => {
+                write!(out, "`{text}` is written as one lexeme and reads as {lexed}")
+            }
         }
     }
 }
 
 /// The gate a transformer's output passes through.
 ///
-/// Two well-formedness questions, both about the *output* rather than about
-/// what it will later mean: every generated node sits at its own path, and
-/// every binding is declared once. Whether the result resolves, type-checks, or
-/// is musically sensible is asked afterwards by the ordinary passes, in the
-/// ordinary way.
+/// Three well-formedness questions, all about the *output* rather than about
+/// what it will later mean: every generated node sits at its own path, every
+/// binding is declared once, and every fused group really is one lexeme.
+/// Whether the result resolves, type-checks, or is musically sensible is asked
+/// afterwards by the ordinary passes, in the ordinary way.
 ///
-/// It asked a third until [`Delimiter`] became a type. "This group names a real
+/// It asked a fourth until [`Delimiter`] became a type. "This group names a real
 /// delimiter" was a question because a transformer wrote the name as text; now
 /// there is no text and no unreal delimiter to name, so the question is
 /// answered where the value is made rather than checked after the fact.
+///
+/// The lexeme question cannot move there for the opposite reason: what a fused
+/// group's children spell is not known until they are all in place, and it is
+/// the *reader* that decides whether they spell one thing. So a transformer
+/// builds freely and the gate says whether the reader would have read it, which
+/// is the discipline this gate already runs on paths and binders. It is also
+/// where `11-quotation.md` §2's splice rule is kept rather than weakened: a
+/// fused group assembling `abc` lexes as one token whose kind is `Identifier`,
+/// which is not one of the three, so there is still no way to build a name out
+/// of pieces.
 ///
 /// Only generated nodes are checked for path collisions. An input node keeps
 /// its original source information wherever it is preserved, and preserving one
@@ -50,6 +74,13 @@ pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
     let mut built: Vec<&NodePath> = Vec::new();
     let mut binders: Vec<&NodePath> = Vec::new();
     walk(root, &mut |node| {
+        if let Syntax::Group {
+            delimiter: Delimiter::Fused,
+            ..
+        } = node
+        {
+            one_lexeme(node)?;
+        }
         let SourceInfo::Generated(path) = node.info() else {
             // An input node keeps its original source information wherever it
             // is preserved, and preserving one twice is a transformer
@@ -78,6 +109,33 @@ pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
         built.push(path);
         Ok(())
     })
+}
+
+/// Whether a fused group's children spell one lexeme of one of the three
+/// composite kinds.
+///
+/// The reader answers, over the text the printer would write, because those are
+/// the two halves of the claim: the group says it is one lexeme, and the only
+/// thing that can establish that is the lexer that would read the text back.
+/// A structural test — "the children are a letter, an accidental and an octave"
+/// — would be a second grammar beside the one in `musa-syntax`, and the two
+/// would drift.
+fn one_lexeme(node: &Syntax) -> Result<(), NotAnExpression> {
+    let text = print(node).text;
+    let lexed = musa_syntax::lex(&text);
+    let refuse = |lexed: String| {
+        Err(NotAnExpression::NotOneLexeme {
+            text: text.clone(),
+            lexed,
+        })
+    };
+    let [only] = lexed.tokens() else {
+        return refuse(format!("{} tokens", lexed.tokens().len()));
+    };
+    if !only.kind.is_composite_literal() {
+        return refuse(format!("one `{}`", super::token_kind_spelling(only.kind)));
+    }
+    Ok(())
 }
 
 fn walk<'a>(

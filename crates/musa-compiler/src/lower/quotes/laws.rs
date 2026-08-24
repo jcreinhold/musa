@@ -274,6 +274,47 @@ fn a_lowered_quote_builds_what_the_whole_phase_builds() {
     }
 }
 
+/// A quoted literal is one lexeme, and prints back as the word it was written
+/// as.
+///
+/// The regression prompt 162h left and 162ha repairs: a `c#5` in a quote body
+/// is a node over the parts the lexer found, and a node whose children were
+/// spaced would print `c # 5`, which the reader reads as three things. Nothing
+/// in `stdlib/` quotes a literal today, which is the only reason the suite was
+/// green; this is what would have caught it.
+#[test]
+fn a_quoted_literal_is_one_lexeme() {
+    let cx = owned().expect("the compiler's own context builds");
+    for written in ["c#5", "M3", "3/8"] {
+        let quoted = format!("quote at here {{ {written} }}");
+        let built = direct(&cx, &quoted);
+        assert_eq!(built, whole(&quoted), "`{quoted}` builds two different trees");
+        assert!(fused(&built), "`{written}` was not built as one lexeme: {built:?}");
+        assert_eq!(
+            built.to_string(),
+            written,
+            "`{written}` did not print back as the word it was written as"
+        );
+    }
+}
+
+/// Whether a fused group stands anywhere in a value.
+///
+/// Anywhere rather than at the root, because a quote's body goes through the
+/// expression grammar and arrives wrapped in the layout groups the CST puts
+/// around a name and an operand — which `crate::quote::matched` peels and this
+/// law has no need to.
+fn fused(node: &Syntax) -> bool {
+    match node {
+        Syntax::Group {
+            delimiter: Delimiter::Fused,
+            ..
+        } => true,
+        Syntax::Group { children, .. } => children.iter().any(fused),
+        Syntax::Missing(_) | Syntax::Token { .. } | Syntax::Identifier { .. } => false,
+    }
+}
+
 /// §2's separator, at three lengths.
 ///
 /// A spread's commas are the position's rather than the body's, so a run of any

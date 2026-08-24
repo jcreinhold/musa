@@ -15,7 +15,19 @@ use super::tree::{SourceInfo, Syntax};
 /// grouped exactly the way the same text would be if it had been read: a
 /// template that decided delimiters its own way would print back as text that
 /// parses differently from what the author wrote.
-pub(crate) fn delimited(mut pieces: Vec<musa_syntax::SyntaxElement>) -> (Delimiter, Vec<musa_syntax::SyntaxElement>) {
+///
+/// `kind` is the node's own, and it decides one case before the outermost
+/// tokens are looked at: a composite literal — `c#5`, `M3`, `3/8` — is one
+/// lexeme whose parts the parser wrote (`musa-syntax`'s `parser/literals.rs`),
+/// so its children are fused rather than spaced. Nothing opens or closes it, so
+/// there is nothing to peel off either.
+pub(crate) fn delimited(
+    kind: musa_syntax::SyntaxKind,
+    mut pieces: Vec<musa_syntax::SyntaxElement>,
+) -> (Delimiter, Vec<musa_syntax::SyntaxElement>) {
+    if kind.is_composite_literal() {
+        return (Delimiter::Fused, pieces);
+    }
     for candidate in Delimiter::ALL {
         let (open, close) = candidate.pair();
         if open.is_empty() {

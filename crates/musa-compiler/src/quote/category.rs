@@ -10,8 +10,13 @@
 /// the lexer's. What this adds is the spelling, and the spelling cannot
 /// disagree with the kind because `stringify!` writes it from the same
 /// identifier. The one thing the macro cannot say is that the list is
-/// *complete*, so a drift test says it: every kind the lexer can produce
-/// appears here, and no parser node kind does.
+/// *complete*, so a drift test says it, and the partition it checks has three
+/// parts rather than two: every kind the lexer can produce appears here, every
+/// kind the parser mints from a composite literal's spelling
+/// ([`musa_syntax::SyntaxKind::is_literal_part`]) appears here, and no parser
+/// node kind does. A part is here because an adapter that can reach a
+/// numerator and cannot say `TokenKind.RationalNumerator` about it has been
+/// handed half an operation.
 macro_rules! token_kinds {
     ($($case:ident),* $(,)?) => {
         pub(crate) const TOKEN_KINDS: &[(&str, musa_syntax::SyntaxKind)] =
@@ -30,6 +35,13 @@ token_kinds!(
     String,
     PitchLiteral,
     IntervalLiteral,
+    PitchLetter,
+    PitchAccidental,
+    PitchOctave,
+    IntervalQuality,
+    IntervalSize,
+    RationalNumerator,
+    RationalDenominator,
     UnitHz,
     UnitMs,
     UnitS,
@@ -218,14 +230,20 @@ pub(crate) fn token_kind_spelling(kind: musa_syntax::SyntaxKind) -> &'static str
         .map_or("Error", |(name, _)| *name)
 }
 
-/// The four delimiters the fixed grouper knows.
+/// The five delimiters the fixed grouper knows.
 ///
 /// A type rather than the spellings it used to be. A transformer named one as
 /// text and the gate checked afterwards that the text named something real;
-/// now there is nothing to check, because the only values are these four and
+/// now there is nothing to check, because the only values are these five and
 /// the phase offers them by name (`../rules/language/11-quotation.md` §4).
 /// `syntax_group`'s ownership entry claimed to hide "the fixed grouper's
 /// delimiter set", and this is what hides it instead.
+///
+/// Two of them open and close nothing, and they differ in exactly one thing —
+/// whether the children are separate words. [`Self::Layout`] holds siblings
+/// together by their layout and writes a space between them; [`Self::Fused`]
+/// holds the parts of *one lexeme* together and writes nothing, because `c # 5`
+/// is three things to the reader that reads the text back and `c#5` is one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum Delimiter {
     Parentheses,
@@ -233,15 +251,29 @@ pub(crate) enum Delimiter {
     Braces,
     /// No delimiter at all — siblings held together by their layout.
     Layout,
+    /// No delimiter and no separator either — the parts of one lexeme.
+    ///
+    /// Admitted only for the three composite literals, and the gate is where
+    /// that is decided rather than here: a delimiter says how the children are
+    /// written, and [`crate::quote::check_expression`] says whether the reader
+    /// would have read the result as one token of one of the three kinds.
+    Fused,
 }
 
 impl Delimiter {
     /// Every delimiter, in the order the grouper tries them.
     ///
-    /// [`Self::Layout`] is last and is the fallback: its pair is empty, so it
-    /// matches every node and would swallow the other three if it were tried
-    /// first.
-    pub(crate) const ALL: [Self; 4] = [Self::Parentheses, Self::Brackets, Self::Braces, Self::Layout];
+    /// The two whose pair is empty are never *matched*: [`Self::Fused`] is
+    /// chosen by the node's own kind before the loop runs, and [`Self::Layout`]
+    /// is the fallback the loop falls out to. Either one tried against a node's
+    /// outermost tokens would match every node and swallow the other three.
+    pub(crate) const ALL: [Self; 5] = [
+        Self::Parentheses,
+        Self::Brackets,
+        Self::Braces,
+        Self::Layout,
+        Self::Fused,
+    ];
 
     /// The name the phase spells this delimiter by, after `Delimiter.`.
     pub(crate) const fn name(self) -> &'static str {
@@ -250,17 +282,29 @@ impl Delimiter {
             Self::Brackets => "Brackets",
             Self::Braces => "Braces",
             Self::Layout => "Layout",
+            Self::Fused => "Fused",
+        }
+    }
+
+    /// What stands between two children of a group of this delimiter.
+    ///
+    /// One space everywhere but [`Self::Fused`], where the children are the
+    /// parts of one lexeme and anything between them would make it several.
+    pub(crate) const fn separator(self) -> &'static str {
+        match self {
+            Self::Parentheses | Self::Brackets | Self::Braces | Self::Layout => " ",
+            Self::Fused => "",
         }
     }
 
     /// The text that opens and closes a group of this delimiter, both empty
-    /// for [`Self::Layout`].
+    /// for [`Self::Layout`] and [`Self::Fused`].
     pub(crate) const fn pair(self) -> (&'static str, &'static str) {
         match self {
             Self::Parentheses => ("(", ")"),
             Self::Brackets => ("[", "]"),
             Self::Braces => ("{", "}"),
-            Self::Layout => ("", ""),
+            Self::Layout | Self::Fused => ("", ""),
         }
     }
 

@@ -186,3 +186,33 @@ fn the_formatter_writes_a_literal_back_as_one_word() {
         assert_eq!(formatted, source, "{written}: the formatter moved a byte");
     }
 }
+
+/// The kinds that say they are parts are the ones the splitter mints.
+///
+/// The third answer a consumer that partitions the kinds needs — a lexer
+/// token, a parser node, or a part — and the one a hand-written list can fall
+/// behind on. `Slash` is under a `Rational` and is *not* a part: it is a token
+/// the lexer produces in its own right, and a consumer that treated it as
+/// minted would be told the wrong thing about a `/` anywhere else.
+#[test]
+fn the_kinds_that_say_they_are_parts_are_the_ones_the_splitter_mints() {
+    let mut minted: Vec<SyntaxKind> = Vec::new();
+    for written in CORPUS {
+        for part in literal(written).children_with_tokens() {
+            let kind = part.kind();
+            assert!(
+                kind.is_literal_part() || musa_syntax::TokenClass::of(kind).is_some(),
+                "{written}: `{kind:?}` is neither a part nor a kind the lexer emits"
+            );
+            if kind.is_literal_part() && !minted.contains(&kind) {
+                minted.push(kind);
+            }
+        }
+    }
+    minted.sort_by_key(|kind| u16::from(*kind));
+    let claimed: Vec<SyntaxKind> = SyntaxKind::all().filter(|kind| kind.is_literal_part()).collect();
+    assert_eq!(
+        minted, claimed,
+        "a kind claims to be a part the splitter never mints, or mints one it does not claim"
+    );
+}

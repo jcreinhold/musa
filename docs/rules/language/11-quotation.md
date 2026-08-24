@@ -163,6 +163,24 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
 - `$` is part of the quote's grammar. It is not an operator, it has no meaning outside a quote, and it cannot be applied
   to something that is not a splice.
 
+**A group may be one lexeme, and the reader says whether it is.** `c#5`, `M3` and `3/8` are one token each to the lexer,
+and the parser writes each as a node over the letter, the accidental, the octave, the quality, the size, the numerator
+and the denominator its pattern already found. A syntax value holds that with a fifth delimiter — `Fused` — whose
+children are written back with **nothing** between them, where every other group writes a space. It is the only thing
+that separates `Fused` from `Layout`: both open and close nothing, and they differ over whether the children are
+separate words.
+
+What a group may claim that for is decided by the reader and not by the grammar. A fused group is admitted only when the
+text it prints lexes as **exactly one token**, and that token's kind is one of the three. So a transformer builds freely
+and the gate says whether the reader would have read it back — the discipline the gate already runs on output paths and
+binders — and the refusal names the assembled text and what the reader made of it instead.
+
+**This does not re-open the splice rule.** A fused group of `a` and `bc` assembles `abc`, which lexes as exactly one
+token, and its kind is `Identifier`, which is not one of the three: refused. Hygiene's guarantee is that an adapter
+cannot build a *name* out of pieces, and the three admitted kinds carry no binding and no scope. Nor does it open a
+position inside a literal: `$letter#5` is `$`, `letter`, `#` and `5` to the lexer, so there is no literal node for a
+splice to stand inside, and a splice still stands where a whole node stands.
+
 **Hygiene.** An identifier written literally in a quote and an identifier that arrives through a splice are different
 names even when they are spelled the same, and neither captures the other. This is the same rule `01-surface.md` §7
 already states for events quotes — events identifiers never capture host identifiers, and alpha-renaming prevents

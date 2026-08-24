@@ -358,7 +358,7 @@ impl Lowering<'_> {
             // written here are not children of it.
             .filter(|piece| !(separated && piece.kind() == SyntaxKind::Comma))
             .collect();
-        let (delimiter, pieces) = crate::quote::delimited(pieces);
+        let (delimiter, pieces) = crate::quote::delimited(node.kind(), pieces);
         // Where a spread may stand, which is the one rule the two directions do
         // not share. Building a run needs the separator its position supplies,
         // so only a comma-separated position has room for one. Matching one
