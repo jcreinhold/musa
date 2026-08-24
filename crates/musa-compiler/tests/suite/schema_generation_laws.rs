@@ -495,6 +495,12 @@ fn the_same_names_resolve_once_their_module_is_imported() {
 /// Both examples compile, and they are the fixtures that prove the libraries
 /// are reachable: `std::tonal::sequences` was committed orphaned, and an
 /// orphaned module is one nothing can be wrong about.
+///
+/// `diatonic-sequences` used to be admitted here as a known failure: it ran to
+/// 206,041 reduction steps against a budget of 200,000, and the assertion said
+/// so exactly rather than skipping it. Prompt 165 closed that — the elaborator
+/// no longer evaluates an argument whose codomain never reads it, and the same
+/// file costs 24,661 — so both examples are held to the same sentence again.
 #[test]
 fn the_examples_compile_and_reach_the_libraries() {
     for (name, source) in [
@@ -502,21 +508,6 @@ fn the_examples_compile_and_reach_the_libraries() {
         ("diatonic-sequences.musa", SEQUENCE_EXAMPLE),
     ] {
         let errors = errors_of(source);
-        if name == "diatonic-sequences.musa" {
-            // Over the language budget on both checkers — the one known
-            // over-budget example, pinned exactly in
-            // `musa_compiler::core_budget` and returning here with the
-            // migration that makes it cheap.
-            assert_eq!(
-                errors,
-                [(
-                    musa_score::Code::ResourceLimit,
-                    "evaluation exceeded the budget for reduction steps at 200001 of 200000".to_owned()
-                )],
-                "{name} fails only the way it is known to fail"
-            );
-            continue;
-        }
         assert!(errors.is_empty(), "{name}: {errors:?}");
     }
     assert!(

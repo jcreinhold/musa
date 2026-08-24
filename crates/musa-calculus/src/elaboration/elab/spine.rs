@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use crate::elaboration::raw::{Raw, RawField};
 use crate::elaboration::refuse::{ElabError, Refusal};
-use crate::kernel::eval::{apply_closure, opened};
+use crate::kernel::eval::{apply_closure, apply_closure_read, opened};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
 use crate::kernel::term::{Definition, Filling, Name, Role, Shape, Term};
@@ -75,15 +75,19 @@ impl Elaborator {
         for _ in 0..count {
             let unfolded = crate::kernel::eval::opened(&mut self.meter, &built.ty)?;
             let function_ty = unfolded.as_ref().unwrap_or(&built.ty);
-            let Form::Pi { domain, codomain, .. } = &function_ty.form else {
+            let Form::Pi {
+                name, domain, codomain, ..
+            } = &function_ty.form
+            else {
                 return Err(Refusal::NotAFunction {
                     at: here,
                     ty: scope.quote_type(&mut self.meter, &built.ty)?,
                 }
                 .into());
             };
+            let named = Some(Arc::clone(name));
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-            let unknown = self.fresh_meta(scope, here, &domain)?;
+            let unknown = self.fresh_meta(scope, here, &domain, named)?;
             built = Typed {
                 term: Term::app(here, built.term, unknown.term),
                 ty: apply_closure(&mut self.meter, &codomain, unknown.value)?,
@@ -105,11 +109,15 @@ impl Elaborator {
     pub(super) fn saturated(&mut self, scope: &Scope, here: Origin, mut built: Typed) -> Result<Typed, ElabError> {
         loop {
             let unfolded = opened(&mut self.meter, &built.ty)?;
-            let Form::Pi { domain, codomain, .. } = &unfolded.as_ref().unwrap_or(&built.ty).form else {
+            let Form::Pi {
+                name, domain, codomain, ..
+            } = &unfolded.as_ref().unwrap_or(&built.ty).form
+            else {
                 return Ok(built);
             };
+            let named = Some(Arc::clone(name));
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
-            let unknown = self.fresh_meta(scope, here, &domain)?;
+            let unknown = self.fresh_meta(scope, here, &domain, named)?;
             built = Typed {
                 term: Term::app(here, built.term, unknown.term),
                 ty: apply_closure(&mut self.meter, &codomain, unknown.value)?,
@@ -252,13 +260,17 @@ impl Elaborator {
         for argument in arguments {
             let unfolded = opened(&mut self.meter, &ty)?;
             let current = unfolded.as_ref().unwrap_or(&ty);
-            let Form::Pi { domain, codomain, .. } = &current.form else {
+            let Form::Pi {
+                name, domain, codomain, ..
+            } = &current.form
+            else {
                 return Err(Refusal::NotAFunction {
                     at: here,
                     ty: scope.quote_type(&mut self.meter, &ty)?,
                 }
                 .into());
             };
+            let named = Some(Arc::clone(name));
             let (domain, codomain) = (Arc::clone(domain), codomain.clone());
             let at = argument.origin();
             let (slot, value) = if !crate::kernel::unify::mentions_unsolved(&domain)
@@ -269,8 +281,7 @@ impl Elaborator {
                 // annotates its own binder and checking is what makes the two
                 // agree.
                 let term = self.check(scope, argument, &domain)?;
-                let value = scope.eval(&mut self.meter, &term)?;
-                (Slot::Argument(term), value)
+                (Slot::Argument(term.clone()), Reading::Written(term))
             } else if argument.checks_only() {
                 // Deferred: a placeholder holds the slot so the rest of the
                 // walk can proceed, and the argument is checked below against
@@ -279,14 +290,14 @@ impl Elaborator {
                 // argument's *value* gets a value to read, and anything the
                 // walk learns about it is a solution the second pass then
                 // agrees with rather than overwrites.
-                let unknown = self.fresh_meta(scope, at, &domain)?;
+                let unknown = self.fresh_meta(scope, at, &domain, named)?;
                 waiting.push(Waiting {
                     argument,
                     domain: Arc::clone(&domain),
                     meta: unknown.meta,
                     at,
                 });
-                (Slot::Deferred(unknown.term), unknown.value)
+                (Slot::Deferred(unknown.term), Reading::Ready(unknown.value))
             } else {
                 // Inferred — but an inferred head can still quantify over
                 // parameters the domain determines (`identity` used unapplied):
@@ -296,11 +307,12 @@ impl Elaborator {
                 let term = self
                     .apply_spine(scope, argument.origin(), inferred, &[], Some(&domain))?
                     .term;
-                let value = scope.eval(&mut self.meter, &term)?;
-                (Slot::Argument(term), value)
+                (Slot::Argument(term.clone()), Reading::Written(term))
             };
             walk.slots.push(slot);
-            ty = apply_closure(&mut self.meter, &codomain, value)?;
+            // The walk needs the *codomain* here, and the argument's value only
+            // where the codomain reads it: see [`apply_closure_read`].
+            ty = apply_closure_read(&mut self.meter, &codomain, |meter| value.read(scope, meter))?;
             left = left.saturating_sub(1);
             self.advance(scope, &mut ty, &mut walk, supplied, Keeping::after(left, ending))?;
         }
@@ -391,14 +403,16 @@ impl Elaborator {
                     };
                     let (domain, codomain) = (Arc::clone(domain), codomain.clone());
                     let term = self.check(scope, written, &domain)?;
-                    let value = scope.eval(&mut self.meter, &term)?;
-                    walk.slots.push(Slot::Parameter(term));
-                    *ty = apply_closure(&mut self.meter, &codomain, value)?;
+                    walk.slots.push(Slot::Parameter(term.clone()));
+                    *ty = apply_closure_read(&mut self.meter, &codomain, |meter| {
+                        scope.eval(meter, &term).map_err(ElabError::from)
+                    })?;
                 }
                 Filling::Parameter if keeping == Keeping::TheScheme => return Ok(()),
                 Filling::Parameter => {
+                    let named = Some(Arc::clone(name));
                     let (domain, codomain, origin) = (Arc::clone(domain), codomain.clone(), current.origin);
-                    let unknown = self.fresh_meta(scope, origin, &domain)?;
+                    let unknown = self.fresh_meta(scope, origin, &domain, named)?;
                     walk.slots.push(Slot::Parameter(unknown.term));
                     *ty = apply_closure(&mut self.meter, &codomain, unknown.value)?;
                 }
@@ -408,7 +422,7 @@ impl Elaborator {
                     // The codomain reads the evidence off its binder; a meta
                     // stands for it, and [`Self::settled`] writes the computed
                     // evidence in — the one place a constraint is answered.
-                    let unknown = self.fresh_meta(scope, origin, &domain)?;
+                    let unknown = self.fresh_meta(scope, origin, &domain, None)?;
                     self.constraints
                         .push((constraint, scope.clone(), codomain.env.clone(), origin, unknown.meta));
                     walk.slots.push(Slot::Evidence(unknown.term));
@@ -582,6 +596,34 @@ struct Waiting<'raw> {
 /// (`kernel::meta`), so there is no longer a spelling of it short enough to
 /// rebuild from the meta alone, and rebuilding it would be the second copy
 /// [`Elaborator::fresh_meta`] exists to prevent.
+/// What the walk has for an argument, for the one thing it needs it for.
+///
+/// The walk pushes each argument's value into the codomain and reads the type
+/// that comes back. A written argument arrives as a *term*, and evaluating one
+/// costs the whole subterm — so it is held unevaluated here and evaluated by
+/// [`apply_closure_read`] only where the codomain can read it. An implicit the
+/// walk minted has its value already and nothing is saved by delaying it.
+enum Reading {
+    /// An argument elaborated to a term, not yet evaluated.
+    Written(Term),
+    /// A value the walk already has.
+    Ready(Value),
+}
+
+impl Reading {
+    /// The value, evaluating the term if that is what this is.
+    ///
+    /// # Errors
+    ///
+    /// As [`Scope::eval`].
+    fn read(self, scope: &Scope, meter: &mut crate::kernel::budget::Meter) -> Result<Value, ElabError> {
+        match self {
+            Self::Written(term) => scope.eval(meter, &term).map_err(ElabError::from),
+            Self::Ready(value) => Ok(value),
+        }
+    }
+}
+
 pub(super) enum Slot {
     /// An implicit parameter: the unknown stands in the term whether or not the
     /// walk solved it, and [`Elaborator::settled`] audits at declaration end.

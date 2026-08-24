@@ -1,0 +1,20 @@
+// A `data` declaration may mention the family it is declaring, and that is
+// what makes a form recursive — but only to the right of every arrow it passes
+// through. Here `Phrase` stands to the *left* of one, so a phrase would be
+// something that consumes phrases, and a type that can do that has a looping
+// inhabitant with no recursion written anywhere. Musa is total, so it is
+// refused at the declaration rather than at the loop.
+piece "A Form That Eats Itself" {
+    data Phrase {
+        Rest,
+        Answered(reply: Phrase -> Nat),
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

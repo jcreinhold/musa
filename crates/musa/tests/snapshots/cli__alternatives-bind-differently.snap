@@ -1,0 +1,17 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+alternative-bindings
+
+  × this alternative does not bind `by`, and another beside it does
+    ╭─[examples/broken/alternatives-bind-differently.musa:15:24]
+ 14 │         match of {
+ 15 │             Rise(by) | Fall(amount) -> by,
+    ·                        ──────┬─────
+    ·                              ╰── here
+ 16 │             Hold -> 0,
+    ╰────
+  help: bind `by` here too, or take it out of the other alternative and split the arm in two
+
+1 problem (1 error)

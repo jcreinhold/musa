@@ -104,7 +104,7 @@ pub(crate) fn discharge(
         && !meta.is_solved()
     {
         return Err(crate::elaboration::refuse::Refusal::Unsolved {
-            site: crate::kernel::meta::MetaSource::TypeParameter,
+            site: meta.source().clone(),
             created: meta.origin(),
             blocked: None,
         }

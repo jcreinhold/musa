@@ -30,7 +30,7 @@
 //! and a number in prose is a fact nothing checks — the exhaustive `match` is
 //! the check, and it is the only one worth having.
 
-use musa_calculus::{ElabError, Origin, Refusal};
+use musa_calculus::{ElabError, Origin, Refusal, Undescended};
 
 use super::Sites;
 use musa_score::diagnose::{Cause, Code, Diagnostic};
@@ -252,12 +252,25 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
         // program did not say. A metavariable nothing solved is the general
         // case; a bare constructor and a term with no inference rule are the
         // two the surface reaches by writing less than a type needs.
-        Refusal::Unsolved { created, blocked, .. } => Filed {
+        // The message names the parameter when the Π it stood at named one,
+        // and the help says the repair rather than restating the failure: a
+        // reader who already knows `A` was undetermined needs to be told that
+        // writing it at the call is what settles it. `musa explain
+        // unsolved-metavariable` carries why it is never guessed at instead.
+        Refusal::Unsolved { site, created, blocked } => Filed {
             code: Code::UnsolvedMetavariable,
             at: *created,
             also: blocked.map(|origin| (origin, "still waiting on this")),
             label: None,
-            help: None,
+            help: Some(match site.named() {
+                Some(name) => std::borrow::Cow::Owned(format!(
+                    "write it at the call — `{{{name} = …}}` in the argument list — or annotate a \
+                     binder the rest of the expression reads it off"
+                )),
+                None => std::borrow::Cow::Borrowed(
+                    "annotate the binder, or pass the argument in braces at the use site",
+                ),
+            }),
             said: None,
         },
         Refusal::BareConstructor { at, .. } | Refusal::Uninferable { at, .. } => one(Code::UnsolvedMetavariable, *at),
@@ -288,12 +301,66 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
             two(Code::DuplicateName, *at, *previous, "first written here")
         }
         Refusal::NonPositive { at, .. } => one(Code::NonPositiveOccurrence, *at),
-        Refusal::IncompleteMatch { at, .. } => one(Code::IncompleteMatch, *at),
-        Refusal::AlternativeBindings { at, .. } => one(Code::AlternativeBindings, *at),
+        // The message names the gap; the help says what to write. A total
+        // language has no fallback arm, so "add an arm" is the whole repair
+        // and there is no second option to weigh it against.
+        Refusal::IncompleteMatch { at, constructor } => Filed {
+            help: Some(std::borrow::Cow::Owned(format!(
+                "add an arm for `{}` — every constructor needs one, and there is no fallback case to write instead",
+                constructor.rsplit('.').next().unwrap_or(constructor)
+            ))),
+            ..one(Code::IncompleteMatch, *at)
+        },
+        // The message names the missing name; the help names the two edits
+        // that make the alternatives agree, because which one is right is a
+        // question about what the body meant to read and only the author knows.
+        Refusal::AlternativeBindings { at, name } => Filed {
+            help: Some(std::borrow::Cow::Owned(format!(
+                "bind `{name}` here too, or take it out of the other alternative and split the arm in two"
+            ))),
+            ..one(Code::AlternativeBindings, *at)
+        },
         Refusal::RecursiveBinding { at, .. } => one(Code::RecursiveBinding, *at),
-        Refusal::UnreachableBranch { at, .. } => one(Code::UnreachableBranch, *at),
-        Refusal::UncheckedRecursion { at, .. } => one(Code::UncheckedRecursion, *at),
-        Refusal::UntypedRecursion { at, .. } => one(Code::UntypedRecursion, *at),
+        // An arm nobody reaches is usually the one that was meant to be
+        // reached, so the help points at the arms above rather than at this
+        // one: the repair is almost always to narrow an earlier pattern.
+        Refusal::UnreachableBranch { at, .. } => Filed {
+            help: Some(std::borrow::Cow::Borrowed(
+                "an earlier arm already matches every value this one would; narrow that one, or delete this",
+            )),
+            ..one(Code::UnreachableBranch, *at)
+        },
+        // §2.4 has no escape hatch to offer, so the help offers the *shape* of
+        // a measure instead: the argument to pass is a binder a `match` bound
+        // out of the one the definition descends on. Which sentence depends on
+        // which condition failed, because the two ask for different edits.
+        Refusal::UncheckedRecursion { at, parameter, why, .. } => Filed {
+            help: Some(match (why, parameter.as_ref()) {
+                (Undescended::NothingSmaller, Some(parameter)) => std::borrow::Cow::Owned(format!(
+                    "pass a binder the `match` on `{parameter}` bound — the piece, not `{parameter}` itself"
+                )),
+                (Undescended::NothingSmaller, None) => std::borrow::Cow::Borrowed(
+                    "`match` on the argument the recursion is on, and pass a binder that match bound",
+                ),
+                (Undescended::NotWhereTheOthersDo, Some(parameter)) => std::borrow::Cow::Owned(format!(
+                    "one definition descends on one argument: put this call on `{parameter}` too, or split the two \
+                     recursions into two definitions"
+                )),
+                (Undescended::NotWhereTheOthersDo, None) => std::borrow::Cow::Borrowed(
+                    "one definition descends on one argument: put every call on the same one",
+                ),
+            }),
+            ..one(Code::UncheckedRecursion, *at)
+        },
+        // The repair is the whole of it and the message already says it, so
+        // the help says where the type goes rather than repeating that one is
+        // needed.
+        Refusal::UntypedRecursion { at, .. } => Filed {
+            help: Some(std::borrow::Cow::Borrowed(
+                "write the return type after `->`, and a type on every parameter",
+            )),
+            ..one(Code::UntypedRecursion, *at)
+        },
         // `02-core-calculus.md` §2.4's graph rule, under the code the old
         // checker filed the same mistake under: a reader who has seen
         // `dependency-cycle` once has seen this.
@@ -355,7 +422,34 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
             )),
             said: None,
         },
-        Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),
+        // §1.5's "two is an error naming both": the refusal carries the
+        // namespaces and the help is where they get named, because the repair
+        // is to write one of them out and a reader cannot pick from a list
+        // they were not shown. An empty list reports here too — the member
+        // exists and the expected type ruled every namespace out — and then
+        // the sentence is about the head rather than about a choice.
+        Refusal::AmbiguousMethod {
+            at,
+            head,
+            method,
+            candidates,
+        } => Filed {
+            help: Some(if candidates.is_empty() {
+                std::borrow::Cow::Owned(format!(
+                    "nothing declares `{method}` for `{head}`; write the namespace that does — `Head::{method}`"
+                ))
+            } else {
+                std::borrow::Cow::Owned(format!(
+                    "write one out: {}",
+                    candidates
+                        .iter()
+                        .map(|candidate| format!("`{candidate}::{method}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ))
+            }),
+            ..one(Code::AmbiguousMethod, *at)
+        },
         // The registry's own five. Reachable from source only through a
         // compiler defect — nobody writes a δ-builtin in `.musa` — but filed
         // rather than folded together, because the person who reads one of

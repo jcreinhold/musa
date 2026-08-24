@@ -875,14 +875,15 @@ fn every_example_elaborates() {
     }
     said.sort();
     said.dedup();
-    // The charge site moves with the engine: under the course correction's
-    // checker the 200001st step lands at the evaluation walk itself rather
-    // than inside an application of the staff adapter. One ResourceLimit
-    // remains the corpus's only failure either way.
+    // One `ResourceLimit` stood here from 142's close to prompt 165: the last
+    // fixture over the 200,000-step reduction budget was `diatonic-sequences`,
+    // at 206,041. 165 stopped the instantiation walk from evaluating an
+    // argument whose codomain never reads it, and the same file costs 24,661.
+    // The corpus now reads, checks *and* fits.
+    let nothing: [String; 0] = [];
     assert_eq!(
-        said,
-        ["ResourceLimit: evaluation exceeded the budget for reduction steps at 200001 of 200000"],
-        "the corpus reads and checks; what is left is the step budget, and the adapter's rewrite owns it"
+        said, nothing,
+        "the corpus reads, checks, and fits inside the language budget"
     );
 }
 

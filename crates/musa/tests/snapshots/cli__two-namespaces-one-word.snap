@@ -1,0 +1,17 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+ambiguous-method
+
+  × `opposite` is declared in more than one namespace
+    ╭─[examples/broken/two-namespaces-one-word.musa:39:9]
+ 38 │     fn inverted() -> Dynamic {
+ 39 │         opposite(Soft)
+    ·         ────┬───
+    ·             ╰── here
+ 40 │     }
+    ╰────
+  help: write one out: `Register::opposite`, `Dynamic::opposite`
+
+1 problem (1 error)

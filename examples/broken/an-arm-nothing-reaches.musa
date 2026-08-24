@@ -1,0 +1,26 @@
+// Arms are read in order, and the first one that matches decides. `Low` is
+// written twice here, so the second `Low` is an arm no value can ever reach —
+// which is worth refusing rather than ignoring, because the arm nobody reaches
+// is usually the one the author meant to keep.
+piece "An Arm Nothing Reaches" {
+    data Register {
+        Low,
+        High,
+    }
+
+    fn octaves_up(where: Register) -> Nat {
+        match where {
+            Low -> 2,
+            High -> 0,
+            Low -> 1,
+        }
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

@@ -1,0 +1,20 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+incomplete-match
+
+  × this match has no arm for `Register.High`
+    ╭─[examples/broken/match-misses-a-register.musa:14:9]
+ 13 │         fn octaves_up(where: Register) -> Nat {
+ 14 │ ╭─▶         match where {
+ 15 │ │               Low -> 2,
+ 16 │ │               Middle -> 1,
+ 17 │ ├─▶         }
+    · ╰──── here
+ 18 │         }
+    ╰────
+  help: add an arm for `High` — every constructor needs one, and there is no fallback case to
+        write instead
+
+1 problem (1 error)

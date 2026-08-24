@@ -1,0 +1,21 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+untyped-recursion
+
+  × `sequence_up` names itself, so it has to say what its type is
+    ╭─[examples/broken/a-recursion-with-no-type.musa:7:5]
+  6 │     piece "A Recursion With No Type" {
+  7 │ ╭─▶     fn sequence_up(steps, from) {
+  8 │ │           match steps {
+  9 │ │               Zero -> from,
+ 10 │ │               Succ(fewer) -> sequence_up(fewer, from + 1),
+ 11 │ │           }
+ 12 │ ├─▶     }
+    · ╰──── here
+ 13 │     
+    ╰────
+  help: write the return type after `->`, and a type on every parameter
+
+1 problem (1 error)

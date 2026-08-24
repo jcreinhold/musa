@@ -346,7 +346,7 @@ fn an_adapter_that_calls_itself_is_refused() {
     assert!(
         found
             .iter()
-            .any(|error| error.contains("`expand` calls itself") && error.contains("decrease")),
+            .any(|error| error.contains("`expand` calls itself") && error.contains("`match` took")),
         "an adapter called itself and was not refused by the termination check: {found:?}"
     );
 }

@@ -1,0 +1,27 @@
+// `Rise(by) | Fall(amount)` is one arm written as two patterns, and one arm
+// has one body. The body can only read a name if *every* alternative bound it,
+// so alternatives that bind different names leave the body reading something
+// that is sometimes not there. Spelling the second binder `by` as well makes
+// the arm mean what it looks like it means.
+piece "Alternatives Bind Differently" {
+    data Contour {
+        Rise(by: Nat),
+        Fall(by: Nat),
+        Hold,
+    }
+
+    fn size(of: Contour) -> Nat {
+        match of {
+            Rise(by) | Fall(amount) -> by,
+            Hold -> 0,
+        }
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

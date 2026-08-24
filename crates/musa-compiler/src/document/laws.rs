@@ -558,9 +558,11 @@ fn the_kernel_rechecks_the_standard_library() {
 /// `TRUST.md` says so about the audit and it is true of the corpus too: a
 /// fixture that runs out of steps was never judged, so the kernel was never
 /// asked and there is nothing for it to have disagreed with. [`BUDGET_WALL`] is
-/// the exact list, and those two are still required to fail *only* that way — a
+/// the exact list, and every entry is required to fail *only* that way — a
 /// `ResourceLimit` is a deferral, and any other code from one of them is a real
-/// failure this law reports like any other.
+/// failure this law reports like any other. The list is **empty** as of prompt
+/// 165, so the branch below is what keeps that true rather than a branch nobody
+/// reaches: an entry added later is held to the same argument.
 #[test]
 fn the_kernel_rechecks_every_example() {
     for &(name, source) in EXAMPLES {
@@ -595,22 +597,20 @@ fn the_kernel_rechecks_every_example() {
 
 /// The fixtures that exhaust a budget before the kernel is asked anything.
 ///
-/// Exact, and each entry is owed elsewhere rather than here. `staff-page` was
-/// the other one: it expanded a region through `std::adapters::staff` at
-/// 381,055 steps, and prompt
-/// [166](../../../../docs/plan/prompts/166-staff-rewrite.md) rewrote the
-/// adapter to 191,586 and struck it from this list in the same commit. What is
-/// left is `diatonic-sequences`, which runs past the 200,000-step reduction
-/// budget with no adapter involved — the tonal class 166's Check once recorded
-/// as having "closed itself" for `nextest`. Half of it did: `rule-of-the-octave`
-/// compiles and this one does not, so the class is prompt
-/// [165](../../../../docs/plan/prompts/165-diagnostics-and-performance.md)'s,
-/// whose Target names it.
+/// **Empty, and that is the finding.** Two entries stood here. `staff-page`
+/// expanded a region through `std::adapters::staff` at 381,055 steps, and
+/// prompt [166](../../../../docs/plan/prompts/166-staff-rewrite.md) rewrote the
+/// adapter to 191,586 and struck it in the same commit. `diatonic-sequences`
+/// ran past the 200,000-step reduction budget with no adapter involved — the
+/// tonal class — and prompt
+/// [165](../../../../docs/plan/prompts/165-diagnostics-and-performance.md)
+/// struck it by making the elaborator stop evaluating arguments no codomain
+/// reads: 206,041 steps became 24,661. Note 64 records the measurement.
 ///
-/// Striking an entry is the commit that fixes it. Adding one needs the same
-/// argument this one carries: which prompt owns the wall, and why the fixture
-/// cannot be judged rather than merely being inconvenient.
-const BUDGET_WALL: &[&str] = &["diatonic-sequences"];
+/// Striking an entry is the commit that fixes it. Adding one needs the argument
+/// the two struck entries carried: which prompt owns the wall, and why the
+/// fixture cannot be judged rather than merely being inconvenient.
+const BUDGET_WALL: &[&str] = &[];
 
 /// Every `.musa` fixture the gate above covers.
 ///

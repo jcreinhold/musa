@@ -1,0 +1,16 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+conversion-mismatch
+
+  × type mismatch at the argument: expected `Nat`, found `Pitch`
+    ╭─[examples/broken/a-row-of-pitches-is-not-a-row-of-counts.musa:18:30]
+ 17 │ 
+ 18 │     let counted: Nat = total(melody());
+    ·                              ────┬───
+    ·                                  ╰── here
+ 19 │ 
+    ╰────
+
+1 problem (1 error)

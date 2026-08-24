@@ -776,6 +776,40 @@ pub(crate) fn apply_closure(meter: &mut Meter, closure: &Closure, argument: Valu
     eval(meter, &closure.env.push(argument), &closure.body)
 }
 
+/// Open a closure at whatever `argument` computes, computing it only if the
+/// closure can read it.
+///
+/// [`Closure::reads_its_binder`] states the condition and why it is
+/// conservative. This exists because the elaborator's instantiation walk holds
+/// a *term* for each argument and needs only the codomain: evaluating that term
+/// to push a value the codomain never reads costs the whole subterm, and a walk
+/// that does it at every level of a nested application pays the sum of the
+/// subtree sizes rather than the tree's. Measured at prompt 165 on a voice of
+/// 400 plain notes: 281,264 of the run's 367,097 reduction steps were spent
+/// evaluating arguments, and every one of them stood at a codomain that never
+/// read its binder.
+///
+/// The argument still reaches the elaborated term, so nothing is skipped that
+/// the program's own evaluation does not do once.
+///
+/// # Errors
+///
+/// Whatever `argument` returns, or as [`eval`].
+pub(crate) fn apply_closure_read<E: From<CoreError>>(
+    meter: &mut Meter,
+    closure: &Closure,
+    argument: impl FnOnce(&mut Meter) -> Result<Value, E>,
+) -> Result<Value, E> {
+    // Nothing in the body reaches the binder, so which value stands there
+    // cannot change the answer. `Value::unread` is what stands there instead.
+    let value = if closure.reads_its_binder() {
+        argument(meter)?
+    } else {
+        Value::unread()
+    };
+    Ok(eval(meter, &closure.env.push(value), &closure.body)?)
+}
+
 /// β, or a blocked application.
 ///
 /// `here` is the origin of the application itself, and is used only when the
@@ -1487,7 +1521,7 @@ mod tests {
         // Unrelated to the neutral above, which is the point: the guard does
         // not ask *which* metavariable, because asking would mean walking the
         // value to find out.
-        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
+        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
         meta.solve(&mut meter, type0())
             .expect("an unsolved metavariable takes a solution");
 
@@ -1536,7 +1570,7 @@ mod tests {
         // A second run, solving an unknown of its own — what another document
         // being compiled beside this one amounts to.
         let mut elsewhere = cx.meter();
-        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone());
+        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
         meta.solve(&mut elsewhere, type0())
             .expect("an unsolved metavariable takes a solution");
 

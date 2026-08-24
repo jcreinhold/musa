@@ -1,0 +1,27 @@
+// The two rows agree about everything a reader would look at first — both are
+// a `Row`, both hold one element — and disagree one level down, about what
+// they hold. A message that printed both types in full would ask the reader to
+// diff `Row<Pitch>(Succ(Zero))` against `Row<Nat>(Succ(Zero))` themselves, so
+// the compiler descends to where they actually differ and names that: the
+// element type. What `melody` counts is durations, and a pitch is not one.
+piece "A Row Of Pitches Is Not A Row Of Counts" {
+    import std::indexed;
+
+    fn melody() -> Row<Pitch>(Succ(Zero)) {
+        Longer(0, c4, Empty)
+    }
+
+    fn total(counts: Row<Nat>(Succ(Zero))) -> Nat {
+        row_top(0, counts)
+    }
+
+    let counted: Nat = total(melody());
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

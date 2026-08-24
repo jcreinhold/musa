@@ -13,9 +13,9 @@ fn cell_material(home: TonalContext, lift: Interval) -> CellMaterial {
         cell = music {
             in scale home.collection {
                 c5/8
-                (c5 step 1)/8
-                (c5 step 2)/8
-                (c5 step 3)/8
+                d5/8
+                e5/8
+                f5/8
             }
         },
         answer = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) },
@@ -37,8 +37,8 @@ fn strand(
 ) -> EventTrack<WrittenTime> {
     music {
         repeat 4 {
-            in scale c major { use subject; }
-            in scale c dorian { use transform(subject); }
+            in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/8 }
+            in scale c dorian { use transform(subject); (c5 step 1)/8 (c5 step 2)/8 }
         }
     }
 }

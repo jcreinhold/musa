@@ -1,0 +1,18 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+non-positive-occurrence
+
+  × `Phrase` occurs in `Answered` where a recursive occurrence is not allowed: it may be the
+  │ field itself, or stand at a parameter of a family that is positive in it — never to the
+  │ left of an arrow
+    ╭─[examples/broken/a-form-that-eats-itself.musa:10:25]
+  9 │         Rest,
+ 10 │         Answered(reply: Phrase -> Nat),
+    ·                         ───┬──
+    ·                            ╰── here
+ 11 │     }
+    ╰────
+
+1 problem (1 error)

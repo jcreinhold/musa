@@ -1,0 +1,27 @@
+// A `match` compiles to the family's recursor, which needs one method per
+// constructor, so a missing arm is not a gap the compiler could fill in with a
+// failure case — a total language has no failure case. `Register` has three
+// members and this transposition answers for two of them, which means the
+// piece never decides what a `High` line should do.
+piece "Match Misses A Register" {
+    data Register {
+        Low,
+        Middle,
+        High,
+    }
+
+    fn octaves_up(where: Register) -> Nat {
+        match where {
+            Low -> 2,
+            Middle -> 1,
+        }
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

@@ -33,6 +33,41 @@ use std::fmt;
 use crate::kernel::budget::ResourceError;
 use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::meta::MetaSource;
+
+/// Which of `02-core-calculus.md` §2.4's two conditions a recursive call
+/// failed, as a report says it.
+///
+/// A mirror of `kernel::terminate`'s own `Why`, kept here because a refusal is
+/// this crate's public vocabulary and the kernel's is not, and because the two
+/// carry different things: the kernel's holds a position in the definition's
+/// binders, and by the time a report is written that position has become the
+/// binder's name or nothing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Undescended {
+    /// No argument of the call is a piece a split took apart.
+    NothingSmaller,
+    /// Arguments descend, but not at the position every other call does.
+    NotWhereTheOthersDo,
+}
+
+impl Undescended {
+    /// The whole sentence, which needs the definition and the parameter to say.
+    #[must_use]
+    pub fn said(&self, name: &Name, parameter: Option<&Name>) -> String {
+        let argument = parameter.map_or_else(
+            || "the argument it recurses on".to_owned(),
+            |parameter| format!("`{parameter}`"),
+        );
+        match *self {
+            Self::NothingSmaller => {
+                format!("`{name}` calls itself, and no argument here is a piece a `match` took out of {argument}")
+            }
+            Self::NotWhereTheOthersDo => {
+                format!("`{name}` calls itself here on a different argument than {argument}, which its other calls descend on")
+            }
+        }
+    }
+}
 use crate::kernel::origin::Origin;
 use crate::kernel::term::{Name, Term};
 use crate::kernel::visibility::ModuleId;
@@ -534,12 +569,22 @@ pub enum Refusal {
         at: Origin,
     },
     /// A recursive call the structural rule could not see descend (§2.4).
-    #[error("`{name}` calls itself on something this checker cannot see decrease")]
+    ///
+    /// Two sentences rather than one, because the two ways a call fails the
+    /// rule ask the author for different repairs: a call where nothing at all
+    /// descends wants a piece a `match` took apart, and a call that descends
+    /// somewhere no earlier call did wants every call put on one argument.
+    #[error("{}", .why.said(.name, .parameter.as_ref()))]
     UncheckedRecursion {
         /// The call.
         at: Origin,
         /// The definition being defined.
         name: Name,
+        /// The definition's own parameter the report talks about, when the
+        /// body had a name for it.
+        parameter: Option<Name>,
+        /// Which of the two ways the call failed.
+        why: Undescended,
     },
     /// An introduction form stood where a type had to be synthesized.
     ///

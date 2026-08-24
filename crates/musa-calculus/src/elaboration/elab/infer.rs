@@ -19,6 +19,15 @@ use super::{Elaborator, Typed};
 impl Elaborator {
     /// `Γ ⊢ raw ⇒ ty ⇝ t`.
     pub(super) fn infer(&mut self, scope: &Scope, raw: &Raw) -> Result<Typed, ElabError> {
+        self.meter.enter("elaboration")?;
+        let read = self.inferring(scope, raw);
+        self.meter.leave();
+        read
+    }
+
+    /// [`Self::infer`] with the level already charged — see [`Self::check`] for
+    /// why the judgment is charged at all.
+    fn inferring(&mut self, scope: &Scope, raw: &Raw) -> Result<Typed, ElabError> {
         let here = raw.origin();
         match raw.shape() {
             RawShape::Var(name) => {

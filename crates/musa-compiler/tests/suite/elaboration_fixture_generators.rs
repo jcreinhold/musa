@@ -296,9 +296,9 @@ fn template_pressure() -> String {
          \x20       cell = music {\n\
          \x20           in scale home.collection {\n\
          \x20               c5/8\n\
-         \x20               (c5 step 1)/8\n\
-         \x20               (c5 step 2)/8\n\
-         \x20               (c5 step 3)/8\n\
+         \x20               d5/8\n\
+         \x20               e5/8\n\
+         \x20               f5/8\n\
          \x20           }\n\
          \x20       },\n\
          \x20       answer = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) },\n\
@@ -322,8 +322,8 @@ fn template_pressure() -> String {
          ) -> EventTrack<WrittenTime> {\n\
          \x20   music {\n\
          \x20       repeat 4 {\n\
-         \x20           in scale c major { use subject; }\n\
-         \x20           in scale c dorian { use transform(subject); }\n\
+         \x20           in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/8 }\n\
+         \x20           in scale c dorian { use transform(subject); (c5 step 1)/8 (c5 step 2)/8 }\n\
          \x20       }\n\
          \x20   }\n\
          }\n\n\
@@ -597,28 +597,43 @@ fn the_pressure_workloads_compile_and_denote_what_they_claim() {
     );
     for (name, source, options, notes) in [
         ("core-pressure", core_pressure(), CompileOptions::default(), 8),
-        ("template-pressure", template_pressure(), imported, 16 + 8 * 32),
+        ("template-pressure", template_pressure(), imported, 16 + 8 * 48),
         (
             "analysis-pressure",
             analysis_pressure(),
             CompileOptions::default(),
             64 * 4 + 64 * 3,
         ),
-        // Each cell is four notes, and a window of [1/4, 1/2] keeps two of
-        // them: thirty-two held, thirty-two diminished, thirty-two restricted,
-        // and one raw phrase.
+        // Each cell is four notes and a window of [1/4, 1/2] keeps two of
+        // them, so the *track* carries thirty-two held, thirty-two diminished,
+        // thirty-two restricted, and one raw phrase: 352 occurrences, which is
+        // what `musa events` prints. A voice denotes fewer, and the difference
+        // is the workload's own doing rather than a loss. The restricted copy
+        // is shifted by the same `index/2` as the copy it was cut from, so its
+        // two notes land on two of the held notes at the same onset with the
+        // same spelling, and a voice merges what sounds together at one onset
+        // into one event. Thirty-two cells times two notes is the sixty-four
+        // that merge away.
         (
             "events-pressure",
             events_pressure(),
             CompileOptions::default(),
-            32 * 4 + 32 * 4 + 32 * 2 + 32,
+            32 * 4 + 32 * 4 + 32,
         ),
         (
             "events-document-pressure",
             events_document_pressure(),
             CompileOptions::default(),
-            // Whole, shifted, and windowed to its first half.
-            16 * (32 + 32 + 16),
+            // Whole, shifted, and windowed to its first half — 80 occurrences a
+            // phrase, and sixteen phrases, so 1,280 in the track. One phrase's
+            // worth reaches a voice, for the same reason as above and more
+            // completely: every occurrence in the document names `voice 0 0`,
+            // every phrase starts at 0 on the same quarter-note grid, and the
+            // sixteen `follow`s sit inside one `together`. So all sixteen land
+            // on one another and merge onset by onset. The size of this
+            // workload is the 1,280 the document holds; the 80 is what one
+            // voice is left denoting.
+            32 + 32 + 16,
         ),
     ] {
         let document = SourceDocument::new(source, format!("tests/fixtures/{name}.musa"));

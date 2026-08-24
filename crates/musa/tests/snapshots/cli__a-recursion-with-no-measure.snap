@@ -1,0 +1,19 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unchecked-recursion
+
+  × `sequence_up` calls itself, and no argument here is a piece a `match` took out of the
+  │ argument it recurses on
+    ╭─[examples/broken/a-recursion-with-no-measure.musa:8:5]
+  7 │     piece "A Recursion With No Measure" {
+  8 │ ╭─▶     fn sequence_up(steps: Nat, from: Nat) -> Nat {
+  9 │ │           sequence_up(steps, from + 1)
+ 10 │ ├─▶     }
+    · ╰──── here
+ 11 │     
+    ╰────
+  help: `match` on the argument the recursion is on, and pass a binder that match bound
+
+1 problem (1 error)

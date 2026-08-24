@@ -1,0 +1,23 @@
+// `Row::Empty` is the empty row of *some* element type, and nothing here says
+// which: `how_long` accepts a row of any `A`, and an empty row carries no
+// element to read one off. Musa never defaults an unknown to a guess and never
+// generalizes a definition the author did not write parameters for, so the
+// unknown is reported where it was written. `Row::Empty` under an annotation —
+// `let none: Row<Pitch>(Zero) = Row::Empty;` — answers it.
+piece "A Row Of Nothing In Particular" {
+    import std::indexed;
+
+    fn how_long<A>(of: Row<A>(Zero)) -> Nat {
+        0
+    }
+
+    let counted: Nat = how_long(Row::Empty);
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

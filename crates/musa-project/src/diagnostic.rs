@@ -514,9 +514,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
              fits, will not fall back to a default, and will not generalize the \
              hole into a type variable — each of those decides what a program \
              means on evidence the author did not give, and none of them can be \
-             taken back by a later reader. The report says which kind of hole it \
-             is (the type of a binder, an implicit argument, an annotation the \
-             author omitted), where the term that opened it was written, and — \
+             taken back by a later reader. The report says which hole it is — the \
+             type parameter by name, where the declaration that opened it \
+             wrote one — where the term that opened it was written, and — \
              when one constraint was still waiting on another — which term that \
              constraint came from.\n\n\
              The fix is to write the missing thing: annotate the binder, or \
@@ -565,8 +565,11 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_score::Code::IncompleteMatch => {
             "A `match` leaves a constructor of the family it splits on with no \
              branch.\n\n\
-             The report names the missing constructors. A match compiles to \
-             the family's recursor, which needs one method per constructor, so \
+             The report names one missing constructor rather than all of \
+             them: coverage is decided while the tree is built, so the first \
+             gap is where the model went wrong and the ones behind it are \
+             often the same mistake counted again. A match compiles to the \
+             family's recursor, which needs one method per constructor, so \
              this is not a policy that could have gone the other way: there is \
              no term to build until every branch exists. Nothing is filled in \
              with a failure case, because a total language has no failure case \

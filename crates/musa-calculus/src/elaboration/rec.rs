@@ -128,6 +128,8 @@ pub(crate) fn lift(
         Refusal::UncheckedRecursion {
             at: here,
             name: Arc::clone(name),
+            parameter: None,
+            why: crate::elaboration::refuse::Undescended::NothingSmaller,
         }
         .into()
     };
@@ -174,9 +176,12 @@ pub(crate) fn lift(
         return Err(refuse());
     };
     if let Some(undescending) = descends(&compiled, &lifted_name) {
+        let (why, parameter) = undescended(&undescending, &compiled.binders);
         return Err(Refusal::UncheckedRecursion {
             at: undescending.0,
             name: Arc::clone(name),
+            parameter,
+            why,
         }
         .into());
     }
@@ -509,5 +514,29 @@ fn pattern_binders(pattern: &RawPattern, into: &mut Vec<Name>) {
                 pattern_binders(first, into);
             }
         }
+    }
+}
+
+/// A kernel verdict, as a report says it: which condition failed, and the
+/// definition's own parameter to name while saying so.
+///
+/// The kernel counts positions and a reader reads names, and this is the one
+/// place the two meet. A position past the end of `binders` answers `None`
+/// rather than a plausible name, for `Origin::UNKNOWN`'s reason.
+pub(crate) fn undescended(
+    undescending: &crate::kernel::terminate::Undescending,
+    binders: &[Name],
+) -> (crate::elaboration::refuse::Undescended, Option<Name>) {
+    use crate::elaboration::refuse::Undescended as Said;
+    use crate::kernel::terminate::Why;
+    match undescending.1 {
+        Why::NothingDescends(position) => (
+            Said::NothingSmaller,
+            position.and_then(|position| binders.get(usize::try_from(position).unwrap_or(usize::MAX)).map(Arc::clone)),
+        ),
+        Why::NoAgreedPosition(position) => (
+            Said::NotWhereTheOthersDo,
+            binders.get(usize::try_from(position).unwrap_or(usize::MAX)).map(Arc::clone),
+        ),
     }
 }

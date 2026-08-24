@@ -1,0 +1,19 @@
+// Musa is total: every function has to finish, and the way one earns that is
+// to recurse on a piece a `match` took out of its own argument. `sequence`
+// counts down in the *body* — `steps` never gets smaller in the call — so
+// nothing here descends, and a sequence over zero steps would still ask for
+// one more. The fix is to match on `steps` and recurse on the piece the
+// `Succ` arm hands back.
+piece "A Recursion With No Measure" {
+    fn sequence_up(steps: Nat, from: Nat) -> Nat {
+        sequence_up(steps, from + 1)
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

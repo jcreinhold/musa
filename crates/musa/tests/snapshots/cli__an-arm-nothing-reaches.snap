@@ -1,0 +1,18 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unreachable-branch
+
+  × no value reaches this arm; an earlier one already covers it
+    ╭─[examples/broken/an-arm-nothing-reaches.musa:15:20]
+ 14 │             High -> 0,
+ 15 │             Low -> 1,
+    ·                    ┬
+    ·                    ╰── here
+ 16 │         }
+    ╰────
+  help: an earlier arm already matches every value this one would; narrow that one, or delete
+        this
+
+1 problem (1 error)

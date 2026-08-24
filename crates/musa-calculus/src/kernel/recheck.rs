@@ -123,7 +123,7 @@ pub(crate) fn compiled(name: &Name, body: &Compiled) -> Result<(), CoreError> {
     if let Some(constructor) = body.tree.uncovered() {
         return Err(Malformed::Uncovered(constructor).into());
     }
-    if let Some(Undescending(at)) = descends(body, name) {
+    if let Some(Undescending(at, _)) = descends(body, name) {
         return Err(Malformed::Undescending(at).into());
     }
     Ok(())

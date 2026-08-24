@@ -46,7 +46,7 @@ use crate::kernel::context::Globals;
 use crate::kernel::list::List;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Sort;
-use crate::kernel::term::{Filling, Level, Name, Term};
+use crate::kernel::term::{Binder, Filling, Level, Name, Shape, Term};
 
 /// An immutable environment: the values of the binders in scope, innermost
 /// first, and the names in scope that no binder introduced.
@@ -159,6 +159,48 @@ impl Env {
 pub(crate) struct Closure {
     pub(crate) env: Env,
     pub(crate) body: Term,
+}
+
+impl Closure {
+    /// Whether opening this closure can observe what it is opened at.
+    ///
+    /// A Π's codomain that never mentions its own binder is the ordinary
+    /// non-dependent arrow written in the dependent syntax, and `A → B` says
+    /// nothing about the `A` it was handed. So a caller that has a *term* for
+    /// the argument and needs only the codomain may skip evaluating it: no
+    /// value it could have computed is reachable from the body.
+    ///
+    /// Conservative at a metavariable, and that is the one subtle arm. §2.1
+    /// writes an unknown `?m[σ]` — the spine is read out of the environment
+    /// rather than carried in the term ([`crate::kernel::eval`]'s `Shape::Meta`
+    /// arm says why) — so a body that is, or contains, an unsolved unknown may
+    /// read *every* binder in scope including this one, whatever its written
+    /// nodes mention. Answering `true` there costs an evaluation that might
+    /// not have been needed; answering `false` would drop a binder an
+    /// occurrence names.
+    pub(crate) fn reads_its_binder(&self) -> bool {
+        reads(&self.body, 0)
+    }
+}
+
+/// Whether `term` mentions the variable bound `depth` binders further out.
+fn reads(term: &Term, depth: u32) -> bool {
+    match term.shape() {
+        Shape::Var(index) => index.0 == depth,
+        // See [`Closure::reads_its_binder`]: an occurrence names its scope by
+        // level and the scope is not in the term.
+        Shape::Meta(_) => true,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => false,
+        Shape::Bind { binder, body, .. } => {
+            let carried = match binder {
+                Binder::Pi { ty, .. } => reads(ty, depth),
+                Binder::Let { ty, value } => reads(ty, depth) || reads(value, depth),
+                Binder::Lam => false,
+            };
+            carried || reads(body, depth.saturating_add(1))
+        }
+        Shape::App { function, argument } => reads(function, depth) || reads(argument, depth),
+    }
 }
 
 /// A semantic value: what it is, and where the term that produced it came from.
@@ -602,6 +644,17 @@ impl Value {
     /// A value of form `form`, from a term that came from `origin`.
     pub(crate) const fn new(origin: Origin, form: Form) -> Self {
         Self { origin, form }
+    }
+
+    /// What stands at a binder nothing reads.
+    ///
+    /// [`Closure::reads_its_binder`] decides when this is admissible and
+    /// [`crate::kernel::eval::apply_closure_read`] is the only caller. The form is
+    /// `Type 0` because the environment has to hold *something* and this is the
+    /// cheapest thing to build; which form it is cannot matter, because the
+    /// body that would observe it does not mention the binder it stands at.
+    pub(crate) const fn unread() -> Self {
+        Self::new(Origin::UNKNOWN, Form::Universe(Sort::ZERO))
     }
 
     /// A blocked elimination, as a value.

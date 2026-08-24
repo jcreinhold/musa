@@ -1,0 +1,49 @@
+// `impl Dynamic { fn opposite … }` declares a definition named
+// `Dynamic.opposite`, and `impl Register` declares another. A bare member
+// spelling is decided by the type the site is already checking against — but a
+// name in *function* position has no such type yet: what is being checked
+// there is the application, and the function's own type is what the site is
+// trying to find out. So both namespaces survive, and rather than guess which
+// one the author meant, the compiler lists them. `Dynamic::opposite(Soft)`
+// chooses; so does `Soft.opposite()`, which reads the head off the receiver.
+piece "Two Namespaces One Word" {
+    data Dynamic {
+        Soft,
+        Loud,
+    }
+
+    data Register {
+        Low,
+        High,
+    }
+
+    impl Dynamic {
+        fn opposite(of: Dynamic) -> Dynamic {
+            match of {
+                Soft -> Loud,
+                Loud -> Soft,
+            }
+        }
+    }
+
+    impl Register {
+        fn opposite(of: Register) -> Register {
+            match of {
+                Low -> High,
+                High -> Low,
+            }
+        }
+    }
+
+    fn inverted() -> Dynamic {
+        opposite(Soft)
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

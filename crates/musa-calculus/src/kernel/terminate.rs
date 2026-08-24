@@ -68,7 +68,28 @@ use crate::kernel::term::{Binder, Level, Name, Role, Shape, Term};
 /// One origin rather than a list: the report is
 /// [`Refusal::UncheckedRecursion`](crate::Refusal), which names *the* call, and
 /// a reader fixes the first one before the rest can be judged.
-pub(crate) struct Undescending(pub(crate) Origin);
+///
+/// The second field is the definition's own parameter the report should talk
+/// about, when there is one to name. The two ways a call fails the rule need
+/// different sentences, and both need a name: a call where *nothing* descends
+/// is about the argument the definition's `match` split on, and a call that
+/// descends somewhere no earlier call did is about the position they disagree
+/// over. Neither is legible as "something this checker cannot see decrease".
+pub(crate) struct Undescending(pub(crate) Origin, pub(crate) Why);
+
+/// Which of the two ways a recursive call fails §2.4's rule.
+pub(crate) enum Why {
+    /// No argument of the call is a piece some split took apart. There is
+    /// nothing smaller in it at all. The position carried is the definition
+    /// binder the split standing over this call took apart, when the call
+    /// stands under one — the argument the author almost certainly meant to
+    /// pass a piece of.
+    NothingDescends(Option<u32>),
+    /// Arguments descend, but at no position every call in the body shares, so
+    /// there is no single measure for the definition. The position carried is
+    /// one an earlier call had agreed on.
+    NoAgreedPosition(u32),
+}
 
 /// Whether every recursive call in `body` descends at one fixed position.
 ///
@@ -96,7 +117,11 @@ pub(crate) fn descends(body: &Compiled, name: &Name) -> Option<Undescending> {
             },
         );
     }
-    let mut measure = Measure { name, agreed: None };
+    let mut measure = Measure {
+        name,
+        agreed: None,
+        splitting: None,
+    };
     measure.tree(&body.tree, Level(arity), &from)
 }
 
@@ -106,6 +131,10 @@ struct Measure<'a> {
     /// The positions every call seen so far descends at. `None` until the first
     /// call, which is what makes a non-recursive body vacuously admitted.
     agreed: Option<Vec<u32>>,
+    /// Which definition binder the innermost split above the walk took apart,
+    /// when it took one apart. Carried for the report and read nowhere else:
+    /// the rule itself is decided entirely by `from` and the call's arguments.
+    splitting: Option<u32>,
 }
 
 /// What one variable in scope is, as far as the measure is concerned.
@@ -162,7 +191,13 @@ impl Measure<'_> {
                     for _ in alternative.hypotheses.iter() {
                         at = at.deeper();
                     }
-                    if let Some(refused) = self.tree(&alternative.body, at, &inner) {
+                    let outer = self.splitting;
+                    if descending.is_some() {
+                        self.splitting = descending;
+                    }
+                    let refused = self.tree(&alternative.body, at, &inner);
+                    self.splitting = outer;
+                    if let Some(refused) = refused {
                         return Some(refused);
                     }
                 }
@@ -229,9 +264,10 @@ impl Measure<'_> {
             })
             .collect();
         if descending.is_empty() {
-            return Some(Undescending(at));
+            return Some(Undescending(at, Why::NothingDescends(self.splitting)));
         }
-        let agreed = match self.agreed.take() {
+        let earlier = self.agreed.clone();
+        let agreed: Vec<u32> = match self.agreed.take() {
             Some(agreed) => agreed
                 .into_iter()
                 .filter(|position| descending.contains(position))
@@ -239,7 +275,12 @@ impl Measure<'_> {
             None => descending,
         };
         if agreed.is_empty() {
-            return Some(Undescending(at));
+            // An earlier call agreed on something; this one descends elsewhere.
+            // Naming the position they disagree over is the whole of what a
+            // reader has to see, and the first of the earlier positions is the
+            // one to name because the rule needs *one*.
+            let position = earlier.and_then(|positions| positions.first().copied()).unwrap_or(0);
+            return Some(Undescending(at, Why::NoAgreedPosition(position)));
         }
         self.agreed = Some(agreed);
         None

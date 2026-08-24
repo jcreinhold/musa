@@ -197,6 +197,8 @@ impl Elaborator {
                 return Err(Refusal::UncheckedRecursion {
                     at: here,
                     name: Arc::clone(name),
+                    parameter: None,
+                    why: crate::elaboration::refuse::Undescended::NothingSmaller,
                 }
                 .into());
             };

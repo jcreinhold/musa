@@ -1,0 +1,18 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unsolved-metavariable
+
+  × could not determine the type parameter `A`
+    ╭─[examples/broken/a-row-of-nothing-in-particular.musa:14:33]
+ 13 │ 
+ 14 │     let counted: Nat = how_long(Row::Empty);
+    ·                                 ─────┬────
+    ·                                      ╰── here
+ 15 │ 
+    ╰────
+  help: write it at the call — `{A = …}` in the argument list — or annotate a binder the rest
+        of the expression reads it off
+
+1 problem (1 error)

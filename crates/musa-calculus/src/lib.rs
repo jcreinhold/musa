@@ -108,6 +108,7 @@ pub use crate::kernel::context::Cx;
 pub use crate::kernel::error::{CoreError, Malformed};
 pub use crate::kernel::family::{Constructor, Declared, Group, canonical};
 pub use crate::kernel::meta::MetaSource;
+pub use crate::elaboration::refuse::Undescended;
 pub use crate::kernel::origin::Origin;
 pub use crate::kernel::program::{Def, Program};
 pub use crate::kernel::sort::{Levels, Sort, SortVar};

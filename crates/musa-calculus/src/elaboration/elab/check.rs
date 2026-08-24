@@ -16,7 +16,23 @@ use super::{Bound, Elaborator};
 
 impl Elaborator {
     /// `Γ ⊢ raw ⇐ ty ⇝ t`.
+    ///
+    /// Charged one nesting level, because `02-core-calculus.md` §4.1 charges the
+    /// metric "wherever an evaluation can stand inside another one" and this
+    /// judgment stands inside itself: reading `f (g (h x))` descends a checking
+    /// call per written node. The counter used to see only `eval`, `quote` and
+    /// `unify`, which on the elaborator's own path is uncorrelated with the host
+    /// stack the descent actually spends — measured at prompt 165's Design, 516
+    /// `infer` frames against a nesting reading of 2.
     pub(super) fn check(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
+        self.meter.enter("elaboration")?;
+        let read = self.checking(scope, raw, ty);
+        self.meter.leave();
+        read
+    }
+
+    /// [`Self::check`] with the level already charged.
+    fn checking(&mut self, scope: &Scope, raw: &Raw, ty: &Value) -> Result<Term, ElabError> {
         let unfolded = opened(&mut self.meter, ty)?;
         let ty = unfolded.as_ref().unwrap_or(ty);
         match self.checked(scope, raw, ty)? {
@@ -259,12 +275,12 @@ impl Elaborator {
         }
         let sort = self.fresh_level(here);
         let domain_ty = Value::new(here, Form::Universe(sort));
-        let domain = self.fresh_meta(scope, here, &domain_ty)?;
+        let domain = self.fresh_meta(scope, here, &domain_ty, None)?;
         let domain_value = Arc::new(domain.value);
         let inner = scope.assume(Some(Arc::clone(name)), here, Arc::clone(&domain_value));
         let sort = self.fresh_level(here);
         let codomain_ty = Value::new(here, Form::Universe(sort));
-        let codomain = self.fresh_meta(&inner, here, &codomain_ty)?;
+        let codomain = self.fresh_meta(&inner, here, &codomain_ty, None)?;
         let pi = Value::new(
             here,
             Form::Pi {

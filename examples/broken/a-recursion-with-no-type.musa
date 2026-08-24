@@ -1,0 +1,21 @@
+// A definition that names itself is in scope while its own body is being
+// read, so there is nothing left to infer its type *from* — the checker would
+// have to know the answer to work out the answer. A non-recursive definition
+// may leave its type unwritten and have it inferred; a recursive one has to
+// declare it. Writing `(steps: Nat, from: Nat) -> Nat` is all this needs.
+piece "A Recursion With No Type" {
+    fn sequence_up(steps, from) {
+        match steps {
+            Zero -> from,
+            Succ(fewer) -> sequence_up(fewer, from + 1),
+        }
+    }
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

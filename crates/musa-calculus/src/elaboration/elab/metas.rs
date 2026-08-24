@@ -71,8 +71,11 @@ impl Elaborator {
         let waiting = self.conversion.postponed().take();
         if let Some(entry) = waiting.first() {
             let blocked_on = entry.blocked_on(&mut self.meter)?;
+            let site = blocked_on
+                .as_ref()
+                .map_or(MetaSource::TypeParameter(None), |meta| meta.source().clone());
             return Err(Refusal::Unsolved {
-                site: MetaSource::TypeParameter,
+                site,
                 created: blocked_on.map_or(entry.origin, |meta| meta.origin()),
                 blocked: Some(entry.origin),
             }
@@ -80,7 +83,7 @@ impl Elaborator {
         }
         if let Some(meta) = self.created.iter().find(|meta| !meta.is_solved()) {
             return Err(Refusal::Unsolved {
-                site: MetaSource::TypeParameter,
+                site: meta.source().clone(),
                 created: meta.origin(),
                 blocked: None,
             }
@@ -135,10 +138,21 @@ impl Elaborator {
     /// the table that travels with the meta, and unfolding the scope of every
     /// unknown would make creating one cost what normalizing the context costs.
     ///
+    /// `named` is what the Π this unknown stands at called its binder, when the
+    /// caller has one to give. It is carried for the diagnostic and read
+    /// nowhere else: an unknown is identified by its cell, never by a name, and
+    /// two unknowns standing at binders spelled alike are still two unknowns.
+    ///
     /// # Errors
     ///
     /// Whatever reading the telescope back and evaluating it spends.
-    pub(crate) fn fresh_meta(&mut self, scope: &Scope, here: Origin, goal: &Value) -> Result<Unknown, ElabError> {
+    pub(crate) fn fresh_meta(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        goal: &Value,
+        named: Option<crate::kernel::term::Name>,
+    ) -> Result<Unknown, ElabError> {
         let telescope = scope.telescope();
         let arity = u32::try_from(telescope.len()).unwrap_or(u32::MAX);
         let mut ty = crate::kernel::quote::quote_type(&mut self.meter, Level(arity), Mode::Keep, goal)?;
@@ -149,7 +163,7 @@ impl Elaborator {
         }
         let globals = scope.cx().globals().clone();
         let ty = crate::kernel::eval::eval(&mut self.meter, &Env::under(globals.clone()), &ty)?;
-        let meta = Meta::new(self.next_meta, here, ty, arity, globals);
+        let meta = Meta::new(self.next_meta, here, ty, arity, globals, MetaSource::TypeParameter(named));
         self.next_meta = self.next_meta.saturating_add(1);
         self.created.push(meta.clone());
         let (term, value) = Self::occurrence(scope, &meta, here)?;

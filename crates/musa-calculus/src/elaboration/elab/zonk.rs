@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use crate::elaboration::refuse::{ElabError, Refusal};
-use crate::kernel::meta::{Meta, MetaSource};
+use crate::kernel::meta::Meta;
 use crate::kernel::term::{Binder, Level, Shape, Term};
 
 use super::Elaborator;
@@ -113,7 +113,7 @@ impl Elaborator {
     fn filled(&mut self, meta: &Meta, depth: Level) -> Result<Term, ElabError> {
         let Some((body, goal)) = crate::kernel::unify::opened_solution(&mut self.meter, meta)? else {
             return Err(Refusal::Unsolved {
-                site: MetaSource::TypeParameter,
+                site: meta.source().clone(),
                 created: meta.origin(),
                 blocked: None,
             }

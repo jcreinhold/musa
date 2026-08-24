@@ -340,13 +340,18 @@ fn elaborate(cx: &Cx, held: &RawTopLevel, recursive: bool) -> Result<(Defined, c
                 return Err(Refusal::UncheckedRecursion {
                     at: held.origin,
                     name: Arc::clone(&held.name),
+                    parameter: None,
+                    why: crate::elaboration::refuse::Undescended::NothingSmaller,
                 }
                 .into());
             };
             if let Some(undescending) = crate::kernel::terminate::descends(&compiled, &held.name) {
+                let (why, parameter) = crate::elaboration::rec::undescended(&undescending, &compiled.binders);
                 return Err(Refusal::UncheckedRecursion {
                     at: undescending.0,
                     name: Arc::clone(&held.name),
+                    parameter,
+                    why,
                 }
                 .into());
             }

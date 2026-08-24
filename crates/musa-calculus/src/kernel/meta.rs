@@ -38,11 +38,19 @@
 use crate::kernel::origin::Origin;
 
 /// Which of `02-core-calculus.md` §2.1's sites an unsolved unknown came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// The parameter's own name travels with the site because a reader needs it:
+/// "could not determine a type parameter" is true of every such failure and
+/// tells nobody which one, while "could not determine the type parameter `A`"
+/// names something the reader can go and write down. It is optional because
+/// not every unknown stands for a written binder — a `Storable` discharge and
+/// the two halves of a Π elaboration open unknowns nobody named — and inventing
+/// a plausible name for those is `Origin::UNKNOWN`'s mistake one level up.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MetaSource {
     /// A type parameter of the called function that no written argument
-    /// determined.
-    TypeParameter,
+    /// determined, named where the Π it stands at named it.
+    TypeParameter(Option<crate::kernel::term::Name>),
 }
 
 impl MetaSource {
@@ -52,9 +60,20 @@ impl MetaSource {
     /// rather than a sentence: the message says where the unknown came from,
     /// and the term's own origin says where to look.
     #[must_use]
-    pub const fn describe(self) -> &'static str {
-        match self {
-            Self::TypeParameter => "a type parameter",
+    pub fn describe(&self) -> std::borrow::Cow<'static, str> {
+        match *self {
+            Self::TypeParameter(None) => std::borrow::Cow::Borrowed("a type parameter"),
+            Self::TypeParameter(Some(ref name)) => {
+                std::borrow::Cow::Owned(format!("the type parameter `{name}`"))
+            }
+        }
+    }
+
+    /// The parameter's name, when the site had one.
+    #[must_use]
+    pub fn named(&self) -> Option<&crate::kernel::term::Name> {
+        match *self {
+            Self::TypeParameter(ref name) => name.as_ref(),
         }
     }
 }
@@ -108,6 +127,9 @@ struct Cell {
     /// that comes out has to unfold the same definitions the scope it came
     /// from would have. It is not part of the meta's identity.
     globals: Globals,
+    /// What the program left unsaid here, for the report that has to name it.
+    /// Read only by [`crate::elaboration::elab::Elaborator::settled`]'s audit.
+    source: MetaSource,
     solution: OnceLock<Value>,
 }
 
@@ -119,15 +141,21 @@ impl Meta {
     /// nested Π binders around the goal, and it mentions no free variable.
     /// [`crate::kernel::unify::scope_of`] is the only reader of that shape, and
     /// it answers a [`Malformed`] rather than assuming when the shape is wrong.
-    pub(crate) fn new(id: u32, origin: Origin, ty: Value, arity: u32, globals: Globals) -> Self {
+    pub(crate) fn new(id: u32, origin: Origin, ty: Value, arity: u32, globals: Globals, source: MetaSource) -> Self {
         Self(Arc::new(Cell {
             id,
             origin,
             ty,
             arity,
             globals,
+            source,
             solution: OnceLock::new(),
         }))
+    }
+
+    /// What the program left unsaid where this unknown was opened.
+    pub(crate) fn source(&self) -> &MetaSource {
+        &self.0.source
     }
 
     /// How many binders its telescope abstracts.
