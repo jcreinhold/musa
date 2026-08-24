@@ -1643,10 +1643,7 @@ library {
         here: NodePath,
         kids: List<SyntaxStep<State, State>>,
     ) -> State {
-        match kids.fold_from_start(
-            Parens(NoNumbers, NoLength),
-            run_syntax_step,
-        ) {
+        match kids.fold_from_start(Parens(NoNumbers, NoLength), run_syntax_step) {
             Parens(stated, exact) -> match exact {
                 Spanned(numeral, span) -> holding_length(read, held, here, exact),
                 _ -> Body(read, held with {
@@ -1733,10 +1730,7 @@ library {
                     Voicing(spot) -> brackets_read(read, held, spot, kids),
                     Ignoring(spot) -> Body(read, held),
                 },
-                Parens(numbers, length) -> kids.fold_from_start(
-                    state,
-                    run_syntax_step,
-                ),
+                Parens(numbers, length) -> kids.fold_from_start(state, run_syntax_step),
                 Bracket(said) -> state,
                 Fusing(parts) -> state,
             }
@@ -1927,15 +1921,11 @@ library {
     ) -> State {
         match state {
             Body(read, held) -> if sighted(kind) {
-                body_token(
-                    read,
-                    held,
-                    Said {
-                        spot = here,
-                        kind = kind,
-                        spelling = spelling
-                    },
-                )
+                body_token(read, held, Said {
+                    spot = here,
+                    kind = kind,
+                    spelling = spelling
+                })
             } else { state },
             Parens(numbers, length) -> if sighted(kind) {
                 stated_token(
@@ -1950,13 +1940,11 @@ library {
                 )
             } else { state },
             Bracket(was) -> if sighted(kind) {
-                Bracket(
-                    Some(Said {
-                        spot = here,
-                        kind = kind,
-                        spelling = spelling
-                    }),
-                )
+                Bracket(Some(Said {
+                    spot = here,
+                    kind = kind,
+                    spelling = spelling
+                }))
             } else { state },
             // A slash is punctuation between forms and a part of `3/8`, and
             // which it is depends only on where it stands — the one thing
