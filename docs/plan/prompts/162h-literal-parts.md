@@ -39,6 +39,11 @@ that read nodes, and spliceable in a quote.
   structure or the law fails.
 - `crates/musa-syntax/src/formatter/` — a lossless CST means the printed text is unchanged, and the formatter is where
   that is proved.
+- `crates/musa-compiler/src/quote/read.rs`'s `read_node`, `build.rs`'s `delimited`, and `print.rs`'s `write_syntax` —
+  **the three files that decide this prompt's boundary**. A node that is not wrapped in a matched delimiter pair becomes
+  a `Delimiter::Layout` group, and the printer writes a group's children with one space between siblings. So a composite
+  literal node read into the phase and printed back is `c # 5`, and the Design below says what this prompt does about
+  that and what it does not.
 
 ## Design
 
@@ -71,6 +76,22 @@ discipline as `check_expression` one level down — build freely, then prove the
 **No new reading operations.** A part is a node and the operations that read nodes read it. If the implementation wants
 `syntax_pitch_letter`, the parts are not really nodes and the design is wrong.
 
+**The phase sees the token it sees today, and that is this prompt's boundary.** The expansion phase reads a region into
+its own `Syntax`, which has four shapes — missing, token, identifier, group — and a group is written back with one space
+between siblings, because the language it is written back into is whitespace-insensitive between tokens. The three
+composite literals are exactly the places where it is not. A composite literal read as a group would therefore print as
+`c # 5`, and `as_expression` — which prints and re-parses — would refuse the composer's own pitch; the staff adapter
+splices one at every note.
+
+So `read_region` reads a composite literal node back as the one token it is, with the kind and the whole spelling it has
+today, and **no phase snapshot moves**. That is a real check and not a concession: it says the parts are a fact about
+the CST and nothing about the phase has changed underneath it.
+
+Giving the phase a shape for "a node that is one lexeme" is prompt [162ha](162ha-a-literal-is-one-lexeme.md)'s, and it
+is a design decision rather than a detail — a fifth group shape, a gate that re-lexes what was built, and the argument
+that the gate keeps §2's "a splice is not string concatenation" true. This prompt would have had to make that decision
+in passing, and a decision made in passing is the one nobody can check later.
+
 **The tie stays as it is.** Fixing `staff.musa`'s spelling comparison is prompt [166](166-staff-rewrite.md)'s; this
 prompt makes it possible and says so in the commit message.
 
@@ -78,11 +99,12 @@ prompt makes it possible and says so in the commit message.
 
 - `PitchLiteral`, `IntervalLiteral` and `Rational` are composite CST nodes with the parts above; the lexer, the printed
   bytes, and every parser test of the token kind are unchanged.
-- Splicing at a part, with the re-lex check and a refusal that names the part and the literal.
+- `crates/musa-compiler/src/quote/read.rs` reads each of the three back as the one token the phase sees today, with a
+  comment saying why and naming 162ha.
 - `editors/tree-sitter-musa` grows the same structure, with corpus entries, and the drift law passes.
 - Laws in `musa-syntax`: node text is the concatenation of the parts for a corpus covering `b2`, `bb2`, `bbb2`, `cn4`,
   `c#-1`, `M3`, `dim7`, `AA4`, `d2`, `3/8`, `12/16`; the formatter round-trips each unchanged; a part carries the range
-  it occupies in the source; a spliced literal that would not lex is refused.
+  it occupies in the source.
 - Laws in `musa-compiler`: a pitch literal elaborates to the same term it does today, checked against the existing
   fixtures rather than new ones.
 
@@ -101,8 +123,9 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
 CST snapshots move — that is the point of the prompt and each moved snapshot must show parts and nothing else. Rendered
-output, `tests/fixtures/elaboration-compatibility.txt`, and every `examples/` rendering must be byte-identical; a moved
-byte there is a failure.
+output, `tests/fixtures/elaboration-compatibility.txt`, every `examples/` rendering, and **every expansion snapshot**
+must be byte-identical; a moved byte there is a failure. The expansion half is the sharp one: it is what says the phase
+still sees the token it saw, which is what makes the boundary above real rather than asserted.
 
 `cargo nextest run --run-ignored all` carries the reds prompt [164](164-builtin-collapse.md)'s Check enumerates; a *new*
 red is this prompt's.
@@ -116,5 +139,8 @@ Commit as `Give a pitch, an interval and a rational the parts the lexer found`.
   (`staff.musa`'s note at `key_named` says so).
 - No per-part reading builtin, and no `Pitch`-valued reader of a node. A part is a node; that is the deliverable.
 - No change to §2's splice rule, to hygiene, or to what a quote builds at.
+- **No fifth group shape, no change to `Delimiter`, no change to the phase printer, and no splice at a part.** Those are
+  [162ha](162ha-a-literal-is-one-lexeme.md)'s, and an implementation that finds itself needing one of them here has
+  crossed the boundary the Design draws.
 - No adapter rewrite. `staff.musa`'s tie comparison and `doubled.musa`'s builders are [166](166-staff-rewrite.md)'s and
   [167](167-studio-rewrite.md)'s.
