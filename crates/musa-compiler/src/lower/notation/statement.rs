@@ -203,10 +203,9 @@ impl Lowering<'_> {
                     // term of its own, and building one per statement would
                     // spend nodes on blocks that claim nothing.
                     if self.claims.len() > raised {
-                        let before = placed.built(origin);
+                        let prefix: Vec<Raw> = placed.pieces().cloned().collect();
                         for claim in self.claims.iter_mut().skip(raised) {
-                            let inside = claim.before.clone();
-                            claim.before = applied(origin, Raw::hosted(origin, "follow"), [before.clone(), inside]);
+                            claim.before.splice(0..0, prefix.iter().cloned());
                         }
                     }
                     placed.place(origin, next);
@@ -251,7 +250,9 @@ impl Lowering<'_> {
         let raised = self.claims.len();
         let body = self.notated(node, reading)?;
         for claim in self.claims.iter_mut().skip(raised) {
-            claim.before = under(claim.before.clone());
+            for piece in &mut claim.before {
+                *piece = under(piece.clone());
+            }
             claim.passage = under(claim.passage.clone());
         }
         Some(under(body))
@@ -479,7 +480,7 @@ impl Lowering<'_> {
             SyntaxKind::TempoStmt => self.context(node, origin, reading, span, Context::Tempo),
             SyntaxKind::ClefStmt => self.context(node, origin, reading, span, Context::Clef),
 
-            SyntaxKind::BarStmt => self.bar(node, origin, reading),
+            SyntaxKind::BarStmt => self.bar(node, reading),
             SyntaxKind::SenzaStmt => self.senza(node, origin, reading, span),
 
             SyntaxKind::AssertStmt => self.asserted(node, origin, reading),

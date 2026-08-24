@@ -112,6 +112,19 @@ impl Placed {
         self.stack.push((count, built));
     }
 
+    /// Everything placed so far, in the pieces this counter holds it in.
+    ///
+    /// Earliest first, so that following them in order is following the music
+    /// in order. There are at most `log₂ n` of them and each one is the same
+    /// `Raw` every later caller sees, because `place` only ever merges whole
+    /// subtrees and never rebuilds one — which is what lets a reader that wants
+    /// a *measurement* of the prefix, rather than the prefix itself, pay for
+    /// each piece once however many claims stand after it. See
+    /// [`crate::document::Document::began`].
+    pub(crate) fn pieces(&self) -> impl Iterator<Item = &Raw> {
+        self.stack.iter().map(|(_, piece)| piece)
+    }
+
     /// Everything placed so far, as one track.
     ///
     /// Seeded with `nothing`, which is what makes an empty block silence rather

@@ -1031,3 +1031,224 @@ const EXAMPLES: &[(&str, &str)] = &[
     ),
     ("variation", include_str!("../../../../../examples/variation.musa")),
 ];
+
+/// Every claim in `source`, as the pair this module's prefix laws compare.
+///
+/// The first number is where [`Document::passage`] says the passage begins,
+/// which it works out by adding the durations of the pieces the fold handed the
+/// claim. The second is the same prefix built back into one term and measured
+/// whole, which is what the compiler did before prompt 165d and what the pieces
+/// have to keep agreeing with.
+fn placed_two_ways(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, usize)> {
+    let node = written(source);
+    let mut resolver = Resolver::new();
+    let sources = [Source::own(&node)];
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    read.parts
+        .iter()
+        .flat_map(|part| part.voices.iter())
+        .flat_map(|voice| voice.claims.iter())
+        .map(|claim| {
+            let (_, placed) = document.passage(claim).expect("a claim places against its own voice");
+            let whole = match claim.before.first() {
+                Some(first) => {
+                    let folded = crate::lower::notation::followed(first.origin(), claim.before.clone());
+                    document
+                        .track(&folded)
+                        .expect("a prefix folded back into one term reads back as a track")
+                        .duration()
+                        .as_ratio()
+                }
+                None => Ratio::new(0, 1),
+            };
+            (placed.at.as_ratio(), whole, claim.before.len())
+        })
+        .collect()
+}
+
+/// A prefix measured in pieces is the prefix measured whole.
+///
+/// A fold hands a claim the music before it as [`Placed`]'s own subtrees rather
+/// than as one term, because building one term per claim is what made a
+/// hundred-bar voice elaborate its own prefix a hundred times. Adding the
+/// pieces' durations is only the same answer because the event track's
+/// `sequence` adds durations — `docs/rules/events/` — and that is a fact about
+/// the ontology rather than about this fold, so it is checked rather than
+/// assumed.
+///
+/// Eleven statements before the last bar so the pieces are genuinely several:
+/// the counter merges equal-sized subtrees, so a prefix of eleven stands as
+/// eight, two, and one, and a law written over a prefix of eight would compare
+/// one piece against itself.
+#[test]
+fn a_prefix_measured_in_pieces_is_the_prefix_measured_whole() {
+    let placed = placed_two_ways(
+        "piece \"Pieces\" {\n\
+             tempo 1/4 = 60;\n\
+             meter 4/4;\n\
+             key c major;\n\
+             score { part p { voice v {\n\
+                 | c4/4 d4/4 e4/4 f4/4\n\
+                 | g4/4 a4/4 b4/4 c5/4\n\
+                 | c4/4 d4/4 e4/4 f4/4\n\
+                 | g4/4 a4/4 b4/4 c5/4\n\
+             } } }\n\
+         }\n",
+    );
+    assert_eq!(placed.len(), 4, "four bars raise four claims: {placed:?}");
+    for (at, whole, pieces) in &placed {
+        assert_eq!(at, whole, "a prefix of {pieces} pieces measured two ways: {placed:?}");
+    }
+    assert_eq!(
+        placed.iter().map(|&(at, _, _)| at).collect::<Vec<_>>(),
+        vec![Ratio::new(0, 1), Ratio::new(1, 1), Ratio::new(2, 1), Ratio::new(3, 1)],
+        "and the four bars stand where whole measures stand",
+    );
+    assert!(
+        placed.iter().any(|&(_, _, pieces)| pieces > 1),
+        "the law is only worth stating where a prefix is several pieces: {placed:?}",
+    );
+}
+
+/// Each of the four transformation blocks agrees with that measurement.
+///
+/// [`Lowering::transforming`](crate::lower::Lowering) maps a block over each of
+/// a claim's prefix pieces rather than over one prefix term, and the two are the
+/// same answer only because each of the four commutes with `follow` in the way
+/// that decides a duration. That is the one place the piecewise prefix could
+/// quietly be wrong, so all four are written out: a `transpose` and an `invert`
+/// keep durations, a `stretch` scales them, and a `retrograde` reverses an order
+/// whose total is the same either way.
+#[test]
+fn a_transformed_prefix_measures_the_same_in_pieces() {
+    for block in ["transpose up m2", "stretch 2", "retrograde", "invert around c5"] {
+        let placed = placed_two_ways(&format!(
+            "piece \"Under\" {{\n\
+                 tempo 1/4 = 60;\n\
+                 meter 4/4;\n\
+                 key c major;\n\
+                 score {{ part p {{ voice v {{\n\
+                     {block} {{\n\
+                         | c4/4 d4/4 e4/4 f4/4\n\
+                         | g4/4 a4/4 b4/4 c5/4\n\
+                         | c4/4 d4/4 e4/4 f4/4\n\
+                     }}\n\
+                 }} }} }}\n\
+             }}\n"
+        ));
+        assert_eq!(placed.len(), 3, "three bars under `{block}`: {placed:?}");
+        for (at, whole, pieces) in &placed {
+            assert_eq!(at, whole, "`{block}` over {pieces} pieces: {placed:?}");
+        }
+    }
+}
+
+/// A voice of a hundred bars compiles, and a hundred bars is not a pathology.
+///
+/// The claim a bar raises used to carry the whole prefix of its fold as one
+/// term, and `Document::passage` elaborated each one, so a voice of `n` bars
+/// elaborated `1 + 2 + … + n` bars of music to read `n` rationals. Measured in
+/// a release build with `musa check`, on one voice of a single whole note a
+/// bar: twenty-five bars 38.7 ms, fifty 125.6 ms, a hundred **490.3 ms** —
+/// four times the time for twice the bars. With the prefix carried in pieces
+/// the same hundred bars take 59.9 ms. A hundred bars of one line is a page of
+/// music, so the wall this crossed was an ordinary one.
+///
+/// One whole note a bar rather than a bar of eighths, because the two limits
+/// are different: `Budget::LANGUAGE` admits about two hundred notes, so a
+/// hundred bars of eighths refuses on steps long before the clock is the
+/// interesting part. Bars are what this law is about, so the notes get out of
+/// the way.
+///
+/// No time is asserted here, because a law that named a number would be a law
+/// about this machine. What is asserted is that the piece compiles and that
+/// every bar lands on its own measure — which is the answer the quadratic also
+/// gave, so the law is a regression guard whose failure mode is the clock
+/// rather than the assertion.
+///
+/// It reads through [`claimed`] rather than [`placed_two_ways`], and the reason
+/// is the finding itself: the second reader folds a claim's pieces back into
+/// one term and elaborates it, which *is* the quadratic. Comparing the two
+/// readings is
+/// [`a_prefix_measured_in_pieces_is_the_prefix_measured_whole`]'s job, at a
+/// size where the comparison is cheap.
+#[test]
+fn a_hundred_bars_place_themselves() {
+    let placed = claimed(&whole_note_bars(100));
+    assert_eq!(placed.len(), 100, "a hundred bars raise a hundred claims");
+    for (index, &(at, extent, _)) in placed.iter().enumerate() {
+        let expected = Ratio::new(i64::try_from(index).unwrap_or(0), 1);
+        assert_eq!(at, expected, "bar {index} begins where bar {index} begins");
+        assert_eq!(extent, Ratio::new(1, 1), "and fills its own measure");
+    }
+}
+
+/// A voice of `bars` bars, each one whole note under a 4/4 meter.
+fn whole_note_bars(bars: usize) -> String {
+    let mut source = String::from(
+        "piece \"Bars\" {\n\
+             tempo 1/4 = 60;\n\
+             meter 4/4;\n\
+             key c major;\n\
+             score { part p { voice v {\n",
+    );
+    for _ in 0..bars {
+        source.push_str("| c4/1\n");
+    }
+    source.push_str("} } }\n}\n");
+    source
+}
+
+/// The bars of one voice share the music standing before them.
+///
+/// This is the line the old fold could not cross at any speed. It gave each
+/// claim `Placed::built` — a term of its own, built for that claim — so the
+/// prefixes of `n` claims were `n` terms sharing nothing, and `passage` had
+/// nothing to cache. Carrying the prefix in the pieces the skew-binary counter
+/// already holds means bar 40 and bar 41 hand `passage` the *same allocations*
+/// for everything they agree about, which is what makes the memo in
+/// [`crate::document::Document::began`] worth having rather than a table of
+/// misses.
+///
+/// Stated as a strict inequality between two counts of the same pieces — with
+/// multiplicity, and distinct by the address the memo keys on — because that is
+/// the property, and it does not name a machine or a clock. The counts are also
+/// asserted to be nonempty and the piece count per claim to stay small, so a
+/// regression that shared everything by handing out no prefix at all would fail
+/// here rather than pass.
+#[test]
+fn the_bars_of_one_voice_share_the_music_before_them() {
+    let node = written(&whole_note_bars(40));
+    let mut resolver = Resolver::new();
+    let sources = [Source::own(&node)];
+    let mut document = elaborate(&mut resolver, &sources).expect("the document elaborates");
+    let read = document.piece(&mut resolver, &node).expect("the piece reads");
+    let claims: Vec<_> = read
+        .parts
+        .iter()
+        .flat_map(|part| part.voices.iter())
+        .flat_map(|voice| voice.claims.iter())
+        .collect();
+    assert_eq!(claims.len(), 40, "forty bars raise forty claims");
+
+    let mut distinct = std::collections::HashSet::new();
+    let mut counted = 0usize;
+    for claim in &claims {
+        assert!(
+            claim.before.len() <= 8,
+            "a claim carries the counter's pieces, not a bar apiece: {}",
+            claim.before.len()
+        );
+        for piece in &claim.before {
+            counted = counted.saturating_add(1);
+            distinct.insert(std::ptr::from_ref(piece.shape()) as usize);
+        }
+    }
+    assert!(counted > 0, "thirty-nine of the forty bars stand after something");
+    assert!(
+        distinct.len() < counted,
+        "the claims share pieces: {} distinct of {counted} carried",
+        distinct.len()
+    );
+}

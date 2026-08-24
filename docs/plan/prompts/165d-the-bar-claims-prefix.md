@@ -1,7 +1,7 @@
 ---
 id: 165d
 slug: the-bar-claims-prefix
-status: in-progress
+status: done
 depends_on: [165b, 165c]
 phase: 3
 ---

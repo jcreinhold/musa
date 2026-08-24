@@ -274,7 +274,7 @@ impl Lowering<'_> {
     /// voice can answer, which is a *declaration* in the enclosing document
     /// rather than a statement in this block, and reading it here would put the
     /// same name in scope once per voice that mentions it.
-    pub(crate) fn bar(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
+    pub(crate) fn bar(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
         let statement = musa_syntax::ast::BarStmt::cast(node.clone())?;
         let passage = self.notated(node, reading)?;
         self.claims.push(Claimed {
@@ -285,7 +285,7 @@ impl Lowering<'_> {
             noun: "bar",
             // Nothing yet: the fold this bar stands in prepends what comes
             // before it, and so does every fold above that one.
-            before: Raw::lit(origin, crate::registry::empty_track()),
+            before: Vec::new(),
             passage: passage.clone(),
         });
         Some(passage)

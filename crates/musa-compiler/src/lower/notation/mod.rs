@@ -325,6 +325,21 @@ impl Reading {
 /// standing before the statement it came from, so no level needs to know how
 /// deeply it is nested and no level is handed an absolute position it could get
 /// wrong.
+///
+/// It is prepended in *pieces* rather than as one term, and that is a
+/// measurement rather than a preference. A fold hands every claim raised under
+/// it the same prefix, and building that prefix into one term per claim means
+/// elaborating it once per claim: a hundred-bar voice elaborated the music
+/// before bar one a hundred times, before bar two ninety-nine times, and
+/// compiling `tests/fixtures/large-score.musa` took 13.33 seconds in a release
+/// build against `06-frame-budgets.md`'s 400 ms. The pieces are
+/// [`Placed`](super::raw::Placed)'s own subtrees, shared by `Arc` across every
+/// claim the fold raises, so [`crate::document::Document::began`] can read each
+/// one's duration once and add them up. Sound because the event track's
+/// `sequence` adds durations: measuring a prefix in pieces and measuring it
+/// whole are one number by the ontology, which
+/// [`a_prefix_measured_in_pieces_is_the_prefix_measured_whole`](crate::lower::piece::laws)
+/// checks rather than assumes.
 pub(crate) struct Claimed {
     /// Which claim is made. The registry's own row, so the name and the shapes
     /// its arguments must have are one fact rather than two that could disagree.
@@ -339,9 +354,11 @@ pub(crate) struct Claimed {
     /// What the sentence naming the passage calls it: a `bar`, or the `passage`
     /// an `assert` was written on.
     pub(crate) noun: &'static str,
-    /// The music standing before the passage. Its duration is where the passage
-    /// begins, which is what a measure claim is measured against.
-    pub(crate) before: Raw,
+    /// The music standing before the passage, earliest piece first. Its total
+    /// duration is where the passage begins, which is what a measure claim is
+    /// measured against; the pieces are the module doc's subject and an empty
+    /// list is a passage that begins at zero.
+    pub(crate) before: Vec<Raw>,
     /// The passage itself. Its duration is how long the passage lasts, and its
     /// occurrences are the notes a pitch or chord claim is proved against.
     pub(crate) passage: Raw,

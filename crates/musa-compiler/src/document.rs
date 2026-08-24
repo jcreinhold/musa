@@ -192,6 +192,11 @@ pub(crate) struct Document {
     /// core already counted exactly, so the reading reports what it spent and
     /// the phase adds it up — see [`crate::phase::PhaseWork`].
     spend: musa_calculus::Spend,
+    /// Durations already read off a claim's prefix pieces, by the address of
+    /// each piece's own allocation. See [`Self::began`] for why an address is
+    /// the right key and what keeps it a valid one.
+    durations:
+        std::sync::Mutex<std::collections::HashMap<usize, (Raw, musa_events::Duration<musa_events::WrittenTime>)>>,
 }
 
 impl Document {
@@ -301,12 +306,59 @@ impl Document {
     /// argument's normal form does not hold what its shape declares — which is
     /// this crate's defect rather than a program's, since every argument was
     /// checked at that shape's own type.
+    /// Where a passage begins: how long the music before it lasts.
+    ///
+    /// [`Claimed::before`](crate::lower::Claimed) holds that music in pieces
+    /// rather than as one term, and this adds their durations up. Adding is not
+    /// an approximation of following: the event track's `sequence` places one
+    /// track after another and its duration is the sum of the two, so a prefix
+    /// measured piecewise and the same prefix measured whole are one rational
+    /// by `docs/rules/events/`'s own equation.
+    ///
+    /// # The cache is a cache
+    ///
+    /// A fold hands every claim raised under it the same prefix pieces, and the
+    /// pieces are shared by `Arc`, so the same allocation is asked its duration
+    /// once per claim standing after it. Measured before this, in a release
+    /// build on one whole note a bar: a voice of a hundred bars took 490 ms to
+    /// compile and one of fifty took 126 — quadratic in the bars, on a workload
+    /// where the notes alone are linear. It takes 60 ms now.
+    ///
+    /// The key is the address of a piece's own allocation, and that is sound
+    /// because it is only ever used to *find* an answer, never to decide that
+    /// two terms are equal. Two structurally equal pieces at two addresses miss
+    /// and are elaborated twice, which is slow and not wrong. The entry keeps
+    /// its `Raw` alive beside the answer so that the address it is filed under
+    /// cannot be freed and handed to a different term while the entry stands.
+    fn began(&self, pieces: &[Raw]) -> Result<musa_events::Duration<musa_events::WrittenTime>, ElabError> {
+        let mut began = musa_events::Duration::default();
+        for piece in pieces {
+            let at = std::ptr::from_ref(piece.shape()) as usize;
+            let measured = match self.durations.lock() {
+                Ok(read) => read.get(&at).map(|&(_, duration)| duration),
+                Err(_) => None,
+            };
+            let duration = match measured {
+                Some(duration) => duration,
+                None => {
+                    let duration = self.track(piece)?.duration();
+                    if let Ok(mut write) = self.durations.lock() {
+                        write.insert(at, (piece.clone(), duration));
+                    }
+                    duration
+                }
+            };
+            began = began.plus(duration);
+        }
+        Ok(began)
+    }
+
     pub(crate) fn passage(
         &self,
         claimed: &Claimed,
     ) -> Result<(musa_score::assert::Claim, musa_score::assert::Passage), ElabError> {
         let claim = self.claim(claimed)?;
-        let before = self.track(&claimed.before)?;
+        let began = self.began(&claimed.before)?.as_ratio();
         let sounding = self.track(&claimed.passage)?;
         let notes = if claim.reads_notes() {
             sounding
@@ -331,7 +383,7 @@ impl Document {
             claim,
             musa_score::assert::Passage {
                 span: claimed.span,
-                at: musa_score::MusicalTime::new(before.duration().as_ratio()),
+                at: musa_score::MusicalTime::new(began),
                 extent: musa_score::MusicalDuration::new(sounding.duration().as_ratio()),
                 content_end: claimed.content_end,
                 notes,
@@ -618,6 +670,7 @@ pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<D
         definitions: declared,
         names,
         spend,
+        durations: std::sync::Mutex::default(),
     })
 }
 

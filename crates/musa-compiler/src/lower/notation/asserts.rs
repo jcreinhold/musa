@@ -48,7 +48,7 @@ impl Lowering<'_> {
             noun: "passage",
             // Nothing yet, exactly as a bar records nothing: the fold this
             // assertion stands in prepends what comes before it.
-            before: Raw::lit(origin, crate::registry::empty_track()),
+            before: Vec::new(),
             // Without the step, because a claim is proved against what sounds
             // and provenance is not part of that. The music the *voice* gets
             // carries it.

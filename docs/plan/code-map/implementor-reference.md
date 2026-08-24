@@ -77,6 +77,16 @@ A construct that needs a fact from context — `step` needs a collection, `asser
 needs a frame — states the requirement and fails with a diagnostic naming what was missing, rather than inventing a
 default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 
+A bar's own context fact is *where it begins*, and the fold has no cursor to keep it. `Claimed::before` in
+`crates/musa-compiler/src/lower/notation/mod.rs` carries the music standing before the passage, in the pieces `Placed` —
+the skew-binary counter in `raw.rs` — already holds it in, earliest first; `Document::began` in
+`crates/musa-compiler/src/document.rs` sums their durations over a memo keyed by the address of each piece's `Arc`, and
+`Document::passage` reads the sum as the claim's onset. The field carried the whole prefix as one built term until
+prompt 165d, which made a voice of `n` bars elaborate `1 + 2 + … + n` bars of music;
+`docs/notes/research/language-design-closure/63-the-barline-quadratic.md` has the measurement and the soundness
+argument. The memo is a cache and never an equality: an address only finds a cached answer, so a miss is a second
+elaboration and never a different rational.
+
 ## 3. A worked trace
 
 `examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
