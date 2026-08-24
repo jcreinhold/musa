@@ -1,7 +1,7 @@
 ---
 id: 164a
 slug: one-document-form
-status: pending
+status: in-progress
 depends_on: [164]
 phase: 3
 ---
@@ -118,7 +118,8 @@ note exists to prevent.
 
 **Migration.** Twenty files under `stdlib/src/` lose a `library {` line, a closing brace, and one level of indentation;
 `cargo run -p musa -- format` writes the indentation once the wrapper is gone. Five module files change not at all.
-`examples/` changes not at all — no example opens a `library`.
+`examples/album/library/motifs.musa` and `patches.musa` lose theirs the same way — the two files under `examples/` that
+open one — and no file under `examples/` that declares a piece changes at all.
 
 ## Target
 
@@ -160,7 +161,8 @@ Commit as `Make a musa file one document form`.
 - **`piece` is not moved into the standard library.** The staging judgment, the fragment `K`, and `follow`/`together`
   are untouched. That prompt is written after 167 and runs before 168.
 - **No declaration is moved out of the `piece` block.** `tempo`, `meter`, `key`, front matter, and `score` stay where
-  they are, and `examples/` is not rewritten.
+  they are, and no file under `examples/` that declares a piece is rewritten. The two that open a `library` lose the
+  wrapper because the keyword is gone, which is Target and not scope.
 - No new language feature. This prompt removes a wrapper and merges two loops; anything it makes newly *expressible*
   beyond declarations standing at a file root is out of scope.
 - No behaviour change to what a piece means: same snapshot, same rendered output, same exports for the same
