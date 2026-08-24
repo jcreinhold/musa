@@ -1,7 +1,7 @@
 ---
 id: 162b
 slug: parameterized-record-literals
-status: pending
+status: in-progress
 depends_on: [157, 161]
 phase: 3
 ---
@@ -56,6 +56,12 @@ An unsolved parameter is the ordinary unsolved-metavariable refusal, pointing at
 say so. Today the annotation catches this as a conversion mismatch; keep a refusal that names both, because a literal
 whose head disagrees with its goal is a real mistake and silence about it would be worse than the bug this prompt fixes.
 
+**One defect was found under this one and is fixed here.** `check.rs`'s `literal` walked the family's parameters with
+`apply` — which applies a λ — where a constructor's *type* is a Π and the walk belongs to `record::instantiated`, whose
+doc comment already said "every rule here walks an accessor's or a constructor's telescope one argument at a time, so
+the one walk lives here". It stood because it was unreachable: no parameterized record could be written at all. Fixing
+it is not scope creep; without it the head this prompt adds reaches a malformed-core report instead of a value.
+
 **A record pattern is the same question and already has an answer.** `Pending { read = r }` matches through
 `02-core-calculus.md` §6.2's case tree, where the scrutinee's type supplies the family. Nothing here changes it, and the
 Check below asserts that.
@@ -70,9 +76,16 @@ the coordinate. That diagnostic is deliberate and a law names it. The parameters
 - `RawShape::Record` carries an optional head; the lowering fills it; the annotation is gone.
 - Inferring a headed literal solves the family's parameters from the fields.
 - A headed literal whose head disagrees with its goal is refused, naming both families.
-- `stdlib/src/algebra.musa` gains the three constructions it declares and has never been able to make: a
-  `Group<Interval>`, an `Action<Pitch, Interval>`, and a `Torsor<Pitch, Interval>`, each written out and each named by a
-  law.
+- `stdlib/src/pitch.musa` gains the three constructions `stdlib/src/algebra.musa` declares and has never been able to
+  make: a `Group<Interval>`, an `Action<Pitch, Interval>`, and a `Torsor<Pitch, Interval>`, each written out and each
+  named by a law.
+
+  **In `pitch.musa` and not in `algebra.musa`.** `pitch.musa` imports `algebra`, so `algebra` cannot import `pitch` —
+  the bundled-module probe answers "these files import each other" — and a construction written in `algebra.musa`
+  would have to reach past `Interval.compose` and `Pitch.act` to the builtins under them. That is the third spelling of
+  one operation `algebra.musa`'s own head comment exists to prevent. A structure is declared where the vocabulary is
+  and constructed where the carrier is, which is also the ordinary direction: `algebra` says what a group is, `pitch`
+  says that written intervals are one.
 - A law suite entry per rule above, in `crates/musa-compiler/tests/suite/`.
 
 ## Check
@@ -110,5 +123,5 @@ Commit as `Let a parameterized record be constructed`.
 - No meta insertion in `check_type`, for the reason the Design gives.
 - No new record feature: no positional construction, no field punning beyond the `Pending { read }` shorthand that §1.2
   already writes, no `..`.
-- No use of the new construction outside `stdlib/src/algebra.musa` and the laws. Prompt 164 is where the algebra reaches
+- No use of the new construction outside `stdlib/src/pitch.musa` and the laws. Prompt 164 is where the algebra reaches
   the musical domains.
