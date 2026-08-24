@@ -67,6 +67,7 @@ mod staff_dispatch_fixture;
 mod staff_expansion_laws;
 mod staff_package_laws;
 mod staff_writing_laws;
+mod structure_law_laws;
 mod studio_laws;
 mod syntax_pattern_laws;
 mod tonal_analysis_validation;

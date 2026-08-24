@@ -149,4 +149,22 @@ library {
     fn triad_classes(refined: Triad) -> PcSet(12) {
         pcset(12, chromatic, map(unspelled, triad_tones(refined)))
     }
+
+    // **The PLR laws are not discharged here, and this is where that is
+    // recorded** (prompt 163). `P`, `L` and `R` are involutions and the
+    // hexatonic cycle closes, both after the projection above — those are true
+    // statements and neither is a proof term in this module.
+    //
+    // Two reasons, and they stack. The first: every function here is quantified
+    // over `Triad`, which is a compiler base type with δ-rules and no
+    // eliminator, so there is no case analysis to split an abstract triad with
+    // and `Refl` is refused on the spot. The second: the projection's own
+    // codomain does not save it, because `PcSet(12)`'s operations reach
+    // `nat_add` too — `std::algebra`'s own note says why that is fatal to a
+    // quantified law.
+    //
+    // So the evidence stays where it can be executed: the property suites in
+    // `crates/musa-compiler/tests/suite/transformational_harmony_laws.rs`, over
+    // the triads the corpus actually builds. `docs/rules/language/05-verification.md`
+    // §4 says which laws are of which kind and why.
 }

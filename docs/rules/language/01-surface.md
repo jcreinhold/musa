@@ -102,6 +102,18 @@ complete (`02-core-calculus.md` §1.3), so a two-argument step function has a tw
 way to write it down; §1.6's own `fold_from_start` declaration needs one, and note 40 §2 recorded the same gap for the
 recursor's four-argument branches.
 
+**A parameter in a function type is unnamed, and the codomain therefore cannot mention it.** `fn-type` above lists
+*types*, so `(x: G) -> Equal<G>(compose(unit(x), x), x)` does not parse — the parser asks for `)` after `x` — and
+`fn (x: G) -> …` is not a type either. A `fn` declaration's parameter list is the only place in this language where an
+author names a Π binder, which is why a declaration may *have* a dependent type it cannot *write*: `std::indexed`'s
+`row_top` has type `(size: Nat) -> Row<A>(Succ(size)) -> A`, the form `02-core-calculus.md` §1 calls the only function
+type, and that type cannot be annotated, stored in a field, or returned.
+
+This is a gap and it is recorded as one. It is **not** what stops a structure from carrying its laws, which is the use
+prompt 163 examined it for: over every carrier `stdlib/` has, a quantified law has no inhabitant at all, so a spelling
+for it would have nothing to hold (§4.0 of `05-verification.md` carries the measurement). Closing the gap therefore
+waits for a use that is blocked by the spelling and not by the term.
+
 Expression forms bind as follows, tightest first:
 
 | Level | Forms | Associativity |

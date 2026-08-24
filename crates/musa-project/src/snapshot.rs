@@ -240,7 +240,7 @@ struct SnapshotWire<'a> {
     /// counts within it and not across pieces.
     document: u64,
     name: &'a str,
-    /// `piece` or `material` — which of the two things this file is.
+    /// `piece`, `material`, `events`, or `modules` — which shape this file is.
     kind: &'static str,
     source: &'a str,
     revision: u64,
@@ -352,6 +352,7 @@ impl ProjectSnapshot<'_> {
                 musa_compiler::DocumentKind::Piece => "piece",
                 musa_compiler::DocumentKind::Material => "material",
                 musa_compiler::DocumentKind::Events => "events",
+                musa_compiler::DocumentKind::Modules => "modules",
             },
             source: self.source,
             revision: self.revision.0,

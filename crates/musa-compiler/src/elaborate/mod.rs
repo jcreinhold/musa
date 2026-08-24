@@ -114,10 +114,16 @@ pub(crate) fn elaborate_parsed(
         if let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) {
             return elaborate_material(resolver, &library, name, options);
         }
+        if !musa_syntax::ast::ModDecl::all_at_root(&root).is_empty() {
+            return elaborate_module_file(resolver, &root);
+        }
         resolver.report(
             Diagnostic::error(Code::Misplaced, "this file declares no piece")
                 .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
-                .help("every musa file is one piece, or a `library { … }` for others to import"),
+                .help(
+                    "every musa file is one piece, a `library { … }` for others to import, \
+                     or a module file of `mod …;` declarations",
+                ),
         );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
@@ -198,6 +204,38 @@ pub(crate) fn elaborate_parsed(
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
         .with_references(references)
+}
+
+/// A module file: `mod …;` declarations and nothing else.
+///
+/// The third document shape (`docs/rules/language/01-surface.md` §1's
+/// `module-file`), and the one that owes no piece. `stdlib/src/lib.musa` is
+/// the worked example: a package's root file names its children and declares
+/// nothing of its own, and a directory module's `mod.musa` does the same one
+/// level down (`docs/rules/language/04-templates-and-modules.md`).
+///
+/// It elaborates to the module tree and no exports, so there is nothing here
+/// to check: which files those names reach is a question about the package,
+/// and [`crate::package`] answers it against the file listing rather than
+/// against one file read alone.
+///
+/// What *is* checked is that the file says only that. A `let` or an `import`
+/// beside the `mod`s is unreachable — a module file is a path segment and not
+/// a module of its own, so nothing can import what it binds — and the same
+/// reasoning that makes an undeclared file "declared nowhere" makes an
+/// undeclarable binding an error rather than dead weight.
+fn elaborate_module_file(resolver: &mut Resolver, root: &SyntaxNode) -> Compilation {
+    for child in root.children() {
+        if child.kind() == musa_syntax::SyntaxKind::ModDecl {
+            continue;
+        }
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "a module file declares modules and nothing else")
+                .at(resolve::trimmed_span(&child), "this is not a `mod` declaration")
+                .help("move it into one of the modules this file names, or make this file a `piece` or a `library`"),
+        );
+    }
+    Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_modules()
 }
 
 /// Every node whose declarations this piece is read against, in reading order.

@@ -145,13 +145,18 @@ impl<'a> Parser<'a> {
     /// Parse the whole document and build the tree.
     pub(super) fn run(mut self) -> (SyntaxNode, Vec<SyntaxError>) {
         self.start(SyntaxKind::Root);
-        // A file is a piece or a library. Which one it is is written at the
-        // top of it rather than inferred from what it happens to contain: a
-        // library with a `score` in it is then a parse error rather than a
-        // rule someone has to remember.
+        // A file is a piece, a library, or a module file
+        // (`docs/rules/language/01-surface.md` §1). Which one it is is written
+        // at the top of it rather than inferred from what it happens to
+        // contain: a library with a `score` in it is then a parse error rather
+        // than a rule someone has to remember.
         //
-        // What may precede it is the file's lexical root: imports, values,
-        // functions, and type declarations. One file is one piece.
+        // What may precede a piece or a library is the file's lexical root:
+        // imports, values, functions, and type declarations. One file is one
+        // piece. A module file is `mod …;` and nothing else, and the
+        // elaborator holds it to that — the parser reads the same preamble
+        // either way, so what is written beside the `mod`s is a question about
+        // meaning rather than about shape.
         let shape = self.root_preamble();
         if self.at(SyntaxKind::LibraryKw) {
             self.library_decl();

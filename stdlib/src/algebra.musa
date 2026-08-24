@@ -16,6 +16,55 @@ library {
     // carries fields and never obligations: an obligation needs evidence, and
     // evidence needs a term witnessing an equality.
     //
+    // # Why no field below holds a law
+    //
+    // The sentence above was written when there was no evidence to attach.
+    // There is now — prompt 156 made `Equal` declarable and prompt 157 made a
+    // structure an ordinary record, so a field *may* be an equation and a
+    // record literal that does not satisfy it is refused at the literal. Prompt
+    // 163 went looking for one to add and found none. The reason is worth
+    // stating here rather than in a note, because it is a fact about this
+    // module's carriers and someone will otherwise try again:
+    //
+    // **A δ-rule computes on canonical data, so it does not step under a
+    // constructor.** `nat_add` is a compiler builtin — note 61 records why it
+    // stays one — and `x + 0` is stuck for a `x` the checker only knows to be a
+    // `Nat`. Splitting it does not help: the `Succ` arm is stuck too, on
+    // `nat_add (Succ i) 0`. Every operation on every carrier here reaches that
+    // arithmetic before it reaches a normal form — `Cyclic(n)` through
+    // `reduced_in`, `Ti` through `plus_in` and `minus_in`, `Pc(n)` through both
+    // — so a quantified law over any of them has no inhabitant an author can
+    // write, and a field typed by one could never be filled.
+    //
+    // Three things this is *not*, each measured rather than assumed:
+    //
+    // - **Not the record mechanism.** A field whose type mentions an earlier
+    //   field is checked against the field the literal supplied, and a false
+    //   equation is refused there.
+    // - **Not `Equal`, and not the absence of tactics.** Induction goes through
+    //   whenever the operation is written by matching. Writing
+    //   `fn cong<A, B>(f: A -> B, x: A, y: A, same: Equal<A>(x, y)) -> Equal<B>(f(x), f(y))`
+    //   as one `match` on `Refl` type-checks, and with it a proof of
+    //   `plus(x, Zero) = x` by induction on `x` type-checks, for a `plus`
+    //   written the way `number_of` below is.
+    // - **Not the surface's missing named function type.** `(x: G) -> …` does
+    //   not parse, which is a real gap and `std::indexed`'s `row_top` is the
+    //   other evidence for it. It is not this one: a spelling for a field that
+    //   has no inhabitant would have nothing to hold.
+    //
+    // And one thing it is, for `Ti` in particular: the T/I group's laws are
+    // **false** up to `Equal` and true up to `same_operation`. `Ti` is
+    // deliberately not indexed by the cycle, so `Transpose(15)` and
+    // `Transpose(3)` are one operation at twelve and two terms anywhere. A
+    // proposition about labels is the wrong proposition; the `Bool` is the
+    // right one.
+    //
+    // What *does* compute is every closed instance. `ti_compose(12, chromatic,
+    // Transpose(0), Transpose(3))` is `Transpose(3)` by evaluation, and the
+    // `Equal` saying so is inhabited by `Refl` today — which is what the
+    // fixtures in `examples/` are made of. A law is the quantified form of
+    // exactly those, and quantifying is the step that does not survive.
+    //
     // # Records, and what the operations are
     //
     // Each structure is a record, so it is a *value*: a function may take two

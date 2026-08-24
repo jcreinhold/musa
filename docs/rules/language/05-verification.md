@@ -82,8 +82,9 @@ Implementations must test the following at the equality named in `00-semantics.m
    only scale, so no additional surface operation is inferred from this law.
 6. **Chosen composition:** `follow` and `together` obey the equations in `00-semantics.md`; no nested-track flatten law
    exists.
-7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`, stated over the traits §1.1
-   names. `Group<Interval>`: `compose` is associative, `unit` is neutral on both sides, and `compose(g, inverse(g))` is
+7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`, stated over the records
+   `stdlib/src/algebra.musa` declares — traits, which an earlier statement of this line named, were deleted at prompt
+   146. `Group<Interval>`: `compose` is associative, `unit` is neutral on both sides, and `compose(g, inverse(g))` is
    `unit`. `Action<Pitch, Interval>` and `Action<NoteName, Interval>`: `act(x, unit(g))` is `x`, and `act(x, compose(g,
    h))` is `act(act(x, h), g)`. `Torsor<Pitch, Interval>`: `act(a, difference(a, b))` is `b` — the cancellation step,
    and the one law that separates a torsor from a carrier with an action. The absent `Torsor<NoteName, Interval>` is
@@ -103,6 +104,35 @@ Implementations must test the following at the equality named in `00-semantics.m
    samples up to the processor's stated numerical tolerance; offline and live execute the same render operation.
 16. **Build reproducibility:** identical locked build closure, compiler version, options, and target produce identical
    semantic artifacts and deterministic offline bytes where the backend promises them.
+
+### 4.0 Which of these is a proof, and which is a test
+
+Since prompt 156 the language can state an equation and inhabit it, so this section owes an answer to the obvious
+question: which of the sixteen laws above is discharged by a term the compiler checks, and which by a suite that runs?
+
+**Today: none of them is a proof term, and prompt 163 measured why.** The obstacle is not the absence of tactics and not
+the record mechanism — a record field may be an equation, a literal that violates one is refused at the literal, and
+induction goes through for any operation written by matching. The obstacle is that the operations these laws are about
+are δ-rules, and a δ-rule computes on canonical data only. `nat_add` does not step under a `Succ`, so `x + 0 = x` is
+stuck for an abstract `x`; every carrier in `stdlib/src/algebra.musa` and `stdlib/src/post_tonal/` reaches that
+arithmetic before it reaches a normal form; and `Pitch`, `NoteName`, `Interval` and `Triad` are base types with no
+eliminator at all. `stdlib/src/algebra.musa`'s own module comment carries the measurement and the refused terms.
+
+What *is* checked by the compiler is the closed case. `Equal<Ti>(ti_compose(12, chromatic, Transpose(0), Transpose(3)),
+Transpose(3))` is inhabited by `Refl`, and the fixtures in `examples/` are made of exactly such bindings: a wrong number
+there is a type error rather than a failing assertion. A law is the quantified form of those, and quantifying is the
+step that does not survive.
+
+So every law in this section is discharged by an executable suite, and that is a floor rather than a preference. Two
+consequences worth keeping in view:
+
+- **A property test and a proof term are different evidence, and the suite would survive a proof anyway.** A test covers
+  the concrete carriers the corpus builds; a proof covers all of them. Where one of these laws ever becomes provable,
+  the suite stays, as the check that the proof is about the operation the code calls.
+- **The re-opening condition is mechanical.** If a δ-rule ever unfolds on a neutral — a fold-defined `Nat` arithmetic,
+  an unfolding rule for builtins, an eliminator for a base type — the measurement above is stale and the laws over the
+  affected carrier should be re-asked as fields. `crates/musa-compiler/tests/suite/structure_law_laws.rs` pins the
+  measurement so that change shows up as a red test rather than as a paragraph nobody re-ran.
 
 ### 4.1 Adapter expansion laws
 

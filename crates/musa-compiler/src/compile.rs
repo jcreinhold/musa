@@ -55,13 +55,13 @@ pub struct CompileOptions {
     pub realization: musa_score::realize::Realization,
 }
 
-/// Which of the two things a musa file may be (roadmap §16).
+/// Which of the shapes a musa file may be (roadmap §16).
 ///
-/// The grammar has always had both — a `piece` sounds, a `library` declares —
-/// but the compiler used to accept only the first at a document's root, which
-/// made "material has no score" indistinguishable from "this failed to
-/// compile". Callers ask this when they need to tell those apart; callers that
-/// only want a score still ask for one and still get `None`.
+/// The grammar has always had the first two — a `piece` sounds, a `library`
+/// declares — but the compiler used to accept only the first at a document's
+/// root, which made "material has no score" indistinguishable from "this
+/// failed to compile". Callers ask this when they need to tell those apart;
+/// callers that only want a score still ask for one and still get `None`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum DocumentKind {
     /// `piece "…" { … }` — the thing that has a score.
@@ -69,6 +69,15 @@ pub enum DocumentKind {
     Piece,
     /// `library { … }` — declarations for other files to import.
     Material,
+    /// `mod …;` and nothing else — a package's module tree, at its root
+    /// (`lib.musa`) or one directory down (`mod.musa`).
+    ///
+    /// Neither of the two above: it has no score, and it exports nothing for
+    /// an importer either, because a module file is a path segment rather
+    /// than a module of its own (`docs/rules/language/04-templates-and-modules.md`).
+    /// A caller deciding what to show needs that told apart from material,
+    /// which has nothing to show and plenty to import.
+    Modules,
     /// `% musa-events-3` — an events interchange file, read as itself
     /// (`docs/rules/language/01-surface.md` §7).
     ///
@@ -151,16 +160,21 @@ impl Compilation {
         self
     }
 
+    pub(crate) fn into_modules(mut self) -> Self {
+        self.kind = DocumentKind::Modules;
+        self
+    }
+
     pub(crate) fn into_events(mut self) -> Self {
         self.kind = DocumentKind::Events;
         self
     }
 
-    /// Which of the two things this document is (roadmap §16).
+    /// Which shape this document is (roadmap §16).
     ///
-    /// Material compiles to no score and that is not a failure: a caller
-    /// deciding what to *show* needs the distinction, because "no score yet"
-    /// and "no score ever" are different screens.
+    /// Material and a module file compile to no score and that is not a
+    /// failure: a caller deciding what to *show* needs the distinction,
+    /// because "no score yet" and "no score ever" are different screens.
     pub fn kind(&self) -> DocumentKind {
         self.kind
     }

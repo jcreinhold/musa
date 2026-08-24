@@ -1017,7 +1017,9 @@ impl ProjectSession {
             // and its emptiness is as legitimate: `events "x" { … timeline 0
             // {} }` is a well-formed file that denotes silence.
             musa_compiler::DocumentKind::Piece | musa_compiler::DocumentKind::Events => score.is_some(),
-            musa_compiler::DocumentKind::Material => !had_errors,
+            // A module file names its children and declares nothing, so
+            // "well-formed as what it is" is the absence of a complaint.
+            musa_compiler::DocumentKind::Material | musa_compiler::DocumentKind::Modules => !had_errors,
         };
         let mut score_changed = false;
         if let Some(mut score) = score {
