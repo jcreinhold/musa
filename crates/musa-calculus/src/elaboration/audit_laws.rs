@@ -158,6 +158,7 @@ mod tests {
         let cx = cx.declaring(&group);
         let var = |spelling: &str| Raw::var(HERE, spelling);
         let program = RawProgram {
+            families: Vec::new(),
             definitions: vec![RawTopLevel {
                 origin: HERE,
                 name: name("copy"),

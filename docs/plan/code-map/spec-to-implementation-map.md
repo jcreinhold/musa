@@ -18,14 +18,14 @@ unfulfilled. `partial` means some of it stands. `absent` means no code answers t
 | [Total non-recursive source expressions](#total-non-recursive-source-expressions) | `musa-compiler` | implemented | conformance tests |
 | [Definitional equality](#definitional-equality) | `musa-calculus` | implemented | 144, 148 |
 | [Bidirectional elaboration](#bidirectional-elaboration) | `musa-calculus` | implemented | 142 |
-| [Top-level definition groups](#top-level-definition-groups) | `musa-calculus` | implemented | 141o, 142 |
+| [Top-level declaration groups](#top-level-declaration-groups) | `musa-calculus` | implemented | 141o, 142, 162ba |
 | [The constructor rule](#the-constructor-rule) | `musa-calculus` | implemented | 141g, 142 |
 | [Inductive families and match](#inductive-families-and-match) | `musa-calculus` | implemented | 144, 148 |
 | [Base types and builtins](#base-types-and-builtins) | `musa-calculus` | implemented | 142, 143 |
 | [Numerals at a counting family](#numerals-at-a-counting-family) | `musa-calculus` | implemented | 142, 143, 148 |
 | [The compiler's own domains and operations](#the-compilers-own-domains-and-operations) | `musa-compiler` | implemented, unreached | 142, 143 |
 | [The CST read as a raw core term](#the-cst-read-as-a-raw-core-term) | `musa-compiler` | implemented, unreached | 142 |
-| [A whole document, elaborated](#a-whole-document-elaborated) | `musa-compiler` | implemented, unreached | 142 |
+| [A whole document, elaborated](#a-whole-document-elaborated) | `musa-compiler` | implemented, unreached | 142, 162ba |
 | [A written piece as the track it denotes](#a-written-piece-as-the-track-it-denotes) | `musa-compiler` | implemented, unreached | 142 |
 | [Records and enums as surface syntax](#records-and-enums-as-surface-syntax) | `musa-syntax` | implemented | 137, 142 |
 | [The private marker](#the-private-marker) | `musa-syntax` | implemented | 137, 142 |
@@ -198,16 +198,21 @@ specification states pattern unification. Prompt 153 replaces the mechanism; pro
 ride on it; prompt 152 gives levels something to solve in. Until then this row is *implemented against a superseded
 §2.1*, and that is the gap to read it with.
 
-## Top-level definition groups
+## Top-level declaration groups
 
-> A document's top-level definitions and instances, declared as one group.
+> A document's `data` groups, definitions, and instances, declared as one group.
 
 `musa-calculus` · **implemented** · `02-core-calculus.md` §2.4
 
-Implemented in `program.rs` as the second door beside `declare`. `declare_program` takes a `RawProgram` — every
-definition a document can see, each with an origin, a name, a visibility, an optional module, an optional written type,
-and a value, plus every `impl` the document writes — and `Cx::defining` brings the definitions into scope as global
-names and the instances into `Classes` in one call.
+Implemented in `program.rs`. `declare_program` takes a `RawProgram` — every definition a document can see, each with an
+origin, a name, a visibility, an optional module, an optional written type, and a value, plus every `impl` the document
+writes, plus every `data` group beside the module it was written in — and `Cx::defining` brings all of it into scope in
+one call.
+
+Since prompt 162ba the families are in the same `RawProgram` rather than declared ahead of it through `declare`, because
+the dependency between the two kinds runs both ways: a field is a type, and an index is a term. `declare` is still the
+door a group goes through; what changed is that the door is opened from inside the analysis, at the position the order
+puts the group in, rather than by a caller holding two lists and guessing which comes first.
 
 A definition is a **global name**, not a binder, and the argument is sharper than symmetry with families: a de Bruijn
 binder refers *outward*, so a named `Cx::define` could let the last definition see the first and never the reverse, and
@@ -765,7 +770,7 @@ caller and owns the source changes the node-decides-the-domain rule implies.
 
 ## A whole document, elaborated
 
-> Which of the core's three doors each written declaration goes through.
+> Which declarations a document holds, gathered and handed to the core as one group.
 
 `musa-compiler` · **implemented, unreached** · `02-core-calculus.md` §2.4, `01-surface.md` §1.2
 
@@ -773,29 +778,34 @@ In `document.rs`. A document is a list of `Source`s — a node whose children ar
 cannot read off the node: whether §5.9's phase vocabulary is spellable inside it. Import *order* is `crate::imports`',
 because a walk that learned about import graphs would be resolving names a second time.
 
-### The order the three doors open in is forced
+### There is one door, and the order behind it is computed
 
-Families first, because a field is a type. Traits next, because a method type may name any family. Then the definitions
-*and the document's instances together* as one group through `declare_program`, because §2.4's forward reference is a
-property of the group and not of a written order, and because neither of those two kinds comes first: an `impl`'s method
-bodies are ordinary terms that may call any definition, and a definition may resolve a method by receiver against an
-instance the same document declares.
+Every declaration — `data` groups, `record`s, definitions, and what `impl` blocks leave behind — goes through
+`declare_program` in one call, and the order is the dependency order that call computes.
 
-There was a fourth door, and prompt 141r removed it for exactly that reason: a `declare_impl` loop running after the
-definitions made every definition blind to its own document's instances, which reads as `NoMethodForType` at a call
-whose `impl` is twenty lines above it.
+It was three doors in a forced order until prompt 162ba, and the order was wrong rather than merely coarse. "Families
+first, because a field is a type" is true and is half of it: a field is a type, but an *index* is a term. §1 makes a
+family's index "any term of the index's type — a call, a projection, a value the program computed", so
+`data Vect<A>(n : Nat) { Cons(…) : (m + 1) }` names `Nat.add`, and a walk that had declared no definition yet could only
+report that as a name nobody wrote. The dependency runs both ways, so no order fixed by kind answers it.
 
-The one shape it cannot express is a family whose field names a `record` — §1.2 makes a record a definition — which the
-core refuses at the field and nothing in this repository writes.
+There was a fourth door before that, and prompt 141r removed it for the same shape of reason: a `declare_impl` loop
+running after the definitions made every definition blind to its own document's instances, which reads as
+`NoMethodForType` at a call whose `impl` is twenty lines above it.
 
-### Family groups are dependency-ordered by their written identifiers
+The limit 141o recorded — a family whose field names a `record`, since §1.2 makes a record a definition — is gone with
+the ordering that caused it, and `document/laws.rs` writes one.
 
-Not by their `Raw` terms: every type name a `data` declaration depends on is an identifier token under its node, so one
-token pass finds fields, indices, and a parameter's own bound at once and cannot fall behind a `Raw` shape added later.
+### The edges are the core's own reading
 
-It over-approximates only in the safe direction — a spurious edge is a spurious *cycle*, and a cycle is
-`Code::DependencyCycle` naming the declarations on it, refused here rather than in the core because the core's
-mutual-recursion door is one group with shared parameters and two written `data` declarations share none.
+Not the document's: `declare_program` walks the `Raw` shapes it owns, under a binder stack, for a `data` group exactly
+as it already did for a definition. That replaces a token pass over the CST, which over-approximated safely while the
+graph held only type names and would not have while it holds every definition's name too — a `fn` named after a
+`record`'s field is an ordinary program and was one spurious edge away from a refused document.
+
+A cycle is `Refusal::DefinitionCycle`, restated as `Code::DependencyCycle` at the declaration that closes it, wherever
+the cycle runs. A `data` group on one is refused with the rest: the core's mutual-recursion door is one group with
+shared parameters, and two written declarations share none.
 
 ### Two questions and no others
 

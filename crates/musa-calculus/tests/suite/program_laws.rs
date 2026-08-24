@@ -57,7 +57,10 @@ fn private_in(module: ModuleId, name: &str, ty: Option<Raw>, value: Raw) -> RawT
 }
 
 fn program(definitions: Vec<RawTopLevel>) -> RawProgram {
-    RawProgram { definitions }
+    RawProgram {
+        families: Vec::new(),
+        definitions,
+    }
 }
 
 fn number(count: u32) -> Raw {

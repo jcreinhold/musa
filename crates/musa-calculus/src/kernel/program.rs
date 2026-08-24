@@ -204,14 +204,25 @@ impl core::fmt::Debug for Defined {
 ///
 /// A namespaced definition — `Pitch.act` — is a member like any other. That is
 /// the whole of what an `impl Pitch { … }` block leaves here.
+///
+/// The declared families are in it for the same reason the raw ones are in a
+/// [`RawProgram`]: the two kinds are ordered by one analysis, so the result is
+/// one thing to bring into scope and not two a caller could bring in the wrong
+/// order.
 pub struct Program {
     pub(crate) members: Arc<[Arc<Defined>]>,
+    pub(crate) families: Arc<[Arc<crate::kernel::family::Group>]>,
 }
 
 impl Program {
     /// Every definition in the group, in the order they were written.
     pub(crate) fn members(&self) -> &[Arc<Defined>] {
         &self.members
+    }
+
+    /// Every family group in it, in the order they were declared.
+    pub(crate) fn families(&self) -> &[Arc<crate::kernel::family::Group>] {
+        &self.families
     }
 
     /// The definitions the *elaborator* put here, in the order it lifted them:
@@ -233,14 +244,19 @@ impl Program {
     }
 }
 
-/// The definitions, in the order the document wrote them.
+/// The declarations, in the order the document wrote them.
 ///
-/// A named list rather than a bare one: what the order shows is the *written*
-/// order, which [`declare_program`] restores after elaborating in the order it
-/// computed.
+/// Named lists rather than bare ones: what the definitions' order shows is the
+/// *written* order, which [`declare_program`] restores after elaborating in the
+/// order it computed, while the families' is the order they were declared in —
+/// two different orders, and a reader of a dump should not have to guess which
+/// one is which.
 impl core::fmt::Debug for Program {
     fn fmt(&self, out: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        out.debug_struct("Program").field("definitions", &self.members).finish()
+        out.debug_struct("Program")
+            .field("definitions", &self.members)
+            .field("families", &self.families)
+            .finish()
     }
 }
 

@@ -69,14 +69,35 @@ pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Prog
     // Positions rather than the values themselves, because the elaboration
     // order is not the written order and the written order is what comes back.
     let mut members: Vec<(usize, Arc<Defined>)> = Vec::with_capacity(program.definitions.len());
+    // In the order they were declared, which is the order they have to be
+    // brought back into scope in: see [`Cx::defining`](crate::Cx::defining).
+    let mut families: Vec<Arc<crate::kernel::family::Group>> = Vec::with_capacity(program.families.len());
     let mut spent = crate::Spend::default();
     for node in ordering(&nodes)? {
-        let Held::Definition(index, held) = node.held;
-        let (defined, spend) = elaborate(&extended, held, node.recursive)?;
-        let defined = Arc::new(defined);
-        spent = spent.and(spend);
-        extended = extended.defining_one(&defined);
-        members.push((index, defined));
+        match node.held {
+            Held::Definition(index, held) => {
+                let (defined, spend) = elaborate(&extended, held, node.recursive)?;
+                let defined = Arc::new(defined);
+                spent = spent.and(spend);
+                extended = extended.defining_one(&defined);
+                members.push((index, defined));
+            }
+            // The module rides beside the group rather than inside the
+            // [`RawData`], for the reason
+            // [`RawGroup`](crate::elaboration::raw::RawGroup) gives: one program
+            // holds several files' declarations, so there is no one module the
+            // walk stands in. A definition says the same thing in its own field
+            // and [`elaborate`] reads it there.
+            Held::Family(group) => {
+                let base = group
+                    .module
+                    .map_or_else(|| extended.clone(), |module| extended.in_module(module));
+                let (declared, spend) = crate::elaboration::declare::declare(&base, &group.data)?;
+                spent = spent.and(spend);
+                extended = extended.declaring(&declared);
+                families.push(declared);
+            }
+        }
     }
     // Written order, not elaboration order: what a caller brings into scope is
     // the document's own list, and the order the analysis found is a fact about
@@ -92,30 +113,62 @@ pub(crate) fn declare_program(cx: &Cx, program: &RawProgram) -> Result<(Arc<Prog
             .map(|(_, defined)| defined)
             .chain(extended.globals().lifted())
             .collect(),
+        families: families.into(),
     });
     Ok((declared, spent))
 }
 
-/// The dependency graph over a document's definitions.
+/// The dependency graph over everything a document declares.
 ///
 /// Two kinds of edge, and the second is why this is not a plain name graph. A
-/// **hard** edge is a definition naming another by its own name. A **soft** edge
-/// is a definition writing `x.m(y)`: the spelling `m` stands for "whichever
-/// namespace declares it", so it reaches every `Head.m` in this group, and an
-/// edge the analysis could not narrow is dropped by [`ordering`] rather than
-/// refused as a cycle.
+/// **hard** edge is a declaration naming another by a name that other one
+/// binds. A **soft** edge is a declaration writing `x.m(y)`: the spelling `m`
+/// stands for "whichever namespace declares it", so it reaches every `Head.m` in
+/// this group, and an edge the analysis could not narrow is dropped by
+/// [`ordering`] rather than refused as a cycle.
+///
+/// # One index space over two kinds
+///
+/// The family groups take the first positions, one each, and the definitions
+/// take the rest, so a node index is not a position in either
+/// list and [`Held`] carries which. The alternative — two graphs, joined
+/// afterwards — is the arrangement this replaces: the join is exactly the
+/// ordering question, and a graph that cannot express "this family is after
+/// that definition" cannot answer it.
+///
+/// # What a declaration *binds*, as opposed to what it is called
+///
+/// A definition binds one name. A `data` group binds one per family and one per
+/// constructor, twice over for a constructor — bare and qualified — because
+/// `01-surface.md` §1.3 lets a use site write either and both have to find the
+/// same node. So the table below is name-to-node and not node-to-name, and
+/// several entries may point at one group.
 fn graph<'a>(program: &'a RawProgram) -> Vec<Node<'a>> {
-    let names: Vec<&Name> = program.definitions.iter().map(|held| &held.name).collect();
+    let first = program.families.len();
+    let mut names: Vec<(Name, usize)> = Vec::new();
+    for (at, group) in program.families.iter().enumerate() {
+        for family in &group.data.families {
+            names.push((Arc::clone(&family.name), at));
+            for constructor in &family.constructors {
+                names.push((Arc::clone(&constructor.name), at));
+                names.push((Arc::from(format!("{}.{}", family.name, constructor.name)), at));
+            }
+        }
+    }
+    for (at, held) in program.definitions.iter().enumerate() {
+        names.push((Arc::clone(&held.name), first.saturating_add(at)));
+    }
     // The soft half of the edges: every namespaced definition in this group
     // whose member spelling a declaration writes. Sorted and deduplicated
-    // because two spellings may reach one definition.
+    // because two spellings may reach one definition. Definitions only — a
+    // family declares no methods, so a spelling can never mean one.
     let namespaced = |methods: &[Name]| {
         let mut found: Vec<usize> = Vec::new();
         for method in methods {
-            found.extend(names.iter().enumerate().filter_map(|(index, name)| {
-                crate::elaboration::namespace::split(name)
+            found.extend(program.definitions.iter().enumerate().filter_map(|(index, held)| {
+                crate::elaboration::namespace::split(&held.name)
                     .filter(|&(_, member)| member == &**method)
-                    .map(|_| index)
+                    .map(|_| first.saturating_add(index))
             }));
         }
         found.sort_unstable();
@@ -128,7 +181,21 @@ fn graph<'a>(program: &'a RawProgram) -> Vec<Node<'a>> {
         found.into_iter().map(|to| Edge { to, hard: true })
     };
     let mut nodes: Vec<Node<'a>> = Vec::with_capacity(names.len());
+    for group in &program.families {
+        let mut written = Written::default();
+        written.walk_data(&group.data, &names);
+        nodes.push(Node {
+            // A family is recursive by construction and the measure that admits
+            // it is strict positivity, checked at the declaration. §2.4's
+            // recursive case is about a *definition*, so this is never set here
+            // and a self-edge is skipped by [`ordering`] like any other.
+            recursive: false,
+            held: Held::Family(group),
+            edges: naming(written.found).chain(namespaced(&written.methods)).collect(),
+        });
+    }
     for (index, held) in program.definitions.iter().enumerate() {
+        let index = first.saturating_add(index);
         let mut written = Written::default();
         if let Some(ty) = &held.ty {
             written.walk(ty, &names);
@@ -148,25 +215,65 @@ fn graph<'a>(program: &'a RawProgram) -> Vec<Node<'a>> {
 }
 
 /// What one declaration writes that the rest of the group might supply: the
-/// definitions it names, and the method spellings it calls.
+/// declarations it names, and the method spellings it calls.
 ///
 /// The two are collected in one walk because they are found in the same places,
 /// and separately because they are resolved differently — a name is matched
-/// against this group's definitions by itself, and a spelling matches every
+/// against what this group binds by itself, and a spelling matches every
 /// namespaced definition that ends in it.
 #[derive(Default)]
 struct Written {
-    /// The positions in the group of the definitions it names.
+    /// The nodes of the graph it names.
     found: Vec<usize>,
     /// The method spellings it calls, each once.
     methods: Vec<Name>,
 }
 
 impl Written {
-    /// Add what `raw` writes, with the group's definition names as `names`.
-    fn walk(&mut self, raw: &crate::elaboration::raw::Raw, names: &[&Name]) {
+    /// Add what `raw` writes, with [`graph`]'s name-to-node table as `names`.
+    fn walk(&mut self, raw: &crate::elaboration::raw::Raw, names: &[(Name, usize)]) {
         let mut bound: Vec<Name> = Vec::new();
         free(raw, &mut bound, names, self);
+    }
+
+    /// Add what the `data` group `data` writes, under its own binders.
+    ///
+    /// The binders are the declaration's, in the order
+    /// [`declare`](crate::elaboration::declare::declare) opens them: the
+    /// families themselves, then the group's parameters, then each family's
+    /// indices, then each constructor's fields — with the chosen indices read
+    /// under the fields and *not* under the index telescope, which is the scope
+    /// `declare` gives them and the reason the two are not one loop.
+    ///
+    /// The constructor names are not bound. They are globals the group installs
+    /// when it is finished, so nothing inside the declaration can name one, and
+    /// a `chosen` that writes a spelling a constructor happens to share means
+    /// the definition of that name — which is an edge, and would be a missing
+    /// one if this bound it.
+    fn walk_data(&mut self, data: &crate::elaboration::raw::RawData, names: &[(Name, usize)]) {
+        let mut bound: Vec<Name> = data.families.iter().map(|family| Arc::clone(&family.name)).collect();
+        for param in &data.params {
+            free(&param.ty, &mut bound, names, self);
+            bound.push(Arc::clone(&param.name));
+        }
+        let params = bound.len();
+        for family in &data.families {
+            for index in &family.indices {
+                free(&index.ty, &mut bound, names, self);
+                bound.push(Arc::clone(&index.name));
+            }
+            bound.truncate(params);
+            for constructor in &family.constructors {
+                for field in &constructor.fields {
+                    free(&field.ty, &mut bound, names, self);
+                    bound.push(Arc::clone(&field.name));
+                }
+                for chosen in &constructor.chosen {
+                    free(chosen, &mut bound, names, self);
+                }
+                bound.truncate(params);
+            }
+        }
     }
 }
 
@@ -356,14 +463,14 @@ enum Elaborated {
 /// binder, because a method name is not a variable: `01-surface.md` §1.5
 /// resolves `x.m` by the receiver's type and never against the binders around
 /// it.
-fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[&Name], found: &mut Written) {
+fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[(Name, usize)], found: &mut Written) {
     let mut walk = |term: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>| free(term, bound, names, found);
     match raw.shape() {
         RawShape::Var(name) => {
             if !bound.iter().any(|binder| binder == name)
-                && let Some(index) = names.iter().position(|declared| *declared == name)
+                && let Some(&(_, node)) = names.iter().find(|(declared, _)| declared == name)
             {
-                found.found.push(index);
+                found.found.push(node);
             }
         }
         // No edge: a hosted name is the reader's, resolved in the host's
@@ -488,21 +595,38 @@ fn binders_of(pattern: &RawPattern, binders: &mut Vec<Name>) {
 /// finds is not the order the document wrote, and the caller gets the written
 /// one back.
 enum Held<'a> {
-    /// A definition, at `.0` in [`RawProgram::definitions`].
+    /// A definition, at `.0` in [`graph`]'s index space.
     Definition(usize, &'a RawTopLevel),
+    /// A `data` group.
+    Family(&'a crate::elaboration::raw::RawGroup),
 }
 
 impl Held<'_> {
     /// What to call this in a cycle.
-    const fn name(&self) -> &Name {
-        let Self::Definition(_, held) = self;
-        &held.name
+    ///
+    /// A group is called by its first family, which is what a reader wrote
+    /// first and what the declaration is named after when it declares one. By
+    /// value rather than by reference because a group of no families has no
+    /// name to borrow — the parser does not write one and
+    /// [`declare`](crate::elaboration::declare) refuses it, but a diagnostic
+    /// may not be the thing that panics on it.
+    fn name(&self) -> Name {
+        match self {
+            Self::Definition(_, held) => Arc::clone(&held.name),
+            Self::Family(group) => group
+                .data
+                .families
+                .first()
+                .map_or_else(|| Arc::from("data"), |family| Arc::clone(&family.name)),
+        }
     }
 
     /// Where it was written.
     const fn origin(&self) -> Origin {
-        let Self::Definition(_, held) = self;
-        held.origin
+        match self {
+            Self::Definition(_, held) => held.origin,
+            Self::Family(group) => group.data.origin,
+        }
     }
 }
 
@@ -663,7 +787,7 @@ fn ordering<'a>(nodes: &'a [Node<'a>]) -> Result<Vec<&'a Node<'a>>, ElabError> {
                             .unwrap_or_default()
                             .iter()
                             .filter_map(|frame| nodes.get(frame.node))
-                            .map(|held| Arc::clone(held.held.name()))
+                            .map(|held| held.held.name())
                             .collect(),
                         at: nodes.get(node).map_or(Origin::UNKNOWN, |held| held.held.origin()),
                     }

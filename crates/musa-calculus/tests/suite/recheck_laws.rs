@@ -242,6 +242,7 @@ fn the_kernel_rechecks_a_program_built_from_every_inferable_corpus_term() {
     let mut declared = 0_u32;
     for programs::Program { name, raw, .. } in programs::accepted() {
         let program = musa_calculus::RawProgram {
+            families: Vec::new(),
             definitions: vec![musa_calculus::RawTopLevel {
                 origin: programs::WRITTEN,
                 name: "member".into(),

@@ -94,8 +94,8 @@ mod elaboration;
 mod kernel;
 
 pub use crate::elaboration::raw::{
-    ARROW_BINDER, Raw, RawArm, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawPattern,
-    RawProgram, RawShape, RawTopLevel,
+    ARROW_BINDER, Raw, RawArm, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawGroup,
+    RawPattern, RawProgram, RawShape, RawTopLevel,
 };
 pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::elaboration::storable::requiring_storable;
@@ -137,30 +137,28 @@ use crate::kernel::scope::Scope;
 /// the recursor's is a term nobody wrote and the group is the only thing that
 /// knows how to build it.
 ///
+/// A document declares its groups through
+/// [`declare_program`] rather than through this, because a family's index may
+/// name a definition and the order is therefore not one a caller can fix. This
+/// is the door that call opens, and it stays public because it is the door: a
+/// law that declares one group and asks the kernel about it is asking about the
+/// declaration and not about a document.
+///
 /// # Errors
 ///
 /// [`Refusal::NonPositive`] for an occurrence §1.1 forbids, and otherwise as
 /// [`check`] — a declaration's parameters, indices, fields, and chosen index
 /// arguments are ordinary elaboration and fail in the ordinary ways.
 pub fn declare(cx: &Cx, data: &RawData) -> Result<Arc<Group>, ElabError> {
-    declare_metered(cx, data).map(|(group, _)| group)
+    with_room(|| crate::elaboration::declare::declare(cx, data)).map(|(group, _)| group)
 }
 
-/// [`declare`], and what elaborating the declaration charged.
+/// Elaborate a document's declarations — its `data` groups and its definitions
+/// — in context `cx`.
 ///
-/// # Errors
-///
-/// As [`declare`].
-pub fn declare_metered(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, Spend), ElabError> {
-    with_room(|| crate::elaboration::declare::declare(cx, data))
-}
-
-/// Elaborate a document's top-level definitions, in context `cx`.
-///
-/// The other half of a document, and the same arrangement [`declare`] has for
-/// the first: one call takes all of them, because `02-core-calculus.md` §2.4
-/// lets a body name a declaration written later, and the result is brought into
-/// scope with [`Cx::defining`].
+/// One call takes all of them, because `02-core-calculus.md` §2.4 lets a body
+/// name a declaration written later, and the result is brought into scope with
+/// [`Cx::defining`], families and definitions together.
 ///
 /// A namespaced definition — `Pitch.act`, what an `impl Pitch { … }` block
 /// writes — is one of these and not a second kind. That is the whole of what
@@ -168,15 +166,34 @@ pub fn declare_metered(cx: &Cx, data: &RawData) -> Result<(Arc<Group>, Spend), E
 /// in the same group as every other definition, so that a body naming `p.act(i)`
 /// and the definition answering it are ordered by the same dependency analysis.
 ///
+/// # Why the families are in the same call
+///
+/// Because the dependency between the two kinds runs both ways. A field is a
+/// type, so a definition may have to wait for a family; and §1 makes a family's
+/// index "any term of the index's type — a call, a projection, a value the
+/// program computed", so a family may have to wait for a definition. Declaring
+/// every family first — what prompt 141o's caller did — makes an index blind to
+/// the document it is written in, which is what
+/// [`declare`](crate::declare)'s own caller reported as `cannot find` on a
+/// perfectly ordinary `data Vect<A>(n : Nat) { Cons(…) : (m + 1) }`.
+///
+/// So the order is computed here rather than fixed by kind, and it is the only
+/// place it could be computed: a caller holding two lists can join them only by
+/// guessing which one goes first.
+///
 /// # Errors
 ///
-/// [`Refusal::DefinitionCycle`] for definitions that name each other, except
+/// [`Refusal::DefinitionCycle`] for declarations that name each other, except
 /// through a bare member spelling: `x.m(y)` stands for "whichever namespace
 /// declares `m`" rather than for a particular definition, so an edge the
 /// analysis guessed at is dropped rather than refused, and a genuine need is
-/// refused where it is written as the call's [`Refusal::NoMethodForType`].
+/// refused where it is written as the call's [`Refusal::NoMethodForType`]. A
+/// family on that cycle is refused with the rest of it — the mutual-recursion
+/// door a `data` group has is one group with shared parameters, which two
+/// written declarations do not have.
 /// [`Refusal::UntypedRecursion`] for a self-recursive definition that wrote no
-/// type, and otherwise as [`check`].
+/// type; whatever [`declare`] refuses, since a group in the program goes
+/// through it unchanged; and otherwise as [`check`].
 pub fn declare_program(cx: &Cx, program: &RawProgram) -> Result<Arc<Program>, ElabError> {
     declare_program_metered(cx, program).map(|(declared, _)| declared)
 }

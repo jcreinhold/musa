@@ -296,7 +296,22 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
         // `02-core-calculus.md` §2.4's graph rule, under the code the old
         // checker filed the same mistake under: a reader who has seen
         // `dependency-cycle` once has seen this.
-        Refusal::DefinitionCycle { at, .. } => one(Code::DependencyCycle, *at),
+        //
+        // The repair is the surface's and so is the sentence. The core can say
+        // that the graph has a cycle in it; only this side knows that the two
+        // ways out are written here — one `data` declaration for two families
+        // that need each other, and nothing at all for two definitions, which
+        // §2.4 admits through the measure rather than through the graph.
+        Refusal::DefinitionCycle { at, .. } => Filed {
+            code: Code::DependencyCycle,
+            at: *at,
+            also: None,
+            label: None,
+            help: Some(std::borrow::Cow::Borrowed(
+                "a declaration may not depend on one that depends on it; two families that need each other are one `data` declaration",
+            )),
+            said: None,
+        },
         Refusal::NotANumeralFamily { at, .. } => one(Code::NotANumeralFamily, *at),
         // The one refusal whose repair the core cannot name. `01-surface.md`
         // §1.5 gives it — write the path out — and `Head::m` is a *surface*

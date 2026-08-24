@@ -63,8 +63,14 @@ pub(crate) fn definition(name: &str, ty: Raw, value: Raw) -> RawTopLevel {
 ///
 /// If the group is refused, which every caller says it is not.
 pub(crate) fn defining(cx: &Cx, definitions: Vec<RawTopLevel>) -> Cx {
-    let declared =
-        musa_calculus::declare_program(cx, &RawProgram { definitions }).expect("the group is a set of declarations");
+    let declared = musa_calculus::declare_program(
+        cx,
+        &RawProgram {
+            families: Vec::new(),
+            definitions,
+        },
+    )
+    .expect("the group is a set of declarations");
     cx.defining(&declared)
 }
 

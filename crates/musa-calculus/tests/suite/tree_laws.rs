@@ -72,7 +72,10 @@ fn definition(name: &str, ty: Raw, value: Raw) -> RawTopLevel {
 ///
 /// Naming the fixture, when the group is refused.
 fn defining(name: &str, cx: &Cx, definitions: Vec<RawTopLevel>) -> Cx {
-    let program = RawProgram { definitions };
+    let program = RawProgram {
+        families: Vec::new(),
+        definitions,
+    };
     let group = musa_calculus::declare_program(cx, &program).unwrap_or_else(|error| panic!("{name}: {error}"));
     cx.defining(&group)
 }
@@ -83,7 +86,10 @@ fn defining(name: &str, cx: &Cx, definitions: Vec<RawTopLevel>) -> Cx {
 ///
 /// When the group is declared, or fails for something that is not a refusal.
 fn refusing(name: &str, cx: &Cx, definitions: Vec<RawTopLevel>) -> Refusal {
-    let program = RawProgram { definitions };
+    let program = RawProgram {
+        families: Vec::new(),
+        definitions,
+    };
     let Err(error) = musa_calculus::declare_program(cx, &program) else {
         panic!("{name}: the group was declared, and this law says it cannot be");
     };

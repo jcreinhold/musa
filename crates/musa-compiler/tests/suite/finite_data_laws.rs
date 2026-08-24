@@ -143,13 +143,14 @@ fn folding_with_the_music_cases_is_the_music_the_plan_denotes() {
 /// it is an answer rather than a loop. If it did not terminate this test would
 /// hang instead of failing, which is the honest shape of the claim.
 ///
-/// The answer this compiler gives is a refusal, not a group. `order_families`
-/// in `musa-compiler`'s `document` module orders each written `data` after the
-/// declarations its fields name and refuses a cycle, because one core group is
-/// one `RawData` and two written declarations are two. `02-core-calculus.md`
-/// §1.1 admits mutually recursive families in the *core*, so building the
-/// group from the cycle is available and is a language decision rather than a
-/// missing line — see `docs/plan/prompts/142-surface-cutover.md`.
+/// The answer this compiler gives is a refusal, not a group. Since prompt 162ba
+/// the walk is `musa-calculus`'s own — one dependency analysis over the `data`
+/// groups and the definitions together — and it refuses a cycle for the reason
+/// it always did: one core group is one `RawData`, and two written declarations
+/// are two. `02-core-calculus.md` §1.1 admits mutually recursive families in the
+/// *core*, so building the group from the cycle is available and is a language
+/// decision rather than a missing line — see
+/// `docs/plan/prompts/142-surface-cutover.md`.
 #[test]
 fn the_group_check_terminates_on_a_mutually_recursive_group() {
     let compilation = compile_data(
@@ -159,14 +160,14 @@ fn the_group_check_terminates_on_a_mutually_recursive_group() {
     );
     let reported = errors(&compilation);
     assert!(
-        reported.contains("`Statement`, `Expression` name each other"),
+        reported.contains("these declarations name each other: Statement → Expression"),
         "{reported}"
     );
-    // The help speaks of "a type declaration" since the cutover's diagnostic
-    // rewrite (285bdf3): the word the author writes is `data`, and the word
-    // the rule is about is the type.
+    // The help speaks of "a declaration" since prompt 162ba put the `data`
+    // groups and the definitions on one graph: the rule is about both kinds
+    // now, and the sentence names the one way out that this cycle has.
     assert!(
-        reported.contains("a type declaration may not depend on one that depends on it"),
+        reported.contains("a declaration may not depend on one that depends on it"),
         "{reported}"
     );
 }

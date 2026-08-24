@@ -470,13 +470,20 @@ impl Cx {
     /// collects signatures before bodies, so no member of a group is finished
     /// until all of them are. A namespaced definition — `Pitch.act` — is a
     /// member like any other, which is what makes `p.act(i)` and the definition
-    /// answering it visible to each other.
+    /// answering it visible to each other. A family the program declared is
+    /// brought in by the same call and for the same reason: the order the two
+    /// kinds were elaborated in is the program's own, and a caller putting the
+    /// families in with a second call could only put them in a different one.
     #[must_use]
     pub fn defining(&self, program: &Program) -> Self {
         let globals = program
+            .families()
+            .iter()
+            .fold(self.globals().clone(), |globals, group| globals.declaring(group));
+        let globals = program
             .members()
             .iter()
-            .fold(self.globals().clone(), |globals, defined| globals.defining(defined));
+            .fold(globals, |globals, defined| globals.defining(defined));
         self.under(globals)
     }
 

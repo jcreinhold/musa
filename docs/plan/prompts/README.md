@@ -380,6 +380,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 162 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make`, and the `template` that shares `make` — all five go |
 | 162a | module-privacy-for-source | 3 | A source file gets a `ModuleId`, so `private` is refused across files instead of carried |
 | 162b | parameterized-record-literals | 3 | `Cell<A>` can be declared and not constructed; the literal learns to find its family |
+| 162ba | one-declaration-order | 3 | An index cannot name the document it is written in; the declarations get one dependency order |
 | 162c | nested-patterns-parse | 3 | §1 says patterns nest and the parser reads one level; it learns the rest |
 | 162d | or-patterns | 3 | `Bass \| Tenor -> true`: one arm for several constructors, and the amendment that admits it |
 | 162e | let-in-a-block | 3 | Naming an intermediate value costs a top-level `fn`; the core has had `let` all along |

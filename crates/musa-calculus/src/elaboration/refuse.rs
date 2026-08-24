@@ -483,7 +483,7 @@ pub enum Refusal {
         /// The arm.
         at: Origin,
     },
-    /// Top-level definitions that name each other (§2.4).
+    /// Top-level declarations that name each other (§2.4).
     ///
     /// §2.4 admits recursion through the structural rule rather than through
     /// the graph, and [`crate::elaboration::rec`]'s hypothesis is minted by a `match` inside
@@ -491,11 +491,17 @@ pub enum Refusal {
     /// become. So the graph rule is not a leftover from the old checker — it is
     /// exactly what the structural rule does not reach, and this is where a
     /// program lands that needs what neither has.
-    #[error("these definitions name each other: {}", names.join(" → "))]
+    ///
+    /// **Declarations** rather than definitions, because a `data` group is on
+    /// the graph too since prompt 162ba. A family has a mutual-recursion door of
+    /// its own — §1.1 checks strict positivity on the whole group — but it opens
+    /// for one `data` declaration with shared parameters, which two written
+    /// declarations naming each other are not.
+    #[error("these declarations name each other: {}", names.join(" → "))]
     DefinitionCycle {
-        /// The definitions in the cycle, in the order they name each other.
+        /// The declarations in the cycle, in the order they name each other.
         names: Vec<Name>,
-        /// The definition whose reference closes it.
+        /// The declaration whose reference closes it.
         at: Origin,
     },
     /// A top-level definition that names itself and wrote no type (§2.4).

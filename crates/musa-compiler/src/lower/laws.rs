@@ -928,8 +928,14 @@ fn namespacing(written: &str) -> Cx {
         })
         .collect();
     let cx = host();
-    let declared = musa_calculus::declare_program(&cx, &musa_calculus::RawProgram { definitions })
-        .expect("a namespace member is a definition");
+    let declared = musa_calculus::declare_program(
+        &cx,
+        &musa_calculus::RawProgram {
+            families: Vec::new(),
+            definitions,
+        },
+    )
+    .expect("a namespace member is a definition");
     cx.defining(&declared)
 }
 

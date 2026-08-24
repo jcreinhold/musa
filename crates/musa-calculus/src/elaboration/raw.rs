@@ -142,13 +142,30 @@ pub struct RawData {
     pub families: Vec<RawFamily>,
 }
 
-/// A document's top-level definitions and instances, before elaboration.
+/// One `data` group beside the module it was written in.
 ///
-/// A group rather than one definition at a time for [`RawData`]'s reason, one
+/// [`RawData`] takes its module from the context it is declared in, which works
+/// while a caller declares one group at a time and stops working the moment the
+/// groups travel in a [`RawProgram`] with everything else: a document holds its
+/// imports' declarations as well as its own, so there is no single module the
+/// program was written in. This is the same answer
+/// [`RawTopLevel::module`](RawTopLevel) already gives one word over — the
+/// module rides beside the declaration rather than around it.
+#[derive(Clone, Debug)]
+pub struct RawGroup {
+    /// The declaration.
+    pub data: RawData,
+    /// The module it was written in, when the caller numbers modules at all.
+    pub module: Option<ModuleId>,
+}
+
+/// Everything a document declares, before elaboration.
+///
+/// A group rather than one declaration at a time for [`RawData`]'s reason, one
 /// word over: `02-core-calculus.md` §2.4 lets a body name a declaration written
-/// later, so no definition here is finished until the group is. What the group
-/// *is not* is an ordering — the order below is the order they were written,
-/// and [`declare_program`](crate::declare_program) computes the order they are
+/// later, so nothing here is finished until all of it is. What the group *is
+/// not* is an ordering — the order below is the order they were written, and
+/// [`declare_program`](crate::declare_program) computes the order they are
 /// elaborated in from what each one names.
 ///
 /// # Why a namespaced definition is one of these
@@ -159,8 +176,23 @@ pub struct RawData {
 /// the definition answering it may call the document's functions, so the two
 /// have to be ordered by one dependency analysis, and §2.4's forward reference
 /// already is that analysis.
-#[derive(Clone, Debug)]
+///
+/// # Why the families are in it rather than declared first
+///
+/// Because a family's terms are ordinary terms. §1 says "a family's index may
+/// be any term of the index's type — a call, a projection, a value the program
+/// computed", so `data Vect<A>(n : Nat) { Cons(m: Nat, …) : (m + 1) }` names
+/// `Nat.add`, and a caller that declared every family before any definition
+/// would be handing that index a context in which no definition exists yet. The
+/// dependency between the two kinds runs *both* ways — a field is a type and an
+/// index is a term — so neither kind can come first and the analysis is one
+/// analysis over both. Prompt 141o ordered them by kind and wrote the cost down
+/// as a limit ("a family whose field names a `record`"); the limit was a
+/// symptom, and this is the shape that does not have it.
+#[derive(Clone, Debug, Default)]
 pub struct RawProgram {
+    /// The `data` groups, in the order the document wrote them.
+    pub families: Vec<RawGroup>,
     /// The definitions, in the order the document wrote them.
     pub definitions: Vec<RawTopLevel>,
 }

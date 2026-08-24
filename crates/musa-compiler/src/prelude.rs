@@ -814,7 +814,13 @@ pub(crate) fn collections(cx: &Cx) -> Result<Cx, ElabError> {
 /// that orders its own definitions: `List.fold_from_end` may name
 /// `List.fold_from_start` without this module having to say which comes first.
 fn defining(cx: &Cx, definitions: Vec<RawTopLevel>) -> Result<Cx, ElabError> {
-    let declared = musa_calculus::declare_program(cx, &RawProgram { definitions })?;
+    let declared = musa_calculus::declare_program(
+        cx,
+        &RawProgram {
+            families: Vec::new(),
+            definitions,
+        },
+    )?;
     Ok(cx.defining(&declared))
 }
 

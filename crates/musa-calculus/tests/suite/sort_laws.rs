@@ -220,6 +220,7 @@ fn declared(cx: &Cx) -> Arc<Program> {
     );
     let value = Raw::lam(WRITTEN, "A", Raw::lam(WRITTEN, "x", Raw::var(WRITTEN, "x")));
     let program = RawProgram {
+        families: Vec::new(),
         definitions: vec![RawTopLevel {
             origin: WRITTEN,
             name: "id".into(),

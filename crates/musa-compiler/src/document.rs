@@ -14,28 +14,29 @@
 //! already answers it, and a module that learned about import graphs would be
 //! doing name resolution twice.
 //!
-//! # The order the three doors are opened in
+//! # There is one door, and the order behind it is computed
 //!
-//! `musa-calculus` has three that a document walks through: [`musa_calculus::declare`]
-//! for a family group, [`musa_calculus::declare_trait`], and
-//! [`musa_calculus::declare_program`] for everything a body can be. They are not
-//! interchangeable and the order between them is forced:
+//! Every declaration a document writes — its `data` groups, its `record`s, its
+//! definitions, and what its `impl` blocks leave behind — goes through
+//! [`musa_calculus::declare_program`] in one call, and the order they are
+//! elaborated in is the dependency order that call computes.
 //!
-//! 1. **Families first**, ordered among themselves, because a `data` field is a
-//!    type and a type is a family or a base type.
-//! 2. **Traits**, whose method types may name any family.
-//! 3. **Definitions and instances together**, in one group, because §2.4's
-//!    forward reference is a property of the group rather than of a written
-//!    order, and because each of the two kinds can name the other: a method body
-//!    is an ordinary term that may call any definition, and a definition that
-//!    writes `x.m(y)` resolves it at the receiver's head, which is an instance.
-//!    Declaring either kind first makes it blind to the other, which is what
-//!    [`musa_calculus::declare_program`] exists to avoid.
+//! It was three doors in a forced order until prompt 162ba, and the order was
+//! wrong rather than merely coarse. Families first, "because a `data` field is a
+//! type", is true and is only half of it: a field is a type, but an *index* is a
+//! term. `02-core-calculus.md` §1 makes a family's index "any term of the
+//! index's type — a call, a projection, a value the program computed", so
+//! `data Vect<A>(n : Nat) { Cons(…) : (m + 1) }` names `Nat.add` and a walk that
+//! had declared no definition yet could only report it as a name nobody wrote.
+//! The dependency runs both ways, so neither kind can come first and the
+//! question is not one an order fixed by kind can answer.
 //!
-//! The one shape this order cannot express is a family whose field names a
-//! `record`, since `01-surface.md` §1.2 makes a record a *definition*. That is a
-//! real limit and it is stated rather than worked around: the core refuses it by
-//! name, at the field, and no document in this repository writes one.
+//! Two things fall out of asking it once. The limit 141o recorded — "a family
+//! whose field names a `record`", since `01-surface.md` §1.2 makes a record a
+//! definition — is gone, because it was a symptom of the ordering rather than a
+//! fact about the language. And a cycle is refused by
+//! [`musa_calculus::Refusal::DefinitionCycle`] wherever it runs, rather than by
+//! two cycle checks that could not see each other's half.
 //!
 //! # Why the context is rebuilt per document
 //!
@@ -48,12 +49,9 @@
 #[cfg(test)]
 pub(crate) mod laws;
 
-use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use musa_calculus::{
-    Cx, ElabError, ModuleId, Name, Origin, Program, Raw, RawData, RawProgram, RawTopLevel, Term, Visibility,
-};
+use musa_calculus::{Cx, ElabError, ModuleId, Name, Origin, Program, Raw, RawProgram, RawTopLevel, Term, Visibility};
 use musa_syntax::ast::AstNode as _;
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
@@ -591,49 +589,12 @@ pub(crate) fn elaborate(resolver: &mut Resolver, sources: &[Source]) -> Option<D
             }
         }
     }
-    let mut refused = false;
     let mut spend = musa_calculus::Spend::default();
-    let mut structural = Vec::new();
-    for (_, declared) in order_types(resolver, read.types)? {
-        match declared {
-            TypeDecl::Family(group, module) => match musa_calculus::declare_metered(&cx.in_module(module), &group) {
-                Ok((declared, spent)) => {
-                    spend = spend.and(spent);
-                    cx = cx.declaring(&declared);
-                }
-                Err(error) => {
-                    resolver.report(refusals::restate(&sites, &error));
-                    refused = true;
-                }
-            },
-            // One record at a time and not one program of them: the order is
-            // already computed here, and a record's Σ may name a family the
-            // record after it has not yet been declared under.
-            TypeDecl::Record(held) => {
-                structural.push(Arc::clone(&held.name));
-                let program = RawProgram {
-                    definitions: vec![held],
-                };
-                match musa_calculus::declare_program_metered(&cx, &program) {
-                    Ok((declared, spent)) => {
-                        spend = spend.and(spent);
-                        cx = cx.defining(&declared);
-                    }
-                    Err(error) => {
-                        resolver.report(refusals::restate(&sites, &error));
-                        refused = true;
-                    }
-                }
-            }
-        }
-    }
-    let names: Vec<Name> = structural
-        .into_iter()
-        .chain(read.definitions.iter().map(|held| Arc::clone(&held.name)))
-        .collect();
-    refused |= !named_once(resolver, &sites, &here);
+    let names: Vec<Name> = read.definitions.iter().map(|held| Arc::clone(&held.name)).collect();
+    let mut refused = !named_once(resolver, &sites, &here);
     refused |= !imports_agree(resolver, &brought);
     let program = RawProgram {
+        families: read.families,
         definitions: read.definitions,
     };
     let declared = match musa_calculus::declare_program_metered(&cx, &program) {
@@ -777,9 +738,11 @@ fn imports_agree(resolver: &mut Resolver, brought: &[(Name, &Import)]) -> bool {
 /// goes through.
 #[derive(Default)]
 struct Read {
-    /// Each type declaration beside the node it was written at, because the node
-    /// is what [`order_types`] reads its dependencies off.
-    types: Vec<(SyntaxNode, TypeDecl)>,
+    /// Each `data` group, beside the module it was written in.
+    families: Vec<musa_calculus::RawGroup>,
+    /// Every definition, `record`s among them: a record declares a type and is
+    /// written as a definition (`01-surface.md` §1.2), and there is no longer a
+    /// door it has to be sorted into before elaboration begins.
     definitions: Vec<RawTopLevel>,
     /// Each definition's declaration beside the name it bound, held until the
     /// document is elaborated. See [`documented`].
@@ -845,7 +808,10 @@ impl Read {
                         self.declaring
                             .push(Declaring::named(&node, &family.name, data.origin, source));
                     }
-                    self.types.push((node, TypeDecl::Family(data, module)));
+                    self.families.push(musa_calculus::RawGroup {
+                        data,
+                        module: Some(module),
+                    });
                 }
                 // An `impl`'s definitions are filed flat and never under an
                 // alias, for the reason the paragraph above gives: the block
@@ -874,15 +840,7 @@ impl Read {
                         source.from.as_ref().map(|from| from.path.as_str()),
                     );
                     self.declaring.push(Declaring::at(&node, &definition, source));
-                    let held = top_level(definition, visibility, module);
-                    // A `record` declares a *type*, so it goes through the type
-                    // door even though it is written as a definition — see
-                    // [`TypeDecl`].
-                    if node.kind() == SyntaxKind::RecordDecl {
-                        self.types.push((node, TypeDecl::Record(held)));
-                    } else {
-                        self.definitions.push(held);
-                    }
+                    self.definitions.push(top_level(definition, visibility, module));
                 }
                 Declared::Refused => self.refused = true,
                 Declared::Elsewhere => {}
@@ -1082,145 +1040,4 @@ fn visibility_of(node: &SyntaxNode) -> Visibility {
     } else {
         Visibility::Public
     }
-}
-
-/// A type declaration, whichever of the two doors it goes through.
-///
-/// `01-surface.md` §1.2 gives a document two ways to declare a type: a `data` or
-/// `enum` names an inductive family, and a `record` names a Σ. The core keeps
-/// them apart — a family is [`musa_calculus::declare`]'s and a record is an ordinary
-/// definition — but *the document* cannot, because either may name the other. A
-/// sum whose payload is a product (`data Taken { Took(read: Reading) }`) and a
-/// product holding a sum (`record Pending { taken: Taken; }`) are both ordinary
-/// programs, and declaring every family before every definition would make the
-/// first unwritable. So the two travel in one list, in one dependency order —
-/// see [`order_types`].
-enum TypeDecl {
-    /// A `data` or `enum` group, declared by [`musa_calculus::declare_metered`]
-    /// under the file that wrote it.
-    ///
-    /// The module rides beside the group rather than inside it, because a
-    /// [`RawData`] takes its module from the *context* it is declared in — see
-    /// [`musa_calculus::declare`] — and the context this walk holds stands in
-    /// the file being compiled. A `private` case of an imported family is
-    /// private to the imported file, so the group is declared in that file's
-    /// module and the walk steps back out again.
-    Family(RawData, ModuleId),
-    /// A `record`, declared by defining its Σ under the record's name.
-    Record(RawTopLevel),
-}
-
-impl TypeDecl {
-    /// The type names this declaration binds — one for a record, and one per
-    /// family for a group.
-    fn names(&self) -> Vec<&str> {
-        match self {
-            Self::Family(data, _) => data.families.iter().map(|family| &*family.name).collect(),
-            Self::Record(held) => vec![&held.name],
-        }
-    }
-}
-
-/// The type declarations, ordered so that each is declared after the types its
-/// fields name.
-///
-/// The same analysis [`musa_calculus::declare_program`] runs over definitions and
-/// for the same reason, one door over: a written order is not a dependency
-/// order, and `data Chord { root: NoteName; }` may be written above the `data
-/// NoteName` it needs.
-///
-/// # Why the edges come off the syntax and not off the [`RawData`]
-///
-/// A dependency here is a *type name*, and every type name a declaration writes
-/// is an identifier token somewhere under its node — in a field, in an index, in
-/// a type parameter's own bound. Reading the tokens finds all of them at once
-/// and cannot fall behind a [`Raw`] shape added later; reading the term would
-/// mean a second walk of nineteen shapes that has to stay in step with the core.
-/// The reading over-approximates — a constructor's own name is a token too — and
-/// that is safe in exactly one direction, which is the direction it errs: a
-/// spurious edge is a spurious *cycle*, and a cycle is refused rather than
-/// silently reordered.
-///
-/// A cycle between two declarations is refused here rather than in the core,
-/// because the core's mutual-recursion door is one group with shared parameters
-/// and two written `data` declarations share none.
-fn order_types(resolver: &mut Resolver, types: Vec<(SyntaxNode, TypeDecl)>) -> Option<Vec<(SyntaxNode, TypeDecl)>> {
-    let edges: Vec<BTreeSet<usize>> = types
-        .iter()
-        .map(|(node, _)| {
-            let named = identifiers(node);
-            types
-                .iter()
-                .enumerate()
-                .filter(|&(_, (_, declared))| declared.names().iter().any(|name| named.contains(*name)))
-                .map(|(index, _)| index)
-                .collect()
-        })
-        .collect();
-    let mut placed = BTreeSet::new();
-    let mut walking = BTreeSet::new();
-    let mut order = Vec::with_capacity(types.len());
-    for start in 0..types.len() {
-        if !visit(start, &edges, &mut walking, &mut placed, &mut order) {
-            let names = types
-                .iter()
-                .enumerate()
-                .filter(|(index, _)| walking.contains(index))
-                .flat_map(|(_, (_, declared))| {
-                    declared
-                        .names()
-                        .into_iter()
-                        .map(|name| format!("`{name}`"))
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            resolver.report(
-                Diagnostic::error(Code::DependencyCycle, format!("{names} name each other"))
-                    .help("a type declaration may not depend on one that depends on it"),
-            );
-            return None;
-        }
-    }
-    let mut held: Vec<Option<(SyntaxNode, TypeDecl)>> = types.into_iter().map(Some).collect();
-    Some(
-        order
-            .into_iter()
-            .filter_map(|index| held.get_mut(index).and_then(Option::take))
-            .collect(),
-    )
-}
-
-/// Depth-first, answering `false` when `node` is on a cycle.
-fn visit(
-    node: usize,
-    edges: &[BTreeSet<usize>],
-    walking: &mut BTreeSet<usize>,
-    placed: &mut BTreeSet<usize>,
-    order: &mut Vec<usize>,
-) -> bool {
-    if placed.contains(&node) {
-        return true;
-    }
-    if !walking.insert(node) {
-        return false;
-    }
-    for &edge in edges.get(node).into_iter().flatten() {
-        if edge != node && !visit(edge, edges, walking, placed, order) {
-            return false;
-        }
-    }
-    walking.remove(&node);
-    placed.insert(node);
-    order.push(node);
-    true
-}
-
-/// Every identifier written anywhere under `node`.
-fn identifiers(node: &SyntaxNode) -> BTreeSet<String> {
-    node.descendants_with_tokens()
-        .filter_map(musa_syntax::SyntaxElement::into_token)
-        .filter(|token| token.kind() == SyntaxKind::Identifier)
-        .map(|token| token.text().to_owned())
-        .collect()
 }

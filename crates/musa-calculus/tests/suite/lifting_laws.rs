@@ -104,6 +104,7 @@ pub(crate) fn declared() -> (Cx, std::sync::Arc<musa_calculus::Program>) {
     let program = musa_calculus::declare_program(
         &cx,
         &RawProgram {
+            families: Vec::new(),
             definitions: vec![bump()],
         },
     )

@@ -131,6 +131,99 @@ fn a_data_declaration_may_be_written_after_the_one_that_names_it() {
     assert!(shown.contains("Inner.Only"), "and the inner one: {shown}");
 }
 
+/// The index a constructor chooses is an ordinary term, so it may name an
+/// ordinary definition — which is the whole of what prompt 162ba repaired.
+/// `02-core-calculus.md` §1 says a family's index is "any term of the index's
+/// type — a call, a projection, a value the program computed", and a walk that
+/// declared every family before any definition made that sentence false at the
+/// only place it is interesting.
+#[test]
+fn a_chosen_index_may_call_a_definition() {
+    let document = document(
+        "library {
+            data Peano { Zero, Succ(prev: Peano) }
+            fn bump(subject: Peano) -> Peano { Succ(subject) }
+            data Ix(p: Peano) {
+                Here : (Zero),
+                There(q: Peano, seen: Ix(q)) : (bump(q)),
+            }
+            let one: Ix(Succ(Zero)) = There(Zero, Here);
+        }",
+    );
+    let (value, _) = document.value("one").expect("`one` is bound");
+    let shown = format!("{value:?}");
+    assert!(shown.contains("Ix.There"), "the constructor it chose: {shown}");
+}
+
+/// And through the method namespace, which is how arithmetic is written.
+/// `01-surface.md` §1.5 makes `m + 1` the call `Nat.add(m, 1)`, so the
+/// `data Vect<A>(n : Nat) { Cons(…) : (m + 1) }` that `02-core-calculus.md` §1.1
+/// introduces indexed families with is writable exactly when an `impl Nat`
+/// standing in the same document is visible from the index — which is the same
+/// repair one word over, since an `impl`'s methods are definitions.
+#[test]
+fn a_chosen_index_may_call_a_method_of_this_document() {
+    let document = document(
+        "library {
+            impl Nat {
+                fn add(left: Nat, right: Nat) -> Nat { nat_add(left, right) }
+            }
+            data Vect<A>(n: Nat) {
+                Nil : (0),
+                Cons(m: Nat, head: A, tail: Vect<A>(m)) : (m + 1),
+            }
+            let two: Vect<Nat>(2) = Cons(1, 7, Cons(0, 8, Nil));
+        }",
+    );
+    let (value, _) = document.value("two").expect("`two` is bound");
+    let shown = format!("{value:?}");
+    assert!(shown.contains("Vect.Cons"), "the constructor it chose: {shown}");
+}
+
+/// A family whose field names a `record`, which prompt 141o wrote down as the
+/// one shape its order could not express: "a family whose field names a
+/// `record`, since `01-surface.md` §1.2 makes a record a *definition*". It was a
+/// symptom of ordering by kind rather than a fact about the language, and it is
+/// gone with the ordering that caused it.
+#[test]
+fn a_data_field_may_name_a_record() {
+    let document = document(
+        "library {
+            data Taken { Took(read: Reading) }
+            record Reading { count: Nat; }
+            let once: Taken = Took(Reading { count = 3 });
+        }",
+    );
+    let (value, _) = document.value("once").expect("`once` is bound");
+    let shown = format!("{value:?}");
+    assert!(shown.contains("Taken.Took"), "the constructor: {shown}");
+}
+
+/// One graph, so a cycle that runs through both kinds is refused like any
+/// other. The family waits for the definition its index calls and the
+/// definition waits for the family its type names, and there is no order that
+/// has both — which the analysis says once rather than reporting as an unknown
+/// name at whichever of the two happened to go first.
+#[test]
+fn a_family_and_a_definition_that_name_each_other_are_refused() {
+    let (document, said) = elaborated(
+        "library {
+            data Peano { Zero, Succ(prev: Peano) }
+            fn bump(subject: Ix(Zero)) -> Peano { Zero }
+            data Ix(p: Peano) {
+                Here : (Zero),
+                There(q: Ix(Zero)) : (bump(q)),
+            }
+        }",
+    );
+    assert!(document.is_none(), "the cycle is refused");
+    assert_eq!(
+        said,
+        ["DependencyCycle: these declarations name each other: Ix → bump"],
+        "and the refusal names the declaration of each kind"
+    );
+}
+
 #[test]
 fn two_data_declarations_that_name_each_other_are_refused() {
     let (document, said) = elaborated(
@@ -142,7 +235,7 @@ fn two_data_declarations_that_name_each_other_are_refused() {
     assert!(document.is_none(), "the cycle is refused");
     assert_eq!(
         said,
-        ["DependencyCycle: `Left`, `Right` name each other"],
+        ["DependencyCycle: these declarations name each other: Left → Right"],
         "and the refusal names both declarations"
     );
 }
