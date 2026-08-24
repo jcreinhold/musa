@@ -40,11 +40,12 @@ says what the implementation owes instead. This prompt discharges it.
   actually costs, make the smallest matching change, re-measure, and report the numbers with the command.
 - `crates/musa-compiler/src/bench.rs` and `core_budget.rs` — where measurement already happens and where the budget is
   charged.
-- `docs/rules/language/02-core-calculus.md` §4.1 in full, **both halves**: the nesting metric, and the non-normative
-  obligation that the compiler run checking and evaluation with at least `nesting limit × frame ceiling` bytes of stack.
-  The first half is implemented and does not bound what it claims to; the second is not implemented on the new path at
-  all. §4.1 also fixes what may move without a version bump — shrinking the frame ceiling is free, raising the limit is
-  a cost-table version bump — which is the constraint every option below is scored against.
+- `docs/rules/language/02-core-calculus.md` §4 in full: the five published aggregate limits and the rule that a value is
+  charged once where it is constructed; then §4.1's **both halves**, the nesting metric and the non-normative obligation
+  that the compiler run checking and evaluation with at least `nesting limit × frame ceiling` bytes of stack. The first
+  half is implemented and does not bound what it claims to; the second is not implemented on the new path at all. §4.1
+  also fixes what may move without a version bump — shrinking the frame ceiling is free, raising the limit is a
+  cost-table version bump — which is the constraint every option below is scored against.
 - `crates/musa-compiler/src/phase/mod.rs`'s `with_room` and `core_budget.rs`'s `FRAME_CEILING` — the *old* evaluator's
   discharge of that obligation: a scoped thread of `NESTING × FRAME_CEILING`, derived rather than picked, with the wasm
   fallback beside it. `musa-calculus` has no equivalent, and the shape of the answer is probably this one moved.
@@ -229,6 +230,16 @@ today is a cost-table version bump and a bad one. So:
    the expansion phase, so the room every host allocates scales with the limit. Whichever way it goes,
    `a_region_nested_deeper_than_anyone_writes_still_expands` ends this prompt carrying a depth the measurement supports
    and a comment that states the measurement, and `Budget::NESTING`'s doc claim ends it re-earned or corrected.
+
+**The size limits have to become real before the step limit can move.** The re-derivation above found that §4's 100,000
+constructed-value-node and 1,048,576 logical-value-byte defaults are not enforced by `musa-calculus` at all. At 200,000
+steps this is hidden because the step wall happens to stop a deep region while the host still holds it; at 1,000,000
+steps a region about 3,400 groups deep is killed for memory instead of exhausting a named resource. That is the same
+forbidden fourth outcome as the stack abort, reached through size rather than depth. Implement both charges at the
+construction locus §4 specifies, with aggregate preflight before allocation where the shape is known, prove that naming
+or selecting an already-built value does not pay again, and measure the corpus before re-deriving the limits. Only after
+those two limits refuse the pathological region may the reduction-step default be raised to what `large-score.musa` and
+the post-tonal class require.
 
 A stack that is merely *larger* is step 1 and is not steps 2 and 3. `RUST_MIN_STACK` in a test command, a `.cargo`
 config, or CI is not any of them: it hides the defect from the suite while leaving every host that is not the suite
@@ -419,6 +430,10 @@ is acceptable — and never a quietly raised threshold.
   corrected. If the answer is a raised limit, one version bump lands in `02-core-calculus.md` §4 carrying both
   measurements — the voice spine and the adapter region — as its reason, and `room.rs`'s allocation is re-stated at the
   size the new limit implies.
+- §4's constructed-value-node and logical-value-byte limits enforced by `musa-calculus`, with boundary laws for each, a
+  law that an already-built value is not charged again when named or selected, and the corpus measurements that justify
+  retaining or changing the published defaults. The large-score step-limit re-derivation lands only after a generated
+  region that previously reached an operating-system kill exhausts one of these deterministic size metrics.
 - A law that a voice long enough to reach the nesting limit is **refused and not fatal**, run on a thread no larger than
   the desktop session thread, so the guarantee is stated at the size the smallest host actually has. The law
   `a_term_nested_past_the_limit_is_refused` in `musa-calculus`'s `budget_laws.rs` is the one to extend: it descends
