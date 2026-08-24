@@ -27,8 +27,8 @@ include it.
   body reached from several branches, which is what a case tree's methods already are. What §6.2 has to gain is the
   sentence saying so, and the rule that the alternatives bind the same names at the same types.
 - `docs/rules/README.md`'s amendment procedure. `docs/rules/language/` is candidate until prompt
-  [193](193-language-spec-graduation.md), so an amendment here is the ordinary kind and not a constitutional one — but
-  it is still an amendment and this prompt's Task is to make it, which is why the Task says so first.
+  [193](193-language-conformance.md), so an amendment here is the ordinary kind and not a constitutional one — but it is
+  still an amendment and this prompt's Task is to make it, which is why the Task says so first.
 - `crates/musa-syntax/src/parser/patterns.rs`, and prompt [162c](162c-nested-patterns-parse.md), which this builds on:
   an alternative is a pattern, so alternation composes with nesting and `Wrap(Loud(n) | Quiet)` has to mean something or
   be refused for a stated reason.
@@ -53,9 +53,9 @@ same method, which §6.2's tree can already express. So `02-core-calculus.md` ga
 — the same shape prompt [161](161-one-declaration-form.md) used for `enum` and `record`.
 
 **And that is what fixes the cost.** A case tree's method for a nullary constructor is a *value*, and prompt
-[162f](162f-unchosen-arms-are-not-run.md) measures what the evaluator does with those. An alternation that shared one
-method rather than copying it is the same body once, so the two prompts must not disagree about which method a branch
-points at; write the alternation as sharing, not as duplication, and 162f's measurement stays true.
+[162f](162f-lazy-methods.md) measures what the evaluator does with those. An alternation that shared one method rather
+than copying it is the same body once, so the two prompts must not disagree about which method a branch points at; write
+the alternation as sharing, not as duplication, and 162f's measurement stays true.
 
 **Exhaustiveness is unchanged.** An arm covering four constructors covers four constructors. Coverage counting is §6.2's
 and the amendment says nothing new about it.
