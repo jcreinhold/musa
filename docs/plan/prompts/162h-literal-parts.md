@@ -1,7 +1,7 @@
 ---
 id: 162h
 slug: literal-parts
-status: pending
+status: in-progress
 depends_on: [161]
 phase: 3
 ---
@@ -35,8 +35,10 @@ that read nodes, and spliceable in a quote.
   stands and never inside one. There is no way to build the identifier `abc` out of `$a` and `bc`, because a splice is
   not string concatenation". That rule is *kept*, and the second half of this prompt is what it means once a part is a
   whole node.
-- `editors/tree-sitter-musa` and the drift law that holds it to the real lexer — the grammar has to grow the same
-  structure or the law fails.
+- `editors/tree-sitter-musa`, `grammar.js` lines 1397–1403 and
+  `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` — the drift law writes the **lexer's** token stream into the
+  grammar's test data and holds the grammar's leaves to it. Three regexes, one per literal, matching the hand lexer's.
+  Read it for what the Design concludes: the grammar is held to the lexer, and the lexer does not change here.
 - `crates/musa-syntax/src/formatter/` — a lossless CST means the printed text is unchanged, and the formatter is where
   that is proved.
 - `crates/musa-compiler/src/quote/read.rs`'s `read_node`, `build.rs`'s `delimited`, and `print.rs`'s `write_syntax` —
@@ -92,6 +94,19 @@ is a design decision rather than a detail — a fifth group shape, a gate that r
 that the gate keeps §2's "a splice is not string concatenation" true. This prompt would have had to make that decision
 in passing, and a decision made in passing is the one nobody can check later.
 
+**The grammar does not change, because the drift law is about the lexer.** `editors/tree-sitter-musa` is a second
+reader, and what holds it honest is that the *lexer's* token stream is written into its test data and its parse is
+compared to that stream leaf for leaf. The lexer is unchanged here, so the stream is unchanged, so the grammar that
+matched it still matches it. A grammar that split `c#5` into three leaves would be the one reader in the repository
+disagreeing with the lexer about where a token ends — which is the exact thing the law exists to catch — and making the
+law admit it would mean weakening the law to fit the change. The parts are a fact about the *parsed tree*, and
+tree-sitter's tree is not that tree; it is the token stream an editor colours.
+
+Two consequences follow and are Target items rather than details. `tree_sitter_name` gains a third answer, beside "a
+token" and "a node kind": a part is minted by the parser and never lexed, so a manifest cannot hold one. And
+`TokenClass::of` answers `None` for a part for the same reason — `highlight` reads `lex(source)`, so a part never
+reaches it, and a class would claim the lexer produces one.
+
 **The tie stays as it is.** Fixing `staff.musa`'s spelling comparison is prompt [166](166-staff-rewrite.md)'s; this
 prompt makes it possible and says so in the commit message.
 
@@ -101,7 +116,8 @@ prompt makes it possible and says so in the commit message.
   bytes, and every parser test of the token kind are unchanged.
 - `crates/musa-compiler/src/quote/read.rs` reads each of the three back as the one token the phase sees today, with a
   comment saying why and naming 162ha.
-- `editors/tree-sitter-musa` grows the same structure, with corpus entries, and the drift law passes.
+- `editors/tree-sitter-musa` is untouched and its drift law passes unchanged, because the law is stated over the
+  lexer's stream. `tree_sitter_name` and `TokenClass::of` each gain an arm saying a part is not a lexer token.
 - Laws in `musa-syntax`: node text is the concatenation of the parts for a corpus covering `b2`, `bb2`, `bbb2`, `cn4`,
   `c#-1`, `M3`, `dim7`, `AA4`, `d2`, `3/8`, `12/16`; the formatter round-trips each unchanged; a part carries the range
   it occupies in the source.
@@ -142,5 +158,7 @@ Commit as `Give a pitch, an interval and a rational the parts the lexer found`.
 - **No fifth group shape, no change to `Delimiter`, no change to the phase printer, and no splice at a part.** Those are
   [162ha](162ha-a-literal-is-one-lexeme.md)'s, and an implementation that finds itself needing one of them here has
   crossed the boundary the Design draws.
+- No change to `editors/tree-sitter-musa`, and none to the drift law's comparison. A grammar rule split into parts, or a
+  `compare-tokens.js` taught to skip past a literal's children, is the law being edited to admit the change.
 - No adapter rewrite. `staff.musa`'s tie comparison and `doubled.musa`'s builders are [166](166-staff-rewrite.md)'s and
   [167](167-studio-rewrite.md)'s.
