@@ -718,7 +718,7 @@ static RECORD: KeywordDoc = doc!(
      A record *is* its fields: two declarations with the same field names at the same types are one type, and one is \
      accepted where the other is expected. Where two quantities have to stay apart, declare them as one-case `enum`s \
      instead, because each `enum` generates its own type.\n\n\
-     ```musa\nrecord Pending {\n    read: Reading;\n    dots: Dots;\n}\n\nfn refuse(p: Pending, why: Text) -> \
+     ```musa\nrecord Pending {\n    read: Reading;\n    dots: Nat;\n}\n\nfn refuse(p: Pending, why: Text) -> \
      Pending { p with { read.refusal = why } }\n```"
 );
 
@@ -745,7 +745,7 @@ static PRIVATE: KeywordDoc = doc!(
      step, and there is no raw constructor to route around it. All the cases or none of them — a mixed enum has no \
      coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received \
      from and passed to whatever its package exports.\n\n\
-     ```musa\nprivate fn dotted_factor(dots: Dots) -> Ratio { … }\n\nenum Chord {\n    private \
+     ```musa\nprivate fn dotted_factor(dots: Nat) -> Ratio { … }\n\nenum Chord {\n    private \
      NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
 );
 static IMPL: KeywordDoc = doc!(
