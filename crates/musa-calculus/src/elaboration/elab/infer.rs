@@ -333,22 +333,32 @@ impl Elaborator {
     /// `x.m` — `01-surface.md` §1.5's method syntax, resolved by exact receiver.
     ///
     /// Two steps and no search. The receiver is inferred, the rigid head of its
-    /// type is read, and `Head.m` is looked up among the definitions in scope.
-    /// A hit is the call; a miss is [`Refusal::NoMethodForType`] naming the type
-    /// and the member, and a receiver whose type has no rigid head at all is
-    /// [`Refusal::MethodOnVariable`].
+    /// type is read, and one candidate set is collected from **two tables**:
+    /// the definition `Head.m` among the definitions in scope, and the field
+    /// `m` where the receiver's type is a one-constructor family that names
+    /// one. Exactly one candidate is the reading; none is
+    /// [`Refusal::NoMethodForType`], naming the type, the member and whatever
+    /// fields the receiver does have; two is [`Refusal::MemberAndField`]; and a
+    /// receiver whose type has no rigid head at all is
+    /// [`Refusal::MethodOnVariable`], which acquires no field table either
+    /// because a type variable names no family.
     ///
-    /// What makes this a lookup rather than a search is that there is one
-    /// candidate by construction: the head names the namespace, the namespace
-    /// and the member spell one name, and a name resolves to one definition.
-    /// Nothing is tried and undone, so nothing can be tried in a different
-    /// order and answer differently.
+    /// What makes this a lookup rather than a search is that both tables are
+    /// keyed on the same two words and both are read at every call. Nothing is
+    /// tried and undone, so nothing can be tried in a different order and
+    /// answer differently, and the collision is *refused* rather than typed
+    /// apart — deciding it by the expected type would mean elaborating both
+    /// readings and keeping whichever converted, which is the trial
+    /// elaboration [`Self::namespaced`] refuses by name.
     ///
-    /// The hit is then elaborated as if the author had written `Head::m(x)`:
-    /// the same definition a qualified path reaches, applied to the receiver
-    /// already in hand. That is what makes "a method is a spelling" true of the
-    /// elaboration and not only of the prose — `x.m(y)` and `Head::m(x, y)` are
-    /// one term.
+    /// A definition hit is then elaborated as if the author had written
+    /// `Head::m(x)`: the same definition a qualified path reaches, applied to
+    /// the receiver already in hand. That is what makes "a method is a
+    /// spelling" true of the elaboration and not only of the prose — `x.m(y)`
+    /// and `Head::m(x, y)` are one term. A field hit is elaborated as if the
+    /// author had written `(x.m)`, through the very function
+    /// [`Elaborator::projection`](super::Elaborator::projection) uses, so
+    /// `x.m(y)` and `(x.m)(y)` are one term for the same reason.
     fn method(&mut self, scope: &Scope, here: Origin, receiver: &Raw, method: &Name) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, receiver)?;
         let unfolded = opened(&mut self.meter, &inferred.ty)?;
@@ -365,15 +375,32 @@ impl Elaborator {
             .into());
         };
         let qualified = crate::elaboration::namespace::qualified(&head, method);
-        let Some(found) = self.namespaced(scope, here, &qualified)? else {
-            return Err(Refusal::NoMethodForType {
+        // Both tables, every time. Asking one first and stopping on a hit would
+        // make the answer depend on the order, which is the property §1.5's
+        // first consequence rests on: a definition added to a package must not
+        // quietly recapture a call that was reading a field.
+        let defined = self.namespaced(scope, here, &qualified)?;
+        let field = self.field_reading(scope, here, &inferred, method)?;
+        match (defined, field) {
+            (Some(found), None) => self.receiving(scope, here, found, &inferred),
+            (None, Some(read)) => Ok(read),
+            (Some(_), Some(_)) => Err(Refusal::MemberAndField {
                 at: here,
                 head,
                 method: Arc::clone(method),
             }
-            .into());
-        };
-        self.receiving(scope, here, found, &inferred)
+            .into()),
+            (None, None) => {
+                let fields = self.field_names(&inferred.ty)?;
+                Err(Refusal::NoMethodForType {
+                    at: here,
+                    head,
+                    method: Arc::clone(method),
+                    fields,
+                }
+                .into())
+            }
+        }
     }
 
     /// The definition a namespaced name denotes, when one is in scope.

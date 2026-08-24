@@ -595,13 +595,19 @@ pub enum Refusal {
         /// The method, as written.
         method: Name,
     },
-    /// `x.m(…)` where nothing named `Head.m` is in scope for `x`'s head.
+    /// `x.m(…)` where neither table has `m` for `x`'s head — no `Head.m` in
+    /// scope, and no field of that name.
     ///
     /// §1.5's "none is an error naming the type and the method". This is an
     /// ordinary unresolved name wearing the spelling the author used: the term
     /// it would have elaborated to is a top-level definition, and the reason it
     /// is a refusal of its own is that reporting `Pitch.act` unresolved would
     /// name a spelling the author never wrote.
+    ///
+    /// The fields are carried because the rule reads two tables and a reader
+    /// has to be able to see both misses. `Group` has fields `unit`, `compose`
+    /// and `inverse`, and a report that named none of them would send someone
+    /// who mistyped one looking in the wrong table.
     #[error("no method `{method}` for `{head}`")]
     NoMethodForType {
         /// The use.
@@ -609,6 +615,30 @@ pub enum Refusal {
         /// The head of the receiver's type.
         head: Name,
         /// The method, as written.
+        method: Name,
+        /// The receiver type's own field names, where it is a product, in
+        /// declaration order; empty where it is not one.
+        fields: Vec<Name>,
+    },
+    /// `x.m(…)` where `Head.m` is in scope *and* `m` is a field of `x`'s type.
+    ///
+    /// §1.5's two-table rule refusing its collision. The two candidates are not
+    /// two definitions of one name — they are two forms, at different arities
+    /// and with different first arguments — so nothing filters between them:
+    /// choosing by the expected type would mean elaborating both and keeping
+    /// whichever converted, which is the trial elaboration the method rule
+    /// exists to not have.
+    ///
+    /// Both readings stay reachable, which is what makes refusing affordable:
+    /// `Head::m(x, …)` names the definition and `(x.m)(…)` names the field, and
+    /// each says which it means without asking anything of the other.
+    #[error("`{method}` is both a definition in `{head}` and a field of `{head}`")]
+    MemberAndField {
+        /// The use.
+        at: Origin,
+        /// The head of the receiver's type.
+        head: Name,
+        /// The member, as written.
         method: Name,
     },
     /// A bare member spelling that the expected type did not narrow to one

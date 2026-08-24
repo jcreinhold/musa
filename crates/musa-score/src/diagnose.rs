@@ -166,8 +166,11 @@ pub enum Code {
     NotANumeralFamily,
     /// `x.m(…)` where `x`'s type is not a declared type constructor.
     MethodOnVariable,
-    /// `x.m(…)` where nothing named `Head.m` is declared for `x`'s head.
+    /// `x.m(…)` where nothing named `Head.m` is declared for `x`'s head and
+    /// `x`'s type has no field of that name either.
     NoMethodForType,
+    /// `x.m(…)` where `Head.m` is declared *and* `m` is a field of `x`'s type.
+    MemberAndField,
     /// A bare member spelling the expected type did not narrow to one
     /// namespace — several declare it, or the type ruled every one of them out.
     AmbiguousMethod,
@@ -297,6 +300,7 @@ code_table! {
     NotANumeralFamily => "not-a-numeral-family",
     MethodOnVariable => "method-on-variable",
     NoMethodForType => "no-method-for-type",
+    MemberAndField => "member-and-field",
     AmbiguousMethod => "ambiguous-method",
     RedundantNamePrefix => "redundant-name-prefix",
     QualifiedPath => "qualified-path",

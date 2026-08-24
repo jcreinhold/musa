@@ -999,7 +999,13 @@ a snapshot.
 Candidates come from a method-name index rebuilt with the trait map, intersected with the same keyed instance read §4
 step 2 already was, so neither operand is a scan.
 
-Three refusals: a receiver whose type has no rigid head, no candidate, and two.
+Candidates come from **two tables**, both read at every call: the definition `Head.m` in scope, and the field `m` where
+the receiver's type is a one-constructor family that names one. A field reading is the accessor term
+`record.rs::projection` builds, factored out and shared, so `x.m(y)` and `(x.m)(y)` are the same term for the same
+reason `x.m(y)` and `Head::m(x, y)` are.
+
+Four refusals: a receiver whose type has no rigid head, no candidate, two candidates in one table, and one candidate in
+each.
 
 **Owes.** Inherent `impl T { … }` blocks are prompt 142's; the surface spelling is
 [Traits and operators as surface syntax](#traits-and-operators-as-surface-syntax).

@@ -1,7 +1,7 @@
 ---
 id: 162i
 slug: a-field-is-a-member
-status: pending
+status: done
 depends_on: [157, 161, 162b]
 phase: 3
 ---

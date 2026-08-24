@@ -26,6 +26,17 @@ piece "Pitch Algebra" {
     let two_octaves: Interval = nothing.compose(P8).compose(P8);
     let down_a_fifth: Interval = P5.inverse();
 
+    // The group *passed*, which is the other half of naming it. `twice` says
+    // nothing about intervals: it takes whatever group it is handed and
+    // composes an element with itself, and `g.compose(x, x)` reads the field
+    // through the same spelling `P5.compose(P8)` reads the definition through.
+    // The two are one operation — `interval_group.compose` **is**
+    // `Interval::compose` — so the line below and `two_octaves` above compute
+    // the same interval two ways.
+    fn twice(g: Group<Interval>, x: Interval) -> Interval { g.compose(x, x) }
+
+    let doubled_octave: Interval = twice(interval_group, P8);
+
     // The action, at both carriers. The same interval, two answers, and the
     // receiver is what chose between them.
     let a_pitch: Pitch = c4.act(M3);

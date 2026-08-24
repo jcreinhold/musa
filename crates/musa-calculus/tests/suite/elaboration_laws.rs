@@ -364,7 +364,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 42] = [
+const ALL_REFUSALS: [&str; 43] = [
     "not-storable",
     "unknown-name",
     "mismatch",
@@ -407,6 +407,7 @@ const ALL_REFUSALS: [&str; 42] = [
     "builtin-refused",
     "not-a-numeral-family",
     "level-mismatch",
+    "member-and-field",
 ];
 
 /// Which refusal this is, as a tag the coverage gate can compare.
@@ -449,6 +450,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::AbstractMatch { .. } => "abstract-match",
         Refusal::MethodOnVariable { .. } => "method-on-variable",
         Refusal::NoMethodForType { .. } => "no-method-for-type",
+        Refusal::MemberAndField { .. } => "member-and-field",
         Refusal::AmbiguousMethod { .. } => "ambiguous-method",
         Refusal::DuplicateExtern { .. } => "duplicate-extern",
         Refusal::HigherOrderDelta { .. } => "higher-order-delta",

@@ -24,6 +24,16 @@ use crate::kernel::value::{Form, Value};
 
 use super::{Elaborator, Typed};
 
+/// The position of the field `field` names among `product`'s, or [`None`].
+///
+/// Declaration order, which is the order the generated accessors are numbered
+/// in — so this is the whole of the lookup and not an index into a second
+/// table that could disagree with the family's own.
+fn positioned(product: &Product, field: &Name) -> Option<u32> {
+    let position = product.fields.iter().position(|declared| declared.name == *field)?;
+    Some(u32::try_from(position).unwrap_or(u32::MAX))
+}
+
 /// The generated accessor for `product`'s field at `position`, as a term
 /// already applied to the parameters the subject's type stands at.
 ///
@@ -155,26 +165,83 @@ impl Elaborator {
     ) -> Result<Typed, ElabError> {
         let inferred = self.infer(scope, record)?;
         let product = self.record_of(scope, here, &inferred.ty)?;
-        let Some(position) = product.fields.iter().position(|declared| declared.name == *field) else {
+        let Some(position) = positioned(&product, field) else {
             return Err(Refusal::NoSuchField {
                 at: here,
                 field: Arc::clone(field),
             }
             .into());
         };
-        let position = u32::try_from(position).unwrap_or(u32::MAX);
+        self.read_field(scope, here, &inferred, &product, position)
+    }
+
+    /// The reading of `field` off an already-inferred `record`, or [`None`]
+    /// where that type is not a product or names no such field.
+    ///
+    /// `01-surface.md` §1.5's second table. [`Self::projection`] and
+    /// [`Elaborator::method`](super::Elaborator::method) both go through it, so
+    /// `x.f` and `x.f(a)` cannot come to disagree about what the field reading
+    /// *is*: one builds the term and the other applies it.
+    ///
+    /// [`None`] rather than a refusal because the caller decides what an
+    /// absence means. A projection has no second table and says "no such
+    /// field"; a method call has one and asks it before it says anything.
+    pub(super) fn field_reading(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        record: &Typed,
+        field: &Name,
+    ) -> Result<Option<Typed>, ElabError> {
+        let Some(product) = self.product(&record.ty)? else {
+            return Ok(None);
+        };
+        let Some(position) = positioned(&product, field) else {
+            return Ok(None);
+        };
+        self.read_field(scope, here, record, &product, position).map(Some)
+    }
+
+    /// The field names `ty`'s constructor declares, in declaration order, or
+    /// none where `ty` is not a product.
+    ///
+    /// For the diagnostic alone: a miss that lists what is actually there is
+    /// what makes the two-table rule legible from the refusal.
+    pub(super) fn field_names(&mut self, ty: &Value) -> Result<Vec<Name>, ElabError> {
+        let Some(product) = self.product(ty)? else {
+            return Ok(Vec::new());
+        };
+        Ok(product
+            .fields
+            .iter()
+            .map(|declared| Arc::clone(&declared.name))
+            .collect())
+    }
+
+    /// `e.f ⇒ A[e]` once the family and the field's position are known.
+    ///
+    /// The accessor half, factored out so the two rules that reach it share one
+    /// term rather than two that a later edit could pull apart.
+    fn read_field(
+        &mut self,
+        scope: &Scope,
+        here: Origin,
+        record: &Typed,
+        product: &Product,
+        position: u32,
+    ) -> Result<Typed, ElabError> {
         let constant = product.projection(position);
         let globals = scope.cx().globals().clone();
         let mut ty = constant.ty(&mut self.meter, &globals)?;
         for param in product.params.clone() {
             ty = instantiated(&mut self.meter, here, &ty, param)?;
         }
-        let subject = scope.eval(&mut self.meter, &inferred.term)?;
+        let subject = scope.eval(&mut self.meter, &record.term)?;
         let ty = instantiated(&mut self.meter, here, &ty, subject)?;
-        let term = accessor(self, scope, &product, here, position)?;
+        let term = accessor(self, scope, product, here, position)?;
         Ok(Typed {
             ty,
-            term: Term::app(here, term, inferred.term),
+            term: Term::app(here, term, record.term.clone()),
         })
     }
 

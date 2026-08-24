@@ -361,5 +361,239 @@ pub(crate) fn refused_methods() -> Vec<RefusedMethod> {
             raw: var("unit"),
             expected: |refusal| matches!(refusal, Refusal::AmbiguousMethod { .. }),
         },
+        RefusedMethod {
+            name: "a member that is also a field",
+            cx: record_context(),
+            raw: over_ops(Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "add"), var("z"))),
+            expected: |refusal| matches!(refusal, Refusal::MemberAndField { .. }),
+        },
     ]
+}
+
+// ---- §1.5's second table: a field is a member ----
+
+/// `data Ops { Ops(add: Nat → Nat → Nat, twice: Nat → Nat, count: Nat, equal:
+/// Nat → Nat → Nat) }`, beside `one_add`'s declarations.
+///
+/// Four fields at the four shapes the two-table rule has to answer for: `add`
+/// collides with a definition `Ops.add`, `twice` is a field and nothing else,
+/// `count` is a field that is not a function, and `equal` is the name an
+/// operator lowers to. A record with one field could state none of them apart.
+///
+/// # Panics
+///
+/// If a declaration this suite writes is refused, which would be a defect in
+/// the crate rather than a property of any law.
+fn record_context() -> Cx {
+    let cx = one_add();
+    let group = musa_calculus::declare(
+        &cx,
+        &data(
+            Vec::new(),
+            vec![family(
+                "Ops",
+                vec![constructor(
+                    "Ops",
+                    vec![
+                        binder("add", binary()),
+                        binder("twice", arrow(var("Nat"), var("Nat"))),
+                        binder("count", var("Nat")),
+                        binder("equal", binary()),
+                    ],
+                )],
+            )],
+        ),
+    )
+    .expect("Ops is a declaration");
+    let cx = cx.declaring(&group);
+    // The collision, declared here rather than in a context of its own: the
+    // laws that need it and the laws that need its absence are about one
+    // record, and splitting them would let the two drift.
+    defining(
+        &cx,
+        vec![definition(
+            "Ops.add",
+            arrow(var("Ops"), binary()),
+            Raw::lam(WRITTEN, "o", first()),
+        )],
+    )
+}
+
+/// `λ(o : Ops). λ(z : Nat). body`, the shape every law below is written in.
+fn over_ops(body: Raw) -> Raw {
+    Raw::annotated_lam(
+        WRITTEN,
+        "o",
+        var("Ops"),
+        Raw::annotated_lam(WRITTEN, "z", var("Nat"), body),
+    )
+}
+
+/// `Ops → Nat → Nat`, as a core type to check the laws against.
+///
+/// # Panics
+///
+/// If the type is refused, which would be a defect in the crate.
+fn ops_to_nat(cx: &Cx) -> Term {
+    let (ty, _) = infer(cx, &arrow(var("Ops"), arrow(var("Nat"), var("Nat")))).expect("`Ops → Nat → Nat` is a type");
+    ty
+}
+
+/// The refusal `raw` earns, or a panic naming what was expected.
+///
+/// # Panics
+///
+/// If the program is accepted, which is what each caller's law denies.
+fn refused(cx: &Cx, what: &'static str, raw: &Raw) -> Refusal {
+    let Err(error) = infer(cx, raw) else {
+        panic!("{what} must be refused");
+    };
+    crate::programs::refusal(what, error)
+}
+
+/// §1.5's second table: `x.f(a)` is `(x.f)(a)` where `f` is a field.
+///
+/// Convertibility and not a snapshot, for the reason
+/// [`a_method_call_is_the_written_path`] gives — and the two terms come off one
+/// function, `record.rs`'s `read_field`, so this law states a property the
+/// implementation makes true by construction rather than one a test has to keep
+/// two copies of an accessor honest about.
+#[test]
+fn a_field_called_like_a_member_is_the_projection_applied() {
+    let cx = record_context();
+    let ty = ops_to_nat(&cx);
+    let called = over_ops(Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "twice"), var("z")));
+    let projected = over_ops(Raw::app(WRITTEN, Raw::project(WRITTEN, var("o"), "twice"), var("z")));
+    let method = check(&cx, &ty, &called).expect("`twice` is a field of `Ops`, so `o.twice(z)` reads it");
+    let path = check(&cx, &ty, &projected).expect("`(o.twice)(z)` is the spelling that always worked");
+    assert_eq!(
+        convertible(&cx, &ty, &method, &path),
+        Ok(true),
+        "`o.twice(z)` and `(o.twice)(z)` must be one term, not two that agree"
+    );
+}
+
+/// The operator spelling goes through the same table.
+///
+/// `musa-compiler`'s `lower/values.rs::operator` lowers `x == y` to exactly this
+/// raw shape — `Raw::method(x, "equal")` applied to `y` — precisely so that the
+/// operator and the written call are one term. That stays true across the
+/// second table: a record with an `equal` field is what `==` finds at that
+/// receiver, and restricting the fallback to written method calls would make the
+/// two rules again.
+#[test]
+fn an_operator_reaches_a_field_because_it_reaches_the_method_rule() {
+    let cx = record_context();
+    let ty = ops_to_nat(&cx);
+    let operator = over_ops(Raw::app(
+        WRITTEN,
+        Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "equal"), var("z")),
+        var("z"),
+    ));
+    let projected = over_ops(Raw::app(
+        WRITTEN,
+        Raw::app(WRITTEN, Raw::project(WRITTEN, var("o"), "equal"), var("z")),
+        var("z"),
+    ));
+    let lowered = check(&cx, &ty, &operator).expect("`z == z` at an `Ops` receiver reads the `equal` field");
+    let path = check(&cx, &ty, &projected).expect("`(o.equal)(z, z)` is the same program written out");
+    assert_eq!(
+        convertible(&cx, &ty, &lowered, &path),
+        Ok(true),
+        "`x == y` and `x.equal(y)` must stay one term at a receiver whose type has the field"
+    );
+}
+
+/// Two candidates is a refusal naming both, and never a choice.
+///
+/// The two readings are not two definitions of one name — `Ops.add` takes the
+/// receiver as its first argument and the field does not — so filtering them by
+/// the expected type would mean elaborating both and keeping whichever
+/// converted. That is the trial elaboration `infer.rs::namespaced` refuses by
+/// name, so the collision is refused instead, and both spellings that pick it
+/// apart stay available.
+#[test]
+fn a_member_that_is_also_a_field_is_refused_and_names_both() {
+    let cx = record_context();
+    let call = over_ops(Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "add"), var("z")));
+    let refusal = refused(&cx, "a member that is also a field", &call);
+    let Refusal::MemberAndField { head, method, .. } = &refusal else {
+        panic!("expected a collision between the two tables, got `{refusal}`");
+    };
+    assert_eq!(&**head, "Ops", "the report names the head both tables were keyed on");
+    assert_eq!(&**method, "add", "and the member that is in both");
+    assert_eq!(
+        refusal.to_string(),
+        "`add` is both a definition in `Ops` and a field of `Ops`"
+    );
+}
+
+/// Neither candidate is the refusal it was, carrying what the second table does
+/// hold.
+///
+/// The fields are what makes the miss legible now that there are two tables: a
+/// reader who wrote `o.composed(z)` needs to see `add`, `twice`, `count` and
+/// `equal` rather than only being told that no definition is spelled that way.
+#[test]
+fn a_member_in_neither_table_names_the_head_the_member_and_the_fields() {
+    let cx = record_context();
+    let call = over_ops(Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "composed"), var("z")));
+    let refusal = refused(&cx, "a member in neither table", &call);
+    let Refusal::NoMethodForType {
+        head, method, fields, ..
+    } = &refusal
+    else {
+        panic!("expected a missing method, got `{refusal}`");
+    };
+    assert_eq!(&**head, "Ops", "the report names the type that has no such member");
+    assert_eq!(&**method, "composed", "and the member that was written");
+    let named: Vec<&str> = fields.iter().map(|field| &**field).collect();
+    assert_eq!(
+        named,
+        vec!["add", "twice", "count", "equal"],
+        "and the fields the receiver does have, in declaration order"
+    );
+}
+
+/// A field that is not a function, applied, fails at the application.
+///
+/// Firing the second table only for fields whose type is a Π would be
+/// type-directed selection wearing a smaller hat, and it would make this
+/// program report a missing method — sending its reader to look for a
+/// definition — when the mistake is that a natural number was applied.
+#[test]
+fn a_field_that_is_not_a_function_fails_where_it_is_applied() {
+    let cx = record_context();
+    let call = over_ops(Raw::app(WRITTEN, Raw::method(WRITTEN, var("o"), "count"), var("z")));
+    let refusal = refused(&cx, "a non-function field applied", &call);
+    assert!(
+        matches!(refusal, Refusal::NotAFunction { .. }),
+        "expected the application to be the mistake, got `{refusal}`"
+    );
+}
+
+/// A receiver with no rigid head acquires no field table either.
+///
+/// `MethodOnVariable` is unchanged by the second table, and it has to be: a
+/// generic `A` names no family, so it has no fields any more than it has a
+/// namespace, and the repair is still the written path.
+#[test]
+fn a_type_variable_receiver_gains_no_fields() {
+    let cx = record_context();
+    let program = Raw::annotated_lam(
+        WRITTEN,
+        "A",
+        type0(),
+        Raw::annotated_lam(
+            WRITTEN,
+            "x",
+            var("A"),
+            Raw::app(WRITTEN, Raw::method(WRITTEN, var("x"), "twice"), var("x")),
+        ),
+    );
+    let refusal = refused(&cx, "a field on a generic parameter", &program);
+    assert!(
+        matches!(refusal, Refusal::MethodOnVariable { .. }),
+        "expected a method on a variable, got `{refusal}`"
+    );
 }

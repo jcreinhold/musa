@@ -328,7 +328,33 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
             )),
             said: None,
         },
-        Refusal::NoMethodForType { at, .. } => one(Code::NoMethodForType, *at),
+        // The fields are the *other* table's contents, and naming them is what
+        // makes a miss legible now that there are two: someone who wrote
+        // `g.composed(a, b)` needs to see `compose` among the fields, not be
+        // told only that no definition is called that.
+        Refusal::NoMethodForType { at, head, fields, .. } => Filed {
+            code: Code::NoMethodForType,
+            at: *at,
+            also: None,
+            label: None,
+            help: (!fields.is_empty())
+                .then(|| std::borrow::Cow::Owned(format!("`{head}` has fields {}", listed(fields)))),
+            said: None,
+        },
+        // The other refusal whose repair is a pair of *surface* spellings. The
+        // core knows a definition and a field are both reachable; only this
+        // side knows that `Head::m(x, …)` and `(x.m)(…)` are how each is
+        // written, and that neither is a path the core has ever seen.
+        Refusal::MemberAndField { at, .. } => Filed {
+            code: Code::MemberAndField,
+            at: *at,
+            also: None,
+            label: None,
+            help: Some(std::borrow::Cow::Borrowed(
+                "write which one is meant — `Head::m(x, y)` for the definition, `(x.m)(y)` for the field",
+            )),
+            said: None,
+        },
         Refusal::AmbiguousMethod { at, .. } => one(Code::AmbiguousMethod, *at),
         // The registry's own five. Reachable from source only through a
         // compiler defect — nobody writes a δ-builtin in `.musa` — but filed
@@ -384,6 +410,20 @@ fn headed(term: &musa_calculus::Term) -> Option<(String, Vec<musa_calculus::Term
             ..
         } => Some((name.to_string(), arguments)),
         _ => None,
+    }
+}
+
+/// A list of names, quoted, with "and" before the last.
+///
+/// The core has its own for the sentences it writes; this side needs one for
+/// the sentences it writes, and duplicating four lines is cheaper than making
+/// a formatting helper part of `musa-calculus`'s interface.
+fn listed(names: &[musa_calculus::Name]) -> String {
+    let quoted: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();
+    match quoted.split_last() {
+        None => String::new(),
+        Some((last, [])) => last.clone(),
+        Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
     }
 }
 

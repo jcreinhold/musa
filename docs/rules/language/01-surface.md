@@ -568,15 +568,36 @@ and `Duration.of` is that name.
 ### 1.5 Methods, paths, and operators
 
 `x.m(y)` resolves **by exact receiver and in one step**. The elaborator takes the head of `x`'s already-known concrete
-type, and `Head.m` is the name it looks up: `x.m(y)` and `Head::m(x, y)` are one term, reached by one lookup. There is
-one candidate by construction — the head names the namespace, the namespace and the member spell one name, and a name
-resolves to one definition — so the answer is that definition or the failure. Three things follow, and each is refused
-rather than left to a search:
+type and collects one candidate set from **two tables**:
+
+- the definition `Head.m`, where one is in scope and visible — then `x.m(y)` and `Head::m(x, y)` are one term; and
+- the field `m`, where `x`'s type is a one-constructor family whose constructor names a field `m` — then `x.m(y)` and
+  `(x.m)(y)` are one term.
+
+Exactly one candidate is the reading. **None** is a failure naming the type, the member, and whatever fields the
+receiver does have. **Two** is a failure naming both and the two spellings that pick them apart, because the two are not
+two definitions of one name: a definition takes the receiver as its first argument and a field does not, so they are
+different terms at different arities and nothing coerces between them.
+
+Both tables are read at every call, so the answer does not depend on which is consulted first and there is no order to
+reason about. That is what keeps this a lookup rather than a search — a definition added to a package cannot quietly
+recapture a call that had been reading a field, because the collision breaks loudly at every such site.
+
+**Presence decides, and the type never does.** The type-directed disambiguation below picks among several *definitions
+of one name in scope* using an expected type already in hand: the candidates are interchangeable in kind, and the type
+is a filter over them. Here the two candidates are two forms rather than two definitions, so filtering them by type
+would mean elaborating both and keeping whichever converted — a trial elaboration this design does not have, whose
+answer would depend on the order constraints were reached. So a field whose type is not a function is read as the field
+and then fails where it is applied, which is where the mistake is.
+
+Three things follow, and each is refused rather than left to a search:
 
 - A value whose type is a generic parameter `A` never acquires `.m` from anywhere. The caller writes the qualified path,
   or a signature that says what the type is; otherwise adding a definition to a package would change what existing code
   means.
 - There is no auto-deref, no receiver coercion, and no fallback to a free function whose first parameter happens to fit.
+  A field of the receiver's *own type* is not that: it is reached from the receiver's type and from nothing in scope, so
+  it is a second table keyed on the same two words rather than a third place to look.
 - Where the receiver's type is still undetermined after the spine walk, the method call is refused at the call, and the
   refusal names the qualified path to write instead. Nothing is postponed *here*: the constraint queue
   `02-core-calculus.md` §2.1 installs holds *comparisons* — a conversion that is not yet decidable, retried when an
