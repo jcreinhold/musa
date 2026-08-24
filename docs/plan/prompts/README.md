@@ -383,6 +383,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 162c | nested-patterns-parse | 3 | §1 says patterns nest and the parser reads one level; it learns the rest |
 | 162d | or-patterns | 3 | `Bass \| Tenor -> true`: one arm for several constructors, and the amendment that admits it |
 | 162e | let-in-a-block | 3 | Naming an intermediate value costs a top-level `fn`; the core has had `let` all along |
+| 162f | lazy-methods | 3 | An `if` evaluates both branches, so the staff adapter has a classifier the domain never asked for |
 | 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed — after 164 builds them |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind methods and namespaces |
 | 165 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
