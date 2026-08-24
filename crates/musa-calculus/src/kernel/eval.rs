@@ -1521,7 +1521,14 @@ mod tests {
         // Unrelated to the neutral above, which is the point: the guard does
         // not ask *which* metavariable, because asking would mean walking the
         // value to find out.
-        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
+        let meta = Meta::new(
+            0,
+            HERE,
+            type0(),
+            0,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
         meta.solve(&mut meter, type0())
             .expect("an unsolved metavariable takes a solution");
 
@@ -1570,7 +1577,14 @@ mod tests {
         // A second run, solving an unknown of its own — what another document
         // being compiled beside this one amounts to.
         let mut elsewhere = cx.meter();
-        let meta = Meta::new(0, HERE, type0(), 0, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
+        let meta = Meta::new(
+            0,
+            HERE,
+            type0(),
+            0,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
         meta.solve(&mut elsewhere, type0())
             .expect("an unsolved metavariable takes a solution");
 

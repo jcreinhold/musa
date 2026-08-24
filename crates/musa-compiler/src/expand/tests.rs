@@ -1002,11 +1002,7 @@ const NONE_AT_ALL: &str = r"syntax_group(syntax_built(here, 3, 0), delimiter, []
 /// recursor may.
 fn nested_region(levels: usize) -> crate::quote::Syntax {
     let root = crate::quote::NodePath::root(crate::quote::ExpansionPath::at(vec![0]));
-    let mut subject = crate::quote::identifier(root.clone(), "a".to_owned());
-    for _ in 0..levels {
-        subject = crate::quote::group(root.clone(), crate::quote::Delimiter::Parentheses, vec![subject]);
-    }
-    subject
+    crate::quote::nested(&root, crate::quote::Delimiter::Parentheses, levels, "a")
 }
 
 /// A region deeper than the budget allows is refused, not fatal.

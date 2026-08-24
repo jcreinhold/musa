@@ -163,7 +163,14 @@ impl Elaborator {
         }
         let globals = scope.cx().globals().clone();
         let ty = crate::kernel::eval::eval(&mut self.meter, &Env::under(globals.clone()), &ty)?;
-        let meta = Meta::new(self.next_meta, here, ty, arity, globals, MetaSource::TypeParameter(named));
+        let meta = Meta::new(
+            self.next_meta,
+            here,
+            ty,
+            arity,
+            globals,
+            MetaSource::TypeParameter(named),
+        );
         self.next_meta = self.next_meta.saturating_add(1);
         self.created.push(meta.clone());
         let (term, value) = Self::occurrence(scope, &meta, here)?;

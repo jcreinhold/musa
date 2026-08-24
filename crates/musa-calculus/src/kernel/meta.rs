@@ -63,9 +63,7 @@ impl MetaSource {
     pub fn describe(&self) -> std::borrow::Cow<'static, str> {
         match *self {
             Self::TypeParameter(None) => std::borrow::Cow::Borrowed("a type parameter"),
-            Self::TypeParameter(Some(ref name)) => {
-                std::borrow::Cow::Owned(format!("the type parameter `{name}`"))
-            }
+            Self::TypeParameter(Some(ref name)) => std::borrow::Cow::Owned(format!("the type parameter `{name}`")),
         }
     }
 

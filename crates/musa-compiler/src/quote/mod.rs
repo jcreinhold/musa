@@ -43,6 +43,8 @@ mod read;
 mod tests;
 mod tree;
 
+#[cfg(test)]
+pub(crate) use build::nested;
 pub(crate) use build::{binder, delimited, group, identifier, reference, token};
 pub(crate) use category::{Cat, Delimiter, token_kind_named, token_kind_spelling};
 pub(crate) use gate::{NotAnExpression, check_expression};

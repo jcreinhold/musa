@@ -532,11 +532,17 @@ pub(crate) fn undescended(
     match undescending.1 {
         Why::NothingDescends(position) => (
             Said::NothingSmaller,
-            position.and_then(|position| binders.get(usize::try_from(position).unwrap_or(usize::MAX)).map(Arc::clone)),
+            position.and_then(|position| {
+                binders
+                    .get(usize::try_from(position).unwrap_or(usize::MAX))
+                    .map(Arc::clone)
+            }),
         ),
         Why::NoAgreedPosition(position) => (
             Said::NotWhereTheOthersDo,
-            binders.get(usize::try_from(position).unwrap_or(usize::MAX)).map(Arc::clone),
+            binders
+                .get(usize::try_from(position).unwrap_or(usize::MAX))
+                .map(Arc::clone),
         ),
     }
 }

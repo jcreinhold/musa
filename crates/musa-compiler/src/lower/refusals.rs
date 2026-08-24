@@ -267,9 +267,9 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
                     "write it at the call — `{{{name} = …}}` in the argument list — or annotate a \
                      binder the rest of the expression reads it off"
                 )),
-                None => std::borrow::Cow::Borrowed(
-                    "annotate the binder, or pass the argument in braces at the use site",
-                ),
+                None => {
+                    std::borrow::Cow::Borrowed("annotate the binder, or pass the argument in braces at the use site")
+                }
             }),
             said: None,
         },

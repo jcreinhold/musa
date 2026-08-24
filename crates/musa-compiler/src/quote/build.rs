@@ -101,3 +101,33 @@ pub(crate) fn reference(at: NodePath, binding: &BindingPath, name: String) -> Sy
         scopes: vec![binding.scope()],
     }
 }
+
+/// A region `levels` groups deep with one identifier at the bottom, at the
+/// paths reading such a region would derive.
+///
+/// Test support for the two depth laws in `expand::tests`, and it lives here
+/// rather than beside them because deriving a child's path is [`NodePath`]'s
+/// own business — descending is the fold's job, and a caller that could walk to
+/// a child could walk to one that is not there.
+///
+/// Built rather than parsed, because the parser flattens nesting it does not
+/// need and depth is the whole point of those two laws. Built *at derived
+/// paths*, because the earlier version of this builder put every level at the
+/// region's root: the transformer then wrote every one of its answers to the
+/// same path, and what the deeper laws met was `DuplicatePath` rather than the
+/// limit they exist to reach. That went unnoticed for as long as the step
+/// budget tripped first.
+#[cfg(test)]
+pub(crate) fn nested(at: &NodePath, delimiter: Delimiter, levels: usize, name: &str) -> Syntax {
+    let mut path = at.clone();
+    let mut down = Vec::with_capacity(levels);
+    for _ in 0..levels {
+        down.push(path.clone());
+        path = path.child(0);
+    }
+    let mut built = identifier(path, name.to_owned());
+    for at in down.into_iter().rev() {
+        built = group(at, delimiter, vec![built]);
+    }
+    built
+}

@@ -683,6 +683,28 @@ one step a node, which is a charge where there was none, so a program close to t
 not. That is the honest half of the trade and it is stated here rather than left to be discovered: the walk is real work
 proportional to the size of one argument, and steps is the metric that prices work.
 
+**Prompt 165 widens it again, and again the reason is a charge for work with no reader.** Elaborating an application
+walks each argument against the function's domain and then needs *something* to open the codomain at, so the
+implementation evaluated the checked term. But checking already walked that term whole; evaluating it walks it again,
+and a nested application pays the sum of its subtree sizes rather than their total. A Π whose codomain does not mention
+its binder is the ordinary non-dependent arrow — `A → B` says nothing about the `A` it was handed — so at such a
+codomain the argument's value is unobservable and the evaluation has no reader at all. Measured on a voice of 400 plain
+notes: 281,264 of 367,097 steps were inside that one evaluation, and *every one of them* stood at a codomain that never
+read its binder. Skipping it where the codomain cannot read it leaves accepted programs' values untouched — nothing
+looked at what is no longer computed — and moves `tests/fixtures/large-score.musa` from 1,674,615 steps to 355,992 and
+`examples/diatonic-sequences.musa` from 206,041 to 24,661. The widening is one-directional, and the reasoning must stay
+conservative at a metavariable: §2.1 writes an unknown with its spine read out of the environment rather than carried in
+the term, so a codomain containing an unsolved unknown is treated as reading every binder in scope.
+
+**And prompt 165 narrows nesting, which is the same exchange one more time.** Removing the argument evaluation removed
+the *bound* that had been riding on it: a tower of 322 nested applications elaborated inside 320 levels, because the
+counter had been seeing the evaluator's descent rather than the elaborator's. §4.1 charges the metric "wherever an
+evaluation can stand inside another one", and the elaborator's two judgments stand inside one another at every written
+node — 516 frames deep on a workload whose nesting reading was 2 — while being charged nothing. They now charge one
+level each. What that costs is a constant of the term's type and not of how far a recursion went: the measured minimum
+for a definition calling itself is 11 levels rather than 3, and it is the same 11 at one call, ten, a hundred and three
+thousand.
+
 ### 4.1 Nesting, and the room to reach the limit
 
 Nesting is the one metric that goes back down. Every other counter measures what a run has spent and never returns; this

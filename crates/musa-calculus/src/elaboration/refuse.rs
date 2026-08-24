@@ -63,7 +63,9 @@ impl Undescended {
                 format!("`{name}` calls itself, and no argument here is a piece a `match` took out of {argument}")
             }
             Self::NotWhereTheOthersDo => {
-                format!("`{name}` calls itself here on a different argument than {argument}, which its other calls descend on")
+                format!(
+                    "`{name}` calls itself here on a different argument than {argument}, which its other calls descend on"
+                )
             }
         }
     }

@@ -318,24 +318,34 @@ fn nat() -> (Cx, Term) {
 /// is a length rather than a stack. What bounds it is [`Metric::Steps`], and the
 /// companion law below is where that is stated.
 ///
-/// **Eight nesting levels, and the number is the point.** Not "under the limit"
-/// — under a budget two orders of magnitude below the recursion's own depth, so
-/// that no reading of the result can be that 320 happened to be enough. Three is
-/// the measured minimum, and what refuses at two is *unification*, which is the
-/// elaborator's structural work on the definition's type and has nothing to do
-/// with how far the recursion went. The five levels between are slack for that
-/// structural work rather than for the recursion.
+/// **Sixteen nesting levels, and the number is the point.** Not "under the
+/// limit" — under a budget two orders of magnitude below the recursion's own
+/// depth, so that no reading of the result can be that 320 happened to be
+/// enough. Eleven is the measured minimum and it is the same eleven at one call,
+/// ten, a hundred and three thousand: what spends those levels is the
+/// elaborator's structural work on the definition's type, which is a constant of
+/// the *term*, and the five levels between are slack for it rather than for the
+/// recursion. Thirty thousand calls do not fit, and what refuses them is
+/// [`Metric::Steps`] — the companion law below.
+///
+/// The minimum was three until prompt 165, which charged `check` and `infer` a
+/// nesting level each: §4.1 charges the metric "wherever an evaluation can stand
+/// inside another one", the elaborator's two judgments stand inside one another
+/// at every written node, and they were charged nothing. Eleven is what the same
+/// structural work costs once the counter can see it. That is a cost-table
+/// version bump, argued in `02-core-calculus.md` §4 — the recursion is still not
+/// on the metric, which is what this law says and what did not change.
 #[test]
 fn a_definition_recursing_far_past_the_nesting_limit_is_accepted() {
     let (cx, nat) = nat();
-    let narrow = Cx::with_budget(Budget::LANGUAGE.nesting(8)).declaring(&nat_context().1);
+    let narrow = Cx::with_budget(Budget::LANGUAGE.nesting(16)).declaring(&nat_context().1);
     let calls = 3_000;
     assert!(
         calls > Budget::NESTING,
         "the law is only a law if the recursion is past the limit"
     );
     let term = musa_calculus::check(&narrow, &nat, &adding(calls)).expect("three thousand calls elaborate");
-    let answer = musa_calculus::normalize(&narrow, &nat, &term).expect("and run, inside eight nesting levels");
+    let answer = musa_calculus::normalize(&narrow, &nat, &term).expect("and run, inside sixteen nesting levels");
     assert_eq!(
         answer,
         musa_calculus::check(&cx, &nat, &Raw::numeral(WRITTEN, "Nat", calls)).expect("a numeral")
@@ -634,22 +644,3 @@ fn the_data_walk_charges_one_step_a_node() {
 /// it is the *same* twelve for every element, which is what "one charge a node"
 /// means when the node is read once and written once.
 const PER_ELEMENT: u64 = 12;
-
-#[test]
-#[ignore = "probe"]
-fn probe_minimum_nesting() {
-    let (cx, nat) = nat();
-    for calls in [1_u64, 10, 100, 3_000, 30_000] {
-        let mut minimum = None;
-        for levels in 1..40 {
-            let narrow = Cx::with_budget(Budget::LANGUAGE.nesting(levels)).declaring(&nat_context().1);
-            if let Ok(term) = musa_calculus::check(&narrow, &nat, &adding(calls)) {
-                if musa_calculus::normalize(&narrow, &nat, &term).is_ok() {
-                    minimum = Some(levels);
-                    break;
-                }
-            }
-        }
-        println!("calls={calls} minimum={minimum:?}");
-    }
-}

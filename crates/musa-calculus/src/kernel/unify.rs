@@ -680,7 +680,14 @@ mod tests {
     fn the_same_unknown_on_both_sides_waits_rather_than_reporting_a_cycle() {
         let cx = Cx::new();
         let mut meter = cx.meter();
-        let meta = Meta::new(1, HERE, unit_type(), 0, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
+        let meta = Meta::new(
+            1,
+            HERE,
+            unit_type(),
+            0,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
         let occurrence = Value::neutral(crate::kernel::value::Neutral::head(
             HERE,
             crate::kernel::value::Head::Meta(meta),
@@ -694,7 +701,14 @@ mod tests {
     #[test]
     fn a_stored_solution_that_names_a_variable_outside_its_scope_is_caught_again() {
         let cx = Cx::new();
-        let meta = Meta::new(2, HERE, one_binder(), 1, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
+        let meta = Meta::new(
+            2,
+            HERE,
+            one_binder(),
+            1,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
         // `λ_. y`, where `y` is a variable at a level the unknown's scope does
         // not reach. Applying it to the scope's own binder leaves `y` standing.
         let escapee = Value::var(HERE, Level(7), Arc::new(Value::new(HERE, Form::Universe(Sort::ZERO))));
@@ -721,7 +735,14 @@ mod tests {
     #[test]
     fn an_occurrence_outside_the_scope_its_unknown_claims_is_refused() {
         let cx = Cx::new();
-        let meta = Meta::new(3, HERE, one_binder(), 1, cx.globals().clone(), crate::kernel::meta::MetaSource::TypeParameter(None));
+        let meta = Meta::new(
+            3,
+            HERE,
+            one_binder(),
+            1,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
         meta.solve(
             &mut cx.meter(),
             Value::new(

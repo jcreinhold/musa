@@ -97,6 +97,7 @@ pub use crate::elaboration::raw::{
     ARROW_BINDER, Raw, RawArm, RawBinder, RawConstructor, RawData, RawDefinition, RawFamily, RawField, RawGroup,
     RawPattern, RawProgram, RawShape, RawTopLevel,
 };
+pub use crate::elaboration::refuse::Undescended;
 pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::elaboration::storable::requiring_storable;
 pub use crate::kernel::base::{
@@ -108,7 +109,6 @@ pub use crate::kernel::context::Cx;
 pub use crate::kernel::error::{CoreError, Malformed};
 pub use crate::kernel::family::{Constructor, Declared, Group, canonical};
 pub use crate::kernel::meta::MetaSource;
-pub use crate::elaboration::refuse::Undescended;
 pub use crate::kernel::origin::Origin;
 pub use crate::kernel::program::{Def, Program};
 pub use crate::kernel::sort::{Levels, Sort, SortVar};
