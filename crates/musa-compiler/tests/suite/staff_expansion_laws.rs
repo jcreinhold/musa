@@ -160,6 +160,51 @@ fn page(body: &str) -> String {
     format!("{HEAD}\n{body}")
 }
 
+/// A bridge that sounds what a page's `time` says, rather than what it holds.
+///
+/// The count and the unit become two notes, at the count and at a hundred
+/// times the unit, which is the public surface saying two numbers apart. It
+/// has to be two: a meter's *span* is `count × 1/unit`, and `4/4` and `1/1`
+/// both span a whole note — the very confusion the law below rules out. The
+/// hundred keeps the two onsets apart when the count and the unit agree, so
+/// that reading them in order reads them, and not the order they were built.
+const TIMED: &str = "match page {
+    Document(_, _, _, _, beats, _, _) -> match beats {
+        Beats(count, unit) -> together(
+            one(position_of(ratio_of(count)), duration_of(1/4)),
+            one(position_of(ratio_mul(ratio_of(unit), 100/1)), duration_of(1/4)),
+        ),
+    },
+}";
+
+/// The two onsets [`TIMED`] sounds a page's `time` at, earliest first.
+fn timing(region: &str) -> Vec<(String, String)> {
+    let mut found: Vec<(num_rational::Ratio<i64>, String)> = events(region, TIMED)
+        .into_iter()
+        .filter(|event| !matches!(event.kind, ScoreEventKind::Rest))
+        .map(|event| (event.onset.as_ratio(), event.notated_duration.spelling))
+        .collect();
+    found.sort();
+    found
+        .into_iter()
+        .map(|(onset, spelling)| (format!("{}/{}", onset.numer(), onset.denom()), spelling))
+        .collect()
+}
+
+/// A staff head with `time` written as `stated` and nothing else changed.
+fn timed_head(stated: &str) -> String {
+    format!(
+        "instrument \"flute\"
+    transposing P1
+    clef treble
+    key c major
+    time {stated}
+    spelling exact_values
+
+    bar (4, 4) {{ c5/4 d5/4 e5/4 f5/4 }}"
+    )
+}
+
 // --- The fourteen items ----------------------------------------------------
 
 #[test]
@@ -198,6 +243,10 @@ fn a_dot_lengthens_the_value_it_follows_by_half() {
     );
 }
 
+/// A span written as a rational is the rational it is, and this is also where
+/// `c5(3/8)` guards the reading: since prompt 162hb a rational reaches the
+/// adapter as a node over its numerator, its bar and its denominator, and what
+/// names the span is still the one exact value the reader read.
 #[test]
 fn an_exact_duration_is_written_as_the_rational_it_is() {
     assert_eq!(
@@ -470,5 +519,34 @@ fn a_note_that_states_two_written_values_is_refused() {
     assert!(
         said.contains("this note states two written values"),
         "the adapter said something else: {said}"
+    );
+}
+
+/// A time signature is two numbers, written either way, and `4/4` is not `1/1`.
+///
+/// The reason this is a law and not a spelling convenience. Before prompt 162h
+/// the lexer handed `4/4` over as one *reduced* rational, so `time 4/4` and
+/// `time 1/1` arrived at the adapter as the same value and a signature had to
+/// be written `time (4, 4)` to be readable at all — the adapter's own file-head
+/// said so. A composite literal is a node over the parts the lexer found now,
+/// so the numerator and the denominator are the two numerals the composer
+/// typed, and the two spellings of one signature agree while two signatures
+/// stay apart.
+#[test]
+fn a_time_signature_says_its_count_and_its_unit_however_it_is_written() {
+    assert_eq!(
+        timing(&timed_head("4/4")),
+        timing(&timed_head("(4, 4)")),
+        "the two spellings of one signature are one signature"
+    );
+    assert_eq!(
+        timing(&timed_head("4/4")),
+        spans(&[("4/1", "1/4"), ("400/1", "1/4")]),
+        "`time 4/4` is four of a quarter"
+    );
+    assert_ne!(
+        timing(&timed_head("4/4")),
+        timing(&timed_head("1/1")),
+        "`4/4` and `1/1` reduce to one value and are not one signature"
     );
 }

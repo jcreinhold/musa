@@ -17,8 +17,13 @@ use musa_score::origin::SourceSpan;
 /// its children. A node whose first and last tokens are a matched delimiter
 /// pair becomes a group of that delimiter; every other node is a layout group,
 /// which is what the fixed grouper does with a line that opens a block. The
-/// three composite literals are the exception, and [`read_node`] says why they
-/// arrive whole here while a quote body builds them out of their parts.
+/// three composite literals are the exception: `c#5` is one lexeme whose parts
+/// the parser wrote (`musa-syntax`'s `parser/literals.rs`), so it arrives as a
+/// [`super::category::Delimiter::Fused`] group and its letter, accidental and octave are
+/// ordinary token children with ordinary paths. An adapter that folds into one
+/// therefore reads a pitch's accidental, or a rational's denominator apart from
+/// its numerator, by looking at the child that is one — no reading operation,
+/// and nothing revealed that the fold did not already reveal.
 pub(crate) fn read_region(node: &musa_syntax::SyntaxNode, expansion: ExpansionPath) -> Syntax {
     read_node(node, &NodePath::root(expansion))
 }
@@ -33,24 +38,6 @@ fn read_node(node: &musa_syntax::SyntaxNode, path: &NodePath) -> Syntax {
             span,
             path: path.clone(),
         });
-    }
-    // A composite literal — `c#5`, `M3`, `3/8` — is a node over the parts the
-    // lexer's pattern found (`musa-syntax`'s `parser/literals.rs`), and one
-    // token to the lexer. [`crate::quote::Delimiter::Fused`] is the shape that
-    // holds those parts, and a quote body builds one; a *region* still hands
-    // its literals over whole, because the one adapter that reads regions
-    // dispatches on `TokenKind.PitchLiteral` and would stop recognizing a note
-    // the day the token became a group. Turning this over is prompt 162hb's,
-    // together with the adapter that has to read it.
-    if node.kind().is_composite_literal() {
-        return Syntax::Token {
-            info: SourceInfo::Original {
-                span,
-                path: path.clone(),
-            },
-            kind: node.kind(),
-            text: node.text().to_string(),
-        };
     }
     let (delimiter, pieces) = delimited(node.kind(), node.children_with_tokens().collect());
     let children = pieces

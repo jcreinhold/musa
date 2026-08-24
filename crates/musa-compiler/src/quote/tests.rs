@@ -310,6 +310,75 @@ fn a_fused_group_that_spells_one_lexeme_is_one_lexeme() {
     }
 }
 
+/// A region's composite literal arrives as a fused group over its parts.
+///
+/// The reading side of `Delimiter::Fused`. Prompt 162ha gave a *quote body* the
+/// shape, so `quote at here { c#5 }` builds one lexeme rather than three words;
+/// this is what the *reader* hands a transformer, and the two are now the same
+/// shape read in the two directions.
+///
+/// What it buys an adapter is stated by what the law checks: the parts are
+/// ordinary token children at ordinary paths, each carrying the kind the
+/// splitter minted it under. So a pitch's accidental — or a rational's
+/// denominator apart from its numerator — is read by looking at the child that
+/// is one, with no operation for it and nothing revealed that the fold did not
+/// already reveal.
+#[test]
+fn a_regions_literal_arrives_as_the_parts_the_reader_found() {
+    for (written, parts) in [
+        (
+            "c#5",
+            vec![("PitchLetter", "c"), ("PitchAccidental", "#"), ("PitchOctave", "5")],
+        ),
+        ("M3", vec![("IntervalQuality", "M"), ("IntervalSize", "3")]),
+        (
+            "3/8",
+            vec![("RationalNumerator", "3"), ("Slash", "/"), ("RationalDenominator", "8")],
+        ),
+    ] {
+        // The literal stands under the expression node that holds it, which is
+        // where an adapter's fold reaches it too.
+        let written_as = read_written(written, expansion());
+        let Syntax::Group { children: ref held, .. } = written_as else {
+            panic!("`{written}` was read as {written_as:?}");
+        };
+        let [
+            Syntax::Group {
+                delimiter,
+                ref children,
+                ..
+            },
+        ] = held[..]
+        else {
+            panic!("`{written}` is one group inside the expression it stands in: {held:?}");
+        };
+        assert_eq!(delimiter, Delimiter::Fused, "`{written}` is one lexeme");
+        let root = NodePath::root(expansion()).child(0);
+        let found: Vec<_> = children
+            .iter()
+            .enumerate()
+            .map(|(index, child)| {
+                let Syntax::Token {
+                    kind,
+                    ref text,
+                    ref info,
+                } = *child
+                else {
+                    panic!("every part of `{written}` is a token, and {child:?} is not");
+                };
+                assert_eq!(
+                    *info.path(),
+                    root.child(u32::try_from(index).unwrap_or(u32::MAX)),
+                    "`{text}` is the child a fold would reach it as"
+                );
+                (token_kind_spelling(kind), text.clone())
+            })
+            .collect();
+        let wanted: Vec<_> = parts.into_iter().map(|(kind, text)| (kind, text.to_owned())).collect();
+        assert_eq!(found, wanted, "`{written}` was read into other parts");
+    }
+}
+
 /// A fused group that is not one lexeme is refused, and the message says what
 /// the reader made of it.
 ///

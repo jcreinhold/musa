@@ -29,6 +29,12 @@
 // until then it is notation, and the score below is the page's two repeated
 // bars written in the language the compiler reads today — the tie written as
 // its two halves, and `c5(3/8)` as the dotted quarter it is worth.
+//
+// The head writes `time 4/4` and the bars write `bar (4, 4)`, which is one
+// signature spelled the two ways the adapter admits. A rational reaches an
+// adapter as the parts the lexer found, so `4/4` is a count of a unit here and
+// not the whole note it reduces to; `(4, 4)` says the same thing in the form
+// every other numbered word on the page uses.
 
 piece "Staff page" {
     import std::notation::staff;
@@ -39,7 +45,7 @@ piece "Staff page" {
         transposing M2
         clef treble
         key d major
-        time (4, 4)
+        time 4/4
         spelling shortest_readable
         pickup (1, 4) { g4/4 }
         repeat (2) {

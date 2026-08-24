@@ -239,9 +239,13 @@ Inside the region a page opens by saying what it is written for and how it is to
         transposing M2
         clef treble
         key d major
-        time (4, 4)
+        time 4/4
         spelling shortest_readable
 ```
+
+A signature is a count of a unit, and `time (4, 4)` says the same thing: the adapter reads a rational in the parts the
+lexer found, so `4/4` is four quarters here rather than the whole note it reduces to. Write it whichever way reads
+better on the page.
 
 and then holds the notation itself:
 

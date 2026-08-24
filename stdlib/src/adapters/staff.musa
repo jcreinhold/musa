@@ -55,11 +55,13 @@
 // delimiters and nothing else. There are no lines — `Whitespace` is one
 // undifferentiated trivia kind — so the forms are delimited instead, and
 // `time` opens a staff where `meter` changes one because a word written above
-// the music and the same word written among it arrive here identically. For a
-// related reason `time (4, 4)` is two numbers rather than `4/4`: the lexer
-// keeps `4/4` whole as one reduced rational, so `4/4` and `1/1` would arrive
-// identical, and a time signature is a count of a unit rather than a quotient.
-// `bar (4, 4) { … }` says its own meter for the reason a note states its own
+// the music and the same word written among it arrive here identically. A time
+// signature is written either way — `time (4, 4)` and `time 4/4` are the same
+// two numbers — because a rational reaches this adapter in the parts the lexer
+// found, so the count and the unit are the numerals the composer typed and not
+// the one value `4/4` and `1/1` both reduce to. A signature is a count of a
+// unit rather than a quotient, and both spellings say which count and which
+// unit. `bar (4, 4) { … }` says its own meter for the reason a note states its own
 // octave: whether one bar is full can then be answered without looking
 // anywhere else, which is what lets the check land on the bar the composer
 // wrote. `pickup (1, 4) { … }` is a bar of a stated length that is not the
@@ -76,7 +78,9 @@
 //   the one exception and says why in its own note.
 // - **A tie's continuation is checked by spelling, not by pitch**, there being
 //   no operation that reads a pitch out of a token: `f5` tied to `f#5` is
-//   caught by comparing the two spellings the composer wrote.
+//   caught by comparing the two spellings the composer wrote. That is a whole
+//   comparison and not a coarse one — the parts partition the lexeme, so two
+//   equal spellings are a letter, an accidental and an octave that agree.
 // - **A printed page is a new page.** `print` carries nothing across — no
 //   comment, no blank line, no origin — because the value holds none of those.
 //   Preserving them is `edit`'s job, which is why the two are separate.
@@ -387,10 +391,34 @@ library {
     // its pitches. Between parentheses there is no sequence to place into and
     // no head to state, and between brackets there is one token and nothing
     // else, so neither of those two carries a `Reading` at all.
+    //
+    // The fourth is inside one lexeme rather than inside the music: a fused
+    // group's children are the parts of a single `c#5` or `3/8`, and reading
+    // them is reading a token, not reading a place.
     data State {
         Body(read: Reading, held: Pending),
         Parens(numbers: Numbers, length: Length),
         Bracket(said: Option<Said>),
+        Fusing(parts: Parts),
+    }
+
+    // The parts of one lexeme, as far as they have been read.
+    //
+    // `c#5` reaches this adapter as a letter, an accidental and an octave, and
+    // `3/8` as a numerator, a bar and a denominator, because that is what the
+    // lexer's own pattern found on the way past. This is what they are folded
+    // into: the kind they say the lexeme is, the text they spell, and the
+    // first and the last of them.
+    //
+    // Keeping those two is the whole of what parts buy here. A rational read
+    // whole is one reduced value, so `4/4` and `1/1` arrive identical; read in
+    // parts it is two numerals that are two numbers. Two is enough because no
+    // lexeme this staff reads apart has a third.
+    record Parts {
+        kind: TokenKind;
+        spelling: Text;
+        opened: Option<NodePath>;
+        closed: Option<NodePath>;
     }
 
     // --------------------------------------------------------------- emitting
@@ -602,8 +630,10 @@ library {
     }
 
     // A tie left open by what came before, met against what sounds now. It is
-    // checked by spelling because a spelling is all this adapter can see: `f5`
-    // tied to `f#5` is two texts, which is the mistake worth catching.
+    // checked by spelling, and a spelling decides it: the parts of a pitch
+    // partition its text, so `f5` and `f#5` being two texts *is* their
+    // accidentals differing, which is the mistake worth catching. Reading the
+    // parts would buy a sentence naming which part differs, not a verdict.
     fn tie_met(hangs: Hanging, next: Sound) -> Result<Hanging, Refusal> {
         match hangs {
             Closed -> Ok(Closed),
@@ -1484,13 +1514,7 @@ library {
         said: Said,
     ) -> State {
         match numbered(said) {
-            Counting(token) -> match syntax_number(node_at(region, token.spot)) {
-                None -> Parens(numbers, length),
-                Some(value) -> match expression_at(region, token.spot) {
-                    None -> Parens(numbers, length),
-                    Some(numeral) -> Parens(one_more_number(numbers, numeral, value), length),
-                },
-            },
+            Counting(token) -> Parens(stated_number(region, numbers, token.spot), length),
             Spanning(token) -> match length {
                 NoLength -> match syntax_number(node_at(region, token.spot)) {
                     None -> Parens(numbers, NoLength),
@@ -1693,18 +1717,197 @@ library {
         delimiter: Delimiter,
         kids: List<SyntaxStep<State, State>>,
     ) -> State {
-        match state {
-            Body(read, held) -> match entering(here, delimiter) {
-                Holding(spot) -> braces_read(read, held, spot, kids),
-                Stating(spot) -> parens_read(read, held, spot, kids),
-                Voicing(spot) -> brackets_read(read, held, spot, kids),
-                Ignoring(spot) -> Body(read, held),
-            },
-            Parens(numbers, length) -> kids.fold_from_start(
-                state,
-                fn (earlier, kid) { run_syntax_step(earlier, kid) },
+        if delimiter_equal(delimiter, Delimiter::Fused) {
+            fused_read(region, state, here, kids)
+        } else {
+            match state {
+                Body(read, held) -> match entering(here, delimiter) {
+                    Holding(spot) -> braces_read(read, held, spot, kids),
+                    Stating(spot) -> parens_read(read, held, spot, kids),
+                    Voicing(spot) -> brackets_read(read, held, spot, kids),
+                    Ignoring(spot) -> Body(read, held),
+                },
+                Parens(numbers, length) -> kids.fold_from_start(
+                    state,
+                    fn (earlier, kid) { run_syntax_step(earlier, kid) },
+                ),
+                Bracket(said) -> state,
+                Fusing(parts) -> state,
+            }
+        }
+    }
+
+    // Everything a fused group spells, read as the one lexeme it is.
+    //
+    // The interception is in front of the dispatch above rather than inside
+    // `entering`, because `entering` is asked only in a body: a chord's
+    // brackets hold pitches and a form's parentheses hold a rational, so all
+    // three places meet a fused group and all three have to meet it as a
+    // lexeme rather than as a group they do not know.
+    fn fused_read(
+        region: Syntax<TokenTree>,
+        state: State,
+        here: NodePath,
+        kids: List<SyntaxStep<State, State>>,
+    ) -> State {
+        match kids.fold_from_start(
+            Fusing(
+                Parts {
+                    kind = TokenKind::Error,
+                    spelling = "",
+                    opened = None,
+                    closed = None,
+                },
             ),
-            Bracket(said) -> state,
+            fn (earlier, kid) { run_syntax_step(earlier, kid) },
+        ) {
+            Fusing(parts) -> lexeme_read(region, state, here, parts),
+            _ -> state,
+        }
+    }
+
+    // What a lexeme is, which its first part decides: a letter opens a pitch, a
+    // quality or a size opens an interval, and a numerator opens a rational.
+    // Only the first is asked, an accidental and a denominator being parts of
+    // something already named.
+    fn literal_kind(found: TokenKind) -> TokenKind {
+        if token_kind_equal(found, TokenKind::PitchLetter) {
+            TokenKind::PitchLiteral
+        } else if token_kind_equal(found, TokenKind::RationalNumerator) {
+            TokenKind::Rational
+        } else { TokenKind::IntervalLiteral }
+    }
+
+    // One more part of the lexeme being read.
+    //
+    // Places rather than tokens, and the first part apart from the rest,
+    // because this runs for every part of every literal on the page: what a
+    // rational needs of its numerator is where it stands, and what the parts
+    // after the first change is the spelling and the end.
+    fn part_read(parts: Parts, here: NodePath, kind: TokenKind, spelling: Text) -> State {
+        match parts.opened {
+            None -> Fusing(
+                Parts {
+                    kind = literal_kind(kind),
+                    spelling = spelling,
+                    opened = Some(here),
+                    closed = None,
+                },
+            ),
+            Some(first) -> Fusing(
+                parts with {
+                    spelling = text_join([parts.spelling, spelling]),
+                    closed = Some(here),
+                },
+            ),
+        }
+    }
+
+    // One lexeme, read under the place it stands in.
+    //
+    // A lexeme goes where the token it used to be went — `sighted` unasked,
+    // none of the three kinds being trivia — with one exception: a rational
+    // written where a form is waiting for numbers states them. `time 4/4` is
+    // `time (4, 4)` written the way a musician writes it, and the two mean the
+    // same because the numerator and the denominator are the same two numbers
+    // either way.
+    fn lexeme_read(
+        region: Syntax<TokenTree>,
+        state: State,
+        here: NodePath,
+        parts: Parts,
+    ) -> State {
+        match state {
+            Body(read, held) -> body_lexeme(region, read, held, here, parts),
+            Parens(numbers, length) -> stated_token(
+                region,
+                numbers,
+                length,
+                Said {
+                    spot = here,
+                    kind = parts.kind,
+                    spelling = parts.spelling
+                },
+            ),
+            Bracket(was) -> Bracket(
+                Some(Said {
+                    spot = here,
+                    kind = parts.kind,
+                    spelling = parts.spelling
+                }),
+            ),
+            Fusing(inner) -> state,
+        }
+    }
+
+    fn body_lexeme(
+        region: Syntax<TokenTree>,
+        read: Reading,
+        held: Pending,
+        here: NodePath,
+        parts: Parts,
+    ) -> State {
+        match held.started {
+            Worded(known) -> if token_kind_equal(parts.kind, TokenKind::Rational) {
+                fractioned(region, read, held, parts)
+            } else {
+                body_token(
+                    read,
+                    held,
+                    Said {
+                        spot = here,
+                        kind = parts.kind,
+                        spelling = parts.spelling
+                    },
+                )
+            },
+            _ -> body_token(
+                read,
+                held,
+                Said {
+                    spot = here,
+                    kind = parts.kind,
+                    spelling = parts.spelling
+                },
+            ),
+        }
+    }
+
+    // The two numbers a rational states. A rational with a part missing states
+    // nothing, which no lexer output reaches, and the reading below is the
+    // reading `stated_token` performs between a form's parentheses.
+    fn fractioned(
+        region: Syntax<TokenTree>,
+        read: Reading,
+        held: Pending,
+        parts: Parts,
+    ) -> State {
+        match parts.opened {
+            None -> Body(read, held),
+            Some(numerator) -> match parts.closed {
+                None -> Body(read, held),
+                Some(denominator) -> Body(
+                    read,
+                    held with {
+                        numbers = stated_number(
+                            region,
+                            stated_number(region, held.numbers, numerator),
+                            denominator,
+                        )
+                    },
+                ),
+            },
+        }
+    }
+
+    // One more number, read from the place the token that spells it stands at.
+    fn stated_number(region: Syntax<TokenTree>, numbers: Numbers, spot: NodePath) -> Numbers {
+        match syntax_number(node_at(region, spot)) {
+            None -> numbers,
+            Some(value) -> match expression_at(region, spot) {
+                None -> numbers,
+                Some(numeral) -> one_more_number(numbers, numeral, value),
+            },
         }
     }
 
@@ -1716,19 +1919,47 @@ library {
         kind: TokenKind,
         spelling: Text,
     ) -> State {
-        match sighted(kind) {
-            Passed(passed) -> state,
-            Seen(seen) -> match Said {
-                spot = here,
-                kind = seen,
-                spelling = spelling
-            } {
-                said -> match state {
-                    Body(read, held) -> body_token(read, held, said),
-                    Parens(numbers, length) -> stated_token(region, numbers, length, said),
-                    Bracket(was) -> Bracket(Some(said)),
-                },
+        match state {
+            Body(read, held) -> match sighted(kind) {
+                Passed(passed) -> state,
+                Seen(seen) -> body_token(
+                    read,
+                    held,
+                    Said {
+                        spot = here,
+                        kind = seen,
+                        spelling = spelling
+                    },
+                ),
             },
+            Parens(numbers, length) -> match sighted(kind) {
+                Passed(passed) -> state,
+                Seen(seen) -> stated_token(
+                    region,
+                    numbers,
+                    length,
+                    Said {
+                        spot = here,
+                        kind = seen,
+                        spelling = spelling
+                    },
+                ),
+            },
+            Bracket(was) -> match sighted(kind) {
+                Passed(passed) -> state,
+                Seen(seen) -> Bracket(
+                    Some(Said {
+                        spot = here,
+                        kind = seen,
+                        spelling = spelling
+                    }),
+                ),
+            },
+            // A slash is punctuation between forms and a part of `3/8`, and
+            // which it is depends only on where it stands — the one thing
+            // `sighted` cannot say. So inside a lexeme nothing is passed over:
+            // `sighted` is not asked at all, and every part counts.
+            Fusing(parts) -> part_read(parts, here, kind, spelling),
         }
     }
 
@@ -1751,6 +1982,9 @@ library {
                 Body(read, held) -> worded(read, held, said),
                 Parens(numbers, length) -> state,
                 Bracket(was) -> Bracket(Some(said)),
+                // No part of a lexeme is a word: the splitter mints seven
+                // kinds and `Identifier` is not one of them.
+                Fusing(parts) -> state,
             },
         }
     }
@@ -1762,6 +1996,7 @@ library {
             Body(read, held) -> Body(refusing(read, here, "this staff cannot read this"), held),
             Parens(numbers, length) -> state,
             Bracket(said) -> state,
+            Fusing(parts) -> state,
         }
     }
 

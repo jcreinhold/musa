@@ -96,10 +96,15 @@ NoItems))";
 ///
 /// A region's anchors are its nodes in reading order, trivia included, so this
 /// is a number about *that* page and not a number about staff notation: 0 is
-/// the region's own group, 2 is `instrument`, 40 is the bar's body, and 42 is
+/// the region's own group, 2 is `instrument`, 42 is the bar's body, and 44 is
 /// the `c5` inside it. The test below asserts what it names, so a page edited
 /// out from under it fails saying which node it found instead.
-const AN_ANCHOR_OF_THE_FIRST_PITCH: u64 = 42;
+///
+/// It moved by two at prompt 162hb, and the page did not: `transposing M2`
+/// stands before the bar, and a composite literal is a node over its parts
+/// now, so `M2` is three nodes where it was one. Reading order is reading
+/// order — what it counts is what the reader read.
+const AN_ANCHOR_OF_THE_FIRST_PITCH: u64 = 44;
 
 /// A piece holding `region` as a staff page and sounding what it realizes.
 fn piece(region: &str) -> String {

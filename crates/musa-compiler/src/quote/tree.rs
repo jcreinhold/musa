@@ -96,6 +96,37 @@ impl Syntax {
         }
     }
 
+    /// This node as the one lexeme it spells, if it is one.
+    ///
+    /// A token is one. A fused group is one too, because the gate admits it
+    /// only when the text its parts spell lexes as exactly one token
+    /// ([`super::check_expression`]) — so `c#5` read out of a region as a
+    /// letter, an accidental and an octave is still the pitch token it was
+    /// written as. Everything else answers `None`.
+    ///
+    /// The kind is the *reader's* and not a field, because a fused group has no
+    /// kind of its own: what its parts spell is what it is, and the lexer is
+    /// the authority on that. An operation that reads something the compiler
+    /// already read — the exact rational `3/8` names — asks here rather than
+    /// growing a case per literal.
+    pub(crate) fn as_lexeme(&self) -> Option<(musa_syntax::SyntaxKind, String)> {
+        match self {
+            Self::Token { kind, text, .. } => Some((*kind, text.clone())),
+            Self::Group {
+                delimiter: Delimiter::Fused,
+                ..
+            } => {
+                let text = print(self).text;
+                let lexed = musa_syntax::lex(&text);
+                let [only] = lexed.tokens() else {
+                    return None;
+                };
+                Some((only.kind, text))
+            }
+            Self::Missing(_) | Self::Identifier { .. } | Self::Group { .. } => None,
+        }
+    }
+
     /// The sub-node at `path`, if this value has one there.
     ///
     /// How a transformer preserves input: the fold reveals a node's path, and

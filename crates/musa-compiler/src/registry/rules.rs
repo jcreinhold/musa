@@ -1097,27 +1097,36 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
         },
         // The reader's own reading, handed back rather than re-derived. Both
         // numeric kinds the lexer distinguishes answer here, and everything else
-        // is not a number and says so in the value — asked as two questions
+        // is not a number and says so in the value — asked as a few questions
         // rather than as a match on the kind, because the lexer has some three
-        // hundred kinds and naming the other two hundred and ninety-eight would
+        // hundred kinds and naming the other two hundred and ninety-odd would
         // be a list nobody could read.
         SyntaxOp::Number => |arguments| {
-            let found = match node(arguments.first()?)? {
-                Syntax::Token { kind, ref text, .. } => {
-                    if kind == musa_syntax::SyntaxKind::Integer {
-                        text.parse::<i64>().ok().map(Ratio::from_integer)
-                    } else if kind == musa_syntax::SyntaxKind::Rational {
-                        text.split_once('/')
-                            .and_then(|(numerator, denominator)| {
-                                Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
-                            })
-                            .and_then(|(numerator, denominator)| exact_ratio(numerator, denominator))
-                    } else {
-                        None
-                    }
+            // Asked of the *lexeme*, so a `3/8` read out of a region as a
+            // numerator, a slash and a denominator is the same rational it was
+            // when it arrived as one token. The reading is still the one the
+            // compiler already performed; what moved is the shape it arrives
+            // in, and `Syntax::as_lexeme` is where that is known.
+            //
+            // A part of a lexeme answers too, where it spells a numeral: a
+            // numerator is a number, and an adapter that can reach one and
+            // cannot read it has been handed half an operation. That is one
+            // more question rather than four, because a part whose text is not
+            // a numeral — a letter, an accidental — fails to parse and says
+            // `None` on its own.
+            let found = node(arguments.first()?)?.as_lexeme().and_then(|(kind, text)| {
+                if kind == musa_syntax::SyntaxKind::Integer || kind.is_literal_part() {
+                    text.parse::<i64>().ok().map(Ratio::from_integer)
+                } else if kind == musa_syntax::SyntaxKind::Rational {
+                    text.split_once('/')
+                        .and_then(|(numerator, denominator)| {
+                            Some((numerator.parse::<i128>().ok()?, denominator.parse::<i128>().ok()?))
+                        })
+                        .and_then(|(numerator, denominator)| exact_ratio(numerator, denominator))
+                } else {
+                    None
                 }
-                Syntax::Missing(_) | Syntax::Identifier { .. } | Syntax::Group { .. } => None,
-            };
+            });
             reduced(optional(found.map(exact)))
         },
         // The number is the node. `to_string` on a `u64` is the reader's own
