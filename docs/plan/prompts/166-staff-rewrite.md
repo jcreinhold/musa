@@ -160,6 +160,11 @@ possible way to make the number look worse for a good reason and better for a ba
   assumed.
 - **Every test in the staff budget class prompt 142's Check names, green.** That class is the reason this prompt moved;
   the two tonal examples it names beside the staff class stay red here and stay 144's.
+- **The class's `#[ignore]` markers removed.** Twenty-five of them, and their stated reason is the wall this prompt
+  closes. `staff_expansion_laws.rs`'s module header says in as many words that these laws are "the measurement it will
+  be greeted by, unignored one green run at a time", and AGENTS.md requires an `#[ignore]` to carry an argument for
+  itself — a marker whose argument the commit has just falsified is drift, not caution. The laws run in seconds, so
+  they belong in the fast suite.
 
 ## Check
 
@@ -260,13 +265,16 @@ Commit as `Rewrite the staff adapter on the new language`.
   in `crates/musa-compiler/src/document/laws.rs`, and its accompanying half of that constant's doc comment: the list
   names this prompt as the entry's owner, says in as many words that "striking an entry is the commit that fixes it",
   and asserts against a wall that is no longer met. That is a record of which prompt owes which fixture, not compiler
-  behaviour, and no other change to `crates/` is in scope. Anything else a library rewrite turns out to force is a
-  finding worth reporting rather than a quiet commit; the whole claim is that this file is ordinary unprivileged Musa.
+  behaviour. The same goes for the twenty-five `#[ignore]` markers the Target names: deleting a marker whose reason the
+  commit just falsified is bookkeeping too, and it strengthens the default suite rather than touching what any law
+  asserts. No other change to `crates/` is in scope. Anything else a library rewrite turns out to force is a finding
+  worth reporting rather than a quiet commit; the whole claim is that this file is ordinary unprivileged Musa.
 - No operation that mints a `NodePath` — not a renamed `syntax_built`, not a `here` that an author derives, not a "fresh
   place" helper in `stdlib/`. If the rewrite needs one, the argument in the Design section is wrong and this prompt says
   so rather than adding it.
 - No other phase-operation deletion. The builders `11-quotation.md` §5 retires still have callers in
   `stdlib/src/adapters/doubled.musa`; removing them belongs to the prompt that audits the registry, not to this one.
-- No weakening or rewriting of an existing staff test to accommodate the rewrite.
+- No weakening or rewriting of an existing staff test to accommodate the rewrite. Removing an `#[ignore]` is the
+  opposite of that and is in scope; changing what a law asserts is not.
 - No adjustment of prompt 132's prediction. It is a fixed gate.
 - No studio work. Prompt 167.
