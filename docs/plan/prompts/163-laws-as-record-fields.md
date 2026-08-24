@@ -182,9 +182,18 @@ cargo nextest run --workspace
 cargo nextest run --workspace --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
-cargo run -p musa -- check stdlib/src/*.musa
+cargo run -p musa -- check stdlib/src/algebra.musa stdlib/src/transformational.musa
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 ```
+
+The `musa check` line named `stdlib/src/*.musa` and could not pass, for a reason that predates this prompt and is not
+about laws: the glob picks up `stdlib/src/lib.musa`, which is a **module file** — a root of `mod` declarations and
+nothing else. `parser/engine.rs` accepts that shape and says a file declaring a module tree owes no piece;
+`elaborate/mod.rs` dispatches on `PieceDecl` and then `LibraryDecl` and has no third arm, so the file is refused with
+*this file declares no piece*. The pre-164 version of the same file is refused identically, so it is a standing gap
+between the parser's three document shapes and the elaborator's two, and closing it is compiler work this prompt's Stop
+has no room for. The line now names the two modules this prompt edits; the whole bundle, module tree included, is
+compiled by `the_standard_library_elaborates` in the workspace run above, so nothing is checked less than before.
 
 Commit as `Let a structure carry its laws`.
 
