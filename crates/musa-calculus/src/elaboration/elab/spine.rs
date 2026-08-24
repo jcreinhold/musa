@@ -92,6 +92,31 @@ impl Elaborator {
         Ok(built)
     }
 
+    /// `head` applied to fresh metas until its type is no longer a Π — a
+    /// *family*'s parameters, where a record literal named the family and no
+    /// expected type said what it stands at.
+    ///
+    /// [`Self::metas`] takes a count because a constructor's is known from the
+    /// declaration; a family's is however many Π stand between it and the
+    /// universe it lands in, and reading that off the type is the same walk
+    /// without the bookkeeping. The fields solve what comes out, through §2.1's
+    /// ordinary matching, and [`Elaborator::settled`] audits what they could
+    /// not.
+    pub(super) fn saturated(&mut self, scope: &Scope, here: Origin, mut built: Typed) -> Result<Typed, ElabError> {
+        loop {
+            let unfolded = opened(&mut self.meter, &built.ty)?;
+            let Form::Pi { domain, codomain, .. } = &unfolded.as_ref().unwrap_or(&built.ty).form else {
+                return Ok(built);
+            };
+            let (domain, codomain) = (Arc::clone(domain), codomain.clone());
+            let unknown = self.fresh_meta(scope, here, &domain)?;
+            built = Typed {
+                term: Term::app(here, built.term, unknown.term),
+                ty: apply_closure(&mut self.meter, &codomain, unknown.value)?,
+            };
+        }
+    }
+
     /// §2.1's instantiation pass: apply `head` to the written arguments, then
     /// match what remains against `expected` when the call is in a checking
     /// position.

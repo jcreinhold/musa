@@ -425,6 +425,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::NoSuchField { .. } => "no-such-field",
         Refusal::NoSuchParameter { .. } => "no-such-parameter",
         Refusal::RecordShape { .. } => "record-shape",
+        Refusal::RecordHead { .. } => "record-head",
         Refusal::NotAType { .. } => "not-a-type",
         Refusal::Uninferable { .. } => "uninferable",
         Refusal::NonPositive { .. } => "non-positive",

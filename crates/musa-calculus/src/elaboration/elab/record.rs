@@ -19,7 +19,7 @@ use crate::kernel::eval::{apply, apply_closure, opened};
 use crate::kernel::family::{Product, product};
 use crate::kernel::origin::Origin;
 use crate::kernel::scope::Scope;
-use crate::kernel::term::{Index, Name, Term};
+use crate::kernel::term::{Index, Name, Role, Shape, Term};
 use crate::kernel::value::{Form, Value};
 
 use super::{Elaborator, Typed};
@@ -66,6 +66,77 @@ impl Elaborator {
             }
             .into()),
         }
+    }
+
+    /// `R { f = e, … } ⇒ R ?p⃗`.
+    ///
+    /// The head is elaborated by the ordinary constant rule, applied to a
+    /// metavariable per family parameter, and the literal is then *checked*
+    /// against the type that makes — so there is one rule that builds a record
+    /// value ([`Elaborator::literal`]) and this one only says what type it is
+    /// being built at. The fields solve the parameters through §2.1's ordinary
+    /// matching; one they do not solve is the ordinary unsolved-metavariable
+    /// refusal, raised where every other unsolved one is.
+    ///
+    /// A head whose type is not a universe once its parameters are filled is
+    /// not a record type, and is refused here rather than reaching
+    /// [`Elaborator::product`] as a goal it would answer `None` to.
+    pub(super) fn headed(&mut self, scope: &Scope, raw: &Raw, head: &Raw) -> Result<Typed, ElabError> {
+        let here = raw.origin();
+        let built = self.infer(scope, head)?;
+        let built = self.saturated(scope, here, built)?;
+        let unfolded = opened(&mut self.meter, &built.ty)?;
+        if !matches!(unfolded.as_ref().unwrap_or(&built.ty).form, Form::Universe(_)) {
+            return Err(Refusal::NotARecord {
+                at: head.origin(),
+                ty: scope.quote_type(&mut self.meter, &built.ty)?,
+            }
+            .into());
+        }
+        let ty = scope.eval(&mut self.meter, &built.term)?;
+        let term = self.check(scope, raw, &ty)?;
+        Ok(Typed { term, ty })
+    }
+
+    /// The head a literal wrote and the family its goal names are the same
+    /// family, or neither is silently ignored.
+    ///
+    /// Before the head rode on the raw term it rode in an annotation, and a
+    /// disagreement came out as a conversion mismatch. Dropping the annotation
+    /// without this would make `let c: Cell<Nat> = Other { … };` elaborate as
+    /// `Cell` and say nothing about the word the author wrote — a real mistake
+    /// answered with silence, which is worse than the defect this whole rule
+    /// exists to fix.
+    pub(super) fn head_agrees(
+        &mut self,
+        scope: &Scope,
+        head: Option<&Raw>,
+        product: &Product,
+    ) -> Result<(), ElabError> {
+        let Some(head) = head else { return Ok(()) };
+        let written = self.infer(scope, head)?;
+        let Shape::Named {
+            name,
+            role: Role::TypeConstructor,
+            ..
+        } = written.term.shape()
+        else {
+            return Err(Refusal::NotARecord {
+                at: head.origin(),
+                ty: scope.quote_type(&mut self.meter, &written.ty)?,
+            }
+            .into());
+        };
+        let expected = crate::kernel::family::Constant::family(&product.group, product.family).name();
+        if *name == expected {
+            return Ok(());
+        }
+        Err(Refusal::RecordHead {
+            at: head.origin(),
+            expected,
+            found: Arc::clone(name),
+        }
+        .into())
     }
 
     /// `e.f ⇒ A[e]`.
@@ -269,7 +340,7 @@ impl Elaborator {
 /// [`Refusal::NotAFunction`] where the type has fewer Π than the walk has
 /// arguments, which is a generated constant disagreeing with the declaration it
 /// was generated from.
-fn instantiated(
+pub(super) fn instantiated(
     meter: &mut crate::kernel::budget::Meter,
     here: Origin,
     ty: &Value,

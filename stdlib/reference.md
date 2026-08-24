@@ -132,6 +132,9 @@ searches the filesystem.
 - `fn compose_intervals(first: Interval, second: Interval) -> Interval` — Apply two spelling-preserving written intervals in sequence.
 - `fn inverse_interval(value: Interval) -> Interval` — Reverse the direction of a written interval.
 - `fn written_pitch_class(value: Pitch) -> NoteName` — Forget octave while retaining the written letter and accidental.
+- `let interval_group: Group<Interval>` — What `std::algebra` declares, said here about this carrier. Each is the same operations the `impl` blocks above already name, gathered into the record that says *which structure* they are — so a function that takes a group takes this one, and `P5.compose(M3)` and `interval_group.compose` are one definition rather than two spellings of one operation.  Here and not in `algebra.musa` because this file imports that one, and a module tree with no cycle in it has to say a structure's name in one place and its inhabitants in another. That is also the ordinary direction: `algebra` says what a group is, and this file says that the written intervals are one.  Nothing consumed these before they could be written. A `record` with a parameter was a declaration nothing could construct, so `Group<Interval>` was a claim about a value that did not exist.
+- `let pitch_action: Action<Pitch, Interval>` — The action, at the carrier that keeps its octave. Not at `NoteName`, whose action is real and whose record is prompt 164's: the quotient has an action and no torsor, and saying so needs both here.
+- `let pitch_torsor: Torsor<Pitch, Interval>` — And simply transitively at `Pitch`: exactly one written interval carries any pitch to any other, which is the lemma `Pitch.difference` computes.
 
 ## `std::post_tonal::pcset`
 

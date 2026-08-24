@@ -52,6 +52,7 @@ mod quotation_laws;
 mod quote_category_laws;
 mod ramps;
 mod realize;
+mod record_literal_laws;
 mod resource_validation;
 mod scale_context_laws;
 mod schema_generation_laws;

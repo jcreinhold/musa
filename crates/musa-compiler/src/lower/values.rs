@@ -939,12 +939,15 @@ impl Lowering<'_> {
 
     // ---- records ----
 
-    /// `P { f = e, … }` — a record value, annotated with the type it names.
+    /// `P { f = e, … }` — a record value, headed by the family it names.
     ///
-    /// The core's records are structural, so the written name is not part of the
-    /// value; it is what says *which* record type this is, which is exactly an
-    /// annotation. Writing it that way is what makes `01-surface.md` §9's
-    /// nominal record a reading rather than a second kind of term.
+    /// The head rides on the literal rather than in an annotation around it.
+    /// An annotation is elaborated as a *type*, and a parameterized record's
+    /// family is not one — `Cell : Type 0 → Type 0` — so `Cell { … }` used to
+    /// be refused with "this stands where a type is needed, but it is not one"
+    /// and every parameterized `record` in the library was a declaration
+    /// nothing could construct. Carried this way the head names a family, whose
+    /// parameters the fields solve.
     fn record(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let mut fields = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FieldInit) {
@@ -954,13 +957,14 @@ impl Lowering<'_> {
             let value = child(&written, is_expr_node)?;
             fields.push((name, self.value(&value)?));
         }
-        let built = Raw::record(origin, fields.iter().map(|(name, term)| (name.as_str(), term.clone())));
+        let fields = fields.iter().map(|(name, term)| (name.as_str(), term.clone()));
         match child(node, |kind| kind == SyntaxKind::NameExpr) {
             Some(named) => {
                 let at = self.origin(&named);
-                Some(Raw::annot(origin, built, Raw::var(at, named.to_string().trim())))
+                let head = Raw::var(at, named.to_string().trim());
+                Some(Raw::headed_record(origin, head, fields))
             }
-            None => Some(built),
+            None => Some(Raw::record(origin, fields)),
         }
     }
 

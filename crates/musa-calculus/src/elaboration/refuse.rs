@@ -280,6 +280,21 @@ pub enum Refusal {
         /// The fields the literal writes, in the order written.
         found: Vec<Name>,
     },
+    /// A record literal names one family and stands where another is wanted.
+    ///
+    /// Two names for one value, and they disagree. Kept as its own refusal
+    /// rather than left to conversion because the two families are what the
+    /// author needs to see, and a conversion mismatch would show them applied
+    /// to whatever parameters each stood at.
+    #[error("this record literal names `{found}`, but `{expected}` is what stands here")]
+    RecordHead {
+        /// The written head.
+        at: Origin,
+        /// The family the expected type names.
+        expected: Name,
+        /// The family the literal names.
+        found: Name,
+    },
     /// A one-constructor family declares one field name twice.
     ///
     /// A telescope with two `f`s is not merely confusing where a projection is

@@ -91,14 +91,21 @@ impl Elaborator {
                 Some(built) => Ok(built),
                 None => self.complete_call(scope, here, function, arguments, supplied, None),
             },
-            // §2: a record literal is an introduction form, so it checks. The
-            // type it "obviously" has is a guess rather than a principal type —
-            // `{ ty = {}, val = {} }` inhabits both `{ ty : Type 0, val : ty }`
-            // and `{ ty : Type 0, val : {} }` — and picking one would be the
-            // conversion checker's forbidden habit of trying the solution that comes to
-            // hand. So there is no inference rule, and an author who wants to
-            // project out of a literal writes the type it should have.
-            RawShape::Record(_) => Err(Refusal::Uninferable { at: here }.into()),
+            // §2: a record literal is an introduction form, so it checks. A
+            // *headless* literal has no principal type — `{ ty = {}, val = {} }`
+            // inhabits both `{ ty : Type 0, val : ty }` and
+            // `{ ty : Type 0, val : {} }` — and picking one would be the
+            // conversion checker's forbidden habit of trying the solution that
+            // comes to hand. So there is no inference rule for one.
+            //
+            // A literal that names its family has no such guess to make: the
+            // head says which type this is, and what is left open is the
+            // family's parameters, which are metas the fields solve.
+            // `01-surface.md` §1.2's "parameters are allowed and are ordinary"
+            // is only true once this rule exists — before it, a parameterized
+            // record could be declared and never constructed.
+            RawShape::Record { head: None, .. } => Err(Refusal::Uninferable { at: here }.into()),
+            RawShape::Record { head: Some(head), .. } => self.headed(scope, raw, head),
             RawShape::Method { receiver, method } => self.method(scope, here, receiver, method),
             RawShape::Project { record, field } => self.projection(scope, here, record, field),
             RawShape::Update { record, updates } => self.update(scope, here, record, updates),
@@ -269,7 +276,7 @@ impl Elaborator {
                     | RawShape::Lam { .. }
                     | RawShape::App { .. }
                     | RawShape::Call { .. }
-                    | RawShape::Record(_)
+                    | RawShape::Record { .. }
                     | RawShape::Method { .. }
                     | RawShape::Project { .. }
                     | RawShape::Update { .. }

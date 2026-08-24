@@ -398,7 +398,10 @@ fn free(raw: &crate::elaboration::raw::Raw, bound: &mut Vec<Name>, names: &[&Nam
                 walk(&field.term, bound);
             }
         }
-        RawShape::Record(fields) => {
+        RawShape::Record { head, fields } => {
+            if let Some(head) = head {
+                walk(head, bound);
+            }
             for field in fields.iter() {
                 walk(&field.term, bound);
             }

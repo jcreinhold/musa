@@ -268,7 +268,8 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
         | Refusal::NotARecord { at, .. }
         | Refusal::NotAType { at, .. }
         | Refusal::NotStorable { at, .. }
-        | Refusal::RecordShape { at, .. } => one(Code::TypeMismatch, *at),
+        | Refusal::RecordShape { at, .. }
+        | Refusal::RecordHead { at, .. } => one(Code::TypeMismatch, *at),
         // Too many, too few, or the wrong kind of argument.
         // A constructor standing at the wrong number of its family's indices
         // is an arity mistake about the declaration, which is the same repair

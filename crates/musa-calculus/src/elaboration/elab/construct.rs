@@ -114,7 +114,7 @@ impl Elaborator {
             | RawShape::Lam { .. }
             | RawShape::App { .. }
             | RawShape::Call { .. }
-            | RawShape::Record(_)
+            | RawShape::Record { .. }
             | RawShape::Method { .. }
             | RawShape::Project { .. }
             | RawShape::Update { .. }

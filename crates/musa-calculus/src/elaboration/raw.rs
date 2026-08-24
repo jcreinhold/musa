@@ -372,8 +372,23 @@ pub enum RawShape {
         /// before the core knows what a function's inferred binders are called.
         supplied: Arc<[RawField]>,
     },
-    /// `{ f₁ = e₁, …, fₙ = eₙ }`, in the order the record type declares.
-    Record(Arc<[RawField]>),
+    /// `R { f₁ = e₁, …, fₙ = eₙ }`, in the order the record type declares.
+    Record {
+        /// The family the literal names, where one is written.
+        ///
+        /// Held as a [`Raw`] and not a [`Name`] because the head is resolved by
+        /// the ordinary constant rule: a `record` declared in a module, brought
+        /// in by `use`, or written out as a qualified path is the same name in
+        /// every other position, and a second resolver here would be a second
+        /// answer to "what does `Cell` mean".
+        ///
+        /// `None` is a literal with no head. Nothing lowers one today —
+        /// `01-surface.md` §1.2 writes the name — and the inferring rule keeps
+        /// its [`Refusal::Uninferable`](crate::Refusal::Uninferable) for it.
+        head: Option<Arc<Raw>>,
+        /// The fields, in the order they were written.
+        fields: Arc<[RawField]>,
+    },
     /// `x.m(…)` before its arguments — `01-surface.md` §1.5's method syntax.
     ///
     /// **Infers**, and holds no arguments: `x.m(y, z)` is this applied to `x`,
@@ -697,7 +712,7 @@ impl Raw {
     pub(crate) fn checks_only(&self) -> bool {
         matches!(
             self.shape(),
-            RawShape::Record(_) | RawShape::Match { .. } | RawShape::Rec { .. } | RawShape::Lam { .. }
+            RawShape::Record { head: None, .. } | RawShape::Match { .. } | RawShape::Rec { .. } | RawShape::Lam { .. }
         )
     }
 
@@ -781,10 +796,31 @@ impl Raw {
         )
     }
 
-    /// `{ … }` as a record literal, from `(name, value)` pairs.
+    /// `{ … }` as a record literal with no head, from `(name, value)` pairs.
     #[must_use]
     pub fn record<'a>(origin: Origin, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
-        Self::new(origin, RawShape::Record(collect(fields)))
+        Self::new(
+            origin,
+            RawShape::Record {
+                head: None,
+                fields: collect(fields),
+            },
+        )
+    }
+
+    /// `R { … }` — the same, naming the family it builds.
+    ///
+    /// The head is what lets the literal *infer*: with no expected type the
+    /// family's parameters become metavariables and the fields solve them.
+    #[must_use]
+    pub fn headed_record<'a>(origin: Origin, head: Self, fields: impl IntoIterator<Item = (&'a str, Self)>) -> Self {
+        Self::new(
+            origin,
+            RawShape::Record {
+                head: Some(Arc::new(head)),
+                fields: collect(fields),
+            },
+        )
     }
 
     /// `x.m` — the definition `Head.m`, where `Head` heads `x`'s type.

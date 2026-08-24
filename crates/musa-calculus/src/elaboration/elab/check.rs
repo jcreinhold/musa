@@ -67,8 +67,11 @@ impl Elaborator {
                 domain,
                 body,
             } => self.lambda(scope, raw, filling, name, domain.as_ref(), body, ty),
-            RawShape::Record(fields) => match self.product(ty)? {
-                Some(product) => self.literal(scope, here, fields, &product).map(Some),
+            RawShape::Record { head, fields } => match self.product(ty)? {
+                Some(product) => {
+                    self.head_agrees(scope, head.as_deref(), &product)?;
+                    self.literal(scope, here, fields, &product).map(Some)
+                }
                 None => self.abstracted(scope, raw, ty),
             },
             // A `let` checks by checking its body: the definition is elaborated
@@ -396,7 +399,12 @@ impl Elaborator {
         let mut ty = constructor.ty(&mut self.meter, &globals)?;
         for param in &product.params {
             built = Term::app(here, built, scope.quote_type(&mut self.meter, param)?);
-            ty = crate::kernel::eval::apply(&mut self.meter, here, ty, param.clone())?;
+            // Through the telescope walk and not `apply`, for the reason
+            // `record::instantiated` gives: a constructor's *type* is a Π, and
+            // applying a Π as though it were a λ is the malformed-core report.
+            // Unreachable until a parameterized record could be written at all,
+            // which is why it stood.
+            ty = crate::elaboration::elab::record::instantiated(&mut self.meter, here, &ty, param.clone())?;
         }
         for written in fields {
             let unfolded = opened(&mut self.meter, &ty)?;

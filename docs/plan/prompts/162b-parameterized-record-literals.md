@@ -1,7 +1,7 @@
 ---
 id: 162b
 slug: parameterized-record-literals
-status: in-progress
+status: done
 depends_on: [157, 161]
 phase: 3
 ---
