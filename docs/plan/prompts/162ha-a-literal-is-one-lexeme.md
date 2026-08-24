@@ -1,7 +1,7 @@
 ---
 id: 162ha
 slug: a-literal-is-one-lexeme
-status: pending
+status: in-progress
 depends_on: [162h]
 phase: 3
 ---
@@ -12,16 +12,20 @@ phase: 3
 
 Prompt [162h](162h-literal-parts.md) gives `c#5`, `M3` and `3/8` the parts the lexer found, in the CST, and stops at the
 expansion phase's door — because the phase's `Syntax` has four shapes and none of them is *a node that is one lexeme*. A
-group is written back with one space between siblings, so a composite literal read as a group prints as `c # 5`, and
-`as_expression` refuses the composer's own pitch. Give the phase the fifth shape, and the gate that keeps it honest: a
-fused group's text must lex as exactly one token of one of the three composite kinds. Then an adapter can read a
-rational's numerator apart from its denominator, and `staff.musa`'s own note — that `time 4/4` is unwritable because
-`4/4` and `1/1` arrive identical — stops being true.
+group is written back with one space between siblings, so a composite literal grouped as one prints as `c # 5`, and
+`as_expression` refuses the composer's own pitch. That is not a hypothetical: 162h left `quote at here { c5/4 }`
+building a layout group of three parts, and no adapter writes one today, which is the only reason the suite is green.
+Give the phase the fifth shape, and the gate that keeps it honest: a fused group's text must lex as exactly one token of
+one of the three composite kinds.
+
+**The reading side is [162hb](162hb-a-region-arrives-in-parts.md)'s**, and the Design below says why: a region's literal
+cannot become a group until the adapter that reads regions can read one.
 
 ## Read
 
 - [162h](162h-literal-parts.md)'s Design, the paragraph **"The phase sees the token it sees today"** — this prompt is
-  the decision it defers, and the boundary it draws is what this one crosses.
+  the decision it defers, and the boundary it draws is what this one crosses. It names prompt 166 as the place the
+  adapter's share lands, and 166 is `done`; [162hb](162hb-a-region-arrives-in-parts.md) is where it actually lands.
 - `crates/musa-compiler/src/quote/category.rs` — `Delimiter`, its four cases, `ALL`, `name`, `pair`, and `named`. The
   vocabulary a fifth case joins, and the three places that have to agree.
 - `crates/musa-compiler/src/quote/build.rs`'s `delimited` and `read.rs`'s `read_node` — where a CST node becomes a group
@@ -35,8 +39,11 @@ rational's numerator apart from its denominator, and `staff.musa`'s own note —
   inside one. There is no way to build the identifier `abc` out of `$a` and `bc`, because a splice is not string
   concatenation." **That rule is kept, and the Design below is the argument that it survives a fused group.** §2 is also
   where the fifth shape is written down.
-- `stdlib/src/adapters/staff.musa`'s file-head, the paragraph beginning "For a related reason `time (4, 4)` is two
-  numbers rather than `4/4`" — the standing evidence, in the adapter's own words.
+- `crates/musa-syntax/src/lexer.rs`'s pitch, interval and rational patterns — the reason a splice cannot stand at a
+  part. Measured rather than argued: `$letter#5` lexes as `Dollar Identifier Hash Integer` and `c#$octave` as
+  `Identifier Hash Dollar Identifier`, so there is no `PitchLiteral` token for 162h's splitter to be handed and no
+  literal node for a splice to sit inside. A part is a node the parser mints *from a lexeme the lexer already read*,
+  which is a different thing from a position the grammar admits.
 - `crates/musa-compiler/src/quote/tests.rs`'s `a_group_that_names_no_real_delimiter_does_not_check` and
   `crates/musa-compiler/src/registry/rules.rs`'s `SyntaxOp::DelimiterEqual` — the two places the closed vocabulary is
   checked and compared.
@@ -63,23 +70,34 @@ an adapter cannot build a name out of pieces, and that guarantee is untouched: t
 and no scope. The rule that changes is not §2's; it is that "one node, one lexeme" was previously unrepresentable and is
 now representable for exactly the three literals whose lexeme has parts.
 
-**Reading is symmetric.** `read_node` reads a composite literal node as a `Fused` group over its part tokens, replacing
-162h's flattening comment. An adapter then folds into a pitch and meets a letter, an accidental and an octave as
-ordinary token children, with ordinary paths — no reading operation, exactly as 162h's Design requires.
+**A quote body that holds a literal builds one, and that is what this prompt turns on.** The template walk and the
+region reader ask one function what a node's delimiter is, and it answers `Fused` for the three kinds. On the template
+side that repairs a live regression: since 162h, `quote at here { c5/4 }` builds a layout group of `c`, `5`, `/`, `4`
+and prints `c 5 / 4`, which the parser reads as four things. Nothing in `stdlib/` quotes a literal today, so nothing
+caught it; a law here does.
 
-**Splicing at a part follows, and needs nothing new.** `quote at here { $letter#5 }` parses as a pitch whose letter is a
-splice, because 162h made the letter a whole node and §2's rule was always "a splice stands where a whole node stands".
-What guards it is the gate above: a splice that makes `c#x5` is refused, naming the literal and what it lexed as.
+**Reading waits for the reader that must read it.** `read_node` keeps handing a region's composite literal over as one
+token. Turning it over is one line and it was tried: 37 tests fail, because `staff.musa`'s `entering` answers `Ignoring`
+for a delimiter it does not know and `group_read` drops that group's children — so every pitch in every region is
+*silently dropped* and the adapter refuses the region with "this staff field says nothing". The representation change
+and the adapter that reads it are one commit, and it is [162hb](162hb-a-region-arrives-in-parts.md)'s. What this prompt
+leaves behind is a stated asymmetry for exactly one prompt: a quote builds a literal as a fused group and a region still
+delivers one as a token. 162h left a worse one — a quote built it as a *layout* group — and this replaces it with the
+shape the reader will produce.
+
+**There is no splice at a part, and the Read section measures why.** `$letter#5` is four tokens; the lexer never offers
+the parser a `PitchLiteral` to split, so there is no node for a splice to stand inside and nothing here changes that. A
+literal's parts are reachable by *reading* one (162hb) and writable by naming their kinds (`syntax_token(here,
+TokenKind.PitchLetter, "c")`), and assembling those into a fused group is what the gate below judges. The earlier draft
+of this prompt claimed the splice followed from 162h; it does not, and a lexer change to make it follow is refused in
+the Stop list.
 
 **The token kinds an adapter may name.** 162h's part kinds are produced by the parser and not by the lexer, so
 `quote/category.rs`'s drift law — "every kind the lexer can produce appears here, and no parser node kind does" — has to
 say what they are. They are neither: they are tokens the parser mints from a lexer token's substrings. The law grows a
 third answer and the parts become nameable, because an adapter that can read a numerator and cannot say
-`TokenKind::RationalNumerator` about it has been handed half an operation.
-
-**Measure the evidence rather than assert it.** The commit message carries a `time 4/4` region read by the staff
-adapter's own reading path, showing the numerator and denominator arriving apart. Rewriting `staff.musa` to accept it is
-prompt [166](166-staff-rewrite.md)'s; showing that it now can is this prompt's.
+`TokenKind.RationalNumerator` about it has been handed half an operation. `musa_syntax::SyntaxKind::is_literal_part` is
+the third answer, beside `is_composite_literal`, and a law in `musa-syntax` holds it to the splitter that mints them.
 
 ## Target
 
@@ -87,15 +105,18 @@ prompt [166](166-staff-rewrite.md)'s; showing that it now can is this prompt's.
 - `print.rs` writes a fused group's children with no separator, and its doc comment states the two-delimiter split.
 - `check_expression` gains a third refusal: a fused group whose text does not lex as exactly one token of one of the
   three composite kinds, naming the text and what it lexed as.
-- `read_node` reads the three composite literal nodes as fused groups, and 162h's flattening comment comes out.
+- `crate::quote::delimited` answers `Fused` for the three kinds, so the quote template and the region reader cannot
+  disagree about what a literal is grouped as — and the template stops building the layout group 162h left it building.
+- `musa_syntax::SyntaxKind::is_literal_part`, with a law in `musa-syntax` holding it to the kinds `parser/literals.rs`
+  actually mints.
 - `quote/category.rs`'s `TOKEN_KINDS` and its drift law admit the part kinds, with the law stating the three-way split
-  it now checks.
+  it now checks; the same law in `crates/musa-compiler/tests/suite/quote_category_laws.rs` has an adapter write one.
 - `docs/rules/language/11-quotation.md` §2 gains the fifth shape and the gate, written as §2 writes its other rules —
   what it is, what it is for, and what it does not re-open.
-- Laws in `musa-compiler`: a composer's pitch spliced through `as_expression` round-trips unchanged; a fused group
-  assembling `c#x5` is refused and the message names it; a fused group assembling `abc` is refused *because `Identifier`
-  is not one of the three*, which is §2's rule restated as a test; a numerator and a denominator are read apart from one
-  another by an ordinary fold; `quote at here { $letter#5 }` builds the pitch it looks like.
+- Laws in `musa-compiler`: `quote at here { c5/4 }` builds a fused group and prints back the four characters it was
+  written with, for a pitch, an interval and a rational; a built fused group that assembles `c#x5` is refused and the
+  message names it; a fused group assembling `abc` is refused *because `Identifier` is not one of the three*, which is
+  §2's rule restated as a test; a fused group built from the parts of a real pitch passes `as_expression`.
 
 ## Check
 
@@ -110,8 +131,9 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
-Expansion snapshots move where a composite literal is inside a region, and each moved one must show a fused group and
-nothing else. `tests/fixtures/elaboration-compatibility.txt` and every `examples/` rendering must be byte-identical.
+Nothing a region is read as changes, so no expansion snapshot moves, `tests/fixtures/elaboration-compatibility.txt` is
+byte-identical, and every `examples/` rendering is byte-identical. A moved snapshot here is evidence that the reading
+side crossed the boundary, which is [162hb](162hb-a-region-arrives-in-parts.md)'s.
 
 ```sh
 cargo nextest run --run-ignored all
@@ -126,7 +148,7 @@ Commit as `Let a group be one lexeme, and check that it is`.
 - Five delimiters. Not one per literal, not a delimiter carrying a kind, not an open vocabulary. The gate says which
   lexemes are admitted; the delimiter says only how the children are written.
 - No change to §2's splice rule, to hygiene, or to what a quote builds at. The gate is where a fused group is judged.
-- No new reading operation. A part is a token child and the fold reads it, which is [162h](162h-literal-parts.md)'s
-  deliverable and this prompt's obligation to leave intact.
-- No adapter rewrite. `staff.musa`'s `time (4, 4)` and its tie comparison are [166](166-staff-rewrite.md)'s.
-- No change to the lexer, and no fourth composite literal.
+- No change to `read_node`, and therefore none to any adapter. A region still hands its literals over as tokens until
+  [162hb](162hb-a-region-arrives-in-parts.md).
+- No change to the lexer, and no fourth composite literal. A splice at a part would need one and is refused here.
+- No new reading operation of any kind.
