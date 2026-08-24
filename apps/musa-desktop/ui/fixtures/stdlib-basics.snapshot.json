@@ -544,8 +544,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 156,
-        "end": 170
+        "start": 134,
+        "end": 148
       }
     },
     {
@@ -572,8 +572,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 254,
-        "end": 266
+        "start": 224,
+        "end": 236
       }
     },
     {
@@ -608,8 +608,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 485,
-        "end": 492
+        "start": 439,
+        "end": 446
       }
     },
     {
@@ -644,8 +644,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 667,
-        "end": 680
+        "start": 605,
+        "end": 618
       }
     },
     {
@@ -680,15 +680,15 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 968,
-        "end": 981
+        "start": 886,
+        "end": 899
       }
     },
     {
       "name": "counting_from",
       "kind": "function",
       "signature": "fn counting_from(count: Nat, first: Nat) -> List<Nat>",
-      "summary": "The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* \"one more\", so counting needs no arithmetic and no failure case.",
+      "summary": "Finite lists: how one is built, and the two ways one is read.  Every function here is written over `List`'s own constructors and nothing else. That is the point of the module rather than an implementation detail: `List` is a declared family with a generated recursor, so a fold over it is ordinary source, and a compiler builtin for one would be a second reduction rule for a type that already has one. `02-core-calculus.md` §5.8 admits a builtin that hides something; a traversal of a list whose constructors the language writes hides nothing.  # Where the folds went  A list is read by `xs.fold_from_start(seed, combine)` and `xs.fold_from_end(seed, combine)`, which are `List`'s own two definitions and not functions of this module. One spelling per direction, and every container that can be walked answers to the same two words in its own namespace — which is what a per-type `list_fold_from_start` beside an `option_fold` beside a `nat_fold` could never be.  What stays here is what a fold does not say as well. `map` and `filter` below are written over `List`'s own constructors and cost the length; building an answer by folding and appending costs its square, because appending to the end of a list walks it. The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* \"one more\", so counting needs no arithmetic and no failure case.",
       "result": {
         "name": "List<Nat>",
         "distinction": null
@@ -716,8 +716,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 1805,
-        "end": 1818
+        "start": 1759,
+        "end": 1772
       }
     },
     {
@@ -744,8 +744,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2075,
-        "end": 2080
+        "start": 2001,
+        "end": 2006
       }
     },
     {
@@ -780,8 +780,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2419,
-        "end": 2427
+        "start": 2321,
+        "end": 2329
       }
     },
     {
@@ -816,8 +816,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2651,
-        "end": 2654
+        "start": 2525,
+        "end": 2528
       }
     },
     {
@@ -852,8 +852,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2922,
-        "end": 2928
+        "start": 2768,
+        "end": 2774
       }
     },
     {
@@ -888,8 +888,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3508,
-        "end": 3514
+        "start": 3302,
+        "end": 3308
       }
     },
     {
@@ -916,8 +916,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3737,
-        "end": 3743
+        "start": 3503,
+        "end": 3509
       }
     },
     {
@@ -952,8 +952,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4228,
-        "end": 4237
+        "start": 3946,
+        "end": 3955
       }
     },
     {
@@ -980,8 +980,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4468,
-        "end": 4475
+        "start": 4158,
+        "end": 4165
       }
     },
     {
@@ -1016,8 +1016,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4613,
-        "end": 4617
+        "start": 4295,
+        "end": 4299
       }
     },
     {
@@ -1052,8 +1052,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4972,
-        "end": 4976
+        "start": 4610,
+        "end": 4614
       }
     },
     {
@@ -1088,8 +1088,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5498,
-        "end": 5505
+        "start": 5080,
+        "end": 5087
       }
     },
     {
@@ -1116,8 +1116,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5688,
-        "end": 5697
+        "start": 5254,
+        "end": 5263
       }
     },
     {
@@ -1152,8 +1152,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5881,
-        "end": 5884
+        "start": 5431,
+        "end": 5434
       }
     },
     {
@@ -1188,8 +1188,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6169,
-        "end": 6172
+        "start": 5683,
+        "end": 5686
       }
     },
     {
@@ -1216,8 +1216,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6485,
-        "end": 6493
+        "start": 5963,
+        "end": 5971
       }
     },
     {
@@ -1252,8 +1252,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6616,
-        "end": 6627
+        "start": 6086,
+        "end": 6097
       }
     },
     {
@@ -1288,8 +1288,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6794,
-        "end": 6808
+        "start": 6248,
+        "end": 6262
       }
     },
     {
@@ -1324,8 +1324,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6990,
-        "end": 7002
+        "start": 6428,
+        "end": 6440
       }
     },
     {

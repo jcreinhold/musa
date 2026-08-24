@@ -23,11 +23,11 @@ use super::{read_adapter_module, refusal_of, region};
 /// printing is allowed to normalize.
 #[cfg(test)]
 pub(crate) fn evaluate_text(expression: &str) -> Option<String> {
-    let parsed = musa_syntax::parse(&format!("library {{\n  let it: Text = {expression};\n}}"));
+    let parsed = musa_syntax::parse(&format!("\n  let it: Text = {expression};\n"));
     if !parsed.errors().is_empty() {
         return None;
     }
-    let library = musa_syntax::ast::LibraryDecl::from_root(&parsed.syntax())?;
+    let library = musa_syntax::ast::Document::of_root(&parsed.syntax())?;
     let mut resolver = Resolver::new();
     let document = crate::document::elaborate(&mut resolver, &[crate::document::Source::own(library.syntax())])?;
     let (normal, _ty) = document

@@ -67,7 +67,7 @@ fn lowered_type(written: &str) -> (Option<Raw>, Vec<Diagnostic>) {
 /// The same, in whichever of the two scopes `02-core-calculus.md` §5.9
 /// distinguishes.
 fn lowered_type_in(written: &str, in_phase: bool) -> (Option<Raw>, Vec<Diagnostic>) {
-    let root = parsed(&format!("library {{ fn probe(x: {written}) -> Nat {{ 0 }} }}"));
+    let root = parsed(&format!(" fn probe(x: {written}) -> Nat {{ 0 }} "));
     let node = first(&root, SyntaxKind::Param)
         .children()
         .find(|child| is_type_node(child.kind()))
@@ -91,7 +91,7 @@ fn lowered_type_in(written: &str, in_phase: bool) -> (Option<Raw>, Vec<Diagnosti
 /// lowering will hand it to, so the law goes through the same door a real
 /// program will.
 fn lowered_expr(written: &str) -> (Option<Raw>, Vec<Diagnostic>) {
-    let root = parsed(&format!("library {{ fn probe() -> Nat {{ {written} }} }}"));
+    let root = parsed(&format!(" fn probe() -> Nat {{ {written} }} "));
     let node = first(&root, SyntaxKind::BlockExpr);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -102,7 +102,7 @@ fn lowered_expr(written: &str) -> (Option<Raw>, Vec<Diagnostic>) {
 /// The first arm's pattern in `match x { … }`, lowered.
 fn lowered_pattern(written: &str) -> Option<RawPattern> {
     let root = parsed(&format!(
-        "library {{ fn probe(x: Nat) -> Nat {{ match x {{ {written} -> 0, }} }} }}"
+        " fn probe(x: Nat) -> Nat {{ match x {{ {written} -> 0, }} }} "
     ));
     let node = first(&root, SyntaxKind::Pattern);
     let mut resolver = Resolver::new();
@@ -419,7 +419,7 @@ fn a_conditional_lowers_to_the_two_armed_boolean_match() {
 #[test]
 fn a_question_lowers_to_a_match_that_evaluates_its_subject_once() {
     let cx = host();
-    let root = parsed("library { fn probe(r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(r?) } }");
+    let root = parsed(" fn probe(r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(r?) } ");
     let node = first(&root, SyntaxKind::BlockExpr);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -519,7 +519,7 @@ fn a_whole_number_pattern_is_the_constructor_chain_it_counts_to() {
 /// `FieldDecl` and a `trait` holds an `FnDecl`: "the first declaration" is not a
 /// question the tree answers on its own.
 fn lowered_item(written: &str, wanted: SyntaxKind) -> (Option<Item>, Vec<Diagnostic>) {
-    let root = parsed(&format!("library {{ {written} }}"));
+    let root = parsed(&format!(" {written} "));
     let node = first(&root, wanted);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -926,7 +926,7 @@ fn a_second_block_at_one_head_adds_to_the_same_namespace() {
 /// still owns the reading of.
 #[test]
 fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
-    let root = parsed("library { fn read(node: Syntax<TokenTree>) -> Nat { match node { quote { a } -> 1, } } }");
+    let root = parsed(" fn read(node: Syntax<TokenTree>) -> Nat { match node { quote { a } -> 1, } } ");
     let node = first(&root, SyntaxKind::Pattern);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -948,7 +948,7 @@ fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
 /// about one be pointed at the line that wrote it rather than at its body.
 #[test]
 fn a_definition_is_numbered_at_the_declaration_that_wrote_it() {
-    let source = "library { let held: Nat = 3; }";
+    let source = " let held: Nat = 3; ";
     let root = parsed(source);
     let node = first(&root, SyntaxKind::LetDecl);
     let mut resolver = Resolver::new();
@@ -1013,7 +1013,7 @@ fn with_same() -> Cx {
 #[test]
 fn a_core_refusal_is_restated_at_the_span_that_caused_it() {
     let cx = host();
-    let source = "library { fn probe() -> Nat { misspelt } }";
+    let source = " fn probe() -> Nat { misspelt } ";
     let root = parsed(source);
     let node = first(&root, SyntaxKind::BlockExpr);
     let mut resolver = Resolver::new();

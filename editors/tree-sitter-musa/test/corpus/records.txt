@@ -2,293 +2,290 @@
 records, enums, literals, patterns, and namespaced cases
 ==================
 
-library {
-  record Region {
-    anchor: Nat;
-    span: Nat;
+record Region {
+  anchor: Nat;
+  span: Nat;
+}
+
+record Pending<A> {
+  read: A;
+  region: Region;
+}
+
+enum Tying {
+  Untied,
+  TiedOn(Nat),
+  Held { when: Nat; why: Text; },
+}
+
+enum Empty {
+}
+
+fn start() -> Region { Region { anchor = 0, span = 1 } }
+
+fn untied() -> Tying { Tying::Untied }
+
+fn shift(held: Pending<Nat>) -> Pending<Nat> { held with { region.anchor = 1 } }
+
+fn width(held: Pending<Nat>) -> Nat { held.region.span }
+
+fn tied(what: Tying) -> Nat {
+  match what {
+    Tying::Untied -> 0,
+    Tying::TiedOn(n) -> n,
+    Tying::Held { when = w } -> w,
   }
+}
 
-  record Pending<A> {
-    read: A;
-    region: Region;
+fn reading(held: Pending<Nat>) -> Nat {
+  match held {
+    Pending { read = r } -> r,
   }
+}
 
-  enum Tying {
-    Untied,
-    TiedOn(Nat),
-    Held { when: Nat; why: Text; },
-  }
-
-  enum Empty {
-  }
-
-  fn start() -> Region { Region { anchor = 0, span = 1 } }
-
-  fn untied() -> Tying { Tying::Untied }
-
-  fn shift(held: Pending<Nat>) -> Pending<Nat> { held with { region.anchor = 1 } }
-
-  fn width(held: Pending<Nat>) -> Nat { held.region.span }
-
-  fn tied(what: Tying) -> Nat {
-    match what {
-      Tying::Untied -> 0,
-      Tying::TiedOn(n) -> n,
-      Tying::Held { when = w } -> w,
-    }
-  }
-
-  fn reading(held: Pending<Nat>) -> Nat {
-    match held {
-      Pending { read = r } -> r,
-    }
-  }
-
-  fn anchored(where_: Region) -> Nat {
-    match where_ {
-      { anchor = a } -> a,
-    }
+fn anchored(where_: Region) -> Nat {
+  match where_ {
+    { anchor = a } -> a,
   }
 }
 
 ---
 
 (source_file
-  (library_declaration
-    (record_declaration
+  (record_declaration
+    (identifier)
+    (field_declaration
       (identifier)
-      (field_declaration
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier))))
-      (field_declaration
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier)))))
-    (record_declaration
+      (type_expression
+        (type_name
+          (identifier))))
+    (field_declaration
       (identifier)
-      (type_parameter_list
-        (type_parameter
-          (identifier)))
-      (field_declaration
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier))))
-      (field_declaration
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier)))))
-    (enum_declaration
+      (type_expression
+        (type_name
+          (identifier)))))
+  (record_declaration
+    (identifier)
+    (type_parameter_list
+      (type_parameter
+        (identifier)))
+    (field_declaration
       (identifier)
-      (enum_case
-        (identifier))
-      (enum_case
-        (identifier)
-        (type_expression
-          (type_name
-            (identifier))))
-      (enum_case
-        (identifier)
-        (field_declaration
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (field_declaration
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (enum_declaration
+      (type_expression
+        (type_name
+          (identifier))))
+    (field_declaration
+      (identifier)
+      (type_expression
+        (type_name
+          (identifier)))))
+  (enum_declaration
+    (identifier)
+    (enum_case
       (identifier))
-    (function_declaration
+    (enum_case
       (identifier)
-      (parameter_list)
       (type_expression
         (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (record_literal_expression
-            (identifier)
-            (field_initializer
-              (identifier)
-              (expression
-                (literal_expression
-                  (integer))))
-            (field_initializer
-              (identifier)
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
+          (identifier))))
+    (enum_case
       (identifier)
-      (parameter_list)
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (path_expression
-            (identifier)
-            (identifier)))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
-              (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (applied_type
+      (field_declaration
+        (identifier)
+        (type_expression
           (type_name
-            (identifier))
-          (type_expression
+            (identifier))))
+      (field_declaration
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))))
+  (enum_declaration
+    (identifier))
+  (function_declaration
+    (identifier)
+    (parameter_list)
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (record_literal_expression
+          (identifier)
+          (field_initializer
+            (identifier)
+            (expression
+              (literal_expression
+                (integer))))
+          (field_initializer
+            (identifier)
+            (expression
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list)
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (path_expression
+          (identifier)
+          (identifier)))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
             (type_name
-              (identifier)))))
-      (block_expression
-        (expression
-          (record_update_expression
-            (name_expression
               (identifier))
-            (field_update
-              (field_path
-                (identifier)
-                (identifier))
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
+            (type_expression
               (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
+                (identifier)))))))
+    (type_expression
+      (applied_type
         (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (name_expression
-            (identifier)
-            (identifier)
+          (identifier))
+        (type_expression
+          (type_name
             (identifier)))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
+    (block_expression
+      (expression
+        (record_update_expression
+          (name_expression
+            (identifier))
+          (field_update
+            (field_path
+              (identifier)
+              (identifier))
             (expression
-              (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (identifier)
-                (identifier))
-              (expression
-                (literal_expression
-                  (integer))))
-            (match_arm
-              (pattern
-                (identifier)
-                (identifier)
-                (pattern
-                  (identifier)))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
-              (pattern
-                (identifier)
-                (identifier)
-                (record_pattern
-                  (field_pattern
-                    (identifier)
-                    (pattern
-                      (identifier)))))
-              (expression
-                (name_expression
-                  (identifier))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
+            (type_name
+              (identifier))
+            (type_expression
               (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
-            (expression
-              (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (identifier)
-                (record_pattern
-                  (field_pattern
-                    (identifier)
-                    (pattern
-                      (identifier)))))
-              (expression
-                (name_expression
-                  (identifier))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (name_expression
           (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
+          (identifier)
+          (identifier)))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (identifier)
+              (identifier))
+            (expression
+              (literal_expression
+                (integer))))
+          (match_arm
+            (pattern
+              (identifier)
+              (identifier)
+              (pattern
+                (identifier)))
             (expression
               (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (record_pattern
-                  (field_pattern
-                    (identifier)
-                    (pattern
-                      (identifier)))))
-              (expression
-                (name_expression
-                  (identifier))))))))))
+                (identifier))))
+          (match_arm
+            (pattern
+              (identifier)
+              (identifier)
+              (record_pattern
+                (field_pattern
+                  (identifier)
+                  (pattern
+                    (identifier)))))
+            (expression
+              (name_expression
+                (identifier))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
+            (type_name
+              (identifier))
+            (type_expression
+              (type_name
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (identifier)
+              (record_pattern
+                (field_pattern
+                  (identifier)
+                  (pattern
+                    (identifier)))))
+            (expression
+              (name_expression
+                (identifier))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (record_pattern
+                (field_pattern
+                  (identifier)
+                  (pattern
+                    (identifier)))))
+            (expression
+              (name_expression
+                (identifier)))))))))

@@ -1,170 +1,168 @@
-library {
-    import std::cyclic;
-    import std::list;
-    // For `Action<NoteName, Interval>`: every transformation below moves a root
-    // by a written interval, and `up`/`down` is that action written as an
-    // operator.
-    import std::pitch;
-    import std::post_tonal::pcset;
+import std::cyclic;
+import std::list;
+// For `Action<NoteName, Interval>`: every transformation below moves a root
+// by a written interval, and `up`/`down` is that action written as an
+// operator.
+import std::pitch;
+import std::post_tonal::pcset;
 
-    // Neo-Riemannian transformations on the triad refinement (OMT
-    // `072-neo-riemannian-triadic-progressions.md`: the PLR transformations,
-    // the Tonnetz, chains and cycles, and the later SNH section).
-    //
-    // Every function here has type `triad -> triad`, and that is the whole
-    // safety argument. A transformation is defined by which two tones it
-    // keeps and where the third one goes, and both halves of that sentence
-    // are meaningless for a suspended, quartal, augmented, diminished, or
-    // altered chord: there is no third to move and no pair to keep. The
-    // refinement is where that is settled, once, by `as_triad` in
-    // `std::harmony`; nothing below re-checks it and nothing below can fail.
-    //
-    // Spelling is preserved, which is not a detail. `P` on the C major triad
-    // is the C minor triad, whose third is `eb` and never `d#`, because the
-    // root moved by no interval and the third moved by a chromatic semitone.
-    // A consequence is that PLR chains do not close in this domain: the
-    // hexatonic cycle `P L P L P L` returns a triad that sounds like the one
-    // it started from and is spelled `dbb`. Finite-group statements are true
-    // only after the spelling is explicitly forgotten, which is what
-    // `triad_classes` below is for — and it is a separate function precisely
-    // so that the projection is something an author performs rather than
-    // something that happens to them.
+// Neo-Riemannian transformations on the triad refinement (OMT
+// `072-neo-riemannian-triadic-progressions.md`: the PLR transformations,
+// the Tonnetz, chains and cycles, and the later SNH section).
+//
+// Every function here has type `triad -> triad`, and that is the whole
+// safety argument. A transformation is defined by which two tones it
+// keeps and where the third one goes, and both halves of that sentence
+// are meaningless for a suspended, quartal, augmented, diminished, or
+// altered chord: there is no third to move and no pair to keep. The
+// refinement is where that is settled, once, by `as_triad` in
+// `std::harmony`; nothing below re-checks it and nothing below can fail.
+//
+// Spelling is preserved, which is not a detail. `P` on the C major triad
+// is the C minor triad, whose third is `eb` and never `d#`, because the
+// root moved by no interval and the third moved by a chromatic semitone.
+// A consequence is that PLR chains do not close in this domain: the
+// hexatonic cycle `P L P L P L` returns a triad that sounds like the one
+// it started from and is spelled `dbb`. Finite-group statements are true
+// only after the spelling is explicitly forgotten, which is what
+// `triad_classes` below is for — and it is a separate function precisely
+// so that the projection is something an author performs rather than
+// something that happens to them.
 
-    // The root of a triad, spelled.
-    fn triad_root(refined: Triad) -> NoteName { chord_root(triad_chord(refined)) }
+// The root of a triad, spelled.
+fn triad_root(refined: Triad) -> NoteName { chord_root(triad_chord(refined)) }
 
-    // The third, which is the tone that says which triad this is: a major
-    // third above the root for the major triad, a minor third for the minor.
-    fn triad_third(refined: Triad) -> NoteName {
-        match triad_major(refined) {
-            true -> triad_root(refined) up M3,
-            false -> triad_root(refined) up m3,
-        }
+// The third, which is the tone that says which triad this is: a major
+// third above the root for the major triad, a minor third for the minor.
+fn triad_third(refined: Triad) -> NoteName {
+    match triad_major(refined) {
+        true -> triad_root(refined) up M3,
+        false -> triad_root(refined) up m3,
     }
-
-    // The fifth, which is perfect in both triads and so needs no question.
-    fn triad_fifth(refined: Triad) -> NoteName { triad_root(refined) up P5 }
-
-    // The major triad rooted on a pitch class. `fallback` is returned only
-    // if a major triad were not a triad, which is why it is the argument the
-    // caller already had: an impossible answer is still a triad and still
-    // spelled from somewhere real, rather than a silence that would have to
-    // be explained. Every transformation below is total because of this
-    // function and the next.
-    fn major_triad_on(root: NoteName, fallback: Triad) -> Triad {
-        chord_triad(chord_on(chord c major, root)).fold_from_end(
-            fallback,
-            fn (refined, impossible) { itself(refined) },
-        )
-    }
-
-    // The minor triad rooted on a pitch class, on the same terms.
-    fn minor_triad_on(root: NoteName, fallback: Triad) -> Triad {
-        chord_triad(chord_on(chord c minor, root)).fold_from_end(
-            fallback,
-            fn (refined, impossible) { itself(refined) },
-        )
-    }
-
-    // The present case of the two constructors above.
-    fn itself(refined: Triad) -> Triad { refined }
-
-    // P, parallel: keep the root and the fifth, move the third by a
-    // chromatic semitone. The C major triad and the C minor triad, which
-    // share a letter and a key signature's worth of difference.
-    fn parallel(refined: Triad) -> Triad {
-        match triad_major(refined) {
-            true -> minor_triad_on(triad_root(refined), refined),
-            false -> major_triad_on(triad_root(refined), refined),
-        }
-    }
-
-    // L, Leittonwechsel: keep the third and the fifth, and move the
-    // remaining tone by a diatonic semitone. From a major triad that is its
-    // own third made a root — C major goes to E minor, the root `c` falling
-    // to `b`; from a minor triad the fifth rises, E minor back to C major.
-    fn leading_tone(refined: Triad) -> Triad {
-        match triad_major(refined) {
-            true -> minor_triad_on(triad_root(refined) up M3, refined),
-            false -> major_triad_on(triad_root(refined) down M3, refined),
-        }
-    }
-
-    // R, relative: keep the root and the third, move the remaining tone by a
-    // whole step. C major goes to A minor and A minor back to C major, which
-    // is the relative pair every key signature already names.
-    fn relative(refined: Triad) -> Triad {
-        match triad_major(refined) {
-            true -> minor_triad_on(triad_root(refined) up M6, refined),
-            false -> major_triad_on(triad_root(refined) down M6, refined),
-        }
-    }
-
-    // S, slide: keep the third, move the root and the fifth by a chromatic
-    // semitone. C major goes to C sharp minor. Written as `L P R` because
-    // that is what it is — OMT 072 introduces S, N, and H as the named
-    // compositions worth having, not as further generators.
-    fn slide(refined: Triad) -> Triad { leading_tone(parallel(relative(refined))) }
-
-    // N, Nebenverwandt: a major triad and its minor subdominant, C major to
-    // F minor. `R L P`.
-    fn nebenverwandt(refined: Triad) -> Triad { relative(leading_tone(parallel(refined))) }
-
-    // H, the hexatonic pole: the triad sharing no tone at all with its
-    // argument, C major to G sharp minor. `L P L`.
-    fn hexatonic_pole(refined: Triad) -> Triad { leading_tone(parallel(leading_tone(refined))) }
-
-    // Two transformations, applied in the order written.
-    fn then(first: Triad -> Triad, second: Triad -> Triad, refined: Triad) -> Triad {
-        second(first(refined))
-    }
-
-    // A chain of transformations, applied left to right from a starting
-    // triad. Composition is what a chain is — no transformation here is a
-    // keyword or a special form, so a list of them is ordinary data and this
-    // is an ordinary fold.
-    fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
-        steps.fold_from_start(start, fn (carried, operation) { applied(operation, carried) })
-    }
-
-    // One step of `chain`.
-    fn applied(operation: Triad -> Triad, carried: Triad) -> Triad { operation(carried) }
-
-    // Forget one spelling. Named for what it does to a pitch class rather
-    // than for the domain it lands in, so that a piece may import this and
-    // `std::post_tonal::pcset` together.
-    fn unspelled(spelled: NoteName) -> Pc(12) { forget_spelling(spelled) }
-
-    // The three tones of a triad, spelled, from the root upward.
-    fn triad_tones(refined: Triad) -> List<NoteName> {
-        [triad_root(refined), triad_third(refined), triad_fifth(refined)]
-    }
-
-    // The projection into the chromatic quotient: the triad as a set of
-    // three unspelled pitch classes. This is where a finite group claim
-    // becomes sayable. `dbb` major and `c` major are two triads and one set,
-    // so a cycle that fails to close in spelling closes here, and the failure
-    // and the closing are both facts an author can hold at once rather than
-    // one hiding the other.
-    fn triad_classes(refined: Triad) -> PcSet(12) {
-        pcset(12, chromatic, map(unspelled, triad_tones(refined)))
-    }
-
-    // **The PLR laws are not discharged here, and this is where that is
-    // recorded** (prompt 163). `P`, `L` and `R` are involutions and the
-    // hexatonic cycle closes, both after the projection above — those are true
-    // statements and neither is a proof term in this module.
-    //
-    // Two reasons, and they stack. The first: every function here is quantified
-    // over `Triad`, which is a compiler base type with δ-rules and no
-    // eliminator, so there is no case analysis to split an abstract triad with
-    // and `Refl` is refused on the spot. The second: the projection's own
-    // codomain does not save it, because `PcSet(12)`'s operations reach
-    // `nat_add` too — `std::algebra`'s own note says why that is fatal to a
-    // quantified law.
-    //
-    // So the evidence stays where it can be executed: the property suites in
-    // `crates/musa-compiler/tests/suite/transformational_harmony_laws.rs`, over
-    // the triads the corpus actually builds. `docs/rules/language/05-verification.md`
-    // §4 says which laws are of which kind and why.
 }
+
+// The fifth, which is perfect in both triads and so needs no question.
+fn triad_fifth(refined: Triad) -> NoteName { triad_root(refined) up P5 }
+
+// The major triad rooted on a pitch class. `fallback` is returned only
+// if a major triad were not a triad, which is why it is the argument the
+// caller already had: an impossible answer is still a triad and still
+// spelled from somewhere real, rather than a silence that would have to
+// be explained. Every transformation below is total because of this
+// function and the next.
+fn major_triad_on(root: NoteName, fallback: Triad) -> Triad {
+    chord_triad(chord_on(chord c major, root)).fold_from_end(
+        fallback,
+        fn (refined, impossible) { itself(refined) },
+    )
+}
+
+// The minor triad rooted on a pitch class, on the same terms.
+fn minor_triad_on(root: NoteName, fallback: Triad) -> Triad {
+    chord_triad(chord_on(chord c minor, root)).fold_from_end(
+        fallback,
+        fn (refined, impossible) { itself(refined) },
+    )
+}
+
+// The present case of the two constructors above.
+fn itself(refined: Triad) -> Triad { refined }
+
+// P, parallel: keep the root and the fifth, move the third by a
+// chromatic semitone. The C major triad and the C minor triad, which
+// share a letter and a key signature's worth of difference.
+fn parallel(refined: Triad) -> Triad {
+    match triad_major(refined) {
+        true -> minor_triad_on(triad_root(refined), refined),
+        false -> major_triad_on(triad_root(refined), refined),
+    }
+}
+
+// L, Leittonwechsel: keep the third and the fifth, and move the
+// remaining tone by a diatonic semitone. From a major triad that is its
+// own third made a root — C major goes to E minor, the root `c` falling
+// to `b`; from a minor triad the fifth rises, E minor back to C major.
+fn leading_tone(refined: Triad) -> Triad {
+    match triad_major(refined) {
+        true -> minor_triad_on(triad_root(refined) up M3, refined),
+        false -> major_triad_on(triad_root(refined) down M3, refined),
+    }
+}
+
+// R, relative: keep the root and the third, move the remaining tone by a
+// whole step. C major goes to A minor and A minor back to C major, which
+// is the relative pair every key signature already names.
+fn relative(refined: Triad) -> Triad {
+    match triad_major(refined) {
+        true -> minor_triad_on(triad_root(refined) up M6, refined),
+        false -> major_triad_on(triad_root(refined) down M6, refined),
+    }
+}
+
+// S, slide: keep the third, move the root and the fifth by a chromatic
+// semitone. C major goes to C sharp minor. Written as `L P R` because
+// that is what it is — OMT 072 introduces S, N, and H as the named
+// compositions worth having, not as further generators.
+fn slide(refined: Triad) -> Triad { leading_tone(parallel(relative(refined))) }
+
+// N, Nebenverwandt: a major triad and its minor subdominant, C major to
+// F minor. `R L P`.
+fn nebenverwandt(refined: Triad) -> Triad { relative(leading_tone(parallel(refined))) }
+
+// H, the hexatonic pole: the triad sharing no tone at all with its
+// argument, C major to G sharp minor. `L P L`.
+fn hexatonic_pole(refined: Triad) -> Triad { leading_tone(parallel(leading_tone(refined))) }
+
+// Two transformations, applied in the order written.
+fn then(first: Triad -> Triad, second: Triad -> Triad, refined: Triad) -> Triad {
+    second(first(refined))
+}
+
+// A chain of transformations, applied left to right from a starting
+// triad. Composition is what a chain is — no transformation here is a
+// keyword or a special form, so a list of them is ordinary data and this
+// is an ordinary fold.
+fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
+    steps.fold_from_start(start, fn (carried, operation) { applied(operation, carried) })
+}
+
+// One step of `chain`.
+fn applied(operation: Triad -> Triad, carried: Triad) -> Triad { operation(carried) }
+
+// Forget one spelling. Named for what it does to a pitch class rather
+// than for the domain it lands in, so that a piece may import this and
+// `std::post_tonal::pcset` together.
+fn unspelled(spelled: NoteName) -> Pc(12) { forget_spelling(spelled) }
+
+// The three tones of a triad, spelled, from the root upward.
+fn triad_tones(refined: Triad) -> List<NoteName> {
+    [triad_root(refined), triad_third(refined), triad_fifth(refined)]
+}
+
+// The projection into the chromatic quotient: the triad as a set of
+// three unspelled pitch classes. This is where a finite group claim
+// becomes sayable. `dbb` major and `c` major are two triads and one set,
+// so a cycle that fails to close in spelling closes here, and the failure
+// and the closing are both facts an author can hold at once rather than
+// one hiding the other.
+fn triad_classes(refined: Triad) -> PcSet(12) {
+    pcset(12, chromatic, map(unspelled, triad_tones(refined)))
+}
+
+// **The PLR laws are not discharged here, and this is where that is
+// recorded** (prompt 163). `P`, `L` and `R` are involutions and the
+// hexatonic cycle closes, both after the projection above — those are true
+// statements and neither is a proof term in this module.
+//
+// Two reasons, and they stack. The first: every function here is quantified
+// over `Triad`, which is a compiler base type with δ-rules and no
+// eliminator, so there is no case analysis to split an abstract triad with
+// and `Refl` is refused on the spot. The second: the projection's own
+// codomain does not save it, because `PcSet(12)`'s operations reach
+// `nat_add` too — `std::algebra`'s own note says why that is fatal to a
+// quantified law.
+//
+// So the evidence stays where it can be executed: the property suites in
+// `crates/musa-compiler/tests/suite/transformational_harmony_laws.rs`, over
+// the triads the corpus actually builds. `docs/rules/language/05-verification.md`
+// §4 says which laws are of which kind and why.

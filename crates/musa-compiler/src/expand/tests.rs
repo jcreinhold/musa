@@ -43,7 +43,7 @@ fn answering(emitted: &str) -> String {
 /// the law in ceremony. Every test about a *module* — its scope, its own
 /// declarations, its level — writes the module out.
 fn module(expand: &str) -> String {
-    format!("library {{\n    let level = \"readable\";\n\n    let expand = {expand};\n}}\n")
+    format!("\n    let level = \"readable\";\n\n    let expand = {expand};\n\n")
 }
 
 /// Expand one region's worth of text through `transformer`, and print it.
@@ -182,7 +182,7 @@ fn an_adapter_may_not_emit_another_region() {
 #[test]
 fn an_adapter_written_with_an_adapter_is_refused() {
     let Err(crate::phase::ModuleFault::Broken(diagnostics)) = crate::phase::read_adapter_module(
-        "library {\n    let expand = syntax other { c4 };\n}\n",
+        "\n    let expand = syntax other { c4 };\n\n",
         crate::phase::PhaseImports::bundled(),
     ) else {
         panic!("the bootstrap is adapter-free")
@@ -681,9 +681,9 @@ fn a_readable_adapters_region_is_read_only_rather_than_broken() {
         .imports
         .get(&uri)
         .expect("the fixture is bundled")
-        .split("    let edit =")
+        .split("\nlet edit =")
         .next()
-        .map(|kept| format!("{}}}\n", kept.replace("\"editable\"", "\"readable\"")))
+        .map(|kept| kept.replace("\"editable\"", "\"readable\""))
         .expect("the fixture declares `edit` last");
     options.imports.insert(uri, readable);
     let answer = adapter_edits(
@@ -711,7 +711,7 @@ fn a_readable_adapters_region_is_read_only_rather_than_broken() {
 /// already holds the words for. This one holds two words, which is enough
 /// for a round trip and honest about everything else being a loss. Its
 /// regions hold one text literal and its value is that text.
-const MOTTO: &str = r#"library {
+const MOTTO: &str = r#"
     let level = "generative";
 
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
@@ -738,7 +738,7 @@ const MOTTO: &str = r#"library {
             _ -> Err("`motto` writes `hello` and `goodbye`, and this is neither"),
         }
     };
-}
+
 "#;
 
 /// The URI the generative fixture is imported by.
@@ -821,7 +821,7 @@ fn a_printer_reads_the_packages_type_and_its_own_modules_declarations() {
     // names it, and it must not be spliced. If reaching were "the whole
     // module" rather than "what the printer names", this fixture would not
     // check at all, because `Syntax<TokenTree>` has no ordinary reading.
-    const CLEFS: &str = r#"library {
+    const CLEFS: &str = r#"
     let level = "generative";
 
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };
@@ -841,7 +841,7 @@ fn a_printer_reads_the_packages_type_and_its_own_modules_declarations() {
     let print = fn (written: Clef) -> Result<Text, Text> {
         Ok(text_join(["clef ", named(written)]))
     };
-}
+
 "#;
     let mut options = CompileOptions::default();
     options.imports.insert(
@@ -885,7 +885,7 @@ fn a_module_that_declares_more_than_it_offers_is_refused_at_its_import() {
     let overstated = MOTTO
         .split("    let print =")
         .next()
-        .map(|kept| format!("{kept}}}\n"))
+        .map(std::borrow::ToOwned::to_owned)
         .expect("the fixture declares `print` last");
     // No region at all: importing the package is where the promise is made,
     // so that is where it is checked.

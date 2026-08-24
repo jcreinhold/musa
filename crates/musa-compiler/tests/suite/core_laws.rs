@@ -92,10 +92,7 @@ fn definition_and_use_spans_reach_the_existing_reference_index() {
 #[test]
 fn imported_values_are_lexical_dependencies_not_a_second_evaluator() {
     let mut imports = ImportSources::default();
-    imports.insert(
-        "theory.musa",
-        "library { let basis: Nat = 5; fn preserve(x: Nat) -> Nat { x } }",
-    );
+    imports.insert("theory.musa", " let basis: Nat = 5; fn preserve(x: Nat) -> Nat { x } ");
     let source = SourceDocument::new(
         "piece \"Imported core\" { import \"theory.musa\"; let answer: Nat = preserve(basis); score { part p { voice v { c4/1 } } } }",
         "piece.musa",

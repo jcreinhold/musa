@@ -50,12 +50,12 @@ const PROBE: &str = "probe::adapter";
 /// is comes from a traversal.
 fn adapter(emit: &str) -> String {
     format!(
-        "library {{\n    let level = \"readable\";\n{emit}\n    let expand = fn (region: Syntax<TokenTree>) -> \
+        "\n    let level = \"readable\";\n{emit}\n    let expand = fn (region: Syntax<TokenTree>) -> \
          Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};\n\n    let built = \
          fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{\n        syntax_fold_from_leaves(\n            fn (here) \
          {{ emit(here, []) }},\n            fn (here, kind, text) {{ emit(here, []) }},\n            fn (here, name) \
          {{ emit(here, []) }},\n            fn (here, delimiter, children) {{ emit(here, children) }},\n            \
-         region,\n        )\n    }};\n}}\n"
+         region,\n        )\n    }};\n\n"
     )
 }
 

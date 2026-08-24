@@ -63,7 +63,7 @@ const REBUILT: &str = r#"
 
 /// A *readable* adapter module holding `body`, alongside the shared rebuild.
 fn probe(body: &str) -> String {
-    format!("library {{\n    let level = \"readable\";\n{REBUILT}\n{body}\n}}\n")
+    format!("\n    let level = \"readable\";\n{REBUILT}\n{body}\n\n")
 }
 
 /// A piece whose one region is read by the probe adapter.

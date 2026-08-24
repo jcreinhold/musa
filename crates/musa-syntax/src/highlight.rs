@@ -77,7 +77,6 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("phrase", SyntaxKind::PhraseKw),
     ("section", SyntaxKind::SectionKw),
     ("harmony", SyntaxKind::HarmonyKw),
-    ("library", SyntaxKind::LibraryKw),
     ("crescendo", SyntaxKind::CrescendoKw),
     ("diminuendo", SyntaxKind::DiminuendoKw),
     ("to", SyntaxKind::ToKw),
@@ -296,7 +295,6 @@ impl TokenClass {
             | SyntaxKind::PhraseKw
             | SyntaxKind::SectionKw
             | SyntaxKind::HarmonyKw
-            | SyntaxKind::LibraryKw
             | SyntaxKind::AsKw
             | SyntaxKind::DataKw
             | SyntaxKind::RecordKw
@@ -377,7 +375,6 @@ impl TokenClass {
             | SyntaxKind::Position
             | SyntaxKind::PitchClass
             | SyntaxKind::ChordSymbol
-            | SyntaxKind::LibraryDecl
             | SyntaxKind::ImportStmt
             | SyntaxKind::SyntaxRegion
             | SyntaxKind::SyntaxGroup

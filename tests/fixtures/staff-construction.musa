@@ -39,372 +39,370 @@
 //   construction site no quote can draw. One call per node stays the law —
 //   two calls about one node meet the duplicate-path gate — but it is the
 //   operation's own law now rather than a discipline around a third argument.
-library {
-    let level = "readable";
+let level = "readable";
 
-    // ------------------------------------------------- what the reader holds
+// ------------------------------------------------- what the reader holds
 
-    // Why a region was refused, and the node the refusal is about.
-    data Refusal {
-        NoRefusal,
-        Refused(node: Syntax<TokenTree>, why: Text),
-    }
-
-    // What sounds first in a stretch of notation.
-    data Sound {
-        Silent,
-        Sounds(spelling: Text, node: Syntax<TokenTree>),
-    }
-
-    // A tie left hanging at the end of a stretch.
-    data Hanging {
-        Closed,
-        Hangs(spelling: Text, node: Syntax<TokenTree>),
-    }
-
-    // One header field, once it has been read.
-    data Given {
-        Absent,
-        Stated(node: Syntax<TokenTree>),
-    }
-
-    // The six things a staff says about itself before any notation.
-    data Head {
-        Head(
-            instrument: Given,
-            shift: Given,
-            written_clef: Given,
-            tonality: Given,
-            beats: Given,
-            spelled: Given,
-        ),
-    }
-
-    // What one stretch of notation reads to.
-    //
-    // `items` holds an expression and not a tree: everything this section
-    // builds is built by a quote, and a quote's body is read by the ordinary
-    // parser, so what comes out of one is already an expression.
-    data Reading {
-        Reading(
-            items: Syntax<Expr>,
-            span: Ratio,
-            opens: Sound,
-            hangs: Hanging,
-            head: Head,
-            refusal: Refusal,
-        ),
-    }
-
-    // How many dots a written value carries.
-    data Dots {
-        NoDots,
-        OneDot,
-        TwoDots,
-        ThreeDots,
-    }
-
-    // The written value a note or rest states, waiting for what it belongs to.
-    data Length {
-        NoLength,
-        Divided(numeral: Syntax<Expr>, dots: Dots, span: Ratio),
-        Spanned(numeral: Syntax<Expr>, span: Ratio),
-    }
-
-    // Whether what is being read is tied on to whatever sounds next.
-    data Tying {
-        Untied,
-        Tied(node: Syntax<TokenTree>),
-    }
-
-    // Up to two numbers a form stated in its parentheses.
-    data Numbers {
-        NoNumbers,
-        OneNumber(first: Syntax<Expr>, value: Ratio),
-        TwoNumbers(
-            first: Syntax<Expr>,
-            count: Ratio,
-            second: Syntax<Expr>,
-            unit: Ratio,
-        ),
-    }
-
-    // A braces body a form has taken but not yet used.
-    data Taken {
-        NoBody,
-        Took(spot: NodePath, read: Reading),
-    }
-
-    // The pitches of a chord or a grace group, waiting for what holds them.
-    data Voiced {
-        NoVoices,
-        Voices(node: Syntax<TokenTree>, spelling: Text, listed: Syntax<Expr>),
-    }
-
-    // One word or literal, waiting for the word that says what it was.
-    data Said {
-        Said(spot: NodePath, kind: TokenKind, spelling: Text),
-    }
-
-    // Up to two of them.
-    data Words {
-        NoWords,
-        OneWord(only: Said),
-        TwoWords(first: Said, second: Said),
-    }
-
-    // What has been read since the last word, reading from the end.
-    data Pending {
-        Pending(
-            read: Reading,
-            length: Length,
-            dots: Dots,
-            tying: Tying,
-            numbers: Numbers,
-            taken: Taken,
-            voiced: Voiced,
-            words: Words,
-        ),
-    }
-
-    // --------------------------------------------------------------- emitting
-
-    // Nothing said yet.
-    // Annotated: a constructor builds a value in checking position, where the
-    // expected type says the family; inferring one would hole its fields.
-    let no_head: Head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
-
-    // Nothing read at all.
-    fn nothing_read(here: NodePath) -> Reading {
-        Reading(quote at here { NoItems }, 0/1, Silent, Closed, no_head, NoRefusal)
-    }
-
-    // A reader that has read nothing, ready to be threaded through children.
-    fn nothing_pending(here: NodePath) -> Pending {
-        Pending(
-            nothing_read(here),
-            NoLength,
-            NoDots,
-            Untied,
-            NoNumbers,
-            NoBody,
-            NoVoices,
-            NoWords,
-        )
-    }
-
-    // The anchor of the node at `here`, or a zero where the compiler has no
-    // range. An anchor is a number whose meaning is the compiler's table: this
-    // adapter hands one over and can read nothing from it.
-    //
-    // The anchor arrives as a token and stands where an expression stands, so
-    // it goes through the checked parse the same way a composer's own token
-    // does — which is the general shape of §1.2's finding rather than a
-    // special case of it.
-    fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
-        match syntax_anchor(region, here) {
-            Some(node) -> match as_expression(node) {
-                Some(place) -> place,
-                None -> quote at here { 0 },
-            },
-            None -> quote at here { 0 },
-        }
-    }
-
-    // `Tie`, as the package spells it.
-    fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
-        match tying {
-            Untied -> quote at here { Untied },
-            Tied(node) -> quote at here { TiedOn },
-        }
-    }
-
-    // How many dots the emitted value carries, as the numeral it is written
-    // with.
-    fn dot_count(here: NodePath, dots: Dots) -> Syntax<Expr> {
-        match dots {
-            NoDots -> quote at here { 0 },
-            OneDot -> quote at here { 1 },
-            TwoDots -> quote at here { 2 },
-            ThreeDots -> quote at here { 3 },
-        }
-    }
-
-    // `WrittenDuration`, as the package spells it.
-    fn written_duration(here: NodePath, length: Length) -> Option<Syntax<Expr>> {
-        match length {
-            NoLength -> None,
-            Divided(numeral, dots, span) -> Some(quote at here {
-                NoteValue($numeral, ${ dot_count(here, dots) })
-            }),
-            Spanned(numeral, span) -> Some(quote at here { ExactSpan($numeral) }),
-        }
-    }
-
-    // The exact span a stated written value covers.
-    fn stated_span(length: Length) -> Option<Ratio> {
-        match length {
-            NoLength -> None,
-            Divided(numeral, dots, span) -> Some(span),
-            Spanned(numeral, span) -> Some(span),
-        }
-    }
-
-    // `Beats(count, unit)`, from the two numbers a form stated.
-    fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
-        match numbers {
-            NoNumbers -> None,
-            OneNumber(first, value) -> None,
-            TwoNumbers(first, count, second, unit) -> Some(quote at here {
-                Beats($first, $second)
-            }),
-        }
-    }
-
-    // What a stated meter measures, in whole notes.
-    fn beats_span(numbers: Numbers) -> Option<Ratio> {
-        match numbers {
-            NoNumbers -> None,
-            OneNumber(first, value) -> None,
-            TwoNumbers(first, count, second, unit) -> Some(ratio_div(count, unit)),
-        }
-    }
-
-    // ------------------------------------------------------ the call sites
-
-    // `call3(here, 1, "Sounded", anchored(region, here), event, items)`.
-    fn sounded(
-        region: Syntax<TokenTree>,
-        here: NodePath,
-        event: Syntax<Expr>,
-        items: Syntax<Expr>,
-    ) -> Syntax<Expr> {
-        quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
-    }
-
-    // `call1(spot, 3, "Rest", value)`.
-    fn rested(spot: NodePath, value: Syntax<Expr>) -> Syntax<Expr> {
-        quote at spot { Rest($value) }
-    }
-
-    // `call5(spot, 12, "Tuplet", anchored(region, spot), played, against,
-    // items, after)`.
-    fn tuplet_of(
-        region: Syntax<TokenTree>,
-        spot: NodePath,
-        played: Syntax<Expr>,
-        against: Syntax<Expr>,
-        items: Syntax<Expr>,
-        after: Syntax<Expr>,
-    ) -> Syntax<Expr> {
-        quote at spot {
-            Tuplet(${ anchored(region, spot) }, $played, $against, $items, $after)
-        }
-    }
-
-    // The site the trial found: `call3(spot, 2, "Note", syntax_token(…,
-    // "PitchLiteral", spelling), value, tie_of(spot, tying))` rebuilt the
-    // composer's pitch literal out of its spelling text. This splices the one
-    // the composer wrote, so the emitted `Note` keeps that node's own source
-    // information — and the malformed case is answered here, at the splice,
-    // rather than by the gate against the whole region.
-    fn note_of(
-        region: Syntax<TokenTree>,
-        spot: NodePath,
-        value: Syntax<Expr>,
-        tying: Tying,
-    ) -> Option<Syntax<Expr>> {
-        match syntax_at(region, spot) {
-            None -> None,
-            Some(node) -> match as_expression(node) {
-                None -> None,
-                Some(sung) -> Some(quote at spot {
-                    Note($sung, $value, ${ tie_of(spot, tying) })
-                }),
-            },
-        }
-    }
-
-    // ---------------------------------------------------------- the traversal
-
-    // A dotted half, as a stated length: the one value this fixture writes, so
-    // that `written_duration` is exercised where a real reader would have read
-    // one off the composer's `/2.`.
-    fn stated(here: NodePath) -> Length {
-        Divided(quote at here { 2 }, OneDot, 3/4)
-    }
-
-    // What a token reads to: a note on the composer's own pitch where the
-    // token is a pitch, and a rest where it is not.
-    //
-    // The kind decides, and it is compared against a named kind rather than
-    // against its spelling — which is the half of the dispatch table prompt 138
-    // already retired, standing next to the half quotation retires.
-    fn from_token(region: Syntax<TokenTree>, here: NodePath, kind: TokenKind) -> Syntax<Expr> {
-        match written_duration(here, stated(here)) {
-            None -> quote at here { NoItems },
-            Some(value) -> if token_kind_equal(kind, TokenKind.PitchLiteral) {
-                match note_of(region, here, value, Untied) {
-                    Some(sung) -> sung,
-                    None -> rested(here, value),
-                }
-            } else {
-                rested(here, value)
-            },
-        }
-    }
-
-    // What anything else at a leaf reads to. A rest states a written value and
-    // nothing else, so nothing here needs the region.
-    fn from_leaf(here: NodePath) -> Syntax<Expr> {
-        match written_duration(here, stated(here)) {
-            None -> quote at here { NoItems },
-            Some(value) -> rested(here, value),
-        }
-    }
-
-    // What a group reads to: parentheses hold a tuplet's two numbers, and
-    // every other delimiter holds notation.
-    fn from_group(
-        region: Syntax<TokenTree>,
-        here: NodePath,
-        delimiter: Delimiter,
-        children: List<Syntax<Expr>>,
-    ) -> Syntax<Expr> {
-        if delimiter_equal(delimiter, Delimiter.Parentheses) {
-            tuplet_of(
-                region,
-                here,
-                quote at here { 3 },
-                quote at here { 2 },
-                quote at here { [$..children] },
-                quote at here { NoItems },
-            )
-        } else {
-            sounded(
-                region,
-                here,
-                quote at here { NoItems },
-                quote at here { [$..children] },
-            )
-        }
-    }
-
-    // The whole region, read the way the staff adapter reads one: every node
-    // gets a place of its own, and every construction is minted at the place
-    // it was built from.
-    fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
-        syntax_fold_from_leaves(
-            fn (here) { quote at here { NoItems } },
-            fn (here, kind, text) { from_token(region, here, kind) },
-            fn (here, name) { from_leaf(here) },
-            fn (here, delimiter, children) { from_group(region, here, delimiter, children) },
-            region,
-        )
-    }
-
-    // Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
-    // total core does not generalize, so `Ok`'s other side is a metavariable
-    // nobody solves unless the signature says it.
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };
+// Why a region was refused, and the node the refusal is about.
+data Refusal {
+    NoRefusal,
+    Refused(node: Syntax<TokenTree>, why: Text),
 }
+
+// What sounds first in a stretch of notation.
+data Sound {
+    Silent,
+    Sounds(spelling: Text, node: Syntax<TokenTree>),
+}
+
+// A tie left hanging at the end of a stretch.
+data Hanging {
+    Closed,
+    Hangs(spelling: Text, node: Syntax<TokenTree>),
+}
+
+// One header field, once it has been read.
+data Given {
+    Absent,
+    Stated(node: Syntax<TokenTree>),
+}
+
+// The six things a staff says about itself before any notation.
+data Head {
+    Head(
+        instrument: Given,
+        shift: Given,
+        written_clef: Given,
+        tonality: Given,
+        beats: Given,
+        spelled: Given,
+    ),
+}
+
+// What one stretch of notation reads to.
+//
+// `items` holds an expression and not a tree: everything this section
+// builds is built by a quote, and a quote's body is read by the ordinary
+// parser, so what comes out of one is already an expression.
+data Reading {
+    Reading(
+        items: Syntax<Expr>,
+        span: Ratio,
+        opens: Sound,
+        hangs: Hanging,
+        head: Head,
+        refusal: Refusal,
+    ),
+}
+
+// How many dots a written value carries.
+data Dots {
+    NoDots,
+    OneDot,
+    TwoDots,
+    ThreeDots,
+}
+
+// The written value a note or rest states, waiting for what it belongs to.
+data Length {
+    NoLength,
+    Divided(numeral: Syntax<Expr>, dots: Dots, span: Ratio),
+    Spanned(numeral: Syntax<Expr>, span: Ratio),
+}
+
+// Whether what is being read is tied on to whatever sounds next.
+data Tying {
+    Untied,
+    Tied(node: Syntax<TokenTree>),
+}
+
+// Up to two numbers a form stated in its parentheses.
+data Numbers {
+    NoNumbers,
+    OneNumber(first: Syntax<Expr>, value: Ratio),
+    TwoNumbers(
+        first: Syntax<Expr>,
+        count: Ratio,
+        second: Syntax<Expr>,
+        unit: Ratio,
+    ),
+}
+
+// A braces body a form has taken but not yet used.
+data Taken {
+    NoBody,
+    Took(spot: NodePath, read: Reading),
+}
+
+// The pitches of a chord or a grace group, waiting for what holds them.
+data Voiced {
+    NoVoices,
+    Voices(node: Syntax<TokenTree>, spelling: Text, listed: Syntax<Expr>),
+}
+
+// One word or literal, waiting for the word that says what it was.
+data Said {
+    Said(spot: NodePath, kind: TokenKind, spelling: Text),
+}
+
+// Up to two of them.
+data Words {
+    NoWords,
+    OneWord(only: Said),
+    TwoWords(first: Said, second: Said),
+}
+
+// What has been read since the last word, reading from the end.
+data Pending {
+    Pending(
+        read: Reading,
+        length: Length,
+        dots: Dots,
+        tying: Tying,
+        numbers: Numbers,
+        taken: Taken,
+        voiced: Voiced,
+        words: Words,
+    ),
+}
+
+// --------------------------------------------------------------- emitting
+
+// Nothing said yet.
+// Annotated: a constructor builds a value in checking position, where the
+// expected type says the family; inferring one would hole its fields.
+let no_head: Head = Head(Absent, Absent, Absent, Absent, Absent, Absent);
+
+// Nothing read at all.
+fn nothing_read(here: NodePath) -> Reading {
+    Reading(quote at here { NoItems }, 0/1, Silent, Closed, no_head, NoRefusal)
+}
+
+// A reader that has read nothing, ready to be threaded through children.
+fn nothing_pending(here: NodePath) -> Pending {
+    Pending(
+        nothing_read(here),
+        NoLength,
+        NoDots,
+        Untied,
+        NoNumbers,
+        NoBody,
+        NoVoices,
+        NoWords,
+    )
+}
+
+// The anchor of the node at `here`, or a zero where the compiler has no
+// range. An anchor is a number whose meaning is the compiler's table: this
+// adapter hands one over and can read nothing from it.
+//
+// The anchor arrives as a token and stands where an expression stands, so
+// it goes through the checked parse the same way a composer's own token
+// does — which is the general shape of §1.2's finding rather than a
+// special case of it.
+fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
+    match syntax_anchor(region, here) {
+        Some(node) -> match as_expression(node) {
+            Some(place) -> place,
+            None -> quote at here { 0 },
+        },
+        None -> quote at here { 0 },
+    }
+}
+
+// `Tie`, as the package spells it.
+fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
+    match tying {
+        Untied -> quote at here { Untied },
+        Tied(node) -> quote at here { TiedOn },
+    }
+}
+
+// How many dots the emitted value carries, as the numeral it is written
+// with.
+fn dot_count(here: NodePath, dots: Dots) -> Syntax<Expr> {
+    match dots {
+        NoDots -> quote at here { 0 },
+        OneDot -> quote at here { 1 },
+        TwoDots -> quote at here { 2 },
+        ThreeDots -> quote at here { 3 },
+    }
+}
+
+// `WrittenDuration`, as the package spells it.
+fn written_duration(here: NodePath, length: Length) -> Option<Syntax<Expr>> {
+    match length {
+        NoLength -> None,
+        Divided(numeral, dots, span) -> Some(quote at here {
+            NoteValue($numeral, ${ dot_count(here, dots) })
+        }),
+        Spanned(numeral, span) -> Some(quote at here { ExactSpan($numeral) }),
+    }
+}
+
+// The exact span a stated written value covers.
+fn stated_span(length: Length) -> Option<Ratio> {
+    match length {
+        NoLength -> None,
+        Divided(numeral, dots, span) -> Some(span),
+        Spanned(numeral, span) -> Some(span),
+    }
+}
+
+// `Beats(count, unit)`, from the two numbers a form stated.
+fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
+    match numbers {
+        NoNumbers -> None,
+        OneNumber(first, value) -> None,
+        TwoNumbers(first, count, second, unit) -> Some(quote at here {
+            Beats($first, $second)
+        }),
+    }
+}
+
+// What a stated meter measures, in whole notes.
+fn beats_span(numbers: Numbers) -> Option<Ratio> {
+    match numbers {
+        NoNumbers -> None,
+        OneNumber(first, value) -> None,
+        TwoNumbers(first, count, second, unit) -> Some(ratio_div(count, unit)),
+    }
+}
+
+// ------------------------------------------------------ the call sites
+
+// `call3(here, 1, "Sounded", anchored(region, here), event, items)`.
+fn sounded(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    event: Syntax<Expr>,
+    items: Syntax<Expr>,
+) -> Syntax<Expr> {
+    quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
+}
+
+// `call1(spot, 3, "Rest", value)`.
+fn rested(spot: NodePath, value: Syntax<Expr>) -> Syntax<Expr> {
+    quote at spot { Rest($value) }
+}
+
+// `call5(spot, 12, "Tuplet", anchored(region, spot), played, against,
+// items, after)`.
+fn tuplet_of(
+    region: Syntax<TokenTree>,
+    spot: NodePath,
+    played: Syntax<Expr>,
+    against: Syntax<Expr>,
+    items: Syntax<Expr>,
+    after: Syntax<Expr>,
+) -> Syntax<Expr> {
+    quote at spot {
+        Tuplet(${ anchored(region, spot) }, $played, $against, $items, $after)
+    }
+}
+
+// The site the trial found: `call3(spot, 2, "Note", syntax_token(…,
+// "PitchLiteral", spelling), value, tie_of(spot, tying))` rebuilt the
+// composer's pitch literal out of its spelling text. This splices the one
+// the composer wrote, so the emitted `Note` keeps that node's own source
+// information — and the malformed case is answered here, at the splice,
+// rather than by the gate against the whole region.
+fn note_of(
+    region: Syntax<TokenTree>,
+    spot: NodePath,
+    value: Syntax<Expr>,
+    tying: Tying,
+) -> Option<Syntax<Expr>> {
+    match syntax_at(region, spot) {
+        None -> None,
+        Some(node) -> match as_expression(node) {
+            None -> None,
+            Some(sung) -> Some(quote at spot {
+                Note($sung, $value, ${ tie_of(spot, tying) })
+            }),
+        },
+    }
+}
+
+// ---------------------------------------------------------- the traversal
+
+// A dotted half, as a stated length: the one value this fixture writes, so
+// that `written_duration` is exercised where a real reader would have read
+// one off the composer's `/2.`.
+fn stated(here: NodePath) -> Length {
+    Divided(quote at here { 2 }, OneDot, 3/4)
+}
+
+// What a token reads to: a note on the composer's own pitch where the
+// token is a pitch, and a rest where it is not.
+//
+// The kind decides, and it is compared against a named kind rather than
+// against its spelling — which is the half of the dispatch table prompt 138
+// already retired, standing next to the half quotation retires.
+fn from_token(region: Syntax<TokenTree>, here: NodePath, kind: TokenKind) -> Syntax<Expr> {
+    match written_duration(here, stated(here)) {
+        None -> quote at here { NoItems },
+        Some(value) -> if token_kind_equal(kind, TokenKind.PitchLiteral) {
+            match note_of(region, here, value, Untied) {
+                Some(sung) -> sung,
+                None -> rested(here, value),
+            }
+        } else {
+            rested(here, value)
+        },
+    }
+}
+
+// What anything else at a leaf reads to. A rest states a written value and
+// nothing else, so nothing here needs the region.
+fn from_leaf(here: NodePath) -> Syntax<Expr> {
+    match written_duration(here, stated(here)) {
+        None -> quote at here { NoItems },
+        Some(value) -> rested(here, value),
+    }
+}
+
+// What a group reads to: parentheses hold a tuplet's two numbers, and
+// every other delimiter holds notation.
+fn from_group(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    delimiter: Delimiter,
+    children: List<Syntax<Expr>>,
+) -> Syntax<Expr> {
+    if delimiter_equal(delimiter, Delimiter.Parentheses) {
+        tuplet_of(
+            region,
+            here,
+            quote at here { 3 },
+            quote at here { 2 },
+            quote at here { [$..children] },
+            quote at here { NoItems },
+        )
+    } else {
+        sounded(
+            region,
+            here,
+            quote at here { NoItems },
+            quote at here { [$..children] },
+        )
+    }
+}
+
+// The whole region, read the way the staff adapter reads one: every node
+// gets a place of its own, and every construction is minted at the place
+// it was built from.
+fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
+    syntax_fold_from_leaves(
+        fn (here) { quote at here { NoItems } },
+        fn (here, kind, text) { from_token(region, here, kind) },
+        fn (here, name) { from_leaf(here) },
+        fn (here, delimiter, children) { from_group(region, here, delimiter, children) },
+        region,
+    )
+}
+
+// Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
+// total core does not generalize, so `Ok`'s other side is a metavariable
+// nobody solves unless the signature says it.
+let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };

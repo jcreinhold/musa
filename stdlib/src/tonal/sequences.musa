@@ -1,195 +1,175 @@
-library {
-    import std::harmony;
-    import std::list;
-    import std::scale;
+import std::harmony;
+import std::list;
+import std::scale;
 
-    // A diatonic sequence is a pattern applied a finite number of times. OMT
-    // `049-diatonic-sequences-in-middles.md` names them by the interval the
-    // roots move: descending fifths, descending thirds, ascending seconds. All
-    // of that is index arithmetic on scale degrees, so all of it is written
-    // here as ordinary functions and finite folds — there is no sequence
-    // keyword, no generator, and no recursion.
-    //
-    // Everything here stops at the harmonic skeleton. A sequence is a list of
-    // chord classes, and a chord class is not music: it chooses no register,
-    // no spacing, no doubling, no rhythm, and no voice leading. A caller
-    // supplies those, which is why the examples render the same skeleton under
-    // more than one policy and sound different both times.
-    //
-    // Every function comes in two shapes. `..._degree` and `..._chord` answer
-    // for one index, which is what a score writes when it places bars; the
-    // plural form answers for a finite count, which is what a fold reads. They
-    // agree by construction: the plural form is `map` over `range`.
+// A diatonic sequence is a pattern applied a finite number of times. OMT
+// `049-diatonic-sequences-in-middles.md` names them by the interval the
+// roots move: descending fifths, descending thirds, ascending seconds. All
+// of that is index arithmetic on scale degrees, so all of it is written
+// here as ordinary functions and finite folds — there is no sequence
+// keyword, no generator, and no recursion.
+//
+// Everything here stops at the harmonic skeleton. A sequence is a list of
+// chord classes, and a chord class is not music: it chooses no register,
+// no spacing, no doubling, no rhythm, and no voice leading. A caller
+// supplies those, which is why the examples render the same skeleton under
+// more than one policy and sound different both times.
+//
+// Every function comes in two shapes. `..._degree` and `..._chord` answer
+// for one index, which is what a score writes when it places bars; the
+// plural form answers for a finite count, which is what a fold reads. They
+// agree by construction: the plural form is `map` over `range`.
 
-    // The degree reached after `index` applications of a rise of `steps` scale
-    // steps. Index zero is the start, which is what makes a count of one mean
-    // "the pattern, stated once".
-    fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        range(index).fold_from_start(start, fn (from, nth) { risen_by(steps, nth, from) })
+// The degree reached after `index` applications of a rise of `steps` scale
+// steps. Index zero is the start, which is what makes a count of one mean
+// "the pattern, stated once".
+fn rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
+    range(index).fold_from_start(start, fn (from, nth) { risen_by(steps, nth, from) })
+}
+
+// The rise itself, as the fold step it is applied by. The index is
+// ignored on purpose: a diatonic sequence moves by the same interval every
+// time, and a pattern that did not would be a different pattern.
+fn risen_by(steps: Nat, index: Nat, from: Degree) -> Degree { up_steps(from, steps) }
+
+// The degree reached after `index` applications of a fall of `steps` scale
+// steps. Falling is its own function rather than a negative rise, because
+// a `nat` has no sign and a direction that could be forgotten is a
+// direction that will be.
+fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
+    range(index).fold_from_start(start, fn (from, nth) { fallen_by(steps, nth, from) })
+}
+
+// The fall, as the fold step it is applied by.
+fn fallen_by(steps: Nat, index: Nat, from: Degree) -> Degree { down_steps(from, steps) }
+
+// The whole finite walk upward: `count` degrees, beginning at `start`. A
+// count of zero is the empty walk and a count of one is the start alone,
+// which are the ordinary meanings and are asserted as laws.
+fn rising_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
+    map(fn (index: Nat) -> Degree { rising_degree(start, steps, index) }, range(count))
+}
+
+// The whole finite walk downward.
+fn falling_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
+    map(fn (index: Nat) -> Degree { falling_degree(start, steps, index) }, range(count))
+}
+
+// Harmonize one degree of a walk with the collection's own stack. Absent
+// when the collection stacks to a sonority the chord vocabulary cannot
+// name, which is how a pentatonic or whole-tone collection reports that it
+// does not harmonize in thirds.
+fn stacked_on(collection: Scale, members: Nat, written: Degree) -> Option<ChordClass> {
+    degree_chord(collection, written, members)
+}
+
+// Harmonize a whole walk. The quality of each chord is the collection's,
+// so a sequence in minor is a different succession of qualities from the
+// same sequence in major without either being written twice.
+fn harmonized(collection: Scale, members: Nat, walk: List<Degree>) -> List<Option<ChordClass>> {
+    map(
+        fn (written: Degree) -> Option<ChordClass> { stacked_on(collection, members, written) },
+        walk,
+    )
+}
+
+// The descending-fifths sequence, one index at a time: roots fall four
+// scale steps each time, which is a fifth down inside the collection.
+// OMT 049.
+fn descending_fifths_degree(start: Degree, index: Nat) -> Degree {
+    falling_degree(start, 4, index)
+}
+
+// The chord the descending-fifths sequence reaches at one index.
+fn descending_fifths_chord(
+    collection: Scale,
+    start: Degree,
+    members: Nat,
+    index: Nat,
+) -> Option<ChordClass> {
+    stacked_on(collection, members, descending_fifths_degree(start, index))
+}
+
+// The descending-fifths sequence as triads. In a major collection this is
+// the succession OMT writes `I–IV–viiº–iii–vi–ii–V–I`, and the diminished
+// triad in it is the collection's doing rather than an exception. OMT 049.
+fn descending_fifths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    harmonized(collection, 3, falling_degrees(start, 4, count))
+}
+
+// The same sequence as seventh chords, which is how OMT 049 most often
+// presents it because the sevenths chain the resolutions together.
+fn descending_fifths_sevenths(
+    collection: Scale,
+    start: Degree,
+    count: Nat,
+) -> List<Option<ChordClass>> { harmonized(collection, 4, falling_degrees(start, 4, count)) }
+
+// The ascending-fifths sequence: roots rise four scale steps each time.
+// A different pattern from the descending one and not its retrograde,
+// because the collection is not symmetrical. OMT 049.
+fn ascending_fifths_degree(start: Degree, index: Nat) -> Degree {
+    rising_degree(start, 4, index)
+}
+
+// The ascending-fifths sequence as triads.
+fn ascending_fifths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    harmonized(collection, 3, rising_degrees(start, 4, count))
+}
+
+// The descending-thirds sequence, the skeleton under the descending 5–6
+// pattern: roots fall two scale steps each time. OMT 049.
+fn descending_thirds_degree(start: Degree, index: Nat) -> Degree {
+    falling_degree(start, 2, index)
+}
+
+// The descending-thirds sequence as triads.
+fn descending_thirds(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    harmonized(collection, 3, falling_degrees(start, 2, count))
+}
+
+// The ascending-seconds sequence, the skeleton under the ascending 5–6
+// pattern and under parallel first-inversion chords: roots rise one scale
+// step each time. OMT 049.
+fn ascending_seconds_degree(start: Degree, index: Nat) -> Degree {
+    rising_degree(start, 1, index)
+}
+
+// The ascending-seconds sequence as triads, in root position.
+fn ascending_seconds(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    harmonized(collection, 3, rising_degrees(start, 1, count))
+}
+
+// The same walk with every chord in first inversion: the parallel `6/3`
+// passage OMT 049 describes. The inversion is a designation on the chord
+// class and not yet a bass note — which note actually sounds lowest is
+// still the voicing's decision.
+fn parallel_sixths(collection: Scale, start: Degree, count: Nat) -> List<Option<ChordClass>> {
+    map(first_inversion, ascending_seconds(collection, start, count))
+}
+
+// Designate the third as bass, keeping absence absent. Written out because
+// an `option` of an `option` is not a chord and this language composes the
+// two by hand.
+fn first_inversion(content: Option<ChordClass>) -> Option<ChordClass> {
+    match content {
+        None -> None,
+        Some(sounding) -> inversion(sounding, 1),
     }
+}
 
-    // The rise itself, as the fold step it is applied by. The index is
-    // ignored on purpose: a diatonic sequence moves by the same interval every
-    // time, and a pattern that did not would be a different pattern.
-    fn risen_by(steps: Nat, index: Nat, from: Degree) -> Degree { up_steps(from, steps) }
-
-    // The degree reached after `index` applications of a fall of `steps` scale
-    // steps. Falling is its own function rather than a negative rise, because
-    // a `nat` has no sign and a direction that could be forgotten is a
-    // direction that will be.
-    fn falling_degree(start: Degree, steps: Nat, index: Nat) -> Degree {
-        range(index).fold_from_start(start, fn (from, nth) { fallen_by(steps, nth, from) })
-    }
-
-    // The fall, as the fold step it is applied by.
-    fn fallen_by(steps: Nat, index: Nat, from: Degree) -> Degree { down_steps(from, steps) }
-
-    // The whole finite walk upward: `count` degrees, beginning at `start`. A
-    // count of zero is the empty walk and a count of one is the start alone,
-    // which are the ordinary meanings and are asserted as laws.
-    fn rising_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
-        map(fn (index: Nat) -> Degree { rising_degree(start, steps, index) }, range(count))
-    }
-
-    // The whole finite walk downward.
-    fn falling_degrees(start: Degree, steps: Nat, count: Nat) -> List<Degree> {
-        map(fn (index: Nat) -> Degree { falling_degree(start, steps, index) }, range(count))
-    }
-
-    // Harmonize one degree of a walk with the collection's own stack. Absent
-    // when the collection stacks to a sonority the chord vocabulary cannot
-    // name, which is how a pentatonic or whole-tone collection reports that it
-    // does not harmonize in thirds.
-    fn stacked_on(collection: Scale, members: Nat, written: Degree) -> Option<ChordClass> {
-        degree_chord(collection, written, members)
-    }
-
-    // Harmonize a whole walk. The quality of each chord is the collection's,
-    // so a sequence in minor is a different succession of qualities from the
-    // same sequence in major without either being written twice.
-    fn harmonized(
-        collection: Scale,
-        members: Nat,
-        walk: List<Degree>,
-    ) -> List<Option<ChordClass>> {
-        map(
-            fn (written: Degree) -> Option<ChordClass> {
-                stacked_on(collection, members, written)
-            },
-            walk,
-        )
-    }
-
-    // The descending-fifths sequence, one index at a time: roots fall four
-    // scale steps each time, which is a fifth down inside the collection.
-    // OMT 049.
-    fn descending_fifths_degree(start: Degree, index: Nat) -> Degree {
-        falling_degree(start, 4, index)
-    }
-
-    // The chord the descending-fifths sequence reaches at one index.
-    fn descending_fifths_chord(
-        collection: Scale,
-        start: Degree,
-        members: Nat,
-        index: Nat,
-    ) -> Option<ChordClass> {
-        stacked_on(collection, members, descending_fifths_degree(start, index))
-    }
-
-    // The descending-fifths sequence as triads. In a major collection this is
-    // the succession OMT writes `I–IV–viiº–iii–vi–ii–V–I`, and the diminished
-    // triad in it is the collection's doing rather than an exception. OMT 049.
-    fn descending_fifths(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> { harmonized(collection, 3, falling_degrees(start, 4, count)) }
-
-    // The same sequence as seventh chords, which is how OMT 049 most often
-    // presents it because the sevenths chain the resolutions together.
-    fn descending_fifths_sevenths(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> { harmonized(collection, 4, falling_degrees(start, 4, count)) }
-
-    // The ascending-fifths sequence: roots rise four scale steps each time.
-    // A different pattern from the descending one and not its retrograde,
-    // because the collection is not symmetrical. OMT 049.
-    fn ascending_fifths_degree(start: Degree, index: Nat) -> Degree {
-        rising_degree(start, 4, index)
-    }
-
-    // The ascending-fifths sequence as triads.
-    fn ascending_fifths(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> { harmonized(collection, 3, rising_degrees(start, 4, count)) }
-
-    // The descending-thirds sequence, the skeleton under the descending 5–6
-    // pattern: roots fall two scale steps each time. OMT 049.
-    fn descending_thirds_degree(start: Degree, index: Nat) -> Degree {
-        falling_degree(start, 2, index)
-    }
-
-    // The descending-thirds sequence as triads.
-    fn descending_thirds(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> { harmonized(collection, 3, falling_degrees(start, 2, count)) }
-
-    // The ascending-seconds sequence, the skeleton under the ascending 5–6
-    // pattern and under parallel first-inversion chords: roots rise one scale
-    // step each time. OMT 049.
-    fn ascending_seconds_degree(start: Degree, index: Nat) -> Degree {
-        rising_degree(start, 1, index)
-    }
-
-    // The ascending-seconds sequence as triads, in root position.
-    fn ascending_seconds(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> { harmonized(collection, 3, rising_degrees(start, 1, count)) }
-
-    // The same walk with every chord in first inversion: the parallel `6/3`
-    // passage OMT 049 describes. The inversion is a designation on the chord
-    // class and not yet a bass note — which note actually sounds lowest is
-    // still the voicing's decision.
-    fn parallel_sixths(
-        collection: Scale,
-        start: Degree,
-        count: Nat,
-    ) -> List<Option<ChordClass>> {
-        map(first_inversion, ascending_seconds(collection, start, count))
-    }
-
-    // Designate the third as bass, keeping absence absent. Written out because
-    // an `option` of an `option` is not a chord and this language composes the
-    // two by hand.
-    fn first_inversion(content: Option<ChordClass>) -> Option<ChordClass> {
-        match content {
-            None -> None,
-            Some(sounding) -> inversion(sounding, 1),
-        }
-    }
-
-    // Sound one stage of a skeleton under a caller's voicing policy. The
-    // policy is a function because the library has no opinion: a stage that
-    // cannot be voiced from the bass the caller named is silence here, and the
-    // caller can see that it was.
-    fn stage_music(
-        policy: ChordClass -> EventTrack<WrittenTime>,
-        content: Option<ChordClass>,
-    ) -> EventTrack<WrittenTime> {
-        match content {
-            None -> music {
-                rest/1
-            },
-            Some(sounding) -> policy(sounding),
-        }
+// Sound one stage of a skeleton under a caller's voicing policy. The
+// policy is a function because the library has no opinion: a stage that
+// cannot be voiced from the bass the caller named is silence here, and the
+// caller can see that it was.
+fn stage_music(
+    policy: ChordClass -> EventTrack<WrittenTime>,
+    content: Option<ChordClass>,
+) -> EventTrack<WrittenTime> {
+    match content {
+        None -> music {
+            rest/1
+        },
+        Some(sounding) -> policy(sounding),
     }
 }

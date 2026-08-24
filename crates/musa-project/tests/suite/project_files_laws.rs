@@ -238,7 +238,7 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     let dir = tempfile::tempdir()?;
     let library = dir.path().join("lib.musa");
     let piece = dir.path().join("piece.musa");
-    std::fs::write(&library, "library { motif tune() { c5/4 } }")?;
+    std::fs::write(&library, " motif tune() { c5/4 } ")?;
     std::fs::write(
         &piece,
         "piece \"P\" { import \"lib.musa\"; tempo 1/4 = 60; meter 4/4; key c major;
@@ -249,7 +249,7 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     assert!(session.snapshot().compiles());
 
     // Rename the motif out from under the piece; the next compile says so.
-    std::fs::write(&library, "library { motif other() { c5/4 } }")?;
+    std::fs::write(&library, " motif other() { c5/4 } ")?;
     session.apply(ProjectCommand::SetSource(
         std::fs::read_to_string(&piece)?.replace("key c major", "key c major;"),
     ))?;

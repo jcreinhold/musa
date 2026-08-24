@@ -1,7 +1,6 @@
 ; Every braced body indents; closers end it.
 [
   (piece_declaration)
-  (library_declaration)
   (data_declaration)
   (record_declaration)
   (enum_declaration)

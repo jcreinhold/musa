@@ -500,7 +500,7 @@ fn a_question_takes_the_whole_expression_before_it() {
 /// other form: a node the printer does not know is a node that loses text.
 #[test]
 fn a_sub_position_of_a_pattern_holds_another_pattern() {
-    let source = r"library {
+    let source = r"
     data Inner { Quiet, Loud(count: Nat) }
     data Outer { Wrap(held: Inner) }
     record Marking { written: Inner; }
@@ -520,7 +520,7 @@ fn a_sub_position_of_a_pattern_holds_another_pattern() {
     }
 
     fn paired(p: (Inner, Nat)) -> Nat { match p { (Loud(count), after) -> count, (Quiet, after) -> after } }
-}
+
 ";
     let parsed = parse(source);
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
@@ -559,7 +559,7 @@ fn a_sub_position_of_a_pattern_holds_another_pattern() {
 /// are what check.
 #[test]
 fn an_alternation_is_one_pattern_holding_its_alternatives() {
-    let source = r"library {
+    let source = r"
     data Clef { Treble, Bass, Alto, Tenor }
     data Inner { Quiet, Loud(count: Nat) }
     data Outer { Wrap(held: Inner), Hold(held: Inner) }
@@ -567,7 +567,7 @@ fn an_alternation_is_one_pattern_holding_its_alternatives() {
     fn low(written: Clef) -> Bool { match written { Bass | Tenor -> true, Treble | Alto -> false } }
 
     fn plain(o: Outer) -> Nat { match o { Wrap(Loud(_) | Quiet) -> 0, Hold(_) -> 1 } }
-}
+
 ";
     let parsed = parse(source);
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
@@ -611,7 +611,7 @@ fn an_alternation_is_one_pattern_holding_its_alternatives() {
 /// what makes the block still hold exactly one expression.
 #[test]
 fn a_binding_is_one_expression_holding_its_body() {
-    let source = r#"library {
+    let source = r#"
     fn stacked(x: Text) -> Text {
         let one: Text = text_join([x, "a"]);
         let two = text_join([one, "b"]);
@@ -621,7 +621,7 @@ fn a_binding_is_one_expression_holding_its_body() {
     fn in_an_arm(written: Bool) -> Text { match written { True -> let word = "yes"; word, False -> "no" } }
 
     fn in_a_quote(x: Syntax<TokenTree>) -> Syntax<TokenTree> { quote at here { let held = $x; held } }
-}
+
 "#;
     let parsed = parse(source);
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());

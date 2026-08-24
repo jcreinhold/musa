@@ -37,7 +37,7 @@ fn errors(source: &str) -> Vec<String> {
 
 /// A library holding `declarations`, with nothing else in it.
 fn library(declarations: &str) -> String {
-    format!("library {{ {declarations} }}")
+    format!(" {declarations} ")
 }
 
 /// The defect, gone: a parameterized record is declared, constructed against

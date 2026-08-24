@@ -262,21 +262,22 @@ fn key_of(kind: &FactKind) -> Option<musa_score::Key> {
 /// own declarations, so a collision is reported against the library that
 /// caused it (roadmap §16).
 ///
-/// A library declares and does not sound, so there is no score to build and
-/// the absence of one is not a failure — that is the whole difference between
-/// this path and the piece path, and it is why [`Compilation::kind`] exists.
-/// What it *does* do is everything a check is for: resolve what the library
-/// builds on, register its declarations so a duplicate or a malformed motif is
-/// reported, and hold its `studio` to a library's rules.
+/// A file with no piece declares and does not sound, so there is no score to
+/// build and the absence of one is not a failure — that is the whole
+/// difference between this path and the piece path, and it is why
+/// [`Compilation::kind`] exists. What it *does* do is everything a check is
+/// for: resolve what the file builds on, register its declarations so a
+/// duplicate or a malformed motif is reported, and hold its `studio` to the
+/// rules.
 ///
-/// The library's own studio arrives as an *imported* block rather than as the
-/// document's. That is not a trick: the rules for a library's studio are the
-/// rules that apply to it wherever it is read, and a library that could wire
-/// itself to a score when opened directly and not when imported would compile
-/// two different ways.
+/// The file's own studio arrives as an *imported* block rather than as the
+/// document's. That is not a trick: the rules for such a studio are the rules
+/// that apply to it wherever it is read, and a file that could wire itself to
+/// a score when opened directly and not when imported would compile two
+/// different ways.
 pub(super) fn elaborate_material(
     resolver: &mut Resolver,
-    library: &musa_syntax::ast::LibraryDecl,
+    library: &musa_syntax::ast::Document,
     name: &str,
     options: &crate::CompileOptions,
 ) -> Compilation {

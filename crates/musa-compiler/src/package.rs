@@ -163,9 +163,9 @@ mod tests {
     /// A well-formed miniature: a root file, a leaf, and a directory module.
     const TREE: [(&str, &str); 4] = [
         ("lib.musa", "mod core;\nmod tonal;\n"),
-        ("core.musa", "library { }"),
+        ("core.musa", " "),
         ("tonal/mod.musa", "mod harmony;\n"),
-        ("tonal/harmony.musa", "library { }"),
+        ("tonal/harmony.musa", " "),
     ];
 
     #[test]
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn a_file_no_declaration_reaches_is_declared_nowhere() {
         let mut files = TREE.to_vec();
-        files.push(("stray.musa", "library { }"));
+        files.push(("stray.musa", " "));
         let package = Package::read(&files);
         assert_eq!(
             package.faults(),
@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn a_stray_file_inside_a_directory_module_is_caught_too() {
         let mut files = TREE.to_vec();
-        files.push(("tonal/sequences.musa", "library { }"));
+        files.push(("tonal/sequences.musa", " "));
         let package = Package::read(&files);
         assert_eq!(
             package.faults(),
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn a_declaration_reaching_no_file_is_missing() {
-        let files = [("lib.musa", "mod core;\nmod absent;\n"), ("core.musa", "library { }")];
+        let files = [("lib.musa", "mod core;\nmod absent;\n"), ("core.musa", " ")];
         let package = Package::read(&files);
         assert_eq!(
             package.faults(),

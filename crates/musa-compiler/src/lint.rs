@@ -481,7 +481,7 @@ mod tests {
     /// be asked here and answered honestly, on a fixture that never reaches
     /// elaboration.
     fn lints(body: &str) -> Vec<Diagnostic> {
-        let source = format!("library {{\n{body}}}\n");
+        let source = format!("\n{body}\n");
         let document = musa_syntax::parse(&source);
         assert!(
             document.errors().is_empty(),

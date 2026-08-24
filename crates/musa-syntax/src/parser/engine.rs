@@ -14,15 +14,6 @@ use crate::{Lexed, SyntaxError, SyntaxKind, Token};
 use rowan::GreenNodeBuilder;
 use text_size::{TextRange, TextSize};
 
-/// What a file's lexical root turned out to be, as far as the parser can tell.
-///
-/// Whether the file still owes a piece: a file that declares a module tree is a
-/// package's own bookkeeping and is not music at all.
-#[derive(Clone, Copy, Default)]
-pub(super) struct RootShape {
-    pub(super) declares_modules: bool,
-}
-
 /// One step of tree construction.
 pub(super) enum Event<'a> {
     StartNode(SyntaxKind),
@@ -145,26 +136,29 @@ impl<'a> Parser<'a> {
     /// Parse the whole document and build the tree.
     pub(super) fn run(mut self) -> (SyntaxNode, Vec<SyntaxError>) {
         self.start(SyntaxKind::Root);
-        // A file is a piece, a library, or a module file
-        // (`docs/rules/language/01-surface.md` §1). Which one it is is written
-        // at the top of it rather than inferred from what it happens to
-        // contain: a library with a `score` in it is then a parse error rather
-        // than a rule someone has to remember.
-        //
-        // What may precede a piece or a library is the file's lexical root:
-        // imports, values, functions, and type declarations. One file is one
-        // piece. A module file is `mod …;` and nothing else, and the
-        // elaborator holds it to that — the parser reads the same preamble
-        // either way, so what is written beside the `mod`s is a question about
-        // meaning rather than about shape.
-        let shape = self.root_preamble();
-        if self.at(SyntaxKind::LibraryKw) {
-            self.library_decl();
-        } else if self.at(SyntaxKind::PieceKw) || !shape.declares_modules {
-            // A file that declares no module tree still owes a piece, and
-            // saying so here is how `piece_decl` reports the one it cannot
-            // find.
+        // `document := declaration* piece?`
+        // (`docs/rules/language/01-surface.md` §1), and there is nothing else
+        // a file can be. A file that stops after its declarations exports
+        // them; a file that goes on to a piece has them as its lexical root; a
+        // file whose declarations are all `mod` is a package's module tree.
+        // Which of those a file turned out to be is read off the tree
+        // afterwards rather than decided by lookahead before anything is
+        // parsed, because it is an observation about a file and never a
+        // different grammar.
+        self.root_declarations();
+        if self.at(SyntaxKind::PieceKw) {
             self.piece_decl();
+        }
+        // A piece is the last thing a file says, so anything still standing
+        // here belongs to no declaration. Reported rather than dropped: this
+        // tree is lossless, and a formatter that round-trips through a parse
+        // that silently forgot the tail would delete the author's text.
+        if self.current().is_some() {
+            self.expected_with_help(
+                "the end of the file",
+                "a `piece` is the last thing a file declares — move this above it, or delete it",
+            );
+            self.recover_past(&[]);
         }
         self.eat_trivia();
         self.finish();
@@ -496,6 +490,38 @@ impl<'a> Parser<'a> {
     /// Wrap tokens in an `ERROR` node until a recovery point. A recovery
     /// semicolon is consumed (it terminated the broken construct); anything
     /// else is left for the enclosing parse.
+    /// Skip to the next recovery point, consuming **at least one** token.
+    ///
+    /// [`Self::recover`] stops *at* a recovery token without consuming it,
+    /// which is right inside a block: every block's loop also breaks on `}`,
+    /// so the caller's next pass sees the token and ends. A file root has no
+    /// closing brace to break on, so a root loop that called `recover` on a
+    /// token already in the recovery set would report, skip nothing, and see
+    /// the same token again — an infinite loop pushing a `SyntaxError` and two
+    /// events per pass until the process runs out of memory. `RBrace` is in
+    /// `PIECE_RECOVERY` and a stray `}` is exactly what a broken file has, so
+    /// this is not a hypothetical.
+    ///
+    /// Eating the offending token first is also the better report: at a root
+    /// there is no enclosing construct the token might have belonged to, so it
+    /// is junk, and junk belongs inside the `Error` node rather than beside it.
+    pub(super) fn recover_past(&mut self, recovery: &[SyntaxKind]) {
+        self.start(SyntaxKind::Error);
+        if self.current().is_some() {
+            self.bump();
+        }
+        while let Some(kind) = self.current() {
+            if recovery.contains(&kind) {
+                break;
+            }
+            self.bump();
+        }
+        if recovery.contains(&SyntaxKind::Semicolon) && self.at(SyntaxKind::Semicolon) {
+            self.bump();
+        }
+        self.finish();
+    }
+
     pub(super) fn recover(&mut self, recovery: &[SyntaxKind]) {
         self.start(SyntaxKind::Error);
         while let Some(kind) = self.current() {

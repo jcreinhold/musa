@@ -1,148 +1,141 @@
-library {
-    import std::harmony;
-    import std::scale;
+import std::harmony;
+import std::scale;
 
-    // A Roman numeral is a coordinate, not a chord. It says which degree of a
-    // tonal context a chord is built on, how many members it stacks, and which
-    // member is in the bass — and nothing about pitch classes until a
-    // collection is supplied, and nothing about register ever. `V` in C major
-    // and `V` in E-flat minor are the same value here; the collection is what
-    // tells them apart. Nothing in this module infers a numeral from notes,
-    // labels a cadence, or decides that a passage has modulated. Those are
-    // claims about music, and a constructor is not the place to make them.
+// A Roman numeral is a coordinate, not a chord. It says which degree of a
+// tonal context a chord is built on, how many members it stacks, and which
+// member is in the bass — and nothing about pitch classes until a
+// collection is supplied, and nothing about register ever. `V` in C major
+// and `V` in E-flat minor are the same value here; the collection is what
+// tells them apart. Nothing in this module infers a numeral from notes,
+// labels a cadence, or decides that a passage has modulated. Those are
+// claims about music, and a constructor is not the place to make them.
 
-    // The numeral three numbers describe, when they describe one. Absent when
-    // the ordinal is outside `I`–`vii`, when the stack is smaller than a triad
-    // or larger than a thirteenth, or when the bass position names a member
-    // the stack does not have — a third inversion of a triad is not a numeral
-    // that is hard to realize, it is not a numeral. OMT 020 and 021.
-    fn numeral(ordinal: Nat, members: Nat, position: Nat) -> Option<Roman> {
-        roman_of(ordinal, members, position)
+// The numeral three numbers describe, when they describe one. Absent when
+// the ordinal is outside `I`–`vii`, when the stack is smaller than a triad
+// or larger than a thirteenth, or when the bass position names a member
+// the stack does not have — a third inversion of a triad is not a numeral
+// that is hard to realize, it is not a numeral. OMT 020 and 021.
+fn numeral(ordinal: Nat, members: Nat, position: Nat) -> Option<Roman> {
+    roman_of(ordinal, members, position)
+}
+
+// The root-position triad on a degree, which is what OMT 020 writes with a
+// bare numeral and no figures.
+fn triad_numeral(ordinal: Nat) -> Option<Roman> { roman_of(ordinal, 3, 0) }
+
+// The root-position seventh chord on a degree: OMT 021's `7`.
+fn seventh_numeral(ordinal: Nat) -> Option<Roman> { roman_of(ordinal, 4, 0) }
+
+// Which degree the numeral is built on, counted from one.
+fn numeral_step(written: Roman) -> Nat { roman_ordinal(written) }
+
+// How many members the numeral stacks: three is a triad, four a seventh.
+fn numeral_size(written: Roman) -> Nat { roman_size(written) }
+
+// Which member the numeral puts in the bass, counted from zero, so zero is
+// root position and one is the `6` of figured bass. A position in the
+// stack and not a pitch: which note actually sounds lowest is a voicing's
+// business, and `std::voicing` is where that is decided.
+fn numeral_bass(written: Roman) -> Nat { roman_inversion(written) }
+
+// The chord a numeral names in a collection, spelled by that collection.
+// The quality is never supplied: `ii` is minor in major and `II` is major
+// in Dorian because those are the notes there, which is the whole content
+// of the word "diatonic". Absent when the collection has no such degree,
+// or when it stacks to a sonority the chord vocabulary cannot name — a
+// harmonic-minor `III7` is an augmented major seventh, and reporting the
+// absence is more honest than rounding it to a chord with other notes in
+// it. OMT 020 and 021.
+fn numeral_chord(collection: Scale, written: Roman) -> Option<ChordClass> {
+    match degree_chord(collection, degree_of(roman_ordinal(written)), roman_size(written)) {
+        None -> None,
+        Some(stacked) -> inversion(stacked, roman_inversion(written)),
     }
+}
 
-    // The root-position triad on a degree, which is what OMT 020 writes with a
-    // bare numeral and no figures.
-    fn triad_numeral(ordinal: Nat) -> Option<Roman> { roman_of(ordinal, 3, 0) }
+// Modal mixture: the numeral realized against a borrowed collection on the
+// home tonic. Borrowing needs no altered degrees and no alteration field,
+// because that is what the word means — the flat six of C major is the
+// sixth of C minor, and spelling it as a lowered degree describes the
+// result rather than the operation. Which collection is borrowed from is
+// the caller's, since parallel minor, harmonic minor, and Phrygian all
+// lend chords and none of them is the default. OMT 061.
+fn borrowed(home: Scale, mode: Scale, written: Roman) -> Option<ChordClass> {
+    numeral_chord(scale_on(mode, scale_root(home)), written)
+}
 
-    // The root-position seventh chord on a degree: OMT 021's `7`.
-    fn seventh_numeral(ordinal: Nat) -> Option<Roman> { roman_of(ordinal, 4, 0) }
-
-    // Which degree the numeral is built on, counted from one.
-    fn numeral_step(written: Roman) -> Nat { roman_ordinal(written) }
-
-    // How many members the numeral stacks: three is a triad, four a seventh.
-    fn numeral_size(written: Roman) -> Nat { roman_size(written) }
-
-    // Which member the numeral puts in the bass, counted from zero, so zero is
-    // root position and one is the `6` of figured bass. A position in the
-    // stack and not a pitch: which note actually sounds lowest is a voicing's
-    // business, and `std::voicing` is where that is decided.
-    fn numeral_bass(written: Roman) -> Nat { roman_inversion(written) }
-
-    // The chord a numeral names in a collection, spelled by that collection.
-    // The quality is never supplied: `ii` is minor in major and `II` is major
-    // in Dorian because those are the notes there, which is the whole content
-    // of the word "diatonic". Absent when the collection has no such degree,
-    // or when it stacks to a sonority the chord vocabulary cannot name — a
-    // harmonic-minor `III7` is an augmented major seventh, and reporting the
-    // absence is more honest than rounding it to a chord with other notes in
-    // it. OMT 020 and 021.
-    fn numeral_chord(collection: Scale, written: Roman) -> Option<ChordClass> {
-        match degree_chord(collection, degree_of(roman_ordinal(written)), roman_size(written)) {
-            None -> None,
-            Some(stacked) -> inversion(stacked, roman_inversion(written)),
-        }
+// An applied chord: a numeral read in the collection that tonicizes a
+// target degree of the home collection. `V/V` in C major is
+// `secondary(home, degree_of(5), major_on(c), five)` — the numeral is read
+// in G, which is why it is D major and not the D minor that C major
+// stacks. The target degree is written out, so a tonicized lowered sixth
+// is as sayable as a tonicized fifth, and the tonicizing collection is
+// written out, so nothing here decides that an applied chord implies
+// major. Tonicization is a local relationship between two chords; whether
+// a passage has modulated is a claim about the passage and is not decided
+// here. OMT 050.
+fn secondary(home: Scale, target: Degree, mode: Scale, written: Roman) -> Option<ChordClass> {
+    match altered_class(home, target) {
+        None -> None,
+        Some(tonicized) -> numeral_chord(scale_on(mode, tonicized), written),
     }
+}
 
-    // Modal mixture: the numeral realized against a borrowed collection on the
-    // home tonic. Borrowing needs no altered degrees and no alteration field,
-    // because that is what the word means — the flat six of C major is the
-    // sixth of C minor, and spelling it as a lowered degree describes the
-    // result rather than the operation. Which collection is borrowed from is
-    // the caller's, since parallel minor, harmonic minor, and Phrygian all
-    // lend chords and none of them is the default. OMT 061.
-    fn borrowed(home: Scale, mode: Scale, written: Roman) -> Option<ChordClass> {
-        numeral_chord(scale_on(mode, scale_root(home)), written)
+// A named chord quality rooted on a named degree of a collection. This is
+// how every chromatic sonority below is built: the degree carries the
+// alteration, the quality carries the members, and neither is guessed. A
+// Neapolitan in C major names a lowered second and in C minor names the
+// plain second, and that difference is the caller's to write, because the
+// minor collection was the caller's to choose. Absent when the collection
+// has no such degree.
+fn quality_on_degree(
+    collection: Scale,
+    written: Degree,
+    quality: ChordClass,
+) -> Option<ChordClass> {
+    match altered_class(collection, written) {
+        None -> None,
+        Some(root) -> Some(chord_rooted_on(quality, root)),
     }
+}
 
-    // An applied chord: a numeral read in the collection that tonicizes a
-    // target degree of the home collection. `V/V` in C major is
-    // `secondary(home, degree_of(5), major_on(c), five)` — the numeral is read
-    // in G, which is why it is D major and not the D minor that C major
-    // stacks. The target degree is written out, so a tonicized lowered sixth
-    // is as sayable as a tonicized fifth, and the tonicizing collection is
-    // written out, so nothing here decides that an applied chord implies
-    // major. Tonicization is a local relationship between two chords; whether
-    // a passage has modulated is a claim about the passage and is not decided
-    // here. OMT 050.
-    fn secondary(
-        home: Scale,
-        target: Degree,
-        mode: Scale,
-        written: Roman,
-    ) -> Option<ChordClass> {
-        match altered_class(home, target) {
-            None -> None,
-            Some(tonicized) -> numeral_chord(scale_on(mode, tonicized), written),
-        }
-    }
+// The Neapolitan: a major triad on the lowered second degree. The `6` in
+// its usual name is a first inversion, which is a position and is taken
+// with `inversion` rather than baked in here — the chord is a major triad
+// in any position, and OMT 062 says so before it says the sixth is
+// idiomatic.
+fn neapolitan(collection: Scale, lowered_second: Degree) -> Option<ChordClass> {
+    quality_on_degree(collection, lowered_second, chord c major)
+}
 
-    // A named chord quality rooted on a named degree of a collection. This is
-    // how every chromatic sonority below is built: the degree carries the
-    // alteration, the quality carries the members, and neither is guessed. A
-    // Neapolitan in C major names a lowered second and in C minor names the
-    // plain second, and that difference is the caller's to write, because the
-    // minor collection was the caller's to choose. Absent when the collection
-    // has no such degree.
-    fn quality_on_degree(
-        collection: Scale,
-        written: Degree,
-        quality: ChordClass,
-    ) -> Option<ChordClass> {
-        match altered_class(collection, written) {
-            None -> None,
-            Some(root) -> Some(chord_rooted_on(quality, root)),
-        }
-    }
+// The Italian sixth: a lowered sixth, the tonic, and a raised fourth, with
+// no fifth. Its augmented sixth is spelled as an augmented sixth, which is
+// the whole reason it is a chord of its own and not a seventh. OMT 063.
+fn italian_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
+    quality_on_degree(collection, lowered_sixth, chord c italian6)
+}
 
-    // The Neapolitan: a major triad on the lowered second degree. The `6` in
-    // its usual name is a first inversion, which is a position and is taken
-    // with `inversion` rather than baked in here — the chord is a major triad
-    // in any position, and OMT 062 says so before it says the sixth is
-    // idiomatic.
-    fn neapolitan(collection: Scale, lowered_second: Degree) -> Option<ChordClass> {
-        quality_on_degree(collection, lowered_second, chord c major)
-    }
+// The French sixth: the Italian sixth with the second degree added, which
+// spells as an augmented fourth above the root. OMT 063.
+fn french_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
+    quality_on_degree(collection, lowered_sixth, chord c french6)
+}
 
-    // The Italian sixth: a lowered sixth, the tonic, and a raised fourth, with
-    // no fifth. Its augmented sixth is spelled as an augmented sixth, which is
-    // the whole reason it is a chord of its own and not a seventh. OMT 063.
-    fn italian_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
-        quality_on_degree(collection, lowered_sixth, chord c italian6)
-    }
+// The German sixth: the Italian sixth with the lowered third added, which
+// spells as a perfect fifth above the root. It sounds like a dominant
+// seventh and is not one — the top note is an augmented sixth, written
+// from a different letter, and re-rooting `dominant7` here would spell the
+// wrong note. OMT 063.
+fn german_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
+    quality_on_degree(collection, lowered_sixth, chord c german6)
+}
 
-    // The French sixth: the Italian sixth with the second degree added, which
-    // spells as an augmented fourth above the root. OMT 063.
-    fn french_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
-        quality_on_degree(collection, lowered_sixth, chord c french6)
-    }
-
-    // The German sixth: the Italian sixth with the lowered third added, which
-    // spells as a perfect fifth above the root. It sounds like a dominant
-    // seventh and is not one — the top note is an augmented sixth, written
-    // from a different letter, and re-rooting `dominant7` here would spell the
-    // wrong note. OMT 063.
-    fn german_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {
-        quality_on_degree(collection, lowered_sixth, chord c german6)
-    }
-
-    // An altered or extended dominant: a named quality on the fifth degree.
-    // Which alteration is present is the caller's, written as the chord type —
-    // there is no universal set of alterations, and a function that picked one
-    // would be asserting a style rather than constructing a chord.
-    // `chord c dom7b9`, `chord c dom7s5`, and the plain extensions all pass
-    // here. OMT 071.
-    fn altered_dominant(collection: Scale, quality: ChordClass) -> Option<ChordClass> {
-        quality_on_degree(collection, degree_of(5), quality)
-    }
+// An altered or extended dominant: a named quality on the fifth degree.
+// Which alteration is present is the caller's, written as the chord type —
+// there is no universal set of alterations, and a function that picked one
+// would be asserting a style rather than constructing a chord.
+// `chord c dom7b9`, `chord c dom7s5`, and the plain extensions all pass
+// here. OMT 071.
+fn altered_dominant(collection: Scale, quality: ChordClass) -> Option<ChordClass> {
+    quality_on_degree(collection, degree_of(5), quality)
 }

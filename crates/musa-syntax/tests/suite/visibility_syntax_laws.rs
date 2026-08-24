@@ -12,7 +12,7 @@ use musa_syntax::ast::{AstNode, EnumDecl, FnDecl, LetDecl, RecordDecl};
 use musa_syntax::{BarSpacing, ParsedDocument, SyntaxElement, SyntaxKind, format, parse};
 
 /// The program every law here is stated over.
-const HIDDEN: &str = r"library {
+const HIDDEN: &str = r"
     private let concert_a = 440;
 
     private fn dotted_factor(dots: Nat) -> Nat { dots }
@@ -31,7 +31,7 @@ const HIDDEN: &str = r"library {
     }
 
     fn build(sym: Symbol) -> Chord { Chord::NamedChord(sym) }
-}
+
 ";
 
 /// The significant tokens of a tree, which formatting may not change.
@@ -55,8 +55,8 @@ fn library(parsed: &ParsedDocument) -> musa_syntax::SyntaxNode {
     parsed
         .syntax()
         .descendants()
-        .find(|node| node.kind() == SyntaxKind::LibraryDecl)
-        .expect("the program is a library")
+        .find(|node| node.kind() == SyntaxKind::Root)
+        .expect("a parse produces a root")
 }
 
 /// §1.3: the marker is a token of the declaration it marks, so every accessor
@@ -178,7 +178,7 @@ fn the_marker_leads_the_line_it_marks() {
 /// The complaint points at the marker rather than at the word after it.
 #[test]
 fn a_marker_on_something_that_is_not_a_declaration_is_refused() {
-    let parsed = parse("library {\n    private use x;\n}\n");
+    let parsed = parse("\n    private use x;\n\n");
     let messages: Vec<String> = parsed.errors().iter().map(ToString::to_string).collect();
     assert!(
         messages
@@ -188,7 +188,7 @@ fn a_marker_on_something_that_is_not_a_declaration_is_refused() {
     );
     assert_eq!(
         parsed.syntax().text().to_string(),
-        "library {\n    private use x;\n}\n",
+        "\n    private use x;\n\n",
         "a refused program is still read losslessly"
     );
 }

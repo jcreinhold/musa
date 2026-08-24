@@ -15,7 +15,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use musa_compiler::{ImportSources, resolve_import};
-use musa_syntax::ast::{ImportStmt, LibraryDecl, PieceDecl};
+use musa_syntax::ast::{ImportStmt, PieceDecl};
 
 /// Everything `source` imports, transitively.
 ///
@@ -49,16 +49,13 @@ pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>)
 fn written_imports(text: &str) -> Vec<String> {
     let document = musa_syntax::parse(text);
     let root = document.syntax();
-    // The file's lexical root imports too, and a document whose piece is
-    // made by a template has its `import` statements only there.
+    // The root's imports and the piece's, because a file may write them in
+    // both places and a file with no piece writes them only at the root.
     let mut statements = ImportStmt::all_at_root(&root);
-    statements.extend(PieceDecl::from_root(&root).map_or_else(
-        || {
-            LibraryDecl::from_root(&root)
-                .map(|library| library.imports())
-                .unwrap_or_default()
-        },
-        |piece| piece.imports(),
-    ));
+    statements.extend(
+        PieceDecl::from_root(&root)
+            .map(|piece| piece.imports())
+            .unwrap_or_default(),
+    );
     statements.iter().filter_map(ImportStmt::path).collect()
 }

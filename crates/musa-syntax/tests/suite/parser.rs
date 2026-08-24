@@ -468,7 +468,7 @@ fn a_library_is_a_different_root_than_a_piece() {
         PieceDecl::from_root(&doc.syntax()).is_none(),
         "a library is not a piece"
     );
-    let library = musa_syntax::ast::LibraryDecl::from_root(&doc.syntax()).expect("a library");
+    let library = musa_syntax::ast::Document::of_root(&doc.syntax()).expect("a document");
     let names: Vec<Option<String>> = library.motifs().iter().map(musa_syntax::ast::MotifDecl::name).collect();
     assert_eq!(names, [Some("rise".to_owned()), Some("fall".to_owned())]);
 }

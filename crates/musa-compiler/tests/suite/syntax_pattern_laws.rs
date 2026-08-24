@@ -42,7 +42,7 @@ use musa_score::Severity;
 const PROBE: &str = "probe::adapter";
 
 fn probe(body: &str) -> String {
-    format!("library {{\n    let level = \"readable\";\n{body}\n}}\n")
+    format!("\n    let level = \"readable\";\n{body}\n\n")
 }
 
 /// An adapter whose answer is what `decide` makes of the region.

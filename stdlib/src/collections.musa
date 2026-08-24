@@ -1,70 +1,64 @@
-library {
-    // Open Music Theory `013-major-scales-scale-degrees-and-key-signatures.md`,
-    // `014-minor-scales-scale-degrees-and-key-signatures.md`, `105-diatonic-modes.md`
-    // and `106-collections.md` supply these collections. Each is its own value:
-    // rooting one on a new tonic keeps its ordered offsets and changes nothing
-    // else, and no collection is a default for any other.
+// Open Music Theory `013-major-scales-scale-degrees-and-key-signatures.md`,
+// `014-minor-scales-scale-degrees-and-key-signatures.md`, `105-diatonic-modes.md`
+// and `106-collections.md` supply these collections. Each is its own value:
+// rooting one on a new tonic keeps its ordered offsets and changes nothing
+// else, and no collection is a default for any other.
 
-    // The major collection, W–W–H–W–W–W–H, rooted on tonic.
-    fn major_on(tonic: NoteName) -> Scale { scale_on(scale c major, tonic) }
+// The major collection, W–W–H–W–W–W–H, rooted on tonic.
+fn major_on(tonic: NoteName) -> Scale { scale_on(scale c major, tonic) }
 
-    // The Dorian rotation of the diatonic collection.
-    fn dorian_on(tonic: NoteName) -> Scale { scale_on(scale c dorian, tonic) }
+// The Dorian rotation of the diatonic collection.
+fn dorian_on(tonic: NoteName) -> Scale { scale_on(scale c dorian, tonic) }
 
-    // The Phrygian rotation.
-    fn phrygian_on(tonic: NoteName) -> Scale { scale_on(scale c phrygian, tonic) }
+// The Phrygian rotation.
+fn phrygian_on(tonic: NoteName) -> Scale { scale_on(scale c phrygian, tonic) }
 
-    // The Lydian rotation.
-    fn lydian_on(tonic: NoteName) -> Scale { scale_on(scale c lydian, tonic) }
+// The Lydian rotation.
+fn lydian_on(tonic: NoteName) -> Scale { scale_on(scale c lydian, tonic) }
 
-    // The Mixolydian rotation.
-    fn mixolydian_on(tonic: NoteName) -> Scale { scale_on(scale c mixolydian, tonic) }
+// The Mixolydian rotation.
+fn mixolydian_on(tonic: NoteName) -> Scale { scale_on(scale c mixolydian, tonic) }
 
-    // The natural minor collection, which is also the Aeolian rotation.
-    fn natural_minor_on(tonic: NoteName) -> Scale { scale_on(scale c natural_minor, tonic) }
+// The natural minor collection, which is also the Aeolian rotation.
+fn natural_minor_on(tonic: NoteName) -> Scale { scale_on(scale c natural_minor, tonic) }
 
-    // The Locrian rotation.
-    fn locrian_on(tonic: NoteName) -> Scale { scale_on(scale c locrian, tonic) }
+// The Locrian rotation.
+fn locrian_on(tonic: NoteName) -> Scale { scale_on(scale c locrian, tonic) }
 
-    // Harmonic minor: natural minor with a raised seventh degree. A distinct
-    // collection, not a spelling of the natural one.
-    fn harmonic_minor_on(tonic: NoteName) -> Scale { scale_on(scale c harmonic_minor, tonic) }
+// Harmonic minor: natural minor with a raised seventh degree. A distinct
+// collection, not a spelling of the natural one.
+fn harmonic_minor_on(tonic: NoteName) -> Scale { scale_on(scale c harmonic_minor, tonic) }
 
-    // Ascending melodic minor: raised sixth and seventh degrees.
-    fn melodic_minor_on(tonic: NoteName) -> Scale { scale_on(scale c melodic_minor, tonic) }
+// Ascending melodic minor: raised sixth and seventh degrees.
+fn melodic_minor_on(tonic: NoteName) -> Scale { scale_on(scale c melodic_minor, tonic) }
 
-    // Descending melodic minor, whose offsets are the natural minor's and
-    // whose identity is not.
-    fn descending_melodic_minor_on(tonic: NoteName) -> Scale {
-        scale_on(scale c descending_melodic_minor, tonic)
-    }
-
-    // The five-note major pentatonic collection.
-    fn major_pentatonic_on(tonic: NoteName) -> Scale {
-        scale_on(scale c major_pentatonic, tonic)
-    }
-
-    // The five-note minor pentatonic collection.
-    fn minor_pentatonic_on(tonic: NoteName) -> Scale {
-        scale_on(scale c minor_pentatonic, tonic)
-    }
-
-    // The six-note whole-tone collection.
-    fn whole_tone_on(tonic: NoteName) -> Scale { scale_on(scale c whole_tone, tonic) }
-
-    // The eight-note octatonic collection beginning with a half step.
-    fn octatonic_half_whole_on(tonic: NoteName) -> Scale {
-        scale_on(scale c octatonic_half_whole, tonic)
-    }
-
-    // The eight-note octatonic collection beginning with a whole step.
-    fn octatonic_whole_half_on(tonic: NoteName) -> Scale {
-        scale_on(scale c octatonic_whole_half, tonic)
-    }
-
-    // The six-note hexatonic collection alternating minor thirds and half steps.
-    fn hexatonic_on(tonic: NoteName) -> Scale { scale_on(scale c hexatonic, tonic) }
-
-    // The acoustic collection: raised fourth and lowered seventh.
-    fn acoustic_on(tonic: NoteName) -> Scale { scale_on(scale c acoustic, tonic) }
+// Descending melodic minor, whose offsets are the natural minor's and
+// whose identity is not.
+fn descending_melodic_minor_on(tonic: NoteName) -> Scale {
+    scale_on(scale c descending_melodic_minor, tonic)
 }
+
+// The five-note major pentatonic collection.
+fn major_pentatonic_on(tonic: NoteName) -> Scale { scale_on(scale c major_pentatonic, tonic) }
+
+// The five-note minor pentatonic collection.
+fn minor_pentatonic_on(tonic: NoteName) -> Scale { scale_on(scale c minor_pentatonic, tonic) }
+
+// The six-note whole-tone collection.
+fn whole_tone_on(tonic: NoteName) -> Scale { scale_on(scale c whole_tone, tonic) }
+
+// The eight-note octatonic collection beginning with a half step.
+fn octatonic_half_whole_on(tonic: NoteName) -> Scale {
+    scale_on(scale c octatonic_half_whole, tonic)
+}
+
+// The eight-note octatonic collection beginning with a whole step.
+fn octatonic_whole_half_on(tonic: NoteName) -> Scale {
+    scale_on(scale c octatonic_whole_half, tonic)
+}
+
+// The six-note hexatonic collection alternating minor thirds and half steps.
+fn hexatonic_on(tonic: NoteName) -> Scale { scale_on(scale c hexatonic, tonic) }
+
+// The acoustic collection: raised fourth and lowered seventh.
+fn acoustic_on(tonic: NoteName) -> Scale { scale_on(scale c acoustic, tonic) }

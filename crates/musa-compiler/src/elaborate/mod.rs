@@ -41,7 +41,7 @@ use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 use musa_score::score::ScoreSnapshot;
 use musa_syntax::SyntaxNode;
-use musa_syntax::ast::{AstNode as _, PieceDecl};
+use musa_syntax::ast::AstNode as _;
 
 mod bars;
 mod canonical;
@@ -108,30 +108,29 @@ pub(crate) fn elaborate_parsed(
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let root = document.syntax();
+    let Some(file) = musa_syntax::ast::Document::of_root(&root) else {
+        // A parse produces a `Root` and `Document` is the reader for one, so
+        // nothing reaches this. It is a fallthrough rather than a panic
+        // because the workspace denies the panicking macros and because there
+        // is a truthful answer to hand: a file whose root cannot be read
+        // declares nothing, which is what an empty compilation says.
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+    };
+    // `document := declaration* piece?` and there is no third thing a file can
+    // be (`docs/rules/language/01-surface.md` §1). The five statements a piece
+    // owns are read at the root by the parser so that standing in the wrong
+    // place can be *said*; this is where it is said.
+    report_misplaced_piece_statements(resolver, &file);
     // A file is one piece however the piece got there, so the piece is the one
-    // `PieceDecl` at the root and there is nothing else it could be.
-    let Some(piece) = PieceDecl::from_root(&root) else {
-        if let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) {
-            return elaborate_material(resolver, &library, name, options);
-        }
-        if !musa_syntax::ast::ModDecl::all_at_root(&root).is_empty() {
+    // `PieceDecl` at the root and there is nothing else it could be. Without
+    // one, the file exports what it declared — and a file that declares
+    // modules is a package's own bookkeeping, which is the same absence read
+    // one step further.
+    let Some(piece) = file.piece() else {
+        if !file.mods().is_empty() {
             return elaborate_module_file(resolver, &root);
         }
-        // The backstop, and only that: a root with no `mod` in it is a root
-        // the parser was already reading a piece at, so a file of no shape at
-        // all is refused up in the syntax pass above with `expected \`piece\``.
-        // Nothing below is reachable from `parse`; it is here so that a fourth
-        // shape arriving one day is refused rather than silently compiled to
-        // nothing.
-        resolver.report(
-            Diagnostic::error(Code::Misplaced, "this file declares no piece")
-                .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
-                .help(
-                    "every musa file is one piece, a `library { … }` for others to import, \
-                     or a module file of `mod …;` declarations",
-                ),
-        );
-        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+        return elaborate_material(resolver, &file, name, options);
     };
 
     resolver.realization = options.realization.clone();
@@ -212,6 +211,53 @@ pub(crate) fn elaborate_parsed(
         .with_references(references)
 }
 
+/// The five statements a piece owns, reported wherever one stands at a file
+/// root.
+///
+/// `tempo`, `meter`, `key`, front matter, and `score` are the piece's ambient
+/// state and its music, and a file root has no piece for them to belong to.
+/// The parser reads them there anyway, and this is why: a grammar that simply
+/// lacks the arm can only say *expected a declaration*, where a grammar that
+/// reads them can name the piece each one wanted. Prompt 164a's Design calls
+/// that the enrichment direction, and `AGENTS.md` calls the alternative a
+/// sublanguage by subtraction.
+///
+/// Reported and not fatal. Every one of the five is *misplaced* rather than
+/// wrong, so the declarations around it are still worth checking, and a file
+/// that also declares a piece gets the rest of the piece's diagnostics in the
+/// same run.
+fn report_misplaced_piece_statements(resolver: &mut Resolver, file: &musa_syntax::ast::Document) {
+    let has_piece = file.piece().is_some();
+    let mut misplaced: Vec<(SyntaxNode, &str, &str)> = Vec::new();
+    for tempo in file.tempos() {
+        misplaced.push((tempo.syntax().clone(), "tempo", "sets the tempo a piece starts in"));
+    }
+    for meter in file.meters() {
+        misplaced.push((meter.syntax().clone(), "meter", "sets the meter a piece starts in"));
+    }
+    for key in file.keys() {
+        misplaced.push((key.syntax().clone(), "key", "sets the key a piece starts in"));
+    }
+    for front in file.front_matter() {
+        misplaced.push((front.syntax().clone(), "front matter", "names who a piece is by"));
+    }
+    if let Some(score) = file.score() {
+        misplaced.push((score.syntax().clone(), "score", "is a piece's music"));
+    }
+    for (node, what, does) in misplaced {
+        let help = if has_piece {
+            "move it inside the `piece { … }` block below"
+        } else {
+            "wrap it in `piece \"…\" { … }`, or move it into the piece that wants it"
+        };
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, format!("`{what}` belongs inside a piece"))
+                .at(resolve::trimmed_span(&node), format!("{what} {does}"))
+                .help(help),
+        );
+    }
+}
+
 /// A module file: `mod …;` declarations and nothing else.
 ///
 /// The third document shape (`docs/rules/language/01-surface.md` §1's
@@ -238,7 +284,7 @@ fn elaborate_module_file(resolver: &mut Resolver, root: &SyntaxNode) -> Compilat
         resolver.report(
             Diagnostic::error(Code::Misplaced, "a module file declares modules and nothing else")
                 .at(resolve::trimmed_span(&child), "this is not a `mod` declaration")
-                .help("move it into one of the modules this file names, or make this file a `piece` or a `library`"),
+                .help("move it into one of the modules this file names, or drop the `mod` declarations from this file"),
         );
     }
     Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_modules()

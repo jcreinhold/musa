@@ -1,13 +1,16 @@
-//! The three shapes a musa file may be, and that the compiler reads all three.
+//! One document form, and that the compiler reads every file through it.
 //!
-//! A `piece` sounds, a `library { … }` declares for others to import, and a
-//! **module file** — `mod …;` and nothing else — is a node of a package's
-//! module tree (`docs/rules/language/01-surface.md` §1, §6;
-//! `docs/rules/language/04-templates-and-modules.md`). The parser has modelled
-//! all three since the package tree landed; the elaborator dispatched on two,
-//! so `stdlib/src/lib.musa` — a file the standard library cannot be built
-//! without — was refused with *this file declares no piece*. These laws are
-//! what keep the two counts equal.
+//! `document := declaration* piece?` (`docs/rules/language/01-surface.md` §1),
+//! so a file is not one of several shapes chosen by lookahead — it is a list of
+//! declarations that may end with a piece. What a file *turned out to be* is an
+//! observation made afterwards: it has a piece, or it has none, or the
+//! declarations it holds are all `mod`. [`DocumentKind`] reports that
+//! observation; it does not select a grammar.
+//!
+//! These laws hold the two counts equal. Before prompt 164a the elaborator
+//! dispatched on two shapes where the parser modelled three, so
+//! `stdlib/src/lib.musa` — a file the standard library cannot be built
+//! without — was refused with *this file declares no piece*.
 
 use musa_compiler::{CompileOptions, DocumentKind, SourceDocument, compile};
 
@@ -75,14 +78,39 @@ fn a_module_file_declares_modules_and_nothing_else() {
     );
 }
 
-/// A file that is none of the three is still refused — by the parser, which
-/// was already reading the piece such a file owes. The elaborator's own
-/// *declares no piece* sits behind that as a backstop, and `stdlib/src/lib.musa`
-/// used to be its one live case.
+/// A file that declares and never sounds is a document, not a failure.
+///
+/// The law prompt 164a inverted. `let alone: Nat = 1;` used to be a file of no
+/// shape, refused by the parser for the `piece` it owed; there is no such debt
+/// now, because a piece is the *optional* tail of the one production and a file
+/// that omits it has omitted nothing.
 #[test]
-fn a_file_of_no_shape_is_still_refused() {
+fn a_file_that_declares_and_never_sounds_is_a_document() {
     let compilation = compiled("stray.musa", "let alone: Nat = 1;\n");
-    assert!(compilation.has_errors());
-    let said = messages(&compilation).join("\n");
-    assert!(said.contains("`piece`"), "the refusal should ask for one: {said}");
+    assert!(!compilation.has_errors(), "{:?}", messages(&compilation));
+    assert_eq!(compilation.kind(), DocumentKind::Material);
+    assert!(
+        compilation.snapshot().is_none(),
+        "nothing sounded, and having sounded nothing is not a failure"
+    );
+}
+
+/// The same file with a piece under the same declarations, read by the same
+/// path — which is the whole claim of one document form.
+#[test]
+fn declarations_and_a_piece_are_the_one_production() {
+    let both = concat!(
+        "let alone: Nat = 1;\n",
+        "\n",
+        "piece \"Both\" {\n",
+        "    tempo 1/4 = 60;\n",
+        "    meter 4/4;\n",
+        "    key c major;\n",
+        "    score { part p { voice v { c5/1 } } }\n",
+        "}\n",
+    );
+    let compilation = compiled("both.musa", both);
+    assert!(!compilation.has_errors(), "{:?}", messages(&compilation));
+    assert_eq!(compilation.kind(), DocumentKind::Piece);
+    assert!(compilation.snapshot().is_some(), "the piece at the tail sounds");
 }

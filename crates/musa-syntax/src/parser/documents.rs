@@ -1,6 +1,6 @@
-//! Whole-file shapes: the root preamble, piece and library documents, imports, `make`/templates, and front matter.
+//! Whole-file shape: a file's declarations, its piece, imports, `make`/templates, and front matter.
 
-use super::engine::{Parser, RootShape};
+use super::engine::Parser;
 use crate::{SyntaxError, SyntaxKind};
 
 /// What may name a module inside an import path.
@@ -51,20 +51,36 @@ const FRONT_MATTER: &[SyntaxKind] = &[
 ];
 
 impl Parser<'_> {
-    /// Whatever stands before the file's piece or library: imports, values,
-    /// functions, and templates.
+    /// The file's declarations: everything a musa file may say outside its
+    /// piece.
     ///
-    /// These are the file's lexical root, and the only scope a template body
-    /// reads besides its own parameters. Nothing here is the file's
-    /// declaration — the piece or library that follows is.
-    pub(super) fn root_preamble(&mut self) -> RootShape {
-        let mut shape = RootShape::default();
+    /// This is the whole of `document := declaration* piece?`
+    /// (`docs/rules/language/01-surface.md` §1) but for the piece itself. A
+    /// file that ends here exports what it declared; a file that goes on to a
+    /// piece has these as its lexical root. Nothing distinguishes the two
+    /// while reading, because nothing needs to: a `library { … }` used to wrap
+    /// this same list and accept a strict subset of what a piece accepts,
+    /// which is a sublanguage by subtraction and is what prompt 164a deleted.
+    ///
+    /// The five statements a piece owns — `tempo`, `meter`, `key`, front
+    /// matter, and `score` — are read here too, and refused by the
+    /// elaborator. They are the piece's ambient state and its music, and a
+    /// file root has no piece for them to belong to; but a grammar that
+    /// simply lacks the arm can only say *expected a declaration*, where a
+    /// grammar that reads them can say which piece they wanted. Reading and
+    /// then refusing is the enrichment direction `AGENTS.md` requires, and it
+    /// is the difference between a message a musician can act on and a token
+    /// the parser did not recognize.
+    pub(super) fn root_declarations(&mut self) {
         loop {
             if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
                 self.import_stmt();
             } else if self.at(SyntaxKind::ModKw) {
                 self.mod_decl();
-                shape.declares_modules = true;
+            } else if self.at(SyntaxKind::MotifKw) {
+                self.motif_decl();
+            } else if self.at(SyntaxKind::FragmentKw) {
+                self.fragment_decl();
             } else if self.opens(SyntaxKind::LetKw) {
                 self.let_decl();
             } else if self.opens(SyntaxKind::FnKw) {
@@ -73,13 +89,40 @@ impl Parser<'_> {
                 self.type_decl();
             } else if self.at_impl() {
                 self.impl_decl();
+            } else if self.at(SyntaxKind::PerformanceKw) {
+                self.performance_decl();
+            } else if self.at(SyntaxKind::StudioKw) {
+                self.studio_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
-            } else {
+            } else if self.at(SyntaxKind::TempoKw) {
+                self.tempo_stmt();
+            } else if self.at(SyntaxKind::MeterKw) {
+                self.meter_stmt();
+            } else if self.at(SyntaxKind::KeyKw) {
+                self.key_stmt();
+            } else if self.at_any(FRONT_MATTER) {
+                self.front_matter_stmt();
+            } else if self.at(SyntaxKind::ScoreKw) {
+                self.score_decl();
+            } else if self.at(SyntaxKind::PieceKw) || self.current().is_none() {
                 break;
+            } else {
+                // Neither a declaration nor the piece nor the end, so it is a
+                // word this file cannot hold. There is no wrapper left to be
+                // outside of, which is why the help lists what a file holds
+                // rather than which of three shapes it should have picked.
+                self.expected_with_help(
+                    "a declaration",
+                    "a musa file holds imports, value/function/type declarations, material, modules, performance, \
+                     and studio declarations, and may end with one `piece \"…\" { … }`",
+                );
+                // `recover_past` and not `recover`: this loop has no `}` arm
+                // to break on, so a recovery that consumed nothing would spin
+                // here forever. See its doc comment.
+                self.recover_past(PIECE_RECOVERY);
             }
         }
-        shape
     }
 
     /// `mod tonal;` — one child of a package's module tree.
@@ -212,56 +255,6 @@ impl Parser<'_> {
             self.bump();
         }
         self.expect(SyntaxKind::Semicolon, "`;`");
-        self.finish();
-    }
-
-    /// `library { ... }` — shared declarations, importable by a piece.
-    pub(super) fn library_decl(&mut self) {
-        self.start(SyntaxKind::LibraryDecl);
-        self.bump(); // library
-        self.expect(SyntaxKind::LBrace, "`{`");
-        loop {
-            if self.at(SyntaxKind::RBrace) {
-                self.bump();
-                break;
-            }
-            if self.current().is_none() {
-                if let Some(error) = self.unclosed("`library` block") {
-                    self.errors.push(error);
-                }
-                break;
-            }
-            if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
-                self.import_stmt();
-            } else if self.at(SyntaxKind::MotifKw) {
-                self.motif_decl();
-            } else if self.at(SyntaxKind::FragmentKw) {
-                self.fragment_decl();
-            } else if self.opens(SyntaxKind::LetKw) {
-                self.let_decl();
-            } else if self.opens(SyntaxKind::FnKw) {
-                self.fn_decl();
-            } else if self.at(SyntaxKind::PerformanceKw) {
-                self.performance_decl();
-            } else if self.at(SyntaxKind::StudioKw) {
-                self.studio_decl();
-            } else if self.at_type_decl() {
-                self.type_decl();
-            } else if self.at_impl() {
-                self.impl_decl();
-            } else if self.at(SyntaxKind::PrivateKw) {
-                self.misplaced_private();
-            } else {
-                // A library holds what can be shared. Music belongs to a
-                // piece, which is why `score` is not in this list.
-                self.expected_with_help(
-                    "a declaration",
-                    "a library holds imports, reusable values/functions, material, signatures, modules, performance, \
-                     and studio declarations",
-                );
-                self.recover(PIECE_RECOVERY);
-            }
-        }
         self.finish();
     }
 

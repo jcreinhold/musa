@@ -128,7 +128,7 @@ pub(crate) fn level_of(
         // twice and the rest not at all.
         crate::phase::ModuleFault::Broken(diagnostics) => LevelFault {
             message: format!("`{path}` is not an adapter module"),
-            help: "an adapter module is a `library` of ordinary declarations, checked in the expansion phase",
+            help: "an adapter module is a file of ordinary declarations, checked in the expansion phase",
             code: Code::Expansion,
             causes: diagnostics
                 .into_iter()

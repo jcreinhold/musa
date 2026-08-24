@@ -67,7 +67,7 @@ pub enum DocumentKind {
     /// `piece "…" { … }` — the thing that has a score.
     #[default]
     Piece,
-    /// `library { … }` — declarations for other files to import.
+    /// Declarations and no `piece` — a file for other files to import.
     Material,
     /// `mod …;` and nothing else — a package's module tree, at its root
     /// (`lib.musa`) or one directory down (`mod.musa`).

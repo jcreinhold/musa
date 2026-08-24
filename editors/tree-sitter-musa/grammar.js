@@ -82,7 +82,7 @@ const SYNTAX_WORDS = [
   'performance', 'profile', 'mark', 'groove', 'grace', 'studio', 'patch', 'modulate',
   'bus', 'assign', 'route', 'send', 'master', 'at', 'output', 'pitch',
   'stretch', 'retrograde', 'invert', 'around', 'with', 'note', 'phrase', 'section',
-  'harmony', 'library', 'crescendo', 'diminuendo', 'to', 'bar', 'assert', 'senza',
+  'harmony', 'crescendo', 'diminuendo', 'to', 'bar', 'assert', 'senza',
   'ending', 'fragment', 'mobile', 'improvise', 'over', 'let', 'fn', 'music',
   'events', 'Option', 'List', 'Result', 'match', 'Some', 'None', 'Ok',
   'Err', 'true', 'false', 'scale', 'degree', 'frame', 'in', 'step',
@@ -129,11 +129,14 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   rules: {
-    // Parser::run — a file is a piece or a library, written at the top,
-    // behind whatever its lexical root declares. One file is one piece.
-    // A module file is the exception: `src/lib.musa` and a directory's
-    // `mod.musa` declare a package's children and nothing else, so they carry
-    // no piece and no library (Parser::root_preamble).
+    // Parser::run — `document := declaration* piece?`
+    // (`docs/rules/language/01-surface.md` §1). One production and not a
+    // choice between shapes: a file is a list of declarations that may end
+    // with a piece, and whether it ended with one is read off the tree
+    // afterwards rather than chosen by lookahead before anything is parsed.
+    // A module file — `src/lib.musa`, a directory's `mod.musa` — is not a
+    // fourth shape either; it is a file whose declarations all happen to be
+    // `mod`.
     source_file: ($) =>
       choice(
         $.events_document,
@@ -141,17 +144,21 @@ module.exports = grammar({
           repeat(
             choice(
               $.import_statement,
+              $.mod_declaration,
+              $.motif_declaration,
+              $.fragment_declaration,
               $.let_declaration,
               $.function_declaration,
               $.data_declaration,
               $.record_declaration,
               $.enum_declaration,
-                $.impl_declaration,
+              $.impl_declaration,
+              $.performance_declaration,
+              $.studio_declaration,
             ),
           ),
-          choice($.piece_declaration, $.library_declaration),
+          optional($.piece_declaration),
         ),
-        repeat1($.mod_declaration),
       ),
 
     // The event track alternative (`docs/rules/language/01-surface.md` §7): a file whose
@@ -298,29 +305,6 @@ module.exports = grammar({
             $.enum_declaration,
             $.impl_declaration,
             $.score_declaration,
-            $.performance_declaration,
-            $.studio_declaration,
-          ),
-        ),
-        '}',
-      ),
-
-    // Parser::library_decl — what can be shared: no score, no header.
-    library_declaration: ($) =>
-      seq(
-        'library',
-        '{',
-        repeat(
-          choice(
-            $.import_statement,
-            $.motif_declaration,
-            $.fragment_declaration,
-            $.let_declaration,
-            $.function_declaration,
-            $.data_declaration,
-            $.record_declaration,
-            $.enum_declaration,
-            $.impl_declaration,
             $.performance_declaration,
             $.studio_declaration,
           ),

@@ -366,13 +366,13 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_score::Code::Import => {
             "A `use` cannot be followed.\n\n\
              Paths are relative to the file that writes them, are joined without \
-             consulting the filesystem, and must name a `library`, not a `piece`. An \
+             consulting the filesystem, and must name a file that declares no `piece`. An \
              import loop is an error rather than a resolution order, because the order \
              would be an accident of which file you opened.\n\n\
              Broken:\n    \
              import \"patches.musa\";      // a piece\n\n\
              Fixed:\n    \
-             import \"../library/patches.musa\";   // a library"
+             import \"../library/patches.musa\";   // declares no piece"
         }
         musa_score::Code::Studio => {
             "The studio graph cannot be built: an input nothing feeds, a cycle, a send \

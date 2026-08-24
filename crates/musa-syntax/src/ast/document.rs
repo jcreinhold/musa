@@ -168,22 +168,44 @@ impl TempoStmt {
     }
 }
 
-/// `library { motif ...; studio { ... } }` — a file of shared declarations.
+/// A whole musa file: the declarations at its root, and the piece they may
+/// end in.
 ///
-/// A library is not a piece: it has no score, and the parser refuses one, so
-/// "what happens to the music in an imported file" is a question that cannot
-/// be asked.
-pub struct LibraryDecl(SyntaxNode);
-wrapper!(LibraryDecl, SyntaxKind::LibraryDecl);
+/// `document := declaration* piece?` (`docs/rules/language/01-surface.md`
+/// §1), which is the only shape a file has. This replaced `LibraryDecl` at
+/// prompt 164a, and the replacement is not a rename: a `library { … }` was
+/// a wrapper that accepted a strict subset of what a piece accepts, so a file
+/// had to declare which of three shapes it was before it could say anything.
+/// A file now says what it declares, and *whether it is a library* is read off
+/// the answer — [`Self::piece`] is `None` — rather than written at the top.
+///
+/// The readers below are the same readers `LibraryDecl` had, moved up one
+/// level, plus the ones a misplaced piece statement is reported from:
+/// [`Self::tempos`], [`Self::meters`], [`Self::keys`],
+/// [`Self::front_matter`], and [`Self::score`] all answer about the *root*,
+/// where none of the five belongs, so that the elaborator can name the piece
+/// each one wanted instead of the parser saying `expected a declaration`.
+pub struct Document(SyntaxNode);
+wrapper!(Document, SyntaxKind::Root);
 
-impl LibraryDecl {
-    /// Cast the root node of a document to its library declaration.
-    pub fn from_root(node: &SyntaxNode) -> Option<Self> {
-        child(node)
+impl Document {
+    /// The file, from the root node a parse produced.
+    pub fn of_root(node: &SyntaxNode) -> Option<Self> {
+        (node.kind() == SyntaxKind::Root).then(|| Self(node.clone()))
     }
 
-    /// The files this library imports, in source order.
+    /// The piece this file ends in, if it declares one.
+    pub fn piece(&self) -> Option<PieceDecl> {
+        child(&self.0)
+    }
+
+    /// The files this one imports, in source order.
     pub fn imports(&self) -> Vec<ImportStmt> {
+        children(&self.0)
+    }
+
+    /// The modules it declares, in source order.
+    pub fn mods(&self) -> Vec<ModDecl> {
         children(&self.0)
     }
 
@@ -214,6 +236,31 @@ impl LibraryDecl {
 
     /// Its `studio` block, if it has one.
     pub fn studio(&self) -> Option<StudioDecl> {
+        child(&self.0)
+    }
+
+    /// Any `tempo` written at the root, where a piece is what one belongs to.
+    pub fn tempos(&self) -> Vec<TempoStmt> {
+        children(&self.0)
+    }
+
+    /// Any `meter` written at the root.
+    pub fn meters(&self) -> Vec<MeterStmt> {
+        children(&self.0)
+    }
+
+    /// Any `key` written at the root.
+    pub fn keys(&self) -> Vec<KeyStmt> {
+        children(&self.0)
+    }
+
+    /// Any front matter written at the root.
+    pub fn front_matter(&self) -> Vec<FrontMatterStmt> {
+        children(&self.0)
+    }
+
+    /// A `score` written at the root, where music belongs to a piece.
+    pub fn score(&self) -> Option<ScoreDecl> {
         child(&self.0)
     }
 }
@@ -250,8 +297,8 @@ pub struct ImportStmt(SyntaxNode);
 wrapper!(ImportStmt, SyntaxKind::ImportStmt);
 
 impl ImportStmt {
-    /// The imports written at a document's lexical root, before its piece or
-    /// library — what the file's templates may read.
+    /// The imports written at a document's root, before its piece — what the
+    /// file's templates may read.
     pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
         children(node)
     }

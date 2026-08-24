@@ -2,7 +2,7 @@
   {
     "spelling": "piece",
     "summary": "one file's one composition",
-    "doc": "A piece is one composition: everything a single file says about one work — its title, its starting tempo, meter, and key, its score, and its studio. Every `.musa` file that is not a `library` holds exactly one.\n\n```musa\npiece \"Ruchenitsa\" { meter 7/8; score { … } }\n```"
+    "doc": "A piece is one composition: everything a single file says about one work — its title, its starting tempo, meter, and key, its score, and its studio. A file holds at most one, and it comes last: whatever a file declares before it — imports, values, functions, types, motifs — is the piece's lexical root, and a file that stops before reaching one exports those declarations for other files to import.\n\n```musa\npiece \"Ruchenitsa\" { meter 7/8; score { … } }\n```"
   },
   {
     "spelling": "tempo",
@@ -283,11 +283,6 @@
     "spelling": "harmony",
     "summary": "the chord-symbol lane",
     "doc": "A harmony block declares the piece's chord-symbol lane: symbols written at the times they govern, like `harmony { \"Dm7\" 1/1 \"G7\" 1/1 }`. The symbols are parsed, so later tooling reads structure instead of letters.\n\n```musa\nharmony { \"Cmaj7\" 2/1 }\n```"
-  },
-  {
-    "spelling": "library",
-    "summary": "declarations other pieces can import",
-    "doc": "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files rather than played itself. A piece brings one in with `import \"path\";` and then speaks its names as its own.\n\n```musa\nlibrary { motif sigh(root: Pitch) { … } }\n```"
   },
   {
     "spelling": "crescendo",

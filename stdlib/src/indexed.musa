@@ -1,87 +1,85 @@
-library {
-    // The domains an index makes declarable.
-    //
-    // `02-core-calculus.md` §1.1 distinguishes a *parameter*, fixed across a
-    // declaration, from an *index*, chosen by each constructor. Everything in
-    // this module is a family whose constructors disagree about where they
-    // land, which is the one thing a parameter cannot express — and each of
-    // them replaces a runtime check the library used to have to write out.
-    //
-    // Note 52 ("the musical algebra the language has to be able to say") is the
-    // list this is answering. What it asks for is not proof machinery: it is
-    // carriers whose *size* the checker knows, so that a length agreement or a
-    // bar's fill is decided where the value is built rather than where it is
-    // used.
+// The domains an index makes declarable.
+//
+// `02-core-calculus.md` §1.1 distinguishes a *parameter*, fixed across a
+// declaration, from an *index*, chosen by each constructor. Everything in
+// this module is a family whose constructors disagree about where they
+// land, which is the one thing a parameter cannot express — and each of
+// them replaces a runtime check the library used to have to write out.
+//
+// Note 52 ("the musical algebra the language has to be able to say") is the
+// list this is answering. What it asks for is not proof machinery: it is
+// carriers whose *size* the checker knows, so that a length agreement or a
+// bar's fill is decided where the value is built rather than where it is
+// used.
 
-    // Two values of one type, and the proof that they are the same one.
-    //
-    // `Refl` is the only constructor and it chooses *both* indices to be its
-    // own field, so a value of `Equal<A>(x, y)` exists exactly when `x` and `y`
-    // are convertible. Matching on one therefore teaches the two apart: the arm
-    // for `Refl` is checked at the goal with the second index replaced by the
-    // first, which is what an equality is *for*.
-    //
-    // This is library code and not apparatus. `docs/plan/prompts/143` drew the
-    // line and it has not moved: there are no tactics, no proof search, and no
-    // hints. `Equal` is declarable because §1.1 admits indexed families, and a
-    // language that admits them and then refuses this one would be refusing
-    // arithmetic it can already do.
-    data Equal<A>(left: A, right: A) {
-        Refl(only: A): (only, only),
-    }
+// Two values of one type, and the proof that they are the same one.
+//
+// `Refl` is the only constructor and it chooses *both* indices to be its
+// own field, so a value of `Equal<A>(x, y)` exists exactly when `x` and `y`
+// are convertible. Matching on one therefore teaches the two apart: the arm
+// for `Refl` is checked at the goal with the second index replaced by the
+// first, which is what an equality is *for*.
+//
+// This is library code and not apparatus. `docs/plan/prompts/143` drew the
+// line and it has not moved: there are no tactics, no proof search, and no
+// hints. `Equal` is declarable because §1.1 admits indexed families, and a
+// language that admits them and then refuses this one would be refusing
+// arithmetic it can already do.
+data Equal<A>(left: A, right: A) {
+    Refl(only: A): (only, only),
+}
 
-    // A sequence of exactly `n` elements.
-    //
-    // Note 52 §1's observation is that a tone row and a bell pattern are the
-    // same object, and both are a sequence whose length is part of its type: a
-    // twelve-tone row is a `Row<PitchClass>(12)`, and a sixteen-pulse bell
-    // pattern is a `Row<Bool>(16)`. The library wrote the length as a comment
-    // and checked it, when it checked it at all, at the call.
-    //
-    // `size` is an ordinary field rather than something the checker guesses.
-    // A constructor's chosen index is read under its own fields, so the length
-    // `Longer` steps from has to be one of them.
-    data Row<A>(n: Nat) {
-        Empty: (Zero),
-        Longer(size: Nat, top: A, later: Row<A>(size)): (Succ(size)),
-    }
+// A sequence of exactly `n` elements.
+//
+// Note 52 §1's observation is that a tone row and a bell pattern are the
+// same object, and both are a sequence whose length is part of its type: a
+// twelve-tone row is a `Row<PitchClass>(12)`, and a sixteen-pulse bell
+// pattern is a `Row<Bool>(16)`. The library wrote the length as a comment
+// and checked it, when it checked it at all, at the call.
+//
+// `size` is an ordinary field rather than something the checker guesses.
+// A constructor's chosen index is read under its own fields, so the length
+// `Longer` steps from has to be one of them.
+data Row<A>(n: Nat) {
+    Empty: (Zero),
+    Longer(size: Nat, top: A, later: Row<A>(size)): (Succ(size)),
+}
 
-    // The first element of a row that has one.
-    //
-    // **Total, and with one arm.** `Empty` stands at `Zero` and this row
-    // stands at `Succ(size)`, so index unification rules that constructor
-    // out and there is no case to write for it — which is the difference
-    // between this and the `Option<A>` the same function returns today.
-    fn row_top<A>(size: Nat, held: Row<A>(Succ(size))) -> A {
-        match held {
-            Longer(inner, top, later) -> top,
-        }
+// The first element of a row that has one.
+//
+// **Total, and with one arm.** `Empty` stands at `Zero` and this row
+// stands at `Succ(size)`, so index unification rules that constructor
+// out and there is no case to write for it — which is the difference
+// between this and the `Option<A>` the same function returns today.
+fn row_top<A>(size: Nat, held: Row<A>(Succ(size))) -> A {
+    match held {
+        Longer(inner, top, later) -> top,
     }
+}
 
-    // Everything after the first element, one shorter.
-    fn row_later<A>(size: Nat, held: Row<A>(Succ(size))) -> Row<A>(size) {
-        match held {
-            Longer(inner, top, later) -> later,
-        }
+// Everything after the first element, one shorter.
+fn row_later<A>(size: Nat, held: Row<A>(Succ(size))) -> Row<A>(size) {
+    match held {
+        Longer(inner, top, later) -> later,
     }
+}
 
-    // A measure, indexed by the written duration it fills.
-    //
-    // Roadmap §2's layering table says a notated duration is not a performed
-    // one, and this is the notated side: the index is a `Duration<WrittenTime>`
-    // and the family's own rule is that a measure's parts add up to it. A bar
-    // that does not fill its meter is refused today by the staff adapter, at
-    // expansion, with a diagnostic; here the sum is the type.
-    //
-    // Spelled `Measure` rather than note 52's `Bar` because
-    // `std::notation::staff` already writes `StaffItem.Bar`, and one word for
-    // two things in one library is the mistake the style guide names.
-    data Measure(fills: Duration<WrittenTime>) {
-        Silent: (duration_of(0/1)),
-        Filling(
-            taken: Duration<WrittenTime>,
-            left: Duration<WrittenTime>,
-            after: Measure(left),
-        ): (duration_add(taken, left)),
-    }
+// A measure, indexed by the written duration it fills.
+//
+// Roadmap §2's layering table says a notated duration is not a performed
+// one, and this is the notated side: the index is a `Duration<WrittenTime>`
+// and the family's own rule is that a measure's parts add up to it. A bar
+// that does not fill its meter is refused today by the staff adapter, at
+// expansion, with a diagnostic; here the sum is the type.
+//
+// Spelled `Measure` rather than note 52's `Bar` because
+// `std::notation::staff` already writes `StaffItem.Bar`, and one word for
+// two things in one library is the mistake the style guide names.
+data Measure(fills: Duration<WrittenTime>) {
+    Silent: (duration_of(0/1)),
+    Filling(
+        taken: Duration<WrittenTime>,
+        left: Duration<WrittenTime>,
+        after: Measure(left),
+    ): (duration_add(taken, left)),
 }

@@ -2,50 +2,47 @@
 a type constructor is applied to a value in parentheses, and to a type in angle brackets
 ==================
 
-library {
-  data Cell<A> {
-    Held(value: A),
-  }
-
-  fn transpose(p: Pc(12)) -> Pc(12) { p }
+data Cell<A> {
+  Held(value: A),
 }
+
+fn transpose(p: Pc(12)) -> Pc(12) { p }
 
 ---
 
 (source_file
-  (library_declaration
-    (data_declaration
+  (data_declaration
+    (identifier)
+    (type_parameter_list
+      (type_parameter
+        (identifier)))
+    (data_variant
       (identifier)
-      (type_parameter_list
-        (type_parameter
-          (identifier)))
-      (data_variant
+      (data_field
         (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (indexed_type
-              (type_name
-                (identifier))
-              (expression
-                (literal_expression
-                  (integer)))))))
-      (type_expression
-        (indexed_type
+        (type_expression
           (type_name
-            (identifier))
-          (expression
-            (literal_expression
-              (integer)))))
-      (block_expression
+            (identifier))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (indexed_type
+            (type_name
+              (identifier))
+            (expression
+              (literal_expression
+                (integer)))))))
+    (type_expression
+      (indexed_type
+        (type_name
+          (identifier))
         (expression
-          (name_expression
-            (identifier)))))))
+          (literal_expression
+            (integer)))))
+    (block_expression
+      (expression
+        (name_expression
+          (identifier))))))

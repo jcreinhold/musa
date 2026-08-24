@@ -25,15 +25,18 @@
     reason = "a law that cannot fail loudly is not a law"
 )]
 
-use musa_syntax::{SyntaxKind, SyntaxNode};
+use musa_syntax::SyntaxNode;
 
 use super::{Document, Source, elaborate};
 use crate::resolve::Resolver;
 
 // ---- reading a written document back out of a parse ----
 
-/// The `library { … }` node `source` writes, with a loud failure when it does
-/// not parse.
+/// The root node `source` writes, with a loud failure when it does not parse.
+///
+/// A law's source is a file's declarations and no piece, which since prompt
+/// 164a is a whole document rather than something inside a wrapper — so the
+/// node the declarations hang from is the root itself.
 fn library(source: &str) -> SyntaxNode {
     let document = musa_syntax::parse(source);
     assert!(
@@ -41,12 +44,7 @@ fn library(source: &str) -> SyntaxNode {
         "the law's own source parses: {:?}",
         document.errors()
     );
-    written_library(&document.syntax()).expect("the source writes a library")
-}
-
-/// The first `library` under `root`, when there is one.
-fn written_library(root: &SyntaxNode) -> Option<SyntaxNode> {
-    root.descendants().find(|node| node.kind() == SyntaxKind::LibraryDecl)
+    document.syntax()
 }
 
 /// `source` elaborated on its own, and every distinct fault, sorted.
@@ -83,11 +81,11 @@ fn document(source: &str) -> Document {
 #[test]
 fn ordinary_definitions_elaborate_and_read_back() {
     let document = document(
-        "library {
+        "
             fn twice(n: Nat) -> Nat { Succ(Succ(n)) }
             let three: Nat = twice(1);
             let also: Nat = 3;
-        }",
+        ",
     );
     assert_eq!(
         document.names().iter().map(|name| &**name).collect::<Vec<_>>(),
@@ -105,11 +103,11 @@ fn ordinary_definitions_elaborate_and_read_back() {
 #[test]
 fn a_body_may_name_a_definition_written_after_it() {
     let document = document(
-        "library {
+        "
             let answer: Nat = later(1);
             fn later(n: Nat) -> Nat { Succ(n) }
             let written: Nat = 2;
-        }",
+        ",
     );
     let (answer, _) = document.value("answer").expect("`answer` is bound");
     let (written, _) = document.value("written").expect("`written` is bound");
@@ -119,11 +117,11 @@ fn a_body_may_name_a_definition_written_after_it() {
 #[test]
 fn a_data_declaration_may_be_written_after_the_one_that_names_it() {
     let document = document(
-        "library {
+        "
             data Held { Wrap(inner: Inner) }
             data Inner { Only }
             let held: Held = Wrap(Only);
-        }",
+        ",
     );
     let (value, _) = document.value("held").expect("`held` is bound");
     let shown = format!("{value:?}");
@@ -140,7 +138,7 @@ fn a_data_declaration_may_be_written_after_the_one_that_names_it() {
 #[test]
 fn a_chosen_index_may_call_a_definition() {
     let document = document(
-        "library {
+        "
             data Peano { Zero, Succ(prev: Peano) }
             fn bump(subject: Peano) -> Peano { Succ(subject) }
             data Ix(p: Peano) {
@@ -148,7 +146,7 @@ fn a_chosen_index_may_call_a_definition() {
                 There(q: Peano, seen: Ix(q)) : (bump(q)),
             }
             let one: Ix(Succ(Zero)) = There(Zero, Here);
-        }",
+        ",
     );
     let (value, _) = document.value("one").expect("`one` is bound");
     let shown = format!("{value:?}");
@@ -164,7 +162,7 @@ fn a_chosen_index_may_call_a_definition() {
 #[test]
 fn a_chosen_index_may_call_a_method_of_this_document() {
     let document = document(
-        "library {
+        "
             impl Nat {
                 fn add(left: Nat, right: Nat) -> Nat { nat_add(left, right) }
             }
@@ -173,7 +171,7 @@ fn a_chosen_index_may_call_a_method_of_this_document() {
                 Cons(m: Nat, head: A, tail: Vect<A>(m)) : (m + 1),
             }
             let two: Vect<Nat>(2) = Cons(1, 7, Cons(0, 8, Nil));
-        }",
+        ",
     );
     let (value, _) = document.value("two").expect("`two` is bound");
     let shown = format!("{value:?}");
@@ -188,11 +186,11 @@ fn a_chosen_index_may_call_a_method_of_this_document() {
 #[test]
 fn a_data_field_may_name_a_record() {
     let document = document(
-        "library {
+        "
             data Taken { Took(read: Reading) }
             record Reading { count: Nat; }
             let once: Taken = Took(Reading { count = 3 });
-        }",
+        ",
     );
     let (value, _) = document.value("once").expect("`once` is bound");
     let shown = format!("{value:?}");
@@ -207,14 +205,14 @@ fn a_data_field_may_name_a_record() {
 #[test]
 fn a_family_and_a_definition_that_name_each_other_are_refused() {
     let (document, said) = elaborated(
-        "library {
+        "
             data Peano { Zero, Succ(prev: Peano) }
             fn bump(subject: Ix(Zero)) -> Peano { Zero }
             data Ix(p: Peano) {
                 Here : (Zero),
                 There(q: Ix(Zero)) : (bump(q)),
             }
-        }",
+        ",
     );
     assert!(document.is_none(), "the cycle is refused");
     assert_eq!(
@@ -227,10 +225,10 @@ fn a_family_and_a_definition_that_name_each_other_are_refused() {
 #[test]
 fn two_data_declarations_that_name_each_other_are_refused() {
     let (document, said) = elaborated(
-        "library {
+        "
             data Left { Wrap(inner: Right) }
             data Right { Wrap(inner: Left) }
-        }",
+        ",
     );
     assert!(document.is_none(), "the cycle is refused");
     assert_eq!(
@@ -242,7 +240,7 @@ fn two_data_declarations_that_name_each_other_are_refused() {
 
 #[test]
 fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
-    const WRITTEN: &str = "library { fn probe(held: Syntax<Expr>) -> Syntax<Expr> { held } }";
+    const WRITTEN: &str = " fn probe(held: Syntax<Expr>) -> Syntax<Expr> { held } ";
     let (ordinary, said) = elaborated(WRITTEN);
     assert!(ordinary.is_none(), "ordinary source cannot name `Syntax`: {said:?}");
     let (phase, said) = faults(&[Source::own(&library(WRITTEN)).in_phase()]);
@@ -268,10 +266,10 @@ fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
 #[test]
 fn a_count_and_a_list_read_back_as_canonical_data() {
     let document = document(
-        "library {
+        "
             let n: Nat = 3;
             let xs: List<Nat> = [1, 2];
-        }",
+        ",
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
@@ -336,7 +334,7 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
 #[test]
 fn a_prelude_container_folds_at_the_head_of_its_own_type() {
     let document = document(
-        "library {
+        "
             let length: Nat = [1, 2, 3].fold_from_start(0, fn (built: Nat, item: Nat) -> Nat { Succ(built) });
             let rebuilt: List<Nat> =
                 [1, 2].fold_from_end([], fn (item: Nat, later: List<Nat>) -> List<Nat> { Cons(item, later) });
@@ -344,7 +342,7 @@ fn a_prelude_container_folds_at_the_head_of_its_own_type() {
             let held: Nat = Some(5).fold_from_end(0, fn (found: Nat, fallback: Nat) -> Nat { found });
             let nothing: Option<Nat> = None;
             let missing: Nat = nothing.fold_from_end(7, fn (found: Nat, fallback: Nat) -> Nat { found });
-        }",
+        ",
     );
     let read = |name: &str| {
         let (normal, _) = document.value(name).expect("the definition is bound");
@@ -392,7 +390,7 @@ fn a_prelude_container_folds_at_the_head_of_its_own_type() {
 /// rather than pointing at node one.
 #[test]
 fn a_refusal_about_a_name_is_restated_through_the_documents_own_sites() {
-    let document = document("library { let held: Nat = 1; }");
+    let document = document(" let held: Nat = 1; ");
     let error = document.value("absent").expect_err("`absent` is not bound");
     let restated = crate::lower::refusals::restate(document.sites(), &error);
     assert_eq!(restated.code, musa_score::diagnose::Code::UnknownName);
@@ -437,7 +435,7 @@ pub(crate) fn library_sources() -> Vec<Source> {
             assert!(held.errors().is_empty(), "`{name}` parses: {:?}", held.errors());
             let path = format!("stdlib/src/{name}.musa");
             Source::imported(
-                &written_library(&held.syntax()).expect("every standard library file writes a library"),
+                &held.syntax(),
                 crate::imports::Imported {
                     path: &path,
                     qualifier: None,
@@ -811,7 +809,7 @@ fn adapter(source: &str) -> Vec<String> {
 #[test]
 fn a_written_unit_selects_the_signature_its_name_and_version_name() {
     let (built, said) = faults(&[Source::own(&library(
-        "library { let gain = machine(primitive(\"scale\", 1, 3/2)); }",
+        " let gain = machine(primitive(\"scale\", 1, 3/2)); ",
     ))]);
     let built = built.unwrap_or_else(|| panic!("a registered unit elaborates: {said:?}"));
     let (_, ty) = built.value("gain").expect("`gain` is bound");
@@ -827,7 +825,7 @@ fn a_written_unit_selects_the_signature_its_name_and_version_name() {
         ),
         ("machine(primitive(\"scale\", 99, 3/2))", "no version 99"),
     ] {
-        let (refused, said) = faults(&[Source::own(&library(&format!("library {{ let gain = {written}; }}")))]);
+        let (refused, said) = faults(&[Source::own(&library(&format!(" let gain = {written}; ")))]);
         assert!(refused.is_none(), "`{written}` is refused");
         assert!(
             said.iter().any(|complaint| complaint.contains(expected)),
@@ -847,11 +845,11 @@ fn a_written_unit_selects_the_signature_its_name_and_version_name() {
 #[test]
 fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
     let built = document(
-        "library {
+        "
             let one = machine(primitive(\"scale\", 1, 3/2));
             let chained = connect(machine(primitive(\"scale\", 1, 3/2)), identity);
             let counted: Nat = 3;
-        }",
+        ",
     );
     let machines = built.machines();
     assert_eq!(
@@ -891,13 +889,13 @@ fn a_machine_reads_back_as_its_description_once_its_ports_are_decided() {
 /// type it is a machine like any other.
 #[test]
 fn an_open_machine_is_refused_until_its_ports_are_written() {
-    let (open, said) = elaborated("library { let open = identity; }");
+    let (open, said) = elaborated(" let open = identity; ");
     assert!(
         open.is_some(),
         "the polymorphic value binds: nothing was asked of it yet: {said:?}"
     );
 
-    let (used, said) = elaborated("library { let open = identity; let joined = connect(open, open); }");
+    let (used, said) = elaborated(" let open = identity; let joined = connect(open, open); ");
     assert!(
         used.is_none(),
         "a machine whose ports nothing determines connects to nothing"
@@ -907,7 +905,7 @@ fn an_open_machine_is_refused_until_its_ports_are_written() {
         "the refusal names what was not determined: {said:?}"
     );
 
-    let decided = document("library { let decided: Machine<AudioFrameStep, Ratio, Ratio> = identity; }");
+    let decided = document(" let decided: Machine<AudioFrameStep, Ratio, Ratio> = identity; ");
     let machines = decided.machines();
     let (name, described) = machines.first().expect("a written type decides the ports");
     assert_eq!(name, "decided");

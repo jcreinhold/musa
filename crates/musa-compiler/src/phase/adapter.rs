@@ -203,12 +203,19 @@ pub(crate) fn read_adapter_module(source: &str, imports: PhaseImports<'_>) -> Re
         )]));
     }
     let root = parsed.syntax();
-    let Some(library) = musa_syntax::ast::LibraryDecl::from_root(&root) else {
+    if musa_syntax::ast::PieceDecl::from_root(&root).is_some() {
         return Err(ModuleFault::Broken(vec![
-            Diagnostic::error(Code::Expansion, "an adapter module is a `library`").help(
-                "write the module as `library { let level = …; let expand = …; }`, the way `stdlib/src/adapters/` does",
+            Diagnostic::error(Code::Expansion, "an adapter module declares a piece").help(
+                "an adapter is read for its declarations, so write it as `let level = …; let expand = …;` at the \
+                 file root, the way `stdlib/src/adapters/` does",
             ),
         ]));
+    }
+    let Some(library) = musa_syntax::ast::Document::of_root(&root) else {
+        return Err(ModuleFault::Broken(vec![Diagnostic::error(
+            Code::Expansion,
+            "an adapter module is a musa file",
+        )]));
     };
     // The adapter-free bootstrap, checked rather than assumed. An adapter whose
     // own definition needed an adapter would put the expansion order back into

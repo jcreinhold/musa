@@ -2,7 +2,6 @@
 ; Comment runs fold in the editor, not the query — a run is not a node.
 [
   (piece_declaration)
-  (library_declaration)
   (data_declaration)
   (record_declaration)
   (enum_declaration)

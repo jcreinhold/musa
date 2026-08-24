@@ -37,15 +37,10 @@ static PIECE: KeywordDoc = doc!(
     "piece",
     "one file's one composition",
     "A piece is one composition: everything a single file says about one work — its title, its starting tempo, \
-     meter, and key, its score, and its studio. Every `.musa` file that is not a `library` holds exactly one.\n\n\
+     meter, and key, its score, and its studio. A file holds at most one, and it comes last: whatever a file \
+     declares before it — imports, values, functions, types, motifs — is the piece's lexical root, and a file that \
+     stops before reaching one exports those declarations for other files to import.\n\n\
      ```musa\npiece \"Ruchenitsa\" { meter 7/8; score { … } }\n```"
-);
-static LIBRARY: KeywordDoc = doc!(
-    "library",
-    "declarations other pieces can import",
-    "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files \
-     rather than played itself. A piece brings one in with `import \"path\";` and then speaks its names as its own.\n\n\
-     ```musa\nlibrary { motif sigh(root: Pitch) { … } }\n```"
 );
 static TEMPO: KeywordDoc = doc!(
     "tempo",
@@ -781,7 +776,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::ImplKw => &IMPL,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
-        SyntaxKind::LibraryKw => &LIBRARY,
         SyntaxKind::TempoKw => &TEMPO,
         SyntaxKind::MeterKw => &METER,
         SyntaxKind::KeyKw => &KEY,
@@ -942,7 +936,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::Position
         | SyntaxKind::PitchClass
         | SyntaxKind::ChordSymbol
-        | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt
         | SyntaxKind::SyntaxRegion
         | SyntaxKind::SyntaxGroup
@@ -1071,7 +1064,6 @@ mod tests {
     fn every_doc_spelling_round_trips_through_the_lexer() {
         let kinds = [
             SyntaxKind::PieceKw,
-            SyntaxKind::LibraryKw,
             SyntaxKind::TempoKw,
             SyntaxKind::MeterKw,
             SyntaxKind::KeyKw,

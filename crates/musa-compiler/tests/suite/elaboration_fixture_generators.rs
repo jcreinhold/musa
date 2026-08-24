@@ -116,7 +116,7 @@ fn higher_order_shape() -> String {
 }
 
 fn declaration_library(index: usize) -> String {
-    let mut source = String::from("library {\n");
+    let mut source = String::from("\n");
     for item in 0..16 {
         let library = word(index);
         let item = word(item);
@@ -125,7 +125,7 @@ fn declaration_library(index: usize) -> String {
             "    motif imported_{library}_{item}() {{ c4/4 d4/4 e4/4 f4/4 }}"
         );
     }
-    source.push_str("}\n");
+    source.push('\n');
     source
 }
 

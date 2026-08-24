@@ -11,7 +11,7 @@
 //!
 //! Invariants: [`TypesetResult::mei`] is present exactly when the source
 //! compiles to a score with no error-severity diagnostics; a material
-//! document (`library { … }`) yields `mei: None` with no error, because "no
+//! document (declarations and no `piece`) yields `mei: None` with no error, because "no
 //! score ever" is not a failure; spans are byte offsets — line/column is the
 //! display layer's job, computed from source the page already holds.
 

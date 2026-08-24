@@ -124,7 +124,7 @@ fn collect<'a>(raw: &'a Raw, found: &mut Vec<&'a Raw>) {
 /// context and checks nothing, which is [`crate::lower::laws`]'s own arrangement
 /// and the reason a law can write one program instead of a whole piece.
 fn read(written: &str) -> Read {
-    let root = parsed(&format!("library {{ fn probe() -> Nat {{ {written} }} }}"));
+    let root = parsed(&format!(" fn probe() -> Nat {{ {written} }} "));
     let node = first(&root, SyntaxKind::MusicExpr);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -137,7 +137,7 @@ fn read(written: &str) -> Read {
 
 /// The declaration `written` lowers to.
 fn declared(written: &str, wanted: SyntaxKind) -> (Option<Item>, Vec<Diagnostic>) {
-    let root = parsed(&format!("library {{ {written} }}"));
+    let root = parsed(&format!(" {written} "));
     let node = first(&root, wanted);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();

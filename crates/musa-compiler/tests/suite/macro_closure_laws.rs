@@ -260,7 +260,7 @@ const PROBE: &str = "probe::adapter";
 
 /// A readable adapter module holding `body`.
 fn probe(body: &str) -> String {
-    format!("library {{\n    let level = \"readable\";\n{body}\n}}\n")
+    format!("\n    let level = \"readable\";\n{body}\n\n")
 }
 
 /// Every error compiling a one-region piece against `module`, whole.

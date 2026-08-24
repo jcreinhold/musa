@@ -78,7 +78,7 @@ fn an_argument_cannot_be_labelled() {
 #[test]
 fn an_imported_core_error_is_located_at_the_local_use() {
     let mut imports = ImportSources::default();
-    imports.insert("broken.musa", "library { let answer: Nat = false; }");
+    imports.insert("broken.musa", " let answer: Nat = false; ");
     let source_text = "piece \"Imported error\" { import \"broken.musa\"; score { part p { voice v { c4/1 } } } }";
     let compilation = compile(
         &SourceDocument::new(source_text, "piece.musa"),

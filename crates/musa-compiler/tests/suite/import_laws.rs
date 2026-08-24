@@ -59,7 +59,7 @@ fn snapshot(compilation: Compilation) -> ScoreSnapshot {
         .unwrap_or_else(|| panic!("expected a snapshot; errors: {messages:?}"))
 }
 
-const MOTIFS: &str = "library { motif rise() { c5/4 d5/4 e5/4 g5/4 } }";
+const MOTIFS: &str = " motif rise() { c5/4 d5/4 e5/4 g5/4 } ";
 
 fn piece(body: &str) -> String {
     format!(
@@ -121,7 +121,7 @@ fn a_file_reached_twice_is_read_once() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"lib.musa\"; import \"also.musa\";"),
-        &[("lib.musa", MOTIFS), ("also.musa", "library { import \"lib.musa\"; }")],
+        &[("lib.musa", MOTIFS), ("also.musa", " import \"lib.musa\"; ")],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
     assert_eq!(snapshot(compilation).motifs().len(), 1, "one declaration, not two");
@@ -134,10 +134,7 @@ fn an_import_cycle_is_reported_with_its_files() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"a.musa\";"),
-        &[
-            ("a.musa", "library { import \"b.musa\"; }"),
-            ("b.musa", "library { import \"a.musa\"; }"),
-        ],
+        &[("a.musa", " import \"b.musa\"; "), ("b.musa", " import \"a.musa\"; ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -164,7 +161,7 @@ fn a_missing_import_names_the_path_it_looked_for() {
 ///
 /// Small on purpose — what is under test is which file the import found, not
 /// what the module in it does, so the module does as little as a module can.
-const ECHO: &str = "library {\n    let level = \"readable\";\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };\n}\n";
+const ECHO: &str = "\n    let level = \"readable\";\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };\n\n";
 
 /// A syntax import resolves by the path its statement *has*, and a path in
 /// quotes is the path without them.
@@ -205,8 +202,8 @@ fn a_syntax_import_written_in_quotes_reads_the_module_at_that_path() {
     );
 }
 
-/// An imported file is a `library`. A piece in one is rejected — the point of
-/// the rule is that a score cannot be imported and silently ignored.
+/// An imported file declares no piece. A piece in one is rejected — the point
+/// of the rule is that a score cannot be imported and silently ignored.
 #[test]
 fn a_piece_cannot_be_imported() {
     let compilation = compile_with(
@@ -219,10 +216,8 @@ fn a_piece_cannot_be_imported() {
     );
     let messages = errors(&compilation);
     assert!(
-        messages
-            .iter()
-            .any(|message| message.contains("is a piece, not a library")),
-        "expected a library rejection, got {messages:?}"
+        messages.iter().any(|message| message.contains("declares a piece")),
+        "expected a rejection naming the piece, got {messages:?}"
     );
 }
 
@@ -250,10 +245,7 @@ fn a_library_studio_may_not_wire_a_score_it_cannot_see() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"lib.musa\";"),
-        &[(
-            "lib.musa",
-            "library { motif rise() { c5/1 } studio { assign p -> reed; } }",
-        )],
+        &[("lib.musa", " motif rise() { c5/1 } studio { assign p -> reed; } ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -272,7 +264,7 @@ fn a_broken_library_is_reported_by_name() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"lib.musa\";"),
-        &[("lib.musa", "library { motif rise( { c5/1 } }")],
+        &[("lib.musa", " motif rise( { c5/1 } ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -303,14 +295,8 @@ fn two_modules_exporting_one_name_are_both_named() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\";"),
         &[
-            (
-                "a.musa",
-                "library { fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } }",
-            ),
-            (
-                "b.musa",
-                "library { fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } }",
-            ),
+            ("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } "),
+            ("b.musa", " fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } "),
         ],
     );
     let messages = errors(&compilation);
@@ -330,14 +316,8 @@ fn an_alias_resolves_a_collision_by_qualifying_one_import() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\" as low; motif fall() { use low.rise(); }"),
         &[
-            (
-                "a.musa",
-                "library { fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } }",
-            ),
-            (
-                "b.musa",
-                "library { fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } }",
-            ),
+            ("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } "),
+            ("b.musa", " fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } "),
         ],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
@@ -355,10 +335,7 @@ fn a_qualified_import_does_not_also_bind_flat() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"a.musa\" as high; motif fall() { use rise(); }"),
-        &[(
-            "a.musa",
-            "library { fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } }",
-        )],
+        &[("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -389,7 +366,7 @@ fn a_private_definition_is_out_of_reach_across_an_import_and_the_refusal_names_t
     let compilation = compile_with(
         "p.musa",
         &document("import \"lib.musa\";\nlet borrowed: Nat = held;"),
-        &[("lib.musa", "library { private let held: Nat = 3; }")],
+        &[("lib.musa", " private let held: Nat = 3; ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -412,11 +389,11 @@ fn a_private_definition_is_out_of_reach_across_an_import_and_the_refusal_names_t
 /// below marks its one case and the type stays public.
 #[test]
 fn a_private_case_lets_the_type_cross_the_import_and_keeps_the_constructor_home() {
-    const SEALED: &str = "library {
+    const SEALED: &str = "
         enum Register { private Made(Nat) }
         fn made(count: Nat) -> Register { Register::Made(count) }
         fn count_of(register: Register) -> Nat { match register { Register::Made(count) -> count } }
-    }";
+    ";
     let reached = compile_with(
         "p.musa",
         &document("import \"lib.musa\";\nlet mine: Register = made(3);\nlet counted: Nat = count_of(mine);"),
@@ -450,10 +427,7 @@ fn a_private_declaration_is_an_ordinary_name_inside_its_own_file() {
     let compilation = compile_with(
         "p.musa",
         &document("import \"lib.musa\";\nlet borrowed: Nat = doubled;"),
-        &[(
-            "lib.musa",
-            "library { private let held: Nat = 3; let doubled: Nat = held; }",
-        )],
+        &[("lib.musa", " private let held: Nat = 3; let doubled: Nat = held; ")],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
 }
@@ -486,7 +460,7 @@ fn an_aliased_import_hides_what_the_bare_one_hides() {
     let compilation = compile_with(
         "p.musa",
         &document("import \"lib.musa\" as low;\nlet borrowed: Nat = low.held;"),
-        &[("lib.musa", "library { private let held: Nat = 3; }")],
+        &[("lib.musa", " private let held: Nat = 3; ")],
     );
     let messages = errors(&compilation);
     assert!(

@@ -2086,61 +2086,6 @@
     }
   },
   {
-    "type": "library_declaration",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "data_declaration",
-          "named": true
-        },
-        {
-          "type": "enum_declaration",
-          "named": true
-        },
-        {
-          "type": "fragment_declaration",
-          "named": true
-        },
-        {
-          "type": "function_declaration",
-          "named": true
-        },
-        {
-          "type": "impl_declaration",
-          "named": true
-        },
-        {
-          "type": "import_statement",
-          "named": true
-        },
-        {
-          "type": "let_declaration",
-          "named": true
-        },
-        {
-          "type": "motif_declaration",
-          "named": true
-        },
-        {
-          "type": "performance_declaration",
-          "named": true
-        },
-        {
-          "type": "record_declaration",
-          "named": true
-        },
-        {
-          "type": "studio_declaration",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "list_expression",
     "named": true,
     "fields": {},
@@ -4162,7 +4107,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "data_declaration",
@@ -4174,6 +4119,10 @@
         },
         {
           "type": "events_document",
+          "named": true
+        },
+        {
+          "type": "fragment_declaration",
           "named": true
         },
         {
@@ -4193,11 +4142,15 @@
           "named": true
         },
         {
-          "type": "library_declaration",
+          "type": "mod_declaration",
           "named": true
         },
         {
-          "type": "mod_declaration",
+          "type": "motif_declaration",
+          "named": true
+        },
+        {
+          "type": "performance_declaration",
           "named": true
         },
         {
@@ -4206,6 +4159,10 @@
         },
         {
           "type": "record_declaration",
+          "named": true
+        },
+        {
+          "type": "studio_declaration",
           "named": true
         }
       ]
@@ -5214,10 +5171,6 @@
   },
   {
     "type": "let",
-    "named": false
-  },
-  {
-    "type": "library",
     "named": false
   },
   {

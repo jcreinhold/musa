@@ -207,9 +207,9 @@ fn material_is_marked_in_use_by_the_piece_in_hand() -> Result {
     std::fs::write(dir.path().join("musa.toml"), "[project]\nname = \"Set\"\n")?;
     std::fs::write(
         dir.path().join("library/used.musa"),
-        "library {\n    motif rise() {\n        c4/4\n    }\n}\n",
+        "\n    motif rise() {\n        c4/4\n    }\n\n",
     )?;
-    std::fs::write(dir.path().join("library/spare.musa"), "library {\n}\n")?;
+    std::fs::write(dir.path().join("library/spare.musa"), "\n\n")?;
     std::fs::write(
         dir.path().join("pieces/draws.musa"),
         "piece \"Draws\" {\n    import \"../library/used.musa\";\n    score {\n        part p {\n            voice v {\n                use rise();\n            }\n        }\n    }\n}\n",

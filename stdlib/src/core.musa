@@ -1,26 +1,24 @@
-library {
-    // Return an exact rational unchanged. This is useful when a public API
-    // wants to say explicitly that it preserves a proportion.
-    fn identity_ratio(value: Ratio) -> Ratio { value }
+// Return an exact rational unchanged. This is useful when a public API
+// wants to say explicitly that it preserves a proportion.
+fn identity_ratio(value: Ratio) -> Ratio { value }
 
-    // Return a natural number unchanged.
-    fn identity_nat(value: Nat) -> Nat { value }
+// Return a natural number unchanged.
+fn identity_nat(value: Nat) -> Nat { value }
 
-    // Apply `before`, then `after`. The composition is the answer, not a
-    // value it was applied to: `compose(f, g)` names the function, and
-    // `compose(f, g)(x)` runs it.
-    fn compose<A, B, C>(after: B -> C, before: A -> B) -> A -> C {
-        fn (value) { after(before(value)) }
-    }
+// Apply `before`, then `after`. The composition is the answer, not a
+// value it was applied to: `compose(f, g)` names the function, and
+// `compose(f, g)(x)` runs it.
+fn compose<A, B, C>(after: B -> C, before: A -> B) -> A -> C {
+    fn (value) { after(before(value)) }
+}
 
-    // Apply the second musical transformation, then the first.
-    fn compose_music(
-        first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-        second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-    ) -> EventTrack<WrittenTime> -> EventTrack<WrittenTime> { compose(first, second) }
+// Apply the second musical transformation, then the first.
+fn compose_music(
+    first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
+    second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
+) -> EventTrack<WrittenTime> -> EventTrack<WrittenTime> { compose(first, second) }
 
-    // Apply the second pitch function, then the first.
-    fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch) -> Pitch -> Pitch {
-        compose(first, second)
-    }
+// Apply the second pitch function, then the first.
+fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch) -> Pitch -> Pitch {
+    compose(first, second)
 }

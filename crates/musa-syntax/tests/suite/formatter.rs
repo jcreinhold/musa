@@ -542,7 +542,7 @@ fn a_function_body_keeps_its_line_until_it_cannot() {
 #[test]
 fn a_match_arms_braced_body_keeps_its_comma_on_its_line() {
     let source = concat!(
-        "library {\n",
+        "\n",
         "fn plain(written: Clef) -> Text {\n",
         "match written {\n",
         "Treble -> { text_join([\"a\", \"b\"]) },\n",
@@ -551,23 +551,23 @@ fn a_match_arms_braced_body_keeps_its_comma_on_its_line() {
         "text_join([opening, \"b\", \"c\", \"d\", \"and one more after that\"])\n",
         "},\n",
         "Bass -> { text_join([\"c\", \"d\"]) }\n",
-        "}\n}\n}\n",
+        "}\n}\n\n",
     );
     let formatted = fmt(source);
     assert!(
-        formatted.contains("            Treble -> { text_join([\"a\", \"b\"]) },\n"),
+        formatted.contains("        Treble -> { text_join([\"a\", \"b\"]) },\n"),
         "a body that fits keeps its comma:\n{formatted}"
     );
     assert!(
-        formatted.contains("            },\n            Bass ->"),
+        formatted.contains("        },\n        Bass ->"),
         "and so does one that stacked:\n{formatted}"
     );
     assert!(
-        !formatted.contains("\n            ,"),
+        !formatted.contains("\n        ,"),
         "no comma is stranded on a line of its own:\n{formatted}"
     );
     assert!(
-        formatted.contains("            Bass -> { text_join([\"c\", \"d\"]) }\n        }\n"),
+        formatted.contains("        Bass -> { text_join([\"c\", \"d\"]) }\n    }\n"),
         "the last arm has no comma, so the match's brace takes the line:\n{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotent");
@@ -596,17 +596,16 @@ fn a_music_body_stacks_however_short_it_is() {
 /// which are one word's worth of a line each, and stay horizontal.
 #[test]
 fn a_declaration_writes_one_constructor_to_a_line() {
-    let source = "library {\ndata Shape { Silence, Sounded(sounded: Pitch, held: Duration), Then(first: Shape, second: Shape) }\n}\n";
+    let source =
+        "\ndata Shape { Silence, Sounded(sounded: Pitch, held: Duration), Then(first: Shape, second: Shape) }\n\n";
     let formatted = fmt(source);
     assert_eq!(
         formatted,
         concat!(
-            "library {\n",
-            "    data Shape {\n",
-            "        Silence,\n",
-            "        Sounded(sounded: Pitch, held: Duration),\n",
-            "        Then(first: Shape, second: Shape)\n",
-            "    }\n",
+            "data Shape {\n",
+            "    Silence,\n",
+            "    Sounded(sounded: Pitch, held: Duration),\n",
+            "    Then(first: Shape, second: Shape)\n",
             "}\n",
         ),
         "{formatted}"
@@ -619,17 +618,11 @@ fn a_declaration_writes_one_constructor_to_a_line() {
 /// `Pair <A, B>` — and a declaration with one constructor is still a list.
 #[test]
 fn a_parameterized_declaration_keeps_its_parameters_on_its_name() {
-    let source = "library {\ndata Pair < A , B > { Both ( left : A , right : B ) , }\n}\n";
+    let source = "\ndata Pair < A , B > { Both ( left : A , right : B ) , }\n\n";
     let formatted = fmt(source);
     assert_eq!(
         formatted,
-        concat!(
-            "library {\n",
-            "    data Pair<A, B> {\n",
-            "        Both(left: A, right: B),\n",
-            "    }\n",
-            "}\n",
-        ),
+        concat!("data Pair<A, B> {\n", "    Both(left: A, right: B),\n", "}\n",),
         "{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotent");
@@ -651,24 +644,24 @@ fn widest_line(text: &str) -> usize {
 #[test]
 fn a_constructor_too_wide_for_its_line_stacks_its_fields() {
     let source = concat!(
-        "library {\n",
+        "\n",
         "data Staff {\n",
         "Bar(anchor: Nat, beats: Meter),\n",
         "Document(instrument: Text, sounding_shift: Interval, written_clef: Clef, ",
         "written_key: Key, beats: Meter, spelling: Spelling, items: StaffItem,),\n",
-        "}\n}\n",
+        "}\n\n",
     );
     let formatted = fmt(source);
     assert!(
-        formatted.contains("        Bar(anchor: Nat, beats: Meter),\n"),
+        formatted.contains("    Bar(anchor: Nat, beats: Meter),\n"),
         "a constructor that fits keeps its line:\n{formatted}"
     );
     assert!(
-        formatted.contains("        Document(\n            instrument: Text,\n"),
+        formatted.contains("    Document(\n        instrument: Text,\n"),
         "and one that does not takes a line per field:\n{formatted}"
     );
     assert!(
-        formatted.contains("            items: StaffItem,\n        ),\n"),
+        formatted.contains("        items: StaffItem,\n    ),\n"),
         "with the closing paren back at the constructor's own indent:\n{formatted}"
     );
     assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
@@ -683,18 +676,18 @@ fn a_constructor_too_wide_for_its_line_stacks_its_fields() {
 #[test]
 fn a_parameter_list_is_measured_with_what_follows_it() {
     let source = concat!(
-        "library {\n",
+        "\n",
         "fn rescaled(factor: Ratio, here: Position<WrittenTime>, point: Position<WrittenTime>,) ",
         "-> Result<Position<WrittenTime>, Text> { point }\n",
-        "}\n",
+        "\n",
     );
     let formatted = fmt(source);
     assert!(
-        formatted.contains("    fn rescaled(\n        factor: Ratio,\n"),
+        formatted.contains("fn rescaled(\n    factor: Ratio,\n"),
         "the head is too long for one line, so its parameters stack:\n{formatted}"
     );
     assert!(
-        formatted.contains("    ) -> Result<Position<WrittenTime>, Text> { point }\n"),
+        formatted.contains(") -> Result<Position<WrittenTime>, Text> { point }\n"),
         "and the return type stays with the paren that closes them:\n{formatted}"
     );
     assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
@@ -707,12 +700,9 @@ fn a_parameter_list_is_measured_with_what_follows_it() {
 /// a gap with nothing on either side of it.
 #[test]
 fn a_joined_list_drops_the_comma_that_held_it_open() {
-    let source = "library {\ndata Meter {\nBeats(count: Nat, unit: Nat,),\n}\n}\n";
+    let source = "\ndata Meter {\nBeats(count: Nat, unit: Nat,),\n}\n\n";
     let formatted = fmt(source);
-    assert!(
-        formatted.contains("        Beats(count: Nat, unit: Nat),\n"),
-        "{formatted}"
-    );
+    assert!(formatted.contains("    Beats(count: Nat, unit: Nat),\n"), "{formatted}");
     // The comma after the *variant* is the declaration's, not the list's: it
     // separates this variant from the next one that could be written under it.
     assert_eq!(fmt(&formatted), formatted, "idempotent");
@@ -731,13 +721,13 @@ fn a_joined_list_drops_the_comma_that_held_it_open() {
 #[test]
 fn a_broken_list_ends_with_a_comma_however_short_its_last_item_is() {
     let call = concat!(
-        "widening(a_long_enough_first_argument_here, ",
+        "widening(a_long_enough_first_argument_right_here, ",
         "a_long_enough_second_argument_as_well_here, c)"
     );
-    let source = format!("library {{\nfn a() -> Nat {{ {call} }}\n}}\n");
+    let source = format!("\nfn a() -> Nat {{ {call} }}\n\n");
     let formatted = fmt(&source);
     assert!(
-        formatted.contains("            a_long_enough_second_argument_as_well_here,\n            c,\n        )\n"),
+        formatted.contains("        a_long_enough_second_argument_as_well_here,\n        c,\n    )\n"),
         "the list is too wide for one line, so it stacks and its last item takes a comma:\n{formatted}"
     );
     // And the same list with the comma already written formats identically:
@@ -756,11 +746,11 @@ fn a_broken_list_ends_with_a_comma_however_short_its_last_item_is() {
 #[test]
 fn a_trailing_bracket_opens_on_the_line_of_its_call() {
     let source = concat!(
-        "library {\n",
+        "\n",
         "let tree: Syntax = syntax_group(syntax_built(here, 9, 0), \"parentheses\", [",
         "syntax_identifier(syntax_built(here, 4, 0), \"repeat\"), ",
         "syntax_token(syntax_built(here, 8, 0), \"Integer\", \"2\")]);\n",
-        "}\n",
+        "\n",
     );
     let formatted = fmt(source);
     assert!(
@@ -768,7 +758,7 @@ fn a_trailing_bracket_opens_on_the_line_of_its_call() {
         "the call keeps its line and the bracket opens on it:\n{formatted}"
     );
     assert!(
-        formatted.contains("\n    ]);\n"),
+        formatted.contains("\n]);\n"),
         "and the bracket closes at the indent the call started at:\n{formatted}"
     );
     assert!(widest_line(&formatted) <= MEASURE, "{formatted}");

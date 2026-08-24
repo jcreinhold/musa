@@ -123,7 +123,6 @@ token_kinds!(
     PhraseKw,
     SectionKw,
     HarmonyKw,
-    LibraryKw,
     CrescendoKw,
     DiminuendoKw,
     ToKw,

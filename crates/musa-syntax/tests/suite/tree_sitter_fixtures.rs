@@ -178,7 +178,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::PhraseKw => "phrase",
         SyntaxKind::SectionKw => "section",
         SyntaxKind::HarmonyKw => "harmony",
-        SyntaxKind::LibraryKw => "library",
         SyntaxKind::CrescendoKw => "crescendo",
         SyntaxKind::DiminuendoKw => "diminuendo",
         SyntaxKind::ToKw => "to",
@@ -257,7 +256,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::Position
         | SyntaxKind::PitchClass
         | SyntaxKind::ChordSymbol
-        | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt
         | SyntaxKind::HairpinStmt
         | SyntaxKind::Duration

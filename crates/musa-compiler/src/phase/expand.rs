@@ -77,7 +77,7 @@ pub(crate) fn expand_region(
 ) -> Result<crate::quote::Syntax, ExpansionFailure> {
     let subject = crate::quote::read_region(&musa_syntax::parse(region).syntax(), expansion);
     expand_syntax(
-        &format!("library {{\n    let level = \"readable\";\n\n    let expand = {transformer};\n}}\n"),
+        &format!("\n    let level = \"readable\";\n\n    let expand = {transformer};\n\n"),
         PhaseImports::bundled(),
         &subject,
     )

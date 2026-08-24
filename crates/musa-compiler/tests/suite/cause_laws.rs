@@ -41,7 +41,7 @@ const SOUND: &str = "probe::sound";
 /// needs a `NodePath`, and the only place one comes from is a traversal.
 fn module(emit: &str) -> String {
     format!(
-        "library {{
+        "
     let level = \"readable\";
 {emit}
     let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
@@ -55,7 +55,7 @@ fn module(emit: &str) -> String {
             region,
         )
     }};
-}}
+
 "
     )
 }

@@ -2,559 +2,546 @@
 data declarations, folds, and records
 ==================
 
-library {
-  data Shape {
-    Silence,
-    Sounded(sounded: Pitch, held: Duration),
-    Then(first: Shape, second: Shape),
-  }
-
-  data Pair<A, B> {
-    Both(left: A, right: B),
-  }
-
-  fn describe(shape: Shape) -> Nat {
-    match shape {
-      Silence -> 0,
-      Sounded(heard, lasting) -> 1,
-      Then(before, after) -> 2,
-    }
-  }
-
-  fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
+data Shape {
+  Silence,
+  Sounded(sounded: Pitch, held: Duration),
+  Then(first: Shape, second: Shape),
 }
+
+data Pair<A, B> {
+  Both(left: A, right: B),
+}
+
+fn describe(shape: Shape) -> Nat {
+  match shape {
+    Silence -> 0,
+    Sounded(heard, lasting) -> 1,
+    Then(before, after) -> 2,
+  }
+}
+
+fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
 
 ---
 
 (source_file
-  (library_declaration
-    (data_declaration
+  (data_declaration
+    (identifier)
+    (data_variant
+      (identifier))
+    (data_variant
       (identifier)
-      (data_variant
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (data_variant
+      (identifier)
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))))
+  (data_declaration
+    (identifier)
+    (type_parameter_list
+      (type_parameter
         (identifier))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (data_declaration
+      (type_parameter
+        (identifier)))
+    (data_variant
       (identifier)
-      (type_parameter_list
-        (type_parameter
-          (identifier))
-        (type_parameter
-          (identifier)))
-      (data_variant
+      (data_field
         (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
+        (type_expression
+          (type_name
+            (identifier))))
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (identifier))
             (expression
-              (name_expression
+              (literal_expression
+                (integer))))
+          (match_arm
+            (pattern
+              (identifier)
+              (pattern
+                (identifier))
+              (pattern
                 (identifier)))
-            (match_arm
+            (expression
+              (literal_expression
+                (integer))))
+          (match_arm
+            (pattern
+              (identifier)
               (pattern
                 (identifier))
-              (expression
-                (literal_expression
-                  (integer))))
-            (match_arm
               (pattern
-                (identifier)
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression
-                  (integer))))
-            (match_arm
-              (pattern
-                (identifier)
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
+                (identifier)))
+            (expression
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
+            (type_name
+              (identifier))
+            (type_expression
               (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (name_expression
-            (identifier)
-            (identifier)))))))
+                (identifier)))
+            (type_expression
+              (type_name
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (name_expression
+          (identifier)
+          (identifier))))))
 
 ==================
 a sub-position holds another pattern
 ==================
 
-library {
-  data Dynamic {
-    Quiet,
-    Loud(level: Nat),
-  }
+data Dynamic {
+  Quiet,
+  Loud(level: Nat),
+}
 
-  data Wrapper {
-    Wrap(held: Dynamic),
-  }
+data Wrapper {
+  Wrap(held: Dynamic),
+}
 
-  record Marking {
-    written: Dynamic;
-  }
+record Marking {
+  written: Dynamic;
+}
 
-  fn loudness(wrapped: Wrapper) -> Nat {
-    match wrapped {
-      Wrap(Loud(level)) -> level,
-      Wrap(Quiet) -> 0,
-    }
+fn loudness(wrapped: Wrapper) -> Nat {
+  match wrapped {
+    Wrap(Loud(level)) -> level,
+    Wrap(Quiet) -> 0,
   }
+}
 
-  fn opening(dynamics: List<Dynamic>) -> Nat {
-    match dynamics {
-      [] -> 0,
-      [Loud(level), .. others] -> level,
-      [Quiet, .. others] -> 0,
-    }
+fn opening(dynamics: List<Dynamic>) -> Nat {
+  match dynamics {
+    [] -> 0,
+    [Loud(level), .. others] -> level,
+    [Quiet, .. others] -> 0,
   }
+}
 
-  fn marked(marking: Marking) -> Nat {
-    match marking {
-      Marking { written = Loud(level) } -> level,
-      Marking { written = Quiet } -> 0,
-    }
+fn marked(marking: Marking) -> Nat {
+  match marking {
+    Marking { written = Loud(level) } -> level,
+    Marking { written = Quiet } -> 0,
   }
+}
 
-  fn paired(both: Pair<Dynamic, Nat>) -> Nat {
-    match both {
-      (Loud(level), after) -> level,
-      (Quiet, after) -> after,
-    }
+fn paired(both: Pair<Dynamic, Nat>) -> Nat {
+  match both {
+    (Loud(level), after) -> level,
+    (Quiet, after) -> after,
   }
+}
 
-  fn held(maybe: Option<Dynamic>) -> Nat {
-    match maybe {
-      Some(Loud(level)) -> level,
-      Some(Quiet) -> 0,
-      None -> 0,
-    }
+fn held(maybe: Option<Dynamic>) -> Nat {
+  match maybe {
+    Some(Loud(level)) -> level,
+    Some(Quiet) -> 0,
+    None -> 0,
   }
 }
 
 ---
 
 (source_file
-  (library_declaration
-    (data_declaration
+  (data_declaration
+    (identifier)
+    (data_variant
+      (identifier))
+    (data_variant
       (identifier)
-      (data_variant
-        (identifier))
-      (data_variant
+      (data_field
         (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (data_declaration
+        (type_expression
+          (type_name
+            (identifier))))))
+  (data_declaration
+    (identifier)
+    (data_variant
       (identifier)
-      (data_variant
+      (data_field
         (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (record_declaration
+        (type_expression
+          (type_name
+            (identifier))))))
+  (record_declaration
+    (identifier)
+    (field_declaration
       (identifier)
-      (field_declaration
+      (type_expression
+        (type_name
+          (identifier)))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
         (identifier)
         (type_expression
           (type_name
             (identifier)))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (identifier)
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier))))
             (expression
               (name_expression
+                (identifier))))
+          (match_arm
+            (pattern
+              (identifier)
+              (pattern
                 (identifier)))
-            (match_arm
-              (pattern
-                (identifier)
-                (pattern
-                  (identifier)
-                  (pattern
-                    (identifier))))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
-              (pattern
-                (identifier)
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (list_type
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
             (expression
-              (name_expression
-                (identifier)))
-            (match_arm
-              (pattern)
-              (expression
-                (literal_expression
-                  (integer))))
-            (match_arm
-              (pattern
-                (pattern
-                  (identifier)
-                  (pattern
-                    (identifier)))
-                (pattern
-                  (identifier)))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
-              (pattern
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
-            (expression
-              (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (identifier)
-                (record_pattern
-                  (field_pattern
-                    (identifier)
-                    (pattern
-                      (identifier)
-                      (pattern
-                        (identifier))))))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
-              (pattern
-                (identifier)
-                (record_pattern
-                  (field_pattern
-                    (identifier)
-                    (pattern
-                      (identifier)))))
-              (expression
-                (literal_expression
-                  (integer))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (list_type
+            (type_expression
               (type_name
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern)
+            (expression
+              (literal_expression
+                (integer))))
+          (match_arm
+            (pattern
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier)))
+              (pattern
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))
+          (match_arm
+            (pattern
+              (pattern
                 (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
-            (expression
-              (name_expression
-                (identifier)))
-            (match_arm
               (pattern
-                (pattern
+                (identifier)))
+            (expression
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (identifier)
+              (record_pattern
+                (field_pattern
                   (identifier)
                   (pattern
-                    (identifier)))
-                (pattern
-                  (identifier)))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
-              (pattern
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (name_expression
-                  (identifier))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (option_type
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
+                    (identifier)
+                    (pattern
+                      (identifier))))))
             (expression
               (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (pattern
+                (identifier))))
+          (match_arm
+            (pattern
+              (identifier)
+              (record_pattern
+                (field_pattern
                   (identifier)
                   (pattern
-                    (identifier))))
-              (expression
-                (name_expression
-                  (identifier))))
-            (match_arm
+                    (identifier)))))
+            (expression
+              (literal_expression
+                (integer))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
+            (type_name
+              (identifier))
+            (type_expression
+              (type_name
+                (identifier)))
+            (type_expression
+              (type_name
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
               (pattern
+                (identifier)
                 (pattern
                   (identifier)))
-              (expression
-                (literal_expression
-                  (integer))))
-            (match_arm
-              (pattern)
-              (expression
-                (literal_expression
-                  (integer))))))))))
+              (pattern
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))
+          (match_arm
+            (pattern
+              (pattern
+                (identifier))
+              (pattern
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (option_type
+            (type_expression
+              (type_name
+                (identifier)))))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier))))
+            (expression
+              (name_expression
+                (identifier))))
+          (match_arm
+            (pattern
+              (pattern
+                (identifier)))
+            (expression
+              (literal_expression
+                (integer))))
+          (match_arm
+            (pattern)
+            (expression
+              (literal_expression
+                (integer)))))))))
 
 ==================
 one arm for several constructors
 ==================
 
-library {
-  data Clef { Treble, Bass, Alto, Tenor }
-  data Form { Slurred, Grouped(played: Nat), Looped(times: Nat), Volta(pass: Nat) }
+data Clef { Treble, Bass, Alto, Tenor }
+data Form { Slurred, Grouped(played: Nat), Looped(times: Nat), Volta(pass: Nat) }
 
-  fn low(written: Clef) -> Bool {
-    match written {
-      Bass | Tenor -> true,
-      Treble | Alto -> false,
-    }
+fn low(written: Clef) -> Bool {
+  match written {
+    Bass | Tenor -> true,
+    Treble | Alto -> false,
   }
+}
 
-  fn plain(form: Form) -> Bool {
-    match form {
-      Slurred | Grouped(_) | Looped(_) | Volta(_) -> true,
-    }
+fn plain(form: Form) -> Bool {
+  match form {
+    Slurred | Grouped(_) | Looped(_) | Volta(_) -> true,
   }
 }
 
 ---
 
 (source_file
-  (library_declaration
-    (data_declaration
+  (data_declaration
+    (identifier)
+    (data_variant
+      (identifier))
+    (data_variant
+      (identifier))
+    (data_variant
+      (identifier))
+    (data_variant
+      (identifier)))
+  (data_declaration
+    (identifier)
+    (data_variant
+      (identifier))
+    (data_variant
       (identifier)
-      (data_variant
-        (identifier))
-      (data_variant
-        (identifier))
-      (data_variant
-        (identifier))
-      (data_variant
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (data_variant
+      (identifier)
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (data_variant
+      (identifier)
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
         (identifier)))
-    (data_declaration
-      (identifier)
-      (data_variant
-        (identifier))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (data_variant
-        (identifier)
-        (data_field
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
-            (expression
-              (name_expression
-                (identifier)))
-            (match_arm
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
               (pattern
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression)))
-            (match_arm
+                (identifier))
               (pattern
-                (pattern
-                  (identifier))
-                (pattern
-                  (identifier)))
-              (expression
-                (literal_expression)))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier)))))
-      (type_expression
-        (type_name
-          (identifier)))
-      (block_expression
-        (expression
-          (match_expression
-            (expression
-              (name_expression
                 (identifier)))
-            (match_arm
+            (expression
+              (literal_expression)))
+          (match_arm
+            (pattern
+              (pattern
+                (identifier))
+              (pattern
+                (identifier)))
+            (expression
+              (literal_expression)))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (type_name
+        (identifier)))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
               (pattern
                 (pattern
                   (pattern
-                    (pattern
-                      (identifier))
-                    (pattern
-                      (identifier)
-                      (pattern
-                        (identifier))))
+                    (identifier))
                   (pattern
                     (identifier)
                     (pattern
@@ -563,5 +550,9 @@ library {
                   (identifier)
                   (pattern
                     (identifier))))
-              (expression
-                (literal_expression)))))))))
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier))))
+            (expression
+              (literal_expression))))))))

@@ -1,236 +1,232 @@
-library {
-    import std::list;
+import std::list;
 
-    // The three structures the musical domains share, named once.
-    //
-    // Every one of them was already in the library, written by hand under a
-    // different name: `interval_add` and `interval_inverse` are a group, and
-    // `pitch_transposed` beside `pitchclass_transposed` is one action spelled
-    // twice. Naming them is not abstraction for its own sake — it is what lets
-    // a reader recognize in one module the structure they already read in
-    // another, and what stops the same operation acquiring a third spelling in
-    // a fourth place.
-    //
-    // The laws each one is expected to satisfy are prose here and law suites in
-    // `docs/rules/language/05-verification.md` §4. A record in this language
-    // carries fields and never obligations: an obligation needs evidence, and
-    // evidence needs a term witnessing an equality.
-    //
-    // # Why no field below holds a law
-    //
-    // The sentence above was written when there was no evidence to attach.
-    // There is now — prompt 156 made `Equal` declarable and prompt 157 made a
-    // structure an ordinary record, so a field *may* be an equation and a
-    // record literal that does not satisfy it is refused at the literal. Prompt
-    // 163 went looking for one to add and found none. The reason is worth
-    // stating here rather than in a note, because it is a fact about this
-    // module's carriers and someone will otherwise try again:
-    //
-    // **A δ-rule computes on canonical data, so it does not step under a
-    // constructor.** `nat_add` is a compiler builtin — note 61 records why it
-    // stays one — and `x + 0` is stuck for a `x` the checker only knows to be a
-    // `Nat`. Splitting it does not help: the `Succ` arm is stuck too, on
-    // `nat_add (Succ i) 0`. Every operation on every carrier here reaches that
-    // arithmetic before it reaches a normal form — `Cyclic(n)` through
-    // `reduced_in`, `Ti` through `plus_in` and `minus_in`, `Pc(n)` through both
-    // — so a quantified law over any of them has no inhabitant an author can
-    // write, and a field typed by one could never be filled.
-    //
-    // Three things this is *not*, each measured rather than assumed:
-    //
-    // - **Not the record mechanism.** A field whose type mentions an earlier
-    //   field is checked against the field the literal supplied, and a false
-    //   equation is refused there.
-    // - **Not `Equal`, and not the absence of tactics.** Induction goes through
-    //   whenever the operation is written by matching. Writing
-    //   `fn cong<A, B>(f: A -> B, x: A, y: A, same: Equal<A>(x, y)) -> Equal<B>(f(x), f(y))`
-    //   as one `match` on `Refl` type-checks, and with it a proof of
-    //   `plus(x, Zero) = x` by induction on `x` type-checks, for a `plus`
-    //   written the way `number_of` below is.
-    // - **Not the surface's missing named function type.** `(x: G) -> …` does
-    //   not parse, which is a real gap and `std::indexed`'s `row_top` is the
-    //   other evidence for it. It is not this one: a spelling for a field that
-    //   has no inhabitant would have nothing to hold.
-    //
-    // And one thing it is, for `Ti` in particular: the T/I group's laws are
-    // **false** up to `Equal` and true up to `same_operation`. `Ti` is
-    // deliberately not indexed by the cycle, so `Transpose(15)` and
-    // `Transpose(3)` are one operation at twelve and two terms anywhere. A
-    // proposition about labels is the wrong proposition; the `Bool` is the
-    // right one.
-    //
-    // What *does* compute is every closed instance. `ti_compose(12, chromatic,
-    // Transpose(0), Transpose(3))` is `Transpose(3)` by evaluation, and the
-    // `Equal` saying so is inhabited by `Refl` today — which is what the
-    // fixtures in `examples/` are made of. A law is the quantified form of
-    // exactly those, and quantifying is the step that does not survive.
-    //
-    // # Records, and what the operations are
-    //
-    // Each structure is a record, so it is a *value*: a function may take two
-    // groups, return one, or hold one in a list, none of which the interface
-    // these replaced could do. What a record cannot do is decide which
-    // operation a call means — and nothing has to, because the operations live
-    // in each carrier's own namespace. `P5.unit()` is `Interval.unit(P5)` and
-    // `c4.act(M3)` is `Pitch.act(c4, M3)`, each an ordinary definition found by
-    // the head of the receiver's type.
+// The three structures the musical domains share, named once.
+//
+// Every one of them was already in the library, written by hand under a
+// different name: `interval_add` and `interval_inverse` are a group, and
+// `pitch_transposed` beside `pitchclass_transposed` is one action spelled
+// twice. Naming them is not abstraction for its own sake — it is what lets
+// a reader recognize in one module the structure they already read in
+// another, and what stops the same operation acquiring a third spelling in
+// a fourth place.
+//
+// The laws each one is expected to satisfy are prose here and law suites in
+// `docs/rules/language/05-verification.md` §4. A record in this language
+// carries fields and never obligations: an obligation needs evidence, and
+// evidence needs a term witnessing an equality.
+//
+// # Why no field below holds a law
+//
+// The sentence above was written when there was no evidence to attach.
+// There is now — prompt 156 made `Equal` declarable and prompt 157 made a
+// structure an ordinary record, so a field *may* be an equation and a
+// record literal that does not satisfy it is refused at the literal. Prompt
+// 163 went looking for one to add and found none. The reason is worth
+// stating here rather than in a note, because it is a fact about this
+// module's carriers and someone will otherwise try again:
+//
+// **A δ-rule computes on canonical data, so it does not step under a
+// constructor.** `nat_add` is a compiler builtin — note 61 records why it
+// stays one — and `x + 0` is stuck for a `x` the checker only knows to be a
+// `Nat`. Splitting it does not help: the `Succ` arm is stuck too, on
+// `nat_add (Succ i) 0`. Every operation on every carrier here reaches that
+// arithmetic before it reaches a normal form — `Cyclic(n)` through
+// `reduced_in`, `Ti` through `plus_in` and `minus_in`, `Pc(n)` through both
+// — so a quantified law over any of them has no inhabitant an author can
+// write, and a field typed by one could never be filled.
+//
+// Three things this is *not*, each measured rather than assumed:
+//
+// - **Not the record mechanism.** A field whose type mentions an earlier
+//   field is checked against the field the literal supplied, and a false
+//   equation is refused there.
+// - **Not `Equal`, and not the absence of tactics.** Induction goes through
+//   whenever the operation is written by matching. Writing
+//   `fn cong<A, B>(f: A -> B, x: A, y: A, same: Equal<A>(x, y)) -> Equal<B>(f(x), f(y))`
+//   as one `match` on `Refl` type-checks, and with it a proof of
+//   `plus(x, Zero) = x` by induction on `x` type-checks, for a `plus`
+//   written the way `number_of` below is.
+// - **Not the surface's missing named function type.** `(x: G) -> …` does
+//   not parse, which is a real gap and `std::indexed`'s `row_top` is the
+//   other evidence for it. It is not this one: a spelling for a field that
+//   has no inhabitant would have nothing to hold.
+//
+// And one thing it is, for `Ti` in particular: the T/I group's laws are
+// **false** up to `Equal` and true up to `same_operation`. `Ti` is
+// deliberately not indexed by the cycle, so `Transpose(15)` and
+// `Transpose(3)` are one operation at twelve and two terms anywhere. A
+// proposition about labels is the wrong proposition; the `Bool` is the
+// right one.
+//
+// What *does* compute is every closed instance. `ti_compose(12, chromatic,
+// Transpose(0), Transpose(3))` is `Transpose(3)` by evaluation, and the
+// `Equal` saying so is inhabited by `Refl` today — which is what the
+// fixtures in `examples/` are made of. A law is the quantified form of
+// exactly those, and quantifying is the step that does not survive.
+//
+// # Records, and what the operations are
+//
+// Each structure is a record, so it is a *value*: a function may take two
+// groups, return one, or hold one in a list, none of which the interface
+// these replaced could do. What a record cannot do is decide which
+// operation a call means — and nothing has to, because the operations live
+// in each carrier's own namespace. `P5.unit()` is `Interval.unit(P5)` and
+// `c4.act(M3)` is `Pitch.act(c4, M3)`, each an ordinary definition found by
+// the head of the receiver's type.
 
-    // A set with an associative composition, a unit, and inverses.
-    //
-    // Laws: `compose(unit(g), g)` and `compose(g, unit(g))` are `g`; composition
-    // is associative; `compose(g, inverse(g))` is `unit(g)`.
-    //
-    // Not every set of movers is one. A duration composes and has a zero and
-    // has no inverse, because a duration is a length and not a displacement,
-    // and `Action` below is stated so that such a mover is still admitted.
-    //
-    // `unit` takes an element, which looks redundant and is not: the element is
-    // read for its *type* and never for its value, so `P5.unit()` is `P1` and so
-    // is `m2.unit()`. Written as a field it is what a caller of the record
-    // supplies; written as `Interval.unit` it is what `P5.unit()` finds.
-    record Group<G> {
-        // The element that changes nothing.
-        unit: G -> G;
+// A set with an associative composition, a unit, and inverses.
+//
+// Laws: `compose(unit(g), g)` and `compose(g, unit(g))` are `g`; composition
+// is associative; `compose(g, inverse(g))` is `unit(g)`.
+//
+// Not every set of movers is one. A duration composes and has a zero and
+// has no inverse, because a duration is a length and not a displacement,
+// and `Action` below is stated so that such a mover is still admitted.
+//
+// `unit` takes an element, which looks redundant and is not: the element is
+// read for its *type* and never for its value, so `P5.unit()` is `P1` and so
+// is `m2.unit()`. Written as a field it is what a caller of the record
+// supplies; written as `Interval.unit` it is what `P5.unit()` finds.
+record Group<G> {
+    // The element that changes nothing.
+    unit: G -> G;
 
-        // Apply the second, then the first. The order is the one `std::core`'s
-        // `compose` already uses, so a reader who knows that knows this.
-        compose: G -> G -> G;
+    // Apply the second, then the first. The order is the one `std::core`'s
+    // `compose` already uses, so a reader who knows that knows this.
+    compose: G -> G -> G;
 
-        // The element that undoes this one.
-        inverse: G -> G;
-    }
-
-    // A carrier moved by a set of movers.
-    //
-    // Laws: `act(x, unit(g))` is `x`, and `act(x, compose(g, h))` is `act(act(x,
-    // h), g)`. Both are stated over whatever unit and composition the mover
-    // has, so a monoid acting is an action here and not an approximation of
-    // one; where the mover is also a `Group`, the action is invertible and the
-    // second law reads backwards as well as forwards.
-    //
-    // The second law is what makes a transformation an object rather than a
-    // call: if composing two movers and acting once agrees with acting twice,
-    // a chain can be built before anything is applied.
-    //
-    // **The carrier comes first** (`docs/rules/style-guide.md` §6). One mover
-    // moves several carriers — an interval moves both a pitch and a spelled
-    // pitch class — and the carrier is what a reader is asking about, so it is
-    // what the parameter list says first. It is also where `x.act(g)` looks:
-    // the receiver decides which `act` runs.
-    record Action<X, G> {
-        // Move one member of the carrier by one mover.
-        act: X -> G -> X;
-    }
-
-    // A carrier on which the movers act *simply transitively*: every ordered
-    // pair of points is joined by exactly one mover.
-    //
-    // That uniqueness is the whole content, so `difference` is the whole record.
-    // The movement itself is an `Action`'s `act` and is not declared twice; the
-    // law joining them is `act(a, difference(a, b))` is `b`, for every `a` and
-    // `b`.
-    //
-    // **Two points never add.** `a + b` for two pitches or two positions is the
-    // single arithmetic error the point/mover split exists to catch, so there
-    // is no field here that could spell it.
-    record Torsor<P, V> {
-        // The mover carrying `start` to `finish`. Unique — that is the claim.
-        difference: P -> P -> V;
-    }
-
-    // Written musical time, moved by a written length.
-    //
-    // An action and deliberately **not** a torsor: `position_between` refuses a
-    // second position that stands before the first, because a duration is a
-    // length rather than a displacement, so the movers have no inverses and two
-    // positions in the wrong order are joined by nothing. The difference
-    // between a position and a later one is asked for by name —
-    // `position_between` — where the caller can see the order it must supply.
-    //
-    // At written time, and not at clock time. `Position<PhysicalTime>` is a
-    // performance coordinate and the two do not unify, which is roadmap §2's
-    // layer table; a second `act` at that coordinate would be one word claiming
-    // the pair is one structure. The namespace is keyed on `Position` alone, so
-    // the coordinate is written where it belongs — in the signature.
-    impl Position {
-        fn act(
-            subject: Position<WrittenTime>,
-            operation: Duration<WrittenTime>,
-        ) -> Position<WrittenTime> { position_shift(subject, operation) }
-    }
-
-    // # Orbit and stabilizer, once for every finite action
-    //
-    // Two questions a finite group action answers, and the two that
-    // `52-the-musical-algebra.md` §2.3 found three compiler builtins asking one
-    // modulus at a time. A set class is an orbit of pitch-class sets under the
-    // T/I group; Messiaen's modes of limited transposition are exactly the
-    // collections whose stabilizer under transposition is nontrivial; a row's
-    // symmetries are its stabilizer. Written here, once, they are the same two
-    // functions for a bell pattern in a cycle of twelve pulses and for a
-    // twenty-four-tone row.
-    //
-    // Both take the group as a list, because a *finite* action is what makes
-    // them computable at all: `03-musical-domains.md` §5's "what the index buys
-    // is counted, not claimed" is exactly this — once the carrier's size is
-    // known the group can be enumerated, and enumeration is an ordinary fold.
-    //
-    // Both take equality on the carrier as an argument rather than finding it.
-    // A record carries fields and never obligations, so a `Group` that also
-    // promised decidable equality on its carrier would be promising something
-    // no field of it holds; and the caller always has the equality, because the
-    // caller is what knew the carrier was finite.
-
-    // Whether `built` already holds a member equal to `value`.
-    private fn already<X>(same: X -> X -> Bool, built: List<X>, value: X) -> Bool {
-        any(fn (seen: X) -> Bool { same(seen, value) }, built)
-    }
-
-    // `built`, with `value` at its front where it is not already there.
-    //
-    // Prepended, and the fold's answer reversed once at the end. Appending
-    // instead would rebuild the whole list at every new member, which is a
-    // second quadratic on top of the comparison's — and at a division of twelve
-    // the row group has forty-eight members, where a spare quadratic is the step
-    // budget. The order a caller sees is unchanged: the group's own, first
-    // occurrence winning, which is what makes a canonical representative a
-    // question about the answer rather than about this function.
-    private fn adding<X>(same: X -> X -> Bool, built: List<X>, value: X) -> List<X> {
-        if already(same, built, value) {
-            built
-        } else { Cons(value, built) }
-    }
-
-    // The distinct images of `point` under every operation in `group`.
-    //
-    // Order is the group's own, first occurrence winning, and duplicates are
-    // dropped — which is what makes the *length* of this the count that
-    // `row12_forms` was: how many distinct rows the labelled forms produce.
-    fn orbit<X, G>(
-        action: Action<X, G>,
-        same: X -> X -> Bool,
-        group: List<G>,
-        point: X,
-    ) -> List<X> {
-        reverse(
-            group.fold_from_start(
-                [],
-                fn (built: List<X>, by: G) -> List<X> {
-                    adding(same, built, action.act(point, by))
-                },
-            ),
-        )
-    }
-
-    // The operations in `group` that leave `point` where it is.
-    //
-    // Its length times the orbit's is the size of the group, which is the
-    // orbit-stabilizer accounting `110-row-properties.md` asks the four form
-    // labels to do on their own.
-    fn stabilizer<X, G>(
-        action: Action<X, G>,
-        same: X -> X -> Bool,
-        group: List<G>,
-        point: X,
-    ) -> List<G> { filter(fn (by: G) -> Bool { same(action.act(point, by), point) }, group) }
+    // The element that undoes this one.
+    inverse: G -> G;
 }
+
+// A carrier moved by a set of movers.
+//
+// Laws: `act(x, unit(g))` is `x`, and `act(x, compose(g, h))` is `act(act(x,
+// h), g)`. Both are stated over whatever unit and composition the mover
+// has, so a monoid acting is an action here and not an approximation of
+// one; where the mover is also a `Group`, the action is invertible and the
+// second law reads backwards as well as forwards.
+//
+// The second law is what makes a transformation an object rather than a
+// call: if composing two movers and acting once agrees with acting twice,
+// a chain can be built before anything is applied.
+//
+// **The carrier comes first** (`docs/rules/style-guide.md` §6). One mover
+// moves several carriers — an interval moves both a pitch and a spelled
+// pitch class — and the carrier is what a reader is asking about, so it is
+// what the parameter list says first. It is also where `x.act(g)` looks:
+// the receiver decides which `act` runs.
+record Action<X, G> {
+    // Move one member of the carrier by one mover.
+    act: X -> G -> X;
+}
+
+// A carrier on which the movers act *simply transitively*: every ordered
+// pair of points is joined by exactly one mover.
+//
+// That uniqueness is the whole content, so `difference` is the whole record.
+// The movement itself is an `Action`'s `act` and is not declared twice; the
+// law joining them is `act(a, difference(a, b))` is `b`, for every `a` and
+// `b`.
+//
+// **Two points never add.** `a + b` for two pitches or two positions is the
+// single arithmetic error the point/mover split exists to catch, so there
+// is no field here that could spell it.
+record Torsor<P, V> {
+    // The mover carrying `start` to `finish`. Unique — that is the claim.
+    difference: P -> P -> V;
+}
+
+// Written musical time, moved by a written length.
+//
+// An action and deliberately **not** a torsor: `position_between` refuses a
+// second position that stands before the first, because a duration is a
+// length rather than a displacement, so the movers have no inverses and two
+// positions in the wrong order are joined by nothing. The difference
+// between a position and a later one is asked for by name —
+// `position_between` — where the caller can see the order it must supply.
+//
+// At written time, and not at clock time. `Position<PhysicalTime>` is a
+// performance coordinate and the two do not unify, which is roadmap §2's
+// layer table; a second `act` at that coordinate would be one word claiming
+// the pair is one structure. The namespace is keyed on `Position` alone, so
+// the coordinate is written where it belongs — in the signature.
+impl Position {
+    fn act(
+        subject: Position<WrittenTime>,
+        operation: Duration<WrittenTime>,
+    ) -> Position<WrittenTime> { position_shift(subject, operation) }
+}
+
+// # Orbit and stabilizer, once for every finite action
+//
+// Two questions a finite group action answers, and the two that
+// `52-the-musical-algebra.md` §2.3 found three compiler builtins asking one
+// modulus at a time. A set class is an orbit of pitch-class sets under the
+// T/I group; Messiaen's modes of limited transposition are exactly the
+// collections whose stabilizer under transposition is nontrivial; a row's
+// symmetries are its stabilizer. Written here, once, they are the same two
+// functions for a bell pattern in a cycle of twelve pulses and for a
+// twenty-four-tone row.
+//
+// Both take the group as a list, because a *finite* action is what makes
+// them computable at all: `03-musical-domains.md` §5's "what the index buys
+// is counted, not claimed" is exactly this — once the carrier's size is
+// known the group can be enumerated, and enumeration is an ordinary fold.
+//
+// Both take equality on the carrier as an argument rather than finding it.
+// A record carries fields and never obligations, so a `Group` that also
+// promised decidable equality on its carrier would be promising something
+// no field of it holds; and the caller always has the equality, because the
+// caller is what knew the carrier was finite.
+
+// Whether `built` already holds a member equal to `value`.
+private fn already<X>(same: X -> X -> Bool, built: List<X>, value: X) -> Bool {
+    any(fn (seen: X) -> Bool { same(seen, value) }, built)
+}
+
+// `built`, with `value` at its front where it is not already there.
+//
+// Prepended, and the fold's answer reversed once at the end. Appending
+// instead would rebuild the whole list at every new member, which is a
+// second quadratic on top of the comparison's — and at a division of twelve
+// the row group has forty-eight members, where a spare quadratic is the step
+// budget. The order a caller sees is unchanged: the group's own, first
+// occurrence winning, which is what makes a canonical representative a
+// question about the answer rather than about this function.
+private fn adding<X>(same: X -> X -> Bool, built: List<X>, value: X) -> List<X> {
+    if already(same, built, value) {
+        built
+    } else { Cons(value, built) }
+}
+
+// The distinct images of `point` under every operation in `group`.
+//
+// Order is the group's own, first occurrence winning, and duplicates are
+// dropped — which is what makes the *length* of this the count that
+// `row12_forms` was: how many distinct rows the labelled forms produce.
+fn orbit<X, G>(
+    action: Action<X, G>,
+    same: X -> X -> Bool,
+    group: List<G>,
+    point: X,
+) -> List<X> {
+    reverse(
+        group.fold_from_start(
+            [],
+            fn (built: List<X>, by: G) -> List<X> { adding(same, built, action.act(point, by)) },
+        ),
+    )
+}
+
+// The operations in `group` that leave `point` where it is.
+//
+// Its length times the orbit's is the size of the group, which is the
+// orbit-stabilizer accounting `110-row-properties.md` asks the four form
+// labels to do on their own.
+fn stabilizer<X, G>(
+    action: Action<X, G>,
+    same: X -> X -> Bool,
+    group: List<G>,
+    point: X,
+) -> List<G> { filter(fn (by: G) -> Bool { same(action.act(point, by), point) }, group) }

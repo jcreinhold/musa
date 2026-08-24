@@ -1,138 +1,134 @@
-library {
-    import std::algebra;
+import std::algebra;
 
-    // Open Music Theory `016-intervals.md` supplies the conventional generic/specific
-    // interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies
-    // the spelling distinction retained by these values. The written unison
-    // has no staff displacement and no chromatic displacement.
-    let unison: Interval = P1;
+// Open Music Theory `016-intervals.md` supplies the conventional generic/specific
+// interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies
+// the spelling distinction retained by these values. The written unison
+// has no staff displacement and no chromatic displacement.
+let unison: Interval = P1;
 
-    // The chromatic semitone spelled as a minor second.
-    let minor_second: Interval = m2;
+// The chromatic semitone spelled as a minor second.
+let minor_second: Interval = m2;
 
-    // The diatonic tone spelled as a major second.
-    let major_second: Interval = M2;
+// The diatonic tone spelled as a major second.
+let major_second: Interval = M2;
 
-    // The perfect fourth.
-    let perfect_fourth: Interval = P4;
+// The perfect fourth.
+let perfect_fourth: Interval = P4;
 
-    // The perfect fifth.
-    let perfect_fifth: Interval = P5;
+// The perfect fifth.
+let perfect_fifth: Interval = P5;
 
-    // The written octave, which changes both coordinates by (7, 12).
-    let octave: Interval = P8;
+// The written octave, which changes both coordinates by (7, 12).
+let octave: Interval = P8;
 
-    // Written intervals are a group, and this is that statement.
-    //
-    // `03-musical-domains.md` §1 defines `Interval = Z x Z` and says the
-    // intervals form an abelian group componentwise; the three methods below
-    // are the three operations that sentence names, and nothing else changes.
-    // `compose_intervals` and `inverse_interval` kept their spellings as
-    // ordinary functions, so a piece that reads better naming the operation
-    // than naming the structure still can.
-    impl Interval {
-        fn unit(element: Interval) -> Interval { P1 }
+// Written intervals are a group, and this is that statement.
+//
+// `03-musical-domains.md` §1 defines `Interval = Z x Z` and says the
+// intervals form an abelian group componentwise; the three methods below
+// are the three operations that sentence names, and nothing else changes.
+// `compose_intervals` and `inverse_interval` kept their spellings as
+// ordinary functions, so a piece that reads better naming the operation
+// than naming the structure still can.
+impl Interval {
+    fn unit(element: Interval) -> Interval { P1 }
 
-        fn compose(first: Interval, second: Interval) -> Interval { interval_add(first, second) }
+    fn compose(first: Interval, second: Interval) -> Interval { interval_add(first, second) }
 
-        fn inverse(element: Interval) -> Interval { interval_inverse(element) }
-    }
-
-    // Apply two spelling-preserving written intervals in sequence.
-    fn compose_intervals(first: Interval, second: Interval) -> Interval {
-        interval_add(first, second)
-    }
-
-    // Reverse the direction of a written interval.
-    fn inverse_interval(value: Interval) -> Interval { interval_inverse(value) }
-
-    // Forget octave while retaining the written letter and accidental.
-    fn written_pitch_class(value: Pitch) -> NoteName { pitchclass_of(value) }
-
-    // What `p up M3` and `p down M3` mean, for the two things that can be
-    // written on either side of them.
-    //
-    // One operator over two domains, because it is one action: a written
-    // interval moves the letter by its generic size and lets the accidental
-    // absorb the rest, and whether an octave is carried along changes nothing
-    // about that. What the two domains do not share is the answer — a `Pitch`
-    // stays a `Pitch` and a `NoteName` stays a `NoteName` — so the receiver
-    // decides which operation runs, which is what a namespace is for.
-    //
-    // `down` is not a second operation. It is the interval that undoes this
-    // one, and `Interval.inverse` above already names it.
-    //
-    // A written pitch moved by a written interval. Partial: the pitch grid is
-    // finite in both coordinates, so a transposition can leave it, and what
-    // leaves it is refused rather than wrapped.
-    impl Pitch {
-        fn act(subject: Pitch, operation: Interval) -> Pitch {
-            pitch_transposed(subject, operation)
-        }
-    }
-
-    // The same move with the octave forgotten. Partial for the other
-    // coordinate: the spelled classes run out of accidentals before they run
-    // out of letters.
-    //
-    // An action and not a torsor, and the reason is the quotient itself: `P8`
-    // moves every spelled class to itself, so two classes are joined by
-    // infinitely many intervals rather than by one. `03-musical-domains.md` §1
-    // proves that as the lemma that the action descends; the missing
-    // `NoteName.difference` is that lemma read as a structure.
-    impl NoteName {
-        fn act(subject: NoteName, operation: Interval) -> NoteName {
-            pitchclass_transposed(subject, operation)
-        }
-    }
-
-    // The written interval carrying one pitch to another, and the operation
-    // that makes written pitch a torsor rather than a carrier with an action.
-    //
-    // `03-musical-domains.md` §1 proves it exists and is unique — "if `p+i=p+j`,
-    // integer cancellation gives `i=j`" — and until now the library had the
-    // action and not the difference, so the lemma was a paragraph rather than
-    // something a piece could ask.
-    //
-    // Written and not sounding: `c4` to `fb4` is `d4` and never `M3`, because
-    // the two count to different letters.
-    impl Pitch {
-        fn difference(start: Pitch, finish: Pitch) -> Interval { pitch_between(start, finish) }
-    }
-
-    // # The three structures, as values
-
-    // What `std::algebra` declares, said here about this carrier. Each is the
-    // same operations the `impl` blocks above already name, gathered into the
-    // record that says *which structure* they are — so a function that takes a
-    // group takes this one, and `P5.compose(M3)` and `interval_group.compose`
-    // are one definition rather than two spellings of one operation.
-    //
-    // Here and not in `algebra.musa` because this file imports that one, and a
-    // module tree with no cycle in it has to say a structure's name in one
-    // place and its inhabitants in another. That is also the ordinary
-    // direction: `algebra` says what a group is, and this file says that the
-    // written intervals are one.
-    //
-    // Nothing consumed these before they could be written. A `record` with a
-    // parameter was a declaration nothing could construct, so `Group<Interval>`
-    // was a claim about a value that did not exist.
-    let interval_group: Group<Interval> = Group {
-        unit = Interval::unit,
-        compose = Interval::compose,
-        inverse = Interval::inverse,
-    };
-
-    // The action, at the carrier that keeps its octave. Not at `NoteName`,
-    // whose action is real and whose record is prompt 164's: the quotient has
-    // an action and no torsor, and saying so needs both here.
-    let pitch_action: Action<Pitch, Interval> = Action {
-        act = Pitch::act
-    };
-
-    // And simply transitively at `Pitch`: exactly one written interval carries
-    // any pitch to any other, which is the lemma `Pitch.difference` computes.
-    let pitch_torsor: Torsor<Pitch, Interval> = Torsor {
-        difference = Pitch::difference
-    };
+    fn inverse(element: Interval) -> Interval { interval_inverse(element) }
 }
+
+// Apply two spelling-preserving written intervals in sequence.
+fn compose_intervals(first: Interval, second: Interval) -> Interval {
+    interval_add(first, second)
+}
+
+// Reverse the direction of a written interval.
+fn inverse_interval(value: Interval) -> Interval { interval_inverse(value) }
+
+// Forget octave while retaining the written letter and accidental.
+fn written_pitch_class(value: Pitch) -> NoteName { pitchclass_of(value) }
+
+// What `p up M3` and `p down M3` mean, for the two things that can be
+// written on either side of them.
+//
+// One operator over two domains, because it is one action: a written
+// interval moves the letter by its generic size and lets the accidental
+// absorb the rest, and whether an octave is carried along changes nothing
+// about that. What the two domains do not share is the answer — a `Pitch`
+// stays a `Pitch` and a `NoteName` stays a `NoteName` — so the receiver
+// decides which operation runs, which is what a namespace is for.
+//
+// `down` is not a second operation. It is the interval that undoes this
+// one, and `Interval.inverse` above already names it.
+//
+// A written pitch moved by a written interval. Partial: the pitch grid is
+// finite in both coordinates, so a transposition can leave it, and what
+// leaves it is refused rather than wrapped.
+impl Pitch {
+    fn act(subject: Pitch, operation: Interval) -> Pitch { pitch_transposed(subject, operation) }
+}
+
+// The same move with the octave forgotten. Partial for the other
+// coordinate: the spelled classes run out of accidentals before they run
+// out of letters.
+//
+// An action and not a torsor, and the reason is the quotient itself: `P8`
+// moves every spelled class to itself, so two classes are joined by
+// infinitely many intervals rather than by one. `03-musical-domains.md` §1
+// proves that as the lemma that the action descends; the missing
+// `NoteName.difference` is that lemma read as a structure.
+impl NoteName {
+    fn act(subject: NoteName, operation: Interval) -> NoteName {
+        pitchclass_transposed(subject, operation)
+    }
+}
+
+// The written interval carrying one pitch to another, and the operation
+// that makes written pitch a torsor rather than a carrier with an action.
+//
+// `03-musical-domains.md` §1 proves it exists and is unique — "if `p+i=p+j`,
+// integer cancellation gives `i=j`" — and until now the library had the
+// action and not the difference, so the lemma was a paragraph rather than
+// something a piece could ask.
+//
+// Written and not sounding: `c4` to `fb4` is `d4` and never `M3`, because
+// the two count to different letters.
+impl Pitch {
+    fn difference(start: Pitch, finish: Pitch) -> Interval { pitch_between(start, finish) }
+}
+
+// # The three structures, as values
+
+// What `std::algebra` declares, said here about this carrier. Each is the
+// same operations the `impl` blocks above already name, gathered into the
+// record that says *which structure* they are — so a function that takes a
+// group takes this one, and `P5.compose(M3)` and `interval_group.compose`
+// are one definition rather than two spellings of one operation.
+//
+// Here and not in `algebra.musa` because this file imports that one, and a
+// module tree with no cycle in it has to say a structure's name in one
+// place and its inhabitants in another. That is also the ordinary
+// direction: `algebra` says what a group is, and this file says that the
+// written intervals are one.
+//
+// Nothing consumed these before they could be written. A `record` with a
+// parameter was a declaration nothing could construct, so `Group<Interval>`
+// was a claim about a value that did not exist.
+let interval_group: Group<Interval> = Group {
+    unit = Interval::unit,
+    compose = Interval::compose,
+    inverse = Interval::inverse,
+};
+
+// The action, at the carrier that keeps its octave. Not at `NoteName`,
+// whose action is real and whose record is prompt 164's: the quotient has
+// an action and no torsor, and saying so needs both here.
+let pitch_action: Action<Pitch, Interval> = Action {
+    act = Pitch::act
+};
+
+// And simply transitively at `Pitch`: exactly one written interval carries
+// any pitch to any other, which is the lemma `Pitch.difference` computes.
+let pitch_torsor: Torsor<Pitch, Interval> = Torsor {
+    difference = Pitch::difference
+};

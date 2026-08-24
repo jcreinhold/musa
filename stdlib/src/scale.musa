@@ -1,110 +1,105 @@
-library {
+// A scale is a tonic pitch class, an ordered cycle of spelled offsets, and
+// a spelled period. It carries no register: a degree names a coordinate,
+// and a frame is what turns that coordinate into a written pitch. Every
+// partial answer here stays an `option`, and no register is ever supplied
+// silently.
 
-    // A scale is a tonic pitch class, an ordered cycle of spelled offsets, and
-    // a spelled period. It carries no register: a degree names a coordinate,
-    // and a frame is what turns that coordinate into a written pitch. Every
-    // partial answer here stays an `option`, and no register is ever supplied
-    // silently.
+// The first degree of any scale. Degrees are written from one, as
+// musicians write them.
+let tonic_degree: Degree = degree_of(1);
 
-    // The first degree of any scale. Degrees are written from one, as
-    // musicians write them.
-    let tonic_degree: Degree = degree_of(1);
+// The scale a key's signature suggests for stepwise motion. It is a
+// default, not a claim: `key c minor` fixes three flats, and a passage may
+// still ask for the harmonic or melodic collection by name.
+fn key_scale(written: Key) -> Scale { signature_scale(written) }
 
-    // The scale a key's signature suggests for stepwise motion. It is a
-    // default, not a claim: `key c minor` fixes three flats, and a passage may
-    // still ask for the harmonic or melodic collection by name.
-    fn key_scale(written: Key) -> Scale { signature_scale(written) }
+// The tonic pitch class a scale is rooted on.
+fn scale_root(collection: Scale) -> NoteName { scale_tonic(collection) }
 
-    // The tonic pitch class a scale is rooted on.
-    fn scale_root(collection: Scale) -> NoteName { scale_tonic(collection) }
+// How many degrees one period of a scale holds.
+fn scale_degrees(collection: Scale) -> Nat { scale_size(collection) }
 
-    // How many degrees one period of a scale holds.
-    fn scale_degrees(collection: Scale) -> Nat { scale_size(collection) }
-
-    // The degree a written pitch occupies, when it occupies one. Membership is
-    // spelled: `eb5` and `d#5` answer differently.
-    fn degree_in(collection: Scale, written: Pitch) -> Option<Degree> {
-        scale_pitch(collection, written)
-    }
-
-    // Whether a written pitch belongs to a scale at all.
-    fn belongs_to(collection: Scale, written: Pitch) -> Bool {
-        scale_pitch(collection, written).fold_from_end(
-            false,
-            fn (located, absent) { degree_is_present(located) },
-        )
-    }
-
-    // The present case of `belongs_to`: a located degree means the pitch is a
-    // member, whichever degree it turned out to be.
-    fn degree_is_present(located: Degree) -> Bool { true }
-
-    // The register frame a scale takes on one absolute tonic pitch. It is
-    // absent when that pitch is not the scale's tonic class.
-    fn frame_on(collection: Scale, root: Pitch) -> Option<Frame> {
-        pitch_frame(collection, root)
-    }
-
-    // The written pitch a numbered degree names in one register frame.
-    fn frame_degree(register: Frame, ordinal: Nat) -> Pitch {
-        frame_pitch(register, degree_of(ordinal))
-    }
-
-    // The tonic, third, and fifth degrees of a frame, in register.
-    fn frame_triad(register: Frame) -> List<Pitch> {
-        [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)]
-    }
-
-    // The pitch class a numbered degree names, with no register at all.
-    // `frame_degree` asks the same thing of a scale that has been given an
-    // absolute tonic, and it has to be given one, because a written pitch has
-    // an octave and something must choose it. A Roman numeral has no octave
-    // to choose — `V` in C major is the class `g`, and which `g` sounds is
-    // the voicing's business. Absent only for an ordinal no score can write.
-    fn degree_class(collection: Scale, ordinal: Nat) -> Option<NoteName> {
-        scale_class(collection, degree_of(ordinal))
-    }
-
-    // The same for a degree that already carries an alteration, so that a
-    // `raise` or `lower` composes into the spelling rather than being lost.
-    // This is how a borrowed or Neapolitan degree is spelled without a frame.
-    fn altered_class(collection: Scale, altered: Degree) -> Option<NoteName> {
-        scale_class(collection, altered)
-    }
-
-    // The chord the collection stacks in thirds from a degree. `members`
-    // counts the notes, so three is a triad and four a seventh chord. The
-    // quality is the collection's and not the caller's: `ii` is minor in major
-    // and `II` is major in Dorian because those are the notes there, which is
-    // the whole content of the word "diatonic". A degree rather than a number
-    // because the degree is where this language does ordinal arithmetic, so a
-    // succession walked by `up_steps` can be harmonized where a walked number
-    // could not. Absent for an altered degree, which is not asking for the
-    // collection's own chord, and absent when the collection stacks to a
-    // sonority the chord vocabulary cannot name.
-    fn degree_chord(collection: Scale, written: Degree, members: Nat) -> Option<ChordClass> {
-        scale_chord(collection, written, members)
-    }
-
-    // The diatonic triad on a degree.
-    fn degree_triad(collection: Scale, written: Degree) -> Option<ChordClass> {
-        scale_chord(collection, written, 3)
-    }
-
-    // The diatonic seventh chord on a degree.
-    fn degree_seventh(collection: Scale, written: Degree) -> Option<ChordClass> {
-        scale_chord(collection, written, 4)
-    }
-
-    // Move a degree up by a whole number of scale steps.
-    fn up_steps(from: Degree, steps: Nat) -> Degree { degree_step_up(from, steps) }
-
-    // Move a degree down by a whole number of scale steps.
-    fn down_steps(from: Degree, steps: Nat) -> Degree { degree_step_down(from, steps) }
-
-    // Raise a degree chromatically without moving its coordinate.
-    fn raise(from: Degree) -> Degree { degree_raised(from) }
-
-    // Lower a degree chromatically without moving its coordinate.
-    fn lower(from: Degree) -> Degree { degree_lowered(from) }
+// The degree a written pitch occupies, when it occupies one. Membership is
+// spelled: `eb5` and `d#5` answer differently.
+fn degree_in(collection: Scale, written: Pitch) -> Option<Degree> {
+    scale_pitch(collection, written)
 }
+
+// Whether a written pitch belongs to a scale at all.
+fn belongs_to(collection: Scale, written: Pitch) -> Bool {
+    scale_pitch(collection, written).fold_from_end(
+        false,
+        fn (located, absent) { degree_is_present(located) },
+    )
+}
+
+// The present case of `belongs_to`: a located degree means the pitch is a
+// member, whichever degree it turned out to be.
+fn degree_is_present(located: Degree) -> Bool { true }
+
+// The register frame a scale takes on one absolute tonic pitch. It is
+// absent when that pitch is not the scale's tonic class.
+fn frame_on(collection: Scale, root: Pitch) -> Option<Frame> { pitch_frame(collection, root) }
+
+// The written pitch a numbered degree names in one register frame.
+fn frame_degree(register: Frame, ordinal: Nat) -> Pitch {
+    frame_pitch(register, degree_of(ordinal))
+}
+
+// The tonic, third, and fifth degrees of a frame, in register.
+fn frame_triad(register: Frame) -> List<Pitch> {
+    [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)]
+}
+
+// The pitch class a numbered degree names, with no register at all.
+// `frame_degree` asks the same thing of a scale that has been given an
+// absolute tonic, and it has to be given one, because a written pitch has
+// an octave and something must choose it. A Roman numeral has no octave
+// to choose — `V` in C major is the class `g`, and which `g` sounds is
+// the voicing's business. Absent only for an ordinal no score can write.
+fn degree_class(collection: Scale, ordinal: Nat) -> Option<NoteName> {
+    scale_class(collection, degree_of(ordinal))
+}
+
+// The same for a degree that already carries an alteration, so that a
+// `raise` or `lower` composes into the spelling rather than being lost.
+// This is how a borrowed or Neapolitan degree is spelled without a frame.
+fn altered_class(collection: Scale, altered: Degree) -> Option<NoteName> {
+    scale_class(collection, altered)
+}
+
+// The chord the collection stacks in thirds from a degree. `members`
+// counts the notes, so three is a triad and four a seventh chord. The
+// quality is the collection's and not the caller's: `ii` is minor in major
+// and `II` is major in Dorian because those are the notes there, which is
+// the whole content of the word "diatonic". A degree rather than a number
+// because the degree is where this language does ordinal arithmetic, so a
+// succession walked by `up_steps` can be harmonized where a walked number
+// could not. Absent for an altered degree, which is not asking for the
+// collection's own chord, and absent when the collection stacks to a
+// sonority the chord vocabulary cannot name.
+fn degree_chord(collection: Scale, written: Degree, members: Nat) -> Option<ChordClass> {
+    scale_chord(collection, written, members)
+}
+
+// The diatonic triad on a degree.
+fn degree_triad(collection: Scale, written: Degree) -> Option<ChordClass> {
+    scale_chord(collection, written, 3)
+}
+
+// The diatonic seventh chord on a degree.
+fn degree_seventh(collection: Scale, written: Degree) -> Option<ChordClass> {
+    scale_chord(collection, written, 4)
+}
+
+// Move a degree up by a whole number of scale steps.
+fn up_steps(from: Degree, steps: Nat) -> Degree { degree_step_up(from, steps) }
+
+// Move a degree down by a whole number of scale steps.
+fn down_steps(from: Degree, steps: Nat) -> Degree { degree_step_down(from, steps) }
+
+// Raise a degree chromatically without moving its coordinate.
+fn raise(from: Degree) -> Degree { degree_raised(from) }
+
+// Lower a degree chromatically without moving its coordinate.
+fn lower(from: Degree) -> Degree { degree_lowered(from) }

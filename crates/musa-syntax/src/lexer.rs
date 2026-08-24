@@ -343,8 +343,6 @@ enum RawToken {
     SectionKw,
     #[token("harmony", priority = 3)]
     HarmonyKw,
-    #[token("library", priority = 3)]
-    LibraryKw,
     #[token("crescendo", priority = 3)]
     CrescendoKw,
     #[token("diminuendo", priority = 3)]
@@ -536,7 +534,6 @@ impl RawToken {
             | Self::PhraseKw
             | Self::SectionKw
             | Self::HarmonyKw
-            | Self::LibraryKw
             | Self::CrescendoKw
             | Self::DiminuendoKw
             | Self::ToKw
@@ -675,7 +672,6 @@ impl RawToken {
             Self::PhraseKw => SyntaxKind::PhraseKw,
             Self::SectionKw => SyntaxKind::SectionKw,
             Self::HarmonyKw => SyntaxKind::HarmonyKw,
-            Self::LibraryKw => SyntaxKind::LibraryKw,
             Self::CrescendoKw => SyntaxKind::CrescendoKw,
             Self::DiminuendoKw => SyntaxKind::DiminuendoKw,
             Self::ToKw => SyntaxKind::ToKw,

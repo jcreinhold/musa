@@ -9,9 +9,10 @@
 //!    [`ImportSources`], keyed by resolved path; whoever owns the filesystem
 //!    (`musa-project`, the CLI) fills it. Compilation stays a pure function
 //!    of its inputs, which is what makes it testable and cacheable.
-//! 2. **An imported file is a `library`, not a piece.** The grammar says so,
-//!    so "a score in an imported file" is a parse error rather than a rule
-//!    somebody has to remember.
+//! 2. **An imported file declares no piece.** A file that sounds is a file
+//!    someone plays, not one someone builds on, and importing one would ask
+//!    which of two scores the result is. Since prompt 164a that is a check
+//!    with a reason rather than a grammar a file had to pick in advance.
 //! 3. **Names are flat.** An imported motif is called what it is called.
 //!    Collisions are diagnostics, not shadowing — silently preferring one of
 //!    two identically named motifs is the kind of thing that makes a piece
@@ -24,7 +25,7 @@
 
 use std::collections::HashMap;
 
-use musa_syntax::ast::{AstNode as _, LibraryDecl};
+use musa_syntax::ast::{AstNode as _, Document};
 
 use crate::package::Package;
 use crate::resolve::Resolver;
@@ -216,10 +217,10 @@ pub(crate) struct Imported<'a> {
 
 impl Libraries {
     /// The imported libraries, with the path each was read from.
-    pub(crate) fn each(&self) -> impl Iterator<Item = (Imported<'_>, LibraryDecl)> {
+    pub(crate) fn each(&self) -> impl Iterator<Item = (Imported<'_>, Document)> {
         self.order.iter().filter_map(|entry| {
             let document = self.documents.get(entry.document)?;
-            Some((entry.imported(), LibraryDecl::from_root(&document.syntax())?))
+            Some((entry.imported(), Document::of_root(&document.syntax())?))
         })
     }
 }
@@ -349,11 +350,11 @@ impl Loader<'_> {
             return;
         }
         let root = document.syntax();
-        if LibraryDecl::from_root(&root).is_none() {
+        if musa_syntax::ast::PieceDecl::from_root(&root).is_some() {
             resolver.report(
-                Diagnostic::error(Code::Import, format!("`{path}` is a piece, not a library"))
-                    .at(span, "only a library can be imported")
-                    .help("wrap the material you want to share in `library { … }`"),
+                Diagnostic::error(Code::Import, format!("`{path}` declares a piece"))
+                    .at(span, "a file that sounds cannot be imported")
+                    .help("move the declarations you want to share into a file that declares no piece"),
             );
             return;
         }
@@ -365,8 +366,8 @@ impl Loader<'_> {
         // Depth first: a library's own imports are registered before it, so
         // whatever it builds on already exists by the time it is read.
         self.stack.push(path.clone());
-        let nested: Vec<String> = LibraryDecl::from_root(&root)
-            .map(|library| library.imports())
+        let nested: Vec<String> = Document::of_root(&root)
+            .map(|imported| imported.imports())
             .unwrap_or_default()
             .iter()
             .filter(|import| !import.changes_syntax())
@@ -391,8 +392,6 @@ impl Loader<'_> {
 mod tests {
     #![allow(clippy::expect_used)]
 
-    use musa_syntax::ast::LibraryDecl;
-
     use super::*;
 
     #[test]
@@ -405,8 +404,8 @@ mod tests {
             let parsed = musa_syntax::parse(source);
             assert!(parsed.errors().is_empty(), "{uri}: {:?}", parsed.errors());
             assert!(
-                LibraryDecl::from_root(&parsed.syntax()).is_some(),
-                "{uri} is not a library"
+                musa_syntax::ast::PieceDecl::from_root(&parsed.syntax()).is_none(),
+                "{uri} declares a piece, and a file that sounds cannot be imported"
             );
         }
     }

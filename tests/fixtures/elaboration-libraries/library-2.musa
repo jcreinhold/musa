@@ -1,4 +1,4 @@
-library {
+
     motif imported_c_a() { c4/4 d4/4 e4/4 f4/4 }
     motif imported_c_b() { c4/4 d4/4 e4/4 f4/4 }
     motif imported_c_c() { c4/4 d4/4 e4/4 f4/4 }
@@ -15,4 +15,4 @@ library {
     motif imported_c_n() { c4/4 d4/4 e4/4 f4/4 }
     motif imported_c_o() { c4/4 d4/4 e4/4 f4/4 }
     motif imported_c_p() { c4/4 d4/4 e4/4 f4/4 }
-}
+

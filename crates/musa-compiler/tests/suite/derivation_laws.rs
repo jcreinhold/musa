@@ -135,7 +135,7 @@ fn two_uses_of_one_motif_agree_on_the_body_and_differ_in_the_site() {
 fn a_piece_with_no_score_leaves_no_derivation() {
     let compilation = compile(
         &SourceDocument::new(
-            "library {\n    fn twice(x: Nat) -> Nat {\n        add(x, x)\n    }\n}",
+            "\n    fn twice(x: Nat) -> Nat {\n        add(x, x)\n    }\n",
             "material.musa",
         ),
         &CompileOptions::default(),

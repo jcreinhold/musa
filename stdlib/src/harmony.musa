@@ -1,70 +1,63 @@
-library {
+// A chord class is rooted spelled content and nothing else: a root pitch
+// class, a stack of spelled intervals above it, and an optionally
+// designated bass. It chooses no register, no spacing, and no doubling —
+// those are a voicing's, and `std::voicing` is where they live.
+//
+// Nothing here derives notes from a chord symbol written above the staff.
+// A symbol is an annotation the composer wrote; a chord class is content
+// the composer built. The two never imply each other.
 
-    // A chord class is rooted spelled content and nothing else: a root pitch
-    // class, a stack of spelled intervals above it, and an optionally
-    // designated bass. It chooses no register, no spacing, and no doubling —
-    // those are a voicing's, and `std::voicing` is where they live.
-    //
-    // Nothing here derives notes from a chord symbol written above the staff.
-    // A symbol is an annotation the composer wrote; a chord class is content
-    // the composer built. The two never imply each other.
+// Re-root a chord class, keeping its type. `chord c major7` on `eb` is an
+// E-flat major seventh, spelled from E-flat.
+fn chord_rooted_on(content: ChordClass, root: NoteName) -> ChordClass { chord_on(content, root) }
 
-    // Re-root a chord class, keeping its type. `chord c major7` on `eb` is an
-    // E-flat major seventh, spelled from E-flat.
-    fn chord_rooted_on(content: ChordClass, root: NoteName) -> ChordClass {
-        chord_on(content, root)
-    }
+// The pitch class a chord class is rooted on. This is the root, which is
+// not the bass: a designated bass is asked for separately.
+fn root_of(content: ChordClass) -> NoteName { chord_root(content) }
 
-    // The pitch class a chord class is rooted on. This is the root, which is
-    // not the bass: a designated bass is asked for separately.
-    fn root_of(content: ChordClass) -> NoteName { chord_root(content) }
+// The bass a chord class designates, when it designates one. Absent means
+// no bass was chosen — it does not mean the root.
+fn bass_of(content: ChordClass) -> Option<NoteName> { chord_bass(content) }
 
-    // The bass a chord class designates, when it designates one. Absent means
-    // no bass was chosen — it does not mean the root.
-    fn bass_of(content: ChordClass) -> Option<NoteName> { chord_bass(content) }
+// The spelled intervals above the root, lowest first, beginning at the
+// unison. Spelled: a major third is a third, never a diminished fourth.
+fn members_of(content: ChordClass) -> List<Interval> { chord_members(content) }
 
-    // The spelled intervals above the root, lowest first, beginning at the
-    // unison. Spelled: a major third is a third, never a diminished fourth.
-    fn members_of(content: ChordClass) -> List<Interval> { chord_members(content) }
-
-    // A true inversion: the numbered member becomes the designated bass.
-    // Positions are counted from zero, so position one is first inversion.
-    // Absent when the class has no such member.
-    fn inversion(content: ChordClass, position: Nat) -> Option<ChordClass> {
-        chord_inversion(content, position)
-    }
-
-    // A slash bass: a designated bass that need not be a member at all.
-    // `chord_over(chord c major, d)` is C over D, and the D is not a chord
-    // tone. This is a different construction from an inversion, and stays one.
-    fn slash_bass(content: ChordClass, bass: NoteName) -> ChordClass {
-        chord_over(content, bass)
-    }
-
-    // The triad refinement, when the content really is a major or minor
-    // triad. This is the domain a neo-Riemannian transformation acts on, and
-    // the proof that it applies is this `option` being present.
-    fn as_triad(content: ChordClass) -> Option<Triad> { chord_triad(content) }
-
-    // Forget the refinement: every triad is a chord class.
-    fn triad_content(refined: Triad) -> ChordClass { triad_chord(refined) }
-
-    // Whether a chord class is a major or minor triad.
-    fn is_triad(content: ChordClass) -> Bool {
-        chord_triad(content).fold_from_end(
-            false,
-            fn (refined, absent) { triad_is_present(refined) },
-        )
-    }
-
-    // The present case of `is_triad`: a refinement that exists is a triad,
-    // whichever of the two it turned out to be.
-    fn triad_is_present(refined: Triad) -> Bool { true }
-
-    // Which of the two a triad is. Total, and a `bool` rather than a partial
-    // answer, because the refinement admitted exactly two chord classes: not
-    // major is minor here, and only here. Every transformation in
-    // `std::transformational` branches on this, since which way a voice
-    // moves is the whole content of the transformation.
-    fn is_major(refined: Triad) -> Bool { triad_major(refined) }
+// A true inversion: the numbered member becomes the designated bass.
+// Positions are counted from zero, so position one is first inversion.
+// Absent when the class has no such member.
+fn inversion(content: ChordClass, position: Nat) -> Option<ChordClass> {
+    chord_inversion(content, position)
 }
+
+// A slash bass: a designated bass that need not be a member at all.
+// `chord_over(chord c major, d)` is C over D, and the D is not a chord
+// tone. This is a different construction from an inversion, and stays one.
+fn slash_bass(content: ChordClass, bass: NoteName) -> ChordClass { chord_over(content, bass) }
+
+// The triad refinement, when the content really is a major or minor
+// triad. This is the domain a neo-Riemannian transformation acts on, and
+// the proof that it applies is this `option` being present.
+fn as_triad(content: ChordClass) -> Option<Triad> { chord_triad(content) }
+
+// Forget the refinement: every triad is a chord class.
+fn triad_content(refined: Triad) -> ChordClass { triad_chord(refined) }
+
+// Whether a chord class is a major or minor triad.
+fn is_triad(content: ChordClass) -> Bool {
+    chord_triad(content).fold_from_end(
+        false,
+        fn (refined, absent) { triad_is_present(refined) },
+    )
+}
+
+// The present case of `is_triad`: a refinement that exists is a triad,
+// whichever of the two it turned out to be.
+fn triad_is_present(refined: Triad) -> Bool { true }
+
+// Which of the two a triad is. Total, and a `bool` rather than a partial
+// answer, because the refinement admitted exactly two chord classes: not
+// major is minor here, and only here. Every transformation in
+// `std::transformational` branches on this, since which way a voice
+// moves is the whole content of the transformation.
+fn is_major(refined: Triad) -> Bool { triad_major(refined) }

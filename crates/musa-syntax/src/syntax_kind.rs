@@ -262,8 +262,6 @@ pub enum SyntaxKind {
     SectionKw,
     /// `harmony`
     HarmonyKw,
-    /// `library`
-    LibraryKw,
     /// `crescendo`
     CrescendoKw,
     /// `diminuendo`
@@ -437,9 +435,6 @@ pub enum SyntaxKind {
     /// makes that a fact about the tree instead of a count the reader has to
     /// get right.
     PitchClass,
-    /// `library { ... }` — a file of shared declarations, importable by a
-    /// piece. Root of a library file, in place of a [`SyntaxKind::PieceDecl`].
-    LibraryDecl,
     /// `import "../library/motifs.musa";` — a relative import.
     ImportStmt,
     /// `crescendo to f { ... }` / `diminuendo to p { ... }` — a hairpin over

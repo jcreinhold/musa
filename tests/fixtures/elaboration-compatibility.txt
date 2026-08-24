@@ -346,10 +346,10 @@ origin=part:0:ensemble:voice:0:line:event:0:3390-3404:468-472:[MotifApplication 
 origin=part:0:ensemble:voice:0:line:event:1:3390-3404:473-477:[MotifApplication { call_site: SourceSpan { start: 3390, end: 3404 } }]
 origin=part:0:ensemble:voice:0:line:event:2:3390-3404:478-482:[MotifApplication { call_site: SourceSpan { start: 3390, end: 3404 } }]
 origin=part:0:ensemble:voice:0:line:event:3:3390-3404:483-487:[MotifApplication { call_site: SourceSpan { start: 3390, end: 3404 } }]
-origin=part:0:ensemble:voice:0:line:event:4:3405-3424:37-41:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
-origin=part:0:ensemble:voice:0:line:event:5:3405-3424:42-46:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
-origin=part:0:ensemble:voice:0:line:event:6:3405-3424:47-51:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
-origin=part:0:ensemble:voice:0:line:event:7:3405-3424:52-56:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
+origin=part:0:ensemble:voice:0:line:event:4:3405-3424:28-32:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
+origin=part:0:ensemble:voice:0:line:event:5:3405-3424:33-37:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
+origin=part:0:ensemble:voice:0:line:event:6:3405-3424:38-42:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
+origin=part:0:ensemble:voice:0:line:event:7:3405-3424:43-47:[MotifApplication { call_site: SourceSpan { start: 3405, end: 3424 } }]
 origin=part:0:ensemble:voice:0:line:event:8:3425-3459:2606-2610:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:9:3425-3459:2611-2615:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:10:3425-3459:2616-2620:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
@@ -358,7 +358,7 @@ origin=part:0:ensemble:voice:0:line:event:12:3425-3459:2654-2658:[MotifApplicati
 origin=part:0:ensemble:voice:0:line:event:13:3425-3459:2659-2663:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:14:3425-3459:2664-2668:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:15:3425-3459:2669-2673:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
-lane=0:ensemble:32:e2e057e59023265d42132dbfa882ddc1
+lane=0:ensemble:32:4d3083214a373d6db4e73f0fe058c52d
 
 [fixture audio-bridge]
 identity=9f670408d1267e94642131d9c0b777b1

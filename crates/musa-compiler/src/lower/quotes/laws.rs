@@ -75,7 +75,7 @@ fn subject() -> Syntax {
 /// their answers are read.
 fn whole(quoted: &str) -> Syntax {
     let source = format!(
-        "library {{
+        "
     let level = \"readable\";
 
     let quoting = fn (here: NodePath) -> Syntax<Expr> {{ {quoted} }};
@@ -89,7 +89,7 @@ fn whole(quoted: &str) -> Syntax {
             region,
         )))
     }};
-}}"
+"
     );
     crate::phase::expand_syntax(&source, crate::phase::PhaseImports::bundled(), &subject())
         .0
@@ -154,7 +154,7 @@ fn lowered(written: &str) -> Raw {
 
 /// The same, keeping whatever it complained about.
 fn lowering(written: &str) -> (Option<Raw>, Vec<Diagnostic>) {
-    let source = format!("library {{ fn probe() -> Nat {{ {written} }} }}");
+    let source = format!(" fn probe() -> Nat {{ {written} }} ");
     let document = musa_syntax::parse(&source);
     assert!(
         document.errors().is_empty(),

@@ -327,8 +327,7 @@ pub(crate) use voice::{duration_text, voice_items};
 // ---------------------------------------------------------------------------
 
 pub use document::{
-    ClefStmt, FrontMatterRole, FrontMatterStmt, ImportStmt, KeyStmt, LibraryDecl, MeterStmt, ModDecl, PieceDecl,
-    TempoStmt,
+    ClefStmt, Document, FrontMatterRole, FrontMatterStmt, ImportStmt, KeyStmt, MeterStmt, ModDecl, PieceDecl, TempoStmt,
 };
 
 pub use performance::{DynamicRule, GraceRule, GrooveRule, MarkRule, PerformanceDecl, ProfileDecl, SettingStmt};

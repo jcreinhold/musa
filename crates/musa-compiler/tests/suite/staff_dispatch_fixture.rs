@@ -159,7 +159,7 @@ fn a_sixteenth_staff_word_does_not_compile_until_it_is_read() {
     // count go wrong. `word_read` is exhaustive over a declared type, so the
     // sixteenth constructor is a hole in it — where the string version's `_ ->`
     // would have swallowed it.
-    let extended = DISPATCH.replace("        Key,\n    }", "        Key,\n        Caesura,\n    }");
+    let extended = DISPATCH.replace("    Key,\n}", "    Key,\n    Caesura,\n}");
     assert!(
         extended != DISPATCH,
         "the sixteenth-word edit did not apply; `StaffWord` was respelled"
@@ -193,9 +193,9 @@ fn the_adapter_matches_no_shape_and_spells_no_keyword_twice() {
     let mut inside = false;
     let stray: Vec<&str> = code()
         .filter(|line| {
-            if line.starts_with("    fn staff_word(") {
+            if line.starts_with("fn staff_word(") {
                 inside = true;
-            } else if line.starts_with("    fn ") {
+            } else if line.starts_with("fn ") {
                 inside = false;
             }
             !inside && line.contains("text_equal")

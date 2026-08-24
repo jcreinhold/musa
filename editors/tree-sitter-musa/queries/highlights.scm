@@ -23,7 +23,6 @@
 
 [
   "piece"
-  "library"
   "mod"
   "as"
   "tempo"

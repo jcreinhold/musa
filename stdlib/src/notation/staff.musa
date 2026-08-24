@@ -1,893 +1,784 @@
-library {
-    import std::list;
+import std::list;
 
-    // A staff document: what is written on a staff, as data, with nothing
-    // about how it sounds.
-    //
-    // The layering table (roadmap §2) says written pitch is not MIDI number
-    // and notated duration is not performed duration, and this module is the
-    // written side of both. A `Note` carries the pitch a reader sees and the
-    // value they read; what a player does with either is a performance
-    // profile's question and never appears here.
-    //
-    // The shape is direct recursion rather than lists of children. A
-    // generated fold replaces one constructor layer, so a `List<StaffItem>`
-    // field would arrive as the list it is, its elements never folded, and a
-    // total traversal could not be written over it. Every sequence is
-    // therefore a constructor carrying the rest of its sequence, and every
-    // nested form carries its body and its rest.
+// A staff document: what is written on a staff, as data, with nothing
+// about how it sounds.
+//
+// The layering table (roadmap §2) says written pitch is not MIDI number
+// and notated duration is not performed duration, and this module is the
+// written side of both. A `Note` carries the pitch a reader sees and the
+// value they read; what a player does with either is a performance
+// profile's question and never appears here.
+//
+// The shape is direct recursion rather than lists of children. A
+// generated fold replaces one constructor layer, so a `List<StaffItem>`
+// field would arrive as the list it is, its elements never folded, and a
+// total traversal could not be written over it. Every sequence is
+// therefore a constructor carrying the rest of its sequence, and every
+// nested form carries its body and its rest.
 
-    // A written note value: a division of the whole note, plus its dots.
-    //
-    // `ExactSpan` is a separate constructor rather than the same one reduced,
-    // because a written rhythm and an exact span are different data even when
-    // they cover the same ground: `c5/4.` is a dotted quarter a reader
-    // performs, and `c5(3/8)` is three eighths of the bar.
-    data WrittenDuration {
-        NoteValue(division: Nat, dots: Nat),
-        ExactSpan(span: Ratio),
-    }
+// A written note value: a division of the whole note, plus its dots.
+//
+// `ExactSpan` is a separate constructor rather than the same one reduced,
+// because a written rhythm and an exact span are different data even when
+// they cover the same ground: `c5/4.` is a dotted quarter a reader
+// performs, and `c5(3/8)` is three eighths of the bar.
+data WrittenDuration {
+    NoteValue(division: Nat, dots: Nat),
+    ExactSpan(span: Ratio),
+}
 
-    // Whether what is written continues into whatever sounds next.
-    data Tie {
-        Untied,
-        TiedOn,
-    }
+// Whether what is written continues into whatever sounds next.
+data Tie {
+    Untied,
+    TiedOn,
+}
 
-    // The clef a staff is read in. A clef is a staff concept, so it is this
-    // package's and not the core's.
-    data Clef {
-        Treble,
-        Bass,
-        Alto,
-        Tenor,
-    }
+// The clef a staff is read in. A clef is a staff concept, so it is this
+// package's and not the core's.
+data Clef {
+    Treble,
+    Bass,
+    Alto,
+    Tenor,
+}
 
-    // A time signature, as it is written: a count of a unit.
-    data Meter {
-        Beats(count: Nat, unit: Nat),
-    }
+// A time signature, as it is written: a count of a unit.
+data Meter {
+    Beats(count: Nat, unit: Nat),
+}
 
-    // Which written value `engrave` chooses for a span it has realized.
-    data Spelling {
-        ShortestReadable,
-        ExactValues,
-    }
+// Which written value `engrave` chooses for a span it has realized.
+data Spelling {
+    ShortestReadable,
+    ExactValues,
+}
 
-    // What is written at one point of the staff.
-    //
-    // None of these reaches the rest of the sequence, which is what makes
-    // each one readable in isolation: a note carries its own pitch and its
-    // own value, and inherits neither register nor duration from what came
-    // before it.
-    data StaffEvent {
-        Note(spelled: Pitch, held: WrittenDuration, tied: Tie),
-        Rest(silent: WrittenDuration),
-        Chord(voices: List<Pitch>, sustained: WrittenDuration, joined: Tie),
-        Grace(ornaments: List<Pitch>),
-        MeterChange(beats: Meter),
-    }
+// What is written at one point of the staff.
+//
+// None of these reaches the rest of the sequence, which is what makes
+// each one readable in isolation: a note carries its own pitch and its
+// own value, and inherits neither register nor duration from what came
+// before it.
+data StaffEvent {
+    Note(spelled: Pitch, held: WrittenDuration, tied: Tie),
+    Rest(silent: WrittenDuration),
+    Chord(voices: List<Pitch>, sustained: WrittenDuration, joined: Tie),
+    Grace(ornaments: List<Pitch>),
+    MeterChange(beats: Meter),
+}
 
-    // The written sequence, and the forms that nest one inside another.
-    //
-    // Every constructor carries an anchor — the syntax position the item came
-    // from — so that a diagnostic about a realized span can be pointed at the
-    // notation that wrote it.
-    data StaffItem {
-        NoItems,
-        Sounded(anchor: Nat, event: StaffEvent, after: StaffItem),
-        Bar(anchor: Nat, beats: Meter, body: StaffItem, after: StaffItem),
-        Slur(anchor: Nat, body: StaffItem, after: StaffItem),
-        Tuplet(anchor: Nat, played: Nat, against: Nat, body: StaffItem, after: StaffItem),
-        Repeat(anchor: Nat, times: Nat, body: StaffItem, after: StaffItem),
-        Ending(anchor: Nat, pass: Nat, body: StaffItem, after: StaffItem),
-    }
+// The written sequence, and the forms that nest one inside another.
+//
+// Every constructor carries an anchor — the syntax position the item came
+// from — so that a diagnostic about a realized span can be pointed at the
+// notation that wrote it.
+data StaffItem {
+    NoItems,
+    Sounded(anchor: Nat, event: StaffEvent, after: StaffItem),
+    Bar(anchor: Nat, beats: Meter, body: StaffItem, after: StaffItem),
+    Slur(anchor: Nat, body: StaffItem, after: StaffItem),
+    Tuplet(anchor: Nat, played: Nat, against: Nat, body: StaffItem, after: StaffItem),
+    Repeat(anchor: Nat, times: Nat, body: StaffItem, after: StaffItem),
+    Ending(anchor: Nat, pass: Nat, body: StaffItem, after: StaffItem),
+}
 
-    // Read a written sequence from the end, one case per constructor.
-    //
-    // A nested form hands its case two answers, its body's and its rest's,
-    // which is what lets a caller decide independently what a bar does to what
-    // is inside it and what follows it. The sequence is the last argument
-    // because that is how the corpus already reads; the recursion descends
-    // there and every argument before it is fixed, which is what §2.4's
-    // measure asks.
-    //
-    // None of the parameters is named for the constructor it answers: `repeat`
-    // and `bar` are keywords, and a fold that spelled half its cases one way
-    // and half another would read worse than one that spells all seven as what
-    // the case *did*.
-    fn staff_item_fold<A>(
-        nothing: A,
-        sounded: Nat -> StaffEvent -> A -> A,
-        barred: Nat -> Meter -> A -> A -> A,
-        slurred: Nat -> A -> A -> A,
-        grouped: Nat -> Nat -> Nat -> A -> A -> A,
-        looped: Nat -> Nat -> A -> A -> A,
-        volta: Nat -> Nat -> A -> A -> A,
-        items: StaffItem,
-    ) -> A {
-        match items {
-            NoItems -> nothing,
-            Sounded(anchor, event, after) -> sounded(
-                anchor,
-                event,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-            Bar(anchor, beats, body, after) -> barred(
-                anchor,
-                beats,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    body,
-                ),
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-            Slur(anchor, body, after) -> slurred(
-                anchor,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    body,
-                ),
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-            Tuplet(anchor, played, against, body, after) -> grouped(
-                anchor,
-                played,
-                against,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    body,
-                ),
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-            Repeat(anchor, times, body, after) -> looped(
-                anchor,
-                times,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    body,
-                ),
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-            Ending(anchor, pass, body, after) -> volta(
-                anchor,
-                pass,
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    body,
-                ),
-                staff_item_fold(
-                    nothing,
-                    sounded,
-                    barred,
-                    slurred,
-                    grouped,
-                    looped,
-                    volta,
-                    after,
-                ),
-            ),
-        }
-    }
-
-    // A whole staff: the instrument it is written for, how far its written
-    // pitch sits from its sounding pitch, and what is on it.
-    //
-    // `sounding_shift` is the transposing instrument, recorded and not
-    // applied: a B♭ clarinet part is written a major second above what it
-    // sounds, and this module says so without computing either side of it.
-    data StaffDocument {
-        Document(
-            instrument: Text,
-            sounding_shift: Interval,
-            written_clef: Clef,
-            written_key: Key,
-            beats: Meter,
-            spelling: Spelling,
-            items: StaffItem,
+// Read a written sequence from the end, one case per constructor.
+//
+// A nested form hands its case two answers, its body's and its rest's,
+// which is what lets a caller decide independently what a bar does to what
+// is inside it and what follows it. The sequence is the last argument
+// because that is how the corpus already reads; the recursion descends
+// there and every argument before it is fixed, which is what §2.4's
+// measure asks.
+//
+// None of the parameters is named for the constructor it answers: `repeat`
+// and `bar` are keywords, and a fold that spelled half its cases one way
+// and half another would read worse than one that spells all seven as what
+// the case *did*.
+fn staff_item_fold<A>(
+    nothing: A,
+    sounded: Nat -> StaffEvent -> A -> A,
+    barred: Nat -> Meter -> A -> A -> A,
+    slurred: Nat -> A -> A -> A,
+    grouped: Nat -> Nat -> Nat -> A -> A -> A,
+    looped: Nat -> Nat -> A -> A -> A,
+    volta: Nat -> Nat -> A -> A -> A,
+    items: StaffItem,
+) -> A {
+    match items {
+        NoItems -> nothing,
+        Sounded(anchor, event, after) -> sounded(
+            anchor,
+            event,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
+        ),
+        Bar(anchor, beats, body, after) -> barred(
+            anchor,
+            beats,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, body),
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
+        ),
+        Slur(anchor, body, after) -> slurred(
+            anchor,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, body),
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
+        ),
+        Tuplet(anchor, played, against, body, after) -> grouped(
+            anchor,
+            played,
+            against,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, body),
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
+        ),
+        Repeat(anchor, times, body, after) -> looped(
+            anchor,
+            times,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, body),
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
+        ),
+        Ending(anchor, pass, body, after) -> volta(
+            anchor,
+            pass,
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, body),
+            staff_item_fold(nothing, sounded, barred, slurred, grouped, looped, volta, after),
         ),
     }
+}
 
-    // The exact spans a written sequence covers, each against the anchor of
-    // the item that wrote it.
-    //
-    // A span carries its tie because joining tied spans is a step of its own:
-    // a tie reaches whatever sounds next, and what sounds next is often
-    // inside a different bar, so the traversal cannot join them while it is
-    // still inside one. Every span `realize` answers with is `Untied`,
-    // because joining is what it did last.
-    data WrittenSpans {
-        NoSpans,
-        Span(
+// A whole staff: the instrument it is written for, how far its written
+// pitch sits from its sounding pitch, and what is on it.
+//
+// `sounding_shift` is the transposing instrument, recorded and not
+// applied: a B♭ clarinet part is written a major second above what it
+// sounds, and this module says so without computing either side of it.
+data StaffDocument {
+    Document(
+        instrument: Text,
+        sounding_shift: Interval,
+        written_clef: Clef,
+        written_key: Key,
+        beats: Meter,
+        spelling: Spelling,
+        items: StaffItem,
+    ),
+}
+
+// The exact spans a written sequence covers, each against the anchor of
+// the item that wrote it.
+//
+// A span carries its tie because joining tied spans is a step of its own:
+// a tie reaches whatever sounds next, and what sounds next is often
+// inside a different bar, so the traversal cannot join them while it is
+// still inside one. Every span `realize` answers with is `Untied`,
+// because joining is what it did last.
+data WrittenSpans {
+    NoSpans,
+    Span(
+        anchor: Nat,
+        start: Position<WrittenTime>,
+        held: Duration<WrittenTime>,
+        tied: Tie,
+        after: WrittenSpans,
+    ),
+}
+
+// The catamorphism's equation, written as it reads: `combine` is handed
+// what the spans after this one produced.
+//
+// `combine` and not `step`, which is a keyword — the scale step is the
+// word the language already spent.
+//
+// The spans come first here and last in the public spelling, for the
+// reason `std::list` states at length: the termination measure holds the
+// arguments before the recursive position fixed, so the argument that
+// descends is the first one.
+private fn folded_spans<A>(
+    spans: WrittenSpans,
+    empty: A,
+    combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
+) -> A {
+    match spans {
+        NoSpans -> empty,
+        Span(anchor, start, held, tied, after) -> combine(
+            anchor,
+            start,
+            held,
+            tied,
+            folded_spans(after, empty, combine),
+        ),
+    }
+}
+
+// Read a sequence of spans from the end: `combine` sees each span together
+// with what the spans after it produced, seeded with `empty`.
+//
+// A fold over a declared family is ordinary source. The core names a
+// family's recursor after the family and compiles `match` to it, so this
+// is written once, here, beside the family it reads.
+fn written_spans_fold<A>(
+    empty: A,
+    combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
+    spans: WrittenSpans,
+) -> A { folded_spans(spans, empty, combine) }
+
+// What a traversal reached: the spans it found, and where it stopped.
+record Realization {
+    spans: WrittenSpans;
+    at_end: Position<WrittenTime>;
+}
+
+// A realized span with the written value `engrave` chose for it.
+data Spelled {
+    NoSpelling,
+    Written(anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: Spelled),
+}
+
+// The catamorphism over spelled spans, its list first for the same reason
+// [`folded_spans`] gives.
+private fn folded_spelling<A>(
+    spelled: Spelled,
+    empty: A,
+    combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
+) -> A {
+    match spelled {
+        NoSpelling -> empty,
+        Written(anchor, start, value, after) -> combine(
+            anchor,
+            start,
+            value,
+            folded_spelling(after, empty, combine),
+        ),
+    }
+}
+
+// Read spelled spans from the end: `combine` sees each span's chosen
+// written value together with what the spans after it produced.
+fn spelled_fold<A>(
+    empty: A,
+    combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
+    spelled: Spelled,
+) -> A { folded_spelling(spelled, empty, combine) }
+
+// A dotted value in the making: what it covers so far, and what the next
+// dot would add.
+record Dotted {
+    total: Ratio;
+    added: Ratio;
+}
+
+// The exact rational a whole number names.
+//
+// A note value is a division of the whole note, so the package needs one;
+// the language has no coercion from `Nat` to `Ratio`, deliberately, so
+// the conversion is written rather than assumed. `1/1` and not `1` for the
+// same reason one step down: a literal infers, and the whole-number token
+// is a `Nat` wherever it stands.
+fn ratio_of(count: Nat) -> Ratio {
+    range(count).fold_from_start(
+        0/1,
+        fn (sofar: Ratio, step_index: Nat) -> Ratio { ratio_add(sofar, 1/1) },
+    )
+}
+
+// `amount` shared out among `parts` of them, or `because` when there are
+// none of them.
+//
+// The zero is caught here rather than left to `ratio_div`. A refusal is
+// the core's own sentence and is not data a package can answer with, and
+// this partiality belongs to the reader: `NoteValue(0, 0)` and `Tuplet(_,
+// 0, 2, …)` are both things someone wrote down, so the package says what
+// is wrong with each in a staff's words and hands back a `Result` its
+// callers thread.
+//
+// The count is taken apart rather than compared against zero, and the
+// difference is not stylistic. A whole number is `Zero` or a `Succ`, and
+// only the second is a division; a comparison would answer the same
+// question, but the division sits in an arm that binds nothing and an arm
+// that binds nothing is an ordinary expression, evaluated where it stands.
+// Written this way the division lives under a binder and is reached only
+// when the count is one the reader can divide by.
+private fn exact_quotient(amount: Ratio, parts: Nat, because: Text) -> Result<Ratio, Text> {
+    match parts {
+        Zero -> Err(because),
+        Succ(fewer) -> Ok(ratio_div(amount, ratio_of(parts))),
+    }
+}
+
+// What one undotted note value covers: the whole note divided.
+fn division_span(division: Nat) -> Result<Ratio, Text> {
+    exact_quotient(
+        1/1,
+        division,
+        "a note value divides the whole note, and zero divides nothing",
+    )
+}
+
+// What a value covers once its dots are added: each dot adds half of what
+// the dot before it added.
+//
+// The half is named because it is wanted twice — added on, and kept as
+// what the next dot halves — and naming it is all `dotted_by` ever was.
+fn dotted_span(base: Ratio, dots: Nat) -> Ratio {
+    match range(dots).fold_from_start(
+        Dotted {
+            total = base,
+            added = base
+        },
+        fn (sofar: Dotted, step_index: Nat) -> Dotted {
+            let half = ratio_div(sofar.added, 2/1);
+            Dotted {
+                total = ratio_add(sofar.total, half),
+                added = half
+            }
+        },
+    ) {
+        Dotted { total, added } -> total,
+    }
+}
+
+// The exact span a written value covers, or the sentence saying why none
+// does.
+fn written_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text> {
+    match value {
+        NoteValue(division, dots) -> match division_span(division) {
+            Ok(base) -> Ok(duration_of(dotted_span(base, dots))),
+            Err(why) -> Err(why),
+        },
+        ExactSpan(span) -> Ok(duration_of(span)),
+    }
+}
+
+// The bar a meter measures.
+fn meter_span(beats: Meter) -> Result<Duration<WrittenTime>, Text> {
+    match beats {
+        Beats(count, unit) -> match division_span(unit) {
+            Ok(one) -> Ok(duration_of(ratio_mul(one, ratio_of(count)))),
+            Err(why) -> Err(why),
+        },
+    }
+}
+
+// One sequence of spans after another, in the order they were written.
+fn joined_spans(first: WrittenSpans, second: WrittenSpans) -> WrittenSpans {
+    written_spans_fold(
+        second,
+        fn (
             anchor: Nat,
             start: Position<WrittenTime>,
             held: Duration<WrittenTime>,
             tied: Tie,
             after: WrittenSpans,
+        ) -> WrittenSpans { Span(anchor, start, held, tied, after) },
+        first,
+    )
+}
+
+// A traversal that has run out of items reaches nothing and stays where
+// it is.
+fn stopped(here: Position<WrittenTime>) -> Result<Realization, Text> {
+    Ok(Realization {
+        spans = NoSpans,
+        at_end = here
+    })
+}
+
+// A nested form — a bar, a slur, a tuplet's siblings, a repeat, an ending
+// — is its body followed by what comes after it.
+fn nested(
+    body: (Position<WrittenTime> -> Result<Realization, Text>),
+    after: (Position<WrittenTime> -> Result<Realization, Text>),
+    here: Position<WrittenTime>,
+) -> Result<Realization, Text> {
+    match body(here) {
+        Ok(inner) -> match after(inner.at_end) {
+            Ok(later) -> Ok(Realization {
+                spans = joined_spans(inner.spans, later.spans),
+                at_end = later.at_end,
+            }),
+            Err(why) -> Err(why),
+        },
+        Err(why) -> Err(why),
+    }
+}
+
+// A tie joins what is written to whatever sounds next, wherever that is.
+//
+// This is a pass over the flat spans rather than a case of the traversal,
+// because the traversal is inside a bar when it meets the tie and what
+// the tie reaches is usually in the next one. Joining last is what lets a
+// tie cross a barline, a slur, or a repeat without any of the three
+// knowing about ties.
+fn joined_ties(spans: WrittenSpans) -> Result<WrittenSpans, Text> {
+    match spans {
+        NoSpans -> Ok(NoSpans),
+        Span(anchor, start, held, tied, after) -> match joined_ties(after) {
+            Ok(later) -> match tied {
+                Untied -> Ok(Span(anchor, start, held, Untied, later)),
+                TiedOn -> match later {
+                    NoSpans -> Err("a tie has nothing after it to tie to"),
+                    Span(next_anchor, next_start, next_held, next_tied, beyond) -> Ok(Span(
+                        anchor,
+                        start,
+                        duration_add(held, next_held),
+                        next_tied,
+                        beyond,
+                    )),
+                },
+            },
+            Err(why) -> Err(why),
+        },
+    }
+}
+
+// One sounding item: its span starts here, and what follows starts after
+// it.
+//
+// The span is measured once and named, because it is wanted twice — once
+// to say where what follows begins, once to record what was written.
+// Naming it is all `placed_span` ever was: a parameter used to be how this
+// language named a value used twice, and a `let` is how it is now.
+fn placed(
+    anchor: Nat,
+    held: WrittenDuration,
+    tied: Tie,
+    here: Position<WrittenTime>,
+    after: (Position<WrittenTime> -> Result<Realization, Text>),
+) -> Result<Realization, Text> {
+    let span = written_span(held)?;
+    match after(position_shift(here, span)) {
+        Ok(later) -> Ok(Realization {
+            spans = Span(anchor, here, span, tied, later.spans),
+            at_end = later.at_end,
+        }),
+        Err(why) -> Err(why),
+    }
+}
+
+// What one written event covers.
+//
+// A grace note refuses. How long a grace takes, and what it takes it
+// from, is a performance profile's choice, and a package that guessed
+// here would be answering a performance question with a notation answer.
+fn sounded_span(
+    anchor: Nat,
+    event: StaffEvent,
+    here: Position<WrittenTime>,
+    after: (Position<WrittenTime> -> Result<Realization, Text>),
+) -> Result<Realization, Text> {
+    match event {
+        Note(spelled, held, tied) -> placed(anchor, held, tied, here, after),
+        Rest(silent) -> placed(anchor, silent, Untied, here, after),
+        Chord(voices, sustained, joined) -> placed(anchor, sustained, joined, here, after),
+        Grace(ornaments) -> Err("a grace note has no written span: its timing is a performance profile's choice"),
+        MeterChange(beats) -> after(here),
+    }
+}
+
+// A point moved by a factor of its distance from the origin, then placed
+// against `here`. This is how a tuplet's inside becomes its outside.
+fn rescaled(
+    factor: Ratio,
+    here: Position<WrittenTime>,
+    point: Position<WrittenTime>,
+) -> Position<WrittenTime> {
+    position_of(ratio_add(position_ratio(here), ratio_mul(factor, position_ratio(point))))
+}
+
+// Every span of a tuplet's body, moved and shortened by the tuplet's
+// factor.
+fn rescaled_spans(
+    factor: Ratio,
+    here: Position<WrittenTime>,
+    spans: WrittenSpans,
+) -> WrittenSpans {
+    // Written as its own recursion rather than through the fold: the seed
+    // would be a bare `NoSpans`, and a constructor standing alone says
+    // nothing about which family it belongs to. Here the arm is checked
+    // against the answer type this signature already states.
+    match spans {
+        NoSpans -> NoSpans,
+        Span(anchor, start, held, tied, after) -> Span(
+            anchor,
+            rescaled(factor, here, start),
+            duration_scale(held, factor),
+            tied,
+            rescaled_spans(factor, here, after),
         ),
     }
+}
 
-    // The catamorphism's equation, written as it reads: `combine` is handed
-    // what the spans after this one produced.
-    //
-    // `combine` and not `step`, which is a keyword — the scale step is the
-    // word the language already spent.
-    //
-    // The spans come first here and last in the public spelling, for the
-    // reason `std::list` states at length: the termination measure holds the
-    // arguments before the recursive position fixed, so the argument that
-    // descends is the first one.
-    private fn folded_spans<A>(
-        spans: WrittenSpans,
-        empty: A,
-        combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
-    ) -> A {
-        match spans {
-            NoSpans -> empty,
-            Span(anchor, start, held, tied, after) -> combine(
-                anchor,
-                start,
-                held,
-                tied,
-                folded_spans(after, empty, combine),
-            ),
-        }
-    }
+// Three in the time of two is a factor of two thirds: the written values
+// stay what they are, and the time they take does not.
+//
+// A tuplet that plays nothing is refused for the reason `division_span`
+// gives: nothing in the time of two is not a tuplet, and the reader who
+// wrote it should hear that rather than the core's division rule.
+fn tuplet_factor(played: Nat, against: Nat) -> Result<Ratio, Text> {
+    exact_quotient(
+        ratio_of(against),
+        played,
+        "a tuplet plays some number of values in the time of another, and this one plays none",
+    )
+}
 
-    // Read a sequence of spans from the end: `combine` sees each span together
-    // with what the spans after it produced, seeded with `empty`.
-    //
-    // A fold over a declared family is ordinary source. The core names a
-    // family's recursor after the family and compiles `match` to it, so this
-    // is written once, here, beside the family it reads.
-    fn written_spans_fold<A>(
-        empty: A,
-        combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
-        spans: WrittenSpans,
-    ) -> A { folded_spans(spans, empty, combine) }
-
-    // What a traversal reached: the spans it found, and where it stopped.
-    record Realization {
-        spans: WrittenSpans;
-        at_end: Position<WrittenTime>;
-    }
-
-    // A realized span with the written value `engrave` chose for it.
-    data Spelled {
-        NoSpelling,
-        Written(
-            anchor: Nat,
-            start: Position<WrittenTime>,
-            value: WrittenDuration,
-            after: Spelled,
-        ),
-    }
-
-    // The catamorphism over spelled spans, its list first for the same reason
-    // [`folded_spans`] gives.
-    private fn folded_spelling<A>(
-        spelled: Spelled,
-        empty: A,
-        combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
-    ) -> A {
-        match spelled {
-            NoSpelling -> empty,
-            Written(anchor, start, value, after) -> combine(
-                anchor,
-                start,
-                value,
-                folded_spelling(after, empty, combine),
-            ),
-        }
-    }
-
-    // Read spelled spans from the end: `combine` sees each span's chosen
-    // written value together with what the spans after it produced.
-    fn spelled_fold<A>(
-        empty: A,
-        combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
-        spelled: Spelled,
-    ) -> A { folded_spelling(spelled, empty, combine) }
-
-    // A dotted value in the making: what it covers so far, and what the next
-    // dot would add.
-    record Dotted {
-        total: Ratio;
-        added: Ratio;
-    }
-
-    // The exact rational a whole number names.
-    //
-    // A note value is a division of the whole note, so the package needs one;
-    // the language has no coercion from `Nat` to `Ratio`, deliberately, so
-    // the conversion is written rather than assumed. `1/1` and not `1` for the
-    // same reason one step down: a literal infers, and the whole-number token
-    // is a `Nat` wherever it stands.
-    fn ratio_of(count: Nat) -> Ratio {
-        range(count).fold_from_start(
-            0/1,
-            fn (sofar: Ratio, step_index: Nat) -> Ratio { ratio_add(sofar, 1/1) },
-        )
-    }
-
-    // `amount` shared out among `parts` of them, or `because` when there are
-    // none of them.
-    //
-    // The zero is caught here rather than left to `ratio_div`. A refusal is
-    // the core's own sentence and is not data a package can answer with, and
-    // this partiality belongs to the reader: `NoteValue(0, 0)` and `Tuplet(_,
-    // 0, 2, …)` are both things someone wrote down, so the package says what
-    // is wrong with each in a staff's words and hands back a `Result` its
-    // callers thread.
-    //
-    // The count is taken apart rather than compared against zero, and the
-    // difference is not stylistic. A whole number is `Zero` or a `Succ`, and
-    // only the second is a division; a comparison would answer the same
-    // question, but the division sits in an arm that binds nothing and an arm
-    // that binds nothing is an ordinary expression, evaluated where it stands.
-    // Written this way the division lives under a binder and is reached only
-    // when the count is one the reader can divide by.
-    private fn exact_quotient(amount: Ratio, parts: Nat, because: Text) -> Result<Ratio, Text> {
-        match parts {
-            Zero -> Err(because),
-            Succ(fewer) -> Ok(ratio_div(amount, ratio_of(parts))),
-        }
-    }
-
-    // What one undotted note value covers: the whole note divided.
-    fn division_span(division: Nat) -> Result<Ratio, Text> {
-        exact_quotient(
-            1/1,
-            division,
-            "a note value divides the whole note, and zero divides nothing",
-        )
-    }
-
-    // What a value covers once its dots are added: each dot adds half of what
-    // the dot before it added.
-    //
-    // The half is named because it is wanted twice — added on, and kept as
-    // what the next dot halves — and naming it is all `dotted_by` ever was.
-    fn dotted_span(base: Ratio, dots: Nat) -> Ratio {
-        match range(dots).fold_from_start(
-            Dotted {
-                total = base,
-                added = base
-            },
-            fn (sofar: Dotted, step_index: Nat) -> Dotted {
-                let half = ratio_div(sofar.added, 2/1);
-                Dotted {
-                    total = ratio_add(sofar.total, half),
-                    added = half
-                }
-            },
-        ) {
-            Dotted { total, added } -> total,
-        }
-    }
-
-    // The exact span a written value covers, or the sentence saying why none
-    // does.
-    fn written_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text> {
-        match value {
-            NoteValue(division, dots) -> match division_span(division) {
-                Ok(base) -> Ok(duration_of(dotted_span(base, dots))),
-                Err(why) -> Err(why),
-            },
-            ExactSpan(span) -> Ok(duration_of(span)),
-        }
-    }
-
-    // The bar a meter measures.
-    fn meter_span(beats: Meter) -> Result<Duration<WrittenTime>, Text> {
-        match beats {
-            Beats(count, unit) -> match division_span(unit) {
-                Ok(one) -> Ok(duration_of(ratio_mul(one, ratio_of(count)))),
-                Err(why) -> Err(why),
-            },
-        }
-    }
-
-    // One sequence of spans after another, in the order they were written.
-    fn joined_spans(first: WrittenSpans, second: WrittenSpans) -> WrittenSpans {
-        written_spans_fold(
-            second,
-            fn (
-                anchor: Nat,
-                start: Position<WrittenTime>,
-                held: Duration<WrittenTime>,
-                tied: Tie,
-                after: WrittenSpans,
-            ) -> WrittenSpans { Span(anchor, start, held, tied, after) },
-            first,
-        )
-    }
-
-    // A traversal that has run out of items reaches nothing and stays where
-    // it is.
-    fn stopped(here: Position<WrittenTime>) -> Result<Realization, Text> {
-        Ok(Realization {
-            spans = NoSpans,
-            at_end = here
-        })
-    }
-
-    // A nested form — a bar, a slur, a tuplet's siblings, a repeat, an ending
-    // — is its body followed by what comes after it.
-    fn nested(
-        body: (Position<WrittenTime> -> Result<Realization, Text>),
-        after: (Position<WrittenTime> -> Result<Realization, Text>),
-        here: Position<WrittenTime>,
-    ) -> Result<Realization, Text> {
-        match body(here) {
-            Ok(inner) -> match after(inner.at_end) {
+// A tuplet realizes its body against its own origin and then places the
+// result, so that the factor multiplies distances rather than positions.
+fn tupleted(
+    played: Nat,
+    against: Nat,
+    body: (Position<WrittenTime> -> Result<Realization, Text>),
+    after: (Position<WrittenTime> -> Result<Realization, Text>),
+    here: Position<WrittenTime>,
+) -> Result<Realization, Text> {
+    match tuplet_factor(played, against) {
+        Ok(factor) -> match body(position_of(0/1)) {
+            Ok(inner) -> match after(rescaled(factor, here, inner.at_end)) {
                 Ok(later) -> Ok(Realization {
-                    spans = joined_spans(inner.spans, later.spans),
+                    spans = joined_spans(
+                        rescaled_spans(factor, here, inner.spans),
+                        later.spans,
+                    ),
                     at_end = later.at_end,
                 }),
                 Err(why) -> Err(why),
             },
             Err(why) -> Err(why),
-        }
+        },
+        Err(why) -> Err(why),
     }
+}
 
-    // A tie joins what is written to whatever sounds next, wherever that is.
-    //
-    // This is a pass over the flat spans rather than a case of the traversal,
-    // because the traversal is inside a bar when it meets the tie and what
-    // the tie reaches is usually in the next one. Joining last is what lets a
-    // tie cross a barline, a slur, or a repeat without any of the three
-    // knowing about ties.
-    fn joined_ties(spans: WrittenSpans) -> Result<WrittenSpans, Text> {
-        match spans {
-            NoSpans -> Ok(NoSpans),
-            Span(anchor, start, held, tied, after) -> match joined_ties(after) {
-                Ok(later) -> match tied {
-                    Untied -> Ok(Span(anchor, start, held, Untied, later)),
-                    TiedOn -> match later {
-                        NoSpans -> Err("a tie has nothing after it to tie to"),
-                        Span(next_anchor, next_start, next_held, next_tied, beyond) -> Ok(Span(
-                            anchor,
-                            start,
-                            duration_add(held, next_held),
-                            next_tied,
-                            beyond,
-                        )),
-                    },
-                },
-                Err(why) -> Err(why),
-            },
-        }
-    }
-
-    // One sounding item: its span starts here, and what follows starts after
-    // it.
-    //
-    // The span is measured once and named, because it is wanted twice — once
-    // to say where what follows begins, once to record what was written.
-    // Naming it is all `placed_span` ever was: a parameter used to be how this
-    // language named a value used twice, and a `let` is how it is now.
-    fn placed(
-        anchor: Nat,
-        held: WrittenDuration,
-        tied: Tie,
-        here: Position<WrittenTime>,
-        after: (Position<WrittenTime> -> Result<Realization, Text>),
-    ) -> Result<Realization, Text> {
-        let span = written_span(held)?;
-        match after(position_shift(here, span)) {
-            Ok(later) -> Ok(Realization {
-                spans = Span(anchor, here, span, tied, later.spans),
-                at_end = later.at_end,
-            }),
-            Err(why) -> Err(why),
-        }
-    }
-
-    // What one written event covers.
-    //
-    // A grace note refuses. How long a grace takes, and what it takes it
-    // from, is a performance profile's choice, and a package that guessed
-    // here would be answering a performance question with a notation answer.
-    fn sounded_span(
-        anchor: Nat,
-        event: StaffEvent,
-        here: Position<WrittenTime>,
-        after: (Position<WrittenTime> -> Result<Realization, Text>),
-    ) -> Result<Realization, Text> {
-        match event {
-            Note(spelled, held, tied) -> placed(anchor, held, tied, here, after),
-            Rest(silent) -> placed(anchor, silent, Untied, here, after),
-            Chord(voices, sustained, joined) -> placed(anchor, sustained, joined, here, after),
-            Grace(ornaments) -> Err("a grace note has no written span: its timing is a performance profile's choice"),
-            MeterChange(beats) -> after(here),
-        }
-    }
-
-    // A point moved by a factor of its distance from the origin, then placed
-    // against `here`. This is how a tuplet's inside becomes its outside.
-    fn rescaled(
-        factor: Ratio,
-        here: Position<WrittenTime>,
-        point: Position<WrittenTime>,
-    ) -> Position<WrittenTime> {
-        position_of(ratio_add(position_ratio(here), ratio_mul(factor, position_ratio(point))))
-    }
-
-    // Every span of a tuplet's body, moved and shortened by the tuplet's
-    // factor.
-    fn rescaled_spans(
-        factor: Ratio,
-        here: Position<WrittenTime>,
-        spans: WrittenSpans,
-    ) -> WrittenSpans {
-        // Written as its own recursion rather than through the fold: the seed
-        // would be a bare `NoSpans`, and a constructor standing alone says
-        // nothing about which family it belongs to. Here the arm is checked
-        // against the answer type this signature already states.
-        match spans {
-            NoSpans -> NoSpans,
-            Span(anchor, start, held, tied, after) -> Span(
-                anchor,
-                rescaled(factor, here, start),
-                duration_scale(held, factor),
-                tied,
-                rescaled_spans(factor, here, after),
-            ),
-        }
-    }
-
-    // Three in the time of two is a factor of two thirds: the written values
-    // stay what they are, and the time they take does not.
-    //
-    // A tuplet that plays nothing is refused for the reason `division_span`
-    // gives: nothing in the time of two is not a tuplet, and the reader who
-    // wrote it should hear that rather than the core's division rule.
-    fn tuplet_factor(played: Nat, against: Nat) -> Result<Ratio, Text> {
-        exact_quotient(
-            ratio_of(against),
-            played,
-            "a tuplet plays some number of values in the time of another, and this one plays none",
-        )
-    }
-
-    // A tuplet realizes its body against its own origin and then places the
-    // result, so that the factor multiplies distances rather than positions.
-    fn tupleted(
-        played: Nat,
-        against: Nat,
-        body: (Position<WrittenTime> -> Result<Realization, Text>),
-        after: (Position<WrittenTime> -> Result<Realization, Text>),
-        here: Position<WrittenTime>,
-    ) -> Result<Realization, Text> {
-        match tuplet_factor(played, against) {
-            Ok(factor) -> match body(position_of(0/1)) {
-                Ok(inner) -> match after(rescaled(factor, here, inner.at_end)) {
-                    Ok(later) -> Ok(Realization {
-                        spans = joined_spans(
-                            rescaled_spans(factor, here, inner.spans),
-                            later.spans,
-                        ),
-                        at_end = later.at_end,
-                    }),
-                    Err(why) -> Err(why),
-                },
-                Err(why) -> Err(why),
-            },
-            Err(why) -> Err(why),
-        }
-    }
-
-    // The traversal itself: one case per constructor, answering with what the
-    // sequence covers once someone says where it starts.
-    //
-    // The fold's answer is a function because the fold is bottom-up and time
-    // runs the other way: what a suffix covers is known before where it
-    // begins, so each case answers "given a starting point, this is what I
-    // reach" rather than a value that would have needed the point already.
-    fn walked(items: StaffItem) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-        staff_item_fold(
-            stopped,
-            fn (
-                anchor: Nat,
-                event: StaffEvent,
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    sounded_span(anchor, event, here, after)
-                }
-            },
-            fn (
-                anchor: Nat,
-                beats: Meter,
-                body: (Position<WrittenTime> -> Result<Realization, Text>),
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    nested(body, after, here)
-                }
-            },
-            fn (
-                anchor: Nat,
-                body: (Position<WrittenTime> -> Result<Realization, Text>),
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    nested(body, after, here)
-                }
-            },
-            fn (
-                anchor: Nat,
-                played: Nat,
-                against: Nat,
-                body: (Position<WrittenTime> -> Result<Realization, Text>),
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    tupleted(played, against, body, after, here)
-                }
-            },
-            fn (
-                anchor: Nat,
-                times: Nat,
-                body: (Position<WrittenTime> -> Result<Realization, Text>),
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    nested(body, after, here)
-                }
-            },
-            fn (
-                anchor: Nat,
-                pass: Nat,
-                body: (Position<WrittenTime> -> Result<Realization, Text>),
-                after: (Position<WrittenTime> -> Result<Realization, Text>),
-            ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-                fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
-                    nested(body, after, here)
-                }
-            },
-            items,
-        )
-    }
-
-    // What is written on the staff.
-    //
-    // `StaffDocument` is a family with one constructor and not a record,
-    // because the adapter builds one positionally from syntax it assembled. A
-    // family is not projected at a field, so the two fields this module reads
-    // are read by a case, once each, rather than at every use.
-    fn document_items(page: StaffDocument) -> StaffItem {
-        match page {
-            Document(_, _, _, _, _, _, items) -> items,
-        }
-    }
-
-    // Which written value `engrave` is to choose for this document's spans.
-    fn document_spelling(page: StaffDocument) -> Spelling {
-        match page {
-            Document(_, _, _, _, _, spelling, _) -> spelling,
-        }
-    }
-
-    // What a document covers, in exact written time.
-    //
-    // A repeat and an ending are traversed once, because written time counts
-    // the page and not the performance: how many times a repeat sounds is a
-    // reading of the score, and this answers what the score says.
-    //
-    // Ties are joined afterwards, over the flat spans, so that a tie reaches
-    // whatever sounds next however deeply either of them is nested.
-    fn realize(document: StaffDocument) -> Result<Realization, Text> {
-        match walked(document_items(document))(position_of(0/1)) {
-            Ok(reached) -> match joined_ties(reached.spans) {
-                Ok(spans) -> Ok(Realization {
-                    spans = spans,
-                    at_end = reached.at_end
-                }),
-                Err(why) -> Err(why),
-            },
-            Err(why) -> Err(why),
-        }
-    }
-
-    // How much written time a document covers altogether.
-    fn written_extent(document: StaffDocument) -> Result<Duration<WrittenTime>, Text> {
-        match realize(document) {
-            Ok(reached) -> Ok(position_between(position_of(0/1), reached.at_end)),
-            Err(why) -> Err(why),
-        }
-    }
-
-    // The note values a reader is expected to read at sight, each beside the
-    // span it covers, shortest spelling first: no dots before one dot, and one
-    // before two.
-    //
-    // The spans are written down rather than derived. `written_span` answers
-    // the same rationals, but it answers them by counting: `ratio_of` walks a
-    // `Nat` one unit at a time, because the language has no coercion from a
-    // whole number to a rational and this module would rather write the
-    // conversion than assume it. Asking that question about a sixty-fourth
-    // costs sixty-four additions, and `first_covering` would ask it again at
-    // every step of a twenty-one-value search, nested inside whatever depth
-    // the caller had already reached. A table the module already knows is a
-    // table the module should write down.
-    private let readable_spellings: List<(WrittenDuration, Ratio)> = [
-        (NoteValue(1, 0), 1/1),
-        (NoteValue(2, 0), 1/2),
-        (NoteValue(4, 0), 1/4),
-        (NoteValue(8, 0), 1/8),
-        (NoteValue(16, 0), 1/16),
-        (NoteValue(32, 0), 1/32),
-        (NoteValue(64, 0), 1/64),
-        (NoteValue(1, 1), 3/2),
-        (NoteValue(2, 1), 3/4),
-        (NoteValue(4, 1), 3/8),
-        (NoteValue(8, 1), 3/16),
-        (NoteValue(16, 1), 3/32),
-        (NoteValue(32, 1), 3/64),
-        (NoteValue(64, 1), 3/128),
-        (NoteValue(1, 2), 7/4),
-        (NoteValue(2, 2), 7/8),
-        (NoteValue(4, 2), 7/16),
-        (NoteValue(8, 2), 7/32),
-        (NoteValue(16, 2), 7/64),
-        (NoteValue(32, 2), 7/128),
-        (NoteValue(64, 2), 7/256),
-    ];
-
-    // The note values a reader is expected to read at sight, shortest
-    // spelling first: no dots before one dot, and one before two.
-    let readable_values: List<WrittenDuration> = map(
-        fn (spelling: (WrittenDuration, Ratio)) -> WrittenDuration {
-            match spelling {
-                (value, covers) -> value,
+// The traversal itself: one case per constructor, answering with what the
+// sequence covers once someone says where it starts.
+//
+// The fold's answer is a function because the fold is bottom-up and time
+// runs the other way: what a suffix covers is known before where it
+// begins, so each case answers "given a starting point, this is what I
+// reach" rather than a value that would have needed the point already.
+fn walked(items: StaffItem) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+    staff_item_fold(
+        stopped,
+        fn (
+            anchor: Nat,
+            event: StaffEvent,
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                sounded_span(anchor, event, here, after)
             }
         },
-        readable_spellings,
-    );
+        fn (
+            anchor: Nat,
+            beats: Meter,
+            body: (Position<WrittenTime> -> Result<Realization, Text>),
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                nested(body, after, here)
+            }
+        },
+        fn (
+            anchor: Nat,
+            body: (Position<WrittenTime> -> Result<Realization, Text>),
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                nested(body, after, here)
+            }
+        },
+        fn (
+            anchor: Nat,
+            played: Nat,
+            against: Nat,
+            body: (Position<WrittenTime> -> Result<Realization, Text>),
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                tupleted(played, against, body, after, here)
+            }
+        },
+        fn (
+            anchor: Nat,
+            times: Nat,
+            body: (Position<WrittenTime> -> Result<Realization, Text>),
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                nested(body, after, here)
+            }
+        },
+        fn (
+            anchor: Nat,
+            pass: Nat,
+            body: (Position<WrittenTime> -> Result<Realization, Text>),
+            after: (Position<WrittenTime> -> Result<Realization, Text>),
+        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+                nested(body, after, here)
+            }
+        },
+        items,
+    )
+}
 
-    // The first of `spellings` whose span is `held` exactly, if one is.
-    //
-    // A search and not a fold: a fold would have to be seeded with a bare
-    // `None`, and a constructor is read against the family it is expected at,
-    // which a fold's answer type does not say until the fold is done. Here
-    // both answers are checked against the type this signature states. It also
-    // stops at the first match, which the fold could not.
-    private fn first_covering(
-        spellings: List<(WrittenDuration, Ratio)>,
-        held: Ratio,
-    ) -> Option<WrittenDuration> {
-        match spellings {
-            [] -> None,
-            // The head is named and then taken apart, because a list pattern
-            // binds its head at a name and does not carry a pattern there.
-            [spelling, .. others] -> match spelling {
-                (candidate, covers) -> if ratio_equal(covers, held) {
-                    Some(candidate)
-                } else { first_covering(others, held) },
-            },
-        }
+// What is written on the staff.
+//
+// `StaffDocument` is a family with one constructor and not a record,
+// because the adapter builds one positionally from syntax it assembled. A
+// family is not projected at a field, so the two fields this module reads
+// are read by a case, once each, rather than at every use.
+fn document_items(page: StaffDocument) -> StaffItem {
+    match page {
+        Document(_, _, _, _, _, _, items) -> items,
     }
+}
 
-    // The first readable value that covers a span exactly, if one does.
-    fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
-        first_covering(readable_spellings, duration_ratio(held))
+// Which written value `engrave` is to choose for this document's spans.
+fn document_spelling(page: StaffDocument) -> Spelling {
+    match page {
+        Document(_, _, _, _, _, spelling, _) -> spelling,
     }
+}
 
-    // Which written value a realized span is printed as.
-    //
-    // This is the choice expansion deliberately left open, and it is made
-    // here so that a span nothing readable spells is a complaint about the
-    // document's spelling policy rather than a note quietly rounded.
-    fn spelled_as(
-        policy: Spelling,
-        held: Duration<WrittenTime>,
-    ) -> Result<WrittenDuration, Text> {
-        match policy {
-            ExactValues -> Ok(ExactSpan(duration_ratio(held))),
-            ShortestReadable -> match readable(held) {
-                Some(value) -> Ok(value),
-                None -> Err("no readable note value covers this span exactly; ask the document for exact values"),
-            },
-        }
-    }
-
-    // Every realized span with the written value chosen for it.
-    fn engrave(document: StaffDocument) -> Result<Spelled, Text> {
-        match realize(document) {
-            Ok(reached) -> spelled_spans(document_spelling(document), reached.spans),
+// What a document covers, in exact written time.
+//
+// A repeat and an ending are traversed once, because written time counts
+// the page and not the performance: how many times a repeat sounds is a
+// reading of the score, and this answers what the score says.
+//
+// Ties are joined afterwards, over the flat spans, so that a tie reaches
+// whatever sounds next however deeply either of them is nested.
+fn realize(document: StaffDocument) -> Result<Realization, Text> {
+    match walked(document_items(document))(position_of(0/1)) {
+        Ok(reached) -> match joined_ties(reached.spans) {
+            Ok(spans) -> Ok(Realization {
+                spans = spans,
+                at_end = reached.at_end
+            }),
             Err(why) -> Err(why),
-        }
+        },
+        Err(why) -> Err(why),
     }
+}
 
-    // The spelling choice, made once per span and refused once for all of
-    // them.
-    fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text> {
-        match spans {
-            NoSpans -> Ok(NoSpelling),
-            Span(anchor, start, held, tied, after) -> match spelled_spans(policy, after) {
-                Ok(beyond) -> match spelled_as(policy, held) {
-                    Ok(value) -> Ok(Written(anchor, start, value, beyond)),
-                    Err(why) -> Err(why),
-                },
+// How much written time a document covers altogether.
+fn written_extent(document: StaffDocument) -> Result<Duration<WrittenTime>, Text> {
+    match realize(document) {
+        Ok(reached) -> Ok(position_between(position_of(0/1), reached.at_end)),
+        Err(why) -> Err(why),
+    }
+}
+
+// The note values a reader is expected to read at sight, each beside the
+// span it covers, shortest spelling first: no dots before one dot, and one
+// before two.
+//
+// The spans are written down rather than derived. `written_span` answers
+// the same rationals, but it answers them by counting: `ratio_of` walks a
+// `Nat` one unit at a time, because the language has no coercion from a
+// whole number to a rational and this module would rather write the
+// conversion than assume it. Asking that question about a sixty-fourth
+// costs sixty-four additions, and `first_covering` would ask it again at
+// every step of a twenty-one-value search, nested inside whatever depth
+// the caller had already reached. A table the module already knows is a
+// table the module should write down.
+private let readable_spellings: List<(WrittenDuration, Ratio)> = [
+    (NoteValue(1, 0), 1/1),
+    (NoteValue(2, 0), 1/2),
+    (NoteValue(4, 0), 1/4),
+    (NoteValue(8, 0), 1/8),
+    (NoteValue(16, 0), 1/16),
+    (NoteValue(32, 0), 1/32),
+    (NoteValue(64, 0), 1/64),
+    (NoteValue(1, 1), 3/2),
+    (NoteValue(2, 1), 3/4),
+    (NoteValue(4, 1), 3/8),
+    (NoteValue(8, 1), 3/16),
+    (NoteValue(16, 1), 3/32),
+    (NoteValue(32, 1), 3/64),
+    (NoteValue(64, 1), 3/128),
+    (NoteValue(1, 2), 7/4),
+    (NoteValue(2, 2), 7/8),
+    (NoteValue(4, 2), 7/16),
+    (NoteValue(8, 2), 7/32),
+    (NoteValue(16, 2), 7/64),
+    (NoteValue(32, 2), 7/128),
+    (NoteValue(64, 2), 7/256),
+];
+
+// The note values a reader is expected to read at sight, shortest
+// spelling first: no dots before one dot, and one before two.
+let readable_values: List<WrittenDuration> = map(
+    fn (spelling: (WrittenDuration, Ratio)) -> WrittenDuration {
+        match spelling {
+            (value, covers) -> value,
+        }
+    },
+    readable_spellings,
+);
+
+// The first of `spellings` whose span is `held` exactly, if one is.
+//
+// A search and not a fold: a fold would have to be seeded with a bare
+// `None`, and a constructor is read against the family it is expected at,
+// which a fold's answer type does not say until the fold is done. Here
+// both answers are checked against the type this signature states. It also
+// stops at the first match, which the fold could not.
+private fn first_covering(
+    spellings: List<(WrittenDuration, Ratio)>,
+    held: Ratio,
+) -> Option<WrittenDuration> {
+    match spellings {
+        [] -> None,
+        // The head is named and then taken apart, because a list pattern
+        // binds its head at a name and does not carry a pattern there.
+        [spelling, .. others] -> match spelling {
+            (candidate, covers) -> if ratio_equal(covers, held) {
+                Some(candidate)
+            } else { first_covering(others, held) },
+        },
+    }
+}
+
+// The first readable value that covers a span exactly, if one does.
+fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
+    first_covering(readable_spellings, duration_ratio(held))
+}
+
+// Which written value a realized span is printed as.
+//
+// This is the choice expansion deliberately left open, and it is made
+// here so that a span nothing readable spells is a complaint about the
+// document's spelling policy rather than a note quietly rounded.
+fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDuration, Text> {
+    match policy {
+        ExactValues -> Ok(ExactSpan(duration_ratio(held))),
+        ShortestReadable -> match readable(held) {
+            Some(value) -> Ok(value),
+            None -> Err("no readable note value covers this span exactly; ask the document for exact values"),
+        },
+    }
+}
+
+// Every realized span with the written value chosen for it.
+fn engrave(document: StaffDocument) -> Result<Spelled, Text> {
+    match realize(document) {
+        Ok(reached) -> spelled_spans(document_spelling(document), reached.spans),
+        Err(why) -> Err(why),
+    }
+}
+
+// The spelling choice, made once per span and refused once for all of
+// them.
+fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text> {
+    match spans {
+        NoSpans -> Ok(NoSpelling),
+        Span(anchor, start, held, tied, after) -> match spelled_spans(policy, after) {
+            Ok(beyond) -> match spelled_as(policy, held) {
+                Ok(value) -> Ok(Written(anchor, start, value, beyond)),
                 Err(why) -> Err(why),
             },
-        }
+            Err(why) -> Err(why),
+        },
     }
 }

@@ -15,7 +15,7 @@ use musa_syntax::{BarSpacing, ParsedDocument, SyntaxKind, format, parse};
 
 /// The three spellings of a splice, in the positions the staff adapter's
 /// twenty construction sites put them in (note 43 §1.2).
-const QUOTES: &str = r"library {
+const QUOTES: &str = r"
     fn emit(here: NodePath, event: Syntax<Expr>, items: Syntax<Expr>) -> Syntax<Expr> {
         quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
     }
@@ -25,7 +25,7 @@ const QUOTES: &str = r"library {
     fn every(here: NodePath, xs: List<Syntax<Expr>>) -> Syntax<Expr> {
         quote at here { Items([$..xs]) }
     }
-}
+
 ";
 
 fn parsed(source: &str) -> ParsedDocument {
@@ -85,9 +85,8 @@ fn the_body_parses_into_what_the_same_text_parses_into_anywhere_else() {
     // an `ApplyExpr` over an `ExprArgList`, exactly as it is in a `let`,
     // because it went through `Parser::expr` either way — and the splices are
     // the only nodes in it that a quote adds.
-    let quoted =
-        parsed("library {\n    fn f(here: NodePath) -> Syntax<Expr> { quote at here { Sounded(one, two) } }\n}\n");
-    let plain = parsed("library {\n    let it = Sounded(one, two);\n}\n");
+    let quoted = parsed("\n    fn f(here: NodePath) -> Syntax<Expr> { quote at here { Sounded(one, two) } }\n\n");
+    let plain = parsed("\n    let it = Sounded(one, two);\n\n");
     let inside = QuoteExpr::cast(nodes(&quoted, SyntaxKind::QuoteExpr).remove(0))
         .expect("a quote node casts")
         .body()
@@ -106,7 +105,7 @@ fn the_shorthand_and_the_expression_form_are_one_node() {
     // know which was written: both hold one expression, and the shorthand's is
     // the name.
     let document = parsed(
-        "library {\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> { quote at here { P($x, ${ g(x) }) } }\n}\n",
+        "\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> { quote at here { P($x, ${ g(x) }) } }\n\n",
     );
     let splices = nodes(&document, SyntaxKind::Splice);
     assert_eq!(splices.len(), 2, "two splices were written");
@@ -131,7 +130,7 @@ fn a_dollar_outside_a_quote_is_not_an_expression() {
     // no meaning outside a quote". The parser is where that is said, so a `$`
     // written in ordinary source is a syntax error rather than a node whose
     // meaning some later pass has to refuse.
-    let document = parse("library {\n    let it = $x;\n}\n");
+    let document = parse("\n    let it = $x;\n\n");
     assert!(
         document.errors().iter().any(|error| error.to_string().contains('$')),
         "`$` outside a quote was read as something: {:?}",
@@ -149,7 +148,7 @@ fn a_splice_inside_a_splice_belongs_to_the_quote_written_there() {
     // code, so a `$` in it is a stray character unless a quote is written
     // *there*. A nested quote makes it a splice again.
     let nested = parsed(
-        "library {\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> {\n        quote at here { P(${ g(quote at here { Q($x) }) }) }\n    }\n}\n",
+        "\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> {\n        quote at here { P(${ g(quote at here { Q($x) }) }) }\n    }\n\n",
     );
     assert_eq!(
         nodes(&nested, SyntaxKind::QuoteExpr).len(),
@@ -162,9 +161,8 @@ fn a_splice_inside_a_splice_belongs_to_the_quote_written_there() {
         "the outer `${{ … }}` and the inner `$x` are the two splices"
     );
 
-    let stray = parse(
-        "library {\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> { quote at here { P(${ g($x) }) } }\n}\n",
-    );
+    let stray =
+        parse("\n    fn f(here: NodePath, x: Syntax<Expr>) -> Syntax<Expr> { quote at here { P(${ g($x) }) } }\n\n");
     assert!(
         !stray.errors().is_empty(),
         "a `$` inside a splice's own expression was read as a splice of the enclosing quote"
@@ -187,7 +185,7 @@ fn the_quote_forms_round_trip_and_format_to_a_fixpoint() {
 ///
 /// The same program the tree-sitter corpus reads, so the two grammars are held
 /// to one text rather than to two paraphrases of one intention.
-const PATTERNS: &str = r"library {
+const PATTERNS: &str = r"
     fn braced(here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
         match node {
             quote { { $inside } } -> quote at here { $inside },
@@ -195,7 +193,7 @@ const PATTERNS: &str = r"library {
             _ -> quote at here { 0 },
         }
     }
-}
+
 ";
 
 #[test]
@@ -224,9 +222,9 @@ fn a_pattern_body_parses_into_what_the_same_text_parses_into_anywhere_else() {
     // ordinary source does. A pattern dialect would be a third grammar to keep
     // in step, and there is not one.
     let quoted = parsed(
-        "library {\n    fn f(node: Syntax<Expr>) -> Nat {\n        match node {\n            quote { Sounded(one, two) } -> 1,\n            _ -> 0,\n        }\n    }\n}\n",
+        "\n    fn f(node: Syntax<Expr>) -> Nat {\n        match node {\n            quote { Sounded(one, two) } -> 1,\n            _ -> 0,\n        }\n    }\n\n",
     );
-    let plain = parsed("library {\n    let it = Sounded(one, two);\n}\n");
+    let plain = parsed("\n    let it = Sounded(one, two);\n\n");
     let inside = QuotePattern::cast(nodes(&quoted, SyntaxKind::QuotePattern).remove(0))
         .expect("a quote pattern casts")
         .body()

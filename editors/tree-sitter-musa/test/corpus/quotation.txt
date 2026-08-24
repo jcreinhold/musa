@@ -2,256 +2,250 @@
 quote at here: a body read by the ordinary grammar
 ==================
 
-library {
-  fn emit(here: NodePath, event: Syntax<Expr>, items: Syntax<Expr>) -> Syntax<Expr> {
-    quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
-  }
+fn emit(here: NodePath, event: Syntax<Expr>, items: Syntax<Expr>) -> Syntax<Expr> {
+  quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
+}
 
-  fn nothing(here: NodePath) -> Syntax<Expr> { quote at here { NoItems } }
+fn nothing(here: NodePath) -> Syntax<Expr> { quote at here { NoItems } }
 
-  fn every(here: NodePath, xs: List<Syntax<Expr>>) -> Syntax<Expr> {
-    quote at here { Items([$..xs]) }
-  }
+fn every(here: NodePath, xs: List<Syntax<Expr>>) -> Syntax<Expr> {
+  quote at here { Items([$..xs]) }
 }
 
 ---
 
 (source_file
-  (library_declaration
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
-              (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier))))))
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
-              (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (applied_type
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
           (type_name
-            (identifier))
-          (type_expression
+            (identifier))))
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
             (type_name
-              (identifier)))))
-      (block_expression
-        (expression
-          (quote_expression
-            (name_expression
               (identifier))
-            (expression
-              (application_expression
-                (name_expression
-                  (identifier))
-                (expression_argument_list
-                  (expression_argument
-                    (expression
-                      (splice
-                        (expression
-                          (application_expression
-                            (name_expression
-                              (identifier))
-                            (expression_argument_list
-                              (expression_argument
-                                (expression
-                                  (name_expression
-                                    (identifier))))
-                              (expression_argument
-                                (expression
-                                  (name_expression
-                                    (identifier))))))))))
-                  (expression_argument
-                    (expression
-                      (splice
-                        (name_expression
-                          (identifier)))))
-                  (expression_argument
-                    (expression
-                      (splice
-                        (name_expression
-                          (identifier))))))))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
+            (type_expression
+              (type_name
+                (identifier))))))
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
             (type_name
-              (identifier)))))
-      (type_expression
-        (applied_type
-          (type_name
-            (identifier))
-          (type_expression
-            (type_name
-              (identifier)))))
-      (block_expression
-        (expression
-          (quote_expression
-            (name_expression
               (identifier))
-            (expression
-              (name_expression
+            (type_expression
+              (type_name
                 (identifier)))))))
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (parameter
-          (identifier)
-          (type_expression
-            (list_type
-              (type_expression
-                (applied_type
-                  (type_name
-                    (identifier))
-                  (type_expression
-                    (type_name
-                      (identifier)))))))))
-      (type_expression
-        (applied_type
+    (type_expression
+      (applied_type
+        (type_name
+          (identifier))
+        (type_expression
           (type_name
+            (identifier)))))
+    (block_expression
+      (expression
+        (quote_expression
+          (name_expression
             (identifier))
-          (type_expression
-            (type_name
-              (identifier)))))
-      (block_expression
-        (expression
-          (quote_expression
+          (expression
+            (application_expression
+              (name_expression
+                (identifier))
+              (expression_argument_list
+                (expression_argument
+                  (expression
+                    (splice
+                      (expression
+                        (application_expression
+                          (name_expression
+                            (identifier))
+                          (expression_argument_list
+                            (expression_argument
+                              (expression
+                                (name_expression
+                                  (identifier))))
+                            (expression_argument
+                              (expression
+                                (name_expression
+                                  (identifier))))))))))
+                (expression_argument
+                  (expression
+                    (splice
+                      (name_expression
+                        (identifier)))))
+                (expression_argument
+                  (expression
+                    (splice
+                      (name_expression
+                        (identifier))))))))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (type_expression
+      (applied_type
+        (type_name
+          (identifier))
+        (type_expression
+          (type_name
+            (identifier)))))
+    (block_expression
+      (expression
+        (quote_expression
+          (name_expression
+            (identifier))
+          (expression
             (name_expression
-              (identifier))
-            (expression
-              (application_expression
-                (name_expression
+              (identifier)))))))
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))
+      (parameter
+        (identifier)
+        (type_expression
+          (list_type
+            (type_expression
+              (applied_type
+                (type_name
                   (identifier))
-                (expression_argument_list
-                  (expression_argument
-                    (expression
-                      (list_expression
-                        (expression
-                          (sequence_splice
-                            (name_expression
-                              (identifier))))))))))))))))
+                (type_expression
+                  (type_name
+                    (identifier)))))))))
+    (type_expression
+      (applied_type
+        (type_name
+          (identifier))
+        (type_expression
+          (type_name
+            (identifier)))))
+    (block_expression
+      (expression
+        (quote_expression
+          (name_expression
+            (identifier))
+          (expression
+            (application_expression
+              (name_expression
+                (identifier))
+              (expression_argument_list
+                (expression_argument
+                  (expression
+                    (list_expression
+                      (expression
+                        (sequence_splice
+                          (name_expression
+                            (identifier)))))))))))))))
 
 ==================
 quote { … } as a pattern: the same body, the other direction
 ==================
 
-library {
-  fn braced(here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
-    match node {
-      quote { { $inside } } -> quote at here { $inside },
-      quote { f($a, $..others) } -> quote at here { $a },
-      _ -> quote at here { 0 },
-    }
+fn braced(here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
+  match node {
+    quote { { $inside } } -> quote at here { $inside },
+    quote { f($a, $..others) } -> quote at here { $a },
+    _ -> quote at here { 0 },
   }
 }
 
 ---
 
 (source_file
-  (library_declaration
-    (function_declaration
-      (identifier)
-      (parameter_list
-        (parameter
-          (identifier)
-          (type_expression
-            (type_name
-              (identifier))))
-        (parameter
-          (identifier)
-          (type_expression
-            (applied_type
-              (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier)))))))
-      (type_expression
-        (applied_type
+  (function_declaration
+    (identifier)
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
           (type_name
-            (identifier))
-          (type_expression
+            (identifier))))
+      (parameter
+        (identifier)
+        (type_expression
+          (applied_type
             (type_name
-              (identifier)))))
-      (block_expression
-        (expression
-          (match_expression
+              (identifier))
+            (type_expression
+              (type_name
+                (identifier)))))))
+    (type_expression
+      (applied_type
+        (type_name
+          (identifier))
+        (type_expression
+          (type_name
+            (identifier)))))
+    (block_expression
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern
+              (quote_pattern
+                (expression
+                  (block_expression
+                    (expression
+                      (splice
+                        (name_expression
+                          (identifier))))))))
             (expression
-              (name_expression
-                (identifier)))
-            (match_arm
-              (pattern
-                (quote_pattern
-                  (expression
-                    (block_expression
-                      (expression
-                        (splice
-                          (name_expression
-                            (identifier))))))))
-              (expression
-                (quote_expression
-                  (name_expression
-                    (identifier))
-                  (expression
-                    (splice
-                      (name_expression
-                        (identifier)))))))
-            (match_arm
-              (pattern
-                (quote_pattern
-                  (expression
-                    (application_expression
-                      (name_expression
-                        (identifier))
-                      (expression_argument_list
-                        (expression_argument
-                          (expression
-                            (splice
-                              (name_expression
-                                (identifier)))))
-                        (expression_argument
-                          (expression
-                            (sequence_splice
-                              (name_expression
-                                (identifier))))))))))
-              (expression
-                (quote_expression
-                  (name_expression
-                    (identifier))
-                  (expression
-                    (splice
-                      (name_expression
-                        (identifier)))))))
-            (match_arm
-              (pattern
-                (identifier))
-              (expression
-                (quote_expression
-                  (name_expression
-                    (identifier))
-                  (expression
-                    (literal_expression
-                      (integer))))))))))))
+              (quote_expression
+                (name_expression
+                  (identifier))
+                (expression
+                  (splice
+                    (name_expression
+                      (identifier)))))))
+          (match_arm
+            (pattern
+              (quote_pattern
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (splice
+                            (name_expression
+                              (identifier)))))
+                      (expression_argument
+                        (expression
+                          (sequence_splice
+                            (name_expression
+                              (identifier))))))))))
+            (expression
+              (quote_expression
+                (name_expression
+                  (identifier))
+                (expression
+                  (splice
+                    (name_expression
+                      (identifier)))))))
+          (match_arm
+            (pattern
+              (identifier))
+            (expression
+              (quote_expression
+                (name_expression
+                  (identifier))
+                (expression
+                  (literal_expression
+                    (integer)))))))))))

@@ -227,7 +227,7 @@ fn names_in(node: &SyntaxNode) -> IndexSet<String> {
 /// The same over source text, for the printer's own body, which is text by the
 /// time anything asks what it names.
 fn names_in_text(source: &str) -> IndexSet<String> {
-    names_in(&musa_syntax::parse(&format!("library {{ let named = {source}; }}")).syntax())
+    names_in(&musa_syntax::parse(&format!(" let named = {source}; ")).syntax())
 }
 
 /// The name a `let` declares.

@@ -1,7 +1,6 @@
 ; The scopes an editor's rename-what-you-see and occurrence-highlighting
 ; read. The language server is the semantic rename; this is the lexical one.
 (piece_declaration) @local.scope
-(library_declaration) @local.scope
 (motif_declaration) @local.scope
 (block) @local.scope
 (function_declaration) @local.scope
