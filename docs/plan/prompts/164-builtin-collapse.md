@@ -12,21 +12,30 @@ phase: 3
 > hardcoded to the modulus 12 (`pc12_*`, `row12_*`) collapse onto the index of 142d, and the operations onto the traits
 > of 142e. That is 12% of a 139-entry registry, and it is the count note 51 §3 uses as the evidence for the index.
 
-# Collapse the Builtin Registry Behind Traits and Namespaces
+# Collapse the Builtin Registry Behind Methods and Namespaces
 
 ## Task
 
-The compiler owns 117 source operations and 14 phase operations, and a large fraction of them exist only because the
-language had no way to overload a name. Traits, methods, and type namespaces exist now. Collapse
-`nat_add`/`ratio_add`/`duration_add` into `Add`, `text_equal` into `==`, `duration_of`/`position_of` into
-`Duration::of`/`Position::of`, and every other entry whose ownership entry no longer names anything the compiler
-actually hides. Record what shrank and what did not, and why.
+The compiler owns 122 source operations and 18 phase operations, and a large fraction of them exist only because the
+language had no way to overload a name. It has one now. Collapse `nat_add`/`ratio_add`/`duration_add` behind `+`,
+`text_equal` behind `==`, `duration_of`/`position_of` behind `Duration::of`/`Position::of`, and every other entry whose
+ownership entry no longer names anything the compiler actually hides. Record what shrank and what did not, and why.
+
+**The mechanism is a namespace, not a trait.** The trait system was measured away at [143](143-one-theory-amendment.md)
+and deleted at [146](146-delete-the-trait-system.md), and [`10-traits.md`](../../rules/language/10-traits.md) is retired
+with no successor. What stands in its place is `01-surface.md` §1.5: an operator is surface syntax for a named function
+— `x == y` is `x.equal(y)`, which is `Nat::equal(x, y)` at `x : Nat` — resolved by type-directed disambiguation against
+the definitions of that name in scope. So there is no `Eq`, no instance, and no dictionary; there is
+`impl Nat { fn equal(…) { … } }` beside the `impl Interval { fn compose(…) }` that `stdlib/src/pitch.musa` already
+writes. An earlier statement of this prompt was written before 146 and named the traits; the collapse it asks for is
+unchanged and the vehicle is this one.
 
 **The seventeen modulus-12 entries are the largest single case, and they are collapsed here rather than at 142e.** That
 prompt named the algebra; this one supplies the carrier it acts on. `Pc12`, `PcSet12`, and `Row12` become `Pc(n)`,
 `PcSet(n)`, and `Row(n)` over 142d's index and 142f's declaration form; `Group<Ti>`, `Action<Pc(n), Ti>`, and
-`Torsor<Pc(n), Ic(n)>` are the instances; and `orbit` and `stabilizer` — ordinary functions of a finite action, taking
-the modulus as the number it is — replace `row12_symmetries`, `row12_forms`, and `row12_matrix`. Note 52 §2.3 is the
+`Torsor<Pc(n), Ic(n)>` are `stdlib/src/algebra.musa`'s records at those carriers — ordinary values, since 143 made a
+structure a record rather than a trait; and `orbit` and `stabilizer` — ordinary functions of a finite action, taking the
+modulus as the number it is — replace `row12_symmetries`, `row12_forms`, and `row12_matrix`. Note 52 §2.3 is the
 argument that those three builtins are one question asked three times.
 
 *Repaired ordering:* this prompt now follows the staff rewrite — prompt 166 was pulled ahead of it and of 144 when the
@@ -48,10 +57,18 @@ staff budget class, which is 166's to deliver.
 - `docs/rules/language/00-semantics.md`'s compiler-ownership paragraph — "an operation may be a builtin only when it
   needs source-aware provenance, direct core construction, a registered primitive's private state, or the private finite
   representation and work budget needed to preserve total evaluation." That is the four-way test each entry faces.
-- `docs/rules/language/10-traits.md`'s operator table, and prompt [137a](137a-operators-and-methods.md)'s implementation
-  — the replacements have to exist and be as fast, or this is a regression dressed as a cleanup.
+- `docs/rules/language/01-surface.md` §1.5's operator paragraph — the operator table's successor, since
+  [`10-traits.md`](../../rules/language/10-traits.md) is retired — together with prompt
+  [137a](137a-operators-and-methods.md)'s implementation and [146](146-delete-the-trait-system.md)'s replacement of
+  instance lookup by type-directed disambiguation. The replacements have to exist and be as fast, or this is a
+  regression dressed as a cleanup. §1.5's two guard rules are load-bearing here: an operator resolves only when the
+  expected type or the head argument's type is known, and an operation that can fail keeps its failing shape, so
+  `ratio_div`'s `Result` survives becoming `/`.
+- `docs/rules/language/03-musical-domains.md` §5, the governing statement of the indexed domains this prompt supplies:
+  `Cyclic(n)`, `Pc(n)`, `Ic(n)`, `Row(n)`, `Icv(n)`, and what each means. `pc12` is `Pc(12)` and `Row12` is `Row(12)`;
+  the §4 definitions are unchanged and are the `n = 12` reading of these.
 - [`141l`](141l-qualified-path.md), which read `::` and moved the operator and index lowerings onto §1.5's qualified
-  desugaring. Its Stop refused to declare the traits those spellings name on the grounds that doing so would answer this
+  desugaring. Its Stop refused to declare what those spellings name on the grounds that doing so would answer this
   prompt's survey in advance; this is the prompt that answers it.
 - Prompt [138](138-typed-syntax.md)'s registry survey, which already marked phase entries for deletion once their
   arguments became typed.
@@ -71,25 +88,28 @@ staff budget class, which is 166's to deliver.
 
 **The test is the ownership field, not the name.** An entry survives when it hides something a library could not: a
 private representation, the build-local registry, source-aware provenance, direct core construction, or the work budget.
-It goes when its hidden information turns out to be "how to add two numbers". Go through all 131 entries and record the
+It goes when its hidden information turns out to be "how to add two numbers". Go through all 140 entries and record the
 verdict for each — this is a survey with an answer per row, not a sweep that deletes what is easy.
 
 **The spellings already exist; what is missing is what they name.** Prompt [141l](141l-qualified-path.md) moved the
-operator and index readings onto `01-surface.md` §1.5's own desugaring — `x == y` is lowered as `Eq::equal(x, y)` and
-`xs[i]` as `Index::at(xs, i)` — and read the `::` path that `Duration::of` is written with. So none of this prompt's
-work is a change to `musa-compiler`'s lowering: `Eq`, `Ord`, `Add`, `Sub`, `Mul`, `Div`, and `Index` are names those
-readings already write and nothing in `crate::registry::owned` declares. What this prompt adds is the declarations and
-the instances, and a collapsed entry is measured by an operator that resolves rather than by a table that shrank.
+operator and index readings onto `01-surface.md` §1.5's own desugaring and read the `::` path that `Duration::of` is
+written with. So none of this prompt's work is a change to `musa-compiler`'s lowering: `equal`, `less`, `add`, `sub`,
+`mul`, `div`, and `at` are the names those readings already write, and at a `Nat` receiver nothing declares any of them
+— `1 == 1` today is `no method 'equal' for 'Nat'`. What this prompt adds is the `impl` blocks that declare them on each
+carrier, and a collapsed entry is measured by an operator that resolves rather than by a table that shrank.
 
 **Some entries move to `stdlib/` rather than disappearing.** An operation that a library can now express belongs in the
 library, written in Musa, where it can be read and improved. Say which moved, and check that the moved version is
 covered by the same laws the builtin was.
 
-**Measure the ones that get slower.** Replacing a direct builtin call with a dictionary projection is the standard cost
-of this design, and the standard mitigation — resolving a known-concrete instance at elaboration time to a direct call —
-is worth doing where the measurement says so and not before. Report P1 and P2 against `06-elaboration-baseline.md`'s
-baseline under its 10% gate; a regression that this prompt causes is this prompt's to fix or to argue, not prompt 165's
-to inherit.
+**Measure the ones that get slower, and expect a different cause from the one this prompt first named.** There is no
+dictionary to project through: 146 resolves a method to a named function at elaboration time, so `a + b` at a known
+`Nat` elaborates to the call `nat_add(a, b)` already was, wrapped in whatever λ the `impl` body puts around the builtin.
+What is left to cost is that λ and the disambiguation walk, and
+[note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) §3 is the standing warning that
+a wrapper an author cannot see is charged to every call that reaches it. Report P1 and P2 against
+`06-elaboration-baseline.md`'s baseline under its 10% gate; a regression that this prompt causes is this prompt's to fix
+or to argue, not prompt 165's to inherit.
 
 **Say what did not shrink.** A survey that reports only the wins is not evidence. The entries that survived, and the
 reason each survived, are the more useful half of the output, because they are the list a future reader will check
@@ -103,7 +123,7 @@ decision, or a budget?
 
 - The collapsed registries, with the operator, method, and namespace forms carrying the load.
 - A per-entry survey — in `docs/plan/code-map/` or a note it links, whichever the code map's own structure wants —
-  recording for each of the 131 entries whether it was kept, replaced, or moved to `stdlib/`, and the hidden information
+  recording for each of the 140 entries whether it was kept, replaced, or moved to `stdlib/`, and the hidden information
   that decided it.
 - `stdlib/` gaining the operations that left the compiler, with their laws.
 - `stdlib/src/post_tonal/` rewritten over `Pc(n)`: `Group<Ti>`, `Action<Pc(n), Ti>`, and `orbit`/`stabilizer` as
@@ -158,7 +178,7 @@ committed set-class fixtures, reproduces `102-set-class-and-prime-form.md`'s pri
 the whole-tone and octatonic collections reproduces `106-collections.md`'s modes of limited transposition. Both as
 fixtures in `examples/`, both cited by `make docs-check`'s theory-citation pass.
 
-Commit as `Collapse the builtin registry behind traits and namespaces`.
+Commit as `Collapse the builtin registry behind methods and namespaces`.
 
 ## Stop
 
