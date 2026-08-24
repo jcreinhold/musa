@@ -397,6 +397,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 165a | explicit-control-stack | 3 | Recursion depth leaves the nesting metric for the step budget it belongs to — before 166, with 165b |
 | 165b | graph-update-and-data-descent | 3 | Memoize the unfold and take data descent off the nesting metric — before 166, which cannot run without it |
 | 165c | release-what-a-compilation-held | 3 | The prelude context is an `Arc` cycle rebuilt per compilation: 257,208 bytes leaked every `compile` — after 166b |
+| 165d | the-bar-claims-prefix | 3 | A bar's claim carries the whole prefix of its fold, so a hundred-bar voice elaborates one a hundred times — before 165 |
 | 166 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
 | 166b | per-context-memo-stamp | 3 | Scope the unfolding memo's invalidation stamp to its context, so one compilation's step count does not depend on another's |
 | 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
