@@ -856,17 +856,19 @@ module.exports = grammar({
         'true',
         'false',
         'None',
-        seq('Some', '(', $.identifier, ')'),
-        seq('Ok', '(', $.identifier, ')'),
-        seq('Err', '(', $.identifier, ')'),
-        // `Sounded(heard, lasting)` — a declared constructor, taking one
-        // binding per field. Whether a bare name is a constructor or a
+        seq('Some', '(', $.pattern, ')'),
+        seq('Ok', '(', $.pattern, ')'),
+        seq('Err', '(', $.pattern, ')'),
+        // `Sounded(heard, Loud(count))` — a declared constructor, taking one
+        // *pattern* per field. Whether a bare name is a constructor or a
         // binding is a question about what the program declares, so only the
-        // parenthesized form is a shape this file can see (Parser::pattern).
+        // parenthesized form is a shape this file can see (Parser::pattern);
+        // a sub-position holds another pattern, which is the recursion
+        // `01-surface.md` §1 states and Parser::constructor_bindings reads.
         seq(
           field('constructor', $.identifier),
           '(',
-          optional(seq($.identifier, repeat(seq(',', $.identifier)))),
+          optional(seq($.pattern, repeat(seq(',', $.pattern)))),
           ')',
         ),
         // `Tying::Untied`, `Tying::TiedOn(n)` — a case named in its type's
@@ -878,7 +880,7 @@ module.exports = grammar({
           repeat1(seq(':', ':', field('case', $.identifier))),
           optional(
             choice(
-              seq('(', optional(seq($.identifier, repeat(seq(',', $.identifier)))), ')'),
+              seq('(', optional(seq($.pattern, repeat(seq(',', $.pattern)))), ')'),
               $.record_pattern,
             ),
           ),
@@ -889,8 +891,8 @@ module.exports = grammar({
         $.record_pattern,
         seq(field('type', $.identifier), $.record_pattern),
         seq('[', ']'),
-        seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
-        seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),
+        seq('[', $.pattern, ',', '.', '.', $.pattern, ']'),
+        seq('(', $.pattern, ',', $.pattern, repeat(seq(',', $.pattern)), ')'),
       ),
 
     record_pattern: ($) =>

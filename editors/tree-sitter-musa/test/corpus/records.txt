@@ -216,7 +216,8 @@ library {
               (pattern
                 (identifier)
                 (identifier)
-                (identifier))
+                (pattern
+                  (identifier)))
               (expression
                 (name_expression
                   (identifier))))

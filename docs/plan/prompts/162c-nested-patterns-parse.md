@@ -1,7 +1,7 @@
 ---
 id: 162c
 slug: nested-patterns-parse
-status: pending
+status: done
 depends_on: [155, 161]
 phase: 3
 ---

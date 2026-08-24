@@ -1015,9 +1015,12 @@ impl Lowering<'_> {
 
     /// One written pattern.
     ///
-    /// The grammar writes a pattern flat — a name, an optional parenthesized run
-    /// of names, or a bracketed or parenthesized run — so this reads tokens
-    /// rather than recursing, except through a record pattern's own fields.
+    /// The head is read off this node's own tokens — a name, a keyword, a
+    /// literal, a bracket, a `::` path — and every *sub-position* is a nested
+    /// `Pattern` node, read by recursion. `01-surface.md` §1's "a sub-position
+    /// holds another pattern rather than only a binder" is that recursion, and
+    /// a bare lowercase name reaching this function one level down is the
+    /// binder reading rather than a second rule.
     pub(crate) fn pattern(&mut self, node: &SyntaxNode) -> Option<RawPattern> {
         let origin = self.origin(node);
         if let Some(fields) = child(node, |kind| kind == SyntaxKind::RecordPattern) {
@@ -1032,23 +1035,25 @@ impl Lowering<'_> {
         // them is the whole of `Tying::Untied`'s repair: reading every later
         // identifier as a binding made the case name one, so the pattern bound
         // `Untied` and matched a constructor named `Tying`.
-        let (path, after) = path_segments(&written);
-        let names: Vec<String> = after
+        let (path, _after) = path_segments(&written);
+        // The sub-positions, each already a whole pattern. A field written as a
+        // bare lowercase name arrives here as a `Bind`, which is what it always
+        // meant; nothing reads a sub-position's spelling any more.
+        let nested: Vec<RawPattern> = children(node, |kind| kind == SyntaxKind::Pattern)
             .iter()
-            .filter(|token| token.kind() == SyntaxKind::Identifier)
-            .map(|token| token.text().to_owned())
-            .collect();
-        let bound = |names: &[String]| -> Vec<RawPattern> {
-            names
-                .iter()
-                .map(|name| RawPattern::bind(origin, name.as_str()))
-                .collect()
-        };
+            .map(|held| self.pattern(held))
+            .collect::<Option<_>>()?;
+        // Whether the pattern was *written applied*. A constructor with no
+        // fields and a binder are the same tokens — `Silence` — and the
+        // uppercase reading below is what tells them apart; a lowercase name
+        // with a `(` after it is a constructor whatever its case, and asking
+        // the token stream is what keeps that from becoming a second rule.
+        let applied = written.iter().any(|token| token.kind() == SyntaxKind::LParen);
         Some(match head.kind() {
-            SyntaxKind::SomeKw => RawPattern::constructor(origin, "Option.Some", bound(&names)),
+            SyntaxKind::SomeKw => RawPattern::constructor(origin, "Option.Some", nested),
             SyntaxKind::NoneKw => RawPattern::constructor(origin, "Option.None", []),
-            SyntaxKind::OkKw => RawPattern::constructor(origin, "Result.Ok", bound(&names)),
-            SyntaxKind::ErrKw => RawPattern::constructor(origin, "Result.Err", bound(&names)),
+            SyntaxKind::OkKw => RawPattern::constructor(origin, "Result.Ok", nested),
+            SyntaxKind::ErrKw => RawPattern::constructor(origin, "Result.Err", nested),
             SyntaxKind::TrueKw => RawPattern::constructor(origin, "Bool.True", []),
             SyntaxKind::FalseKw => RawPattern::constructor(origin, "Bool.False", []),
             // `3` counts down to `Nat.Zero`, which is an ordinary constructor
@@ -1064,16 +1069,9 @@ impl Lowering<'_> {
             // admits, and they are exactly `List`'s two constructors: the
             // bracket is a spelling of a cons cell rather than of a list of
             // known length, so there is no chain to build here.
-            SyntaxKind::LBracket => match names.as_slice() {
+            SyntaxKind::LBracket => match nested.as_slice() {
                 [] => RawPattern::constructor(origin, "List.Empty", []),
-                [head, tail] => RawPattern::constructor(
-                    origin,
-                    "List.Cons",
-                    [
-                        RawPattern::bind(origin, head.as_str()),
-                        RawPattern::bind(origin, tail.as_str()),
-                    ],
-                ),
+                [head, tail] => RawPattern::constructor(origin, "List.Cons", [head.clone(), tail.clone()]),
                 // The parser has already complained; a pattern read from a
                 // bracket it could not finish would bind names nobody wrote.
                 _ => return None,
@@ -1082,7 +1080,7 @@ impl Lowering<'_> {
             // wider one matches the nesting [`super::paired`] writes. A `(` with
             // no name under it is the [`SyntaxKind::LBracket`] case again: the
             // parser has already complained.
-            SyntaxKind::LParen => paired(bound(&names), |first, second| {
+            SyntaxKind::LParen => paired(nested, |first, second| {
                 RawPattern::constructor(origin, "Pair.Both", [first, second])
             })?,
             // `Tying::Untied` — §1.5's path, read exactly as it is in an
@@ -1090,15 +1088,15 @@ impl Lowering<'_> {
             // same name written in the same way.
             SyntaxKind::Identifier if path.len() > 1 => {
                 let name = self.qualified(&path, crate::resolve::trimmed_span(node))?;
-                RawPattern::constructor(origin, name.as_str(), bound(&names))
+                RawPattern::constructor(origin, name.as_str(), nested)
             }
             SyntaxKind::Identifier => {
-                if names.is_empty() && !head.text().chars().next().is_some_and(char::is_uppercase) {
+                if !applied && !head.text().chars().next().is_some_and(char::is_uppercase) {
                     // `_` is an ordinary binder whose name nothing refers to,
                     // which is what the core's own `RawPattern::Bind` documents.
                     RawPattern::bind(origin, head.text())
                 } else {
-                    RawPattern::constructor(origin, head.text(), bound(&names))
+                    RawPattern::constructor(origin, head.text(), nested)
                 }
             }
             _ => return None,

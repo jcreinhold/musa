@@ -40,6 +40,7 @@ mod marks;
 mod meter_changes;
 mod music_compatibility;
 mod music_laws;
+mod nested_pattern_laws;
 mod notation_details_laws;
 mod notation_marks;
 mod open_form;

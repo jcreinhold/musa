@@ -101,16 +101,20 @@ library {
             (match_arm
               (pattern
                 (identifier)
-                (identifier)
-                (identifier))
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
               (expression
                 (literal_expression
                   (integer))))
             (match_arm
               (pattern
                 (identifier)
-                (identifier)
-                (identifier))
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
               (expression
                 (literal_expression
                   (integer))))))))
@@ -137,3 +141,295 @@ library {
           (name_expression
             (identifier)
             (identifier)))))))
+
+==================
+a sub-position holds another pattern
+==================
+
+library {
+  data Dynamic {
+    Quiet,
+    Loud(level: Nat),
+  }
+
+  data Wrapper {
+    Wrap(held: Dynamic),
+  }
+
+  record Marking {
+    written: Dynamic;
+  }
+
+  fn loudness(wrapped: Wrapper) -> Nat {
+    match wrapped {
+      Wrap(Loud(level)) -> level,
+      Wrap(Quiet) -> 0,
+    }
+  }
+
+  fn opening(dynamics: List<Dynamic>) -> Nat {
+    match dynamics {
+      [] -> 0,
+      [Loud(level), .. others] -> level,
+      [Quiet, .. others] -> 0,
+    }
+  }
+
+  fn marked(marking: Marking) -> Nat {
+    match marking {
+      Marking { written = Loud(level) } -> level,
+      Marking { written = Quiet } -> 0,
+    }
+  }
+
+  fn paired(both: Pair<Dynamic, Nat>) -> Nat {
+    match both {
+      (Loud(level), after) -> level,
+      (Quiet, after) -> after,
+    }
+  }
+
+  fn held(maybe: Option<Dynamic>) -> Nat {
+    match maybe {
+      Some(Loud(level)) -> level,
+      Some(Quiet) -> 0,
+      None -> 0,
+    }
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (record_declaration
+      (identifier)
+      (field_declaration
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier)
+                  (pattern
+                    (identifier))))
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (identifier)
+                (pattern
+                  (identifier)))
+              (expression
+                (literal_expression
+                  (integer))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (list_type
+              (type_expression
+                (type_name
+                  (identifier)))))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern)
+              (expression
+                (literal_expression
+                  (integer))))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier)
+                  (pattern
+                    (identifier)))
+                (pattern
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
+              (expression
+                (literal_expression
+                  (integer))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (identifier)
+                (record_pattern
+                  (field_pattern
+                    (identifier)
+                    (pattern
+                      (identifier)
+                      (pattern
+                        (identifier))))))
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (identifier)
+                (record_pattern
+                  (field_pattern
+                    (identifier)
+                    (pattern
+                      (identifier)))))
+              (expression
+                (literal_expression
+                  (integer))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (applied_type
+              (type_name
+                (identifier))
+              (type_expression
+                (type_name
+                  (identifier)))
+              (type_expression
+                (type_name
+                  (identifier)))))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier)
+                  (pattern
+                    (identifier)))
+                (pattern
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (option_type
+              (type_expression
+                (type_name
+                  (identifier)))))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier)
+                  (pattern
+                    (identifier))))
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier)))
+              (expression
+                (literal_expression
+                  (integer))))
+            (match_arm
+              (pattern)
+              (expression
+                (literal_expression
+                  (integer))))))))))

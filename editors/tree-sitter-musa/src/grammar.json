@@ -4066,7 +4066,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4087,7 +4087,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4108,7 +4108,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4139,7 +4139,7 @@
                   "members": [
                     {
                       "type": "SYMBOL",
-                      "name": "identifier"
+                      "name": "pattern"
                     },
                     {
                       "type": "REPEAT",
@@ -4152,7 +4152,7 @@
                           },
                           {
                             "type": "SYMBOL",
-                            "name": "identifier"
+                            "name": "pattern"
                           }
                         ]
                       }
@@ -4226,7 +4226,7 @@
                               "members": [
                                 {
                                   "type": "SYMBOL",
-                                  "name": "identifier"
+                                  "name": "pattern"
                                 },
                                 {
                                   "type": "REPEAT",
@@ -4239,7 +4239,7 @@
                                       },
                                       {
                                         "type": "SYMBOL",
-                                        "name": "identifier"
+                                        "name": "pattern"
                                       }
                                     ]
                                   }
@@ -4313,7 +4313,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4329,7 +4329,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4346,7 +4346,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "STRING",
@@ -4354,7 +4354,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "identifier"
+              "name": "pattern"
             },
             {
               "type": "REPEAT",
@@ -4367,7 +4367,7 @@
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "identifier"
+                    "name": "pattern"
                   }
                 ]
               }

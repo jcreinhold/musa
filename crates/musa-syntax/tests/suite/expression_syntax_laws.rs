@@ -487,3 +487,63 @@ fn a_question_takes_the_whole_expression_before_it() {
         );
     }
 }
+
+/// A sub-position holds another pattern, and the tree says so.
+///
+/// `docs/rules/language/01-surface.md` §1's **Patterns nest** paragraph is the
+/// rule; the CST is where it becomes readable. Each sub-position is a
+/// `Pattern` node rather than a bare binder token, so the lowering walks the
+/// same shape at every depth instead of switching to token-reading one level
+/// down. The formatter round-trip is here for the same reason it is on every
+/// other form: a node the printer does not know is a node that loses text.
+#[test]
+fn a_sub_position_of_a_pattern_holds_another_pattern() {
+    let source = r"library {
+    data Inner { Quiet, Loud(count: Nat) }
+    data Outer { Wrap(held: Inner) }
+    record Marking { written: Inner; }
+
+    fn wrapped(o: Outer) -> Nat { match o { Wrap(Loud(count)) -> count, Wrap(Quiet) -> 0 } }
+
+    fn listed(l: List<Inner>) -> Nat {
+        match l { [] -> 0, [Loud(count), .. others] -> count, [Quiet, .. others] -> 0 }
+    }
+
+    fn marked(m: Marking) -> Nat {
+        match m { Marking { written = Loud(count) } -> count, Marking { written = Quiet } -> 0 }
+    }
+
+    fn held(h: Option<Inner>) -> Nat {
+        match h { Some(Loud(count)) -> count, Some(Quiet) -> 0, None -> 0 }
+    }
+
+    fn paired(p: (Inner, Nat)) -> Nat { match p { (Loud(count), after) -> count, (Quiet, after) -> after } }
+}
+";
+    let parsed = parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+
+    let nested = parsed
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::Pattern)
+        .filter(|node| node.parent().is_some_and(|held| held.kind() == SyntaxKind::Pattern))
+        .count();
+    assert_eq!(
+        nested, 17,
+        "3 in `wrapped`, 5 in `listed`, 1 in `marked`, 3 in `held`, 5 in `paired` — \
+         a record's sub-position hangs under its `FieldPattern` and so is not counted here"
+    );
+
+    let once = format(&parsed, BarSpacing::Compact).to_string();
+    let reparsed = parse(&once);
+    assert!(
+        reparsed.errors().is_empty(),
+        "the formatted text no longer parses:\n{once}"
+    );
+    assert_eq!(
+        format(&reparsed, BarSpacing::Compact).to_string(),
+        once,
+        "formatting a nested pattern is not idempotent:\n{once}"
+    );
+}

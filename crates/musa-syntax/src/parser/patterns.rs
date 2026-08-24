@@ -16,9 +16,7 @@ impl Parser<'_> {
             Some(SyntaxKind::Identifier) if self.at_word("some") => {
                 self.respelled_constructor();
                 self.bump();
-                self.expect(SyntaxKind::LParen, "`(`");
-                self.expect(SyntaxKind::Identifier, "a binding name");
-                self.expect(SyntaxKind::RParen, "`)`");
+                self.held_pattern();
             }
             // `Tying::Untied`, `Reading::Refused { why = w }` — a case named
             // in its type's namespace. The bare spelling is the arm below and
@@ -78,29 +76,27 @@ impl Parser<'_> {
             ) => self.bump(),
             Some(SyntaxKind::SomeKw | SyntaxKind::OkKw | SyntaxKind::ErrKw) => {
                 self.bump();
-                self.expect(SyntaxKind::LParen, "`(`");
-                self.expect(SyntaxKind::Identifier, "a binding name");
-                self.expect(SyntaxKind::RParen, "`)`");
+                self.held_pattern();
             }
             Some(SyntaxKind::LBracket) => {
                 self.bump();
                 if !self.at(SyntaxKind::RBracket) {
-                    self.expect(SyntaxKind::Identifier, "a head binding");
+                    self.pattern();
                     self.expect(SyntaxKind::Comma, "`,`");
                     self.expect(SyntaxKind::Dot, "`.`");
                     self.expect(SyntaxKind::Dot, "`.`");
-                    self.expect(SyntaxKind::Identifier, "a tail binding");
+                    self.pattern();
                 }
                 self.expect(SyntaxKind::RBracket, "`]`");
             }
             Some(SyntaxKind::LParen) => {
                 self.bump();
-                self.expect(SyntaxKind::Identifier, "a binding name");
+                self.pattern();
                 self.expect(SyntaxKind::Comma, "`,`");
-                self.expect(SyntaxKind::Identifier, "a binding name");
+                self.pattern();
                 while self.at(SyntaxKind::Comma) {
                     self.bump();
-                    self.expect(SyntaxKind::Identifier, "a binding name");
+                    self.pattern();
                 }
                 self.expect(SyntaxKind::RParen, "`)`");
             }
@@ -114,21 +110,45 @@ impl Parser<'_> {
         self.nth_significant(1) == Some(SyntaxKind::Colon) && self.nth_significant(2) == Some(SyntaxKind::Colon)
     }
 
-    /// `(pitch, held)` — one binding per field of a constructor pattern.
+    /// `(pitch, Loud(count))` — one *pattern* per field of a constructor
+    /// pattern.
     ///
-    /// Bindings and not patterns: nested patterns are what
-    /// `02-core-calculus.md` §6.2's case tree admits and what the surface will
-    /// grow, but widening this position is a change to every existing `match`
-    /// in the tree and belongs with the migration that reads them.
+    /// Patterns and not bindings. `01-surface.md` §1 says "a sub-position holds
+    /// another pattern rather than only a binder" and `02-core-calculus.md`
+    /// §6.2's case tree splits a sub-position the same way it splits the
+    /// subject, so the grammar is recursive because the compiler already is. A
+    /// bare lowercase name is still a binder — that reading is the
+    /// [`Self::pattern`] arm it always was, reached one level down.
     pub(super) fn constructor_bindings(&mut self) {
         self.bump(); // `(`
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
-            self.expect(SyntaxKind::Identifier, "a binding name");
+            // A pattern that reads nothing would spin here: `pattern` reports
+            // and does not consume where it recognizes no opening token, so the
+            // loop, not the callee, is what has to notice.
+            let before = self.pos;
+            self.pattern();
+            if self.pos == before {
+                break;
+            }
             if self.at(SyntaxKind::Comma) {
                 self.bump();
             } else {
                 break;
             }
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+    }
+
+    /// `(held)` — the one sub-pattern `Some`, `Ok` and `Err` each take.
+    ///
+    /// Their own function because they are spelled as keywords and so cannot
+    /// reach [`Self::constructor_bindings`] through the identifier arm, and
+    /// because each takes exactly one field: a second would be a pattern for a
+    /// constructor that does not exist.
+    fn held_pattern(&mut self) {
+        self.expect(SyntaxKind::LParen, "`(`");
+        if !self.at(SyntaxKind::RParen) {
+            self.pattern();
         }
         self.expect(SyntaxKind::RParen, "`)`");
     }

@@ -2994,6 +2994,10 @@
           "named": true
         },
         {
+          "type": "pattern",
+          "named": true
+        },
+        {
           "type": "pitch_literal",
           "named": true
         },

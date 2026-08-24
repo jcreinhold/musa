@@ -89,7 +89,8 @@ piece "Expressions" {
                   (identifier))))
             (match_arm
               (pattern
-                (identifier))
+                (pattern
+                  (identifier)))
               (expression
                 (name_expression
                   (identifier))))))))
