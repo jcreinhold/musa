@@ -1,7 +1,7 @@
 ---
 id: 162d
 slug: or-patterns
-status: in-progress
+status: done
 depends_on: [162c]
 phase: 3
 ---

@@ -843,6 +843,16 @@ module.exports = grammar({
 
     pattern: ($) =>
       choice(
+        // `Bass | Tenor` — one arm answering for several constructors
+        // (`docs/rules/language/01-surface.md` §1). A pattern with no `|` in
+        // it is the node it always was; only an alternation gains a level.
+        // Written as a left-associative binary rule rather than as one node
+        // holding every alternative, which is the shape the hand parser
+        // builds: `a | b | c` nests here and is flat there. The drift law
+        // holds this file to the *lexer*, token for token, and `|` is one
+        // token either way — a second reader that agreed about the tokens and
+        // grouped them differently is what the law admits.
+        prec.left(seq($.pattern, '|', $.pattern)),
         // `quote { $head($..args) }` — quotation as a pattern
         // (`docs/rules/language/11-quotation.md` §4). No anchor: a pattern
         // builds nothing, so there is no node for one to be derived from.

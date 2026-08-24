@@ -529,6 +529,20 @@ pub enum RawPattern {
         /// One sub-pattern per field, in field order.
         fields: Vec<Self>,
     },
+    /// Several patterns, any one of which matches.
+    ///
+    /// `Bass | Tenor` is one arm reached from several branches of the case
+    /// tree, not several arms (`02-core-calculus.md` §6.2). Every alternative
+    /// binds the same names, which is Peyton Jones ch. 5's condition and is
+    /// checked before the tree is built: the body is one expression, so the
+    /// scope it is checked in cannot depend on which alternative matched.
+    Or {
+        /// Where it was written.
+        origin: Origin,
+        /// The alternatives, in the order written. Always two or more — one
+        /// alternative is the pattern itself.
+        alternatives: Vec<Self>,
+    },
     /// A record, with a sub-pattern for the fields it names.
     ///
     /// It binds rather than selects: a record has one shape, so there is nothing
@@ -548,7 +562,10 @@ impl RawPattern {
     #[must_use]
     pub const fn origin(&self) -> Origin {
         match *self {
-            Self::Bind { origin, .. } | Self::Constructor { origin, .. } | Self::Record { origin, .. } => origin,
+            Self::Bind { origin, .. }
+            | Self::Constructor { origin, .. }
+            | Self::Or { origin, .. }
+            | Self::Record { origin, .. } => origin,
         }
     }
 }
@@ -946,6 +963,15 @@ impl RawPattern {
             origin,
             name: name.into(),
             fields: fields.into_iter().collect(),
+        }
+    }
+
+    /// An alternation: several patterns, any one of which matches.
+    #[must_use]
+    pub fn or(origin: Origin, alternatives: impl IntoIterator<Item = Self>) -> Self {
+        Self::Or {
+            origin,
+            alternatives: alternatives.into_iter().collect(),
         }
     }
 

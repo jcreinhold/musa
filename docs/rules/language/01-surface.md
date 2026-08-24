@@ -133,15 +133,24 @@ spellings.
 
 `match` is the sole added case-analysis spelling. Arms are comma-separated and a final comma is accepted; braces and
 arrows keep the alternatives legible when an arm's expression spans lines. Patterns cover booleans, naturals and other
-literal domains, empty/cons lists, products, enum constructors, and record fields. A bare identifier binds the whole
-value; `_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the
-constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+literal domains, empty/cons lists, products, enum constructors, record fields, and **alternation**: `p | q` matches
+whatever either matches, at every position a pattern stands, including inside a nested one. A bare identifier binds the
+whole value; `_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns
+the constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
 **Patterns nest.** A sub-position holds another pattern rather than only a binder, and `02-core-calculus.md` §6.2 is
 where that is decided: a `match` compiles through a case tree to the generated eliminators, and coverage is decided
 there. This replaces the earlier depth-one rule, whose whole argument was that the case-tree compiler had not earned its
 place; §6.2 states what changed and why. There are still no guards, no conditional equations, and no pattern on the left
 of a definition.
+
+**One arm may answer for several constructors.** `Bass | Tenor -> true` is one arm, not two: the case tree points both
+branches at it, which is what §6.2 already does with a variable pattern in a split column. **Every alternative binds the
+same names**, or the arm is refused naming the alternative and the name it lacks — the body is one expression, so the
+scope it is checked in cannot depend on which alternative matched. `_` is the spelling for a sub-position an arm does
+not read, so `Looped(_) | Volta(_)` is how two constructors carrying different values share one answer. Alternation adds
+no elimination and changes nothing about coverage: an arm covering four constructors covers four constructors. It is not
+a door for guards — `Bass | Tenor if …` is the conditional equation this section refuses, and refuses still.
 
 `if condition { consequent } else { alternative }` is one expression and not a statement. The condition has type `Bool`,
 the two branches have one type between them, and that type is the conditional's. The `else` is mandatory: a one-armed

@@ -471,6 +471,14 @@ fn binders_of(pattern: &RawPattern, binders: &mut Vec<Name>) {
                 binders_of(field, binders);
             }
         }
+        // The first alternative, and not every one: an alternation's
+        // alternatives bind the same names (`02-core-calculus.md` §6.2), so
+        // reading them all would list each name once per alternative.
+        RawPattern::Or { alternatives, .. } => {
+            if let Some(first) = alternatives.first() {
+                binders_of(first, binders);
+            }
+        }
     }
 }
 

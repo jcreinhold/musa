@@ -5,7 +5,33 @@ use super::engine::Parser;
 use crate::SyntaxKind;
 
 impl Parser<'_> {
+    /// One pattern, which may be an alternation.
+    ///
+    /// `Bass | Tenor` is one pattern written as several: `01-surface.md` §1
+    /// admits alternation at every position a pattern stands, and
+    /// `02-core-calculus.md` §6.2 compiles it by pointing several branches of
+    /// the case tree at one arm. The node is built *after* the first
+    /// alternative, so a pattern with no `|` in it is the node it always was
+    /// and only an alternation gains a level.
     pub(super) fn pattern(&mut self) {
+        let checkpoint = self.events.len();
+        self.one_pattern();
+        if self.at(SyntaxKind::Pipe) {
+            self.start_at(checkpoint, SyntaxKind::Pattern);
+            while self.at(SyntaxKind::Pipe) {
+                self.bump();
+                let before = self.pos;
+                self.one_pattern();
+                if self.pos == before {
+                    break;
+                }
+            }
+            self.finish();
+        }
+    }
+
+    /// One alternative: everything a pattern may be except an alternation.
+    fn one_pattern(&mut self) {
         self.start(SyntaxKind::Pattern);
         match self.current() {
             Some(SyntaxKind::QuoteKw) => self.quote_pattern(),

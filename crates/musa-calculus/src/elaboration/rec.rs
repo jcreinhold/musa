@@ -501,5 +501,13 @@ fn pattern_binders(pattern: &RawPattern, into: &mut Vec<Name>) {
                 pattern_binders(field, into);
             }
         }
+        // The first alternative, and not every one: an alternation's
+        // alternatives bind the same names (`02-core-calculus.md` §6.2), so
+        // reading them all would list each name once per alternative.
+        RawPattern::Or { alternatives, .. } => {
+            if let Some(first) = alternatives.first() {
+                pattern_binders(first, into);
+            }
+        }
     }
 }

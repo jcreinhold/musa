@@ -463,6 +463,20 @@ pub enum Refusal {
         /// where the author's model went wrong.
         constructor: Name,
     },
+    /// An alternation whose alternatives do not bind the same names (§6.2).
+    ///
+    /// Peyton Jones ch. 5's condition. The arm's body is one expression checked
+    /// once per branch the alternation reaches, so the scope it is checked in
+    /// cannot depend on which alternative matched: a name one alternative binds
+    /// and another does not is a name the body may read and may not have.
+    #[error("this alternative does not bind `{name}`, and another beside it does")]
+    AlternativeBindings {
+        /// The alternative that lacks the name.
+        at: Origin,
+        /// The name it lacks. One rather than all of them, for
+        /// [`Self::IncompleteMatch`]'s reason.
+        name: Name,
+    },
     /// An arm no case the tree reaches can ever select.
     #[error("no value reaches this arm; an earlier one already covers it")]
     UnreachableBranch {

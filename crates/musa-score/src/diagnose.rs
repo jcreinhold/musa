@@ -126,6 +126,12 @@ pub enum Code {
     /// [`Self::NonExhaustiveMatch`]: it is a property of the case tree, not of
     /// the rank-1 pattern list.
     UnreachableBranch,
+    /// An alternation whose alternatives do not bind the same names.
+    ///
+    /// A pattern's alternatives are one arm reached from several branches, and
+    /// the arm's body is one expression: a name only some alternatives bind is
+    /// a name the body may read and may not have.
+    AlternativeBindings,
     /// A `match` whose scrutinee's index is not a distinct variable, which is
     /// A recursive call the termination rule cannot see is smaller.
     UncheckedRecursion,
@@ -273,6 +279,7 @@ code_table! {
     NonPositiveOccurrence => "non-positive-occurrence",
     IncompleteMatch => "incomplete-match",
     UnreachableBranch => "unreachable-branch",
+    AlternativeBindings => "alternative-bindings",
     UncheckedRecursion => "unchecked-recursion",
     UntypedRecursion => "untyped-recursion",
     PrivateName => "private-name",

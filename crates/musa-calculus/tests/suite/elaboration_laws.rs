@@ -364,7 +364,7 @@ fn each_refusal_is_reached_by_the_program_it_is_about() {
 }
 
 /// Every refusal this crate can answer with.
-const ALL_REFUSALS: [&str; 40] = [
+const ALL_REFUSALS: [&str; 41] = [
     "not-storable",
     "unknown-name",
     "mismatch",
@@ -382,6 +382,7 @@ const ALL_REFUSALS: [&str; 40] = [
     "no-such-constructor",
     "incomplete-match",
     "unreachable-branch",
+    "alternative-bindings",
     "unchecked-recursion",
     "untyped-recursion",
     "definition-cycle",
@@ -433,6 +434,7 @@ fn kind(refusal: &Refusal) -> &'static str {
         Refusal::NoSuchConstructor { .. } => "no-such-constructor",
         Refusal::IncompleteMatch { .. } => "incomplete-match",
         Refusal::UnreachableBranch { .. } => "unreachable-branch",
+        Refusal::AlternativeBindings { .. } => "alternative-bindings",
         Refusal::UncheckedRecursion { .. } => "unchecked-recursion",
         Refusal::UntypedRecursion { .. } => "untyped-recursion",
         Refusal::DefinitionCycle { .. } => "definition-cycle",

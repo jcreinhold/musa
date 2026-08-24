@@ -433,3 +433,135 @@ library {
               (expression
                 (literal_expression
                   (integer))))))))))
+
+==================
+one arm for several constructors
+==================
+
+library {
+  data Clef { Treble, Bass, Alto, Tenor }
+  data Form { Slurred, Grouped(played: Nat), Looped(times: Nat), Volta(pass: Nat) }
+
+  fn low(written: Clef) -> Bool {
+    match written {
+      Bass | Tenor -> true,
+      Treble | Alto -> false,
+    }
+  }
+
+  fn plain(form: Form) -> Bool {
+    match form {
+      Slurred | Grouped(_) | Looped(_) | Volta(_) -> true,
+    }
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier)))
+    (data_declaration
+      (identifier)
+      (data_variant
+        (identifier))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (data_variant
+        (identifier)
+        (data_field
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
+              (expression
+                (literal_expression)))
+            (match_arm
+              (pattern
+                (pattern
+                  (identifier))
+                (pattern
+                  (identifier)))
+              (expression
+                (literal_expression)))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (pattern
+                  (pattern
+                    (pattern
+                      (identifier))
+                    (pattern
+                      (identifier)
+                      (pattern
+                        (identifier))))
+                  (pattern
+                    (identifier)
+                    (pattern
+                      (identifier))))
+                (pattern
+                  (identifier)
+                  (pattern
+                    (identifier))))
+              (expression
+                (literal_expression)))))))))

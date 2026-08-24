@@ -547,3 +547,54 @@ fn a_sub_position_of_a_pattern_holds_another_pattern() {
         "formatting a nested pattern is not idempotent:\n{once}"
     );
 }
+
+/// `Bass | Tenor` is one pattern written as several.
+///
+/// `docs/rules/language/01-surface.md` §1 admits alternation at every position
+/// a pattern stands. The tree says which nodes are the alternatives — the `|`
+/// is the parent's own token and each alternative is a `Pattern` child — and a
+/// pattern with no `|` in it is the node it always was, which the counts below
+/// are what check.
+#[test]
+fn an_alternation_is_one_pattern_holding_its_alternatives() {
+    let source = r"library {
+    data Clef { Treble, Bass, Alto, Tenor }
+    data Inner { Quiet, Loud(count: Nat) }
+    data Outer { Wrap(held: Inner), Hold(held: Inner) }
+
+    fn low(written: Clef) -> Bool { match written { Bass | Tenor -> true, Treble | Alto -> false } }
+
+    fn plain(o: Outer) -> Nat { match o { Wrap(Loud(_) | Quiet) -> 0, Hold(_) -> 1 } }
+}
+";
+    let parsed = parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+
+    let alternations = parsed
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::Pattern)
+        .filter(|node| {
+            node.children_with_tokens()
+                .filter_map(|held| held.into_token())
+                .any(|token| token.kind() == SyntaxKind::Pipe)
+        })
+        .count();
+    assert_eq!(alternations, 3, "two in `low`, one inside `Wrap` in `plain`");
+
+    let once = format(&parsed, BarSpacing::Compact).to_string();
+    assert!(
+        once.contains("Bass | Tenor"),
+        "the formatter lost the spacing around `|`:\n{once}"
+    );
+    let reparsed = parse(&once);
+    assert!(
+        reparsed.errors().is_empty(),
+        "the formatted text no longer parses:\n{once}"
+    );
+    assert_eq!(
+        format(&reparsed, BarSpacing::Compact).to_string(),
+        once,
+        "formatting an alternation is not idempotent:\n{once}"
+    );
+}

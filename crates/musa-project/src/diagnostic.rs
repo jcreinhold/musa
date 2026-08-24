@@ -592,6 +592,17 @@ pub fn explain(code: &str) -> Option<&'static str> {
              unreachable, an earlier arm covers it, and the report names \
              which one."
         }
+        musa_score::Code::AlternativeBindings => {
+            "One arm's pattern alternatives do not bind the same names.\n\n\
+             `Bass | Tenor -> true` is one arm reached from two branches of \
+             the case tree, and the arm's body is one expression. The scope \
+             that body is checked in therefore cannot depend on which \
+             alternative matched: a name one alternative binds and another \
+             does not is a name the body may read and may not have.\n\n\
+             Write `_` where an alternative holds a value the arm does not \
+             use, so every alternative binds the same names — \
+             `Looped(_) | Volta(_)` rather than `Looped(times) | Volta(pass)`."
+        }
         musa_score::Code::UncheckedRecursion => {
             "A recursive call the termination rule cannot see is smaller.\n\n\
              Musa is total, and a `rec` definition is admitted by rewriting \

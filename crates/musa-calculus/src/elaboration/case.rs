@@ -141,6 +141,9 @@ pub(crate) fn tree(
     }
     let mut rows = Vec::with_capacity(arms.len());
     for (which, arm) in arms.iter().enumerate() {
+        for pattern in &arm.patterns {
+            agreeing(pattern)?;
+        }
         if arm.patterns.len() != columns.len() {
             return Err(Refusal::IncompleteMatch {
                 at: arm.body.origin(),
@@ -306,7 +309,9 @@ impl Tree<'_, '_> {
             .rows
             .iter()
             .find_map(|row| match row.patterns.get(column)? {
-                pattern @ (RawPattern::Constructor { .. } | RawPattern::Record { .. }) => Some(pattern.origin()),
+                pattern @ (RawPattern::Constructor { .. } | RawPattern::Record { .. } | RawPattern::Or { .. }) => {
+                    Some(pattern.origin())
+                }
                 RawPattern::Bind { .. } => None,
             })
             .unwrap_or(subject.at);
@@ -349,6 +354,15 @@ impl Tree<'_, '_> {
             .find_map(|(column, pattern)| match pattern {
                 RawPattern::Constructor { .. } => Some(Test::Split(column)),
                 RawPattern::Record { .. } => Some(Test::Open(column)),
+                // An alternation tests whatever its alternatives test, and they
+                // agree: `belong` refuses a column mixing a record pattern with
+                // a constructor one before any split runs, and an alternation
+                // of binders binds and tests nothing.
+                RawPattern::Or { alternatives, .. } => match alternatives.first() {
+                    Some(RawPattern::Constructor { .. }) => Some(Test::Split(column)),
+                    Some(RawPattern::Record { .. }) => Some(Test::Open(column)),
+                    Some(RawPattern::Bind { .. } | RawPattern::Or { .. }) | None => None,
+                },
                 RawPattern::Bind { .. } => None,
             })
     }
@@ -372,6 +386,10 @@ impl Tree<'_, '_> {
             .iter()
             .find_map(|row| match row.patterns.get(column)? {
                 pattern @ RawPattern::Record { .. } => Some(pattern.origin()),
+                pattern @ RawPattern::Or { alternatives, .. } => alternatives
+                    .iter()
+                    .any(|held| matches!(held, RawPattern::Record { .. }))
+                    .then(|| pattern.origin()),
                 RawPattern::Bind { .. } | RawPattern::Constructor { .. } => None,
             })
             .unwrap_or(subject.at);
@@ -422,49 +440,57 @@ impl Tree<'_, '_> {
 
         let mut rows = Vec::with_capacity(problem.rows.len());
         for row in &problem.rows {
-            let Some(pattern) = row.patterns.get(column) else {
+            let Some(held) = row.patterns.get(column) else {
                 continue;
             };
-            let mut bindings = row.bindings.clone();
-            let inner: Vec<&RawPattern> = match pattern {
-                RawPattern::Record { fields, .. } => names
-                    .iter()
-                    .map(|name| match fields.iter().find(|(field, _)| field == name) {
-                        Some((_, sub)) => sub,
-                        // A field this column opened that this row did not
-                        // name: matched by a wildcard, exactly as at a split.
-                        None => wildcard(),
-                    })
-                    .collect(),
-                // A variable names the whole record and none of its fields, as
-                // it does at a constructor split.
-                RawPattern::Bind { name, .. } => {
-                    bindings.push((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)));
-                    vec![wildcard(); names.len()]
-                }
-                RawPattern::Constructor { origin, name, .. } => {
-                    return Err(Refusal::NoSuchConstructor {
-                        at: *origin,
-                        name: Arc::clone(name),
-                        ty: scope.quote_type(self.elaborator.meter(), &record_ty)?,
-                        cases: Vec::new(),
+            // One row per alternative, for [`Self::narrowed`]'s reason. A
+            // record has one shape, so every alternative reaches this column's
+            // opening rather than one of several branches.
+            for pattern in choices(held) {
+                let mut bindings = row.bindings.clone();
+                let inner: Vec<&RawPattern> = match pattern {
+                    RawPattern::Record { fields, .. } => names
+                        .iter()
+                        .map(|name| match fields.iter().find(|(field, _)| field == name) {
+                            Some((_, sub)) => sub,
+                            // A field this column opened that this row did not
+                            // name: matched by a wildcard, exactly as at a split.
+                            None => wildcard(),
+                        })
+                        .collect(),
+                    // A variable names the whole record and none of its fields, as
+                    // it does at a constructor split.
+                    RawPattern::Bind { name, .. } => {
+                        bindings.push((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)));
+                        vec![wildcard(); names.len()]
                     }
-                    .into());
+                    RawPattern::Constructor { origin, name, .. } => {
+                        return Err(Refusal::NoSuchConstructor {
+                            at: *origin,
+                            name: Arc::clone(name),
+                            ty: scope.quote_type(self.elaborator.meter(), &record_ty)?,
+                            cases: Vec::new(),
+                        }
+                        .into());
+                    }
+                    // Flattened by [`choices`] one level up; §1's grammar has no
+                    // alternative that is itself an alternation.
+                    RawPattern::Or { .. } => continue,
+                };
+                let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(names.len()));
+                for (position, standing) in row.patterns.iter().enumerate() {
+                    if position == column {
+                        patterns.extend(inner.iter().copied());
+                    } else {
+                        patterns.push(standing);
+                    }
                 }
-            };
-            let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(names.len()));
-            for (position, held) in row.patterns.iter().enumerate() {
-                if position == column {
-                    patterns.extend(inner.iter().copied());
-                } else {
-                    patterns.push(held);
-                }
+                rows.push(Row {
+                    patterns,
+                    bindings,
+                    arm: row.arm,
+                });
             }
-            rows.push(Row {
-                patterns,
-                bindings,
-                arm: row.arm,
-            });
         }
         Ok(Problem {
             columns,
@@ -480,8 +506,13 @@ impl Tree<'_, '_> {
         column: usize,
         product: &crate::kernel::family::Product,
     ) -> Result<Vec<(u32, Name)>, ElabError> {
-        for row in &problem.rows {
-            let Some(RawPattern::Record { origin, fields }) = row.patterns.get(column).copied() else {
+        let written = problem
+            .rows
+            .iter()
+            .filter_map(|row| row.patterns.get(column).copied())
+            .flat_map(choices);
+        for pattern in written {
+            let RawPattern::Record { origin, fields } = pattern else {
                 continue;
             };
             for (field, _) in fields {
@@ -503,10 +534,15 @@ impl Tree<'_, '_> {
             .enumerate()
             .map(|(position, declared)| (u32::try_from(position).unwrap_or(u32::MAX), Arc::clone(&declared.name)))
             .filter(|(_, name)| {
-                problem.rows.iter().any(|row| {
-                    matches!(row.patterns.get(column), Some(RawPattern::Record { fields, .. })
-                        if fields.iter().any(|(field, _)| field == name))
-                })
+                problem
+                    .rows
+                    .iter()
+                    .filter_map(|row| row.patterns.get(column).copied())
+                    .flat_map(choices)
+                    .any(|pattern| {
+                        matches!(pattern, RawPattern::Record { fields, .. }
+                            if fields.iter().any(|(field, _)| field == name))
+                    })
             })
             .collect())
     }
@@ -547,6 +583,15 @@ impl Tree<'_, '_> {
                 RawPattern::Bind { name, .. } => {
                     Some((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)))
                 }
+                // `x | x` — an alternation no split consumed, which the binding
+                // condition has already shown binds one name whichever
+                // alternative matched. The first is that name.
+                RawPattern::Or { alternatives, .. } => match alternatives.first() {
+                    Some(RawPattern::Bind { name, .. }) => {
+                        Some((Arc::clone(name), subject.value.clone(), Arc::clone(&subject.ty)))
+                    }
+                    _ => None,
+                },
                 RawPattern::Constructor { .. } | RawPattern::Record { .. } => None,
             })
             .collect();
@@ -646,6 +691,10 @@ impl Tree<'_, '_> {
             .iter()
             .find_map(|row| match row.patterns.get(column) {
                 Some(RawPattern::Constructor { origin, name, .. }) => Some((Arc::clone(name), *origin)),
+                Some(RawPattern::Or { alternatives, .. }) => alternatives.iter().find_map(|held| match held {
+                    RawPattern::Constructor { origin, name, .. } => Some((Arc::clone(name), *origin)),
+                    RawPattern::Bind { .. } | RawPattern::Record { .. } | RawPattern::Or { .. } => None,
+                }),
                 Some(RawPattern::Bind { .. } | RawPattern::Record { .. }) | None => None,
             })
             .unwrap_or_else(|| (Arc::from("?"), at));
@@ -693,9 +742,17 @@ impl Tree<'_, '_> {
             Some(subject) => scope.quote_type(self.elaborator.meter(), &subject.ty)?,
             None => Term::universe(self.here, Sort::ZERO),
         };
-        for row in &problem.rows {
-            match row.patterns.get(column).copied() {
-                Some(RawPattern::Constructor { origin, name, .. }) => {
+        // Each row's alternatives, not each row's pattern: `Bass | Wrong` is
+        // wrong about `Wrong` and the author wrote both, so every alternative
+        // is asked the same question the single pattern was.
+        let written = problem
+            .rows
+            .iter()
+            .filter_map(|row| row.patterns.get(column).copied())
+            .flat_map(choices);
+        for pattern in written {
+            match pattern {
+                RawPattern::Constructor { origin, name, .. } => {
                     if known.iter().any(|constructor| selects(constructor, name)) {
                         continue;
                     }
@@ -710,16 +767,17 @@ impl Tree<'_, '_> {
                 // A record pattern against a family. Reported as what it is —
                 // the subject is not a record — rather than as a constructor
                 // nobody wrote.
-                Some(pattern @ RawPattern::Record { .. }) => {
+                RawPattern::Record { .. } => {
                     return Err(Refusal::NotARecord {
                         at: pattern.origin(),
                         ty,
                     }
                     .into());
                 }
-                // A variable, or a row that ends before this column: neither
-                // names a constructor, so neither can name a wrong one.
-                Some(RawPattern::Bind { .. }) | None => {}
+                // A variable: it names no constructor, so it can name no wrong
+                // one. An alternation never reaches here — [`choices`] hands
+                // out its alternatives, and an alternative is not one.
+                RawPattern::Bind { .. } | RawPattern::Or { .. } => {}
             }
         }
         Ok(())
@@ -1482,55 +1540,175 @@ impl Tree<'_, '_> {
         let wanted = Constant::constructor(group, family, which).name();
         let mut rows = Vec::new();
         for row in &problem.rows {
-            let Some(pattern) = row.patterns.get(column) else {
+            let Some(held) = row.patterns.get(column) else {
                 continue;
             };
-            let mut bindings = row.bindings.clone();
-            let inner: Vec<&RawPattern> = match pattern {
-                RawPattern::Constructor { name, fields: sub, .. } => {
-                    if !selects(&wanted, name) {
-                        continue;
-                    }
-                    if sub.len() != fields.len() {
-                        return Err(Refusal::NoSuchConstructor {
-                            at: pattern.origin(),
-                            name: Arc::clone(name),
-                            ty: Term::universe(pattern.origin(), Sort::ZERO),
-                            cases: vec![Arc::clone(&wanted)],
+            // One row per alternative that selects this constructor — usually
+            // exactly one, and none for the branches this arm does not answer.
+            // That *is* the alternation: one arm, reached from several
+            // branches, rather than several arms (§6.2).
+            for pattern in choices(held) {
+                let mut bindings = row.bindings.clone();
+                let inner: Vec<&RawPattern> = match pattern {
+                    RawPattern::Constructor { name, fields: sub, .. } => {
+                        if !selects(&wanted, name) {
+                            continue;
                         }
-                        .into());
+                        if sub.len() != fields.len() {
+                            return Err(Refusal::NoSuchConstructor {
+                                at: pattern.origin(),
+                                name: Arc::clone(name),
+                                ty: Term::universe(pattern.origin(), Sort::ZERO),
+                                cases: vec![Arc::clone(&wanted)],
+                            }
+                            .into());
+                        }
+                        sub.iter().collect()
                     }
-                    sub.iter().collect()
+                    RawPattern::Bind { name, .. } => {
+                        // What the variable stood for, as this branch knows it: the
+                        // constructor rather than the subject one level up, so a
+                        // body that uses the name is reading the refined value.
+                        bindings.push((Arc::clone(name), built.value.clone(), Arc::clone(&built.ty)));
+                        // ch. 5's variable rule: it matches this constructor as it
+                        // matches every other, and the fields it did not name are
+                        // matched by wildcards rather than by nothing.
+                        vec![wildcard(); fields.len()]
+                    }
+                    // Refused by `belong` before any split runs, so a column that
+                    // reached here has none. An alternation is never here either —
+                    // [`choices`] flattened it one level up, and §1's grammar has
+                    // no alternative that is itself an alternation.
+                    RawPattern::Record { .. } | RawPattern::Or { .. } => continue,
+                };
+                let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(fields.len()));
+                for (position, standing) in row.patterns.iter().enumerate() {
+                    if position == column {
+                        patterns.extend(inner.iter().copied());
+                    } else {
+                        patterns.push(standing);
+                    }
                 }
-                RawPattern::Bind { name, .. } => {
-                    // What the variable stood for, as this branch knows it: the
-                    // constructor rather than the subject one level up, so a
-                    // body that uses the name is reading the refined value.
-                    bindings.push((Arc::clone(name), built.value.clone(), Arc::clone(&built.ty)));
-                    // ch. 5's variable rule: it matches this constructor as it
-                    // matches every other, and the fields it did not name are
-                    // matched by wildcards rather than by nothing.
-                    vec![wildcard(); fields.len()]
-                }
-                // Refused by `belong` before any split runs, so a column that
-                // reached here has none.
-                RawPattern::Record { .. } => continue,
-            };
-            let mut patterns = Vec::with_capacity(row.patterns.len().saturating_add(fields.len()));
-            for (position, held) in row.patterns.iter().enumerate() {
-                if position == column {
-                    patterns.extend(inner.iter().copied());
-                } else {
-                    patterns.push(held);
-                }
+                rows.push(Row {
+                    patterns,
+                    bindings,
+                    arm: row.arm,
+                });
             }
-            rows.push(Row {
-                patterns,
-                bindings,
-                arm: row.arm,
-            });
         }
         Ok(rows)
+    }
+}
+
+/// Every alternation in `pattern` binds the same names in every alternative.
+///
+/// Peyton Jones ch. 5's condition, asked before the tree is built rather than
+/// discovered at a leaf: the alternation is one arm, its body is one
+/// expression, and a name only some alternatives bind is a name the body may
+/// read and may not have. Checked on the *raw* pattern because it is a question
+/// about what was written — no type is needed to see that `Loud(n) | Quiet`
+/// binds `n` in one alternative and not the other.
+///
+/// `_` is left out. It is spelled as a binder whose name nothing refers to
+/// ([`RawPattern::Bind`]), so counting it would make `Looped(_) | Slurred`
+/// disagree about a name no body can read — which is the very spelling the
+/// condition exists to let an author reach for.
+///
+/// # Errors
+///
+/// [`Refusal::AlternativeBindings`], naming the alternative and the name.
+fn agreeing(pattern: &RawPattern) -> Result<(), ElabError> {
+    match pattern {
+        RawPattern::Bind { .. } => {}
+        RawPattern::Constructor { fields, .. } => {
+            for field in fields {
+                agreeing(field)?;
+            }
+        }
+        RawPattern::Record { fields, .. } => {
+            for (_, field) in fields {
+                agreeing(field)?;
+            }
+        }
+        RawPattern::Or { alternatives, .. } => {
+            for alternative in alternatives {
+                agreeing(alternative)?;
+            }
+            let Some(first) = alternatives.first() else {
+                return Ok(());
+            };
+            let wanted = readable(first);
+            for alternative in alternatives.iter().skip(1) {
+                let held = readable(alternative);
+                if let Some(name) = wanted.iter().find(|name| !held.contains(name)) {
+                    return Err(Refusal::AlternativeBindings {
+                        at: alternative.origin(),
+                        name: Arc::clone(name),
+                    }
+                    .into());
+                }
+                // The other direction, reported at the *first* alternative,
+                // because that is the one that lacks the name this one binds.
+                if let Some(name) = held.iter().find(|name| !wanted.contains(name)) {
+                    return Err(Refusal::AlternativeBindings {
+                        at: first.origin(),
+                        name: Arc::clone(name),
+                    }
+                    .into());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The names a pattern binds that a body could read, in written order.
+fn readable(pattern: &RawPattern) -> Vec<Name> {
+    let mut found = Vec::new();
+    gather(pattern, &mut found);
+    found
+}
+
+fn gather(pattern: &RawPattern, into: &mut Vec<Name>) {
+    match pattern {
+        RawPattern::Bind { name, .. } => {
+            if &**name != "_" {
+                into.push(Arc::clone(name));
+            }
+        }
+        RawPattern::Constructor { fields, .. } => {
+            for field in fields {
+                gather(field, into);
+            }
+        }
+        RawPattern::Record { fields, .. } => {
+            for (_, field) in fields {
+                gather(field, into);
+            }
+        }
+        // An alternation inside an alternation: its alternatives agree by the
+        // time this is asked, so the first stands for all of them.
+        RawPattern::Or { alternatives, .. } => {
+            if let Some(first) = alternatives.first() {
+                gather(first, into);
+            }
+        }
+    }
+}
+
+/// The alternatives a pattern offers: an alternation's, or the pattern itself.
+///
+/// One place says what an alternation *is* to the tree — several patterns in
+/// one column, any of which may match — and every rule that reads a column
+/// reads it through here. `01-surface.md` §1 admits no alternative that is
+/// itself an alternation, so this flattens exactly one level and no walk needs
+/// to recurse.
+fn choices(pattern: &RawPattern) -> &[RawPattern] {
+    match pattern {
+        RawPattern::Or { alternatives, .. } => alternatives,
+        held @ (RawPattern::Bind { .. } | RawPattern::Constructor { .. } | RawPattern::Record { .. }) => {
+            std::slice::from_ref(held)
+        }
     }
 }
 

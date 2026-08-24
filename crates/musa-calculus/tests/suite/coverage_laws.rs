@@ -334,7 +334,74 @@ pub(crate) fn refused_matches() -> Vec<RefusedMatch> {
             ty: arrow(var("Nat"), var("Nat")),
             expected: |refusal| matches!(refusal, Refusal::UnreachableBranch { .. }),
         },
+        RefusedMatch {
+            name: "an alternation whose alternatives bind different names",
+            raw: Raw::lam(
+                WRITTEN,
+                "n",
+                matching(
+                    [var("n")],
+                    vec![arm(
+                        vec![RawPattern::or(
+                            WRITTEN,
+                            [con("Nat.Succ", [bind("m")]), con("Nat.Zero", [])],
+                        )],
+                        var("Nat.Zero"),
+                    )],
+                ),
+            ),
+            ty: arrow(var("Nat"), var("Nat")),
+            expected: |refusal| matches!(refusal, Refusal::AlternativeBindings { .. }),
+        },
     ]
+}
+
+/// An alternation is one arm reached from several branches, and adds nothing
+/// to the core (§6.2).
+///
+/// The strongest form of that claim available here: the term
+/// `Zero | Succ(_) -> Zero` elaborates to *is* the term
+/// `Zero -> Zero, Succ(_) -> Zero` elaborates to, compared structurally rather
+/// than by convertibility — an alternation that emitted a node of its own, or
+/// a different method for a branch, would be convertible and would fail here.
+/// Both programs are written at one origin, so what is compared is the term
+/// and not where it was written (§7).
+#[test]
+fn an_alternation_emits_the_term_the_several_arms_emit() {
+    let cx = nat_vec_context();
+    let ty = nat_to_nat(&cx);
+    let alternated = Raw::lam(
+        WRITTEN,
+        "n",
+        matching(
+            [var("n")],
+            vec![arm(
+                vec![RawPattern::or(
+                    WRITTEN,
+                    [con("Nat.Zero", []), con("Nat.Succ", [bind("_")])],
+                )],
+                var("Nat.Zero"),
+            )],
+        ),
+    );
+    let separately = Raw::lam(
+        WRITTEN,
+        "n",
+        matching(
+            [var("n")],
+            vec![
+                arm(vec![con("Nat.Zero", [])], var("Nat.Zero")),
+                arm(vec![con("Nat.Succ", [bind("_")])], var("Nat.Zero")),
+            ],
+        ),
+    );
+    let one = musa_calculus::check(&cx, &ty, &alternated).expect("the alternation is checked");
+    let other = musa_calculus::check(&cx, &ty, &separately).expect("the two arms are checked");
+    assert_eq!(
+        format!("{one:?}"),
+        format!("{other:?}"),
+        "an alternation emitted a term the several arms do not"
+    );
 }
 
 /// Each of those, refused for the reason it is wrong.

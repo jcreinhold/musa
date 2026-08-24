@@ -1030,6 +1030,18 @@ impl Lowering<'_> {
             return self.not_yet(&quoted, "a quote pattern", "a template");
         }
         let written: Vec<SyntaxToken> = own_tokens(node).collect();
+        // `Bass | Tenor` — one arm reached from several branches
+        // (`01-surface.md` §1). The alternatives are the node's `Pattern`
+        // children and the `|` is its own token, which is what tells this shape
+        // from a constructor's sub-positions: those have a head token before
+        // them and this has none.
+        if written.iter().any(|token| token.kind() == SyntaxKind::Pipe) {
+            let alternatives: Vec<RawPattern> = children(node, |kind| kind == SyntaxKind::Pattern)
+                .iter()
+                .map(|held| self.pattern(held))
+                .collect::<Option<_>>()?;
+            return Some(RawPattern::or(origin, alternatives));
+        }
         let head = written.first()?.clone();
         // The `::` path the head writes, and the bindings after it. Splitting
         // them is the whole of `Tying::Untied`'s repair: reading every later

@@ -357,10 +357,7 @@ library {
     // The word itself, whichever of the four this staff made of it.
     fn said_of(known: Knows) -> Said {
         match known {
-            Unknown(word) -> word,
-            Nests(word, form, missing) -> word,
-            Sings(word, sings, missing) -> word,
-            States(word, field) -> word,
+            Unknown(word) | Nests(word, _, _) | Sings(word, _, _) | States(word, _) -> word,
         }
     }
 

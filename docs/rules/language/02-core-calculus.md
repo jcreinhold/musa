@@ -970,9 +970,22 @@ coverage is decided: an accepted `match` covers every constructor, and an arm no
 unreachable rather than silently kept. Coverage is constructor coverage — with no indices there is no index unification,
 and a reachable arm is one whose pattern some value of the scrutinee's type matches.
 
+**Alternation is one arm reached from several branches.** `p | q` in a pattern position is not a new elimination and
+adds no node to the tree: the rows the alternation covers are the rows each alternative covers, so the branch for each
+constructor an alternative names selects the same arm. Coverage is unchanged — the alternation contributes an arm to
+every branch its alternatives reach, and `uncovered` still asks the declaration group which constructor has none.
+
+**The alternatives bind the same names.** This is Peyton Jones ch. 5's condition and it is checked on the written
+pattern, before the tree is built: an arm's body is one expression, so the scope it is checked in cannot depend on which
+alternative matched. A name one alternative binds and another does not is refused, naming the alternative and the name.
+`_` is excluded, being a binder no body can read — `Looped(_) | Volta(_)` is the spelling for two constructors carrying
+different values and one answer. The body is checked once per branch the alternation reaches, so an alternative binding
+a name at a *different type* is refused exactly where the body cannot be given both.
+
 There are still no guards, no conditional equations, and no pattern on the left of a definition. A guard reintroduces
 the fall-through between equations that a case tree exists to eliminate, and coverage in the presence of guards is
-either unsound or requires deciding arbitrary boolean equivalence.
+either unsound or requires deciding arbitrary boolean equivalence. Alternation is not a door for one: it says which
+values an arm answers for, and nothing about when.
 
 The compilation is Peyton Jones 1987 chapters 4–6's: the variable, constructor, empty, and mixture rules, with the
 `FAIL`/fat-bar mechanism **not** adopted, because it exists to express failure between equations and Musa's arms do not
