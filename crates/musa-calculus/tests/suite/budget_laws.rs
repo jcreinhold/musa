@@ -634,3 +634,22 @@ fn the_data_walk_charges_one_step_a_node() {
 /// it is the *same* twelve for every element, which is what "one charge a node"
 /// means when the node is read once and written once.
 const PER_ELEMENT: u64 = 12;
+
+#[test]
+#[ignore = "probe"]
+fn probe_minimum_nesting() {
+    let (cx, nat) = nat();
+    for calls in [1_u64, 10, 100, 3_000, 30_000] {
+        let mut minimum = None;
+        for levels in 1..40 {
+            let narrow = Cx::with_budget(Budget::LANGUAGE.nesting(levels)).declaring(&nat_context().1);
+            if let Ok(term) = musa_calculus::check(&narrow, &nat, &adding(calls)) {
+                if musa_calculus::normalize(&narrow, &nat, &term).is_ok() {
+                    minimum = Some(levels);
+                    break;
+                }
+            }
+        }
+        println!("calls={calls} minimum={minimum:?}");
+    }
+}
