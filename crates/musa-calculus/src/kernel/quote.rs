@@ -432,6 +432,11 @@ fn read_elimination(
                     return Err(Malformed::NotAFunction.into());
                 }
             };
+            // The second place `02-core-calculus.md` §3's fifth rule names: a
+            // spine that stayed stuck is being read back, so whatever it holds
+            // delayed is evaluated now and the normal form is the one the
+            // strict machine wrote.
+            let argument = &crate::kernel::eval::demanded(meter, argument)?;
             // η at a record is the one rule that has to be *not* applied here:
             // see [`projecting_from`].
             let read_back = if projecting_from(prefix) {

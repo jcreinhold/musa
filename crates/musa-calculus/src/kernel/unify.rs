@@ -50,7 +50,7 @@ use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::quote::{At, Mode, quote};
 use crate::kernel::term::{Binder, Level, Shape, Term};
-use crate::kernel::value::{DefHead, Elim, Env, Form, Head, Neutral, Value};
+use crate::kernel::value::{Arg, DefHead, Elim, Env, Form, Head, Neutral, Value};
 
 /// What asking an unknown to take a value answered.
 ///
@@ -142,6 +142,12 @@ pub(crate) fn fragment(value: &Value) -> Option<Fragment> {
     let mut levels = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
         let Elim::App { argument, .. } = elimination;
+        // Settled throughout: the head is a metavariable, and
+        // `02-core-calculus.md` §3's fifth rule delays an argument only at a
+        // recursor's motive and method positions. An unsettled one would be
+        // outside the pattern fragment, which is this function's answer to
+        // everything it cannot read.
+        let argument = argument.settled()?;
         let Form::Neutral(applied) = &argument.form else {
             return None;
         };
@@ -347,7 +353,7 @@ pub(crate) fn occurrence(meta: &Meta, here: Origin, arguments: &[Value]) -> Resu
             .iter()
             .map(|argument| Elim::App {
                 origin: here,
-                argument: Arc::new(argument.clone()),
+                argument: Arg::ready(argument.clone()),
             })
             .collect(),
         // As `crate::kernel::eval::occurrence`: an unknown has no folded value.
@@ -458,10 +464,18 @@ fn walk(value: &Value, seen: &mut impl FnMut(&Meta) -> bool) -> bool {
                 Head::Def(_, ty, crate::kernel::value::Folding::Value(folded)) => walk(ty, seen) || walk(folded, seen),
                 Head::Def(_, ty, _) => walk(ty, seen),
             };
-            head || neutral
-                .spine
-                .iter()
-                .any(|Elim::App { argument, .. }| walk(argument, seen))
+            head || neutral.spine.iter().any(|Elim::App { argument, .. }| match *argument {
+                Arg::Ready(ref value) => walk(value, seen),
+                // A delay holds a term and the environment its free variables
+                // are read in. Evaluation invents no unknowns, so everything
+                // the forced value could mention is reachable from that
+                // environment — over-approximating in exactly the direction
+                // this walk already over-approximates for a closure.
+                Arg::Delayed(ref delay) => match delay.settled() {
+                    Some(value) => walk(value, seen),
+                    None => delay.parts().0.iter().any(|item| walk(item, seen)),
+                },
+            })
         }
     }
 }

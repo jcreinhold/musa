@@ -26,6 +26,7 @@ mod family_laws;
 mod generated_laws;
 mod glued_laws;
 mod implicit_laws;
+mod laziness_laws;
 mod lifting_laws;
 mod malformed_laws;
 mod namespace_laws;

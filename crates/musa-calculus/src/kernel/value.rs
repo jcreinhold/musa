@@ -364,7 +364,90 @@ pub(crate) enum DefHead {
 /// One elimination applied to a blocked head.
 #[derive(Clone)]
 pub(crate) enum Elim {
-    App { origin: Origin, argument: Arc<Value> },
+    App { origin: Origin, argument: Arg },
+}
+
+/// An argument on a blocked spine, evaluated or not yet.
+///
+/// `02-core-calculus.md` §3's fifth strategy rule is what this enum exists for:
+/// a recursor is strict in its target and lazy in its methods, so the argument
+/// standing at a method position is carried as the term it was written as until
+/// ι asks for it. Every other argument in the calculus is [`Self::Ready`]
+/// before it ever reaches a spine, because [`crate::kernel::eval`] evaluates it
+/// on the way in.
+///
+/// **A delayed argument is not a [`Value`], deliberately.** The rule is that it
+/// is looked at in exactly two places — ι selecting it, and a spine that stayed
+/// stuck being read back or compared — and a variant of [`Form`] would make
+/// every match on a value a place where the third could be written by accident.
+/// A separate type makes the two places the only ones that compile.
+#[derive(Clone)]
+pub(crate) enum Arg {
+    /// Evaluated, as every argument outside a recursor's methods is.
+    Ready(Arc<Value>),
+    /// Written but not evaluated; shared, so that forcing it happens once.
+    Delayed(Arc<Delay>),
+}
+
+/// A term held with the environment it is read in, and the value it forced to.
+///
+/// The memo is the difference between this being a saving and a loss. A
+/// recursor under a fold meets its methods once per turn, and a delay that
+/// re-evaluated its term at every turn would spend more than the strict
+/// machine did on exactly the programs §3's fifth rule is for.
+pub(crate) struct Delay {
+    env: Env,
+    term: Term,
+    forced: OnceLock<Value>,
+}
+
+impl Delay {
+    /// The environment and the term, for the one caller that evaluates them.
+    pub(crate) const fn parts(&self) -> (&Env, &Term) {
+        (&self.env, &self.term)
+    }
+
+    /// The value this forced to, if something already forced it.
+    pub(crate) fn settled(&self) -> Option<&Value> {
+        self.forced.get()
+    }
+
+    /// Record what this forced to, if nothing recorded it first.
+    ///
+    /// A second writer is not an error: two threads may force one delay, and
+    /// totality (§2.4) says they computed the same value. The first one wins
+    /// and the second's is dropped.
+    pub(crate) fn fill(&self, value: Value) {
+        drop(self.forced.set(value));
+    }
+}
+
+impl Arg {
+    /// An argument already evaluated.
+    pub(crate) fn ready(value: Value) -> Self {
+        Self::Ready(Arc::new(value))
+    }
+
+    /// An argument to be evaluated when something asks.
+    pub(crate) fn delayed(env: Env, term: Term) -> Self {
+        Self::Delayed(Arc::new(Delay {
+            env,
+            term,
+            forced: OnceLock::new(),
+        }))
+    }
+
+    /// The value, where one is already there to be had.
+    ///
+    /// [`None`] means a delay nothing has forced yet — not that there is no
+    /// value, which is why the callers that cannot evaluate treat it as "leave
+    /// this spine alone" rather than as an answer.
+    pub(crate) fn settled(&self) -> Option<&Value> {
+        match *self {
+            Self::Ready(ref value) => Some(value),
+            Self::Delayed(ref delay) => delay.forced.get(),
+        }
+    }
 }
 
 impl Elim {
@@ -488,8 +571,23 @@ impl Drop for Neutral {
 fn loosen(work: &mut Vec<Value>, spine: Vec<Elim>, unfolded: Option<Arc<OnceLock<(Stamp, Value)>>>) {
     for elimination in spine {
         let Elim::App { argument, .. } = elimination;
-        if let Some(value) = Arc::into_inner(argument) {
-            work.push(value);
+        match argument {
+            Arg::Ready(value) => {
+                if let Some(value) = Arc::into_inner(value) {
+                    work.push(value);
+                }
+            }
+            // A delay owns an environment as well as a memo, and an
+            // environment is a shared list whose own destructor is one frame
+            // deep. What has this neutral's depth is the value it forced to,
+            // so that is what comes onto the worklist.
+            Arg::Delayed(delay) => {
+                if let Some(delay) = Arc::into_inner(delay)
+                    && let Some(value) = delay.forced.into_inner()
+                {
+                    work.push(value);
+                }
+            }
         }
     }
     if let Some(cell) = unfolded

@@ -558,7 +558,10 @@ fn analysed(value: &Value) -> Option<(Name, Vec<Value>)> {
             let mut fields = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
             for elimination in neutral.spine.iter().skip(params) {
                 let Elim::App { ref argument, .. } = *elimination;
-                fields.push(Value::clone(argument));
+                // Settled throughout: `constructed` answered, so the head is a
+                // constructor, and `02-core-calculus.md` §3's fifth rule delays
+                // an argument only at a recursor's motive and method positions.
+                fields.push(argument.settled()?.clone());
             }
             Some((name, fields))
         }

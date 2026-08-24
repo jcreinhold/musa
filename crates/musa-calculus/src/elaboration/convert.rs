@@ -632,6 +632,12 @@ impl Conversion {
             let Form::Pi { domain, .. } = head_type(meter, &prefix)?.form else {
                 return Err(blocked_mismatch(meter, depth, one, other)?);
             };
+            // The second place `02-core-calculus.md` §3's fifth rule names: two
+            // spines that both stayed stuck are being compared, so whatever
+            // either holds delayed is evaluated before the comparison. §3's `≡`
+            // is what it always was; this is where the rule pays for that.
+            let left_argument = &crate::kernel::eval::demanded(meter, left_argument)?;
+            let right_argument = &crate::kernel::eval::demanded(meter, right_argument)?;
             self.step(meter, depth, At::Term(&domain), origin, left_argument, right_argument)
                 .map_err(|failure| failure.under(PathStep::Argument))?;
             prefix.spine.push(mine.clone());

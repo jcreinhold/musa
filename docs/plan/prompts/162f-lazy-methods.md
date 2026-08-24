@@ -1,7 +1,7 @@
 ---
 id: 162f
 slug: lazy-methods
-status: pending
+status: done
 depends_on: [155a, 161]
 phase: 3
 ---

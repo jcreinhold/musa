@@ -8,23 +8,66 @@ use super::group::{Group, Role};
 use crate::kernel::budget::Meter;
 use crate::kernel::context::Globals;
 use crate::kernel::error::CoreError;
-use crate::kernel::eval::{apply, eval};
+use crate::kernel::eval::{apply, apply_arg, demanded, eval};
 use crate::kernel::sort::Sort;
 use crate::kernel::term::Name;
-use crate::kernel::value::{Elim, Form, Head, Neutral, Value};
+use crate::kernel::value::{Arg, Elim, Form, Head, Neutral, Value};
 use std::sync::Arc;
 
 /// The constant at the head of a blocked spine, and what has been applied to it.
+///
+/// Answers `None` for a spine holding an argument nothing has forced yet.
+/// Under `02-core-calculus.md` §3's fifth rule only a recursor's motives and
+/// methods are ever delayed ([`delays_next`]), so a projection's spine and a
+/// constructor's are settled throughout and this is the total function it
+/// looks like. Where the head *is* a recursor, [`applied_to`] reads the spine
+/// without forcing and this is not the reader used.
 pub(super) fn spine(neutral: &Neutral) -> Option<(Constant, Vec<Value>)> {
+    let (constant, arguments) = applied_to(neutral)?;
+    let mut settled = Vec::with_capacity(arguments.len());
+    for argument in arguments {
+        settled.push(argument.settled()?.clone());
+    }
+    Some((constant, settled))
+}
+
+/// The same, leaving a delayed argument delayed.
+fn applied_to(neutral: &Neutral) -> Option<(Constant, Vec<Arg>)> {
     let Head::Const(constant, _) = &neutral.head else {
         return None;
     };
     let mut arguments = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
         let Elim::App { argument, .. } = elimination;
-        arguments.push(Value::clone(argument));
+        arguments.push(argument.clone());
     }
     Some((constant.clone(), arguments))
+}
+
+/// Whether the next argument this blocked spine receives is a recursor's
+/// motive or one of its methods.
+///
+/// `02-core-calculus.md` §3's fifth rule, as a question the evaluator can ask
+/// at the moment it has evaluated a function and not yet its argument. The
+/// recursor's telescope is parameters, motives, methods, indices, target; the
+/// window here is the motives and the methods, which is everything ι chooses
+/// among and the motive it chooses under. The parameters are before it because
+/// an induction hypothesis reads them to build a field's type, the indices and
+/// the target are after it because the target is what ι is strict in.
+pub(crate) fn delays_next(neutral: &Neutral) -> bool {
+    let Head::Const(ref constant, _) = neutral.head else {
+        return false;
+    };
+    if !matches!(constant.role, Role::Recursor(_)) {
+        return false;
+    }
+    let group = &constant.group;
+    let params = u64::from(group.params());
+    let window = params
+        .saturating_add(u64::from(group.arity()))
+        .saturating_add(u64::from(group.methods()));
+    let at = u64::try_from(neutral.spine.len()).unwrap_or(u64::MAX);
+    at >= params && at < window
 }
 
 /// ι at an inductive family, or `None` when the elimination stays blocked.
@@ -217,13 +260,15 @@ pub(crate) fn stepped(neutral: &Neutral, subject: Option<&Value>) -> Option<Valu
 
 /// Everything ι needs once it has decided the elimination fires.
 pub(crate) struct Reduction {
-    /// The method for the constructor the target was built by.
-    pub(crate) method: Value,
+    /// The method for the constructor the target was built by, delayed until
+    /// this ι chose it — see [`delays_next`].
+    pub(crate) method: Arg,
     /// The constructor's field arguments.
     pub(crate) fields: Vec<Value>,
     /// The recursor's parameters, motives, and methods — what an induction
-    /// hypothesis is the same elimination at.
-    prefix: Vec<Value>,
+    /// hypothesis is the same elimination at. Held unforced, so that
+    /// reassembling the hypothesis does not evaluate the methods it carries.
+    prefix: Vec<Arg>,
     /// The group, and the constructor within it that the target was built by.
     group: Arc<Group>,
     family: u32,
@@ -238,7 +283,7 @@ pub(crate) struct Reduction {
 /// Decide whether `neutral` is a saturated recursor applied to a constructor,
 /// and take apart what it is applied to.
 fn ready(neutral: &Neutral, subject: Option<&Value>) -> Option<Reduction> {
-    let (recursor, arguments) = spine(neutral)?;
+    let (recursor, arguments) = applied_to(neutral)?;
     let Head::Const(_, ref globals) = neutral.head else {
         return None;
     };
@@ -348,7 +393,9 @@ pub(crate) fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec
     // this walk builds up.
     let mut reading = Group::declarations(group, &reduction.globals);
     for param in reduction.prefix.iter().take(params) {
-        reading = reading.push(param.clone());
+        // Forced, and it is always a clone: `delays_next` delays the motives
+        // and the methods, and a parameter stands before both.
+        reading = reading.push(demanded(meter, param)?);
     }
     let mut recursive = rule.recursive.iter().peekable();
     let mut built = Vec::new();
@@ -367,7 +414,7 @@ pub(crate) fn hypotheses(meter: &mut Meter, reduction: &Reduction) -> Result<Vec
             }
             .value(here, &reduction.globals);
             for argument in &reduction.prefix {
-                hypothesis = apply(meter, here, hypothesis, argument.clone())?;
+                hypothesis = apply_arg(meter, here, hypothesis, argument.clone())?;
             }
             // The field's own indices, which stand between the methods and the
             // field in the recursor's telescope. Read off the field's *type*,

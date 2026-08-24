@@ -39,7 +39,7 @@ use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
 use crate::kernel::term::{Binder, Constant, Definition, Filling, Name, Role, Shape, Term};
-use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Value};
+use crate::kernel::value::{Arg, Closure, DefHead, Delay, Elim, Env, Folding, Form, Head, Neutral, Value};
 
 /// Evaluate `term` in `env`.
 ///
@@ -67,7 +67,7 @@ enum Step {
     Apply {
         here: Origin,
         function: Value,
-        argument: Value,
+        argument: Arg,
     },
     /// Look through this value's head: solved metavariables always, folded
     /// definitions when `definitions`.
@@ -126,10 +126,7 @@ enum Frame {
     /// entry first. `charged` is whether each application is charged a step —
     /// false for a definition's spine being replayed, whose eliminations were
     /// charged when they entered the spine.
-    Spine {
-        pending: Vec<(Origin, Value)>,
-        charged: bool,
-    },
+    Spine { pending: Vec<(Origin, Arg)>, charged: bool },
     /// The incoming value came through one δ or one solved metavariable; keep
     /// looking through it until its head is neither.
     ///
@@ -152,6 +149,14 @@ enum Frame {
     /// The same, with the hypotheses already assembled and `pending` the ones
     /// left, last first.
     Hypothesis { pending: Vec<Pending>, here: Origin },
+    /// The incoming value is what a delayed method evaluated to; record it on
+    /// the delay so that the next turn of the fold finds it there.
+    ///
+    /// The first of the two places `02-core-calculus.md` §3's fifth rule names,
+    /// and a frame rather than a host call for the reason [`demanded`] gives: this
+    /// happens once per turn of a fold, and a host frame here would put one
+    /// under every level of the data being folded (§4.1).
+    Forcing { delay: Arc<Delay> },
 }
 
 /// Run the machine until the control stack is empty.
@@ -279,6 +284,28 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
             Step::Value(value)
         }
         Frame::Argument { env, argument, here } => {
+            // §3's fifth rule, decided at the one moment it can be: the
+            // function has just been evaluated, so whether the argument about
+            // to be evaluated stands at a method position of a recursor is
+            // known, and the two frames that would evaluate it are simply not
+            // pushed. The charges are the ones the strict path made — the
+            // `enter` at the application is given back and the application
+            // itself is charged — because what changed is the argument, not
+            // the application.
+            if let Form::Neutral(ref function) = value.form
+                && crate::kernel::family::delays_next(function)
+            {
+                let built = Neutral::eliminated(
+                    function,
+                    Elim::App {
+                        origin: here,
+                        argument: Arg::delayed(env, argument),
+                    },
+                );
+                meter.leave();
+                meter.step("function application")?;
+                return eliminating(meter, stack, built);
+            }
             stack.push(Frame::Applied { function: value, here });
             Step::Term(env, argument)
         }
@@ -293,7 +320,7 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
             Step::Apply {
                 here,
                 function,
-                argument: value,
+                argument: Arg::ready(value),
             }
         }
         Frame::Body { env, body } => {
@@ -337,6 +364,10 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
             hypothesis(meter, stack, pending, here, value)?
         }
         Frame::Hypothesis { pending, here } => hypothesis(meter, stack, pending, here, value)?,
+        Frame::Forcing { delay } => {
+            delay.fill(value.clone());
+            Step::Value(value)
+        }
     })
 }
 
@@ -344,7 +375,7 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
 fn spined(
     meter: &mut Meter,
     stack: &mut Vec<Frame>,
-    mut pending: Vec<(Origin, Value)>,
+    mut pending: Vec<(Origin, Arg)>,
     charged: bool,
     function: Value,
 ) -> Result<Step, CoreError> {
@@ -390,7 +421,7 @@ fn hypothesis(
             Ok(Step::Apply {
                 here,
                 function: answer,
-                argument: ignored,
+                argument: Arg::ready(ignored),
             })
         }
         None => {
@@ -400,7 +431,7 @@ fn hypothesis(
             Ok(Step::Apply {
                 here,
                 function: recursor,
-                argument: field,
+                argument: Arg::ready(field),
             })
         }
     }
@@ -465,7 +496,10 @@ fn occurrence(stack: &mut Vec<Frame>, env: &Env, here: Origin, meta: &Meta) -> R
         // Its own origins (§7): what the unknown stood for was written
         // somewhere, and the occurrence is not that place.
         Some(solution) => {
-            let mut pending: Vec<(Origin, Value)> = arguments.into_iter().map(|argument| (here, argument)).collect();
+            let mut pending: Vec<(Origin, Arg)> = arguments
+                .into_iter()
+                .map(|argument| (here, Arg::ready(argument)))
+                .collect();
             pending.reverse();
             if pending.is_empty() {
                 return Ok(Step::Value(solution.clone()));
@@ -480,7 +514,7 @@ fn occurrence(stack: &mut Vec<Frame>, env: &Env, here: Origin, meta: &Meta) -> R
                 .into_iter()
                 .map(|argument| Elim::App {
                     origin: here,
-                    argument: Arc::new(argument),
+                    argument: Arg::ready(argument),
                 })
                 .collect(),
             // An unknown is not a definition: there is nothing folded here to
@@ -684,11 +718,11 @@ fn push_spine(stack: &mut Vec<Frame>, spine: &[Elim], charged: bool) {
     if spine.is_empty() {
         return;
     }
-    let mut pending: Vec<(Origin, Value)> = spine
+    let mut pending: Vec<(Origin, Arg)> = spine
         .iter()
         .map(|elimination| {
             let Elim::App { origin, ref argument } = *elimination;
-            (origin, Value::clone(argument))
+            (origin, argument.clone())
         })
         .collect();
     pending.reverse();
@@ -714,7 +748,7 @@ fn matched(meter: &mut Meter, neutral: &Neutral) -> Result<Option<Matched>, Core
     let mut arguments = Vec::with_capacity(neutral.spine.len());
     for elimination in &neutral.spine {
         let Elim::App { ref argument, .. } = *elimination;
-        arguments.push(Value::clone(argument));
+        arguments.push(demanded(meter, argument)?);
     }
     compiled.reduce(meter, globals, def.name(), &arguments)
 }
@@ -751,7 +785,53 @@ pub(crate) fn apply_closure(meter: &mut Meter, closure: &Closure, argument: Valu
 /// # Errors
 ///
 /// [`Malformed::NotAFunction`] when `function` is neither a lambda nor neutral.
+/// The value a spine argument stands for, evaluating it if nothing has yet.
+///
+/// The second of the two places `02-core-calculus.md` §3's fifth rule names: a
+/// spine that stayed stuck is about to be read back, compared, or asked its
+/// type, and a reader that met a term where it expected a value would have to
+/// know about the rule. This is the boundary that means it does not.
+///
+/// Forcing is a host call and not a transition of the machine, which is right
+/// here and wrong at the other place: reading a stuck spine descends on the
+/// host's stack already (§4.1's room obligation is about that descent), while ι
+/// selecting a method happens once per turn of a fold and must not put a frame
+/// under it — see [`Frame::Forcing`].
+///
+/// # Errors
+///
+/// As [`eval`], for the term the delay holds.
+pub(crate) fn demanded(meter: &mut Meter, argument: &Arg) -> Result<Value, CoreError> {
+    if let Some(value) = argument.settled() {
+        return Ok(value.clone());
+    }
+    let Arg::Delayed(ref delay) = *argument else {
+        // `settled` answers `Some` for every `Ready`, so this is unreachable;
+        // written as a match rather than an unwrap so that it stays so.
+        return Err(Malformed::NotAFunction.into());
+    };
+    let (env, term) = delay.parts();
+    let value = eval(meter, env, term)?;
+    delay.fill(value.clone());
+    Ok(value)
+}
+
 pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
+    apply_arg(meter, here, function, Arg::ready(argument))
+}
+
+/// [`apply`] to an argument that may not have been evaluated.
+///
+/// The one caller is [`crate::kernel::family::hypotheses`], reassembling a
+/// recursor over the prefix it was applied to. That prefix holds the methods,
+/// which under §3's fifth rule are delayed, and an induction hypothesis that
+/// forced them to rebuild the spine they already sit on would evaluate every
+/// method of the fold at every level of it.
+///
+/// # Errors
+///
+/// As [`apply`].
+pub(crate) fn apply_arg(meter: &mut Meter, here: Origin, function: Value, argument: Arg) -> Result<Value, CoreError> {
     meter.step("function application")?;
     applying(meter, here, function, argument)
 }
@@ -761,7 +841,7 @@ pub(crate) fn apply(meter: &mut Meter, here: Origin, function: Value, argument: 
 /// the replay as well would count every application of a definition twice.
 /// The work inside — a β body, an ι step, a builtin's rule — carries its own
 /// charges either way.
-fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Value) -> Result<Value, CoreError> {
+fn applying(meter: &mut Meter, here: Origin, function: Value, argument: Arg) -> Result<Value, CoreError> {
     run(
         meter,
         Step::Apply {
@@ -782,23 +862,23 @@ fn applied(
     stack: &mut Vec<Frame>,
     here: Origin,
     function: Value,
-    argument: Value,
+    argument: Arg,
 ) -> Result<Step, CoreError> {
     match function.form {
-        Form::Lam(body) => Ok(entering(meter, stack, body.env.push(argument), body.body)),
+        // A λ is not a recursor, so nothing delayed is ever applied to one by
+        // the rule above; an argument that arrived delayed some other way is
+        // forced here rather than pushed, because β substitutes a value.
+        Form::Lam(body) => {
+            let argument = demanded(meter, &argument)?;
+            Ok(entering(meter, stack, body.env.push(argument), body.body))
+        }
         // Not a function, and not applied to anything: `Row(12) x` is what a
         // caller wrote when it meant `Row x`, and this is where it says so.
         // A blocked application is where ι at an inductive family fires: the
         // recursor's target is its last argument, so this is the first moment the
         // elimination can know it has met a constructor.
         Form::Neutral(function) => {
-            let built = Neutral::eliminated(
-                &function,
-                Elim::App {
-                    origin: here,
-                    argument: Arc::new(argument),
-                },
-            );
+            let built = Neutral::eliminated(&function, Elim::App { origin: here, argument });
             eliminating(meter, stack, built)
         }
         Form::Universe(_) | Form::Pi { .. } | Form::Lit(_) | Form::Numeral(_) => Err(Malformed::NotAFunction.into()),
@@ -818,7 +898,10 @@ fn eliminating(meter: &mut Meter, stack: &mut Vec<Frame>, built: Neutral) -> Res
     if crate::kernel::family::opens_last(&built)
         && let Some(Elim::App { argument, .. }) = built.spine.last()
     {
-        let subject = Value::clone(argument);
+        // Forced, and it is always a clone: a spine that `opens_last` admits is
+        // saturated, and the last argument of a saturated recursor is the
+        // target, which `delays_next` never delays.
+        let subject = demanded(meter, argument)?;
         stack.push(Frame::Eliminating { built });
         return Ok(Step::Open {
             value: subject,
@@ -857,8 +940,11 @@ fn eliminated(
             Fired::Field(field) => Step::Value(field),
             Fired::Method(reduction) => {
                 let here = built.origin;
-                let mut fields: Vec<(Origin, Value)> =
-                    reduction.fields.iter().map(|field| (here, field.clone())).collect();
+                let mut fields: Vec<(Origin, Arg)> = reduction
+                    .fields
+                    .iter()
+                    .map(|field| (here, Arg::ready(field.clone())))
+                    .collect();
                 fields.reverse();
                 let method = reduction.method.clone();
                 stack.push(Frame::Hypotheses { reduction, here });
@@ -868,7 +954,21 @@ fn eliminated(
                         charged: true,
                     });
                 }
-                Step::Value(method)
+                // §3's fifth rule, collected: the method ι chose is the one of
+                // the recursor's methods that is evaluated, and the frames
+                // above are already waiting for what it evaluates to.
+                match method {
+                    Arg::Ready(ref value) => Step::Value(Value::clone(value)),
+                    Arg::Delayed(delay) => match delay.settled() {
+                        Some(value) => Step::Value(value.clone()),
+                        None => {
+                            let (env, term) = delay.parts();
+                            let (env, term) = (env.clone(), term.clone());
+                            stack.push(Frame::Forcing { delay });
+                            Step::Term(env, term)
+                        }
+                    },
+                }
             }
         });
     }
@@ -883,7 +983,11 @@ fn eliminated(
     }
     if let Some(chosen) = matched(meter, &built)? {
         let here = built.outer_origin();
-        let mut rest: Vec<(Origin, Value)> = chosen.rest.into_iter().map(|argument| (here, argument)).collect();
+        let mut rest: Vec<(Origin, Arg)> = chosen
+            .rest
+            .into_iter()
+            .map(|argument| (here, Arg::ready(argument)))
+            .collect();
         rest.reverse();
         if !rest.is_empty() {
             stack.push(Frame::Spine {
@@ -937,7 +1041,8 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
     let mut arguments = Vec::with_capacity(built.spine.len());
     for elimination in &built.spine {
         let Elim::App { argument, .. } = elimination;
-        let Some(datum) = canonical(meter, argument)? else {
+        let argument = demanded(meter, argument)?;
+        let Some(datum) = canonical(meter, &argument)? else {
             return Ok(None);
         };
         arguments.push(datum);
@@ -1027,15 +1132,11 @@ fn canonical(meter: &mut Meter, value: &Value) -> Result<Option<Datum>, CoreErro
                 let Some((constructor, params)) = crate::kernel::family::constructed(neutral) else {
                     return Ok(None);
                 };
-                let mut rest: Vec<Arc<Value>> = neutral
-                    .spine
-                    .iter()
-                    .skip(params)
-                    .map(|elimination| {
-                        let Elim::App { ref argument, .. } = *elimination;
-                        Arc::clone(argument)
-                    })
-                    .collect();
+                let mut rest = Vec::with_capacity(neutral.spine.len().saturating_sub(params));
+                for elimination in neutral.spine.iter().skip(params) {
+                    let Elim::App { ref argument, .. } = *elimination;
+                    rest.push(Arc::new(demanded(meter, argument)?));
+                }
                 rest.reverse();
                 match rest.pop() {
                     Some(first) => {
@@ -1095,7 +1196,8 @@ fn result_type(meter: &mut Meter, builtin: &Builtin, globals: &Globals, built: &
         let Form::Pi { codomain, .. } = ty.form else {
             return Err(Malformed::NotAFunction.into());
         };
-        ty = apply_closure(meter, &codomain, Value::clone(argument))?;
+        let argument = demanded(meter, argument)?;
+        ty = apply_closure(meter, &codomain, argument)?;
     }
     Ok(ty)
 }
@@ -1141,7 +1243,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     let mut arguments = Vec::with_capacity(built.spine.len());
     for elimination in &built.spine {
         let Elim::App { argument, .. } = elimination;
-        arguments.push(Value::clone(argument));
+        arguments.push(demanded(meter, argument)?);
     }
     // Registration checked that the target names an argument, so this indexes a
     // spine of exactly the arity.
@@ -1231,7 +1333,10 @@ pub(crate) fn neutral_type(meter: &mut Meter, neutral: &Neutral) -> Result<Value
 fn eliminated_type(meter: &mut Meter, head: Value, elimination: &Elim) -> Result<Value, CoreError> {
     match elimination {
         Elim::App { argument, .. } => match head.form {
-            Form::Pi { codomain, .. } => apply_closure(meter, &codomain, Value::clone(argument)),
+            Form::Pi { codomain, .. } => {
+                let argument = demanded(meter, argument)?;
+                apply_closure(meter, &codomain, argument)
+            }
             Form::Universe(_) | Form::Lam(_) | Form::Lit(_) | Form::Numeral(_) | Form::Neutral(_) => {
                 Err(Malformed::NotAFunction.into())
             }
@@ -1277,7 +1382,7 @@ mod tests {
     use crate::kernel::origin::Origin;
     use crate::kernel::sort::Sort;
     use crate::kernel::term::{Level, Term};
-    use crate::kernel::value::{Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Value};
+    use crate::kernel::value::{Arg, Closure, DefHead, Elim, Env, Folding, Form, Head, Neutral, Value};
     use std::sync::Arc;
 
     const HERE: Origin = Origin::node(921);
@@ -1316,7 +1421,7 @@ mod tests {
             &Neutral::head(HERE, head),
             Elim::App {
                 origin: HERE,
-                argument: Arc::new(type0()),
+                argument: Arg::ready(type0()),
             },
         )
     }

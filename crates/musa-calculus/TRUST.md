@@ -37,6 +37,25 @@ admission), `namespace`, `storable`, `show`, `refuse`.
 it also solves metavariables and builds a diagnostic path, and a kernel that shared that walk would be auditing itself
 with the instrument under audit. The kernel's own conversion is `quote ∘ eval` compared by `Term`'s `PartialEq`.
 
+### What a spine holds, and why it can be a term
+
+`eval` is call by value with one exception, `02-core-calculus.md` §3's fifth strategy rule: a recursor is strict in its
+target and lazy in its methods, so a blocked spine's argument is a `value::Arg`, which is either a value or a term with
+the environment it is read in. Two things keep that inside the trusted account rather than widening it.
+
+**It is a cost decision and not a semantic one, because the calculus is total.** Every δ-rule is a function of its
+arguments and no rule emits a diagnostic (§2.4), so a method that was not evaluated and one that was are the same value.
+`quote ∘ eval` therefore decides exactly what it decided before the rule existed, which is what invariant 2 asserts and
+what the conformance oracle checks byte for byte.
+
+**A delay is looked at in two places and the type says which.** `Arg` is not a `Value` and has none of a value's
+operations, so a reader that met one has to say what it does about it: `eval::demanded` evaluates it, and `Arg::settled`
+reads it only if something already has. ι selecting a method is the first place, and it is a frame of the machine rather
+than a host call so that a fold does not grow the host stack (§4.1). A spine that stayed stuck being read back,
+compared, or asked its type is the second, and those force through `demanded` before the value leaves. Everywhere else —
+a constructor's fields, a projection's subject, a metavariable's pattern spine, a builtin's arguments — the head is not
+a recursor, so nothing there is ever delayed, and each of those readers says so where it reads.
+
 ## The kernel acceptance invariants
 
 **1. No unsolved metavariable crosses the boundary.** Enforced by `Checked::try_from`, which is the only way to obtain

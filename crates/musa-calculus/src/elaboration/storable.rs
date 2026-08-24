@@ -181,7 +181,7 @@ fn stor(
                     let mut arguments = Vec::with_capacity(params);
                     for elimination in neutral.spine.iter().take(params) {
                         let Elim::App { argument, .. } = elimination;
-                        arguments.push(Value::clone(argument));
+                        arguments.push(crate::kernel::eval::demanded(meter, argument)?);
                     }
                     visiting.push(key);
                     let mut answer = true;

@@ -558,7 +558,7 @@ comparing normal forms. There is no case in which two types nothing can read fai
 there is no case in which conversion is handed something it cannot read: an ill-formed type is refused where it is
 *formed*, not where it is compared.
 
-**The strategy is part of the specification.** Conversion is decidable either way, but the four rules below are what
+**The strategy is part of the specification.** Conversion is decidable either way, but the five rules below are what
 make it *cheap*, and a checker that lost one would still be correct and would grind. They are rules, not notes:
 
 - **Rigid heads first.** Two neutrals with different rigid heads are different, and neither side is unfolded to find
@@ -568,6 +568,14 @@ make it *cheap*, and a checker that lost one would still be correct and would gr
 - **A numeral is compared as a number.** A closed value of a counting family is never expanded into a tower of its step
   constructor.
 - **The meter is the backstop.** A budget crossing is a refusal (§4), never a hang and never a silent pass.
+- **A recursor is strict in its target and lazy in its methods.** ι chooses one method; the others are never evaluated.
+  The motive goes with them, being read only where the elimination stays stuck. This is cheap because the calculus is
+  total (§2.4): every δ-rule is a function of its arguments and no rule emits a diagnostic, so an unevaluated method and
+  an evaluated one are the same value and the only difference is what the meter charged. Elsewhere the two would not be
+  the same — a lazy argument changes which programs terminate — which is why the rule is stated here and not as a
+  general strategy. A checker that lost it would answer exactly what it answers now, and would evaluate every arm of
+  every `match` at every scrutinee: a case tree compiles to a recursor (§6.2) and `if` is a case tree over `Bool`, so an
+  `if`/`else if` chain would evaluate both branch values whichever branch it took.
 
 **What conversion does *not* have to do** is the other half of why it is cheap, and each absence is load-bearing rather
 than incidental. There are **no unary towers**, because of the numeral rule above. There are **no proof terms to
@@ -599,9 +607,11 @@ answer — a compiler that does not return and an editor that stops answering wh
 the left end of that chain up.
 
 **Evaluation of an accepted program** is deterministic call by value, left to right for arguments and source order for
-finite folds. A closure is a term with an immutable finite environment. Track constructors produce ordinary track
-values; machine constructors produce ordinary machine values. **Neither runs anything.** Building a machine does not
-step it, and building a track does not schedule it.
+finite folds, with the recursor rule above the one exception and the one place it is visible: what an author observes is
+that a chain of conditions costs what the branch it took costs, not what every branch costs. A closure is a term with an
+immutable finite environment. Track constructors produce ordinary track values; machine constructors produce ordinary
+machine values. **Neither runs anything.** Building a machine does not step it, and building a track does not schedule
+it.
 
 Exact values remain integers or reduced rationals. There is no floating-point type in the source language; floats appear
 only inside a registered primitive's private state and at the device edge. Ordering of maps, declarations, diagnostic
