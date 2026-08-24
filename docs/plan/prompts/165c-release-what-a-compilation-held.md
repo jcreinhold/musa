@@ -2,7 +2,7 @@
 id: 165c
 slug: release-what-a-compilation-held
 status: pending
-depends_on: [165b]
+depends_on: [165b, 166b]
 phase: 3
 ---
 
@@ -15,88 +15,100 @@ phase: 3
 
 ## Task
 
-Find what a finished compilation keeps alive, and release it. One compilation costs about 2.6 MB live; a process that
-runs several hundred of them grows by roughly 2 MB apiece and never gives it back. Nothing in `docs/rules/` is violated
-by that — it is not a correctness bug — but it is the difference between a desktop session that stays flat over an
-afternoon of edits and one that does not, and `docs/rules/desktop/06-frame-budgets.md` assumes the first.
+A finished compilation leaks its prelude context. **257,208 bytes per `compile` call, exactly, whatever the program is**
+— the same figure for a ninety-byte piece, for `tests/fixtures/events-pressure.musa`, and for a piece that imports half
+the standard library. Release it.
 
-**Attribute before fixing.** This prompt's first half is measurement, and its Design names a leading hypothesis rather
-than a conclusion, because the hypothesis is a reading of the code and not a profile.
+It is not a high-water-mark artefact and not an allocator declining to return pages: it is live bytes, counted by a
+`GlobalAlloc` that adds on `alloc` and subtracts on `dealloc`, read after the `Compilation` and the `SourceDocument`
+have both been dropped. A process that compiles grows by a quarter of a megabyte per compilation forever, which is why
+`cargo test -p musa-compiler --test suite` peaks at 1.13 GB single-threaded over 503 tests and 1.72 GB over sixteen
+threads.
 
 ## Read
 
-- The measurements this prompt exists for, reproducible from the repo root against a release build:
+- **The measurement, and how it was narrowed.** A counting global allocator, live bytes after `drop(compilation)`, one
+  workload compiled twelve times in one process:
 
-  | What | Peak RSS | Note |
+  | Probe | Live bytes, round 1 → 12 | Per round |
   | --- | --- | --- |
-  | `musa check examples/in-c.musa` | 35 MB | the largest single example |
-  | `musa check examples/*.musa` (57 files, one process) | 45 MB | released and reused — the CLI shows no growth |
-  | `cargo test -p musa-compiler --test suite -- --test-threads=1` | 1.13 GB | 503 tests, ~2 MB apiece over a ~90 MB base |
-  | `cargo test -p musa-compiler --test suite` | 1.72 GB | the same, sixteen threads |
-  | `cargo bench -p musa-compiler --bench pipeline -- p1_compile` | 838 MB | divan reports 2.619 MB / 35,750 allocations *live* per iteration |
+  | `tests/fixtures/events-pressure.musa` | 273,032 → 3,102,320 | **257,208** |
+  | a ninety-byte `piece` with one note | 273,032 → 3,102,320 | **257,208** |
+  | the same piece importing `std::tonal::harmony` and `std::collections` | 274,759 → 3,103,... | **257,208** |
+  | a source that does not parse, so nothing elaborates | 4,940 → 4,940 | **0** |
+  | `events-pressure` with `memo_for` returning `None` | 273,032 → 3,102,320 | **257,208** |
 
-  The CLI row and the bench row disagree, and reconciling them is the first piece of work: the CLI's examples are small
-  and the bench's workloads are the pressure fixtures, so the difference may be size rather than retention. Establish
-  which before changing anything.
+  Four things follow and each one closes a door. The leak is *constant in the program*, so it is not the program's
+  values. It is *zero when elaboration does not run*, so it is on the elaboration path and not in parsing or lowering.
+  It does not move when the δ-unfolding memo is disabled outright, so it is not the memo — which retires the suspicion
+  [`165b`](165b-graph-update-and-data-descent.md) would naturally attract. And it does not grow when the program pulls
+  in more of the standard library, so it is not the imported context either.
 
-- `crates/musa-calculus/src/kernel/value.rs` — `Delay`, `Neutral::unfolded`, `memo_for`, and `loosen`. `loosen` and its
-  worklist are what make dropping a deep value iterative rather than recursive, so the drop path is already deliberate
-  and is the right place to read from.
-- `crates/musa-calculus/src/kernel/eval.rs` — `demanded` and `Frame::Forcing`, the two places a delay is filled.
-- Peyton Jones ch. 12 §12.4, the update rule: a shared redex's root is overwritten with its result, and the point of
-  overwriting rather than annotating is that the redex's environment becomes garbage. Ch. 17 on storage management is
-  about a machine musa does not have and does not transfer; §12.4's *reason* does.
-- `crates/musa-compiler/benches/pipeline.rs` — the workloads, and `divan`'s allocation counters, which measure live
-  bytes at an iteration's peak and therefore cannot see retention across iterations. Whatever measures this has to
-  measure something else.
-- The `rust-performance` skill's workflow, and its rule against optimizing from intuition. Two of the three structures
-  this investigation surfaced turned out to cost nothing measurable; see **Stop**.
+  What is left, and what is the right size, is the prelude that `crate::registry::owned()` builds from scratch on every
+  call.
+
+- `crates/musa-compiler/src/registry.rs`'s `owned()` — the whole function. It declares `prelude::phase()`,
+  `prelude::musical()`, two `Registry`s, `prelude::methods_in`, and `prelude::collections`, and it is called once per
+  compilation from `crates/musa-compiler/src/document.rs:571`.
+- `crates/musa-calculus/src/kernel/context.rs` — `Globals(Option<Arc<Tables>>)` and `Tables`, whose `definitions` field
+  is a `List<Arc<Defined>>`.
+- `crates/musa-calculus/src/kernel/program.rs` — `Defined`, whose `ty` is an `Arc<Value>`.
+- `crates/musa-calculus/src/kernel/value.rs` — `Head::Const(_, Globals)`, `Head::Base(_, _, Globals)`,
+  `Head::Def(_, Globals, _)`, and `Env`'s own `globals` field, which every `Closure` captures.
+
+  **These four readings are the cycle.** `Arc<Tables>` holds an `Arc<Defined>`; the `Defined`'s type is a `Value`; a
+  `Value` that is a `Pi` captures an `Env` in its codomain closure and an `Env` carries a `Globals`; that `Globals` is
+  the same `Arc<Tables>`. Every definition whose type is a function type closes the loop, which is nearly all of them.
+  `Arc` does not collect cycles, so the prelude's table keeps itself alive after the last outside handle is gone.
+
+- Peyton Jones ch. 17 on storage management is about a machine musa does not have and does not transfer. What does
+  transfer is the ordinary observation underneath it: reference counting is exact for acyclic structure and blind to
+  cycles, and a design that closes a cycle has chosen a collector it does not have.
+- `crates/musa-dsp/tests/suite/rt.rs` — the workspace's existing counting allocator, and its doc comment on why the
+  tally is per-thread. Read it before writing a second one.
+- [`166b`](166b-per-context-memo-stamp.md), which this prompt now depends on — see **Design**.
+- The `rust-performance` skill's workflow, and its rule against optimizing from intuition. Two other structures surfaced
+  by the same investigation were measured and dismissed; see **Stop**.
 
 ## Design
 
-**The leading hypothesis is that a forced delay never releases its environment.**
+**Build the prelude once.** `owned()` takes no arguments and answers the same context every time, so the fix that
+matches the measurement is to compute it once per process and hand out clones. A `Cx` is a handle over `Arc`s and
+cloning one is cheap. The cycle then leaks exactly one prelude for the life of the process — which is not a leak at all,
+because a process-lifetime cache is meant to live that long — and the per-compilation cost of rebuilding it goes with
+it.
 
-```rust
-pub(crate) struct Delay { env: Env, term: Term, forced: OnceLock<Value> }
-```
+**This is why the prompt depends on [`166b`](166b-per-context-memo-stamp.md) and must not run before it.** A shared
+prelude means shared `Value`s, and a shared `Value` carries the δ-unfolding memo cell 165b put on it. Under today's
+process-global invalidation stamp, whether a second compilation *hits* a cell the first one filled depends on what other
+threads have been solving in between — so caching the prelude would take 166b's non-determinism and multiply it by the
+whole prelude. With the stamp scoped to its context first, a cached prelude is safe. Doing these in the other order
+would make the budget's acceptance depend on scheduling, which `docs/rules/language/02-core-calculus.md` §4 forbids.
 
-`fill` writes `forced` and leaves `env` and `term` in place for the delay's whole life. An `Env` is a persistent list of
-shared `Value`s, and a `Value`'s spine holds further delays holding their own environments, so the retention chains: a
-single live delay can pin the whole local scope it was built under, long after the only thing anyone will ever read from
-it is `forced`. That is precisely the garbage §12.4's update exists to release.
+**Do not break the cycle by weakening the back-edge.** `Head::Const`, `Head::Base`, `Head::Def`, and `Env` each carry a
+`Globals` deliberately — `context.rs`'s doc comment argues it at length: a closure must resolve against the table it was
+*built* under, which is the only table that can be right. A `Weak` there would need a strong owner that outlives every
+value built under it, and naming that owner is a larger design than this prompt, with a soundness argument of its own.
+Cache first; if a second cyclic table shows up later that a cache cannot answer, that is when the back-edge is worth
+re-opening.
 
-It is a hypothesis and not a finding because only one site constructs one — `eval.rs`'s `Frame::Argument` arm, guarded
-by `family::delays_next` — so delays exist at recursor method positions and nowhere else. Whether that is enough of the
-heap to explain 2 MB a compilation is a question for a measurement, not for a reading.
-
-**If it is confirmed, the shape of the fix is to make the body droppable.** `parts()` hands out `&Env` and `&Term`
-today, so releasing them means the body moves behind something a reader can take from — a `Mutex<Option<(Env, Term)>>`
-beside the `OnceLock`, taken under the lock in `demanded`, or the two collapsed into one cell that holds *either* the
-body or the value. Two threads may force one delay (`fill`'s doc comment says so and totality is why it is allowed), so
-whichever shape is chosen has to keep that safe: a loser that finds the body already taken reads the value instead.
-
-**If it is not confirmed, say so and follow the measurement.** A prompt that names a hypothesis is not a prompt that
-mandates it. The other structures read during the same investigation and *not* selected are in **Stop**, with the
-numbers that dismissed them, so a later reader does not re-open them for free.
-
-**No budget change and no cost-table change.** Releasing memory must not change what a program costs in steps: the
-budget is acceptance (`docs/rules/language/02-core-calculus.md` §4) and this prompt is about bytes. If a candidate fix
-would change a step count, it is the wrong fix.
+**Verify the cache did what the measurement predicted.** The number to beat is 257,208 → 0 per round. If caching drops
+it to something small but non-zero, there is a second holder and it should be attributed the same way rather than
+rounded off.
 
 ## Target
 
-- A measurement that attributes the growth, recorded in `docs/notes/research/language-design-closure/` as a numbered
-  note: what was measured, with what command, on what machine, and what fraction of the growth each attributed structure
-  accounts for.
-- The attributed retention released, in the crate that owns it.
-- A law that fails if it comes back — a test that runs one workload N times in one process and asserts the process's
-  live bytes after the Nth are within a constant factor of after the first. Live bytes and not RSS: RSS is a high-water
-  mark that an allocator is free never to return, which is why the CLI row above proves less than it looks like it does.
-  `crates/musa-dsp`'s `CountingAllocator` is the existing instrument of this kind in the workspace and is the thing to
-  read before writing a second one.
+- `crate::registry::owned()`'s prelude built once per process, with the reason written where the cache is — that the
+  context is a pure function of the compiler's own tables, and that its `Globals` is a reference cycle, so building a
+  second one is both slower and permanent.
+- A law that fails if the growth comes back: a counting global allocator, one workload compiled N times in one process,
+  asserting that live bytes after the Nth are within a constant of after the first. Live bytes and not RSS — RSS is a
+  high-water mark an allocator is free never to return, and it would have called this leak clean.
+- A numbered note under `docs/notes/research/language-design-closure/` recording the attribution above: the probe, the
+  five narrowing measurements, and the cycle read off the four types.
 - `crates/musa-calculus/TRUST.md` updated if anything moved across the trusted boundary.
-- The same step counts before and after, shown rather than asserted: `Budget::LANGUAGE`'s note in
-  `crates/musa-calculus/src/kernel/budget.rs` records the staff adapter's spend, and it must not move.
+- The same step counts before and after, shown rather than asserted. `Budget::LANGUAGE`'s note in
+  `crates/musa-calculus/src/kernel/budget.rs` records the staff adapter's spend and it must not move.
 
 ## Check
 
@@ -121,10 +133,14 @@ Commit as `Release what a compilation held`.
   take the caller's stack unconditionally — leaves the run at the same 0.15 s and the same 37 MB. The reservations are
   lazily committed and the spawns are lost in the noise. Hoisting the room to one thread per compilation is a real API
   change to a trusted crate for no measured gain, and it needs a workload that shows a cost before it is worth making.
-- **No narrowing of the unfold memo and no change to `memo_for`.** Its invalidation stamp is
-  [`166b`](166b-per-context-memo-stamp.md)'s subject and that prompt's Stop already fences it. A memo cell holds a value
-  no longer reachable through a stamp that has moved on, which is retention of the same family — but it is retention
-  *within* a live value, so it goes away when the value does, and the two prompts must not both edit the same field.
+- **No narrowing of the unfold memo and no change to `memo_for`.** It was a suspect and it was measured and dismissed:
+  with `memo_for` returning `None` for every head, the leak is byte-for-byte identical. Its invalidation stamp is
+  [`166b`](166b-per-context-memo-stamp.md)'s subject and that prompt's Stop already fences it.
+- **No change to `Delay`.** It was the reading this prompt was first written around — a forced delay keeps its `env` and
+  its `term` alive beside the value it forced to, which is exactly the garbage Peyton Jones ch. 12 §12.4's update exists
+  to release. It is still true and it is still not this leak: the leak is constant in the program and delays are not.
+  Releasing a forced delay's body is a real change with a real argument and it needs its own prompt and its own
+  measurement, taken on a workload where delays are the heap.
 - **No budget change, no cost-table change, no step-count change.**
 - **No allocator swap.** Reaching for a different global allocator is the intervention the `rust-performance` skill puts
   last for a reason, and it would hide the question rather than answer it.
