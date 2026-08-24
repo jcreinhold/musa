@@ -1,7 +1,8 @@
 # The language
 
-A `.musa` file is one piece or one library. This page surveys the surface syntax; `examples/` in the repository holds a
-runnable fixture for every construct named here.
+A `.musa` file is one piece or one library — or, inside a package, a module file: `mod name;` declarations and nothing
+else, which is how `lib.musa` and a directory's `mod.musa` name their children. This page surveys the surface syntax;
+`examples/` in the repository holds a runnable fixture for every construct named here.
 
 ## A piece
 

@@ -137,7 +137,7 @@ clean worktree at `7396cb2c` and byte-identically in this prompt's tree — 3 er
 
 | File | What it says | Whose it is |
 | --- | --- | --- |
-| `stdlib/src/lib.musa` | `this file declares no piece` | the glob's. `lib.musa` is the package's module tree — twenty-four lines of `mod` — so it is neither a piece nor a library and `musa check` will always refuse it. The Check as written could never pass. |
+| `stdlib/src/lib.musa` | `this file declares no piece` | the glob's. `lib.musa` is the package's module tree — twenty-four lines of `mod` — so it is neither a piece nor a library and `musa check` refused it. **Since repaired**: a module file is the third document shape, the elaborator reads it, and the glob passes. |
 | `examples/diatonic-sequences.musa` | reduction steps at 200001 of 200000 | the tonal budget class. Prompt [166](166-staff-rewrite.md)'s Check records that class as having "closed itself" — and it did, for `nextest`. It did not close for a whole-file check, which is a gap in 166's measurement rather than a defect here. |
 | `examples/staff-page.musa` | `expanding this region with std::adapters::staff crossed a compilation limit` | prompt [166](166-staff-rewrite.md)'s, named in its Check's thirty-test table. |
 

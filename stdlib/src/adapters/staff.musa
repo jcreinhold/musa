@@ -1311,23 +1311,29 @@ library {
     // nothing, between parentheses they state nothing, and between brackets
     // they are not a pitch. Most of a page's tokens are the space around its
     // notation, and this says so before one is made into a `Said`. The chain
-    // is short on purpose: a case tree's methods for constructors that carry
-    // nothing are values and `if` is one such tree, so a level here is paid by
-    // every token on the page and a level in `kinded` by only the looked-at
-    // ones.
-    data Sighted {
-        Passed(kind: TokenKind),
-        Seen(kind: TokenKind),
-    }
-
-    fn sighted(kind: TokenKind) -> Sighted {
+    // is short on purpose, and ordered by how often each answer is the one:
+    // whitespace is most of a page, so it is asked first and costs one
+    // comparison.
+    //
+    // **A `Bool` and not a `Sighted`.** This returned a two-constructor type
+    // carrying the kind in both arms, on the argument that a case tree's
+    // methods for constructors that carry nothing are values. The argument is
+    // sound about case trees and wrong about this one: the only caller is
+    // `token_read`, which already holds the `kind` it passed in, so the
+    // payload was a copy of the question — discarded in the passed-over arm
+    // and re-bound to an equal value in the other. Building it cost a
+    // constructor and a projection for every token on the page, whitespace
+    // included, which is where a page's tokens mostly are. `if` is the case
+    // tree over `Bool` and it is lazy since prompt 162f, so nothing is paid
+    // for the branch not taken.
+    fn sighted(kind: TokenKind) -> Bool {
         if token_kind_equal(kind, TokenKind::Whitespace) {
-            Passed(kind)
+            false
         } else if token_kind_equal(kind, TokenKind::Slash) {
-            Passed(kind)
+            false
         } else if token_kind_equal(kind, TokenKind::Comma) {
-            Passed(kind)
-        } else { Seen(kind) }
+            false
+        } else { true }
     }
 
     // What a token the reader looked at is, by what the lexer called it.
@@ -1545,7 +1551,7 @@ library {
             Body(nothing_read(region) with {
                 hangs = hangs
             }, nothing_held),
-            fn (earlier, kid) { run_syntax_step(earlier, kid) },
+            run_syntax_step,
         ) {
             Body(read, held) -> flushed(read, here, held),
             _ -> nothing_read(region),
@@ -1639,7 +1645,7 @@ library {
     ) -> State {
         match kids.fold_from_start(
             Parens(NoNumbers, NoLength),
-            fn (earlier, kid) { run_syntax_step(earlier, kid) },
+            run_syntax_step,
         ) {
             Parens(stated, exact) -> match exact {
                 Spanned(numeral, span) -> holding_length(read, held, here, exact),
@@ -1729,7 +1735,7 @@ library {
                 },
                 Parens(numbers, length) -> kids.fold_from_start(
                     state,
-                    fn (earlier, kid) { run_syntax_step(earlier, kid) },
+                    run_syntax_step,
                 ),
                 Bracket(said) -> state,
                 Fusing(parts) -> state,
@@ -1759,7 +1765,7 @@ library {
                     closed = None,
                 },
             ),
-            fn (earlier, kid) { run_syntax_step(earlier, kid) },
+            run_syntax_step,
         ) {
             Fusing(parts) -> lexeme_read(region, state, here, parts),
             _ -> state,
@@ -1920,41 +1926,38 @@ library {
         spelling: Text,
     ) -> State {
         match state {
-            Body(read, held) -> match sighted(kind) {
-                Passed(passed) -> state,
-                Seen(seen) -> body_token(
+            Body(read, held) -> if sighted(kind) {
+                body_token(
                     read,
                     held,
                     Said {
                         spot = here,
-                        kind = seen,
+                        kind = kind,
                         spelling = spelling
                     },
-                ),
-            },
-            Parens(numbers, length) -> match sighted(kind) {
-                Passed(passed) -> state,
-                Seen(seen) -> stated_token(
+                )
+            } else { state },
+            Parens(numbers, length) -> if sighted(kind) {
+                stated_token(
                     region,
                     numbers,
                     length,
                     Said {
                         spot = here,
-                        kind = seen,
+                        kind = kind,
                         spelling = spelling
                     },
-                ),
-            },
-            Bracket(was) -> match sighted(kind) {
-                Passed(passed) -> state,
-                Seen(seen) -> Bracket(
+                )
+            } else { state },
+            Bracket(was) -> if sighted(kind) {
+                Bracket(
                     Some(Said {
                         spot = here,
-                        kind = seen,
+                        kind = kind,
                         spelling = spelling
                     }),
-                ),
-            },
+                )
+            } else { state },
             // A slash is punctuation between forms and a part of `3/8`, and
             // which it is depends only on where it stands — the one thing
             // `sighted` cannot say. So inside a lexeme nothing is passed over:

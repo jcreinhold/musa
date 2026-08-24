@@ -159,6 +159,32 @@ impl Budget {
     /// recorded before the workload existed. The budget does not move for any
     /// of it.
     ///
+    /// **Where the adapter's residual actually is, measured rather than
+    /// guessed.** 166 closed that factor of 1.9, and 162hb then spent most of
+    /// what it bought: the same run went from 154,990 to 185,568 steps, which
+    /// is 7% under this limit where there had been 29%. The standing guess was
+    /// that `sighted` — asked once per token, and building a two-constructor
+    /// `Sighted` to answer — was some 45 steps of that per token, so about a
+    /// quarter of the run. **It was about 0.7%.** Dropping the data type for
+    /// the `Bool` its only caller wanted saved 1,288 steps, and eta-reducing
+    /// the four `fn (earlier, kid) { run_syntax_step(earlier, kid) }` fold
+    /// arguments beside it saved 3,306, for 180,974 and 9.5% of headroom.
+    ///
+    /// The run decomposes, by the same probe with one arm of the adapter
+    /// stubbed at a time:
+    ///
+    /// | What runs on `examples/staff-page.musa` | Steps |
+    /// | --- | --- |
+    /// | the traversal alone — every node walked, `sighted` constantly false | 60,898 |
+    /// | + the reading state machine, fused literals not descended into | 130,753 |
+    /// | + the fused-literal path (`fused_read`/`part_read`/`lexeme_read`) | 180,974 |
+    ///
+    /// A third of the run is therefore reached before the adapter reads
+    /// anything, and the composite literals 162h introduced cost 50,221 — not
+    /// the ~11,500 first attributed to them. Those are the two places a later
+    /// prompt has to go for real headroom, and neither is a per-token constant
+    /// that tuning a predicate reaches. The budget still does not move.
+    ///
     /// **Two of the five metrics are un-limited.** §4 says so in as many words: "Conversion and metavariable
     /// metrics have no defaults yet: prompt 165 measures the new checker and
     /// sets them, and until it does, the checker charges them and reports them

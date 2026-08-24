@@ -117,6 +117,12 @@ pub(crate) fn elaborate_parsed(
         if !musa_syntax::ast::ModDecl::all_at_root(&root).is_empty() {
             return elaborate_module_file(resolver, &root);
         }
+        // The backstop, and only that: a root with no `mod` in it is a root
+        // the parser was already reading a piece at, so a file of no shape at
+        // all is refused up in the syntax pass above with `expected \`piece\``.
+        // Nothing below is reachable from `parse`; it is here so that a fourth
+        // shape arriving one day is refused rather than silently compiled to
+        // nothing.
         resolver.report(
             Diagnostic::error(Code::Misplaced, "this file declares no piece")
                 .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")

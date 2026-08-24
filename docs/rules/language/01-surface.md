@@ -75,6 +75,7 @@ events-quote := "events" "EventTrack" "[" "WrittenTime" "," "ScoreFact" "]" "{" 
 antiquote    := "${" expr "}"
 document     := (import | binding | function | data | record | enum | impl)*
                 (piece | library)
+              | module-file
 path         := IDENT "." IDENT
 sound-bind   := "sound" expr "using" expr ";"
 instrument   := "instrument" IDENT ("from" STRING)? "conforms" path
@@ -91,7 +92,7 @@ fallback     := "unsupported" "technique" IDENT "->" "notation_only" "warning" "
 import       := "import" (STRING | module-path) ("as" IDENT)? ";"
 module-path  := IDENT ("::" IDENT)*
 mod-decl     := "mod" IDENT ";"
-module-file  := mod-decl*
+module-file  := mod-decl+                                    % one at least: an empty file owes a piece
 ```
 
 Function arrows associate right, and a function type may name more than one parameter. `(B, A) -> B` is a function of
@@ -893,6 +894,13 @@ piece "Study" {
 A file is one piece or one library, and whatever precedes it — imports, bindings, functions, type declarations — is the
 file's lexical root. Identity comes from the site the way it always did: two calls of one function at two sites are two
 declarations at two origins, for the same reason two `make`s were.
+
+A **module file** is the third document shape and the one exception to that sentence: it is `mod-decl*` and nothing
+else, so it owes no piece and has no lexical root. A package's `lib.musa` and each directory module's `mod.musa` are
+module files (`04-templates-and-modules.md`), and they elaborate to the module tree and no exports. Anything else at
+their root is refused rather than elaborated, because a module file is a path segment and not a module of its own:
+nothing can import what a `let` there would bind, and a declaration nothing can reach is the "declared nowhere" fault
+said from the other side. `crates/musa-compiler/src/elaborate/mod.rs` is where the three shapes are told apart.
 
 ## 6.1 What sealing became
 
