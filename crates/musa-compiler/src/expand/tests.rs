@@ -391,17 +391,23 @@ fn a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop() {
     // And end to end, on a region the run cannot finish: a stop must not
     // reach the reader as the adapter's own sentence.
     //
-    // The stop is provoked by nesting rather than by narrowing a budget.
+    // The stop is provoked by depth rather than by narrowing a budget.
     // `musa_calculus::Budget::scaled` says why in as many words — the core's
     // limit is `LANGUAGE` and nothing in the pipeline lowers it, "because a
     // budget the caller could lower would make acceptance a property of the
     // invocation rather than of the language" — so the only honest way to
     // reach the counter is to give it work it genuinely cannot do under it.
-    // Deep enough that `doubled`'s own traversal cannot finish under
-    // `Budget::NESTING`, and no deeper: the point is the *reporting*, so a
-    // depth chosen for headroom would be a slower test saying the same
-    // thing.
-    const DEPTH: usize = 120;
+    //
+    // **Which counter stops it changed at prompt 165, and so did the depth.**
+    // It used to be `Budget::NESTING`, at 120 groups; the traversal's descent
+    // charged a nesting level and spent a host frame, and the level came back
+    // at every level of the descent while the frames did not. Removing that
+    // recursion — `kernel::eval`'s `structural` hands its rewritten term to
+    // the control stack now — leaves `Metric::Steps` as what a traversal
+    // spends and what stops it. Measured by bisection against this very
+    // assertion: 320 groups still read and 350 do not, so 400 is just past the
+    // boundary, and the point is still the *reporting* rather than the number.
+    const DEPTH: usize = 400;
     let deep = format!("{}a{}", "(".repeat(DEPTH), ")".repeat(DEPTH));
     let stopped = run(&piece(&deep));
     assert!(

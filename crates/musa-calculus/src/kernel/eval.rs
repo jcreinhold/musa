@@ -1032,7 +1032,10 @@ fn eliminated(
         return Ok(entering(meter, stack, chosen.env, chosen.term));
     }
     match structural(meter, &built)? {
-        Some(reduced) => Ok(Step::Value(reduced)),
+        // Entered rather than evaluated: see `structural`'s own note. This is
+        // the traversal's descent, and it belongs on the control stack with
+        // every other one.
+        Some((env, rewritten)) => Ok(entering(meter, stack, env, rewritten)),
         None => Ok(Step::Value(Value::neutral(built))),
     }
 }
@@ -1248,7 +1251,7 @@ fn result_type(meter: &mut Meter, builtin: &Builtin, globals: &Globals, built: &
 ///   literals — so it waits for the one argument the registration declared, and
 ///   passes the rest through untouched. That is ι's condition, which asks about
 ///   the recursor's target and nothing about its methods.
-/// - **it answers a term, which this evaluates.** The rewrite writes down the
+/// - **it answers a term, which the caller enters.** The rewrite writes down the
 ///   next step in the traversal, and the arguments it names by position are
 ///   bound to the values already on the spine. Nothing is re-evaluated and
 ///   nothing is quoted, so a function argument is never forced — a traversal
@@ -1259,12 +1262,36 @@ fn result_type(meter: &mut Meter, builtin: &Builtin, globals: &Globals, built: &
 /// also the backstop for a rewrite that does not descend: a rule that reapplied
 /// its builtin to the same literal would exhaust the budget rather than hang.
 ///
+/// # Why this hands a term back instead of evaluating one
+///
+/// It used to answer a `Value`, by calling [`eval`] on the rewritten term inside
+/// `meter.nested("traversal", …)`. That was the last host recursion left in
+/// evaluation, and it cost one host frame per level of a region's nesting —
+/// measured at about 16 KiB a level in a debug build, so a region some two
+/// thousand groups deep aborted the process on the 32 MiB thread §4.1's room
+/// obligation arranges for it.
+///
+/// The nesting charge it carried did not bound that, and could not: the
+/// rewritten term is *entered*, so a case arm inside it saves the enclosing
+/// depth and starts again from zero — §4.1's own second clause — and the level
+/// came back at every level of the descent while the frames kept stacking.
+/// Measured, with `Budget::NESTING` narrowed to 40: a region 100 groups deep
+/// still expanded, and one 300 deep overflowed the room that same constant
+/// derives. A counter that admits a hundred levels and a stack that dies at
+/// three hundred are not two readings of one limit.
+///
+/// So the answer is a term, and the caller reaches it through [`entering`] the
+/// way the ι rule already does. The descent is the control stack's now — heap
+/// bounded by the step count — and what bounds it is `Metric::Steps`, the
+/// counter that measures work done, which is what a traversal spends. Prompt
+/// 165b removing the two data walks' charges *in the same change that removed
+/// their frames* is the precedent; `02-core-calculus.md` §4.1 is the argument.
+///
 /// # Errors
 ///
-/// [`CoreError::Exhausted`] at a budget limit, [`Malformed::BuiltinStuck`] when
-/// the rewrite answers nothing at a literal target and a full spine, and
-/// whatever evaluating the answer answers.
-fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError> {
+/// [`CoreError::Exhausted`] at a budget limit, and [`Malformed::BuiltinStuck`]
+/// when the rewrite answers nothing at a literal target and a full spine.
+fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<(Env, Term)>, CoreError> {
     let Head::Builtin(builtin, globals) = &built.head else {
         return Ok(None);
     };
@@ -1300,15 +1327,7 @@ fn structural(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreE
     let env = arguments
         .into_iter()
         .fold(Env::under(globals.clone()), |env, argument| env.push(argument));
-    // The one nesting charge evaluation still makes, and §4.1's first clause is
-    // exactly it: "§5.9's traversal descends *through* the transformer's own
-    // branches, so one level of a region's nesting costs a whole chain of
-    // evaluator frames rather than one." A rewrite that names its own builtin
-    // again is a host call from here, so the depth of a traversal is the depth
-    // of this chain, and a region nested past the limit has to be refused
-    // rather than abort the process. Every other descent evaluation makes is on
-    // the control stack above and charges steps.
-    meter.nested("traversal", |meter| eval(meter, &env, &rewritten).map(Some))
+    Ok(Some((env, rewritten)))
 }
 
 /// The type of a blocked elimination.

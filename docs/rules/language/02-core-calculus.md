@@ -783,6 +783,33 @@ host frames at all. `crates/musa-calculus/tests/suite/budget_laws.rs` states bot
 built and read on a 2 MiB thread, and the step charge is one per node counted by hand.
 `../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md` is the measurement.
 
+**The third walk came off at prompt 165, and it is the one the metric was named for.** The paragraph above this section
+says the metric exists because §5.9's traversal descends through the transformer's own branches. It did — one host frame
+per level of a region's nesting, about 16 KiB of it in a debug build — and the charge that was supposed to bound it did
+not, because the rewritten term is *entered*, and this section's own second clause says entering a term saves the
+enclosing depth and starts again from zero. The level came back at every level of the descent while the frames kept
+stacking. Measured with the limit narrowed to 40: a region 100 groups deep still expanded, and one 300 deep overflowed
+the room that same constant derives. A counter that admits a hundred levels and a stack that dies at three hundred are
+not two readings of one limit, and `nesting limit × frame ceiling` is not a derivation when the limit is not what is
+being spent.
+
+So the traversal hands its rewritten term to the evaluator's control stack, the way the ι rule beside it already did,
+and the charge goes with the frames in the same change — the condition the paragraph above insists on. This is a
+widening of the same shape and it is a cost-table version bump for the same reason: a region between about 320 and 680
+groups deep is now read where it was refused, and 680 is where `reduction steps` stops it, which is the counter that
+measures work done and the one a traversal was always spending. `crates/musa-compiler/src/expand/tests.rs`'s
+`a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop` carries the measurement, restated from 120 groups to 400
+with the bisection that found the boundary.
+
+**What this does not yet buy is a larger step limit**, and the reason belongs here because it is about this table rather
+than about that change. Two of the metrics §4 publishes — 100,000 constructed value nodes and 1,048,576 logical value
+bytes — are not enforced: `Budget::LANGUAGE` leaves them open, as the paragraph in §4 about un-limited metrics says. So
+`reduction steps` is doing duty as a memory bound as well as a work bound, and it is not one. At 200,000 the depth it
+admits is about 680 groups, which a host holds comfortably. Raised to a million it admits about 3,400, and a region that
+deep is killed for memory rather than refused — which is the same defect this section is about, one metric further
+along. The step limit is therefore not re-derived until the metrics that bound *size* are enforced, and
+`../../notes/research/language-design-closure/64-the-argument-nobody-reads.md` records the measurement that says so.
+
 ## 5. Metatheoretic obligations
 
 **This section states obligations; it discharges none of them.** The list grew when the calculus became one theory, and
