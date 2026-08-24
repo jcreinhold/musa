@@ -351,6 +351,16 @@ is acceptable — and never a quietly raised threshold.
 - The tonal class closed: `diatonic-sequences` and `rule-of-the-octave` elaborating at the language budget, by a
   measured `std::tonal` fix or an argued cost-table version bump, with the measurement recorded in
   `docs/rules/language/06-elaboration-baseline.md` either way.
+- The post-tonal class closed, the same way and for the same reason. Prompt [164](164-builtin-collapse.md)'s Design
+  records what the budget affords, bisected: ~525 reduction steps for one iteration of a `map` whose body is a single
+  call to `fn same(x: Nat) -> Nat { x }`, ~1,750 for one `number_moved` at a division of twelve, and ~50,000 for one T/I
+  operation applied to a six-member pitch-class set with the images compared. Against 200,000 that is about a hundred
+  user function calls per binding, which is why 164's fixtures state the orbit reading at a division of six and the
+  limited-transposition counts only for collections of at most four members. What this prompt owes is the same four
+  facts at twelve: the whole-tone and octatonic collections' transposition stabilizers, the T/I orbit of a set class,
+  and a row's `4n` labelled forms — `matrix`, `row_forms`, `row_symmetries`. The charge is the checker's rather than the
+  library's, which is what makes it this prompt's: the first row above is a loop with nothing in it, and it is the same
+  charge note 60 measured on an empty staff region.
 - A closing line in note 44 for each item this prompt settles, so the audit ends rather than being inherited again.
 - The room obligation discharged at the `musa-calculus` seam, with a `FRAME_CEILING` constant in `musa-calculus`
   carrying the measurement that justifies it — of the `infer → check → eval` chain, in a debug build, with the command

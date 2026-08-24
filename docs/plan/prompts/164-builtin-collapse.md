@@ -1,7 +1,7 @@
 ---
 id: 164
 slug: builtin-collapse
-status: pending
+status: in-progress
 depends_on: [156, 162b, 166]
 phase: 3
 ---
@@ -139,6 +139,33 @@ a wrapper an author cannot see is charged to every call that reaches it. Report 
 `06-elaboration-baseline.md`'s baseline under its 10% gate; a regression that this prompt causes is this prompt's to fix
 or to argue, not prompt 165's to inherit.
 
+**What the step budget affords, measured on this prompt's own `stdlib/`.** The three modulus-12 builtins that become
+`orbit` and `stabilizer` were one δ-step each; written in Musa they are a group enumeration and a fold, and the fold is
+charged. Bisecting the iteration count of a `map`/`fold` loop against `02-core-calculus.md` §4's 200,000-step budget,
+one binding at a time:
+
+| Workload at a division of twelve | Iterations that fit | Steps each |
+| --- | --- | --- |
+| `map` over a list, one user call in the body | 380 | ~525 |
+| a six-member `map` of `number_moved` | 19 | ~10,500 |
+| one T/I operation applied to a six-member set, and the images compared | 4 | ~50,000 |
+
+So the budget affords roughly a hundred user function calls per binding, and that is what decides which of this prompt's
+fixtures can state their fact at twelve. It reaches: `normal_order` and `prime_form`; a single row operation; and
+`stabilizer` under the twelve transpositions for a set of at most four members. It does not reach: `stabilizer` under
+the twenty-four T/I operations for a set of two members or more, the whole-tone and octatonic collections' transposition
+stabilizers at six and eight members, or any of the `4n` row-group computations — `matrix`, `row_forms`,
+`row_symmetries` — which need between three and fifteen times the budget.
+
+That is a checker cost and not a library one: 525 steps for a loop iteration whose body is
+`fn same(x: Nat) -> Nat { x }` is the same charge
+[note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) and prompt
+[165b](165b-graph-update-and-data-descent.md) measured on an empty staff region. Prompt
+[165](165-diagnostics-and-performance.md) owns the checker's cost and owns the argued cost-table bump, and its Target
+already carries the same shape for the tonal class. The rows above are what it inherits; this prompt's Stop forbids
+raising the budget in place of a fix, and the fixtures below are stated at the divisions the budget reaches rather than
+at the division the theory is usually written in.
+
 **Say what did not shrink.** A survey that reports only the wins is not evidence. The entries that survived, and the
 reason each survived, are the more useful half of the output, because they are the list a future reader will check
 before proposing a new builtin.
@@ -156,7 +183,7 @@ decision, or a budget?
 - `stdlib/` gaining the operations that left the compiler, with their laws.
 - `stdlib/src/post_tonal/` rewritten over `Pc(n)`: `Group<Ti>`, `Action<Pc(n), Ti>`, and `orbit`/`stabilizer` as
   ordinary functions, with the modulus reaching them as the number it is.
-- `examples/`: the two fixtures the Check names.
+- `examples/`: the two fixtures the Check names, each stating its fact at a division the measured budget reaches.
 - P1/P2 measurements against `06-elaboration-baseline.md`'s baseline, and any mitigation applied, measured.
 - The privacy audit, recorded.
 - `docs/rules/language/` repaired wherever it named an operation that no longer exists.
@@ -201,10 +228,21 @@ this prompt's, and a *new* red under either runner is.
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.
 
-And the musical check the moved half brings with it: `orbit` under `Action<Pc(n), Ti>` at modulus 12, applied to the
-committed set-class fixtures, reproduces `102-set-class-and-prime-form.md`'s prime forms, and `stabilizer` applied to
-the whole-tone and octatonic collections reproduces `106-collections.md`'s modes of limited transposition. Both as
-fixtures in `examples/`, both cited by `make docs-check`'s theory-citation pass.
+And the musical check the moved half brings with it, in the two fixtures, both cited by `make docs-check`'s
+theory-citation pass:
+
+- **`102-set-class-and-prime-form.md`, at twelve.** `normal_order` and `prime_form` reproduce the chapter's worked
+  example — `[10, 0, 2, 3, 5]` in normal order, `(02357)` as its prime form — and the triads' `(037)`, with the major
+  and minor triads reaching one prime form because T and I carry one to the other.
+- **`102`'s orbit reading, at six.** A set class *is* an orbit of the T/I group, and `orbit` under
+  `Action<PcSet(n), Ti>` says so where the budget reaches: at a division of six, `prime_form` names exactly the orbit
+  `set_class` enumerates. The same theorem at twelve is 165's, per the Design's table.
+- **`106-collections.md`, at twelve.** `stabilizer` under the transpositions reproduces the chapter's
+  limited-transposition counts for the collections the budget reaches — the tritone, the augmented triad, and the
+  diminished seventh, which the chapter's closing paragraph names as subsets carrying the same property. The whole-tone
+  and octatonic collections themselves are 165's, and the fixture says so where it stops.
+- **`108`–`110`, at twelve.** A row, its fault, and each of P, I, R and RI as a single operation. The `4n` labelled
+  forms — `matrix`, `row_forms`, `row_symmetries` — are 165's.
 
 Commit as `Collapse the builtin registry behind methods and namespaces`.
 
