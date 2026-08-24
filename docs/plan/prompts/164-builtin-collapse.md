@@ -127,11 +127,28 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
 
-The two `nextest` lines still show the tonal budget class red — `diatonic-sequences` and `rule-of-the-octave`, named in
-prompt 142's Check and closed at 144 — and nothing else. The staff class is green because
-[165b](165b-graph-update-and-data-descent.md) and then 166 ran first; the thirty staff budget failures the suite carried
-through 162a are those two prompts' to close between them, and a red one here means this prompt was started out of
-order.
+**The staff class is green**, because [165b](165b-graph-update-and-data-descent.md) and then 166 ran first; the thirty
+staff budget failures the suite carried through 162a are those two prompts' to close between them, and a red one here
+means this prompt was started out of order. `cargo nextest run --workspace` is green outright.
+
+What `--run-ignored all` still shows is four rows, measured at prompt 166's commit and **all four
+[165](165-diagnostics-and-performance.md)'s**, whose Target already names each of them:
+
+| Test | What it reads |
+| --- | --- |
+| `musa::cli wav_export_is_deterministic_for_all_examples` | every example, and it dies on `examples/diatonic-sequences.musa` |
+| `large_score_generators::*` (2) | `tests/fixtures/large-score.musa`, 1500 events, no adapter |
+| `elaboration_fixture_generators::the_pressure_workloads_compile_and_denote_what_they_claim` | `core-pressure.musa`, no adapter |
+
+An earlier statement of this paragraph named "the tonal budget class — `diatonic-sequences` and `rule-of-the-octave` …
+and nothing else". Half of that is wrong twice over: `rule-of-the-octave` compiles, and the two `large_score` rows and
+`core-pressure` are neither tonal nor closed. Prompt 166's Check carries the same correction and the same measurement.
+
+`cargo insta test --workspace --unreferenced=reject` is red for `diatonic-sequences` too, and for one more reason that
+is [166b](166b-per-context-memo-stamp.md)'s: it runs libtest rather than nextest — one process, many threads — where the
+δ-unfolding memo's process-global invalidation stamp makes a compilation's step count depend on what else the process is
+compiling ([note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) §6). Neither red is
+this prompt's, and a *new* red under either runner is.
 
 The oracle stays fixed: a collapse that changes a semantic hash, a diagnostic code, or a rendered corpus file has
 changed behaviour, and behaviour changes belonged to prompt 142.
