@@ -1081,8 +1081,10 @@ position in the quote's own tree; a spliced node keeps its arrival identity. `pa
 step in, since an empty path would restate the origin and put every site's outermost node at one address. The
 construction is charged to the expansion budget where it is built.
 
-**Owes.** Prompt 166 rewrites `stdlib/src/adapters/staff.musa` on it and measures; the trial's construction program
-compiles today as `tests/fixtures/staff-construction.musa`.
+**Done.** Prompt 166 rewrote `stdlib/src/adapters/staff.musa` on it and measured: the emitting section fell from 260
+lines to 156, and the fifty-six `syntax_built` calls and twenty-seven role integers are gone. The trial's construction
+program compiles today as `tests/fixtures/staff-construction.musa`; the measurement is
+[note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) §§1–2.
 
 ## Quote patterns
 
@@ -1115,10 +1117,13 @@ between them a search.
 Coverage is `Shape`, keyed on the template — like a literal it constrains without enumerating, so a match of shapes
 still needs the arm that says what the adapter reads, and two identical shapes are one arm.
 
-**Owes.** Prompt 166 rewrites `stdlib/src/adapters/staff.musa` and measures; the trial's dispatch program compiles today
-as `tests/fixtures/staff-dispatch.musa`, and it contains no quote pattern at all — which is
-[note 43](../../notes/research/language-design-closure/43-dependent-language-trial.md) §2's own finding about where the
-form belongs, since a pattern is written in Musa and staff notation is not.
+**Done, and the one section that got bigger.** Prompt 166 rewrote `stdlib/src/adapters/staff.musa` and measured: the
+reader's three sections went 513 lines to 612, because the evaluator charges every level of an `if` chain to every token
+that reaches it and the file now classifies in two stages to keep the page inside its budget —
+[note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) §3 is the cost model and the
+finding. The trial's dispatch program compiles today as `tests/fixtures/staff-dispatch.musa`, and it contains no quote
+pattern at all — which is [note 43](../../notes/research/language-design-closure/43-dependent-language-trial.md) §2's
+own finding about where the form belongs, since a pattern is written in Musa and staff notation is not.
 
 ## Quotation in the core
 

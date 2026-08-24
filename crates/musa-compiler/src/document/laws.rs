@@ -502,19 +502,22 @@ fn the_kernel_rechecks_every_example() {
 
 /// The fixtures that exhaust a budget before the kernel is asked anything.
 ///
-/// Exact, and each entry is owed elsewhere rather than here. `staff-page`
-/// expands a region through `std::adapters::staff`, which prompt
-/// [166](../../../../docs/plan/prompts/166-staff-rewrite.md) measures as thirty
-/// failing tests and owns the rewrite of; `diatonic-sequences` runs past the
-/// 200,000-step reduction budget with no adapter involved, which is the tonal
-/// class 166's Check records as having "closed itself" for `nextest` — it did
-/// not close for a whole-file check, and this list is where that is written
-/// down rather than assumed.
+/// Exact, and each entry is owed elsewhere rather than here. `staff-page` was
+/// the other one: it expanded a region through `std::adapters::staff` at
+/// 381,055 steps, and prompt
+/// [166](../../../../docs/plan/prompts/166-staff-rewrite.md) rewrote the
+/// adapter to 191,586 and struck it from this list in the same commit. What is
+/// left is `diatonic-sequences`, which runs past the 200,000-step reduction
+/// budget with no adapter involved — the tonal class 166's Check once recorded
+/// as having "closed itself" for `nextest`. Half of it did: `rule-of-the-octave`
+/// compiles and this one does not, so the class is prompt
+/// [165](../../../../docs/plan/prompts/165-diagnostics-and-performance.md)'s,
+/// whose Target names it.
 ///
 /// Striking an entry is the commit that fixes it. Adding one needs the same
-/// argument these two carry: which prompt owns the wall, and why the fixture
+/// argument this one carries: which prompt owns the wall, and why the fixture
 /// cannot be judged rather than merely being inconvenient.
-const BUDGET_WALL: &[&str] = &["diatonic-sequences", "staff-page"];
+const BUDGET_WALL: &[&str] = &["diatonic-sequences"];
 
 /// Every `.musa` fixture the gate above covers.
 ///

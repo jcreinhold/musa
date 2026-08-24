@@ -317,10 +317,11 @@ Seven of the fourteen phase operations therefore go, leaving `recurse_syntax`, `
 `syntax_fold_from_leaves`, `syntax_at`, `syntax_anchor`, `syntax_number`, and `as_expression`. `syntax_anchor` also
 loses its third argument, because the place it took is what §3 computes — as `Derived { origin, quotation, path }` of
 the anchored node, at a reserved site no quote can draw, since a δ rule is a function of its arguments and nothing else
-(`02-core-calculus.md` §5.8's D3) and the node's own path is already the unique name. Prompt 139 owns the deletions;
-prompt 166 owns the anchor's arity, as the prompt that removes the last caller of the place argument. The binding three
-come back when an adapter introduces a name the composer can see and refer to, which neither the staff nor the studio
-adapter does.
+(`02-core-calculus.md` §5.8's D3) and the node's own path is already the unique name. Prompt 139 owns the deletions; the
+anchor's arity went at prompt **145**, not 166 — `crates/musa-compiler/src/phase/ownership.rs` declares
+`syntax_anchor(subject, path)`, and every shipped caller was already at two arguments before the staff rewrite began.
+The binding three come back when an adapter introduces a name the composer can see and refer to, which neither the staff
+nor the studio adapter does.
 
 ## 6. Two quotations, one discipline, and they are not merged
 

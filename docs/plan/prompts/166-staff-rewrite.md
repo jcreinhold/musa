@@ -1,14 +1,14 @@
 ---
 id: 166
 slug: staff-rewrite
-status: pending
+status: done
 depends_on: [142f, 162, 165a, 165b]
 phase: 3
 ---
 
 > **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
 > [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** This is still the acceptance gate,
-> and it is now the gate for the correction _and_ its correction: the constitution's amendment record says the pass is
+> and it is now the gate for the correction *and* its correction: the constitution's amendment record says the pass is
 > answerable to this number, and the number has moved the wrong way — 2,404 lines when the amendment was granted, 2,515
 > today. The rewrite runs on the language of 142a–142e, and if it is not dramatically shorter, note 51's diagnosis is
 > wrong.
@@ -34,7 +34,7 @@ A rather than an implementation.
   a fifth of the spend and never fires where the spend is, a specified cache would be a cost-table version bump besides
   (`02-core-calculus.md` §4: it changes what the meter charges), and the spend itself is the call count this rewrite
   deletes. The rewrite therefore lands before the registry collapse and the cost table. What that bullet got wrong is
-  the last clause of its own conclusion — that the rewrite is _what_ turns prompt 142's staff budget failures green. Two
+  the last clause of its own conclusion — that the rewrite is *what* turns prompt 142's staff budget failures green. Two
   of the three orders of magnitude were the evaluator's, and
   [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) measures them;
   [165b](165b-graph-update-and-data-descent.md) takes them and runs first.
@@ -61,7 +61,7 @@ A rather than an implementation.
   `stdlib/src/adapters/staff.musa`, `stdlib/src/adapters/doubled.musa`, and `tests/fixtures/staff-construction.musa` all
   call it at two arguments already. `45-phase-registry-survey.md`'s row records the prompt correctly and
   `11-quotation.md` §5 names this one, which is the remaining half-sentence to repair. What was this prompt's about the
-  anchor is therefore done, and the Design paragraph below is kept as the record of _why_ the shape is the one it is —
+  anchor is therefore done, and the Design paragraph below is kept as the record of *why* the shape is the one it is —
   the argument, not an instruction.
 - `crates/musa-compiler/src/quote/mod.rs`'s `Derived` and `check_expression`, and
   `crates/musa-compiler/src/phase/mod.rs`'s `syntax_quote` — how a quote mints provenance without an author supplying a
@@ -87,7 +87,7 @@ test or a grep in the Check, not as a claim in the commit message.
 here.** The argument is kept because it is the record of why the shape is the one the code now has, and because prompt
 139's deferral pointed at this number. Of the two shapes, only one survives its own consequences. Keeping the argument
 means giving authors an operation that mints a fresh place — and that operation is `syntax_built` under a new name,
-which `11-quotation.md` §5 deletes and `43-dependent-language-trial.md` §13 records as a falsifier the pass did _not_
+which `11-quotation.md` §5 deletes and `43-dependent-language-trial.md` §13 records as a falsifier the pass did *not*
 fire ("a hand-written provenance path, or a role integer by another name — no"). So the shape is
 `syntax_anchor(subject, path)`, answering the anchor of the input node at `path` as before, and the place its answer
 stands at derives from the arguments alone: `origin` is the anchored node's path, already unique per node, and
@@ -115,7 +115,7 @@ evaluator arm, `PhaseFamily::Builder`'s doc, the two anchor unit tests in `crate
 note are all already at the new arity. What is not is `docs/rules/language/11-quotation.md` §5, which still says "prompt
 166 owns the anchor's arity". Repair it to name 145, and check `45-phase-registry-survey.md`'s row against it.
 
-**The compatibility oracle: check it, and expect it not to move.** An anchor _number_ is a node's position in the
+**The compatibility oracle: check it, and expect it not to move.** An anchor *number* is a node's position in the
 region's reading order and this changes nothing about reading order, so every anchor the staff adapter emits is the
 number it emitted before — which is what `staff_writing_laws.rs` asserts and why those tests survive unchanged. What
 changes is the derived path of the token carrying that number, from `built(here, 33, 0)` to `built(here, <site>, 0)`,
@@ -163,8 +163,8 @@ possible way to make the number look worse for a good reason and better for a ba
 - **The class's `#[ignore]` markers removed.** Twenty-five of them, and their stated reason is the wall this prompt
   closes. `staff_expansion_laws.rs`'s module header says in as many words that these laws are "the measurement it will
   be greeted by, unignored one green run at a time", and AGENTS.md requires an `#[ignore]` to carry an argument for
-  itself — a marker whose argument the commit has just falsified is drift, not caution. The laws run in seconds, so
-  they belong in the fast suite.
+  itself — a marker whose argument the commit has just falsified is drift, not caution. The laws run in seconds, so they
+  belong in the fast suite.
 
 ## Check
 
@@ -195,25 +195,24 @@ The two `nextest` lines close the staff budget class. **The class is thirty test
 this prompt was written against.** `--run-ignored all` on a clean tree at `7cf258e0` reports 31 failures; 30 are this
 class and one was an unrelated orphan since deleted:
 
-| Tests                                                                                       | What they read                                                   |
-| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `staff_expansion_laws::*` (25)                                                              | a staff region through `std::adapters::staff`                    |
-| `staff_writing_laws::a_printed_page_says_what_the_value_said`                               | the same, printed back                                           |
-| `session_laws::the_staff_page_example_compiles_and_renders`                                 | `examples/staff-page.musa`                                       |
-| `large_score_generators::*` (2)                                                             | `tests/fixtures/large-score.musa`, no adapter involved           |
-| `musa::cli wav_export_is_deterministic_for_all_examples`                                    | every example, and it dies on `examples/diatonic-sequences.musa` |
-| `elaboration_fixture_generators::the_pressure_workloads_compile_and_denote_what_they_claim` | `core-pressure.musa`, no adapter involved                        |
+| Tests | What they read |
+| --- | --- |
+| `staff_expansion_laws::*` (25) | a staff region through `std::adapters::staff` |
+| `staff_writing_laws::a_printed_page_says_what_the_value_said` | the same, printed back |
+| `session_laws::the_staff_page_example_compiles_and_renders` | `examples/staff-page.musa` |
+| `large_score_generators::*` (2) | `tests/fixtures/large-score.musa`, no adapter involved |
+| `musa::cli wav_export_is_deterministic_for_all_examples` | every example, and it dies on `examples/diatonic-sequences.musa` |
+| `elaboration_fixture_generators::the_pressure_workloads_compile_and_denote_what_they_claim` | `core-pressure.musa`, no adapter involved |
 
 **Three of those rows are not this prompt's, and the original table said otherwise.** It attributed the two
 `large_score_generators` tests and the `wav` export to `examples/staff-page.musa` on the strength of their being in the
 same failure list. They are not: `tests/fixtures/large-score.musa` is a generated 100-bar score with no `syntax` region
-and no adapter import at all, and the `wav` export walks every example and panics on
-`examples/diatonic-sequences.musa`, which likewise imports no adapter. Both are the whole-file 200,000-step
-_elaboration_ budget, and both are already named in prompt [165](165-diagnostics-and-performance.md)'s Target — the
-1500-event fixture by that description, the tonal class by name. They belong to 165 and cannot be closed here without
-doing 165's work.
+and no adapter import at all, and the `wav` export walks every example and panics on `examples/diatonic-sequences.musa`,
+which likewise imports no adapter. Both are the whole-file 200,000-step *elaboration* budget, and both are already named
+in prompt [165](165-diagnostics-and-performance.md)'s Target — the 1500-event fixture by that description, the tonal
+class by name. They belong to 165 and cannot be closed here without doing 165's work.
 
-One test goes red _because_ this prompt succeeds, and closing it is part of finishing:
+One test goes red *because* this prompt succeeds, and closing it is part of finishing:
 `document::laws::the_kernel_rechecks_every_example` asserts `` `staff-page` no longer meets the budget wall — strike it
 from BUDGET_WALL ``. `BUDGET_WALL` in `crates/musa-compiler/src/document/laws.rs` names this prompt as `staff-page`'s
 owner and says "Striking an entry is the commit that fixes it". So this commit strikes it, and the Stop section below
@@ -221,10 +220,10 @@ carves out exactly that one line of `crates/`.
 
 **There were two walls and neither of them was this prompt's**, which is
 [note 59](../../notes/research/language-design-closure/59-the-staff-wall-is-the-evaluators.md) and the reason
-[165b](165b-graph-update-and-data-descent.md) now runs first. Measured before any rewrite: a staff region with _nothing
-in it_ cost 455,942 steps against a budget of 200,000, because δ had no graph update and every consumer of a folded
+[165b](165b-graph-update-and-data-descent.md) now runs first. Measured before any rewrite: a staff region with *nothing
+in it* cost 455,942 steps against a budget of 200,000, because δ had no graph update and every consumer of a folded
 value re-ran the whole unfold; and `examples/staff-page.musa` peaked at 672 of 320 nesting levels inside
-`canonical`/`realize`, which charge one level per level of _data_. There was no algorithm in an empty region for a
+`canonical`/`realize`, which charge one level per level of *data*. There was no algorithm in an empty region for a
 rewrite to remove. With those two fixed and the adapter untouched, 23 of the 24 `staff_expansion_laws` pass at the
 unchanged 200,000-step budget.
 
@@ -242,12 +241,24 @@ no adapter involved — **closed halfway, and this Check overstated it**. Measur
 `examples/rule-of-the-octave.musa` compiles, and `examples/diatonic-sequences.musa` still reports `evaluation exceeded
 the budget for reduction steps at 200001 of 200000` — identically with the pristine pre-rewrite adapter, which it does
 not import. It is absent from the `nextest` list only because `BUDGET_WALL` excuses it there; a whole-file check still
-fails, which is what the `wav` export row above is. Prompt 165 owns it. What stands in its place is `core-pressure`, which is prompt 165's own pressure fixture and hit the _nesting_ wall
-at 257 of 256. Prompt 165's note asked this prompt to settle it: "if the staff rewrite makes `core-pressure` green as a
-side effect, the wall was the adapter's shape after all; if it does not, the notion of a nesting level is what needs
-repairing." Note 59 answered it before the rewrite — the wall was not the adapter's shape, and 165b is the repair. So
-`core-pressure` is not this prompt's, and every other row above must be green. Any other red means this prompt is not
-done.
+fails, which is what the `wav` export row above is. Prompt 165 owns it. What stands in its place is `core-pressure`,
+which is prompt 165's own pressure fixture and hit the *nesting* wall at 257 of 256. Prompt 165's note asked this prompt
+to settle it: "if the staff rewrite makes `core-pressure` green as a side effect, the wall was the adapter's shape after
+all; if it does not, the notion of a nesting level is what needs repairing." Note 59 answered it before the rewrite —
+the wall was not the adapter's shape, and 165b is the repair. So `core-pressure` is not this prompt's, and every other
+row above must be green. Any other red means this prompt is not done.
+
+**What the run actually reported, recorded here because two lines above stay red and neither is this prompt's.**
+`cargo nextest run --workspace` is green at 1,895 of 1,895, including all twenty-eight now-unignored staff laws.
+`cargo nextest run --run-ignored all` reports exactly the four rows the table above assigns to prompt 165, and
+`document::laws::the_kernel_rechecks_every_example` passes with `staff-page` struck.
+`cargo insta test --workspace --unreferenced=reject` is red twice over: once for the same
+`examples/diatonic-sequences.musa` the `wav` row names, and once because it runs libtest rather than nextest — one
+process, many threads — which exposed that the δ-unfolding memo's invalidation stamp is a process-global, so a
+compilation's step count depends on what else the process is compiling.
+[Note 60](../../notes/research/language-design-closure/60-the-staff-rewrite-measured.md) §6 measures it and
+[166b](166b-per-context-memo-stamp.md) owns it. Neither red is weakened here and neither is the adapter's: with a
+thread-local stamp and this adapter, all 653 of that binary's tests pass.
 
 The oracle stays fixed: a rewrite of a library file has no business changing a semantic hash or a rendered corpus file,
 and the Design section's analysis says the anchor's derived path is not observable in any of them. If one moves, stop
@@ -259,12 +270,12 @@ Commit as `Rewrite the staff adapter on the new language`.
 
 - No new notation coverage, no new diagnostic, no changed anchor, no changed conformance level. The adapter does the
   same job.
-- **One line of `crates/`, and it is the bookkeeping this prompt is named in.** The one change this prompt used to
-  carry — `syntax_anchor`'s arity — landed at prompt 145, and the two evaluator repairs the budget class turned out to
-  need are [165b](165b-graph-update-and-data-descent.md)'s. What is left is striking `"staff-page"` from `BUDGET_WALL`
-  in `crates/musa-compiler/src/document/laws.rs`, and its accompanying half of that constant's doc comment: the list
-  names this prompt as the entry's owner, says in as many words that "striking an entry is the commit that fixes it",
-  and asserts against a wall that is no longer met. That is a record of which prompt owes which fixture, not compiler
+- **One line of `crates/`, and it is the bookkeeping this prompt is named in.** The one change this prompt used to carry
+  — `syntax_anchor`'s arity — landed at prompt 145, and the two evaluator repairs the budget class turned out to need
+  are [165b](165b-graph-update-and-data-descent.md)'s. What is left is striking `"staff-page"` from `BUDGET_WALL` in
+  `crates/musa-compiler/src/document/laws.rs`, and its accompanying half of that constant's doc comment: the list names
+  this prompt as the entry's owner, says in as many words that "striking an entry is the commit that fixes it", and
+  asserts against a wall that is no longer met. That is a record of which prompt owes which fixture, not compiler
   behaviour. The same goes for the twenty-five `#[ignore]` markers the Target names: deleting a marker whose reason the
   commit just falsified is bookkeeping too, and it strengthens the default suite rather than touching what any law
   asserts. No other change to `crates/` is in scope. Anything else a library rewrite turns out to force is a finding

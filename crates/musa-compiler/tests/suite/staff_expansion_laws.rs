@@ -11,15 +11,14 @@
 //! instead of at hand-written data. That the two agree is the point — the
 //! expansion produces the package's data and adds nothing to it.
 //!
-//! Every law below is ignored, and the reason is one line: expanding a staff
-//! region with `std::adapters::staff` crosses the compilation limit on the
-//! checker the course correction replaced and on the one that replaced it,
-//! byte-identically. What still covers the contract in the fast suite:
-//! `staff_package_laws.rs` proves the same realization semantics against
-//! hand-written data, which is this module's observation bridge pointed the
-//! other way. What is deferred: the adapter's expansion cost, which is the
-//! staff adapter migration's terrain — these laws are the measurement it will
-//! be greeted by, unignored one green run at a time.
+//! Every law below was ignored until prompt 166, for one reason: expanding a
+//! staff region with `std::adapters::staff` crossed the compilation limit on
+//! the checker the course correction replaced and on the one that replaced it,
+//! byte-identically. Two of the three orders of magnitude were the evaluator's
+//! and prompt 165b took them; the remaining factor of 1.9 was the adapter's
+//! shape, and the rewrite at 166 took that. They are fast-suite laws now — the
+//! slowest of them runs in three seconds — which is what "unignored one green
+//! run at a time" was waiting for.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -164,7 +163,6 @@ fn page(body: &str) -> String {
 // --- The fourteen items ----------------------------------------------------
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_note_states_its_own_pitch_and_its_own_written_value() {
     assert_eq!(
         notes(&page("bar (4, 4) { c5/4 d5/4 e5/4 f5/4 }")),
@@ -177,7 +175,6 @@ fn a_note_states_its_own_pitch_and_its_own_written_value() {
 /// does not do is sound, and that is a performance question this stage has no
 /// opinion about.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_rest_takes_its_written_value_and_moves_what_follows_it() {
     assert_eq!(
         notes(&page("bar (4, 4) { c5/4 rest/2 d5/4 }")),
@@ -186,7 +183,6 @@ fn a_rest_takes_its_written_value_and_moves_what_follows_it() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_chord_is_one_written_value_over_several_pitches() {
     assert_eq!(
         notes(&page("bar (4, 4) { [c5 e5 g5]/2 [d5 f5]/2 }")),
@@ -195,7 +191,6 @@ fn a_chord_is_one_written_value_over_several_pitches() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_dot_lengthens_the_value_it_follows_by_half() {
     assert_eq!(
         notes(&page("bar (4, 4) { c5/2. d5/4 }")),
@@ -204,7 +199,6 @@ fn a_dot_lengthens_the_value_it_follows_by_half() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn an_exact_duration_is_written_as_the_rational_it_is() {
     assert_eq!(
         notes(&page("bar (4, 4) { c5(3/8) d5(1/8) e5/2 }")),
@@ -213,7 +207,6 @@ fn an_exact_duration_is_written_as_the_rational_it_is() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_tie_joins_a_note_to_what_sounds_next_across_a_bar_line() {
     assert_eq!(
         notes(&page(
@@ -230,7 +223,6 @@ fn a_tie_joins_a_note_to_what_sounds_next_across_a_bar_line() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_slur_holds_what_it_marks_and_changes_no_span() {
     assert_eq!(
         notes(&page("bar (4, 4) { slur { c5/4 d5/4 } e5/2 }")),
@@ -239,7 +231,6 @@ fn a_slur_holds_what_it_marks_and_changes_no_span() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_tuplet_plays_its_inside_in_the_time_it_states() {
     assert_eq!(
         notes(&page("bar (4, 4) { tuplet (3, 2) { c5/4 d5/4 e5/4 } f5/2 }")),
@@ -248,7 +239,6 @@ fn a_tuplet_plays_its_inside_in_the_time_it_states() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_pickup_is_a_bar_of_the_length_it_states() {
     assert_eq!(
         notes(&page("pickup (1, 4) { g4/4 }\n    bar (4, 4) { c5/1 }")),
@@ -257,7 +247,6 @@ fn a_pickup_is_a_bar_of_the_length_it_states() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_repeat_holds_what_it_repeats_and_says_how_many_times() {
     assert_eq!(
         notes(&page("repeat (2) {\n        bar (4, 4) { c5/1 }\n    }")),
@@ -266,7 +255,6 @@ fn a_repeat_holds_what_it_repeats_and_says_how_many_times() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn an_alternate_ending_says_which_pass_it_is_for() {
     assert_eq!(
         notes(&page(
@@ -277,7 +265,6 @@ fn an_alternate_ending_says_which_pass_it_is_for() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_meter_change_is_written_where_it_happens_and_takes_no_time() {
     assert_eq!(
         notes(&page("bar (4, 4) { c5/1 }\n    meter (3, 4)\n    bar (3, 4) { d5/2. }")),
@@ -290,7 +277,6 @@ fn a_meter_change_is_written_where_it_happens_and_takes_no_time() {
 /// and records the pitches; when it takes its time from is a performance
 /// profile's answer, which is §2.4's deliberate silence.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_grace_note_is_read_and_left_for_a_performance_to_time() {
     let with_grace = notes(&page("bar (4, 4) { c5/2 grace [e5] d5/2 }"));
     assert!(
@@ -308,7 +294,6 @@ fn a_grace_note_is_read_and_left_for_a_performance_to_time() {
 /// the same whatever the shift is, and the shift is still there to be read.
 /// Roadmap §2's row — written pitch is not sounding pitch — held by a test.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_transposing_instrument_is_recorded_and_not_applied() {
     let concert = notes(&page("bar (4, 4) { c5/1 }"));
     let clarinet = notes(&format!(
@@ -354,7 +339,6 @@ fn a_transposing_instrument_is_recorded_and_not_applied() {
 /// spell and compares it against what the bar says it measures. Only the
 /// adapter can say *where*, because only the adapter holds nodes.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_bar_that_does_not_fill_its_meter_is_refused_at_the_bar() {
     let (said, pointed) = refusal(&page("bar (4, 4) { c5/2 d5/4 }"));
     assert!(
@@ -367,7 +351,6 @@ fn a_bar_that_does_not_fill_its_meter_is_refused_at_the_bar() {
 /// §2.5's second: a tie joins two notes, so the note it continues into has to
 /// be spelled the same way. Two spellings of one sounding pitch are two notes.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_tie_into_a_differently_spelled_note_is_refused_at_the_tie() {
     let (said, pointed) = refusal(&page(
         "bar (4, 4) { c5/2 d5/4 e5/4 ~ }\n    bar (4, 4) { f5/4 g5/4 a5/2 }",
@@ -380,7 +363,6 @@ fn a_tie_into_a_differently_spelled_note_is_refused_at_the_tie() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_tie_with_nothing_sounding_after_it_is_refused() {
     let (said, _) = refusal(&page("bar (4, 4) { c5/2 d5/4 e5/4 ~ }"));
     assert!(
@@ -390,7 +372,6 @@ fn a_tie_with_nothing_sounding_after_it_is_refused() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_word_the_staff_does_not_know_is_refused_at_the_word() {
     let (said, pointed) = refusal(&page("crescendo\n    bar (4, 4) { c5/1 }"));
     assert!(
@@ -401,7 +382,6 @@ fn a_word_the_staff_does_not_know_is_refused_at_the_word() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_note_that_states_no_written_value_is_refused_at_the_note() {
     let (said, pointed) = refusal(&page("bar (1, 4) { c5 d5/4 }"));
     assert!(
@@ -412,7 +392,6 @@ fn a_note_that_states_no_written_value_is_refused_at_the_note() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn an_empty_chord_is_refused_at_the_chord() {
     let (said, pointed) = refusal(&page("bar (4, 4) { []/1 }"));
     assert!(
@@ -423,7 +402,6 @@ fn an_empty_chord_is_refused_at_the_chord() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_tuplet_that_plays_nothing_in_the_time_of_some_is_refused_at_the_tuplet() {
     let (said, pointed) = refusal(&page("bar (4, 4) { tuplet (0, 2) { c5/4 } f5/2 }"));
     assert!(
@@ -434,7 +412,6 @@ fn a_tuplet_that_plays_nothing_in_the_time_of_some_is_refused_at_the_tuplet() {
 }
 
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_header_stated_twice_is_refused_at_the_second_statement() {
     let (said, _) = refusal(&format!("{HEAD}    clef bass\n\n    bar (4, 4) {{ c5/1 }}"));
     assert!(
@@ -455,7 +432,6 @@ fn a_header_stated_twice_is_refused_at_the_second_statement() {
 /// which is the half that would quietly stop being true if the reader ever
 /// grew a memory.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn no_note_takes_its_register_or_its_value_from_the_note_before_it() {
     let together: Vec<String> = notes(&page("bar (4, 4) { c5/4 d5/8 e5/8 f5/2 }"))
         .into_iter()
@@ -489,7 +465,6 @@ fn no_note_takes_its_register_or_its_value_from_the_note_before_it() {
 /// value. `c5/4/8` cannot be the fixture, because the lexer reads `4/8` whole
 /// as one rational token and the adapter never sees two numerals at all.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
 fn a_note_that_states_two_written_values_is_refused() {
     let (said, _) = refusal(&page("bar (1, 4) { c5(3/8)/4 }"));
     assert!(

@@ -217,15 +217,12 @@ fn a_command_the_staff_does_not_serve_is_refused_by_name() {
 
 // ------------------------------------------------------------ the round trip
 
-// Ignored: the staff adapter's `print` fails byte-identically on the checker
-// the course correction replaced and on the one that replaced it — its
-// transformer builds a core term musa-calculus rejects ("a value that is not a
-// type stood in type position"). What still covers the round trip's contract
-// in the fast suite: `staff_package_laws.rs`'s realization laws, which read
-// the same spans off hand-written data. What is deferred: the printer's
-// term-building, which is the staff adapter migration's terrain.
+// Ignored until prompt 166: the staff adapter's `print` failed
+// byte-identically on the checker the course correction replaced and on the
+// one that replaced it — its transformer built a core term musa-calculus
+// rejects ("a value that is not a type stood in type position"). The rewrite
+// at 166 does not build that term, so the law runs in the fast suite.
 #[test]
-#[ignore = "the staff adapter's `print` builds a term musa-calculus rejects, on both checkers; the adapter migration owns it"]
 fn a_printed_page_says_what_the_value_said() {
     // The round-trip law, stated on the value rather than on the text because
     // printing is allowed to normalize.
