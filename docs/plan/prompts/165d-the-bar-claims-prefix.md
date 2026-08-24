@@ -1,7 +1,7 @@
 ---
 id: 165d
 slug: the-bar-claims-prefix
-status: pending
+status: in-progress
 depends_on: [165b, 165c]
 phase: 3
 ---
@@ -12,10 +12,8 @@ phase: 3
 
 Every `|` and every `bar { … }` raises a `fills_meter` claim, and a claim carries `before` — the whole prefix of the
 fold it stands in — so that `document.rs` can read one rational off it. Elaborating a hundred-bar voice therefore
-elaborates the prefix a hundred times, and compiling
-[`tests/fixtures/large-score.musa`](../../../tests/fixtures/large-score.musa) — the fixture
-[`docs/rules/desktop/06-frame-budgets.md`](../../rules/desktop/06-frame-budgets.md)'s B1 and B2 are measured against —
-takes **13.33 seconds** in a release build against a 400 ms budget. Make a claim cost its duration, which is what its
+elaborates the prefix a hundred times, and the wall clock is quadratic in the barlines: twenty-five bars of whole notes
+compile in **39 ms**, fifty in **126 ms**, one hundred in **490 ms**. Make a claim cost its duration, which is what its
 own doc comment already says it costs.
 
 ## Read
@@ -62,24 +60,42 @@ own doc comment already says it costs.
 
 ## Design
 
-**The measurement, so the fix is not an intuition.** Release build, arm64 macOS, `musa check` on a single voice of 8
-eighth notes per bar:
+**The measurement, so the fix is not an intuition.** Release build, arm64 macOS, `musa check` on a generated file
+holding one `piece` with one `part` and one `voice`, each bar a `|` and its notes. Best of three runs of a loop; process
+start is inside the number, and a one-bar file costs 10 ms of it, which the compile-only column subtracts.
 
-| bars | notes | wall clock |
+One whole note per bar — the shape that separates bars from notes, since the step budget admits far more bars than it
+admits notes:
+
+| bars | wall clock | compile only |
 | ---: | ---: | ---: |
-| 12 | 96 | 0.09 s |
-| 25 | 200 | 0.38 s |
-| 50 | 400 | 1.56 s |
-| 100 | 800 | 6.59 s |
+| 25 | 38.7 ms | 28.7 ms |
+| 50 | 125.6 ms | 115.6 ms |
+| 100 | 490.3 ms | 480.3 ms |
 
-Doubling the bars quadruples the time, which is the definition of the defect. The same 800 notes written **without**
-barlines compile in **0.15 s**, and four separate voices of 800 notes compile in 0.63 s — so it is neither the note
-count, the spine depth, nor the number of voices. It is the bars. `tests/fixtures/large-score.musa` is 100 bars in four
-parts and takes **13.33 s**.
+Doubling the bars quadruples the time — 4.03× and then 4.15× — which is the definition of the defect. Eight eighth notes
+per bar says the same thing across the range the step budget leaves open:
 
-The *step meter does not see it*: the same four rows cost 80,638 / 187,202 / 396,123 / 836,815 steps — linear. A
-quadratic that the deterministic budget prices as linear is worth stating on its own, because §4's counters are what a
-reader would reach for to find exactly this.
+| bars | notes | wall clock | compile only |
+| ---: | ---: | ---: | ---: |
+| 12 | 96 | 65.3 ms | 55.2 ms |
+| 25 | 200 | 245.4 ms | 235.3 ms |
+| 26 | 208 | 267.3 ms | 257.2 ms |
+
+2.17× the bars for 4.66× the time. Twenty-six bars of eighths is the ceiling: twenty-seven refuses at 200,001 steps of
+`Budget::LANGUAGE`'s 200,000, which is why the bar-count evidence above is written in whole notes.
+
+**The step meter does not see it.** The refusal boundary is the same program for program with this fix and without it —
+twenty-six bars of eighths compiles and twenty-seven refuses in both builds — so the quadratic was never a step, and no
+counter in `02-core-calculus.md` §4 would have found it. That is worth stating on its own, because §4's counters are
+what a reader would reach for to find exactly this.
+
+**`large-score.musa` is not the workload here.**
+[`tests/fixtures/large-score.musa`](../../../tests/fixtures/large-score.musa) is the fixture
+[`docs/rules/desktop/06-frame-budgets.md`](../../rules/desktop/06-frame-budgets.md)'s B1 and B2 are measured against,
+and today it refuses on the step budget in 35 ms — the same 35 ms with this fix and without. It cannot time a compile
+until prompt 165 settles the ceiling, so this prompt is measured on the synthetic voices above, and B2 against the real
+fixture waits for that prompt.
 
 **Where it is.** A claim's `before` is the fold's whole prefix as a term, and `Document::passage` elaborates each one
 separately. Bar `k`'s prefix holds `k` bars of notes, so the total elaborated is `1 + 2 + … + N` bars for a voice of
@@ -107,10 +123,10 @@ function of that term, and the identity is only ever used to *find* a cached ans
 equal. Two structurally equal terms with different pointers cost a second elaboration and give the same answer, so a
 miss is slow and never wrong. Say so where the cache is, the way prompt 165c's does.
 
-**What this prompt does not do.** It does not touch the step charge, the cost table, or `Budget::LANGUAGE`. The bars
-above cost 836,815 steps for 800 notes with or without this fix, because the meter never priced the quadratic; making
-that number smaller is prompt 165's, and so is deciding whether 200,000 is the right ceiling for a corpus that measures
-104,261 (`examples/in-c.musa`) to 1,674,615 (`large-score`). This prompt is the wall clock alone.
+**What this prompt does not do.** It does not touch the step charge, the cost table, or `Budget::LANGUAGE`. Every
+program above refuses or compiles at exactly the bar it did before, because the meter never priced the quadratic; making
+the ceiling admit more music is prompt 165's, and so is deciding whether 200,000 is the right number for a corpus that
+runs from `examples/in-c.musa` to `large-score`. This prompt is the wall clock alone.
 
 ## Target
 
@@ -124,8 +140,12 @@ that number smaller is prompt 165's, and so is deciding whether 200,000 is the r
   pieces are several.
 - A law that the four transformation blocks agree with that measurement — `transpose`, `stretch`, `retrograde`, `invert`
   — since the claim's onset under each is what a reader would doubt.
-- A law that a voice of one hundred bars compiles, stated as a bound the quadratic could not meet and the fix can:
-  `#[ignore]`d if it is slow enough to need it, with the doc comment AGENTS.md requires.
+- A law that a voice of one hundred bars places every claim at its own bar — one whole note per bar, the shape today's
+  step budget admits at that length, and the length at which the fold took 490 ms and the fix takes 60 ms. It asserts
+  the onsets and not the clock, because a wall-clock assertion is a slower machine's false failure.
+- A law that the claims of one voice share the pieces of their prefixes — that the distinct pieces across every claim
+  are fewer than the pieces counted with multiplicity. One built term per claim shares nothing, so this is the line the
+  fold could not cross, and it is what makes the cache in `passage` worth having.
 - The measurement recorded as a numbered note under
   [`docs/notes/research/language-design-closure/`](../../notes/research/language-design-closure/): the table above, the
   command, the machine, the after numbers, and the sentence about the meter pricing a quadratic as linear.
