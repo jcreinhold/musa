@@ -172,6 +172,16 @@ impl Meta {
     /// [`Stamp`](crate::kernel::budget::Stamp) is how it finds out. Solving
     /// through the meter is what keeps a solution and the invalidation it owes
     /// one act rather than two a caller could do only half of.
+    ///
+    /// **And the meter is the scope, which is the whole point.** The counter
+    /// this moves used to be a process-global `static`, so a memo filled by one
+    /// compilation was read back as stale by another that had merely been
+    /// running beside a third — making a program's step count, and therefore
+    /// §4's acceptance, a property of machine load. A run's memos are
+    /// invalidated by that run's solutions and by nothing else; two elaborations
+    /// that share no globals cannot solve each other's unknowns.
+    /// [`Stamp`](crate::kernel::budget::Stamp) carries the argument in full,
+    /// including why the scope is not narrowed further.
     pub(crate) fn solve(&self, meter: &mut Meter, value: Value) -> Result<(), Malformed> {
         self.0
             .solution

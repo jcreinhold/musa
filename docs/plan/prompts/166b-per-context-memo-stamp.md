@@ -1,7 +1,7 @@
 ---
 id: 166b
 slug: per-context-memo-stamp
-status: pending
+status: done
 depends_on: [165b]
 phase: 3
 ---
