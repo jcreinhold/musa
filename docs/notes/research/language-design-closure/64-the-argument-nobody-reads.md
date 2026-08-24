@@ -133,7 +133,39 @@ Design step 4 — "`Budget::NESTING`'s doc claim ends this prompt re-earned or c
 unblocks the re-derivation above. The two large-score generator laws stay red meanwhile, and they are red for the right
 reason: they are the measurement saying the published table and the desktop specification disagree.
 
-## 5. One repair that did land: the depth fixture was malformed
+## 5. Three host recursions over a region's depth, two of them now gone
+
+The abort above was chased to its sites, on a deliberately small (256 KiB) thread so that each walk could be run alone
+and cheaply. Building a region is a loop and is fine; dropping one recurses at about 64 bytes a level and is fine in
+practice. Three walks were not.
+
+| Walk | Cost a level | Died on 256 KiB at | Status |
+| --- | ---: | ---: | --- |
+| `quote::gate`'s `walk`, under `check_expression` | ~500 B | ~500 | **loop now** |
+| `Syntax::clone`, derived | ~850 B | ~300 | **loop now** |
+| the traversal's own descent, in evaluation | ~16 KiB | — | open |
+
+`check_expression` carried a second defect and it is the one that froze a host rather than aborting it: `built` and
+`binders` were `Vec`s scanned with `contains` for every node, and each comparison walks a path, so the gate cost the
+square of a region's node count times its depth. Both are `HashSet`s now. With those two changed, a region 4,000 groups
+deep passes the gate and clones instantly on a 256 KiB thread, and expansion is linear again — 0.43 s at depth 400, 0.65
+s at 600, against a run that took minutes and climbed in memory before.
+
+The third is the one §4.1 is actually about, and it is still open. Isolated by swapping the transformer's group branch
+for one that reads nothing (`NONE_AT_ALL`): a region 2,000 deep then costs 1,394 steps and recurses not at all, where
+the reading branch (`EACH_ONCE`) aborts. So the frames are the traversal's descent, at about 16 KiB a level — and the
+counter does not see them. Narrowing `Budget::NESTING` to 40 proves both halves at once: a region 100 groups deep still
+*expands* (so the metric is not charged per level), and a region 300 deep *overflows* (so the room, which is derived
+from that same constant, is being spent per level at ~16 KiB). `NESTING × FRAME_CEILING` is therefore not a derivation
+for this workload; it multiplies a constant nobody charges by a ceiling measured against a different descent.
+
+§4.1 says what the two ways out are and prices them: charge the descent, or remove the frames. Charging it bounds region
+depth at 320 and lets the step limit rise freely, at the cost of refusing regions between 320 and the ~680 that 200,000
+steps admits today — an acceptance narrowing, so a cost-table version bump with a stated reason. Removing the frames is
+prompt 165a's control-stack treatment pointed at the traversal, and narrows nothing. Either is a change to the evaluator
+with its own measurement, and neither belongs in the same commit as the two walks above.
+
+## 6. One more repair that did land: the depth fixture was malformed
 
 `expand::tests`'s `nested_region` built every level at the region's *root* path, so the transformer wrote every one of
 its answers to the same path and a deep region met `NotAnExpression(DuplicatePath)` rather than the limit the law exists

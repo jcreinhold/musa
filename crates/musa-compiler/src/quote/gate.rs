@@ -71,8 +71,12 @@ impl std::fmt::Display for NotAnExpression {
 /// its original source information wherever it is preserved, and preserving one
 /// twice is a transformer duplicating text, not a transformer breaking anchors.
 pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
-    let mut built: Vec<&NodePath> = Vec::new();
-    let mut binders: Vec<&NodePath> = Vec::new();
+    // Sets rather than vectors: both were scanned linearly for every node, and
+    // each comparison walks a path, so the gate cost the square of the region's
+    // node count times its depth. On a deep region that is the difference
+    // between a refusal and a host that stops responding.
+    let mut built: std::collections::HashSet<&NodePath> = std::collections::HashSet::new();
+    let mut binders: std::collections::HashSet<&NodePath> = std::collections::HashSet::new();
     walk(root, &mut |node| {
         if let Syntax::Group {
             delimiter: Delimiter::Fused,
@@ -96,17 +100,15 @@ pub(crate) fn check_expression(root: &Syntax) -> Result<(), NotAnExpression> {
         if let Syntax::Identifier { scopes, .. } = node
             && scopes.first().is_some_and(|scope| scope.0 == *path)
         {
-            if binders.contains(&path) {
+            if !binders.insert(path) {
                 return Err(NotAnExpression::ConflictingBinder);
             }
-            binders.push(path);
-            built.push(path);
+            built.insert(path);
             return Ok(());
         }
-        if built.contains(&path) {
+        if !built.insert(path) {
             return Err(NotAnExpression::DuplicatePath);
         }
-        built.push(path);
         Ok(())
     })
 }
@@ -138,14 +140,28 @@ fn one_lexeme(node: &Syntax) -> Result<(), NotAnExpression> {
     Ok(())
 }
 
+/// # Why this is a loop
+///
+/// The depth this descends is the depth of the region a transformer was handed,
+/// which is the size of an input rather than how deeply anybody wrote a term —
+/// the same argument §4.1 accepts for the two data walks, and the same remedy:
+/// the pending work is an explicit stack in this function's own frame, so a
+/// region deep enough to matter costs heap and not host frames. Recursing here
+/// cost about 500 bytes a level, so this walk alone aborted the process on a
+/// region some four thousand groups deep — a refusal turned into a crash, which
+/// is the one outcome `02-core-calculus.md` §4 does not have.
 fn walk<'a>(
     node: &'a Syntax,
     visit: &mut impl FnMut(&'a Syntax) -> Result<(), NotAnExpression>,
 ) -> Result<(), NotAnExpression> {
-    visit(node)?;
-    if let Syntax::Group { children, .. } = node {
-        for child in children {
-            walk(child, visit)?;
+    let mut pending: Vec<&'a Syntax> = vec![node];
+    while let Some(node) = pending.pop() {
+        visit(node)?;
+        if let Syntax::Group { children, .. } = node {
+            // Reversed, so that popping takes them in source order: the gate
+            // reports the *first* duplicate, and which node that is is part of
+            // the diagnostic rather than an accident of traversal order.
+            pending.extend(children.iter().rev());
         }
     }
     Ok(())
