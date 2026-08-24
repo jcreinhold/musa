@@ -385,6 +385,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 162e | let-in-a-block | 3 | Naming an intermediate value costs a top-level `fn`; the core has had `let` all along |
 | 162f | lazy-methods | 3 | An `if` evaluates both branches, so the staff adapter has a classifier the domain never asked for |
 | 162g | value-literals-as-syntax | 3 | `dot_count` is four quotes for four numbers, and `doubled` hand-allocates thirteen roles |
+| 162h | literal-parts | 3 | `c#5` and `3/8` are one token each, so a consumer re-parses what the lexer already found |
 | 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed — after 164 builds them |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind methods and namespaces |
 | 165 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
