@@ -140,10 +140,10 @@ fn transpose_answer(subject: EventTrack<WrittenTime>, by: Interval) -> EventTrac
 }
 ```
 
-The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, `Voicing`, and
-`Row12`, with `Duration<C>`, `Position<C>`, `EventTrack<C>`, `Option<...>`, `List<...>`, `Result<..., ...>`, products,
-and arrows as constructors. `match` is the case-analysis spelling. A multi-statement musical body is explicitly
-`music { ... }`; `use e;` places an `EventTrack<WrittenTime>` at the current cursor.
+The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, and `Voicing`,
+with `Duration<C>`, `Position<C>`, `EventTrack<C>`, `Option<...>`, `List<...>`, `Result<..., ...>`, products, and arrows
+as constructors. `match` is the case-analysis spelling. A multi-statement musical body is explicitly `music { ... }`;
+`use e;` places an `EventTrack<WrittenTime>` at the current cursor.
 
 ### Exact time
 

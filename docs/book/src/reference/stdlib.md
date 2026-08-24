@@ -13,16 +13,17 @@ The modules:
 | `std::collections` | Scale collections: the modes, harmonic and melodic minor, pentatonic, whole-tone, octatonic |
 | `std::context` | The `TonalContext` signature and its `CMajor` / `ANaturalMinor` modules |
 | `std::core` | Identity and composition combinators |
+| `std::cyclic` | `Cycle(n)` and `Cyclic(n)`: a division of the octave or of a pulse cycle, and a position in one |
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
 | `std::indexed` | Families whose constructors choose their index: `Equal`, the length-carrying `Row`, and `Measure` |
 | `std::list` | Finite lists: `range`, `repeated`, `map`, `filter`, and the two folds |
 | `std::nat` | `nat_fold`: counting upward, told which repetition it is in |
 | `std::notation::staff` | Staff documents as data: written values, the items on a staff, and realizing them into exact time |
 | `std::option` | Reading an `Option` by naming both cases |
-| `std::post_tonal::pcset` | Pitch-class sets |
+| `std::post_tonal::pcset` | Pitch-class sets at any division: normal order, prime form, set classes |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
-| `std::post_tonal::serial` | Twelve-tone rows and their forms |
+| `std::post_tonal::serial` | Tone rows at any division, and their forms |
 | `std::transformational` | Neo-Riemannian transformations on triads |
 | `std::voicing` | Voicing policies: close and drop positions |
 

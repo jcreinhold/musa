@@ -564,7 +564,7 @@ static RESULT: KeywordDoc = doc!(
     "`Result<T, E>` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. \
      Unlike `Option<T>` it says *which* way an operation failed, so an operation with two distinct failures returns one \
      rather than asking the caller to re-derive the reason.\n\n\
-     ```musa\nlet series: Result<Row12, (List<Nat>, List<Pc12>)> = row12_of(sketch);\n```"
+     ```musa\nlet series: Result<ToneRow(12), RowFault> = row(12, chromatic, sketch);\n```"
 );
 static OK: KeywordDoc = doc!(
     "Ok",

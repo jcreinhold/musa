@@ -1073,7 +1073,7 @@ fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
 
 #[test]
 fn hover_draws_the_distinction_between_a_domain_and_the_one_it_is_confused_with() {
-    // `NoteName` and `Pc12` are both "a pitch class" in ordinary speech and
+    // `NoteName` and `Pc(12)` are both "a pitch class" in ordinary speech and
     // are different objects here. A hover that named only the type would let
     // a reader carry the confusion; the sentence is the compiler's own.
     let mut server = Server::start();

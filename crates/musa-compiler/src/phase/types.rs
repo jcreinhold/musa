@@ -280,30 +280,8 @@ pub(crate) enum Builtin {
     CloseVoicing,
     DropVoicing,
     OmitVoicing,
-    Pc12Of,
-    Pc12Number,
     Pc12Forget,
-    Pc12Transposed,
-    Pc12Inverted,
     Pc12Spelled,
-    PcSet12Of,
-    PcSet12Members,
-    PcSet12Transposed,
-    PcSet12Inverted,
-    PcSet12Normal,
-    PcSet12Prime,
-    PcSet12Vector,
-    Row12Of,
-    Row12Pcs,
-    Row12Head,
-    Row12Transposed,
-    Row12Inverted,
-    Row12Retrograde,
-    Row12Matrix,
-    Row12Forms,
-    Row12Symmetries,
-    Row12Repeats,
-    Row12Missing,
     Transpose,
     Stretch,
     Retrograde,
@@ -354,9 +332,6 @@ pub(crate) enum Base {
     Triad,
     Roman,
     Voicing,
-    Pc12,
-    PcSet12,
-    Row12,
 }
 
 /// An argument or result type of a δ-builtin.
@@ -370,22 +345,6 @@ pub(crate) enum Shape {
     Base(Base),
     Option(&'static Self),
     List(&'static Self),
-    /// `Result<value, error>` — how a builtin with more than one way to
-    /// fail says which one happened. `Option` says only *that* it did.
-    Result(&'static Self, &'static Self),
-    /// Why a sequence of pitch classes is not a twelve-tone row.
-    ///
-    /// The one signature in the table that is neither a base type nor a
-    /// container over one, and the reason it is spelled as a name rather than as
-    /// an anonymous pair: a δ-rule answers a `musa_calculus::Datum`, which is a
-    /// literal or a constructor, so a bare product is the one thing it cannot
-    /// write. That is the mechanism noticing something true — the pair was a
-    /// domain concept wearing a tuple — so it is declared in
-    /// [`crate::prelude`] and named here.
-    ///
-    /// It is still a product to the old checker, because [`Self::ty`] still has
-    /// to answer one; that half leaves with the old checker in prompt 142.
-    Fault,
 }
 
 impl Shape {
@@ -406,8 +365,6 @@ impl Shape {
         match self {
             Self::Base(base) => base.is_storable(),
             Self::Option(member) | Self::List(member) => member.is_storable(),
-            Self::Fault => NATS.is_storable() && PC12S.is_storable(),
-            Self::Result(value, error) => value.is_storable() && error.is_storable(),
         }
     }
 }
@@ -436,10 +393,7 @@ impl Base {
             | Self::ChordClass
             | Self::Triad
             | Self::Roman
-            | Self::Voicing
-            | Self::Pc12
-            | Self::PcSet12
-            | Self::Row12 => true,
+            | Self::Voicing => true,
         }
     }
 }
@@ -511,22 +465,12 @@ pub(crate) const TRIAD: Shape = Shape::Base(Base::Triad);
 pub(crate) const ROMAN: Shape = Shape::Base(Base::Roman);
 
 pub(crate) const VOICING: Shape = Shape::Base(Base::Voicing);
-pub(crate) const PC12: Shape = Shape::Base(Base::Pc12);
-
-pub(crate) const PCSET12: Shape = Shape::Base(Base::PcSet12);
-pub(crate) const ROW12: Shape = Shape::Base(Base::Row12);
-
 pub(crate) const TEXTS: Shape = Shape::List(&TEXT);
 pub(crate) const MAYBE_TEXT: Shape = Shape::Option(&TEXT);
 
-pub(crate) const NATS: Shape = Shape::List(&NAT);
 pub(crate) const PITCHES: Shape = Shape::List(&PITCH);
 
 pub(crate) const INTERVALS: Shape = Shape::List(&INTERVAL);
-pub(crate) const PC12S: Shape = Shape::List(&PC12);
-
-pub(crate) const ROW12S: Shape = Shape::List(&ROW12);
-
 pub(crate) const MAYBE_NAT: Shape = Shape::Option(&NAT);
 
 pub(crate) const MAYBE_CLASS: Shape = Shape::Option(&CLASS);
@@ -539,15 +483,6 @@ pub(crate) const MAYBE_TRIAD: Shape = Shape::Option(&TRIAD);
 pub(crate) const MAYBE_ROMAN: Shape = Shape::Option(&ROMAN);
 
 pub(crate) const MAYBE_VOICING: Shape = Shape::Option(&VOICING);
-
-/// A row, or the two exact reasons a sequence is not one: the order positions
-/// whose pitch class already appeared, and the pitch classes it never names
-/// (*Open Music Theory*, `108-basics-of-twelve-tone-theory.md`). Both, rather
-/// than a choice between them, because a sequence of the wrong length can have
-/// either without the other.
-pub(crate) const ROW_FAULT: Shape = Shape::Fault;
-
-pub(crate) const ROW12_OR_FAULT: Shape = Shape::Result(&ROW12, &ROW_FAULT);
 
 /// Register a first-order signature, checking it as it is written.
 ///

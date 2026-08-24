@@ -4,15 +4,15 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 conversion-mismatch
 
-  × expected `PitchClass`, found `Pc12`
+  × type mismatch: expected `PitchClass`, found `Pc 12`
     ╭─[examples/broken/pc12-has-forgotten-the-spelling.musa:12:29]
- 11 │     let sounding: Pc12 = forget_spelling(scale_root(home));
+ 11 │     let sounding: Pc(12) = forget_spelling(scale_root(home));
  12 │     let written: NoteName = sounding;
     ·                             ────┬───
-    ·                                 ╰── this has type `Pc12`
+    ·                                 ╰── here
  13 │ 
     ╰────
-  help: a `Pc12` has forgotten its spelling: `spelled_in` chooses one back, against the
+  help: a `Pc(n)` has forgotten its spelling: `spelled_in` chooses one back, against the
         collection that decides it
 
 1 problem (1 error)

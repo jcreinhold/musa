@@ -1,4 +1,4 @@
-// `forget_spelling` maps a note name into `Pc12`, where `B♯ = C` is true, and
+// `forget_spelling` maps a note name into `Pc(12)`, where `B♯ = C` is true, and
 // it is total because forgetting always succeeds. Coming back is not: a class
 // in `ℤ/12ℤ` names no spelling, and `spelled_in(member, collection)` chooses
 // one against the collection that decides it — answering nothing where that
@@ -8,7 +8,7 @@ piece "Pc12 Has Forgotten The Spelling" {
     import std::scale;
 
     let home: Scale = scale c major;
-    let sounding: Pc12 = forget_spelling(scale_root(home));
+    let sounding: Pc(12) = forget_spelling(scale_root(home));
     let written: NoteName = sounding;
 
     score {

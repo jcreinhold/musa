@@ -1,9 +1,11 @@
 library {
+    import std::cyclic;
     import std::list;
     // For `Action<NoteName, Interval>`: every transformation below moves a root
     // by a written interval, and `up`/`down` is that action written as an
     // operator.
     import std::pitch;
+    import std::post_tonal::pcset;
 
     // Neo-Riemannian transformations on the triad refinement (OMT
     // `072-neo-riemannian-triadic-progressions.md`: the PLR transformations,
@@ -131,7 +133,7 @@ library {
     // Forget one spelling. Named for what it does to a pitch class rather
     // than for the domain it lands in, so that a piece may import this and
     // `std::post_tonal::pcset` together.
-    fn unspelled(spelled: NoteName) -> Pc12 { pc12_forget(spelled) }
+    fn unspelled(spelled: NoteName) -> Pc(12) { forget_spelling(spelled) }
 
     // The three tones of a triad, spelled, from the root upward.
     fn triad_tones(refined: Triad) -> List<NoteName> {
@@ -144,7 +146,7 @@ library {
     // so a cycle that fails to close in spelling closes here, and the failure
     // and the closing are both facts an author can hold at once rather than
     // one hiding the other.
-    fn triad_classes(refined: Triad) -> PcSet12 {
-        pcset12_of(map(unspelled, triad_tones(refined)))
+    fn triad_classes(refined: Triad) -> PcSet(12) {
+        pcset(12, chromatic, map(unspelled, triad_tones(refined)))
     }
 }

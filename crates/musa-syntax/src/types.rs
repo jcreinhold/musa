@@ -62,9 +62,6 @@ pub const BASE_TYPES: &[(&str, &str)] = &[
     ("Triad", "a `ChordClass` with exactly three members"),
     ("Roman", "a roman numeral, read against a key"),
     ("Voicing", "a chord class laid out in actual pitches"),
-    ("Pc12", "a pitch class modulo twelve, where C♯ and D♭ are one"),
-    ("PcSet12", "a set of `Pc12`s"),
-    ("Row12", "an ordering of all twelve `Pc12`s"),
 ];
 
 /// Every type spelling this language removed, with the one that replaced it.
@@ -96,9 +93,16 @@ pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("triad", "Triad"),
     ("roman", "Roman"),
     ("voicing", "Voicing"),
-    ("pc12", "Pc12"),
-    ("pcset12", "PcSet12"),
-    ("row12", "Row12"),
+    // The three the compiler stopped owning. `std::post_tonal` declares them
+    // over the division they belong to, so the rewrite carries the modulus the
+    // old name had built in — and the capitalized spellings are here too,
+    // because these were removed rather than respelled.
+    ("pc12", "Pc(12)"),
+    ("pcset12", "PcSet(12)"),
+    ("row12", "ToneRow(12)"),
+    ("Pc12", "Pc(12)"),
+    ("PcSet12", "PcSet(12)"),
+    ("Row12", "ToneRow(12)"),
     ("music", "EventTrack<WrittenTime>"),
     ("option", "Option"),
     ("list", "List"),

@@ -98,7 +98,7 @@ Four declarations, one rule, because in all four the prefix arrives second:
 | `record Duration { duration_beats: Ratio; }` | `d.duration_beats` | `beats` |
 | `enum Decision<P> { DecisionYes(P) }` | `Decision::DecisionYes` | `Yes` |
 
-This is the exact shape a migration out of the builtin registry invites. Every `chord_root`, `row12_retrograde`, and
+This is the exact shape a migration out of the builtin registry invites. Every `chord_root`, `row_retrograde`, and
 `duration_of` there is a name from a language with no receivers, and moving one across without dropping the prefix
 writes the old shape in the new spelling.
 
@@ -130,7 +130,7 @@ of score marks. A profile never names a graph path. Within `implementation graph
 `resonance`, typed ports, and physical units are honest and documented terms; hiding them behind vague musical words
 would make the advanced surface less comprehensible, not more.
 
-Likewise, `Scale`, `Key`, `ChordClass`, `Voicing`, `NoteName`, and `Pc12` are separate names because they preserve
+Likewise, `Scale`, `Key`, `ChordClass`, `Voicing`, `NoteName`, and `Pc(12)` are separate names because they preserve
 separate choices — and a spelled thing is a *name*, which is why the last two are not one type. Prefer the readable
 block form `in scale ... { ... }` to an unexplained context operator. Use `template`/`make ... as ...` only for
 identity-bearing declarations; use `fn` for values and `motif` only for a music-producing function that a musician would

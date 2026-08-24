@@ -13,7 +13,7 @@ Constructor invariants are necessary for a value to inhabit its type and are che
 - a scale is nonempty and has no duplicate spelled member within its period;
 - a `triad` satisfies the declared tertian-member invariant;
 - a voicing contains exact pitches licensed by its chord-class and omission policy;
-- a `row12` is a bijection over `pc12`;
+- a `ToneRow(n)` is a bijection over `Pc(n)`;
 - an events quote closes, type-checks, and contains decodable `ScoreFact` payloads;
 - a control curve has ordered exact points in the control's domain;
 - an instrument implementation conforms to its declared instrument signature;
@@ -134,7 +134,7 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 | a track value freezing its scale | bind one `step` phrase and use it in C major and C Dorian |
 | implicit track join | place together two successions whose unequal durations make flattening choices disagree |
 | key equals scale | ask for degree 6 in a minor key without natural/harmonic/melodic policy or register |
-| pitch class equals `pc12` | spell C-sharp and D-flat in a notation-preserving transform |
+| pitch class equals `Pc(12)` | spell C-sharp and D-flat in a notation-preserving transform |
 | chord equals voicing | realize one Cmaj7 class in close and drop-2 voicings |
 | analysis equals truth | provide a passage with plausible tonicization and modulation readings |
 | dynamic equals gain/filter | swap two conforming instruments whose expression implementations differ |

@@ -1,19 +1,38 @@
 //! What the chromatic quotient promises
 //! (`docs/rules/language/03-musical-domains.md` §1 and §4).
 //!
-//! `pc12` is `Z/12Z` and a spelled pitch class is not one. Only `χ` is total,
+//! `Pc(12)` is `Z/12Z` and a spelled pitch class is not one. Only `χ` is total,
 //! and it is not injective; the way back is a policy the author names, which
 //! is why it takes a collection and may answer nothing. Every law here holds
 //! that boundary at the language surface, where an author would meet it.
 //!
-//! Counting is how a value becomes visible from outside the compiler. A
-//! `nat` is turned into that many overlaid notes and a `list` into one note
-//! per member, so `pcset12_vector` and `pcset12_members` can be read off a
-//! score snapshot. The algebra itself — the exhaustive `T`/`I` reference,
-//! the brute-force prime-form model over all 4096 sets, the interval-class
-//! accounting — is checked where it is computed, in `musa_score::pc12`'s own unit
-//! tests, because the domain is crate-private and nothing outside can see a
-//! `Pc12` at all.
+//! # How a value becomes visible, and why that changed
+//!
+//! These laws used to count notes. A `nat` was sounded as that many overlaid
+//! notes and a `list` as one note per member, because `Pc12` was a compiler
+//! base type with a crate-private representation and nothing in source could
+//! hold one, let alone compare two.
+//!
+//! Prompt 164 moved the domain into `stdlib/src/post_tonal/pcset.musa`, over
+//! `std::cyclic`'s `Cycle(n)` rather than hardcoded to twelve, and the counting
+//! apparatus went with it: a set's members are an ordinary `List<Nat>` now, and
+//! `Equal` states what they are. So each law below is a `.musa` binding whose
+//! *type* is the claim and whose value is the proof, and the test asserts that
+//! the compiler accepted it. A wrong number is a type error, which is a
+//! stronger statement than a note count and a shorter one to read.
+//!
+//! # Two laws asked at six
+//!
+//! The interval-class vector costs more reduction steps at a division of twelve
+//! than `02-core-calculus.md` §4's budget allows today — prompt 164's Design
+//! measures the charge and prompt 165 owns it — so it is asked at six, where
+//! there are three interval classes rather than six and the law is the same
+//! law. That the division is writable at all is the collapse this prompt made:
+//! a modulus is an argument now.
+//!
+//! The exhaustive `T`/`I` reference and the brute-force prime-form model over
+//! all 4096 sets stay in `musa_score::pc12`'s own unit tests, which is where
+//! the two surviving builtins' Rust side lives.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -23,42 +42,31 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{Code, ScoreEventKind, ScoreSnapshot, Severity};
+use musa_score::{Code, Severity};
 
-/// The counting apparatus every fixture below is written against.
-///
-/// `tally` sounds one note per unit of a `nat` and `chorus` one note per
-/// member of a list, so a count that has no other way out of the compiler
-/// leaves as notes in a voice.
+/// What every fixture below is written against: the division, and the readouts
+/// that turn a pitch class or a set into the numbers the chapter writes.
 const PRELUDE: &str = r"
+    import std::cyclic;
+    import std::indexed;
     import std::list;
     import std::post_tonal::pcset;
-    import std::post_tonal::serial;
 
     meter 4/4;
 
-    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
-    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
-    fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
-    fn beat_for_nat(count: Nat) -> EventTrack<WrittenTime> { beat() }
-    fn beat_for_spelling(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
-    fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { voices.fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
+    fn numbered(member: Pc(12)) -> Nat { class_number(12, member) }
+    fn numbers(held: List<Pc(12)>) -> List<Nat> { map(numbered, held) }
+    fn chromatic_set(written: List<Nat>) -> PcSet(12) { pcset(12, chromatic, pcs(12, chromatic, written)) }
+    fn found(cell: Option<NoteName>) -> Bool { cell.fold_from_end(false, fn (one, otherwise) { true }) }
 ";
 
-/// A piece whose one voice sounds `expression`.
-fn probe(bindings: &str, expression: &str) -> String {
-    format!(
-        "piece \"Law\" {{\n{PRELUDE}\n{bindings}\n    score {{ part p {{ voice v {{ use {expression}; }} }} }}\n}}\n"
-    )
-}
-
-fn compile_named(source: &str) -> musa_compiler::Compilation {
-    compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default())
+/// A piece carrying `bindings` and sounding nothing in particular.
+fn probe(bindings: &str) -> String {
+    format!("piece \"Law\" {{\n{PRELUDE}\n{bindings}\n    score {{ part p {{ voice v {{ c4/1 }} }} }}\n}}\n")
 }
 
 fn errors_of(source: &str) -> Vec<(Code, String)> {
-    compile_named(source)
+    compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default())
         .diagnostics()
         .iter()
         .filter(|diagnostic| diagnostic.severity == Severity::Error)
@@ -66,176 +74,152 @@ fn errors_of(source: &str) -> Vec<(Code, String)> {
         .collect()
 }
 
-fn snapshot_of(source: &str) -> ScoreSnapshot {
-    let errors = errors_of(source);
+/// The bindings elaborate, which is what makes each `Equal` a proof.
+fn holds(bindings: &str) {
+    let errors = errors_of(&probe(bindings));
     assert!(errors.is_empty(), "expected a clean compile, got {errors:?}");
-    compile_named(source).into_snapshot().expect("compiles")
 }
 
-/// How many notes the probe's voice sounds — the value, read as music.
-///
-/// Simultaneous notes in one voice are one chord event, so what is counted is
-/// pitches and not events: `tally(3)` is a chord of three, not three notes.
-fn counted(bindings: &str, expression: &str) -> usize {
-    let snapshot = snapshot_of(&probe(bindings, expression));
-    snapshot
-        .parts()
-        .iter()
-        .flat_map(|(_, part)| part.voices())
-        .flat_map(|(_, voice)| voice.events())
-        .map(|event| match event.kind {
-            ScoreEventKind::Note { .. } => 1,
-            ScoreEventKind::Chord { ref pitches } => pitches.len(),
-            ScoreEventKind::Rest => 0,
-        })
-        .sum()
+/// The bindings are refused, with the code that says why.
+fn refused(bindings: &str, expected: Code, what: &str) {
+    let errors = errors_of(&probe(bindings));
+    assert!(errors.iter().any(|(code, _)| *code == expected), "{what}: {errors:?}");
 }
 
 #[test]
 fn a_spelled_pitch_class_is_not_an_unspelled_one() {
-    let spelled_where_unspelled_belongs = probe("    let wrong: Pc12 = pitchclass_of(c4);", "beat()");
-    let errors = errors_of(&spelled_where_unspelled_belongs);
-    assert!(
-        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
-        "a `pitchclass` must not stand where a `pc12` belongs: {errors:?}"
+    refused(
+        "    let wrong: Pc(12) = pitchclass_of(c4);",
+        Code::ConversionMismatch,
+        "a `pitchclass` must not stand where a `Pc(12)` belongs",
     );
-
-    let unspelled_where_spelled_belongs = probe("    let wrong: NoteName = pc(0);", "beat()");
-    let errors = errors_of(&unspelled_where_spelled_belongs);
-    assert!(
-        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
-        "and a `pc12` must not stand where a `pitchclass` belongs: {errors:?}"
+    refused(
+        "    let wrong: NoteName = pc(12, chromatic, 0);",
+        Code::ConversionMismatch,
+        "and a `Pc(12)` must not stand where a `pitchclass` belongs",
     );
 }
 
 #[test]
 fn a_pitch_class_is_not_the_number_that_names_it() {
-    let errors = errors_of(&probe("    let wrong: Nat = pc(3);", "beat()"));
-    assert!(
-        errors.iter().any(|(code, _)| *code == Code::ConversionMismatch),
-        "reading a residue as a number must be asked for: {errors:?}"
+    refused(
+        "    let wrong: Nat = pc(12, chromatic, 3);",
+        Code::ConversionMismatch,
+        "reading a residue as a number must be asked for",
     );
 }
 
 #[test]
 fn the_quotient_reduces_modulo_twelve() {
-    assert_eq!(counted("", "tally(number_of(pc(11)))"), 11);
-    assert_eq!(counted("", "tally(number_of(pc(13)))"), 1, "13 and 1 are one residue");
-    assert_eq!(counted("", "tally(number_of(pc(25)))"), 1, "and so are 25 and 1");
-    assert_eq!(counted("", "tally(number_of(pc(12)))"), 0, "12 is 0");
+    holds(
+        "
+    let eleven: Equal<Nat>(numbered(pc(12, chromatic, 11)), 11) = Refl(11);
+    let thirteen: Equal<Nat>(numbered(pc(12, chromatic, 13)), 1) = Refl(1);
+    let twenty_five: Equal<Nat>(numbered(pc(12, chromatic, 25)), 1) = Refl(1);
+    let twelve: Equal<Nat>(numbered(pc(12, chromatic, 12)), 0) = Refl(0);
+",
+    );
 }
 
 #[test]
 fn forgetting_a_spelling_is_total_and_not_injective() {
-    let sharp = counted("", "tally(number_of(forget_spelling(pitchclass_of(c#4))))");
-    let flat = counted("", "tally(number_of(forget_spelling(pitchclass_of(db4))))");
-    assert_eq!(sharp, 1, "c sharp forgets onto one");
-    assert_eq!(sharp, flat, "and d flat forgets onto the same one");
-
-    assert_eq!(
-        counted("", "tally(number_of(forget_spelling(pitchclass_of(b#3))))"),
-        0,
-        "b sharp forgets onto zero, which c also forgets onto"
-    );
-    assert_eq!(
-        counted("", "tally(number_of(forget_spelling(pitchclass_of(cbb4))))"),
-        10,
-        "a deeply altered spelling is an ordinary member of the quotient"
+    holds(
+        "
+    let sharp: Equal<Nat>(numbered(forget_spelling(pitchclass_of(c#4))), 1) = Refl(1);
+    let flat: Equal<Nat>(numbered(forget_spelling(pitchclass_of(db4))), 1) = Refl(1);
+    let sharpened: Equal<Nat>(numbered(forget_spelling(pitchclass_of(b#3))), 0) = Refl(0);
+    let doubly: Equal<Nat>(numbered(forget_spelling(pitchclass_of(cbb4))), 10) = Refl(10);
+",
     );
 }
 
 #[test]
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
-    let bindings = "
-    fn present(spelled: NoteName) -> EventTrack<WrittenTime> { beat() }
-    let in_c: EventTrack<WrittenTime> = spelled_in(pc(1), scale c major).fold_from_end(
-        music { rest/1 },
-        fn (found, otherwise) { present(found) },
+    holds(
+        "
+    let in_c: Equal<Bool>(found(spelled_in(pc(12, chromatic, 1), scale c major)), false) =
+        Refl(false);
+    let in_d: Equal<Bool>(found(spelled_in(pc(12, chromatic, 1), scale d major)), true) =
+        Refl(true);
+",
     );
-    let in_d: EventTrack<WrittenTime> = spelled_in(pc(1), scale d major).fold_from_end(
-        music { rest/1 },
-        fn (found, otherwise) { present(found) },
-    );
-";
-    assert_eq!(
-        counted(bindings, "in_c"),
-        0,
-        "C major has no note of pitch class one, and the projection says so"
-    );
-    assert_eq!(counted(bindings, "in_d"), 1, "D major spells it `c#`");
 }
 
 #[test]
 fn a_set_holds_a_repeated_member_once() {
-    assert_eq!(
-        counted(
-            "    let triad: PcSet12 = pcset(pcs([0, 0, 4, 7, 7]));",
-            "chorus(map(beat_for_pc, set_members(triad)))"
-        ),
-        3,
-        "a set is what was asked for, so a repetition is not an error and not a member twice"
+    holds(
+        "
+    let triad: PcSet(12) = chromatic_set([0, 0, 4, 7, 7]);
+    let held: Equal<List<Nat>>(numbers(set_members(12, chromatic, triad)), [0, 4, 7]) =
+        Refl([0, 4, 7]);
+",
     );
 }
 
 #[test]
 fn a_set_reads_out_ascending_and_normal_order_need_not() {
-    let bindings = "
-    let set: PcSet12 = pcset(pcs([0, 5, 8]));
-    let ascending: EventTrack<WrittenTime> = chorus(map(tally, map(number_of, set_members(set))));
-    let normal: EventTrack<WrittenTime> = chorus(map(tally, map(number_of, normal_order(set))));
-";
-    assert_eq!(counted(bindings, "ascending"), 13, "0 + 5 + 8 read ascending");
-    assert_eq!(
-        counted(bindings, "normal"),
-        13,
-        "the same three members, rotated: 5, 8, 0 is the compact ordering"
+    holds(
+        "
+    let set: PcSet(12) = chromatic_set([0, 5, 8]);
+    let ascending: Equal<List<Nat>>(numbers(set_members(12, chromatic, set)), [0, 5, 8]) =
+        Refl([0, 5, 8]);
+    let normal: Equal<List<Nat>>(numbers(normal_order(12, chromatic, set)), [5, 8, 0]) =
+        Refl([5, 8, 0]);
+",
     );
 }
 
 #[test]
 fn the_interval_class_vector_has_six_entries_and_counts_every_pair() {
-    let bindings = "    let triad: PcSet12 = pcset(pcs([0, 4, 7]));";
-    assert_eq!(
-        counted(bindings, "chorus(map(beat_for_nat, interval_class_vector(triad)))"),
-        6,
-        "six interval classes, because ic 7 is ic 5 heard the other way round"
-    );
-    assert_eq!(
-        counted(bindings, "chorus(map(tally, interval_class_vector(triad)))"),
-        3,
-        "and three pairs in a three-member set"
+    holds(
+        "
+    let sixfold: Cycle(6) = Positions(5);
+    let triad: PcSet(6) = pcset(6, sixfold, pcs(6, sixfold, [0, 1, 3]));
+    let width: Equal<Nat>(length(interval_class_vector(6, sixfold, triad)), 3) = Refl(3);
+    let counts: Equal<List<Nat>>(interval_class_vector(6, sixfold, triad), [1, 1, 1]) =
+        Refl([1, 1, 1]);
+",
     );
 }
 
 #[test]
 fn a_set_class_survives_transposition_and_inversion() {
-    let bindings = "
-    let triad: PcSet12 = pcset(pcs([0, 4, 7]));
-    let moved: PcSet12 = set_transposed(triad, 3);
-    let mirrored: PcSet12 = set_inverted(triad, 0);
-";
-    let upright = counted(
-        bindings,
-        "chorus(map(tally, map(number_of, set_members(prime_form(triad)))))",
+    holds(
+        "
+    let triad: PcSet(12) = chromatic_set([0, 4, 7]);
+    let upright: Equal<Bool>(
+        same_set(12, prime_form(12, chromatic, triad), chromatic_set([0, 3, 7])),
+        true,
+    ) = Refl(true);
+",
     );
-    let moved = counted(
-        bindings,
-        "chorus(map(tally, map(number_of, set_members(prime_form(moved)))))",
+    holds(
+        "
+    let triad: PcSet(12) = chromatic_set([0, 4, 7]);
+    let moved: PcSet(12) = set_transposed(12, chromatic, triad, 3);
+    let same: Equal<Bool>(
+        same_set(12, prime_form(12, chromatic, moved), prime_form(12, chromatic, triad)),
+        true,
+    ) = Refl(true);
+",
     );
-    let mirrored = counted(
-        bindings,
-        "chorus(map(tally, map(number_of, set_members(prime_form(mirrored)))))",
+    holds(
+        "
+    let triad: PcSet(12) = chromatic_set([0, 4, 7]);
+    let mirrored: PcSet(12) = set_inverted(12, chromatic, triad, 0);
+    let same: Equal<Bool>(
+        same_set(12, prime_form(12, chromatic, mirrored), prime_form(12, chromatic, triad)),
+        true,
+    ) = Refl(true);
+",
     );
-    assert_eq!(upright, 10, "the major triad's prime form is 0, 3, 7");
-    assert_eq!(moved, upright, "transposition does not change the set class");
-    assert_eq!(mirrored, upright, "and neither does inversion");
 }
 
 #[test]
 fn the_bundled_libraries_import_like_any_other() {
-    let source = probe("", "beat()");
+    let errors = errors_of(&probe(""));
     assert!(
-        errors_of(&source).is_empty(),
-        "`std::post_tonal::pcset` and `std::post_tonal::serial` must compile as bundled sources"
+        errors.is_empty(),
+        "`std::cyclic` and `std::post_tonal::pcset` must compile as bundled sources: {errors:?}"
     );
 }

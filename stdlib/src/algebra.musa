@@ -1,4 +1,6 @@
 library {
+    import std::list;
+
     // The three structures the musical domains share, named once.
     //
     // Every one of them was already in the library, written by hand under a
@@ -107,4 +109,79 @@ library {
             operation: Duration<WrittenTime>,
         ) -> Position<WrittenTime> { position_shift(subject, operation) }
     }
+
+    // # Orbit and stabilizer, once for every finite action
+    //
+    // Two questions a finite group action answers, and the two that
+    // `52-the-musical-algebra.md` §2.3 found three compiler builtins asking one
+    // modulus at a time. A set class is an orbit of pitch-class sets under the
+    // T/I group; Messiaen's modes of limited transposition are exactly the
+    // collections whose stabilizer under transposition is nontrivial; a row's
+    // symmetries are its stabilizer. Written here, once, they are the same two
+    // functions for a bell pattern in a cycle of twelve pulses and for a
+    // twenty-four-tone row.
+    //
+    // Both take the group as a list, because a *finite* action is what makes
+    // them computable at all: `03-musical-domains.md` §5's "what the index buys
+    // is counted, not claimed" is exactly this — once the carrier's size is
+    // known the group can be enumerated, and enumeration is an ordinary fold.
+    //
+    // Both take equality on the carrier as an argument rather than finding it.
+    // A record carries fields and never obligations, so a `Group` that also
+    // promised decidable equality on its carrier would be promising something
+    // no field of it holds; and the caller always has the equality, because the
+    // caller is what knew the carrier was finite.
+
+    // Whether `built` already holds a member equal to `value`.
+    private fn already<X>(same: X -> X -> Bool, built: List<X>, value: X) -> Bool {
+        any(fn (seen: X) -> Bool { same(seen, value) }, built)
+    }
+
+    // `built`, with `value` at its front where it is not already there.
+    //
+    // Prepended, and the fold's answer reversed once at the end. Appending
+    // instead would rebuild the whole list at every new member, which is a
+    // second quadratic on top of the comparison's — and at a division of twelve
+    // the row group has forty-eight members, where a spare quadratic is the step
+    // budget. The order a caller sees is unchanged: the group's own, first
+    // occurrence winning, which is what makes a canonical representative a
+    // question about the answer rather than about this function.
+    private fn adding<X>(same: X -> X -> Bool, built: List<X>, value: X) -> List<X> {
+        if already(same, built, value) {
+            built
+        } else { Cons(value, built) }
+    }
+
+    // The distinct images of `point` under every operation in `group`.
+    //
+    // Order is the group's own, first occurrence winning, and duplicates are
+    // dropped — which is what makes the *length* of this the count that
+    // `row12_forms` was: how many distinct rows the labelled forms produce.
+    fn orbit<X, G>(
+        action: Action<X, G>,
+        same: X -> X -> Bool,
+        group: List<G>,
+        point: X,
+    ) -> List<X> {
+        reverse(
+            group.fold_from_start(
+                [],
+                fn (built: List<X>, by: G) -> List<X> {
+                    adding(same, built, action.act(point, by))
+                },
+            ),
+        )
+    }
+
+    // The operations in `group` that leave `point` where it is.
+    //
+    // Its length times the orbit's is the size of the group, which is the
+    // orbit-stabilizer accounting `110-row-properties.md` asks the four form
+    // labels to do on their own.
+    fn stabilizer<X, G>(
+        action: Action<X, G>,
+        same: X -> X -> Bool,
+        group: List<G>,
+        point: X,
+    ) -> List<G> { filter(fn (by: G) -> Bool { same(action.act(point, by), point) }, group) }
 }

@@ -1,0 +1,380 @@
+library {
+    import std::algebra;
+    import std::list;
+
+    // A cycle of n positions, and the operations that move around it.
+    //
+    // `03-musical-domains.md` §5 is what this module implements: `Cyclic(n)` is
+    // ℤ/nℤ as an *element* type, the modulus is an index rather than a constant,
+    // and everything §4 wrote for twelve is written here once for every n. A
+    // pitch-class set in ℤ/12 and a bell pattern in a 12-pulse cycle are the
+    // same object — transposition is rotation, inversion is reflection — so the
+    // pitch reading in `std::post_tonal::pcset` and a rhythmic reading of the
+    // same functions share their algorithms and their laws.
+    //
+    // Nothing here knows about pitch. A `Cyclic(12)` is position five of twelve
+    // and not F; what makes it F is a reading, and a reading is a different
+    // module's word.
+
+    // One position in a cycle of `n`.
+    //
+    // The shape is a finite ordinal: `Origin` is position zero and `After`
+    // counts one more. Only a cycle with a position in it can have one, so
+    // `Cyclic(0)` is empty — which is the whole reason the operations below need
+    // no failure case and no bound check. The index of a member *is* the size of
+    // its cycle, so a member always says which cycle it belongs to and a member
+    // of one cycle can never stand in another.
+    //
+    // `besides` is a field rather than a bound variable because a constructor
+    // reads its own chosen index out of its own fields
+    // (`02-core-calculus.md` §1.1): `Origin(besides)` stands at `Succ(besides)`,
+    // so a cycle of twelve is one position and eleven besides.
+    data Cyclic(n: Nat) {
+        Origin(besides: Nat): (Succ(besides)),
+        After(besides: Nat, earlier: Cyclic(besides)): (Succ(besides)),
+    }
+
+    // A cycle of `n` positions, as a value.
+    //
+    // The witness that `n` is at least one, which is what makes `place_in`
+    // total. An author names the division — `03-musical-domains.md` §5's
+    // "naming the division is something an author does" — and names it once:
+    // `chromatic` below is that name for twelve.
+    data Cycle(n: Nat) {
+        Positions(besides: Nat): (Succ(besides)),
+    }
+
+    // A transposition or an inversion: the operations that preserve a cycle's
+    // interval structure.
+    //
+    // One family and not two, because they are one group. T_i is rotation by i
+    // and I_j is reflection through j, and the composite of two reflections is a
+    // rotation — so a type that held only the transpositions would be closed and
+    // wrong, and two unrelated types would make `orbit` need two arguments.
+    //
+    // **Not indexed by the cycle**, unlike `Cyclic(n)`, and the asymmetry is the
+    // point: T_3 is T_3 in every division, and what makes a label an operation
+    // is the carrier it is applied to. `moved` reduces the index against the
+    // cycle its argument belongs to, so `Transpose(15)` at twelve is `T_3` and
+    // at twenty-four is itself. A `Ti(n)` would have to be rewritten to move a
+    // motif from one division to another, which is a thing analysts do.
+    data Ti {
+        Transpose(steps: Nat),
+        Invert(about: Nat),
+    }
+
+    // The chromatic cycle: twelve equal divisions of the octave.
+    //
+    // Here rather than in `std::post_tonal` because twelve is not a fact about
+    // pitch. `068-equal-divisions-of-the-octave.md` divides the octave into n
+    // parts and asks which n admit which symmetries; twelve is the n common
+    // practice chose, and the two below are the two the corpus asks for next.
+    let chromatic: Cycle(12) = Positions(11);
+
+    // The quarter-tone cycle, which quarter-tone practice and most modelling of
+    // Turkish and Arabic theory use.
+    let quartertone: Cycle(24) = Positions(23);
+
+    // The cycle one position belongs to.
+    //
+    // Total and free: a member's index *is* its cycle's size, so this reads the
+    // witness back out of a value that already carried it.
+    fn cycle_of(n: Nat, place: Cyclic(n)) -> Cycle(n) {
+        match place {
+            Origin(besides) -> Positions(besides),
+            After(besides, earlier) -> Positions(besides),
+        }
+    }
+
+    // How many positions a cycle has.
+    fn size_of(n: Nat, cycle: Cycle(n)) -> Nat {
+        match cycle {
+            Positions(besides) -> Succ(besides),
+        }
+    }
+
+    // The number a position names: zero through `n - 1`.
+    fn number_of(n: Nat, place: Cyclic(n)) -> Nat {
+        match place {
+            Origin(besides) -> 0,
+            After(besides, earlier) -> Succ(number_of(besides, earlier)),
+        }
+    }
+
+    // The position numbered `j`, in a cycle of `Succ(besides)` positions.
+    //
+    // Private because it is only correct where `j` is at most `besides`, which
+    // is what `onward` and `backward` guarantee of everything handed to it. A
+    // `j` past the end folds back to the origin rather than failing, so the
+    // function is total for the checker as well as for the caller.
+    private fn embed(besides: Nat, j: Nat) -> Cyclic(Succ(besides)) {
+        match j {
+            Zero -> Origin(besides),
+            Succ(i) -> match besides {
+                Zero -> Origin(Zero),
+                Succ(fewer) -> After(Succ(fewer), embed(fewer, i)),
+            },
+        }
+    }
+
+    // `value - amount`, and zero where that would run below zero.
+    //
+    // `Nat.sub` answers an `Option` because a whole number has no negatives to
+    // land in, which is the right refusal at the operator and the wrong shape
+    // here: every subtraction below has already been guarded by the comparison
+    // beside it, so the absent case is unreachable and zero is the only thing it
+    // could mean.
+    private fn without(value: Nat, amount: Nat) -> Nat {
+        match value - amount {
+            Some(left) -> left,
+            None -> 0,
+        }
+    }
+
+    // `value`, with `size` taken off it as often as it will go.
+    //
+    // Subtracting rather than counting up. An earlier reading of this module
+    // walked the cycle one position at a time, on the argument that the language
+    // has no division on whole numbers — true, and it does not need one, but a
+    // walk costs a reduction step per position and a group orbit asks for the
+    // residue of every member under every operation. At a division of twelve
+    // that walk is the whole step budget, so the residue is taken by subtraction
+    // instead: a number already standing in the cycle costs one comparison.
+    //
+    // `fuel` is what makes the descent structural. Each turn takes at least one
+    // off `value`, because `size` is `Succ(besides)` and never zero, so counting
+    // the turns down from `value` itself can only run out after the answer is
+    // found — and the totality checker sees a `Nat` getting smaller rather than
+    // a subtraction it would have to reason about.
+    private fn folded(size: Nat, fuel: Nat, value: Nat) -> Nat {
+        match fuel {
+            Zero -> value,
+            Succ(less) -> if value < size {
+                value
+            } else { folded(size, less, without(value, size)) },
+        }
+    }
+
+    // `value` reduced into a cycle of `size` positions.
+    private fn reduced_in(size: Nat, value: Nat) -> Nat { folded(size, value, value) }
+
+    // `left - right`, reduced into a cycle of `size` positions.
+    private fn differing(size: Nat, left: Nat, right: Nat) -> Nat {
+        let above: Nat = reduced_in(size, left);
+        let below: Nat = reduced_in(size, right);
+        if below < Succ(above) {
+            without(above, below)
+        } else { without(size, without(below, above)) }
+    }
+
+    // The position `number` names, reduced into the cycle.
+    //
+    // `place_in(chromatic, 13)` and `place_in(chromatic, 1)` are one position,
+    // because they are one residue. Total: the cycle value is the witness that
+    // there is a position to answer with.
+    fn place_in(n: Nat, cycle: Cycle(n), number: Nat) -> Cyclic(n) {
+        match cycle {
+            Positions(besides) -> embed(besides, reduced_in(Succ(besides), number)),
+        }
+    }
+
+    // T_i: `place` moved `steps` positions forward.
+    fn transposed(n: Nat, place: Cyclic(n), steps: Nat) -> Cyclic(n) {
+        match cycle_of(n, place) {
+            Positions(besides) -> embed(
+                besides,
+                reduced_in(Succ(besides), number_of(n, place) + steps),
+            ),
+        }
+    }
+
+    // I_j: `place` reflected through the position numbered `about`.
+    //
+    // `about - place`, walked backward, which is the same reflection
+    // `101-pitch-class-sets-normal-order-and-transformations.md` writes as
+    // `n - x` for I_0.
+    fn inverted(n: Nat, place: Cyclic(n), about: Nat) -> Cyclic(n) {
+        match cycle_of(n, place) {
+            Positions(besides) -> embed(
+                besides,
+                differing(Succ(besides), about, number_of(n, place)),
+            ),
+        }
+    }
+
+    // One operation of the T/I group, applied.
+    fn moved(n: Nat, place: Cyclic(n), by: Ti) -> Cyclic(n) {
+        match by {
+            Transpose(steps) -> transposed(n, place, steps),
+            Invert(about) -> inverted(n, place, about),
+        }
+    }
+
+    // The action of the T/I group on the cycle, as the value `std::algebra`
+    // names.
+    //
+    // A record and not a class: prompt 143 made a structure a value, so this can
+    // be passed to `orbit` and `stabilizer` beside any other action.
+    fn rotation(n: Nat) -> Action<Cyclic(n), Ti> {
+        Action {
+            act = fn (place: Cyclic(n), by: Ti) -> Cyclic(n) { moved(n, place, by) }
+        }
+    }
+
+    // Whether two positions of one cycle are the same position.
+    fn same_place(n: Nat, left: Cyclic(n), right: Cyclic(n)) -> Bool {
+        number_of(n, left) == number_of(n, right)
+    }
+
+    // Whether two operations are the same operation.
+    //
+    // A transposition and an inversion are never equal *as labels*, which is
+    // what this compares. Whether they agree on a particular cycle member is a
+    // different question, and `stabilizer` asks that one by applying them.
+    fn same_operation(left: Ti, right: Ti) -> Bool {
+        match left {
+            Transpose(leftsteps) -> match right {
+                Transpose(rightsteps) -> leftsteps == rightsteps,
+                Invert(rightabout) -> false,
+            },
+            Invert(leftabout) -> match right {
+                Transpose(rightsteps) -> false,
+                Invert(rightabout) -> leftabout == rightabout,
+            },
+        }
+    }
+
+    // Every position of the cycle, ascending from zero.
+    fn positions(n: Nat, cycle: Cycle(n)) -> List<Cyclic(n)> {
+        map(
+            fn (number: Nat) -> Cyclic(n) { place_in(n, cycle, number) },
+            range(size_of(n, cycle)),
+        )
+    }
+
+    // The n transpositions of the cycle.
+    fn transpositions(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+        map(fn (steps: Nat) -> Ti { Transpose(steps) }, range(size_of(n, cycle)))
+    }
+
+    // The n inversions of the cycle.
+    fn inversions(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+        map(fn (about: Nat) -> Ti { Invert(about) }, range(size_of(n, cycle)))
+    }
+
+    // The smaller of the two ways round the cycle from `left` to `right`.
+    //
+    // What `103-interval-class-vectors.md` calls an interval class: five up and
+    // seven down are one class at twelve, because the chapter's own reason is
+    // that an interval is the same interval heard the other way round. At an
+    // even `n` the half-cycle is its own opposite, which is why the tritone
+    // counts once.
+    fn class_between(n: Nat, cycle: Cycle(n), left: Nat, right: Nat) -> Nat {
+        let upward: Nat = minus_in(n, cycle, right, left);
+        let downward: Nat = minus_in(n, cycle, left, right);
+        if upward < downward {
+            upward
+        } else { downward }
+    }
+
+    // How many interval classes a cycle of `n` has: `n / 2`, rounded down.
+    //
+    // Six at twelve, and `03-musical-domains.md` §5's derived count rather than
+    // §4's literal. Written by counting down two at a time, because the language
+    // has no division on whole numbers and needs none for this.
+    fn class_count(n: Nat, cycle: Cycle(n)) -> Nat { halved(size_of(n, cycle)) }
+
+    // `count / 2`, rounded down.
+    private fn halved(count: Nat) -> Nat {
+        match count {
+            Zero -> 0,
+            Succ(Zero) -> 0,
+            Succ(Succ(two)) -> Succ(halved(two)),
+        }
+    }
+
+    // The whole T/I group, enumerated: 2n operations, and 2n whatever n is.
+    //
+    // Twenty-four at twelve, forty-eight at twenty-four. The number is derived
+    // and not written down, which is `03-musical-domains.md` §5's "every count
+    // that was a literal in §4 is now derived".
+    //
+    // The list and the `Group<Ti>` below are two different things and both are
+    // wanted: `orbit` and `stabilizer` walk the elements, and composition is
+    // what makes a chain of transformations an object before anything is
+    // applied.
+    fn ti_operations(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+        concat(transpositions(n, cycle), inversions(n, cycle))
+    }
+
+    // `left + right`, reduced into the cycle.
+    //
+    // Both arguments are reduced on the way in, so a caller may hand over a
+    // label written past the end — `Transpose(15)` at twelve — and get the
+    // operation it names.
+    fn plus_in(n: Nat, cycle: Cycle(n), left: Nat, right: Nat) -> Nat {
+        reduced_in(size_of(n, cycle), left + right)
+    }
+
+    // `left - right`, reduced into the cycle, wrapping at zero.
+    fn minus_in(n: Nat, cycle: Cycle(n), left: Nat, right: Nat) -> Nat {
+        differing(size_of(n, cycle), left, right)
+    }
+
+    // The number a T/I operation sends `number` to.
+    //
+    // T_i adds and I_j reflects, which is the whole of the dihedral action on a
+    // cycle. Written on numbers rather than on `Cyclic(n)` because a set, a row,
+    // and a bell pattern each move a whole list at once, and each of them holds
+    // its members as the numbers they reduce to.
+    fn number_moved(n: Nat, cycle: Cycle(n), number: Nat, by: Ti) -> Nat {
+        match by {
+            Transpose(steps) -> plus_in(n, cycle, number, steps),
+            Invert(about) -> minus_in(n, cycle, about, number),
+        }
+    }
+
+    // Apply `earlier`, then `later`.
+    //
+    // The four cases are the dihedral multiplication table, and each is one
+    // line of arithmetic on the labels: T_a T_b is T_(a+b), T_a I_b is I_(a+b),
+    // I_a T_b is I_(a-b), and I_a I_b is T_(a-b). The last is the one that makes
+    // this a group rather than two unrelated families — two reflections compose
+    // to a rotation — and it is why `Ti` is one `data` with two cases.
+    fn ti_compose(n: Nat, cycle: Cycle(n), later: Ti, earlier: Ti) -> Ti {
+        match later {
+            Transpose(steps) -> match earlier {
+                Transpose(more) -> Transpose(plus_in(n, cycle, steps, more)),
+                Invert(about) -> Invert(plus_in(n, cycle, steps, about)),
+            },
+            Invert(about) -> match earlier {
+                Transpose(steps) -> Invert(minus_in(n, cycle, about, steps)),
+                Invert(other) -> Transpose(minus_in(n, cycle, about, other)),
+            },
+        }
+    }
+
+    // The operation that undoes this one.
+    //
+    // A reflection is its own inverse, which is why the second case only
+    // reduces the label; a rotation's inverse is the rotation the other way.
+    fn ti_inverse(n: Nat, cycle: Cycle(n), by: Ti) -> Ti {
+        match by {
+            Transpose(steps) -> Transpose(minus_in(n, cycle, 0, steps)),
+            Invert(about) -> Invert(plus_in(n, cycle, about, 0)),
+        }
+    }
+
+    // The T/I group of a cycle, as the value `std::algebra` names.
+    //
+    // `unit` takes an element and reads it for its type alone, which is the
+    // record's own convention: every operation of a cycle has the same unit,
+    // and it is the rotation by nothing.
+    fn ti_group(n: Nat, cycle: Cycle(n)) -> Group<Ti> {
+        Group {
+            unit = fn (whichever: Ti) -> Ti { Transpose(0) },
+            compose = fn (later: Ti, earlier: Ti) -> Ti { ti_compose(n, cycle, later, earlier) },
+            inverse = fn (by: Ti) -> Ti { ti_inverse(n, cycle, by) },
+        }
+    }
+}

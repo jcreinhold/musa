@@ -1052,7 +1052,7 @@ pub struct TypeFact {
     /// As it is spelled in source: `NoteName`, `List<Pitch>`.
     pub name: String,
     /// The one line distinguishing this type from the one it is confused
-    /// with — spelled `NoteName` against modulo-twelve `Pc12`, `Key` against
+    /// with — spelled `NoteName` against modulo-twelve `Pc(12)`, `Key` against
     /// `Scale`, `ChordClass` against `Voicing`. Absent for a compound type,
     /// which is distinguished by its shape.
     pub distinction: Option<String>,

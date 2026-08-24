@@ -7,8 +7,8 @@ use super::Family;
 use super::Type;
 use super::{
     BOOL, CHORD, CLASS, DEGREE, DURATION, FRAME, INTERVAL, INTERVALS, KEY, MAYBE_CHORD, MAYBE_CLASS, MAYBE_DEGREE,
-    MAYBE_FRAME, MAYBE_NAT, MAYBE_ROMAN, MAYBE_TEXT, MAYBE_TRIAD, MAYBE_VOICING, NAT, NATS, PC12, PC12S, PCSET12,
-    PITCH, PITCHES, POSITION, RATIO, ROMAN, ROW12, ROW12_OR_FAULT, ROW12S, SCALE, TEXT, TEXTS, TRIAD, VOICING, delta,
+    MAYBE_FRAME, MAYBE_NAT, MAYBE_ROMAN, MAYBE_TEXT, MAYBE_TRIAD, MAYBE_VOICING, NAT, PITCH, PITCHES, POSITION, RATIO,
+    ROMAN, SCALE, TEXT, TEXTS, TRIAD, VOICING, delta,
 };
 
 /// The nine machine builtins of `../across-stages/03-machine-calculus.md` §2.
@@ -504,7 +504,7 @@ pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 20]
     },
 ];
 
-pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 122] = [
+pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 100] = [
     BuiltinOwnership {
         operation: Builtin::NatFold,
         spelling: "nat_fold",
@@ -998,148 +998,16 @@ pub(crate) const BUILTIN_OWNERSHIP: [BuiltinOwnership<Builtin>; 122] = [
         family: delta(&[VOICING, NAT], MAYBE_VOICING),
     },
     BuiltinOwnership {
-        operation: Builtin::Pc12Of,
-        spelling: "pc12_of",
-        hidden_information: "the canonical representative of a residue class modulo twelve",
-        family: delta(&[NAT], PC12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Pc12Number,
-        spelling: "pc12_number",
-        hidden_information: "the canonical representative, which is the only number a residue class has",
-        family: delta(&[PC12], NAT),
-    },
-    BuiltinOwnership {
         operation: Builtin::Pc12Forget,
         spelling: "pc12_forget",
         hidden_information: "the chromatic coordinate of a spelled pitch class, taken modulo twelve",
-        family: delta(&[CLASS], PC12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Pc12Transposed,
-        spelling: "pc12_transposed",
-        hidden_information: "modular addition, which a `nat` without subtraction cannot express",
-        family: delta(&[PC12, NAT], PC12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Pc12Inverted,
-        spelling: "pc12_inverted",
-        hidden_information: "modular subtraction, which a `nat` without subtraction cannot express",
-        family: delta(&[PC12, NAT], PC12),
+        family: delta(&[CLASS], NAT),
     },
     BuiltinOwnership {
         operation: Builtin::Pc12Spelled,
         spelling: "pc12_spelled",
         hidden_information: "the collection's spelled members, searched for the one this class forgets to",
-        family: delta(&[PC12, SCALE], MAYBE_CLASS),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Of,
-        spelling: "pcset12_of",
-        hidden_information: "the twelve-bit membership word that makes duplication unrepresentable",
-        family: delta(&[PC12S], PCSET12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Members,
-        spelling: "pcset12_members",
-        hidden_information: "the membership word, read out ascending",
-        family: delta(&[PCSET12], PC12S),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Transposed,
-        spelling: "pcset12_transposed",
-        hidden_information: "the membership word, rotated by the index without unpacking it",
-        family: delta(&[PCSET12, NAT], PCSET12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Inverted,
-        spelling: "pcset12_inverted",
-        hidden_information: "the membership word, reflected about the index without unpacking it",
-        family: delta(&[PCSET12, NAT], PCSET12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Normal,
-        spelling: "pcset12_normal",
-        hidden_information: "every rotation of the set and the compactness order that chooses between them",
-        family: delta(&[PCSET12], PC12S),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Prime,
-        spelling: "pcset12_prime",
-        hidden_information: "the normal orders of the set and its inversion, and which of the two reads lower",
-        family: delta(&[PCSET12], PCSET12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::PcSet12Vector,
-        spelling: "pcset12_vector",
-        hidden_information: "every unordered pair of members and the interval class each realizes",
-        family: delta(&[PCSET12], NATS),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Of,
-        spelling: "row12_of",
-        hidden_information: "the permutation invariant: twelve order positions and each pitch class once",
-        family: delta(&[PC12S], ROW12_OR_FAULT),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Pcs,
-        spelling: "row12_pcs",
-        hidden_information: "the private order-position array",
-        family: delta(&[ROW12], PC12S),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Head,
-        spelling: "row12_head",
-        hidden_information: "order position zero of the private array, which the finite list eliminators cannot index",
-        family: delta(&[ROW12], PC12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Transposed,
-        spelling: "row12_transposed",
-        hidden_information: "modular addition, and the finite-closure lemma that keeps the result a row",
-        family: delta(&[ROW12, NAT], ROW12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Inverted,
-        spelling: "row12_inverted",
-        hidden_information: "modular subtraction, and the finite-closure lemma that keeps the result a row",
-        family: delta(&[ROW12, NAT], ROW12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Retrograde,
-        spelling: "row12_retrograde",
-        hidden_information: "reversal of the order positions, which the finite list eliminators cannot express",
-        family: delta(&[ROW12], ROW12),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Matrix,
-        spelling: "row12_matrix",
-        hidden_information: "the classical construction: the inversion about the row's own head, read as starting pitches",
-        family: delta(&[ROW12], ROW12S),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Forms,
-        spelling: "row12_forms",
-        hidden_information: "the forty-eight labelled forms, compared for equality and counted once each",
-        family: delta(&[ROW12], NAT),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Symmetries,
-        spelling: "row12_symmetries",
-        hidden_information: "the forty-eight labelled forms, counted where they fix the row",
-        family: delta(&[ROW12], NAT),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Repeats,
-        spelling: "row12_repeats",
-        hidden_information: "pitch-class equality, which the surface has no operator for",
-        family: delta(&[PC12S], NATS),
-    },
-    BuiltinOwnership {
-        operation: Builtin::Row12Missing,
-        spelling: "row12_missing",
-        hidden_information: "pitch-class equality against the whole finite domain",
-        family: delta(&[PC12S], PC12S),
+        family: delta(&[NAT, SCALE], MAYBE_CLASS),
     },
     BuiltinOwnership {
         operation: Builtin::Transpose,

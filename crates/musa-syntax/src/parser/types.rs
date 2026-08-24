@@ -191,7 +191,7 @@ impl Parser<'_> {
         };
         let help = if was == "pitchclass" {
             "`pitchclass` is `NoteName`: a pitch class forgets spelling, and this is the type that keeps it, so C♯ and \
-             D♭ are two things here and one `Pc12`"
+             D♭ are two things here and one `Pc(12)`"
                 .to_owned()
         } else {
             format!("every type the compiler owns is spelled with a capital, so `{was}` is `{now}`")

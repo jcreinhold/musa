@@ -21,7 +21,7 @@
 //! A base type is *inert*: it contributes no ι-rule, so two closed values of it
 //! are convertible exactly when the host says the payloads agree. That is the
 //! right shape for a domain whose representation the compiler owns and no source
-//! program takes apart — a `Pitch`, a `Scale`, a `Row12`. It is the wrong shape
+//! program takes apart — a `Pitch`, a `Scale`, a `Voicing`. It is the wrong shape
 //! for anything source pattern-matches on, which is why `Bool`, `Nat`, `Option`,
 //! `List`, and `Result` are declared in [`crate::prelude`] instead.
 //!
@@ -41,8 +41,8 @@
 //! 1. the structural families, which name no base type;
 //! 2. a registry holding every base type and no builtin, so that a base type is
 //!    nameable;
-//! 3. the musical families, whose fields may name a base type — `RowFault` holds
-//!    a `List Pc12`;
+//! 3. the musical families, whose fields may name a base type — `Fact` holds a
+//!    `Pitch` and a `Duration`;
 //! 4. the builtins, whose signatures may name anything above, and the full
 //!    registry.
 //!
@@ -318,7 +318,7 @@ pub(crate) fn owned() -> Result<Cx, ElabError> {
     // until the registry that resolves that name is the context's. `List`'s
     // traversals name no builtin, but they name `List.Cons`, and one ordering
     // for all of them is one thing to remember rather than two.
-    let cx = crate::prelude::equality(&cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
+    let cx = crate::prelude::methods_in(&cx.with_externs(Arc::new(Registry::new(bases, builtins)?)))?;
     crate::prelude::collections(&cx)
 }
 
@@ -485,10 +485,6 @@ fn bases() -> Vec<Base> {
         storable("Metronome"),
         storable("Ramp"),
         storable("ChordSymbol"),
-        // The twelve-tone domains.
-        storable("Pc12"),
-        storable("PcSet12"),
-        storable("Row12"),
         // The phase-local domains (§5.9). Registered beside the musical ones
         // rather than in a second registry, because a base type is a base type;
         // what §5.9 keeps separate is the *operations*, and those are two tables
@@ -690,8 +686,6 @@ fn shape_type(cx: &Cx, shape: Shape) -> Result<Term, ElabError> {
         Shape::Base(leaf) => base_type(cx, leaf),
         Shape::Option(member) => applied(cx, "Option", [shape_type(cx, *member)?]),
         Shape::List(member) => applied(cx, "List", [shape_type(cx, *member)?]),
-        Shape::Result(value, error) => applied(cx, "Result", [shape_type(cx, *value)?, shape_type(cx, *error)?]),
-        Shape::Fault => crate::prelude::constant(cx, "RowFault"),
     }
 }
 
@@ -716,9 +710,6 @@ fn base_type(cx: &Cx, leaf: Leaf) -> Result<Term, ElabError> {
         Leaf::Triad => plain_type("Triad"),
         Leaf::Roman => plain_type("Roman"),
         Leaf::Voicing => plain_type("Voicing"),
-        Leaf::Pc12 => plain_type("Pc12"),
-        Leaf::PcSet12 => plain_type("PcSet12"),
-        Leaf::Row12 => plain_type("Row12"),
         // Declared rather than registered, so they are read out of the prelude's
         // context and not out of this registry. §1 decides both by name: a `Nat`
         // with no recursor would leave `nat_fold` with nothing to fold, and

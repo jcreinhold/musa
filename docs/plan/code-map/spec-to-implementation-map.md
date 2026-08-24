@@ -545,9 +545,11 @@ wearing a value's clothes, and none of those four sentences is something a calle
 
 The arithmetic, duration, and position rules in `registry/rules.rs` are the same judgment and still answer a `Result`,
 because `BUILTIN_OWNERSHIP` is one table read by two checkers and narrowing them rewrites the twenty corpus sites that
-read them — 141m's survey table lists the eleven rules and the twenty sites, and prompt 142 carries the move. `Row12Of`
-and `checked_expression` keep theirs for good: a `RowFault` names which positions repeat and which classes are missing,
-and the syntax gate exists so a transformer can decide what to say about a tree it built badly.
+read them — 141m's survey table lists the eleven rules and the twenty sites, and prompt 142 carries the move.
+`checked_expression` keeps its for good: the syntax gate exists so a transformer can decide what to say about a tree it
+built badly. The row builtin that stood beside it kept a `Result` for the same reason and no longer exists — prompt 164
+moved it into `stdlib/src/post_tonal/serial.musa`, where `row` answers `Result<ToneRow(n), RowFault>` in ordinary Musa
+and the fault still names which positions repeat and which classes are missing.
 
 ### Registrations past both ownership tables
 
@@ -1316,7 +1318,11 @@ carries a reversal banner.
 **Owes.** Prompt 151 deletes `index.rs`, the `Indexed` shape, and the conversion hook, turning an indexed type into an
 ordinary applied type constructor. Prompt 155 reified the case tree and made the motive dependent; prompt 155a makes a
 tree a definition body; prompt 156 gives constructors their indices and the unification that decides which branches are
-reachable. Prompt 164 discharges the seventeen `pc12_*`/`row12_*` builtins the original amendment was granted on.
+reachable. Prompt 164 **discharged** the `pc12_*`/`row12_*` builtins the original amendment was granted on: twenty-two
+of the twenty-four are gone and `stdlib/src/cyclic.musa` and `stdlib/src/post_tonal/` replaced them, with the modulus an
+ordinary argument. The two that stayed are the spelling bridge, `pc12_forget` and `pc12_spelled`, which hold
+`musa-score`'s spelling tables rather than a modulus. The per-entry verdicts are
+[note 61](../../notes/research/language-design-closure/61-the-registry-survey.md).
 
 ---
 

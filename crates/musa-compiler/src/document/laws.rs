@@ -450,24 +450,22 @@ pub(crate) fn library_sources() -> Vec<Source> {
 
 /// Every library `stdlib/` writes that is not an adapter, in import order.
 ///
-/// One document rather than fourteen, because that is what an importing file
+/// One document rather than eighteen, because that is what an importing file
 /// sees: `triad` is written in `harmony.musa` and read in several others, and
 /// surveying each file alone would report names as missing that are not
 /// missing at all.
 const STANDARD_LIBRARY: &[(&str, &str)] = &[
     ("core", include_str!("../../../../stdlib/src/core.musa")),
     ("algebra", include_str!("../../../../stdlib/src/algebra.musa")),
+    ("indexed", include_str!("../../../../stdlib/src/indexed.musa")),
     ("collections", include_str!("../../../../stdlib/src/collections.musa")),
     ("list", include_str!("../../../../stdlib/src/list.musa")),
+    ("cyclic", include_str!("../../../../stdlib/src/cyclic.musa")),
     ("pitch", include_str!("../../../../stdlib/src/pitch.musa")),
     ("scale", include_str!("../../../../stdlib/src/scale.musa")),
     ("harmony", include_str!("../../../../stdlib/src/harmony.musa")),
     ("voicing", include_str!("../../../../stdlib/src/voicing.musa")),
     ("context", include_str!("../../../../stdlib/src/context.musa")),
-    (
-        "transformational",
-        include_str!("../../../../stdlib/src/transformational.musa"),
-    ),
     (
         "post_tonal/pcset",
         include_str!("../../../../stdlib/src/post_tonal/pcset.musa"),
@@ -475,6 +473,10 @@ const STANDARD_LIBRARY: &[(&str, &str)] = &[
     (
         "post_tonal/serial",
         include_str!("../../../../stdlib/src/post_tonal/serial.musa"),
+    ),
+    (
+        "transformational",
+        include_str!("../../../../stdlib/src/transformational.musa"),
     ),
     (
         "tonal/harmony",

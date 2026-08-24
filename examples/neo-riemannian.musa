@@ -191,17 +191,17 @@ piece "Neo-Riemannian" {
         None,
         fn (found, otherwise) { returned(found) },
     );
-    let tonic_classes: Option<PcSet12> = tonic.fold_from_end(
+    let tonic_classes: Option<PcSet(12)> = tonic.fold_from_end(
         None,
         fn (found, otherwise) { classes(found) },
     );
-    let returned_classes: Option<PcSet12> = tonic.fold_from_end(
+    let returned_classes: Option<PcSet(12)> = tonic.fold_from_end(
         None,
         fn (found, otherwise) { classes_after(found) },
     );
 
-    fn classes(refined: Triad) -> Option<PcSet12> { Some(triad_classes(refined)) }
-    fn classes_after(start: Triad) -> Option<PcSet12> { Some(triad_classes(at_plplpl(start))) }
+    fn classes(refined: Triad) -> Option<PcSet(12)> { Some(triad_classes(refined)) }
+    fn classes_after(start: Triad) -> Option<PcSet(12)> { Some(triad_classes(at_plplpl(start))) }
 
     // The named compositions, on the triad OMT names them from.
     let slid: Option<Triad> = tonic.fold_from_end(

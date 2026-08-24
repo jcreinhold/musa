@@ -38,7 +38,7 @@
 //! **D1's *or* is [`Datum`].** A δ-builtin's argument and result types are "a
 //! base type **or a finite constructor over base types**", and the second half
 //! is not optional decoration: a host that answers `Option Scale` or takes a
-//! `List Pc12` is writing an ordinary first-order function, because neither
+//! `List Pc(12)` is writing an ordinary first-order function, because neither
 //! family has an arrow in it. So a rule reads and writes [`Datum`] rather than
 //! [`Literal`] — a literal, or a constructor of a declared family applied to
 //! more of the same — and the firing condition is "every argument is canonical

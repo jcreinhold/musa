@@ -64,15 +64,15 @@ use musa_score::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 19 of `SYNTAX_OWNERSHIP`'s 20. The rows
-/// past this module's 96 and seventeen are registered where their reduction is:
+/// 91 of `BUILTIN_OWNERSHIP`'s 100 and 19 of `SYNTAX_OWNERSHIP`'s 20. The rows
+/// past this module's 74 and seventeen are registered where their reduction is:
 /// the two traversals in [`super::traversal`], the eight track builtins in
 /// [`super::track`], and the eight machine forms in [`super::machine`], which
 /// are §5.8's second, third, and fourth families rather than its first. A
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 132;
+pub(super) const REGISTERED: usize = 110;
 
 /// The operations the core has that neither ownership table names.
 ///
@@ -229,11 +229,6 @@ pub(super) fn halves(datum: &Datum) -> Option<(&Datum, &Datum)> {
         return None;
     }
     Some((fields.first()?, fields.get(1)?))
-}
-
-/// The pitch classes of a `List Pc12`.
-fn pc12s(datum: &Datum) -> Option<Vec<musa_score::pc12::Pc12>> {
-    items(datum)?.into_iter().map(read::<musa_score::pc12::Pc12>).collect()
 }
 
 // ---- writing an answer ----
@@ -833,148 +828,19 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
             ))
         },
 
-        // ---- the twelve-tone domains ----
-        Builtin::Pc12Of => |arguments| {
-            reduced(plain(
-                "Pc12",
-                musa_score::pc12::Pc12::from_number(nat(arguments.first()?)?),
-            ))
-        },
-        Builtin::Pc12Number => |arguments| {
-            reduced(whole(u64::from(
-                read::<musa_score::pc12::Pc12>(arguments.first()?)?.number(),
-            )))
-        },
         Builtin::Pc12Forget => |arguments| {
-            reduced(plain(
-                "Pc12",
-                musa_score::pc12::Pc12::forgetting(read::<PitchClass>(arguments.first()?)?),
-            ))
-        },
-        Builtin::Pc12Transposed => |arguments| {
-            let member = read::<musa_score::pc12::Pc12>(arguments.first()?)?;
-            reduced(plain("Pc12", member.transposed(nat(arguments.get(1)?)?)))
-        },
-        Builtin::Pc12Inverted => |arguments| {
-            let member = read::<musa_score::pc12::Pc12>(arguments.first()?)?;
-            reduced(plain("Pc12", member.inverted(nat(arguments.get(1)?)?)))
+            reduced(whole(u64::from(
+                musa_score::pc12::Pc12::forgetting(read::<PitchClass>(arguments.first()?)?).number(),
+            )))
         },
         Builtin::Pc12Spelled => |arguments| {
             let (member, collection) = (
-                read::<musa_score::pc12::Pc12>(arguments.first()?)?,
+                musa_score::pc12::Pc12::from_number(nat(arguments.first()?)?),
                 read::<musa_score::scale::Scale>(arguments.get(1)?)?,
             );
             reduced(optional(
                 member.spelled(collection).map(|class| plain("PitchClass", class)),
             ))
-        },
-        Builtin::PcSet12Of => |arguments| {
-            reduced(plain(
-                "PcSet12",
-                musa_score::pc12::PcSet12::of(pc12s(arguments.first()?)?),
-            ))
-        },
-        Builtin::PcSet12Members => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(pc12_listing(set.members().collect()))
-        },
-        Builtin::PcSet12Normal => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(pc12_listing(set.normal_order()))
-        },
-        Builtin::PcSet12Transposed => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(plain("PcSet12", set.transposed(nat(arguments.get(1)?)?)))
-        },
-        Builtin::PcSet12Inverted => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(plain("PcSet12", set.inverted(nat(arguments.get(1)?)?)))
-        },
-        Builtin::PcSet12Prime => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(plain("PcSet12", set.prime_form()))
-        },
-        Builtin::PcSet12Vector => |arguments| {
-            let set = read::<musa_score::pc12::PcSet12>(arguments.first()?)?;
-            reduced(listing(
-                set.interval_class_vector()
-                    .into_iter()
-                    .map(|count| whole(u64::from(count))),
-            ))
-        },
-        // The one builtin that says *which* way it failed. A caller used to
-        // learn that from `row12_repeats` and `row12_missing`, run again on the
-        // same input; the reason now comes back with the refusal.
-        Builtin::Row12Of => |arguments| {
-            let pcs = pc12s(arguments.first()?)?;
-            Some(match musa_score::pc12::Row12::checked(&pcs) {
-                // The one operation the criterion leaves as a value, and the
-                // error type is what says so: a `RowFault` names *which*
-                // positions repeat and *which* classes are missing, which is an
-                // analysis a program reads rather than a sentence a composer is
-                // told. `stdlib/src/post_tonal/serial.musa`'s `row` writes the
-                // `Result<Row12, (List<Nat>, List<Pc12>)>` out and hands it on.
-                Some(row) => Answer::Reduced(case("Result.Ok", vec![plain("Row12", row)])),
-                None => Answer::Reduced(case(
-                    "Result.Err",
-                    vec![case(
-                        "RowFault.Fault",
-                        vec![
-                            listing(musa_score::pc12::repeated_positions(&pcs).into_iter().map(whole)),
-                            pc12_listing(musa_score::pc12::missing_classes(&pcs)),
-                        ],
-                    )],
-                )),
-            })
-        },
-        Builtin::Row12Pcs => |arguments| {
-            let row = read::<musa_score::pc12::Row12>(arguments.first()?)?;
-            reduced(pc12_listing(row.pcs().collect()))
-        },
-        Builtin::Row12Head => |arguments| {
-            reduced(plain(
-                "Pc12",
-                read::<musa_score::pc12::Row12>(arguments.first()?)?.head(),
-            ))
-        },
-        Builtin::Row12Transposed => |arguments| {
-            let row = read::<musa_score::pc12::Row12>(arguments.first()?)?;
-            reduced(plain("Row12", row.transposed(nat(arguments.get(1)?)?)))
-        },
-        Builtin::Row12Inverted => |arguments| {
-            let row = read::<musa_score::pc12::Row12>(arguments.first()?)?;
-            reduced(plain("Row12", row.inverted(nat(arguments.get(1)?)?)))
-        },
-        Builtin::Row12Retrograde => |arguments| {
-            reduced(plain(
-                "Row12",
-                read::<musa_score::pc12::Row12>(arguments.first()?)?.retrograde(),
-            ))
-        },
-        Builtin::Row12Matrix => |arguments| {
-            let row = read::<musa_score::pc12::Row12>(arguments.first()?)?;
-            reduced(listing(row.matrix().into_iter().map(|form| plain("Row12", form))))
-        },
-        Builtin::Row12Forms => |arguments| {
-            reduced(whole(u64::from(
-                read::<musa_score::pc12::Row12>(arguments.first()?)?.forms(),
-            )))
-        },
-        Builtin::Row12Symmetries => |arguments| {
-            reduced(whole(u64::from(
-                read::<musa_score::pc12::Row12>(arguments.first()?)?.symmetries(),
-            )))
-        },
-        Builtin::Row12Repeats => |arguments| {
-            let pcs = pc12s(arguments.first()?)?;
-            reduced(listing(
-                musa_score::pc12::repeated_positions(&pcs).into_iter().map(whole),
-            ))
-        },
-        Builtin::Row12Missing => |arguments| {
-            reduced(pc12_listing(musa_score::pc12::missing_classes(&pc12s(
-                arguments.first()?,
-            )?)))
         },
 
         // ---- the 25 rows this module does not own ----
@@ -1009,11 +875,6 @@ pub(super) fn source(operation: Builtin) -> Option<Rule> {
         | Builtin::Drop
         | Builtin::Swap => return None,
     })
-}
-
-/// A `List Pc12`.
-fn pc12_listing(members: Vec<musa_score::pc12::Pc12>) -> Datum {
-    listing(members.into_iter().map(|member| plain("Pc12", member)))
 }
 
 // ---- the expansion phase ----

@@ -68,7 +68,7 @@ pub(crate) fn markdown(item: &ItemFact) -> String {
         text.push_str(summary);
     }
     // The distinction, and only when there is one to draw. `NoteName` against
-    // `Pc12` and `ChordClass` against `Voicing` are the confusions this line
+    // `Pc(12)` and `ChordClass` against `Voicing` are the confusions this line
     // exists for; a track needs no disambiguation and gets no sentence.
     if let Some(result) = &item.result
         && let Some(distinction) = &result.distinction

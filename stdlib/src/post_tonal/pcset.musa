@@ -1,101 +1,424 @@
 library {
+    import std::algebra;
+    import std::cyclic;
     import std::list;
 
-    // Unspelled pitch classes and finite sets of them: the chromatic
-    // quotient `pc12 = Z/12Z` and the set-class apparatus built on it
-    // (OMT `099-pitch-and-pitch-class.md`,
+    // Unspelled pitch classes and finite sets of them, at whatever division of
+    // the octave an author names (OMT `099-pitch-and-pitch-class.md`,
     // `100-intervals-in-integer-notation.md`,
     // `101-pitch-class-sets-normal-order-and-transformations.md`,
-    // `102-set-class-and-prime-form.md`,
-    // `103-interval-class-vectors.md`).
+    // `102-set-class-and-prime-form.md`, `103-interval-class-vectors.md`,
+    // `106-collections.md`).
     //
-    // Nothing here spells anything. `c#` and `db` are one value in this
-    // domain and two values in `std::pitch`, and only one direction between
-    // them is total: `forget_spelling`. Coming back is `spelled_in`, which
-    // takes the collection that decides the spelling and answers nothing
-    // when that collection holds no such note. There is no coercion either
-    // way, and a function that wanted one would have to name the collection
-    // it meant.
+    // Nothing here spells anything. `c#` and `db` are one value in this domain
+    // and two values in `std::pitch`, and only one direction between them is
+    // total: `forget_spelling`. Coming back is `spelled_in`, which takes the
+    // collection that decides the spelling and answers nothing when that
+    // collection holds no such note.
+    //
+    // # The modulus is a parameter
+    //
+    // `03-musical-domains.md` §5: every count that was a literal at twelve is
+    // derived here. The T/I group has `2n` operations, the interval-class vector
+    // has `n / 2` entries, and twelve is what `std::cyclic`'s `chromatic` names
+    // rather than a number written into these functions. Quarter-tone practice
+    // asks for `quartertone` and gets the same operations and the same laws.
+    //
+    // # Why a pitch class is not a cycle position
+    //
+    // `Pc(n)` wraps `Cyclic(n)` rather than being it. §5 keeps the pitch reading
+    // and the rhythmic reading separate types over one carrier, because a
+    // listener does not hear a pitch-class set and a bell pattern as the same
+    // thing — and Musa never identifies what practice distinguishes. What they
+    // share is everything below the wrapper: transposition is rotation,
+    // inversion is reflection, and prime form is a canonical orbit
+    // representative in both readings.
 
-    // The pitch class a number names, reduced modulo twelve. `pc(13)` and
-    // `pc(1)` are one pitch class, because they are one residue.
-    fn pc(number: Nat) -> Pc12 { pc12_of(number) }
-
-    // The pitch classes a list of numbers names, each reduced modulo twelve.
-    // A row or a set is written as its numbers, because that is what this
-    // domain has instead of letters.
-    fn pcs(numbers: List<Nat>) -> List<Pc12> { map(pc, numbers) }
-
-    // The canonical representative, zero through eleven.
-    fn number_of(member: Pc12) -> Nat { pc12_number(member) }
-
-    // Forget a spelling. This is the only total map from the spelled domain
-    // into this one; it is not injective, and it has no inverse without a
-    // policy.
-    fn forget_spelling(spelled: NoteName) -> Pc12 { pc12_forget(spelled) }
-
-    // Spell a pitch class inside one collection — the explicit policy that
-    // `forget_spelling` has no inverse without. Absent when the collection
-    // holds no note of this pitch class.
-    fn spelled_in(member: Pc12, collection: Scale) -> Option<NoteName> {
-        pc12_spelled(member, collection)
+    // One pitch class in a division of `n`.
+    //
+    // The division is a field and the index is chosen from it, which is what
+    // makes a member say which division it belongs to: a `Pc(12)` can never
+    // stand where a `Pc(24)` is wanted, and neither can be built without saying
+    // which it is.
+    data Pc(n: Nat) {
+        Class(division: Nat, place: Cyclic(division)): (division),
     }
 
-    // T_n: transposition by n semitones, `x + n` modulo twelve. The index
-    // comes first because it is what names the operation: T_3 of a member,
-    // read in that order.
-    fn transposed_by(index: Nat, member: Pc12) -> Pc12 { pc12_transposed(member, index) }
+    // The pitch class a number names, reduced into the division.
+    //
+    // `pc(12, chromatic, 13)` and `pc(12, chromatic, 1)` are one pitch class,
+    // because they are one residue.
+    fn pc(n: Nat, cycle: Cycle(n), number: Nat) -> Pc(n) { Class(n, place_in(n, cycle, number)) }
 
-    // T_n itself, as a value. Lewin's transformations are composed, inverted,
-    // and applied, so the operation has to be nameable and not only usable:
-    // `transposition(3)` is T_3, and `compose(transposition(3), inverted_about(0, _))`
-    // is a group element like any other.
-    fn transposition(index: Nat) -> Pc12 -> Pc12 { transposed_by(index, _) }
+    // The pitch classes a list of numbers names, each reduced.
+    //
+    // A row or a set is written as its numbers, because that is what this domain
+    // has instead of letters.
+    fn pcs(n: Nat, cycle: Cycle(n), numbers: List<Nat>) -> List<Pc(n)> {
+        map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, numbers)
+    }
 
-    // I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror
-    // through zero. The twelve transpositions and the twelve inversions are
-    // together the whole 24-element affine group on `pc12` — and 24 is the
-    // number, whatever a row's four form labels might suggest.
-    fn inverted_about(index: Nat, member: Pc12) -> Pc12 { pc12_inverted(member, index) }
+    // The canonical representative: zero through `n - 1`.
+    fn class_number(n: Nat, member: Pc(n)) -> Nat {
+        match member {
+            Class(division, place) -> number_of(division, place),
+        }
+    }
+
+    // Whether two pitch classes of one division are the same class.
+    fn same_class(n: Nat, left: Pc(n), right: Pc(n)) -> Bool {
+        class_number(n, left) == class_number(n, right)
+    }
+
+    // One T/I operation, applied to one pitch class.
+    fn class_moved(n: Nat, cycle: Cycle(n), member: Pc(n), by: Ti) -> Pc(n) {
+        pc(n, cycle, number_moved(n, cycle, class_number(n, member), by))
+    }
+
+    // T_i: transposition by `index`, `x + i` in the division.
+    //
+    // The index comes before the member because it is what names the operation:
+    // T_3 of a member, read in that order.
+    fn transposed_by(n: Nat, cycle: Cycle(n), index: Nat, member: Pc(n)) -> Pc(n) {
+        class_moved(n, cycle, member, Transpose(index))
+    }
+
+    // I_j: inversion about `index`, `j - x` in the division. I_0 is the plain
+    // mirror through zero.
+    fn inverted_about(n: Nat, cycle: Cycle(n), index: Nat, member: Pc(n)) -> Pc(n) {
+        class_moved(n, cycle, member, Invert(index))
+    }
+
+    // The T/I group acting on pitch classes, as the value `std::algebra` names.
+    //
+    // The whole point of it being a value: `orbit` and `stabilizer` take it
+    // beside any other action, so a set class and a row's symmetries are the
+    // same two functions asked at different carriers.
+    fn class_action(n: Nat, cycle: Cycle(n)) -> Action<Pc(n), Ti> {
+        Action {
+            act = fn (member: Pc(n), by: Ti) -> Pc(n) { class_moved(n, cycle, member, by) }
+        }
+    }
 
     // Apply one pitch-class function to every member of a finite list.
-    fn map_pc(function: Pc12 -> Pc12, members: List<Pc12>) -> List<Pc12> {
+    fn map_pc(n: Nat, function: Pc(n) -> Pc(n), members: List<Pc(n)>) -> List<Pc(n)> {
         map(function, members)
     }
 
-    // The set of everything listed, however often it was listed. A set
-    // cannot hold a duplicate, so this cannot fail: a repetition is a
+    // # The spelled domain, and the one-way door between
+
+    // Forget a spelling.
+    //
+    // The only total map from the spelled domain into this one; it is not
+    // injective, and it has no inverse without a policy. At twelve, because a
+    // spelling is a common-practice object and the letters name that division.
+    fn forget_spelling(spelled: NoteName) -> Pc(12) { pc(12, chromatic, pc12_forget(spelled)) }
+
+    // Spell a pitch class inside one collection — the explicit policy that
+    // `forget_spelling` has no inverse without. Absent when the collection holds
+    // no note of this pitch class.
+    fn spelled_in(member: Pc(12), collection: Scale) -> Option<NoteName> {
+        pc12_spelled(class_number(12, member), collection)
+    }
+
+    // # Sets
+
+    // A finite set of pitch classes in one division.
+    //
+    // The members are held ascending and without repetition, and the case is
+    // `private` so that is a fact about the type rather than a promise: `pcset`
+    // is the only way in, and it sorts and deduplicates. That is what the
+    // twelve-bit membership word used to buy and what a bare `List<Pc(n)>` would
+    // give up.
+    data PcSet(n: Nat) {
+        private Members(division: Nat, ascending: List<Nat>): (division),
+    }
+
+    // `sorted`, with `value` in its place — and unchanged where it is already
+    // there.
+    private fn inserted(value: Nat, sorted: List<Nat>) -> List<Nat> {
+        match sorted {
+            [] -> [value],
+            [head, .. tail] -> if value < head {
+                Cons(value, sorted)
+            } else if head < value {
+                Cons(head, inserted(value, tail))
+            } else { sorted },
+        }
+    }
+
+    // The numbers, ascending and each once.
+    private fn gathered(numbers: List<Nat>) -> List<Nat> {
+        match numbers {
+            [] -> [],
+            [head, .. tail] -> inserted(head, gathered(tail)),
+        }
+    }
+
+    // The set of everything listed, however often it was listed.
+    //
+    // A set cannot hold a duplicate, so this cannot fail: a repetition is a
     // mistake only where order matters, which is `std::post_tonal::serial`.
-    fn pcset(members: List<Pc12>) -> PcSet12 { pcset12_of(members) }
+    fn pcset(n: Nat, cycle: Cycle(n), members: List<Pc(n)>) -> PcSet(n) {
+        Members(
+            n,
+            gathered(map(fn (member: Pc(n)) -> Nat { class_number(n, member) }, members)),
+        )
+    }
 
-    // The members, ascending from zero. This is the set's own order and not
-    // its normal order. Named for the set rather than `members_of`, because
-    // `std::harmony` already reads the members of a chord class and a piece
-    // that reasons about both must be able to import both.
-    fn set_members(set: PcSet12) -> List<Pc12> { pcset12_members(set) }
+    // The members' numbers, ascending. The set's own order and not its normal
+    // order.
+    private fn numbers_of(n: Nat, set: PcSet(n)) -> List<Nat> {
+        match set {
+            Members(division, ascending) -> ascending,
+        }
+    }
 
-    // T_n applied to every member. The set is transposed as a set rather
-    // than mapped member by member: T_n on a set is a set operation, and
-    // writing it as a map would need a function of the index alone, which is
-    // not something a call can produce.
-    fn set_transposed(set: PcSet12, index: Nat) -> PcSet12 { pcset12_transposed(set, index) }
+    // The members, ascending from zero.
+    //
+    // Named for the set rather than `members_of`, because `std::harmony` already
+    // reads the members of a chord class and a piece that reasons about both
+    // must be able to import both.
+    fn set_members(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Pc(n)> {
+        map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, numbers_of(n, set))
+    }
 
-    // I_n applied to every member, and a set operation for the same reason.
-    fn set_inverted(set: PcSet12, index: Nat) -> PcSet12 { pcset12_inverted(set, index) }
+    // How many members the set has.
+    fn set_size(n: Nat, set: PcSet(n)) -> Nat { length(numbers_of(n, set)) }
 
-    // Normal order: the rotation of the ascending members packed most
-    // tightly to the left. Ties break inward — first to last, then first to
-    // the one before last, and so on — and finally by the lowest starting
-    // pitch class.
-    fn normal_order(set: PcSet12) -> List<Pc12> { pcset12_normal(set) }
+    // One T/I operation, applied to the whole set.
+    //
+    // A set operation and not a map: the answer is a set, so the images are
+    // gathered again, and an operation that collapsed two members would give a
+    // smaller set rather than a list with a repeat in it.
+    fn set_moved(n: Nat, cycle: Cycle(n), set: PcSet(n), by: Ti) -> PcSet(n) {
+        Members(
+            n,
+            gathered(
+                map(
+                    fn (number: Nat) -> Nat { number_moved(n, cycle, number, by) },
+                    numbers_of(n, set),
+                ),
+            ),
+        )
+    }
 
-    // Prime form: the set class this set belongs to. The normal orders of
-    // the set and of its inversion are each transposed to begin on zero, and
-    // whichever reads lower is the answer.
-    fn prime_form(set: PcSet12) -> PcSet12 { pcset12_prime(set) }
+    // T_i applied to every member.
+    fn set_transposed(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n) {
+        set_moved(n, cycle, set, Transpose(index))
+    }
 
-    // The interval-class vector: six counts, for interval classes one
-    // through six. Six and not twelve, because interval class seven is
-    // interval class five heard the other way round.
-    fn interval_class_vector(set: PcSet12) -> List<Nat> { pcset12_vector(set) }
+    // I_j applied to every member.
+    fn set_inverted(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n) {
+        set_moved(n, cycle, set, Invert(index))
+    }
+
+    // Whether two sets hold the same members.
+    fn same_set(n: Nat, left: PcSet(n), right: PcSet(n)) -> Bool {
+        same_numbers(numbers_of(n, left), numbers_of(n, right))
+    }
+
+    // Whether two ascending lists are the same list.
+    private fn same_numbers(left: List<Nat>, right: List<Nat>) -> Bool {
+        match left {
+            [] -> match right {
+                [] -> true,
+                [head, .. tail] -> false,
+            },
+            [head, .. tail] -> match right {
+                [] -> false,
+                [other, .. others] -> if head == other {
+                    same_numbers(tail, others)
+                } else { false },
+            },
+        }
+    }
+
+    // The T/I group acting on sets.
+    fn set_action(n: Nat, cycle: Cycle(n)) -> Action<PcSet(n), Ti> {
+        Action {
+            act = fn (set: PcSet(n), by: Ti) -> PcSet(n) { set_moved(n, cycle, set, by) }
+        }
+    }
+
+    // # Normal order, prime form, and the interval-class vector
+
+    // How tightly one rotation packs, as a list to compare.
+    //
+    // The spans from the first member outward to the last, the second-to-last,
+    // and so on inward, and then the first member itself as the final tie
+    // break. Comparing two of these left to right is exactly the convention
+    // `101-pitch-class-sets-normal-order-and-transformations.md` states in
+    // prose.
+    private fn compactness(n: Nat, cycle: Cycle(n), rotation: List<Nat>) -> List<Nat> {
+        match rotation {
+            [] -> [],
+            [first, .. others] -> concat(
+                reverse(
+                    map(fn (member: Nat) -> Nat { minus_in(n, cycle, member, first) }, others),
+                ),
+                [first],
+            ),
+        }
+    }
+
+    // Whether `left` reads lower than `right`, left to right.
+    //
+    // Both lists are the same length wherever this is asked — two rotations of
+    // one set, or two zeroed normal orders of one set class — so running out is
+    // not a case that decides anything and answers false.
+    private fn reads_lower(left: List<Nat>, right: List<Nat>) -> Bool {
+        match left {
+            [] -> false,
+            [head, .. tail] -> match right {
+                [] -> false,
+                [other, .. others] -> if head < other {
+                    true
+                } else if other < head {
+                    false
+                } else { reads_lower(tail, others) },
+            },
+        }
+    }
+
+    // Whichever of the two packs more tightly, the earlier winning a tie.
+    private fn tighter(
+        n: Nat,
+        cycle: Cycle(n),
+        best: List<Nat>,
+        candidate: List<Nat>,
+    ) -> List<Nat> {
+        if reads_lower(compactness(n, cycle, candidate), compactness(n, cycle, best)) {
+            candidate
+        } else { best }
+    }
+
+    // Normal order, as the numbers.
+    private fn normal_numbers(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+        match rotations(numbers_of(n, set)) {
+            [] -> [],
+            [first, .. others] -> others.fold_from_start(
+                first,
+                fn (best: List<Nat>, candidate: List<Nat>) -> List<Nat> {
+                    tighter(n, cycle, best, candidate)
+                },
+            ),
+        }
+    }
+
+    // Normal order: the rotation of the ascending members packed most tightly
+    // to the left.
+    //
+    // Ties break inward — first to last, then first to the one before last, and
+    // so on — and finally by the lowest starting pitch class.
+    fn normal_order(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Pc(n)> {
+        map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, normal_numbers(n, cycle, set))
+    }
+
+    // The normal order transposed to begin on zero.
+    private fn zeroed(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+        match normal_numbers(n, cycle, set) {
+            [] -> [],
+            [first, .. others] -> map(
+                fn (member: Nat) -> Nat { minus_in(n, cycle, member, first) },
+                Cons(first, others),
+            ),
+        }
+    }
+
+    // Prime form: the set class this set belongs to.
+    //
+    // The normal orders of the set and of its inversion are each transposed to
+    // begin on zero, and whichever reads lower is the answer. That is
+    // `102-set-class-and-prime-form.md`'s construction, and it agrees with the
+    // orbit reading below: a set class is the orbit of the set under the T/I
+    // group, and this is its canonical representative.
+    fn prime_form(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> PcSet(n) {
+        let upright: List<Nat> = zeroed(n, cycle, set);
+        let mirrored: List<Nat> = zeroed(n, cycle, set_inverted(n, cycle, set, 0));
+        Members(n, gathered(if reads_lower(mirrored, upright) {
+            mirrored
+        } else { upright }))
+    }
+
+    // The set class itself: every set the T/I group reaches from this one.
+    //
+    // `52-the-musical-algebra.md` §2.3's observation, executable — a set class
+    // *is* an orbit, and `prime_form` names it. The length of this times the
+    // length of `set_symmetries` is `2n`.
+    fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<PcSet(n)> {
+        orbit(
+            set_action(n, cycle),
+            fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+            ti_operations(n, cycle),
+            set,
+        )
+    }
+
+    // The T/I operations that send the set to itself.
+    fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
+        stabilizer(
+            set_action(n, cycle),
+            fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+            ti_operations(n, cycle),
+            set,
+        )
+    }
+
+    // The transpositions alone that send the set to itself.
+    //
+    // A collection is one of Messiaen's modes of limited transposition exactly
+    // when more than one of these fixes it (`106-collections.md`): the whole-tone
+    // collection is fixed by every even transposition, the octatonic by every
+    // third. That is the chapter, and it is a stabilizer and nothing else.
+    fn transposition_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
+        stabilizer(
+            set_action(n, cycle),
+            fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+            transpositions(n, cycle),
+            set,
+        )
+    }
+
+    // How many pairs among `members` realize `sought` as their interval class.
+    private fn pairs_of_class(n: Nat, cycle: Cycle(n), sought: Nat, members: List<Nat>) -> Nat {
+        match members {
+            [] -> 0,
+            [head, .. others] -> against(n, cycle, sought, head, others) + pairs_of_class(
+                n,
+                cycle,
+                sought,
+                others,
+            ),
+        }
+    }
+
+    // How many members of `others` stand `sought` away from `member`.
+    private fn against(
+        n: Nat,
+        cycle: Cycle(n),
+        sought: Nat,
+        member: Nat,
+        others: List<Nat>,
+    ) -> Nat {
+        match others {
+            [] -> 0,
+            [head, .. tail] -> if class_between(n, cycle, member, head) == sought {
+                Succ(against(n, cycle, sought, member, tail))
+            } else { against(n, cycle, sought, member, tail) },
+        }
+    }
+
+    // The interval-class vector: one count per interval class, ascending.
+    //
+    // `n / 2` entries and not six, for the reason
+    // `103-interval-class-vectors.md` already gives — interval class `n - k` is
+    // interval class `k` heard the other way round — so the count is derived from
+    // the division rather than written down.
+    fn interval_class_vector(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+        map(
+            fn (index: Nat) -> Nat { pairs_of_class(n, cycle, Succ(index), numbers_of(n, set)) },
+            range(class_count(n, cycle)),
+        )
+    }
 }

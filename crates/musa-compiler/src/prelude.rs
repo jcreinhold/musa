@@ -24,7 +24,7 @@
 //! A base type is *inert*: it contributes no ι-rule, so two closed values of it
 //! are convertible exactly when the host says the payloads agree. That is the
 //! right shape for a domain whose representation the compiler owns and no source
-//! program takes apart — a `Pitch`, a `Scale`, a `Row12`.
+//! program takes apart — a `Pitch`, a `Scale`, a `Voicing`.
 //!
 //! It is the wrong shape for anything source code pattern-matches on, and
 //! `02-core-calculus.md` decides two of those by name. `Nat` "is in the language
@@ -231,35 +231,6 @@ fn pair_data() -> RawData {
             vec![constructor(
                 "Both",
                 vec![binder("first", var("A")), binder("second", var("B"))],
-            )],
-        )],
-    )
-}
-
-/// `data RowFault { Fault(List Nat, List Pc12) }`.
-///
-/// Why the twelve-tone row's failure has a name rather than a tuple: a rule
-/// answers a [`musa_calculus::Datum`], which is a literal or a constructor, and an
-/// anonymous pair is neither. That is the mechanism noticing something true —
-/// the pair was a domain concept wearing a tuple. *Open Music Theory*
-/// `108-basics-of-twelve-tone-theory.md` says what the two halves are: the order
-/// positions whose pitch class already appeared, and the pitch classes the
-/// sequence never names. Both, rather than a choice between them, because a
-/// sequence of the wrong length can have either without the other.
-///
-/// It is the one declaration here that is musical rather than structural, and it
-/// belongs to the compiler for the same reason `Pitch` does.
-fn row_fault_data() -> RawData {
-    data(
-        Vec::new(),
-        vec![family(
-            "RowFault",
-            vec![constructor(
-                "Fault",
-                vec![
-                    binder("repeated", applied("List", [var("Nat")])),
-                    binder("missing", applied("List", [var("Pc12")])),
-                ],
             )],
         )],
     )
@@ -496,13 +467,21 @@ pub(crate) fn structural() -> Vec<RawData> {
 ///
 /// One today. It is a separate list rather than a comment on an ordering because
 /// the ordering is a real constraint that would otherwise be discoverable only
-/// by breaking it: `RowFault` holds a `List Pc12`, and `Pc12` is registered
-/// rather than declared.
+/// by breaking it: `Fact` holds a `Pitch` and a `Duration`, and both of those are
+/// registered rather than declared.
 pub(crate) fn musical() -> Vec<RawData> {
-    vec![row_fault_data(), fact_data()]
+    vec![fact_data()]
 }
 
-/// `Text.equal`, and its four siblings — the definitions `==` resolves to.
+/// The definitions an operator, a method, or a `Type::member` path resolves to.
+///
+/// `01-surface.md` §1.5 says an operator *is* a named function: `x == y` is
+/// `x.equal(y)`, which is `Nat.equal(x, y)` at a `Nat` receiver, and `+`, `-`,
+/// `*`, `/`, `<` and `xs[i]` read the same way onto `add`, `sub`, `mul`, `div`,
+/// `less` and `at`. The reading has been in the lowering since prompt 137a and
+/// the qualified path since 141l; what was missing until prompt 164 was
+/// anything for them to *find*, so `1 + 2` reported "no method `add` for
+/// `Nat`". This is that table.
 ///
 /// # Why the compiler owns them rather than the standard library
 ///
@@ -517,32 +496,67 @@ pub(crate) fn musical() -> Vec<RawData> {
 /// line it would have to write is an import of the thing that gives `==` its
 /// meaning.
 ///
-/// # Why five names rather than one
+/// The same argument reaches every row below, and one row further than the
+/// literal patterns do. `List` and `Option` are declared *here*, so a definition
+/// in `List`'s namespace belongs here too; and `Duration`, `Position`, `Ratio`
+/// and `Interval` are base types this module registers, so a piece that writes
+/// `Duration::of(1/4)` is naming a compiler-owned domain and not a library's.
+///
+/// # Why one name per carrier rather than one name
 ///
 /// The lowering does not know the subject's type: `3/8` is a `Ratio` token that
 /// may stand at `Duration<WrittenTime>`, and a pattern is checked against the
 /// type of what it matches rather than against its own spelling. Method syntax
 /// runs *after* the subject is inferred, which is the only place the question
 /// has an answer. So the lowering writes `equal` on the receiver and the
-/// receiver's head picks the definition — which is also what prompt 164 needs
-/// standing before it can collapse `text_equal` and its four siblings onto `==`.
+/// receiver's head picks the definition — which is the whole of what replaced
+/// the trait system at prompt 146: no class, no instance, no dictionary, and a
+/// call that costs what the direct call cost.
 ///
-/// The list is closed by the grammar rather than by taste:
+/// # Why the builtin keeps its bare spelling
+///
+/// Prompt 164 collapses the registry's *surface vocabulary*, not the registry.
+/// Every δ-rule below still hides what its ownership row says it hides — the
+/// nonnegativity a `Duration` constructor checks, the reduced form two
+/// rationals share, the representable range a whole number stays inside — so
+/// none of them may become library code, and the audit in
+/// [note 61](../../../docs/notes/research/language-design-closure/61-the-registry-survey.md)
+/// records that verdict row by row. What changes is which spelling an author
+/// reaches for. `nat_add` remains the name of the rule; `+` is how a piece asks
+/// for it.
+///
+/// Each body is the builtin itself rather than a λ around it wherever the two
+/// have the same type. `Text.equal`'s type *is* `text_equal`'s type, so
+/// η-contraction is not a trick — the two are the same term, and writing
+/// `λx y. text_equal(x, y)` would only add a redex for the evaluator to undo,
+/// which [note 60](../../../docs/notes/research/language-design-closure/60-the-staff-rewrite-measured.md)
+/// §3 measures the cost of. Only `Nat.equal` and `Nat.less` have real bodies,
+/// because `Nat` is a declared family with no δ-rule to point at.
+fn methods() -> Vec<RawTopLevel> {
+    let mut declared = equalities();
+    declared.extend(orderings());
+    declared.extend(arithmetic());
+    declared.extend(accessors());
+    declared.push(namespaced("List", "at", Some(indexing()), list_at()));
+    declared
+}
+
+/// `==` at every carrier a literal or a comparison can stand at.
+///
+/// The five literal ones are closed by the grammar rather than by taste:
 /// `Lowering::matches_a_literal` fires for a string, a rational, a pitch, and an
 /// interval, and a rational stands at `Ratio` or at `Duration<WrittenTime>`.
-/// `Bool` and `Nat` are absent because they are *declared* families — `true` and
-/// `7` are constructor patterns, split by the case tree, and a definition for
-/// them would be a second way to ask a question ι already answers.
 ///
-/// `Position<WrittenTime>` is absent for the opposite reason: `position_equal`
-/// exists, but no literal spells a position and no source program can therefore
-/// reach it. Prompt 164 adds it in the commit that gives `==` its meaning, where
-/// it will have a caller.
+/// `Position<WrittenTime>` joins them for the opposite reason: `position_equal`
+/// exists and no literal spells a position, so until `==` had a meaning nothing
+/// could reach it. It has a caller now.
 ///
-/// Each body is the builtin itself rather than a λ around it. `Text.equal`'s
-/// type is `text_equal`'s type, so η-contraction is not a trick here — the two
-/// are the same term, and writing `λx y. text_equal(x, y)` would only add a
-/// redex for the evaluator to undo.
+/// `Bool` is still absent, and that is not an oversight. `true` and `false` are
+/// constructor patterns split by the case tree, so `flag == other` is a `match`
+/// a reader can write and a definition would be a second way to ask a question
+/// ι already answers. `Nat` was absent for the same reason and is here anyway,
+/// because a `Nat` is not two cases but arbitrarily many: splitting `count == 7`
+/// by hand is eight arms, and nobody writes it.
 fn equalities() -> Vec<RawTopLevel> {
     vec![
         namespaced("Text", "equal", None, var("text_equal")),
@@ -550,7 +564,232 @@ fn equalities() -> Vec<RawTopLevel> {
         namespaced("Duration", "equal", None, var("duration_equal")),
         namespaced("Pitch", "equal", None, var("pitch_equal")),
         namespaced("Interval", "equal", None, var("interval_equal")),
+        namespaced("Position", "equal", None, var("position_equal")),
+        namespaced("Nat", "equal", Some(comparing()), nat_equal()),
     ]
+}
+
+/// `<` at the three ordered carriers, and at `Nat`.
+///
+/// One direction only. `01-surface.md` §1.5 gives the operator table one
+/// comparison, and `b < a` is how a piece asks the other — a `greater` beside it
+/// would be a second spelling of one δ-rule, which is the mistake the style
+/// guide §6 names.
+fn orderings() -> Vec<RawTopLevel> {
+    vec![
+        namespaced("Ratio", "less", None, var("ratio_less")),
+        namespaced("Duration", "less", None, var("duration_less")),
+        namespaced("Position", "less", None, var("position_less")),
+        namespaced("Nat", "less", Some(comparing()), nat_less()),
+    ]
+}
+
+/// `+`, `-`, `*` and `/` where the carrier has them.
+///
+/// The table is not square and should not be. `Duration` adds and does not
+/// subtract, because `03-musical-domains.md` makes it a length rather than a
+/// displacement and a length below zero is not one; `Nat` subtracts into an
+/// `Option`, because §1.5's second guard rule says an operation that can fail
+/// keeps its failing shape and `3 - 5` is the failure; `Ratio` divides and
+/// *refuses* at a zero divisor, which is the same rule stated in the δ-rule
+/// instead of in the result type, because a refusal is what the meter answers
+/// when no rule fires.
+///
+/// `Position` has no `+`. Two positions never add — `algebra.musa`'s `Torsor`
+/// says so in prose and `Position.shift` is the operation a piece actually
+/// wants — so the spelling that would make the mistake writable is left out.
+fn arithmetic() -> Vec<RawTopLevel> {
+    vec![
+        namespaced("Nat", "add", None, var("nat_add")),
+        namespaced("Nat", "mul", None, var("nat_mul")),
+        namespaced("Nat", "sub", None, var("nat_sub")),
+        namespaced("Ratio", "add", None, var("ratio_add")),
+        namespaced("Ratio", "sub", None, var("ratio_sub")),
+        namespaced("Ratio", "mul", None, var("ratio_mul")),
+        namespaced("Ratio", "div", None, var("ratio_div")),
+        namespaced("Duration", "add", None, var("duration_add")),
+        namespaced("Duration", "mul", None, var("duration_scale")),
+        namespaced("Interval", "add", None, var("interval_add")),
+    ]
+}
+
+/// The namespace forms for the operations that build and read a compiler-owned
+/// domain: `Duration::of`, `Position::between`, `Text::join`.
+///
+/// None of these is an operator, and all of them are what the Task means by
+/// collapsing `duration_of` behind `Duration::of`. The δ-rule is unchanged and
+/// still hides the nonnegativity, the origin, and the storage; the dotted name
+/// is where a reader now finds it, in the namespace of the type it answers.
+///
+/// # Three that are deliberately absent
+///
+/// `Interval::inverse` and `Interval::compose`: `stdlib/src/pitch.musa` declares
+/// both, as the `Group<Interval>` operations that `algebra.musa` names, and a
+/// second declaration here would be two definitions of one name in two packages.
+///
+/// `Position::shift`: `stdlib/src/algebra.musa` declares `Position.act`, which
+/// is the same δ-rule under the name the structure gives it.
+///
+/// `Duration::scale`: it is `*` — [`arithmetic`] declares it as `Duration.mul`,
+/// where `held * (2/3)` is what a tuplet actually reads like.
+///
+/// # And why absent matters beyond taste
+///
+/// A bare name resolves through the namespaces *before* the host's registry
+/// (`elaboration::elab::name`'s `constant`), so declaring `Position.shift` would
+/// have made a bare `shift` — the track builtin every schema in the corpus calls
+/// — resolve to `position_shift` instead. One-word members are shared with the
+/// registry's one-word spellings, and the collision is silent until a type
+/// mismatch reports it somewhere else entirely.
+fn accessors() -> Vec<RawTopLevel> {
+    vec![
+        namespaced("Duration", "of", None, var("duration_of")),
+        namespaced("Duration", "ratio", None, var("duration_ratio")),
+        namespaced("Position", "of", None, var("position_of")),
+        namespaced("Position", "ratio", None, var("position_ratio")),
+        namespaced("Position", "between", None, var("position_between")),
+        namespaced("Text", "join", None, var("text_join")),
+    ]
+}
+
+/// `Nat → Nat → Bool`, written out because neither answer is a builtin's.
+fn comparing() -> Raw {
+    arrow(var("Nat"), arrow(var("Nat"), var("Bool")))
+}
+
+/// `Nat.equal`, over `nat_sub` and two case splits.
+///
+/// ```text
+/// fn (left, right) {
+///     match nat_sub(left, right) {
+///         None    -> false,        // left < right
+///         Some(k) -> match k { Zero -> true, Succ(_) -> false },
+///     }
+/// }
+/// ```
+///
+/// Constant cost, and that is the reason for the encoding. `Nat` is a declared
+/// family, so the obvious definition descends both arguments together and costs
+/// the smaller of them — and `count == 7` inside a fold would then charge the
+/// fold seven steps per element. Truncated subtraction answers `Some(0)` exactly
+/// when the two are equal, so one δ-rule and two nullary splits decide it.
+fn nat_equal() -> Raw {
+    lam(
+        "left",
+        lam(
+            "right",
+            matching(
+                applied("nat_sub", [var("left"), var("right")]),
+                vec![
+                    arm(vec![con("Option.None", [])], var("False")),
+                    arm(
+                        vec![con("Option.Some", [held("difference")])],
+                        matching(
+                            var("difference"),
+                            vec![
+                                arm(vec![con("Nat.Zero", [])], var("True")),
+                                arm(vec![con("Nat.Succ", [held("smaller")])], var("False")),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    )
+}
+
+/// `Nat.less`, the same shape the other way round.
+///
+/// `right - left` is `Some(Succ(_))` exactly when `left < right`: absent says
+/// `right` is the smaller, and `Some(Zero)` says they are the same.
+fn nat_less() -> Raw {
+    lam(
+        "left",
+        lam(
+            "right",
+            matching(
+                applied("nat_sub", [var("right"), var("left")]),
+                vec![
+                    arm(vec![con("Option.None", [])], var("False")),
+                    arm(
+                        vec![con("Option.Some", [held("difference")])],
+                        matching(
+                            var("difference"),
+                            vec![
+                                arm(vec![con("Nat.Zero", [])], var("False")),
+                                arm(vec![con("Nat.Succ", [held("smaller")])], var("True")),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        ),
+    )
+}
+
+/// `{A : Type} → List A → Nat → Option A`.
+fn indexing() -> Raw {
+    Raw::parameter_pi(
+        HERE,
+        "A",
+        type0(),
+        arrow(list_of(var("A")), arrow(var("Nat"), option_of(var("A")))),
+    )
+}
+
+/// `List.at`: the member at an order position, or nothing.
+///
+/// `xs[i]` is what `01-surface.md` §1.5 lowers onto this, and the `Option` is
+/// §1.5's second guard rule again — an index past the end is the failure, and it
+/// stays in the result type rather than becoming a refusal, because a piece that
+/// reads a list by position is expected to handle the end.
+///
+/// Two descents at once, which is why it is a `rec` and not a fold: the list
+/// shortens and the index shrinks together, and the walk stops at whichever runs
+/// out first. A fold would visit every member even after the answer was found,
+/// and the evaluator is eager.
+fn list_at() -> Raw {
+    let walk_ty = arrow(list_of(var("A")), arrow(var("Nat"), option_of(var("A"))));
+    Raw::parameter_lam(
+        HERE,
+        "A",
+        Raw::annotated_bind(
+            HERE,
+            "walk",
+            walk_ty.clone(),
+            Raw::rec(
+                HERE,
+                "walk",
+                walk_ty,
+                lam(
+                    "xs",
+                    lam(
+                        "index",
+                        matching(
+                            var("xs"),
+                            vec![
+                                arm(vec![con("List.Empty", [])], var("None")),
+                                arm(
+                                    vec![con("List.Cons", [held("first"), held("rest")])],
+                                    matching(
+                                        var("index"),
+                                        vec![
+                                            arm(vec![con("Nat.Zero", [])], applied("Some", [var("first")])),
+                                            arm(
+                                                vec![con("Nat.Succ", [held("earlier")])],
+                                                applied("walk", [var("rest"), var("earlier")]),
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+            ),
+            var("walk"),
+        ),
+    )
 }
 
 /// `List.fold_from_start` and `List.fold_from_end`, and the same two for
@@ -558,7 +797,7 @@ fn equalities() -> Vec<RawTopLevel> {
 ///
 /// # Why the compiler owns these too
 ///
-/// [`equalities`]'s argument, applied to a traversal. `List` and `Option` are
+/// [`methods`]'s argument, applied to a traversal. `List` and `Option` are
 /// *prelude* families — no source file writes `data List` — and a definition in
 /// a type's namespace belongs with the type. Declaring `List` here and
 /// `List.fold_from_end` in `stdlib/` would put a family and its one lawful
@@ -784,7 +1023,7 @@ fn namespaced(head: &str, member: &str, ty: Option<Raw>, value: Raw) -> RawTopLe
     }
 }
 
-/// `cx` with every [`equalities`] definition in it.
+/// `cx` with every [`methods`] definition in it.
 ///
 /// Last in [`crate::registry::owned`] and necessarily so: each body is a
 /// δ-builtin's name, and a name resolves only once the registry holding it is
@@ -795,15 +1034,15 @@ fn namespaced(head: &str, member: &str, ty: Option<Raw>, value: Raw) -> RawTopLe
 /// As [`musa_calculus::declare_program`] — in practice never, since the
 /// definitions are this module's own and a failure here is a compiler defect
 /// rather than a program's.
-pub(crate) fn equality(cx: &Cx) -> Result<Cx, ElabError> {
-    defining(cx, equalities())
+pub(crate) fn methods_in(cx: &Cx) -> Result<Cx, ElabError> {
+    defining(cx, methods())
 }
 
 /// `cx` with every [`traversals`] definition in it.
 ///
 /// # Errors
 ///
-/// As [`equality`].
+/// As [`methods_in`].
 pub(crate) fn collections(cx: &Cx) -> Result<Cx, ElabError> {
     defining(cx, traversals())
 }

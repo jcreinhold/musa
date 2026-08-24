@@ -46,7 +46,7 @@ fn each_base_type_is_nameable() {
 #[test]
 fn a_family_over_a_base_type_is_declared() {
     let cx = owned().expect("the compiler's own context builds");
-    crate::prelude::constant(&cx, "RowFault.Fault").expect("`RowFault` holds a `List Pc12` and is declared");
+    crate::prelude::constant(&cx, "Fact.Note").expect("`Fact` holds a `Pitch` and is declared");
 }
 
 /// Every δ spelling of both tables is registered, exactly once, under the name

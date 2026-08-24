@@ -400,9 +400,6 @@ pub(super) fn compiler_type(written: &str) -> Option<&'static str> {
         "Triad" => "Triad",
         "Roman" => "Roman",
         "Voicing" => "Voicing",
-        "Pc12" => "Pc12",
-        "PcSet12" => "PcSet12",
-        "Row12" => "Row12",
         _ => return None,
     })
 }

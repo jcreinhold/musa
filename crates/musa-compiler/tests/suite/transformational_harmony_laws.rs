@@ -39,6 +39,7 @@ const MAJOR: usize = 2;
 
 /// The counting apparatus, and the two triads every fixture starts from.
 const PRELUDE: &str = r"
+    import std::cyclic;
     import std::harmony;
     import std::list;
     import std::post_tonal::pcset;
@@ -51,10 +52,10 @@ const PRELUDE: &str = r"
     fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
     fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
     fn chorus(voices: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { voices.fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
-    fn beat_for_pc(member: Pc12) -> EventTrack<WrittenTime> { beat() }
+    fn beat_for_pc(member: Pc(12)) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_voicing(chosen: Voicing) -> EventTrack<WrittenTime> { beat() }
     fn beat_for_triad(refined: Triad) -> EventTrack<WrittenTime> { beat() }
-    fn numbered(member: Pc12) -> EventTrack<WrittenTime> { together(beat(), tally(number_of(member))) }
+    fn numbered(member: Pc(12)) -> EventTrack<WrittenTime> { together(beat(), tally(class_number(12, member))) }
     fn quality(refined: Triad) -> EventTrack<WrittenTime> { match is_major(refined) {
         true -> tally(2),
         false -> tally(1),
@@ -365,8 +366,8 @@ fn the_hexatonic_cycle_closes_only_after_the_spelling_is_forgotten() {
         "which is exactly the pitch that does voice it"
     );
 
-    let quotient = "chorus(map(numbered, set_members(triad_classes(probed))))";
-    let members = "chorus(map(beat_for_pc, set_members(triad_classes(probed))))";
+    let quotient = "chorus(map(numbered, set_members(12, chromatic, triad_classes(probed))))";
+    let members = "chorus(map(beat_for_pc, set_members(12, chromatic, triad_classes(probed))))";
     assert_eq!(asked("c_major", "refined", members), 3, "a triad is three classes");
     assert_eq!(asked("c_major", cycle, members), 3, "before and after the cycle");
     assert_eq!(

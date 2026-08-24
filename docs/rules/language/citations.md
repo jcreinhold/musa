@@ -42,7 +42,7 @@ cadenzas exist, and it is specified in [`01-surface.md`](01-surface.md).
 | `Pitch` and `Interval` as staff-and-chromatic pairs | OMT `005-half-steps-whole-steps-and-accidentals.md`, `016-intervals.md` |
 | interval names (`M3`, `d5`, `P8`) and their qualities | OMT `016-intervals.md` |
 | `NoteName`: a spelled pitch class, octave forgotten | Musa definition — the quotient lemma, [`03-musical-domains.md`](03-musical-domains.md) §1 |
-| `Pc12`: `ℤ/12ℤ`, where `B♯ = C` | OMT `099-pitch-and-pitch-class.md`, `100-intervals-in-integer-notation.md` |
+| `Pc(12)`: `ℤ/12ℤ`, where `B♯ = C` | OMT `099-pitch-and-pitch-class.md`, `100-intervals-in-integer-notation.md` |
 
 Musa proves two things here rather than citing them, because they are what make spelling survive arithmetic: that
 interval addition is a **faithful action** on `ℤ²`, and that the action **descends** to the octave quotient. Both are in

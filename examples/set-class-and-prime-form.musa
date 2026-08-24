@@ -1,0 +1,189 @@
+// A set class is an orbit, and prime form is the name we give it.
+//
+// Open Music Theory's `102-set-class-and-prime-form.md` states the label two
+// ways. As a recipe: put the set in normal order, transpose it to begin on
+// zero, do the same to its inversion, and keep whichever reads lower. And as a
+// relation: two sets share a label exactly when some transposition or inversion
+// carries one to the other. The recipe is `prime_form`; the relation is an
+// orbit of the T/I group, which `101-pitch-class-sets-normal-order-and-transformations.md`
+// describes one operation at a time. This file computes both and checks that
+// they agree — the triads at twelve carrying one prime form between them, and
+// the orbit at six being exactly as large as the group divided by what fixes
+// the set.
+//
+// Nothing here is written for twelve. `std::cyclic` names the division and
+// every count follows from it: the T/I group has twice as many operations as
+// the division has pitch classes, and `orbit` and `stabilizer` are
+// `std::algebra`'s, taking that group as the list it is.
+//
+// **A prime form is compared as a set, not read out as numbers.** `same_set`
+// answers the chapter's question — is this the class `(02357)`? — and reading
+// the members back out as numbers builds a `Pc(12)` per member for no gain.
+// The one place the numbers are written out is where the images themselves are
+// the claim.
+//
+// **The divisions differ between the two halves on purpose.** The recipe runs
+// at twelve, where the chapter's examples are written. The orbit runs at six,
+// because a twenty-four-operation orbit of a twelve-note division costs more
+// reduction steps than `02-core-calculus.md` §4's budget allows today — see
+// prompt 164's Design for the measurement and prompt 165 for whose it is. The
+// theorem is the same at both divisions, which is the whole reason the modulus
+// is a parameter.
+piece "Set Class and Prime Form" {
+    import std::algebra;
+    import std::cyclic;
+    import std::indexed;
+    import std::list;
+    import std::post_tonal::pcset;
+
+    // # The recipe, at twelve
+
+    // The chapter's worked example, and its five steps. Normal order is
+    // `[10, 0, 2, 3, 5]` — the rotation packed most tightly to the left, which
+    // is not the ascending order the set is held in.
+    let worked: PcSet(12) = chromatic_set([10, 0, 2, 3, 5]);
+    let worked_normal: Equal<List<Nat>>(numbers(normal_order(12, chromatic, worked)), [
+        10,
+        0,
+        2,
+        3,
+        5,
+    ]) = Refl([10, 0, 2, 3, 5]);
+
+    // Steps 2 through 5, which choose between two candidates: the normal order
+    // transposed to zero is `(02457)`, its inversion's is `(02357)`, and the
+    // second reads lower. So the prime form is the minor pentachord.
+    let worked_prime: Equal<Bool>(same_set(
+        12,
+        prime_form(12, chromatic, worked),
+        chromatic_set([0, 2, 3, 5, 7]),
+    ), true,) = Refl(true);
+
+    // Prime form is a property of the set class and not of the set, so
+    // inverting the set cannot change it: the losing candidate above was this
+    // set read the other way round, which is why it lost rather than naming a
+    // second class. The triads below say that in a value, on a set small enough
+    // that a second five-member normal order fits the step budget.
+
+    // The triads, which the chapter uses to say what the two relations mean:
+    // T₂ of a C major triad is a D major triad, and I₀ of it is an F minor
+    // triad. So major and minor triads are one set class, `(037)`.
+    let c_major: PcSet(12) = chromatic_set([0, 4, 7]);
+    let d_major: PcSet(12) = set_transposed(12, chromatic, c_major, 2);
+    let f_minor: PcSet(12) = set_inverted(12, chromatic, c_major, 0);
+
+    let c_major_prime: Equal<Bool>(same_set(
+        12,
+        prime_form(12, chromatic, c_major),
+        chromatic_set([0, 3, 7]),
+    ), true,) = Refl(true);
+    let d_major_prime: Equal<Bool>(same_set(
+        12,
+        prime_form(12, chromatic, d_major),
+        prime_form(12, chromatic, c_major),
+    ), true,) = Refl(true);
+    let f_minor_prime: Equal<Bool>(same_set(
+        12,
+        prime_form(12, chromatic, f_minor),
+        prime_form(12, chromatic, c_major),
+    ), true,) = Refl(true);
+
+    // And the images themselves, so the transposition and the inversion are
+    // values in the file rather than claims about it.
+    let d_major_members: Equal<List<Nat>>(members(d_major), [2, 6, 9]) = Refl([2, 6, 9]);
+    let f_minor_members: Equal<List<Nat>>(members(f_minor), [0, 5, 8]) = Refl([0, 5, 8]);
+
+    // # The orbit, at six
+
+    // A division of six: the whole-tone universe, where a step is a whole step
+    // of the chromatic one. Twelve T/I operations rather than twenty-four, and
+    // three interval classes rather than six, both derived rather than written
+    // down.
+    let sixfold: Cycle(6) = Positions(5);
+    let operations: Equal<Nat>(length(ti_operations(6, sixfold)), 12) = Refl(12);
+    let classes: Equal<Nat>(class_count(6, sixfold), 3) = Refl(3);
+
+    // `[0, 1, 3]` at a division of six, which no operation fixes. Its set class
+    // is all twelve sets the group reaches, and its stabilizer is the identity
+    // alone — twelve, split the way the orbit-stabilizer count says it must be.
+    let subject: PcSet(6) = sixfold_set([0, 1, 3]);
+    let orbit_size: Equal<Nat>(length(set_class(6, sixfold, subject)), 12) = Refl(12);
+    let fixers: Equal<Nat>(length(set_symmetries(6, sixfold, subject)), 1) = Refl(1);
+
+    // `[0, 2, 4]` is the other extreme, and the reason the division is
+    // interesting: at six it is a set of limited transposition, so its orbit is
+    // two sets rather than twelve and its stabilizer is the other six
+    // operations. Three of those six are transpositions, which is
+    // `106-collections.md`'s count of how many distinct transpositions the
+    // collection has.
+    let even: PcSet(6) = sixfold_set([0, 2, 4]);
+    let even_orbit: Equal<Nat>(length(set_class(6, sixfold, even)), 2) = Refl(2);
+    let even_fixers: Equal<Nat>(length(set_symmetries(6, sixfold, even)), 6) = Refl(6);
+    let even_transpositions: Equal<Nat>(length(
+        transposition_symmetries(6, sixfold, even),
+    ), 3) = Refl(3);
+
+    // And the two readings agreeing, which is what this half is for. The other
+    // member of that orbit is `[1, 3, 5]`, it is in the orbit `set_class`
+    // enumerates, and `prime_form` gives it the same name — the recipe and the
+    // relation answering together.
+    let odd: PcSet(6) = set_transposed(6, sixfold, even, 1);
+    let odd_members: Equal<Bool>(same_set(6, odd, sixfold_set([1, 3, 5])), true) = Refl(true);
+    let odd_in_orbit: Equal<Bool>(any(
+        fn (member: PcSet(6)) -> Bool { same_set(6, member, odd) },
+        set_class(6, sixfold, even),
+    ), true,) = Refl(true);
+    let odd_same_prime: Equal<Bool>(same_set(
+        6,
+        prime_form(6, sixfold, odd),
+        prime_form(6, sixfold, even),
+    ), true,) = Refl(true);
+
+    // # The helpers, which say nothing new
+
+    // A set of pitch classes at twelve, from the numbers the chapter writes.
+    fn chromatic_set(written: List<Nat>) -> PcSet(12) {
+        pcset(12, chromatic, pcs(12, chromatic, written))
+    }
+
+    // The same, at the division of six the second half runs at.
+    fn sixfold_set(written: List<Nat>) -> PcSet(6) {
+        pcset(6, sixfold, pcs(6, sixfold, written))
+    }
+
+    // A set's members as the numbers the chapter writes.
+    fn members(subject: PcSet(12)) -> List<Nat> { numbers(set_members(12, chromatic, subject)) }
+
+    // Pitch classes as numbers.
+    fn numbers(held: List<Pc(12)>) -> List<Nat> {
+        map(fn (member: Pc(12)) -> Nat { class_number(12, member) }, held)
+    }
+
+    meter 4/4;
+
+    // The sets sounded, so the file is a score and not only an argument: the
+    // worked pentachord, the C major triad the orbit counted, and the two
+    // triads the chapter's two relations reach from it.
+    score {
+        part piano {
+            voice upper {
+                bb4/4
+                c5/4
+                d5/4
+                eb5/4
+                f5/4
+                rest/4
+                c5/4
+                e5/4
+                g5/4
+                d5/4
+                f#5/4
+                a5/4
+                c5/4
+                f5/4
+                ab5/4
+                rest/4
+            }
+        }
+    }
+}

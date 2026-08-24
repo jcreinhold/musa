@@ -1,0 +1,120 @@
+// A collection of limited transposition is one a transposition already fixes.
+//
+// Open Music Theory's `106-collections.md` tabulates Messiaen's modes by their
+// "number of unique transpositions": the whole-tone collection has two rather
+// than twelve, the octatonic three. The chapter then says the property is not
+// the modes' alone — "other subsets/supersets of these collections may also
+// have this property" — and this file computes it for three of those subsets.
+//
+// The count is not a fact about collections that needs a table. A transposition
+// is a group element, a collection is a point it moves, and the number of
+// distinct transpositions is the size of the point's orbit; what is left over
+// is its stabilizer, the transpositions that put the collection back where it
+// was. `std::algebra`'s `orbit` and `stabilizer` are those two functions, and
+// nothing in either one knows what a pitch class is.
+//
+// **Where this stops.** The whole-tone and octatonic collections themselves —
+// six and eight members at a division of twelve — cost more reduction steps
+// than `02-core-calculus.md` §4's budget allows today, so what is written here
+// are the three subsets that fit: the tritone, the augmented triad, and the
+// diminished seventh chord, which the chapter's own sentence covers. The modes
+// are prompt 165's, and the code they will run is the code below.
+piece "Limited Transposition" {
+    import std::algebra;
+    import std::cyclic;
+    import std::indexed;
+    import std::list;
+    import std::post_tonal::pcset;
+
+    // The twelve transpositions, derived from the division rather than listed.
+    let available: Equal<Nat>(length(transpositions(12, chromatic)), 12) = Refl(12);
+
+    // The tritone divides the octave in two, so six transpositions exhaust it
+    // and two — T₀ and T₆ — leave it alone.
+    let tritone: PcSet(12) = chromatic_set([0, 6]);
+    let tritone_transpositions: Equal<Nat>(length(moves(tritone)), 6) = Refl(6);
+    let tritone_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, tritone),
+    ), 2) = Refl(2);
+
+    // The augmented triad divides it in three: four distinct transpositions,
+    // three operations fixing it.
+    let augmented: PcSet(12) = chromatic_set([0, 4, 8]);
+    let augmented_transpositions: Equal<Nat>(length(moves(augmented)), 4) = Refl(4);
+    let augmented_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, augmented),
+    ), 3) = Refl(3);
+
+    // The diminished seventh chord divides it in four, which is why there are
+    // only three of them — the count the chapter gives the octatonic collection
+    // this chord is a subset of.
+    let diminished: PcSet(12) = chromatic_set([0, 3, 6, 9]);
+    let diminished_transpositions: Equal<Nat>(length(moves(diminished)), 3) = Refl(3);
+    let diminished_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, diminished),
+    ), 4,) = Refl(4);
+
+    // And a collection with no symmetry at all, so the property reads as a
+    // property and not as arithmetic that always comes out the same way: the
+    // major triad has all twelve transpositions and only the identity fixes it.
+    let major: PcSet(12) = chromatic_set([0, 4, 7]);
+    let major_transpositions: Equal<Nat>(length(moves(major)), 12) = Refl(12);
+    let major_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, major),
+    ), 1) = Refl(1);
+
+    // Each pair above multiplies to twelve, which is not a coincidence about
+    // pitch: it is the orbit-stabilizer count, and it holds for every finite
+    // group acting on anything. `transposition_symmetries` is `stabilizer` with
+    // the transpositions handed to it, and saying so directly gives the same
+    // answer as asking through the name.
+    let augmented_directly: Equal<Nat>(length(
+        stabilizer(set_action(12, chromatic), alike, transpositions(12, chromatic), augmented),
+    ), 3,) = Refl(3);
+
+    // # The helpers, which say nothing new
+
+    // The distinct collections the transpositions reach from this one.
+    fn moves(collection: PcSet(12)) -> List<PcSet(12)> {
+        orbit(set_action(12, chromatic), alike, transpositions(12, chromatic), collection)
+    }
+
+    // A set of pitch classes at twelve, from the numbers the chapter writes.
+    fn chromatic_set(written: List<Nat>) -> PcSet(12) {
+        pcset(12, chromatic, pcs(12, chromatic, written))
+    }
+
+    // Equality of collections, which `orbit` and `stabilizer` take as an
+    // argument because a group knows nothing about its carrier.
+    fn alike(left: PcSet(12), right: PcSet(12)) -> Bool { same_set(12, left, right) }
+
+    meter 3/4;
+
+    // The three collections sounded in the order the file argues them: the
+    // tritone, the augmented triad, and the diminished seventh chord, each
+    // followed by the transposition that returns it to itself.
+    score {
+        part piano {
+            voice upper {
+                c4/4
+                f#4/4
+                rest/4
+                f#4/4
+                c5/4
+                rest/4
+                c4/4
+                e4/4
+                g#4/4
+                e4/4
+                g#4/4
+                c5/4
+                c4/4
+                eb4/4
+                f#4/4
+                a4/4
+                c5/4
+                rest/4
+            }
+        }
+    }
+}

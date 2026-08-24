@@ -1,7 +1,7 @@
 ---
 id: 164
 slug: builtin-collapse
-status: in-progress
+status: done
 depends_on: [156, 162b, 166]
 phase: 3
 ---

@@ -153,9 +153,6 @@ fn every_written_base_type_lowers_to_a_type_the_core_accepts() {
         "Triad",
         "Roman",
         "Voicing",
-        "Pc12",
-        "PcSet12",
-        "Row12",
         "Duration<WrittenTime>",
         "Position<PhysicalTime>",
         // The type a fragment inhabits, written the way its duration is. This

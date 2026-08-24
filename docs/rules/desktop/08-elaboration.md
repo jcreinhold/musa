@@ -28,7 +28,7 @@ Builds the three notes of a triad on a root.
 
 The first two lines are the musician's: the signature as the source spells it, and the summary written above the
 declaration. The disclosure holds what only an implementor wants — the distinction line that separates the types a
-person confuses (`NoteName` against `Pc12`, `Key` against `Scale`, `ChordClass` against `Voicing`), the document the
+person confuses (`NoteName` against `Pc(12)`, `Key` against `Scale`, `ChordClass` against `Voicing`), the document the
 declaration lives in, and whether it is writable. It is closed by default, it stays closed until asked, and it is the
 same fact told at a different depth.
 

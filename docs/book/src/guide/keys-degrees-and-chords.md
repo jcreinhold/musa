@@ -181,12 +181,19 @@ Reading a numeral *off* a passage is a different activity with a different answe
 
 ## 5. When the spelling stops mattering
 
-Twelve-tone and pitch-class-set work is an algebra over `pc12 = ℤ/12ℤ`, and `pc12` is not a spelling: it has forgotten
-which letter the note was written with. `std::post_tonal::pcset` holds sets, normal order, prime form, and
-interval-class vectors; `std::post_tonal::serial` holds rows, their forms, and their matrices. Going back into notation
-is `spelled_in`, which takes the collection that decides the spelling and answers nothing where that collection has no
-such note — see `examples/serial-forms.musa`, and
+Twelve-tone and pitch-class-set work is an algebra over `ℤ/nℤ`, and a member of it is not a spelling: it has forgotten
+which letter the note was written with. `std::cyclic` names the division — `chromatic` is the twelve of common practice,
+`quartertone` the twenty-four — and hands it to everything else as the number it is. `std::post_tonal::pcset` holds
+`Pc(n)`, sets of them, normal order, prime form, and interval-class vectors; `std::post_tonal::serial` holds
+`ToneRow(n)`, its forms, and its matrix. Going back into notation is `spelled_in`, which takes the collection that
+decides the spelling and answers nothing where that collection has no such note — see `examples/serial-forms.musa`,
+`examples/set-class-and-prime-form.musa`, `examples/limited-transposition.musa`, and
 [What musa refuses to blur §2](../concepts/distinctions.md#2-a-pitch-class-is-not-a-residue-mod-12).
+
+The division is an argument and never a spelling, which is what lets one definition answer at twelve, at six, and at
+twenty-four. A set class is an orbit of the T/I group and a mode of limited transposition is a collection its
+transpositions fix, so `std::algebra`'s `orbit` and `stabilizer` compute both — the same two functions for a pitch-class
+set and for a bell pattern in a cycle of pulses.
 
 The remaining bundled modules are the plumbing: `std::core` for exact rationals and the small total operations,
 `std::list` for finite lists, and `std::pitch` for the named written intervals. `std::indexed` is a smaller and stranger

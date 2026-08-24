@@ -257,17 +257,20 @@ an order-sensitive traversal. `Nat` and generated data folds keep one canonical 
 for them has earned admission. The two list folds become the `Iterable` methods `fold_from_start` and `fold_from_end` in
 §1.6, which changes the notation and not the count: two directions, two names, one signature.
 
-The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`, `Scale`,
-`Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis<A>`, and `EventTrack[C, A]`. Products,
-lists, and arrows are the constructors described in `02-core-calculus.md`; `Option<A>` and `Result<A, E>` are enums
-declared in `std` rather than grammar (§1.3). A `data`, `record`, or `enum` declaration adds a type of its own, so this
-list is no longer closed by the compiler. Declaration kinds are not types. Every type is spelled with a capital and
-every music statement keyword is not, which is what lets `key c major;` set a key and `Key` name the type of what it set
-without either word looking the other up (prompt 113). Six of these words — `pitch`, `music`, `scale`, `key`, `degree`,
-`frame` — are *also* music statement keywords, and one word doing two jobs in two grammars is a collision a parser can
-only paper over; a capital settles it in the lexer. `NoteName` is the letter and accidental as written, with no octave:
-a pitch class is octave *and* enharmonic equivalence (Open Music Theory 99), so a type in which C♯ and D♭ differ is a
-name rather than a class, and `Pc12` is the class it names.
+The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Scale`, `Key`,
+`Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Analysis<A>`, and `EventTrack[C, A]`. The chromatic quotient and
+the twelve-tone row were on this list until prompt 164 and are not compiler-owned types any more: `std::post_tonal`
+declares `Pc(n)`, `PcSet(n)`, and `ToneRow(n)` over `std::cyclic`'s `Cycle(n)`, so the modulus is an argument rather
+than a spelling, and §5 of `03-musical-domains.md` is where they are defined. Products, lists, and arrows are the
+constructors described in `02-core-calculus.md`; `Option<A>` and `Result<A, E>` are enums declared in `std` rather than
+grammar (§1.3). A `data`, `record`, or `enum` declaration adds a type of its own, so this list is no longer closed by
+the compiler. Declaration kinds are not types. Every type is spelled with a capital and every music statement keyword is
+not, which is what lets `key c major;` set a key and `Key` name the type of what it set without either word looking the
+other up (prompt 113). Six of these words — `pitch`, `music`, `scale`, `key`, `degree`, `frame` — are *also* music
+statement keywords, and one word doing two jobs in two grammars is a collision a parser can only paper over; a capital
+settles it in the lexer. `NoteName` is the letter and accidental as written, with no octave: a pitch class is octave
+*and* enharmonic equivalence (Open Music Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class,
+and `Pc(12)` is the class it names.
 
 **A type parameter is angle-bracketed, and now users write them.** `data`, `record`, `enum`, and `fn` all take `<A, B>`,
 and a type is applied as `List<Pitch>` or `Vec<A, n>`. That is a real change: the previous rule said `Option`, `List`,
@@ -302,9 +305,9 @@ and finite lists. Existing pitch and interval literals are also expression atoms
 constructors rather than literal syntax, and read identically. Strings and floating-point values remain syntax of their
 owning declaration domains rather than core values.
 
-A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `NoteName`, while an argument to
-`Row12` supplies `Pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
-`NoteName` value to `Pc12` requires `forget_spelling`; there is no implicit value coercion in the opposite direction.
+A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `NoteName`. Outside such an expected
+constructor position, write a type annotation. Converting an existing `NoteName` value to `Pc(12)` requires
+`forget_spelling`; there is no implicit value coercion in the opposite direction.
 
 `control-domain`, `quantity`, and `range` use the exact unit grammar shared with studio values. `path` is a qualified
 identifier such as `std.sound.basic_sine` or `bow.pressure`. `notation-selector` is one documented dynamic,
@@ -809,18 +812,18 @@ use open_bar;
 
 stack c4 major7/2
 
-let row: Row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
-let symmetric: Row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
-let matrix: List<List<Pc12>> = row_matrix(symmetric, convention: zero_based);
+let row: Result<ToneRow(12), RowFault> = row(12, chromatic, [0, 1, 4, 2, 6, 5, 10, 7, 8, 11, 9, 3]);
+let symmetric: Result<ToneRow(12), RowFault> = row(12, chromatic, [0, 6, 2, 8, 4, 10, 5, 11, 7, 1, 9, 3]);
 ```
 
 `chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A voicing
 policy is an ordinary named function that selects those and returns `Option<Voicing>`, absent when its preconditions do
 not hold — a bass the class does not contain, or a register the written range cannot reach. `play` alone creates sounded
 music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the absolute root fixing
-register; `stack c major7/2` is rejected, because a pitch class chooses no register. `Row12` statically requires each
-`Pc12` exactly once; symmetry may make fewer than 48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error.
-Row-form naming always states a convention.
+register; `stack c major7/2` is rejected, because a pitch class chooses no register. `row` admits a `ToneRow(n)` only
+when each of the `n` pitch classes stands exactly once, and answers a `RowFault` naming both reasons when one does not;
+symmetry may make fewer than `4n` distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error. Row-form naming
+always states a convention.
 
 ## 6. Declaration templates and the module layer — removed by 162
 

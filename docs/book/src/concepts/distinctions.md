@@ -27,10 +27,10 @@ transposition is spelling-preserving by construction rather than by a repair pas
 ## 2. A pitch class is not a residue mod 12
 
 `NoteName` is a written pitch with the octave forgotten and the spelling kept: `C♯` and `D♭` are different values.
-`Pc12` is `ℤ/12ℤ`, where they are the same value. The map from one to the other exists, is named, and goes one way.
+`Pc(12)` is `ℤ/12ℤ`, where they are the same value. The map from one to the other exists, is named, and goes one way.
 
-**Falsifier.** `B♯ = C` is false as `NoteName` and true as `Pc12`. Pitch-class-set theory needs the second; notation
-needs the first. Coming back from `Pc12` into notation is `spelled_in`, which takes the collection that decides the
+**Falsifier.** `B♯ = C` is false as `NoteName` and true as `Pc(12)`. Pitch-class-set theory needs the second; notation
+needs the first. Coming back from `Pc(12)` into notation is `spelled_in`, which takes the collection that decides the
 spelling and answers nothing where that collection has no such note — the loss shows up in the value rather than being
 papered over.
 
@@ -144,7 +144,7 @@ compared against a checked-in golden, so the advice cannot quietly stop matching
 | `a-numeral-has-no-collection.musa` | §6 — a numeral carries no quality |
 | `a-degree-is-not-a-pitch.musa` | §4 — an ordinal needs a frame |
 | `a-note-name-has-no-octave.musa` | §1 — a written class is not a written pitch |
-| `pc12-has-forgotten-the-spelling.musa` | §2 — the map into `Pc12` is one-way |
+| `pc12-has-forgotten-the-spelling.musa` | §2 — the map into `Pc(12)` is one-way |
 | `a-function-is-not-its-result.musa` | §9 — a nullary `fn` is still a function |
 
 ```sh

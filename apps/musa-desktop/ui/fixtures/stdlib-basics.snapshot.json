@@ -857,6 +857,342 @@
       }
     },
     {
+      "name": "concat",
+      "kind": "function",
+      "signature": "fn concat<A>(first: List<A>, second: List<A>) -> List<A>",
+      "summary": "The members of `first`, then the members of `second`.  Costs the length of `first` and nothing for `second`, which is why the module docs say an answer built by folding and appending costs the square: this is the append, and folding it over n members walks n prefixes.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "first",
+          "label": "first: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        },
+        {
+          "name": "second",
+          "label": "second: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 3508,
+        "end": 3514
+      }
+    },
+    {
+      "name": "length",
+      "kind": "function",
+      "signature": "fn length<A>(values: List<A>) -> Nat",
+      "summary": "How many members a list has.",
+      "result": {
+        "name": "Nat",
+        "distinction": "a whole number, zero or more"
+      },
+      "parameters": [
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 3737,
+        "end": 3743
+      }
+    },
+    {
+      "name": "reversing",
+      "kind": "function",
+      "signature": "fn reversing<A>(values: List<A>, built: List<A>) -> List<A>",
+      "summary": "The members in the opposite order.  Written over an accumulator rather than over `concat`, because appending one member at a time to the end costs the square of the length and this costs the length. The accumulator comes after the argument the recursion descends on, for §2.4's reason.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        },
+        {
+          "name": "built",
+          "label": "built: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 4228,
+        "end": 4237
+      }
+    },
+    {
+      "name": "reverse",
+      "kind": "function",
+      "signature": "fn reverse<A>(values: List<A>) -> List<A>",
+      "summary": "The members in the opposite order.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 4468,
+        "end": 4475
+      }
+    },
+    {
+      "name": "take",
+      "kind": "function",
+      "signature": "fn take<A>(count: Nat, values: List<A>) -> List<A>",
+      "summary": "The first `count` members, or all of them where there are fewer.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 4613,
+        "end": 4617
+      }
+    },
+    {
+      "name": "drop",
+      "kind": "function",
+      "signature": "fn drop<A>(count: Nat, values: List<A>) -> List<A>",
+      "summary": "Everything but the first `count` members, or nothing where there are fewer.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 4972,
+        "end": 4976
+      }
+    },
+    {
+      "name": "rotated",
+      "kind": "function",
+      "signature": "fn rotated<A>(count: Nat, values: List<A>) -> List<A>",
+      "summary": "The members from `count` onward, then the members before it.  A rotation and not a shift: nothing is lost, so rotating by the length gives the list back. `102-set-class-and-prime-form.md`'s normal order is chosen from among these.",
+      "result": {
+        "name": "List<A>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 5498,
+        "end": 5505
+      }
+    },
+    {
+      "name": "rotations",
+      "kind": "function",
+      "signature": "fn rotations<A>(values: List<A>) -> List<List<A>>",
+      "summary": "Every rotation of the list, starting with the list itself.",
+      "result": {
+        "name": "List<List<A>>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 5688,
+        "end": 5697
+      }
+    },
+    {
+      "name": "any",
+      "kind": "function",
+      "signature": "fn any<A>(predicate: A -> Bool, values: List<A>) -> Bool",
+      "summary": "Whether any member answers true.",
+      "result": {
+        "name": "Bool",
+        "distinction": "`true` or `false`"
+      },
+      "parameters": [
+        {
+          "name": "predicate",
+          "label": "predicate: A -> Bool",
+          "ty": {
+            "name": "A -> Bool",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 5881,
+        "end": 5884
+      }
+    },
+    {
+      "name": "all",
+      "kind": "function",
+      "signature": "fn all<A>(predicate: A -> Bool, values: List<A>) -> Bool",
+      "summary": "Whether every member answers true.",
+      "result": {
+        "name": "Bool",
+        "distinction": "`true` or `false`"
+      },
+      "parameters": [
+        {
+          "name": "predicate",
+          "label": "predicate: A -> Bool",
+          "ty": {
+            "name": "A -> Bool",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List<A>",
+          "ty": {
+            "name": "List<A>",
+            "distinction": null
+          }
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 6169,
+        "end": 6172
+      }
+    },
+    {
       "name": "naturals",
       "kind": "function",
       "signature": "fn naturals(count: Nat) -> List<Nat>",
@@ -880,8 +1216,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3275,
-        "end": 3283
+        "start": 6485,
+        "end": 6493
       }
     },
     {
@@ -916,8 +1252,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3406,
-        "end": 3417
+        "start": 6616,
+        "end": 6627
       }
     },
     {
@@ -952,8 +1288,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3584,
-        "end": 3598
+        "start": 6794,
+        "end": 6808
       }
     },
     {
@@ -988,8 +1324,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3780,
-        "end": 3792
+        "start": 6990,
+        "end": 7002
       }
     },
     {
@@ -1173,6 +1509,76 @@
     },
     {
       "name": "filter",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "concat",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "length",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "reversing",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "reverse",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "take",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "drop",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "rotated",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "rotations",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "any",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": []
+    },
+    {
+      "name": "all",
       "kind": "function",
       "declaration": null,
       "external": "musa-stdlib:/std/list.musa",

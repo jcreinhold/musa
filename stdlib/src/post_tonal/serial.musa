@@ -1,117 +1,336 @@
 library {
+    import std::algebra;
+    import std::cyclic;
     import std::list;
+    import std::post_tonal::pcset;
 
-    // Twelve-tone rows and the operations on them (OMT
-    // `108-basics-of-twelve-tone-theory.md`,
+    // Rows and the operations on them (OMT `108-basics-of-twelve-tone-theory.md`,
     // `109-naming-conventions-for-rows.md`, `110-row-properties.md`).
     //
-    // A row is a bijection from the twelve order positions onto the twelve
-    // pitch classes. An arbitrary sequence of pitch classes is a
-    // `list[pc12]` and stays one: `row` is the only way in, and when the
-    // sequence is not a row it says which way it failed. Because the
-    // invariant is checked once there, every operation below is total —
-    // composing a row
-    // with a permutation of order positions and a bijection of pitch
-    // classes is again a row, so none of them can fail.
+    // A row is a bijection from the order positions onto the pitch classes. An
+    // arbitrary sequence of pitch classes is a `List<Nat>` and stays one: `row`
+    // is the only way in, and when the sequence is not a row it says which way
+    // it failed. Because the invariant is checked once there, every operation
+    // below is total — composing a row with a permutation of order positions
+    // and a bijection of pitch classes is again a row, so none of them can
+    // fail.
     //
-    // The four labels P, I, R, and RI are 24 affine pitch-class operations
-    // times the reversal R, which is a separate involution acting on order
-    // positions. That is `D12 x C2`, so there are at most 48 labelled forms
-    // — not one 48-element group of pitch-class operations. How many
-    // distinct rows those 48 labels produce depends on the row, so
-    // `distinct_forms` counts rather than assumes.
-
-    // The row a sequence spells, or both exact reasons it is not one: the
-    // order positions that repeat an earlier pitch class, and the pitch
-    // classes the sequence never names. Both, rather than a choice between
-    // them, because a sequence of the wrong length can have either without
-    // the other.
+    // # At any division, and the counts that follow
     //
-    // `RowFault` and not a pair of lists, because the two halves are one
-    // musical fact — how this sequence failed to be a row — and a pair would
-    // let a caller take one half and forget it had the other.
-    fn row(pcs: List<Pc12>) -> Result<Row12, RowFault> { row12_of(pcs) }
+    // Twelve is where the practice is and not where the theory stops. A row of
+    // `n` classes has `2n` affine pitch-class operations times the reversal,
+    // which is `4n` labelled forms; at twelve that is the familiar forty-eight,
+    // and nothing below writes either number down. `03-musical-domains.md` §5:
+    // what the index buys is counted, not claimed.
+    //
+    // # The forms are an orbit
+    //
+    // `52-the-musical-algebra.md` §2.3 is that `distinct_forms` and
+    // `row_symmetries` are one question — how the labelled group acts on this
+    // row — asked twice, and that the group is `D_n x C_2` rather than a
+    // `4n`-element group of pitch-class operations, because R acts on the order
+    // positions and T/I act on the pitch classes. `RowOp` is that product
+    // written down, and the two functions are `std::algebra`'s `orbit` and
+    // `stabilizer` at this action and nothing else.
 
-    // The order positions whose pitch class already appeared earlier, asked
-    // on their own. The first occurrence is not among them, because that is
-    // where the pitch class belongs.
-    fn repeated_positions(pcs: List<Pc12>) -> List<Nat> { row12_repeats(pcs) }
-
-    // The pitch classes a sequence never names, ascending, asked on their
-    // own. A sequence of the right length has one of these lists empty
-    // exactly when it has the other empty.
-    fn missing_classes(pcs: List<Pc12>) -> List<Pc12> { row12_missing(pcs) }
-
-    // The row's pitch classes, in order position order.
-    fn pcs_of(series: Row12) -> List<Pc12> { row12_pcs(series) }
-
-    // P: transposition by n semitones, order positions untouched.
-    fn transposed(series: Row12, index: Nat) -> Row12 { row12_transposed(series, index) }
-
-    // I: inversion about n, order positions untouched.
-    fn inverted(series: Row12, index: Nat) -> Row12 { row12_inverted(series, index) }
-
-    // R: the order positions reversed, pitch classes untouched. An
-    // involution, and it commutes with P and I because it acts on the other
-    // side of the row.
-    fn retrograde_of(series: Row12) -> Row12 { row12_retrograde(series) }
-
-    // RI: the retrograde of the inversion, which is also the inversion of
-    // the retrograde. Writing it both ways and getting one row is what
-    // "commutes" means here.
-    fn retrograde_inversion_of(series: Row12, index: Nat) -> Row12 {
-        row12_retrograde(row12_inverted(series, index))
+    // One labelled form: what happens to the pitch classes, and whether the
+    // order positions are reversed.
+    //
+    // P is `Form(Transpose(i), false)`, I is `Form(Invert(j), false)`, R is the
+    // same two with `true`. The four labels are this pair and not four cases,
+    // which is what makes R commute with P and I — they act on different sides
+    // of the row.
+    data RowOp {
+        Form(pitches: Ti, reversed: Bool),
     }
 
-    // The twelve-tone matrix, as twelve rows. Row zero is the row as
-    // written; row i is the transposition beginning on the ith pitch class
-    // of the inversion about the row's own head, so every column read
-    // downward is an inversion. The construction fixes no naming convention,
-    // because the rows are rows and not labels: which transposition is
-    // called P0 is the question the two functions below answer, differently
-    // and by name.
-    fn matrix(series: Row12) -> List<Row12> { row12_matrix(series) }
-
-    // The transposition index under the fixed-zero convention: P0 is the
-    // form beginning on pitch class zero, so a row's index is simply the
-    // number of the pitch class it begins on.
-    fn fixed_zero_index(series: Row12) -> Nat { pc12_number(first_pc(series)) }
-
-    // The transposition index under the moveable-zero convention: P0 is the
-    // row as written, so an index is only meaningful relative to a stated
-    // reference row. `moveable_zero_index(reference, form)` is how far the
-    // form stands above the reference.
-    fn moveable_zero_index(reference: Row12, form: Row12) -> Nat {
-        pc12_number(pc12_inverted(first_pc(reference), pc12_number(first_pc(form))))
+    // Both exact reasons a sequence is not a row: the order positions that
+    // repeat an earlier pitch class, and the pitch classes the sequence never
+    // names.
+    //
+    // Both, rather than a choice between them, because a sequence of the wrong
+    // length can have either without the other — and one `data` rather than a
+    // pair of lists, because the two halves are one musical fact and a pair
+    // would let a caller take one half and forget it had the other.
+    data RowFault {
+        Fault(repeats: List<Nat>, missing: List<Nat>),
     }
 
-    // How many *distinct* rows the 48 labelled forms produce. Forty-eight
-    // for a generic row; fewer for a row some labelled operation fixes.
-    fn distinct_forms(series: Row12) -> Nat { row12_forms(series) }
+    // A sequence naming every pitch class of its division exactly once.
+    //
+    // The case is `private`: `row` checks, and nothing else can build one, so
+    // every operation below may be total.
+    //
+    // `ToneRow` and not `Row`, because `std::indexed` already publishes `Row<A>(n)`
+    // for a vector of a known length, and the two are different objects — one is
+    // a bijection onto the pitch classes, the other is any `n` values at all. The
+    // domain word is the one that gives way, since a matrix row is the reading a
+    // reader of `std::indexed` would expect from the shorter name.
+    data ToneRow(n: Nat) {
+        private Series(division: Nat, numbers: List<Nat>): (division),
+    }
 
-    // The order of the row's stabilizer: how many of the 48 labelled
-    // operations send the row to itself. This times `distinct_forms` is
-    // always 48, which is the orbit-stabilizer accounting the four labels
-    // are so often asked to do on their own.
-    fn symmetries(series: Row12) -> Nat { row12_symmetries(series) }
+    // Whether `value` is somewhere in `among`.
+    private fn found_in(value: Nat, among: List<Nat>) -> Bool {
+        any(fn (seen: Nat) -> Bool { seen == value }, among)
+    }
 
-    // Spell one row inside a collection, position by position. A pitch class
-    // the collection cannot spell is absent, and the row keeps its length,
-    // so a projection that lost notes is visible as the gaps it left.
-    fn row_spelled_in(series: Row12, collection: Scale) -> List<Option<NoteName>> {
-        map(
-            fn (member: Pc12) -> Option<NoteName> { spelling_in(collection, member) },
-            row12_pcs(series),
+    // The order positions of `numbers`, from `position` on, whose pitch class
+    // stood in `seen` already.
+    private fn repeats_from(position: Nat, seen: List<Nat>, numbers: List<Nat>) -> List<Nat> {
+        match numbers {
+            [] -> [],
+            [head, .. others] -> if found_in(head, seen) {
+                Cons(position, repeats_from(Succ(position), Cons(head, seen), others))
+            } else { repeats_from(Succ(position), Cons(head, seen), others) },
+        }
+    }
+
+    // The order positions whose pitch class already appeared earlier.
+    //
+    // The first occurrence is not among them, because that is where the pitch
+    // class belongs.
+    fn repeated_positions(numbers: List<Nat>) -> List<Nat> { repeats_from(0, [], numbers) }
+
+    // The pitch classes a sequence never names, ascending.
+    //
+    // A sequence of the right length has one of these lists empty exactly when
+    // it has the other empty.
+    fn missing_classes(n: Nat, cycle: Cycle(n), numbers: List<Nat>) -> List<Nat> {
+        filter(
+            fn (candidate: Nat) -> Bool {
+                if found_in(candidate, numbers) {
+                    false
+                } else { true }
+            },
+            range(size_of(n, cycle)),
         )
     }
 
-    // The spelling policy of one collection, as a function a row can be
-    // carried across.
-    fn spelling_in(collection: Scale, member: Pc12) -> Option<NoteName> {
-        pc12_spelled(member, collection)
+    // The row a sequence spells, or both exact reasons it is not one.
+    //
+    // The numbers are reduced into the division first, so `12` and `0` are the
+    // same pitch class here as everywhere else and a sequence is not refused for
+    // spelling one of its classes the long way round.
+    fn row(n: Nat, cycle: Cycle(n), numbers: List<Nat>) -> Result<ToneRow(n), RowFault> {
+        let reduced: List<Nat> = map(
+            fn (number: Nat) -> Nat { number_of(n, place_in(n, cycle, number)) },
+            numbers,
+        );
+        let repeats: List<Nat> = repeated_positions(reduced);
+        let missing: List<Nat> = missing_classes(n, cycle, reduced);
+        if length(repeats) == 0 {
+            if length(missing) == 0 {
+                Ok(Series(n, reduced))
+            } else { Err(Fault(repeats, missing)) }
+        } else { Err(Fault(repeats, missing)) }
     }
 
-    // The pitch class a row begins on. Order position zero always exists,
-    // because a row has twelve of them.
-    fn first_pc(series: Row12) -> Pc12 { row12_head(series) }
+    // The row's pitch classes as numbers, in order-position order.
+    fn row_numbers(n: Nat, series: ToneRow(n)) -> List<Nat> {
+        match series {
+            Series(division, numbers) -> numbers,
+        }
+    }
+
+    // The row's pitch classes, in order-position order.
+    fn row_pcs(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<Pc(n)> {
+        pcs(n, cycle, row_numbers(n, series))
+    }
+
+    // The pitch class a row begins on, as a number. Order position zero always
+    // exists, because a row has one position per pitch class and there is at
+    // least one.
+    fn first_number(n: Nat, series: ToneRow(n)) -> Nat {
+        match row_numbers(n, series) {
+            [] -> 0,
+            [head, .. others] -> head,
+        }
+    }
+
+    // One labelled operation, applied to the row.
+    //
+    // Total by construction: relabelling the pitch classes by a bijection and
+    // permuting the order positions each send a row to a row.
+    fn row_moved(n: Nat, cycle: Cycle(n), series: ToneRow(n), by: RowOp) -> ToneRow(n) {
+        match by {
+            Form(pitches, reversed) -> Series(
+                n,
+                order_of(
+                    reversed,
+                    map(
+                        fn (number: Nat) -> Nat { number_moved(n, cycle, number, pitches) },
+                        row_numbers(n, series),
+                    ),
+                ),
+            ),
+        }
+    }
+
+    // The order positions, reversed or not.
+    private fn order_of(reversed: Bool, numbers: List<Nat>) -> List<Nat> {
+        if reversed {
+            reverse(numbers)
+        } else { numbers }
+    }
+
+    // P: transposition by `index`, order positions untouched.
+    fn row_transposed(n: Nat, cycle: Cycle(n), series: ToneRow(n), index: Nat) -> ToneRow(n) {
+        row_moved(n, cycle, series, Form(Transpose(index), false))
+    }
+
+    // I: inversion about `index`, order positions untouched.
+    fn row_inverted(n: Nat, cycle: Cycle(n), series: ToneRow(n), index: Nat) -> ToneRow(n) {
+        row_moved(n, cycle, series, Form(Invert(index), false))
+    }
+
+    // R: the order positions reversed, pitch classes untouched.
+    //
+    // An involution, and it commutes with P and I because it acts on the other
+    // side of the row — which is exactly what `RowOp`'s two fields say.
+    fn row_retrograde(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> ToneRow(n) {
+        row_moved(n, cycle, series, Form(Transpose(0), true))
+    }
+
+    // RI: the retrograde of the inversion, which is also the inversion of the
+    // retrograde. Writing it both ways and getting one row is what "commutes"
+    // means here.
+    fn row_retrograde_inversion(
+        n: Nat,
+        cycle: Cycle(n),
+        series: ToneRow(n),
+        index: Nat,
+    ) -> ToneRow(n) { row_moved(n, cycle, series, Form(Invert(index), true)) }
+
+    // Whether two rows of one division are the same row.
+    fn same_row(n: Nat, left: ToneRow(n), right: ToneRow(n)) -> Bool {
+        same_order(row_numbers(n, left), row_numbers(n, right))
+    }
+
+    // Whether two sequences agree position by position.
+    private fn same_order(left: List<Nat>, right: List<Nat>) -> Bool {
+        match left {
+            [] -> match right {
+                [] -> true,
+                [head, .. others] -> false,
+            },
+            [head, .. others] -> match right {
+                [] -> false,
+                [other, .. remaining] -> if head == other {
+                    same_order(others, remaining)
+                } else { false },
+            },
+        }
+    }
+
+    // The labelled group acting on rows.
+    fn row_action(n: Nat, cycle: Cycle(n)) -> Action<ToneRow(n), RowOp> {
+        Action {
+            act = fn (series: ToneRow(n), by: RowOp) -> ToneRow(n) {
+                row_moved(n, cycle, series, by)
+            }
+        }
+    }
+
+    // Every labelled form there is: `4n` of them, each T/I read forward and
+    // backward. How many *rows* that is depends on the row, which is what
+    // `distinct_forms` counts.
+    fn row_operations(n: Nat, cycle: Cycle(n)) -> List<RowOp> {
+        concat(
+            map(fn (pitches: Ti) -> RowOp { Form(pitches, false) }, ti_operations(n, cycle)),
+            map(fn (pitches: Ti) -> RowOp { Form(pitches, true) }, ti_operations(n, cycle)),
+        )
+    }
+
+    // The distinct rows the labelled forms produce.
+    //
+    // An orbit, and `52-the-musical-algebra.md` §2.3's point: this was a builtin
+    // that counted, and it is the length of a list the library can now build.
+    fn row_forms(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<ToneRow(n)> {
+        orbit(
+            row_action(n, cycle),
+            fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { same_row(n, left, right) },
+            row_operations(n, cycle),
+            series,
+        )
+    }
+
+    // How many *distinct* rows the labelled forms produce. `4n` for a generic
+    // row; fewer for a row some labelled operation fixes.
+    fn distinct_forms(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> Nat {
+        length(row_forms(n, cycle, series))
+    }
+
+    // The labelled operations that send the row to itself.
+    //
+    // Its length times `distinct_forms` is `4n`, which is the orbit-stabilizer
+    // accounting the four labels are so often asked to do on their own.
+    fn row_symmetries(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<RowOp> {
+        stabilizer(
+            row_action(n, cycle),
+            fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { same_row(n, left, right) },
+            row_operations(n, cycle),
+            series,
+        )
+    }
+
+    // The row transposed to begin on `start`.
+    private fn starting_on(
+        n: Nat,
+        cycle: Cycle(n),
+        series: ToneRow(n),
+        start: Nat,
+    ) -> ToneRow(n) {
+        row_transposed(n, cycle, series, minus_in(n, cycle, start, first_number(n, series)))
+    }
+
+    // The row matrix, as one row per order position.
+    //
+    // Row zero is the row as written; row i is the transposition beginning on
+    // the ith pitch class of the inversion about the row's own head, so every
+    // column read downward is an inversion. The construction fixes no naming
+    // convention, because the rows are rows and not labels: which transposition
+    // is called P0 is the question the two functions below answer, differently
+    // and by name.
+    fn matrix(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<ToneRow(n)> {
+        let head: Nat = first_number(n, series);
+        let leftmost: ToneRow(n) = row_inverted(
+            n,
+            cycle,
+            series,
+            plus_in(n, cycle, head, head),
+        );
+        map(
+            fn (start: Nat) -> ToneRow(n) { starting_on(n, cycle, series, start) },
+            row_numbers(n, leftmost),
+        )
+    }
+
+    // The transposition index under the fixed-zero convention: P0 is the form
+    // beginning on pitch class zero, so a row's index is simply the number of
+    // the pitch class it begins on.
+    fn fixed_zero_index(n: Nat, series: ToneRow(n)) -> Nat { first_number(n, series) }
+
+    // The transposition index under the moveable-zero convention: P0 is the row
+    // as written, so an index is only meaningful relative to a stated reference
+    // row. `moveable_zero_index(reference, form)` is how far the form stands
+    // above the reference.
+    fn moveable_zero_index(
+        n: Nat,
+        cycle: Cycle(n),
+        reference: ToneRow(n),
+        form: ToneRow(n),
+    ) -> Nat { minus_in(n, cycle, first_number(n, form), first_number(n, reference)) }
+
+    // Spell one row inside a collection, position by position.
+    //
+    // A pitch class the collection cannot spell is absent, and the row keeps its
+    // length, so a projection that lost notes is visible as the gaps it left.
+    // At twelve, because a spelling is.
+    fn row_spelled_in(series: ToneRow(12), collection: Scale) -> List<Option<NoteName>> {
+        map(
+            fn (member: Pc(12)) -> Option<NoteName> { spelled_in(member, collection) },
+            row_pcs(12, chromatic, series),
+        )
+    }
 }

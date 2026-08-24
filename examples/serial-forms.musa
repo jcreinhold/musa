@@ -1,105 +1,147 @@
-// Pitch-class sets and twelve-tone rows are an algebra over `pc12 = Z/12Z`,
-// and `pc12` is not a spelling. Every value below forgets which letter a note
-// was written with; the only way back into notation is `spelled_in`, which
-// takes the collection that decides the spelling and answers nothing where
-// that collection has no such note.
+// A row is an ordering of pitch classes, and a pitch class is not a spelling.
 //
-// The four row labels P, I, R, and RI are 24 affine operations on pitch
-// classes times one reversal of order positions. That is `D12 x C2` and at
-// most 48 labelled forms, not one 48-element group: `generic_forms` below is
-// 48 and `chromatic_forms` is 24, and each one times its own stabilizer is 48.
+// Open Music Theory's `108-basics-of-twelve-tone-theory.md` asks for a row —
+// each pitch class once, in an order — before it asks for anything else, and
+// `109-naming-conventions-for-rows.md` names the four things that can be done
+// to one: prime, inversion, retrograde, and retrograde inversion. This file
+// builds a row, shows what makes a list of numbers fail to be one, and applies
+// each of those four as a single operation.
+//
+// Every value below has forgotten which letter a note was written with. The
+// only way back into notation is `row_spelled_in`, which takes the collection
+// that decides the spelling and answers nothing where that collection has no
+// such note.
+//
+// **Where this stops.** `110-row-properties.md` counts the labelled forms — the
+// 4n of them, the matrix, and the operations that fix a row — and those cost
+// more reduction steps than `02-core-calculus.md` §4's budget allows today.
+// `row_forms`, `distinct_forms`, `row_symmetries`, and `matrix` are in
+// `std::post_tonal::serial` and are prompt 165's to exercise. What is here is
+// what one operation costs.
 piece "Serial Forms" {
-    import std::post_tonal::pcset;
+    import std::cyclic;
+    import std::indexed;
+    import std::list;
     import std::post_tonal::serial;
 
     // A row is written as twelve numbers because a row has no spelling to
-    // write. `pc` reduces modulo twelve, so this list is twelve residues.
-    let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
+    // write. The numbers are reduced into the division, so this list is twelve
+    // residues.
+    let generic_numbers: List<Nat> = [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7];
 
-    // The only way into `row12`, and it can fail: twelve entries, each pitch
-    // class once. The failure carries its own reason, so a caller that has
-    // the failure never has to ask the question again to learn why.
-    let generic: Result<Row12, RowFault> = row(generic_pcs);
+    // The only way into `ToneRow(12)`, and it can fail: one entry per pitch
+    // class, each pitch class once. The failure carries its own reason, so a
+    // caller that has the failure never has to ask the question again to learn
+    // why.
+    let generic: Result<ToneRow(12), RowFault> = row(12, chromatic, generic_numbers);
+    let generic_is_row: Equal<Bool>(is_row(generic), true) = Refl(true);
 
-    // The ascending chromatic row, which is a row and is also symmetric: the
-    // retrograde inversion about eleven sends it to itself.
-    let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    let chromatic: Result<Row12, RowFault> = row(chromatic_pcs);
+    // Not a row, and the reason says which two ways: the position that repeated
+    // and the pitch class that never arrived.
+    let flawed_numbers: List<Nat> = [0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3];
+    let flawed: Result<ToneRow(12), RowFault> = row(12, chromatic, flawed_numbers);
+    let flawed_is_row: Equal<Bool>(is_row(flawed), false) = Refl(false);
+    let flawed_repeats: Equal<List<Nat>>(repeated_positions(flawed_numbers), [3]) = Refl([3]);
+    let flawed_missing: Equal<List<Nat>>(missing_classes(12, chromatic, flawed_numbers), [
+        11,
+    ]) = Refl([11]);
 
-    // Not a row, and the `Err` says which two ways: the position that
-    // repeated and the pitch class that never arrived — `[3]` and `[11]`.
-    // Asked separately here, because a pattern binds the reason whole.
-    let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
-    let flawed: Result<Row12, RowFault> = row(flawed_pcs);
-    let flawed_is_row: Bool = match flawed {
-        Ok(series) -> true,
-        Err(reason) -> false,
-    };
-    let flawed_repeats: List<Nat> = repeated_positions(flawed_pcs);
-    let flawed_missing: List<Pc12> = missing_classes(flawed_pcs);
+    // # The four labels, one operation each
 
-    // How many distinct rows the 48 labels produce, and how many of the 48
-    // fix the row. The product is 48 in both cases; the factors are not the
-    // same, which is why neither is assumed.
-    fn form_count(series: Row12) -> Nat { distinct_forms(series) }
-    fn symmetry_count(series: Row12) -> Nat { symmetries(series) }
+    // P₃: every pitch class transposed by three, order unchanged.
+    let prime_three: Equal<List<Nat>>(form(
+        generic,
+        fn (series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) },
+    ), [3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10],) = Refl([3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10]);
 
-    let generic_forms: Nat = match generic {
-        Ok(series) -> form_count(series),
-        Err(reason) -> 0,
-    };
-    let generic_symmetries: Nat = match generic {
-        Ok(series) -> symmetry_count(series),
-        Err(reason) -> 0,
-    };
-    let chromatic_forms: Nat = match chromatic {
-        Ok(series) -> form_count(series),
-        Err(reason) -> 0,
-    };
-    let chromatic_symmetries: Nat = match chromatic {
-        Ok(series) -> symmetry_count(series),
-        Err(reason) -> 0,
-    };
+    // I₀: every pitch class reflected through zero, order unchanged.
+    let inversion_zero: Equal<List<Nat>>(form(
+        generic,
+        fn (series: ToneRow(12)) -> ToneRow(12) { row_inverted(12, chromatic, series, 0) },
+    ), [0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5],) = Refl([0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5]);
 
-    // The matrix: twelve rows, row zero the row as written, each column read
-    // downward an inversion. The construction names no convention, so the
-    // index a form is *called* is asked for separately and by name.
-    fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
-    let generic_matrix: List<Row12> = match generic {
-        Ok(series) -> matrix_of(series),
-        Err(reason) -> [],
-    };
+    // R: the order reversed, the pitch classes untouched. The two axes are
+    // independent, which is why the labels multiply rather than add.
+    let retrograde_form: Equal<List<Nat>>(form(
+        generic,
+        fn (series: ToneRow(12)) -> ToneRow(12) { row_retrograde(12, chromatic, series) },
+    ), [7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0],) = Refl([7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0]);
 
-    fn fixed_zero(series: Row12) -> Nat { fixed_zero_index(series) }
-    let generic_fixed_zero: Nat = match generic {
-        Ok(series) -> fixed_zero(series),
-        Err(reason) -> 0,
-    };
+    // RI₀: both at once, which is the chapter's fourth label and not a fifth
+    // kind of thing.
+    let retrograde_inversion_form: Equal<List<Nat>>(form(
+        generic,
+        fn (series: ToneRow(12)) -> ToneRow(12) {
+            row_retrograde_inversion(12, chromatic, series, 0)
+        },
+    ), [5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0],) = Refl([5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0]);
+
+    // A row a label sends to itself. The ascending chromatic row is fixed by
+    // the retrograde inversion about eleven — one operation, so it fits here;
+    // counting *all* the operations that fix a row is `110`'s question and
+    // prompt 165's.
+    let ascending: Result<ToneRow(12), RowFault> = row(12, chromatic, [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+    ]);
+    let ascending_is_symmetric: Equal<Bool>(alike(
+        ascending,
+        fn (series: ToneRow(12)) -> ToneRow(12) {
+            row_retrograde_inversion(12, chromatic, series, 11)
+        },
+    ), true,) = Refl(true);
 
     // The spelling projection, and it is not a coercion. C major spells seven
     // of the twelve classes and nothing else, so five positions come back
     // absent — the loss is in the value, where it can be seen.
-    fn in_c_major(series: Row12) -> List<Option<NoteName>> {
-        row_spelled_in(series, scale c major)
-    }
     let generic_in_c_major: List<Option<NoteName>> = match generic {
-        Ok(series) -> in_c_major(series),
+        Ok(series) -> row_spelled_in(series, scale c major),
         Err(reason) -> [],
     };
 
-    // Sets forget order as well as spelling. This is the row's first
-    // tetrachord as a set: its normal order, its prime form, and its
-    // interval-class vector are facts about the set class, not the ordering.
-    let head_set: PcSet12 = pcset(pcs([0, 1, 4, 9]));
-    let head_normal: List<Pc12> = normal_order(head_set);
-    let head_prime: PcSet12 = prime_form(head_set);
-    let head_vector: List<Nat> = interval_class_vector(head_set);
+    // # The helpers, which say nothing new
 
-    // Transposition and inversion act on the set as they act on its members,
-    // and a set class is what survives both.
-    let head_up_three: PcSet12 = set_transposed(head_set, 3);
-    let head_mirrored: PcSet12 = set_inverted(head_set, 0);
-    let mirrored_prime: PcSet12 = prime_form(head_mirrored);
+    // Whether a list of numbers was a row.
+    fn is_row(built: Result<ToneRow(12), RowFault>) -> Bool {
+        match built {
+            Ok(series) -> true,
+            Err(reason) -> false,
+        }
+    }
+
+    // One operation applied to a row, read back as the numbers `109` writes.
+    // The empty list stands for the row that was never built, which the
+    // assertions above have already ruled out.
+    fn form(
+        built: Result<ToneRow(12), RowFault>,
+        operation: ToneRow(12) -> ToneRow(12),
+    ) -> List<Nat> {
+        match built {
+            Ok(series) -> row_numbers(12, operation(series)),
+            Err(reason) -> [],
+        }
+    }
+
+    // Whether an operation returns a row to itself.
+    fn alike(
+        built: Result<ToneRow(12), RowFault>,
+        operation: ToneRow(12) -> ToneRow(12),
+    ) -> Bool {
+        match built {
+            Ok(series) -> same_row(12, operation(series), series),
+            Err(reason) -> false,
+        }
+    }
 
     meter 4/4;
 

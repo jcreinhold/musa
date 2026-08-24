@@ -50,7 +50,7 @@ pub struct ItemSource {
 /// A type as a reader meets it: the name, and the one line that distinguishes
 /// it from the type it is most often confused with.
 ///
-/// The distinction is the point. `NoteName` and `Pc12` are both "a pitch
+/// The distinction is the point. `NoteName` and `Pc(12)` are both "a pitch
 /// class" in ordinary speech and are different objects in this language —
 /// spelled versus modulo twelve — and the same is true of `Key` against
 /// `Scale` and `ChordClass` against `Voicing`. The sentences come from

@@ -475,11 +475,11 @@ fn crossing(expected: &musa_calculus::Term, found: &musa_calculus::Term) -> Opti
             "`degree_in(collection, written)` locates a pitch in a collection, and is absent when \
              it is not a member"
         }
-        (Some("PitchClass"), Some("Pc12")) => {
-            "a `Pc12` has forgotten its spelling: `spelled_in` chooses one back, against the \
+        (Some("PitchClass"), Some("Pc")) => {
+            "a `Pc(n)` has forgotten its spelling: `spelled_in` chooses one back, against the \
              collection that decides it"
         }
-        (Some("Pc12"), Some("PitchClass")) => "`forget_spelling` is the map into `Pc12`, and it is total",
+        (Some("Pc"), Some("PitchClass")) => "`forget_spelling` is the map into `Pc(12)`, and it is total",
         (Some("Scale"), Some("Key")) => {
             "a key is not a collection — C minor is three of them: `key_scale` takes the \
              signature's own collection, or name the one you mean"
