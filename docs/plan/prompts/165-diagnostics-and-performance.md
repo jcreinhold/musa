@@ -295,6 +295,45 @@ What neither may do is stay unnamed.
 > six-hundred-element list into a `Datum` and building one back — so the wall is not the adapter's shape and could not
 > have been. The repair is the one this paragraph named, and it is [165b](165b-graph-update-and-data-descent.md)'s.
 > `core-pressure` stays this prompt's to re-measure once that lands.
+>
+> **Re-measured, and half of the paragraph above was wrong.** 165b landed and `core-pressure` is green — it compiles and
+> denotes 8 of 8 events, so the nesting wall was data descent exactly as note 59 said. The tonal half did not close and
+> never had. `diatonic-sequences` refuses at **200,001 of 200,000 reduction steps** today, and it refuses identically on
+> a worktree at `7cf258e0`, the very tree the paragraph above measured. The paragraph read a failure *list* for a test
+> named after the example, and no such test exists: the example's budget failure surfaces under
+> `musa::cli wav_export_is_deterministic_for_all_examples`, which is one of the 31. `rule-of-the-octave` did close, and
+> closed on its own. So the obligation is half discharged by measurement and half still owed, and the owed half is a
+> single example.
+>
+> **What the four `--run-ignored all` failures actually are**, measured at `5603d149` with
+> `cargo nextest run --workspace --run-ignored all`:
+>
+> | Failure | What it says |
+> | --- | --- |
+> | `elaboration_fixture_generators::the_pressure_workloads_compile_and_denote_what_they_claim` | four separate claims, below |
+> | `large_score_generators::large_score_fixture_is_current` | `evaluation exceeded the budget for reduction steps at 200001 of 200000` |
+> | `large_score_generators::large_score_is_the_size_the_budgets_assume` | the same fixture, the same wall |
+> | `musa::cli wav_export_is_deterministic_for_all_examples` | `examples/diatonic-sequences.musa` at the same wall |
+>
+> and the pressure workloads decompose, measured by compiling all five rather than stopping at the first:
+>
+> | Workload | Today |
+> | --- | --- |
+> | `core-pressure` | **passes**, 8 of 8 events — 165b closed it |
+> | `template-pressure` | three `` `step` needs a scale it can count `` readings |
+> | `analysis-pressure` | `canonical data exceeded the budget for reduction steps at 200001 of 200000` |
+> | `events-pressure` | denotes 288 of a claimed 352 |
+> | `events-document-pressure` | denotes 80 of a claimed 1280 |
+>
+> Three of those are one wall — the step budget — and are the class this prompt already owns. The other two are claims
+> about a *fixture*, not about the checker, and the distinction matters for **Stop**: `musa events` on
+> `tests/fixtures/events-pressure.musa` prints **352** note occurrences, so the event track denotes what the comment
+> says and what differs is the count taken from the score's voices. `template-pressure` is the same kind of thing seen
+> from the other side — the generator writes `in scale home.collection` around a `step`, where `home` is a *parameter*,
+> and `00-semantics.md` says `in scale` "is resolved while pitches are resolved — before any track value exists", so no
+> value for that projection exists at the moment `step` must count. The diagnostic is right and the fixture asks for
+> something the architecture forbids. **Both are therefore this prompt's to repair in the generator**, which changes no
+> acceptance and keeps **Stop**'s first line intact; neither is licence to change what `in scale` means.
 
 > **Finding C landed early, out of stack order.** The audit's first two items — glued evaluation and its representation,
 > `Head::Def` with both forms — were this prompt's until the migration measured them. Elaborating
@@ -348,9 +387,14 @@ is acceptable — and never a quietly raised threshold.
   and any acceptance flip landed as an argued cost-table version bump in `02-core-calculus.md` §4 rather than a quiet
   one. `cargo nextest run --workspace` with the staff class still red is the measurement that says "declined"; the class
   is 145's either way, and the memo's job is the wall clock and the step count, not the rewrite.
-- The tonal class closed: `diatonic-sequences` and `rule-of-the-octave` elaborating at the language budget, by a
-  measured `std::tonal` fix or an argued cost-table version bump, with the measurement recorded in
-  `docs/rules/language/06-elaboration-baseline.md` either way.
+- The tonal class closed: `diatonic-sequences` at the language budget, by a measured `std::tonal` fix or an argued
+  cost-table version bump, with the measurement recorded in `docs/rules/language/06-elaboration-baseline.md` either way.
+- `the_pressure_workloads_compile_and_denote_what_they_claim` green, and its `#[ignore]` doc comment restated at what
+  the finished tree measures rather than at what 142's close did. Two of its five claims are the *generator's* to
+  correct rather than the checker's, per the repair note in **Design**: `template-pressure` must not write a `step`
+  under an `in scale` whose collection is a parameter projection, and the two events workloads' claimed counts must be
+  the counts a score's voices actually take. Correcting a fixture's claim is not a behaviour change; changing what
+  `in scale` or a window *means* would be, and **Stop**'s first line still forbids it.
 - The post-tonal class closed, the same way and for the same reason. Prompt [164](164-builtin-collapse.md)'s Design
   records what the budget affords, bisected: ~525 reduction steps for one iteration of a `map` whose body is a single
   call to `fn same(x: Nat) -> Nat { x }`, ~1,750 for one `number_moved` at a division of twelve, and ~50,000 for one T/I
