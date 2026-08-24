@@ -1,7 +1,7 @@
 ---
 id: 163
 slug: laws-as-record-fields
-status: pending
+status: in-progress
 depends_on: [156, 157, 164]
 phase: 3
 ---
@@ -16,8 +16,8 @@ declarable and prompt 157 made a structure an ordinary record, so the evidence e
 thing the evidence would be attached to: **nothing in the corpus constructs a `Group`, an `Action`, or a `Torsor`.** The
 three records are declared in `algebra.musa` and are named nowhere else, and their carriers — `Interval`, `Pitch`,
 `NoteName`, `PitchClass` — are compiler base types with δ-rules and no eliminator. Prompt 164 is where both change:
-`Pc(n)` becomes a declared indexed family and `Group<Ti>`, `Action<Pc(n), Ti>`, and `Torsor<Pc(n), Ic(n)>` become
-instances. This prompt is where those instances gain their equations.
+`Pc(n)` becomes a declared indexed family and `Group<Ti>` and `Action<Pc(n), Ti>` become instances. This prompt is where
+those instances gain their equations — to the extent the fourth finding below leaves any.
 
 `depends_on` therefore names a *later* number, which the anatomy in [`README.md`](README.md) does not otherwise expect.
 Renumbering this prompt to sit after 164 is the tidier bookkeeping and the worse change: `02-core-calculus.md` names
@@ -30,7 +30,11 @@ plan file's number in order. The dependency is the fact; the number is a label.
 - `stdlib/src/indexed.musa` — `Equal` and `Refl` as prompt 156 left them, and the paragraph refusing tactics, proof
   search, and hints.
 - [`164`](164-builtin-collapse.md) — the prompt that supplies the carriers and the instances. Its Target names
-  `Group<Ti>`, `Action<Pc(n), Ti>`, `Torsor<Pc(n), Ic(n)>`, and `orbit`/`stabilizer` over a declared `Pc(n)`.
+  `Group<Ti>`, `Action<Pc(n), Ti>`, and `orbit`/`stabilizer` over a declared `Pc(n)`. **It names no `Torsor`**, and an
+  earlier statement of this prompt said it did: there is no `Ic(n)` in `stdlib/` and none was planned, so a
+  `Torsor<Pc(n), Ic(n)>` field has no instance to be a field of. `Torsor` keeps its one field and gains no law here.
+- [`note 61`](../../notes/research/language-design-closure/61-the-registry-survey.md) — which builtins 164 kept, and
+  why. The δ-rules over `Nat` are on the kept list, which is what the fourth finding below turns on.
 - `docs/rules/language/05-verification.md` §4 — the law suites that are currently the only place a law is written down,
   and §4.7 in particular, which states the pitch-action laws this prompt would move.
 - `docs/rules/language/01-surface.md` §1's grammar, `type` and `fn-type` — and `docs/rules/language/02-core-calculus.md`
@@ -108,16 +112,46 @@ that is *inhabitable* once it is spellable. Which brings the third finding.
 `PitchClass`, and `Triad` are compiler base types. Their operations are δ-rules that compute on canonical data and there
 is no case analysis to split an abstract element with, so `(x: Interval) -> Equal<Interval>(interval_add(x, P1), x)` has
 no inhabitant a Musa author can write — verified: `Refl(x)` is refused with *expected `interval_add #0 P1`, found `#0`*.
-There is no finite `data` carrier in `stdlib/` to induct over instead. This is exactly why the prompt now waits for 164:
-`Pc(n)` arrives there as a declared indexed family, and a law over a declared family is provable the way every other
-total function in this language is — by matching.
+There was no finite `data` carrier in `stdlib/` to induct over instead. This is why the prompt waits for 164: `Pc(n)`
+arrives there as a declared indexed family, and the expectation recorded here was that a law over a declared family is
+provable the way every other total function in this language is — by matching. **That expectation is measured false, and
+the fourth finding is why.**
+
+**Four: a declared carrier is not enough, because a δ-rule does not unfold on a neutral.** Measured against 164's
+commit, with `musa check` on four probe files:
+
+- The *mechanism* is sound and induction really does work. `cong` — `fn cong<A, B>(f: A -> B, x: A, y: A, same:
+  Equal<A>(x, y)) -> Equal<B>(f(x), f(y))`, whose body is one `match` on `Refl` — type-checks, and with it
+  `fn right_unit(x: Nat) -> Equal<Nat>(plus(x, Zero), x)` is provable by induction on `x`, for a `plus` written by
+  matching. Nothing about proof terms, records, or `Equal` is the obstacle.
+- The obstacle is `+`. `nat_add` is a builtin δ-rule
+  ([note 61](../../notes/research/language-design-closure/61-the-registry-survey.md) keeps it, because it hides the
+  representable range), and a δ-rule computes on *canonical* data only. So `fn add_zero(x: Nat) -> Equal<Nat>(x + 0, x)`
+  is refused with *expected `nat_add #0 0`, found `#0`*, and splitting `x` does not help: the `Succ` arm is refused with
+  *expected `nat_add (Nat.Succ #2) 0`*. `Nat` has constructors to match on and no arithmetic that steps under them.
+- Every law over 164's carriers passes through that arithmetic. `Action<Cyclic(n), Ti>`'s unit law is refused at
+  `Nat.add (number_of #2 #1) 0`; `Group<Ti>`'s left-unit law at `folded (size_of #4 #3) (Nat.add 0 #1) (Nat.add 0 #1)`;
+  `Action<Pc(n), Ti>`'s at `place_in #2 #1 (number_moved …)`. The carriers are declared; their operations are not.
+- `Ti`'s group laws are also *false* up to `Equal`, and that is not an accident of the encoding. `Ti` is deliberately
+  not indexed by the cycle (`cyclic.musa` says why: `T_3` is `T_3` in every division), so `Transpose(15)` and
+  `Transpose(3)` are one operation at twelve and two terms everywhere. The relation the laws hold up to is
+  `same_operation`, which is a `Bool` and not a proposition.
+- Closed instances still compute, exactly as finding one said: `Equal<Ti>(ti_compose(12, chromatic, Transpose(0),
+  Transpose(3)), Transpose(3))` is inhabited by `Refl(Transpose(3))` today, and so is the corresponding fact about
+  `class_moved`. What does not exist is the *quantified* form, which is the only form a law field has.
+
+So the decision the second finding poses resolves against the amendment, and for a reason that is not the one the
+decision anticipated: the blocker is not that a law field has no spelling. It is that no law field has an inhabitant, so
+a spelling would have nothing to hold. `01-surface.md` §1 is **not** amended here, `row_top`'s type stays unwritable,
+and the evidence for the named function type has to come from somewhere that is not this prompt.
 
 **Which laws those are, expected before the work starts.** The pitch-class group at a fixed modulus, the interval torsor
 over written pitch, and transposition as an action are the candidates, and each is a candidate only in the form 164
 leaves it in. The transformational laws with preconditions — PLR closing only after spelling is forgotten — become laws
 over `triad_classes`, which is the type the precondition was already carved into; note that `triad_classes` takes a
-`Triad`, so that law is quantified over a base type and is subject to finding three until 164 says otherwise. Anything
-not discharged is recorded as *not discharged*, with the reason, in the module.
+`Triad`, so that law is quantified over a base type and is subject to finding three, which 164 did not change — `Triad`
+is still a base type and still has no eliminator. Anything not discharged is recorded as *not discharged*, with the
+reason, in the module, and after the fourth finding that is all of them.
 
 **`05-verification.md` §4 does not go away.** A property test over generated values and a proof term are different
 evidence: one covers the concrete carriers the corpus actually uses, the other covers all of them. Where a law is
@@ -134,7 +168,8 @@ fields, not more apparatus. Record which way it went.
   that sentence with its three measurements behind it.
 - `docs/rules/language/01-surface.md` §1: the named function type, if and only if a law field turns out to be
   inhabitable — amended under `docs/rules/README.md`'s procedure, with `row_top`'s unwritable type as the second piece
-  of evidence, and with the parser, formatter, tree-sitter grammar, and lowering following it.
+  of evidence, and with the parser, formatter, tree-sitter grammar, and lowering following it. **The fourth finding
+  resolves this to no**: nothing is amended, and the reason is recorded where the amendment would have gone.
 - `stdlib/src/transformational.musa`: the PLR laws over `triad_classes`, to the extent 164's carriers make them
   provable.
 - `docs/rules/language/05-verification.md` §4: which laws are proved, which are tested, and why each is where it is.
