@@ -1,7 +1,7 @@
 ---
 id: 162d
 slug: or-patterns
-status: pending
+status: in-progress
 depends_on: [162c]
 phase: 3
 ---
@@ -38,8 +38,10 @@ include it.
 - `crates/musa-calculus/src/elaboration/case.rs`'s module documentation, and prompt
   [165](165-diagnostics-and-performance.md)'s Finding A — which prompt owns hoisting an arm's body out of the leaves it
   reaches, and the condition under which that is sound.
-- `stdlib/src/adapters/staff.musa`'s `clef_word`, `spelling_word`, and `tie_of`, and `stdlib/src/notation/staff.musa` —
-  the measured callers, so the Check can name lines that become fewer.
+- `stdlib/src/adapters/staff.musa`'s `said_of`, `form_span`, and `form_refusal` — the measured callers, so the Check can
+  name lines that become fewer. `clef_word` and `spelling_word` are *not* among them: their arms answer four different
+  words, so alternation has nothing to say about them, and `stdlib/src/notation/staff.musa` carries no run of identical
+  arms at all.
 
 ## Design
 
@@ -80,8 +82,8 @@ and the amendment says nothing new about it.
 - `editors/tree-sitter-musa` reads it, with a corpus entry.
 - Laws: an alternation answers what the several arms answered *and emits the same term*; a binding disagreement is
   refused; an alternation of all a family's constructors is exhaustive; a nested alternation parses.
-- One `stdlib/` caller converted as the evidence — `stdlib/src/notation/staff.musa`'s clef reader — with the line count
-  before and after in the commit message.
+- One `stdlib/` caller converted as the evidence — `stdlib/src/adapters/staff.musa`'s `said_of`, whose four arms bind
+  one name out of four constructors of different arities — with the line count before and after in the commit message.
 
 ## Check
 
@@ -112,6 +114,6 @@ Commit as `Let one arm answer for several constructors`.
 - No guards. `Bass | Tenor if …` is the conditional equation §1 refuses, and alternation is not the door for it.
 - No alternation in a *definition's* parameter list. There is still no pattern on the left of a definition.
 - No `..` and no wildcard constructor set. `_` already discards.
-- No sweep of `stdlib/`. One converted caller is the evidence; the adapters belong to prompts
+- No sweep of `stdlib/`. One converted caller is the evidence; everything else in the adapters belongs to prompts
   [166](166-staff-rewrite.md) and [167](167-studio-rewrite.md).
 - No change to what exhaustiveness means or to any diagnostic §6.2 names.
