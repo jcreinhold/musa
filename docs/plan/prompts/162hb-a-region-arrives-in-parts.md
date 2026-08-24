@@ -1,7 +1,7 @@
 ---
 id: 162hb
 slug: a-region-arrives-in-parts
-status: pending
+status: in-progress
 depends_on: [162ha]
 phase: 3
 ---
@@ -32,7 +32,13 @@ what makes `time 4/4` writable and the tie comparable by what was written rather
   group's children, so a pitch that becomes a fused group is *silently dropped* rather than diagnosed. Prompt 162ha
   measured it: 37 tests fail and the adapter refuses every region it is handed, saying "this staff field says nothing".
 - `stdlib/src/adapters/staff.musa` around the tie, the comment beginning "checked by spelling because a spelling is all
-  this adapter can see: `f5` tied to `f#5` is two texts" — the second thing the parts change.
+  this adapter can see: `f5` tied to `f#5` is two texts" — which reads like the same kind of workaround as the `time`
+  note and is **not** one. The parts partition the lexeme, so comparing the whole spellings *is* comparing the parts,
+  and the verdict is already right. What parts would buy is a message naming which part differs, and the Design says why
+  that is not this prompt's.
+- `crates/musa-compiler/src/registry/rules.rs`'s `SyntaxOp::Number` — the operation that reads `3/8` as an exact
+  rational, written against a `Token` and answering `None` for a group. `c5(3/8)` goes through it, so it moves with the
+  representation or the exact span stops being readable.
 - `crates/musa-compiler/tests/suite/staff_expansion_laws.rs` and `staff_writing_laws.rs` — the behaviour this rewrite
   must not move. **Those tests survive unchanged**, for prompt [166](166-staff-rewrite.md)'s reason: they were written
   against behaviour and not against implementation, so a rewrite that needs them edited has changed the adapter's
@@ -70,22 +76,22 @@ the lexer and there is no `PitchLiteral` for the parser to split, which 162ha me
 the adapter a pitch value either — `docs/rules/language/11-quotation.md` §2's "no operation reads a text as source"
 still holds, and a letter is a token like any other.
 
-**Measure the acceptance gate rather than assert it.** The commit message carries the adapter's line count before and
-after, and the count of `text_equal` comparisons the parts deleted. 166's gate was "dramatically shorter"; this is a
-smaller claim and it is still a number.
+**Measure rather than assert.** The commit message carries the adapter's line count before and after. This prompt adds a
+form rather than deleting one, so the number is expected to go up, and saying by how much is what keeps prompt 166's
+gate honest about what has happened to the file since it ran.
 
 ## Target
 
 - `read_node` reads the three composite literal nodes as fused groups, and 162ha's deferral comment comes out.
 - `read_region`'s doc comment says what an adapter now receives.
-- `stdlib/src/adapters/staff.musa` reads a fused group, and every existing law in
+- `SyntaxOp::Number` reads a fused group as the lexeme its parts spell, so `c5(3/8)` still names an exact span.
+- `stdlib/src/adapters/staff.musa` reads a fused group in all three of its states, and every existing law in
   `crates/musa-compiler/tests/suite/staff_expansion_laws.rs` and `staff_writing_laws.rs` passes **unchanged**.
 - `time 4/4` is admitted by the staff adapter, beside `time (4, 4)`, and the file-head's paragraph about why it could
-  not be is replaced by what it now does.
-- The tie compares parts rather than whole spellings, and its diagnostic names the part that differs.
+  not be is replaced by what it now does. The tie's comment is corrected to say that a spelling comparison is a part
+  comparison rather than a workaround for not having one.
 - Laws in `musa-compiler`: a region's `c#5` arrives as a fused group whose children are the letter, the accidental and
-  the octave; `time 4/4` and `time 1/1` are two different staves rather than one; a tie into a differently spelled note
-  is still refused, and the message names the accidental.
+  the octave; `time 4/4` and `time 1/1` are two different staves rather than one; `c5(3/8)` still names its exact span.
 - One `examples/` fixture writes `time 4/4`, so the form is a regression fixture and not only a law.
 
 ## Check
@@ -118,6 +124,8 @@ Commit as `Hand a region's literal over in parts, and read them in the staff`.
 - No second reading operation. A part is a token child and the fold reads it; nothing gains a way to ask for a pitch's
   accidental other than by looking at the child that is one.
 - No splice at a part, and no lexer change to make one possible. That is 162ha's measurement and it stands.
+- No part data in `Sound`, `Hanging` or `Voice`. The tie's verdict is already right and its message is not worth that
+  change; a prompt that wants the better sentence can have it later.
 - No change to `Delimiter`, to the gate, or to `11-quotation.md` — 162ha owns all three and this prompt consumes them.
 - No new staff notation. `time 4/4` is a spelling of a form the adapter already has; a form it does not have is not this
   prompt's.
