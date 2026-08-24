@@ -2,7 +2,7 @@
 id: 164
 slug: builtin-collapse
 status: pending
-depends_on: [156, 166]
+depends_on: [156, 162b, 166]
 phase: 3
 ---
 
@@ -80,6 +80,10 @@ staff budget class, which is 166's to deliver.
   row's symmetries are orbit and stabilizer and nothing else; §5 is what the index buys, counted. §5's falsifier — the
   post-tonal rewrite for arbitrary n, substantially shorter than today's 213 lines plus 17 builtins — is this prompt's
   to pass or to fail.
+- Prompt [162b](162b-parameterized-record-literals.md), which this prompt now depends on. `Group<Ti>`,
+  `Action<Pc(n), Ti>`, and `Torsor<Pc(n), Ic(n)>` are parameterized records, and until 162b runs a parameterized record
+  can be declared and not constructed — which is why `stdlib/src/algebra.musa` declares all three and builds none of
+  them. The measurement paragraph in the Design below is the evidence.
 - The `rust-performance` skill's workflow, and `docs/rules/language/06-elaboration-baseline.md`'s P1/P2 baseline. A
   dictionary indirection where there used to be a direct call is exactly the kind of change that is invisible in a
   microbenchmark and visible in a pipeline.
@@ -97,6 +101,30 @@ written with. So none of this prompt's work is a change to `musa-compiler`'s low
 `mul`, `div`, and `at` are the names those readings already write, and at a `Nat` receiver nothing declares any of them
 — `1 == 1` today is `no method 'equal' for 'Nat'`. What this prompt adds is the `impl` blocks that declare them on each
 carrier, and a collapsed entry is measured by an operator that resolves rather than by a table that shrank.
+
+**What a first attempt measured, so the second does not re-derive it.** The method layer of this prompt was built, run,
+and reverted; these are its findings and they are the plan for the retry, not background.
+
+- *The method tables work and the whole operator layer resolves.* `equal`, `less`, `add`, `sub`, `mul`, `div`, `of`,
+  `ratio`, `between`, `join` and `List.at` declared as namespace members on their carriers make `1 == 1`, `a + b`,
+  `Duration::of(3/8)` and `xs[i]` resolve, with the compiler suite green at 876 of 876.
+- *A one-word namespace member steals the bare registry spelling of the same name.* Name resolution in
+  `crates/musa-calculus/src/elaboration/elab/name.rs` tries namespace members **before** the host registry, so declaring
+  `Position.shift` captured the bare `shift` the track builtins register, and nineteen staff laws failed with "expected
+  `Position WrittenTime`, found `Duration WrittenTime`" at a site that had never mentioned `Position`. The collision is
+  silent until a type mismatch surfaces somewhere else entirely. Two entries hit it: `Position.shift` is not declared at
+  all — `algebra.musa`'s `Position.act` is the same δ-rule under the structure's own name — and `Duration.scale` is
+  declared as `Duration.mul`, because `examples/glass-mountain.musa` writes `scale(250 Hz)` at the DSP. Every entry this
+  prompt declares must be checked against the bare registry spellings before it is added.
+- *Indexed matching refines the goal and not the context.* Matching a constructor of an indexed family refines the type
+  being built but leaves the types already in scope alone, so a carrier that indexes on a variable a pattern binds does
+  not typecheck. Matching a plain `Nat` parameter *does* refine an index that mentions it. The consequence for this
+  prompt: `Ti` is **not** indexed — `data Ti { Transpose(steps: Nat), Invert(about: Nat) }` — which is also the better
+  reading, since T₃ is T₃ in every division; and a helper that needs to count through an index takes the index as an
+  ordinary parameter rather than binding it in a pattern.
+- *A parameterized record cannot be constructed, and that is the blocker.* `Action { act = … }` is refused with "this
+  stands where a type is needed, but it is not one", which is why `stdlib/src/algebra.musa` declares `Group<G>`,
+  `Action<X, G>` and `Torsor<P, V>` and never builds one. Prompt 162b closes it and is now a dependency.
 
 **Some entries move to `stdlib/` rather than disappearing.** An operation that a library can now express belongs in the
 library, written in Musa, where it can be read and improved. Say which moved, and check that the moved version is
