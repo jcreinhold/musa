@@ -173,6 +173,14 @@ pub(crate) fn program(cx: &Cx, program: &Program) -> Result<(), CoreError> {
 /// release build accepts. **A δ-rule's refusal is not one either**: that is a
 /// host rule answering about the author's own arguments, which the re-checker
 /// has no opinion about.
+///
+/// Gated to the builds that audit, because those are the only builds that call
+/// it: the one production call site in `declare_program.rs` is itself
+/// `#[cfg(debug_assertions)]`, and the rest are tests. A release build has no
+/// caller, and saying so with the same `cfg` its callers carry is the honest
+/// spelling — an `allow(dead_code)` would claim the item is used and silence
+/// the next one that is not.
+#[cfg(any(debug_assertions, test))]
 pub(crate) fn disagreement(cx: &Cx, ty: &Value, term: &Term) -> Option<Malformed> {
     let checked = match Checked::try_from(term.clone()) {
         Ok(checked) => checked,
