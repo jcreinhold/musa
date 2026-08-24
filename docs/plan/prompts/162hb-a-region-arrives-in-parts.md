@@ -94,9 +94,12 @@ the lexer and there is no `PitchLiteral` for the parser to split, which 162ha me
 the adapter a pitch value either — `docs/rules/language/11-quotation.md` §2's "no operation reads a text as source"
 still holds, and a letter is a token like any other.
 
-**Measure rather than assert.** The commit message carries the adapter's line count before and after. This prompt adds a
-form rather than deleting one, so the number is expected to go up, and saying by how much is what keeps prompt 166's
-gate honest about what has happened to the file since it ran.
+**Measure rather than assert.** The commit message carries the adapter's line count before and after, and what the
+biggest page costs to expand. A literal that is a node over its parts is more nodes to walk, so the staff adapter's run
+over `examples/staff-page.musa` grows: 154,990 reduction steps before, against a limit of 200,000 that
+`musa_calculus::Budget`'s note says does not move. Saying the new number is what keeps the next prompt honest about the
+room it has. This prompt adds a form rather than deleting one, so the number is expected to go up, and saying by how
+much is what keeps prompt 166's gate honest about what has happened to the file since it ran.
 
 ## Target
 
@@ -105,7 +108,14 @@ gate honest about what has happened to the file since it ran.
 - `SyntaxOp::Number` reads a fused group as the lexeme its parts spell, so `c5(3/8)` still names an exact span, and
   reads a part that spells a numeral as that numeral, so `4/4`'s two numbers are two numbers.
 - `stdlib/src/adapters/staff.musa` reads a fused group in all three of its states, and every existing law in
-  `crates/musa-compiler/tests/suite/staff_expansion_laws.rs` and `staff_writing_laws.rs` passes **unchanged**.
+  `crates/musa-compiler/tests/suite/staff_expansion_laws.rs` and `staff_writing_laws.rs` passes **unchanged**, with one
+  constant excepted: `AN_ANCHOR_OF_THE_FIRST_PITCH` is a node's position in a page's reading order, and a page whose
+  `transposing M2` is three nodes where it was one counts two further before it. The law is the law it was — the edit
+  replaces the node the anchor names and no other byte — and the number it names moves with the reading order, which is
+  what its own note says it is a number about. Its note says so.
+- `stdlib/src/adapters/doubled.musa` rebuilds a fused group as a fused group. The fixture wraps every group it meets and
+  a composite literal is one now, so leaving it alone turns `c4` into a letter and an octave with an expression between
+  them — three lexemes where the composer wrote one, which is not one ordinary expression and says so.
 - `time 4/4` is admitted by the staff adapter, beside `time (4, 4)`, and the file-head's paragraph about why it could
   not be is replaced by what it now does. The tie's comment is corrected to say that a spelling comparison is a part
   comparison rather than a workaround for not having one.
@@ -148,4 +158,5 @@ Commit as `Hand a region's literal over in parts, and read them in the staff`.
 - No change to `Delimiter`, to the gate, or to `11-quotation.md` — 162ha owns all three and this prompt consumes them.
 - No new staff notation. `time 4/4` is a spelling of a form the adapter already has; a form it does not have is not this
   prompt's.
-- `doubled.musa` is untouched: it reads no literal.
+- `doubled.musa` gains one case and nothing else. It reads no literal and still does not; what it must not do is
+  *unmake* one while rebuilding the region around it.
