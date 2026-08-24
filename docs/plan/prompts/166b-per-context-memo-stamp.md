@@ -61,8 +61,18 @@ instead of about headroom.
 - The invalidation stamp scoped to the context that owns the metavariables, with `SOLUTIONS` gone from
   `crates/musa-calculus/src/kernel/meta.rs`.
 - `a_solved_metavariable_makes_a_forced_value_unfold_again` passing unchanged.
-- A new law in `musa-calculus` asserting that one program's spend is the same whether or not another context is solving
-  metavariables concurrently.
+- **The regression law is `cargo test -p musa-compiler --test suite`, and it is the only one that discriminates.**
+  Design asked for a `musa-calculus` law that elaborates a program beside a thread solving metavariables and asserts the
+  two spends equal. It was written and it does not work, and *why* it does not is worth recording rather than retrying:
+  a memo cell exists only on a `Head::Def` carrying a `Folding::Value` (`memo_for`), and a *hit* needs the same neutral
+  forced twice, which needs a value shared across two forcings. A micro-law can build a folded definition easily and
+  cannot make one of its neutrals be forced twice without contriving the sharing — and a fixture bent to fit the
+  mechanism rather than the domain is the shape `docs/plan/prompts/README.md` warns about. Real programs get the sharing
+  for free: note 60 records 4,434 memo hits in one staff compile.
+
+  Measured rather than assumed. With the stamp reverted to a process-global counter, `cargo test -p musa-compiler --test
+  suite` fails **28 of 693** laws; with it scoped to the run, 0. That is a sharp regression signal, it is already in
+  **Check**, and it is what this Target now asks for.
 - `cargo test -p musa-compiler --test suite` green under libtest's default thread count, which is the failure note 60 §6
   records.
 - `crates/musa-calculus/TRUST.md` updated if the change moves anything across the trusted boundary, and a sentence in
