@@ -35,10 +35,10 @@ that read nodes, and spliceable in a quote.
   stands and never inside one. There is no way to build the identifier `abc` out of `$a` and `bc`, because a splice is
   not string concatenation". That rule is *kept*, and the second half of this prompt is what it means once a part is a
   whole node.
-- `editors/tree-sitter-musa`, `grammar.js` lines 1397–1403 and
-  `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs` — the drift law writes the **lexer's** token stream into the
-  grammar's test data and holds the grammar's leaves to it. Three regexes, one per literal, matching the hand lexer's.
-  Read it for what the Design concludes: the grammar is held to the lexer, and the lexer does not change here.
+- `editors/tree-sitter-musa`, `grammar.js` lines 1397–1403 and `crates/musa-syntax/tests/suite/tree_sitter_fixtures.rs`
+  — the drift law writes the **lexer's** token stream into the grammar's test data and holds the grammar's leaves to it.
+  Three regexes, one per literal, matching the hand lexer's. Read it for what the Design concludes: the grammar is held
+  to the lexer, and the lexer does not change here.
 - `crates/musa-syntax/src/formatter/` — a lossless CST means the printed text is unchanged, and the formatter is where
   that is proved.
 - `crates/musa-compiler/src/quote/read.rs`'s `read_node`, `build.rs`'s `delimited`, and `print.rs`'s `write_syntax` —
@@ -69,11 +69,12 @@ the lexer is unchanged, so the sixteen parser sites that test it are untouched; 
 it. That is the whole reason this is tractable, and an implementation that finds itself editing all sixteen has taken
 the other design by accident.
 
-**A part is a whole node, so a splice may stand at one — and the result is re-lexed.** `quote at here { $letter#5 }` is
-admitted because a letter is now a node, and §2's rule is untouched: a splice still stands where a whole node stands.
-What guards it is not the splice rule but a check at the literal: the assembled spelling must lex as one token of the
-kind the literal claims, and a splice that makes `c#x5` is refused, naming the part and the literal. This is the same
-discipline as `check_expression` one level down — build freely, then prove the reader would have read it.
+**A part is a whole node, and a splice still may not stand at one — yet.** `quote at here { $letter#5 }` is the shape
+the parts make thinkable, and §2's rule would be untouched by it: a splice stands where a whole node stands, and a
+letter is now a whole node. What it needs is not the splice rule but a check at the literal — the assembled spelling
+must lex as one token of the kind the literal claims, so that `c#x5` is refused, naming the part and the literal — and
+that check has nowhere to live until the phase has a shape for a node that is one lexeme. Both are prompt
+[162ha](162ha-a-literal-is-one-lexeme.md)'s. This prompt makes the shape possible and writes none of it.
 
 **No new reading operations.** A part is a node and the operations that read nodes read it. If the implementation wants
 `syntax_pitch_letter`, the parts are not really nodes and the design is wrong.
@@ -116,8 +117,8 @@ prompt makes it possible and says so in the commit message.
   bytes, and every parser test of the token kind are unchanged.
 - `crates/musa-compiler/src/quote/read.rs` reads each of the three back as the one token the phase sees today, with a
   comment saying why and naming 162ha.
-- `editors/tree-sitter-musa` is untouched and its drift law passes unchanged, because the law is stated over the
-  lexer's stream. `tree_sitter_name` and `TokenClass::of` each gain an arm saying a part is not a lexer token.
+- `editors/tree-sitter-musa` is untouched and its drift law passes unchanged, because the law is stated over the lexer's
+  stream. `tree_sitter_name` and `TokenClass::of` each gain an arm saying a part is not a lexer token.
 - Laws in `musa-syntax`: node text is the concatenation of the parts for a corpus covering `b2`, `bb2`, `bbb2`, `cn4`,
   `c#-1`, `M3`, `dim7`, `AA4`, `d2`, `3/8`, `12/16`; the formatter round-trips each unchanged; a part carries the range
   it occupies in the source.
