@@ -1,4 +1,4 @@
-//! How one token is spaced against the token before it.
+//! How one lexeme is spaced against the lexeme before it.
 //!
 //! One concern of the `formatter` module; see its docs for the rules.
 
@@ -8,11 +8,26 @@ use super::lists::{
 };
 use super::writer::Writer;
 use crate::SyntaxKind;
-use crate::language::{SyntaxNode, SyntaxToken};
+use crate::language::{SyntaxElement, SyntaxNode};
 
-pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut Writer) {
-    let kind = token.kind();
-    let text = token.text();
+/// Space and write one lexeme.
+///
+/// A lexeme is a token, or one of the three composite literals — `c#5`, `M3`,
+/// `3/8` — which the lexer reads as one token and the parser writes as a node
+/// over its parts. Spacing is a question about the lexeme the composer typed,
+/// so the parts are not asked: the node's whole text is written as the one
+/// word it is, and the two rules that read a *token* (a trailing comma's, a
+/// path separator's) ask kinds no literal has.
+pub(super) fn format_token(node: &SyntaxNode, lexeme: &SyntaxElement, writer: &mut Writer) {
+    let kind = lexeme.kind();
+    let whole;
+    let text: &str = match lexeme {
+        SyntaxElement::Node(literal) => {
+            whole = literal.text().to_string();
+            &whole
+        }
+        SyntaxElement::Token(token) => token.text(),
+    };
     let parent = node.kind();
     // Whether this token belongs to a list that is being written down the
     // page. Only the list's own punctuation asks, and a token whose parent is
@@ -41,7 +56,11 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         writer.after_significant(SyntaxKind::Comma);
         writer.end_line();
     }
-    if kind == SyntaxKind::Comma && !stacked && carries_a_trailing_comma(parent) && ends_its_list(token) {
+    if kind == SyntaxKind::Comma
+        && !stacked
+        && carries_a_trailing_comma(parent)
+        && lexeme.as_token().is_some_and(ends_its_list)
+    {
         writer.skip_token();
         return;
     }
@@ -152,7 +171,7 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         ) || stacked
         {
             writer.end_line();
-        } else if !ends_its_list(token) {
+        } else if !lexeme.as_token().is_some_and(ends_its_list) {
             writer.space();
         }
     } else if kind == SyntaxKind::Equals {
@@ -168,7 +187,7 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         // than of the parent, because a path is spelled the same in a pattern
         // — where it is bumped straight into the arm — as in an expression,
         // where it is a `PathExpr`.
-        if parent != SyntaxKind::ImportStmt && !halves_a_path_separator(token) {
+        if parent != SyntaxKind::ImportStmt && !lexeme.as_token().is_some_and(halves_a_path_separator) {
             writer.space();
         }
     } else if kind == SyntaxKind::PipeForward && writer.in_wrapped_chain() {

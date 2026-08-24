@@ -5,9 +5,9 @@
 
 use super::nodes::one_line;
 use super::{Layout, MEASURE};
+use crate::SyntaxKind;
 use crate::language::SyntaxNode;
 use crate::meter::beat_groups;
-use crate::{SyntaxElement, SyntaxKind};
 use std::collections::{HashMap, HashSet};
 use text_size::TextRange;
 
@@ -181,9 +181,9 @@ fn scan_meters(node: &SyntaxNode, inherited: Option<(u32, u32)>, meters: &mut Me
 fn meter_of(statement: &SyntaxNode) -> Option<(u32, u32)> {
     let written = statement
         .children_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| token.kind() == SyntaxKind::Rational)?;
-    let (numerator, denominator) = written.text().split_once('/')?;
+        .find(|part| part.kind() == SyntaxKind::Rational)?;
+    let written = written.into_node()?.text().to_string();
+    let (numerator, denominator) = written.split_once('/')?;
     Some((numerator.parse().ok()?, denominator.parse().ok()?))
 }
 

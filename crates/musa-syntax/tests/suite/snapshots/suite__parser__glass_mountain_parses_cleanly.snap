@@ -1,6 +1,5 @@
 ---
 source: crates/musa-syntax/tests/suite/parser.rs
-assertion_line: 96
 expression: print_tree(&doc.syntax())
 ---
 Root@0..2171
@@ -42,7 +41,10 @@ Root@0..2171
       Whitespace@158..163 "\n    "
       MeterKw@163..168 "meter"
       Whitespace@168..169 " "
-      Rational@169..172 "4/4"
+      Rational@169..172
+        RationalNumerator@169..170 "4"
+        Slash@170..171 "/"
+        RationalDenominator@171..172 "4"
       Semicolon@172..173 ";"
     KeyStmt@173..190
       Whitespace@173..178 "\n    "
@@ -84,19 +86,25 @@ Root@0..2171
             Integer@250..251 "4"
         NoteStmt@251..264
           Whitespace@251..260 "\n        "
-          PitchLiteral@260..262 "c5"
+          PitchLiteral@260..262
+            PitchLetter@260..261 "c"
+            PitchOctave@261..262 "5"
           Duration@262..264
             Slash@262..263 "/"
             Integer@263..264 "2"
         NoteStmt@264..277
           Whitespace@264..273 "\n        "
-          PitchLiteral@273..275 "b4"
+          PitchLiteral@273..275
+            PitchLetter@273..274 "b"
+            PitchOctave@274..275 "4"
           Duration@275..277
             Slash@275..276 "/"
             Integer@276..277 "4"
         NoteStmt@277..290
           Whitespace@277..286 "\n        "
-          PitchLiteral@286..288 "a4"
+          PitchLiteral@286..288
+            PitchLetter@286..287 "a"
+            PitchOctave@287..288 "4"
           Duration@288..290
             Slash@288..289 "/"
             Integer@289..290 "2"
@@ -138,7 +146,9 @@ Root@0..2171
                 LParen@407..408 "("
                 ExprArg@408..410
                   LiteralExpr@408..410
-                    PitchLiteral@408..410 "e5"
+                    PitchLiteral@408..410
+                      PitchLetter@408..409 "e"
+                      PitchOctave@409..410 "5"
                 RParen@410..411 ")"
             Semicolon@411..412 ";"
           TransposeStmt@412..501
@@ -147,7 +157,9 @@ Root@0..2171
             Whitespace@439..440 " "
             DownKw@440..444 "down"
             Whitespace@444..445 " "
-            IntervalLiteral@445..447 "P5"
+            IntervalLiteral@445..447
+              IntervalQuality@445..446 "P"
+              IntervalSize@446..447 "5"
             Block@447..501
               Whitespace@447..448 " "
               LBrace@448..449 "{"
@@ -162,7 +174,9 @@ Root@0..2171
                     LParen@478..479 "("
                     ExprArg@479..481
                       LiteralExpr@479..481
-                        PitchLiteral@479..481 "e5"
+                        PitchLiteral@479..481
+                          PitchLetter@479..480 "e"
+                          PitchOctave@480..481 "5"
                     RParen@481..482 ")"
                 Semicolon@482..483 ";"
               Whitespace@483..500 "\n                "
@@ -187,25 +201,34 @@ Root@0..2171
           LBrace@574..575 "{"
           NoteStmt@575..596
             Whitespace@575..592 "\n                "
-            PitchLiteral@592..594 "c5"
+            PitchLiteral@592..594
+              PitchLetter@592..593 "c"
+              PitchOctave@593..594 "5"
             Duration@594..596
               Slash@594..595 "/"
               Integer@595..596 "1"
           NoteStmt@596..617
             Whitespace@596..613 "\n                "
-            PitchLiteral@613..615 "c5"
+            PitchLiteral@613..615
+              PitchLetter@613..614 "c"
+              PitchOctave@614..615 "5"
             Duration@615..617
               Slash@615..616 "/"
               Integer@616..617 "1"
           NoteStmt@617..638
             Whitespace@617..634 "\n                "
-            PitchLiteral@634..636 "a4"
+            PitchLiteral@634..636
+              PitchLetter@634..635 "a"
+              PitchOctave@635..636 "4"
             Duration@636..638
               Slash@636..637 "/"
               Integer@637..638 "1"
           NoteStmt@638..660
             Whitespace@638..655 "\n                "
-            PitchLiteral@655..658 "g#4"
+            PitchLiteral@655..658
+              PitchLetter@655..656 "g"
+              PitchAccidental@656..657 "#"
+              PitchOctave@657..658 "4"
             Duration@658..660
               Slash@658..659 "/"
               Integer@659..660 "1"
@@ -234,25 +257,33 @@ Root@0..2171
               LBrace@919..920 "{"
               NoteStmt@920..945
                 Whitespace@920..941 "\n                    "
-                PitchLiteral@941..943 "a2"
+                PitchLiteral@941..943
+                  PitchLetter@941..942 "a"
+                  PitchOctave@942..943 "2"
                 Duration@943..945
                   Slash@943..944 "/"
                   Integer@944..945 "1"
               NoteStmt@945..970
                 Whitespace@945..966 "\n                    "
-                PitchLiteral@966..968 "f2"
+                PitchLiteral@966..968
+                  PitchLetter@966..967 "f"
+                  PitchOctave@967..968 "2"
                 Duration@968..970
                   Slash@968..969 "/"
                   Integer@969..970 "1"
               NoteStmt@970..995
                 Whitespace@970..991 "\n                    "
-                PitchLiteral@991..993 "d2"
+                PitchLiteral@991..993
+                  PitchLetter@991..992 "d"
+                  PitchOctave@992..993 "2"
                 Duration@993..995
                   Slash@993..994 "/"
                   Integer@994..995 "1"
               NoteStmt@995..1020
                 Whitespace@995..1016 "\n                    "
-                PitchLiteral@1016..1018 "e2"
+                PitchLiteral@1016..1018
+                  PitchLetter@1016..1017 "e"
+                  PitchOctave@1017..1018 "2"
                 Duration@1018..1020
                   Slash@1018..1019 "/"
                   Integer@1019..1020 "1"

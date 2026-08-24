@@ -9,6 +9,7 @@ use super::ScoreDecl;
 use super::StudioDecl;
 use super::child;
 use super::children;
+use super::element_text;
 use super::token_text;
 use super::unquote;
 use super::wrapper;
@@ -156,13 +157,14 @@ impl TempoStmt {
     /// The first token of one of `wanted` after `keyword`, or after the start
     /// of the statement when `keyword` is `None`.
     fn token_after(&self, keyword: Option<SyntaxKind>, wanted: &[SyntaxKind]) -> Option<String> {
-        let mut tokens = self.0.children_with_tokens().filter_map(SyntaxElement::into_token);
+        let mut lexemes = self.0.children_with_tokens();
         if let Some(keyword) = keyword {
-            tokens.find(|token| token.kind() == keyword)?;
+            lexemes.find(|lexeme| lexeme.kind() == keyword)?;
         }
-        tokens
-            .find(|token| wanted.contains(&token.kind()))
-            .map(|token| token.text().to_owned())
+        lexemes
+            .find(|lexeme| wanted.contains(&lexeme.kind()))
+            .as_ref()
+            .map(element_text)
     }
 }
 

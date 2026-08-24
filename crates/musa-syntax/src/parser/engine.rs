@@ -191,12 +191,35 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Write one lexer token into the tree.
+    ///
+    /// The one funnel every significant token and every piece of trivia goes
+    /// through, which is why the three composite literals are split *here*
+    /// rather than at each site that bumps one. `self.at(PitchLiteral)` asks
+    /// about the lexer's token and the lexer is unchanged, so every site that
+    /// tests a literal is untouched and every site that writes one gets the
+    /// parts without saying so.
+    ///
+    /// A composite literal becomes a node of its own kind whose children are
+    /// its parts, each a token with its own range. The node's text is the
+    /// concatenation of its children — [`super::literals::parts`] partitions
+    /// the spelling — so the tree stays lossless and every printed byte is
+    /// unchanged.
     pub(super) fn emit_token(&mut self, token: &Token) {
         let start = usize::from(token.range.start());
         let end = usize::from(token.range.end());
-        if let Some(text) = self.source.get(start..end) {
+        let Some(text) = self.source.get(start..end) else {
+            return;
+        };
+        let Some(parts) = super::literals::parts(token.kind, text) else {
             self.events.push(Event::Token(token.kind, text));
+            return;
+        };
+        self.events.push(Event::StartNode(token.kind));
+        for (kind, piece) in parts {
+            self.events.push(Event::Token(kind, piece));
         }
+        self.events.push(Event::FinishNode);
     }
 
     pub(super) fn advance(&mut self) {

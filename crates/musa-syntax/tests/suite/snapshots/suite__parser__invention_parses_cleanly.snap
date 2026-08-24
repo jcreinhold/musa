@@ -1,5 +1,5 @@
 ---
-source: crates/musa-syntax/tests/parser.rs
+source: crates/musa-syntax/tests/suite/parser.rs
 expression: print_tree(&doc.syntax())
 ---
 Root@0..272
@@ -23,7 +23,10 @@ Root@0..272
       Whitespace@50..55 "\n    "
       MeterKw@55..60 "meter"
       Whitespace@60..61 " "
-      Rational@61..64 "4/4"
+      Rational@61..64
+        RationalNumerator@61..62 "4"
+        Slash@62..63 "/"
+        RationalDenominator@63..64 "4"
       Semicolon@64..65 ";"
     KeyStmt@65..82
       Whitespace@65..70 "\n    "
@@ -64,25 +67,33 @@ Root@0..272
             Pipe@185..186 "|"
             NoteStmt@186..191
               Whitespace@186..187 " "
-              PitchLiteral@187..189 "c4"
+              PitchLiteral@187..189
+                PitchLetter@187..188 "c"
+                PitchOctave@188..189 "4"
               Duration@189..191
                 Slash@189..190 "/"
                 Integer@190..191 "4"
             NoteStmt@191..196
               Whitespace@191..192 " "
-              PitchLiteral@192..194 "d4"
+              PitchLiteral@192..194
+                PitchLetter@192..193 "d"
+                PitchOctave@193..194 "4"
               Duration@194..196
                 Slash@194..195 "/"
                 Integer@195..196 "4"
             NoteStmt@196..201
               Whitespace@196..197 " "
-              PitchLiteral@197..199 "e4"
+              PitchLiteral@197..199
+                PitchLetter@197..198 "e"
+                PitchOctave@198..199 "4"
               Duration@199..201
                 Slash@199..200 "/"
                 Integer@200..201 "4"
             NoteStmt@201..206
               Whitespace@201..202 " "
-              PitchLiteral@202..204 "f4"
+              PitchLiteral@202..204
+                PitchLetter@202..203 "f"
+                PitchOctave@203..204 "4"
               Duration@204..206
                 Slash@204..205 "/"
                 Integer@205..206 "4"
@@ -91,19 +102,25 @@ Root@0..272
             Pipe@223..224 "|"
             NoteStmt@224..229
               Whitespace@224..225 " "
-              PitchLiteral@225..227 "g4"
+              PitchLiteral@225..227
+                PitchLetter@225..226 "g"
+                PitchOctave@226..227 "4"
               Duration@227..229
                 Slash@227..228 "/"
                 Integer@228..229 "2"
             NoteStmt@229..234
               Whitespace@229..230 " "
-              PitchLiteral@230..232 "a4"
+              PitchLiteral@230..232
+                PitchLetter@230..231 "a"
+                PitchOctave@231..232 "4"
               Duration@232..234
                 Slash@232..233 "/"
                 Integer@233..234 "4"
             NoteStmt@234..239
               Whitespace@234..235 " "
-              PitchLiteral@235..237 "b4"
+              PitchLiteral@235..237
+                PitchLetter@235..236 "b"
+                PitchOctave@236..237 "4"
               Duration@237..239
                 Slash@237..238 "/"
                 Integer@238..239 "4"

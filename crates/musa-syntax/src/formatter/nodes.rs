@@ -17,8 +17,14 @@ pub(super) fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layou
     // the rest of it joins on without a space.
     let mut tight = false;
     for element in node.children_with_tokens() {
+        // A composite literal — `c#5`, `M3`, `3/8` — is a node over the parts
+        // the lexer's pattern found (`parser/literals.rs`), and what the
+        // composer typed is one word. So it is spaced as the lexeme it is and
+        // never as a node with children: a formatter that walked into it would
+        // write `c # 5`, which is three things to the lexer.
+        let composite = element.kind().is_composite_literal();
         match element {
-            SyntaxElement::Node(child) => {
+            SyntaxElement::Node(child) if !composite => {
                 writer.blank_line_if_pending();
                 // A quote is written as it stands. Its interior is the
                 // event track's grammar, whose layout the event track's own printer
@@ -125,9 +131,11 @@ pub(super) fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layou
                     writer.end_line();
                 }
             }
-            SyntaxElement::Token(token) => {
-                let kind = token.kind();
-                if kind == SyntaxKind::Whitespace {
+            lexeme @ (SyntaxElement::Node(_) | SyntaxElement::Token(_)) => {
+                let kind = lexeme.kind();
+                if let Some(token) = lexeme.as_token()
+                    && kind == SyntaxKind::Whitespace
+                {
                     writer.note_whitespace(token.text());
                     continue;
                 }
@@ -154,11 +162,11 @@ pub(super) fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layou
                         | SyntaxKind::PathExpr
                         | SyntaxKind::FieldPath
                 ) {
-                    writer.write_word(kind, token.text(), tight);
+                    writer.write_word(kind, &crate::ast::element_text(&lexeme), tight);
                     tight = true;
                     continue;
                 }
-                format_token(node, &token, writer);
+                format_token(node, &lexeme, writer);
             }
         }
     }

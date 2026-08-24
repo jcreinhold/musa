@@ -871,6 +871,13 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::String
         | SyntaxKind::PitchLiteral
         | SyntaxKind::IntervalLiteral
+        | SyntaxKind::PitchLetter
+        | SyntaxKind::PitchAccidental
+        | SyntaxKind::PitchOctave
+        | SyntaxKind::IntervalQuality
+        | SyntaxKind::IntervalSize
+        | SyntaxKind::RationalNumerator
+        | SyntaxKind::RationalDenominator
         | SyntaxKind::UnitHz
         | SyntaxKind::UnitMs
         | SyntaxKind::UnitS

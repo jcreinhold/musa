@@ -1,5 +1,5 @@
 ---
-source: crates/musa-syntax/tests/parser.rs
+source: crates/musa-syntax/tests/suite/parser.rs
 expression: print_tree(&doc.syntax())
 ---
 Root@0..43
@@ -13,12 +13,18 @@ Root@0..43
       Whitespace@11..16 "\n    "
       MeterKw@16..21 "meter"
       Whitespace@21..22 " "
-      Rational@22..25 "4/4"
+      Rational@22..25
+        RationalNumerator@22..23 "4"
+        Slash@23..24 "/"
+        RationalDenominator@24..25 "4"
     MeterStmt@25..40
       Whitespace@25..30 "\n    "
       MeterKw@30..35 "meter"
       Whitespace@35..36 " "
-      Rational@36..39 "2/2"
+      Rational@36..39
+        RationalNumerator@36..37 "2"
+        Slash@37..38 "/"
+        RationalDenominator@38..39 "2"
       Semicolon@39..40 ";"
     Whitespace@40..41 "\n"
     RBrace@41..42 "}"

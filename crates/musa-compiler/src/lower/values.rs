@@ -20,7 +20,7 @@
 
 use musa_calculus::{Origin, Raw, RawArm, RawPattern};
 use musa_syntax::ast::AstNode as _;
-use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 use super::items::declared_name;
@@ -290,15 +290,15 @@ impl Lowering<'_> {
             SyntaxKind::FalseKw => Raw::hosted(origin, "Bool.False"),
             SyntaxKind::Integer => whole(origin, self.whole_number(&token)?),
             SyntaxKind::Rational => plain_literal(origin, "Ratio", self.exact(&token)?),
-            SyntaxKind::String => plain_literal(origin, "Text", musa_syntax::ast::unquote(token.text())),
+            SyntaxKind::String => plain_literal(origin, "Text", musa_syntax::ast::unquote(&super::lexeme_text(&token))),
             SyntaxKind::PitchLiteral => {
-                let Some(pitch) = musa_score::WrittenPitch::parse(token.text()) else {
+                let Some(pitch) = musa_score::WrittenPitch::parse(&super::lexeme_text(&token)) else {
                     return self.not_a(&token, "pitch");
                 };
                 plain_literal(origin, "Pitch", pitch)
             }
             SyntaxKind::IntervalLiteral => {
-                let Some(interval) = musa_score::Interval::parse(token.text(), false) else {
+                let Some(interval) = musa_score::Interval::parse(&super::lexeme_text(&token), false) else {
                     return self.not_a(&token, "interval");
                 };
                 plain_literal(origin, "Interval", interval)
@@ -308,8 +308,8 @@ impl Lowering<'_> {
     }
 
     /// `n`, as a natural number.
-    fn whole_number(&mut self, token: &SyntaxToken) -> Option<u64> {
-        token.text().parse().ok().or_else(|| {
+    fn whole_number(&mut self, token: &musa_syntax::SyntaxElement) -> Option<u64> {
+        super::lexeme_text(token).parse().ok().or_else(|| {
             self.refuse(
                 Diagnostic::error(Code::OutOfRange, "this natural number is too large")
                     .at(token_span(token), "outside Musa's exact natural range"),
@@ -329,8 +329,9 @@ impl Lowering<'_> {
     /// Two ways to fail and two messages, because they are two mistakes: a
     /// numerator or denominator past `i64` is a number outside the exact range
     /// musical time is measured in, and a zero denominator is not a number at all.
-    fn exact(&mut self, token: &SyntaxToken) -> Option<Ratio<i64>> {
-        let (numerator, denominator) = token.text().split_once('/')?;
+    fn exact(&mut self, token: &musa_syntax::SyntaxElement) -> Option<Ratio<i64>> {
+        let written = super::lexeme_text(token);
+        let (numerator, denominator) = written.split_once('/')?;
         let (Ok(numerator), Ok(denominator)) = (numerator.parse::<i64>(), denominator.parse::<i64>()) else {
             return self.refuse(
                 Diagnostic::error(Code::OutOfRange, "this rational number is too large")
@@ -366,10 +367,13 @@ impl Lowering<'_> {
     }
 
     /// "`x` is not a τ", at the token that wrote it.
-    fn not_a<T>(&mut self, token: &SyntaxToken, what: &str) -> Option<T> {
+    fn not_a<T>(&mut self, token: &musa_syntax::SyntaxElement, what: &str) -> Option<T> {
         self.refuse(
-            Diagnostic::error(Code::NotAValue, format!("`{}` is not a {what}", token.text()))
-                .at(token_span(token), format!("invalid {what} literal")),
+            Diagnostic::error(
+                Code::NotAValue,
+                format!("`{}` is not a {what}", super::lexeme_text(token)),
+            )
+            .at(token_span(token), format!("invalid {what} literal")),
         )
     }
 
@@ -575,7 +579,7 @@ impl Lowering<'_> {
         for supplied in children(&list, |kind| kind == SyntaxKind::SuppliedArg) {
             let name = own_tokens(&supplied)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())?;
+                .map(|token| super::lexeme_text(&token))?;
             let value = self.value(&child(&supplied, is_expr_node)?)?;
             written.supplied.push((name, value));
         }
@@ -638,7 +642,7 @@ impl Lowering<'_> {
             let bound = self.origin(parameter);
             let name = own_tokens(parameter)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())?;
+                .map(|token| super::lexeme_text(&token))?;
             built = match child(parameter, super::is_type_node) {
                 Some(written) => {
                     let domain = self.ty(&written)?;
@@ -689,7 +693,7 @@ impl Lowering<'_> {
     fn method_call(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let receiver = self.value(&child(node, is_expr_node)?)?;
         let named = own_tokens(node).find(|token| token.kind() == SyntaxKind::Identifier)?;
-        let method = Raw::method(origin, receiver, named.text());
+        let method = Raw::method(origin, receiver, super::lexeme_text(&named));
         let Written {
             arguments,
             slots,
@@ -981,7 +985,7 @@ impl Lowering<'_> {
         for written in children(node, |kind| kind == SyntaxKind::FieldInit) {
             let name = own_tokens(&written)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())?;
+                .map(|token| super::lexeme_text(&token))?;
             let value = child(&written, is_expr_node)?;
             fields.push((name, self.value(&value)?));
         }
@@ -1010,7 +1014,7 @@ impl Lowering<'_> {
             let path = child(&written, |kind| kind == SyntaxKind::FieldPath)?;
             let path: Vec<String> = significant_tokens(&path)
                 .filter(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())
+                .map(|token| super::lexeme_text(&token))
                 .collect();
             let value = child(&written, is_expr_node)?;
             updates.push((path, self.value(&value)?));
@@ -1057,7 +1061,7 @@ impl Lowering<'_> {
         if let Some(quoted) = child(node, |kind| kind == SyntaxKind::QuotePattern) {
             return self.not_yet(&quoted, "a quote pattern", "a template");
         }
-        let written: Vec<SyntaxToken> = own_tokens(node).collect();
+        let written: Vec<musa_syntax::SyntaxElement> = own_tokens(node).collect();
         // `Bass | Tenor` — one arm reached from several branches
         // (`01-surface.md` §1). The alternatives are the node's `Pattern`
         // children and the `|` is its own token, which is what tells this shape
@@ -1131,12 +1135,13 @@ impl Lowering<'_> {
                 RawPattern::constructor(origin, name.as_str(), nested)
             }
             SyntaxKind::Identifier => {
-                if !applied && !head.text().chars().next().is_some_and(char::is_uppercase) {
+                let spelling = super::lexeme_text(&head);
+                if !applied && !spelling.chars().next().is_some_and(char::is_uppercase) {
                     // `_` is an ordinary binder whose name nothing refers to,
                     // which is what the core's own `RawPattern::Bind` documents.
-                    RawPattern::bind(origin, head.text())
+                    RawPattern::bind(origin, spelling)
                 } else {
-                    RawPattern::constructor(origin, head.text(), nested)
+                    RawPattern::constructor(origin, spelling, nested)
                 }
             }
             _ => return None,
@@ -1156,7 +1161,7 @@ impl Lowering<'_> {
             let at = self.origin(&written);
             let name = own_tokens(&written)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())?;
+                .map(|token| super::lexeme_text(&token))?;
             let held = match child(&written, |kind| kind == SyntaxKind::Pattern) {
                 Some(nested) => self.pattern(&nested)?,
                 None => RawPattern::bind(at, name.as_str()),
@@ -1200,7 +1205,7 @@ fn trailing_word(node: &SyntaxNode) -> String {
     significant_tokens(node)
         .filter(|token| token.kind() == SyntaxKind::Identifier)
         .last()
-        .map(|token| token.text().to_owned())
+        .map(|token| super::lexeme_text(&token))
         .unwrap_or_default()
 }
 
@@ -1247,13 +1252,13 @@ fn literal_of(pattern: &SyntaxNode) -> Option<SyntaxNode> {
 /// A head that is not an identifier — `Some`, `[`, `(`, a number — opens no
 /// path, so the segments are empty and every token is "after", which is what
 /// the shapes below already read.
-fn path_segments(written: &[SyntaxToken]) -> (Vec<String>, &[SyntaxToken]) {
+fn path_segments(written: &[musa_syntax::SyntaxElement]) -> (Vec<String>, &[musa_syntax::SyntaxElement]) {
     let mut segments = Vec::new();
     let mut rest = written;
     while let [name, tail @ ..] = rest
         && name.kind() == SyntaxKind::Identifier
     {
-        segments.push(name.text().to_owned());
+        segments.push(super::lexeme_text(name));
         match tail {
             [first, second, beyond @ ..] if first.kind() == SyntaxKind::Colon && second.kind() == SyntaxKind::Colon => {
                 rest = beyond;
@@ -1376,13 +1381,13 @@ fn written_name(node: &SyntaxNode) -> Option<String> {
                 | SyntaxKind::RepeatKw
         )
     })?;
-    let mut written = first.text().to_owned();
+    let mut written = super::lexeme_text(&first);
     while tokens.next().is_some_and(|token| token.kind() == SyntaxKind::Dot) {
         let Some(member) = tokens.next().filter(|token| token.kind() == SyntaxKind::Identifier) else {
             break;
         };
         written.push('.');
-        written.push_str(member.text());
+        written.push_str(&super::lexeme_text(&member));
     }
     Some(written)
 }
@@ -1390,13 +1395,13 @@ fn written_name(node: &SyntaxNode) -> Option<String> {
 /// The text a written string literal spells, if that is what this node is.
 fn text_of(node: &SyntaxNode) -> Option<String> {
     let token = significant_tokens(node).next()?;
-    (token.kind() == SyntaxKind::String).then(|| musa_syntax::ast::unquote(token.text()))
+    (token.kind() == SyntaxKind::String).then(|| musa_syntax::ast::unquote(&super::lexeme_text(&token)))
 }
 
 /// The natural a written integer literal spells, if that is what this node is.
 fn whole_of(node: &SyntaxNode) -> Option<u32> {
     let token = significant_tokens(node).next()?;
-    (token.kind() == SyntaxKind::Integer).then(|| token.text().parse().ok())?
+    (token.kind() == SyntaxKind::Integer).then(|| super::lexeme_text(&token).parse().ok())?
 }
 
 /// The expression node each written argument holds, in written order.
@@ -1433,7 +1438,7 @@ fn unknown_unit(id: &str, version: u32, span: SourceSpan) -> Diagnostic {
 }
 
 /// Where a token was written.
-fn token_span(token: &SyntaxToken) -> SourceSpan {
-    let range = token.text_range();
+fn token_span(lexeme: &musa_syntax::SyntaxElement) -> SourceSpan {
+    let range = lexeme.text_range();
     SourceSpan::new(range.start().into(), range.end().into())
 }

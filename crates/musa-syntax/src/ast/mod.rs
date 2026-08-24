@@ -66,8 +66,33 @@ pub(crate) fn find_token(node: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxTo
         .find(|token| token.kind() == kind)
 }
 
+/// The source text an element covers: a token's own text, or a node's whole
+/// text.
+///
+/// The three composite literals — `c#5`, `M3`, `3/8` — are nodes whose
+/// children are the parts the lexer's pattern already found
+/// (`parser/literals.rs`), so the lexeme a reader wants is the *node's* text.
+/// Everything else that a reader asks for by kind is still a token, and a
+/// token's text is its own.
+pub(crate) fn element_text(element: &SyntaxElement) -> String {
+    match element {
+        SyntaxElement::Node(node) => node.text().to_string(),
+        SyntaxElement::Token(token) => token.text().to_string(),
+    }
+}
+
+/// One lexeme of `kind` among a node's own children — a token of that kind,
+/// or the composite literal node standing for one.
+///
+/// A reader asking for a `PitchLiteral` wants `g#4`, and whether the CST
+/// spells that as one token or as a node over its parts is not a question the
+/// reader is asking.
+pub(crate) fn find_lexeme(node: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxElement> {
+    node.children_with_tokens().find(|element| element.kind() == kind)
+}
+
 pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
-    find_token(node, kind).map(|token| token.text().to_string())
+    find_lexeme(node, kind).as_ref().map(element_text)
 }
 
 /// Whether a declaration carries the `private` marker
@@ -82,9 +107,9 @@ pub(crate) fn is_private(node: &SyntaxNode) -> bool {
 
 pub(crate) fn descendant_token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.descendants_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| token.kind() == kind)
-        .map(|token| token.text().to_string())
+        .find(|element| element.kind() == kind)
+        .as_ref()
+        .map(element_text)
 }
 
 /// A token's byte range, as the compiler's spans are counted.

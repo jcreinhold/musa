@@ -155,10 +155,9 @@ fn lex_error_token_recovers_and_continues() {
         .descendants()
         .filter(|node| node.kind() == SyntaxKind::NoteStmt)
         .filter_map(|node| {
-            node.children_with_tokens()
-                .filter_map(SyntaxElement::into_token)
-                .find(|token| token.kind() == SyntaxKind::PitchLiteral)
-                .map(|token| token.text().to_string())
+            node.children()
+                .find(|child| child.kind() == SyntaxKind::PitchLiteral)
+                .map(|pitch| pitch.text().to_string())
         })
         .collect();
     assert_eq!(notes, ["c5", "d5"]);

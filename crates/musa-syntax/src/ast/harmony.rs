@@ -1,6 +1,7 @@
 //! See `ast` module docs; the items parsed in this family.
 
 use super::children;
+use super::element_text;
 use super::token_text;
 use super::wrapper;
 use crate::SyntaxKind;
@@ -65,9 +66,8 @@ impl ChordSymbol {
     pub fn text(&self) -> String {
         self.0
             .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| !token.kind().is_trivia())
-            .map(|token| token.text().to_string())
+            .filter(|part| !part.kind().is_trivia())
+            .map(|part| element_text(&part))
             .collect()
     }
 

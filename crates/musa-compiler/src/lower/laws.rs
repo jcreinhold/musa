@@ -321,6 +321,69 @@ fn every_written_literal_lowers_to_a_term_the_core_checks_at_its_own_domain() {
     }
 }
 
+/// A composite literal lowers to the value its *whole* spelling names.
+///
+/// `c#5`, `M3` and `3/8` are one token to the lexer and nodes over their parts
+/// in the tree (`musa-syntax`'s `parser/literals.rs`), so a lowering that took
+/// the first token would find the letter `c` and build a pitch from it. The
+/// law above cannot see that: it asks which domain the term inhabits, and a
+/// pitch built from a part is still a pitch. This asks the value.
+///
+/// Checked against the fixtures the corpus already has rather than new ones —
+/// `bb2` is B flat because the letter comes off first, `d2` is the note D2 and
+/// not a diminished second, and `12/16` reduces on the way in because
+/// `Ratio::new` is what the lowering calls.
+#[test]
+fn a_composite_literal_lowers_to_the_value_its_whole_spelling_names() {
+    let pitch = |spelled: &str| {
+        crate::registry::literal(
+            crate::registry::plain_type("Pitch"),
+            musa_score::WrittenPitch::parse(spelled).expect("the corpus spells pitches"),
+        )
+    };
+    let interval = |spelled: &str| {
+        crate::registry::literal(
+            crate::registry::plain_type("Interval"),
+            musa_score::Interval::parse(spelled, false).expect("the corpus spells intervals"),
+        )
+    };
+    let ratio = |numerator: i64, denominator: i64| {
+        crate::registry::literal(
+            crate::registry::plain_type("Ratio"),
+            num_rational::Ratio::new(numerator, denominator),
+        )
+    };
+    let cases = [
+        ("b2", pitch("b2")),
+        ("bb2", pitch("bb2")),
+        ("bbb2", pitch("bbb2")),
+        ("cn4", pitch("cn4")),
+        ("c#-1", pitch("c#-1")),
+        ("M3", interval("M3")),
+        ("dim7", interval("dim7")),
+        ("AA4", interval("AA4")),
+        // `d2` is the *note* D2. The lexer's longest match takes the pitch
+        // pattern first, which is why a singly diminished interval is spelled
+        // `dim2` — the one place the two literals' spellings collide, and the
+        // reason the parts are split by kind and not by shape.
+        ("d2", pitch("d2")),
+        ("3/8", ratio(3, 8)),
+        ("12/16", ratio(12, 16)),
+    ];
+    for (written, expected) in cases {
+        let (raw, complaints) = lowered_expr(written);
+        assert!(complaints.is_empty(), "`{written}` lowers without complaint");
+        let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
+        let RawShape::Lit(value) = raw.shape() else {
+            panic!("`{written}` lowers to a literal, not {:?}", raw.shape());
+        };
+        assert_eq!(
+            *value, expected,
+            "`{written}` lowered to `{value}` — the lowering read a part, not the lexeme"
+        );
+    }
+}
+
 #[test]
 fn the_written_container_forms_lower_to_the_constructors_they_stand_for() {
     let cx = host();

@@ -13,6 +13,7 @@ use super::VoiceItem;
 use super::child;
 use super::children;
 use super::descendant_token_text;
+use super::element_text;
 use super::find_token;
 use super::span_of;
 use super::token_text;
@@ -199,42 +200,40 @@ impl Duration {
     pub fn parameter(&self) -> Option<String> {
         self.parts()
             .next()
-            .filter(|token| token.kind() == SyntaxKind::Identifier)
-            .map(|token| token.text().to_string())
+            .filter(|part| part.kind() == SyntaxKind::Identifier)
+            .as_ref()
+            .map(element_text)
     }
 
     /// The longest this may be held, when the statement gives the performer a
     /// range (`g4/4 to 2/1`), spelled the same way.
     pub fn held_to(&self) -> Option<String> {
-        let mut after = self
-            .parts()
-            .skip_while(|token| token.kind() != SyntaxKind::ToKw)
-            .skip(1);
+        let mut after = self.parts().skip_while(|part| part.kind() != SyntaxKind::ToKw).skip(1);
         spell(&mut after)
     }
 
-    fn parts(&self) -> impl Iterator<Item = SyntaxToken> + '_ {
-        self.0
-            .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| !token.kind().is_trivia())
+    /// The lexemes written inside the duration, trivia dropped. Elements
+    /// rather than tokens because `3/8` is a node over its parts and is one
+    /// lexeme here.
+    fn parts(&self) -> impl Iterator<Item = SyntaxElement> + '_ {
+        self.0.children_with_tokens().filter(|part| !part.kind().is_trivia())
     }
 }
 
-/// Read one duration value off the front of a token run.
-pub(crate) fn spell(tokens: &mut impl Iterator<Item = SyntaxToken>) -> Option<String> {
-    let first = tokens.next()?;
+/// Read one duration value off the front of a lexeme run.
+pub(crate) fn spell(lexemes: &mut impl Iterator<Item = SyntaxElement>) -> Option<String> {
+    let first = lexemes.next()?;
     if matches!(first.kind(), SyntaxKind::Rational | SyntaxKind::Integer) {
-        return Some(first.text().to_string());
+        return Some(element_text(&first));
     }
     if first.kind() != SyntaxKind::Slash {
         // An identifier: a duration parameter, resolved somewhere that knows
         // what it is bound to.
         return None;
     }
-    let value = tokens.next().filter(|token| token.kind() == SyntaxKind::Integer)?;
-    let dots = tokens.take_while(|token| token.kind() == SyntaxKind::Dot).count();
-    dotted(value.text().parse().ok()?, dots)
+    let value = lexemes.next().filter(|part| part.kind() == SyntaxKind::Integer)?;
+    let dots = lexemes.take_while(|part| part.kind() == SyntaxKind::Dot).count();
+    dotted(element_text(&value).parse().ok()?, dots)
 }
 
 /// `/N` with `d` augmentation dots, as a fraction: `(1/N)·(2 − 2⁻ᵈ)`.
@@ -359,9 +358,8 @@ impl ChordStmt {
     pub fn pitches(&self) -> Vec<String> {
         self.0
             .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| token.kind() == SyntaxKind::PitchLiteral)
-            .map(|token| token.text().to_string())
+            .filter(|part| part.kind() == SyntaxKind::PitchLiteral)
+            .map(|pitch| element_text(&pitch))
             .collect()
     }
 
@@ -394,15 +392,14 @@ impl UseStmt {
         };
         expression
             .descendants_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .filter(|token| {
-                token.kind() == SyntaxKind::PitchLiteral
-                    || token.kind() == SyntaxKind::Identifier
-                    || token.kind() == SyntaxKind::Rational
-                    || token.kind() == SyntaxKind::Integer
+            .filter(|part| {
+                part.kind() == SyntaxKind::PitchLiteral
+                    || part.kind() == SyntaxKind::Identifier
+                    || part.kind() == SyntaxKind::Rational
+                    || part.kind() == SyntaxKind::Integer
             })
             .skip(1) // the motif name
-            .map(|token| token.text().to_string())
+            .map(|argument| element_text(&argument))
             .collect()
     }
 

@@ -172,13 +172,17 @@ fn write_through(node: &SyntaxNode, stop: &SyntaxToken, writer: &mut Writer, lay
             SyntaxElement::Node(child) if child.text_range().contains_range(stop.text_range()) => {
                 return write_through(&child, stop, writer, layout);
             }
+            // A composite literal is one lexeme, not a node to walk into.
+            SyntaxElement::Node(literal) if literal.kind().is_composite_literal() => {
+                format_token(node, &SyntaxElement::Node(literal), writer);
+            }
             SyntaxElement::Node(child) => format_node(&child, writer, layout),
             SyntaxElement::Token(token) if token.kind() == SyntaxKind::Whitespace => {
                 writer.note_whitespace(token.text());
             }
             SyntaxElement::Token(token) => {
                 let reached = token.text_range() == stop.text_range();
-                format_token(node, &token, writer);
+                format_token(node, &SyntaxElement::Token(token), writer);
                 if reached {
                     return true;
                 }
@@ -231,6 +235,10 @@ fn line_tail(list: &SyntaxNode, enclosing: &[bool], layout: &Layout) -> usize {
         while let Some(element) = following {
             following = element.next_sibling_or_token();
             match element {
+                // One lexeme, measured as one word.
+                SyntaxElement::Node(literal) if literal.kind().is_composite_literal() => {
+                    format_token(&parent, &SyntaxElement::Node(literal), &mut writer);
+                }
                 SyntaxElement::Node(child) => match next_break(&child) {
                     // The line can be cut here, so this is where the tail ends
                     // and the delimiter that cuts it is the last of it.
@@ -256,7 +264,9 @@ fn line_tail(list: &SyntaxNode, enclosing: &[bool], layout: &Layout) -> usize {
                 SyntaxElement::Token(token) if closes_a_line(token.kind(), &writer) => {
                     return width;
                 }
-                SyntaxElement::Token(token) => format_token(&parent, &token, &mut writer),
+                SyntaxElement::Token(token) => {
+                    format_token(&parent, &SyntaxElement::Token(token), &mut writer);
+                }
             }
             width = writer.written();
             if writer.line_ended() || width > MEASURE {

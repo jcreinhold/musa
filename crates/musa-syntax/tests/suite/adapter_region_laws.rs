@@ -61,15 +61,20 @@ fn a_syntax_import_and_a_region_are_both_read_without_complaint() {
     );
 }
 
+/// A composite literal is admitted alongside the groups because it is not the
+/// grouper's doing: `c#4` is one token to the lexer and the parser writes its
+/// parts wherever it writes it (`parser/literals.rs`). The claim the law makes
+/// is that the *region reader* has no opinion about the interior, and a
+/// lexeme's own shape is not an opinion about the adapter's language.
 #[test]
 fn the_interior_of_a_region_is_grouped_and_nothing_more() {
     let document = parse(REGION);
     let region = region(&document);
     let inside = nodes(&region);
     assert!(
-        inside
-            .iter()
-            .all(|kind| matches!(kind, SyntaxKind::SyntaxRegion | SyntaxKind::SyntaxGroup)),
+        inside.iter().all(
+            |kind| matches!(kind, SyntaxKind::SyntaxRegion | SyntaxKind::SyntaxGroup) || kind.is_composite_literal()
+        ),
         "the fixed grouper forms a node per matched delimiter pair and no other node: {inside:?}"
     );
     // `{ 3 (4 [5]) … }` — the braces, the parentheses, and the brackets.

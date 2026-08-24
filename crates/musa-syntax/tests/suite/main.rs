@@ -9,6 +9,7 @@ mod editing_laws;
 mod expression_syntax_laws;
 mod formatter;
 mod highlight_laws;
+mod literal_parts_laws;
 mod parser;
 mod quotation_syntax_laws;
 mod record_syntax_laws;

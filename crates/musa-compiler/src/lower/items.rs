@@ -529,7 +529,7 @@ impl Lowering<'_> {
 pub(super) fn declared_name(node: &SyntaxNode) -> Option<Name> {
     own_tokens(node)
         .find(|token| token.kind() == SyntaxKind::Identifier)
-        .map(|token| Name::from(token.text()))
+        .map(|token| Name::from(super::lexeme_text(&token).as_str()))
 }
 
 /// Every `Param` of a declaration's parameter list, in order.

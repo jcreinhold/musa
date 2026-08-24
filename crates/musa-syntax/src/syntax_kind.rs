@@ -40,6 +40,45 @@ pub enum SyntaxKind {
     /// singly diminished interval from the written pitch `d4`.
     IntervalLiteral,
 
+    // --- Literal parts.
+    //
+    // The lexer's regexes above find the letter, the accidental run, the
+    // octave, the quality, the size, the numerator and the denominator on the
+    // way past. These are the kinds those substrings carry once the parser
+    // writes them into the tree, so a consumer reads a part instead of
+    // re-deriving it from the spelling — root `AGENTS.md`'s "hand a consumer
+    // what we already computed", whose example is this one.
+    //
+    // They are produced by the *parser*, from one lexer token, and never by
+    // the lexer: `c#5` is one token and `c # 5` is three things, and it is the
+    // lexer that decides which. So the three literal kinds above stay token
+    // kinds out of the lexer and become node kinds in the tree, and these are
+    // the tokens under them.
+    /// `a`–`g`, the letter a written pitch names.
+    PitchLetter,
+    /// A run of `#`, a run of `b`, or a single `n`, inside a written pitch.
+    ///
+    /// A run rather than one character, because `bbb2` is B double flat and
+    /// the double flat is one accidental. Absent where the pitch has none.
+    PitchAccidental,
+    /// The octave a written pitch ends with, sign and all.
+    ///
+    /// The `-` belongs here rather than beside it: `a-1` names an octave and
+    /// not a subtraction, which is a fact the lexer decided by taking the
+    /// whole thing as one token.
+    PitchOctave,
+    /// `P`, `M`, `m`, a run of `A`, a run of `d`, or `dim`.
+    IntervalQuality,
+    /// The size a named interval ends with — the `3` of `M3`.
+    IntervalSize,
+    /// The numerator of a [`SyntaxKind::Rational`].
+    RationalNumerator,
+    /// The denominator of a [`SyntaxKind::Rational`].
+    ///
+    /// The bar between them is an ordinary [`SyntaxKind::Slash`], which is
+    /// what it is: the same character the duration separator is written with.
+    RationalDenominator,
+
     // --- Unit suffixes (roadmap §7.2: units are part of the syntax).
     /// `Hz`
     UnitHz,
@@ -98,8 +137,10 @@ pub enum SyntaxKind {
     /// `.` — the path separator in a modulation target, and the augmentation
     /// dot on a short-form duration (`c4/4.`).
     Dot,
-    /// `/` — the duration separator (`c4/4`), and the fraction bar inside a
-    /// [`SyntaxKind::Rational`], which the lexer keeps whole.
+    /// `/` — the duration separator (`c4/4`), and the fraction bar between a
+    /// [`SyntaxKind::RationalNumerator`] and a
+    /// [`SyntaxKind::RationalDenominator`]. The lexer keeps a rational whole
+    /// as one token; the parser writes it out as its three parts.
     Slash,
     /// `|` — the barline.
     Pipe,
@@ -789,6 +830,17 @@ impl SyntaxKind {
     /// in the tree (losslessness) but skipped by the parser.
     pub fn is_trivia(self) -> bool {
         matches!(self, Self::Whitespace | Self::LineComment | Self::BlockComment)
+    }
+
+    /// Whether this kind is a literal the lexer reads as one token and the
+    /// parser writes as a node over its parts (`parser/literals.rs`).
+    ///
+    /// The three are `c#5`, `M3` and `3/8`. Every other literal is a leaf.
+    /// A reader that wants the lexeme rather than the parts asks this, because
+    /// the distinction it is asking about — "is the text under this element
+    /// one token to the lexer" — is exactly what the parts made ambiguous.
+    pub fn is_composite_literal(self) -> bool {
+        matches!(self, Self::PitchLiteral | Self::IntervalLiteral | Self::Rational)
     }
 
     /// Every kind, in declaration order.

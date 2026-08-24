@@ -572,9 +572,8 @@ fn trimmed(node: &SyntaxNode) -> TextRange {
 /// The first token of `kinds` directly under `node`.
 fn token_of(node: &SyntaxNode, kinds: &[SyntaxKind]) -> Option<TextRange> {
     node.children_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| kinds.contains(&token.kind()))
-        .map(|token| token.text_range())
+        .find(|lexeme| kinds.contains(&lexeme.kind()))
+        .map(|lexeme| lexeme.text_range())
 }
 
 /// Set, add, or remove one header statement.

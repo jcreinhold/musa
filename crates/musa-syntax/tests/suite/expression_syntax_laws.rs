@@ -182,15 +182,17 @@ fn pitch_translation_is_a_single_non_associative_expression_layer() {
 fn diminished_interval_spelling_does_not_steal_the_note_d4() {
     let parsed = parse("piece \"pitch\" { let sounded: Pitch = d4; let distance: Interval = dim4; }");
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
-    let tokens = parsed
+    // The two literals are nodes over the parts the lexer's pattern found, so
+    // what is collected here is the lexeme each one spells, which is the thing
+    // the law is about: `d4` is a note and `dim4` is an interval.
+    let lexemes = parsed
         .syntax()
-        .descendants_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .filter(|token| matches!(token.kind(), SyntaxKind::PitchLiteral | SyntaxKind::IntervalLiteral))
-        .map(|token| (token.kind(), token.text().to_owned()))
+        .descendants()
+        .filter(|node| matches!(node.kind(), SyntaxKind::PitchLiteral | SyntaxKind::IntervalLiteral))
+        .map(|literal| (literal.kind(), literal.text().to_string()))
         .collect::<Vec<_>>();
     assert_eq!(
-        tokens,
+        lexemes,
         [
             (SyntaxKind::PitchLiteral, "d4".to_owned()),
             (SyntaxKind::IntervalLiteral, "dim4".to_owned()),

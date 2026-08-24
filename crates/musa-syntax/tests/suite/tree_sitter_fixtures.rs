@@ -366,6 +366,19 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::MethodCallExpr
         | SyntaxKind::IndexExpr
         | SyntaxKind::IndexedType => panic!("`{kind:?}` is a node, not a token"),
+
+        // The parts of a composite literal. The lexer emits `c#5` as one
+        // token and the parser splits it (`parser/literals.rs`), so a part
+        // never reaches a manifest — this stream is `lex`'s, not the CST's.
+        SyntaxKind::PitchLetter
+        | SyntaxKind::PitchAccidental
+        | SyntaxKind::PitchOctave
+        | SyntaxKind::IntervalQuality
+        | SyntaxKind::IntervalSize
+        | SyntaxKind::RationalNumerator
+        | SyntaxKind::RationalDenominator => {
+            panic!("`{kind:?}` is a part the parser mints, never a token the lexer emits")
+        }
     }
 }
 

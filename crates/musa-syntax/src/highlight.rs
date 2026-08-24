@@ -199,7 +199,8 @@ impl TokenClass {
         }
     }
 
-    /// The class of a token kind, or `None` for a parser node kind.
+    /// The class of a token kind, or `None` for a kind the lexer never
+    /// produces — a parser node kind, or a composite literal's part.
     ///
     /// Exhaustive by construction: the workspace forbids wildcard match arms,
     /// so a new [`SyntaxKind`] arrives here as a compile error rather than as
@@ -485,6 +486,18 @@ impl TokenClass {
             | SyntaxKind::FieldPath
             | SyntaxKind::AppliedType
             | SyntaxKind::IndexedType => return None,
+
+            // The parts of a composite literal, for the same reason as a node
+            // kind: highlighting reads the *lexer's* stream, and the lexer
+            // reads `c#5` as one token. A part exists only in the parsed tree,
+            // where the whole is already styled as the pitch it spells.
+            SyntaxKind::PitchLetter
+            | SyntaxKind::PitchAccidental
+            | SyntaxKind::PitchOctave
+            | SyntaxKind::IntervalQuality
+            | SyntaxKind::IntervalSize
+            | SyntaxKind::RationalNumerator
+            | SyntaxKind::RationalDenominator => return None,
         };
         Some(class)
     }

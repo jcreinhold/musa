@@ -71,7 +71,7 @@ use std::collections::HashMap;
 use num_rational::Ratio;
 
 use musa_calculus::{ModuleId, Origin, Raw};
-use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
+use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::resolve::Resolver;
 use musa_score::diagnose::Diagnostic;
@@ -569,7 +569,7 @@ impl<'a> Lowering<'a> {
         for parameter in parameters {
             let Some(name) = own_tokens(parameter)
                 .find(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_owned())
+                .map(|token| lexeme_text(&token))
             else {
                 continue;
             };
@@ -713,22 +713,41 @@ fn whole(origin: Origin, value: u64) -> Raw {
     Raw::numeral(origin, "Nat", value)
 }
 
-/// The tokens of `node` that carry meaning, in order.
-fn significant_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {
+/// The lexemes of `node` that carry meaning, in order.
+///
+/// A lexeme is a token, or one of the three composite literals — `c#5`, `M3`,
+/// `3/8` — which the lexer reads as one token and the parser writes as a node
+/// over the parts its pattern found. What a lowering asks about is what the
+/// composer wrote, so a literal answers as the one word it is and its parts are
+/// not descended into.
+fn significant_tokens(node: &SyntaxNode) -> impl Iterator<Item = musa_syntax::SyntaxElement> + '_ {
     node.descendants_with_tokens()
-        .filter_map(musa_syntax::SyntaxElement::into_token)
-        .filter(|token| !token.kind().is_trivia())
+        .filter(|lexeme| is_lexeme(lexeme) && !lexeme.kind().is_trivia())
+        .filter(|lexeme| !lexeme.parent().is_some_and(|owner| owner.kind().is_composite_literal()))
 }
 
-/// The tokens `node` itself holds, without descending into its children.
+/// Whether an element is a lexeme rather than a node with parts: every token,
+/// and the three composite literals.
+fn is_lexeme(element: &musa_syntax::SyntaxElement) -> bool {
+    element.as_token().is_some() || element.kind().is_composite_literal()
+}
+
+/// The lexemes `node` itself holds, without descending into its children.
 ///
 /// The difference from [`significant_tokens`] is what keeps a form's own words
 /// apart from its parts': `p step down n` writes `down` in the `StepExpr`, and a
 /// `down` inside the expression `n` would otherwise answer for it.
-fn own_tokens(node: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {
+fn own_tokens(node: &SyntaxNode) -> impl Iterator<Item = musa_syntax::SyntaxElement> + '_ {
     node.children_with_tokens()
-        .filter_map(musa_syntax::SyntaxElement::into_token)
-        .filter(|token| !token.kind().is_trivia())
+        .filter(|lexeme| is_lexeme(lexeme) && !lexeme.kind().is_trivia())
+}
+
+/// The source text one lexeme covers.
+fn lexeme_text(lexeme: &musa_syntax::SyntaxElement) -> String {
+    match lexeme {
+        musa_syntax::SyntaxElement::Node(literal) => literal.text().to_string(),
+        musa_syntax::SyntaxElement::Token(token) => token.text().to_owned(),
+    }
 }
 
 /// Whether `node` writes one of the form's own words.

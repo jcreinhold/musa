@@ -463,7 +463,9 @@ pub(super) fn is_statement(kind: SyntaxKind) -> bool {
 /// wants to *quote back*: `may omit` spelled with a space should say what
 /// was written, not what its first token was.
 pub(super) fn word(node: &SyntaxNode) -> String {
-    significant_tokens(node).map(|token| token.text().to_owned()).collect()
+    significant_tokens(node)
+        .map(|token| crate::lower::lexeme_text(&token))
+        .collect()
 }
 
 /// A written claim, spelled back: `pitches_in(scale c major)`, `fills_meter()`.

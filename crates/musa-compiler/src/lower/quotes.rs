@@ -548,7 +548,7 @@ impl Lowering<'_> {
         }
         let name = child(node, |kind| kind == SyntaxKind::NameExpr)
             .and_then(|held| significant_tokens(&held).next())
-            .map(|token| token.text().to_owned())?;
+            .map(|token| super::lexeme_text(&token))?;
         let hole = walk.bound.len();
         walk.bound.push((name, sequence));
         Some(if sequence {

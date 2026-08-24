@@ -35,6 +35,7 @@ mod engine;
 mod expressions;
 mod functions;
 mod harmony;
+mod literals;
 mod notes;
 mod patterns;
 mod pitches;
