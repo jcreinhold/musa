@@ -380,6 +380,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 162 | delete-the-module-layer | 3 | `signature`, `structure`, `template structure`, `make`, and the `template` that shares `make` — all five go |
 | 162a | module-privacy-for-source | 3 | A source file gets a `ModuleId`, so `private` is refused across files instead of carried |
 | 162b | parameterized-record-literals | 3 | `Cell<A>` can be declared and not constructed; the literal learns to find its family |
+| 162c | nested-patterns-parse | 3 | §1 says patterns nest and the parser reads one level; it learns the rest |
 | 163 | laws-as-record-fields | 3 | Group, action and torsor carry the equations they always claimed — after 164 builds them |
 | 164 | builtin-collapse | 3 | Collapse the builtin registry behind methods and namespaces |
 | 165 | diagnostics-and-performance | 3 | Make the new failures legible and the new checker fast enough |
