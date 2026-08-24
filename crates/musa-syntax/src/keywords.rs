@@ -1001,6 +1001,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::SuppliedArg
         | SyntaxKind::MatchExpr
         | SyntaxKind::MatchArm
+        | SyntaxKind::LetExpr
         | SyntaxKind::IfExpr
         | SyntaxKind::RecordUpdateExpr
         | SyntaxKind::FieldUpdate

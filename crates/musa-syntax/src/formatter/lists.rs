@@ -297,6 +297,32 @@ pub(super) fn opens_a_further_rung(owner: &SyntaxNode, child: &SyntaxNode) -> bo
         && owner.children().last().as_ref() != Some(child)
 }
 
+/// Whether a local binding's `;` ends the line, or is followed by its body on
+/// the same one.
+///
+/// A `let` in a block is a *step*: the block is read down the page, and the
+/// binding, the bindings after it, and the expression they are all for each
+/// take a line. Everywhere else a `let` is written into the middle of
+/// something — a match arm's result, a `quote at here { … }`'s interior — and
+/// breaking there would put the body at the indent of whatever the `let` is
+/// nested in, which in an arm is the indent of the *next arm*. An author who
+/// wants the stacked reading in one of those places writes the braces that
+/// ask for it, and `-> { let … }` gets exactly the block layout above.
+///
+/// The chain is walked because only its outermost link is the block's child:
+/// `let a = …; let b = …; e` is one `let` inside another, and all of its
+/// semicolons end their lines or none of them do.
+pub(super) fn binding_ends_its_line(binding: &SyntaxNode) -> bool {
+    let mut outermost = binding.clone();
+    while let Some(owner) = outermost.parent() {
+        if owner.kind() != SyntaxKind::LetExpr {
+            return owner.kind() == SyntaxKind::BlockExpr;
+        }
+        outermost = owner;
+    }
+    false
+}
+
 /// Whether this node is written as a braced body, so its `{` ends the line the
 /// thing it belongs to started.
 fn opens_a_body(kind: SyntaxKind) -> bool {

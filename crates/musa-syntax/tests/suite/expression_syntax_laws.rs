@@ -598,3 +598,57 @@ fn an_alternation_is_one_pattern_holding_its_alternatives() {
         "formatting an alternation is not idempotent:\n{once}"
     );
 }
+
+/// `let name = value; body` is one expression, wherever an expression stands.
+///
+/// `docs/rules/language/01-surface.md` §1 admits it in a block, and a block is
+/// not the only place an expression is read: a match arm's result and a
+/// `quote at here { … }`'s interior are the same production. What the tree
+/// says is that several bindings are several nodes nested rightward — the
+/// second `LetExpr` is a *child* of the first and not a sibling — which is
+/// what makes the block still hold exactly one expression.
+#[test]
+fn a_binding_is_one_expression_holding_its_body() {
+    let source = r#"library {
+    fn stacked(x: Text) -> Text {
+        let one: Text = text_join([x, "a"]);
+        let two = text_join([one, "b"]);
+        text_join([one, two])
+    }
+
+    fn in_an_arm(written: Bool) -> Text { match written { True -> let word = "yes"; word, False -> "no" } }
+
+    fn in_a_quote(x: Syntax<TokenTree>) -> Syntax<TokenTree> { quote at here { let held = $x; held } }
+}
+"#;
+    let parsed = parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+
+    let bindings: Vec<_> = parsed
+        .syntax()
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::LetExpr)
+        .collect();
+    assert_eq!(bindings.len(), 4, "two in `stacked`, one in the arm, one in the quote");
+
+    // Rightward nesting, as a fact about the tree rather than about the text:
+    // `stacked`'s second binding hangs under its first, so the block below
+    // them holds one expression and not three.
+    let nested = bindings
+        .iter()
+        .filter(|node| node.parent().is_some_and(|owner| owner.kind() == SyntaxKind::LetExpr))
+        .count();
+    assert_eq!(nested, 1, "`let two` is a child of `let one`");
+
+    let once = format(&parsed, BarSpacing::Compact).to_string();
+    let reparsed = parse(&once);
+    assert!(
+        reparsed.errors().is_empty(),
+        "the formatted text no longer parses:\n{once}"
+    );
+    assert_eq!(
+        format(&reparsed, BarSpacing::Compact).to_string(),
+        once,
+        "formatting a binding is not idempotent:\n{once}"
+    );
+}

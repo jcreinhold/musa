@@ -5,6 +5,7 @@
 //! that cargo never reclaims. See `docs/notes/toolchain/slow-test-suite.md`.
 
 mod alternation_laws;
+mod binding_laws;
 mod analysis_laws;
 mod annotation_laws;
 mod argument_order_laws;

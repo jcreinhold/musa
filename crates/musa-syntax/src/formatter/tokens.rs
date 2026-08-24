@@ -3,7 +3,8 @@
 //! One concern of the `formatter` module; see its docs for the rules.
 
 use super::lists::{
-    breakable_list, carries_a_trailing_comma, continues_past_a_branch, ends_its_list, halves_a_path_separator,
+    binding_ends_its_line, breakable_list, carries_a_trailing_comma, continues_past_a_branch, ends_its_list,
+    halves_a_path_separator,
 };
 use super::writer::Writer;
 use crate::SyntaxKind;
@@ -124,7 +125,9 @@ pub(super) fn format_token(node: &SyntaxNode, token: &SyntaxToken, writer: &mut 
         }
     } else if kind == SyntaxKind::Semicolon {
         writer.write(";");
-        writer.end_line();
+        if parent != SyntaxKind::LetExpr || binding_ends_its_line(node) {
+            writer.end_line();
+        }
     } else if kind == SyntaxKind::Comma {
         writer.write(",");
         // A match arm and a constructor are both a case of the same thing, and

@@ -503,3 +503,184 @@ piece "questions" {
             (pitch_literal)
             (duration
               (integer))))))))
+
+==================
+a block names a value with let
+==================
+
+library {
+  fn twice(x: Text) -> Text {
+    let doubled: Text = text_join([x, x]);
+    text_join([doubled, doubled])
+  }
+
+  fn stacked(x: Text) -> Text {
+    let one = text_join([x, "a"]);
+    let two = text_join([one, "b"]);
+    text_join([one, two])
+  }
+
+  fn in_an_arm(written: Bool) -> Text {
+    match written {
+      True -> let word = "yes"; text_join([word, word]),
+      False -> "no",
+    }
+  }
+}
+
+---
+
+(source_file
+  (library_declaration
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (let_expression
+            (identifier)
+            (type_expression
+              (type_name
+                (identifier)))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (list_expression
+                        (expression
+                          (name_expression
+                            (identifier)))
+                        (expression
+                          (name_expression
+                            (identifier)))))))))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (list_expression
+                        (expression
+                          (name_expression
+                            (identifier)))
+                        (expression
+                          (name_expression
+                            (identifier)))))))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (let_expression
+            (identifier)
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (list_expression
+                        (expression
+                          (name_expression
+                            (identifier)))
+                        (expression
+                          (literal_expression
+                            (string)))))))))
+            (expression
+              (let_expression
+                (identifier)
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (list_expression
+                            (expression
+                              (name_expression
+                                (identifier)))
+                            (expression
+                              (literal_expression
+                                (string)))))))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (list_expression
+                            (expression
+                              (name_expression
+                                (identifier)))
+                            (expression
+                              (name_expression
+                                (identifier)))))))))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name
+          (identifier)))
+      (block_expression
+        (expression
+          (match_expression
+            (expression
+              (name_expression
+                (identifier)))
+            (match_arm
+              (pattern
+                (identifier))
+              (expression
+                (let_expression
+                  (identifier)
+                  (expression
+                    (literal_expression
+                      (string)))
+                  (expression
+                    (application_expression
+                      (name_expression
+                        (identifier))
+                      (expression_argument_list
+                        (expression_argument
+                          (expression
+                            (list_expression
+                              (expression
+                                (name_expression
+                                  (identifier)))
+                              (expression
+                                (name_expression
+                                  (identifier))))))))))))
+            (match_arm
+              (pattern
+                (identifier))
+              (expression
+                (literal_expression
+                  (string))))))))))

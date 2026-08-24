@@ -290,6 +290,7 @@ fn file(sites: &Sites, refusal: &Refusal) -> Filed {
         Refusal::NonPositive { at, .. } => one(Code::NonPositiveOccurrence, *at),
         Refusal::IncompleteMatch { at, .. } => one(Code::IncompleteMatch, *at),
         Refusal::AlternativeBindings { at, .. } => one(Code::AlternativeBindings, *at),
+        Refusal::RecursiveBinding { at, .. } => one(Code::RecursiveBinding, *at),
         Refusal::UnreachableBranch { at, .. } => one(Code::UnreachableBranch, *at),
         Refusal::UncheckedRecursion { at, .. } => one(Code::UncheckedRecursion, *at),
         Refusal::UntypedRecursion { at, .. } => one(Code::UntypedRecursion, *at),

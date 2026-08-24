@@ -543,6 +543,14 @@ pub enum SyntaxKind {
     MatchExpr,
     /// One pattern and result in a match.
     MatchArm,
+    /// `let name = value; body`, with an optional `: type` before the `=`.
+    ///
+    /// An expression and not a statement: the `;` terminates the binding, the
+    /// body is the one expression that follows it, and the whole of it is what
+    /// the block holds (`docs/rules/language/01-surface.md` §1). Several
+    /// bindings are several of these nested rightward, which is what the core
+    /// term already means — this node spells `Raw::Let`, it does not add one.
+    LetExpr,
     /// `if condition { consequent } else { alternative }`.
     ///
     /// Surface syntax with no core term behind it: the compiler elaborates it

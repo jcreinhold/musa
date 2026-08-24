@@ -23,9 +23,10 @@ use musa_syntax::ast::AstNode as _;
 use musa_syntax::{SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
+use super::items::declared_name;
 use super::{
-    Lowering, Question, applied, child, children, is_expr_node, listed, own_tokens, paired, significant_tokens, whole,
-    writes,
+    Lowering, Question, applied, child, children, is_expr_node, is_type_node, listed, own_tokens,
+    paired, significant_tokens, whole, writes,
 };
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
@@ -131,6 +132,7 @@ impl Lowering<'_> {
             SyntaxKind::ScaleExpr => self.scale(node, origin),
             SyntaxKind::KeyExpr => self.key(node, origin),
             SyntaxKind::MatchExpr => self.match_on(node, origin),
+            SyntaxKind::LetExpr => self.local_binding(node, origin),
             SyntaxKind::IfExpr => self.conditional(node, origin),
             SyntaxKind::RecordLiteralExpr => self.record(node, origin),
             SyntaxKind::RecordUpdateExpr => self.record_update(node, origin),
@@ -832,6 +834,32 @@ impl Lowering<'_> {
     }
 
     // ---- the branching forms ----
+
+    /// `let x : A = v; e` — the core's own `let`, given a spelling.
+    ///
+    /// Nothing is desugared here, which is the point: `02-core-calculus.md` §2
+    /// has had the term since the beginning and `01-surface.md` §9.1's path
+    /// update already elaborates to one. What was missing was a way to write
+    /// it, so this reads the two expression children and hands them over.
+    ///
+    /// Both parts go through [`Lowering::value`] and not [`Lowering::expr`]: a
+    /// `?` inside a binding's value belongs to the function the binding stands
+    /// in, exactly as it would if the value had been written where the name is
+    /// used. A boundary here would catch it one level too early and answer the
+    /// binding with a `Result` nobody asked for.
+    fn local_binding(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
+        let name = declared_name(node)?;
+        let parts = children(node, is_expr_node);
+        let value = self.value(parts.first()?)?;
+        let body = self.value(parts.get(1)?)?;
+        match child(node, is_type_node) {
+            Some(written) => {
+                let ty = self.ty(&written)?;
+                Some(Raw::annotated_bind(origin, name, ty, value, body))
+            }
+            None => Some(Raw::bind(origin, name, value, body)),
+        }
+    }
 
     /// `if c { a } else { b }` — the two-arm boolean match the core already has.
     fn conditional(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {

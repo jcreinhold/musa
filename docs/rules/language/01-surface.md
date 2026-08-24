@@ -123,9 +123,21 @@ return whichever they were given, so `c4 up M3` is a pitch and `chord_root(triad
 own type decides, and no register is invented for a value that never had one. Every `fn` has an expression body, written
 in braces: `{ e }` is a block, it holds exactly one expression, and it means that expression — `⟦{ e }⟧ = ⟦e⟧`
 (`02-core-calculus.md` §2). A block is an expression form wherever an expression is admitted, not a special case of
-`fn`. There is no statement language inside it: no `let`, no `return`, no `;`-separated sequence, and a second
-expression in a block is a static error naming the rule. A multi-statement musical body is explicitly `music { ... }`,
-which is a different construct that happens to abut the body's brace.
+`fn`. There is no statement language inside it: no `return`, no `;`-separated sequence, and a second expression in a
+block is a static error naming the rule. A multi-statement musical body is explicitly `music { ... }`, which is a
+different construct that happens to abut the body's brace.
+
+**A block may name a value.** `let name = value; body` and `let name : T = value; body` are one expression — the `;`
+terminates the binding exactly as it does at the top level, and the body is the single expression the block holds. So
+nothing above is weakened: a `let` is not a second expression, and `{ e1; e2 }` is still the static error it always was.
+Several bindings are several `let`s nested rightward, `let a = …; let b = …; e` meaning `let a = … in (let b = … in e)`,
+which is `02-core-calculus.md` §2's term and not a new one — §9.1's path update has elaborated to that term since before
+the surface could spell it. The annotation is optional and inference is the ordinary one. The binding is **not**
+recursive: its value is read outside the binder, so a value that names the binder is refused (`recursive-binding`) and
+a recursion is written with `rec`, which is lifted to a definition of its own. An outer binding of the same name is
+shadowed rather than refused, because there the value has something to mean. `return` and the bare sequence stay
+forbidden for the reason they always were: each would be a statement whose value is decided by where control left it,
+and this language has no control to leave — a `let` adds a name, not a step.
 
 Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means the
 written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply diminished

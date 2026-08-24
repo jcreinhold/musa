@@ -446,6 +446,7 @@ impl TokenClass {
             | SyntaxKind::SuppliedArg
             | SyntaxKind::MatchExpr
             | SyntaxKind::MatchArm
+            | SyntaxKind::LetExpr
             | SyntaxKind::IfExpr
             | SyntaxKind::RecordUpdateExpr
             | SyntaxKind::FieldUpdate

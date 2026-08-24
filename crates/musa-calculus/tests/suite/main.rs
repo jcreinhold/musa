@@ -701,6 +701,15 @@ pub(crate) mod programs {
                 expected: |refusal| matches!(refusal, Refusal::UnknownName { .. }),
             },
             Refused {
+                name: "a `let` whose value names the binder it is introducing",
+                // Not `UnknownName`: nothing else in scope carries the name,
+                // so the only thing the value can have meant is the recursion
+                // a `let` does not have.
+                raw: Raw::bind(WRITTEN, "loop", var("loop"), unit()),
+                ty: None,
+                expected: |refusal| matches!(refusal, Refusal::RecursiveBinding { .. }),
+            },
+            Refused {
                 name: "an implicit written against an explicit binder",
                 // A written `{…}` fills the implicit binder of a
                 // host-generated scheme and nothing else; against an ordinary

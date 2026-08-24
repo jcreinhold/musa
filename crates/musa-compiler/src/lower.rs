@@ -770,6 +770,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::KeyExpr
             | SyntaxKind::StepExpr
             | SyntaxKind::MatchExpr
+            | SyntaxKind::LetExpr
             | SyntaxKind::IfExpr
             | SyntaxKind::RecordUpdateExpr
             | SyntaxKind::RecordLiteralExpr

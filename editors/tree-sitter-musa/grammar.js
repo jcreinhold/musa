@@ -511,6 +511,7 @@ module.exports = grammar({
     // functions. Application binds tightest.
     expression: ($) =>
       choice(
+        $.let_expression,
         $.match_expression,
         $.if_expression,
         $.record_update_expression,
@@ -828,6 +829,22 @@ module.exports = grammar({
       ),
 
     match_arm: ($) => seq(field('pattern', $.pattern), '->', field('value', $.expression)),
+
+    // Parser::let_expr — a local binding, which is one expression and not a
+    // statement. The `;` terminates the binding, the body is the expression
+    // after it, and several bindings are several of these nested rightward,
+    // so a block still holds exactly one expression. Same shape as
+    // `let_declaration` minus the visibility, plus the body.
+    let_expression: ($) =>
+      seq(
+        'let',
+        field('name', $.identifier),
+        optional(seq(':', field('type', $.type_expression))),
+        '=',
+        field('value', $.expression),
+        ';',
+        field('body', $.expression),
+      ),
 
     // `else` is mandatory, so there is no dangling-else ambiguity to resolve
     // and an `else if` ladder is one `if_expression` nested in the

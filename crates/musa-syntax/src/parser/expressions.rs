@@ -26,7 +26,42 @@ impl Parser<'_> {
         // this expression sees it, and only the rightmost can be followed by a
         // `with` at all.
         let spoken_for = std::mem::take(&mut self.with_is_spoken_for);
-        self.comparison_expr(spoken_for);
+        if self.at(SyntaxKind::LetKw) {
+            self.let_expr(spoken_for);
+        } else {
+            self.comparison_expr(spoken_for);
+        }
+    }
+
+    /// `let name = value; body` — a local binding, which is one expression.
+    ///
+    /// Read here rather than in [`Self::block_expr`] because a body is not
+    /// always a block: a match arm's result and a `quote at here { … }`'s
+    /// interior are both [`Self::expr`], and a binding is worth exactly as
+    /// much in those places as between braces. Nothing about the block
+    /// changes — it still holds one expression, and a `let` is one, so
+    /// `{ e1; e2 }` is still the error [`Self::second_expression_in_a_block`]
+    /// names (`docs/rules/language/01-surface.md` §1).
+    ///
+    /// Several bindings are several of these: the body is another
+    /// [`Self::expr`], so `let a = …; let b = …; e` nests rightward with no
+    /// list of bindings and no scope table. The suppression a trailing `with`
+    /// is subject to belongs to the body and not to the value, because the
+    /// value ends at its `;` and only the body can be followed by one.
+    fn let_expr(&mut self, spoken_for: bool) {
+        self.start(SyntaxKind::LetExpr);
+        self.bump(); // let
+        self.expect(SyntaxKind::Identifier, "a binding name");
+        if self.at(SyntaxKind::Colon) {
+            self.bump();
+            self.type_expr();
+        }
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.expr();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.with_is_spoken_for = spoken_for;
+        self.expr();
+        self.finish();
     }
 
     /// Level 6 — `==` and `<`, non-associative.

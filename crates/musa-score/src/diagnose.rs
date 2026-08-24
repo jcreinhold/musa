@@ -132,6 +132,14 @@ pub enum Code {
     /// the arm's body is one expression: a name only some alternatives bind is
     /// a name the body may read and may not have.
     AlternativeBindings,
+    /// A `let` whose value names the binder the `let` is introducing.
+    ///
+    /// A local binding is not recursive: its value is read outside the binder,
+    /// so a value reaching for the name has no recursion to reach. Distinct
+    /// from [`Self::UnknownName`] because the author was not misspelling
+    /// anything, and from [`Self::UncheckedRecursion`] because there is no
+    /// recursion here for a measure to check.
+    RecursiveBinding,
     /// A `match` whose scrutinee's index is not a distinct variable, which is
     /// A recursive call the termination rule cannot see is smaller.
     UncheckedRecursion,
@@ -280,6 +288,7 @@ code_table! {
     IncompleteMatch => "incomplete-match",
     UnreachableBranch => "unreachable-branch",
     AlternativeBindings => "alternative-bindings",
+    RecursiveBinding => "recursive-binding",
     UncheckedRecursion => "unchecked-recursion",
     UntypedRecursion => "untyped-recursion",
     PrivateName => "private-name",

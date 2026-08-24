@@ -438,7 +438,7 @@ impl Elaborator {
             Some(written) => {
                 let (ty_term, _) = self.check_type(scope, written)?;
                 let ty_value = scope.eval(&mut self.meter, &ty_term)?;
-                let value_term = self.check(scope, value, &ty_value)?;
+                let value_term = self.check(scope, value, &ty_value).map_err(named_itself(name))?;
                 (ty_term, ty_value, value_term)
             }
             None => {
@@ -446,7 +446,7 @@ impl Elaborator {
                 // and a use of the name instantiates it through the
                 // application walk — §2.1's "quantified at the declaration,
                 // solved at the use".
-                let inferred = self.infer(scope, value)?;
+                let inferred = self.infer(scope, value).map_err(named_itself(name))?;
                 let ty_term = scope.quote_type(&mut self.meter, &inferred.ty)?;
                 (ty_term, inferred.ty, inferred.term)
             }
@@ -457,5 +457,30 @@ impl Elaborator {
             ty_term,
             value_term,
         })
+    }
+}
+
+/// Re-read a refusal from a `let`'s value as the recursion it probably was.
+///
+/// [`Elaborator::definition`] reads a binding's value in the scope *outside*
+/// the binder, which is what makes a `let` non-recursive (§2). So a value that
+/// spells the name being bound raises [`Refusal::UnknownName`], and the author
+/// who wrote it was not misspelling anything — they were writing a recursion
+/// this term does not have. The two are told apart by the name and by nothing
+/// else, which is exactly right: where an outer binder of that name *is* in
+/// scope no refusal is raised at all, and the value means the outer one.
+///
+/// Only the value's own refusal passes through here. The body is elaborated
+/// under the binder, so a name in it resolves and never reaches this.
+fn named_itself(name: &Name) -> impl FnOnce(ElabError) -> ElabError + use<'_> {
+    move |error| match error {
+        ElabError::Refused(Refusal::UnknownName { name: unknown, at, .. }) if unknown == *name => {
+            Refusal::RecursiveBinding {
+                name: Arc::clone(name),
+                at,
+            }
+            .into()
+        }
+        other => other,
     }
 }

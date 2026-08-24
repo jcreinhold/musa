@@ -131,6 +131,22 @@ pub enum Refusal {
         /// has no such list.
         candidates: Vec<Name>,
     },
+    /// A `let` whose value names the binder the `let` is introducing, where
+    /// nothing else in scope carries that name.
+    ///
+    /// Told apart from [`Self::UnknownName`] by the name alone: a `let` is
+    /// non-recursive, so its value is read in the scope *outside* the binder,
+    /// and a value that reaches for the name being bound is asking for a
+    /// recursion the term does not have. Shadowing is untouched — where an
+    /// outer binder of the same name is in scope the value means that one,
+    /// which is the reading `let sofar = f(sofar);` wants and gets.
+    #[error("`{name}` is being bound here, and a `let` cannot name itself")]
+    RecursiveBinding {
+        /// The name, as the binder spells it.
+        name: Name,
+        /// Where the value reached for it.
+        at: Origin,
+    },
     /// §2's `Switch` called conversion and conversion said no.
     #[error("{0}")]
     Mismatch(Box<Mismatch>),

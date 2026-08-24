@@ -603,6 +603,23 @@ pub fn explain(code: &str) -> Option<&'static str> {
              use, so every alternative binds the same names — \
              `Looped(_) | Volta(_)` rather than `Looped(times) | Volta(pass)`."
         }
+        musa_score::Code::RecursiveBinding => {
+            "A `let` names itself in its own value.\n\n\
+             `let x = …; e` binds one name over one body, and the value is \
+             read in the scope *outside* the binder — so the name is not yet \
+             in scope where the value is written, and a value that spells it \
+             is asking for a recursion this term does not have.\n\n\
+             A recursion is written with `rec`, which the compiler lifts to a \
+             definition of its own, or as a `fn` beside the one that calls \
+             it. If the name was meant to be an *outer* binding of the same \
+             name, nothing is wrong with shadowing it — but nothing outside \
+             this `let` declares it, which is why this is a refusal and not a \
+             shadowing.\n\n\
+             Broken:\n    \
+             let total = total + 1; total\n\n\
+             Fixed:\n    \
+             let raised = total + 1; raised"
+        }
         musa_score::Code::UncheckedRecursion => {
             "A recursive call the termination rule cannot see is smaller.\n\n\
              Musa is total, and a `rec` definition is admitted by rewriting \
