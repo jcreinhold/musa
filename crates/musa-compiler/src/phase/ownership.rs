@@ -115,7 +115,7 @@ pub(crate) enum SyntaxOp {
     /// not with the number because a transformer may emit a place and may not
     /// read one (`26-language-design-decision.md` §3.4) — this hands back
     /// something to splice, and nothing to compare. The answer stands at
-    /// [`crate::quote::anchor_place`] of the anchored node: the place derives
+    /// [`crate::quote::delta_place`] of the anchored node: the place derives
     /// from the arguments alone, because a δ rule is a function of its
     /// arguments and nothing else (§5.8's D3), and the reservation it uses is
     /// [`crate::quote::path::DELTA_QUOTATION`]'s.
@@ -130,6 +130,28 @@ pub(crate) enum SyntaxOp {
     /// a conversion the phase has no operation for and no finite table could
     /// stand in for, since a written span is an arbitrary rational.
     Number,
+    /// `syntax_numeral(path, value)` — the number, as the one expression node
+    /// that denotes it.
+    ///
+    /// The value *is* the node: there is one integer token spelling `value` and
+    /// no grammar is consulted, so the argument cannot decide what kind of node
+    /// comes out. That is what separates this from `eval`
+    /// (`../rules/language/11-quotation.md` §2) and why the separation is a
+    /// difference in capability rather than in type. Before it existed an
+    /// adapter that had computed a number either enumerated the numbers it
+    /// might be, one quote each, or dropped to [`Self::Token`] and wrote both
+    /// the spelling and a hand-allocated role.
+    Numeral,
+    /// `syntax_text(path, value)` — the text, as the one expression node that
+    /// denotes it.
+    ///
+    /// [`Self::Numeral`]'s argument for the same reason, and one more of its
+    /// own: **the compiler writes the escape**. A text holding a quotation
+    /// mark, a backslash or a line feed becomes a string literal that reads
+    /// back as exactly that text ([`musa_syntax::ast::quote`]), so an adapter
+    /// never composes the spelling and there is no injection to get wrong.
+    /// Without that this would be `eval` with extra steps.
+    Text,
     /// `syntax_built(path, role, child)` — an output path derived from `path`.
     Built,
     /// `syntax_binding(path, role)` — the binding `path` declares at `role`.
@@ -277,7 +299,7 @@ impl SyntaxOp {
             // the node it is *about*; the place its answer stands at is no
             // argument at all, because a δ rule is a function of its
             // arguments (§5.8's D3) and the place derives from them —
-            // `crate::quote::anchor_place` is the derivation.
+            // `crate::quote::delta_place` is the derivation.
             Self::At | Self::Anchor => {
                 Type::Function(vec![syntax(), path()], Box::new(Type::Option(Box::new(syntax()))))
             }
@@ -285,6 +307,13 @@ impl SyntaxOp {
             // number, and `Ratio` because one operation covering both numeric
             // kinds is one operation an adapter has to learn.
             Self::Number => Type::Function(vec![syntax()], Box::new(Type::Option(Box::new(Type::Ratio)))),
+            // The two rows whose *result* is at `Expr` without the parser
+            // having run. Nothing is parsed to reach it: a numeral and a
+            // string literal are expressions by construction, which is the
+            // claim `as_expression` has to establish about a tree it was
+            // handed and these two have from the start.
+            Self::Numeral => Type::Function(vec![path(), Type::Nat], Box::new(expression())),
+            Self::Text => Type::Function(vec![path(), Type::Text], Box::new(expression())),
             Self::Built => Type::Function(vec![path(), Type::Nat, Type::Nat], Box::new(Type::NodePath)),
             Self::Binding => Type::Function(vec![path(), Type::Nat], Box::new(Type::BindingPath)),
             Self::Token => Type::Function(vec![path(), Type::TokenKind, Type::Text], Box::new(syntax())),
@@ -338,7 +367,7 @@ pub(crate) struct BuiltinOwnership<T, F = Family> {
 /// looked up when ordinary source reads a name. Each entry says what it hides,
 /// for the same reason the source entries do — an operation earns a place in a
 /// compiler-owned registry by hiding something a library could not.
-pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 18] = [
+pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 20] = [
     BuiltinOwnership {
         operation: SyntaxOp::Recurse,
         spelling: "recurse_syntax",
@@ -376,6 +405,20 @@ pub(crate) const SYNTAX_OWNERSHIP: [BuiltinOwnership<SyntaxOp, PhaseFamily>; 18]
         spelling: "syntax_number",
         hidden_information: "the reader's own numeric reading of a literal token, which a transformer has no operation \
                              to derive from that token's text",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Numeral,
+        spelling: "syntax_numeral",
+        hidden_information: "which token the reader spells a number with, and generated source information for it, so \
+                             that a computed number reaches an expression without an adapter writing either",
+        family: PhaseFamily::Builder,
+    },
+    BuiltinOwnership {
+        operation: SyntaxOp::Text,
+        spelling: "syntax_text",
+        hidden_information: "the escaping the reader inverts, which is what makes a text a literal that reads back as \
+                             that text rather than a spelling an adapter composed",
         family: PhaseFamily::Builder,
     },
     BuiltinOwnership {

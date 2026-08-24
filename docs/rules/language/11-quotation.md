@@ -171,10 +171,31 @@ scopes a syntax value carries are opaque (127da): package code may compare two n
 received, and has no operation that constructs one.
 
 **What a quote is not.** It is not `eval`: the result is a syntax value that the phase then checks and elaborates like
-any other, and there is no operation from `Text` to `Syntax c`. It is not a procedural macro over a token stream: the
-body is parsed, so an adapter cannot assemble syntax the grammar does not admit. Both are refused in the Stop list of
-the prompt that wrote this document, and both are refused here for the same reason: they are holes in the boundary
+any other, and **no operation reads a text as source**. It is not a procedural macro over a token stream: the body is
+parsed, so an adapter cannot assemble syntax the grammar does not admit. Both are refused in the Stop list of the prompt
+that wrote this document, and both are refused here for the same reason: they are holes in the boundary
 `00-semantics.md` §2 exists to hold.
+
+The first refusal used to be stated as a *shape* — "there is no operation from `Text` to `Syntax c`" — and a shape is
+the wrong thing to forbid, because two operations of exactly that shape are admitted and neither is `eval`:
+
+- `syntax_numeral(here, n) : Syntax Expr` is the one integer token that spells `n`.
+- `syntax_text(here, t) : Syntax Expr` is the one string literal whose contents are `t`.
+
+Neither reads its argument. No grammar is consulted, no lexer is run over the value, and the argument cannot decide what
+*kind* of node comes out — the result is a literal either way, and a `Text` holding a `+` yields a string literal
+holding a `+` and never an operator. That is what makes the difference a difference in capability: `eval` lets a value
+choose the program, and these let a value be one leaf of it.
+
+`syntax_text` carries the obligation that goes with writing a literal, and the compiler and not the adapter carries it:
+the spelling is escaped so that the reader reads back exactly the text that was given, for every text, including one
+holding a quotation mark, a backslash, or a line feed. An adapter never composes the spelling, so there is nothing to
+get wrong; the pair `unquote ∘ quote = id` in `musa-syntax` is where it is discharged. Without that this *would* be
+`eval` with extra steps, since a text that escaped its own quotation mark would be choosing where the literal ends.
+
+There is no third literal. A `Ratio` has no one-node spelling below zero, so an operation for it would answer
+`Option (Syntax Expr)` and put a refusal path at every splice site; a negative exact span is built from the numerals it
+is made of.
 
 ## 3. Provenance the elaborator computes
 

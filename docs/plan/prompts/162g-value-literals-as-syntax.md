@@ -1,7 +1,7 @@
 ---
 id: 162g
 slug: value-literals-as-syntax
-status: pending
+status: done
 depends_on: [161]
 phase: 3
 ---
@@ -72,7 +72,9 @@ should have one.
 ## Target
 
 - `syntax_numeral(here: NodePath, value: Nat) -> Syntax<Expr>` and `syntax_text(here: NodePath, value: Text) ->
-  Syntax<Expr>`, registered, with their `BUILTIN_OWNERSHIP` rows and the hidden information each names.
+  Syntax<Expr>`, registered, with their `SYNTAX_OWNERSHIP` rows and the hidden information each names. (The **Read**
+  section's neighbours — `syntax_number`, `syntax_token`, `syntax_built` — are all in the phase table, which is the one
+  meant; `BUILTIN_OWNERSHIP` is the source language's and holds nothing that takes a `NodePath`.)
 - `docs/rules/language/11-quotation.md` §2's "What a quote is not" paragraph rewritten: what stays forbidden is an
   operation that *parses* a text, and the two literal constructions are named as what is admitted and why they are not
   that.
@@ -100,7 +102,7 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo nextest run --run-ignored all -E 'test(staff_expansion)'
 ```
 
-Twenty-five run, twenty-five pass, none of them edited.
+Twenty-four run, twenty-four pass, none of them edited — the file holds twenty-four laws and this line said twenty-five.
 
 `cargo nextest run --run-ignored all` and `cargo insta test --workspace` carry the reds prompt
 [164](164-builtin-collapse.md)'s Check enumerates; a *new* red is this prompt's.

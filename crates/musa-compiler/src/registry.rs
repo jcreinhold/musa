@@ -62,10 +62,10 @@
 //! than by a signature, which [`machine::UNREGISTERED`] argues and prompt 142
 //! owns.
 //!
-//! `SYNTAX_OWNERSHIP` has 18 rows and seventeen are registered: fifteen δ builders
-//! here, and the two traversals in [`traversal`], which are §5.8's *second*
-//! family — a structural eliminator over `Syntax`, which is a base type. The
-//! eighteenth, `run_syntax_step`, is [`run_syntax_step`]: a projection, not a
+//! `SYNTAX_OWNERSHIP` has 20 rows and nineteen are registered: seventeen δ
+//! builders here, and the two traversals in [`traversal`], which are §5.8's
+//! *second* family — a structural eliminator over `Syntax`, which is a base
+//! type. The twentieth, `run_syntax_step`, is [`run_syntax_step`]: a projection, not a
 //! compiler-owned operation, and its target is a declared family that
 //! [`Registry::new`] would refuse. [`crate::registry::rules::UNREGISTERED`]
 //! counts what is left, and the suite counts it again off the tables themselves.
@@ -964,7 +964,7 @@ fn builtins(cx: &Cx) -> Result<Vec<Builtin>, ElabError> {
 /// }
 /// ```
 ///
-/// Seventeen rows in, sixteen registrations and this out. `run_syntax_step`
+/// Nineteen rows in, eighteen registrations and this out. `run_syntax_step`
 /// leaves the phase registry because a projection is not a compiler-owned
 /// operation: it hides nothing, which is the test every `SYNTAX_OWNERSHIP` row
 /// already states for itself. [`Registry::new`] would have refused it in any

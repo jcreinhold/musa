@@ -48,7 +48,7 @@ pub(crate) use category::{Cat, Delimiter, token_kind_named, token_kind_spelling}
 pub(crate) use gate::{NotAnExpression, check_expression};
 pub(crate) use instantiate::{instantiate, template_root};
 pub(crate) use matching::{Hygiene, Spliced, Template, matched};
-pub(crate) use path::{BindingPath, Derived, ExpansionPath, NodePath, anchor_place};
+pub(crate) use path::{BindingPath, DeltaBuilder, Derived, ExpansionPath, NodePath, delta_place};
 #[cfg(test)]
 pub(crate) use print::Printed;
 pub(crate) use print::print;

@@ -177,35 +177,32 @@ library {
         refusal: Refusal;
     }
 
-    // How many dots a written value carries.
-    //
-    // Four values and not a `Nat`, because the count has to be emitted as a
-    // numeral and this adapter can only emit numerals it can spell.
-    data Dots {
-        NoDots,
-        OneDot,
-        TwoDots,
-        ThreeDots,
-    }
-
     // One more dot, or nothing further.
-    fn one_more_dot(sofar: Dots) -> Option<Dots> {
+    //
+    // The count is a `Nat`. It used to be a four-value `data Dots`, and the
+    // declaration said why: the count has to be emitted as a numeral, and this
+    // adapter could only emit numerals it could spell. `syntax_numeral` spells
+    // any of them, so the enumeration went and the number stayed.
+    //
+    // Three is still the most a note takes, and that is this adapter's
+    // reading of the notation rather than a limit of what it can write: a
+    // fourth dot is refused with a sentence, in `dot_read`.
+    fn one_more_dot(sofar: Nat) -> Option<Nat> {
         match sofar {
-            NoDots -> Some(OneDot),
-            OneDot -> Some(TwoDots),
-            TwoDots -> Some(ThreeDots),
-            ThreeDots -> None,
+            3 -> None,
+            _ -> Some(nat_add(sofar, 1)),
         }
     }
 
     // What the dots multiply the undotted value by: each dot adds half of what
-    // the dot before it added.
-    fn dotted_factor(dots: Dots) -> Ratio {
+    // the dot before it added. The last arm is the third dot rather than a
+    // default, because `one_more_dot` above is the only way a count grows.
+    fn dotted_factor(dots: Nat) -> Ratio {
         match dots {
-            NoDots -> 1/1,
-            OneDot -> 3/2,
-            TwoDots -> 7/4,
-            ThreeDots -> 15/8,
+            0 -> 1/1,
+            1 -> 3/2,
+            2 -> 7/4,
+            _ -> 15/8,
         }
     }
 
@@ -217,7 +214,7 @@ library {
     // refuses `c5/0` where it is written.
     data Length {
         NoLength,
-        Divided(numeral: Syntax<Expr>, dots: Dots, value: Ratio),
+        Divided(numeral: Syntax<Expr>, dots: Nat, value: Ratio),
         Spanned(numeral: Syntax<Expr>, span: Ratio),
     }
 
@@ -499,22 +496,10 @@ library {
 
     // How many dots the emitted value carries, as the numeral it is written
     // with.
-    fn dot_count(here: NodePath, dots: Dots) -> Syntax<Expr> {
-        match dots {
-            NoDots -> quote at here {
-                0
-            },
-            OneDot -> quote at here {
-                1
-            },
-            TwoDots -> quote at here {
-                2
-            },
-            ThreeDots -> quote at here {
-                3
-            },
-        }
-    }
+    //
+    // This was four quotes holding `0`, `1`, `2` and `3` — one per value the
+    // count could take — because a computed number had no way into a quote.
+    fn dot_count(here: NodePath, dots: Nat) -> Syntax<Expr> { syntax_numeral(here, dots) }
 
     // `WrittenDuration`, as the package spells it. Every caller has already
     // refused `NoLength` against the note it belongs to, so the whole note
@@ -1392,7 +1377,7 @@ library {
                                 read,
                                 held,
                                 token.spot,
-                                Divided(numeral, NoDots, value),
+                                Divided(numeral, 0, value),
                             ),
                         },
                     },

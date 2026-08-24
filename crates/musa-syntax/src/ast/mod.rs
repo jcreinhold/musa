@@ -103,10 +103,17 @@ pub(crate) fn span_of(token: &SyntaxToken) -> (u32, u32) {
 /// keystroke. An unknown escape keeps its character rather than its
 /// backslash: this resolves what the lexer accepts and invents nothing.
 ///
+/// **`\n` is the one escape that names a character rather than removing a
+/// backslash**, and it is here because the lexer's string body excludes a raw
+/// line feed (`lexer.rs`'s `[^"\\\n]`) — so without it there is no text
+/// containing a newline that [`quote`] could write at all, and the pair below
+/// would be an inverse only on the texts that happen not to hold one. A tab
+/// needs no such treatment: the body pattern admits it raw.
+///
 /// With [`quote`] this pair is `Text`'s exact encoding
 /// (`docs/rules/language/02-core-calculus.md` §1.1): `unquote(quote(t))` is
-/// `t` for every text the lexer can read, so a text value written into source
-/// and read back is the same value.
+/// `t` for **every** text, so a text value written into source and read back
+/// is the same value.
 #[must_use]
 pub fn unquote(literal: &str) -> String {
     let body = literal
@@ -116,8 +123,10 @@ pub fn unquote(literal: &str) -> String {
     let mut characters = body.chars();
     while let Some(character) = characters.next() {
         if character == '\\' {
-            if let Some(escaped) = characters.next() {
-                out.push(escaped);
+            match characters.next() {
+                Some('n') => out.push('\n'),
+                Some(escaped) => out.push(escaped),
+                None => {}
             }
         } else {
             out.push(character);
@@ -130,15 +139,26 @@ pub fn unquote(literal: &str) -> String {
 ///
 /// The inverse of [`unquote`], and the only correct way to write a value a
 /// composer typed into the source.
+///
+/// Three characters are written as escapes and the rest stand for themselves:
+/// a quotation mark and a backslash because they would end the literal or
+/// start an escape, and a line feed because the lexer's string body refuses
+/// one raw. That set is decided by the lexer's pattern rather than chosen —
+/// escaping a character the pattern already admits would make the spelling
+/// longer and the reading no different.
 #[must_use]
 pub fn quote(text: &str) -> String {
     let mut out = String::with_capacity(text.len().saturating_add(2));
     out.push('"');
     for character in text.chars() {
-        if character == '"' || character == '\\' {
-            out.push('\\');
+        match character {
+            '"' | '\\' => {
+                out.push('\\');
+                out.push(character);
+            }
+            '\n' => out.push_str("\\n"),
+            _ => out.push(character),
         }
-        out.push(character);
     }
     out.push('"');
     out

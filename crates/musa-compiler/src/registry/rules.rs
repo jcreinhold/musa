@@ -64,15 +64,15 @@ use musa_score::time::{Exact, exact_arithmetic, exact_ratio, written_rational};
 
 /// How many rows of the two ownership tables reach the core's registry.
 ///
-/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 17 of `SYNTAX_OWNERSHIP`'s 18. The rows
-/// past this module's 96 and fifteen are registered where their reduction is:
+/// 112 of `BUILTIN_OWNERSHIP`'s 121 and 19 of `SYNTAX_OWNERSHIP`'s 20. The rows
+/// past this module's 96 and seventeen are registered where their reduction is:
 /// the two traversals in [`super::traversal`], the eight track builtins in
 /// [`super::track`], and the eight machine forms in [`super::machine`], which
 /// are §5.8's second, third, and fourth families rather than its first. A
 /// δ-builtin's rule is a [`Rule`] and lives here; the others carry a rewrite, a
 /// family, or no reduction at all, and live beside the argument that admits
 /// them.
-pub(super) const REGISTERED: usize = 130;
+pub(super) const REGISTERED: usize = 132;
 
 /// The operations the core has that neither ownership table names.
 ///
@@ -1088,7 +1088,7 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
             let wanted = path(arguments.get(1)?)?;
             let found = subject.anchor(&wanted).map(|anchor| {
                 crate::quote::token(
-                    crate::quote::anchor_place(&wanted),
+                    crate::quote::delta_place(&wanted, crate::quote::DeltaBuilder::Anchor),
                     musa_syntax::SyntaxKind::Integer,
                     anchor.to_string(),
                 )
@@ -1119,6 +1119,39 @@ pub(super) fn phase(operation: SyntaxOp) -> Option<Rule> {
                 Syntax::Missing(_) | Syntax::Identifier { .. } | Syntax::Group { .. } => None,
             };
             reduced(optional(found.map(exact)))
+        },
+        // The number is the node. `to_string` on a `u64` is the reader's own
+        // spelling of an `Integer` and there is no other — no sign, no
+        // separators, no radix — so the spelling is decided by the value and
+        // not chosen here, which is what makes the reading below its inverse.
+        SyntaxOp::Numeral => |arguments| {
+            let here = path(arguments.first()?)?;
+            let value = nat(arguments.get(1)?)?;
+            reduced(tree(
+                Cat::Expr,
+                crate::quote::token(
+                    crate::quote::delta_place(&here, crate::quote::DeltaBuilder::Numeral),
+                    musa_syntax::SyntaxKind::Integer,
+                    value.to_string(),
+                ),
+            ))
+        },
+        // And the escaping is the compiler's, which is the whole of why this
+        // is not `eval`: `musa_syntax::ast::quote` is the inverse of the
+        // `unquote` the reader runs, so a text holding a quotation mark, a
+        // backslash or a line feed comes back as itself and an adapter never
+        // composes a spelling.
+        SyntaxOp::Text => |arguments| {
+            let here = path(arguments.first()?)?;
+            let value = text(arguments.get(1)?)?;
+            reduced(tree(
+                Cat::Expr,
+                crate::quote::token(
+                    crate::quote::delta_place(&here, crate::quote::DeltaBuilder::Text),
+                    musa_syntax::SyntaxKind::String,
+                    musa_syntax::ast::quote(&value),
+                ),
+            ))
         },
         // Written through `Derived` rather than through `NodePath::built`
         // directly, because the triple is what a derived path *is*: the origin

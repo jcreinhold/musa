@@ -13,14 +13,21 @@ use musa_syntax::ast::{quote, unquote};
 use musa_syntax::{SyntaxKind, lex, parse};
 use proptest::prelude::*;
 
-/// Texts drawn from the characters that make encoding hard: the two the
+/// Texts drawn from the characters that make encoding hard: the three the
 /// escape rule is about, plus prose, whitespace, and one character outside
 /// the Latin alphabet — a title is prose, and prose is not ASCII.
+///
+/// The line feed is here because it is the character the lexer's string body
+/// refuses raw, so it is the one that separates an encoding from a rendering:
+/// a `quote` that wrote it literally satisfies the round trip and injectivity
+/// below and produces a literal the reader cannot read, which is what the
+/// third law is for.
 fn any_text() -> impl Strategy<Value = String> {
     prop::collection::vec(
         prop_oneof![
             Just('"'),
             Just('\\'),
+            Just('\n'),
             Just(' '),
             Just('\t'),
             Just('a'),

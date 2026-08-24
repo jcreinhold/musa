@@ -36,6 +36,7 @@ mod inferred_core_laws;
 mod key_and_clef_changes;
 mod lint_laws;
 mod literal_pattern_laws;
+mod literal_syntax_laws;
 mod machine_laws;
 mod macro_closure_laws;
 mod marks;

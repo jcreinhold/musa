@@ -214,15 +214,15 @@ fn the_unregistered_rows_are_the_families_they_are_said_to_be() {
     }
 }
 
-/// Seventeen of the phase's eighteen rows are registered, and the eighteenth is
+/// Nineteen of the phase's twenty rows are registered, and the twentieth is
 /// defined.
 ///
 /// The claim prompt 141f closes, stated where both halves can be checked at once.
-/// Fifteen builders and two traversals reach [`musa_calculus::Registry`];
+/// Seventeen builders and two traversals reach [`musa_calculus::Registry`];
 /// `run_syntax_step` does not, and is a term that checks at its own type instead
 /// — which is what makes leaving it out a design decision rather than a gap.
 #[test]
-fn seventeen_phase_rows_are_registered_and_one_is_defined() {
+fn nineteen_phase_rows_are_registered_and_one_is_defined() {
     let cx = owned().expect("the compiler's own context builds");
     let all = builtins(&cx).expect("both tables translate");
     let registered: Vec<&str> = all
@@ -230,7 +230,7 @@ fn seventeen_phase_rows_are_registered_and_one_is_defined() {
         .map(|builtin| &**builtin.name())
         .filter(|name| SYNTAX_OWNERSHIP.iter().any(|entry| entry.spelling == *name))
         .collect();
-    assert_eq!(registered.len(), 17, "fifteen builders and two traversals");
+    assert_eq!(registered.len(), 19, "seventeen builders and two traversals");
 
     let left: Vec<&str> = SYNTAX_OWNERSHIP
         .iter()

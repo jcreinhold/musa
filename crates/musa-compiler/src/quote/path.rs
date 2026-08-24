@@ -261,20 +261,49 @@ impl Derived {
 /// nothing.
 pub(crate) const DELTA_QUOTATION: u32 = u32::MAX;
 
+/// Which δ builder a node under [`DELTA_QUOTATION`] came out of.
+///
+/// A quote site separates two quotes at one anchor by its own index, drawn at
+/// lowering time; a δ rule has no index to draw, so the reservation is shared
+/// and the position within it is what keeps two builders apart. There is one
+/// number per builder that answers with a node, named here rather than written
+/// at each rule, because the thing that must be true of them — that they are
+/// distinct — is a property of the list and not of any one entry.
+///
+/// A builder may still be called only once per path, exactly as
+/// `11-quotation.md` §5 says of the anchor: the place is a function of the
+/// arguments, so two calls at one path stand at one place and
+/// [`super::check_expression`] refuses the pair. An adapter that wants two
+/// derives two paths.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum DeltaBuilder {
+    /// `syntax_anchor`, which had the reservation to itself until prompt 162g.
+    Anchor,
+    /// `syntax_numeral`.
+    Numeral,
+    /// `syntax_text`.
+    Text,
+}
+
 /// The place a δ-built node stands at: derived from the node the operation is
 /// *about*, at the reserved site, one step in.
 ///
 /// The node's own path is already a unique, elaboration-time identity — no two
 /// nodes of a region share a reading-order path — so the place needs no fresh
-/// name at all. Two calls about one node produce one place and meet
-/// `check_expression`'s duplicate-path gate, which is the one-call-per-anchor
-/// obligation `11-quotation.md` §5 keeps, stated on the anchored node rather
-/// than on a call site.
-pub(crate) fn anchor_place(anchor_of: &NodePath) -> NodePath {
+/// name at all. Two calls of one builder about one node produce one place and
+/// meet `check_expression`'s duplicate-path gate, which is the one-call-per-
+/// anchor obligation `11-quotation.md` §5 keeps, stated on the anchored node
+/// rather than on a call site.
+pub(crate) fn delta_place(about: &NodePath, builder: DeltaBuilder) -> NodePath {
+    let position = match builder {
+        DeltaBuilder::Anchor => 0,
+        DeltaBuilder::Numeral => 1,
+        DeltaBuilder::Text => 2,
+    };
     Derived {
-        origin: anchor_of.clone(),
+        origin: about.clone(),
         quotation: DELTA_QUOTATION,
-        path: vec![0],
+        path: vec![position],
     }
     .path()
 }
