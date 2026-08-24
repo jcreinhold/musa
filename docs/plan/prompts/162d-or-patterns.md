@@ -34,7 +34,10 @@ include it.
   be refused for a stated reason.
 - Peyton Jones ch. 5, *The Semantics of Pattern Matching*, §5.2's match compiler: the variable rule, the constructor
   rule, and the mixture rule. An alternation is the mixture rule with one right-hand side shared, and ch. 5 is where the
-  binding condition below comes from.
+  binding condition below comes from. §5.4.1 is the per-leaf elaboration cost this prompt inherits and does not pay.
+- `crates/musa-calculus/src/elaboration/case.rs`'s module documentation, and prompt
+  [165](165-diagnostics-and-performance.md)'s Finding A — which prompt owns hoisting an arm's body out of the leaves it
+  reaches, and the condition under which that is sound.
 - `stdlib/src/adapters/staff.musa`'s `clef_word`, `spelling_word`, and `tie_of`, and `stdlib/src/notation/staff.musa` —
   the measured callers, so the Check can name lines that become fewer.
 
@@ -52,10 +55,16 @@ enumeration with no fields, which is where the corpus's duplication actually is.
 same method, which §6.2's tree can already express. So `02-core-calculus.md` gains a sentence and the core gains no form
 — the same shape prompt [161](161-one-declaration-form.md) used for `enum` and `record`.
 
-**And that is what fixes the cost.** A case tree's method for a nullary constructor is a *value*, and prompt
-[162f](162f-lazy-methods.md) measures what the evaluator does with those. An alternation that shared one method rather
-than copying it is the same body once, so the two prompts must not disagree about which method a branch points at; write
-the alternation as sharing, not as duplication, and 162f's measurement stays true.
+**The arm is written once; its body is still elaborated once per leaf, and that is prompt 165's.**
+`crates/musa-calculus/src/elaboration/case.rs`'s module documentation already states the standing cost — "An arm's body
+is still elaborated once per leaf it reaches, which is Peyton Jones §5.4.1's remaining cost \[…\] prompt 165 owns the
+change" — and prompt [165](165-diagnostics-and-performance.md)'s Finding A is the hoist that answers it, under the
+condition 136b proved. An alternation reaches several leaves exactly the way a variable pattern in a split column
+already does, so it inherits that cost rather than earning a second, differently-conditioned answer here; sharing one
+body across leaves *here* would be 165 implemented early and under a weaker argument. What this prompt owes instead is
+that an alternation is no worse than the arms it replaces: `Bass | Tenor -> e` emits the term `Bass -> e, Tenor -> e`
+emits, which is a law below. Prompt [162f](162f-lazy-methods.md) is unaffected either way — it forces the method the
+target chose and no other, whether or not two methods are one term.
 
 **Exhaustiveness is unchanged.** An arm covering four constructors covers four constructors. Coverage counting is §6.2's
 and the amendment says nothing new about it.
@@ -64,12 +73,13 @@ and the amendment says nothing new about it.
 
 - `|` between patterns, at every position a pattern stands, including inside a nested one.
 - The binding condition, with a refusal that names the name and the alternative.
-- An alternation compiles to shared case-tree methods, not to copied ones.
+- An alternation adds no core form and no method a separate arm would not have produced: `Bass | Tenor -> e` emits the
+  term `Bass -> e, Tenor -> e` emits.
 - `docs/rules/language/01-surface.md` §1 and `02-core-calculus.md` §6.2 amended, each saying what it now admits and what
   it still refuses.
 - `editors/tree-sitter-musa` reads it, with a corpus entry.
-- Laws: an alternation answers what the several arms answered; a binding disagreement is refused; an alternation of all
-  a family's constructors is exhaustive; a nested alternation parses.
+- Laws: an alternation answers what the several arms answered *and emits the same term*; a binding disagreement is
+  refused; an alternation of all a family's constructors is exhaustive; a nested alternation parses.
 - One `stdlib/` caller converted as the evidence — `stdlib/src/notation/staff.musa`'s clef reader — with the line count
   before and after in the commit message.
 
