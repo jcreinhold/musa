@@ -35,11 +35,14 @@ use crate::workspace::Document;
 pub(crate) fn completions(document: &Document, position: Position) -> CompletionResponse {
     let mut items: BTreeMap<String, CompletionItem> = BTreeMap::new();
     at_site(document, position, &mut items);
-    for doc in musa_dsp::PROCESSORS {
-        items.entry(doc.key.name.to_owned()).or_insert_with(|| CompletionItem {
-            label: doc.key.name.to_owned(),
+    for doc in musa_project::standard_studio_vocabulary()
+        .into_iter()
+        .flat_map(musa_dsp::StudioVocabulary::processors)
+    {
+        items.entry(doc.name().to_owned()).or_insert_with(|| CompletionItem {
+            label: doc.name().to_owned(),
             kind: Some(CompletionItemKind::FUNCTION),
-            detail: Some(doc.signature.to_owned()),
+            detail: Some(doc.signature().to_owned()),
             documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
                 value: super::hover::processor_markdown(doc),
@@ -179,13 +182,16 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
     let Some(call) = super::call::at(&parsed.syntax(), byte) else {
         return;
     };
-    if let Some(processor) = musa_dsp::processor_doc(&call.name) {
-        for parameter in processor.params {
+    if let Some(processor) = musa_project::standard_studio_vocabulary()
+        .ok()
+        .and_then(|vocabulary| vocabulary.processor(&call.name))
+    {
+        for parameter in processor.parameters() {
             site(
                 items,
-                &format!("{}:", parameter.name),
+                &format!("{}:", parameter.name()),
                 CompletionItemKind::FIELD,
-                parameter.summary.to_owned(),
+                parameter.summary().to_owned(),
             );
         }
         return;
@@ -266,9 +272,12 @@ fn keyword_item(
         kind: Some(item_kind),
         ..CompletionItem::default()
     };
-    if let Some(doc) = musa_dsp::studio_term(spelling) {
+    if let Some(doc) = musa_project::standard_studio_vocabulary()
+        .ok()
+        .and_then(|vocabulary| vocabulary.term(spelling))
+    {
         return CompletionItem {
-            detail: Some(doc.signature.to_owned()),
+            detail: Some(doc.signature().to_owned()),
             documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
                 value: super::hover::term_markdown(doc),

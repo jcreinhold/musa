@@ -123,7 +123,7 @@ fn the_facts_report_what_the_compiler_resolved() {
         .find(|patch| patch.name == "glass_pad")
         .and_then(|patch| patch.stages.iter().find(|stage| stage.processor == "lowpass"))
         .expect("the filter stage");
-    assert_eq!(lowpass.origin, "builtin");
+    assert_eq!(lowpass.origin, "bundled Musa source + registered primitive");
     assert!(lowpass.summary.starts_with("Keeps frequencies"));
     assert!(lowpass.signature.contains("resonance: Ratio"));
     // The written value is what the modulation moves around, so the interface

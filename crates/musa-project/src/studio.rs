@@ -221,35 +221,48 @@ fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
                 .iter()
                 .enumerate()
                 .map(|(index, node)| {
-                    let catalogue = musa_dsp::processor_doc(node.processor.name());
+                    let catalogue = crate::standard_studio_vocabulary()
+                        .ok()
+                        .and_then(|vocabulary| vocabulary.processor(node.processor.name()));
                     StageFacts {
                         index,
                         processor: node.processor.name().to_owned(),
-                        summary: catalogue.map_or_else(String::new, |doc| doc.summary.to_owned()),
-                        signature: catalogue.map_or_else(String::new, |doc| doc.signature.to_owned()),
-                        origin: "builtin".to_owned(),
+                        summary: catalogue.map_or_else(String::new, |doc| doc.summary().to_owned()),
+                        signature: catalogue.map_or_else(String::new, |doc| doc.signature().to_owned()),
+                        origin: "bundled Musa source + registered primitive".to_owned(),
                         label: node.label.clone(),
                         params: node
                             .processor
                             .params()
                             .iter()
                             .enumerate()
-                            .map(|(at, declared)| ParamFacts {
-                                name: declared.name.to_owned(),
-                                summary: declared.summary.to_owned(),
-                                value: Fraction::from_ratio(
-                                    node.params
-                                        .get(at)
-                                        .copied()
-                                        .flatten()
-                                        .map_or(declared.default, |value| value.magnitude),
-                                ),
-                                unit: declared.unit.spelling().unwrap_or_default().to_owned(),
-                                minimum: Fraction::from_ratio(declared.range.0),
-                                maximum: Fraction::from_ratio(declared.range.1),
-                                written: node.param_spans.get(at).copied().flatten().is_some(),
-                                span: node.param_spans.get(at).copied().flatten().map(span),
-                                modulated_by: modulator(studio, name, index, declared.name),
+                            .map(|(at, declared)| {
+                                let source = catalogue.and_then(|processor| processor.parameters().get(at));
+                                ParamFacts {
+                                    name: declared.name.to_owned(),
+                                    summary: source
+                                        .map_or_else(String::new, |parameter| parameter.summary().to_owned()),
+                                    value: Fraction::from_ratio(
+                                        node.params
+                                            .get(at)
+                                            .copied()
+                                            .flatten()
+                                            .map_or(declared.default, |value| value.magnitude),
+                                    ),
+                                    unit: source
+                                        .and_then(|parameter| parameter.default().unit().spelling())
+                                        .unwrap_or_default()
+                                        .to_owned(),
+                                    minimum: Fraction::from_ratio(
+                                        source.map_or(declared.range.0, |parameter| *parameter.minimum().magnitude()),
+                                    ),
+                                    maximum: Fraction::from_ratio(
+                                        source.map_or(declared.range.1, |parameter| *parameter.maximum().magnitude()),
+                                    ),
+                                    written: node.param_spans.get(at).copied().flatten().is_some(),
+                                    span: node.param_spans.get(at).copied().flatten().map(span),
+                                    modulated_by: modulator(studio, name, index, declared.name),
+                                }
                             })
                             .collect(),
                     }

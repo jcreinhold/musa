@@ -21,9 +21,66 @@ pub(crate) fn definition(document: &Document, uri: &Uri, position: Position) -> 
     if let Some(answer) = at_named_definition(&snapshot, byte, uri, document.lines()) {
         return Some(answer);
     }
+    if let Some(answer) = at_studio_vocabulary(&snapshot, byte) {
+        return Some(answer);
+    }
     let score = snapshot.score()?;
     let lines = document.lines();
     at_use_site(score, byte, lines, uri).or_else(|| at_generated_event(score, byte, lines, uri))
+}
+
+/// A processor, parameter, or studio term is a row of the ordinary checked
+/// source value, not a host declaration. Open the declaration that owns those
+/// rows; the virtual document then exposes the complete exact contract.
+fn at_studio_vocabulary(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32) -> Option<GotoDefinitionResponse> {
+    const URI: &str = "musa-stdlib:/std/sound/catalogue.musa";
+    const DECLARATION: &str = "studio_vocabulary";
+
+    let parsed = musa_syntax::parse(snapshot.source());
+    let token = parsed.syntax().token_at_offset(byte.into()).find(|token| {
+        matches!(
+            token.kind(),
+            musa_syntax::SyntaxKind::Identifier
+                | musa_syntax::SyntaxKind::ScaleKw
+                | musa_syntax::SyntaxKind::StudioKw
+                | musa_syntax::SyntaxKind::PatchKw
+                | musa_syntax::SyntaxKind::ModulateKw
+                | musa_syntax::SyntaxKind::BusKw
+                | musa_syntax::SyntaxKind::AssignKw
+                | musa_syntax::SyntaxKind::SendKw
+                | musa_syntax::SyntaxKind::RouteKw
+                | musa_syntax::SyntaxKind::MasterKw
+                | musa_syntax::SyntaxKind::AtKw
+                | musa_syntax::SyntaxKind::OutputKw
+                | musa_syntax::SyntaxKind::UnitHz
+                | musa_syntax::SyntaxKind::UnitMs
+                | musa_syntax::SyntaxKind::UnitS
+                | musa_syntax::SyntaxKind::UnitDb
+        )
+    })?;
+    let word = token.text();
+    let vocabulary = musa_project::standard_studio_vocabulary().ok()?;
+    let is_entry = vocabulary.processor(word).is_some()
+        || vocabulary.term(word).is_some()
+        || super::call::at(&parsed.syntax(), byte).is_some_and(|call| {
+            vocabulary
+                .processor(&call.name)
+                .is_some_and(|processor| processor.parameters().iter().any(|parameter| parameter.name() == word))
+        });
+    if !is_entry {
+        return None;
+    }
+
+    let source = musa_project::standard_library_source(URI)?;
+    let start = source.find(DECLARATION)? as u32;
+    let uri = Uri::from_str(URI).ok()?;
+    Some(GotoDefinitionResponse::Scalar(Location {
+        uri,
+        range: LineIndex::new(source).range(musa_project::Span {
+            start,
+            end: start.saturating_add(DECLARATION.len() as u32),
+        }),
+    }))
 }
 
 fn at_named_definition(

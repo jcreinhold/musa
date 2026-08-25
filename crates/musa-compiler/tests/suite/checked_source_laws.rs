@@ -3,11 +3,13 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use musa_compiler::{CompileOptions, SourceDocument, SourceSchema, checked_source_value};
+use musa_compiler::{
+    CompileOptions, SourceDocument, SourceSchema, checked_source_value, checked_standard_studio_vocabulary,
+};
 use musa_dsp::{
     ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
-    StudioDescriptionError, decode_exact_quantity, decode_studio_description, exact_quantity_schema,
-    studio_description_schema,
+    StudioDescriptionError, check_studio_vocabulary, decode_exact_quantity, decode_studio_description,
+    decode_studio_vocabulary, exact_quantity_schema, studio_description_schema,
 };
 use num_rational::Ratio;
 
@@ -121,6 +123,94 @@ fn source_quantities_keep_exact_dimensions_until_dsp_preparation() {
         assert_eq!(quantity.magnitude(), &magnitude);
         assert_eq!(checked.exact_source_bytes(), artifact.exact_bytes());
     }
+}
+
+#[test]
+fn standard_studio_vocabulary_is_checked_source_data() {
+    let artifact = checked_standard_studio_vocabulary()
+        .unwrap_or_else(|diagnostics| panic!("standard vocabulary should check: {diagnostics:#?}"));
+    let vocabulary = decode_studio_vocabulary(&artifact).expect("the source vocabulary schema decodes");
+    assert_eq!(vocabulary.schema_version(), 1);
+    let processor_names = vocabulary
+        .processors()
+        .iter()
+        .map(musa_dsp::ProcessorContract::name)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        processor_names,
+        [
+            "oscillator",
+            "gain",
+            "mix",
+            "envelope",
+            "lowpass",
+            "highpass",
+            "reverb",
+            "delay",
+            "chorus",
+            "scale",
+            "bias",
+            "clamp",
+            "smoothing",
+        ],
+        "every processor spelling recognized by the migration parser has one source declaration"
+    );
+    let term_names = vocabulary
+        .terms()
+        .iter()
+        .map(musa_dsp::StudioTermContract::spelling)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        term_names,
+        [
+            "Audio",
+            "Control",
+            "NoteEvents",
+            "Hz",
+            "dB",
+            "s",
+            "ms",
+            "Ratio",
+            "adsr",
+            "sine",
+            "studio",
+            "assign",
+            "modulate",
+            "at",
+            "instrument",
+            "patch",
+            "signal",
+            "bus",
+            "send",
+            "route",
+            "master",
+            "room",
+            "output",
+        ],
+        "every standard parser/control/unit spelling has one source declaration"
+    );
+    for processor in vocabulary.processors() {
+        assert!(!processor.summary().is_empty());
+        assert!(!processor.note().is_empty());
+        assert!(!processor.signature().is_empty());
+        assert!(!processor.example().is_empty());
+        assert!(!processor.ports().is_empty());
+        assert!(processor.parameters().iter().all(|parameter| parameter.name() != "q"));
+    }
+    for term in vocabulary.terms() {
+        assert!(!term.summary().is_empty());
+        assert!(!term.note().is_empty());
+        assert!(!term.signature().is_empty());
+        assert!(!term.example().is_empty());
+    }
+    let lowpass = vocabulary.processor("lowpass").expect("source lowpass declaration");
+    assert!(lowpass.note().contains("quality factor Q"));
+    assert_eq!(
+        lowpass.parameters().get(1).map(musa_dsp::StudioParameterContract::name),
+        Some("resonance")
+    );
+    check_studio_vocabulary(&vocabulary).expect("source contracts agree with registered primitive support");
+    assert_eq!(vocabulary.exact_source_bytes(), artifact.exact_bytes());
 }
 
 #[test]

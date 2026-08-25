@@ -180,7 +180,22 @@ pub struct ParamSpec {
 impl Processor {
     /// The processor a written name denotes.
     pub fn from_name(name: &str) -> Option<Self> {
-        crate::catalogue::processor(name).map(|entry| entry.processor)
+        match name {
+            "oscillator" => Some(Self::Oscillator),
+            "gain" => Some(Self::Gain),
+            "mix" => Some(Self::Mix),
+            "envelope" => Some(Self::Envelope),
+            "lowpass" => Some(Self::Lowpass),
+            "highpass" => Some(Self::Highpass),
+            "reverb" => Some(Self::Reverb),
+            "delay" => Some(Self::Delay),
+            "chorus" => Some(Self::Chorus),
+            "scale" => Some(Self::Scale),
+            "bias" => Some(Self::Bias),
+            "clamp" => Some(Self::Clamp),
+            "smoothing" => Some(Self::Smoothing),
+            _ => None,
+        }
     }
 
     /// How it is written.

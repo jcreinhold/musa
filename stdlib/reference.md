@@ -266,6 +266,27 @@ searches the filesystem.
 - `fn raise(from: Degree) -> Degree` — Raise a degree chromatically without moving its coordinate.
 - `fn lower(from: Degree) -> Degree` — Lower a degree chromatically without moving its coordinate.
 
+## `std::sound::catalogue`
+
+- `record PortContract: Type` — One valid first-order input and result shape for a processor.
+- `record PrimitiveRequirement: Type` — Stable host capability required by a future executable source wrapper. This names no state layout or work figure: those remain private host facts.
+- `record ProcessorContract: Type` — One complete source-facing standard processor declaration.
+- `record StudioTermContract: Type` — Documentation and written shape for one standard studio term.
+- `record StudioVocabularyArtifact: Type` — The edition-pinned finite studio vocabulary crossing the checked boundary.
+- `fn frequency_value(value: Ratio) -> SoundQuantity(Frequency)` — Construct an exact frequency quantity for a catalogue declaration.
+- `fn linear_value(value: Ratio) -> SoundQuantity(LinearAmplitude)` — Construct an exact linear-amplitude quantity for a catalogue declaration.
+- `fn level_value(value: Ratio) -> SoundQuantity(Level)` — Construct an exact level quantity for a catalogue declaration.
+- `fn time_value(value: Ratio) -> SoundQuantity(Time)` — Construct an exact time quantity for a catalogue declaration.
+- `fn frequency_parameter(name: Text, summary: Text, default: Ratio, minimum: Ratio, maximum: Ratio) -> SomeParameterContract` — Package a frequency parameter while retaining its checked index.
+- `fn linear_parameter(name: Text, summary: Text, default: Ratio, minimum: Ratio, maximum: Ratio) -> SomeParameterContract` — Package a linear-amplitude parameter while retaining its checked index.
+- `fn level_parameter(name: Text, summary: Text, default: Ratio, minimum: Ratio, maximum: Ratio) -> SomeParameterContract` — Package a level parameter while retaining its checked index.
+- `fn time_parameter(name: Text, summary: Text, default: Ratio, minimum: Ratio, maximum: Ratio) -> SomeParameterContract` — Package a time parameter while retaining its checked index.
+- `fn primitive(id: Text) -> PrimitiveRequirement` — Name one version-one host capability without exposing its implementation.
+- `let audio_processor_ports: List<PortContract>` — The public shape shared by unary audio processors.
+- `let control_processor_ports: List<PortContract>` — The public shape shared by unary control processors.
+- `let oscillator_ports: List<PortContract>` — The two context-selected public shapes of an oscillator.
+- `let studio_vocabulary: StudioVocabularyArtifact` — The complete source-owned studio vocabulary for standard-library edition 1.
+
 ## `std::sound::graph`
 
 - `record PortPath: Type` — One node and one port on it, kept as two names rather than reparsed text.

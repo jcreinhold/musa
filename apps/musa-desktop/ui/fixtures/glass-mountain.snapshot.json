@@ -1195,7 +1195,7 @@
             "processor": "oscillator",
             "summary": "Produces a sine wave as an instrument partial or control signal.",
             "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": "carrier",
             "params": [
               {
@@ -1245,7 +1245,7 @@
             "processor": "oscillator",
             "summary": "Produces a sine wave as an instrument partial or control signal.",
             "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1298,7 +1298,7 @@
             "processor": "gain",
             "summary": "Changes a signal's level.",
             "signature": "gain(gain: dB = 0 dB)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": "shimmer",
             "params": [
               {
@@ -1331,7 +1331,7 @@
             "processor": "mix",
             "summary": "Combines two or more audio signals.",
             "signature": "mix(first: Audio, second: Audio, ...): Audio",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": []
           },
@@ -1340,7 +1340,7 @@
             "processor": "envelope",
             "summary": "Shapes a note's level over time.",
             "signature": "envelope(attack: s = 5 ms, decay: s = 0 s, sustain: Ratio = 1, release: s = 50 ms)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1442,7 +1442,7 @@
             "processor": "lowpass",
             "summary": "Keeps frequencies below a cutoff.",
             "signature": "lowpass(cutoff: Hz = 20000 Hz, resonance: Ratio = 0.707)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1506,7 +1506,7 @@
             "processor": "reverb",
             "summary": "Places audio in a simulated room.",
             "signature": "reverb(room: Ratio = 0.5, damping: Ratio = 0.5, mix: Ratio = 1)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1590,7 +1590,7 @@
             "processor": "oscillator",
             "summary": "Produces a sine wave as an instrument partial or control signal.",
             "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1643,7 +1643,7 @@
             "processor": "scale",
             "summary": "Multiplies a control signal.",
             "signature": "scale(factor: Hz = 1 Hz): Control",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {
@@ -1676,7 +1676,7 @@
             "processor": "bias",
             "summary": "Offsets a control signal.",
             "signature": "bias(offset: Hz = 0 Hz): Control",
-            "origin": "builtin",
+            "origin": "bundled Musa source + registered primitive",
             "label": null,
             "params": [
               {

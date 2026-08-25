@@ -686,7 +686,7 @@ fn bind_argument(
                 ),
             )
             .maybe_at(span, "outside the writable range")
-            .note("the public range is fixed by the built-in processor schema"),
+            .note("the public range is fixed by the standard-library processor declaration"),
         );
         return;
     }

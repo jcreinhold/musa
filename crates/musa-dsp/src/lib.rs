@@ -8,7 +8,6 @@
 //! locks, logs, or performs I/O.
 
 mod audio;
-mod catalogue;
 mod effects;
 mod envelope;
 mod error;
@@ -27,17 +26,13 @@ mod studio;
 mod voice;
 
 pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_audio};
-pub use crate::catalogue::{
-    BuiltinKey, PROCESSORS, PortSchema, ProcessorDoc, SignalRole, StudioTermDoc, SurfacePort, SurfaceSchema, TERMS,
-    processor as processor_doc, reference_markdown as studio_reference, term as studio_term,
-};
 pub use crate::intent::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit,
     WrittenQuantity, written_ratio,
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
-pub use crate::primitive::AudioLimits;
+pub use crate::primitive::{AudioLimits, VocabularyAgreementError, check_studio_vocabulary};
 pub use crate::schedule::{
     AudioFormat, BoundaryCollision, BoundaryKind, ChannelLayout, CollapsePolicy, EventBatch, EventHandle, EventMessage,
     FrameRounding, MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy,
@@ -45,9 +40,11 @@ pub use crate::schedule::{
 };
 pub use crate::source::{
     CheckedExactQuantity, ExactQuantityError, ExactQuantityProjection, ParameterProjection, ParameterValueKind,
-    PortKindProjection, PortKindTag, PortPathProjection, SoundDimension, SoundUnit, StudioDeclaration,
-    StudioDeclarationKind, StudioDescription, StudioDescriptionError, decode_exact_quantity, decode_studio_description,
-    exact_quantity_schema, studio_description_schema,
+    PortContract, PortKindProjection, PortKindTag, PortPathProjection, PrimitiveRequirement, ProcessorContract,
+    SignalRole, SoundDimension, SoundUnit, StudioDeclaration, StudioDeclarationKind, StudioDescription,
+    StudioDescriptionError, StudioParameterContract, StudioTermContract, StudioVocabulary, StudioVocabularyError,
+    SurfacePort, decode_exact_quantity, decode_studio_description, decode_studio_vocabulary, exact_quantity_schema,
+    studio_description_schema, studio_vocabulary_schema,
 };
 
 #[cfg(test)]

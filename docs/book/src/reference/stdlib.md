@@ -23,6 +23,7 @@ The modules:
 | `std::post_tonal::pcset` | Pitch-class sets at any division: normal order, prime form, set classes |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
+| `std::sound::catalogue` | Source-owned studio processor contracts, terms, exact domains, documentation, examples, and primitive requirements |
 | `std::sound::graph` | Finite studio descriptions and validation of descriptors, ports, parameters, bindings, and cycles |
 | `std::sound::quantity` | Exact indexed sound dimensions, units, quantities, and their checked boundary artifact |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
@@ -92,6 +93,11 @@ and `SoundQuantity(d)` share the same index, so the ordinary type checker refuse
 is required. Magnitudes remain exact ratios; `milliseconds(30/1)` and `seconds(3/100)` produce the same checked value,
 while the lossless source tree still retains which spelling the author wrote. Floating-point conversion happens only
 when DSP preparation needs a physical representation.
+
+`std::sound::catalogue` is the edition-pinned vocabulary tooling presents. Processor names, signatures, documentation,
+examples, and exact parameter defaults and ranges are ordinary checked Musa data over those quantities. A primitive
+requirement names stable native support by id and version; private state layouts, concrete buffers, and step work remain
+in the host registry and are checked for agreement rather than copied into source.
 
 Writing back is not the same claim as reading. A printed page says what the value said — realize the page a printer
 wrote and you get the spans the value held — but it is new text, so it preserves no comment, no blank line, and no

@@ -94,3 +94,33 @@ fn has_errors(diagnostics: &[Diagnostic]) -> bool {
         .iter()
         .any(|diagnostic| diagnostic.severity == Severity::Error)
 }
+
+/// Check the edition-pinned standard studio vocabulary as ordinary source.
+///
+/// This is the one bridge used by documentation, tooling, and host agreement
+/// checks. It deliberately returns the generic checked artifact: the compiler
+/// does not own or interpret the sound schema.
+///
+/// # Errors
+///
+/// Returns the standard-library import, checking, normalization, or artifact
+/// diagnostics. A bundled vocabulary that fails here is a build defect.
+pub fn checked_standard_studio_vocabulary() -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
+    const PROBE: &str = r#"import std::sound::catalogue;
+piece "Studio vocabulary" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    checked_source_value(
+        &SourceDocument::new(PROBE, "musa-stdlib:/studio-vocabulary.musa"),
+        &CompileOptions::default(),
+        "studio_vocabulary",
+        &musa_calculus::SourceSchema::new(
+            "std.sound.catalogue.StudioVocabularyArtifact",
+            "StudioVocabularyArtifact",
+            1,
+        ),
+    )
+}

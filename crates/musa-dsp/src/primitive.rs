@@ -5,6 +5,7 @@
 //! are conservative upper bounds checked before any processor state is built.
 
 use crate::spec::{PortKind, ProcessorSpec, StudioGraphSpec};
+use crate::{Processor, SoundUnit, StudioVocabulary, SurfacePort, Unit};
 
 /// Explicit bounds for the native one-frame machine. There is no default:
 /// accepting a larger studio graph is a product decision.
@@ -221,6 +222,211 @@ fn kind(processor: ProcessorSpec) -> PrimitiveKind {
 fn registered(processor: ProcessorSpec) -> Option<&'static Registration> {
     let wanted = kind(processor);
     REGISTRY.iter().find(|entry| entry.kind == wanted)
+}
+
+/// A source studio declaration disagrees with the build-local primitive support.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("{message}")]
+pub struct VocabularyAgreementError {
+    message: String,
+}
+
+/// Check the facts crossing from the source studio vocabulary to native support.
+///
+/// Source remains authoritative for names, documentation, exact written
+/// domains, defaults, and ranges. This check reads only the host facts a
+/// source wrapper cannot declare: registered identity/version, concrete port
+/// formats, configuration keys, state layout, and bounded step work. The
+/// temporary [`Processor`] table participates only as the prompt-180a
+/// differential oracle for the still-live surface lowering.
+///
+/// # Errors
+///
+/// Returns the first missing legacy spelling, parameter disagreement,
+/// unregistered primitive, port mismatch, or unsupported configuration input.
+pub fn check_studio_vocabulary(vocabulary: &StudioVocabulary) -> Result<(), VocabularyAgreementError> {
+    const LEGACY: &[Processor] = &[
+        Processor::Oscillator,
+        Processor::Gain,
+        Processor::Mix,
+        Processor::Envelope,
+        Processor::Lowpass,
+        Processor::Highpass,
+        Processor::Reverb,
+        Processor::Delay,
+        Processor::Chorus,
+        Processor::Scale,
+        Processor::Bias,
+        Processor::Clamp,
+        Processor::Smoothing,
+    ];
+
+    for legacy in LEGACY {
+        let source = vocabulary.processor(legacy.name()).ok_or_else(|| {
+            agreement(format!(
+                "legacy processor `{}` has no source declaration",
+                legacy.name()
+            ))
+        })?;
+        if source.parameters().len() != legacy.params().len() {
+            return Err(agreement(format!(
+                "source processor `{}` has {} parameters; the migration oracle has {}",
+                source.name(),
+                source.parameters().len(),
+                legacy.params().len()
+            )));
+        }
+        for (source_parameter, oracle) in source.parameters().iter().zip(legacy.params()) {
+            if source_parameter.name() != oracle.name
+                || source_parameter.default().unit() != source_unit(oracle.unit)
+                || source_parameter.default().magnitude() != &oracle.default
+                || source_parameter.minimum().magnitude() != &oracle.range.0
+                || source_parameter.maximum().magnitude() != &oracle.range.1
+            {
+                return Err(agreement(format!(
+                    "source parameter `{}.{}` disagrees with the prompt-180a migration oracle",
+                    source.name(),
+                    source_parameter.name()
+                )));
+            }
+        }
+    }
+    for source in vocabulary.processors() {
+        let legacy = Processor::from_name(source.name()).ok_or_else(|| {
+            agreement(format!(
+                "source processor `{}` is not recognized by the migration oracle",
+                source.name()
+            ))
+        })?;
+        for requirement in source.primitives() {
+            let witnesses = primitive_witnesses(requirement.id(), requirement.version());
+            let Some(representative) = witnesses.first().copied() else {
+                return Err(agreement(format!(
+                    "source processor `{}` requires unregistered primitive `{}@{}`",
+                    source.name(),
+                    requirement.id(),
+                    requirement.version()
+                )));
+            };
+            if !witnesses.iter().any(|witness| {
+                source
+                    .ports()
+                    .iter()
+                    .any(|contract| port_contract_matches(contract, *witness))
+            }) {
+                return Err(agreement(format!(
+                    "source processor `{}` has no port contract supported by `{}@{}`",
+                    source.name(),
+                    requirement.id(),
+                    requirement.version()
+                )));
+            }
+            let registration = registered(representative).ok_or_else(|| {
+                agreement(format!(
+                    "primitive `{}@{}` lost its registration",
+                    requirement.id(),
+                    requirement.version()
+                ))
+            })?;
+            if registration.configuration.is_empty()
+                || registration.state_layout.is_empty()
+                || registration.base_work == 0
+            {
+                return Err(agreement(format!(
+                    "primitive `{}@{}` has an incomplete private resource contract",
+                    requirement.id(),
+                    requirement.version()
+                )));
+            }
+        }
+        for (source_parameter, oracle) in source.parameters().iter().zip(legacy.params()) {
+            if source.primitives().is_empty() {
+                continue;
+            }
+            let descriptor = source
+                .primitives()
+                .iter()
+                .flat_map(|requirement| primitive_witnesses(requirement.id(), requirement.version()))
+                .find_map(|witness| witness.descriptor(oracle.dsp_name));
+            let Some(descriptor) = descriptor else {
+                return Err(agreement(format!(
+                    "source parameter `{}.{}` names no registered configuration input",
+                    source.name(),
+                    source_parameter.name()
+                )));
+            };
+            let expected_unit = if oracle.unit == Unit::Decibels {
+                Unit::Linear
+            } else {
+                oracle.unit
+            };
+            if descriptor.unit != expected_unit {
+                return Err(agreement(format!(
+                    "source parameter `{}.{}` disagrees with its registered configuration unit",
+                    source.name(),
+                    source_parameter.name()
+                )));
+            }
+            let converted = |value: &num_rational::Ratio<i64>| {
+                let ratio = crate::quantity::ratio_to_f64(*value);
+                if oracle.unit == Unit::Decibels {
+                    10f64.powf(ratio / 20.0)
+                } else {
+                    ratio
+                }
+            };
+            let minimum = converted(source_parameter.minimum().magnitude());
+            let maximum = converted(source_parameter.maximum().magnitude());
+            let tolerance = 1e-6;
+            if minimum + tolerance < f64::from(descriptor.range.0)
+                || maximum > f64::from(descriptor.range.1) + tolerance
+            {
+                return Err(agreement(format!(
+                    "source range for `{}.{}` exceeds its registered configuration range",
+                    source.name(),
+                    source_parameter.name()
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn source_unit(unit: Unit) -> SoundUnit {
+    match unit {
+        Unit::Hz => SoundUnit::Hertz,
+        Unit::Linear => SoundUnit::Linear,
+        Unit::Decibels => SoundUnit::Decibels,
+        Unit::Seconds => SoundUnit::Seconds,
+    }
+}
+
+fn primitive_witnesses(id: &str, version: u64) -> Vec<ProcessorSpec> {
+    PROCESSOR_WITNESSES
+        .iter()
+        .copied()
+        .filter(|witness| {
+            registered(*witness).is_some_and(|entry| entry.name == id && u64::from(entry.version) == version)
+        })
+        .collect()
+}
+
+fn port_contract_matches(contract: &crate::PortContract, witness: ProcessorSpec) -> bool {
+    let inputs: Vec<SurfacePort> = witness.input_ports().into_iter().map(surface_port).collect();
+    let outputs: Vec<SurfacePort> = witness.output_ports().into_iter().map(surface_port).collect();
+    contract.inputs() == inputs && outputs.as_slice() == [contract.output()]
+}
+
+fn surface_port(port: PortKind) -> SurfacePort {
+    match port {
+        PortKind::Audio { .. } => SurfacePort::Audio,
+        PortKind::Control => SurfacePort::Control,
+        PortKind::NoteEvents => SurfacePort::NoteEvents,
+    }
+}
+
+fn agreement(message: String) -> VocabularyAgreementError {
+    VocabularyAgreementError { message }
 }
 
 /// Conservatively price all retained native state and one-frame work.

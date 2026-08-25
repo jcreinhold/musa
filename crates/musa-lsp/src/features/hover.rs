@@ -74,23 +74,27 @@ fn at_studio_catalogue(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
         )
     })?;
     let word = token.text();
-    let markdown = if let Some(doc) = musa_dsp::processor_doc(word) {
+    let vocabulary = musa_project::standard_studio_vocabulary().ok()?;
+    let markdown = if let Some(doc) = vocabulary.processor(word) {
         processor_markdown(doc)
-    } else if let Some(doc) = musa_dsp::studio_term(word) {
+    } else if let Some(doc) = vocabulary.term(word) {
         term_markdown(doc)
     } else {
         let call = super::call::at(&parsed.syntax(), byte)?;
-        let processor = musa_dsp::processor_doc(&call.name)?;
-        let parameter = processor.params.iter().find(|parameter| parameter.name == word)?;
+        let processor = vocabulary.processor(&call.name)?;
+        let parameter = processor
+            .parameters()
+            .iter()
+            .find(|parameter| parameter.name() == word)?;
         format!(
-            "**{}** — *parameter of {}*\n\n{}\n\nUnit: `{}` · default: `{}` · range: `{}`–`{}`\n\nOrigin: `builtin`",
-            parameter.name,
-            processor.key.name,
-            parameter.summary,
-            parameter.unit.spelling().unwrap_or("Ratio"),
-            musa_dsp::written_ratio(parameter.default),
-            musa_dsp::written_ratio(parameter.range.0),
-            musa_dsp::written_ratio(parameter.range.1),
+            "**{}** — *parameter of {}*\n\n{}\n\nUnit: `{}` · default: `{}` · range: `{}`–`{}`\n\nOrigin: bundled Musa source",
+            parameter.name(),
+            processor.name(),
+            parameter.summary(),
+            parameter.default().unit().spelling().unwrap_or("Ratio"),
+            musa_dsp::written_ratio(*parameter.default().magnitude()),
+            musa_dsp::written_ratio(*parameter.minimum().magnitude()),
+            musa_dsp::written_ratio(*parameter.maximum().magnitude()),
         )
     };
     let range = token.text_range();
@@ -104,29 +108,42 @@ fn at_studio_catalogue(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
     ))
 }
 
-pub(crate) fn processor_markdown(doc: &musa_dsp::ProcessorDoc) -> String {
-    let availability = if doc.native { "native" } else { "unavailable natively" };
+pub(crate) fn processor_markdown(doc: &musa_dsp::ProcessorContract) -> String {
+    let primitives = doc
+        .primitives()
+        .iter()
+        .map(|primitive| format!("{}@{}", primitive.id(), primitive.version()))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
-        "**{}** — *{}*\n\n{} {}\n\n```musa\n{}\n```\n\n{}\n\nOrigin: `builtin` · schema v{} · {availability}\n\nExample: `{}`",
-        doc.key.name,
-        doc.schema.role.label(),
-        doc.summary,
-        doc.note,
-        doc.signature,
-        parameters_markdown(doc.params),
-        doc.key.version,
-        doc.example,
+        "**{}** — *{}*\n\n{} {}\n\n```musa\n{}\n```\n\n{}\n\nOrigin: bundled Musa source · registered primitives: {}\n\nExample: `{}`",
+        doc.name(),
+        doc.role().label(),
+        doc.summary(),
+        doc.note(),
+        doc.signature(),
+        parameters_markdown(doc.parameters()),
+        if primitives.is_empty() {
+            "none (source composition)"
+        } else {
+            &primitives
+        },
+        doc.example(),
     )
 }
 
-pub(crate) fn term_markdown(doc: &musa_dsp::StudioTermDoc) -> String {
+pub(crate) fn term_markdown(doc: &musa_dsp::StudioTermContract) -> String {
     format!(
-        "**{}** — *studio concept*\n\n{} {}\n\n```musa\n{}\n```\n\nOrigin: `builtin`\n\nExample: `{}`",
-        doc.spelling, doc.summary, doc.note, doc.signature, doc.example
+        "**{}** — *studio concept*\n\n{} {}\n\n```musa\n{}\n```\n\nOrigin: bundled Musa source\n\nExample: `{}`",
+        doc.spelling(),
+        doc.summary(),
+        doc.note(),
+        doc.signature(),
+        doc.example()
     )
 }
 
-fn parameters_markdown(params: &[musa_dsp::ParamSpec]) -> String {
+fn parameters_markdown(params: &[musa_dsp::StudioParameterContract]) -> String {
     if params.is_empty() {
         return "Parameters: none.".to_owned();
     }
@@ -135,12 +152,12 @@ fn parameters_markdown(params: &[musa_dsp::ParamSpec]) -> String {
         .map(|param| {
             format!(
                 "- `{}` — {}; unit `{}`, default `{}`, range `{}`–`{}`",
-                param.name,
-                param.summary,
-                param.unit.spelling().unwrap_or("Ratio"),
-                musa_dsp::written_ratio(param.default),
-                musa_dsp::written_ratio(param.range.0),
-                musa_dsp::written_ratio(param.range.1)
+                param.name(),
+                param.summary(),
+                param.default().unit().spelling().unwrap_or("Ratio"),
+                musa_dsp::written_ratio(*param.default().magnitude()),
+                musa_dsp::written_ratio(*param.minimum().magnitude()),
+                musa_dsp::written_ratio(*param.maximum().magnitude())
             )
         })
         .collect::<Vec<_>>()

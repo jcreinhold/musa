@@ -820,7 +820,7 @@ fn completion_offers_the_vocabulary_and_the_names() {
         "{}",
         content.value
     );
-    assert!(content.value.contains("builtin"), "{}", content.value);
+    assert!(content.value.contains("bundled Musa source"), "{}", content.value);
     server.stop();
 }
 
@@ -1176,7 +1176,26 @@ fn studio_help_comes_from_the_catalogue_even_when_the_call_is_incomplete() {
     let hover = hover_markdown(&mut server, &uri, at(STUDIO_TOOLING, "lowpass"));
     assert!(hover.contains("Keeps frequencies below a cutoff."), "{hover}");
     assert!(hover.contains("quality factor Q"), "{hover}");
-    assert!(hover.contains("Origin: `builtin`"), "{hover}");
+    assert!(hover.contains("Origin: bundled Musa source"), "{hover}");
+
+    let definition = server
+        .client
+        .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
+            text_document_position_params: position_params(&uri, at(STUDIO_TOOLING, "lowpass")),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        });
+    let definition: GotoDefinitionResponse = serde_json::from_value(definition).expect("a source definition");
+    let GotoDefinitionResponse::Scalar(location) = definition else {
+        panic!("expected one location: {definition:?}");
+    };
+    assert_eq!(location.uri.as_str(), "musa-stdlib:/std/sound/catalogue.musa");
+    let catalogue = musa_project::standard_library_source(location.uri.as_str()).expect("catalogue source");
+    assert_eq!(
+        location.range.start.line,
+        at(catalogue, "studio_vocabulary").line,
+        "the row belongs to the source artifact"
+    );
 
     let call = at(STUDIO_TOOLING, "lowpass(cutoff");
     let help = signature_help(&mut server, &uri, shifted(call, 20));

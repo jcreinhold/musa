@@ -268,3 +268,8 @@ Neither operation allocates a processor or runs a signal.
 The parameter values it produces use `std::sound::quantity`, where the unit and quantity share a source type index.
 Milliseconds normalize exactly to seconds there; the original token remains in the lossless source for an editor, and
 only later DSP preparation converts the checked rational to a floating physical value.
+
+The processor and studio vocabulary itself lives in `std::sound::catalogue`. Completion, hover, signatures, and the
+generated reference read that checked source value, so names, documentation, and exact parameter contracts can change
+with a standard-library edition without acquiring a second authoritative Rust table. Native primitives still own only
+the runtime facts source cannot declare, joined by stable id and version.

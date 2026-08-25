@@ -106,6 +106,97 @@ pub fn standard_library_reference() -> String {
     out
 }
 
+/// The studio vocabulary reference derived from the checked source artifact.
+#[cfg(test)]
+fn studio_vocabulary_reference() -> Result<String, String> {
+    let checked = crate::checked_standard_studio_vocabulary().map_err(|diagnostics| {
+        diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect::<Vec<_>>()
+            .join("; ")
+    })?;
+    let vocabulary = musa_dsp::decode_studio_vocabulary(&checked).map_err(|error| error.to_string())?;
+    musa_dsp::check_studio_vocabulary(&vocabulary).map_err(|error| error.to_string())?;
+    let mut out = String::from(
+        "# Studio vocabulary\n\nThis page is generated from the checked ordinary Musa value `std::sound::catalogue::studio_vocabulary`. Source declarations own names, documentation, exact written domains, defaults, ranges, and examples; the native registry contributes only checked primitive support facts.\n\n",
+    );
+    for processor in vocabulary.processors() {
+        let primitives = processor
+            .primitives()
+            .iter()
+            .map(|primitive| format!("{}@{}", primitive.id(), primitive.version()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            out,
+            "## `{}`\n\n{} {}\n\n- Signature: `{}`\n- Role: {}\n- Origin: `std::sound::catalogue`\n- Schema: version {}\n- Registered primitive support: `{}`\n- Example: `{}`\n",
+            processor.name(),
+            processor.summary(),
+            processor.note(),
+            processor.signature(),
+            processor.role().label(),
+            vocabulary.schema_version(),
+            if primitives.is_empty() {
+                "source composition"
+            } else {
+                &primitives
+            },
+            processor.example(),
+        );
+        let ports = processor
+            .ports()
+            .iter()
+            .map(|ports| {
+                let inputs = if ports.inputs().is_empty() {
+                    "()".to_owned()
+                } else {
+                    ports
+                        .inputs()
+                        .iter()
+                        .map(|port| port.label())
+                        .collect::<Vec<_>>()
+                        .join(" × ")
+                };
+                format!("{inputs} -> {}", ports.output().label())
+            })
+            .collect::<Vec<_>>()
+            .join(" or ");
+        let _ = writeln!(out, "- Ports: `{ports}`\n");
+        if !processor.parameters().is_empty() {
+            out.push_str(
+                "| Parameter | Meaning | Unit | Default | Written range |\n| --- | --- | --- | ---: | ---: |\n",
+            );
+            for parameter in processor.parameters() {
+                let _ = writeln!(
+                    out,
+                    "| `{}` | {} | `{}` | {} | {}–{} |",
+                    parameter.name(),
+                    parameter.summary(),
+                    parameter.default().unit().spelling().unwrap_or("Ratio"),
+                    musa_dsp::written_ratio(*parameter.default().magnitude()),
+                    musa_dsp::written_ratio(*parameter.minimum().magnitude()),
+                    musa_dsp::written_ratio(*parameter.maximum().magnitude()),
+                );
+            }
+            out.push('\n');
+        }
+    }
+    out.push_str("## Studio concepts\n\n");
+    for term in vocabulary.terms() {
+        let _ = writeln!(
+            out,
+            "### `{}`\n\n{} {}\n\n- Shape: `{}`\n- Origin: `std::sound::catalogue`\n- Example: `{}`\n",
+            term.spelling(),
+            term.summary(),
+            term.note(),
+            term.signature(),
+            term.example(),
+        );
+    }
+    Ok(out)
+}
+
 /// One list line: the signature, and the sentence that explains it.
 fn entry(out: &mut String, item: &ItemDoc, summary: Option<&str>) {
     let _ = write!(out, "- `{}`", item.signature);
@@ -194,6 +285,23 @@ mod tests {
         assert!(
             reference.contains("`fn do_re_mi_strong() -> List<Bool>`"),
             "{reference}"
+        );
+    }
+
+    #[test]
+    fn checked_in_studio_reference_is_derived_from_executable_source() {
+        let generated = studio_vocabulary_reference().expect("the checked studio vocabulary renders");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/book/src/reference/studio-vocabulary.md"
+        );
+        if std::env::var_os("UPDATE_FIXTURES").is_some() {
+            std::fs::write(path, &generated).expect("write studio vocabulary reference");
+        }
+        assert_eq!(
+            generated,
+            include_str!("../../../docs/book/src/reference/studio-vocabulary.md"),
+            "re-run the compiler reference test with UPDATE_FIXTURES=1"
         );
     }
 }

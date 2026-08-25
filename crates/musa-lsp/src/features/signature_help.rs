@@ -92,23 +92,23 @@ fn claimed(name: &str) -> Option<SignatureInformation> {
     })
 }
 
-/// The signature of a studio processor, from the DSP-owned public schema.
+/// The signature of a studio processor, from the checked source vocabulary.
 fn builtin(name: &str) -> Option<SignatureInformation> {
-    let doc = musa_dsp::processor_doc(name)?;
+    let doc = musa_project::standard_studio_vocabulary().ok()?.processor(name)?;
     Some(SignatureInformation {
-        label: doc.signature.to_owned(),
+        label: doc.signature().to_owned(),
         documentation: Some(Documentation::MarkupContent(MarkupContent {
             kind: MarkupKind::Markdown,
             value: super::hover::processor_markdown(doc),
         })),
         parameters: Some(
-            doc.params
+            doc.parameters()
                 .iter()
                 .map(|parameter| ParameterInformation {
-                    label: ParameterLabel::Simple(parameter.name.to_owned()),
+                    label: ParameterLabel::Simple(parameter.name().to_owned()),
                     documentation: Some(Documentation::MarkupContent(MarkupContent {
                         kind: MarkupKind::Markdown,
-                        value: parameter.summary.to_owned(),
+                        value: parameter.summary().to_owned(),
                     })),
                 })
                 .collect(),
