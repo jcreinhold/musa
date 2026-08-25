@@ -1,7 +1,7 @@
 ---
 id: 180b
 slug: dependency-law
-status: pending
+status: done
 depends_on: [174a, 180a]
 phase: 3
 ---
