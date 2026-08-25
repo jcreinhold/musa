@@ -1,7 +1,7 @@
 ---
 id: 179
 slug: part-instrument-routing
-status: pending
+status: done
 depends_on: [31, 174, 177, 178]
 phase: 3
 ---

@@ -163,6 +163,7 @@ fn the_dsp_boundary_refuses_programmatic_values_outside_its_range() {
     studio.push_route(Route {
         source: "violin".to_owned(),
         destination: "master".to_owned(),
+        span: None,
     });
 
     let (_, lowering) = lower_studio(&studio, &OPTIONS);

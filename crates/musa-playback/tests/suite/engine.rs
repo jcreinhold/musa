@@ -12,7 +12,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use super::support::silent_plan;
+use super::support::{silent_plan, source_plan};
 use musa_playback::testing::{CallbackCore, Message};
 use musa_playback::{AudioEngine, EngineConfig, EngineError, PreparedPlaybackPlan, TransportCommand};
 
@@ -45,6 +45,31 @@ fn rig() -> Rig {
 
 fn push(rig: &mut Rig, message: Message) {
     rig.commands.push(message).expect("queue has room");
+}
+
+fn isolated_source(first_part: &str) -> String {
+    format!(
+        "piece \"live routing\" {{ tempo 1/4 = 60; meter 4/4; score {{ \
+         part a {{ voice v {{ {first_part} }} }} part b {{ voice v {{ a4/1 }} }} }} \
+         studio {{ patch shared {{ oscillator(sine) |> gain(-24 dB) |> output; }} \
+         assign a -> shared; assign b -> shared; route b -> master; }} }}"
+    )
+}
+
+fn callback_block(source: &str) -> Vec<f32> {
+    let mut rig = rig();
+    push(&mut rig, Message::Install(Box::new(source_plan(source, 0))));
+    push(&mut rig, Message::Transport(TransportCommand::Play));
+    let mut output = vec![0.0; 512];
+    rig.core.process(&mut output);
+    output
+}
+
+#[test]
+fn live_plan_delivers_each_part_only_to_its_instance() {
+    let crowded = isolated_source("[c2 d2 e2 f2 g2 a2 b2 c3 d3 e3 f3 g3 a3 b3 c4 d4 e4]/1");
+    let silent = isolated_source("rest/1");
+    assert_eq!(callback_block(&crowded), callback_block(&silent));
 }
 
 #[test]

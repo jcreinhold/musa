@@ -20,7 +20,7 @@ use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use super::support::silent_plan;
+use super::support::{silent_plan, source_plan};
 use musa_playback::testing::{CallbackCore, Message};
 use musa_playback::{PreparedPlaybackPlan, TransportCommand};
 
@@ -57,6 +57,13 @@ unsafe impl GlobalAlloc for CountingAllocator {
 #[global_allocator]
 static ALLOCATOR: CountingAllocator = CountingAllocator;
 
+const ROUTED: &str = concat!(
+    "piece \"rt routing\" { tempo 1/4 = 60; meter 4/4; score { ",
+    "part a { voice v { c4/1 } } part b { voice v { g4/1 } } } studio { ",
+    "patch p { oscillator(sine) |> output; } assign a -> p; assign b -> p; ",
+    "route a -> master; route b -> master; } }",
+);
+
 #[test]
 fn the_callback_path_allocates_nothing() {
     let (mut commands, command_consumer) = rtrb::RingBuffer::<Message>::new(16);
@@ -68,7 +75,7 @@ fn the_callback_path_allocates_nothing() {
     // Preload: install + play + loop + a queued replacement plan. The
     // measured blocks then cover install, retire, and transport handling.
     commands
-        .push(Message::Install(Box::new(silent_plan(1_000_000))))
+        .push(Message::Install(Box::new(source_plan(ROUTED, 0))))
         .expect("queue");
     commands
         .push(Message::Transport(TransportCommand::Play))

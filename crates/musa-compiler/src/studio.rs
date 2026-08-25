@@ -161,7 +161,14 @@ pub(crate) fn resolve(
                     if let Some(span) = patch_span {
                         references.record_use(crate::resolve::NameKind::Patch, &patch, span);
                     }
-                    spec.assign(part, Assignment { patch, patch_span });
+                    if spec.assignment(&part).is_some() {
+                        diagnostics.push(
+                            Diagnostic::error(Code::DuplicateName, format!("part `{part}` already has an instrument"))
+                                .maybe_at(span, "assigned again here"),
+                        );
+                    } else {
+                        spec.assign(part, Assignment { patch, patch_span });
+                    }
                 }
             }
             StudioItem::Route(route) => {
@@ -188,7 +195,11 @@ pub(crate) fn resolve(
                     {
                         references.record_use(crate::resolve::NameKind::Part, &source, span);
                     }
-                    spec.push_route(Route { source, destination });
+                    spec.push_route(Route {
+                        source,
+                        destination,
+                        span,
+                    });
                 }
             }
             StudioItem::Send(send) => resolve_send(send, &mut spec, parts, references, diagnostics),
@@ -209,7 +220,50 @@ pub(crate) fn resolve(
             StudioItem::Patch(_) | StudioItem::Bus(_) | StudioItem::Signal(_) => {}
         }
     }
+    diagnose_bus_cycles(&spec, diagnostics);
     spec
+}
+
+fn diagnose_bus_cycles(spec: &StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+    let edges = spec
+        .sends()
+        .iter()
+        .filter(|send| spec.has_bus(&send.source))
+        .map(|send| (send.source.as_str(), send.bus.as_str(), send.span))
+        .chain(
+            spec.routes()
+                .iter()
+                .filter(|route| route.destination != "master" && spec.has_bus(&route.source))
+                .map(|route| (route.source.as_str(), route.destination.as_str(), route.span)),
+        )
+        .collect::<Vec<_>>();
+    for (source, destination, span) in &edges {
+        let mut frontier = vec![*destination];
+        let mut seen = std::collections::HashSet::new();
+        let mut cyclic = source == destination;
+        while !cyclic {
+            let Some(bus) = frontier.pop() else { break };
+            if !seen.insert(bus) {
+                continue;
+            }
+            for (_, next, _) in edges.iter().filter(|(from, _, _)| *from == bus) {
+                if next == source {
+                    cyclic = true;
+                    break;
+                }
+                frontier.push(*next);
+            }
+        }
+        if cyclic {
+            diagnostics.push(
+                Diagnostic::error(
+                    Code::DependencyCycle,
+                    format!("bus binding `{source} -> {destination}` participates in a cycle"),
+                )
+                .maybe_at(*span, "the room signal would depend on itself"),
+            );
+        }
+    }
 }
 
 fn resolve_send(
@@ -266,6 +320,7 @@ fn resolve_send(
         bus,
         level,
         level_span,
+        span,
     });
 }
 

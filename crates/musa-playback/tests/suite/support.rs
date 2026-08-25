@@ -16,7 +16,14 @@ const RATE: u32 = 48_000;
 const EMPTY: &str = "piece \"silent\" { score { part p { voice v { } } } }";
 
 pub(crate) fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
-    let compilation = compile(&SourceDocument::new(EMPTY, "silent.musa"), &CompileOptions::default());
+    source_plan(EMPTY, total_frames)
+}
+
+pub(crate) fn source_plan(source: &str, tail_frames: u64) -> PreparedPlaybackPlan {
+    let compilation = compile(
+        &SourceDocument::new(source, "playback.musa"),
+        &CompileOptions::default(),
+    );
     let score = compilation.snapshot().expect("silent fixture compiles");
     let gestures = lower_gestures(score).expect("empty gesture track");
     let instruments = checked_standard_instruments().expect("standard instruments check");
@@ -31,11 +38,11 @@ pub(crate) fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
         CollapsePolicy::Ordered,
         [MessageKind::End, MessageKind::Point, MessageKind::Begin],
         ScheduleLimits {
-            max_frame: total_frames,
-            max_time_map_entries: 1,
-            max_occurrences: 0,
-            max_messages: 0,
-            max_batches: 0,
+            max_frame: 10_000_000,
+            max_time_map_entries: 2_001,
+            max_occurrences: 1_000,
+            max_messages: 2_000,
+            max_batches: 2_000,
         },
     )
     .expect("schedule policy");
@@ -54,8 +61,8 @@ pub(crate) fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
                 max_state_bytes: 64 << 20,
                 max_step_work: 1_000_000,
             },
-            tail_frames: total_frames,
-            max_total_frames: total_frames,
+            tail_frames,
+            max_total_frames: 10_000_000,
         },
     )
     .expect("silent audio prepares");

@@ -1,5 +1,5 @@
 ---
-source: crates/musa-dsp/src/../tests/suite/studio.rs
+source: crates/musa-compiler/tests/suite/studio_lowering_laws.rs
 expression: "format!(\"{graph:#?}\")"
 ---
 StudioGraphSpec {
@@ -60,6 +60,70 @@ StudioGraphSpec {
             id: NodeId(
                 2,
             ),
+            processor: PolySine {
+                voices: 16,
+            },
+            params: [
+                (
+                    "ratio",
+                    2.0,
+                ),
+                (
+                    "blend",
+                    0.17782794,
+                ),
+                (
+                    "attack",
+                    0.03,
+                ),
+                (
+                    "decay",
+                    1.8,
+                ),
+                (
+                    "sustain",
+                    0.65,
+                ),
+                (
+                    "release",
+                    3.5,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                3,
+            ),
+            processor: Biquad {
+                kind: LowPass,
+            },
+            params: [
+                (
+                    "cutoff",
+                    1400.0,
+                ),
+                (
+                    "q",
+                    0.7,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                4,
+            ),
+            processor: StereoGain,
+            params: [
+                (
+                    "gain",
+                    0.12589253,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                5,
+            ),
             processor: StereoGain,
             params: [
                 (
@@ -70,7 +134,16 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                3,
+                6,
+            ),
+            processor: Mixer {
+                inputs: 2,
+            },
+            params: [],
+        },
+        Node {
+            id: NodeId(
+                7,
             ),
             processor: Reverb,
             params: [
@@ -90,23 +163,23 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                4,
+                8,
             ),
             processor: Mixer {
-                inputs: 2,
+                inputs: 3,
             },
             params: [],
         },
         Node {
             id: NodeId(
-                5,
+                9,
             ),
             processor: Limiter,
             params: [],
         },
         Node {
             id: NodeId(
-                6,
+                10,
             ),
             processor: Lfo {
                 waveform: Sine,
@@ -120,7 +193,7 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                7,
+                11,
             ),
             processor: Scale,
             params: [
@@ -132,7 +205,7 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                8,
+                12,
             ),
             processor: Bias,
             params: [
@@ -156,16 +229,6 @@ StudioGraphSpec {
         },
         Connection {
             from: NodeId(
-                1,
-            ),
-            from_port: 0,
-            to: NodeId(
-                2,
-            ),
-            to_port: 0,
-        },
-        Connection {
-            from: NodeId(
                 2,
             ),
             from_port: 0,
@@ -187,22 +250,32 @@ StudioGraphSpec {
         Connection {
             from: NodeId(
                 3,
-            ),
-            from_port: 0,
-            to: NodeId(
-                4,
-            ),
-            to_port: 1,
-        },
-        Connection {
-            from: NodeId(
-                4,
             ),
             from_port: 0,
             to: NodeId(
                 5,
             ),
             to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                4,
+            ),
+            from_port: 0,
+            to: NodeId(
+                6,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                5,
+            ),
+            from_port: 0,
+            to: NodeId(
+                6,
+            ),
+            to_port: 1,
         },
         Connection {
             from: NodeId(
@@ -216,7 +289,7 @@ StudioGraphSpec {
         },
         Connection {
             from: NodeId(
-                7,
+                1,
             ),
             from_port: 0,
             to: NodeId(
@@ -224,11 +297,61 @@ StudioGraphSpec {
             ),
             to_port: 0,
         },
+        Connection {
+            from: NodeId(
+                3,
+            ),
+            from_port: 0,
+            to: NodeId(
+                8,
+            ),
+            to_port: 1,
+        },
+        Connection {
+            from: NodeId(
+                7,
+            ),
+            from_port: 0,
+            to: NodeId(
+                8,
+            ),
+            to_port: 2,
+        },
+        Connection {
+            from: NodeId(
+                8,
+            ),
+            from_port: 0,
+            to: NodeId(
+                9,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                10,
+            ),
+            from_port: 0,
+            to: NodeId(
+                11,
+            ),
+            to_port: 0,
+        },
+        Connection {
+            from: NodeId(
+                11,
+            ),
+            from_port: 0,
+            to: NodeId(
+                12,
+            ),
+            to_port: 0,
+        },
     ],
     modulations: [
         ModulationEdge {
             from: NodeId(
-                8,
+                12,
             ),
             from_port: 0,
             to: NodeId(
@@ -236,10 +359,20 @@ StudioGraphSpec {
             ),
             param: "cutoff",
         },
+        ModulationEdge {
+            from: NodeId(
+                12,
+            ),
+            from_port: 0,
+            to: NodeId(
+                3,
+            ),
+            param: "cutoff",
+        },
     ],
     output: Some(
         NodeId(
-            5,
+            9,
         ),
     ),
 }

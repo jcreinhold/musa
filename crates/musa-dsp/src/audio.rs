@@ -8,17 +8,17 @@
 
 use musa_calculus::CheckedSource;
 use musa_events::{Duration, PerformedTime, PhysicalTime, Position, empty};
-use musa_score::{Gesture, GesturePlan, Tuning};
+use musa_score::{Gesture, GesturePlan, PartId, Tuning};
 
 use crate::StudioSpec;
-use crate::plan::{RenderPlan, prepare_plan};
+use crate::plan::{RenderPlan, prepare_routed_plan};
 use crate::primitive::{AudioLimits, resources};
 use crate::schedule::{
     AudioFormat, ChannelLayout, Schedule, ScheduleError, SchedulePolicy, ScheduledSource, TimeDecision, TimeMap,
     merge_schedules, schedule,
 };
 use crate::spec::GraphOptions;
-use crate::studio::lower_studio;
+use crate::studio::{lower_studio, lower_studio_for_parts};
 
 /// Every product-level choice that can change audio preparation or its finite
 /// playback extent. There is deliberately no default.
@@ -86,13 +86,30 @@ pub struct PreparedAudio {
     // machine calculus even while the migration oracle supplies production
     // oscillator execution. Prompt 180a removes that oracle.
     _instrument_machine: crate::PreparedMachine,
+    // Exact source identities retained beside their compact prepared slots.
+    // Equal declarations deliberately still have distinct instance ids.
+    _instrument_instances: Vec<InstrumentInstanceBinding>,
     plan: RenderPlan,
     schedule: Schedule<PerformedTime, Gesture>,
-    source: ScheduledSource<Gesture>,
+    lanes: Vec<PreparedLane>,
     tuning: Tuning,
     sample_rate: u32,
     total_frames: u64,
     position: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PreparedInstrumentId(usize);
+
+struct InstrumentInstanceBinding {
+    _part: PartId,
+    _declaration: String,
+    _instance: PreparedInstrumentId,
+}
+
+struct PreparedLane {
+    instance: PreparedInstrumentId,
+    source: ScheduledSource<Gesture>,
 }
 
 impl PreparedAudio {
@@ -120,7 +137,9 @@ impl PreparedAudio {
     /// matching transport seek rather than reconstructing the instrument.
     pub fn seek(&mut self, frame: u64) {
         self.position = frame.min(self.total_frames);
-        self.source.seek(self.position);
+        for lane in &mut self.lanes {
+            lane.source.seek(self.position);
+        }
     }
 
     /// Execute exactly one reference frame, reading this frame's event batch
@@ -130,8 +149,11 @@ impl PreparedAudio {
         if self.position >= self.total_frames {
             return [0.0; 2];
         }
-        let (_, messages) = self.source.step();
-        let frame = self.plan.step(messages, self.tuning);
+        for lane in &mut self.lanes {
+            let (_, messages) = lane.source.step();
+            self.plan.apply_events(lane.instance.0, messages, self.tuning);
+        }
+        let frame = self.plan.finish_step();
         self.position = self.position.saturating_add(1);
         frame
     }
@@ -203,7 +225,17 @@ fn prepare_audio(
         sample_rate,
         render_seed: options.render_seed,
     };
-    let (graph, lowering) = lower_studio(studio, &graph_options);
+    let part_names = gestures
+        .lanes()
+        .iter()
+        .map(musa_score::GestureLane::name)
+        .collect::<Vec<_>>();
+    let (graph, lowering, part_inputs) = if part_names.is_empty() {
+        let (graph, lowering) = lower_studio(studio, &graph_options);
+        (graph, lowering, Vec::new())
+    } else {
+        lower_studio_for_parts(studio, &part_names, &graph_options)
+    };
     if !lowering.errors.is_empty() {
         return Err(AudioPrepareError::StudioValue(lowering.errors.join("; ")));
     }
@@ -216,8 +248,25 @@ fn prepare_audio(
         AudioPrepareError::Primitive("native primitive is absent from the closed registry".to_owned())
     })?;
     check_resources(required, options.limits)?;
-    let plan = prepare_plan(&graph, &graph_options).map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
-    let schedule = schedule_gestures(gestures, options)?;
+    let mut instrument_instances = Vec::with_capacity(gestures.lanes().len());
+    let mut event_inputs = Vec::with_capacity(gestures.lanes().len());
+    for (instance, lane) in gestures.lanes().iter().enumerate() {
+        let input = part_inputs
+            .iter()
+            .find(|input| input.part == lane.name())
+            .ok_or_else(|| {
+                AudioPrepareError::StudioValue(format!("part `{}` has no prepared instrument instance", lane.name()))
+            })?;
+        event_inputs.push((input.node, instance));
+        instrument_instances.push(InstrumentInstanceBinding {
+            _part: lane.part(),
+            _declaration: input.declaration.clone(),
+            _instance: PreparedInstrumentId(instance),
+        });
+    }
+    let plan = prepare_routed_plan(&graph, &graph_options, &event_inputs)
+        .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
+    let (schedule, lane_schedules) = schedule_gestures(gestures, options)?;
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
     let total_frames = schedule
@@ -228,13 +277,21 @@ fn prepare_audio(
             actual: schedule.finish_frame().saturating_add(tail_frames),
             limit: options.max_total_frames,
         })?;
-    let source = schedule.source();
+    let lanes = lane_schedules
+        .iter()
+        .enumerate()
+        .map(|(instance, schedule)| PreparedLane {
+            instance: PreparedInstrumentId(instance),
+            source: schedule.source(),
+        })
+        .collect();
     Ok(PreparedAudio {
         _instrument_contracts: instrument_contracts,
         _instrument_machine: instrument_machine,
+        _instrument_instances: instrument_instances,
         plan,
         schedule,
-        source,
+        lanes,
         tuning: options.tuning,
         sample_rate,
         total_frames,
@@ -271,10 +328,15 @@ fn check_resources(actual: crate::primitive::AudioResources, limits: AudioLimits
 fn schedule_gestures(
     gestures: &GesturePlan,
     options: AudioOptions,
-) -> Result<Schedule<PerformedTime, Gesture>, ScheduleError> {
-    let mut lanes = gestures.lanes().iter();
-    let mut combined = match lanes.next() {
-        Some(lane) => schedule_lane(lane, options)?,
+) -> Result<(Schedule<PerformedTime, Gesture>, Vec<Schedule<PerformedTime, Gesture>>), ScheduleError> {
+    let lane_schedules = gestures
+        .lanes()
+        .iter()
+        .map(|lane| schedule_lane(lane, options))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut schedules = lane_schedules.iter();
+    let mut combined = match schedules.next() {
+        Some(schedule) => schedule.clone(),
         None => {
             let track = empty(Duration::ZERO);
             schedule(
@@ -285,11 +347,10 @@ fn schedule_gestures(
             )?
         }
     };
-    for lane in lanes {
-        let next = schedule_lane(lane, options)?;
-        combined = merge_schedules(options.schedule, &combined, &next)?;
+    for next in schedules {
+        combined = merge_schedules(options.schedule, &combined, next)?;
     }
-    Ok(combined)
+    Ok((combined, lane_schedules))
 }
 
 fn schedule_lane(

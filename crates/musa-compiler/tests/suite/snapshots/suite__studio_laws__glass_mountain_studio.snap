@@ -424,14 +424,32 @@ StudioSpec {
         Route {
             source: "violin",
             destination: "master",
+            span: Some(
+                SourceSpan {
+                    start: 1994,
+                    end: 2027,
+                },
+            ),
         },
         Route {
             source: "strings",
             destination: "master",
+            span: Some(
+                SourceSpan {
+                    start: 2027,
+                    end: 2060,
+                },
+            ),
         },
         Route {
             source: "hall",
             destination: "master",
+            span: Some(
+                SourceSpan {
+                    start: 2140,
+                    end: 2170,
+                },
+            ),
         },
     ],
     sends: [
@@ -451,6 +469,12 @@ StudioSpec {
                     end: 2099,
                 },
             ),
+            span: Some(
+                SourceSpan {
+                    start: 2060,
+                    end: 2100,
+                },
+            ),
         },
         Send {
             source: "strings",
@@ -466,6 +490,12 @@ StudioSpec {
                 SourceSpan {
                     start: 2133,
                     end: 2139,
+                },
+            ),
+            span: Some(
+                SourceSpan {
+                    start: 2100,
+                    end: 2140,
                 },
             ),
         },

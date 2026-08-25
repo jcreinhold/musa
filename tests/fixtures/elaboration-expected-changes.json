@@ -12,11 +12,6 @@
       "repaired_by": "expressive-control-realization"
     },
     {
-      "defect": "shared-note-stream-warning",
-      "observation": "two assigned patches both consume the merged note stream and therefore sound both parts",
-      "repaired_by": "part-instrument-routing"
-    },
-    {
       "defect": "ignored-parameter-event",
       "observation": "PerformanceEvent::Parameter is sorted and delivered but ignored by the render plan",
       "repaired_by": "expressive-control-realization"

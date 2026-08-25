@@ -606,6 +606,8 @@ pub struct Send {
     pub level: WrittenQuantity,
     /// Where the level was written, for an editor that rewrites it.
     pub level_span: Option<SourceSpan>,
+    /// The complete statement, retained for binding diagnostics.
+    pub span: Option<SourceSpan>,
 }
 
 /// `assign violin -> glass_pad;` — which patch realizes a part.
@@ -625,6 +627,8 @@ pub struct Route {
     pub source: String,
     /// Where it goes: a bus name, or `master`.
     pub destination: String,
+    /// The complete statement, retained for binding diagnostics.
+    pub span: Option<SourceSpan>,
 }
 
 /// The compiled studio: everything a graph builder needs, with every name
@@ -665,6 +669,10 @@ impl StudioSpec {
         }
         for send in &mut self.sends {
             send.level_span = map.maybe(send.level_span);
+            send.span = map.maybe(send.span);
+        }
+        for route in &mut self.routes {
+            route.span = map.maybe(route.span);
         }
     }
 

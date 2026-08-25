@@ -41,8 +41,8 @@ struct Step {
     outputs: Vec<usize>,
     /// Preallocated scratch for taken output buffers (capacity = outputs).
     taken: Vec<Box<[f32]>>,
-    /// Whether this processor consumes scheduled note events (§13.5).
-    takes_events: bool,
+    /// Private prepared lane whose scheduled note events this processor reads.
+    event_input: Option<usize>,
     /// Control connections into this node's parameters (§13.7).
     modulations: Vec<ParamLink>,
 }
@@ -361,7 +361,19 @@ fn set(slot: &mut f32, name: &str, expected: &str, value: f32) {
 /// # Errors
 /// [`GraphError`] for unknown nodes/ports, kind or channel mismatches,
 /// duplicate inputs, cycles, or a missing output designation.
+#[cfg(any(test, feature = "testing"))]
 pub(crate) fn prepare_plan(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<RenderPlan, GraphError> {
+    prepare_routed_plan(spec, options, &[])
+}
+
+/// Compile a spec while binding selected event-consuming nodes to prepared
+/// lane indices. An empty binding list preserves the single-input graph test
+/// harness; production always supplies every part-local synth explicitly.
+pub(crate) fn prepare_routed_plan(
+    spec: &StudioGraphSpec,
+    options: &GraphOptions,
+    event_inputs: &[(NodeId, usize)],
+) -> Result<RenderPlan, GraphError> {
     let span = tracing::info_span!(
         "prepare_audio_primitives",
         nodes = spec.nodes().len(),
@@ -442,7 +454,12 @@ pub(crate) fn prepare_plan(spec: &StudioGraphSpec, options: &GraphOptions) -> Re
             .map(|(port, _)| port_buffers.get(&(*id, port)).copied().unwrap_or(0))
             .collect::<Vec<usize>>();
         let taken = Vec::with_capacity(outputs.len());
-        let takes_events = processor.input_ports().contains(&PortKind::NoteEvents);
+        let event_input = processor.input_ports().contains(&PortKind::NoteEvents).then(|| {
+            event_inputs
+                .iter()
+                .find(|(node, _)| node == id)
+                .map_or(0, |(_, input)| *input)
+        });
         let modulations = spec
             .modulations()
             .iter()
@@ -464,7 +481,7 @@ pub(crate) fn prepare_plan(spec: &StudioGraphSpec, options: &GraphOptions) -> Re
             inputs,
             outputs,
             taken,
-            takes_events,
+            event_input,
             modulations,
         });
     }
@@ -672,23 +689,38 @@ fn channels_of(kind: PortKind) -> usize {
 }
 
 impl RenderPlan {
+    /// Deliver one prepared lane's events to only the instrument instances
+    /// bound to that lane. This mutates no graph buffers and allocates nothing.
+    pub(crate) fn apply_events(&mut self, input: usize, events: &[EventMessage<Gesture>], tuning: Tuning) {
+        for step in &mut self.schedule {
+            if step.event_input == Some(input) {
+                for event in events {
+                    step.instance.apply_event(event, tuning);
+                }
+            }
+        }
+    }
+
+    /// Advance every processor once after this frame's lane-local event
+    /// batches have been delivered.
+    pub(crate) fn finish_step(&mut self) -> [f32; 2] {
+        const FRAME_WIDTH: usize = 1;
+        let sample_rate = f64::from(self.sample_rate);
+        for step in &mut self.schedule {
+            process_step(step, &mut self.buffers, 1, sample_rate, FRAME_WIDTH);
+        }
+        self.master_frame(FRAME_WIDTH)
+    }
+
     /// Execute exactly one reference audio-frame step.
     ///
     /// Event input is applied before the processors produce this frame. Every
     /// processor, feedback edge, modulation source, and smoother therefore
     /// advances once regardless of the host callback partition.
+    #[cfg(any(test, feature = "testing"))]
     pub(crate) fn step(&mut self, events: &[EventMessage<Gesture>], tuning: Tuning) -> [f32; 2] {
-        const FRAME_WIDTH: usize = 1;
-        let sample_rate = f64::from(self.sample_rate);
-        for step in &mut self.schedule {
-            if step.takes_events {
-                for event in events {
-                    step.instance.apply_event(event, tuning);
-                }
-            }
-            process_step(step, &mut self.buffers, 1, sample_rate, FRAME_WIDTH);
-        }
-        self.master_frame(FRAME_WIDTH)
+        self.apply_events(0, events, tuning);
+        self.finish_step()
     }
 
     fn master_frame(&self, channel_stride: usize) -> [f32; 2] {

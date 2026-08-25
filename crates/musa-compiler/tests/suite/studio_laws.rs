@@ -227,6 +227,37 @@ fn a_written_effect_compiles_without_a_warning() {
     assert_eq!(warnings, Vec::<&str>::new());
 }
 
+#[test]
+fn assigning_one_part_twice_is_a_spanned_duplicate_binding() {
+    let compilation = compile_text(&piece(
+        "patch p { oscillator(sine) |> output; } patch q { oscillator(sine) |> output; } \
+         assign violin -> p; assign violin -> q;",
+    ));
+    let diagnostic = compilation
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.code == Code::DuplicateName)
+        .expect("duplicate assignment diagnostic");
+    assert!(diagnostic.message.contains("already has an instrument"));
+    assert!(!diagnostic.labels.is_empty(), "the second binding is pointed out");
+}
+
+#[test]
+fn cyclic_bus_bindings_are_refused_at_their_statements() {
+    let compilation = compile_text(&piece(
+        "patch p { oscillator(sine) |> output; } bus one { reverb(); } bus two { reverb(); } \
+         assign violin -> p; route violin -> master; \
+         send one -> two at -6 dB; send two -> one at -6 dB;",
+    ));
+    let cycles = compilation
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.code == Code::DependencyCycle)
+        .collect::<Vec<_>>();
+    assert_eq!(cycles.len(), 2, "each written cycle edge is identified");
+    assert!(cycles.iter().all(|diagnostic| !diagnostic.labels.is_empty()));
+}
+
 // --- Diagnostics ------------------------------------------------------------
 
 #[test]

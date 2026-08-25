@@ -20,10 +20,10 @@
 //! is what keeps `shimmer = oscillator(...) |> gain(-15 dB)` a quieter
 //! partial rather than a 15 dB cut on the whole instrument.
 //!
-//! **One note stream.** Every patch reads the same scheduled events, because
-//! that is what the private one-frame plan delivers today. A studio that assigns
-//! two parts to two different patches gets both patches sounding both parts;
-//! [`lower_studio`] says so rather than pretending otherwise.
+//! A patch declaration is a recipe, not a stateful instrument. Lowering makes
+//! one synth and one downstream chain for every part that selects the recipe;
+//! the preparation boundary then binds that synth to exactly that part's
+//! scheduled event lane.
 
 use crate::spec::{FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform};
 use crate::{NodeIndex, ParamSpec, Patch, Processor, StudioNode, StudioSpec, Unit, WrittenQuantity, written_ratio};
@@ -48,6 +48,17 @@ pub struct StudioLowering {
     pub release_tail: f32,
 }
 
+/// One part-local event input created while lowering the compatibility studio.
+///
+/// This is a prepared binding, not source routing vocabulary: the source part
+/// and declaration names are retained only long enough for audio preparation
+/// to resolve them to private compact indices.
+pub(crate) struct PartInput {
+    pub(crate) part: String,
+    pub(crate) declaration: String,
+    pub(crate) node: NodeId,
+}
+
 /// The number of voices each patch's synthesizer gets.
 const POLYPHONY: u8 = 16;
 
@@ -60,81 +71,128 @@ const MAX_MIX: usize = 8;
 /// studio produces the default instrument graph, which is what makes a piece
 /// with no `studio` block render exactly as it did before studios existed
 /// (§14.8).
-pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
+pub fn lower_studio(studio: &StudioSpec, options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
+    let parts = studio.assignments().map(|(part, _)| part).collect::<Vec<_>>();
+    let lowered = lower_studio_for_parts(studio, &parts, options);
+    (lowered.0, lowered.1)
+}
+
+/// Lower one independently stateful instrument for every prepared part.
+pub(crate) fn lower_studio_for_parts(
+    studio: &StudioSpec,
+    parts: &[&str],
+    _options: &GraphOptions,
+) -> (StudioGraphSpec, StudioLowering, Vec<PartInput>) {
     let mut lowering = StudioLowering::default();
     validate_exact_intent(studio, &mut lowering);
     if !lowering.errors.is_empty() {
-        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);
+        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering, Vec::new());
     }
-    if studio.is_empty() {
-        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);
+    if studio.is_empty() && parts.len() <= 1 {
+        let graph = crate::instrument::poly_sine_spec(POLYPHONY);
+        let inputs = parts
+            .first()
+            .map(|part| PartInput {
+                part: (*part).to_owned(),
+                declaration: "std.sound.basic_sine@1".to_owned(),
+                node: NodeId(0),
+            })
+            .into_iter()
+            .collect();
+        return (graph, lowering, inputs);
     }
 
     let mut graph = StudioGraphSpec::new();
-    let assigned: Vec<&str> = distinct_patches(studio);
-    if assigned.len() > 1 {
-        // Every synth sees every note until the engine routes events per
-        // part. Said once, here, rather than left for a user to discover.
-        lowering.notes.push(format!(
-            "{} patches share one note stream: every assigned part sounds through all of them",
-            assigned.len()
-        ));
-    }
 
-    // Each assigned patch: its own synth through its own stages.
+    // Every part gets its own synth and chain. Reusing a declaration reuses
+    // only its immutable recipe, never voices, envelopes, or effect state.
     let mut master_inputs: Vec<NodeId> = Vec::new();
-    let mut patch_outputs: Vec<(&str, NodeId)> = Vec::new();
+    let mut part_outputs: Vec<(&str, NodeId)> = Vec::new();
+    let mut inputs = Vec::with_capacity(parts.len());
     let mut addresses: Addresses<'_> = Vec::new();
-    for name in &assigned {
-        let Some(patch) = studio.patch(name) else { continue };
+    for part in parts {
+        let declaration = studio.patch_for_part(part);
         let synth = graph.add_node(ProcessorSpec::PolySine { voices: POLYPHONY });
-        lower_bank(&mut graph, synth, patch, &mut lowering);
-        let tail = lower_container(
-            &mut graph,
-            synth,
-            Some(synth),
-            patch,
-            name,
-            &mut addresses,
-            &mut lowering,
-        );
-        patch_outputs.push((name, tail));
+        let tail = match declaration.and_then(|name| studio.patch(name).map(|patch| (name, patch))) {
+            Some((name, patch)) => {
+                lower_bank(&mut graph, synth, patch, &mut lowering);
+                lower_container(
+                    &mut graph,
+                    synth,
+                    Some(synth),
+                    patch,
+                    name,
+                    &mut addresses,
+                    &mut lowering,
+                )
+            }
+            None => synth,
+        };
+        part_outputs.push((part, tail));
+        inputs.push(PartInput {
+            part: (*part).to_owned(),
+            declaration: declaration.unwrap_or("std.sound.basic_sine@1").to_owned(),
+            node: synth,
+        });
     }
 
-    // Buses: their stages fed by the sends that name them.
+    // Buses are shared mix machines. A source may be a part instance or an
+    // already-prepared bus; compiler cycle checking makes this finite order
+    // exist before DSP preparation begins.
     let mut bus_outputs: Vec<(&str, NodeId)> = Vec::new();
-    for (name, bus) in studio.buses() {
-        // Two parts sharing a patch share its signal, so two sends of that
-        // signal are one send: adding it twice would put the patch into the
-        // bus at double strength for a reason nobody wrote. The loudest
-        // level written wins, and the lowering says so.
-        let mut levels: Vec<(NodeId, f64)> = Vec::new();
-        for send in studio.sends().iter().filter(|send| send.bus == name) {
-            let Some(from) = source_output(studio, &send.source, &patch_outputs) else {
-                continue;
-            };
-            let level = crate::quantity::linear(send.level);
-            match levels.iter_mut().find(|(node, _)| *node == from) {
-                Some(existing) => {
-                    lowering.notes.push(format!(
-                        "`{}` sends a signal already sent to `{name}`; the louder level applies",
-                        send.source
-                    ));
-                    existing.1 = existing.1.max(level);
-                }
-                None => levels.push((from, level)),
-            }
-        }
+    let mut pending = studio.buses().collect::<Vec<_>>();
+    while !pending.is_empty() {
+        let Some(index) = pending.iter().position(|(name, _)| {
+            studio
+                .sends()
+                .iter()
+                .filter(|send| send.bus == *name && studio.has_bus(&send.source))
+                .all(|send| bus_outputs.iter().any(|(bus, _)| *bus == send.source))
+                && studio
+                    .routes()
+                    .iter()
+                    .filter(|route| route.destination == *name && studio.has_bus(&route.source))
+                    .all(|route| bus_outputs.iter().any(|(bus, _)| *bus == route.source))
+        }) else {
+            lowering
+                .errors
+                .push("cyclic bus bindings reached DSP preparation".to_owned());
+            break;
+        };
+        let (name, bus) = pending.remove(index);
         let mut feeds: Vec<NodeId> = Vec::new();
-        for (from, level) in levels {
+        for send in studio.sends().iter().filter(|send| send.bus == name) {
+            let from = source_output(&send.source, &part_outputs).or_else(|| {
+                bus_outputs
+                    .iter()
+                    .find(|(bus, _)| *bus == send.source)
+                    .map(|(_, node)| *node)
+            });
+            let Some(from) = from else { continue };
             let attenuated = graph.add_node(ProcessorSpec::StereoGain);
-            set_param(&mut graph, attenuated, "gain", level, &mut lowering);
+            set_param(
+                &mut graph,
+                attenuated,
+                "gain",
+                crate::quantity::linear(send.level),
+                &mut lowering,
+            );
             graph.connect(from, 0, attenuated, 0);
             feeds.push(attenuated);
         }
-        let Some(input) = merge(&mut graph, &feeds, &mut lowering) else {
-            continue;
-        };
+        for route in studio.routes().iter().filter(|route| route.destination == name) {
+            let from = source_output(&route.source, &part_outputs).or_else(|| {
+                bus_outputs
+                    .iter()
+                    .find(|(bus, _)| *bus == route.source)
+                    .map(|(_, node)| *node)
+            });
+            if let Some(from) = from {
+                feeds.push(from);
+            }
+        }
+        let input = merge(&mut graph, &feeds, &mut lowering)
+            .unwrap_or_else(|| graph.add_node(ProcessorSpec::Passthrough { channels: 2 }));
         let tail = lower_container(&mut graph, input, None, bus, name, &mut addresses, &mut lowering);
         bus_outputs.push((name, tail));
     }
@@ -145,7 +203,7 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
         if route.destination != "master" {
             continue;
         }
-        let from = source_output(studio, &route.source, &patch_outputs).or_else(|| {
+        let from = source_output(&route.source, &part_outputs).or_else(|| {
             bus_outputs
                 .iter()
                 .find(|(name, _)| *name == route.source)
@@ -157,6 +215,14 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
             && !master_inputs.contains(&from)
         {
             master_inputs.push(from);
+        }
+    }
+    // A part absent from the compatibility studio has the edition default and
+    // its implicit route to master. This is independent of whether another
+    // part made its own studio choices explicit.
+    for (part, output) in &part_outputs {
+        if studio.patch_for_part(part).is_none() && !master_inputs.contains(output) {
+            master_inputs.push(*output);
         }
     }
     if master_inputs.is_empty() {
@@ -176,7 +242,7 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
     graph.set_output(master);
 
     lower_modulations(&mut graph, studio, &addresses, &mut lowering);
-    (graph, lowering)
+    (graph, lowering, inputs)
 }
 
 /// Recheck the public exact contract where intent crosses into floating DSP.
@@ -259,25 +325,11 @@ fn set_param(graph: &mut StudioGraphSpec, node: NodeId, name: &'static str, valu
     }
 }
 
-/// The patches parts are actually assigned to, in assignment order and
-/// without repeats.
-fn distinct_patches(studio: &StudioSpec) -> Vec<&str> {
-    let mut seen: Vec<&str> = Vec::new();
-    for (_, patch) in studio.assignments() {
-        if !seen.contains(&patch) {
-            seen.push(patch);
-        }
-    }
-    seen
-}
-
-/// Where a `route`/`send` source's signal comes from: a bus by that name, or
-/// the patch the named part is assigned to.
-fn source_output(studio: &StudioSpec, name: &str, patches: &[(&str, NodeId)]) -> Option<NodeId> {
-    let patch = studio.patch_for_part(name)?;
-    patches
+/// Where a part-valued `route`/`send` source's signal comes from.
+fn source_output(name: &str, parts: &[(&str, NodeId)]) -> Option<NodeId> {
+    parts
         .iter()
-        .find(|(candidate, _)| *candidate == patch)
+        .find(|(candidate, _)| *candidate == name)
         .map(|(_, id)| *id)
 }
 
@@ -489,16 +541,18 @@ fn lower_modulations(
 ) {
     let mut sources: Vec<(&str, NodeId)> = Vec::new();
     for modulation in studio.modulations() {
-        let Some((_, _, target)) = addresses
+        let targets = addresses
             .iter()
-            .find(|(patch, index, _)| *patch == modulation.patch && *index == modulation.node)
-        else {
+            .filter(|(patch, index, _)| *patch == modulation.patch && *index == modulation.node)
+            .map(|(_, _, target)| *target)
+            .collect::<Vec<_>>();
+        if targets.is_empty() {
             lowering.notes.push(format!(
                 "`{}.{}` is part of the voice source and cannot be modulated yet",
                 modulation.patch, modulation.param
             ));
             continue;
-        };
+        }
         let source = match sources.iter().find(|(name, _)| *name == modulation.source) {
             Some((_, id)) => Some(*id),
             None => {
@@ -525,7 +579,9 @@ fn lower_modulations(
                 ));
                 continue;
             };
-            graph.modulate(source, 0, *target, dsp_name);
+            for target in targets {
+                graph.modulate(source, 0, target, dsp_name);
+            }
         }
     }
 }
