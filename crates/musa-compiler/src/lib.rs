@@ -52,6 +52,7 @@ mod lint;
 /// The surface CST read as a [`musa_calculus::Raw`].
 mod lower;
 mod package;
+mod performance_source;
 mod phase;
 /// The compiler's own `data` declarations, reachable only from [`registry`].
 mod prelude;
@@ -76,6 +77,9 @@ pub use crate::expand::{AdapterEdit, AdapterEditError, AdapterPrintError, adapte
 pub use crate::imports::{
     ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
     standard_library_modules, standard_library_source,
+};
+pub use crate::performance_source::{
+    PerformanceBridgeError, checked_performance_interpretations, lower_gestures,
 };
 /// Events text as an editor sees it, re-exported so a language server can
 /// colour and outline an event track document without a second copy of the grammar

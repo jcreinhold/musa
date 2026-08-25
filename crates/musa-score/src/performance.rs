@@ -31,6 +31,7 @@ use crate::time::MusicalTime;
 use musa_events::{Canonical, Duration, EventTrack, Occurrence, PerformedTime, PhysicalTime, Position, Span, track};
 use num_rational::Ratio;
 use std::fmt::Write as _;
+use std::sync::Arc;
 
 /// Equal temperament with a configurable concert A (roadmap §8.1: the
 /// concrete default now, a service boundary later).
@@ -352,20 +353,69 @@ fn ratio_to_f64(value: Ratio<i64>) -> f64 {
 /// after checked scheduling has fixed the occurrence's frame boundaries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Gesture {
+    /// Stable source-declared identity within the finite performance plan.
+    instance: u64,
     /// Written pitch after score transposition, before an instrument tunes it.
-    pub pitch: WrittenPitch,
+    pitch: WrittenPitch,
     /// The score occurrence this gesture realizes.
-    pub event: EventId,
+    event: EventId,
     /// Complete source and expansion provenance.
-    pub origin: Origin,
+    origin: Origin,
     /// Exact abstract loudness; one is neutral.
-    pub amplitude: Ratio<i64>,
+    amplitude: Ratio<i64>,
     /// Exact requested attack time in physical seconds; zero means unstated.
-    pub attack_seconds: Ratio<i64>,
+    attack_seconds: Ratio<i64>,
     /// Where the source occurrence begins on the unwarped page.
-    pub notated_on: MusicalTime,
+    notated_on: MusicalTime,
     /// Where the source occurrence ends on the unwarped page.
-    pub notated_off: MusicalTime,
+    notated_off: MusicalTime,
+    /// Exact checked source gesture framing. Empty only on the retained
+    /// pre-177 differential oracle used by compatibility tests.
+    source_exact: Arc<[u8]>,
+    /// Differential oracle only: the legacy span calculation's exact gate.
+    legacy_gate: Ratio<i64>,
+}
+
+impl Gesture {
+    /// Stable source-declared identity within this finite plan.
+    pub const fn instance(&self) -> u64 {
+        self.instance
+    }
+
+    /// Written pitch retained until tuning.
+    pub const fn pitch(&self) -> WrittenPitch {
+        self.pitch
+    }
+
+    /// Source score event in the temporary written-lineage projection.
+    pub const fn event(&self) -> EventId {
+        self.event
+    }
+
+    /// Exact abstract expression projection used by compatibility consumers.
+    pub const fn amplitude(&self) -> Ratio<i64> {
+        self.amplitude
+    }
+
+    /// Temporary physical-attack compatibility projection, removed at 178.
+    pub const fn attack_seconds(&self) -> Ratio<i64> {
+        self.attack_seconds
+    }
+
+    /// Written onset retained for score-mode MIDI compatibility.
+    pub const fn notated_on(&self) -> MusicalTime {
+        self.notated_on
+    }
+
+    /// Written end retained for score-mode MIDI compatibility.
+    pub const fn notated_off(&self) -> MusicalTime {
+        self.notated_off
+    }
+
+    /// Exact checked source framing of the opaque gesture payload.
+    pub fn exact_source_bytes(&self) -> &[u8] {
+        &self.source_exact
+    }
 }
 
 impl Canonical for Gesture {
@@ -376,6 +426,13 @@ impl Canonical for Gesture {
     /// explicit encoding; arbitrary source strings are length-framed. This is
     /// deliberately a versioned identity key, never an audio parameter codec.
     fn canonical_key(&self) -> String {
+        if !self.source_exact.is_empty() {
+            let mut key = format!("source={}:{};", self.source_exact.len(), self.instance);
+            for byte in self.source_exact.iter() {
+                let _ = write!(key, "{byte:02x}");
+            }
+            return key;
+        }
         let mut key = String::new();
         let _ = write!(
             key,
@@ -484,6 +541,7 @@ mod gesture_identity_laws {
 
     fn gesture(axis: &str) -> Gesture {
         Gesture {
+            instance: 0,
             pitch: WrittenPitch {
                 letter: Letter::C,
                 accidental: Accidental::NATURAL,
@@ -500,6 +558,8 @@ mod gesture_identity_laws {
             attack_seconds: Ratio::ZERO,
             notated_on: MusicalTime::ZERO,
             notated_off: MusicalTime::new(Ratio::new(1, 4)),
+            source_exact: Arc::from([]),
+            legacy_gate: Ratio::ONE,
         }
     }
 
@@ -619,6 +679,230 @@ pub enum PerformanceError {
     Unsupported(String),
 }
 
+/// One complete notation value presented to `std::performance.interpret`.
+///
+/// This is a lossless host projection of facts the score already computed;
+/// it contains no interpreted gate, loudness, technique, or control. The
+/// compiler serializes it as an ordinary `NotationView` and source owns the
+/// answer.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PerformanceView {
+    /// Stable source gesture identity within this finite preparation.
+    pub instance: u64,
+    /// Written pitch before tuning.
+    pub pitch: WrittenPitch,
+    /// Prevailing written dynamic, when any.
+    pub dynamic: Option<crate::score::DynamicMark>,
+    /// Written note marks in source order.
+    pub marks: Vec<crate::Mark>,
+    /// Hairpin target and exact reached progress at this event.
+    pub hairpin: Option<(crate::score::DynamicMark, Ratio<i64>)>,
+}
+
+/// One part's finite source-performance request batch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PerformanceRequests {
+    /// Part whose occurrences receive the answers.
+    pub part: PartId,
+    /// Parsed declarations only; interpretation remains source-owned.
+    pub profile: Option<PerformanceProfile>,
+    /// Views in the exact order gesture lowering consumes them.
+    pub views: Vec<PerformanceView>,
+}
+
+/// Project every notation input the source performance policy receives.
+///
+/// The order is grace gestures first and then the principal's written
+/// pitches, matching the mechanical track bridge. A changed order is caught
+/// by the result-count and gesture-id checks at that boundary.
+#[must_use]
+pub fn performance_requests(score: &ScoreSnapshot) -> Vec<PerformanceRequests> {
+    let marks = Interpretation::collect(score);
+    let curves = hairpin_curves(score);
+    let graces = grace_index(score);
+    let mut next_instance = 0_u64;
+    let mut batches = Vec::new();
+    for (part_id, part) in score.parts().iter() {
+        let mut views = Vec::new();
+        for (_, voice) in part.voices() {
+            let mut dynamic = None;
+            for event in voice.events() {
+                if let Some(mark) = marks.dynamics.get(&event.id) {
+                    dynamic = Some(*mark);
+                }
+                let hairpin = curves.get(&event.id).map(|curve| (curve.target, curve.fraction));
+                for grace in graces.get(&event.id).map_or(&[][..], Vec::as_slice) {
+                    views.push(PerformanceView {
+                        instance: next_instance,
+                        pitch: grace.pitch,
+                        dynamic,
+                        marks: grace.articulations.clone(),
+                        hairpin,
+                    });
+                    next_instance = next_instance.saturating_add(1);
+                }
+                let pitches: &[WrittenPitch] = match &event.kind {
+                    ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
+                    ScoreEventKind::Chord { pitches } => pitches,
+                    ScoreEventKind::Rest => &[],
+                };
+                for pitch in pitches {
+                    views.push(PerformanceView {
+                        instance: next_instance,
+                        pitch: *pitch,
+                        dynamic,
+                        marks: marks.articulations_of(event.id).to_vec(),
+                        hairpin,
+                    });
+                    next_instance = next_instance.saturating_add(1);
+                }
+            }
+        }
+        batches.push(PerformanceRequests {
+            part: part_id,
+            profile: score.profiles().for_part(part.name()).cloned(),
+            views,
+        });
+    }
+    batches
+}
+
+#[derive(Clone, Debug)]
+struct SourceReading {
+    instance: u64,
+    pitch: WrittenPitch,
+    expression: Ratio<i64>,
+    gate: Ratio<i64>,
+    attack: Ratio<i64>,
+    hold: Ratio<i64>,
+    exact_gesture: Arc<[u8]>,
+}
+
+fn source_readings(
+    artifacts: &[musa_calculus::CheckedSource],
+) -> Result<Vec<Vec<SourceReading>>, PerformanceError> {
+    artifacts.iter().map(source_lane).collect()
+}
+
+fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceReading>, PerformanceError> {
+    if artifact.schema().name() != "std.performance.PerformanceInterpretationArtifact"
+        || artifact.schema().version() != 1
+        || !artifact.has_valid_framing()
+    {
+        return Err(PerformanceError::Unsupported(
+            "the performance bridge received the wrong checked-source schema".to_owned(),
+        ));
+    }
+    let [_, results] = source_fields::<2>(artifact.root(), "PerformanceInterpretationArtifact")?;
+    source_list(results, |result| {
+        let [gesture, expression, gate, attack, hold] = source_fields::<5>(result, "ProfileResult")?;
+        let [instance, pitch, _, _] = source_fields::<4>(gesture, "NoteGesture")?;
+        let [instance] = source_fields::<1>(instance, "GestureId")?;
+        Ok(SourceReading {
+            instance: source_nat(instance)?,
+            pitch: source_pitch(pitch)?,
+            expression: source_ratio(expression)?,
+            gate: source_ratio(gate)?,
+            attack: source_ratio(attack)?,
+            hold: source_ratio(hold)?,
+            exact_gesture: gesture.exact_bytes().into(),
+        })
+    })
+}
+
+fn source_fields<'a, const COUNT: usize>(
+    datum: musa_calculus::SourceDatum<'a>,
+    expected: &str,
+) -> Result<[musa_calculus::SourceDatum<'a>; COUNT], PerformanceError> {
+    let Some(musa_calculus::SourceDatumKind::Case { constructor }) = datum.kind() else {
+        return Err(source_shape(expected));
+    };
+    if !constructor.rsplit('.').next().is_some_and(|name| name == expected) {
+        return Err(source_shape(expected));
+    }
+    let fields = datum
+        .fields()
+        .ok_or_else(|| source_shape(expected))?
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| source_shape(expected))?
+        .try_into()
+        .map_err(|_| source_shape(expected))?;
+    Ok(fields)
+}
+
+fn source_list<T>(
+    mut datum: musa_calculus::SourceDatum<'_>,
+    mut read: impl FnMut(musa_calculus::SourceDatum<'_>) -> Result<T, PerformanceError>,
+) -> Result<Vec<T>, PerformanceError> {
+    let mut values = Vec::new();
+    loop {
+        let Some(musa_calculus::SourceDatumKind::Case { constructor }) = datum.kind() else {
+            return Err(source_shape("List"));
+        };
+        match constructor.rsplit('.').next() {
+            Some("Empty") => return Ok(values),
+            Some("Cons") => {
+                let [head, tail] = source_fields::<2>(datum, "Cons")?;
+                values.push(read(head)?);
+                datum = tail;
+            }
+            _ => return Err(source_shape("List")),
+        }
+    }
+}
+
+fn source_nat(datum: musa_calculus::SourceDatum<'_>) -> Result<u64, PerformanceError> {
+    match datum.kind() {
+        Some(musa_calculus::SourceDatumKind::Count { family, count }) if family.ends_with("Nat") => Ok(count),
+        _ => Err(source_shape("Nat")),
+    }
+}
+
+fn source_ratio(datum: musa_calculus::SourceDatum<'_>) -> Result<Ratio<i64>, PerformanceError> {
+    let Some(musa_calculus::SourceDatumKind::Literal { type_name, bytes }) = datum.kind() else {
+        return Err(source_shape("Ratio"));
+    };
+    if !type_name.ends_with("Ratio") || bytes.len() != 16 {
+        return Err(source_shape("Ratio"));
+    }
+    let numerator = i64::from_be_bytes(bytes[..8].try_into().map_err(|_| source_shape("Ratio"))?);
+    let denominator = i64::from_be_bytes(bytes[8..].try_into().map_err(|_| source_shape("Ratio"))?);
+    if denominator == 0 {
+        return Err(source_shape("Ratio"));
+    }
+    Ok(Ratio::new(numerator, denominator))
+}
+
+fn source_pitch(datum: musa_calculus::SourceDatum<'_>) -> Result<WrittenPitch, PerformanceError> {
+    let Some(musa_calculus::SourceDatumKind::Literal { type_name, bytes }) = datum.kind() else {
+        return Err(source_shape("Pitch"));
+    };
+    let [letter, accidental_a, accidental_b, accidental_c, accidental_d, octave_a, octave_b, octave_c, octave_d] = bytes
+    else {
+        return Err(source_shape("Pitch"));
+    };
+    if !type_name.ends_with("Pitch") {
+        return Err(source_shape("Pitch"));
+    }
+    Ok(WrittenPitch {
+        letter: crate::Letter::from_steps(i8::try_from(*letter).map_err(|_| source_shape("Pitch"))?)
+            .ok_or_else(|| source_shape("Pitch"))?,
+        accidental: crate::Accidental(i32::from_be_bytes([
+            *accidental_a,
+            *accidental_b,
+            *accidental_c,
+            *accidental_d,
+        ])),
+        octave: i32::from_be_bytes([*octave_a, *octave_b, *octave_c, *octave_d]),
+    })
+}
+
+fn source_shape(expected: &str) -> PerformanceError {
+    PerformanceError::Unsupported(format!(
+        "the checked source performance result is not a `{expected}` in schema version 1"
+    ))
+}
+
 /// Lower a score into exact, instrument-independent performed gesture tracks.
 ///
 /// Groove, grace policy, articulation, and dynamic interpretation are fixed;
@@ -635,6 +919,7 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
     let graces = grace_index(score);
     let mut lanes = Vec::new();
     let mut polytempo = false;
+    let mut next_instance = 0_u64;
     for (id, part) in score.parts().iter() {
         let profile = score.profiles().for_part(part.name());
         let scope = crate::Scope::Part { part: id.0 };
@@ -698,7 +983,16 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
                         }),
                     })
                     .collect();
-                let lowered = lower_gesture_event(&clock, event, &interpreted, &leaning, policy, floor, &mut pending);
+                let lowered = lower_gesture_event(
+                    &clock,
+                    event,
+                    &interpreted,
+                    &leaning,
+                    policy,
+                    floor,
+                    &mut next_instance,
+                    &mut pending,
+                );
                 if let Some(at) = lowered.anticipated {
                     let performed = clock.performed(at);
                     for index in previous.clone() {
@@ -758,6 +1052,67 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
     })
 }
 
+/// Build the performed track from checked `std::performance` results.
+///
+/// The retained Rust lowering supplies only coordinate conversion, grace
+/// placement, provenance, and a differential oracle for the pre-177 corpus.
+/// Every projected musical field is replaced by the checked source answer;
+/// disagreement is an error rather than a host-side fallback.
+///
+/// # Errors
+///
+/// Returns [`PerformanceError`] for a wrong/malformed artifact, a request/result
+/// mismatch, a source↔legacy differential mismatch, or an invalid exact track.
+pub fn lower_gestures_from_checked(
+    score: &ScoreSnapshot,
+    artifacts: &[musa_calculus::CheckedSource],
+) -> Result<GesturePlan, PerformanceError> {
+    let readings = source_readings(artifacts)?;
+    let mut plan = lower_gestures(score)?;
+    if readings.len() != plan.lanes.len() {
+        return Err(source_shape("one interpretation artifact per gesture lane"));
+    }
+    for (lane, source) in plan.lanes.iter_mut().zip(readings) {
+        let by_instance: std::collections::HashMap<_, _> = source
+            .into_iter()
+            .map(|reading| (reading.instance, reading))
+            .collect();
+        let mut seen = std::collections::HashSet::new();
+        let occurrences = lane
+            .track
+            .occurrences()
+            .iter()
+            .map(|occurrence| {
+                let mut gesture = occurrence.payload().clone();
+                let reading = by_instance
+                    .get(&gesture.instance)
+                    .ok_or_else(|| source_shape("a result for every requested gesture"))?;
+                if !seen.insert(gesture.instance)
+                    || reading.pitch != gesture.pitch
+                    || reading.expression != gesture.amplitude
+                    || reading.attack != gesture.attack_seconds
+                    || reading.gate * reading.hold != gesture.legacy_gate
+                {
+                    return Err(PerformanceError::Unsupported(
+                        "checked source performance disagrees with the retained compatibility oracle".to_owned(),
+                    ));
+                }
+                gesture.pitch = reading.pitch;
+                gesture.amplitude = reading.expression;
+                gesture.attack_seconds = reading.attack;
+                gesture.source_exact = Arc::clone(&reading.exact_gesture);
+                Ok(Occurrence::new(occurrence.span(), gesture))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if seen.len() != by_instance.len() {
+            return Err(source_shape("one consumed result for every requested gesture"));
+        }
+        lane.track = track(lane.track.duration(), occurrences)
+            .map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
+    }
+    Ok(plan)
+}
+
 /// Written time to exact performed time, for one part.
 ///
 /// The composition order is the whole point (docs/rules/events/06-surface-elaboration.md): the
@@ -811,6 +1166,7 @@ fn lower_gesture_event(
     leaning: &[GraceSlot],
     policy: crate::GracePolicy,
     floor: MusicalTime,
+    next_instance: &mut u64,
     gestures: &mut Vec<PendingGesture>,
 ) -> Lowered {
     let pitches: &[WrittenPitch] = match &event.kind {
@@ -828,6 +1184,7 @@ fn lower_gesture_event(
             start: clock.performed(at),
             end: clock.performed(at + sounds),
             payload: Gesture {
+                instance: *next_instance,
                 pitch: slot.pitch,
                 event: event.id,
                 origin: event.origin.clone(),
@@ -835,8 +1192,11 @@ fn lower_gesture_event(
                 attack_seconds: interpreted.attack,
                 notated_on: event.onset,
                 notated_off: notated_end,
+                source_exact: Arc::from([]),
+                legacy_gate: slot.gate,
             },
         });
+        *next_instance = next_instance.saturating_add(1);
         at = at + stolen.each;
     }
     let sounded_start = stolen.principal_starts_at;
@@ -848,6 +1208,7 @@ fn lower_gesture_event(
             start: clock.performed(sounded_start),
             end: clock.performed(sounded_end),
             payload: Gesture {
+                instance: *next_instance,
                 pitch: *pitch,
                 event: event.id,
                 origin: event.origin.clone(),
@@ -855,8 +1216,11 @@ fn lower_gesture_event(
                 attack_seconds: interpreted.attack,
                 notated_on: event.onset,
                 notated_off: notated_end,
+                source_exact: Arc::from([]),
+                legacy_gate: interpreted.gate,
             },
         });
+        *next_instance = next_instance.saturating_add(1);
     }
     Lowered {
         pushed: first..gestures.len(),

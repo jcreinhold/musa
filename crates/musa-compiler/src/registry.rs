@@ -241,8 +241,9 @@ where
 ///
 /// Deliberately smaller than the registry: syntax, event tracks, machines,
 /// provenance, and notation values are opaque host objects rather than source
-/// package data. The studio trial needs only `Text` and `Ratio`; counts and
-/// declared cases are encoded by `musa-calculus` itself.
+/// package data. Counts and declared cases are encoded by `musa-calculus`
+/// itself. `Pitch` participates because checked source performance gestures
+/// retain spelling until the later tuning boundary.
 pub(crate) fn source_literal(value: &Literal) -> Option<musa_calculus::SourceLiteral> {
     let musa_calculus::Shape::Named { name, .. } = value.ty().shape() else {
         return None;
@@ -257,6 +258,14 @@ pub(crate) fn source_literal(value: &Literal) -> Option<musa_calculus::SourceLit
             let mut bytes = Vec::with_capacity(16);
             bytes.extend_from_slice(&ratio.numer().to_be_bytes());
             bytes.extend_from_slice(&ratio.denom().to_be_bytes());
+            Some(musa_calculus::SourceLiteral::new(Arc::clone(name), bytes))
+        }
+        "Pitch" => {
+            let pitch = held::<musa_score::WrittenPitch>(value)?;
+            let mut bytes = Vec::with_capacity(9);
+            bytes.push(u8::try_from(pitch.letter.steps()).ok()?);
+            bytes.extend_from_slice(&pitch.accidental.0.to_be_bytes());
+            bytes.extend_from_slice(&pitch.octave.to_be_bytes());
             Some(musa_calculus::SourceLiteral::new(Arc::clone(name), bytes))
         }
         _ => None,

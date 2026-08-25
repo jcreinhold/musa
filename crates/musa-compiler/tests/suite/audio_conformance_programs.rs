@@ -81,11 +81,11 @@ fn ensemble_tuning_is_configuration_not_a_rewritten_pitch() {
     let gestures = lower_gestures(&score).expect("exact gestures");
     let lane = gestures.lanes().first().expect("the ensemble lane");
     let occurrence = lane.track().occurrences().first().expect("the first gesture");
-    let written = occurrence.payload().pitch;
+    let written = occurrence.payload().pitch();
     let mut options = support::options(0);
     options.tuning = Tuning { concert_a: 432.0 };
     let mut audio = prepare_audio(&gestures, &studio, options).expect("configured instrument machine");
-    assert_eq!(occurrence.payload().pitch, written);
+    assert_eq!(occurrence.payload().pitch(), written);
     assert!(audio.step().iter().all(|sample| sample.is_finite()));
 }
 

@@ -276,8 +276,8 @@ fn lane_track<'a>(
         // module exists not to do.
         let (on, off, velocity) = match options.mode {
             MidiMode::Score => (
-                reference_seconds(performance, note.notated_on),
-                reference_seconds(performance, note.notated_off),
+                reference_seconds(performance, note.notated_on()),
+                reference_seconds(performance, note.notated_off()),
                 NEUTRAL_VELOCITY,
             ),
             MidiMode::Performance => (

@@ -4,8 +4,8 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    CompileOptions, SourceDocument, SourceSchema, checked_source_value, checked_standard_performance_vocabulary,
-    checked_standard_studio_vocabulary,
+    CompileOptions, SourceDocument, SourceSchema, checked_performance_interpretations, checked_source_value,
+    checked_standard_performance_vocabulary, checked_standard_studio_vocabulary, compile,
 };
 use musa_dsp::{
     ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
@@ -224,6 +224,40 @@ fn standard_performance_vocabulary_is_checked_source_data() {
     );
     assert!(artifact.has_valid_framing());
     assert!(!artifact.exact_bytes().is_empty());
+}
+
+#[test]
+fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
+    let source = r#"piece "Checked performance" {
+        meter 4/4;
+        key c major;
+        performance { profile strings {
+            mark staccato { gate = 1/2; attack = 10 ms; }
+            dynamic p { amplitude = 3/8; }
+        } }
+        score { part violin { profile strings; voice line { dynamic p; c4/4 staccato d4/4 } } }
+    }"#;
+    let compilation = compile(
+        &SourceDocument::new(source, "checked-performance-bridge.musa"),
+        &CompileOptions::default(),
+    );
+    assert!(!compilation.has_errors(), "{:#?}", compilation.diagnostics());
+    let artifacts = checked_performance_interpretations(compilation.snapshot().expect("score"))
+        .unwrap_or_else(|diagnostics| panic!("performance requests should check: {diagnostics:#?}"));
+    assert_eq!(artifacts.len(), 1);
+    assert!(artifacts[0].has_valid_framing());
+    assert_eq!(
+        artifacts[0].schema().name(),
+        "std.performance.PerformanceInterpretationArtifact"
+    );
+    let plan = musa_compiler::lower_gestures(compilation.snapshot().expect("score"))
+        .expect("checked source results lower mechanically");
+    assert!(
+        plan.lanes()
+            .iter()
+            .flat_map(|lane| lane.track().occurrences())
+            .all(|occurrence| !occurrence.payload().exact_source_bytes().is_empty())
+    );
 }
 
 fn checked_performance_value(binding: &str, declaration: &str, root_type: &str) -> musa_compiler::CheckedSource {

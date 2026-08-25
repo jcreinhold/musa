@@ -132,6 +132,19 @@ impl PerformanceProfile {
         &self.name
     }
 
+    /// Exact written-mark rules, in declaration order, for the checked-source bridge.
+    ///
+    /// This exposes declarations already parsed from source; it does not
+    /// interpret a mark. `std::performance` remains the owner of that step.
+    pub fn mark_rules(&self) -> impl Iterator<Item = (Mark, ArticulationRealization)> + '_ {
+        self.articulations.iter().map(|(mark, rule)| (*mark, *rule))
+    }
+
+    /// Exact dynamic declarations, in source order, for the checked-source bridge.
+    pub fn dynamic_rules(&self) -> impl Iterator<Item = (DynamicMark, Ratio<i64>)> + '_ {
+        self.dynamics.iter().map(|(mark, level)| (*mark, *level))
+    }
+
     /// How this profile reads a note's articulations, in written order.
     ///
     /// Gates **multiply** — two shortening marks shorten twice — and holds

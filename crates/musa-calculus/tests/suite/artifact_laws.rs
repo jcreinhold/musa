@@ -57,6 +57,17 @@ fn schema_identity_is_framed_into_exact_equality() {
 }
 
 #[test]
+fn a_checked_subvalue_has_schema_independent_exact_framing() {
+    let cx = box_context();
+    let first = checked_source(&cx, &boxed(), &SourceSchema::new("test.box-a", "Box", 1), |_| None)
+        .expect("first artifact");
+    let second = checked_source(&cx, &boxed(), &SourceSchema::new("test.box-b", "Box", 9), |_| None)
+        .expect("second artifact");
+    assert_ne!(first.exact_bytes(), second.exact_bytes());
+    assert_eq!(first.root().exact_bytes(), second.root().exact_bytes());
+}
+
+#[test]
 fn a_wrong_root_and_a_function_are_not_artifacts_of_the_claimed_schema() {
     let cx = box_context();
     let wrong = checked_source(&cx, &boxed(), &SourceSchema::new("test.wrong", "Unit", 1), |_| None);

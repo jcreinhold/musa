@@ -158,9 +158,9 @@ impl ProcessorInstance {
             EventMessage::Begin(handle, gesture) => {
                 allocator.note_on(
                     handle,
-                    tuning.frequency(&gesture.pitch) as f32,
-                    ratio_to_f32(gesture.amplitude),
-                    ratio_to_f32(gesture.attack_seconds),
+                    tuning.frequency(&gesture.pitch()) as f32,
+                    ratio_to_f32(gesture.amplitude()),
+                    ratio_to_f32(gesture.attack_seconds()),
                 );
             }
             EventMessage::End(handle) => allocator.note_off(handle),

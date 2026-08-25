@@ -2476,6 +2476,7 @@ version = "0.1.0"
 dependencies = [
  "indexmap 2.14.0",
  "insta",
+ "musa-calculus",
  "musa-events",
  "num-rational",
  "proptest",

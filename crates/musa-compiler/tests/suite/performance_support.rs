@@ -46,11 +46,11 @@ pub(crate) fn notes_in(lane: &GestureLane) -> Vec<ExactNote> {
                 off_seconds: lane.physical(span.end()).as_ratio(),
                 on_performed: span.start().as_ratio(),
                 off_performed: span.end().as_ratio(),
-                notated_on: gesture.notated_on.as_ratio(),
-                notated_off: gesture.notated_off.as_ratio(),
-                amplitude: gesture.amplitude,
-                pitch: gesture.pitch,
-                event: gesture.event,
+                notated_on: gesture.notated_on().as_ratio(),
+                notated_off: gesture.notated_off().as_ratio(),
+                amplitude: gesture.amplitude(),
+                pitch: gesture.pitch(),
+                event: gesture.event(),
             }
         })
         .collect();

@@ -7,6 +7,7 @@ version.workspace = true
 
 [dependencies]
 indexmap = { version = "2", features = ["serde"] }
+musa-calculus = { workspace = true }
 musa-events = { workspace = true }
 num-rational = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }

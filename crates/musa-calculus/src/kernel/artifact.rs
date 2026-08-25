@@ -197,6 +197,48 @@ impl<'a> SourceDatum<'a> {
             })
         }))
     }
+
+    /// The exact, self-framed encoding of this datum and its descendants.
+    ///
+    /// Unlike [`CheckedSource::exact_bytes`], this deliberately omits the
+    /// artifact root schema. It is the representation-independent key for a
+    /// checked source subvalue: constructor names, owner-supplied literal
+    /// bytes, counting-family names, field order, and field boundaries all
+    /// participate. Consumers use it when one member of a checked aggregate
+    /// becomes an admitted opaque payload.
+    #[must_use]
+    pub fn exact_bytes(self) -> Vec<u8> {
+        let mut bytes = b"musa-source-datum".to_vec();
+        word(&mut bytes, ENCODING_VERSION);
+        encode_datum(self, &mut bytes);
+        bytes
+    }
+}
+
+fn encode_datum(datum: SourceDatum<'_>, bytes: &mut Vec<u8>) {
+    let mut work = vec![datum];
+    while let Some(next) = work.pop() {
+        match next.kind() {
+            Some(SourceDatumKind::Literal { type_name, bytes: literal }) => {
+                bytes.push(0);
+                framed(bytes, type_name.as_bytes());
+                framed(bytes, literal);
+            }
+            Some(SourceDatumKind::Count { family, count }) => {
+                bytes.push(1);
+                framed(bytes, family.as_bytes());
+                word(bytes, count);
+            }
+            Some(SourceDatumKind::Case { constructor }) => {
+                bytes.push(2);
+                framed(bytes, constructor.as_bytes());
+                let fields: Vec<_> = next.fields().into_iter().flatten().flatten().collect();
+                word(bytes, u64::try_from(fields.len()).unwrap_or(u64::MAX));
+                work.extend(fields.into_iter().rev());
+            }
+            None => bytes.push(u8::MAX),
+        }
+    }
 }
 
 /// The three canonical source-data forms.

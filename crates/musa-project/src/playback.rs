@@ -182,9 +182,9 @@ pub(crate) fn performance_dump(score: &ScoreSnapshot) -> Result<String, ProjectE
                 "  {}..{} {} amplitude={} event-{:x}",
                 span.start(),
                 span.end(),
-                gesture.pitch,
-                gesture.amplitude,
-                gesture.event.0
+                gesture.pitch(),
+                gesture.amplitude(),
+                gesture.event().0
             );
         }
     }
