@@ -252,6 +252,7 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         }
         | musa_calculus::Shape::Lit(_)
         | musa_calculus::Shape::App { .. }
-        | musa_calculus::Shape::Meta(_) => None,
+        | musa_calculus::Shape::Meta(_)
+        | musa_calculus::Shape::MetaAt { .. } => None,
     }
 }

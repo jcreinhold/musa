@@ -189,7 +189,7 @@ fn reads(term: &Term, depth: u32) -> bool {
         Shape::Var(index) => index.0 == depth,
         // See [`Closure::reads_its_binder`]: an occurrence names its scope by
         // level and the scope is not in the term.
-        Shape::Meta(_) => true,
+        Shape::Meta(_) | Shape::MetaAt { .. } => true,
         Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => false,
         Shape::Bind { binder, body, .. } => {
             let carried = match binder {

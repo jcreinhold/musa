@@ -95,7 +95,7 @@ fn used_identity() -> Raw {
 /// new [`Shape`] variant holding a term is a compile error here.
 fn holds_no_unknown(term: &Term) -> bool {
     match term.shape() {
-        Shape::Meta(_) => false,
+        Shape::Meta(_) | Shape::MetaAt { .. } => false,
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,
         Shape::Bind { binder, body, .. } => binder.outer().all(holds_no_unknown) && holds_no_unknown(body),
         Shape::App { function, argument } => holds_no_unknown(function) && holds_no_unknown(argument),

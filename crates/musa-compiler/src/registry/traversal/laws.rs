@@ -448,7 +448,8 @@ fn trees(term: &Term, into: &mut Vec<Syntax>) {
         | musa_calculus::Shape::Universe(_)
         | musa_calculus::Shape::Lit(musa_calculus::Constant::Numeral(_))
         | musa_calculus::Shape::Bind { .. }
-        | musa_calculus::Shape::Meta(_) => {}
+        | musa_calculus::Shape::Meta(_)
+        | musa_calculus::Shape::MetaAt { .. } => {}
     }
 }
 

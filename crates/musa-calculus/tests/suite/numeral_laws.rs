@@ -83,7 +83,12 @@ fn depth(term: &Term) -> u32 {
             .outer()
             .fold(deeper(body), |so_far, term| so_far.max(deeper(term))),
         // The leaves, and the numeral is one of them — which is the claim.
-        Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 1,
+        Shape::Var(_)
+        | Shape::Named { .. }
+        | Shape::Lit(_)
+        | Shape::Meta(_)
+        | Shape::MetaAt { .. }
+        | Shape::Universe(_) => 1,
     }
 }
 

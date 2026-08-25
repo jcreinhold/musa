@@ -345,6 +345,10 @@ fn restamp(term: &Term, origin: Origin) -> Term {
         // A meta has no subterms to restamp, and its identity is the cell rather
         // than anything written here — cloning it keeps the same unknown.
         Shape::Meta(meta) => Shape::Meta(meta.clone()),
+        Shape::MetaAt { meta, scope } => Shape::MetaAt {
+            meta: meta.clone(),
+            scope: std::sync::Arc::clone(scope),
+        },
     };
     Term::new(origin, shape)
 }
@@ -355,6 +359,6 @@ fn children(term: &Term) -> Vec<&Term> {
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => Vec::new(),
         Shape::Bind { binder, body, .. } => binder.outer().chain(std::iter::once(body)).collect(),
         Shape::App { function, argument } => vec![function, argument],
-        Shape::Meta(_) => Vec::new(),
+        Shape::Meta(_) | Shape::MetaAt { .. } => Vec::new(),
     }
 }

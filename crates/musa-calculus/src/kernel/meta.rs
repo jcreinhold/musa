@@ -7,8 +7,11 @@
 //! the unknown and consulted when someone remembers to: it is the shape of the
 //! unknown itself. A meta created under n binders has the **closed** type
 //! `(x₀ : A₀) → … → (x_{n-1} : A_{n-1}) → A`, every occurrence of it is that
-//! meta *applied to those n variables*, and its solution is a closed
-//! λ-abstraction of the same n binders.
+//! meta *applied to n contextual variables*, and its solution is a closed
+//! λ-abstraction of the same n binders. The ordinary occurrence uses the
+//! identity context; `Shape::MetaAt` preserves the permutation or weakening
+//! produced when Miller-pattern inversion places one metavariable in another's
+//! solution.
 //!
 //! # Why closed, when a context would have been less code
 //!
@@ -28,8 +31,9 @@
 //! second walk to notice a capture ([`crate::kernel::unify`] and
 //! [`crate::kernel::recheck`] each make that refusal, once at solving and once
 //! at verification). And the **pattern fragment has something to match**:
-//! `?m x₀ … x_{n-1} ≟ t` is §2.1's shape, and it is the shape every occurrence
-//! already has.
+//! `?m x₀ … x_{n-1} ≟ t` is §2.1's shape, including a distinct-variable
+//! permutation or weakening represented by stable levels rather than a syntax
+//! substitution.
 //!
 //! [`MetaSource`] survives beside all of it because the failure it names
 //! survives — a type parameter nothing in the call determined — and a

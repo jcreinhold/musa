@@ -217,6 +217,7 @@ pub(crate) fn universe_of(term: &Term) -> Result<Sort, CoreError> {
             ..
         } => Ok(universe_of(ty)?.max(&universe_of(body)?)),
         Shape::Meta(_)
+        | Shape::MetaAt { .. }
         | Shape::Var(_)
         | Shape::Named { .. }
         | Shape::Lit(_)
@@ -368,6 +369,7 @@ fn infer(cx: &Cx, meter: &mut Meter, term: &Term) -> Result<Value, CoreError> {
         // with one means a caller went around it. A solved one is a different
         // fact, and the one this arm exists for — see [`solved`].
         Shape::Meta(meta) => solved(cx, meter, meta),
+        Shape::MetaAt { meta, scope } => solved_at(cx, meter, meta, scope),
     }
 }
 
@@ -430,6 +432,35 @@ fn solved(cx: &Cx, meter: &mut Meter, meta: &crate::kernel::meta::Meta) -> Resul
         };
         let codomain = codomain.clone();
         ty = apply_closure(meter, &codomain, argument)?;
+    }
+    Ok(ty)
+}
+
+/// [`solved`] at the explicit contextual renaming carried by `MetaAt`.
+fn solved_at(
+    cx: &Cx,
+    meter: &mut Meter,
+    meta: &crate::kernel::meta::Meta,
+    scope: &[crate::kernel::term::Level],
+) -> Result<Value, CoreError> {
+    // Make the independent stored-solution scope check first.
+    drop(solved(cx, meter, meta)?);
+    if scope.len() != meta.arity() as usize {
+        return Err(Malformed::MetaTelescope(meta.id()).into());
+    }
+    let depth = cx.env().depth().0;
+    let mut ty = meta.ty().clone();
+    for level in scope {
+        let index = depth
+            .checked_sub(level.0.saturating_add(1))
+            .ok_or(Malformed::MetaTelescope(meta.id()))?;
+        let argument = cx.env().get(index).ok_or(Malformed::MetaTelescope(meta.id()))?.clone();
+        let unfolded = opened(meter, &ty)?;
+        let current = unfolded.as_ref().unwrap_or(&ty);
+        let Form::Pi { codomain, .. } = &current.form else {
+            return Err(Malformed::MetaTelescope(meta.id()).into());
+        };
+        ty = apply_closure(meter, codomain, argument)?;
     }
     Ok(ty)
 }
@@ -520,6 +551,7 @@ fn peeled<'t>(cx: &Cx, meter: &mut Meter, term: &'t Term) -> Result<Option<(Cx, 
             // which is not a term this pass can read — and not one elaboration
             // builds, since the λs it applies are the ones it wrote.
             Shape::Meta(_)
+            | Shape::MetaAt { .. }
             | Shape::Var(_)
             | Shape::Named { .. }
             | Shape::Lit(_)
@@ -549,6 +581,7 @@ fn abstraction(head: &Term) -> bool {
                 ..
             } => at = body,
             Shape::Meta(_)
+            | Shape::MetaAt { .. }
             | Shape::Var(_)
             | Shape::Named { .. }
             | Shape::Lit(_)

@@ -217,7 +217,7 @@ impl Elaborator {
         // A *bare* constructor reference — no written fields — has nothing
         // for its family parameters to be learned from, so each becomes a
         // meta (§2.1): `None` is `None<?>` wherever it stands, and the slot it
-        // is checked against solves the meta by ordinary first-order matching.
+        // is checked against solves the meta by pattern unification.
         // Without this a bare constructor at an undetermined slot would lend
         // the slot its Π-scheme, and the program that then drew a value from
         // the slot would meet a function type where its data was. A written
@@ -238,6 +238,7 @@ impl Elaborator {
             },
             Shape::Named { .. }
             | Shape::Meta(_)
+            | Shape::MetaAt { .. }
             | Shape::Var(_)
             | Shape::Lit(_)
             | Shape::Universe(_)

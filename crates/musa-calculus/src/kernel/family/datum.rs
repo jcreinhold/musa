@@ -146,7 +146,7 @@ enum Read<'a> {
 fn one<'a>(globals: &Globals, term: &'a Term) -> Option<Read<'a>> {
     let (head, arguments) = applied_spine(term);
     match *head.shape() {
-        Shape::Meta(_) => None,
+        Shape::Meta(_) | Shape::MetaAt { .. } => None,
         Shape::Lit(Written::Payload(ref literal)) if arguments.is_empty() => {
             Some(Read::Leaf(Datum::Lit(literal.clone())))
         }

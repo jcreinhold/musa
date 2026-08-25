@@ -338,6 +338,7 @@ impl Elaborator {
                     | Definition::Builtin(_) => 0,
                 },
                 Shape::Meta(_)
+                | Shape::MetaAt { .. }
                 | Shape::Var(_)
                 | Shape::Lit(_)
                 | Shape::Universe(_)

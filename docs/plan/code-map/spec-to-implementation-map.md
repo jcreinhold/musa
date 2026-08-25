@@ -176,10 +176,10 @@ comparisons only while a round makes progress and turns a survivor or unsolved m
 declaration closes. `elab/zonk.rs` writes every solution into the checked term, so no metavariable crosses the public
 boundary. Nothing is defaulted or generalized.
 
-The contextual representation currently generates identity scope spines and solves those completely. The closure audit
-found that `kernel/unify.rs` recognizes a permuted or weakened distinct-variable spine but postpones it because solution
-quotation cannot yet invert the renaming. Completing that last, normally unreachable part of the stated Miller fragment
-is owed before prompt 170 closes the pass.
+Ordinary occurrences use the identity context compactly. `Shape::MetaAt` carries a non-identity contextual weakening or
+permutation as stable de Bruijn levels; solution quotation inverts the pattern spine into those levels, including
+flex-flex chains, without shifting syntax or adding term substitution. Direct laws cover permutation, weakening, an
+omitted ambient variable, and a later-solved flex-flex dependency.
 
 Introduction forms check only, so a record literal has no inference rule and an elimination applied directly to one is
 `Refusal::Uninferable` rather than a guess; a `let` passes the goal through to its body rather than inferring, which is

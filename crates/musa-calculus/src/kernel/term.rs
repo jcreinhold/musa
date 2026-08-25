@@ -146,20 +146,20 @@ pub(crate) enum Definition {
 ///
 /// Three arms because there are three answers, and none of them is the
 /// implicit-argument insertion this type was once named for: an author writes
-/// the argument, or §2.1's first-order matching solves it, or the checker
+/// the argument, or §2.1's pattern unification solves it, or the checker
 /// computes it. The elaborator's own walk spells the same three — see
 /// `elab::spine`'s `Slot`.
 #[derive(Clone, Debug)]
 pub enum Filling {
     /// Written at every use.
     Written,
-    /// A type parameter, solved at every use by §2.1's first-order matching of
+    /// A type parameter, solved at every use by §2.1's pattern unification of
     /// the written arguments' inferred types against the parameter types.
     ///
-    /// Not a metavariable that survives its call: a parameter the match does
-    /// not determine is [`crate::Refusal::Unsolved`] at the call, naming the
-    /// parameter, and the author writes the argument. A use site may write it
-    /// too, which is the one place a filling appears on an application.
+    /// A parameter the declaration does not determine is
+    /// [`crate::Refusal::Unsolved`], naming the parameter, and the author
+    /// writes the argument. A use site may write it too, which is the one place
+    /// a filling appears on an application.
     Parameter,
     /// Computed at every use, and never written.
     ///
@@ -239,7 +239,9 @@ pub struct Index(pub u32);
 /// A de Bruijn level: how many binders in from the empty context a variable's
 /// binder is. `Level(0)` is the outermost.
 ///
-/// Levels appear only inside values and inside quotation, never in a [`Term`].
+/// Levels appear inside values and quotation. The one term-level use is the
+/// elaboration-only [`Shape::MetaAt`] renaming: stable levels let that mapping
+/// survive movement beneath later binders without syntax substitution.
 ///
 /// **A position and a count are the same number, and this type is both.** A
 /// scope holding `n` binders has levels `0..n`, so `Level(n)` names the next
@@ -438,6 +440,18 @@ pub enum Shape {
     /// A placeholder for an argument the instantiation walk has not yet
     /// solved — see [`crate::kernel::meta::Meta`].
     Meta(crate::kernel::meta::Meta),
+    /// The same unknown under an explicit weakening or permutation of its
+    /// contextual variables.
+    ///
+    /// Ordinary elaboration writes [`Self::Meta`], whose scope is the
+    /// outermost `arity` variables in order. Pattern-spine inversion needs the
+    /// general `?m[σ]` form: each level here selects one stable outer-context
+    /// entry, so moving the term under more binders requires no shifting and
+    /// no term substitution.
+    MetaAt {
+        meta: crate::kernel::meta::Meta,
+        scope: Arc<[Level]>,
+    },
     /// A variable, named by how many binders out its binder is.
     Var(Index),
     /// A name no binder introduced, and what kind of thing it is (§1).
@@ -507,6 +521,16 @@ impl PartialEq for Shape {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Meta(left), Self::Meta(right)) => left == right,
+            (
+                Self::MetaAt {
+                    meta: left,
+                    scope: left_scope,
+                },
+                Self::MetaAt {
+                    meta: right,
+                    scope: right_scope,
+                },
+            ) => left == right && left_scope == right_scope,
             (Self::Var(left), Self::Var(right)) => left == right,
             // Two uses of one name are one term — including two uses of one
             // definition, where conversion never gets this far because
@@ -557,6 +581,7 @@ impl PartialEq for Shape {
             // the new form.
             (
                 Self::Meta(_)
+                | Self::MetaAt { .. }
                 | Self::Var(_)
                 | Self::Named { .. }
                 | Self::Lit(_)
@@ -607,7 +632,7 @@ impl Term {
     /// term back whole.
     pub(crate) fn substitute_levels(&self, with: &impl Fn(&SortVar) -> Option<Sort>) -> Self {
         let shape = match self.shape() {
-            Shape::Meta(_) | Shape::Var(_) | Shape::Lit(_) => return self.clone(),
+            Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Var(_) | Shape::Lit(_) => return self.clone(),
             Shape::Named { name, role, levels } => Shape::Named {
                 name: Arc::clone(name),
                 role: role.clone(),
@@ -639,7 +664,7 @@ impl Term {
     /// elaborator happened to invent unknowns in.
     pub(crate) fn level_vars(&self, found: &mut Vec<SortVar>) {
         match self.shape() {
-            Shape::Meta(_) | Shape::Var(_) | Shape::Lit(_) => {}
+            Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Var(_) | Shape::Lit(_) => {}
             Shape::Named { levels, .. } => {
                 for level in levels.as_slice() {
                     note_vars(level, found);
@@ -674,6 +699,22 @@ impl Term {
     #[must_use]
     pub(crate) fn meta(origin: Origin, meta: crate::kernel::meta::Meta) -> Self {
         Self::new(origin, Shape::Meta(meta))
+    }
+
+    /// A contextual metavariable under a stable level renaming.
+    ///
+    /// `scope[i]` is the ambient variable supplied to the metavariable's
+    /// `i`th telescope binder. Levels, rather than indices, keep this mapping
+    /// unchanged when the term is evaluated under additional binders.
+    #[must_use]
+    pub(crate) fn meta_at(origin: Origin, meta: crate::kernel::meta::Meta, scope: Vec<Level>) -> Self {
+        Self::new(
+            origin,
+            Shape::MetaAt {
+                meta,
+                scope: scope.into(),
+            },
+        )
     }
 
     /// A variable.
@@ -886,7 +927,7 @@ pub(crate) fn occurrences(term: &Term, depth: u32, level: u32) -> u32 {
         Shape::Var(index) => u32::from(depth.checked_sub(index.0.saturating_add(1)) == Some(level)),
         // Closed leaves: none of them can be a variable, so none of them can
         // hold an occurrence of one.
-        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 0,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Universe(_) => 0,
         // One arm for three binders: whatever the binder carries is read
         // outside it, and the body one deeper. That is the saving [`Binder`]
         // exists for, and this is the smallest place it shows.

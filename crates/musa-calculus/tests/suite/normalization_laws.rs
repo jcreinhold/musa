@@ -125,6 +125,7 @@ fn head_of(term: &Term) -> Option<(String, usize)> {
     match head.shape() {
         Shape::Named { name, .. } => Some((name.to_string(), arguments)),
         Shape::Meta(_)
+        | Shape::MetaAt { .. }
         | Shape::Var(_)
         | Shape::Lit(_)
         | Shape::Universe(_)
@@ -261,7 +262,7 @@ fn is_normal(cx: &Cx, term: &Term) -> bool {
                 && is_normal(cx, function)
                 && is_normal(cx, argument)
         }
-        Shape::Meta(_) => false,
+        Shape::Meta(_) | Shape::MetaAt { .. } => false,
         // A normal form has none: elaboration either solved it or refused the
         // declaration that left it unsolved (§2.1). Reaching one here means a
         // term went to `normalize` before that happened.

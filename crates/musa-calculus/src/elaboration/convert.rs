@@ -256,7 +256,7 @@ impl Conversion {
             let left = unfolded_left.as_ref().unwrap_or(left);
             let unfolded_right = force(meter, right)?;
             let right = unfolded_right.as_ref().unwrap_or(right);
-            let flexible = match self.assignment(meter, left, right) {
+            let flexible = match self.assignment(meter, depth, left, right) {
                 Ok(outcome) => outcome,
                 Err(failure) => return Ok(Err(failure)),
             };
@@ -296,15 +296,15 @@ impl Conversion {
     /// rigid — the pair is undecided, and calling it rigid would send it to a
     /// structural descent that would report a mismatch for a comparison nothing
     /// has answered yet.
-    fn assignment(&self, meter: &mut Meter, left: &Value, right: &Value) -> Result<Outcome, Failure> {
+    fn assignment(&self, meter: &mut Meter, depth: Level, left: &Value, right: &Value) -> Result<Outcome, Failure> {
         if self.deciding {
             return Ok(Outcome::Rigid);
         }
-        let mine = unify::assign(meter, left, right)?;
+        let mine = unify::assign(meter, depth, left, right)?;
         if mine == Outcome::Solved {
             return Ok(Outcome::Solved);
         }
-        let theirs = unify::assign(meter, right, left)?;
+        let theirs = unify::assign(meter, depth, right, left)?;
         Ok(match (mine, theirs) {
             (_, Outcome::Solved) | (Outcome::Solved, _) => Outcome::Solved,
             (Outcome::Blocked, _) | (_, Outcome::Blocked) => Outcome::Blocked,

@@ -202,7 +202,8 @@ impl Registry {
             // A λ or a `let`, the Π above having taken its own diagnostic.
             | Shape::Bind { .. }
             | Shape::Lit(_)
-            | Shape::Meta(_) => {
+            | Shape::Meta(_)
+            | Shape::MetaAt { .. } => {
                 return Err(Refusal::NotFiniteData {
                     name: Arc::clone(builtin.name()),
                     at: head.origin(),

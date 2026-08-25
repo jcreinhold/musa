@@ -15,8 +15,8 @@ phase: 3
 > **Amendment authorized and landed from note
 > [`74`](../../notes/research/language-design-closure/74-language-pass-closure-blocker.md).** The governing stage
 > judgment now states scoped metavariables, Miller-pattern solutions, postponed comparisons, and bounded spine deferral.
-> The amendment audit also exposed the unifier's sound but incomplete handling of non-identity pattern spines; repair
-> that representation gap before this closure audit resumes.
+> The amendment audit also exposed the unifier's sound but incomplete handling of non-identity pattern spines; the
+> contextual-level repair and its permutation, weakening, and flex-flex laws landed before this closure audit resumed.
 
 # Close the Language Pass and Repair What It Left Behind
 

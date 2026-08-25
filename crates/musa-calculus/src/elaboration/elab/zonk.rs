@@ -56,6 +56,7 @@ impl Elaborator {
         let here = term.origin();
         let shape = match term.shape() {
             Shape::Meta(meta) => return self.filled(meta, depth),
+            Shape::MetaAt { meta, scope } => return self.filled_at(meta, scope, depth),
             Shape::Var(_) | Shape::Lit(_) => return Ok(term.clone()),
             // Levels are written back here too, for the same reason metas are:
             // the stored term outlives the elaboration that solved them, and a
@@ -112,6 +113,26 @@ impl Elaborator {
     /// solution and reading it back spends.
     fn filled(&mut self, meta: &Meta, depth: Level) -> Result<Term, ElabError> {
         let Some((body, goal)) = crate::kernel::unify::opened_solution(&mut self.meter, meta)? else {
+            return Err(Refusal::Unsolved {
+                site: meta.source().clone(),
+                created: meta.origin(),
+                blocked: None,
+            }
+            .into());
+        };
+        Ok(crate::kernel::quote::quote(
+            &mut self.meter,
+            depth,
+            crate::kernel::quote::Mode::Open,
+            &goal,
+            &body,
+        )?)
+    }
+
+    /// [`Self::filled`] for the explicit contextual renaming produced while a
+    /// non-identity Miller spine is inverted.
+    fn filled_at(&mut self, meta: &Meta, scope: &[Level], depth: Level) -> Result<Term, ElabError> {
+        let Some((body, goal)) = crate::kernel::unify::solution_at(&mut self.meter, meta, scope)? else {
             return Err(Refusal::Unsolved {
                 site: meta.source().clone(),
                 created: meta.origin(),

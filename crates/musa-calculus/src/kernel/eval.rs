@@ -38,7 +38,7 @@ use crate::kernel::family::{Fired, Pending, Reduction};
 use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
 use crate::kernel::sort::Levels;
-use crate::kernel::term::{Binder, Constant, Definition, Filling, Name, Role, Shape, Term};
+use crate::kernel::term::{Binder, Constant, Definition, Filling, Level, Name, Role, Shape, Term};
 use crate::kernel::value::{Arg, Closure, DefHead, Delay, Elim, Env, Folding, Form, Head, Neutral, Value};
 
 /// Evaluate `term` in `env`.
@@ -229,8 +229,9 @@ fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term)
         ),
         // An unknown stands for a whole occurrence, spine and all: it is
         // closed, and §2.1 writes it `?m[σ]` — applied to the scope it may
-        // mention (`kernel::meta`). The spine is *not* in the term, and
-        // reading it out of the environment here is the reason. A term
+        // mention (`kernel::meta`). The common identity spine is read from
+        // the environment here; `MetaAt` carries only the stable levels of a
+        // non-identity renaming. A term
         // moves: it is placed under further binders, put in a closure, and
         // evaluated again in whatever environment that closure was built
         // in. A spine written as indices would have to be shifted each
@@ -238,7 +239,8 @@ fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term)
         // read from the environment by *level* names the same binders
         // wherever the term ends up, because every environment a term is
         // re-read in extends the one it was written in.
-        Shape::Meta(meta) => occurrence(meter, stack, env, here, meta)?,
+        Shape::Meta(meta) => occurrence(meter, stack, env, here, meta, None)?,
+        Shape::MetaAt { meta, scope } => occurrence(meter, stack, env, here, meta, Some(scope))?,
         // Resolved on the way in, so a value carries the level its arms
         // have already been solved to rather than the one written first.
         Shape::Universe(level) => Step::Value(constructed(meter, "universe value", 1, 1, || {
@@ -523,6 +525,7 @@ fn occurrence(
     env: &Env,
     here: Origin,
     meta: &Meta,
+    scope: Option<&[Level]>,
 ) -> Result<Step, CoreError> {
     let depth = env.depth().0;
     if meta.solution().is_none() {
@@ -530,12 +533,28 @@ fn occurrence(
         meter.construct("metavariable occurrence", held, held)?;
     }
     let mut arguments = Vec::with_capacity(meta.arity() as usize);
-    for level in 0..meta.arity() {
-        let index = depth
-            .checked_sub(level.saturating_add(1))
-            .ok_or(Malformed::MetaTelescope(meta.id()))?;
-        let argument = env.get(index).ok_or(Malformed::MetaTelescope(meta.id()))?;
-        arguments.push(argument.clone());
+    match scope {
+        Some(scope) => {
+            if scope.len() != meta.arity() as usize {
+                return Err(Malformed::MetaTelescope(meta.id()).into());
+            }
+            for level in scope {
+                let index = depth
+                    .checked_sub(level.0.saturating_add(1))
+                    .ok_or(Malformed::MetaTelescope(meta.id()))?;
+                let argument = env.get(index).ok_or(Malformed::MetaTelescope(meta.id()))?;
+                arguments.push(argument.clone());
+            }
+        }
+        None => {
+            for level in 0..meta.arity() {
+                let index = depth
+                    .checked_sub(level.saturating_add(1))
+                    .ok_or(Malformed::MetaTelescope(meta.id()))?;
+                let argument = env.get(index).ok_or(Malformed::MetaTelescope(meta.id()))?;
+                arguments.push(argument.clone());
+            }
+        }
     }
     match meta.solution() {
         // Its own origins (§7): what the unknown stood for was written

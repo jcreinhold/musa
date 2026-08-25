@@ -549,7 +549,7 @@ fn metas_solved(term: &Term) -> bool {
     use musa_calculus::Shape;
 
     match term.shape() {
-        Shape::Meta(meta) => meta.is_solved(),
+        Shape::Meta(meta) | Shape::MetaAt { meta, .. } => meta.is_solved(),
         // A base type, a builtin, and a literal are all closed: each is a name
         // or a payload the host registered, and none of them holds a term.
         Shape::Var(_) | Shape::Universe(_) | Shape::Named { .. } | Shape::Lit(_) => true,

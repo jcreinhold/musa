@@ -105,7 +105,12 @@ fn refused(name: &str, cx: &Cx, program: &RawProgram) -> Refusal {
 /// whatever the definition is, and that is what this counts.
 fn size(term: &Term) -> u32 {
     let inner = match term.shape() {
-        Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => 0,
+        Shape::Var(_)
+        | Shape::Named { .. }
+        | Shape::Lit(_)
+        | Shape::Meta(_)
+        | Shape::MetaAt { .. }
+        | Shape::Universe(_) => 0,
         Shape::Bind { binder, body, .. } => binder
             .outer()
             .fold(size(body), |total, term| total.saturating_add(size(term))),

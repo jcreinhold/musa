@@ -41,6 +41,7 @@
 //! [`crate::kernel::recheck`] does check twice, and deliberately: verification
 //! that trusts the pass it is verifying verifies nothing.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::kernel::budget::Meter;
@@ -48,7 +49,7 @@ use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::eval::{apply, apply_closure, eval, force, opened};
 use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
-use crate::kernel::quote::{At, Mode, quote_solution};
+use crate::kernel::quote::{At, Inverse, Mode, quote_solution};
 use crate::kernel::term::{Level, Term};
 use crate::kernel::value::{Arg, DefHead, Elim, Env, Form, Head, Neutral, Value};
 
@@ -80,31 +81,9 @@ pub(crate) struct Fragment {
     pub(crate) meta: Meta,
     /// The variables its spine applies, outermost first.
     levels: Vec<Level>,
-}
-
-impl Fragment {
-    /// Whether the spine is the identity on the unknown's own scope.
-    ///
-    /// The shape every occurrence this crate builds already has: a meta of
-    /// arity `n` applied to `x₀ … x_{n-1}` in order. It matters because it is
-    /// the shape whose inverse is nothing at all, so the solution is the
-    /// read-back of the value and no renaming stands between them.
-    ///
-    /// A permuted or partial spine is inside §2.1's fragment and is *not*
-    /// solved here: inverting it needs a read-back that renames as it goes, and
-    /// this crate's [`quote`] does not, so the honest answer is the one §2.1
-    /// gives outside the fragment — postpone, and let the declaration's end
-    /// report it if nothing else settles it. No occurrence the elaborator
-    /// builds has that shape, so what this costs is a completeness the language
-    /// has never been able to exercise.
-    fn is_identity(&self, meta_arity: u32) -> bool {
-        self.levels.len() == meta_arity as usize
-            && self
-                .levels
-                .iter()
-                .enumerate()
-                .all(|(position, level)| u32::try_from(position).is_ok_and(|position| level.0 == position))
-    }
+    /// The same variables with their semantic types, for instantiating the
+    /// metavariable's dependent telescope at this occurrence.
+    arguments: Vec<Value>,
 }
 
 /// The unsolved unknown at `value`'s head, if there is one.
@@ -139,7 +118,12 @@ pub(crate) fn fragment(value: &Value) -> Option<Fragment> {
     if meta.solution().is_some() {
         return None;
     }
+    if neutral.spine.len() != meta.arity() as usize {
+        return None;
+    }
     let mut levels = Vec::with_capacity(neutral.spine.len());
+    let mut arguments = Vec::with_capacity(neutral.spine.len());
+    let mut distinct = (neutral.spine.len() > 8).then(|| HashSet::with_capacity(neutral.spine.len()));
     for elimination in &neutral.spine {
         let Elim::App { argument, .. } = elimination;
         // Settled throughout: the head is a metavariable, and
@@ -160,14 +144,20 @@ pub(crate) fn fragment(value: &Value) -> Option<Fragment> {
             Head::Def(DefHead::Local(level), _, _) => *level,
             Head::Meta(_) | Head::Const(..) | Head::Base(..) | Head::Builtin(..) | Head::Def(..) => return None,
         };
-        if !applied.spine.is_empty() || levels.contains(&level) {
+        let new = match &mut distinct {
+            Some(distinct) => distinct.insert(level),
+            None => !levels.contains(&level),
+        };
+        if !applied.spine.is_empty() || !new {
             return None;
         }
         levels.push(level);
+        arguments.push(argument.clone());
     }
     Some(Fragment {
         meta: meta.clone(),
         levels,
+        arguments,
     })
 }
 
@@ -192,7 +182,7 @@ pub(crate) fn fragment(value: &Value) -> Option<Fragment> {
 /// [`Malformed::AlreadySolved`] when a second write is attempted, which is a
 /// defect in the caller rather than in the program, and whatever the read-back
 /// spends.
-pub(crate) fn assign(meter: &mut Meter, one: &Value, other: &Value) -> Result<Outcome, CoreError> {
+pub(crate) fn assign(meter: &mut Meter, depth: Level, one: &Value, other: &Value) -> Result<Outcome, CoreError> {
     let Some(pattern) = fragment(one) else {
         // Not a pattern — but the reason matters. An unsolved unknown at the
         // head under a spine the fragment does not admit is §2.1's "outside the
@@ -219,11 +209,26 @@ pub(crate) fn assign(meter: &mut Meter, one: &Value, other: &Value) -> Result<Ou
     if flexible_head(other).as_ref() == Some(&pattern.meta) {
         return Ok(Outcome::Blocked);
     }
-    if !pattern.is_identity(pattern.meta.arity()) {
-        return Ok(Outcome::Blocked);
-    }
-    let (_, goal) = scope_of(meter, &pattern.meta)?;
-    let depth = Level(pattern.meta.arity());
+    let goal = goal_at(meter, &pattern.meta, &pattern.arguments)?;
+    let identity = pattern
+        .levels
+        .iter()
+        .enumerate()
+        .all(|(position, level)| u32::try_from(position).is_ok_and(|position| level.0 == position));
+    let mut mapped = Vec::new();
+    let inverse = if identity {
+        Inverse::Prefix
+    } else {
+        let ambient = usize::try_from(depth.0).unwrap_or(usize::MAX);
+        mapped.resize(ambient, None);
+        for (position, level) in pattern.levels.iter().enumerate() {
+            let Some(slot) = usize::try_from(level.0).ok().and_then(|level| mapped.get_mut(level)) else {
+                return Ok(Outcome::Blocked);
+            };
+            *slot = u32::try_from(position).ok().map(Level);
+        }
+        Inverse::Mapped(&mapped)
+    };
     // `Mode::Keep`. `quote`'s header says solutions open, and that sentence was
     // written when a solution was a small implicit type argument stored as a
     // value with no read-back at all. A telescoped unknown is read back, and
@@ -235,7 +240,16 @@ pub(crate) fn assign(meter: &mut Meter, one: &Value, other: &Value) -> Result<Ou
     // escape-checked by `Reading::index` exactly as an ordinary variable is,
     // and a folded global is written as the definition itself rather than as a
     // name some later scope has to resolve.
-    let body = match quote_solution(meter, depth, Mode::Keep, &goal, other, pattern.meta.id()) {
+    let body = match quote_solution(
+        meter,
+        depth,
+        Level(pattern.meta.arity()),
+        inverse,
+        Mode::Keep,
+        &goal,
+        other,
+        pattern.meta.id(),
+    ) {
         Ok(body) => body,
         // The one failure this arm swallows is the scope check, and swallowing
         // it into `Blocked` rather than into a refusal is deliberate: the value
@@ -317,19 +331,36 @@ pub(crate) fn scope_of(meter: &mut Meter, meta: &Meta) -> Result<(Vec<Value>, Va
     Ok((variables, ty))
 }
 
-/// An occurrence of `meta`: the unknown applied to the whole of its own scope,
-/// as a term and as a value.
+/// The result type of `meta` at one occurrence of its contextual spine.
+fn goal_at(meter: &mut Meter, meta: &Meta, arguments: &[Value]) -> Result<Value, CoreError> {
+    if arguments.len() != meta.arity() as usize {
+        return Err(Malformed::MetaTelescope(meta.id()).into());
+    }
+    let mut ty = meta.ty().clone();
+    for argument in arguments {
+        let opened_ty = opened(meter, &ty)?;
+        let current = opened_ty.as_ref().unwrap_or(&ty);
+        let Form::Pi { codomain, .. } = &current.form else {
+            return Err(Malformed::MetaTelescope(meta.id()).into());
+        };
+        ty = apply_closure(meter, codomain, argument.clone())?;
+    }
+    Ok(ty)
+}
+
+/// An identity occurrence of `meta`, as a term and as a value.
 ///
 /// One function for both because they must agree — a value whose spine differs
 /// from what the term evaluates to is something other than what the elaborator
 /// reasoned about, and that disagreement is invisible until much later.
 ///
-/// The term is [`Term::meta`] and nothing else: the scope is not written
-/// (`kernel::meta`), it is read out of the environment where the term is
-/// evaluated. `arguments` is what that environment holds, outermost first, and
-/// it is a parameter rather than something rebuilt from the telescope because a
-/// `let` binder stands for the definition folded and not for a variable — a
-/// spine of fresh variables would be a value the term does not evaluate to.
+/// The identity scope is not written (`kernel::meta`): evaluation reads it out
+/// of the environment. `arguments` is what that environment holds, outermost
+/// first, and it is a parameter rather than something rebuilt from the
+/// telescope because a `let` binder stands for the definition folded and not
+/// for a variable — a spine of fresh variables would be a value the term does
+/// not evaluate to. Non-identity occurrences arise only during solution
+/// quotation and use [`Term::meta_at`].
 ///
 /// # Errors
 ///
@@ -373,6 +404,41 @@ pub(crate) fn opened_solution(meter: &mut Meter, meta: &Meta) -> Result<Option<(
         return Ok(None);
     };
     let (variables, goal) = scope_of(meter, meta)?;
+    let mut body = solution;
+    for variable in variables {
+        body = apply(meter, meta.origin(), body, variable)?;
+    }
+    Ok(Some((body, goal)))
+}
+
+/// A solved unknown instantiated at one explicit contextual renaming.
+///
+/// The levels are stable context positions, not syntax indices. Walking the
+/// telescope supplies each selected variable with the domain expected at that
+/// position, including dependencies on earlier selected variables.
+pub(crate) fn solution_at(
+    meter: &mut Meter,
+    meta: &Meta,
+    levels: &[Level],
+) -> Result<Option<(Value, Value)>, CoreError> {
+    let Some(solution) = meta.solution().cloned() else {
+        return Ok(None);
+    };
+    if levels.len() != meta.arity() as usize {
+        return Err(Malformed::MetaTelescope(meta.id()).into());
+    }
+    let mut variables = Vec::with_capacity(levels.len());
+    let mut goal = meta.ty().clone();
+    for level in levels {
+        let opened_ty = opened(meter, &goal)?;
+        let current = opened_ty.as_ref().unwrap_or(&goal);
+        let Form::Pi { domain, codomain, .. } = &current.form else {
+            return Err(Malformed::MetaTelescope(meta.id()).into());
+        };
+        let variable = Value::var(meta.origin(), *level, Arc::clone(domain));
+        variables.push(variable.clone());
+        goal = apply_closure(meter, codomain, variable)?;
+    }
     let mut body = solution;
     for variable in variables {
         body = apply(meter, meta.origin(), body, variable)?;
@@ -548,7 +614,7 @@ mod tests {
     //! from outside. These are the terms nobody should be able to build, built
     //! by the one caller that can.
 
-    use super::{Level, Meta, Origin, Outcome, Term, assign};
+    use super::{Level, Meta, Origin, Outcome, Term, assign, force, occurrence, solution_at};
     use crate::kernel::context::Cx;
     use crate::kernel::error::{CoreError, Malformed};
     use crate::kernel::sort::Sort;
@@ -581,6 +647,42 @@ mod tests {
                 },
             },
         )
+    }
+
+    /// `(x : Type 0) → (y : Type 0) → Type 0`, the closed telescope of the
+    /// arity-two unknowns used by the pattern-spine laws.
+    fn two_binders() -> Value {
+        Value::new(
+            HERE,
+            Form::Pi {
+                filling: crate::kernel::term::Filling::Written,
+                name: Arc::from("x"),
+                domain: Arc::new(unit_type()),
+                codomain: Closure {
+                    env: Env::EMPTY,
+                    body: Term::pi(
+                        HERE,
+                        "y",
+                        Term::universe(HERE, Sort::ZERO),
+                        Term::universe(HERE, Sort::ZERO),
+                    ),
+                },
+            },
+        )
+    }
+
+    fn variable(level: u32) -> Value {
+        Value::var(HERE, Level(level), Arc::new(unit_type()))
+    }
+
+    fn variable_level(value: &Value) -> Option<Level> {
+        let Form::Neutral(neutral) = &value.form else {
+            return None;
+        };
+        let crate::kernel::value::Head::Var(level, _) = neutral.head else {
+            return None;
+        };
+        neutral.spine.is_empty().then_some(level)
     }
 
     /// The malformation `outcome` carries, or a panic naming what arrived.
@@ -627,7 +729,10 @@ mod tests {
                 },
             },
         );
-        let fault = malformed("an unknown in its own answer", assign(&mut meter, &occurrence, &cyclic));
+        let fault = malformed(
+            "an unknown in its own answer",
+            assign(&mut meter, Level::ZERO, &occurrence, &cyclic),
+        );
         assert!(matches!(fault, Malformed::Cyclic(0)), "{fault}");
         assert!(!meta.is_solved(), "a refused assignment must write nothing");
     }
@@ -651,8 +756,114 @@ mod tests {
             HERE,
             crate::kernel::value::Head::Meta(meta),
         ));
-        let outcome = assign(&mut meter, &occurrence, &occurrence).expect("a reflexive pair is not a failure");
+        let outcome =
+            assign(&mut meter, Level::ZERO, &occurrence, &occurrence).expect("a reflexive pair is not a failure");
         assert!(matches!(outcome, Outcome::Solved), "a pair already equal is settled");
+    }
+
+    /// Miller inversion is not limited to the identity context: the unknown's
+    /// first binder may be supplied by the ambient innermost variable while a
+    /// variable between the supplied pair is weakened away.
+    #[test]
+    fn a_permuted_and_weakened_pattern_spine_is_inverted() {
+        let cx = Cx::new();
+        let mut meter = cx.meter();
+        let meta = Meta::new(
+            4,
+            HERE,
+            two_binders(),
+            2,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
+        let outer = variable(0);
+        let omitted = variable(1);
+        let inner = variable(2);
+        let (_, occurrence) =
+            occurrence(&meta, HERE, &[inner.clone(), outer]).expect("two arguments fit an arity-two unknown");
+
+        assert_eq!(
+            assign(&mut meter, Level(3), &occurrence, &inner).expect("a pattern has one solution"),
+            Outcome::Solved
+        );
+        let (body, _) = solution_at(&mut meter, &meta, &[Level(0), Level(1)])
+            .expect("the stored solution is well scoped")
+            .expect("the pattern solved the unknown");
+        assert_eq!(
+            variable_level(&body),
+            Some(Level(0)),
+            "the inverse maps the ambient inner variable to binder zero"
+        );
+        assert_eq!(
+            variable_level(&omitted),
+            Some(Level(1)),
+            "the ambient variable omitted from the spine is untouched"
+        );
+    }
+
+    /// A variable outside the pattern spine is not captured merely because it
+    /// is in the ambient context.
+    #[test]
+    fn a_pattern_solution_cannot_name_a_weakened_away_variable() {
+        let cx = Cx::new();
+        let mut meter = cx.meter();
+        let meta = Meta::new(
+            5,
+            HERE,
+            two_binders(),
+            2,
+            cx.globals().clone(),
+            crate::kernel::meta::MetaSource::TypeParameter(None),
+        );
+        let (_, occurrence) =
+            occurrence(&meta, HERE, &[variable(2), variable(0)]).expect("two arguments fit an arity-two unknown");
+        let outcome = assign(&mut meter, Level(3), &occurrence, &variable(1))
+            .expect("an out-of-scope candidate waits rather than guessing");
+        assert_eq!(outcome, Outcome::Blocked);
+        assert!(!meta.is_solved());
+    }
+
+    /// Quoting one flexible pattern as another's solution preserves the second
+    /// pattern's contextual permutation. Solving the second unknown later must
+    /// replay that permutation rather than silently turn it into identity.
+    #[test]
+    fn a_flex_flex_solution_preserves_its_contextual_permutation() {
+        let cx = Cx::new();
+        let mut meter = cx.meter();
+        let make = |id| {
+            Meta::new(
+                id,
+                HERE,
+                two_binders(),
+                2,
+                cx.globals().clone(),
+                crate::kernel::meta::MetaSource::TypeParameter(None),
+            )
+        };
+        let first = make(6);
+        let second = make(7);
+        let x = variable(0);
+        let y = variable(1);
+        let (_, first_xy) = occurrence(&first, HERE, &[x.clone(), y.clone()]).expect("arity agrees");
+        let (_, second_yx) = occurrence(&second, HERE, &[y.clone(), x.clone()]).expect("arity agrees");
+        let (_, second_xy) = occurrence(&second, HERE, &[x.clone(), y]).expect("arity agrees");
+
+        assert_eq!(
+            assign(&mut meter, Level(2), &first_xy, &second_yx).expect("flex-flex pattern assignment"),
+            Outcome::Solved
+        );
+        assert_eq!(
+            assign(&mut meter, Level(2), &second_xy, &x).expect("the second unknown is determined later"),
+            Outcome::Solved
+        );
+        let forced = force(&mut meter, &first_xy)
+            .expect("forcing the solved chain succeeds")
+            .expect("the solved head changes");
+        assert_eq!(
+            variable_level(&forced),
+            Some(Level(1)),
+            "the stored `second y x` keeps `y` as its first argument"
+        );
     }
 
     /// The re-checker's own scope check, made over a solution the unifier would

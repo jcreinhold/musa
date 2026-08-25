@@ -436,7 +436,8 @@ fn spelled(ty: &Term) -> Option<String> {
         // one — and it is named anyway, because an arm that says "unreachable"
         // is a claim a later reader has to re-derive.
         | musa_calculus::Shape::App { .. }
-        | musa_calculus::Shape::Meta(_) => None,
+        | musa_calculus::Shape::Meta(_)
+        | musa_calculus::Shape::MetaAt { .. } => None,
     }
 }
 

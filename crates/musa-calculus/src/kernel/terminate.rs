@@ -223,7 +223,12 @@ impl Measure<'_> {
             return None;
         }
         match term.shape() {
-            Shape::Meta(_) | Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => None,
+            Shape::Meta(_)
+            | Shape::MetaAt { .. }
+            | Shape::Var(_)
+            | Shape::Named { .. }
+            | Shape::Lit(_)
+            | Shape::Universe(_) => None,
             Shape::Bind { binder, body, .. } => {
                 for outer in binder.outer() {
                     if let Some(refused) = self.term(outer, depth, from) {

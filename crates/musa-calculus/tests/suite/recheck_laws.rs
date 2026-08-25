@@ -163,7 +163,7 @@ fn every_index_in_a_checked_term_names_a_binder_that_encloses_it() {
 fn furthest(term: &Term, under: u32) -> u32 {
     match term.shape() {
         Shape::Var(Index(index)) => index.saturating_sub(under),
-        Shape::Meta(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => 0,
+        Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => 0,
         Shape::Bind { binder, body, .. } => {
             let inside = furthest(body, under.saturating_add(1));
             let beside = match binder {

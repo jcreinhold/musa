@@ -55,6 +55,9 @@ Miller-pattern assignments, finite postponement and retry within one declaration
 bounded deferral of checking-only arguments.
 
 The implementation audit for the amendment also exposed a narrower defect the contradiction audit had not: the unifier
-recognized arbitrary distinct-variable spines but its solution quotation inverted only the identity spine. That is a
-sound incompleteness, not permission to narrow the rule silently. The code map records it as owed, and prompt 170 does
-not resume until the contextual read-back can preserve permutation and weakening without adding term substitution.
+recognized arbitrary distinct-variable spines but its solution quotation inverted only the identity spine. That sound
+incompleteness was repaired before prompt 170 resumed. An elaboration-only `MetaAt` term carries a contextual
+permutation or weakening as stable levels, so moving beneath later binders needs neither shifting nor term substitution;
+solution quotation maps ambient variables into the metavariable's telescope and preserves the mapping through flex-flex
+chains. Direct laws cover permutation with weakening, rejection of a variable omitted from the spine, and a second
+metavariable solved after the permuted solution was stored.

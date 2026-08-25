@@ -77,7 +77,7 @@ enum Precedence {
 
 fn write(out: &mut String, term: &Term, at: Precedence, names: &mut Vec<Name>) {
     match term.shape() {
-        Shape::Meta(meta) => {
+        Shape::Meta(meta) | Shape::MetaAt { meta, .. } => {
             let _ = write!(out, "{meta}");
         }
         Shape::Var(index) => {
@@ -218,6 +218,6 @@ fn occurs(term: &Term, depth: u32) -> bool {
         }
         // Closed, or a leaf. A metavariable stands for a closed term applied to
         // the binders in scope (`term.rs`), so it holds no index of its own.
-        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => false,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Universe(_) => false,
     }
 }

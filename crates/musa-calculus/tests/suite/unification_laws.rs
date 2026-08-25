@@ -435,7 +435,7 @@ fn mentions_free_variable(term: &Term) -> bool {
             // Closed by construction, so each escapes nothing: a declared
             // constant, and the three the host registered.
             Shape::Named { .. } | Shape::Lit(_) => false,
-            Shape::Universe(_) | Shape::Meta(_) => false,
+            Shape::Universe(_) | Shape::Meta(_) | Shape::MetaAt { .. } => false,
             Shape::Bind { binder, body, .. } => {
                 binder.outer().any(|term| walk(term, depth)) || walk(body, depth.saturating_add(1))
             }

@@ -778,7 +778,7 @@ fn mentions(term: &Term, watched: Watched, depth: u32, bound: u32) -> Option<Ori
     let under = bound.saturating_add(1);
     match term.shape() {
         Shape::Var(index) => watched.holds(depth.saturating_add(bound), *index).then_some(here),
-        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => None,
+        Shape::Named { .. } | Shape::Lit(_) | Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Universe(_) => None,
         // Whatever sits outside the binder is read where the binder is; the
         // body is read one binder in. Which subterms those are is the
         // `Binder`'s question, so the three forms share this arm.

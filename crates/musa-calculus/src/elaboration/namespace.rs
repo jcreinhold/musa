@@ -74,7 +74,8 @@ pub(crate) fn head_name(term: &Term) -> Option<Name> {
         | Shape::Universe(_)
         | Shape::Bind { .. }
         | Shape::Lit(_)
-        | Shape::Meta(_) => None,
+        | Shape::Meta(_)
+        | Shape::MetaAt { .. } => None,
     }
 }
 

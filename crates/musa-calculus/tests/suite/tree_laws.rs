@@ -123,7 +123,7 @@ fn computes(name: &str, cx: &Cx, ty: &Term, written: &Raw, expected: &Raw) {
 fn names(term: &Term, wanted: &str) -> bool {
     match term.shape() {
         Shape::Named { name, .. } => &**name == wanted,
-        Shape::Var(_) | Shape::Lit(_) | Shape::Meta(_) | Shape::Universe(_) => false,
+        Shape::Var(_) | Shape::Lit(_) | Shape::Meta(_) | Shape::MetaAt { .. } | Shape::Universe(_) => false,
         Shape::Bind { binder, body, .. } => names(body, wanted) || binder.outer().any(|term| names(term, wanted)),
         Shape::App { function, argument } => names(function, wanted) || names(argument, wanted),
     }

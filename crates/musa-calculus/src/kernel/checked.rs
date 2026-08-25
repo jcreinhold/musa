@@ -58,7 +58,7 @@ impl TryFrom<Term> for Checked {
 /// The first metavariable in `term`, by a walk over every subterm.
 fn unsolved(term: &Term) -> Option<u32> {
     match term.shape() {
-        Shape::Meta(meta) => (!meta.is_solved()).then(|| meta.id()),
+        Shape::Meta(meta) | Shape::MetaAt { meta, .. } => (!meta.is_solved()).then(|| meta.id()),
         Shape::Var(_) | Shape::Named { .. } | Shape::Lit(_) | Shape::Universe(_) => None,
         Shape::Bind { binder, body, .. } => binder_unsolved(binder).or_else(|| unsolved(body)),
         Shape::App { function, argument } => unsolved(function).or_else(|| unsolved(argument)),

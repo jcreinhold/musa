@@ -130,10 +130,36 @@ impl At<'_> {
 /// One value rather than separate parameters because every recursive branch
 /// must carry the same depth, mode, and optional occurs-check target.
 #[derive(Clone, Copy)]
-struct Reading {
+pub(crate) enum Inverse<'a> {
+    /// Target level `i` is ambient level `i`; later ambient binders are
+    /// weakened away.
+    Prefix,
+    /// A genuine permutation or non-prefix weakening, indexed by ambient
+    /// level.
+    Mapped(&'a [Option<Level>]),
+}
+
+#[derive(Clone, Copy)]
+enum Variables<'a> {
+    /// Input and output use the same context.
+    Same,
+    /// Read an ambient context into a metavariable's contextual telescope.
+    Inverted {
+        /// Ambient depth where solution quotation began.
+        ambient: Level,
+        /// Output depth before quotation introduces any binders.
+        target: Level,
+        inverse: Inverse<'a>,
+    },
+}
+
+#[derive(Clone, Copy)]
+struct Reading<'a> {
     depth: Level,
+    output_depth: Level,
     mode: Mode,
     solving: Option<u32>,
+    variables: Variables<'a>,
 }
 
 /// Why reading a value back did not produce a term.
@@ -165,23 +191,31 @@ impl Escape {
     }
 }
 
-impl Reading {
+impl<'a> Reading<'a> {
     /// A plain quotation: no metavariable to fit the answer into.
     const fn open(depth: Level, mode: Mode) -> Self {
         Self {
             depth,
+            output_depth: depth,
             mode,
             solving: None,
+            variables: Variables::Same,
         }
     }
 
     /// A quotation that writes `target`'s solution and rejects the target
     /// wherever the same walk encounters it.
-    const fn solving(depth: Level, mode: Mode, target: u32) -> Self {
+    const fn solving(depth: Level, output_depth: Level, inverse: Inverse<'a>, mode: Mode, target: u32) -> Self {
         Self {
             depth,
+            output_depth,
             mode,
             solving: Some(target),
+            variables: Variables::Inverted {
+                ambient: depth,
+                target: output_depth,
+                inverse,
+            },
         }
     }
 
@@ -200,6 +234,7 @@ impl Reading {
     fn under_binder(self) -> Self {
         Self {
             depth: self.depth.deeper(),
+            output_depth: self.output_depth.deeper(),
             ..self
         }
     }
@@ -210,14 +245,38 @@ impl Reading {
 
     /// The index that names `level` in the term being written.
     ///
-    /// Without a [`Solving`] this is the ordinary level-to-index conversion.
-    /// With one, the answer is the same for a variable quotation introduced
-    /// itself — the solution has just as many binders inside it — and shifted by
-    /// the binders the solution drops for one from the outer context, which is
-    /// also where a variable the solution may not mention is refused.
+    /// In an ordinary quotation this is the identity. In solution quotation,
+    /// variables introduced beneath the solution keep their relative level;
+    /// ambient variables are inverted through the pattern spine, and an
+    /// ambient variable omitted from that spine is refused here.
+    fn output_level(self, level: Level) -> Result<Level, Escape> {
+        match self.variables {
+            Variables::Same => Ok(level),
+            Variables::Inverted {
+                ambient,
+                target,
+                inverse,
+            } => {
+                if level.0 >= ambient.0 {
+                    return Ok(Level(target.0.saturating_add(level.0.saturating_sub(ambient.0))));
+                }
+                match inverse {
+                    Inverse::Prefix if level.0 < target.0 => Ok(level),
+                    Inverse::Prefix => Err(Escape::Core(Malformed::EscapedVariable.into())),
+                    Inverse::Mapped(inverse) => usize::try_from(level.0)
+                        .ok()
+                        .and_then(|level| inverse.get(level))
+                        .copied()
+                        .flatten()
+                        .ok_or_else(|| Escape::Core(Malformed::EscapedVariable.into())),
+                }
+            }
+        }
+    }
+
     fn index(self, level: Level) -> Result<Index, Escape> {
-        level
-            .to_index(self.depth)
+        self.output_level(level)?
+            .to_index(self.output_depth)
             .ok_or_else(|| Escape::Core(Malformed::EscapedVariable.into()))
     }
 }
@@ -240,15 +299,23 @@ pub(crate) fn quote(meter: &mut Meter, depth: Level, mode: Mode, ty: &Value, val
 pub(crate) fn quote_solution(
     meter: &mut Meter,
     depth: Level,
+    output_depth: Level,
+    inverse: Inverse<'_>,
     mode: Mode,
     ty: &Value,
     value: &Value,
     target: u32,
 ) -> Result<Term, CoreError> {
-    read(meter, Reading::solving(depth, mode, target), ty, value).map_err(Escape::core)
+    read(
+        meter,
+        Reading::solving(depth, output_depth, inverse, mode, target),
+        ty,
+        value,
+    )
+    .map_err(Escape::core)
 }
 
-fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Result<Term, Escape> {
+fn read(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         // `as_ref().unwrap_or` rather than `unwrap_or_else(clone)`: the common
@@ -319,7 +386,7 @@ pub(crate) fn quote_type(meter: &mut Meter, depth: Level, mode: Mode, value: &Va
     read_type(meter, Reading::open(depth, mode), value).map_err(Escape::core)
 }
 
-fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term, Escape> {
+fn read_type(meter: &mut Meter, reading: Reading<'_>, value: &Value) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         let unfolded = reading.seen(meter, value)?;
@@ -358,7 +425,7 @@ fn read_type(meter: &mut Meter, reading: Reading, value: &Value) -> Result<Term,
 /// definitionally that constructor applied to its own projections, and two
 /// values agreeing field by field therefore read back to one term. The guard
 /// against a recursive family is [`Product::expandable`](crate::kernel::family::Product::expandable)'s.
-fn rebuilt(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Result<Option<Term>, Escape> {
+fn rebuilt(meter: &mut Meter, reading: Reading<'_>, ty: &Value, value: &Value) -> Result<Option<Term>, Escape> {
     let Some(product) = product(meter, ty)? else {
         return Ok(None);
     };
@@ -397,7 +464,7 @@ fn rebuilt(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Re
 /// Each argument is quoted at the type the spine gives it, which is why
 /// [`head_type`] exists: an argument quoted untyped would not be η-expanded,
 /// and `f g` would read back differently from `f (λx. g x)`.
-fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Result<Term, Escape> {
+fn read_neutral(meter: &mut Meter, reading: Reading<'_>, neutral: &Neutral) -> Result<Term, Escape> {
     meter.nested("quotation", |meter| {
         meter.quoted_node("quotation")?;
         let here = neutral.origin;
@@ -420,7 +487,38 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
                 if reading.solving == Some(meta.id()) {
                     return Err(Malformed::Cyclic(meta.id()).into());
                 }
-                Term::meta(here, meta.clone())
+                let mut scope = Vec::with_capacity(meta.arity() as usize);
+                for elimination in neutral.spine.iter().take(meta.arity() as usize) {
+                    let Elim::App { argument, .. } = elimination;
+                    let argument = crate::kernel::eval::demanded(meter, argument)?;
+                    let Form::Neutral(applied) = &argument.form else {
+                        return Err(Malformed::EscapedVariable.into());
+                    };
+                    let level = match &applied.head {
+                        Head::Var(level, _) | Head::Def(DefHead::Local(level), _, _) if applied.spine.is_empty() => {
+                            *level
+                        }
+                        Head::Var(..)
+                        | Head::Meta(..)
+                        | Head::Const(..)
+                        | Head::Base(..)
+                        | Head::Builtin(..)
+                        | Head::Def(..) => return Err(Malformed::EscapedVariable.into()),
+                    };
+                    scope.push(reading.output_level(level)?);
+                }
+                if scope.len() != meta.arity() as usize {
+                    return Err(Malformed::MetaTelescope(meta.id()).into());
+                }
+                let identity = scope
+                    .iter()
+                    .enumerate()
+                    .all(|(position, level)| u32::try_from(position).is_ok_and(|position| level.0 == position));
+                if identity {
+                    Term::meta(here, meta.clone())
+                } else {
+                    Term::meta_at(here, meta.clone(), scope)
+                }
             }
             Head::Const(constant, _) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
@@ -458,7 +556,7 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
 /// One elimination of an already-quoted prefix, read back.
 fn read_elimination(
     meter: &mut Meter,
-    reading: Reading,
+    reading: Reading<'_>,
     prefix: &Neutral,
     quoted: Term,
     elimination: &Elim,
