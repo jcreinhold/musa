@@ -48,7 +48,7 @@ fn wav_bytes(samples: &[f32]) -> Result<Vec<u8>> {
     Ok(cursor.into_inner())
 }
 
-fn scheduled() -> Result<(musa_dsp::StudioSpec, GesturePlan, String)> {
+fn scheduled() -> Result<(crate::intent::StudioSpec, GesturePlan, String)> {
     let compilation = compile(
         &SourceDocument::new(SOURCE, "tests/fixtures/audio-bridge.musa"),
         &CompileOptions::default(),
@@ -71,7 +71,7 @@ fn scheduled() -> Result<(musa_dsp::StudioSpec, GesturePlan, String)> {
             digest(event_text.as_bytes())
         );
     }
-    Ok((compilation.into_parts().1, performance, lane_summary))
+    Ok((super::audio_support::studio(&compilation), performance, lane_summary))
 }
 
 fn manifest() -> Result<String> {

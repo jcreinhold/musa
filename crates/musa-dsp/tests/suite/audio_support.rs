@@ -1,22 +1,31 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::arithmetic_side_effects)]
 
+use crate::intent::StudioSpec;
 use musa_compiler::{
     CompileOptions, SourceDocument, checked_standard_instrument_machine, checked_standard_instruments, compile,
 };
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, PreparedAudio,
-    ScheduleLimits, SchedulePolicy, StudioSpec,
+    ScheduleLimits, SchedulePolicy,
 };
 use musa_score::{ScoreSnapshot, Tuning};
 
 pub(crate) const RATE: u32 = 48_000;
 
+pub(crate) fn studio(compilation: &musa_compiler::Compilation) -> StudioSpec {
+    let source = compilation.studio_source().expect("checked studio");
+    musa_dsp::decode_studio_execution(source)
+        .expect("production studio artifact")
+        .preparation_projection()
+        .expect("every production processor has a native preparation witness")
+}
+
 pub(crate) fn parts(source: &str) -> (ScoreSnapshot, StudioSpec) {
     let compilation = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default());
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
-    let (score, studio) = compilation.into_parts();
-    (score.expect("score"), studio)
+    let studio = studio(&compilation);
+    (compilation.into_snapshot().expect("score"), studio)
 }
 
 pub(crate) fn options(tail_frames: u64) -> AudioOptions {
@@ -56,7 +65,7 @@ pub(crate) fn prepare(source: &str, tail_frames: u64) -> PreparedAudio {
     let compilation = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default());
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
     let gestures = musa_compiler::lower_gestures(compilation.snapshot().expect("score")).expect("source gestures");
-    let (_, studio) = compilation.into_parts();
+    let studio = studio(&compilation);
     prepare_gestures(&gestures, &studio, options(tail_frames)).expect("audio")
 }
 
@@ -70,7 +79,7 @@ pub(crate) fn prepare_gestures(
     };
     let instruments = checked_standard_instruments().map_err(diagnostic)?;
     let instrument_machine = checked_standard_instrument_machine().map_err(diagnostic)?;
-    musa_dsp::prepare_execution(gestures, &instruments, &instrument_machine, studio, options)
+    crate::audio::prepare_projected_execution(gestures, &instruments, &instrument_machine, studio, options)
 }
 
 pub(crate) fn render_source(source: &str, frames: usize) -> Vec<f32> {

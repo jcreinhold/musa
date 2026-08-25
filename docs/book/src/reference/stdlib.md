@@ -26,6 +26,7 @@ The modules:
 | `std::sound::catalogue` | Source-owned studio processor contracts, terms, exact domains, documentation, examples, and primitive requirements |
 | `std::sound::graph` | Finite studio descriptions and validation of descriptors, ports, parameters, bindings, and cycles |
 | `std::sound::instrument` | Typed instrument signatures, indexed control requirements, standard instruments, and private registered-machine implementations |
+| `std::sound::production` | Checked production studio artifacts and source-owned processor defaults |
 | `std::sound::quantity` | Exact indexed sound dimensions, units, quantities, and their checked boundary artifact |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
 | `std::transformational` | Neo-Riemannian transformations on triads |

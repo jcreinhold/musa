@@ -18,8 +18,8 @@
 //! crate — no module there named a pass — and the boundary is what keeps it
 //! true.
 //!
-//! Studio intent is another answer, owned by `musa-dsp`; this crate constructs
-//! it and depends on that vocabulary just as it depends on `musa-score`.
+//! Studio compatibility spelling lowers into an ordinary checked `std::sound`
+//! value. Audio consumers decode their private projection outside this crate.
 //!
 //! Must never expose: pass internals (resolution tables, expansion
 //! machinery); transient `slotmap` keys as serialized identities. Must never
@@ -64,8 +64,11 @@ mod registry;
 mod resolve;
 mod source_value;
 mod studio;
+mod studio_model;
 
-pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
+pub use crate::compile::{
+    Compilation, CompileOptions, DocumentKind, SourceDocument, StudioSpans, compile, format_document,
+};
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]
 pub use crate::elaborate::events_normal_form;

@@ -7,11 +7,10 @@
 
 ```text
 musa-syntax ──┐
-musa-calculus ┤
-musa-events ──┼──► {musa-score, musa-dsp} ──┐
-              └──► musa-compiler ◄────────┘
-                         ├──► musa-notation
-                         └──► musa-project ◄── musa-playback ◄── musa-dsp
+musa-calculus ┼──► musa-compiler ──► musa-project ◄── musa-playback ◄── musa-dsp
+musa-events ──┘           │                ▲
+                          ├──► musa-score ──┤
+                          └──► musa-notation┘
 ```
 
 `musa-calculus` and `musa-events` are leaves. `musa-lsp` also reads `musa-syntax`, because highlighting and completion
@@ -47,8 +46,10 @@ exact rational until the performance/DSP edge.
 6. `musa-compiler::elaborate` realizes the checked term through registered finite base values and δ-rules, producing
    caller-ready facts and `EventTrack(WrittenTime, ScoreFact)` values with provenance.
 
-The compiler's phase-local studio descriptor inference is not source-language typing. Do not add a source construct to
-`infer.rs`, reimplement conversion in the compiler, or expose a calculus `Value` to make a downstream pass convenient.
+The compatibility `studio` spelling is lowered to ordinary `std::sound` constructors and checked by this same path; its
+generic checked artifact and compiler-owned lineage table are the only production handoff. Do not add a source construct
+to `infer.rs`, reimplement conversion in the compiler, or expose a calculus `Value` to make a downstream pass
+convenient.
 
 ## Definitions, data, and names
 

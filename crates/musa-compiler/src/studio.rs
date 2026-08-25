@@ -1,13 +1,15 @@
-//! Resolve surface `studio` declarations into the temporary [`StudioSpec`] oracle.
+//! Desugar the compatibility `studio` spelling into checked `std::sound` data.
 //!
-//! Ordinary declarations in `std::sound` own the editable vocabulary. This
-//! legacy compiler path remains only for differential migration through prompt
-//! 180a and must gain no new semantic construct or caller.
+//! [`SurfaceStudio`] is a private CST-resolution record: it retains names,
+//! topology, exact written literals, and edit spans long enough to print the
+//! ordinary source constructors. It is neither a public semantic value nor a
+//! DSP input; the checked source artifact below is the production handoff.
 
-use indexmap::IndexMap;
-use musa_dsp::{
-    Assignment, Modulation, NodeIndex, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, WrittenQuantity,
+use crate::studio_model::{
+    SurfaceAssignment, SurfaceGraph, SurfaceModulation, SurfaceNode, SurfaceNodeIndex, SurfaceProcessor,
+    SurfaceQuantity, SurfaceRoute, SurfaceSend, SurfaceStudio, SurfaceUnit,
 };
+use indexmap::IndexMap;
 use musa_score::origin::SourceSpan;
 use musa_syntax::ast::{
     Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
@@ -16,12 +18,13 @@ use num_rational::Ratio;
 
 use crate::resolve::{span_of, trimmed_span};
 use musa_score::diagnose::{Code, Diagnostic};
+use std::fmt::Write as _;
 
-/// Read an exact decimal or ratio and its unit into a [`WrittenQuantity`].
+/// Read an exact decimal or ratio and its unit into a [`SurfaceQuantity`].
 ///
 /// `ms` is folded into seconds here, which is why the spec carries no
 /// millisecond unit: the dimension is time, and the suffix is a scale.
-fn parse_value(number: &str, suffix: Option<&str>) -> Option<WrittenQuantity> {
+fn parse_value(number: &str, suffix: Option<&str>) -> Option<SurfaceQuantity> {
     let magnitude = match number.split_once('/') {
         Some((numerator, denominator)) => {
             let denominator = denominator.parse().ok()?;
@@ -33,18 +36,18 @@ fn parse_value(number: &str, suffix: Option<&str>) -> Option<WrittenQuantity> {
         None => musa_score::profile::parse_decimal(number)?,
     };
     let unit = match suffix {
-        None => Unit::Linear,
-        Some("Hz") => Unit::Hz,
-        Some("dB") => Unit::Decibels,
-        Some("s") => Unit::Seconds,
+        None => SurfaceUnit::Linear,
+        Some("Hz") => SurfaceUnit::Hz,
+        Some("dB") => SurfaceUnit::Decibels,
+        Some("s") => SurfaceUnit::Seconds,
         Some("ms") => {
             let magnitude =
                 musa_score::time::exact_arithmetic(magnitude, Ratio::from_integer(1000), musa_score::time::Exact::Div)?;
-            return Some(WrittenQuantity::new(magnitude, Unit::Seconds));
+            return Some(SurfaceQuantity::new(magnitude, SurfaceUnit::Seconds));
         }
         Some(_) => return None,
     };
-    Some(WrittenQuantity::new(magnitude, unit))
+    Some(SurfaceQuantity::new(magnitude, unit))
 }
 
 /// What a library's `studio` may not write.
@@ -58,7 +61,7 @@ fn complain(node: &musa_syntax::SyntaxNode, what: &str, diagnostics: &mut Vec<Di
     );
 }
 
-/// Resolve a `studio` block into a [`StudioSpec`], reporting every unresolved
+/// Resolve a `studio` block into a [`SurfaceStudio`], reporting every unresolved
 /// name and mis-united value against `diagnostics`.
 ///
 /// `parts` is the set of part names the score declared: `assign` is the one
@@ -74,8 +77,8 @@ pub(crate) fn resolve(
     parts: &[String],
     references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
-) -> StudioSpec {
-    let mut spec = StudioSpec::default();
+) -> SurfaceStudio {
+    let mut spec = SurfaceStudio::default();
     spec.set_span(decl.map(|decl| span_of(decl.syntax())));
     let mut items: Vec<StudioItem> = Vec::new();
     for library in imported {
@@ -104,7 +107,7 @@ pub(crate) fn resolve(
             StudioItem::Bus(bus) => declare_bus(bus, &mut spec, diagnostics),
             StudioItem::Signal(signal) => {
                 let name = signal.name().unwrap_or_default();
-                let mut built = Patch::default();
+                let mut built = SurfaceGraph::default();
                 let Some(chain) = signal.chain() else { continue };
                 if lower_chain(&chain, &mut built, diagnostics).is_some() && !spec.insert_signal(name.clone(), built) {
                     diagnostics.push(
@@ -167,7 +170,7 @@ pub(crate) fn resolve(
                                 .maybe_at(span, "assigned again here"),
                         );
                     } else {
-                        spec.assign(part, Assignment { patch, patch_span });
+                        spec.assign(part, SurfaceAssignment { patch, patch_span });
                     }
                 }
             }
@@ -195,7 +198,7 @@ pub(crate) fn resolve(
                     {
                         references.record_use(crate::resolve::NameKind::Part, &source, span);
                     }
-                    spec.push_route(Route {
+                    spec.push_route(SurfaceRoute {
                         source,
                         destination,
                         span,
@@ -224,7 +227,225 @@ pub(crate) fn resolve(
     spec
 }
 
-fn diagnose_bus_cycles(spec: &StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+/// Elaborate the resolved compatibility surface into the ordinary
+/// `std::sound::studio` value consumed by production preparation.
+pub(crate) fn checked_source(
+    studio: &SurfaceStudio,
+    declared: bool,
+) -> Result<
+    (
+        musa_calculus::CheckedSource,
+        Vec<Option<musa_score::origin::SourceSpan>>,
+    ),
+    Vec<Diagnostic>,
+> {
+    let mut anchors = Anchors::default();
+    let mut body = String::from("import std::sound::production;\n\nlet compiled_studio: StudioExecutionArtifact = ");
+    write_studio(&mut body, studio, declared, &mut anchors);
+    body.push_str(";\n");
+    let checked = crate::checked_source_value(
+        &crate::SourceDocument::new(body, "musa-generated:/studio-cutover.musa"),
+        &crate::CompileOptions::default(),
+        "compiled_studio",
+        &musa_calculus::SourceSchema::new(
+            "std.sound.production.StudioExecutionArtifact",
+            "StudioExecutionArtifact",
+            1,
+        ),
+    )?;
+    Ok((checked, anchors.spans))
+}
+
+#[derive(Default)]
+struct Anchors {
+    spans: Vec<Option<SourceSpan>>,
+}
+
+impl Anchors {
+    fn push(&mut self, span: Option<SourceSpan>) -> u64 {
+        let anchor = u64::try_from(self.spans.len()).unwrap_or(u64::MAX);
+        self.spans.push(span);
+        anchor
+    }
+}
+
+fn write_studio(out: &mut String, studio: &SurfaceStudio, declared: bool, anchors: &mut Anchors) {
+    let root = anchors.push(studio.span());
+    let _ = write!(
+        out,
+        "StudioExecutionArtifact {{ schema_version = 1, anchor = {root}, declared = {}, patches = ",
+        if declared { "true" } else { "false" }
+    );
+    write_graphs(out, studio.patches(), anchors);
+    out.push_str(", buses = ");
+    write_graphs(out, studio.buses(), anchors);
+    out.push_str(", signals = ");
+    write_graphs(out, studio.signals(), anchors);
+    out.push_str(", assignments = [");
+    for (index, (part, instrument)) in studio.assignments().enumerate() {
+        separator(out, index);
+        let anchor = anchors.push(studio.assignment(part).and_then(|assignment| assignment.patch_span));
+        let _ = write!(
+            out,
+            "StudioAssignment {{ anchor = {anchor}, part_name = {}, instrument = {} }}",
+            quoted(part),
+            quoted(instrument)
+        );
+    }
+    out.push_str("], routes = [");
+    for (index, route) in studio.routes().iter().enumerate() {
+        separator(out, index);
+        let anchor = anchors.push(route.span);
+        let _ = write!(
+            out,
+            "StudioRoute {{ anchor = {anchor}, source = {}, destination = {} }}",
+            quoted(&route.source),
+            quoted(&route.destination)
+        );
+    }
+    out.push_str("], sends = [");
+    for (index, send) in studio.sends().iter().enumerate() {
+        separator(out, index);
+        let anchor = anchors.push(send.span);
+        let level_anchor = anchors.push(send.level_span);
+        let _ = write!(
+            out,
+            "StudioSend {{ anchor = {anchor}, level_anchor = {level_anchor}, source = {}, destination_bus = {}, level = {} }}",
+            quoted(&send.source),
+            quoted(&send.bus),
+            quantity(send.level)
+        );
+    }
+    out.push_str("], modulations = [");
+    for (index, modulation) in studio.modulations().iter().enumerate() {
+        separator(out, index);
+        let anchor = anchors.push(None);
+        let _ = write!(
+            out,
+            "StudioModulation {{ anchor = {anchor}, source = {}, instrument = {}, node = {}, parameter = {} }}",
+            quoted(&modulation.source),
+            quoted(&modulation.patch),
+            modulation.node,
+            quoted(modulation.param)
+        );
+    }
+    out.push_str("] }");
+}
+
+fn write_graphs<'a>(
+    out: &mut String,
+    graphs: impl Iterator<Item = (&'a str, &'a SurfaceGraph)>,
+    anchors: &mut Anchors,
+) {
+    out.push('[');
+    for (index, (name, graph)) in graphs.enumerate() {
+        separator(out, index);
+        let anchor = anchors.push(None);
+        let _ = write!(
+            out,
+            "StudioGraph {{ anchor = {anchor}, name = {}, nodes = [",
+            quoted(name)
+        );
+        for (node_index, node) in graph.nodes().iter().enumerate() {
+            separator(out, node_index);
+            let anchor = anchors.push(node.span);
+            let label = node
+                .label
+                .as_deref()
+                .map_or_else(|| "None".to_owned(), |name| format!("Some({})", quoted(name)));
+            let _ = write!(
+                out,
+                "StudioNode {{ anchor = {anchor}, label = {label}, processor = {}, written_parameters = [",
+                processor(node)
+            );
+            for (parameter_index, value) in node.params.iter().enumerate() {
+                separator(out, parameter_index);
+                match value {
+                    Some(_) => {
+                        let anchor = anchors.push(node.param_spans.get(parameter_index).copied().flatten());
+                        let _ = write!(out, "Some({anchor})");
+                    }
+                    None => out.push_str("None"),
+                }
+            }
+            out.push_str("], inputs = [");
+            for (input_index, input) in node.inputs.iter().enumerate() {
+                separator(out, input_index);
+                let _ = write!(out, "{input}");
+            }
+            out.push_str("] }");
+        }
+        let _ = write!(out, "], output_node = {} }}", graph.output().unwrap_or(0));
+    }
+    out.push(']');
+}
+
+fn processor(node: &SurfaceNode) -> String {
+    let arguments = node
+        .params
+        .iter()
+        .map(|value| value.map_or_else(|| "None".to_owned(), |value| format!("Some({})", quantity(value))))
+        .collect::<Vec<_>>()
+        .join(", ");
+    match node.processor {
+        SurfaceProcessor::Mix => "studio_mix()".to_owned(),
+        SurfaceProcessor::Oscillator => format!("studio_oscillator({arguments})"),
+        SurfaceProcessor::Gain => format!("studio_gain({arguments})"),
+        SurfaceProcessor::Envelope => format!("studio_envelope({arguments})"),
+        SurfaceProcessor::Lowpass => format!("studio_lowpass({arguments})"),
+        SurfaceProcessor::Highpass => format!("studio_highpass({arguments})"),
+        SurfaceProcessor::Reverb => format!("studio_reverb({arguments})"),
+        SurfaceProcessor::Delay => format!("studio_delay({arguments})"),
+        SurfaceProcessor::Chorus => format!("studio_chorus({arguments})"),
+        SurfaceProcessor::Scale => format!("studio_scale({arguments})"),
+        SurfaceProcessor::Bias => format!("studio_bias({arguments})"),
+        SurfaceProcessor::Clamp => format!("studio_clamp({arguments})"),
+        SurfaceProcessor::Smoothing => format!("studio_smoothing({arguments})"),
+    }
+}
+
+fn quantity(value: SurfaceQuantity) -> String {
+    let magnitude = source_ratio(value.magnitude);
+    match value.unit {
+        SurfaceUnit::Hz => format!("Written(Frequency, {magnitude}, Hertz)"),
+        SurfaceUnit::Linear => format!("Written(LinearAmplitude, {magnitude}, Linear)"),
+        SurfaceUnit::Decibels => format!("Written(Level, {magnitude}, Decibels)"),
+        SurfaceUnit::Seconds => format!("Written(Time, {magnitude}, Seconds)"),
+    }
+}
+
+fn source_ratio(value: Ratio<i64>) -> String {
+    if *value.numer() < 0 {
+        format!("0/1 - {}/{}", value.numer().unsigned_abs(), value.denom())
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    }
+}
+
+fn quoted(value: &str) -> String {
+    let mut out = String::with_capacity(value.len().saturating_add(2));
+    out.push('"');
+    for character in value.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            other => out.push(other),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn separator(out: &mut String, index: usize) {
+    if index > 0 {
+        out.push_str(", ");
+    }
+}
+
+fn diagnose_bus_cycles(spec: &SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
     let edges = spec
         .sends()
         .iter()
@@ -268,7 +489,7 @@ fn diagnose_bus_cycles(spec: &StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
 
 fn resolve_send(
     send: &SendStmt,
-    spec: &mut StudioSpec,
+    spec: &mut SurfaceStudio,
     parts: &[String],
     references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
@@ -309,13 +530,13 @@ fn resolve_send(
         );
         return;
     };
-    if level.unit != Unit::Decibels {
+    if level.unit != SurfaceUnit::Decibels {
         diagnostics
             .push(Diagnostic::error(Code::NotAValue, "a send level is written in `dB`").maybe_at(span, "missing `dB`"));
         return;
     }
     let level_span = send.level().map(|literal| trimmed_span(literal.syntax()));
-    spec.push_send(Send {
+    spec.push_send(SurfaceSend {
         source,
         bus,
         level,
@@ -332,10 +553,10 @@ fn resolve_send(
 fn resolve_target(
     source: &str,
     path: &[String],
-    spec: &StudioSpec,
+    spec: &SurfaceStudio,
     span: Option<musa_score::origin::SourceSpan>,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Option<Modulation> {
+) -> Option<SurfaceModulation> {
     let written = path.join(".");
     let [patch_name, stage, param] = path else {
         diagnostics.push(
@@ -354,7 +575,7 @@ fn resolve_target(
         );
         return None;
     };
-    let matches: Vec<NodeIndex> = patch
+    let matches: Vec<SurfaceNodeIndex> = patch
         .nodes()
         .iter()
         .enumerate()
@@ -390,7 +611,7 @@ fn resolve_target(
         );
         return None;
     };
-    Some(Modulation {
+    Some(SurfaceModulation {
         source: source.to_owned(),
         patch: patch_name.clone(),
         node: *node,
@@ -398,7 +619,7 @@ fn resolve_target(
     })
 }
 
-fn declare_patch(decl: &PatchDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+fn declare_patch(decl: &PatchDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
     let name = decl.name().unwrap_or_default();
     let Some(patch) = build_container(&decl.signals(), &decl.chains(), diagnostics) else {
         return;
@@ -418,7 +639,7 @@ fn declare_patch(decl: &PatchDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<
     }
 }
 
-fn declare_bus(decl: &BusDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+fn declare_bus(decl: &BusDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
     let name = decl.name().unwrap_or_default();
     // A bus's input is whatever is sent to it, so its chain needs no
     // `output` terminal: the last stage *is* the output.
@@ -452,9 +673,9 @@ fn build_container(
     signals: &[musa_syntax::ast::SignalBinding],
     chains: &[musa_syntax::ast::ChainStmt],
     diagnostics: &mut Vec<Diagnostic>,
-) -> Option<Patch> {
-    let mut patch = Patch::default();
-    let mut locals: IndexMap<String, NodeIndex> = IndexMap::new();
+) -> Option<SurfaceGraph> {
+    let mut patch = SurfaceGraph::default();
+    let mut locals: IndexMap<String, SurfaceNodeIndex> = IndexMap::new();
     for binding in signals {
         let Some(chain) = binding.chain() else { continue };
         let name = binding.name().unwrap_or_default();
@@ -473,7 +694,11 @@ fn build_container(
 }
 
 /// A top-level signal chain, which has no enclosing patch's local names.
-fn lower_chain(chain: &SignalChain, patch: &mut Patch, diagnostics: &mut Vec<Diagnostic>) -> Option<NodeIndex> {
+fn lower_chain(
+    chain: &SignalChain,
+    patch: &mut SurfaceGraph,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<SurfaceNodeIndex> {
     let locals = IndexMap::new();
     let node = lower_chain_into(chain, patch, &locals, diagnostics)?;
     patch.set_output(node);
@@ -484,11 +709,11 @@ fn lower_chain(chain: &SignalChain, patch: &mut Patch, diagnostics: &mut Vec<Dia
 /// node as its input, and `output` marks rather than adds one.
 fn lower_chain_into(
     chain: &SignalChain,
-    patch: &mut Patch,
-    locals: &IndexMap<String, NodeIndex>,
+    patch: &mut SurfaceGraph,
+    locals: &IndexMap<String, SurfaceNodeIndex>,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Option<NodeIndex> {
-    let mut previous: Option<NodeIndex> = None;
+) -> Option<SurfaceNodeIndex> {
+    let mut previous: Option<SurfaceNodeIndex> = None;
     for stage in chain.stages() {
         match &stage {
             SignalStage::Name(name) => {
@@ -532,23 +757,23 @@ fn lower_chain_into(
 /// One `name(args)` construction, with its upstream stage already lowered.
 fn lower_call(
     call: &CallExpr,
-    upstream: Option<NodeIndex>,
-    patch: &mut Patch,
-    locals: &IndexMap<String, NodeIndex>,
+    upstream: Option<SurfaceNodeIndex>,
+    patch: &mut SurfaceGraph,
+    locals: &IndexMap<String, SurfaceNodeIndex>,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Option<NodeIndex> {
+) -> Option<SurfaceNodeIndex> {
     let span = Some(span_of(call.syntax()));
     let written = call.callee().unwrap_or_default();
-    let Some(processor) = Processor::from_name(&written) else {
+    let Some(processor) = SurfaceProcessor::from_name(&written) else {
         diagnostics.push(
             Diagnostic::error(Code::UnknownWord, format!("unknown processor `{written}`"))
                 .maybe_at(span, "musa has no processor by this name"),
         );
         return None;
     };
-    let mut params: Vec<Option<WrittenQuantity>> = vec![None; processor.params().len()];
+    let mut params: Vec<Option<SurfaceQuantity>> = vec![None; processor.params().len()];
     let mut param_spans: Vec<Option<SourceSpan>> = vec![None; params.len()];
-    let mut inputs: Vec<NodeIndex> = upstream.into_iter().collect();
+    let mut inputs: Vec<SurfaceNodeIndex> = upstream.into_iter().collect();
     let mut positional = 0usize;
 
     for arg in call.args() {
@@ -599,7 +824,7 @@ fn lower_call(
         }
     }
 
-    Some(patch.push(StudioNode {
+    Some(patch.push(SurfaceNode {
         processor,
         label: None,
         params,
@@ -618,8 +843,8 @@ fn is_argument_group(call: &CallExpr) -> bool {
 /// Bind one written argument to a declared parameter, checking its unit.
 fn bind_argument(
     arg: &Arg,
-    processor: Processor,
-    params: &mut [Option<WrittenQuantity>],
+    processor: SurfaceProcessor,
+    params: &mut [Option<SurfaceQuantity>],
     spans: &mut [Option<SourceSpan>],
     positional: &mut usize,
     diagnostics: &mut Vec<Diagnostic>,

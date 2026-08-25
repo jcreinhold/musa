@@ -16,8 +16,8 @@
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
+use crate::intent::{Processor, StudioSpec, Unit};
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_dsp::{Processor, StudioSpec, Unit};
 
 use musa_score::{Code, Severity};
 
@@ -36,7 +36,7 @@ fn studio_of(text: &str) -> StudioSpec {
         .map(|diagnostic| diagnostic.message.as_str())
         .collect();
     assert!(errors.is_empty(), "expected a clean compile; got {errors:?}");
-    compilation.into_parts().1
+    super::audio_support::studio(&compilation)
 }
 
 fn errors_of(text: &str) -> Vec<String> {
@@ -67,8 +67,10 @@ fn a_studio_block_changes_nothing_about_the_score() {
         "patch p { oscillator(sine) |> output; } assign violin -> p; route violin -> master;",
     ));
     let without = compile_text("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part violin { voice v { c4/1 } } } }");
-    let (with_score, studio) = with.into_parts();
-    let (without_score, empty) = without.into_parts();
+    let studio = super::audio_support::studio(&with);
+    let empty = super::audio_support::studio(&without);
+    let with_score = with.into_snapshot();
+    let without_score = without.into_snapshot();
     assert_eq!(
         format!("{:#?}", with_score.expect("compiles")),
         format!("{:#?}", without_score.expect("compiles"))

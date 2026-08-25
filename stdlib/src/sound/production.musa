@@ -1,0 +1,273 @@
+import std::sound::quantity;
+
+// The resolved production studio value. The compatibility `studio { ... }`
+// spelling desugars to these ordinary constructors; this module, rather than
+// a Rust catalogue, owns defaults and the exact parameter dimensions.
+
+/// One production processor with every omitted parameter filled in source.
+data StudioProcessor {
+    Oscillator(frequency: SoundQuantity(Frequency), ratio: SoundQuantity(LinearAmplitude)),
+    Gain(gain: SoundQuantity(Level)),
+    Mix,
+    Envelope(
+        attack: SoundQuantity(Time),
+        decay: SoundQuantity(Time),
+        sustain: SoundQuantity(LinearAmplitude),
+        release: SoundQuantity(Time),
+    ),
+    Lowpass(cutoff: SoundQuantity(Frequency), resonance: SoundQuantity(LinearAmplitude)),
+    Highpass(cutoff: SoundQuantity(Frequency), resonance: SoundQuantity(LinearAmplitude)),
+    Reverb(
+        room: SoundQuantity(LinearAmplitude),
+        damping: SoundQuantity(LinearAmplitude),
+        mix: SoundQuantity(LinearAmplitude),
+    ),
+    Delay(
+        time: SoundQuantity(Time),
+        feedback: SoundQuantity(LinearAmplitude),
+        mix: SoundQuantity(LinearAmplitude),
+    ),
+    Chorus(
+        rate: SoundQuantity(Frequency),
+        depth: SoundQuantity(Time),
+        mix: SoundQuantity(LinearAmplitude),
+    ),
+    Scale(factor: SoundQuantity(Frequency)),
+    Bias(offset: SoundQuantity(Frequency)),
+    Clamp(minimum: SoundQuantity(Frequency), maximum: SoundQuantity(Frequency)),
+    Smoothing(time: SoundQuantity(Time)),
+}
+
+/// One resolved processor node in a patch, bus, or control signal.
+record StudioNode {
+    anchor: Nat;
+    label: Option(Text);
+    processor: StudioProcessor;
+    written_parameters: List(Option(Nat));
+    inputs: List(Nat);
+}
+
+/// One named finite processor graph and its designated output node.
+record StudioGraph {
+    anchor: Nat;
+    name: Text;
+    nodes: List(StudioNode);
+    output_node: Nat;
+}
+
+/// One part-to-instrument assignment.
+record StudioAssignment {
+    anchor: Nat;
+    part_name: Text;
+    instrument: Text;
+}
+
+/// One exact-decibel send.
+record StudioSend {
+    anchor: Nat;
+    level_anchor: Nat;
+    source: Text;
+    destination_bus: Text;
+    level: SoundQuantity(Level);
+}
+
+/// One explicit route to a bus or the master output.
+record StudioRoute {
+    anchor: Nat;
+    source: Text;
+    destination: Text;
+}
+
+/// One control-signal binding to a resolved private stage parameter.
+record StudioModulation {
+    anchor: Nat;
+    source: Text;
+    instrument: Text;
+    node: Nat;
+    parameter: Text;
+}
+
+/// The complete exact production studio crossing the checked-source boundary.
+record StudioExecutionArtifact {
+    schema_version: Nat;
+    anchor: Nat;
+    declared: Bool;
+    patches: List(StudioGraph);
+    buses: List(StudioGraph);
+    signals: List(StudioGraph);
+    assignments: List(StudioAssignment);
+    routes: List(StudioRoute);
+    sends: List(StudioSend);
+    modulations: List(StudioModulation);
+}
+
+/// Lift an exact ratio into the frequency dimension.
+private fn frequency(value: Ratio) -> SoundQuantity(Frequency) {
+    Written(Frequency, value, Hertz)
+}
+
+/// Lift an exact ratio into the linear-amplitude dimension.
+private fn linear_value(value: Ratio) -> SoundQuantity(LinearAmplitude) {
+    Written(LinearAmplitude, value, Linear)
+}
+
+/// Lift an exact ratio into the level dimension.
+private fn level(value: Ratio) -> SoundQuantity(Level) { Written(Level, value, Decibels) }
+
+/// Lift an exact ratio into the time dimension.
+private fn time(value: Ratio) -> SoundQuantity(Time) { Written(Time, value, Seconds) }
+
+/// Select a supplied frequency or its source-owned fallback.
+private fn frequency_or(
+    value: Option(SoundQuantity(Frequency)),
+    fallback: SoundQuantity(Frequency),
+) -> SoundQuantity(Frequency) { match value { Some(found) -> found, None -> fallback } }
+
+/// Select a supplied linear amplitude or its source-owned fallback.
+private fn linear_or(
+    value: Option(SoundQuantity(LinearAmplitude)),
+    fallback: SoundQuantity(LinearAmplitude),
+) -> SoundQuantity(LinearAmplitude) { match value { Some(found) -> found, None -> fallback } }
+
+/// Select a supplied level or its source-owned fallback.
+private fn level_or(
+    value: Option(SoundQuantity(Level)),
+    fallback: SoundQuantity(Level),
+) -> SoundQuantity(Level) { match value { Some(found) -> found, None -> fallback } }
+
+/// Select a supplied time or its source-owned fallback.
+private fn time_or(
+    value: Option(SoundQuantity(Time)),
+    fallback: SoundQuantity(Time),
+) -> SoundQuantity(Time) { match value { Some(found) -> found, None -> fallback } }
+
+/// Construct an oscillator, applying edition-one source defaults.
+fn studio_oscillator(
+    frequency_value: Option(SoundQuantity(Frequency)),
+    ratio: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Oscillator(
+        frequency_or(frequency_value, frequency(1/1)),
+        linear_or(ratio, linear_value(1/1)),
+    )
+}
+
+/// Construct a gain stage, applying its source default.
+fn studio_gain(gain: Option(SoundQuantity(Level))) -> StudioProcessor {
+    Gain(level_or(gain, level(0/1)))
+}
+
+/// Construct the signal mixer.
+fn studio_mix() -> StudioProcessor { Mix }
+
+/// Construct a voice envelope, applying edition-one source defaults.
+fn studio_envelope(
+    attack: Option(SoundQuantity(Time)),
+    decay: Option(SoundQuantity(Time)),
+    sustain: Option(SoundQuantity(LinearAmplitude)),
+    release: Option(SoundQuantity(Time)),
+) -> StudioProcessor {
+    Envelope(
+        time_or(attack, time(1/200)),
+        time_or(decay, time(0/1)),
+        linear_or(sustain, linear_value(1/1)),
+        time_or(release, time(1/20)),
+    )
+}
+
+/// The exact Butterworth resonance used by both filter constructors.
+private fn default_resonance() -> SoundQuantity(LinearAmplitude) {
+    linear_value(1767766952966369/2500000000000000)
+}
+
+/// Construct a low-pass stage, applying source defaults.
+fn studio_lowpass(
+    cutoff: Option(SoundQuantity(Frequency)),
+    resonance: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Lowpass(frequency_or(cutoff, frequency(20000/1)), linear_or(resonance, default_resonance()))
+}
+
+/// Construct a high-pass stage, applying source defaults.
+fn studio_highpass(
+    cutoff: Option(SoundQuantity(Frequency)),
+    resonance: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Highpass(frequency_or(cutoff, frequency(20/1)), linear_or(resonance, default_resonance()))
+}
+
+/// Construct a reverb stage, applying source defaults.
+fn studio_reverb(
+    room: Option(SoundQuantity(LinearAmplitude)),
+    damping: Option(SoundQuantity(LinearAmplitude)),
+    mix: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Reverb(
+        linear_or(room, linear_value(1/2)),
+        linear_or(damping, linear_value(1/2)),
+        linear_or(mix, linear_value(1/1)),
+    )
+}
+
+/// Construct a delay stage, applying source defaults.
+fn studio_delay(
+    delay_time: Option(SoundQuantity(Time)),
+    feedback: Option(SoundQuantity(LinearAmplitude)),
+    mix: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Delay(
+        time_or(delay_time, time(1/4)),
+        linear_or(feedback, linear_value(3/10)),
+        linear_or(mix, linear_value(3/10)),
+    )
+}
+
+/// Construct a chorus stage, applying source defaults.
+fn studio_chorus(
+    rate: Option(SoundQuantity(Frequency)),
+    depth: Option(SoundQuantity(Time)),
+    mix: Option(SoundQuantity(LinearAmplitude)),
+) -> StudioProcessor {
+    Chorus(
+        frequency_or(rate, frequency(3/5)),
+        time_or(depth, time(1/250)),
+        linear_or(mix, linear_value(2/5)),
+    )
+}
+
+/// Construct a control scale stage, applying its source default.
+fn studio_scale(factor: Option(SoundQuantity(Frequency))) -> StudioProcessor {
+    Scale(frequency_or(factor, frequency(1/1)))
+}
+
+/// Construct a control bias stage, applying its source default.
+fn studio_bias(offset: Option(SoundQuantity(Frequency))) -> StudioProcessor {
+    Bias(frequency_or(offset, frequency(0/1)))
+}
+
+/// Construct a control clamp stage, applying source defaults.
+fn studio_clamp(
+    minimum: Option(SoundQuantity(Frequency)),
+    maximum: Option(SoundQuantity(Frequency)),
+) -> StudioProcessor {
+    Clamp(frequency_or(minimum, frequency(0/1)), frequency_or(maximum, frequency(20000/1)))
+}
+
+/// Construct a smoothing stage, applying its source default.
+fn studio_smoothing(smoothing_time: Option(SoundQuantity(Time))) -> StudioProcessor {
+    Smoothing(time_or(smoothing_time, time(1/50)))
+}
+
+/// The source-owned zero-setup studio value.
+let empty_studio: StudioExecutionArtifact = StudioExecutionArtifact {
+    schema_version = 1,
+    anchor = 0,
+    declared = false,
+    patches = [],
+    buses = [],
+    signals = [],
+    assignments = [],
+    routes = [],
+    sends = [],
+    modulations = []
+};

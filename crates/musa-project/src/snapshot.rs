@@ -56,11 +56,10 @@ pub(crate) struct ValidArtifacts {
     /// snapshot has already spent. One string per successful compile, beside
     /// a history that already holds one per edit.
     pub(crate) source: String,
-    /// The compiled studio from the same compilation. Kept beside the score
-    /// rather than inside it: they are two documents, and pairing them here
-    /// is what stops a render from using one piece's sound with another's
-    /// notes (§6.5).
-    pub(crate) studio: musa_dsp::StudioSpec,
+    /// Source-checked production studio used by audio preparation.
+    pub(crate) studio_execution: musa_dsp::StudioExecution,
+    /// Compiler-owned source ranges addressed by the execution artifact.
+    pub(crate) studio_spans: musa_compiler::StudioSpans,
     /// Everything the interface displays about that score.
     pub(crate) facts: ScoreFacts,
     /// Everything the Sound and Mix workspaces display about that studio.

@@ -16,8 +16,8 @@
 //! compilation's live data. Only an allocator that subtracts on `dealloc` can
 //! tell retention from reuse.
 //!
-//! The tally is per-thread, for the reason `crates/musa-dsp/tests/suite/rt.rs`
-//! gives about its own: a `#[global_allocator]` is process-wide and this file
+//! The tally is per-thread, for the reason the audio real-time law gives about
+//! its own: a `#[global_allocator]` is process-wide and this file
 //! shares its binary with every other `musa-compiler` integration test, so a
 //! process-wide counter would also count whatever runs beside it. libtest gives
 //! every test its own thread, so a thread's own tally measures only the code

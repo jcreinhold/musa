@@ -14,8 +14,8 @@
 // Sample arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
+use crate::intent::StudioSpec;
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_dsp::StudioSpec;
 use musa_dsp::testing::{
     GraphError, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, lower_studio, prepare_graph,
 };
@@ -49,7 +49,7 @@ fn peak(output: &[f32]) -> f32 {
 fn studio_of(source: &str) -> StudioSpec {
     let compilation = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default());
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
-    compilation.into_parts().1
+    super::audio_support::studio(&compilation)
 }
 
 fn piece(studio: &str) -> String {

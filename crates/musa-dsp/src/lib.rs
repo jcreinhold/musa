@@ -1,8 +1,8 @@
 //! Checked scheduling and one-frame audio execution.
 //!
 //! [`prepare_execution`] consumes exact performed gestures, checked source
-//! instruments, their machine projection, and temporary authored studio
-//! intent, then returns opaque [`PreparedAudio`]. Preparation validates and
+//! instruments, their machine projection, and the exact read-only projection
+//! of a checked source studio, then returns opaque [`PreparedAudio`]. Preparation validates and
 //! allocates the closed native primitive graph; both offline rendering and the
 //! live callback then repeat the same event-before-output frame step.
 //! CPAL and threads remain in `musa-playback`; the step path never allocates,
@@ -25,16 +25,13 @@ mod schedule;
 mod source;
 mod spec;
 mod studio;
+mod studio_source;
 mod voice;
 
 pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_execution};
 pub use crate::instrument_source::{
     InstrumentContract, InstrumentContracts, InstrumentContractsError, InstrumentControlContract,
     InstrumentTechniqueContract, decode_instrument_contracts, instrument_contracts_schema,
-};
-pub use crate::intent::{
-    Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit,
-    WrittenQuantity, written_ratio,
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
@@ -51,6 +48,11 @@ pub use crate::source::{
     StudioDescriptionError, StudioParameterContract, StudioTermContract, StudioVocabulary, StudioVocabularyError,
     SurfacePort, decode_exact_quantity, decode_studio_description, decode_studio_vocabulary, exact_quantity_schema,
     studio_description_schema, studio_vocabulary_schema,
+};
+pub use crate::studio_source::{
+    StudioAssignmentProjection, StudioExecution, StudioExecutionError, StudioGraphProjection,
+    StudioModulationProjection, StudioNodeProjection, StudioRouteProjection, StudioSendProjection,
+    decode_studio_execution, studio_execution_schema,
 };
 
 #[cfg(test)]
@@ -71,22 +73,24 @@ pub mod testing {
 
     use crate::{EventMessage, MachineValue, PreparedMachine, StepError};
 
-    pub use crate::Unit;
-    pub use crate::error::GraphError;
-    pub use crate::instrument::poly_sine_spec;
-    pub use crate::spec::{Combination, FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform};
-    pub use crate::studio::lower_studio;
+    pub(crate) use crate::error::GraphError;
+    pub(crate) use crate::instrument::poly_sine_spec;
+    pub(crate) use crate::intent::Unit;
+    pub(crate) use crate::spec::{
+        Combination, FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform,
+    };
+    pub(crate) use crate::studio::lower_studio;
 
     /// One-frame harness for primitive and private-flattening laws.
-    pub struct PreparedGraph(crate::plan::RenderPlan);
+    pub(crate) struct PreparedGraph(crate::plan::RenderPlan);
 
     /// Validate and allocate a private graph with one-frame execution.
-    pub fn prepare_graph(spec: &StudioGraphSpec, sample_rate: u32) -> Result<PreparedGraph, GraphError> {
+    pub(crate) fn prepare_graph(spec: &StudioGraphSpec, sample_rate: u32) -> Result<PreparedGraph, GraphError> {
         prepare_graph_seeded(spec, sample_rate, 0)
     }
 
     /// Validate and allocate the test graph with an explicit stochastic seed.
-    pub fn prepare_graph_seeded(
+    pub(crate) fn prepare_graph_seeded(
         spec: &StudioGraphSpec,
         sample_rate: u32,
         render_seed: u64,
@@ -103,7 +107,7 @@ pub mod testing {
 
     impl PreparedGraph {
         /// Run repeated reference steps, delivering `first` before frame zero.
-        pub fn render(&mut self, first: &[EventMessage<Gesture>], output: &mut [f32]) {
+        pub(crate) fn render(&mut self, first: &[EventMessage<Gesture>], output: &mut [f32]) {
             for (index, frame) in output.as_chunks_mut::<2>().0.iter_mut().enumerate() {
                 let messages = if index == 0 { first } else { &[] };
                 let [left, right] = self.0.step(messages, Tuning::default());
@@ -113,7 +117,7 @@ pub mod testing {
     }
 
     /// Run a finite input history from the exact start state.
-    pub fn run_machine_offline(
+    pub(crate) fn run_machine_offline(
         machine: &PreparedMachine,
         inputs: impl IntoIterator<Item = MachineValue>,
     ) -> Result<Vec<MachineValue>, StepError> {

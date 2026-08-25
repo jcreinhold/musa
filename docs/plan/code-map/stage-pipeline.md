@@ -35,8 +35,9 @@ audio history
 ```
 
 This flow is implemented through live and offline audio. The native flattening graph and render plan are crate-private;
-the product facade accepts exact checked projections of source-declared gestures and studio intent plus explicit
-preparation options, then returns opaque `PreparedAudio`. The projections are not a second Rust sound language.
+the project facade joins exact performed gestures with the compiler's generic checked studio artifact. `musa-dsp`
+decodes a read-only exact preparation projection plus explicit options and returns opaque `PreparedAudio`; the compiler
+has no DSP dependency and the projection is not a second Rust sound language.
 
 No intermediate front-end representation crosses its owner's facade. Rowan nodes stay in `musa-syntax`; `Raw`, core
 terms, values, environments, evaluator frames, and unification stay in `musa-calculus`; compiler resolution and

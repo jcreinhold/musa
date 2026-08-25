@@ -27,6 +27,11 @@ tracing = "0.1"
 divan = "0.1.21"
 hound = "3"
 insta = "1"
+musa-compiler = { workspace = true }
+
+[[bench]]
+harness = false
+name = "audio_bridge"
 
 [[bench]]
 harness = false

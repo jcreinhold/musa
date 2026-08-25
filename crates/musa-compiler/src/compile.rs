@@ -3,6 +3,7 @@
 
 use musa_score::diagnose::{Diagnostic, Severity};
 use musa_score::score::ScoreSnapshot;
+use std::sync::Arc;
 
 /// A source document to compile.
 pub struct SourceDocument {
@@ -94,7 +95,9 @@ pub enum DocumentKind {
 pub struct Compilation {
     kind: DocumentKind,
     snapshot: Option<ScoreSnapshot>,
-    studio: musa_dsp::StudioSpec,
+    studio: crate::studio_model::SurfaceStudio,
+    studio_source: Option<musa_calculus::CheckedSource>,
+    studio_spans: StudioSpans,
     machines: Vec<(String, musa_score::MachineSpec)>,
     diagnostics: Vec<Diagnostic>,
     identity: musa_events::SemanticHash,
@@ -114,7 +117,9 @@ impl Compilation {
         Self {
             kind: DocumentKind::Piece,
             snapshot,
-            studio: musa_dsp::StudioSpec::default(),
+            studio: crate::studio_model::SurfaceStudio::default(),
+            studio_source: None,
+            studio_spans: StudioSpans::default(),
             machines: Vec::new(),
             diagnostics,
             identity: musa_events::SemanticHash::default(),
@@ -144,6 +149,7 @@ impl Compilation {
             snapshot.remap_spans(&expansion.map);
         }
         self.studio.remap_spans(&expansion.map);
+        self.studio_spans.remap(&expansion.map);
         for decision in &mut self.decisions {
             decision.remap_spans(&expansion.map);
         }
@@ -179,8 +185,18 @@ impl Compilation {
         self.kind
     }
 
-    pub(crate) fn with_studio(mut self, studio: musa_dsp::StudioSpec) -> Self {
+    pub(crate) fn with_studio(mut self, studio: crate::studio_model::SurfaceStudio) -> Self {
         self.studio = studio;
+        self
+    }
+
+    pub(crate) fn with_studio_source(
+        mut self,
+        source: musa_calculus::CheckedSource,
+        spans: Vec<Option<musa_score::origin::SourceSpan>>,
+    ) -> Self {
+        self.studio_source = Some(source);
+        self.studio_spans = StudioSpans(spans.into());
         self
     }
 
@@ -253,19 +269,32 @@ impl Compilation {
         self.identity
     }
 
-    /// The compiled studio. Empty when the piece declares no `studio` block,
-    /// which is the zero-setup case: every part keeps the default instrument
-    /// (§14.8).
-    pub fn studio(&self) -> &musa_dsp::StudioSpec {
-        &self.studio
+    /// The exact checked source value denoted by the compatibility studio
+    /// spelling. This generic artifact is the production semantic handoff;
+    /// consumers decode their own read-only projection from it.
+    pub fn studio_source(&self) -> Option<&musa_calculus::CheckedSource> {
+        self.studio_source.as_ref()
+    }
+
+    /// Resolve one checked studio anchor into this compilation's source.
+    /// Forged or source-generated ordinals deliberately name no range.
+    #[must_use]
+    pub fn studio_span(&self, anchor: u64) -> Option<musa_score::origin::SourceSpan> {
+        self.studio_spans.resolve(anchor)
+    }
+
+    /// The immutable lineage table paired with [`Self::studio_source`].
+    #[must_use]
+    pub fn studio_spans(&self) -> &StudioSpans {
+        &self.studio_spans
     }
 
     /// The machine a name denotes, if this document names one
     /// (`docs/rules/across-stages/03-machine-calculus.md` §2).
     ///
     /// A [`musa_score::MachineSpec`] is immutable, flat, and exact, and it is the
-    /// only form a machine leaves the compiler in. Its named consumer is
-    /// `musa-dsp`, which prepares one into something that can be stepped.
+    /// only form a machine leaves the compiler in. Its audio consumer prepares
+    /// one into something that can be stepped.
     pub fn machine(&self, name: &str) -> Option<&musa_score::MachineSpec> {
         self.machines
             .iter()
@@ -293,13 +322,6 @@ impl Compilation {
         self.machines.iter().map(|(name, _)| name.as_str()).collect()
     }
 
-    /// The score and the studio together, consuming the compilation. They are
-    /// two documents produced by one pass (§10.6), and the callers that
-    /// render sound need both.
-    pub fn into_parts(self) -> (Option<ScoreSnapshot>, musa_dsp::StudioSpec) {
-        (self.snapshot, self.studio)
-    }
-
     /// The expanded score, if compilation succeeded.
     pub fn snapshot(&self) -> Option<&ScoreSnapshot> {
         self.snapshot.as_ref()
@@ -320,6 +342,27 @@ impl Compilation {
         self.diagnostics
             .iter()
             .any(|diagnostic| diagnostic.severity == Severity::Error)
+    }
+}
+
+/// Compiler-owned source lineage for ordinals embedded in a checked studio.
+///
+/// The table is immutable and has no public constructor: source declarations
+/// carry only stable ordinals, while the compiler remains the sole authority
+/// for mapping those ordinals back into the lossless input document.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct StudioSpans(Arc<[Option<musa_score::origin::SourceSpan>]>);
+
+impl StudioSpans {
+    fn remap(&mut self, map: &musa_score::origin::SourceMap) {
+        self.0 = self.0.iter().map(|span| map.maybe(*span)).collect();
+    }
+
+    /// Resolve one checked ordinal. Forged and source-generated ordinals name
+    /// no range.
+    #[must_use]
+    pub fn resolve(&self, anchor: u64) -> Option<musa_score::origin::SourceSpan> {
+        self.0.get(usize::try_from(anchor).ok()?).copied().flatten()
     }
 }
 

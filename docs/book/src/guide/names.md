@@ -273,6 +273,10 @@ generated reference read that checked source value, so names, documentation, and
 with a standard-library edition without acquiring a second authoritative Rust table. Native primitives still own only
 the runtime facts source cannot declare, joined by stable id and version.
 
+The compatibility studio spelling reaches `std::sound::production` next. That module applies source-owned defaults and
+builds the versioned checked production artifact; the DSP only decodes an exact read-only preparation projection from
+that artifact. The compiler therefore neither publishes a studio object model nor depends on the DSP crate.
+
 Instrument behavior follows the same ownership rule. `std::sound::instrument` declares typed signatures, indexed control
 requirements, technique fallbacks, and the standard instruments as ordinary Musa values. Its registered-machine
 components and graph-local parameter targets stay private to the declaring module; preparation receives their checked

@@ -7,7 +7,7 @@ use musa_compiler::{
 };
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, ScheduleLimits,
-    SchedulePolicy, prepare_execution,
+    SchedulePolicy, decode_studio_execution, prepare_execution,
 };
 use musa_playback::PreparedPlaybackPlan;
 use musa_score::{Tuning, lower_gestures};
@@ -28,6 +28,8 @@ pub(crate) fn source_plan(source: &str, tail_frames: u64) -> PreparedPlaybackPla
     let gestures = lower_gestures(score).expect("empty gesture track");
     let instruments = checked_standard_instruments().expect("standard instruments check");
     let instrument_machine = checked_standard_instrument_machine().expect("standard instrument machine checks");
+    let studio = decode_studio_execution(compilation.studio_source().expect("studio artifact checks"))
+        .expect("studio artifact decodes");
     let format = AudioFormat::new(
         std::num::NonZeroU32::new(RATE).expect("nonzero rate"),
         ChannelLayout::Stereo,
@@ -50,7 +52,7 @@ pub(crate) fn source_plan(source: &str, tail_frames: u64) -> PreparedPlaybackPla
         &gestures,
         &instruments,
         &instrument_machine,
-        compilation.studio(),
+        &studio,
         AudioOptions {
             format,
             schedule,

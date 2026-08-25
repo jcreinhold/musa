@@ -840,8 +840,19 @@ impl SourceReading {
     }
 }
 
-fn source_readings(artifacts: &[musa_calculus::CheckedSource]) -> Result<Vec<Vec<SourceReading>>, PerformanceError> {
-    artifacts.iter().map(source_lane).collect()
+fn source_readings(
+    artifacts: &[Vec<musa_calculus::CheckedSource>],
+) -> Result<Vec<Vec<SourceReading>>, PerformanceError> {
+    artifacts
+        .iter()
+        .map(|chunks| {
+            let mut lane = Vec::new();
+            for chunk in chunks {
+                lane.extend(source_lane(chunk)?);
+            }
+            Ok(lane)
+        })
+        .collect()
 }
 
 fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceReading>, PerformanceError> {
@@ -1263,7 +1274,7 @@ fn lower_gestures_with_source(
 /// mismatch, or an invalid exact track.
 pub fn lower_gestures_from_checked(
     score: &ScoreSnapshot,
-    artifacts: &[musa_calculus::CheckedSource],
+    artifacts: &[Vec<musa_calculus::CheckedSource>],
 ) -> Result<GesturePlan, PerformanceError> {
     let readings = source_readings(artifacts)?;
     lower_gestures_with_source(score, Some(readings))

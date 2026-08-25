@@ -73,11 +73,12 @@ description; the audio history is what stepping one produces, and is never a val
 instrument, and mix declarations remain independently editable source. One deep `prepare_audio` operation validates and
 binds them into an immutable plan; neither ordinary callers nor the real-time callback assemble these stages piecemeal.
 
-The present independent `PerformancePlan`/Rust `StudioSpec` handoff is a pre-cutover compatibility path with the wrong
-semantic owner and an insufficient contract: it turns profiles into a few floats before knowing the instrument, discards
-part identity at graph input, declares but ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as
-if it were musical control. Prompts 127–178 replace those debts. A rejected combined score-audio object would make
-notation edits mutate DSP state and would destroy independent export, caching, and UI projections.
+The former independent `PerformancePlan`/Rust `StudioSpec` handoff had the wrong semantic owner and an insufficient
+contract: it turned profiles into a few floats before knowing the instrument, discarded part identity at graph input,
+declared but ignored parameter events, and exposed graph-stage addressing as if it were musical control. The production
+handoff is now a versioned checked source value decoded into a read-only DSP preparation projection; the compiler has no
+DSP dependency. A rejected combined score-audio object would make notation edits mutate DSP state and would destroy
+independent export, caching, and UI projections.
 
 ## 2. Performance gestures
 

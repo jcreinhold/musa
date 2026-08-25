@@ -143,6 +143,7 @@ origin=part:1:cello:voice:0:lower:event:126:2207-2220:896-900:[MotifApplication 
 origin=part:1:cello:voice:0:lower:event:127:2207-2220:901-905:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
 lane=0:flute:64:1ffcd9e9c7057538638854be7c336e0f
 lane=1:cello:64:ba489bf44407a4a5e70e548939635207
+studio=bc20751a1d97b1001fc63be74a5e5dcd
 
 [fixture higher-order-shape]
 identity=7916d9f2ea98fb99c8de1dfc3b4e5b2c
@@ -277,6 +278,7 @@ origin=part:1:cello:voice:0:lower:event:126:485-496:262-266:[RepeatIteration(15)
 origin=part:1:cello:voice:0:lower:event:127:485-496:267-271:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
 lane=0:flute:64:63f587e4ee6767de6acda83e6fda1adc
 lane=1:cello:64:389cda6a9876068c68f951fa66653a50
+studio=bc20751a1d97b1001fc63be74a5e5dcd
 
 [fixture declaration-heavy]
 identity=2d218ab8d3ce6d82a87fc2583f1f7ded
@@ -359,6 +361,7 @@ origin=part:0:ensemble:voice:0:line:event:13:3425-3459:2659-2663:[MotifApplicati
 origin=part:0:ensemble:voice:0:line:event:14:3425-3459:2664-2668:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:15:3425-3459:2669-2673:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 lane=0:ensemble:16:e6b6af8334e004cbc723d4e354e4b76c
+studio=bc20751a1d97b1001fc63be74a5e5dcd
 
 [fixture audio-bridge]
 identity=9f670408d1267e94642131d9c0b777b1
@@ -373,17 +376,7 @@ origin=part:1:viola:voice:0:countermelody:event:6:803-816:803-816:[]
 origin=part:1:viola:voice:0:countermelody:event:7:817-821:817-821:[]
 lane=0:oboe:4:179aacf5ccd71c14bba78ca6bae7137c
 lane=1:viola:4:55aa243c87a9e12662be0c243160a1bd
-patch=reed:output=Some(1):oscillator:None:default:default:lowpass:None:1800Hz:7/10
-patch=bow:output=Some(1):oscillator:None:default:1/2:envelope:None:3/200s:default:default:3/10s
-bus=hall:["reverb"]
-assign=oboe->reed
-assign=viola->bow
-route=oboe->master
-route=viola->master
-route=hall->master
-send=oboe->hall:-18dB
-send=viola->hall:-20dB
-modulate=lfo->reed:1:cutoff
+studio=912bd4fcd81686df390458fba450c23b
 
 [backend mei]
 files=11

@@ -1,31 +1,18 @@
-//! Private graph-building projection used during native DSP preparation.
+//! Private CST-resolution records for the compatibility `studio` spelling.
 //!
-//! Ordinary declarations in `std::sound` own the language. These crate-private
-//! values reorganize one checked artifact for the existing graph flattener;
-//! callers cannot construct them and they carry no independent schema.
-//!
-//! ```text
-//! studio {
-//!     patch glass_pad {
-//!         carrier = oscillator(sine);
-//!         mix(carrier, shimmer) |> lowpass(cutoff: 1400 Hz) |> output;
-//!     }
-//!     assign violin -> glass_pad;
-//!     route violin -> master;
-//! }
-//! ```
-//!
-//! `StudioSpec` retains source-derived names and exact quantities until
-//! `studio.rs` lowers them into private graph indices and floating-point state.
+//! Written values retain units and source spans while the spelling is
+//! translated to ordinary `std::sound` constructors. None of these types cross
+//! the compiler facade or constitute a second sound-language API.
 
 use indexmap::IndexMap;
 use num_rational::Ratio;
 
 use musa_score::origin::SourceSpan;
 
-/// Preparation-side unit tag decoded from checked `SoundUnit` data.
+/// Unit token retained while a compatibility literal is printed as source.
+/// `std::sound::quantity::SoundUnit` remains authoritative.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Unit {
+pub(crate) enum SurfaceUnit {
     /// Hertz.
     Hz,
     /// Dimensionless ratio.
@@ -36,7 +23,7 @@ pub(crate) enum Unit {
     Seconds,
 }
 
-impl Unit {
+impl SurfaceUnit {
     /// How the unit is written in source, or `None` for a bare number.
     pub(crate) fn spelling(self) -> Option<&'static str> {
         match self {
@@ -48,65 +35,21 @@ impl Unit {
     }
 }
 
-/// Exact quantity in the private native-preparation shape.
+/// Exact compatibility literal retained only until checked-source construction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct WrittenQuantity {
+pub(crate) struct SurfaceQuantity {
     /// The exact magnitude, normalized to the unit's base (`ms` becomes
     /// seconds). Decimal syntax denotes its decimal rational exactly.
     pub(crate) magnitude: Ratio<i64>,
     /// The dimension it carries.
-    pub(crate) unit: Unit,
+    pub(crate) unit: SurfaceUnit,
 }
 
-impl WrittenQuantity {
+impl SurfaceQuantity {
     /// Construct an exact normalized quantity.
-    pub(crate) const fn new(magnitude: Ratio<i64>, unit: Unit) -> Self {
+    pub(crate) const fn new(magnitude: Ratio<i64>, unit: SurfaceUnit) -> Self {
         Self { magnitude, unit }
     }
-}
-
-/// Write an exact catalogue quantity without introducing a floating value.
-/// Terminating rationals use decimal notation; the rest use `numerator/denominator`.
-pub(crate) fn written_ratio(value: Ratio<i64>) -> String {
-    let denominator = *value.denom();
-    let mut reduced = denominator;
-    while reduced % 2 == 0 {
-        reduced /= 2;
-    }
-    while reduced % 5 == 0 {
-        reduced /= 5;
-    }
-    if reduced != 1 {
-        return value.to_string();
-    }
-    let numerator = i128::from(*value.numer());
-    let denominator = i128::from(denominator);
-    let negative = numerator < 0;
-    let numerator = numerator.abs();
-    let Some(whole) = numerator.checked_div(denominator) else {
-        return value.to_string();
-    };
-    let Some(mut remainder) = numerator.checked_rem(denominator) else {
-        return value.to_string();
-    };
-    if remainder == 0 {
-        return format!("{}{whole}", if negative { "-" } else { "" });
-    }
-    let mut fraction = String::new();
-    while remainder != 0 {
-        let Some(scaled) = remainder.checked_mul(10) else {
-            return value.to_string();
-        };
-        let Some(digit) = scaled.checked_div(denominator) else {
-            return value.to_string();
-        };
-        fraction.push(char::from_digit(u32::try_from(digit).unwrap_or(0), 10).unwrap_or('0'));
-        let Some(next) = scaled.checked_rem(denominator) else {
-            return value.to_string();
-        };
-        remainder = next;
-    }
-    format!("{}{}.{}", if negative { "-" } else { "" }, whole, fraction)
 }
 
 /// A processor the studio language can name.
@@ -114,7 +57,7 @@ pub(crate) fn written_ratio(value: Ratio<i64>) -> String {
 /// Deliberately a closed set: §7.2 forbids raw backend escapes, so a patch
 /// can only say things the compiler understands and can check.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Processor {
+pub(crate) enum SurfaceProcessor {
     /// `oscillator(sine, frequency: 220 Hz)`
     Oscillator,
     /// `gain(-15 dB)`
@@ -145,33 +88,33 @@ pub(crate) enum Processor {
 
 /// One declared parameter of a processor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct ParamSpec {
+pub(crate) struct SurfaceParam {
     /// The name it is written with.
     pub(crate) name: &'static str,
     /// Stable private render-graph key. Usually the public name; filter
     /// `resonance` deliberately maps to the conventional DSP key `q`.
     pub(crate) dsp_name: &'static str,
     /// Removed or historical spellings, for diagnostics only. These are not
-    /// accepted by [`Processor::param`].
+    /// accepted by [`SurfaceProcessor::param`].
     pub(crate) former_names: &'static [&'static str],
     /// Plain musician-facing description.
     pub(crate) summary: &'static str,
     /// The unit it must be written in.
-    pub(crate) unit: Unit,
+    pub(crate) unit: SurfaceUnit,
     /// Its value when the patch does not say.
     pub(crate) default: Ratio<i64>,
     /// The range a control may write, in the unit above — a decibel gain runs
     /// from −60 to +12, not from 0 to 1.
     ///
     /// This is the *writable* range, which is not the DSP's clamp: a graph
-    /// parameter's descriptor in `musa-dsp` bounds what the processor will
+    /// parameter's private preparation descriptor bounds what the processor will
     /// accept in linear terms, and this bounds what a composer means by
     /// turning a knob all the way up. They answer different questions, and a
     /// slider needs this one.
     pub(crate) range: (Ratio<i64>, Ratio<i64>),
 }
 
-impl Processor {
+impl SurfaceProcessor {
     /// The processor a written name denotes.
     pub(crate) fn from_name(name: &str) -> Option<Self> {
         match name {
@@ -219,17 +162,17 @@ impl Processor {
     /// target's, and today the only target anyone modulates is a cutoff.
     /// Inferring the unit from the target is a change to the unit system, not
     /// to these tables, and it waits for a second target to justify it.
-    pub(crate) const fn params(self) -> &'static [ParamSpec] {
+    pub(crate) const fn params(self) -> &'static [SurfaceParam] {
         const fn spec(
             name: &'static str,
             dsp_name: &'static str,
             former_names: &'static [&'static str],
-            unit: Unit,
+            unit: SurfaceUnit,
             default: Ratio<i64>,
             range: (Ratio<i64>, Ratio<i64>),
             summary: &'static str,
-        ) -> ParamSpec {
-            ParamSpec {
+        ) -> SurfaceParam {
+            SurfaceParam {
                 name,
                 dsp_name,
                 former_names,
@@ -242,12 +185,12 @@ impl Processor {
         const fn r(numerator: i64, denominator: i64) -> Ratio<i64> {
             Ratio::new_raw(numerator, denominator)
         }
-        const OSCILLATOR: &[ParamSpec] = &[
+        const OSCILLATOR: &[SurfaceParam] = &[
             spec(
                 "frequency",
                 "frequency",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(1, 1),
                 (r(0, 1), r(200, 1)),
                 "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
@@ -256,29 +199,29 @@ impl Processor {
                 "ratio",
                 "ratio",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1, 1),
                 (r(1, 4), r(16, 1)),
                 "Scales the pitch supplied by the score.",
             ),
         ];
-        const GAIN: &[ParamSpec] = &[spec(
+        const GAIN: &[SurfaceParam] = &[spec(
             "gain",
             "gain",
             &[],
-            Unit::Decibels,
+            SurfaceUnit::Decibels,
             r(0, 1),
             (r(-60, 1), r(12, 1)),
             "Sets level in decibels.",
         )];
         // Written defaults are the built-in voice envelope, so `envelope()`
         // with nothing said is not a different sound from saying nothing.
-        const ENVELOPE: &[ParamSpec] = &[
+        const ENVELOPE: &[SurfaceParam] = &[
             spec(
                 "attack",
                 "attack",
                 &[],
-                Unit::Seconds,
+                SurfaceUnit::Seconds,
                 r(1, 200),
                 (r(0, 1), r(5, 1)),
                 "Sets the rise time after a note begins.",
@@ -287,7 +230,7 @@ impl Processor {
                 "decay",
                 "decay",
                 &[],
-                Unit::Seconds,
+                SurfaceUnit::Seconds,
                 r(0, 1),
                 (r(0, 1), r(10, 1)),
                 "Sets the time to reach the sustain level.",
@@ -296,7 +239,7 @@ impl Processor {
                 "sustain",
                 "sustain",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1, 1),
                 (r(0, 1), r(1, 1)),
                 "Sets the held level while a note continues.",
@@ -305,18 +248,18 @@ impl Processor {
                 "release",
                 "release",
                 &[],
-                Unit::Seconds,
+                SurfaceUnit::Seconds,
                 r(1, 20),
                 (r(0, 1), r(10, 1)),
                 "Sets the fade time after a note ends.",
             ),
         ];
-        const LOWPASS: &[ParamSpec] = &[
+        const LOWPASS: &[SurfaceParam] = &[
             spec(
                 "cutoff",
                 "cutoff",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(20_000, 1),
                 (r(20, 1), r(20_000, 1)),
                 "Sets the boundary frequency.",
@@ -325,18 +268,18 @@ impl Processor {
                 "resonance",
                 "q",
                 &["q"],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1_767_766_952_966_369, 2_500_000_000_000_000),
                 (r(1, 10), r(20, 1)),
                 "Emphasizes the cutoff, conventionally represented by quality factor Q.",
             ),
         ];
-        const HIGHPASS: &[ParamSpec] = &[
+        const HIGHPASS: &[SurfaceParam] = &[
             spec(
                 "cutoff",
                 "cutoff",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(20, 1),
                 (r(20, 1), r(20_000, 1)),
                 "Sets the boundary frequency.",
@@ -345,18 +288,18 @@ impl Processor {
                 "resonance",
                 "q",
                 &["q"],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1_767_766_952_966_369, 2_500_000_000_000_000),
                 (r(1, 10), r(20, 1)),
                 "Emphasizes the cutoff, conventionally represented by quality factor Q.",
             ),
         ];
-        const REVERB: &[ParamSpec] = &[
+        const REVERB: &[SurfaceParam] = &[
             spec(
                 "room",
                 "room",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1, 2),
                 (r(0, 1), r(1, 1)),
                 "Sets the apparent room size.",
@@ -365,7 +308,7 @@ impl Processor {
                 "damping",
                 "damping",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1, 2),
                 (r(0, 1), r(1, 1)),
                 "Controls high-frequency absorption.",
@@ -374,7 +317,7 @@ impl Processor {
                 "mix",
                 "mix",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(1, 1),
                 (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
@@ -384,12 +327,12 @@ impl Processor {
         // untouched, 1 is the effect alone. A delay's `time` is bounded by
         // the line the DSP preallocates (2 s), and a chorus's `depth` by what
         // a chorus is — a few milliseconds of wobble, not a second one.
-        const DELAY: &[ParamSpec] = &[
+        const DELAY: &[SurfaceParam] = &[
             spec(
                 "time",
                 "time",
                 &[],
-                Unit::Seconds,
+                SurfaceUnit::Seconds,
                 r(1, 4),
                 (r(0, 1), r(2, 1)),
                 "Sets the interval before each repeat.",
@@ -398,7 +341,7 @@ impl Processor {
                 "feedback",
                 "feedback",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(3, 10),
                 (r(0, 1), r(19, 20)),
                 "Sets how much delayed sound repeats.",
@@ -407,18 +350,18 @@ impl Processor {
                 "mix",
                 "mix",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(3, 10),
                 (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
             ),
         ];
-        const CHORUS: &[ParamSpec] = &[
+        const CHORUS: &[SurfaceParam] = &[
             spec(
                 "rate",
                 "rate",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(3, 5),
                 (r(0, 1), r(20, 1)),
                 "Sets how quickly the doubled voice moves.",
@@ -427,7 +370,7 @@ impl Processor {
                 "depth",
                 "depth",
                 &[],
-                Unit::Seconds,
+                SurfaceUnit::Seconds,
                 r(1, 250),
                 (r(0, 1), r(1, 100)),
                 "Sets the maximum delay variation.",
@@ -436,36 +379,36 @@ impl Processor {
                 "mix",
                 "mix",
                 &[],
-                Unit::Linear,
+                SurfaceUnit::Linear,
                 r(2, 5),
                 (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
             ),
         ];
-        const SCALE: &[ParamSpec] = &[spec(
+        const SCALE: &[SurfaceParam] = &[spec(
             "factor",
             "factor",
             &[],
-            Unit::Hz,
+            SurfaceUnit::Hz,
             r(1, 1),
             (r(0, 1), r(20_000, 1)),
             "Multiplies each control value.",
         )];
-        const BIAS: &[ParamSpec] = &[spec(
+        const BIAS: &[SurfaceParam] = &[spec(
             "offset",
             "offset",
             &[],
-            Unit::Hz,
+            SurfaceUnit::Hz,
             r(0, 1),
             (r(0, 1), r(20_000, 1)),
             "Adds to each control value.",
         )];
-        const CLAMP: &[ParamSpec] = &[
+        const CLAMP: &[SurfaceParam] = &[
             spec(
                 "min",
                 "min",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(0, 1),
                 (r(0, 1), r(20_000, 1)),
                 "Sets the lowest output value.",
@@ -474,17 +417,17 @@ impl Processor {
                 "max",
                 "max",
                 &[],
-                Unit::Hz,
+                SurfaceUnit::Hz,
                 r(20_000, 1),
                 (r(0, 1), r(20_000, 1)),
                 "Sets the highest output value.",
             ),
         ];
-        const SMOOTHING: &[ParamSpec] = &[spec(
+        const SMOOTHING: &[SurfaceParam] = &[spec(
             "time",
             "time",
             &[],
-            Unit::Seconds,
+            SurfaceUnit::Seconds,
             r(1, 50),
             (r(0, 1), r(1, 1)),
             "Sets how quickly the control catches its target.",
@@ -507,24 +450,24 @@ impl Processor {
     }
 
     /// A named parameter's declaration.
-    pub(crate) fn param(self, name: &str) -> Option<ParamSpec> {
+    pub(crate) fn param(self, name: &str) -> Option<SurfaceParam> {
         self.params().iter().copied().find(|param| param.name == name)
     }
 }
 
 /// A node's index within its patch.
-pub(crate) type NodeIndex = usize;
+pub(crate) type SurfaceNodeIndex = usize;
 
 /// One processor instance inside a patch.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct StudioNode {
+pub(crate) struct SurfaceNode {
     /// What it runs.
-    pub(crate) processor: Processor,
+    pub(crate) processor: SurfaceProcessor,
     /// The name it was bound to, if it was written as `name = ...`. This is
     /// what a `modulate` path addresses.
     pub(crate) label: Option<String>,
     /// Resolved parameter values, in the processor's declaration order.
-    pub(crate) params: Vec<Option<WrittenQuantity>>,
+    pub(crate) params: Vec<Option<SurfaceQuantity>>,
     /// Where each parameter's *written* value is, parallel to `params`, and
     /// `None` for a parameter the patch left to its default.
     ///
@@ -537,62 +480,67 @@ pub(crate) struct StudioNode {
     /// wrote can be *added* rather than only changed.
     pub(crate) span: Option<SourceSpan>,
     /// The nodes feeding it, in argument order.
-    pub(crate) inputs: Vec<NodeIndex>,
+    pub(crate) inputs: Vec<SurfaceNodeIndex>,
 }
 
 /// A patch or a bus: a graph of nodes with one designated output.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Patch {
-    nodes: Vec<StudioNode>,
-    output: Option<NodeIndex>,
+pub(crate) struct SurfaceGraph {
+    nodes: Vec<SurfaceNode>,
+    output: Option<SurfaceNodeIndex>,
 }
 
-impl Patch {
+impl SurfaceGraph {
     /// Its nodes, in creation order.
-    pub(crate) fn nodes(&self) -> &[StudioNode] {
+    pub(crate) fn nodes(&self) -> &[SurfaceNode] {
         &self.nodes
     }
 
     /// The node whose signal leaves the patch.
-    pub(crate) fn output(&self) -> Option<NodeIndex> {
+    pub(crate) fn output(&self) -> Option<SurfaceNodeIndex> {
         self.output
     }
 
     #[doc(hidden)]
-    pub(crate) fn push(&mut self, node: StudioNode) -> NodeIndex {
+    pub(crate) fn push(&mut self, node: SurfaceNode) -> SurfaceNodeIndex {
         self.nodes.push(node);
         self.nodes.len().saturating_sub(1)
     }
 
     #[doc(hidden)]
-    pub(crate) fn set_output(&mut self, node: NodeIndex) {
+    pub(crate) fn set_output(&mut self, node: SurfaceNodeIndex) {
         self.output = Some(node);
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn nodes_mut(&mut self) -> &mut Vec<SurfaceNode> {
+        &mut self.nodes
     }
 }
 
 /// `modulate lfo -> glass_pad.lowpass.cutoff;` — a typed control connection
 /// (§13.7), resolved to the node it addresses.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Modulation {
+pub(crate) struct SurfaceModulation {
     /// The modulating signal's name.
     pub(crate) source: String,
     /// The patch owning the modulated node.
     pub(crate) patch: String,
     /// Which node in that patch.
-    pub(crate) node: NodeIndex,
+    pub(crate) node: SurfaceNodeIndex,
     /// Which of its parameters.
     pub(crate) param: &'static str,
 }
 
 /// `send violin -> hall at -18 dB;`
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Send {
+pub(crate) struct SurfaceSend {
     /// The part or bus sending.
     pub(crate) source: String,
     /// The bus receiving.
     pub(crate) bus: String,
     /// How much of the signal is sent.
-    pub(crate) level: WrittenQuantity,
+    pub(crate) level: SurfaceQuantity,
     /// Where the level was written, for an editor that rewrites it.
     pub(crate) level_span: Option<SourceSpan>,
     /// The complete statement, retained for binding diagnostics.
@@ -601,7 +549,7 @@ pub(crate) struct Send {
 
 /// `assign violin -> glass_pad;` — which patch realizes a part.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Assignment {
+pub(crate) struct SurfaceAssignment {
     /// The patch the part is realized by.
     pub(crate) patch: String,
     /// Where the patch *name* was written, so pointing a part at a different
@@ -611,7 +559,7 @@ pub(crate) struct Assignment {
 
 /// `route violin -> master;`
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Route {
+pub(crate) struct SurfaceRoute {
     /// The part or bus whose output is routed.
     pub(crate) source: String,
     /// Where it goes: a bus name, or `master`.
@@ -623,50 +571,66 @@ pub(crate) struct Route {
 /// The compiled studio: everything a graph builder needs, with every name
 /// already resolved (§10.6).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct StudioSpec {
-    patches: IndexMap<String, Patch>,
-    buses: IndexMap<String, Patch>,
-    signals: IndexMap<String, Patch>,
-    assignments: IndexMap<String, Assignment>,
-    routes: Vec<Route>,
-    sends: Vec<Send>,
-    modulations: Vec<Modulation>,
+pub(crate) struct SurfaceStudio {
+    patches: IndexMap<String, SurfaceGraph>,
+    buses: IndexMap<String, SurfaceGraph>,
+    signals: IndexMap<String, SurfaceGraph>,
+    assignments: IndexMap<String, SurfaceAssignment>,
+    routes: Vec<SurfaceRoute>,
+    sends: Vec<SurfaceSend>,
+    modulations: Vec<SurfaceModulation>,
     span: Option<SourceSpan>,
 }
 
-impl StudioSpec {
-    /// Whether the piece declared no studio at all, in which case the default
-    /// instrument graph applies to everything (§14.8).
-    pub(crate) fn is_empty(&self) -> bool {
-        self.patches.is_empty() && self.buses.is_empty() && self.assignments.is_empty()
+impl SurfaceStudio {
+    /// Move every place this spec points at back into the composer's own text
+    /// (`crate::expand`).
+    #[doc(hidden)]
+    pub(crate) fn remap_spans(&mut self, map: &musa_score::origin::SourceMap) {
+        self.span = map.maybe(self.span);
+        for patch in self
+            .patches
+            .values_mut()
+            .chain(self.buses.values_mut())
+            .chain(self.signals.values_mut())
+        {
+            for node in &mut patch.nodes {
+                node.span = map.maybe(node.span);
+                for span in &mut node.param_spans {
+                    *span = map.maybe(*span);
+                }
+            }
+        }
+        for assignment in self.assignments.values_mut() {
+            assignment.patch_span = map.maybe(assignment.patch_span);
+        }
+        for send in &mut self.sends {
+            send.level_span = map.maybe(send.level_span);
+            send.span = map.maybe(send.span);
+        }
+        for route in &mut self.routes {
+            route.span = map.maybe(route.span);
+        }
     }
 
     /// A patch by name.
-    pub(crate) fn patch(&self, name: &str) -> Option<&Patch> {
+    pub(crate) fn patch(&self, name: &str) -> Option<&SurfaceGraph> {
         self.patches.get(name)
     }
 
     /// The declared patches, in source order.
-    pub(crate) fn patches(&self) -> impl Iterator<Item = (&str, &Patch)> {
+    pub(crate) fn patches(&self) -> impl Iterator<Item = (&str, &SurfaceGraph)> {
         self.patches.iter().map(|(name, patch)| (name.as_str(), patch))
     }
 
     /// The declared buses, in source order.
-    pub(crate) fn buses(&self) -> impl Iterator<Item = (&str, &Patch)> {
+    pub(crate) fn buses(&self) -> impl Iterator<Item = (&str, &SurfaceGraph)> {
         self.buses.iter().map(|(name, bus)| (name.as_str(), bus))
     }
 
     /// The top-level named signals (modulation sources), in source order.
-    pub(crate) fn signals(&self) -> impl Iterator<Item = (&str, &Patch)> {
+    pub(crate) fn signals(&self) -> impl Iterator<Item = (&str, &SurfaceGraph)> {
         self.signals.iter().map(|(name, signal)| (name.as_str(), signal))
-    }
-
-    /// Which patch realizes a part, if the studio says.
-    ///
-    /// A part the studio does not mention keeps the default instrument: a
-    /// partial `studio` block must not silence the rest of the piece (§14.8).
-    pub(crate) fn patch_for_part(&self, part: &str) -> Option<&str> {
-        self.assignments.get(part).map(|assignment| assignment.patch.as_str())
     }
 
     /// The part→patch assignments, in source order.
@@ -676,58 +640,93 @@ impl StudioSpec {
             .map(|(part, assignment)| (part.as_str(), assignment.patch.as_str()))
     }
 
+    /// One part's assignment, with the span an editor would rewrite to point
+    /// it at a different patch (§11's `AssignPatch`).
+    pub(crate) fn assignment(&self, part: &str) -> Option<&SurfaceAssignment> {
+        self.assignments.get(part)
+    }
+
     /// The declared routes, in source order.
-    pub(crate) fn routes(&self) -> &[Route] {
+    pub(crate) fn routes(&self) -> &[SurfaceRoute] {
         &self.routes
     }
 
     /// The declared sends, in source order.
-    pub(crate) fn sends(&self) -> &[Send] {
+    pub(crate) fn sends(&self) -> &[SurfaceSend] {
         &self.sends
     }
 
     /// The declared modulation connections, in source order.
-    pub(crate) fn modulations(&self) -> &[Modulation] {
+    pub(crate) fn modulations(&self) -> &[SurfaceModulation] {
         &self.modulations
     }
 
+    /// The `studio { … }` block itself, when the piece declared one. An
+    /// editor that has to *add* a statement — assigning a part that no
+    /// `assign` mentions — writes it inside this range.
+    pub(crate) fn span(&self) -> Option<SourceSpan> {
+        self.span
+    }
+
     #[doc(hidden)]
-    pub(crate) fn insert_patch(&mut self, name: String, patch: Patch) -> bool {
+    pub(crate) fn set_span(&mut self, span: Option<SourceSpan>) {
+        self.span = span;
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn insert_patch(&mut self, name: String, patch: SurfaceGraph) -> bool {
         self.patches.insert(name, patch).is_none()
     }
 
     #[doc(hidden)]
-    pub(crate) fn insert_bus(&mut self, name: String, bus: Patch) -> bool {
+    pub(crate) fn insert_bus(&mut self, name: String, bus: SurfaceGraph) -> bool {
         self.buses.insert(name, bus).is_none()
     }
 
     #[doc(hidden)]
-    pub(crate) fn insert_signal(&mut self, name: String, signal: Patch) -> bool {
+    pub(crate) fn insert_signal(&mut self, name: String, signal: SurfaceGraph) -> bool {
         self.signals.insert(name, signal).is_none()
     }
 
     #[doc(hidden)]
-    pub(crate) fn assign(&mut self, part: String, assignment: Assignment) {
+    pub(crate) fn assign(&mut self, part: String, assignment: SurfaceAssignment) {
         self.assignments.insert(part, assignment);
     }
 
     #[doc(hidden)]
-    pub(crate) fn push_route(&mut self, route: Route) {
+    pub(crate) fn push_route(&mut self, route: SurfaceRoute) {
         self.routes.push(route);
     }
 
     #[doc(hidden)]
-    pub(crate) fn push_send(&mut self, send: Send) {
+    pub(crate) fn push_send(&mut self, send: SurfaceSend) {
         self.sends.push(send);
     }
 
     #[doc(hidden)]
-    pub(crate) fn push_modulation(&mut self, modulation: Modulation) {
+    pub(crate) fn push_modulation(&mut self, modulation: SurfaceModulation) {
         self.modulations.push(modulation);
+    }
+
+    /// Whether a name denotes something signal-shaped: a bus, or a part that
+    /// has been assigned a patch. Used to check `route` and `send` sources.
+    #[doc(hidden)]
+    pub(crate) fn is_routable(&self, name: &str) -> bool {
+        self.buses.contains_key(name) || self.assignments.contains_key(name)
     }
 
     #[doc(hidden)]
     pub(crate) fn has_bus(&self, name: &str) -> bool {
         self.buses.contains_key(name)
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn has_patch(&self, name: &str) -> bool {
+        self.patches.contains_key(name)
+    }
+
+    #[doc(hidden)]
+    pub(crate) fn has_signal(&self, name: &str) -> bool {
+        self.signals.contains_key(name)
     }
 }

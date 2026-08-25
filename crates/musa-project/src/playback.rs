@@ -5,8 +5,6 @@
 //! single preparation; [`prepare`] hands it to the engine and [`to_wav`]
 //! runs it offline.
 
-use musa_dsp::StudioSpec;
-
 use musa_compiler::lower_gestures;
 use musa_playback::PreparedPlaybackPlan;
 use musa_score::{PerformanceOptions, ScoreSnapshot};
@@ -19,7 +17,7 @@ pub(crate) fn sample_rate() -> u32 {
 }
 
 /// Exact gesture lowering → checked scheduling → prepared audio machine.
-fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::PreparedAudio, ProjectError> {
+fn build(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<musa_dsp::PreparedAudio, ProjectError> {
     let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let instruments = musa_compiler::checked_standard_instruments()
         .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
@@ -79,7 +77,10 @@ fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::Prepare
 ///
 /// # Errors
 /// [`ProjectError::Performance`] if lowering or audio preparation fails.
-pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<PreparedPlaybackPlan, ProjectError> {
+pub(crate) fn prepare(
+    score: &ScoreSnapshot,
+    studio: &musa_dsp::StudioExecution,
+) -> Result<PreparedPlaybackPlan, ProjectError> {
     Ok(PreparedPlaybackPlan::new(build(score, studio)?))
 }
 
@@ -88,7 +89,7 @@ pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Prep
 /// # Errors
 /// [`ProjectError::Performance`] if lowering, audio preparation, or WAV
 /// encoding fails.
-pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u8>, ProjectError> {
+pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<Vec<u8>, ProjectError> {
     let mut prepared = build(score, studio)?;
     let audio = musa_dsp::render_offline(&mut prepared);
     wav_bytes(&audio)

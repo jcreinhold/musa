@@ -1,7 +1,7 @@
 //! Exact performed-gesture observations shared by compiler tests.
 //!
 //! This deliberately stops before frames. Checked scheduling is exercised in
-//! `musa-dsp`; compiler laws inspect the exact value handed to that stage.
+//! the audio consumer; compiler laws inspect the exact value handed to that stage.
 
 #![expect(
     clippy::expect_used,

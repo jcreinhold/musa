@@ -92,9 +92,9 @@ fn at_studio_catalogue(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
             processor.name(),
             parameter.summary(),
             parameter.default().unit().spelling().unwrap_or("Ratio"),
-            musa_dsp::written_ratio(*parameter.default().magnitude()),
-            musa_dsp::written_ratio(*parameter.minimum().magnitude()),
-            musa_dsp::written_ratio(*parameter.maximum().magnitude()),
+            musa_project::format_studio_ratio(*parameter.default().magnitude()),
+            musa_project::format_studio_ratio(*parameter.minimum().magnitude()),
+            musa_project::format_studio_ratio(*parameter.maximum().magnitude()),
         )
     };
     let range = token.text_range();
@@ -155,9 +155,9 @@ fn parameters_markdown(params: &[musa_dsp::StudioParameterContract]) -> String {
                 param.name(),
                 param.summary(),
                 param.default().unit().spelling().unwrap_or("Ratio"),
-                musa_dsp::written_ratio(*param.default().magnitude()),
-                musa_dsp::written_ratio(*param.minimum().magnitude()),
-                musa_dsp::written_ratio(*param.maximum().magnitude())
+                musa_project::format_studio_ratio(*param.default().magnitude()),
+                musa_project::format_studio_ratio(*param.minimum().magnitude()),
+                musa_project::format_studio_ratio(*param.maximum().magnitude())
             )
         })
         .collect::<Vec<_>>()

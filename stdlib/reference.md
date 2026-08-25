@@ -381,6 +381,38 @@ searches the filesystem.
 - `record InstrumentExecutionArtifact: Type` — This root is the only route from a private body to host preparation. It is produced and checked as one source value; no Rust instrument schema can independently construct or amend it.
 - `let standard_instruments: InstrumentExecutionArtifact` — Versioned checked standard instrument declarations and private machines.
 
+## `std::sound::production`
+
+- `record StudioNode: Type` — One resolved processor node in a patch, bus, or control signal.
+- `record StudioGraph: Type` — One named finite processor graph and its designated output node.
+- `record StudioAssignment: Type` — One part-to-instrument assignment.
+- `record StudioSend: Type` — One exact-decibel send.
+- `record StudioRoute: Type` — One explicit route to a bus or the master output.
+- `record StudioModulation: Type` — One control-signal binding to a resolved private stage parameter.
+- `record StudioExecutionArtifact: Type` — The complete exact production studio crossing the checked-source boundary.
+- `fn frequency(value: Ratio) -> SoundQuantity(Frequency)` — Lift an exact ratio into the frequency dimension.
+- `fn level(value: Ratio) -> SoundQuantity(Level)` — Lift an exact ratio into the level dimension.
+- `fn time(value: Ratio) -> SoundQuantity(Time)` — Lift an exact ratio into the time dimension.
+- `fn frequency_or(value: Option(SoundQuantity(Frequency)), fallback: SoundQuantity(Frequency)) -> SoundQuantity(Frequency)` — Select a supplied frequency or its source-owned fallback.
+- `fn linear_or(value: Option(SoundQuantity(LinearAmplitude)), fallback: SoundQuantity(LinearAmplitude)) -> SoundQuantity(LinearAmplitude)` — Select a supplied linear amplitude or its source-owned fallback.
+- `fn level_or(value: Option(SoundQuantity(Level)), fallback: SoundQuantity(Level)) -> SoundQuantity(Level)` — Select a supplied level or its source-owned fallback.
+- `fn time_or(value: Option(SoundQuantity(Time)), fallback: SoundQuantity(Time)) -> SoundQuantity(Time)` — Select a supplied time or its source-owned fallback.
+- `fn studio_oscillator(frequency_value: Option(SoundQuantity(Frequency)), ratio: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct an oscillator, applying edition-one source defaults.
+- `fn studio_gain(gain: Option(SoundQuantity(Level))) -> StudioProcessor` — Construct a gain stage, applying its source default.
+- `fn studio_mix() -> StudioProcessor` — Construct the signal mixer.
+- `fn studio_envelope(attack: Option(SoundQuantity(Time)), decay: Option(SoundQuantity(Time)), sustain: Option(SoundQuantity(LinearAmplitude)), release: Option(SoundQuantity(Time))) -> StudioProcessor` — Construct a voice envelope, applying edition-one source defaults.
+- `fn default_resonance() -> SoundQuantity(LinearAmplitude)` — The exact Butterworth resonance used by both filter constructors.
+- `fn studio_lowpass(cutoff: Option(SoundQuantity(Frequency)), resonance: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct a low-pass stage, applying source defaults.
+- `fn studio_highpass(cutoff: Option(SoundQuantity(Frequency)), resonance: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct a high-pass stage, applying source defaults.
+- `fn studio_reverb(room: Option(SoundQuantity(LinearAmplitude)), damping: Option(SoundQuantity(LinearAmplitude)), mix: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct a reverb stage, applying source defaults.
+- `fn studio_delay(delay_time: Option(SoundQuantity(Time)), feedback: Option(SoundQuantity(LinearAmplitude)), mix: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct a delay stage, applying source defaults.
+- `fn studio_chorus(rate: Option(SoundQuantity(Frequency)), depth: Option(SoundQuantity(Time)), mix: Option(SoundQuantity(LinearAmplitude))) -> StudioProcessor` — Construct a chorus stage, applying source defaults.
+- `fn studio_scale(factor: Option(SoundQuantity(Frequency))) -> StudioProcessor` — Construct a control scale stage, applying its source default.
+- `fn studio_bias(offset: Option(SoundQuantity(Frequency))) -> StudioProcessor` — Construct a control bias stage, applying its source default.
+- `fn studio_clamp(minimum: Option(SoundQuantity(Frequency)), maximum: Option(SoundQuantity(Frequency))) -> StudioProcessor` — Construct a control clamp stage, applying source defaults.
+- `fn studio_smoothing(smoothing_time: Option(SoundQuantity(Time))) -> StudioProcessor` — Construct a smoothing stage, applying its source default.
+- `let empty_studio: StudioExecutionArtifact` — The source-owned zero-setup studio value.
+
 ## `std::sound::quantity`
 
 - `record ExactQuantityArtifact: Type` — The versioned checked-artifact root consumed at the DSP boundary.

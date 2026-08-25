@@ -15,8 +15,8 @@
 // Sample arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
+use crate::intent::Processor;
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_dsp::Processor;
 use musa_dsp::testing::{
     Combination, FilterKind, GraphOptions, ProcessorSpec, StudioGraphSpec, Unit, Waveform, lower_studio, prepare_graph,
 };
@@ -375,7 +375,7 @@ fn the_roadmap_studio_renders() {
         &CompileOptions::default(),
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
-    let studio = compilation.into_parts().1;
+    let studio = super::audio_support::studio(&compilation);
     let (_, lowering) = lower_studio(&studio, &OPTIONS);
     assert!(
         (lowering.release_tail - 3.5).abs() < 1e-6,

@@ -115,7 +115,7 @@ piece "Checked custom controls" {{ meter 4/4; key c major; score {{ part proof {
         ),
     )
     .map_err(|diagnostics| format!("custom source controls should check: {diagnostics:#?}"))?;
-    let gestures = musa_score::lower_gestures_from_checked(&score, &[artifact])
+    let gestures = musa_score::lower_gestures_from_checked(&score, &[vec![artifact]])
         .map_err(|diagnostics| format!("checked controls should lower: {diagnostics:#?}"))?;
     let mut audio = prepare_gestures(&gestures, &studio, options(frames as u64)).map_err(|error| error.to_string())?;
     let mut output = vec![0.0; frames * 2];

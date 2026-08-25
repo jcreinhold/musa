@@ -119,7 +119,7 @@ pub struct ProjectSession {
 #[derive(Debug, PartialEq)]
 struct InstalledPlan {
     music: musa_compiler::SemanticHash,
-    studio: musa_dsp::StudioSpec,
+    studio: musa_dsp::StudioExecution,
 }
 
 /// One state of the document.
@@ -465,7 +465,7 @@ impl ProjectSession {
             ExportRequest::Mei => Ok(ExportArtifact::text(valid.mei.clone()).warn(valid.mei_warnings.clone())),
             ExportRequest::LilyPond => Ok(render_notation(score, musa_notation::NotationTarget::LilyPond)?),
             ExportRequest::MusicXml => Ok(render_notation(score, musa_notation::NotationTarget::MusicXml)?),
-            ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio)?)),
+            ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio_execution)?)),
             ExportRequest::Midi(mode) => {
                 let (bytes, warnings) = playback::to_midi(score, mode)?;
                 Ok(ExportArtifact::bytes(bytes).warn(warnings))
@@ -794,8 +794,8 @@ impl ProjectSession {
     /// Resolve a studio edit and apply it under the same transaction a score
     /// edit gets: a knob that produced an uncompilable patch changes nothing.
     fn edit_studio(&mut self, edit: &crate::studio::StudioEdit) -> Result<ProjectUpdate, ProjectError> {
-        let studio = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.studio;
-        let edits = crate::studio::edits_for(studio, &self.source, edit)?;
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let edits = crate::studio::edits_for(&valid.studio_execution, &valid.studio_spans, &self.source, edit)?;
         let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
         let candidate = musa_syntax::apply_edits(&self.source, &edits);
         if let Some(reason) = self.first_error(&candidate) {
@@ -1003,10 +1003,18 @@ impl ProjectSession {
         } else {
             compilation.derivation().cloned()
         };
-        let (score, studio) = if compilation.has_errors() {
-            (None, musa_dsp::StudioSpec::default())
+        let studio_execution = if compilation.has_errors() {
+            None
         } else {
-            compilation.into_parts()
+            compilation
+                .studio_source()
+                .and_then(|source| musa_dsp::decode_studio_execution(source).ok())
+        };
+        let studio_spans = compilation.studio_spans().clone();
+        let score = if compilation.has_errors() || studio_execution.is_none() {
+            None
+        } else {
+            compilation.into_snapshot()
         };
         self.kind = kind;
         // `compiles` means well-formed as *what it is*. Material declares and
@@ -1022,7 +1030,7 @@ impl ProjectSession {
             musa_compiler::DocumentKind::Material | musa_compiler::DocumentKind::Modules => !had_errors,
         };
         let mut score_changed = false;
-        if let Some(mut score) = score {
+        if let (Some(mut score), Some(studio_execution)) = (score, studio_execution) {
             // The project's composer, for a piece that named none. Done here
             // rather than in the compiler because a piece opened on its own
             // is still a whole piece: the `musa.toml` above it is context,
@@ -1036,7 +1044,7 @@ impl ProjectSession {
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
                     let facts = crate::facts::ScoreFacts::derive(&score, &self.source, &decisions, derivation.as_ref());
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
-                    let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
+                    let studio_facts = crate::studio::StudioFacts::derive(&studio_execution, &studio_spans, &parts);
                     let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();
                     let items = items.iter().map(crate::facts::ItemFact::from_compiler).collect();
                     self.valid = Some(ValidArtifacts {
@@ -1045,7 +1053,8 @@ impl ProjectSession {
                         mei_warnings: rendered.warnings().to_vec(),
                         score,
                         source: self.source.clone(),
-                        studio,
+                        studio_execution,
+                        studio_spans,
                         facts,
                         studio_facts,
                         names,
@@ -1103,7 +1112,7 @@ impl ProjectSession {
     fn plan_identity(&self) -> Option<InstalledPlan> {
         self.valid.as_ref().map(|valid| InstalledPlan {
             music: valid.identity,
-            studio: valid.studio.clone(),
+            studio: valid.studio_execution.clone(),
         })
     }
 
@@ -1119,7 +1128,7 @@ impl ProjectSession {
             return Ok(());
         }
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
-        let plan = playback::prepare(&valid.score, &valid.studio)?;
+        let plan = playback::prepare(&valid.score, &valid.studio_execution)?;
         self.total_frames = plan.total_frames();
         let audio = self
             .audio

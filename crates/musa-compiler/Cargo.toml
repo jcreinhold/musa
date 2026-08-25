@@ -12,7 +12,6 @@ workspace = true
 [dependencies]
 indexmap = { version = "2", features = ["serde"] }
 musa-calculus = { workspace = true }
-musa-dsp = { workspace = true }
 musa-events = { workspace = true }
 musa-score = { workspace = true }
 musa-syntax = { workspace = true }
@@ -24,14 +23,8 @@ tracing = "0.1"
 
 [dev-dependencies]
 divan = "0.1.21"
-hound = "3"
 insta = "1"
-musa-dsp = { workspace = true, features = ["testing"] }
 proptest = "1"
-
-[[bench]]
-harness = false
-name = "audio_bridge"
 
 [[bench]]
 harness = false

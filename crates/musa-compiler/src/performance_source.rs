@@ -1,16 +1,23 @@
 //! Checked source interpretation of finite performance request batches.
 //!
 //! Rust transcribes notation facts and already-parsed profile declarations;
-//! `std::performance` alone decides what those declarations mean. One checked
-//! artifact per part keeps work linear and gives the track bridge an exact,
-//! schema-versioned answer rather than evaluator state or a Rust enum mirror.
+//! `std::performance` alone decides what those declarations mean. Checked
+//! artifacts in bounded chunks keep work linear and give the track bridge an
+//! exact, schema-versioned answer rather than evaluator state or a Rust enum
+//! mirror.
 
 use std::fmt::Write as _;
 
-use musa_score::{Diagnostic, PerformanceProfile, PerformanceRequests, ScoreSnapshot};
+use musa_score::{Diagnostic, PerformanceProfile, PerformanceRequests, PerformanceView, ScoreSnapshot};
 use num_rational::Ratio;
 
 use crate::{CompileOptions, SourceDocument, checked_source_value};
+
+/// Keep source `List` construction comfortably below the evaluator's general
+/// nesting budget. This is preparation scheduling, not musical semantics: the
+/// mechanical bridge concatenates chunks in source order before matching
+/// gesture identities.
+const INTERPRETATION_CHUNK: usize = 128;
 
 /// Failure of the checked source-to-track performance bridge.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -48,11 +55,13 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<musa_score::GesturePlan, 
 
 /// Check and evaluate every part's source performance request batch.
 ///
-/// Each returned artifact corresponds to the same-index part from
-/// [`musa_score::performance_requests`]. The artifact is ordinary normalized
-/// source data and has no public constructor; downstream mechanical lowering
-/// can therefore trust that every result passed the general elaborator,
-/// pattern unifier, evaluator, and storability check.
+/// Each outer vector corresponds to the same-index part from
+/// [`musa_score::performance_requests`]. Its artifacts partition that part's
+/// requests in source order, keeping ordinary source-list evaluation within a
+/// fixed resource bound. The artifacts are normalized source data and have no
+/// public constructor; downstream mechanical lowering can therefore trust
+/// that every result passed the general elaborator, pattern unifier, evaluator,
+/// and storability check.
 ///
 /// # Errors
 ///
@@ -60,15 +69,26 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<musa_score::GesturePlan, 
 /// from the ordinary checked-source path. No partial batch is published.
 pub fn checked_performance_interpretations(
     score: &ScoreSnapshot,
-) -> Result<Vec<musa_calculus::CheckedSource>, Vec<Diagnostic>> {
+) -> Result<Vec<Vec<musa_calculus::CheckedSource>>, Vec<Diagnostic>> {
     let batches = musa_score::performance_requests(score);
     let mut artifacts = Vec::with_capacity(batches.len());
     let mut diagnostics = Vec::new();
     for batch in &batches {
-        match checked_batch(batch) {
-            Ok(artifact) => artifacts.push(artifact),
-            Err(mut errors) => diagnostics.append(&mut errors),
+        let mut part = Vec::with_capacity(batch.views().len().div_ceil(INTERPRETATION_CHUNK).max(1));
+        if batch.views().is_empty() {
+            match checked_batch(batch, &[]) {
+                Ok(artifact) => part.push(artifact),
+                Err(mut errors) => diagnostics.append(&mut errors),
+            }
+        } else {
+            for views in batch.views().chunks(INTERPRETATION_CHUNK) {
+                match checked_batch(batch, views) {
+                    Ok(artifact) => part.push(artifact),
+                    Err(mut errors) => diagnostics.append(&mut errors),
+                }
+            }
         }
+        artifacts.push(part);
     }
     if diagnostics.is_empty() {
         Ok(artifacts)
@@ -77,7 +97,10 @@ pub fn checked_performance_interpretations(
     }
 }
 
-fn checked_batch(batch: &PerformanceRequests) -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
+fn checked_batch(
+    batch: &PerformanceRequests,
+    views: &[PerformanceView],
+) -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
     let mut source = String::from("import std::performance;\n");
     let _ = writeln!(
         source,
@@ -85,7 +108,7 @@ fn checked_batch(batch: &PerformanceRequests) -> Result<musa_calculus::CheckedSo
         profile(batch.profile())
     );
     source.push_str("let performance_requests: List(InterpretationRequest) = [\n");
-    for view in batch.views() {
+    for view in views {
         let marks = view
             .marks()
             .iter()

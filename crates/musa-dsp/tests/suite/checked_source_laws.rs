@@ -3,6 +3,8 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
+use std::fmt::Write as _;
+
 use musa_compiler::{
     CompileOptions, SourceDocument, SourceSchema, checked_performance_interpretations, checked_source_value,
     checked_standard_instrument_machine, checked_standard_instruments, checked_standard_performance_vocabulary,
@@ -11,7 +13,8 @@ use musa_compiler::{
 use musa_dsp::{
     ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
     StudioDescriptionError, check_studio_vocabulary, decode_exact_quantity, decode_instrument_contracts,
-    decode_studio_description, decode_studio_vocabulary, exact_quantity_schema, studio_description_schema,
+    decode_studio_description, decode_studio_execution, decode_studio_vocabulary, exact_quantity_schema,
+    studio_description_schema,
 };
 use num_rational::Ratio;
 
@@ -216,6 +219,45 @@ fn standard_studio_vocabulary_is_checked_source_data() {
 }
 
 #[test]
+fn the_production_studio_projection_retains_the_complete_checked_value() {
+    let source = r#"piece "source studio" {
+        meter 4/4;
+        key c major;
+        score { part lead { voice notes { c4/1 } } }
+        studio {
+            patch instrument {
+                filter = oscillator(sine, ratio: 2) |> lowpass(cutoff: 1400 Hz);
+                filter |> gain(-6 dB) |> output;
+            }
+            motion = oscillator(sine, frequency: 3/5 Hz) |> scale(250 Hz);
+            assign lead -> instrument;
+            route lead -> master;
+            modulate motion -> instrument.filter.cutoff;
+        }
+    }"#;
+    let compilation = compile(
+        &SourceDocument::new(source, "production-studio-projection.musa"),
+        &CompileOptions::default(),
+    );
+    let errors = compilation
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == musa_score::Severity::Error)
+        .collect::<Vec<_>>();
+    assert!(errors.is_empty(), "production studio should check: {errors:#?}");
+    let artifact = compilation
+        .studio_source()
+        .expect("successful compilation has a studio artifact");
+    let projection = decode_studio_execution(artifact).expect("the production schema decodes");
+    assert_eq!(projection.exact_source(), artifact.exact_bytes());
+    assert_eq!(projection.patches().len(), 1);
+    assert_eq!(projection.signals().len(), 1);
+    assert_eq!(projection.assignments().len(), 1);
+    assert_eq!(projection.routes().len(), 1);
+    assert_eq!(projection.modulations().len(), 1);
+}
+
+#[test]
 fn standard_performance_vocabulary_is_checked_source_data() {
     let artifact = checked_standard_performance_vocabulary()
         .unwrap_or_else(|diagnostics| panic!("standard performance vocabulary should check: {diagnostics:#?}"));
@@ -390,7 +432,9 @@ fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
     let artifacts = checked_performance_interpretations(compilation.snapshot().expect("score"))
         .unwrap_or_else(|diagnostics| panic!("performance requests should check: {diagnostics:#?}"));
     assert_eq!(artifacts.len(), 1);
-    let artifact = artifacts.first().expect("one part produces one artifact");
+    let part = artifacts.first().expect("one part produces one artifact lane");
+    assert_eq!(part.len(), 1);
+    let artifact = part.first().expect("a small part produces one artifact");
     assert!(artifact.has_valid_framing());
     assert_eq!(
         artifact.schema().name(),
@@ -403,6 +447,39 @@ fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
             .iter()
             .flat_map(|lane| lane.track().occurrences())
             .all(|occurrence| !occurrence.payload().exact_source_bytes().is_empty())
+    );
+}
+
+#[test]
+fn performance_requests_are_checked_in_bounded_source_chunks() {
+    let mut source = String::from(
+        "piece \"Bounded performance bridge\" {\n    meter 4/4;\n    key c major;\n    score { part line { voice notes {\n",
+    );
+    for _ in 0..321 {
+        writeln!(source, "        c4/4").expect("writing source cannot fail");
+    }
+    source.push_str("    } } }\n}\n");
+    let compilation = compile(
+        &SourceDocument::new(source, "bounded-performance-bridge.musa"),
+        &CompileOptions::default(),
+    );
+    assert!(!compilation.has_errors(), "{:#?}", compilation.diagnostics());
+
+    let score = compilation.snapshot().expect("score");
+    let artifacts = checked_performance_interpretations(score)
+        .unwrap_or_else(|diagnostics| panic!("bounded requests should check: {diagnostics:#?}"));
+    assert_eq!(artifacts.len(), 1);
+    let part = artifacts.first().expect("one part produces one artifact lane");
+    assert_eq!(part.len(), 3, "321 requests use 128-item chunks");
+    assert!(part.iter().all(musa_compiler::CheckedSource::has_valid_framing));
+
+    let plan = musa_score::lower_gestures_from_checked(score, &artifacts)
+        .expect("chunked checked results lower as one logical part lane");
+    let lane = plan.lanes().first().expect("one source part produces one gesture lane");
+    assert_eq!(
+        lane.track().occurrences().len(),
+        321,
+        "chunking must preserve every requested gesture"
     );
 }
 
@@ -455,7 +532,7 @@ piece "Checked source result" {
         ),
     )
     .unwrap_or_else(|diagnostics| panic!("source result should check: {diagnostics:#?}"));
-    let plan = musa_score::lower_gestures_from_checked(compilation.snapshot().expect("score"), &[artifact])
+    let plan = musa_score::lower_gestures_from_checked(compilation.snapshot().expect("score"), &[vec![artifact]])
         .expect("checked source result lowers mechanically");
     let lane = plan.lanes().first().expect("one gesture lane");
     let occurrence = lane.track().occurrences().first().expect("one gesture");

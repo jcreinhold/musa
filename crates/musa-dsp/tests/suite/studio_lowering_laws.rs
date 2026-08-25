@@ -11,9 +11,9 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
+use crate::intent::{Assignment, Patch, Processor, Route, StudioNode, StudioSpec, Unit, WrittenQuantity};
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_dsp::testing::{GraphOptions, lower_studio, poly_sine_spec, prepare_graph};
-use musa_dsp::{Assignment, Patch, Processor, Route, StudioNode, StudioSpec, Unit, WrittenQuantity};
 use num_rational::Ratio;
 
 const OPTIONS: GraphOptions = GraphOptions {
@@ -26,7 +26,7 @@ const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.m
 fn studio_of(source: &str) -> StudioSpec {
     let compilation = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default());
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
-    compilation.into_parts().1
+    super::audio_support::studio(&compilation)
 }
 
 fn piece(studio: &str) -> String {

@@ -1,5 +1,5 @@
 ---
-source: crates/musa-dsp/src/../tests/suite/audio.rs
+source: crates/musa-dsp/src/../tests/suite/audio_bridge_laws.rs
 expression: "prepare_graph(&spec, RATE).err().expect(\"mismatch\").to_string()"
 ---
 port mismatch: control into audio/1

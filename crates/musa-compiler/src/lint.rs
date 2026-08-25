@@ -20,7 +20,7 @@ use musa_syntax::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDe
 use musa_syntax::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::resolve::{NameKind, ReferenceIndex};
-use musa_dsp::StudioSpec;
+use crate::studio_model::SurfaceStudio;
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 
@@ -33,7 +33,7 @@ pub(crate) fn lint(
     document: &ParsedDocument,
     piece: &PieceDecl,
     references: &ReferenceIndex,
-    studio: &StudioSpec,
+    studio: &SurfaceStudio,
 ) -> Vec<Diagnostic> {
     let source = document.text();
     let mut lints = Vec::new();
@@ -211,7 +211,7 @@ fn unassigned_patch(
     document: &ParsedDocument,
     source: &str,
     references: &ReferenceIndex,
-    studio: &StudioSpec,
+    studio: &SurfaceStudio,
     lints: &mut Vec<Diagnostic>,
 ) {
     let assigned: Vec<&str> = studio.assignments().map(|(_part, patch)| patch).collect();

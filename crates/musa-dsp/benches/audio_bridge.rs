@@ -30,6 +30,8 @@ fn prepare() -> PreparedAudio {
     let gestures = lower_gestures(score).expect("fixture gestures");
     let instruments = checked_standard_instruments().expect("standard instruments");
     let instrument_machine = checked_standard_instrument_machine().expect("standard instrument machine");
+    let studio = musa_dsp::decode_studio_execution(compilation.studio_source().expect("checked studio"))
+        .expect("production studio artifact");
     let format = AudioFormat::new(
         std::num::NonZeroU32::new(SAMPLE_RATE).expect("sample rate"),
         ChannelLayout::Stereo,
@@ -53,7 +55,7 @@ fn prepare() -> PreparedAudio {
         &gestures,
         &instruments,
         &instrument_machine,
-        compilation.studio(),
+        &studio,
         AudioOptions {
             format,
             schedule,

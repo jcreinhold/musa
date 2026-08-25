@@ -1,6 +1,6 @@
 # Studio vocabulary
 
-This page is generated from the checked ordinary Musa value `std::sound::catalogue::studio_vocabulary`. Source declarations own names, documentation, exact written domains, defaults, ranges, and examples; the native registry contributes only checked primitive support facts.
+This page is generated from the checked ordinary Musa value `std::sound::catalogue::studio_vocabulary`. Source declarations own names, documentation, exact written domains, defaults, ranges, and examples; the native registry contributes only checked primitive support facts. Production studio values and source-owned defaults are declared by `std::sound::production`.
 
 ## `oscillator`
 

@@ -1959,9 +1959,10 @@ In particular:
   scales, exact time, marks, the score snapshot, exact performed gestures, provenance, diagnostics, and analysis, and
   names no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
-- compiler may depend on `musa-dsp` only for an opaque checked preparation projection and primitive-contract queries;
-  editable studio vocabulary remains ordinary source in `stdlib/`, while graph preparation and rendering remain
-  downstream operations;
+- compiler does not depend on `musa-dsp`: it emits a generic checked source artifact and compiler-owned lineage spans;
+  `musa-project` hands that artifact to the sibling DSP consumer, whose read-only preparation projection follows the
+  source schema. Editable studio vocabulary remains ordinary source in `stdlib/`, while graph preparation and rendering
+  remain downstream operations;
 - the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
 - the event-track is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;

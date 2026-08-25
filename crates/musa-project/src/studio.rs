@@ -18,7 +18,7 @@
 //! rewritten in the unit it was written in, and only a parameter that was
 //! never written is inserted, in the unit it is declared in.
 
-use musa_dsp::{Modulation, NodeIndex, StudioSpec, Unit};
+use musa_dsp::{SoundUnit, StudioExecution, StudioGraphProjection};
 use serde::Serialize;
 
 use crate::command::TextEdit;
@@ -170,98 +170,94 @@ impl StudioFacts {
     ///
     /// The score is needed for one thing only: the list of parts, so a part
     /// the studio never mentions still gets a row.
-    pub(crate) fn derive(studio: &StudioSpec, parts: &[String]) -> Self {
+    pub(crate) fn derive(studio: &StudioExecution, spans: &musa_compiler::StudioSpans, parts: &[String]) -> Self {
         Self {
-            declared: !studio.is_empty(),
-            patches: containers(studio, ContainerKind::Patch),
-            buses: containers(studio, ContainerKind::Bus),
-            signals: containers(studio, ContainerKind::Signal),
+            declared: studio.declared(),
+            patches: containers(studio, spans, ContainerKind::Patch),
+            buses: containers(studio, spans, ContainerKind::Bus),
+            signals: containers(studio, spans, ContainerKind::Signal),
             assignments: parts
                 .iter()
                 .map(|part| AssignmentFacts {
                     part: part.clone(),
-                    patch: studio.patch_for_part(part).map(ToOwned::to_owned),
+                    patch: studio
+                        .assignments()
+                        .find(|assignment| assignment.part() == part)
+                        .map(|assignment| assignment.instrument().to_owned()),
                 })
                 .collect(),
             sends: studio
                 .sends()
-                .iter()
                 .map(|send| SendFacts {
-                    source: send.source.clone(),
-                    bus: send.bus.clone(),
-                    decibels: Fraction::from_ratio(send.level.magnitude),
-                    span: send.level_span.map(span),
+                    source: send.source().to_owned(),
+                    bus: send.bus().to_owned(),
+                    decibels: Fraction::from_ratio(*send.level().magnitude()),
+                    span: spans.resolve(send.level_anchor()).map(span),
                 })
                 .collect(),
             routes: studio
                 .routes()
-                .iter()
                 .map(|route| RouteFacts {
-                    source: route.source.clone(),
-                    destination: route.destination.clone(),
+                    source: route.source().to_owned(),
+                    destination: route.destination().to_owned(),
                 })
                 .collect(),
         }
     }
 }
 
-fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
-    let declared: Vec<(&str, &musa_dsp::Patch)> = match kind {
+fn containers(
+    studio: &StudioExecution,
+    spans: &musa_compiler::StudioSpans,
+    kind: ContainerKind,
+) -> Vec<ContainerFacts> {
+    let declared: Vec<&StudioGraphProjection> = match kind {
         ContainerKind::Patch => studio.patches().collect(),
         ContainerKind::Bus => studio.buses().collect(),
         ContainerKind::Signal => studio.signals().collect(),
     };
     declared
         .into_iter()
-        .map(|(name, patch)| ContainerFacts {
+        .map(|graph| ContainerFacts {
             kind,
-            name: name.to_owned(),
-            stages: patch
+            name: graph.name().to_owned(),
+            stages: graph
                 .nodes()
-                .iter()
                 .enumerate()
                 .map(|(index, node)| {
                     let catalogue = crate::standard_studio_vocabulary()
                         .ok()
-                        .and_then(|vocabulary| vocabulary.processor(node.processor.name()));
+                        .and_then(|vocabulary| vocabulary.processor(node.processor()));
                     StageFacts {
                         index,
-                        processor: node.processor.name().to_owned(),
+                        processor: node.processor().to_owned(),
                         summary: catalogue.map_or_else(String::new, |doc| doc.summary().to_owned()),
                         signature: catalogue.map_or_else(String::new, |doc| doc.signature().to_owned()),
                         origin: "bundled Musa source + registered primitive".to_owned(),
-                        label: node.label.clone(),
+                        label: node.label().map(ToOwned::to_owned),
                         params: node
-                            .processor
-                            .params()
-                            .iter()
+                            .parameters()
                             .enumerate()
-                            .map(|(at, declared)| {
-                                let source = catalogue.and_then(|processor| processor.parameters().get(at));
+                            .map(|(at, (name, _dsp_name, value))| {
+                                let source_parameter = catalogue.and_then(|processor| processor.parameters().get(at));
+                                let written_anchor = node.written_parameters().nth(at).flatten();
                                 ParamFacts {
-                                    name: declared.name.to_owned(),
-                                    summary: source
+                                    name: name.to_owned(),
+                                    summary: source_parameter
                                         .map_or_else(String::new, |parameter| parameter.summary().to_owned()),
-                                    value: Fraction::from_ratio(
-                                        node.params
-                                            .get(at)
-                                            .copied()
-                                            .flatten()
-                                            .map_or(declared.default, |value| value.magnitude),
-                                    ),
-                                    unit: source
-                                        .and_then(|parameter| parameter.default().unit().spelling())
-                                        .unwrap_or_default()
-                                        .to_owned(),
-                                    minimum: Fraction::from_ratio(
-                                        source.map_or(declared.range.0, |parameter| *parameter.minimum().magnitude()),
-                                    ),
-                                    maximum: Fraction::from_ratio(
-                                        source.map_or(declared.range.1, |parameter| *parameter.maximum().magnitude()),
-                                    ),
-                                    written: node.param_spans.get(at).copied().flatten().is_some(),
-                                    span: node.param_spans.get(at).copied().flatten().map(span),
-                                    modulated_by: modulator(studio, name, index, declared.name),
+                                    value: Fraction::from_ratio(*value.magnitude()),
+                                    unit: value.unit().spelling().unwrap_or_default().to_owned(),
+                                    minimum: Fraction::from_ratio(source_parameter.map_or_else(
+                                        || *value.magnitude(),
+                                        |parameter| *parameter.minimum().magnitude(),
+                                    )),
+                                    maximum: Fraction::from_ratio(source_parameter.map_or_else(
+                                        || *value.magnitude(),
+                                        |parameter| *parameter.maximum().magnitude(),
+                                    )),
+                                    written: written_anchor.is_some(),
+                                    span: written_anchor.and_then(|anchor| spans.resolve(anchor)).map(span),
+                                    modulated_by: modulator(studio, graph.name(), index, name),
                                 }
                             })
                             .collect(),
@@ -274,14 +270,13 @@ fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
 
 /// The signal modulating one parameter, if any. Modulation is addressed by
 /// patch name, node, and parameter, which is exactly this triple.
-fn modulator(studio: &StudioSpec, container: &str, node: NodeIndex, param: &'static str) -> Option<String> {
+fn modulator(studio: &StudioExecution, container: &str, node: usize, param: &str) -> Option<String> {
     studio
         .modulations()
-        .iter()
-        .find(|modulation: &&Modulation| {
-            modulation.patch == container && modulation.node == node && modulation.param == param
+        .find(|modulation| {
+            modulation.instrument() == container && modulation.node() == node && modulation.parameter() == param
         })
-        .map(|modulation| modulation.source.clone())
+        .map(|modulation| modulation.source().to_owned())
 }
 
 fn span(source: musa_score::SourceSpan) -> Span {
@@ -355,23 +350,28 @@ pub(crate) fn describe(edit: &StudioEdit) -> String {
 /// # Errors
 /// [`ProjectError::Uneditable`] when the edit names something this revision
 /// does not have, or something the source cannot express.
-pub(crate) fn edits_for(studio: &StudioSpec, source: &str, edit: &StudioEdit) -> Result<Vec<TextEdit>, ProjectError> {
+pub(crate) fn edits_for(
+    studio: &StudioExecution,
+    spans: &musa_compiler::StudioSpans,
+    source: &str,
+    edit: &StudioEdit,
+) -> Result<Vec<TextEdit>, ProjectError> {
     match *edit {
         StudioEdit::AssignPatch {
             ref part, ref patch, ..
-        } => assign_patch(studio, source, part, patch),
+        } => assign_patch(studio, spans, source, part, patch),
         StudioEdit::SetParam {
             kind,
             ref container,
             stage,
             ref param,
             value,
-        } => set_param(studio, source, kind, container, stage, param, value),
+        } => set_param(studio, spans, source, kind, container, stage, param, value),
         StudioEdit::SetSendLevel {
             source: ref sender,
             ref bus,
             decibels,
-        } => set_send_level(studio, source, sender, bus, decibels),
+        } => set_send_level(studio, spans, source, sender, bus, decibels),
     }
 }
 
@@ -379,17 +379,27 @@ fn missing(what: impl Into<String>) -> ProjectError {
     ProjectError::Uneditable(what.into())
 }
 
-fn assign_patch(studio: &StudioSpec, source: &str, part: &str, patch: &str) -> Result<Vec<TextEdit>, ProjectError> {
-    if studio.patch(patch).is_none() {
+fn assign_patch(
+    studio: &StudioExecution,
+    spans: &musa_compiler::StudioSpans,
+    source: &str,
+    part: &str,
+    patch: &str,
+) -> Result<Vec<TextEdit>, ProjectError> {
+    if !studio.patches().any(|candidate| candidate.name() == patch) {
         return Err(missing(format!("there is no patch named `{patch}`")));
     }
-    match studio.assignment(part).and_then(|assignment| assignment.patch_span) {
+    match studio
+        .assignments()
+        .find(|assignment| assignment.part() == part)
+        .and_then(|assignment| spans.resolve(assignment.anchor()))
+    {
         // The part already has an assignment: replace the name it points at,
         // leaving the statement — and any comment on it — alone.
         Some(written) => Ok(vec![TextEdit::new(span(written), patch)]),
         None => {
-            let block = studio
-                .span()
+            let block = spans
+                .resolve(studio.anchor())
                 .ok_or_else(|| missing("this piece has no `studio` block to write into"))?;
             let at = closing_brace(source, span(block))
                 .ok_or_else(|| missing("this piece's `studio` block is unfinished"))?;
@@ -413,7 +423,8 @@ fn closing_brace(source: &str, block: Span) -> Option<u32> {
 }
 
 fn set_param(
-    studio: &StudioSpec,
+    studio: &StudioExecution,
+    spans: &musa_compiler::StudioSpans,
     source: &str,
     kind: ContainerKind,
     container: &str,
@@ -422,40 +433,34 @@ fn set_param(
     value: f64,
 ) -> Result<Vec<TextEdit>, ProjectError> {
     let found = match kind {
-        ContainerKind::Patch => studio.patch(container),
-        ContainerKind::Bus => studio.buses().find(|(name, _)| *name == container).map(|(_, it)| it),
-        ContainerKind::Signal => studio.signals().find(|(name, _)| *name == container).map(|(_, it)| it),
+        ContainerKind::Patch => studio.patches().find(|graph| graph.name() == container),
+        ContainerKind::Bus => studio.buses().find(|graph| graph.name() == container),
+        ContainerKind::Signal => studio.signals().find(|graph| graph.name() == container),
     };
     let found = found.ok_or_else(|| missing(format!("there is no `{container}` in the studio")))?;
     let node = found
         .nodes()
-        .get(stage)
+        .nth(stage)
         .ok_or_else(|| missing(format!("`{container}` has no stage {stage}")))?;
-    let at = node
-        .processor
-        .params()
-        .iter()
-        .position(|declared| declared.name == param)
-        .ok_or_else(|| missing(format!("`{}` has no parameter `{param}`", node.processor.name())))?;
-    let declared = node
-        .processor
-        .params()
-        .get(at)
-        .copied()
-        .ok_or_else(|| missing("that parameter went missing"))?;
+    let (at, (_, _, quantity)) = node
+        .parameters()
+        .enumerate()
+        .find(|(_, (name, _, _))| *name == param)
+        .ok_or_else(|| missing(format!("`{}` has no parameter `{param}`", node.processor())))?;
+    let written = node.written_parameters().nth(at).flatten();
 
-    match node.param_spans.get(at).copied().flatten() {
+    match written.and_then(|anchor| spans.resolve(anchor)) {
         // Written: replace the literal in the scale it was written in, so a
         // patch that says `30 ms` keeps saying milliseconds.
         Some(written) => {
             let range = span(written);
             let text = slice(source, range).unwrap_or_default();
-            Ok(vec![TextEdit::new(range, rewritten(text, declared.unit, value))])
+            Ok(vec![TextEdit::new(range, rewritten(text, quantity.unit(), value))])
         }
         // Never written: add it, in the unit it is declared in.
         None => {
-            let call = node
-                .span
+            let call = spans
+                .resolve(node.anchor())
                 .ok_or_else(|| missing("that stage was not written in the source"))?;
             let call = span(call);
             let text = slice(source, call).unwrap_or_default();
@@ -467,7 +472,7 @@ fn set_param(
                 .and_then(|head| head.find('(').map(|open| open.saturating_add(1)));
             let empty = inside.is_none_or(|open| text.get(open..close).is_none_or(|args| args.trim().is_empty()));
             let separator = if empty { "" } else { ", " };
-            let literal = written_value(declared.unit, value);
+            let literal = written_value(quantity.unit(), value);
             let at = call.start.saturating_add(u32::try_from(close).unwrap_or(0));
             Ok(vec![TextEdit::new(
                 Span { start: at, end: at },
@@ -478,7 +483,8 @@ fn set_param(
 }
 
 fn set_send_level(
-    studio: &StudioSpec,
+    studio: &StudioExecution,
+    spans: &musa_compiler::StudioSpans,
     source: &str,
     sender: &str,
     bus: &str,
@@ -486,19 +492,18 @@ fn set_send_level(
 ) -> Result<Vec<TextEdit>, ProjectError> {
     let send = studio
         .sends()
-        .iter()
-        .find(|send| send.source == sender && send.bus == bus)
+        .find(|send| send.source() == sender && send.bus() == bus)
         .ok_or_else(|| missing(format!("there is no send from `{sender}` to `{bus}`")))?;
-    let written = send
-        .level_span
+    let written = spans
+        .resolve(send.level_anchor())
         .ok_or_else(|| missing("that send's level was not written in the source"))?;
     let range = span(written);
     let text = slice(source, range).unwrap_or_default();
     // A send written as a plain ratio keeps being one; the fader's decibels
     // convert back rather than rewriting the composer's choice of scale.
-    let value = match send.level.unit {
-        Unit::Decibels => decibels,
-        Unit::Hz | Unit::Linear | Unit::Seconds => {
+    let value = match send.level().unit() {
+        SoundUnit::Decibels => decibels,
+        SoundUnit::Hertz | SoundUnit::Linear | SoundUnit::Seconds => {
             if decibels.is_finite() {
                 10f64.powf(decibels / 20.0)
             } else {
@@ -506,7 +511,7 @@ fn set_send_level(
             }
         }
     };
-    Ok(vec![TextEdit::new(range, rewritten(text, send.level.unit, value))])
+    Ok(vec![TextEdit::new(range, rewritten(text, send.level().unit(), value))])
 }
 
 fn slice(source: &str, range: Span) -> Option<&str> {
@@ -519,15 +524,15 @@ fn slice(source: &str, range: Span) -> Option<&str> {
 ///
 /// The only scale the language has two spellings for is time, and `ms` is
 /// common enough in a patch that normalizing it away would be a visible loss.
-fn rewritten(existing: &str, unit: Unit, value: f64) -> String {
-    if unit == Unit::Seconds && existing.trim_end().ends_with("ms") {
+fn rewritten(existing: &str, unit: SoundUnit, value: f64) -> String {
+    if unit == SoundUnit::Seconds && existing.trim_end().ends_with("ms") {
         return format!("{} ms", number(value * 1000.0));
     }
     written_value(unit, value)
 }
 
 /// A literal in the unit's canonical spelling.
-fn written_value(unit: Unit, value: f64) -> String {
+fn written_value(unit: SoundUnit, value: f64) -> String {
     match unit.spelling() {
         Some(spelling) => format!("{} {spelling}", number(value)),
         None => number(value),

@@ -4,12 +4,12 @@
 
 /// A node's identity within a spec.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NodeId(pub u32);
+pub(crate) struct NodeId(pub(crate) u32);
 
 /// The kind of a port: what flows through it (§13.4). Compatibility is
 /// exact equality — conversions require explicit adapter processors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PortKind {
+pub(crate) enum PortKind {
     /// Audio-rate samples with a fixed channel count.
     Audio {
         /// Channels (1 = mono, 2 = stereo).
@@ -31,11 +31,11 @@ impl std::fmt::Display for PortKind {
     }
 }
 
-use crate::Unit;
+use crate::intent::Unit;
 
 /// Parameter smoothing applied to value changes (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Smoothing {
+pub(crate) enum Smoothing {
     /// No smoothing (step change).
     None,
     /// One-pole slew advanced once per frame.
@@ -44,7 +44,7 @@ pub enum Smoothing {
 
 /// How a modulation signal combines with the base value (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Combination {
+pub(crate) enum Combination {
     /// Replace the base value.
     Replace,
     /// Multiply the base value.
@@ -53,24 +53,24 @@ pub enum Combination {
 
 /// One parameter's contract (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ParameterDescriptor {
+pub(crate) struct ParameterDescriptor {
     /// The parameter name (language-facing).
-    pub name: &'static str,
+    pub(crate) name: &'static str,
     /// Its unit.
-    pub unit: Unit,
+    pub(crate) unit: Unit,
     /// Inclusive value range.
-    pub range: (f32, f32),
+    pub(crate) range: (f32, f32),
     /// Default when unset.
-    pub default: f32,
+    pub(crate) default: f32,
     /// Smoothing applied to changes.
-    pub smoothing: Smoothing,
+    pub(crate) smoothing: Smoothing,
     /// Modulation combination rule.
-    pub combination: Combination,
+    pub(crate) combination: Combination,
 }
 
 /// A low-frequency oscillator's shape (§13.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Waveform {
+pub(crate) enum Waveform {
     /// A sine, the shape a modulation reaches for unless it says otherwise.
     Sine,
     /// A linear rise and fall.
@@ -89,7 +89,7 @@ pub(crate) const MAX_DELAY: f32 = 2.0;
 
 /// A biquad's response (§13.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FilterKind {
+pub(crate) enum FilterKind {
     /// Passes below the cutoff.
     LowPass,
     /// Passes above the cutoff.
@@ -99,7 +99,7 @@ pub enum FilterKind {
 /// The processor a node runs. Every variant knows its static port list and
 /// parameter descriptors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProcessorSpec {
+pub(crate) enum ProcessorSpec {
     /// Sine oscillator, phase-continuous (§13.5). Params: `frequency` (Hz).
     /// Output: mono audio.
     Sine,
@@ -198,7 +198,7 @@ pub enum ProcessorSpec {
 
 impl ProcessorSpec {
     /// Input port kinds, in index order.
-    pub fn input_ports(self) -> Vec<PortKind> {
+    pub(crate) fn input_ports(self) -> Vec<PortKind> {
         match self {
             Self::Sine | Self::Noise | Self::Constant | Self::Lfo { .. } => Vec::new(),
             Self::PolySine { .. } => vec![PortKind::NoteEvents],
@@ -218,7 +218,7 @@ impl ProcessorSpec {
     }
 
     /// Output port kinds, in index order.
-    pub fn output_ports(self) -> Vec<PortKind> {
+    pub(crate) fn output_ports(self) -> Vec<PortKind> {
         match self {
             Self::Sine | Self::Noise | Self::Gain => vec![PortKind::Audio { channels: 1 }],
             Self::Splitter => vec![PortKind::Audio { channels: 1 }, PortKind::Audio { channels: 1 }],
@@ -244,7 +244,7 @@ impl ProcessorSpec {
     }
 
     /// Parameter descriptors, in declaration order.
-    pub fn parameters(self) -> &'static [ParameterDescriptor] {
+    pub(crate) fn parameters(self) -> &'static [ParameterDescriptor] {
         const FREQUENCY: ParameterDescriptor = ParameterDescriptor {
             name: "frequency",
             unit: Unit::Hz,
@@ -553,7 +553,7 @@ impl ProcessorSpec {
     }
 
     /// A named parameter's contract, if it declares one.
-    pub fn descriptor(self, name: &str) -> Option<ParameterDescriptor> {
+    pub(crate) fn descriptor(self, name: &str) -> Option<ParameterDescriptor> {
         self.parameters().iter().copied().find(|p| p.name == name)
     }
 }
@@ -561,7 +561,7 @@ impl ProcessorSpec {
 /// A declarative studio graph: nodes, connections, parameters. Editable;
 /// lowered privately into the prepared one-frame audio machine.
 #[derive(Clone, Debug, Default)]
-pub struct StudioGraphSpec {
+pub(crate) struct StudioGraphSpec {
     nodes: Vec<Node>,
     connections: Vec<Connection>,
     modulations: Vec<ModulationEdge>,
@@ -569,7 +569,7 @@ pub struct StudioGraphSpec {
 }
 
 #[derive(Clone, Debug)]
-pub struct Node {
+pub(crate) struct Node {
     id: NodeId,
     processor: ProcessorSpec,
     params: Vec<(&'static str, f32)>,
@@ -583,30 +583,30 @@ pub struct Node {
 /// than the connection's. That is what keeps `modulate` from becoming an
 /// anonymous 0..1 wire into an unknown quantity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ModulationEdge {
-    pub from: NodeId,
-    pub from_port: usize,
-    pub to: NodeId,
-    pub param: &'static str,
+pub(crate) struct ModulationEdge {
+    pub(crate) from: NodeId,
+    pub(crate) from_port: usize,
+    pub(crate) to: NodeId,
+    pub(crate) param: &'static str,
 }
 
 /// One connection between output and input ports.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Connection {
-    pub from: NodeId,
-    pub from_port: usize,
-    pub to: NodeId,
-    pub to_port: usize,
+pub(crate) struct Connection {
+    pub(crate) from: NodeId,
+    pub(crate) from_port: usize,
+    pub(crate) to: NodeId,
+    pub(crate) to_port: usize,
 }
 
 impl StudioGraphSpec {
     /// An empty graph.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Add a node; returns its identity.
-    pub fn add_node(&mut self, processor: ProcessorSpec) -> NodeId {
+    pub(crate) fn add_node(&mut self, processor: ProcessorSpec) -> NodeId {
         let id = NodeId(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX));
         self.nodes.push(Node {
             id,
@@ -621,7 +621,12 @@ impl StudioGraphSpec {
     ///
     /// # Errors
     /// [`GraphError::UnknownNode`] / [`GraphError::InvalidParameter`].
-    pub fn set_param(&mut self, node: NodeId, name: &'static str, value: f32) -> Result<(), crate::error::GraphError> {
+    pub(crate) fn set_param(
+        &mut self,
+        node: NodeId,
+        name: &'static str,
+        value: f32,
+    ) -> Result<(), crate::error::GraphError> {
         let Some(entry) = self.nodes.iter_mut().find(|entry| entry.id == node) else {
             return Err(crate::error::GraphError::UnknownNode(node));
         };
@@ -640,7 +645,7 @@ impl StudioGraphSpec {
     }
 
     /// Connect an output port to an input port.
-    pub fn connect(&mut self, from: NodeId, from_port: usize, to: NodeId, to_port: usize) {
+    pub(crate) fn connect(&mut self, from: NodeId, from_port: usize, to: NodeId, to_port: usize) {
         self.connections.push(Connection {
             from,
             from_port,
@@ -653,7 +658,7 @@ impl StudioGraphSpec {
     ///
     /// Both ends are checked during audio preparation, not here, so a spec under
     /// construction can be written in any order.
-    pub fn modulate(&mut self, from: NodeId, from_port: usize, to: NodeId, param: &'static str) {
+    pub(crate) fn modulate(&mut self, from: NodeId, from_port: usize, to: NodeId, param: &'static str) {
         self.modulations.push(ModulationEdge {
             from,
             from_port,
@@ -664,45 +669,45 @@ impl StudioGraphSpec {
 
     /// Designate the graph's master output node (its first output port must
     /// be stereo audio, or mono audio adapted via `MonoToStereo`).
-    pub fn set_output(&mut self, node: NodeId) {
+    pub(crate) fn set_output(&mut self, node: NodeId) {
         self.output = Some(node);
     }
 
-    pub fn nodes(&self) -> &[Node] {
+    pub(crate) fn nodes(&self) -> &[Node] {
         &self.nodes
     }
 
-    pub fn connections(&self) -> &[Connection] {
+    pub(crate) fn connections(&self) -> &[Connection] {
         &self.connections
     }
 
-    pub fn modulations(&self) -> &[ModulationEdge] {
+    pub(crate) fn modulations(&self) -> &[ModulationEdge] {
         &self.modulations
     }
 
-    pub fn output(&self) -> Option<NodeId> {
+    pub(crate) fn output(&self) -> Option<NodeId> {
         self.output
     }
 
-    pub fn output_kind(&self) -> Option<PortKind> {
+    pub(crate) fn output_kind(&self) -> Option<PortKind> {
         self.output
             .and_then(|node| self.processor_of(node))
             .and_then(|processor| processor.output_ports().first().copied())
     }
 
-    pub fn node(&self, id: NodeId) -> Option<&Node> {
+    pub(crate) fn node(&self, id: NodeId) -> Option<&Node> {
         self.nodes.iter().find(|entry| entry.id == id)
     }
 
-    pub fn processor_of(&self, id: NodeId) -> Option<ProcessorSpec> {
+    pub(crate) fn processor_of(&self, id: NodeId) -> Option<ProcessorSpec> {
         self.node(id).map(|node| node.processor)
     }
 
-    pub fn params_of(&self, id: NodeId) -> &[(&'static str, f32)] {
+    pub(crate) fn params_of(&self, id: NodeId) -> &[(&'static str, f32)] {
         self.node(id).map_or(&[], |node| node.params.as_slice())
     }
 
-    pub fn param_value(&self, id: NodeId, descriptor: &ParameterDescriptor) -> f32 {
+    pub(crate) fn param_value(&self, id: NodeId, descriptor: &ParameterDescriptor) -> f32 {
         self.params_of(id)
             .iter()
             .find(|(key, _)| *key == descriptor.name)
@@ -712,20 +717,20 @@ impl StudioGraphSpec {
 }
 
 impl Node {
-    pub fn id(&self) -> NodeId {
+    pub(crate) fn id(&self) -> NodeId {
         self.id
     }
 
-    pub fn processor(&self) -> ProcessorSpec {
+    pub(crate) fn processor(&self) -> ProcessorSpec {
         self.processor
     }
 }
 
 /// Options for private one-frame graph preparation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GraphOptions {
+pub(crate) struct GraphOptions {
     /// Samples per second.
-    pub sample_rate: u32,
+    pub(crate) sample_rate: u32,
     /// Explicit whole-render seed from which stochastic primitive state is derived.
-    pub render_seed: u64,
+    pub(crate) render_seed: u64,
 }

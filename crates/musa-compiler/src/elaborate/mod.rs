@@ -195,6 +195,13 @@ pub(crate) fn elaborate_parsed(
     let references = std::mem::take(&mut resolver.references);
     let lints = crate::lint::lint(document, &piece, &references, &studio);
     resolver.diagnostics.extend(lints);
+    let (studio_source, studio_spans) = match crate::studio::checked_source(&studio, piece.studio().is_some()) {
+        Ok(source) => source,
+        Err(mut diagnostics) => {
+            resolver.diagnostics.append(&mut diagnostics);
+            return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+        }
+    };
     // A piece that asked nothing was not realized, it was compiled, and the
     // score says so by having no performance at all. Everything downstream —
     // the seed field, the Origin step, the export note — appears and vanishes
@@ -205,6 +212,7 @@ pub(crate) fn elaborate_parsed(
     }
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
+        .with_studio_source(studio_source, studio_spans)
         .with_machines(machines)
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))

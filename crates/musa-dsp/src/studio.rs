@@ -25,27 +25,29 @@
 //! the preparation boundary then binds that synth to exactly that part's
 //! scheduled event lane.
 
+use crate::intent::{
+    NodeIndex, ParamSpec, Patch, Processor, StudioNode, StudioSpec, Unit, WrittenQuantity, written_ratio,
+};
 use crate::spec::{FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform};
-use crate::{NodeIndex, ParamSpec, Patch, Processor, StudioNode, StudioSpec, Unit, WrittenQuantity, written_ratio};
 
 /// What a lowering produced besides the graph.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct StudioLowering {
+pub(crate) struct StudioLowering {
     /// Things the studio asked for that the graph could not honour exactly.
     /// Not errors: the graph renders, and the caller decides whether to show
     /// them (the CLI prints them; the desktop app surfaces them in the Sound
     /// workspace).
-    pub notes: Vec<String>,
+    pub(crate) notes: Vec<String>,
     /// Invalid exact intent refused at the DSP boundary. Compiler-produced
     /// specs have already passed the same public ranges; this catches
     /// programmatic construction and any future producer drift.
-    pub errors: Vec<String>,
+    pub(crate) errors: Vec<String>,
     /// The longest release any patch asks for, in seconds.
     ///
     /// An offline render needs it to know when the piece is over. A fixed
     /// tail was enough while every note stopped when it ended; a patch with
     /// a 3.5 s release would be cut off mid-fade by one.
-    pub release_tail: f32,
+    pub(crate) release_tail: f32,
 }
 
 /// One part-local event input created while lowering the compatibility studio.
@@ -71,7 +73,7 @@ const MAX_MIX: usize = 8;
 /// studio produces the default instrument graph, which is what makes a piece
 /// with no `studio` block render exactly as it did before studios existed
 /// (§14.8).
-pub fn lower_studio(studio: &StudioSpec, options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
+pub(crate) fn lower_studio(studio: &StudioSpec, options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
     let parts = studio.assignments().map(|(part, _)| part).collect::<Vec<_>>();
     let lowered = lower_studio_for_parts(studio, &parts, options);
     (lowered.0, lowered.1)
@@ -245,12 +247,9 @@ pub(crate) fn lower_studio_for_parts(
     (graph, lowering, inputs)
 }
 
-/// Recheck the public exact contract where intent crosses into floating DSP.
-///
-/// The language compiler performs these checks while resolving source, but
-/// [`StudioSpec`] is also a public construction API. Keeping this check here
-/// prevents another producer from bypassing the declared units and writable
-/// ranges before the lossy conversion below.
+/// Defensively recheck the source-derived exact contract at the lossy DSP edge.
+/// The preparation projection is private, but checking here keeps malformed
+/// internal data from reaching float conversion or primitive allocation.
 fn validate_exact_intent(studio: &StudioSpec, lowering: &mut StudioLowering) {
     for (container, patch) in studio.patches().chain(studio.buses()).chain(studio.signals()) {
         for node in patch.nodes() {

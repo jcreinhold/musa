@@ -86,6 +86,14 @@ pub struct ExactQuantityProjection {
 }
 
 impl ExactQuantityProjection {
+    pub(crate) const fn from_checked_parts(dimension: SoundDimension, magnitude: Ratio<i64>, unit: SoundUnit) -> Self {
+        Self {
+            dimension,
+            magnitude,
+            unit,
+        }
+    }
+
     /// The source index shared by the quantity and its unit.
     #[must_use]
     pub const fn dimension(&self) -> SoundDimension {

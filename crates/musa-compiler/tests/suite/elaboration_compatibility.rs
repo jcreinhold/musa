@@ -223,48 +223,8 @@ fn manifest() -> Result<String> {
             );
         }
 
-        let studio = compilation.studio();
-        for (patch_name, patch) in studio.patches() {
-            let _ = write!(out, "patch={patch_name}:output={:?}", patch.output());
-            for node in patch.nodes() {
-                let _ = write!(out, ":{}:{:?}", node.processor.name(), node.label);
-                for value in &node.params {
-                    match value {
-                        Some(value) => {
-                            let _ = write!(out, ":{}{}", value.magnitude, value.unit.spelling().unwrap_or(""));
-                        }
-                        None => out.push_str(":default"),
-                    }
-                }
-            }
-            out.push('\n');
-        }
-        for (bus_name, bus) in studio.buses() {
-            let processors: Vec<&str> = bus.nodes().iter().map(|node| node.processor.name()).collect();
-            let _ = writeln!(out, "bus={bus_name}:{processors:?}");
-        }
-        for (part, patch) in studio.assignments() {
-            let _ = writeln!(out, "assign={part}->{patch}");
-        }
-        for route in studio.routes() {
-            let _ = writeln!(out, "route={}->{}", route.source, route.destination);
-        }
-        for send in studio.sends() {
-            let _ = writeln!(
-                out,
-                "send={}->{}:{}{}",
-                send.source,
-                send.bus,
-                send.level.magnitude,
-                send.level.unit.spelling().unwrap_or("")
-            );
-        }
-        for modulation in studio.modulations() {
-            let _ = writeln!(
-                out,
-                "modulate={}->{}:{}:{}",
-                modulation.source, modulation.patch, modulation.node, modulation.param
-            );
+        if let Some(studio) = compilation.studio_source() {
+            let _ = writeln!(out, "studio={}", digest(studio.exact_bytes()));
         }
     }
 

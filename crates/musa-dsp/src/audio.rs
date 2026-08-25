@@ -11,7 +11,7 @@ use musa_events::{Duration, PerformedTime, PhysicalTime, Position, empty};
 use musa_score::{Gesture, GesturePlan, PartId, Tuning};
 use num_rational::Ratio;
 
-use crate::StudioSpec;
+use crate::intent::StudioSpec;
 use crate::plan::{PreparedParameterEvent, PreparedParameterId, RenderPlan, prepare_routed_plan};
 use crate::primitive::{AudioLimits, resources};
 use crate::schedule::{
@@ -84,8 +84,7 @@ pub struct PreparedAudio {
     // fields below cannot stand in for preparation identity (R1).
     _instrument_contracts: crate::InstrumentContracts,
     // The source instrument component is prepared through the governing
-    // machine calculus even while the migration oracle supplies production
-    // oscillator execution. Prompt 180a removes that oracle.
+    // machine calculus beside the source-derived native graph projection.
     _instrument_machine: crate::PreparedMachine,
     // Exact source identities retained beside their compact prepared slots.
     // Equal declarations deliberately still have distinct instance ids.
@@ -191,7 +190,7 @@ impl PreparedAudio {
 /// # Errors
 /// [`AudioPrepareError`] names the scheduling, primitive, or extent check that
 /// refused preparation.
-pub fn prepare_execution(
+pub(crate) fn prepare_projected_execution(
     gestures: &GesturePlan,
     instruments: &CheckedSource,
     instrument_machine: &musa_score::MachineSpec,
@@ -220,6 +219,25 @@ pub fn prepare_execution(
     let instrument_machine = crate::prepare_machine(instrument_machine)
         .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?;
     prepare_audio(gestures, contracts, instrument_machine, studio, options)
+}
+
+/// Prepare audio from the one checked production studio value.
+///
+/// # Errors
+/// Refuses malformed checked source before any primitive is allocated, then
+/// reports the same scheduling, primitive, and extent errors as
+/// [`AudioPrepareError`].
+pub fn prepare_execution(
+    gestures: &GesturePlan,
+    instruments: &CheckedSource,
+    instrument_machine: &musa_score::MachineSpec,
+    studio: &crate::StudioExecution,
+    options: AudioOptions,
+) -> Result<PreparedAudio, AudioPrepareError> {
+    let projection = studio.preparation_projection().ok_or_else(|| {
+        AudioPrepareError::StudioValue("checked studio processor has no native preparation witness".to_owned())
+    })?;
+    prepare_projected_execution(gestures, instruments, instrument_machine, &projection, options)
 }
 
 fn prepare_audio(

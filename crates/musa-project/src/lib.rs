@@ -81,7 +81,7 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
-pub use crate::vocabulary::standard_studio_vocabulary;
+pub use crate::vocabulary::{format_studio_ratio, standard_studio_vocabulary};
 pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};

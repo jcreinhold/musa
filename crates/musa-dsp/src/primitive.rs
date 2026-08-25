@@ -4,8 +4,9 @@
 //! versioned entry naming its configuration and state layout. Resource bounds
 //! are conservative upper bounds checked before any processor state is built.
 
+use crate::intent::{Processor, Unit};
 use crate::spec::{PortKind, ProcessorSpec, StudioGraphSpec};
-use crate::{Processor, SoundUnit, StudioVocabulary, SurfacePort, Unit};
+use crate::{SoundUnit, StudioVocabulary, SurfacePort};
 
 /// Explicit bounds for the native one-frame machine. There is no default:
 /// accepting a larger studio graph is a product decision.

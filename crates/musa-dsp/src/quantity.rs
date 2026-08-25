@@ -9,7 +9,7 @@
 
 use num_rational::Ratio;
 
-use crate::{Unit, WrittenQuantity};
+use crate::intent::{Unit, WrittenQuantity};
 
 pub(crate) fn ratio_to_f64(value: Ratio<i64>) -> f64 {
     (*value.numer() as f64) / (*value.denom() as f64)
