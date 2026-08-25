@@ -48,7 +48,6 @@
   "groove"
   "grace"
   "tuplet"
-  "performance"
   "profile"
   "mark"
   "studio"
@@ -109,13 +108,14 @@
 
 ; --- Keywords whose class depends on where they stand -----------------------
 ;
-; `harmony`, `pitch`, `scale` are also module names — `parser.rs`'s
+; `harmony`, `performance`, `pitch`, `scale` are also module names — `parser.rs`'s
 ; MODULE_NAME lets a module be named after a domain (`import std::harmony;`,
 ; `mod pitch;`). They are captured by parent here, never by bare text: a flat
 ; list cannot tell `harmony { ... }` from `std::harmony`, and guessing from
 ; text is exactly the bug this section exists to prevent.
 
 (harmony_declaration "harmony" @keyword)
+(performance_declaration "performance" @keyword)
 (option_type "Option" @keyword)
 (list_type "List" @keyword)
 (result_type "Result" @keyword)
@@ -227,11 +227,13 @@
 
 (import_statement (identifier) @variable)
 (import_statement "harmony" @variable)
+(import_statement "performance" @variable)
 (import_statement "pitch" @variable)
 (import_statement "scale" @variable)
 
 (mod_declaration (identifier) @variable)
 (mod_declaration "harmony" @variable)
+(mod_declaration "performance" @variable)
 (mod_declaration "pitch" @variable)
 (mod_declaration "scale" @variable)
 

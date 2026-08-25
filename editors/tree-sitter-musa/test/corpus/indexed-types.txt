@@ -8,6 +8,8 @@ data Cell<A> {
 
 fn transpose(p: Pc(12)) -> Pc(12) { p }
 
+fn compare<A>(proof: Equal<A>(left, right,)) -> Equal<List<A>>(left, right) { proof }
+
 ---
 
 (source_file
@@ -32,16 +34,62 @@ fn transpose(p: Pc(12)) -> Pc(12) { p }
           (indexed_type
             (type_name
               (identifier))
-            (expression
-              (literal_expression
-                (integer)))))))
+            (type_index_argument_list
+              (expression
+                (literal_expression
+                  (integer))))))))
     (type_expression
       (indexed_type
         (type_name
           (identifier))
-        (expression
-          (literal_expression
-            (integer)))))
+        (type_index_argument_list
+          (expression
+            (literal_expression
+              (integer))))))
+    (block_expression
+      (expression
+        (name_expression
+          (identifier)))))
+  (function_declaration
+    (identifier)
+    (type_parameter_list
+      (type_parameter
+        (identifier)))
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (indexed_type
+            (applied_type
+              (type_name
+                (identifier))
+              (type_expression
+                (type_name
+                  (identifier))))
+            (type_index_argument_list
+              (expression
+                (name_expression
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))))))
+    (type_expression
+      (indexed_type
+        (applied_type
+          (type_name
+            (identifier))
+          (type_expression
+            (list_type
+              (type_expression
+                (type_name
+                  (identifier))))))
+        (type_index_argument_list
+          (expression
+            (name_expression
+              (identifier)))
+          (expression
+            (name_expression
+              (identifier))))))
     (block_expression
       (expression
         (name_expression

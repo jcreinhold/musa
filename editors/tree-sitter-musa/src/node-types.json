@@ -1660,6 +1660,10 @@
             "named": true
           },
           {
+            "type": "performance",
+            "named": false
+          },
+          {
             "type": "pitch",
             "named": false
           },
@@ -1857,26 +1861,58 @@
     "type": "indexed_type",
     "named": true,
     "fields": {
-      "index": {
-        "multiple": false,
+      "base": {
+        "multiple": true,
         "required": true,
         "types": [
           {
-            "type": "expression",
+            "type": "(",
+            "named": false
+          },
+          {
+            "type": ")",
+            "named": false
+          },
+          {
+            "type": "applied_type",
             "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "option_type",
+            "named": true
+          },
+          {
+            "type": "product_type",
+            "named": true
+          },
+          {
+            "type": "result_type",
+            "named": true
+          },
+          {
+            "type": "type_expression",
+            "named": true
+          },
           {
             "type": "type_name",
             "named": true
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_index_argument_list",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2423,6 +2459,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "performance",
+            "named": false
           },
           {
             "type": "pitch",
@@ -4625,6 +4665,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "type_index_argument_list",
+    "named": true,
+    "fields": {
+      "index": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {

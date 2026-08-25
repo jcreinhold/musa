@@ -24,6 +24,7 @@ an import path nests as deep as the package does
 
 piece "Nested" {
   import std::tonal::harmony;
+  import std::performance;
   import std::post_tonal::pcset as sets;
   score {
     part p {
@@ -41,6 +42,8 @@ piece "Nested" {
     (string)
     (import_statement
       (identifier)
+      (identifier))
+    (import_statement
       (identifier))
     (import_statement
       (identifier)

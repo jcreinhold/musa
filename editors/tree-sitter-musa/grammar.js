@@ -328,11 +328,12 @@ module.exports = grammar({
         ';',
       ),
 
-    // A module may be named after a domain keyword — `harmony`, `pitch`,
-    // `scale` — and the lexer writes the keyword token wherever the word
-    // appears (Parser::MODULE_NAME). `list` and `option` are ordinary
-    // identifiers now that the types are `List` and `Option`.
-    _module_name: ($) => choice($.identifier, 'harmony', 'pitch', 'scale'),
+    // A module may be named after a domain keyword — `harmony`,
+    // `performance`, `pitch`, `scale` — and the lexer writes the keyword
+    // token wherever the word appears (Parser::MODULE_NAME). `list` and
+    // `option` are ordinary identifiers now that the types are `List` and
+    // `Option`.
+    _module_name: ($) => choice($.identifier, 'harmony', 'performance', 'pitch', 'scale'),
 
     // Parser::front_matter_stmt — one shape, four heads.
     front_matter_statement: ($) =>
@@ -454,11 +455,12 @@ module.exports = grammar({
         $._type_atom,
       ),
 
-    _type_atom: ($) =>
+    _type_atom: ($) => choice($._unindexed_type_atom, $.indexed_type),
+
+    _unindexed_type_atom: ($) =>
       choice(
         $.type_name,
         $.applied_type,
-        $.indexed_type,
         $.option_type,
         $.list_type,
         $.result_type,
@@ -476,14 +478,28 @@ module.exports = grammar({
     // parser (Parser::type_atom).
     applied_type: ($) =>
       seq(field('name', $.type_name), '<', $.type_expression, repeat(seq(',', $.type_expression)), '>'),
-    // `Pc(12)` — a type carrying an index. An index is spelled in parentheses
-    // precisely so that it is not the angle-bracket form above: `Pc<A>` takes a
-    // type and `Pc(12)` takes a number, and the grammar tells them apart rather
-    // than the checker (Parser::type_atom). The index is an ordinary
-    // expression, because what an index may *say* is a restriction the checker
-    // applies and not a second syntax.
+    // `Pc(12)`, `Equal<Nat>(left, right)` — a type carrying one or more
+    // indices. Parentheses may follow an atom that already took type
+    // parameters, exactly as Parser::type_expr loops after Parser::type_atom.
+    // Each telescope is a comma-separated list of ordinary expressions; what
+    // an index may *say* is a checker restriction and not a second syntax.
     indexed_type: ($) =>
-      seq(field('name', $.type_name), '(', field('index', $.expression), ')'),
+      seq(
+        field('base', $._unindexed_type_atom),
+        repeat1($.type_index_argument_list),
+      ),
+    type_index_argument_list: ($) =>
+      seq(
+        '(',
+        optional(
+          seq(
+            field('index', $.expression),
+            repeat(seq(',', field('index', $.expression))),
+            optional(','),
+          ),
+        ),
+        ')',
+      ),
     option_type: ($) => seq('Option', '<', $.type_expression, '>'),
     list_type: ($) => seq('List', '<', $.type_expression, '>'),
     // The binary sum, in its one surface spelling (Parser::type_atom).
@@ -797,7 +813,8 @@ module.exports = grammar({
     // Both injections carry a value: a sum has no empty side.
     result_expression: ($) =>
       choice(seq('Ok', '(', $.expression, ')'), seq('Err', '(', $.expression, ')')),
-    list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),
+    list_expression: ($) =>
+      seq('[', optional(seq($.expression, repeat(seq(',', $.expression)), optional(','))), ']'),
     product_expression: ($) =>
       seq('(', $.expression, ',', $.expression, repeat(seq(',', $.expression)), ')'),
 
@@ -1387,7 +1404,9 @@ module.exports = grammar({
     rational: ($) => /[0-9]+\/[0-9]+/,
     float: ($) => /[0-9]+\.[0-9]+/,
     integer: ($) => /[0-9]+/,
-    identifier: ($) => /[a-zA-Z_][a-zA-Z_0-9]*/,
+    // The lexer gives the exact spelling `s` to UnitS at higher priority;
+    // longer names beginning with s remain identifiers.
+    identifier: ($) => /([a-rt-zA-Z_][a-zA-Z_0-9]*|s[a-zA-Z_0-9]+)/,
 
     // `"([^"\\\n]|\\[^\n])*"` — one quoted line. An unterminated quote is
     // error recovery's business, exactly as the hand lexer leaves it.
