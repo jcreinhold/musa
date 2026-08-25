@@ -747,17 +747,18 @@ makes knowable. 164–170 survive with their tasks intact and their targets enla
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
 **174b–181 build musical sound on that core without a second Rust language.** Repaired 174b first establishes a generic
-checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 175 makes the
-source-declared primitive wrappers discoverable and joins them to private host registrations; 176 keeps source
-quantities exact through the one DSP conversion. 176a's payload rule guards the second payload. 177 declares gestures,
-indexed controls, and profiles in `std::performance` and gives opaque track/provenance work to the host. 178 declares
-instrument signatures and mappings in source over private primitives. 179 preserves part identity through prepared
-routing, and 180 evaluates source control mappings before resolving private parameters. Once that source side has
-production parity, 180a deletes the legacy public `StudioSpec` path and the compiler-to-DSP edge; 174c then enforces the
-resulting Cargo roles separately from source ownership. 181 gives the surface one clear sound/profile choice while
-keeping expert source machine and mix declarations available. Removed patch syntax is a hard error with a certain fix,
-not a compatibility path. Notes 79–80 record why the Rust-vocabulary work was reopened and why bridging must precede
-cutover.
+checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 176 first
+declares exact source quantities and keeps them exact through the one DSP conversion. 175 then makes processor contracts
+and the rest of the source studio vocabulary discoverable and joins primitive-backed declarations to private host
+registrations. 176a's payload rule guards the second payload. 177 declares gestures, indexed controls, and profiles in
+`std::performance` and gives opaque track/provenance work to the host. 178 supplies the executable registered-primitive
+wrappers and declares instrument signatures, mappings, and private machine bodies in source. 179 preserves part identity
+through prepared routing, and 180 evaluates source control mappings before resolving private parameters. Once that
+source side has production parity, 180a deletes the legacy public `StudioSpec` path and the compiler-to-DSP edge; 174c
+then enforces the resulting Cargo roles separately from source ownership. 181 gives the surface one clear sound/profile
+choice while keeping expert source machine and mix declarations available. Removed patch syntax is a hard error with a
+certain fix, not a compatibility path. Notes 79–82 record why the Rust-vocabulary work was reopened, why bridging must
+precede cutover, and why source quantities precede vocabulary while executable wrappers remain in 178.
 
 **182–188 add external sound without making builds or time implicit.** 182 defines verified content-addressed assets
 before a decoder exists. 183 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from

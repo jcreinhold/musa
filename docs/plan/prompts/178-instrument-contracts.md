@@ -17,7 +17,7 @@ primitive contracts and preparation, not an `InstrumentSpec` language beside sou
 
 ## Read
 
-- `docs/rules/language/08-performance-and-sound.md` §§0, 3–5; repaired 175–177 and note 79.
+- `docs/rules/language/08-performance-and-sound.md` §§0, 3–5; repaired 175–177 and notes 79 and 82.
 - Prompts 171–174 and `docs/plan/code-map/process-runtime.md`: private state, exact preparation, one-frame semantics,
   batching, and the build-local primitive registry.
 - Source modules/privacy, parameterized records, indexed families, pattern unification, `Storable`, and machine
@@ -36,9 +36,10 @@ default/range, rate, docs, and mapping agree by ordinary dependent typing. Omitt
 Miller-pattern unifier, including postponement; no instrument-specific compatibility table substitutes for conversion.
 Custom controls are ordinary namespaced declarations.
 
-Native implementation bodies name source wrappers over registered primitives and may address their own private graph
-paths. Outside the body only signature keys are addressable. Finite checking rejects duplicate/missing controls,
-incompatible mappings, private-node access, unsupported techniques, and channel mismatch before preparation.
+This prompt supplies the executable source wrappers deliberately deferred by prompt 175. Native implementation bodies
+name those wrappers over registered primitives and may address their own private graph paths. Outside the body only
+signature keys are addressable. Finite checking rejects duplicate/missing controls, incompatible mappings, private-node
+access, unsupported techniques, and channel mismatch before preparation.
 
 Delete the old `patch` declaration with a hard source fix. A library exports its instrument/signature and may keep its
 implementation declarations private through ordinary module privacy. Standard instruments and presets remain readable
