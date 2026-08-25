@@ -74,7 +74,7 @@ const CAREFUL: &str = r#"piece "Careful" {
         patch soft {
             oscillator(sine)
                 |> envelope(adsr(attack: 30 ms, decay: 1 s, sustain: 0.5, release: 2 s))
-                |> lowpass(cutoff: 900 Hz, q: 0.7)
+                |> lowpass(cutoff: 900 Hz, resonance: 0.7)
                 |> output;
         }
         bus room {
@@ -116,6 +116,16 @@ fn the_facts_report_what_the_compiler_resolved() {
     assert!((cutoff.value - 1400.0).abs() < 1e-9, "{cutoff:?}");
     assert_eq!(cutoff.unit, "Hz");
     assert!(cutoff.written);
+    assert_eq!(cutoff.summary, "Sets the boundary frequency.");
+    let lowpass = studio
+        .patches
+        .iter()
+        .find(|patch| patch.name == "glass_pad")
+        .and_then(|patch| patch.stages.iter().find(|stage| stage.processor == "lowpass"))
+        .expect("the filter stage");
+    assert_eq!(lowpass.origin, "builtin");
+    assert!(lowpass.summary.starts_with("Keeps frequencies"));
+    assert!(lowpass.signature.contains("resonance: Ratio"));
     // The written value is what the modulation moves around, so the interface
     // has to be able to say that a knob is not the whole story (§13.7).
     assert_eq!(cutoff.modulated_by.as_deref(), Some("lfo"));

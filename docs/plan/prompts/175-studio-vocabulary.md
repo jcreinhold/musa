@@ -1,7 +1,7 @@
 ---
 id: 175
 slug: studio-vocabulary
-status: pending
+status: completed
 depends_on: [122, 174b]
 phase: 3
 ---

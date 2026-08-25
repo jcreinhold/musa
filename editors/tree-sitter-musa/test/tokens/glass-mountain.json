@@ -196,7 +196,7 @@
     { "kind": "integer", "text": "1400" },
     { "kind": "unit", "text": "Hz" },
     { "kind": ",", "text": "," },
-    { "kind": "identifier", "text": "q" },
+    { "kind": "identifier", "text": "resonance" },
     { "kind": ":", "text": ":" },
     { "kind": "float", "text": "0.7" },
     { "kind": ")", "text": ")" },

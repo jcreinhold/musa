@@ -130,7 +130,7 @@ impl SignalStage {
     }
 }
 
-/// `lowpass(cutoff: 1400 Hz, q: 0.7)`
+/// `lowpass(cutoff: 1400 Hz, resonance: 0.7)`
 pub struct CallExpr(SyntaxNode);
 wrapper!(CallExpr, SyntaxKind::CallExpr);
 
@@ -167,6 +167,15 @@ impl Arg {
     pub fn name(&self) -> Option<String> {
         find_token(&self.0, SyntaxKind::Colon)?;
         token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The argument-name token, when this is a named argument.
+    ///
+    /// Diagnostics use its exact range to replace a removed spelling without
+    /// rewriting the value or its comments.
+    pub fn name_token(&self) -> Option<SyntaxToken> {
+        find_token(&self.0, SyntaxKind::Colon)?;
+        find_token(&self.0, SyntaxKind::Identifier)
     }
 
     /// The argument's value.

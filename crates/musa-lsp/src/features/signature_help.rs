@@ -26,7 +26,9 @@ pub(crate) fn signature_help(document: &Document, position: Position) -> Option<
     let snapshot = document.snapshot();
     let parsed = musa_syntax::parse(snapshot.source());
     let call = super::call::at(&parsed.syntax(), byte)?;
-    let signature = declared(&snapshot, &call.name).or_else(|| claimed(&call.name))?;
+    let signature = declared(&snapshot, &call.name)
+        .or_else(|| claimed(&call.name))
+        .or_else(|| builtin(&call.name))?;
     // Clamped to the signature's own length: a caller who wrote one comma too
     // many is past the end, and highlighting a parameter that does not exist
     // would answer a question the signature cannot.
@@ -83,6 +85,31 @@ fn claimed(name: &str) -> Option<SignatureInformation> {
                 .map(|parameter| ParameterInformation {
                     label: ParameterLabel::Simple((*parameter).to_owned()),
                     documentation: None,
+                })
+                .collect(),
+        ),
+        active_parameter: None,
+    })
+}
+
+/// The signature of a studio processor, from the DSP-owned public schema.
+fn builtin(name: &str) -> Option<SignatureInformation> {
+    let doc = musa_dsp::processor_doc(name)?;
+    Some(SignatureInformation {
+        label: doc.signature.to_owned(),
+        documentation: Some(Documentation::MarkupContent(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: super::hover::processor_markdown(doc),
+        })),
+        parameters: Some(
+            doc.params
+                .iter()
+                .map(|parameter| ParameterInformation {
+                    label: ParameterLabel::Simple(parameter.name.to_owned()),
+                    documentation: Some(Documentation::MarkupContent(MarkupContent {
+                        kind: MarkupKind::Markdown,
+                        value: parameter.summary.to_owned(),
+                    })),
                 })
                 .collect(),
         ),

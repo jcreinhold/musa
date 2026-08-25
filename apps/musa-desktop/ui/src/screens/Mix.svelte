@@ -147,7 +147,11 @@
           <section class="group" aria-label="Buses">
             <h2 class="group-name">Buses</h2>
             {#each studio.buses as bus (bus.name)}
-              <article class="strip">
+              <article
+                class="strip"
+                aria-label={`${bus.name}: ${bus.stages.map((stage) => stage.summary).join(" ")}`}
+                title={bus.stages.map((stage) => `${stage.processor}: ${stage.summary}`).join("\n")}
+              >
                 <header class="strip-head">
                   <h3 class="strip-name">{bus.name}</h3>
                   <p class="strip-route">

@@ -33,6 +33,9 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     if let Some(found) = at_item(&snapshot, byte, lines) {
         return Some(found);
     }
+    if let Some(found) = at_studio_catalogue(&snapshot, byte, lines) {
+        return Some(found);
+    }
     if let Some(found) = at_keyword(&snapshot, byte, lines) {
         return Some(found);
     }
@@ -43,6 +46,106 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
         return Some(found);
     }
     at_studio(document, byte, lines)
+}
+
+/// A studio processor, parameter, or concept, read from invalid syntax but
+/// answered by the same catalogue the compiler checks.
+fn at_studio_catalogue(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_syntax::parse(snapshot.source());
+    let token = parsed.syntax().token_at_offset(byte.into()).find(|token| {
+        matches!(
+            token.kind(),
+            musa_syntax::SyntaxKind::Identifier
+                | musa_syntax::SyntaxKind::ScaleKw
+                | musa_syntax::SyntaxKind::StudioKw
+                | musa_syntax::SyntaxKind::PatchKw
+                | musa_syntax::SyntaxKind::ModulateKw
+                | musa_syntax::SyntaxKind::BusKw
+                | musa_syntax::SyntaxKind::AssignKw
+                | musa_syntax::SyntaxKind::SendKw
+                | musa_syntax::SyntaxKind::RouteKw
+                | musa_syntax::SyntaxKind::MasterKw
+                | musa_syntax::SyntaxKind::AtKw
+                | musa_syntax::SyntaxKind::OutputKw
+                | musa_syntax::SyntaxKind::UnitHz
+                | musa_syntax::SyntaxKind::UnitMs
+                | musa_syntax::SyntaxKind::UnitS
+                | musa_syntax::SyntaxKind::UnitDb
+        )
+    })?;
+    let word = token.text();
+    let markdown = if let Some(doc) = musa_dsp::processor_doc(word) {
+        processor_markdown(doc)
+    } else if let Some(doc) = musa_dsp::studio_term(word) {
+        term_markdown(doc)
+    } else {
+        let call = super::call::at(&parsed.syntax(), byte)?;
+        let processor = musa_dsp::processor_doc(&call.name)?;
+        let parameter = processor.params.iter().find(|parameter| parameter.name == word)?;
+        format!(
+            "**{}** — *parameter of {}*\n\n{}\n\nUnit: `{}` · default: `{}` · range: `{}`–`{}`\n\nOrigin: `builtin`",
+            parameter.name,
+            processor.key.name,
+            parameter.summary,
+            parameter.unit.spelling().unwrap_or("Ratio"),
+            parameter.default,
+            parameter.range.0,
+            parameter.range.1,
+        )
+    };
+    let range = token.text_range();
+    Some(answer(
+        lines,
+        Span {
+            start: u32::from(range.start()),
+            end: u32::from(range.end()),
+        },
+        markdown,
+    ))
+}
+
+pub(crate) fn processor_markdown(doc: &musa_dsp::ProcessorDoc) -> String {
+    let availability = if doc.native { "native" } else { "unavailable natively" };
+    format!(
+        "**{}** — *{}*\n\n{} {}\n\n```musa\n{}\n```\n\n{}\n\nOrigin: `builtin` · schema v{} · {availability}\n\nExample: `{}`",
+        doc.key.name,
+        doc.schema.role.label(),
+        doc.summary,
+        doc.note,
+        doc.signature,
+        parameters_markdown(doc.params),
+        doc.key.version,
+        doc.example,
+    )
+}
+
+pub(crate) fn term_markdown(doc: &musa_dsp::StudioTermDoc) -> String {
+    format!(
+        "**{}** — *studio concept*\n\n{} {}\n\n```musa\n{}\n```\n\nOrigin: `builtin`\n\nExample: `{}`",
+        doc.spelling, doc.summary, doc.note, doc.signature, doc.example
+    )
+}
+
+fn parameters_markdown(params: &[musa_dsp::ParamSpec]) -> String {
+    if params.is_empty() {
+        return "Parameters: none.".to_owned();
+    }
+    let rows = params
+        .iter()
+        .map(|param| {
+            format!(
+                "- `{}` — {}; unit `{}`, default `{}`, range `{}`–`{}`",
+                param.name,
+                param.summary,
+                param.unit.spelling().unwrap_or("Ratio"),
+                param.default,
+                param.range.0,
+                param.range.1
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("Parameters:\n\n{rows}")
 }
 
 /// A declared name — here or in an imported library: its signature, its

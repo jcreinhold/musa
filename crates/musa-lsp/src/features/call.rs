@@ -36,10 +36,16 @@ pub(crate) struct CallSite {
 pub(crate) fn at(tree: &SyntaxNode, byte: u32) -> Option<CallSite> {
     let mut best: Option<CallSite> = None;
     for node in tree.descendants() {
-        if !matches!(node.kind(), SyntaxKind::ApplyExpr | SyntaxKind::AssertStmt) {
+        if !matches!(
+            node.kind(),
+            SyntaxKind::ApplyExpr | SyntaxKind::AssertStmt | SyntaxKind::CallExpr
+        ) {
             continue;
         }
-        let Some(arguments) = node.children().find(|child| child.kind() == SyntaxKind::ExprArgList) else {
+        let Some(arguments) = node
+            .children()
+            .find(|child| matches!(child.kind(), SyntaxKind::ExprArgList | SyntaxKind::ArgList))
+        else {
             continue;
         };
         let range = arguments.text_range();
@@ -72,7 +78,7 @@ fn callee(node: &SyntaxNode, arguments: &SyntaxNode) -> Option<String> {
     if let Some(token) = node
         .children_with_tokens()
         .filter_map(|element| element.into_token())
-        .find(|token| token.kind() == SyntaxKind::Identifier)
+        .find(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::ScaleKw))
     {
         return Some(token.text().to_owned());
     }

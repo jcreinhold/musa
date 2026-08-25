@@ -320,7 +320,7 @@ fn the_roadmap_patch_sounds_like_a_pad() {
         render_source(&source, RATE as usize * 4)
     };
     let pad = voice(-15.0, 3.5);
-    let plain = voice(-120.0, 0.05);
+    let plain = voice(-60.0, 0.05);
     assert!(
         high_frequency_energy(&pad) > high_frequency_energy(&plain) * 1.05,
         "the partial must be audible above the fundamental"

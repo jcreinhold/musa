@@ -2409,6 +2409,7 @@ dependencies = [
  "fluent-uri",
  "lsp-server",
  "lsp-types",
+ "musa-dsp",
  "musa-project",
  "musa-syntax",
  "serde_json",

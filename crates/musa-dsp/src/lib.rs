@@ -8,6 +8,7 @@
 //! locks, logs, or performs I/O.
 
 mod audio;
+mod catalogue;
 mod effects;
 mod envelope;
 mod error;
@@ -24,6 +25,10 @@ mod studio;
 mod voice;
 
 pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_audio};
+pub use crate::catalogue::{
+    BuiltinKey, PROCESSORS, PortSchema, ProcessorDoc, SignalRole, StudioTermDoc, SurfacePort, SurfaceSchema, TERMS,
+    processor as processor_doc, reference_markdown as studio_reference, term as studio_term,
+};
 pub use crate::intent::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
 };

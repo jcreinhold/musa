@@ -48,6 +48,14 @@ pub struct StageFacts {
     pub index: usize,
     /// The processor, written the way the language writes it: `lowpass`.
     pub processor: String,
+    /// Plain catalogue sentence used as the visible description and
+    /// accessible explanation.
+    pub summary: String,
+    /// Typed public call shape.
+    pub signature: String,
+    /// Where this processor comes from. Built-ins are explicit rather than
+    /// looking like project declarations.
+    pub origin: String,
     /// The name it was bound to (`lfo = oscillator(...)`), when it has one.
     /// This is what a `modulate` path addresses.
     pub label: Option<String>,
@@ -61,6 +69,8 @@ pub struct StageFacts {
 pub struct ParamFacts {
     /// The name it is written with: `cutoff`.
     pub name: String,
+    /// Plain catalogue sentence for labels, hover, and accessibility.
+    pub summary: String,
     /// Its value in the unit's base — seconds, hertz, decibels, or a plain
     /// ratio. Written `30 ms` reads back as `0.03`.
     pub value: f64,
@@ -209,26 +219,33 @@ fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
                 .nodes()
                 .iter()
                 .enumerate()
-                .map(|(index, node)| StageFacts {
-                    index,
-                    processor: node.processor.name().to_owned(),
-                    label: node.label.clone(),
-                    params: node
-                        .processor
-                        .params()
-                        .iter()
-                        .enumerate()
-                        .map(|(at, declared)| ParamFacts {
-                            name: declared.name.to_owned(),
-                            value: node.params.get(at).map_or(declared.default, |value| value.magnitude),
-                            unit: declared.unit.spelling().unwrap_or_default().to_owned(),
-                            minimum: declared.range.0,
-                            maximum: declared.range.1,
-                            written: node.param_spans.get(at).copied().flatten().is_some(),
-                            span: node.param_spans.get(at).copied().flatten().map(span),
-                            modulated_by: modulator(studio, name, index, declared.name),
-                        })
-                        .collect(),
+                .map(|(index, node)| {
+                    let catalogue = musa_dsp::processor_doc(node.processor.name());
+                    StageFacts {
+                        index,
+                        processor: node.processor.name().to_owned(),
+                        summary: catalogue.map_or_else(String::new, |doc| doc.summary.to_owned()),
+                        signature: catalogue.map_or_else(String::new, |doc| doc.signature.to_owned()),
+                        origin: "builtin".to_owned(),
+                        label: node.label.clone(),
+                        params: node
+                            .processor
+                            .params()
+                            .iter()
+                            .enumerate()
+                            .map(|(at, declared)| ParamFacts {
+                                name: declared.name.to_owned(),
+                                summary: declared.summary.to_owned(),
+                                value: node.params.get(at).map_or(declared.default, |value| value.magnitude),
+                                unit: declared.unit.spelling().unwrap_or_default().to_owned(),
+                                minimum: declared.range.0,
+                                maximum: declared.range.1,
+                                written: node.param_spans.get(at).copied().flatten().is_some(),
+                                span: node.param_spans.get(at).copied().flatten().map(span),
+                                modulated_by: modulator(studio, name, index, declared.name),
+                            })
+                            .collect(),
+                    }
                 })
                 .collect(),
         })

@@ -35,6 +35,18 @@ use crate::workspace::Document;
 pub(crate) fn completions(document: &Document, position: Position) -> CompletionResponse {
     let mut items: BTreeMap<String, CompletionItem> = BTreeMap::new();
     at_site(document, position, &mut items);
+    for doc in musa_dsp::PROCESSORS {
+        items.entry(doc.key.name.to_owned()).or_insert_with(|| CompletionItem {
+            label: doc.key.name.to_owned(),
+            kind: Some(CompletionItemKind::FUNCTION),
+            detail: Some(doc.signature.to_owned()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: super::hover::processor_markdown(doc),
+            })),
+            ..CompletionItem::default()
+        });
+    }
     for (spelling, kind) in SPELLINGS {
         let (item_kind, class) = match TokenClass::of(*kind) {
             Some(TokenClass::Keyword | TokenClass::Use) => (CompletionItemKind::KEYWORD, "keyword"),
@@ -167,6 +179,17 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
     let Some(call) = super::call::at(&parsed.syntax(), byte) else {
         return;
     };
+    if let Some(processor) = musa_dsp::processor_doc(&call.name) {
+        for parameter in processor.params {
+            site(
+                items,
+                &format!("{}:", parameter.name),
+                CompletionItemKind::FIELD,
+                parameter.summary.to_owned(),
+            );
+        }
+        return;
+    }
     // A claim's arguments are words the registry reads, not values: where one
     // is expected, the words themselves are the vocabulary.
     if let Some(claim) = musa_project::assertion_claims().find(|claim| claim.name == call.name) {
@@ -243,6 +266,16 @@ fn keyword_item(
         kind: Some(item_kind),
         ..CompletionItem::default()
     };
+    if let Some(doc) = musa_dsp::studio_term(spelling) {
+        return CompletionItem {
+            detail: Some(doc.signature.to_owned()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: super::hover::term_markdown(doc),
+            })),
+            ..base
+        };
+    }
     let Some(doc) = musa_syntax::keyword_doc(kind) else {
         return CompletionItem {
             detail: Some(class.to_owned()),

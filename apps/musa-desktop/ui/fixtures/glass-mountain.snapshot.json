@@ -2,7 +2,7 @@
   "document": 0,
   "name": "glass-mountain.musa",
   "kind": "piece",
-  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh(e5);\n\n                transpose down P5 {\n                    use sigh(e5);\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh(e5);\n\n                transpose down P5 {\n                    use sigh(e5);\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, resonance: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -1193,20 +1193,25 @@
           {
             "index": 0,
             "processor": "oscillator",
+            "summary": "Produces a sine wave as an instrument partial or control signal.",
+            "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
+            "origin": "builtin",
             "label": "carrier",
             "params": [
               {
                 "name": "frequency",
-                "value": 440.0,
+                "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
+                "value": 1.0,
                 "unit": "Hz",
-                "minimum": 20.0,
-                "maximum": 20000.0,
+                "minimum": 0.0,
+                "maximum": 200.0,
                 "written": false,
                 "span": null,
                 "modulatedBy": null
               },
               {
                 "name": "ratio",
+                "summary": "Scales the pitch supplied by the score.",
                 "value": 1.0,
                 "unit": "",
                 "minimum": 0.25,
@@ -1220,20 +1225,25 @@
           {
             "index": 1,
             "processor": "oscillator",
+            "summary": "Produces a sine wave as an instrument partial or control signal.",
+            "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "frequency",
-                "value": 440.0,
+                "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
+                "value": 1.0,
                 "unit": "Hz",
-                "minimum": 20.0,
-                "maximum": 20000.0,
+                "minimum": 0.0,
+                "maximum": 200.0,
                 "written": false,
                 "span": null,
                 "modulatedBy": null
               },
               {
                 "name": "ratio",
+                "summary": "Scales the pitch supplied by the score.",
                 "value": 2.0,
                 "unit": "",
                 "minimum": 0.25,
@@ -1250,10 +1260,14 @@
           {
             "index": 2,
             "processor": "gain",
+            "summary": "Changes a signal's level.",
+            "signature": "gain(gain: dB = 0 dB)",
+            "origin": "builtin",
             "label": "shimmer",
             "params": [
               {
                 "name": "gain",
+                "summary": "Sets level in decibels.",
                 "value": -15.0,
                 "unit": "dB",
                 "minimum": -60.0,
@@ -1270,16 +1284,23 @@
           {
             "index": 3,
             "processor": "mix",
+            "summary": "Combines two or more audio signals.",
+            "signature": "mix(first: Audio, second: Audio, ...): Audio",
+            "origin": "builtin",
             "label": null,
             "params": []
           },
           {
             "index": 4,
             "processor": "envelope",
+            "summary": "Shapes a note's level over time.",
+            "signature": "envelope(attack: s = 5 ms, decay: s = 0 s, sustain: Ratio = 1, release: s = 50 ms)",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "attack",
+                "summary": "Sets the rise time after a note begins.",
                 "value": 0.03,
                 "unit": "s",
                 "minimum": 0.0,
@@ -1293,6 +1314,7 @@
               },
               {
                 "name": "decay",
+                "summary": "Sets the time to reach the sustain level.",
                 "value": 1.8,
                 "unit": "s",
                 "minimum": 0.0,
@@ -1306,6 +1328,7 @@
               },
               {
                 "name": "sustain",
+                "summary": "Sets the held level while a note continues.",
                 "value": 0.65,
                 "unit": "",
                 "minimum": 0.0,
@@ -1319,6 +1342,7 @@
               },
               {
                 "name": "release",
+                "summary": "Sets the fade time after a note ends.",
                 "value": 3.5,
                 "unit": "s",
                 "minimum": 0.0,
@@ -1335,10 +1359,14 @@
           {
             "index": 5,
             "processor": "lowpass",
+            "summary": "Keeps frequencies below a cutoff.",
+            "signature": "lowpass(cutoff: Hz = 20000 Hz, resonance: Ratio = 0.707)",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "cutoff",
+                "summary": "Sets the boundary frequency.",
                 "value": 1400.0,
                 "unit": "Hz",
                 "minimum": 20.0,
@@ -1351,15 +1379,16 @@
                 "modulatedBy": "lfo"
               },
               {
-                "name": "q",
+                "name": "resonance",
+                "summary": "Emphasizes the cutoff, conventionally represented by quality factor Q.",
                 "value": 0.7,
                 "unit": "",
                 "minimum": 0.1,
                 "maximum": 20.0,
                 "written": true,
                 "span": {
-                  "start": 1631,
-                  "end": 1634
+                  "start": 1639,
+                  "end": 1642
                 },
                 "modulatedBy": null
               }
@@ -1376,36 +1405,42 @@
           {
             "index": 0,
             "processor": "reverb",
+            "summary": "Places audio in a simulated room.",
+            "signature": "reverb(room: Ratio = 0.5, damping: Ratio = 0.5, mix: Ratio = 1)",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "room",
+                "summary": "Sets the apparent room size.",
                 "value": 0.82,
                 "unit": "",
                 "minimum": 0.0,
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1880,
-                  "end": 1884
+                  "start": 1888,
+                  "end": 1892
                 },
                 "modulatedBy": null
               },
               {
                 "name": "damping",
+                "summary": "Controls high-frequency absorption.",
                 "value": 0.55,
                 "unit": "",
                 "minimum": 0.0,
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1895,
-                  "end": 1899
+                  "start": 1903,
+                  "end": 1907
                 },
                 "modulatedBy": null
               },
               {
                 "name": "mix",
+                "summary": "Balances dry and processed audio.",
                 "value": 1.0,
                 "unit": "",
                 "minimum": 0.0,
@@ -1427,23 +1462,28 @@
           {
             "index": 0,
             "processor": "oscillator",
+            "summary": "Produces a sine wave as an instrument partial or control signal.",
+            "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "frequency",
+                "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
                 "value": 0.08,
                 "unit": "Hz",
-                "minimum": 20.0,
-                "maximum": 20000.0,
+                "minimum": 0.0,
+                "maximum": 200.0,
                 "written": true,
                 "span": {
-                  "start": 1716,
-                  "end": 1723
+                  "start": 1724,
+                  "end": 1731
                 },
                 "modulatedBy": null
               },
               {
                 "name": "ratio",
+                "summary": "Scales the pitch supplied by the score.",
                 "value": 1.0,
                 "unit": "",
                 "minimum": 0.25,
@@ -1457,18 +1497,22 @@
           {
             "index": 1,
             "processor": "scale",
+            "summary": "Multiplies a control signal.",
+            "signature": "scale(factor: Hz = 1 Hz): Control",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "factor",
+                "summary": "Multiplies each control value.",
                 "value": 250.0,
                 "unit": "Hz",
                 "minimum": 0.0,
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1746,
-                  "end": 1752
+                  "start": 1754,
+                  "end": 1760
                 },
                 "modulatedBy": null
               }
@@ -1477,18 +1521,22 @@
           {
             "index": 2,
             "processor": "bias",
+            "summary": "Offsets a control signal.",
+            "signature": "bias(offset: Hz = 0 Hz): Control",
+            "origin": "builtin",
             "label": null,
             "params": [
               {
                 "name": "offset",
+                "summary": "Adds to each control value.",
                 "value": 1400.0,
                 "unit": "Hz",
                 "minimum": 0.0,
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1774,
-                  "end": 1781
+                  "start": 1782,
+                  "end": 1789
                 },
                 "modulatedBy": null
               }
@@ -1513,8 +1561,8 @@
         "bus": "hall",
         "decibels": -18.0,
         "span": {
-          "start": 2084,
-          "end": 2090
+          "start": 2092,
+          "end": 2098
         }
       },
       {
@@ -1522,8 +1570,8 @@
         "bus": "hall",
         "decibels": -14.0,
         "span": {
-          "start": 2124,
-          "end": 2130
+          "start": 2132,
+          "end": 2138
         }
       }
     ],
@@ -1609,16 +1657,16 @@
       "external": null,
       "uses": [
         {
-          "start": 1928,
-          "end": 1934
+          "start": 1936,
+          "end": 1942
         },
         {
-          "start": 2001,
-          "end": 2007
+          "start": 2009,
+          "end": 2015
         },
         {
-          "start": 2066,
-          "end": 2072
+          "start": 2074,
+          "end": 2080
         }
       ]
     },
@@ -1642,16 +1690,16 @@
       "external": null,
       "uses": [
         {
-          "start": 1964,
-          "end": 1971
+          "start": 1972,
+          "end": 1979
         },
         {
-          "start": 2033,
-          "end": 2040
+          "start": 2041,
+          "end": 2048
         },
         {
-          "start": 2105,
-          "end": 2112
+          "start": 2113,
+          "end": 2120
         }
       ]
     },
@@ -1685,12 +1733,12 @@
       "external": null,
       "uses": [
         {
-          "start": 1938,
-          "end": 1947
+          "start": 1946,
+          "end": 1955
         },
         {
-          "start": 1975,
-          "end": 1984
+          "start": 1983,
+          "end": 1992
         }
       ]
     }

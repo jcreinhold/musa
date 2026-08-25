@@ -387,9 +387,9 @@ fn set_stage_params(graph: &mut StudioGraphSpec, id: NodeId, node: &StudioNode, 
     for (declared, value) in node.processor.params().iter().zip(&node.params) {
         let known = graph
             .processor_of(id)
-            .is_some_and(|processor| processor.descriptor(declared.name).is_some());
+            .is_some_and(|processor| processor.descriptor(declared.dsp_name).is_some());
         if known {
-            set_param(graph, id, declared.name, value.as_linear(), lowering);
+            set_param(graph, id, declared.dsp_name, value.as_linear(), lowering);
         }
     }
 }
@@ -427,7 +427,19 @@ fn lower_modulations(
             }
         };
         if let Some(source) = source {
-            graph.modulate(source, 0, *target, modulation.param);
+            let Some(dsp_name) = studio
+                .patch(&modulation.patch)
+                .and_then(|patch| patch.nodes().get(modulation.node))
+                .and_then(|node| node.processor.param(modulation.param))
+                .map(|param| param.dsp_name)
+            else {
+                lowering.notes.push(format!(
+                    "`{}.{}` has no render parameter",
+                    modulation.patch, modulation.param
+                ));
+                continue;
+            };
+            graph.modulate(source, 0, *target, dsp_name);
         }
     }
 }

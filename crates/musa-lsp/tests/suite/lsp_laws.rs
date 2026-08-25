@@ -76,6 +76,20 @@ const HOVER_PIECE: &str = "piece \"Hover\" {
 }
 ";
 
+/// Studio tooling is syntax-driven so it remains available while the call is
+/// incomplete and the project has no current studio facts.
+const STUDIO_TOOLING: &str = "piece \"Studio tooling\" {
+    tempo 1/4 = 96;
+    meter 4/4;
+    score { part piano { voice melody { c4/1 } } }
+    studio {
+        patch soft {
+            oscillator(sine) |> lowpass(cutoff: 1400 Hz, resonance: ) |> output;
+        }
+    }
+}
+";
+
 /// The client end of the connection, with the responses' bookkeeping a test
 /// should never have to write out.
 struct Client {
@@ -787,8 +801,9 @@ fn completion_offers_the_vocabulary_and_the_names() {
     for expected in ["sigh", "violin", "strings"] {
         assert!(labels.contains(&expected), "name `{expected}` missing");
     }
-    // A keyword teaches from the menu: its own documentation rides the item,
-    // while a unit has only its class.
+    // The menu teaches from the authoritative vocabulary: language keywords
+    // carry their syntax docs and studio units carry their typed catalogue
+    // entry rather than a second hard-coded description.
     let tempo = items.iter().find(|item| item.label == "tempo").expect("tempo item");
     assert_eq!(tempo.detail.as_deref(), Some("how fast, written where it changes"));
     let Some(lsp_types::Documentation::MarkupContent(content)) = &tempo.documentation else {
@@ -796,8 +811,16 @@ fn completion_offers_the_vocabulary_and_the_names() {
     };
     assert!(content.value.contains("```musa"), "{}", content.value);
     let hz = items.iter().find(|item| item.label == "Hz").expect("Hz item");
-    assert_eq!(hz.detail.as_deref(), Some("unit"));
-    assert!(hz.documentation.is_none());
+    assert_eq!(hz.detail.as_deref(), Some("Number Hz"));
+    let Some(lsp_types::Documentation::MarkupContent(content)) = &hz.documentation else {
+        panic!("Hz should carry catalogue documentation");
+    };
+    assert!(
+        content.value.contains("Hertz measure cycles per second"),
+        "{}",
+        content.value
+    );
+    assert!(content.value.contains("builtin"), "{}", content.value);
     server.stop();
 }
 
@@ -1142,6 +1165,36 @@ fn signature_help_answers_for_a_claim_from_the_compilers_own_registry() {
     // The policy argument, past the comma.
     let help = signature_help(&mut server, &uri, shifted(claim, 24));
     assert_eq!(help.active_parameter, Some(1));
+    server.stop();
+}
+
+#[test]
+fn studio_help_comes_from_the_catalogue_even_when_the_call_is_incomplete() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("studio-tooling", STUDIO_TOOLING);
+
+    let hover = hover_markdown(&mut server, &uri, at(STUDIO_TOOLING, "lowpass"));
+    assert!(hover.contains("Keeps frequencies below a cutoff."), "{hover}");
+    assert!(hover.contains("quality factor Q"), "{hover}");
+    assert!(hover.contains("Origin: `builtin`"), "{hover}");
+
+    let call = at(STUDIO_TOOLING, "lowpass(cutoff");
+    let help = signature_help(&mut server, &uri, shifted(call, 20));
+    assert!(
+        help.signatures
+            .first()
+            .expect("one studio signature")
+            .label
+            .contains("resonance: Ratio")
+    );
+
+    let items = completions(&mut server, &uri, shifted(call, 18));
+    let resonance = items
+        .iter()
+        .find(|item| item.label == "resonance:")
+        .expect("canonical parameter completion");
+    assert!(resonance.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')));
+    assert!(!items.iter().any(|item| item.label == "q:"));
     server.stop();
 }
 

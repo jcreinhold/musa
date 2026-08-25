@@ -59,7 +59,7 @@
 </script>
 
 <div class="param" class:inherited={!param.written}>
-  <label class="name" for={id}>{param.name}</label>
+  <label class="name" for={id} title={param.summary}>{param.name}</label>
   <input
     {id}
     class="track"
@@ -69,6 +69,8 @@
     {step}
     value={shown}
     disabled={!editable}
+    aria-label={`${param.name}: ${param.summary}`}
+    title={param.summary}
     oninput={(event) => (dragging = event.currentTarget.valueAsNumber)}
     onchange={(event) => {
       const next = event.currentTarget.valueAsNumber;

@@ -344,6 +344,8 @@ export interface HeaderFact {
  */
 export interface ParamFacts {
   name: string;
+  /** Plain catalogue sentence used by labels and assistive technology. */
+  summary: string;
   value: number;
   unit: string;
   /** What a control may write, in that unit. */
@@ -359,6 +361,9 @@ export interface ParamFacts {
 export interface StageFacts {
   index: number;
   processor: string;
+  summary: string;
+  signature: string;
+  origin: string;
   label: string | null;
   params: ParamFacts[];
 }

@@ -75,6 +75,24 @@ fn a_send_reaches_its_bus_and_the_bus_reaches_master() {
 }
 
 #[test]
+fn public_resonance_maps_to_the_private_q_descriptor() {
+    let studio = studio_of(&piece(
+        "patch p { oscillator(sine) |> lowpass(resonance: 1.2) |> output; } \
+         lfo = oscillator(sine) |> scale(1 Hz); \
+         assign violin -> p; route violin -> master; modulate lfo -> p.lowpass.resonance;",
+    ));
+    let (graph, lowering) = lower_studio(&studio, &OPTIONS);
+    assert!(lowering.notes.is_empty(), "{:?}", lowering.notes);
+    let rendered = format!("{graph:#?}");
+    assert!(rendered.contains("\"q\""), "private descriptor: {rendered}");
+    assert!(
+        !rendered.contains("\"resonance\""),
+        "public spelling crossed the boundary: {rendered}"
+    );
+    prepare_graph(&graph, OPTIONS.sample_rate).expect("the mapped modulation is valid");
+}
+
+#[test]
 fn a_studio_that_routes_nothing_says_so_and_still_renders() {
     let studio = studio_of(&piece("patch p { oscillator(sine) |> output; } assign violin -> p;"));
     let (graph, lowering) = lower_studio(&studio, &OPTIONS);

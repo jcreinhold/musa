@@ -90,9 +90,9 @@ pub enum Processor {
     Mix,
     /// `envelope(adsr(...))`
     Envelope,
-    /// `lowpass(cutoff: 1400 Hz, q: 0.7)`
+    /// `lowpass(cutoff: 1400 Hz, resonance: 0.7)`
     Lowpass,
-    /// `highpass(cutoff: 80 Hz, q: 0.7)`
+    /// `highpass(cutoff: 80 Hz, resonance: 0.7)`
     Highpass,
     /// `reverb(room: 0.82, damping: 0.55)`
     Reverb,
@@ -115,6 +115,14 @@ pub enum Processor {
 pub struct ParamSpec {
     /// The name it is written with.
     pub name: &'static str,
+    /// Stable private render-graph key. Usually the public name; filter
+    /// `resonance` deliberately maps to the conventional DSP key `q`.
+    pub dsp_name: &'static str,
+    /// Removed or historical spellings, for diagnostics only. These are not
+    /// accepted by [`Processor::param`].
+    pub former_names: &'static [&'static str],
+    /// Plain musician-facing description.
+    pub summary: &'static str,
     /// The unit it must be written in.
     pub unit: Unit,
     /// Its value when the patch does not say.
@@ -133,26 +141,11 @@ pub struct ParamSpec {
 impl Processor {
     /// The processor a written name denotes.
     pub fn from_name(name: &str) -> Option<Self> {
-        Some(match name {
-            "oscillator" => Self::Oscillator,
-            "gain" => Self::Gain,
-            "mix" => Self::Mix,
-            "envelope" => Self::Envelope,
-            "lowpass" => Self::Lowpass,
-            "highpass" => Self::Highpass,
-            "reverb" => Self::Reverb,
-            "delay" => Self::Delay,
-            "chorus" => Self::Chorus,
-            "scale" => Self::Scale,
-            "bias" => Self::Bias,
-            "clamp" => Self::Clamp,
-            "smoothing" => Self::Smoothing,
-            _ => return None,
-        })
+        crate::catalogue::processor(name).map(|entry| entry.processor)
     }
 
     /// How it is written.
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Oscillator => "oscillator",
             Self::Gain => "gain",
@@ -178,62 +171,273 @@ impl Processor {
     /// target's, and today the only target anyone modulates is a cutoff.
     /// Inferring the unit from the target is a change to the unit system, not
     /// to these tables, and it waits for a second target to justify it.
-    pub fn params(self) -> &'static [ParamSpec] {
-        const fn spec(name: &'static str, unit: Unit, default: f64, range: (f64, f64)) -> ParamSpec {
+    pub const fn params(self) -> &'static [ParamSpec] {
+        const fn spec(
+            name: &'static str,
+            dsp_name: &'static str,
+            former_names: &'static [&'static str],
+            unit: Unit,
+            default: f64,
+            range: (f64, f64),
+            summary: &'static str,
+        ) -> ParamSpec {
             ParamSpec {
                 name,
+                dsp_name,
+                former_names,
+                summary,
                 unit,
                 default,
                 range,
             }
         }
         const OSCILLATOR: &[ParamSpec] = &[
-            spec("frequency", Unit::Hz, 440.0, (20.0, 20_000.0)),
-            spec("ratio", Unit::Linear, 1.0, (0.25, 16.0)),
+            spec(
+                "frequency",
+                "frequency",
+                &[],
+                Unit::Hz,
+                1.0,
+                (0.0, 200.0),
+                "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
+            ),
+            spec(
+                "ratio",
+                "ratio",
+                &[],
+                Unit::Linear,
+                1.0,
+                (0.25, 16.0),
+                "Scales the pitch supplied by the score.",
+            ),
         ];
-        const GAIN: &[ParamSpec] = &[spec("gain", Unit::Decibels, 0.0, (-60.0, 12.0))];
+        const GAIN: &[ParamSpec] = &[spec(
+            "gain",
+            "gain",
+            &[],
+            Unit::Decibels,
+            0.0,
+            (-60.0, 12.0),
+            "Sets level in decibels.",
+        )];
         // Written defaults are the built-in voice envelope, so `envelope()`
         // with nothing said is not a different sound from saying nothing.
         const ENVELOPE: &[ParamSpec] = &[
-            spec("attack", Unit::Seconds, 0.005, (0.0, 5.0)),
-            spec("decay", Unit::Seconds, 0.0, (0.0, 10.0)),
-            spec("sustain", Unit::Linear, 1.0, (0.0, 1.0)),
-            spec("release", Unit::Seconds, 0.05, (0.0, 10.0)),
+            spec(
+                "attack",
+                "attack",
+                &[],
+                Unit::Seconds,
+                0.005,
+                (0.0, 5.0),
+                "Sets the rise time after a note begins.",
+            ),
+            spec(
+                "decay",
+                "decay",
+                &[],
+                Unit::Seconds,
+                0.0,
+                (0.0, 10.0),
+                "Sets the time to reach the sustain level.",
+            ),
+            spec(
+                "sustain",
+                "sustain",
+                &[],
+                Unit::Linear,
+                1.0,
+                (0.0, 1.0),
+                "Sets the held level while a note continues.",
+            ),
+            spec(
+                "release",
+                "release",
+                &[],
+                Unit::Seconds,
+                0.05,
+                (0.0, 10.0),
+                "Sets the fade time after a note ends.",
+            ),
         ];
         const LOWPASS: &[ParamSpec] = &[
-            spec("cutoff", Unit::Hz, 20_000.0, (20.0, 20_000.0)),
-            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2, (0.1, 20.0)),
+            spec(
+                "cutoff",
+                "cutoff",
+                &[],
+                Unit::Hz,
+                20_000.0,
+                (20.0, 20_000.0),
+                "Sets the boundary frequency.",
+            ),
+            spec(
+                "resonance",
+                "q",
+                &["q"],
+                Unit::Linear,
+                std::f64::consts::FRAC_1_SQRT_2,
+                (0.1, 20.0),
+                "Emphasizes the cutoff, conventionally represented by quality factor Q.",
+            ),
         ];
         const HIGHPASS: &[ParamSpec] = &[
-            spec("cutoff", Unit::Hz, 20.0, (20.0, 20_000.0)),
-            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2, (0.1, 20.0)),
+            spec(
+                "cutoff",
+                "cutoff",
+                &[],
+                Unit::Hz,
+                20.0,
+                (20.0, 20_000.0),
+                "Sets the boundary frequency.",
+            ),
+            spec(
+                "resonance",
+                "q",
+                &["q"],
+                Unit::Linear,
+                std::f64::consts::FRAC_1_SQRT_2,
+                (0.1, 20.0),
+                "Emphasizes the cutoff, conventionally represented by quality factor Q.",
+            ),
         ];
         const REVERB: &[ParamSpec] = &[
-            spec("room", Unit::Linear, 0.5, (0.0, 1.0)),
-            spec("damping", Unit::Linear, 0.5, (0.0, 1.0)),
-            spec("mix", Unit::Linear, 1.0, (0.0, 1.0)),
+            spec(
+                "room",
+                "room",
+                &[],
+                Unit::Linear,
+                0.5,
+                (0.0, 1.0),
+                "Sets the apparent room size.",
+            ),
+            spec(
+                "damping",
+                "damping",
+                &[],
+                Unit::Linear,
+                0.5,
+                (0.0, 1.0),
+                "Controls high-frequency absorption.",
+            ),
+            spec(
+                "mix",
+                "mix",
+                &[],
+                Unit::Linear,
+                1.0,
+                (0.0, 1.0),
+                "Balances dry and processed audio.",
+            ),
         ];
         // Time effects (§13.6). `mix` is the dry/wet balance: 0 is the input
         // untouched, 1 is the effect alone. A delay's `time` is bounded by
         // the line the DSP preallocates (2 s), and a chorus's `depth` by what
         // a chorus is — a few milliseconds of wobble, not a second one.
         const DELAY: &[ParamSpec] = &[
-            spec("time", Unit::Seconds, 0.25, (0.0, 2.0)),
-            spec("feedback", Unit::Linear, 0.3, (0.0, 0.95)),
-            spec("mix", Unit::Linear, 0.3, (0.0, 1.0)),
+            spec(
+                "time",
+                "time",
+                &[],
+                Unit::Seconds,
+                0.25,
+                (0.0, 2.0),
+                "Sets the interval before each repeat.",
+            ),
+            spec(
+                "feedback",
+                "feedback",
+                &[],
+                Unit::Linear,
+                0.3,
+                (0.0, 0.95),
+                "Sets how much delayed sound repeats.",
+            ),
+            spec(
+                "mix",
+                "mix",
+                &[],
+                Unit::Linear,
+                0.3,
+                (0.0, 1.0),
+                "Balances dry and processed audio.",
+            ),
         ];
         const CHORUS: &[ParamSpec] = &[
-            spec("rate", Unit::Hz, 0.6, (0.0, 20.0)),
-            spec("depth", Unit::Seconds, 0.004, (0.0, 0.01)),
-            spec("mix", Unit::Linear, 0.4, (0.0, 1.0)),
+            spec(
+                "rate",
+                "rate",
+                &[],
+                Unit::Hz,
+                0.6,
+                (0.0, 20.0),
+                "Sets how quickly the doubled voice moves.",
+            ),
+            spec(
+                "depth",
+                "depth",
+                &[],
+                Unit::Seconds,
+                0.004,
+                (0.0, 0.01),
+                "Sets the maximum delay variation.",
+            ),
+            spec(
+                "mix",
+                "mix",
+                &[],
+                Unit::Linear,
+                0.4,
+                (0.0, 1.0),
+                "Balances dry and processed audio.",
+            ),
         ];
-        const SCALE: &[ParamSpec] = &[spec("factor", Unit::Hz, 1.0, (0.0, 20_000.0))];
-        const BIAS: &[ParamSpec] = &[spec("offset", Unit::Hz, 0.0, (0.0, 20_000.0))];
+        const SCALE: &[ParamSpec] = &[spec(
+            "factor",
+            "factor",
+            &[],
+            Unit::Hz,
+            1.0,
+            (0.0, 20_000.0),
+            "Multiplies each control value.",
+        )];
+        const BIAS: &[ParamSpec] = &[spec(
+            "offset",
+            "offset",
+            &[],
+            Unit::Hz,
+            0.0,
+            (0.0, 20_000.0),
+            "Adds to each control value.",
+        )];
         const CLAMP: &[ParamSpec] = &[
-            spec("min", Unit::Hz, 0.0, (0.0, 20_000.0)),
-            spec("max", Unit::Hz, 20_000.0, (0.0, 20_000.0)),
+            spec(
+                "min",
+                "min",
+                &[],
+                Unit::Hz,
+                0.0,
+                (0.0, 20_000.0),
+                "Sets the lowest output value.",
+            ),
+            spec(
+                "max",
+                "max",
+                &[],
+                Unit::Hz,
+                20_000.0,
+                (0.0, 20_000.0),
+                "Sets the highest output value.",
+            ),
         ];
-        const SMOOTHING: &[ParamSpec] = &[spec("time", Unit::Seconds, 0.02, (0.0, 1.0))];
+        const SMOOTHING: &[ParamSpec] = &[spec(
+            "time",
+            "time",
+            &[],
+            Unit::Seconds,
+            0.02,
+            (0.0, 1.0),
+            "Sets how quickly the control catches its target.",
+        )];
         match self {
             Self::Oscillator => OSCILLATOR,
             Self::Gain => GAIN,

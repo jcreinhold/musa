@@ -10,7 +10,7 @@ studio {
     patch glass_pad {
         oscillator(sine)
             |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))
-            |> lowpass(cutoff: 1400 Hz, q: 0.7)
+            |> lowpass(cutoff: 1400 Hz, resonance: 0.7)
             |> output;
     }
 }

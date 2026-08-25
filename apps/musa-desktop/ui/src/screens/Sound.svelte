@@ -137,11 +137,12 @@
               <ol class="chain">
                 {#each patch.stages as stage (stage.index)}
                   <li class="stage-row">
-                    <h3 class="stage-name">
+                    <h3 class="stage-name" title={`${stage.summary} ${stage.signature} Origin: ${stage.origin}.`}>
                       <span class="processor">{stage.processor}</span>{#if stage.label}<span class="label"
                           >{stage.label}</span
                         >{/if}
                     </h3>
+                    <p class="stage-description">{stage.summary}</p>
                     {#if stage.params.length === 0}
                       <p class="no-params">nothing to set</p>
                     {:else}
@@ -348,6 +349,14 @@
     line-height: var(--t-name-line);
     font-weight: 400;
     color: var(--ink);
+  }
+
+  .stage-description {
+    margin: 0 0 var(--s-2);
+    font-family: var(--f-ui);
+    font-size: var(--t-micro-size);
+    line-height: var(--t-micro-line);
+    color: var(--ink-muted);
   }
 
   .label {

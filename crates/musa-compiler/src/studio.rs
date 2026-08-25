@@ -568,6 +568,31 @@ fn bind_argument(
     let index = match arg.name() {
         Some(name) => {
             let Some(found) = processor.params().iter().position(|param| param.name == name) else {
+                if let Some(replacement) = processor
+                    .params()
+                    .iter()
+                    .find(|param| param.former_names.contains(&name.as_str()))
+                {
+                    let mut diagnostic = Diagnostic::error(
+                        Code::UnknownName,
+                        format!(
+                            "`{name}` is no longer a parameter of `{}`; write `{}`",
+                            processor.name(),
+                            replacement.name
+                        ),
+                    )
+                    .maybe_at(span, "removed parameter spelling")
+                    .note(replacement.summary);
+                    if let Some(token) = arg.name_token() {
+                        diagnostic = diagnostic.fix(
+                            format!("replace `{name}` with `{}`", replacement.name),
+                            crate::resolve::source_span_of(&token),
+                            replacement.name,
+                        );
+                    }
+                    diagnostics.push(diagnostic);
+                    return;
+                }
                 diagnostics.push(
                     Diagnostic::error(
                         Code::UnknownName,
@@ -628,7 +653,7 @@ fn bind_argument(
             .note("units are part of the syntax, so musa never guesses one");
         // Writing the unit the parameter is declared in is the one repair
         // that changes no number, so it is a fix rather than a help line. A
-        // *wrong* unit is not: `q: 2 Hz` might be a misplaced argument, and
+        // *wrong* unit is not: `resonance: 2 Hz` might be a misplaced argument, and
         // guessing which is exactly what a fix must not do.
         if let (Some(expected), None, Some(at)) = (declared.unit.spelling(), literal.unit(), span) {
             let written = match arg.name() {
@@ -638,6 +663,26 @@ fn bind_argument(
             diagnostic = diagnostic.fix(format!("write `{number} {expected}`"), at, written);
         }
         diagnostics.push(diagnostic);
+        return;
+    }
+    if !(declared.range.0..=declared.range.1).contains(&value.magnitude) {
+        diagnostics.push(
+            Diagnostic::error(
+                Code::OutOfRange,
+                format!(
+                    "`{}` must be between {} and {}{}",
+                    declared.name,
+                    declared.range.0,
+                    declared.range.1,
+                    declared
+                        .unit
+                        .spelling()
+                        .map_or(String::new(), |unit| format!(" {unit}")),
+                ),
+            )
+            .maybe_at(span, "outside the writable range")
+            .note("the public range is fixed by the built-in processor schema"),
+        );
         return;
     }
     if let Some(slot) = params.get_mut(index) {

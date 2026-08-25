@@ -25,7 +25,7 @@ pub enum SyntaxKind {
     Identifier,
     /// `[0-9]+` — whole-note counts, tempos, repeat counts.
     Integer,
-    /// `[0-9]+.[0-9]+` — unitless controls such as `q: 0.7`.
+    /// `[0-9]+.[0-9]+` — unitless controls such as `resonance: 0.7`.
     Float,
     /// `[0-9]+/[0-9]+` — durations (`1/4`, `3/8`) and meters (`4/4`).
     Rational,

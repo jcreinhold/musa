@@ -40,6 +40,7 @@
 # Reference
 
 - [The language](reference/language.md)
+- [Studio vocabulary](reference/studio-vocabulary.md)
 - [Standard library](reference/stdlib.md)
 - [CLI](reference/cli.md)
 - [Lint codes](reference/lints.md)

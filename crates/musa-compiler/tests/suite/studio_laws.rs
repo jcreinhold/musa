@@ -19,7 +19,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_dsp::{Processor, StudioSpec, Unit};
 
-use musa_score::Severity;
+use musa_score::{Code, Severity};
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
 
@@ -215,9 +215,41 @@ fn a_unit_bearing_parameter_written_bare_is_rejected() {
 #[test]
 fn a_ratio_written_with_a_unit_is_rejected_too() {
     let errors = errors_of(&piece(
-        "patch p { oscillator(sine) |> lowpass(cutoff: 1400 Hz, q: 2 Hz) |> output; } assign violin -> p;",
+        "patch p { oscillator(sine) |> lowpass(cutoff: 1400 Hz, resonance: 2 Hz) |> output; } assign violin -> p;",
     ));
-    assert!(errors.contains(&"`q` takes no unit".to_owned()), "got {errors:?}");
+    assert!(
+        errors.contains(&"`resonance` takes no unit".to_owned()),
+        "got {errors:?}"
+    );
+}
+
+#[test]
+fn a_parameter_outside_the_catalogues_written_range_is_rejected() {
+    let compilation = compile_text(&piece(
+        "patch p { oscillator(sine) |> lowpass(resonance: 25) |> output; } assign violin -> p;",
+    ));
+    let diagnostic = compilation
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.message.contains("`resonance` must be between"))
+        .expect("the public range is checked");
+    assert_eq!(diagnostic.code, Code::OutOfRange);
+}
+
+#[test]
+fn removed_q_is_a_hard_error_with_an_exact_fix() {
+    let compilation = compile_text(&piece(
+        "patch p { oscillator(sine) |> lowpass(cutoff: 1400 Hz, q: 0.7) |> output; } assign violin -> p;",
+    ));
+    let diagnostic = compilation
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.message.contains("`q` is no longer"))
+        .expect("the removed spelling is diagnosed");
+    assert_eq!(diagnostic.code, Code::UnknownName);
+    let fix = diagnostic.fixes.first().expect("one certain repair");
+    assert_eq!(fix.edits.len(), 1);
+    assert_eq!(fix.edits.first().expect("one edit").replacement, "resonance");
 }
 
 #[test]
