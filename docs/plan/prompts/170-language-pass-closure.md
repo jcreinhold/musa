@@ -12,10 +12,11 @@ phase: 3
 > mechanisms, both algorithms in full, staff.musa's size, staff-page's compile cost, and every mechanism that could
 > **not** be removed named with the committed program that proves it necessary.
 
-> **Blocked by note [`74`](../../notes/research/language-design-closure/74-language-pass-closure-blocker.md).** The
-> governing stage judgment still specifies first-order-only instantiation, while the constitution, candidate language
-> specification, and implementation use scoped metavariables, pattern unification, and postponed comparisons. This
-> prompt's Stop forbids amending `across-stages/`; it remains pending until that governing decision lands.
+> **Amendment authorized and landed from note
+> [`74`](../../notes/research/language-design-closure/74-language-pass-closure-blocker.md).** The governing stage
+> judgment now states scoped metavariables, Miller-pattern solutions, postponed comparisons, and bounded spine deferral.
+> The amendment audit also exposed the unifier's sound but incomplete handling of non-identity pattern spines; repair
+> that representation gap before this closure audit resumes.
 
 # Close the Language Pass and Repair What It Left Behind
 

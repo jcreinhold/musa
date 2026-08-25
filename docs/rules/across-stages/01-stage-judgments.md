@@ -40,9 +40,14 @@ The source language uses the typing and evaluation rules in `docs/rules/language
 
 means that expression `e` has type `A` when `Σ` supplies declarations and `Γ` supplies local variables. The judgment is
 **bidirectional**: `e` is either checked against an `A` that is already known, or its `A` is inferred and flows outward,
-with a type parameter solved by first-order matching against the written arguments' types. There is no principal type —
-constitution §9's *Checked bidirectionally* rule replaced that discipline — and an annotation is required only where a
-public signature or separate checking needs one. A type may mention a value.
+with omitted terms represented by scoped metavariables. Unification assigns one only in Miller's pattern fragment, where
+the solution is unique; a comparison that is blocked on an unsolved metavariable is postponed within the current
+declaration, retried after progress, and refused if it survives the declaration. Nothing is guessed, defaulted, or
+generalized. A checking-only written argument whose domain is not known yet may be elaborated after later written
+arguments constrain that domain; this bounded spine deferral is distinct from constraint postponement, elaborates each
+argument once, and does not change written evaluation order. `docs/rules/language/02-core-calculus.md` §2.1 owns the
+exact rules. There is no principal type — constitution §9's *Checked bidirectionally* rule replaced that discipline —
+and an annotation is required only where a public signature or separate checking needs one. A type may mention a value.
 
 Evaluation is pure, strict, deterministic, and terminating for accepted programs, subject to the stated limits on
 foreign operations. A typed evaluation of result `A` is one of

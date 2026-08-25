@@ -42,9 +42,34 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
 
-The most recent such amendment is prompt 143's, which commits the language to **one type theory** — a dependently typed
-core with inductive families — and reverses the stratified index admitted immediately before it. It answers the six
-requirements here rather than by reference.
+The most recent amendment is prompt 170's synchronization of
+[`across-stages/01-stage-judgments.md`](across-stages/01-stage-judgments.md) §2 with the one-theory decision prompt 143
+already admitted. It changes no accepted source program, but it changes a governing algorithmic claim, so it answers the
+six requirements explicitly.
+
+1. **The reason.** The lower-precedence stage judgment still named the first-order, call-local matcher that prompt 153
+   replaced. That contradicted constitution §9, the candidate core specification, and the constraint queue in the
+   implementation, leaving two governing answers to the same elaboration question.
+2. **Which current examples no longer work.** None. The amendment describes the mechanism already exercised by the
+   examples and standard library. Its characteristic cases are an omitted family parameter determined under local
+   binders and a checking-only argument whose type is determined by a later written argument; both already compile.
+3. **The replacement rule in plain language.** Omitted terms are scoped metavariables. A metavariable is assigned only
+   by a unique Miller-pattern solution; a comparison that cannot yet be decided waits in the current declaration and is
+   retried after progress; a survivor is an error. The fixed, at-most-two-pass elaboration of checking-only written
+   arguments is separate from that queue and preserves written evaluation order.
+4. **The formal specification and the code map.** The stage judgment above now states the rule and delegates its exact
+   calculus to [`language/02-core-calculus.md`](language/02-core-calculus.md) §2.1. The bidirectional-elaboration row in
+   [`../plan/code-map/spec-to-implementation-map.md`](../plan/code-map/spec-to-implementation-map.md) records the scoped
+   meta, unifier, queue, settlement, zonking, and bounded spine deferral separately.
+5. **How stored files and public APIs migrate.** They do not. Metavariables are private elaboration state, are fully
+   zonked before a checked term crosses the crate boundary, and change neither source syntax nor stored identity.
+6. **The record.**
+   [`../notes/research/language-design-closure/74-language-pass-closure-blocker.md`](../notes/research/language-design-closure/74-language-pass-closure-blocker.md)
+   preserves the contradiction, the two alternatives, and the authorization to choose this one.
+
+Before it, prompt 143's amendment commits the language to **one type theory** — a dependently typed core with inductive
+families — and reverses the stratified index admitted immediately before it. It answers the six requirements here rather
+than by reference.
 
 1. **The reason.** It is an engineering one, and it is that the core is currently three partial mechanisms where one
    would do. The eliminator is **non-dependent**: `family/assemble.rs`'s motive answers a type rather than a family, so

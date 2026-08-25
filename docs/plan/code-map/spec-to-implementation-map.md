@@ -169,18 +169,17 @@ value construction, with exact-limit boundary laws and reuse laws for named defi
 
 `musa-calculus` · **implemented** · `02-core-calculus.md` §2
 
-Implemented at the size note 50's correction left it. The three mechanisms the feature name used to carry are gone.
+`elab/spine.rs` inserts a contextual `Meta` for an inferred binder. `kernel/unify.rs` separates solved, rigidly
+different, and blocked comparisons, admits only unique pattern assignments, and owns the finite queue;
+`elaboration/convert.rs` supplies the type-directed comparison and diagnostic path. `elab/metas.rs` retries waiting
+comparisons only while a round makes progress and turns a survivor or unsolved meta into `Refusal::Unsolved` when the
+declaration closes. `elab/zonk.rs` writes every solution into the checked term, so no metavariable crosses the public
+boundary. Nothing is defaulted or generalized.
 
-**No level unknowns.** `level.rs` is `Type 0` and `Type 1` with no arithmetic beyond `succ` and `max`, a bare `Type`
-elaborates at the level its use demands, and there is no level sort to solve in.
-
-**No independent re-checker.** `recheck.rs` and the `well_typed` door are deleted, and the suites keep the eval and
-conversion laws it used to back.
-
-**Nothing postpones, retries, or generalizes.** A hole is created by one instantiation walk (`elab/spine.rs`) for one
-binder the author did not write, solved by first-order assignment in `convert.rs`'s solving mode, and substituted away
-by `Elaborator::zonk`. One still unsolved when a declaration ends is `Refusal::Unsolved`, naming which of `MetaSource`'s
-two sites it came from, and the author writes the argument.
+The contextual representation currently generates identity scope spines and solves those completely. The closure audit
+found that `kernel/unify.rs` recognizes a permuted or weakened distinct-variable spine but postpones it because solution
+quotation cannot yet invert the renaming. Completing that last, normally unreachable part of the stated Miller fragment
+is owed before prompt 170 closes the pass.
 
 Introduction forms check only, so a record literal has no inference rule and an elimination applied directly to one is
 `Refusal::Uninferable` rather than a guess; a `let` passes the goal through to its body rather than inferring, which is
@@ -192,11 +191,9 @@ read a solved hole as an unsolved one and assign it a second time — assignment
 which determined one thing once. Each pass after the first is charged, so a chain is bounded by the §4 budget rather
 than by a claim that chains are short.
 
-**Owes.** Prompt 142 cut the compiler over. What §2.1 now specifies is **absent**: there is no constraint queue, nothing
-postpones, and no metavariable outlives the call that created it — the crate implements first-order matching where the
-specification states pattern unification. Prompt 153 replaces the mechanism; prompt 154 adds the implicit arguments that
-ride on it; prompt 152 gives levels something to solve in. Until then this row is *implemented against a superseded
-§2.1*, and that is the gap to read it with.
+Checking-only arguments whose domains are not known yet use the bounded two-pass walk in `elab/spine.rs`. Each argument
+is elaborated exactly once and the emitted application remains in written order. This is elaboration deferral, not a
+constraint retry: method lookup and host index acceptance need a known head before they can produce a comparison at all.
 
 ## Top-level declaration groups
 
