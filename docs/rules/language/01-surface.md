@@ -994,10 +994,7 @@ performance {
     }
 }
 
-instrument solo_strings from "pkg:orchestra/solo-violin.sfz" conforms note_instrument {
-    control bow.noise: normalized = 0.12;
-    control bow.bridge_distance: mm in [0 mm, 50 mm] = 20 mm;
-}
+instrument solo_strings from "pkg:orchestra/solo-violin.sfz" conforms note_instrument;
 
 instrument mallets from "assets/marimba.sfz" conforms note_instrument;
 
@@ -1015,6 +1012,9 @@ score {
     }
 }
 ```
+
+The controls available on either instrument are the ordinary indexed fields of the `InstrumentSignature` named after
+`conforms`. An instrument declaration does not repeat that source-owned contract in a parser-specific control block.
 
 Within a part, `sound instrument using profile;` is the ordinary one-action form. It desugars to the independent profile
 selection, part-to-instrument assignment, and part-output-to-master route below. The expert surface may spell those

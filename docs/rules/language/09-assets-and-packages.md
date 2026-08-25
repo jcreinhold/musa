@@ -34,8 +34,8 @@ only by an explicit non-reproducible scratch command and cannot produce a releas
 
 ## 2. Exact-pinned packages without a solver
 
-The roadmap's relative-import-only rule remains governing until prompt 191. This candidate extends it in prompts 180–181
-with a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
+The roadmap's relative-import-only rule remains governing until prompt 191. This candidate extends it in prompts 182–183
+with a locked asset/package closure and a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
 
 ```toml
 [packages]
@@ -214,4 +214,4 @@ contract failure, and preparation-budget excess. None degrades silently to the d
 6. **Media distinction:** tempo transformation changes beat-fitted physical playback but not fixed-media duration;
    changing instrument assignment affects note-driven samples but not clip or fixed-media lanes.
 
-Prompts 180–186 implement these laws; prompts 189–191 measure preparation cost and audit deterministic artifacts.
+Prompts 182–188 implement these laws; prompts 189–192 measure preparation cost and audit deterministic artifacts.
