@@ -59,23 +59,35 @@ only by an explicit non-reproducible scratch command and cannot produce a releas
 
 ## 2. Exact-pinned packages without a solver
 
-The roadmap's relative-import-only rule remains governing until prompt 191. This candidate extends it in prompts 182–183
+The roadmap's relative-import-only rule remains governing until prompt 183. This candidate extends it in prompts 182–183
 with a locked asset/package closure and a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
 
 ```toml
-[packages]
-orchestra = { git = "https://example.org/musa/orchestra.git", rev = "sha1:8f42000000000000000000000000000000000000" }
+[packages.orchestra]
+git = "https://example.org/musa/orchestra.git"
+rev = "sha1:8f42000000000000000000000000000000000000"
 ```
 
-Source resolves a package path explicitly:
+Source imports a package module through the same module-path syntax used for `std`; the manifest alias is its first
+segment:
 
 ```musa
-import "pkg:orchestra/instruments/strings.musa";
+import orchestra::instruments::strings;
 ```
+
+There is no quoted `pkg:` module-import form. `pkg:orchestra/solo-violin.sfz` is instead the logical address of package
+data where an existing source declaration expects an asset path, such as `instrument … from "…"`.
 
 A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod` tree
 — fetched by exact pin rather than bundled. Prompt 183 adds the fetch layer and the lockfile and no second notion of
 what a package is.
+
+Lock format 2 retains the root `[assets."path"]` records from §1 and adds `package_roots`, an ordered `packages` array,
+and an ordered file array under each package. A root alias maps to a content-addressed node locator. Each node records
+package name, Git URL, exact algorithm-tagged revision, declared source root, exact alias-to-node dependency edges, a
+framed tree digest, and the complete canonical sequence of `(path, byte length, SHA-256 digest)` file facts. The cache
+may use the node or tree digest to find a candidate, but verification compares the complete descriptor, edge map, file
+fact sequence, and raw bytes. Digest equality alone is never package equality.
 
 `rev` is a full immutable commit object ID with explicit `sha1:` or `sha256:` algorithm. Branches, tags, version ranges,
 “latest,” registries, and implicit network lookup are rejected. `musa fetch` materializes and verifies the exact tree in

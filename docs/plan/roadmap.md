@@ -2569,10 +2569,11 @@ Relative imports are sufficient:
 use "../library/patches.musa";
 ```
 
-> **Candidate extension (prompts 180–181):** retain relative imports for local work, and add exact-pinned Git packages
-> through `musa.toml`, `musa.lock`, an explicit `musa fetch`, and `pkg:` paths. Ordinary builds remain offline. Full
-> commit pins are graph collection, not version-range solving; registries, ranges, tags, branches, and implicit fetching
-> remain rejected. Until prompt 191, the relative-import-only rule above remains governing.
+> **Candidate extension (prompts 182–183):** retain relative imports for local work, and add exact-pinned Git packages
+> through `musa.toml`, `musa.lock`, an explicit `musa fetch`, ordinary package module paths, and `pkg:` asset addresses.
+> Ordinary builds remain offline. Full commit pins are graph collection, not version-range solving; registries, ranges,
+> tags, branches, and implicit fetching remain rejected. Until prompt 183 completes, the relative-import-only rule above
+> remains governing.
 
 Imports should be:
 
