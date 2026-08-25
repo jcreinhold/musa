@@ -400,7 +400,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 165d | the-bar-claims-prefix | 3 | A bar's claim carries the whole prefix of its fold, so a hundred-bar voice elaborates one a hundred times — before 165 |
 | 166 | staff-rewrite | 3 | Rewrite the staff adapter on the new language |
 | 166b | per-context-memo-stamp | 3 | Scope the unfolding memo's invalidation stamp to its context, so one compilation's step count does not depend on another's |
-| 145a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
+| 166a | equality-for-declared-types | 3 | Whether a declared type gets an equality, and by which route |
 | 167 | studio-rewrite | 3 | Write the studio adapter as an unprivileged package |
 | 168 | adapter-freeze | 3 | Freeze the adapter rules and carry them through hostile review |
 | 169 | core-conformance | 3 | Discharge the core's obligation matrix |
