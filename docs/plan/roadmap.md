@@ -1946,27 +1946,11 @@ musa/
 
 ## 15.1 Dependency direction
 
-```text
-leaves    musa-syntax        musa-calculus        musa-events
-
-values             musa-score                  musa-dsp
-             ← event track              ← event track, score
-
-passes                     musa-compiler
-              ← calculus, event track, language, score, studio values
-
-outputs                    musa-notation
-                    ← syntax, events, score
-
-engine                     musa-playback
-                       ← score, audio
-
-shells    musa-wasm ← compiler, render, score
-          musa-project ← score, compiler, render, audio, engine, language
-          musa ← project      musa-lsp ← project, language      desktop ← project
-```
-
-No dependency points upward.
+Every Cargo crate has exactly one dependency role: theory, vocabulary, pipeline, consumer, session, or shell. The
+authoritative member assignment and the production edges each role permits live in
+[`scripts/check-layers.py`](../../scripts/check-layers.py); `make docs-check` reads every workspace manifest and rejects
+an unassigned crate or a backwards edge. Dev-dependencies are exempt because a test may reach upward to build a real
+fixture without adding that edge to a shipped artifact.
 
 In particular:
 
@@ -1981,10 +1965,11 @@ In particular:
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
-- the language server is the one shell with a second edge, to `musa-syntax` (§15.11): highlighting and completion must
-  answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe;
-- the wasm shell sits on `musa-notation` and, like the CLI, on `musa-compiler` directly (§15.14), and nothing in the
-  workspace depends on it — `packages/*` consumes its built artifact from TypeScript, below Cargo entirely.
+- the language server names `musa-syntax` and the DSP vocabulary directly (§15.11): highlighting, completion, and studio
+  help must answer on half-typed source, which the session's facts — the last *valid* compile's — cannot fully describe;
+- the wasm shell sits directly on `musa-compiler`, `musa-notation`, and `musa-score` (§15.14), while the CLI sits on the
+  project session; nothing in the workspace depends on wasm — `packages/*` consumes its built artifact from TypeScript,
+  below Cargo entirely.
 
 ## 15.2 `musa-syntax`
 

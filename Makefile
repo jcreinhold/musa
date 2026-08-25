@@ -163,8 +163,12 @@ verify: ## Everything CI would check, in the order that fails fastest
 docs: ## Build the documentation book into target/mdbook
 	mdbook build docs/book
 
+.PHONY: layers-check
+layers-check: ## Check every production Cargo edge against its dependency role
+	python3 scripts/check-layers.py
+
 .PHONY: docs-check
-docs-check: ## Check every link in docs/, the teaching examples, and that the book builds
+docs-check: layers-check ## Check dependency roles, docs, teaching examples, and the book
 	bash scripts/check-docs.sh
 
 .PHONY: docs-serve

@@ -77,12 +77,11 @@ let them drift silently.
 | `docs/book/` | **teaching.** tutorials, guide, how-to, explanation, reference |
 | `docs/notes/` | **governs nothing.** `research/` decision records, `toolchain/` machine traps |
 
-Dependency direction is one-way from leaves and value vocabularies into passes, engines, and shells. `musa-score` owns
-score values and `musa-dsp` owns studio/audio values; `musa-compiler` depends on both to name what it produces.
-`musa-notation` sits over syntax, events, and score, while playback sits over score and DSP. `musa-lsp` is the one shell
-that also depends directly on `musa-syntax` (highlighting and completion answer on half-typed source, which the
-session's facts cannot describe — roadmap §15.11). `musa-wasm` is a fourth shell, over compiler + render, and
-`packages/*` sits below it in TypeScript. No dependency points upward.
+Every Cargo crate has one dependency role: theory, vocabulary, pipeline, consumer, session, or shell. The authoritative
+assignment table and allowed production edges live in [`scripts/check-layers.py`](scripts/check-layers.py), and
+`make docs-check` checks every workspace manifest against them. Dev-dependencies are deliberately exempt so tests may
+build realistic fixtures through a higher layer. `packages/*` consumes the wasm artifact from TypeScript and is outside
+the Cargo graph.
 
 ## Commands
 
