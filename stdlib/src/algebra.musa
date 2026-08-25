@@ -52,11 +52,11 @@ import std::list;
 //   has no inhabitant would have nothing to hold.
 //
 // And one thing it is, for `Ti` in particular: the T/I group's laws are
-// **false** up to `Equal` and true up to `same_operation`. `Ti` is
-// deliberately not indexed by the cycle, so `Transpose(15)` and
-// `Transpose(3)` are one operation at twelve and two terms anywhere. A
-// proposition about labels is the wrong proposition; the `Bool` is the
-// right one.
+// **false** up to `Equal` and true after applying the labels to a chosen
+// cycle. `Ti` is deliberately not indexed by the cycle, so `Transpose(15)`
+// and `Transpose(3)` are one operation at twelve and two terms anywhere. A
+// proposition about labels is the wrong proposition; comparing their action
+// on the carrier is the right one.
 //
 // What *does* compute is every closed instance. `ti_compose(12, chromatic,
 // Transpose(0), Transpose(3))` is `Transpose(3)` by evaluation, and the

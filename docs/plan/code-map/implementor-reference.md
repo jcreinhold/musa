@@ -71,6 +71,14 @@ Judgments are in [`02-core-calculus.md`](../../rules/language/02-core-calculus.m
   reference to a nullary `() -> EventTrack[WrittenTime, ScoreFact]` function *where a track is expected* is applied, so
   `use subject;` and `use subject();` mean the same thing. It is one case in the checker, not a general coercion.
 
+### Equality for declared values
+
+There is no derived equality and no instance lookup. A declared type supports `==` only when an ordinary definition
+named `equal` exists in its namespace. `PcSet(n)` and `ToneRow(n)` write that definition over their private canonical
+representations; their index is an inferred retained argument. The other 52 declarations acquire nothing implicitly.
+[Note 65](../../notes/research/language-design-closure/65-equality-is-a-namespace-definition.md) records the count and
+the decision.
+
 ### Context requirements
 
 A construct that needs a fact from context — `step` needs a collection, `assert fills_meter()` needs a meter, a degree

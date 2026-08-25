@@ -1,7 +1,7 @@
 ---
 id: 166a
 slug: equality-for-declared-types
-status: pending
+status: done
 depends_on: [166]
 phase: 3
 ---

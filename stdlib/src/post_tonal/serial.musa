@@ -197,9 +197,16 @@ fn row_retrograde_inversion(
     index: Nat,
 ) -> ToneRow(n) { row_moved(n, cycle, series, Form(Invert(index), true)) }
 
-// Whether two rows of one division are the same row.
-fn same_row(n: Nat, left: ToneRow(n), right: ToneRow(n)) -> Bool {
-    same_order(row_numbers(n, left), row_numbers(n, right))
+// Equality of rows is equality of their private normalized order lists.
+//
+// Written here rather than generated: `ToneRow`'s constructor is private and
+// `row` establishes the bijection once, so equality should observe precisely
+// the representation that invariant makes canonical. The division is inferred
+// from the operands.
+impl ToneRow {
+    fn equal<{n: Nat}>(left: ToneRow(n), right: ToneRow(n)) -> Bool {
+        same_order(row_numbers(n, left), row_numbers(n, right))
+    }
 }
 
 // Whether two sequences agree position by position.
@@ -244,7 +251,7 @@ fn row_operations(n: Nat, cycle: Cycle(n)) -> List<RowOp> {
 fn row_forms(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<ToneRow(n)> {
     orbit(
         row_action(n, cycle),
-        fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { same_row(n, left, right) },
+        fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { left == right },
         row_operations(n, cycle),
         series,
     )
@@ -263,7 +270,7 @@ fn distinct_forms(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> Nat {
 fn row_symmetries(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> List<RowOp> {
     stabilizer(
         row_action(n, cycle),
-        fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { same_row(n, left, right) },
+        fn (left: ToneRow(n), right: ToneRow(n)) -> Bool { left == right },
         row_operations(n, cycle),
         series,
     )

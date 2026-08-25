@@ -64,11 +64,6 @@ fn class_number(n: Nat, member: Pc(n)) -> Nat {
     }
 }
 
-// Whether two pitch classes of one division are the same class.
-fn same_class(n: Nat, left: Pc(n), right: Pc(n)) -> Bool {
-    class_number(n, left) == class_number(n, right)
-}
-
 // One T/I operation, applied to one pitch class.
 fn class_moved(n: Nat, cycle: Cycle(n), member: Pc(n), by: Ti) -> Pc(n) {
     pc(n, cycle, number_moved(n, cycle, class_number(n, member), by))
@@ -209,9 +204,16 @@ fn set_inverted(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n) 
     set_moved(n, cycle, set, Invert(index))
 }
 
-// Whether two sets hold the same members.
-fn same_set(n: Nat, left: PcSet(n), right: PcSet(n)) -> Bool {
-    same_numbers(numbers_of(n, left), numbers_of(n, right))
+// Equality of sets is equality of their private normalized member lists.
+//
+// Written here rather than generated: `PcSet`'s one public fact is that its
+// members are ascending and unique, and this definition compares through
+// exactly that invariant. The division is inferred from the two operands, so
+// `left == right` is the complete call an author writes.
+impl PcSet {
+    fn equal<{n: Nat}>(left: PcSet(n), right: PcSet(n)) -> Bool {
+        same_numbers(numbers_of(n, left), numbers_of(n, right))
+    }
 }
 
 // Whether two ascending lists are the same list.
@@ -343,7 +345,7 @@ fn prime_form(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> PcSet(n) {
 fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<PcSet(n)> {
     orbit(
         set_action(n, cycle),
-        fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+        fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
         ti_operations(n, cycle),
         set,
     )
@@ -353,7 +355,7 @@ fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<PcSet(n)> {
 fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
     stabilizer(
         set_action(n, cycle),
-        fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+        fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
         ti_operations(n, cycle),
         set,
     )
@@ -368,7 +370,7 @@ fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
 fn transposition_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
     stabilizer(
         set_action(n, cycle),
-        fn (left: PcSet(n), right: PcSet(n)) -> Bool { same_set(n, left, right) },
+        fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
         transpositions(n, cycle),
         set,
     )

@@ -1155,10 +1155,11 @@ fn an_enum_case_is_reached_by_its_type_in_an_expression_and_in_a_pattern() {
 /// and the receiver's head picks the definition. The two spellings below are one
 /// program, which is what makes the table a *sugar* rather than a mechanism.
 ///
-/// `Nat.equal` is written here rather than shipped: the prelude gives the five
-/// base types an `equal` and gives `Nat` none, on the stated ground that `Nat`
-/// is a declared family and ι already answers. What a law needs is something for
-/// `==` to resolve to while it checks that it resolves at all.
+/// `Nat.equal` is written here as the smallest self-contained namespace. The
+/// real prelude now ships seven equalities, including `Nat`, but this law's
+/// context is deliberately bare so it can isolate operator lowering from
+/// prelude construction. What it needs is one definition for `==` to resolve to
+/// while it checks that both spellings elaborate to the same term.
 #[test]
 fn an_operator_is_method_syntax_on_its_left_operand() {
     let cx = namespacing("impl Nat { fn equal(x: Nat, y: Nat) -> Bool { true } }");

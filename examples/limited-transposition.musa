@@ -86,7 +86,7 @@ piece "Limited Transposition" {
 
     // Equality of collections, which `orbit` and `stabilizer` take as an
     // argument because a group knows nothing about its carrier.
-    fn alike(left: PcSet(12), right: PcSet(12)) -> Bool { same_set(12, left, right) }
+    fn alike(left: PcSet(12), right: PcSet(12)) -> Bool { left == right }
 
     meter 3/4;
 

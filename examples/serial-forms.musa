@@ -138,7 +138,7 @@ piece "Serial Forms" {
         operation: ToneRow(12) -> ToneRow(12),
     ) -> Bool {
         match built {
-            Ok(series) -> same_row(12, operation(series), series),
+            Ok(series) -> operation(series) == series,
             Err(reason) -> false,
         }
     }

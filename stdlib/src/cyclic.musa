@@ -220,29 +220,6 @@ fn rotation(n: Nat) -> Action<Cyclic(n), Ti> {
     }
 }
 
-// Whether two positions of one cycle are the same position.
-fn same_place(n: Nat, left: Cyclic(n), right: Cyclic(n)) -> Bool {
-    number_of(n, left) == number_of(n, right)
-}
-
-// Whether two operations are the same operation.
-//
-// A transposition and an inversion are never equal *as labels*, which is
-// what this compares. Whether they agree on a particular cycle member is a
-// different question, and `stabilizer` asks that one by applying them.
-fn same_operation(left: Ti, right: Ti) -> Bool {
-    match left {
-        Transpose(leftsteps) -> match right {
-            Transpose(rightsteps) -> leftsteps == rightsteps,
-            Invert(rightabout) -> false,
-        },
-        Invert(leftabout) -> match right {
-            Transpose(rightsteps) -> false,
-            Invert(rightabout) -> leftabout == rightabout,
-        },
-    }
-}
-
 // Every position of the cycle, ascending from zero.
 fn positions(n: Nat, cycle: Cycle(n)) -> List<Cyclic(n)> {
     map(fn (number: Nat) -> Cyclic(n) { place_in(n, cycle, number) }, range(size_of(n, cycle)))

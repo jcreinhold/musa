@@ -16,8 +16,8 @@
 // the division has pitch classes, and `orbit` and `stabilizer` are
 // `std::algebra`'s, taking that group as the list it is.
 //
-// **A prime form is compared as a set, not read out as numbers.** `same_set`
-// answers the chapter's question — is this the class `(02357)`? — and reading
+// **A prime form is compared as a set, not read out as numbers.** `==` at
+// `PcSet` answers the chapter's question — is this the class `(02357)`? — and reading
 // the members back out as numbers builds a `Pc(12)` per member for no gain.
 // The one place the numbers are written out is where the images themselves are
 // the claim.
@@ -53,11 +53,13 @@ piece "Set Class and Prime Form" {
     // Steps 2 through 5, which choose between two candidates: the normal order
     // transposed to zero is `(02457)`, its inversion's is `(02357)`, and the
     // second reads lower. So the prime form is the minor pentachord.
-    let worked_prime: Equal<Bool>(same_set(
-        12,
-        prime_form(12, chromatic, worked),
-        chromatic_set([0, 2, 3, 5, 7]),
-    ), true,) = Refl(true);
+    let worked_prime: Equal<Bool>(prime_form(12, chromatic, worked) == chromatic_set([
+        0,
+        2,
+        3,
+        5,
+        7,
+    ]), true,) = Refl(true);
 
     // Prime form is a property of the set class and not of the set, so
     // inverting the set cannot change it: the losing candidate above was this
@@ -72,20 +74,20 @@ piece "Set Class and Prime Form" {
     let d_major: PcSet(12) = set_transposed(12, chromatic, c_major, 2);
     let f_minor: PcSet(12) = set_inverted(12, chromatic, c_major, 0);
 
-    let c_major_prime: Equal<Bool>(same_set(
+    let c_major_prime: Equal<Bool>(prime_form(12, chromatic, c_major) == chromatic_set([
+        0,
+        3,
+        7,
+    ]), true,) = Refl(true);
+    let d_major_prime: Equal<Bool>(prime_form(12, chromatic, d_major) == prime_form(
         12,
-        prime_form(12, chromatic, c_major),
-        chromatic_set([0, 3, 7]),
+        chromatic,
+        c_major,
     ), true,) = Refl(true);
-    let d_major_prime: Equal<Bool>(same_set(
+    let f_minor_prime: Equal<Bool>(prime_form(12, chromatic, f_minor) == prime_form(
         12,
-        prime_form(12, chromatic, d_major),
-        prime_form(12, chromatic, c_major),
-    ), true,) = Refl(true);
-    let f_minor_prime: Equal<Bool>(same_set(
-        12,
-        prime_form(12, chromatic, f_minor),
-        prime_form(12, chromatic, c_major),
+        chromatic,
+        c_major,
     ), true,) = Refl(true);
 
     // And the images themselves, so the transposition and the inversion are
@@ -128,15 +130,15 @@ piece "Set Class and Prime Form" {
     // enumerates, and `prime_form` gives it the same name — the recipe and the
     // relation answering together.
     let odd: PcSet(6) = set_transposed(6, sixfold, even, 1);
-    let odd_members: Equal<Bool>(same_set(6, odd, sixfold_set([1, 3, 5])), true) = Refl(true);
+    let odd_members: Equal<Bool>(odd == sixfold_set([1, 3, 5]), true) = Refl(true);
     let odd_in_orbit: Equal<Bool>(any(
-        fn (member: PcSet(6)) -> Bool { same_set(6, member, odd) },
+        fn (member: PcSet(6)) -> Bool { member == odd },
         set_class(6, sixfold, even),
     ), true,) = Refl(true);
-    let odd_same_prime: Equal<Bool>(same_set(
+    let odd_same_prime: Equal<Bool>(prime_form(6, sixfold, odd) == prime_form(
         6,
-        prime_form(6, sixfold, odd),
-        prime_form(6, sixfold, even),
+        sixfold,
+        even,
     ), true,) = Refl(true);
 
     // # The helpers, which say nothing new

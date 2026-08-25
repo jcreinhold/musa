@@ -71,8 +71,6 @@ searches the filesystem.
 - `fn inverted(n: Nat, place: Cyclic(n), about: Nat) -> Cyclic(n)` — I_j: `place` reflected through the position numbered `about`.  `about - place`, walked backward, which is the same reflection `101-pitch-class-sets-normal-order-and-transformations.md` writes as `n - x` for I_0.
 - `fn moved(n: Nat, place: Cyclic(n), by: Ti) -> Cyclic(n)` — One operation of the T/I group, applied.
 - `fn rotation(n: Nat) -> Action<Cyclic(n), Ti>` — The action of the T/I group on the cycle, as the value `std::algebra` names.  A record and not a class: prompt 143 made a structure a value, so this can be passed to `orbit` and `stabilizer` beside any other action.
-- `fn same_place(n: Nat, left: Cyclic(n), right: Cyclic(n)) -> Bool` — Whether two positions of one cycle are the same position.
-- `fn same_operation(left: Ti, right: Ti) -> Bool` — Whether two operations are the same operation.  A transposition and an inversion are never equal *as labels*, which is what this compares. Whether they agree on a particular cycle member is a different question, and `stabilizer` asks that one by applying them.
 - `fn positions(n: Nat, cycle: Cycle(n)) -> List<Cyclic(n)>` — Every position of the cycle, ascending from zero.
 - `fn transpositions(n: Nat, cycle: Cycle(n)) -> List<Ti>` — The n transpositions of the cycle.
 - `fn inversions(n: Nat, cycle: Cycle(n)) -> List<Ti>` — The n inversions of the cycle.
@@ -186,7 +184,6 @@ searches the filesystem.
 - `fn pc(n: Nat, cycle: Cycle(n), number: Nat) -> Pc(n)` — The pitch class a number names, reduced into the division.  `pc(12, chromatic, 13)` and `pc(12, chromatic, 1)` are one pitch class, because they are one residue.
 - `fn pcs(n: Nat, cycle: Cycle(n), numbers: List<Nat>) -> List<Pc(n)>` — The pitch classes a list of numbers names, each reduced.  A row or a set is written as its numbers, because that is what this domain has instead of letters.
 - `fn class_number(n: Nat, member: Pc(n)) -> Nat` — The canonical representative: zero through `n - 1`.
-- `fn same_class(n: Nat, left: Pc(n), right: Pc(n)) -> Bool` — Whether two pitch classes of one division are the same class.
 - `fn class_moved(n: Nat, cycle: Cycle(n), member: Pc(n), by: Ti) -> Pc(n)` — One T/I operation, applied to one pitch class.
 - `fn transposed_by(n: Nat, cycle: Cycle(n), index: Nat, member: Pc(n)) -> Pc(n)` — T_i: transposition by `index`, `x + i` in the division.  The index comes before the member because it is what names the operation: T_3 of a member, read in that order.
 - `fn inverted_about(n: Nat, cycle: Cycle(n), index: Nat, member: Pc(n)) -> Pc(n)` — I_j: inversion about `index`, `j - x` in the division. I_0 is the plain mirror through zero.
@@ -203,7 +200,6 @@ searches the filesystem.
 - `fn set_moved(n: Nat, cycle: Cycle(n), set: PcSet(n), by: Ti) -> PcSet(n)` — One T/I operation, applied to the whole set.  A set operation and not a map: the answer is a set, so the images are gathered again, and an operation that collapsed two members would give a smaller set rather than a list with a repeat in it.
 - `fn set_transposed(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n)` — T_i applied to every member.
 - `fn set_inverted(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n)` — I_j applied to every member.
-- `fn same_set(n: Nat, left: PcSet(n), right: PcSet(n)) -> Bool` — Whether two sets hold the same members.
 - `fn same_numbers(left: List<Nat>, right: List<Nat>) -> Bool` — Whether two ascending lists are the same list.
 - `fn set_action(n: Nat, cycle: Cycle(n)) -> Action<PcSet(n), Ti>` — The T/I group acting on sets.
 - `fn compactness(n: Nat, cycle: Cycle(n), rotation: List<Nat>) -> List<Nat>` — How tightly one rotation packs, as a list to compare.  The spans from the first member outward to the last, the second-to-last, and so on inward, and then the first member itself as the final tie break. Comparing two of these left to right is exactly the convention `101-pitch-class-sets-normal-order-and-transformations.md` states in prose.
@@ -236,7 +232,6 @@ searches the filesystem.
 - `fn row_inverted(n: Nat, cycle: Cycle(n), series: ToneRow(n), index: Nat) -> ToneRow(n)` — I: inversion about `index`, order positions untouched.
 - `fn row_retrograde(n: Nat, cycle: Cycle(n), series: ToneRow(n)) -> ToneRow(n)` — R: the order positions reversed, pitch classes untouched.  An involution, and it commutes with P and I because it acts on the other side of the row — which is exactly what `RowOp`'s two fields say.
 - `fn row_retrograde_inversion(n: Nat, cycle: Cycle(n), series: ToneRow(n), index: Nat) -> ToneRow(n)` — RI: the retrograde of the inversion, which is also the inversion of the retrograde. Writing it both ways and getting one row is what "commutes" means here.
-- `fn same_row(n: Nat, left: ToneRow(n), right: ToneRow(n)) -> Bool` — Whether two rows of one division are the same row.
 - `fn same_order(left: List<Nat>, right: List<Nat>) -> Bool` — Whether two sequences agree position by position.
 - `fn row_action(n: Nat, cycle: Cycle(n)) -> Action<ToneRow(n), RowOp>` — The labelled group acting on rows.
 - `fn row_operations(n: Nat, cycle: Cycle(n)) -> List<RowOp>` — Every labelled form there is: `4n` of them, each T/I read forward and backward. How many *rows* that is depends on the row, which is what `distinct_forms` counts.

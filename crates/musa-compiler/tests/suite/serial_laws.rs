@@ -175,6 +175,25 @@ fn a_row_has_twelve_order_positions() {
 }
 
 #[test]
+fn a_tone_row_uses_its_written_namespace_equality() {
+    holds(
+        "
+    fn rows_equal(
+        left: Result<ToneRow(12), RowFault>,
+        right: Result<ToneRow(12), RowFault>,
+    ) -> Bool {
+        match left {
+            Ok(one) -> match right { Ok(other) -> one == other, Err(reason) -> false },
+            Err(reason) -> false,
+        }
+    }
+    let same: Equal<Bool>(rows_equal(generic, generic), true) = Refl(true);
+    let different: Equal<Bool>(rows_equal(generic, twelve), false) = Refl(false);
+",
+    );
+}
+
+#[test]
 fn each_label_is_one_operation_on_the_row() {
     holds(
         "

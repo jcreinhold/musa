@@ -109,6 +109,35 @@ fn a_pitch_class_is_not_the_number_that_names_it() {
     );
 }
 
+/// Declared equality is an ordinary namespace definition: the operator, the
+/// method, and the qualified path are one term, with the division inferred
+/// from the operands.
+#[test]
+fn a_pitch_class_set_uses_its_written_namespace_equality() {
+    holds(
+        "
+    let left: PcSet(12) = chromatic_set([0, 3, 7]);
+    let same: PcSet(12) = chromatic_set([7, 3, 0, 3]);
+    let other: PcSet(12) = chromatic_set([0, 4, 7]);
+    let operator: Equal<Bool>(left == same, true) = Refl(true);
+    let method: Equal<Bool>(left.equal(same), true) = Refl(true);
+    let qualified: Equal<Bool>(PcSet::equal(left, same), true) = Refl(true);
+    let distinct: Equal<Bool>(left == other, false) = Refl(false);
+",
+    );
+}
+
+/// A declaration does not acquire equality merely by being finite. `Pc` has
+/// no `equal` definition, so the ordinary method refusal is the whole answer.
+#[test]
+fn a_declared_type_without_written_equality_has_no_implicit_fallback() {
+    refused(
+        "    let invented: Bool = pc(12, chromatic, 0) == pc(12, chromatic, 0);",
+        Code::NoMethodForType,
+        "a declared type without `equal` must not gain one implicitly",
+    );
+}
+
 #[test]
 fn the_quotient_reduces_modulo_twelve() {
     holds(
@@ -188,7 +217,7 @@ fn a_set_class_survives_transposition_and_inversion() {
         "
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
     let upright: Equal<Bool>(
-        same_set(12, prime_form(12, chromatic, triad), chromatic_set([0, 3, 7])),
+        prime_form(12, chromatic, triad) == chromatic_set([0, 3, 7]),
         true,
     ) = Refl(true);
 ",
@@ -198,7 +227,7 @@ fn a_set_class_survives_transposition_and_inversion() {
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
     let moved: PcSet(12) = set_transposed(12, chromatic, triad, 3);
     let same: Equal<Bool>(
-        same_set(12, prime_form(12, chromatic, moved), prime_form(12, chromatic, triad)),
+        prime_form(12, chromatic, moved) == prime_form(12, chromatic, triad),
         true,
     ) = Refl(true);
 ",
@@ -208,7 +237,7 @@ fn a_set_class_survives_transposition_and_inversion() {
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
     let mirrored: PcSet(12) = set_inverted(12, chromatic, triad, 0);
     let same: Equal<Bool>(
-        same_set(12, prime_form(12, chromatic, mirrored), prime_form(12, chromatic, triad)),
+        prime_form(12, chromatic, mirrored) == prime_form(12, chromatic, triad),
         true,
     ) = Refl(true);
 ",
