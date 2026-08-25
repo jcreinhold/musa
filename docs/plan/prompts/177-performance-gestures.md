@@ -44,11 +44,21 @@ Nothing is added to `musa-events`: no term form, operation, or public-surface ch
 observations on a gesture track keep their existing laws. A control curve remains payload data; frame sampling stays in
 the scheduler or instrument machine.
 
-A note gesture carries stable event/part identity, written pitch until tuning, onset/extent, separation/hold/emphasis
-intent, symbolic technique tags, legato/phrase grouping, and per-note controls. A lane also carries piecewise exact
-`ControlCurve`s keyed by semantic `ControlKey` and typed by a small control value family. Standard keys include
-expression, emphasis, separation, brightness, sustain, and legato; namespaced custom keys are admitted only with a
-declaration in prompt 178.
+A note occurrence's `EventTrack` span carries its performed onset and extent. Its `Gesture` payload carries stable
+gesture/event identity, written pitch until tuning, separation/hold/emphasis intent, symbolic technique tags,
+legato/phrase grouping, per-note controls, and origin — **never an absolute position in any coordinate**. `PartId`
+belongs to the lane, not redundantly to each payload. This is required by payload-admission rule A3 and keeps temporal
+support in the one structure that owns it.
+
+MIDI score mode and provenance still need the source event's written support. Record that as a separate, immutable
+`GestureId -> written EventId/span` conversion relation under constitution §6. It is lineage/presentation data: it is
+not part of `Gesture::canonical_key`, is not another ordered temporal container, and cannot affect gesture scheduling.
+Repair `docs/rules/language/08-performance-and-sound.md`'s provisional `NoteGesture.support` field to state this same
+separation before adding the payload-admission row.
+
+A lane also carries piecewise exact `ControlCurve`s keyed by semantic `ControlKey` and typed by a small control value
+family. Standard keys include expression, emphasis, separation, brightness, sustain, and legato; namespaced custom keys
+are admitted only with a declaration in prompt 178.
 
 For a hairpin on `[s,e]`, specify and test `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and
 events `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic
@@ -56,14 +66,16 @@ technique/group identity even when a numeric fallback is also available, so a sa
 staccato regions rather than receiving only a gate multiplier.
 
 Keep the public compiler facade narrow. Compare (and record) a separate public `PerformanceIntent` artifact with the
-chosen design in which private exact gestures are scheduled into a caller-oriented `PerformancePlan`; publish only the
-minimum immutable lane/control information required by MIDI and `musa-dsp`. `ParameterId(u32)` is not reused as
-`ControlKey`.
+chosen design in which private exact gestures and their non-temporal lineage relation are projected into a
+caller-oriented `PerformancePlan`; publish only the minimum immutable lane/control information required by MIDI and
+`musa-dsp`. Compatibility values that the old renderer alone understands (notably physical attack seconds) are also a
+named projection keyed by `GestureId`, never a gesture control or canonical payload field; prompt 178 deletes that
+projection when the instrument signature owns the mapping. `ParameterId(u32)` is not reused as `ControlKey`.
 
 ## Target
 
 - Private exact gesture construction as `EventTrack<PerformedTime,Gesture>`, its exact encoding and admission-table row,
-  and revised caller-facing performance facts.
+  a separately keyed written-support/compatibility conversion record, and revised caller-facing performance facts.
 - Profile-to-gesture interpretation for all existing marks with byte/semantic parity where the old model was expressive
   enough; explicit retained/fallback information where it was not.
 - Algebraic/property tests for curve endpoints, monotonic hairpins, grouping, exactness, context changes, and
