@@ -25,13 +25,12 @@
 //! two parts to two different patches gets both patches sounding both parts;
 //! [`lower_studio`] says so rather than pretending otherwise.
 
-use musa_compiler::{NodeIndex, Patch, Processor, StudioNode, StudioSpec};
-
 use crate::spec::{FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform};
+use crate::{NodeIndex, Patch, Processor, StudioNode, StudioSpec};
 
 /// What a lowering produced besides the graph.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct StudioLowering {
+pub struct StudioLowering {
     /// Things the studio asked for that the graph could not honour exactly.
     /// Not errors: the graph renders, and the caller decides whether to show
     /// them (the CLI prints them; the desktop app surfaces them in the Sound
@@ -57,7 +56,7 @@ const MAX_MIX: usize = 8;
 /// studio produces the default instrument graph, which is what makes a piece
 /// with no `studio` block render exactly as it did before studios existed
 /// (§14.8).
-pub(crate) fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
+pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
     let mut lowering = StudioLowering::default();
     if studio.is_empty() {
         return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);

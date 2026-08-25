@@ -14,12 +14,13 @@
 // Sample arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_dsp::StudioSpec;
 use musa_dsp::testing::{
     GraphError, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, lower_studio, prepare_graph,
 };
 
-use super::support::render_source;
+use super::audio_support::render_source;
 
 const RATE: u32 = 48_000;
 const OPTIONS: GraphOptions = GraphOptions {

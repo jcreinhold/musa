@@ -1949,17 +1949,17 @@ musa/
 ```text
 leaves    musa-syntax        musa-calculus        musa-events
 
-values                      musa-score
-                            ← language, event track
+values             musa-score                  musa-dsp
+             ← event track              ← event track, score
 
 passes                     musa-compiler
-                     ← calculus, event track, language, score
+              ← calculus, event track, language, score, studio values
 
-outputs         musa-notation                  musa-dsp
-          ← syntax, events, score          ← score, compiler
-                                                 │
-                                             musa-playback
-                                          ← score, audio
+outputs                    musa-notation
+                    ← syntax, events, score
+
+engine                     musa-playback
+                       ← score, audio
 
 shells    musa-wasm ← compiler, render, score
           musa-project ← score, compiler, render, audio, engine, language
@@ -1974,7 +1974,8 @@ In particular:
   scales, exact time, marks, the score snapshot, exact performed gestures, provenance, diagnostics, and analysis, and
   names no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
-- compiler does not depend on audio;
+- compiler depends on `musa-dsp` only for the editable studio vocabulary it produces; graph preparation and rendering
+  remain downstream operations;
 - the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
 - the event-track is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;
@@ -2038,6 +2039,9 @@ Dependencies:
 ```text
 musa-syntax
 musa-calculus
+musa-dsp
+musa-events
+musa-score
 num-rational
 slotmap
 indexmap
@@ -2123,10 +2127,11 @@ Owns:
 Dependencies:
 
 ```text
-musa-compiler
-fundsp
-hound
-rtrb
+musa-events
+musa-score
+indexmap
+num-bigint
+num-rational
 thiserror
 tracing
 ```

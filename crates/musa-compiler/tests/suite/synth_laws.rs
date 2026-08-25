@@ -11,7 +11,7 @@
 // Sample arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
-use super::support::render_source;
+use super::audio_support::render_source;
 
 const RATE: u32 = 48_000;
 

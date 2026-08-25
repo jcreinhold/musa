@@ -10,8 +10,11 @@ version.workspace = true
 [lints]
 workspace = true
 
+[features]
+testing = []
+
 [dependencies]
-musa-compiler = { workspace = true }
+indexmap = "2"
 musa-events = { workspace = true }
 musa-score = { workspace = true }
 num-bigint = "0.4"
@@ -23,10 +26,6 @@ tracing = "0.1"
 divan = "0.1.21"
 hound = "3"
 insta = "1"
-
-[[bench]]
-harness = false
-name = "audio_bridge"
 
 [[bench]]
 harness = false

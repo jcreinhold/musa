@@ -4,7 +4,7 @@ use crate::spec::NodeId;
 
 /// A failure to validate or prepare the private native primitive graph.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
-pub(crate) enum GraphError {
+pub enum GraphError {
     /// A connection names a node that does not exist.
     #[error("unknown node {0:?} in connection")]
     UnknownNode(NodeId),

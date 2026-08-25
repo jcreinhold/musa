@@ -77,11 +77,12 @@ let them drift silently.
 | `docs/book/` | **teaching.** tutorials, guide, how-to, explanation, reference |
 | `docs/notes/` | **governs nothing.** `research/` decision records, `toolchain/` machine traps |
 
-Dependency direction is one-way: {syntax, calculus, events} → compiler → audio → engine → project → {cli, lsp, desktop}.
-`musa-score` is a values layer depending only on `musa-events`; `musa-notation` sits over syntax, events, and score.
-`musa-lsp` is the one shell that also depends directly on `musa-syntax` (highlighting and completion answer on
-half-typed source, which the session's facts cannot describe — roadmap §15.11). `musa-wasm` is a fourth shell, over
-compiler + render, and `packages/*` sits below it in TypeScript. No dependency points upward.
+Dependency direction is one-way from leaves and value vocabularies into passes, engines, and shells. `musa-score` owns
+score values and `musa-dsp` owns studio/audio values; `musa-compiler` depends on both to name what it produces.
+`musa-notation` sits over syntax, events, and score, while playback sits over score and DSP. `musa-lsp` is the one shell
+that also depends directly on `musa-syntax` (highlighting and completion answer on half-typed source, which the
+session's facts cannot describe — roadmap §15.11). `musa-wasm` is a fourth shell, over compiler + render, and
+`packages/*` sits below it in TypeScript. No dependency points upward.
 
 ## Commands
 

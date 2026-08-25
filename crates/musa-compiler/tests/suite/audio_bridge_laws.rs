@@ -14,7 +14,7 @@ use musa_dsp::testing::{ProcessorSpec, StudioGraphSpec, prepare_graph, prepare_g
 use musa_dsp::{AudioFormat, AudioPrepareError, ChannelLayout, prepare_audio};
 use musa_score::{Tuning, lower_gestures};
 
-use super::support::{options, parts};
+use super::audio_support::{options, parts};
 
 // --- Helpers -----------------------------------------------------------------
 

@@ -5,7 +5,7 @@
 //! single preparation; [`prepare`] hands it to the engine and [`to_wav`]
 //! runs it offline.
 
-use musa_compiler::StudioSpec;
+use musa_dsp::StudioSpec;
 
 use musa_playback::PreparedPlaybackPlan;
 use musa_score::{PerformanceOptions, ScoreSnapshot, lower_gestures};

@@ -8,7 +8,7 @@ use musa_score::machine::{MachineSpec, PortSchema as Port, SpecForm, SpecNode, S
 use musa_score::{Tuning, lower_gestures};
 use num_rational::Ratio;
 
-use super::support;
+use super::audio_support as support;
 
 #[test]
 fn tonal_construction_runs_through_exact_gestures_and_one_frame_audio() {

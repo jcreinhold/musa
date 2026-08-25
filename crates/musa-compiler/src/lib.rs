@@ -7,7 +7,7 @@
 //! ontology.
 //!
 //! Owns: name resolution, unit checking, motif expansion, imports and
-//! packages, elaboration through `musa-calculus`, the studio spec, lint, and
+//! packages, elaboration through `musa-calculus`, studio resolution, lint, and
 //! the documentation and reference readers — every stage that *works out* an
 //! answer.
 //!
@@ -17,6 +17,9 @@
 //! depends on it rather than containing it. That was true before it was a
 //! crate — no module there named a pass — and the boundary is what keeps it
 //! true.
+//!
+//! Studio intent is another answer, owned by `musa-dsp`; this crate constructs
+//! it and depends on that vocabulary just as it depends on `musa-score`.
 //!
 //! Must never expose: pass internals (resolution tables, expansion
 //! machinery); transient `slotmap` keys as serialized identities. Must never
@@ -85,9 +88,6 @@ pub use musa_events::{EventsTokenClass, events_bindings, events_classify, events
 
 pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
-pub use crate::studio::{
-    Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
-};
 /// The event track's semantic digest, re-exported so a consumer can hold a
 /// compilation's identity without depending on the event track directly.
 pub use musa_events::SemanticHash;

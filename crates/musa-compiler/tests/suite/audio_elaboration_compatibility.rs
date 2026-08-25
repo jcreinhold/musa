@@ -1,7 +1,7 @@
 //! Audio-side compatibility oracle for the elaboration migration fixture.
 //!
 //! Refresh intentionally with `UPDATE_ELABORATION_BASELINE=1 cargo test
-//! -p musa-dsp --test suite` in a clean worktree.
+//! -p musa-compiler --test suite` in a clean worktree.
 
 #![allow(clippy::expect_used)]
 
@@ -12,7 +12,7 @@ use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_dsp::prepare_audio;
 use musa_score::{GesturePlan, lower_gestures};
 
-use super::support::options;
+use super::audio_support::options;
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -49,7 +49,7 @@ fn wav_bytes(samples: &[f32]) -> Result<Vec<u8>> {
     Ok(cursor.into_inner())
 }
 
-fn scheduled() -> Result<(musa_compiler::StudioSpec, GesturePlan, String)> {
+fn scheduled() -> Result<(musa_dsp::StudioSpec, GesturePlan, String)> {
     let compilation = compile(
         &SourceDocument::new(SOURCE, "tests/fixtures/audio-bridge.musa"),
         &CompileOptions::default(),

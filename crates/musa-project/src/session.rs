@@ -119,7 +119,7 @@ pub struct ProjectSession {
 #[derive(Debug, PartialEq)]
 struct InstalledPlan {
     music: musa_compiler::SemanticHash,
-    studio: musa_compiler::StudioSpec,
+    studio: musa_dsp::StudioSpec,
 }
 
 /// One state of the document.
@@ -1004,7 +1004,7 @@ impl ProjectSession {
             compilation.derivation().cloned()
         };
         let (score, studio) = if compilation.has_errors() {
-            (None, musa_compiler::StudioSpec::default())
+            (None, musa_dsp::StudioSpec::default())
         } else {
             compilation.into_parts()
         };

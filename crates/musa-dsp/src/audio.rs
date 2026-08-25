@@ -6,10 +6,10 @@
 //! by offline rendering and the live callback.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::StudioSpec;
 use musa_events::{Duration, PerformedTime, PhysicalTime, Position, empty};
 use musa_score::{Gesture, GesturePlan, Tuning};
 
+use crate::StudioSpec;
 use crate::plan::{RenderPlan, prepare_plan};
 use crate::primitive::{AudioLimits, resources};
 use crate::schedule::{

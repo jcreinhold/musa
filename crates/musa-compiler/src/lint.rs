@@ -20,7 +20,7 @@ use musa_syntax::ast::{AstNode, BarStmt, EnumDecl, ImplDecl, PieceDecl, RecordDe
 use musa_syntax::{ParsedDocument, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 use crate::resolve::{NameKind, ReferenceIndex};
-use crate::studio::StudioSpec;
+use musa_dsp::StudioSpec;
 use musa_score::diagnose::{Code, Diagnostic};
 use musa_score::origin::SourceSpan;
 

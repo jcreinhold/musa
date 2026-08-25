@@ -18,7 +18,7 @@
 //! rewritten in the unit it was written in, and only a parameter that was
 //! never written is inserted, in the unit it is declared in.
 
-use musa_compiler::{Modulation, NodeIndex, StudioSpec, Unit, Value};
+use musa_dsp::{Modulation, NodeIndex, StudioSpec, Unit, Value};
 use serde::Serialize;
 
 use crate::command::TextEdit;
@@ -195,7 +195,7 @@ impl StudioFacts {
 }
 
 fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
-    let declared: Vec<(&str, &musa_compiler::Patch)> = match kind {
+    let declared: Vec<(&str, &musa_dsp::Patch)> = match kind {
         ContainerKind::Patch => studio.patches().collect(),
         ContainerKind::Bus => studio.buses().collect(),
         ContainerKind::Signal => studio.signals().collect(),

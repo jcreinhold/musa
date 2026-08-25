@@ -94,7 +94,7 @@ pub enum DocumentKind {
 pub struct Compilation {
     kind: DocumentKind,
     snapshot: Option<ScoreSnapshot>,
-    studio: crate::studio::StudioSpec,
+    studio: musa_dsp::StudioSpec,
     machines: Vec<(String, musa_score::MachineSpec)>,
     diagnostics: Vec<Diagnostic>,
     identity: musa_events::SemanticHash,
@@ -114,7 +114,7 @@ impl Compilation {
         Self {
             kind: DocumentKind::Piece,
             snapshot,
-            studio: crate::studio::StudioSpec::default(),
+            studio: musa_dsp::StudioSpec::default(),
             machines: Vec::new(),
             diagnostics,
             identity: musa_events::SemanticHash::default(),
@@ -179,7 +179,7 @@ impl Compilation {
         self.kind
     }
 
-    pub(crate) fn with_studio(mut self, studio: crate::studio::StudioSpec) -> Self {
+    pub(crate) fn with_studio(mut self, studio: musa_dsp::StudioSpec) -> Self {
         self.studio = studio;
         self
     }
@@ -256,7 +256,7 @@ impl Compilation {
     /// The compiled studio. Empty when the piece declares no `studio` block,
     /// which is the zero-setup case: every part keeps the default instrument
     /// (§14.8).
-    pub fn studio(&self) -> &crate::studio::StudioSpec {
+    pub fn studio(&self) -> &musa_dsp::StudioSpec {
         &self.studio
     }
 
@@ -296,7 +296,7 @@ impl Compilation {
     /// The score and the studio together, consuming the compilation. They are
     /// two documents produced by one pass (§10.6), and the callers that
     /// render sound need both.
-    pub fn into_parts(self) -> (Option<ScoreSnapshot>, crate::studio::StudioSpec) {
+    pub fn into_parts(self) -> (Option<ScoreSnapshot>, musa_dsp::StudioSpec) {
         (self.snapshot, self.studio)
     }
 

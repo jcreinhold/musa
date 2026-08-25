@@ -19,10 +19,10 @@ pub(crate) fn lower_studio(
     piece: &PieceDecl,
     snapshot: &ScoreSnapshot,
     imported: &[musa_syntax::ast::StudioDecl],
-) -> crate::studio::StudioSpec {
+) -> musa_dsp::StudioSpec {
     let studio = piece.studio();
     if studio.is_none() && imported.is_empty() {
-        return crate::studio::StudioSpec::default();
+        return musa_dsp::StudioSpec::default();
     }
     let parts: Vec<String> = snapshot
         .parts()

@@ -16,7 +16,8 @@
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
-use musa_compiler::{CompileOptions, Processor, SourceDocument, StudioSpec, Unit, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_dsp::{Processor, StudioSpec, Unit};
 
 use musa_score::Severity;
 

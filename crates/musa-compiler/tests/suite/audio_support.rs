@@ -1,10 +1,10 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, PreparedAudio,
-    ScheduleLimits, SchedulePolicy, prepare_audio,
+    ScheduleLimits, SchedulePolicy, StudioSpec, prepare_audio,
 };
 use musa_score::{ScoreSnapshot, Tuning, lower_gestures};
 

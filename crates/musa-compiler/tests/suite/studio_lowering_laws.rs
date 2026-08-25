@@ -11,7 +11,8 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_dsp::StudioSpec;
 use musa_dsp::testing::{GraphOptions, lower_studio, poly_sine_spec, prepare_graph};
 
 const OPTIONS: GraphOptions = GraphOptions {

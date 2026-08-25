@@ -2345,9 +2345,11 @@ name = "musa-compiler"
 version = "0.1.0"
 dependencies = [
  "divan",
+ "hound",
  "indexmap 2.14.0",
  "insta",
  "musa-calculus",
+ "musa-dsp",
  "musa-events",
  "musa-score",
  "musa-syntax",
@@ -2381,8 +2383,8 @@ version = "0.1.0"
 dependencies = [
  "divan",
  "hound",
+ "indexmap 2.14.0",
  "insta",
- "musa-compiler",
  "musa-events",
  "musa-score",
  "num-bigint",

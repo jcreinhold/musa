@@ -7,9 +7,11 @@
 
 ```text
 musa-syntax ──┐
-              ├──► musa-compiler ──► {musa-notation, musa-dsp} ──► musa-playback ──► musa-project
-musa-calculus ┤          ▲
-musa-events ──┘     musa-score
+musa-calculus ┤
+musa-events ──┼──► {musa-score, musa-dsp} ──┐
+              └──► musa-compiler ◄────────┘
+                         ├──► musa-notation
+                         └──► musa-project ◄── musa-playback ◄── musa-dsp
 ```
 
 `musa-calculus` and `musa-events` are leaves. `musa-lsp` also reads `musa-syntax`, because highlighting and completion
@@ -23,7 +25,7 @@ must work on half-typed text. The public seams are deliberately narrow:
 | `musa-score` | musical values, snapshots, provenance, diagnostics, analysis | no parsing or pass machinery exists here |
 | `musa-compiler` | imports/names, host registrations, lowering, quotation/adapters, realization | pass types, resolution tables, calculus internals |
 | `musa-notation` | notation plan and exports | planning internals |
-| `musa-dsp` | studio validation, machine/scheduling target, offline rendering | primitive state, buffers, schedules |
+| `musa-dsp` | editable studio vocabulary, graph validation, machine/scheduling target, offline rendering | primitive state, buffers, schedules |
 | `musa-playback` | device negotiation, transport, callback | CPAL and callback internals |
 | `musa-project` | documents, revisions, commands, derived-result coordination | compiler internals |
 
