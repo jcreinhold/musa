@@ -27,7 +27,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Staff and studio adapters on one frozen interface | implemented | `stdlib/src/adapters/{staff,graph}.musa`; adapter law suites |
 | Tonal and post-tonal packages over indexed families | implemented | `stdlib/src/{tonal,post_tonal}`; generic-row and corpus laws |
 | Source-to-adapter-to-event-track provenance | implemented | compiler derivation records and prompt-169 K1–K20 matrix |
-| Provenance composition through scheduling and audio | partial | exact gesture payloads and opaque occurrence handles reach audio; prompt 174 completes the derivation audit |
+| Provenance composition through scheduling and audio | implemented | exact gesture payloads retain complete origins; opaque occurrence handles reach audio; note 77 R14 audits derivation reuse and associative stage composition |
 | Exact machine reference step and primitive registry | implemented | `musa-dsp/src/{machine,primitive,plan}.rs`; structural and native one-frame registries |
 | Checked event-track scheduling into frame sources | implemented | `musa-dsp::schedule`; exact-map, decision, collapse, merge, countdown, seek, and bound laws |
 | One-frame DSP meaning and opaque prepared machine | implemented | exact gestures → checked `Schedule` → `PreparedAudio`; live/offline repeated-step partition and RT laws |
@@ -108,7 +108,7 @@ The standard library is a version-matched Musa package with a real module tree. 
 record and the `c_major` and `a_natural_minor` values; tonal and post-tonal packages use the same language as a piece.
 There is no privileged library evaluator.
 
-## Event-track boundary and remaining runtime work
+## Event-track and runtime boundary
 
 The checked written result elaborates to `EventTrack<WrittenTime, ScoreFact>`. `musa-events` owns exact positions and
 durations, typed occurrences, `empty`, `event`, `follow`, `together`, `map_payloads`, `duration`, queries,
@@ -122,6 +122,7 @@ decision record, and an allocation-free cursor/countdown source. Its bounds cove
 batches, and frame representation; its merger injects opaque handles into recursive disjoint namespaces before sorting.
 
 Production audio lowers directly to exact `EventTrack<PerformedTime, Gesture>` lanes, checks them through `Schedule`,
-then prepares registered one-frame native instruments. It never translates the legacy already-frame-tagged
-`PerformancePlan`; that value remains only at MIDI/debug consumers pending prompt 174's complete derivation and deletion
-audit. The graph flattening is private and has no caller-defined block width or public compilation API.
+then prepares registered one-frame native instruments. Prompt 174 deleted the legacy frame-scheduled performance value;
+MIDI and debug consumers now read the same exact `GesturePlan` and choose no audio-frame lattice. Note 77 records the
+complete derivation audit. The graph flattening is private and has no caller-defined block width or public compilation
+API.

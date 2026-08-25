@@ -1,19 +1,20 @@
 //! Performance resolver (roadmap §6.4, §15.3;
 //! docs/rules/events/06-surface-elaboration.md).
 //!
-//! The neutral core that integrates the tempo map and schedules a
-//! `ScoreSnapshot` into frame-exact note-on/note-off events.
+//! The neutral core that integrates the tempo map and resolves a
+//! `ScoreSnapshot` into exact, instrument-independent gesture tracks.
 //!
 //! Tempo is a monotone map written-time → second applied to symbolic positions
 //! (§22) — it never rewrites the symbolic track, and "stretch" (an event track
 //! time action) is not "tempo" (a performance map). Symbolic stays in beats
-//! until this boundary; floats (frequency, seconds→frames) appear only here.
+//! through this boundary. Frame choice and tuning happen later, in checked
+//! audio preparation; the optional `frames` query is only an edge projection.
 //!
 //! Neutrality is the point (roadmap §2): a written A4 becomes a frequency
 //! only through the tuning service, and symbolic dynamics are not
 //! velocities. Interpretation enters here and only here: the part's profile
 //! (`profile.rs`) turns the written marks into a gate, an amplitude, and an
-//! attack request. A part with no profile is scheduled exactly as it was
+//! attack request. A part with no profile is resolved exactly as it was
 //! before profiles existed — full gate, neutral amplitude.
 
 // Time accumulation uses `MusicalTime`/`MusicalDuration` operators, total
@@ -22,7 +23,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::groove::Groove;
-use crate::origin::Origin;
+use crate::origin::{ExpansionStep, Origin};
 use crate::pitch::WrittenPitch;
 use crate::profile::{ArticulationRealization, PerformanceProfile};
 use crate::score::{EventId, Meter, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
@@ -248,12 +249,12 @@ impl IntegratedTempoMap {
     /// constant of the map, because the shape is normative and the sampling
     /// is the consumer's policy (docs/rules/events/07) — the same rule a hairpin's
     /// `Progress` is read under, and the reason both are one type.
-    pub fn segments(&self, steps_per_whole: u32, sample_rate: u32) -> Vec<TempoSegment> {
+    pub fn segments(&self, steps_per_whole: u32) -> Vec<TempoSegment> {
         let mut segments = Vec::with_capacity(self.points.len());
         for (index, point) in self.points.iter().enumerate() {
             let next = self.points.get(index.saturating_add(1)).map(|point| point.position);
             let Some(ramp) = point.ramp.as_ref() else {
-                segments.push(self.segment_at(point.position, point.seconds_per_whole, sample_rate));
+                segments.push(self.segment_at(point.position, point.seconds_per_whole));
                 continue;
             };
             // Cut at the next marking: past it, this segment says nothing.
@@ -274,26 +275,25 @@ impl IntegratedTempoMap {
                 segments.push(self.segment_at(
                     MusicalTime::new(point.position.as_ratio() + along),
                     point.rate_at(ramp, local),
-                    sample_rate,
                 ));
             }
             // The rate the ramp arrived at, stated once where it arrives —
             // unless the next marking got there first and states its own.
             let ends = point.position.as_ratio() + ramp.over;
             if next.is_none_or(|next| ends < next.as_ratio()) {
-                segments.push(self.segment_at(MusicalTime::new(ends), ramp.to, sample_rate));
+                segments.push(self.segment_at(MusicalTime::new(ends), ramp.to));
             }
         }
         segments
     }
 
-    /// One exported segment: a position, the frame it falls on, and the rate
-    /// in force there.
-    fn segment_at(&self, position: MusicalTime, seconds_per_whole: Ratio<i64>, sample_rate: u32) -> TempoSegment {
+    /// One exported segment: its exact musical and physical positions and
+    /// the rate in force there.
+    fn segment_at(&self, position: MusicalTime, seconds_per_whole: Ratio<i64>) -> TempoSegment {
         TempoSegment {
             position,
-            frame: self.frames(position, sample_rate),
-            seconds_per_quarter: ratio_to_f64(seconds_per_whole) / 4.0,
+            physical: self.physical(Position::new(position.as_ratio())),
+            seconds_per_quarter: seconds_per_whole / 4,
         }
     }
 
@@ -328,65 +328,21 @@ impl IntegratedTempoMap {
     }
 }
 
-/// One tempo segment as an exporter sees it: where it starts, in both
-/// symbolic and frame time, and how fast it goes.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// One tempo segment as an exporter sees it: where it starts, in exact
+/// symbolic and physical time, and how fast it goes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TempoSegment {
     /// The symbolic position the segment starts at.
     pub position: MusicalTime,
-    /// The absolute frame the segment starts at.
-    pub frame: u64,
-    /// Seconds per quarter note inside the segment.
-    pub seconds_per_quarter: f64,
+    /// Exact physical seconds where the segment starts.
+    pub physical: Position<PhysicalTime>,
+    /// Exact seconds per quarter note inside the segment.
+    pub seconds_per_quarter: Ratio<i64>,
 }
 
 /// The one place a musical rational becomes a float.
 fn ratio_to_f64(value: Ratio<i64>) -> f64 {
     *value.numer() as f64 / *value.denom() as f64
-}
-
-/// Identity of one sounding note instance, matching note-on to note-off.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VoiceInstanceId(pub u32);
-
-/// A parameter target for `Parameter` events (nothing produces them yet;
-/// the type exists now so the event enum is stable).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ParameterId(pub u32);
-
-/// A sounding note: written pitch plus derived frequency, with provenance.
-/// Frequency is derived at this boundary, never stored in the score.
-///
-/// The interpreted fields come from the part's profile (roadmap §6.4). With
-/// no profile they are exactly neutral, which is what keeps a piece that
-/// declares none sounding bit-for-bit as it did before profiles existed.
-#[derive(Clone, Debug, PartialEq)]
-pub struct PerformedNote {
-    /// The written pitch (post-transposition; sounding = written until
-    /// transposing instruments exist).
-    pub pitch: WrittenPitch,
-    /// Frequency in Hz from the tuning service.
-    pub frequency: f64,
-    /// The score event this note realizes.
-    pub event: EventId,
-    /// Why the event exists.
-    pub origin: Origin,
-    /// Interpreted loudness in `0..=1`, from the prevailing dynamic marking.
-    /// Abstract, not decibels and not a MIDI velocity (§2); `1.0` is neutral.
-    pub amplitude: f32,
-    /// The attack time in seconds the profile asks for. A request carried to
-    /// the instrument, not an envelope: the instrument's parameter system
-    /// decides what an instrument does with it.
-    pub attack: f32,
-    /// The frame the *written* value ends at, before the profile's gate.
-    /// Notated duration ≠ performed duration (§2) and both are facts: score
-    /// MIDI wants this one, performance MIDI wants the note-off's.
-    pub notated_off: u64,
-    /// The frame the note starts at *on the page*, before the part's groove.
-    /// The same fact as `notated_off` in the other direction: a swung file is
-    /// a performance, and a notation program reading a score-mode export must
-    /// not be handed an interpretation to draw.
-    pub notated_on: u64,
 }
 
 /// One exact instrument-independent instruction in performed time.
@@ -414,29 +370,146 @@ pub struct Gesture {
 
 impl Canonical for Gesture {
     const OWNER_TYPE_ID: &'static str = "musa.score.Gesture";
-    const QUOTIENT_VERSION: u32 = 1;
+    const QUOTIENT_VERSION: u32 = 2;
 
-    /// Every stored field participates. The representation is deliberately
-    /// textual and versioned: it is an ordering/equality key for finite track
-    /// preparation, never an audio parameter codec.
+    /// Every stored field participates. Constructors and integers have an
+    /// explicit encoding; arbitrary source strings are length-framed. This is
+    /// deliberately a versioned identity key, never an audio parameter codec.
     fn canonical_key(&self) -> String {
         let mut key = String::new();
         let _ = write!(
             key,
-            "{}|{}|{}|{}|{}|{}|{}|{}|{:?}|{:?}|{:?}",
-            self.pitch,
-            self.event.0,
-            self.amplitude,
-            self.attack_seconds,
-            self.notated_on,
-            self.notated_off,
-            self.origin.source_span.start,
-            self.origin.source_span.end,
-            self.origin.expansion_path,
-            self.origin.definition_span,
-            self.origin.declaration,
+            "pitch={},{},{};event={};",
+            self.pitch.letter.as_char(),
+            self.pitch.accidental.0,
+            self.pitch.octave,
+            self.event.0
         );
+        write_ratio(&mut key, "amplitude", self.amplitude);
+        write_ratio(&mut key, "attack", self.attack_seconds);
+        write_ratio(&mut key, "notated-on", self.notated_on.as_ratio());
+        write_ratio(&mut key, "notated-off", self.notated_off.as_ratio());
+        write_span(&mut key, "source", self.origin.source_span);
+        write_span(&mut key, "definition", self.origin.definition_span);
+        let _ = write!(
+            key,
+            "declaration={};path={};",
+            self.origin.declaration.0,
+            self.origin.expansion_path.len()
+        );
+        for step in &self.origin.expansion_path {
+            write_expansion_step(&mut key, step);
+        }
         key
+    }
+}
+
+fn write_ratio(key: &mut String, name: &str, value: Ratio<i64>) {
+    let _ = write!(key, "{name}={}/{};", value.numer(), value.denom());
+}
+
+fn write_span(key: &mut String, name: &str, span: crate::SourceSpan) {
+    let _ = write!(key, "{name}={},{};", span.start, span.end);
+}
+
+fn write_text(key: &mut String, name: &str, value: &str) {
+    let _ = write!(key, "{name}={}:{};", value.len(), value);
+}
+
+/// Encode the provenance sum by constructor. Keeping this match exhaustive is
+/// part of the identity contract: adding a constructor cannot silently make
+/// two gestures equal or inherit an unstable `Debug` spelling.
+fn write_expansion_step(key: &mut String, step: &ExpansionStep) {
+    match step {
+        ExpansionStep::MotifApplication { call_site } => {
+            key.push_str("motif;");
+            write_span(key, "call", *call_site);
+        }
+        ExpansionStep::RepeatIteration(iteration) => {
+            let _ = write!(key, "repeat={iteration};");
+        }
+        ExpansionStep::Transposition(interval) => {
+            let _ = write!(key, "transpose={},{};", interval.diatonic_steps, interval.semitones);
+        }
+        ExpansionStep::Stretch(factor) => {
+            key.push_str("stretch;");
+            write_ratio(key, "factor", *factor);
+        }
+        ExpansionStep::Retrograde => key.push_str("retrograde;"),
+        ExpansionStep::Inversion { axis } => {
+            key.push_str("invert;");
+            write_text(key, "axis", axis);
+        }
+        ExpansionStep::MapNotePitches => key.push_str("map-note-pitches;"),
+        ExpansionStep::ScaleContext { scale } => {
+            key.push_str("scale-context;");
+            write_text(key, "scale", scale);
+        }
+        ExpansionStep::TemplateInstance {
+            template,
+            alias,
+            site,
+            identity,
+        } => {
+            key.push_str("template-instance;");
+            write_text(key, "template", template);
+            write_text(key, "alias", alias);
+            write_span(key, "site", *site);
+            write_text(key, "identity", identity);
+        }
+        ExpansionStep::Assertion { claim } => {
+            key.push_str("assertion;");
+            write_text(key, "claim", claim);
+        }
+        ExpansionStep::EventsSplice { at } => {
+            key.push_str("events-splice;");
+            write_ratio(key, "at", *at);
+        }
+        ExpansionStep::Specialization { override_site } => {
+            key.push_str("specialization;");
+            write_span(key, "override", *override_site);
+        }
+    }
+}
+
+#[cfg(test)]
+mod gesture_identity_laws {
+    use musa_events::Canonical as _;
+    use num_rational::Ratio;
+
+    use super::Gesture;
+    use crate::{
+        Accidental, DeclarationId, EventId, ExpansionStep, Letter, MusicalTime, Origin, SourceSpan, WrittenPitch,
+    };
+
+    fn gesture(axis: &str) -> Gesture {
+        Gesture {
+            pitch: WrittenPitch {
+                letter: Letter::C,
+                accidental: Accidental::NATURAL,
+                octave: 4,
+            },
+            event: EventId(1),
+            origin: Origin {
+                source_span: SourceSpan::new(1, 2),
+                definition_span: SourceSpan::new(3, 4),
+                declaration: DeclarationId(5),
+                expansion_path: vec![ExpansionStep::Inversion { axis: axis.to_owned() }],
+            },
+            amplitude: Ratio::ONE,
+            attack_seconds: Ratio::ZERO,
+            notated_on: MusicalTime::ZERO,
+            notated_off: MusicalTime::new(Ratio::new(1, 4)),
+        }
+    }
+
+    #[test]
+    fn framed_gesture_identity_does_not_parse_payload_delimiters() {
+        let left = gesture("c4|1:source");
+        let right = gesture("c4|1:source|");
+        let first = left.canonical_key();
+        assert_eq!(first, left.canonical_key());
+        assert_ne!(left.canonical_key(), right.canonical_key());
     }
 }
 
@@ -476,83 +549,41 @@ impl GestureLane {
 /// Exact performance preparation before frame scheduling or tuning.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GesturePlan {
+    tempo: IntegratedTempoMap,
+    meters: Vec<MeterChange>,
+    keys: Vec<KeyChange>,
     lanes: Vec<GestureLane>,
+    polytempo: bool,
 }
 
 impl GesturePlan {
+    /// The piece-scoped exact tempo map used by single-tempo edge formats.
+    pub fn tempo(&self) -> &IntegratedTempoMap {
+        &self.tempo
+    }
+
+    /// Whether at least one part carries a tempo map distinct from the piece.
+    pub const fn is_polytempo(&self) -> bool {
+        self.polytempo
+    }
+
+    /// Piece-scoped meter changes at exact written positions.
+    pub fn meters(&self) -> &[MeterChange] {
+        &self.meters
+    }
+
+    /// Piece-scoped key changes at exact written positions.
+    pub fn keys(&self) -> &[KeyChange] {
+        &self.keys
+    }
+
     /// One exact lane per part, in source order.
     pub fn lanes(&self) -> &[GestureLane] {
         &self.lanes
     }
 }
 
-/// One scheduled performance event.
-#[derive(Clone, Debug, PartialEq)]
-pub enum PerformanceEvent {
-    /// A note starts.
-    NoteOn {
-        /// Absolute frame.
-        frame: u64,
-        /// The sounding note.
-        note: PerformedNote,
-        /// Instance identity for the matching note-off.
-        instance: VoiceInstanceId,
-    },
-    /// A note ends, at the profile's gate of the written value.
-    NoteOff {
-        /// Absolute frame.
-        frame: u64,
-        /// The instance ending.
-        instance: VoiceInstanceId,
-    },
-    /// A parameter change (unused for now; present for enum
-    /// stability).
-    Parameter {
-        /// Absolute frame.
-        frame: u64,
-        /// What changes.
-        target: ParameterId,
-        /// The new value.
-        value: f32,
-    },
-}
-
-impl PerformanceEvent {
-    /// The event's frame.
-    pub fn frame(&self) -> u64 {
-        match self {
-            Self::NoteOn { frame, .. } | Self::NoteOff { frame, .. } | Self::Parameter { frame, .. } => *frame,
-        }
-    }
-}
-
-/// One part's scheduled events (an instrument lane; parts ≠ synthesizers —
-/// the lane is scheduled data, not a synth instance).
-#[derive(Clone, Debug, PartialEq)]
-pub struct PerformanceLane {
-    part: PartId,
-    name: String,
-    events: Vec<PerformanceEvent>,
-}
-
-impl PerformanceLane {
-    /// The part identity.
-    pub fn part(&self) -> PartId {
-        self.part
-    }
-
-    /// The part name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Events sorted by frame, then `EventId`, with ons before offs.
-    pub fn events(&self) -> &[PerformanceEvent] {
-        &self.events
-    }
-}
-
-/// A time signature and the frame it takes effect at.
+/// A time signature and the exact written position where it takes effect.
 ///
 /// Meter is notation, and a performance does not hear it — which is exactly
 /// why it is carried here rather than derived: MIDI is an *edge* format that
@@ -560,78 +591,23 @@ impl PerformanceLane {
 /// the exporter to hold a second score.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MeterChange {
-    /// Where it starts, in frames.
-    pub frame: u64,
+    /// Where it starts in written time.
+    pub at: MusicalTime,
     /// What it is.
     pub meter: crate::score::Meter,
 }
 
-/// A key signature and the frame it takes effect at.
+/// A key signature and the exact written position where it takes effect.
 ///
 /// Carried for the same reason as [`MeterChange`]: SMF writes a key-signature
 /// meta event, and the exporter must not have to hold a second score to know
 /// when to write one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KeyChange {
-    /// Where it starts, in frames.
-    pub frame: u64,
+    /// Where it starts in written time.
+    pub at: MusicalTime,
     /// What it is.
     pub key: crate::score::Key,
-}
-
-/// The scheduled performance of a score.
-#[derive(Clone, Debug, PartialEq)]
-pub struct PerformancePlan {
-    tempo: IntegratedTempoMap,
-    sample_rate: u32,
-    meters: Vec<MeterChange>,
-    keys: Vec<KeyChange>,
-    lanes: Vec<PerformanceLane>,
-    polytempo: bool,
-}
-
-impl PerformancePlan {
-    /// The piece's tempo map: what the conductor reads.
-    ///
-    /// Under polytempo the lanes were scheduled against their own parts'
-    /// maps and this is the reference the piece-wide lists are stated
-    /// against, which is why [`Self::is_polytempo`] exists — a caller that
-    /// prints this as *the* tempo of the file has to know when that is a
-    /// reading rather than the piece.
-    pub fn tempo(&self) -> &IntegratedTempoMap {
-        &self.tempo
-    }
-
-    /// Explicit frame lattice used by this legacy scheduled plan.
-    pub const fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
-
-    /// Whether the lanes were scheduled against different tempo maps.
-    ///
-    /// Only the exporters ask. SMF has one tempo track, so a polytempo
-    /// performance is written out sonically exact and notationally wrong,
-    /// and the loss is stated rather than discovered
-    /// (`docs/rules/events/07-backend-contract.md`).
-    pub fn is_polytempo(&self) -> bool {
-        self.polytempo
-    }
-
-    /// Every meter the piece states, in playing order, beginning with the one
-    /// it opens in.
-    pub fn meters(&self) -> &[MeterChange] {
-        &self.meters
-    }
-
-    /// Every key the piece states, in playing order.
-    pub fn keys(&self) -> &[KeyChange] {
-        &self.keys
-    }
-
-    /// One lane per part, in source order.
-    pub fn lanes(&self) -> &[PerformanceLane] {
-        &self.lanes
-    }
 }
 
 /// A failure to lower a score for performance. Reserved: the current
@@ -653,16 +629,18 @@ pub enum PerformanceError {
 /// [`PerformanceError`] if the resulting finite performed track violates its
 /// exact bounds.
 pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceError> {
+    let reference = IntegratedTempoMap::new(score, crate::Scope::Piece);
     let marks = Interpretation::collect(score);
     let curves = hairpin_curves(score);
     let graces = grace_index(score);
     let mut lanes = Vec::new();
+    let mut polytempo = false;
     for (id, part) in score.parts().iter() {
         let profile = score.profiles().for_part(part.name());
         let scope = crate::Scope::Part { part: id.0 };
         let tempo = IntegratedTempoMap::new(score, scope);
+        polytempo |= tempo != reference;
         let clock = Clock {
-            tempo: &tempo,
             meters: score.meters(),
             scope,
             groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
@@ -761,188 +739,18 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
             tempo,
         });
     }
-    Ok(GesturePlan { lanes })
-}
-
-/// Lower a score into a frame-scheduled `PerformancePlan`.
-///
-/// # Errors
-/// [`PerformanceError`] for unschedulable constructs (none in the current
-/// grammar).
-pub fn lower_performance(
-    score: &ScoreSnapshot,
-    options: &PerformanceOptions,
-) -> Result<PerformancePlan, PerformanceError> {
-    let reference = IntegratedTempoMap::new(score, crate::Scope::Piece);
-    let marks = Interpretation::collect(score);
-    // The hairpin index covers the whole piece: an event belongs to exactly
-    // one voice, so one map keyed by event id serves every voice.
-    let curves = hairpin_curves(score);
-    let graces = grace_index(score);
-    let mut lanes = Vec::new();
-    let mut next_instance = 0u32;
-    let mut polytempo = false;
-    for (id, part) in score.parts().iter() {
-        let profile = score.profiles().for_part(part.name());
-        let scope = crate::Scope::Part { part: id.0 };
-        // The part's own tempo if it states one, the piece's otherwise. Two
-        // parts at different speeds are two maps and nothing else: the frames
-        // this produces are absolute, so the engine merges lanes at different
-        // tempos exactly as it merges lanes at the same one.
-        let speed = IntegratedTempoMap::new(score, scope);
-        polytempo |= speed != reference;
-        // The groove is the part's, because feel is an ensemble's sections
-        // disagreeing on purpose: a swung horn over a straight bass is a
-        // arrangement, not a mistake.
-        let clock = Clock {
-            tempo: &speed,
-            meters: score.meters(),
-            scope,
-            groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
-        };
-        // What the part's reading makes of a grace note. Notation is silent on
-        // this by design (roadmap §2): the page says *a grace note*, and
-        // whether it lands on the beat or ahead of it is the performer's, so
-        // it is the profile's here.
-        let policy = profile.map_or(crate::GracePolicy::DEFAULT, PerformanceProfile::grace);
-        let mut events = Vec::new();
-        for (_, voice) in part.voices() {
-            // The prevailing dynamic is per voice: a marking applies from its
-            // event onward in the voice that wrote it, not across the part.
-            //
-            // This is the event track's prevailing rule (docs/rules/events/03 D11) applied
-            // in bulk — one ordered pass over the voice, carrying the last
-            // marking forward — and not one `EventTrack::prevailing` call per
-            // event, which would be O(events × markings). The two conventions
-            // D11 fixes are honoured here: a marking on an event is in force
-            // *at* that event (the assignment precedes the read below), and of
-            // two markings at one instant the canonically later wins, because
-            // `Marks::collect` inserts them in the annotation lane's order and
-            // the last insertion keeps the key.
-            let mut dynamic = None;
-            // The loudness a hairpin grows from: whatever was in force at its
-            // first note, which is what a hairpin means on the page.
-            let mut curve_from: Option<Ratio<i64>> = None;
-            // How far back a grace note may reach, and what it shortens when
-            // it does. Both are per voice: a grace leans on the line it is
-            // written in, not on whatever else the part happens to sound.
-            let mut floor = MusicalTime::ZERO;
-            let mut previous = 0..0;
-            for event in voice.events() {
-                if let Some(mark) = marks.dynamics.get(&event.id) {
-                    dynamic = Some(*mark);
-                }
-                let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
-                    profile.realize(marks.articulations_of(event.id))
-                });
-                let level = dynamic
-                    .zip(profile)
-                    .and_then(|(mark, profile)| profile.amplitude(mark))
-                    .unwrap_or(Ratio::ONE);
-                let amplitude = match curves.get(&event.id) {
-                    None => {
-                        curve_from = None;
-                        level
-                    }
-                    Some(curve) => {
-                        let from = *curve_from.get_or_insert(level);
-                        let to = profile
-                            .and_then(|profile| profile.amplitude(curve.target))
-                            .unwrap_or(Ratio::ONE);
-                        let reached = from + (to - from) * curve.fraction;
-                        // A hairpin arrives at its mark, and leaves it in
-                        // force for what follows.
-                        if curve.fraction == Ratio::ONE {
-                            dynamic = Some(curve.target);
-                            curve_from = None;
-                        }
-                        reached
-                    }
-                };
-                let interpreted = Interpreted {
-                    gate: realization.gate * realization.hold,
-                    attack: realization.attack,
-                    amplitude,
-                };
-                // A grace note's own marks are read by the same profile that
-                // reads the principal's: a staccato grace is short for the same
-                // reason a staccato note is, and nothing about leaning on
-                // another note changes that.
-                let leaning: Vec<GraceSlot> = graces
-                    .get(&event.id)
-                    .map_or(&[][..], Vec::as_slice)
-                    .iter()
-                    .map(|grace| GraceSlot {
-                        pitch: grace.pitch,
-                        gate: profile.map_or(Ratio::ONE, |profile| {
-                            let realized = profile.realize(&grace.articulations);
-                            realized.gate * realized.hold
-                        }),
-                    })
-                    .collect();
-                let lowered = lower_event(
-                    options,
-                    &clock,
-                    event,
-                    &interpreted,
-                    &leaning,
-                    policy,
-                    floor,
-                    &mut events,
-                    &mut next_instance,
-                );
-                // A grace taken from the note before is only honest if that
-                // note actually gives the time up: the previous note-off is
-                // pulled back to where the grace starts. `min` because a gate
-                // may already have ended it sooner — a staccato note does not
-                // get *longer* because the next note has a grace.
-                if let Some(at) = lowered.anticipated {
-                    let frame = clock.frames(at, options.sample_rate);
-                    for index in previous.clone() {
-                        if let Some(PerformanceEvent::NoteOff { frame: off, .. }) = events.get_mut(index) {
-                            *off = (*off).min(frame);
-                        }
-                    }
-                }
-                // The bound the next event's graces may reach back to: the
-                // midpoint of this note. Rests leave it where it was — silence
-                // gives way freely, so a grace may take all of one.
-                if !matches!(event.kind, ScoreEventKind::Rest) {
-                    floor =
-                        event.onset + crate::time::MusicalDuration::new(event.notated_duration.value.as_ratio() / 2);
-                }
-                previous = lowered.pushed;
-            }
-        }
-        sort_events(&mut events);
-        lanes.push(PerformanceLane {
-            part: part.id(),
-            name: part.name().to_string(),
-            events,
-        });
-    }
-    // Piece-scoped, and against the piece's tempo: these two lists are the
-    // conductor's, not any lane's, and a polymetric piece's other grids are
-    // read off the snapshot by whoever needs them.
     let meters = score
         .meters()
         .changes(crate::Scope::Piece)
-        .map(|(at, meter)| MeterChange {
-            frame: reference.frames(at, options.sample_rate),
-            meter: *meter,
-        })
+        .map(|(at, meter)| MeterChange { at, meter: *meter })
         .collect();
     let keys = score
         .keys()
         .changes(crate::Scope::Piece)
-        .map(|(at, key)| KeyChange {
-            frame: reference.frames(at, options.sample_rate),
-            key: *key,
-        })
+        .map(|(at, key)| KeyChange { at, key: *key })
         .collect();
-    Ok(PerformancePlan {
+    Ok(GesturePlan {
         tempo: reference,
-        sample_rate: options.sample_rate,
         meters,
         keys,
         lanes,
@@ -950,7 +758,7 @@ pub fn lower_performance(
     })
 }
 
-/// Written time to frames, for one part.
+/// Written time to exact performed time, for one part.
 ///
 /// The composition order is the whole point (docs/rules/events/06-surface-elaboration.md): the
 /// groove is a written-time → written-time warp and tempo is written-time → second, so the groove
@@ -961,10 +769,8 @@ pub fn lower_performance(
 /// reached for `tempo.frames` directly would silently drop the groove, and
 /// nothing in the output would say so.
 struct Clock<'a> {
-    tempo: &'a IntegratedTempoMap,
     meters: &'a crate::ContextTrack<Meter>,
-    /// The part this clock is for: its meter names the groove's cell and its
-    /// tempo is what `tempo` was integrated at.
+    /// The part this clock is for: its meter names the groove's cell.
     scope: crate::Scope,
     groove: Groove,
 }
@@ -974,17 +780,6 @@ impl Clock<'_> {
     fn performed(&self, at: MusicalTime) -> Position<PerformedTime> {
         let meter = self.meters.at(self.scope, at).copied().unwrap_or_default();
         Position::new(self.groove.warp(meter, at).as_ratio())
-    }
-
-    /// The frame a written instant is played at.
-    fn frames(&self, at: MusicalTime, sample_rate: u32) -> u64 {
-        self.tempo
-            .frames(MusicalTime::new(self.performed(at).as_ratio()), sample_rate)
-    }
-
-    /// The frame a written instant sits at *on the page* — tempo, no groove.
-    fn written_frames(&self, at: MusicalTime, sample_rate: u32) -> u64 {
-        self.tempo.frames(at, sample_rate)
     }
 }
 
@@ -1006,9 +801,8 @@ struct PendingGesture {
     payload: Gesture,
 }
 
-/// Exact counterpart of [`lower_event`]. It deliberately shares the same
-/// stealing and interpretation inputs; the only difference is that it stops
-/// at performed positions instead of choosing frames and frequency.
+/// Lower one event with the shared grace-stealing and interpretation rules,
+/// stopping at performed positions before frames and tuning are chosen.
 #[allow(clippy::too_many_arguments)]
 fn lower_gesture_event(
     clock: &Clock<'_>,
@@ -1182,108 +976,6 @@ struct GraceSlot {
     gate: Ratio<i64>,
 }
 
-/// Exact ratio → the float the DSP edge needs. This is the boundary the
-/// roadmap allows floats to appear at, and the only one.
-fn ratio_to_f32(value: Ratio<i64>) -> f32 {
-    *value.numer() as f32 / *value.denom() as f32
-}
-
-/// Lower one score event: notes and chord tones become on/off pairs; rests
-/// schedule nothing (absence is silence; docs/rules/events/00-purpose.md).
-///
-/// **Where a grace note's time comes from.** A grace is a *point* occurrence —
-/// zero written duration — so performance is where it acquires one, and the
-/// time has to come out of a neighbour. Which neighbour is `policy`, and the
-/// asymmetry between the two answers is the point of keeping it out of the
-/// notation: stealing from the principal delays it and leaves the bar intact;
-/// stealing from the previous note leaves the principal exactly where the page
-/// puts it. Either way `notated_on`/`notated_off` — what the editor highlights
-/// — are computed from the written values and never move.
-#[allow(clippy::too_many_arguments)]
-fn lower_event(
-    options: &PerformanceOptions,
-    clock: &Clock<'_>,
-    event: &ScoreEvent,
-    interpreted: &Interpreted,
-    leaning: &[GraceSlot],
-    policy: crate::GracePolicy,
-    floor: MusicalTime,
-    events: &mut Vec<PerformanceEvent>,
-    next_instance: &mut u32,
-) -> Lowered {
-    let pitches: &[WrittenPitch] = match &event.kind {
-        ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
-        ScoreEventKind::Chord { pitches } => pitches,
-        ScoreEventKind::Rest => &[],
-    };
-    let written = event.notated_duration.value;
-    let notated_end = event.onset + written;
-    let notated_off = clock.written_frames(notated_end, options.sample_rate);
-    let notated_on = clock.written_frames(event.onset, options.sample_rate);
-    let stolen = steal(event, written, leaning.len(), policy, floor);
-    let mut at = stolen.graces_start_at;
-    for slot in leaning {
-        let instance = VoiceInstanceId(*next_instance);
-        *next_instance = next_instance.saturating_add(1);
-        let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * slot.gate);
-        events.push(PerformanceEvent::NoteOn {
-            frame: clock.frames(at, options.sample_rate),
-            note: PerformedNote {
-                pitch: slot.pitch,
-                frequency: options.tuning.frequency(&slot.pitch),
-                // A grace belongs to the note it leans on: selecting it in the
-                // editor selects that note, and highlighting follows the
-                // principal's written span because a grace has none of its own.
-                event: event.id,
-                origin: event.origin.clone(),
-                amplitude: ratio_to_f32(interpreted.amplitude),
-                attack: ratio_to_f32(interpreted.attack),
-                notated_off,
-                notated_on,
-            },
-            instance,
-        });
-        events.push(PerformanceEvent::NoteOff {
-            frame: clock.frames(at + sounds, options.sample_rate),
-            instance,
-        });
-        at = at + stolen.each;
-    }
-    let sounded_start = stolen.principal_starts_at;
-    let sounded_end =
-        sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * interpreted.gate);
-    let on_frame = clock.frames(sounded_start, options.sample_rate);
-    let off_frame = clock.frames(sounded_end, options.sample_rate);
-    let first = events.len();
-    for pitch in pitches {
-        let instance = VoiceInstanceId(*next_instance);
-        *next_instance = next_instance.saturating_add(1);
-        let note = PerformedNote {
-            pitch: *pitch,
-            frequency: options.tuning.frequency(pitch),
-            event: event.id,
-            origin: event.origin.clone(),
-            amplitude: ratio_to_f32(interpreted.amplitude),
-            attack: ratio_to_f32(interpreted.attack),
-            notated_off,
-            notated_on,
-        };
-        events.push(PerformanceEvent::NoteOn {
-            frame: on_frame,
-            note,
-            instance,
-        });
-        events.push(PerformanceEvent::NoteOff {
-            frame: off_frame,
-            instance,
-        });
-    }
-    Lowered {
-        pushed: first..events.len(),
-        anticipated: stolen.anticipated,
-    }
-}
-
 /// What the voice loop needs to know about an event it has just lowered.
 struct Lowered {
     /// Where in `events` the *principal's* on/off pairs went, so the next
@@ -1377,20 +1069,6 @@ fn steal(
         principal_sounds: crate::time::MusicalDuration::new(written.as_ratio() - total.as_ratio()),
         anticipated: None,
     }
-}
-
-/// Deterministic order: frame, then offs before ons (a gate ending exactly
-/// where another starts must close first, or same-frame transitions
-/// overlap), then event identity, then instance (§6.4 stability).
-fn sort_events(events: &mut [PerformanceEvent]) {
-    fn key(event: &PerformanceEvent) -> (u64, u8, u64, u32) {
-        match event {
-            PerformanceEvent::NoteOff { frame, instance } => (*frame, 0, u64::MAX, instance.0),
-            PerformanceEvent::NoteOn { frame, note, instance } => (*frame, 1, note.event.0, instance.0),
-            PerformanceEvent::Parameter { frame, target, .. } => (*frame, 2, 0, target.0),
-        }
-    }
-    events.sort_by_key(key);
 }
 
 #[cfg(test)]

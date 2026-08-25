@@ -129,7 +129,7 @@ pub(super) fn elaborate_score(
 /// one place both halves are in hand: [`crate::lower::piece::Part::profile`] is
 /// what the part says, and `snapshot` is what the piece declares. A profile
 /// changes no note and no barline — it is how the marks a note carries become
-/// numbers, which is `lower_performance`'s question and nothing the notation
+/// numbers, which is exact gesture lowering's question and nothing the notation
 /// asks.
 fn assign_profile(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, part: &crate::lower::piece::Part) {
     let Some((profile, span)) = &part.profile else {

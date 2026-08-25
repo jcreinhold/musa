@@ -23,7 +23,8 @@
 //! contain: notation planning, DSP, MIDI numbers in the score, or floating-
 //! point musical time.
 //!
-//! Facade (roadmap §15.3): [`compile`] and `lower_performance`.
+//! Facade (roadmap §15.3): [`compile`]. Exact performed gestures are values
+//! lowered from its [`ScoreSnapshot`](musa_score::ScoreSnapshot).
 //!
 //! Invariants: expansion always terminates (source recursion is structural and
 //! resource-bounded);

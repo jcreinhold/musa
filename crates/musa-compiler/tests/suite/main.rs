@@ -51,6 +51,7 @@ mod notation_marks;
 mod open_form;
 mod pc12_laws;
 mod performance;
+mod performance_support;
 mod pitch_action_laws;
 mod polymeter;
 mod profile_laws;

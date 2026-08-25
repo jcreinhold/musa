@@ -23,7 +23,10 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::{ScoreSnapshot, lower_gestures};
+use num_rational::Ratio;
+
+use super::performance_support::{notes_in, notes_of};
 
 /// A piece whose only variable is what the profile says about the beat.
 fn piece(profile: &str) -> String {
@@ -43,20 +46,13 @@ fn score_of(text: &str) -> ScoreSnapshot {
         .expect("compiles")
 }
 
-/// The frame each note starts at, in written order.
-fn onsets(score: &ScoreSnapshot) -> Vec<u64> {
-    let plan = lower_performance(score, &PerformanceOptions::default()).expect("lowers");
-    let mut frames: Vec<u64> = plan
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter())
-        .filter_map(|event| match event {
-            PerformanceEvent::NoteOn { frame, .. } => Some(*frame),
-            PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
-        })
-        .collect();
-    frames.sort_unstable();
-    frames
+/// The exact performed position each note starts at, in written order.
+fn onsets(score: &ScoreSnapshot) -> Vec<Ratio<i64>> {
+    notes_of(score)
+        .into_iter()
+        .flatten()
+        .map(|note| note.on_performed)
+        .collect()
 }
 
 /// Straight eighths at 60 bpm are one second apart in pairs; swung, the first
@@ -68,8 +64,6 @@ fn a_swing_moves_the_offbeat_and_not_the_beat() {
     assert_eq!(straight.len(), swung.len(), "the same notes are played either way");
     // A quarter is one second at 1/4 = 60, so a pair of eighths spans one
     // second and its midpoint is at half of it, or two thirds of it swung.
-    let rate = PerformanceOptions::default().sample_rate;
-    let second = u64::from(rate);
     for (index, (plain, swing)) in straight.iter().zip(&swung).enumerate() {
         if index % 2 == 0 {
             assert_eq!(plain, swing, "note {index} is on the beat and must not move");
@@ -79,8 +73,8 @@ fn a_swing_moves_the_offbeat_and_not_the_beat() {
     }
     // At 1/4 = 60 a whole note is four seconds. The second eighth is written
     // at 1/8 — half a second — and sounds at 1/6, which is two thirds of one.
-    assert_eq!(straight[1], second / 2);
-    assert_eq!(swung[1], second * 2 / 3);
+    assert_eq!(straight[1], Ratio::new(1, 8));
+    assert_eq!(swung[1], Ratio::new(1, 6));
 }
 
 /// The check that matters most: an engraver must not learn that the band
@@ -157,19 +151,13 @@ fn two_parts_may_disagree_about_the_beat() {
             part bass { profile flat; voice v { c3/8 d3/8 c3/8 d3/8 } }
         } }";
     let score = score_of(source);
-    let plan = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");
+    let plan = lower_gestures(&score).expect("lowers");
     let lane = |name: &str| {
         let lane = plan.lanes().iter().find(|lane| lane.name() == name).expect("a lane");
-        let mut frames: Vec<u64> = lane
-            .events()
-            .iter()
-            .filter_map(|event| match event {
-                PerformanceEvent::NoteOn { frame, .. } => Some(*frame),
-                PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
-            })
-            .collect();
-        frames.sort_unstable();
-        frames
+        notes_in(lane)
+            .into_iter()
+            .map(|note| note.on_performed)
+            .collect::<Vec<_>>()
     };
     let horn = lane("horn");
     let bass = lane("bass");

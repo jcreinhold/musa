@@ -17,7 +17,7 @@
 //!
 //! Declarations only. Nothing here touches a `ScoreEvent`: the profiles ride
 //! along in the snapshot the way motif declarations do, and interpretation
-//! happens once, in `performance.rs`, on the way to a `PerformancePlan`.
+//! happens once, in `performance.rs`, on the way to exact gesture tracks.
 //!
 //! Values stay **exact rationals**, like musical time: `0.55` is a written
 //! decimal, and rounding it to a float here would put an approximation in the

@@ -29,7 +29,8 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::ScoreSnapshot;
+use num_rational::Ratio;
 
 /// A piece whose only variable is what the profile says about grace notes.
 ///
@@ -54,16 +55,11 @@ fn score_of(text: &str) -> ScoreSnapshot {
 }
 
 /// Every note-on frame with the pitch that starts there, in time order.
-fn attacks(score: &ScoreSnapshot) -> Vec<(u64, String)> {
-    let plan = lower_performance(score, &PerformanceOptions::default()).expect("lowers");
-    let mut attacks: Vec<(u64, String)> = plan
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter())
-        .filter_map(|event| match event {
-            PerformanceEvent::NoteOn { frame, note, .. } => Some((*frame, note.pitch.to_string())),
-            PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
-        })
+fn attacks(score: &ScoreSnapshot) -> Vec<(Ratio<i64>, String)> {
+    let mut attacks: Vec<_> = super::performance_support::notes_of(score)
+        .into_iter()
+        .flatten()
+        .map(|note| (note.on_seconds, note.pitch.to_string()))
         .collect();
     attacks.sort();
     attacks
@@ -85,17 +81,24 @@ fn the_profile_says_how_a_grace_is_played() {
     // onset is two seconds in. Stealing from the principal moves *it* and
     // leaves the grace on the beat; stealing from the previous note moves the
     // *grace* and leaves the principal alone.
-    let quarter = u64::from(PerformanceOptions::default().sample_rate);
-    assert!(on_the_beat.contains(&(2 * quarter, "b4".to_owned())), "{on_the_beat:?}");
-    assert!(ahead_of_it.contains(&(2 * quarter, "c5".to_owned())), "{ahead_of_it:?}");
-    // And each reading leaves the other note off the beat by the stolen 1/8.
-    let eighth = quarter / 2;
+    let quarter = Ratio::ONE;
+    let two_quarters = Ratio::from_integer(2) * quarter;
     assert!(
-        on_the_beat.contains(&(2 * quarter + eighth, "c5".to_owned())),
+        on_the_beat.contains(&(two_quarters, "b4".to_owned())),
         "{on_the_beat:?}"
     );
     assert!(
-        ahead_of_it.contains(&(2 * quarter - eighth, "b4".to_owned())),
+        ahead_of_it.contains(&(two_quarters, "c5".to_owned())),
+        "{ahead_of_it:?}"
+    );
+    // And each reading leaves the other note off the beat by the stolen 1/8.
+    let eighth = quarter / 2;
+    assert!(
+        on_the_beat.contains(&(two_quarters + eighth, "c5".to_owned())),
+        "{on_the_beat:?}"
+    );
+    assert!(
+        ahead_of_it.contains(&(two_quarters - eighth, "b4".to_owned())),
         "{ahead_of_it:?}"
     );
 }
@@ -114,8 +117,8 @@ fn a_grace_with_nothing_behind_it_takes_from_the_note_it_leans_on() {
             } } } }",
     );
     let attacks = attacks(&score);
-    let eighth = u64::from(PerformanceOptions::default().sample_rate) / 2;
-    assert_eq!(attacks[0], (0, "b4".to_owned()), "{attacks:?}");
+    let eighth = Ratio::new(1, 2);
+    assert_eq!(attacks[0], (Ratio::ZERO, "b4".to_owned()), "{attacks:?}");
     assert_eq!(attacks[1], (eighth, "c5".to_owned()), "{attacks:?}");
 }
 
@@ -132,19 +135,13 @@ fn a_grace_cannot_swallow_the_note_it_leans_on() {
                 d5/4
             } } } }",
     );
-    let plan = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");
-    let mut open: std::collections::HashMap<u32, u64> = std::collections::HashMap::new();
-    for event in plan.lanes()[0].events() {
-        match event {
-            PerformanceEvent::NoteOn { frame, instance, .. } => {
-                open.insert(instance.0, *frame);
-            }
-            PerformanceEvent::NoteOff { frame, instance } => {
-                let on = open.remove(&instance.0).expect("an off follows its on");
-                assert!(*frame >= on, "note {} ends at {frame} and starts at {on}", instance.0);
-            }
-            PerformanceEvent::Parameter { .. } => {}
-        }
+    for note in super::performance_support::notes_of(&score).into_iter().flatten() {
+        assert!(
+            note.off_seconds >= note.on_seconds,
+            "gesture ends at {} and starts at {}",
+            note.off_seconds,
+            note.on_seconds
+        );
     }
 }
 

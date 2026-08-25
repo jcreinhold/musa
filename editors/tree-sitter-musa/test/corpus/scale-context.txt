@@ -6,7 +6,7 @@ piece "Scale Context" {
   import std::scale;
   let home: Key = key c minor;
   let collection: Scale = signature_scale(home);
-  fn figure() -> Music {
+  fn figure() -> EventTrack<WrittenTime, ScoreFact> {
     music {
       c5/8
       (c5 step 1)/8
@@ -62,8 +62,15 @@ piece "Scale Context" {
       (identifier)
       (parameter_list)
       (type_expression
-        (type_name
-          (identifier)))
+        (applied_type
+          (type_name
+            (identifier))
+          (type_expression
+            (type_name
+              (identifier)))
+          (type_expression
+            (type_name
+              (identifier)))))
       (block_expression
         (expression
           (music_expression

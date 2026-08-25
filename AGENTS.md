@@ -131,7 +131,7 @@ seconds. `cargo clean` fixes it; see
 
 ## Standards
 
-- **Deep modules.** Public facades are narrow (`parse`, `compile`, `render_notation`, `compile_graph`, `AudioEngine`,
+- **Deep modules.** Public facades are narrow (`parse`, `compile`, `render_notation`, `prepare_audio`, `AudioEngine`,
   `ProjectSession`); pass types, Rowan internals, DSP internals, and CPAL types never cross crate boundaries. No public
   item without a caller. Doc-comment the public API and its invariants before implementing it.
 - **Layer separation.** Roadmap §2's table is law: written pitch ≠ MIDI number, notated duration ≠ performed duration,

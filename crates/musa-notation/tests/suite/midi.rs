@@ -23,7 +23,7 @@
 use midly::{MidiMessage, Smf, Timing, TrackEventKind};
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_notation::{MidiMode, MidiOptions, render_midi};
-use musa_score::{PerformanceOptions, lower_performance};
+use musa_score::lower_gestures;
 
 const PROFILE_FIXTURE: &str = include_str!("../../../../examples/profile-fixture.musa");
 const TUPLET_FIXTURE: &str = include_str!("../../../../examples/tuplet-fixture.musa");
@@ -32,7 +32,7 @@ fn midi_of(source: &str, mode: MidiMode) -> Vec<u8> {
     let score = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default())
         .into_snapshot()
         .expect("compiles");
-    let performance = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");
+    let performance = lower_gestures(&score).expect("lowers");
     render_midi(
         &performance,
         &MidiOptions {
@@ -197,7 +197,7 @@ fn output_is_deterministic() {
 /// A MIDI file is a performance, so it swings; a score-mode file is a
 /// notation program's input, so it does not.
 ///
-/// Both facts come out of the same plan, which is why `PerformedNote` carries
+/// Both facts come out of the same plan, which is why `Gesture` carries
 /// the written on-frame beside the scheduled one — the same shape
 /// `notated_off` already had, in the other direction.
 #[test]

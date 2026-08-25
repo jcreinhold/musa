@@ -138,6 +138,41 @@ fn connect_and_beside_follow_the_structural_equations() {
 }
 
 #[test]
+fn connect_reassociation_preserves_the_step_function() {
+    let scale = descriptor("scale", 1).expect("registered");
+    let left = spec(
+        Port::Ratio,
+        Port::Ratio,
+        vec![
+            SpecNode::primitive(scale, stored_ratio(2, 1)),
+            SpecNode::primitive(scale, stored_ratio(3, 1)),
+            SpecNode::wiring(SpecForm::Connect, vec![0, 1]),
+            SpecNode::primitive(scale, stored_ratio(5, 1)),
+            SpecNode::wiring(SpecForm::Connect, vec![2, 3]),
+        ],
+    );
+    let right = spec(
+        Port::Ratio,
+        Port::Ratio,
+        vec![
+            SpecNode::primitive(scale, stored_ratio(2, 1)),
+            SpecNode::primitive(scale, stored_ratio(3, 1)),
+            SpecNode::primitive(scale, stored_ratio(5, 1)),
+            SpecNode::wiring(SpecForm::Connect, vec![1, 2]),
+            SpecNode::wiring(SpecForm::Connect, vec![0, 3]),
+        ],
+    );
+    let input = ratio(7, 1);
+    let left = prepare_machine(&left)
+        .expect("left association")
+        .start()
+        .step(input.clone());
+    let right = prepare_machine(&right).expect("right association").start().step(input);
+    assert_eq!(left, right);
+    assert_eq!(left, Ok(ratio(210, 1)));
+}
+
+#[test]
 fn every_reference_primitive_runs_the_function_its_registration_names() {
     let scale_offset = spec(
         Port::Ratio,

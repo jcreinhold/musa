@@ -222,7 +222,7 @@ pub(super) fn format_token(node: &SyntaxNode, lexeme: &SyntaxElement, writer: &m
             writer.indent_less();
             writer.break_before_close();
         }
-        // `use sigh(` closes up; `fn (line: Music)` does not, because there is
+        // `use sigh(` closes up; `fn (line: EventTrack<WrittenTime, ScoreFact>)` does not, because there is
         // no name between the word and the list and `fn(` reads as a call.
         if kind == SyntaxKind::LParen && writer.prev == Some(SyntaxKind::FnKw) {
             writer.space();

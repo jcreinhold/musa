@@ -11,7 +11,7 @@ piece "Expressions" {
     }
   }
   let raised: Pitch = transform(fn (from: Pitch) -> Pitch { choose(Some(from), c4) }, e4);
-  fn melody(root: Pitch) -> Music {
+  fn melody(root: Pitch) -> EventTrack<WrittenTime, ScoreFact> {
     music {
       root/4
       use answer(root);
@@ -145,8 +145,15 @@ piece "Expressions" {
             (type_name
               (identifier)))))
       (type_expression
-        (type_name
-          (identifier)))
+        (applied_type
+          (type_name
+            (identifier))
+          (type_expression
+            (type_name
+              (identifier)))
+          (type_expression
+            (type_name
+              (identifier)))))
       (block_expression
         (expression
           (music_expression

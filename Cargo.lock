@@ -2420,6 +2420,7 @@ dependencies = [
  "insta",
  "midly",
  "musa-compiler",
+ "musa-events",
  "musa-score",
  "num-rational",
  "proptest",

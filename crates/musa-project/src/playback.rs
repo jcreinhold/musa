@@ -1,4 +1,4 @@
-//! The compile → lower → graph chain, prepared once and used both ways.
+//! The compile → exact gestures → prepared-audio chain, used both ways.
 //!
 //! Roadmap §13.8: an offline render and a live performance must come from
 //! the same preparation, or "export what I hear" is a lie. [`build`] is that
@@ -8,17 +8,16 @@
 use musa_compiler::StudioSpec;
 
 use musa_playback::PreparedPlaybackPlan;
-use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_gestures, lower_performance};
+use musa_score::{PerformanceOptions, ScoreSnapshot, lower_gestures};
 
 use crate::error::ProjectError;
 
-/// The sample rate the whole chain runs at: the performance lowering's rate,
-/// so frame numbers from the compiler are frame numbers in the render.
+/// The sample rate at which checked scheduling and audio preparation agree.
 pub(crate) fn sample_rate() -> u32 {
     PerformanceOptions::default().sample_rate
 }
 
-/// Performance lowering → default instrument graph → frame-sorted events.
+/// Exact gesture lowering → checked scheduling → prepared audio machine.
 fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::PreparedAudio, ProjectError> {
     let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let sample_rate = sample_rate();
@@ -72,7 +71,7 @@ fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::Prepare
 /// The chain prepared for the engine.
 ///
 /// # Errors
-/// [`ProjectError::Performance`] if lowering or graph compilation fails.
+/// [`ProjectError::Performance`] if lowering or audio preparation fails.
 pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<PreparedPlaybackPlan, ProjectError> {
     Ok(PreparedPlaybackPlan::new(build(score, studio)?))
 }
@@ -80,7 +79,7 @@ pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Prep
 /// The same chain rendered offline to 32-bit float stereo WAV bytes.
 ///
 /// # Errors
-/// [`ProjectError::Performance`] if lowering, graph compilation, or WAV
+/// [`ProjectError::Performance`] if lowering, audio preparation, or WAV
 /// encoding fails.
 pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u8>, ProjectError> {
     let mut prepared = build(score, studio)?;
@@ -98,8 +97,7 @@ pub(crate) fn to_midi(
     score: &ScoreSnapshot,
     mode: musa_notation::MidiMode,
 ) -> Result<(Vec<u8>, Vec<String>), ProjectError> {
-    let performance = musa_score::lower_performance(score, &PerformanceOptions::default())
-        .map_err(|error| ProjectError::Performance(error.to_string()))?;
+    let performance = lower_gestures(score).map_err(|error| ProjectError::Performance(error.to_string()))?;
     let options = musa_notation::MidiOptions {
         mode,
         ..musa_notation::MidiOptions::default()
@@ -164,31 +162,30 @@ fn wav_bytes(audio: &musa_dsp::RenderedAudio) -> Result<Vec<u8>, ProjectError> {
 
 /// The performance lowering, formatted as the `render --to performance`
 /// debug dump. Lives here because it is the one place that already knows the
-/// performance vocabulary; nothing above this crate sees a
-/// [`PerformanceEvent`].
+/// exact performed-gesture vocabulary; frame assignment remains private to
+/// audio preparation.
 ///
 /// # Errors
 /// [`ProjectError::Performance`] if lowering fails.
 pub(crate) fn performance_dump(score: &ScoreSnapshot) -> Result<String, ProjectError> {
     use std::fmt::Write as _;
 
-    let performance = lower_performance(score, &PerformanceOptions::default())
-        .map_err(|e| ProjectError::Performance(e.to_string()))?;
+    let performance = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let mut out = String::new();
     for lane in performance.lanes() {
         let _ = writeln!(out, "lane {}:", lane.name());
-        for event in lane.events() {
-            let _ = match event {
-                PerformanceEvent::NoteOn { frame, note, instance } => writeln!(
-                    out,
-                    "  on  {frame} {} {:.2}Hz event-{:x} i{}",
-                    note.pitch, note.frequency, note.event.0, instance.0
-                ),
-                PerformanceEvent::NoteOff { frame, instance } => writeln!(out, "  off {frame} i{}", instance.0),
-                PerformanceEvent::Parameter { frame, target, value } => {
-                    writeln!(out, "  par {frame} p{} {value}", target.0)
-                }
-            };
+        for occurrence in lane.track().occurrences() {
+            let span = occurrence.span();
+            let gesture = occurrence.payload();
+            let _ = writeln!(
+                out,
+                "  {}..{} {} amplitude={} event-{:x}",
+                span.start(),
+                span.end(),
+                gesture.pitch,
+                gesture.amplitude,
+                gesture.event.0
+            );
         }
     }
     Ok(out)

@@ -17,7 +17,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
 use musa_notation::{MidiOptions, NotationOptions, NotationTarget, render_midi, render_notation};
-use musa_score::{PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::{ScoreSnapshot, lower_gestures};
 
 const CADENZA: &str = include_str!("../../../../examples/cadenza.musa");
 const CHANT: &str = include_str!("../../../../examples/chant.musa");
@@ -125,7 +125,7 @@ fn no_barline_moves_a_notehead() {
 fn midi_says_nothing_where_there_is_no_meter() {
     let count = |source: &str| {
         let score = score_of(source, "unmeasured.musa");
-        let performance = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");
+        let performance = lower_gestures(&score).expect("lowers");
         let bytes = render_midi(&performance, &MidiOptions::default()).expect("renders");
         let smf = midly::Smf::parse(&bytes).expect("parses");
         smf.tracks

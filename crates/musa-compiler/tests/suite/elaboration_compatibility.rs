@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, SourceDocument, compile, events_normal_form};
 
-use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
+use musa_score::{GestureLane, lower_gestures};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -59,10 +59,20 @@ fn digest(bytes: &[u8]) -> String {
     format!("{:032x}", musa_events::stable_digest(bytes))
 }
 
-fn event_digest(events: &[PerformanceEvent]) -> String {
+fn event_digest(lane: &GestureLane) -> String {
     let mut text = String::new();
-    for event in events {
-        let _ = writeln!(text, "{event:?}");
+    for occurrence in lane.track().occurrences() {
+        let span = occurrence.span();
+        let gesture = occurrence.payload();
+        let _ = writeln!(
+            text,
+            "{}..{}:{:?}:{}..{}",
+            span.start(),
+            span.end(),
+            gesture,
+            lane.physical(span.start()),
+            lane.physical(span.end())
+        );
     }
     digest(text.as_bytes())
 }
@@ -201,15 +211,15 @@ fn manifest() -> Result<String> {
             }
         }
 
-        let performance = lower_performance(score, &PerformanceOptions::default())?;
+        let performance = lower_gestures(score)?;
         for lane in performance.lanes() {
             let _ = writeln!(
                 out,
                 "lane={}:{}:{}:{}",
                 lane.part().0,
                 lane.name(),
-                lane.events().len(),
-                event_digest(lane.events())
+                lane.track().occurrences().len(),
+                event_digest(lane)
             );
         }
 

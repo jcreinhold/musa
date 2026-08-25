@@ -13,18 +13,19 @@
 //!   profile, velocity from the prevailing dynamic. It is what you hand to a
 //!   sampler.
 //!
-//! Both read the same [`PerformancePlan`], which carries both facts per note
-//! (§2: notated duration ≠ performed duration).
+//! Both read the same exact [`GesturePlan`], whose occurrence span is the
+//! performed fact and whose payload carries the written span (§2: notated
+//! duration ≠ performed duration). Frame scheduling belongs only to audio.
 
 // Frame→tick conversion is exact for musa's magnitudes; the workspace
 // arithmetic lint is allowed at module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use std::collections::HashMap;
-
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, Track, TrackEvent, TrackEventKind};
-use musa_score::{PerformanceEvent, PerformancePlan, VoiceInstanceId, WrittenPitch};
+use musa_events::{PerformedTime, Position};
+use musa_score::{GestureLane, GesturePlan, MusicalTime, WrittenPitch};
+use num_rational::Ratio;
 
 use crate::error::RenderError;
 
@@ -66,7 +67,7 @@ const NEUTRAL_VELOCITY: u8 = 80;
 /// # Errors
 /// [`RenderError::Unsupported`] when a written pitch falls outside MIDI's
 /// 0–127 range, which no other backend cares about.
-pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Result<Vec<u8>, RenderError> {
+pub fn render_midi(performance: &GesturePlan, options: &MidiOptions) -> Result<Vec<u8>, RenderError> {
     // One track per lane plus the tempo track, and the lane count is the
     // channel-assignment story: past fifteen lanes, parts start sharing a
     // channel, and that is invisible in the file.
@@ -83,7 +84,8 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
         // a tenth part from being silently rewritten to a drum kit.
         let slot = index % 15;
         let channel = u4::new(u8::try_from(if slot >= 9 { slot + 1 } else { slot }).unwrap_or(0));
-        smf.tracks.push(lane_track(lane, channel, &ticks, *options)?);
+        smf.tracks
+            .push(lane_track(lane, performance, channel, &ticks, *options)?);
     }
     let mut bytes = Vec::new();
     smf.write(&mut bytes)
@@ -107,7 +109,7 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
 /// and small enough that an eight-bar riser costs a few hundred bytes.
 const TEMPO_STEPS_PER_WHOLE: u32 = 32;
 
-/// Frames → ticks, one segment per tempo.
+/// Exact physical seconds → MIDI ticks, one segment per tempo.
 ///
 /// The plan is scheduled in frames; the file is metrical, so ticks are beats
 /// and the conversion factor changes wherever the tempo does. Each segment
@@ -120,54 +122,50 @@ struct Ticks {
 
 #[derive(Clone, Copy)]
 struct TickSegment {
-    frame: u64,
+    seconds: Ratio<i64>,
     tick: u64,
-    per_frame: f64,
+    per_second: f64,
 }
 
 impl Ticks {
-    fn new(performance: &PerformancePlan, ticks_per_quarter: u16) -> Self {
-        let rate = f64::from(performance.sample_rate());
+    fn new(performance: &GesturePlan, ticks_per_quarter: u16) -> Self {
         let mut segments: Vec<TickSegment> = Vec::new();
-        for segment in performance
-            .tempo()
-            .segments(TEMPO_STEPS_PER_WHOLE, performance.sample_rate())
-        {
-            let frames_per_quarter = segment.seconds_per_quarter * rate;
-            let per_frame = if frames_per_quarter > 0.0 {
-                f64::from(ticks_per_quarter) / frames_per_quarter
+        for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
+            let seconds_per_quarter = ratio_to_f64(segment.seconds_per_quarter);
+            let per_second = if seconds_per_quarter > 0.0 {
+                f64::from(ticks_per_quarter) / seconds_per_quarter
             } else {
                 0.0
             };
             let tick = segments.last().map_or(0, |previous: &TickSegment| {
-                let frames = segment.frame.saturating_sub(previous.frame) as f64;
+                let seconds = ratio_to_f64(segment.physical.as_ratio() - previous.seconds);
                 previous
                     .tick
-                    .saturating_add((frames * previous.per_frame).round().max(0.0) as u64)
+                    .saturating_add((seconds * previous.per_second).round().max(0.0) as u64)
             });
             segments.push(TickSegment {
-                frame: segment.frame,
+                seconds: segment.physical.as_ratio(),
                 tick,
-                per_frame,
+                per_second,
             });
         }
         Self { segments }
     }
 
-    fn of(&self, frame: u64) -> u64 {
+    fn of(&self, seconds: Ratio<i64>) -> u64 {
         let Some(segment) = self
             .segments
             .iter()
             .rev()
-            .find(|segment| segment.frame <= frame)
+            .find(|segment| segment.seconds <= seconds)
             .or_else(|| self.segments.first())
         else {
             return 0;
         };
-        let frames = frame.saturating_sub(segment.frame) as f64;
+        let elapsed = ratio_to_f64(seconds - segment.seconds).max(0.0);
         segment
             .tick
-            .saturating_add((frames * segment.per_frame).round().max(0.0) as u64)
+            .saturating_add((elapsed * segment.per_second).round().max(0.0) as u64)
     }
 }
 
@@ -177,15 +175,14 @@ impl Ticks {
 /// SMF has one of each for the whole file, which is what makes them a track
 /// rather than a property of a part — and what will make polytempo lossy
 /// here and nowhere else.
-fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
+fn tempo_track(performance: &GesturePlan, ticks: &Ticks) -> Track<'static> {
     let mut absolute: Vec<(u64, u8, MetaMessage<'static>)> = Vec::new();
-    for segment in performance
-        .tempo()
-        .segments(TEMPO_STEPS_PER_WHOLE, performance.sample_rate())
-    {
-        let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
+    for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
+        let micros = (ratio_to_f64(segment.seconds_per_quarter) * 1_000_000.0)
+            .round()
+            .max(1.0) as u32;
         absolute.push((
-            ticks.of(segment.frame),
+            ticks.of(segment.physical.as_ratio()),
             2,
             MetaMessage::Tempo(u24::new(micros.min(0x00FF_FFFF))),
         ));
@@ -194,10 +191,14 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
         let Some(message) = time_signature(change.meter) else {
             continue;
         };
-        absolute.push((ticks.of(change.frame), 0, message));
+        absolute.push((ticks.of(reference_seconds(performance, change.at)), 0, message));
     }
     for change in performance.keys() {
-        absolute.push((ticks.of(change.frame), 1, key_signature(change.key)));
+        absolute.push((
+            ticks.of(reference_seconds(performance, change.at)),
+            1,
+            key_signature(change.key),
+        ));
     }
     // A meter, then a key, then a tempo at the same tick — the order a
     // conductor reads them in and the order every other writer emits.
@@ -254,42 +255,39 @@ fn key_signature(key: musa_score::Key) -> MetaMessage<'static> {
 
 /// One track per part, named, with its notes on one channel.
 fn lane_track<'a>(
-    lane: &musa_score::PerformanceLane,
+    lane: &GestureLane,
+    performance: &GesturePlan,
     channel: u4,
     ticks: &Ticks,
     options: MidiOptions,
 ) -> Result<Track<'a>, RenderError> {
     // Absolute-tick messages first; deltas are a rendering of them.
     let mut absolute: Vec<(u64, u8, MidiMessage)> = Vec::new();
-    let mut ends: HashMap<VoiceInstanceId, u64> = HashMap::new();
-    for event in lane.events() {
-        if let PerformanceEvent::NoteOff { frame, instance } = event {
-            ends.insert(*instance, *frame);
-        }
-    }
-    for event in lane.events() {
-        let PerformanceEvent::NoteOn { frame, note, instance } = event else {
-            continue;
-        };
+    for occurrence in lane.track().occurrences() {
+        let note = occurrence.payload();
         let key = midi_key(note.pitch).ok_or_else(|| RenderError::Unsupported {
             event: note.event,
             what: format!("written pitch {} is outside MIDI's range", note.pitch),
         })?;
-        // Score mode reads the *written* on-frame, not the scheduled one.
+        // Score mode reads the written positions, not the performed span.
         // The part's groove is in the scheduled frame, and a
         // notation program handed a swung onset would draw triplets — which
         // is an engraver printing an interpretation, the thing the groove
         // module exists not to do.
-        let (on_frame, off_frame, velocity) = match options.mode {
-            MidiMode::Score => (note.notated_on, note.notated_off, NEUTRAL_VELOCITY),
+        let (on, off, velocity) = match options.mode {
+            MidiMode::Score => (
+                reference_seconds(performance, note.notated_on),
+                reference_seconds(performance, note.notated_off),
+                NEUTRAL_VELOCITY,
+            ),
             MidiMode::Performance => (
-                *frame,
-                ends.get(instance).copied().unwrap_or(note.notated_off),
+                lane.physical(occurrence.span().start()).as_ratio(),
+                lane.physical(occurrence.span().end()).as_ratio(),
                 velocity_of(note.amplitude),
             ),
         };
         absolute.push((
-            ticks.of(on_frame),
+            ticks.of(on),
             // Note-on sorts after note-off at the same tick, so a repeated
             // pitch retriggers instead of being cut by its predecessor.
             1,
@@ -299,7 +297,7 @@ fn lane_track<'a>(
             },
         ));
         absolute.push((
-            ticks.of(off_frame.max(on_frame)),
+            ticks.of(off.max(on)),
             0,
             MidiMessage::NoteOff {
                 key: u7::new(key),
@@ -351,7 +349,18 @@ fn midi_key(pitch: WrittenPitch) -> Option<u8> {
 /// Abstract amplitude → velocity. Linear and documented rather than clever:
 /// a curve here would be a second interpretation layer on top of the profile
 /// that already made the choice.
-fn velocity_of(amplitude: f32) -> u8 {
-    let scaled = (amplitude.clamp(0.0, 1.0) * 127.0).round() as u8;
+fn velocity_of(amplitude: Ratio<i64>) -> u8 {
+    let scaled = (ratio_to_f64(amplitude).clamp(0.0, 1.0) * 127.0).round() as u8;
     scaled.max(1)
+}
+
+fn reference_seconds(performance: &GesturePlan, at: MusicalTime) -> Ratio<i64> {
+    performance
+        .tempo()
+        .physical(Position::<PerformedTime>::new(at.as_ratio()))
+        .as_ratio()
+}
+
+fn ratio_to_f64(value: Ratio<i64>) -> f64 {
+    *value.numer() as f64 / *value.denom() as f64
 }

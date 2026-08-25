@@ -18,7 +18,7 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{MusicalTime, PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::{MusicalTime, ScoreSnapshot};
 use num_rational::Ratio;
 
 const CADENZA: &str = include_str!("../../../../examples/cadenza.musa");
@@ -98,18 +98,22 @@ fn unmeasured_music_is_performed_exactly() {
     let notes = "c5/8 d5/8 e5/4 f5/2";
     let free = score_of(&piece("tempo 1/4 = 60; meter none;", notes));
     let measured = score_of(&piece("tempo 1/4 = 60; meter 4/4;", notes));
-    let frames = |score: &ScoreSnapshot| {
-        lower_performance(score, &PerformanceOptions::default())
-            .expect("schedules")
-            .lanes()
-            .iter()
-            .flat_map(|lane| lane.events().iter().map(musa_score::PerformanceEvent::frame))
+    let spans = |score: &ScoreSnapshot| {
+        super::performance_support::notes_of(score)
+            .into_iter()
+            .flatten()
+            .map(|note| (note.on_seconds, note.off_seconds))
             .collect::<Vec<_>>()
     };
-    assert_eq!(frames(&free), frames(&measured));
+    assert_eq!(spans(&free), spans(&measured));
     assert_eq!(
-        frames(&free),
-        vec![0, 24_000, 24_000, 48_000, 48_000, 96_000, 96_000, 192_000]
+        spans(&free),
+        vec![
+            (Ratio::ZERO, Ratio::new(1, 2)),
+            (Ratio::new(1, 2), Ratio::ONE),
+            (Ratio::ONE, Ratio::from_integer(2)),
+            (Ratio::from_integer(2), Ratio::from_integer(4)),
+        ]
     );
 }
 

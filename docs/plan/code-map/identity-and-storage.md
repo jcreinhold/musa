@@ -55,6 +55,10 @@ The implementation includes regression tests for:
 - equal tracks built in different orders; and
 - the same track laws at a structured payload containing text, a rational, and a progress curve.
 
+`Gesture` uses quotient version 2. Every stored field is represented and every textual field is length-framed, so
+delimiter-like source or expansion text cannot change field boundaries. Changing that projection or encoding requires
+another quotient-version bump.
+
 Old unframed digests belong to an old format version and must not be read as new track identity; so do the two refused
 encoding versions listed in [`../clean-break-ledger.md`](../clean-break-ledger.md).
 

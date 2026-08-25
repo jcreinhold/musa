@@ -20,7 +20,7 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, lower_performance};
+use musa_score::{IntegratedTempoMap, MusicalTime, Scope, ScoreSnapshot};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -48,16 +48,7 @@ const SIXTEEN_WHOLES: &str = "c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1
      c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1";
 
 fn frames_at(score: &ScoreSnapshot, whole_notes: i64) -> u64 {
-    lower_performance(
-        score,
-        &PerformanceOptions {
-            sample_rate: RATE,
-            ..PerformanceOptions::default()
-        },
-    )
-    .expect("schedules")
-    .tempo()
-    .frames(MusicalTime::new(Ratio::from_integer(whole_notes)), RATE)
+    IntegratedTempoMap::new(score, Scope::Piece).frames(MusicalTime::new(Ratio::from_integer(whole_notes)), RATE)
 }
 
 /// The arithmetic, on a case a reader can do in their head.
@@ -148,15 +139,7 @@ fn a_worded_ramp_moves_no_clock() {
 #[test]
 fn a_ramp_is_the_sum_of_its_parts_at_every_point() {
     let score = score_of(&piece("tempo 1/4 = 72 to 144 over 6/1;", SIXTEEN_WHOLES));
-    let plan = lower_performance(
-        &score,
-        &PerformanceOptions {
-            sample_rate: RATE,
-            ..PerformanceOptions::default()
-        },
-    )
-    .expect("schedules");
-    let map = plan.tempo();
+    let map = IntegratedTempoMap::new(&score, Scope::Piece);
     let at = |sixths: i64| map.frames(MusicalTime::new(Ratio::new(sixths, 6)), RATE);
     let mut previous = 0;
     for sixths in 1..=36 {

@@ -5,6 +5,7 @@
 //! `target/debug/deps`. See `docs/notes/toolchain/slow-test-suite.md`.
 
 mod audio;
+mod conformance_programs;
 mod dsp_laws;
 mod effects_laws;
 mod elaboration_compatibility;

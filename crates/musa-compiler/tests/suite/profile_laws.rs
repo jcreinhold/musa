@@ -23,8 +23,11 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{PerformanceEvent, PerformanceLane, PerformanceOptions, ScoreSnapshot, Severity, lower_performance};
+use musa_score::{GestureLane, ScoreSnapshot, Severity, lower_gestures};
+use num_rational::Ratio;
 use proptest::prelude::*;
+
+use super::performance_support::notes_in;
 
 const PROFILE_FIXTURE: &str = include_str!("../../../../examples/profile-fixture.musa");
 
@@ -53,30 +56,16 @@ fn errors_of(text: &str) -> Vec<String> {
 ///
 /// A note-on and its note-off are two events joined by an instance id; every
 /// assertion here is about the span between them, so the pairing is done once.
-fn sounded(lane: &PerformanceLane) -> Vec<(u64, u64, f32)> {
-    let mut notes = Vec::new();
-    for event in lane.events() {
-        let PerformanceEvent::NoteOn { frame, note, instance } = event else {
-            continue;
-        };
-        let off = lane
-            .events()
-            .iter()
-            .find_map(|other| {
-                let PerformanceEvent::NoteOff { frame, instance: id } = other else {
-                    return None;
-                };
-                (id == instance).then_some(*frame)
-            })
-            .unwrap_or(*frame);
-        notes.push((*frame, off, note.amplitude));
-    }
-    notes
+fn sounded(lane: &GestureLane) -> Vec<(Ratio<i64>, Ratio<i64>, Ratio<i64>)> {
+    notes_in(lane)
+        .into_iter()
+        .map(|note| (note.on_seconds, note.off_seconds, note.amplitude))
+        .collect()
 }
 
 /// `(on, off, amplitude)` per note of the first part, in schedule order.
-fn notes_of(snapshot: &ScoreSnapshot) -> Vec<(u64, u64, f32)> {
-    let plan = lower_performance(snapshot, &PerformanceOptions::default()).expect("lowers");
+fn notes_of(snapshot: &ScoreSnapshot) -> Vec<(Ratio<i64>, Ratio<i64>, Ratio<i64>)> {
+    let plan = lower_gestures(snapshot).expect("lowers");
     sounded(plan.lanes().first().expect("one lane"))
 }
 
@@ -98,14 +87,18 @@ fn a_piece_without_profiles_is_scheduled_neutrally() {
     let notes = notes_of(&snapshot);
     // A whole note at quarter=60 is 4 seconds; the staccato is written but
     // uninterpreted, so it still sounds its full value.
-    assert_eq!(notes, vec![(0, 4 * 48_000, 1.0)]);
+    assert_eq!(notes, vec![(Ratio::ZERO, Ratio::from_integer(4), Ratio::ONE)]);
 }
 
 #[test]
 fn a_part_without_a_profile_is_neutral_even_when_the_piece_declares_one() {
     let source = piece("profile violin { mark staccato { gate = 0.5; } }", "", "c4/1 staccato");
     let notes = notes_of(&score_of(&source));
-    assert_eq!(notes, vec![(0, 4 * 48_000, 1.0)], "declared is not the same as chosen");
+    assert_eq!(
+        notes,
+        vec![(Ratio::ZERO, Ratio::from_integer(4), Ratio::ONE)],
+        "declared is not the same as chosen"
+    );
 }
 
 // --- Interpretation ---------------------------------------------------------
@@ -118,10 +111,10 @@ fn a_gate_shortens_the_sounding_value_and_leaves_the_onset_alone() {
         "c4/2 staccato c4/2",
     );
     let notes = notes_of(&score_of(&source));
-    let half = 2 * 48_000;
+    let half = Ratio::from_integer(2);
     assert_eq!(
         notes,
-        vec![(0, half / 4, 1.0), (half, half + half, 1.0)],
+        vec![(Ratio::ZERO, half / 4, Ratio::ONE), (half, half + half, Ratio::ONE)],
         "the second note starts where it is written, not where the first stopped sounding"
     );
 }
@@ -140,7 +133,11 @@ fn a_gate_written_as_a_ratio_shortens_the_note() {
         "c4/1 staccato",
     );
     let notes = notes_of(&score_of(&source));
-    assert_eq!(notes, vec![(0, 48_000, 1.0)], "a quarter of four seconds");
+    assert_eq!(
+        notes,
+        vec![(Ratio::ZERO, Ratio::ONE, Ratio::ONE)],
+        "a quarter of four seconds"
+    );
 }
 
 /// A fermata lengthens the note and leaves the next one where it was written.
@@ -155,10 +152,13 @@ fn a_hold_lengthens_the_note_without_moving_the_next() {
         "c4/2 fermata c4/2",
     );
     let notes = notes_of(&score_of(&source));
-    let half = 2 * 48_000;
+    let half = Ratio::from_integer(2);
     assert_eq!(
         notes,
-        vec![(0, 2 * half, 1.0), (half, half + half, 1.0)],
+        vec![
+            (Ratio::ZERO, Ratio::from_integer(2) * half, Ratio::ONE),
+            (half, half + half, Ratio::ONE),
+        ],
         "the first rings on under the second, which starts where it is written"
     );
 }
@@ -171,7 +171,7 @@ fn gates_multiply_when_a_note_carries_two_realized_marks() {
         "c4/1 staccato>",
     );
     let notes = notes_of(&score_of(&source));
-    assert_eq!(notes.first().map(|note| note.1), Some(48_000));
+    assert_eq!(notes.first().map(|note| note.1), Some(Ratio::ONE));
 }
 
 #[test]
@@ -181,8 +181,11 @@ fn a_dynamic_sets_the_amplitude_from_its_note_onward() {
         "profile violin;",
         "c4/4 dynamic p; d4/4 e4/4 dynamic f; g4/4",
     );
-    let amplitudes: Vec<f32> = notes_of(&score_of(&source)).iter().map(|note| note.2).collect();
-    assert_eq!(amplitudes, vec![1.0, 0.25, 0.25, 1.0]);
+    let amplitudes: Vec<Ratio<i64>> = notes_of(&score_of(&source)).iter().map(|note| note.2).collect();
+    assert_eq!(
+        amplitudes,
+        vec![Ratio::ONE, Ratio::new(1, 4), Ratio::new(1, 4), Ratio::ONE]
+    );
 }
 
 #[test]
@@ -196,18 +199,21 @@ fn an_undeclared_mark_is_neutral_rather_than_an_error() {
     );
     let snapshot = score_of(&source);
     let notes = notes_of(&snapshot);
-    assert_eq!(notes.iter().map(|note| note.2).collect::<Vec<_>>(), vec![1.0, 1.0]);
-    assert_eq!(notes.first().map(|note| note.1), Some(4 * 48_000));
+    assert_eq!(
+        notes.iter().map(|note| note.2).collect::<Vec<_>>(),
+        vec![Ratio::ONE, Ratio::ONE]
+    );
+    assert_eq!(notes.first().map(|note| note.1), Some(Ratio::from_integer(4)));
 }
 
 #[test]
 fn the_same_score_under_two_profiles_is_two_performances() {
     let snapshot = score_of(PROFILE_FIXTURE);
-    let plan = lower_performance(&snapshot, &PerformanceOptions::default()).expect("lowers");
+    let plan = lower_gestures(&snapshot).expect("lowers");
     // Both parts open with a staccato quarter. The flute reads it through
     // `winds` (gate 0.7, `p` = 0.45), the cello through `strings` (gate 0.5,
     // `mf` = 0.6) — the same written mark, two different sounds.
-    let first: Vec<(u64, f32)> = plan
+    let first: Vec<(Ratio<i64>, Ratio<i64>)> = plan
         .lanes()
         .iter()
         .map(|lane| {
@@ -215,8 +221,14 @@ fn the_same_score_under_two_profiles_is_two_performances() {
             (off - on, amplitude)
         })
         .collect();
-    // A quarter at 100 bpm is 0.6 s = 28800 frames.
-    assert_eq!(first, vec![(20_160, 0.45), (14_400, 0.6)]);
+    // A quarter at 100 bpm is 3/5 s; the two gates are 7/10 and 1/2.
+    assert_eq!(
+        first,
+        vec![
+            (Ratio::new(21, 50), Ratio::new(9, 20)),
+            (Ratio::new(3, 10), Ratio::new(3, 5))
+        ]
+    );
     insta::assert_snapshot!("profile_fixture", format!("{snapshot:#?}"));
 }
 
@@ -313,10 +325,10 @@ proptest! {
         );
         let notes = notes_of(&score_of(&source));
         let (on, off, _) = *notes.first().ok_or_else(|| TestCaseError::fail("no note"))?;
-        // One beat is one second at quarter = 60, so the frame count is the
-        // written value's seconds times the gate, rounded once.
-        let seconds = f64::from(beats) * written.parse::<f64>().unwrap_or(0.0);
-        let expected = (seconds * 48_000.0).round() as u64;
+        // One beat is one second at quarter = 60; the written decimal is an
+        // exact rational at the gesture boundary.
+        let ten_thousandths = (written.parse::<f64>().unwrap_or(0.0) * 10_000.0).round() as i64;
+        let expected = Ratio::new(i64::from(beats) * ten_thousandths, 10_000);
         prop_assert_eq!(off - on, expected);
     }
 

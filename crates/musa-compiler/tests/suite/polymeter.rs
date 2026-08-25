@@ -16,7 +16,7 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{MusicalTime, PerformanceOptions, Scope, ScoreSnapshot, lower_performance};
+use musa_score::{MusicalTime, Scope, ScoreSnapshot, lower_gestures};
 use num_rational::Ratio;
 
 const BULGARIAN: &str = include_str!("../../../../examples/bulgarian.musa");
@@ -54,12 +54,10 @@ fn refuses(source: &str, expected: &str) {
     );
 }
 
-fn frames(score: &ScoreSnapshot) -> Vec<Vec<u64>> {
-    lower_performance(score, &PerformanceOptions::default())
-        .expect("schedules")
-        .lanes()
-        .iter()
-        .map(|lane| lane.events().iter().map(musa_score::PerformanceEvent::frame).collect())
+fn performed_positions(score: &ScoreSnapshot) -> Vec<Vec<Ratio<i64>>> {
+    super::performance_support::notes_of(score)
+        .into_iter()
+        .map(|lane| lane.into_iter().map(|note| note.on_performed).collect())
         .collect()
 }
 
@@ -122,7 +120,10 @@ fn a_barline_that_moves_moves_no_note() {
     let piece = |part: &str| {
         format!("piece \"P\" {{ tempo 1/4 = 60; meter 4/4; score {{ part p {{ {part} voice v {{ {notes} }} }} }} }}")
     };
-    assert_eq!(frames(&score_of(&piece("meter 7/8;"))), frames(&score_of(&piece(""))));
+    assert_eq!(
+        performed_positions(&score_of(&piece("meter 7/8;"))),
+        performed_positions(&score_of(&piece("")))
+    );
 }
 
 /// `0/4` is not a meter, in a part exactly as in the header: a fraction here
@@ -141,25 +142,29 @@ fn a_part_meter_of_no_beats_must_say_so() {
 /// decelerating part's, because it started slower.
 #[test]
 fn a_part_at_its_own_tempo_is_played_at_it() {
-    let plan = lower_performance(&score_of(CANON_X), &PerformanceOptions::default()).expect("schedules");
+    let plan = lower_gestures(&score_of(CANON_X)).expect("exact gestures lower");
     assert!(plan.is_polytempo(), "the parts state different tempos");
-    let onset = |lane: usize| {
-        plan.lanes()
-            .get(lane)
-            .expect("a lane")
-            .events()
+    let onset = |index: usize| {
+        let lane = plan.lanes().get(index).expect("a lane");
+        lane.track()
+            .occurrences()
             .iter()
-            .map(musa_score::PerformanceEvent::frame)
-            .find(|frame| *frame > 0)
+            .map(|occurrence| lane.physical(occurrence.span().start()).as_ratio())
+            .find(|seconds| *seconds > Ratio::ZERO)
             .expect("a second event")
     };
     // Both parts open on the downbeat, whatever their speed.
     assert_eq!(
         plan.lanes()
             .iter()
-            .filter_map(|lane| lane.events().first().map(musa_score::PerformanceEvent::frame))
+            .filter_map(|lane| {
+                lane.track()
+                    .occurrences()
+                    .first()
+                    .map(|occurrence| lane.physical(occurrence.span().start()).as_ratio())
+            })
             .collect::<Vec<_>>(),
-        vec![0, 0]
+        vec![Ratio::ZERO, Ratio::ZERO]
     );
     // The rising part starts at 60 and the falling one at 180, so the first
     // quarter of the rising part is the longer of the two by a wide margin.
@@ -171,6 +176,6 @@ fn a_part_at_its_own_tempo_is_played_at_it() {
 /// warning noise.
 #[test]
 fn one_tempo_is_not_polytempo() {
-    let plan = lower_performance(&score_of(BULGARIAN), &PerformanceOptions::default()).expect("schedules");
+    let plan = lower_gestures(&score_of(BULGARIAN)).expect("exact gestures lower");
     assert!(!plan.is_polytempo());
 }

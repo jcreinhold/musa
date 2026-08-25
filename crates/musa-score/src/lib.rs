@@ -2,8 +2,8 @@
 //! written in.
 //!
 //! Everything here is a *result* or a *word for one*: written pitch, chords,
-//! scales, exact musical time, marks, the score snapshot, the performance
-//! plan, what an analysis saw, and what a diagnostic says. Nothing here
+//! scales, exact musical time, marks, the score snapshot, exact performed
+//! gestures, what an analysis saw, and what a diagnostic says. Nothing here
 //! computes one. Resolution, expansion, elaboration, and lowering are
 //! `musa-compiler`, one layer up, and no module in this crate names them.
 //!
@@ -72,9 +72,8 @@ pub use crate::machine::{MACHINE_SPEC_VERSION, MachineSpec, PortSchema, SpecForm
 pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
-    Gesture, GestureLane, GesturePlan, IntegratedTempoMap, KeyChange, MeterChange, ParameterId, PerformanceError,
-    PerformanceEvent, PerformanceLane, PerformanceOptions, PerformancePlan, PerformedNote, TempoSegment, Tuning,
-    VoiceInstanceId, lower_gestures, lower_performance,
+    Gesture, GestureLane, GesturePlan, IntegratedTempoMap, KeyChange, MeterChange, PerformanceError,
+    PerformanceOptions, TempoSegment, Tuning, lower_gestures,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};

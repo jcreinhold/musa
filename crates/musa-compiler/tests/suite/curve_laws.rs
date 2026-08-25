@@ -17,9 +17,10 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
-use musa_score::{MusicalTime, PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::{MusicalTime, ScoreSnapshot};
+use num_rational::Ratio;
 
-const RATE: u32 = 48_000;
+use super::performance_support::notes_of;
 
 fn score_of(source: &str) -> ScoreSnapshot {
     let compilation = compile(&SourceDocument::new(source, "curve.musa"), &CompileOptions::default());
@@ -53,43 +54,22 @@ fn quarters_with_tempo(before: usize, statement: &str) -> String {
     notes.join(" ")
 }
 
-/// The onset frames of every note-on, in order.
-fn onsets(score: &ScoreSnapshot) -> Vec<u64> {
-    let plan = lower_performance(
-        score,
-        &PerformanceOptions {
-            sample_rate: RATE,
-            ..PerformanceOptions::default()
-        },
-    )
-    .expect("schedules");
-    let mut frames: Vec<u64> = plan
-        .lanes()
-        .iter()
-        .flat_map(musa_score::PerformanceLane::events)
-        .filter_map(|event| match event {
-            PerformanceEvent::NoteOn { frame, .. } => Some(*frame),
-            PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
-        })
-        .collect();
-    frames.sort_unstable();
-    frames
+/// Exact physical onset seconds of every gesture, in order.
+fn onsets(score: &ScoreSnapshot) -> Vec<Ratio<i64>> {
+    notes_of(score)
+        .into_iter()
+        .flatten()
+        .map(|note| note.on_seconds)
+        .collect()
 }
 
 /// The amplitude of every note-on, in order.
-fn amplitudes(score: &ScoreSnapshot) -> Vec<f32> {
-    let plan = lower_performance(score, &PerformanceOptions::default()).expect("schedules");
-    let mut notes: Vec<(u64, f32)> = plan
-        .lanes()
-        .iter()
-        .flat_map(musa_score::PerformanceLane::events)
-        .filter_map(|event| match event {
-            PerformanceEvent::NoteOn { frame, note, .. } => Some((*frame, note.amplitude)),
-            PerformanceEvent::NoteOff { .. } | PerformanceEvent::Parameter { .. } => None,
-        })
-        .collect();
-    notes.sort_by_key(|(frame, _)| *frame);
-    notes.into_iter().map(|(_, amplitude)| amplitude).collect()
+fn amplitudes(score: &ScoreSnapshot) -> Vec<Ratio<i64>> {
+    notes_of(score)
+        .into_iter()
+        .flatten()
+        .map(|note| note.amplitude)
+        .collect()
 }
 
 /// Before the change, a quarter at 60 is a second; after it, a quarter at 120
@@ -99,9 +79,9 @@ fn amplitudes(score: &ScoreSnapshot) -> Vec<f32> {
 fn a_tempo_change_moves_every_note_after_it_and_none_before() {
     let score = score_of(&piece("", &quarters_with_tempo(8, "tempo 1/4 = 120;")));
     // Bars 1–2 at 60 bpm: one second each quarter. Bars 3–4 at 120: half.
-    let expected: Vec<u64> = (0..8)
-        .map(|index| u64::from(RATE) * index)
-        .chain((0..8).map(|index| u64::from(RATE) * 8 + u64::from(RATE) * index / 2))
+    let expected: Vec<Ratio<i64>> = (0..8)
+        .map(Ratio::from_integer)
+        .chain((0..8).map(|index| Ratio::from_integer(8) + Ratio::new(index, 2)))
         .collect();
     assert_eq!(onsets(&score), expected);
 }
@@ -111,25 +91,23 @@ fn a_tempo_change_moves_every_note_after_it_and_none_before() {
 #[test]
 fn a_piece_without_a_change_is_the_tempo_it_declares() {
     let score = score_of(&piece("", SIXTEEN_QUARTERS));
-    let expected: Vec<u64> = (0..16).map(|index| u64::from(RATE) * index).collect();
+    let expected: Vec<Ratio<i64>> = (0..16).map(Ratio::from_integer).collect();
     assert_eq!(onsets(&score), expected);
 }
 
 /// The seam is exact. A tempo change on a beat that is not a whole number of
-/// frames from the start would drift if the map rounded each segment; it
-/// accumulates in rationals and rounds once, so the note at the change lands
-/// on the frame the arithmetic says.
+/// a sampled clock would drift if the map rounded each segment; the exact
+/// gesture boundary accumulates in rationals instead.
 #[test]
-fn the_frame_at_a_tempo_change_is_the_sum_of_what_came_before() {
-    // 7 bpm makes a quarter 60/7 seconds — never a whole number of frames.
+fn the_exact_time_at_a_tempo_change_is_the_sum_of_what_came_before() {
+    // 7 bpm makes a quarter 60/7 seconds.
     let source = piece("", &quarters_with_tempo(4, "tempo 1/4 = 7;"));
     let score = score_of(&source);
-    let frames = onsets(&score);
-    let at_change = frames.get(4).copied().expect("a note at the change");
-    assert_eq!(at_change, u64::from(RATE) * 4, "bar 1 at 60 bpm is four seconds");
-    let next = frames.get(5).copied().expect("a note after the change");
-    // 60/7 of a second, rounded once.
-    let expected = at_change + (f64::from(RATE) * 60.0 / 7.0).round() as u64;
+    let times = onsets(&score);
+    let at_change = times.get(4).copied().expect("a note at the change");
+    assert_eq!(at_change, Ratio::from_integer(4), "bar 1 at 60 bpm is four seconds");
+    let next = times.get(5).copied().expect("a note after the change");
+    let expected = at_change + Ratio::new(60, 7);
     assert_eq!(next, expected);
 }
 
@@ -181,7 +159,16 @@ fn a_hairpin_leaves_the_prevailing_mark_and_arrives_at_its_own() {
         } } } }";
     let amplitudes = amplitudes(&score_of(source));
     // Five notes, four steps of 0.2: p, and then evenly up to f.
-    assert_eq!(amplitudes, [0.2, 0.4, 0.6, 0.8, 1.0]);
+    assert_eq!(
+        amplitudes,
+        [
+            Ratio::new(1, 5),
+            Ratio::new(2, 5),
+            Ratio::new(3, 5),
+            Ratio::new(4, 5),
+            Ratio::ONE,
+        ]
+    );
 }
 
 /// A diminuendo is the same line in the other direction, and the mark it
@@ -199,7 +186,10 @@ fn a_hairpin_leaves_its_mark_in_force_after_it() {
             diminuendo to p { c5/4 c5/4 c5/4 }
             c5/4
         } } } }";
-    assert_eq!(amplitudes(&score_of(source)), [1.0, 0.6, 0.2, 0.2]);
+    assert_eq!(
+        amplitudes(&score_of(source)),
+        [Ratio::ONE, Ratio::new(3, 5), Ratio::new(1, 5), Ratio::new(1, 5)]
+    );
 }
 
 /// A hairpin over notes a profile says nothing about changes nothing: with
@@ -211,7 +201,7 @@ fn a_hairpin_without_a_profile_is_neutral() {
         score { part p { voice v {
             crescendo to f { c5/4 c5/4 c5/4 c5/4 }
         } } } }";
-    assert_eq!(amplitudes(&score_of(source)), [1.0, 1.0, 1.0, 1.0]);
+    assert_eq!(amplitudes(&score_of(source)), [Ratio::ONE; 4]);
 }
 
 /// A hairpin changes no note's place or length: it is interpretation, and

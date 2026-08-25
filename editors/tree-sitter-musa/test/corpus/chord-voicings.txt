@@ -7,7 +7,7 @@ piece "Chord Voicings" {
   import std::voicing;
   let sonority: ChordClass = chord c major7;
   let close: Option<Voicing> = close_position(sonority, c4);
-  fn held(chosen: Voicing) -> Music {
+  fn held(chosen: Voicing) -> EventTrack<WrittenTime, ScoreFact> {
     play(chosen, 1/1)
   }
   score {
@@ -69,8 +69,15 @@ piece "Chord Voicings" {
             (type_name
               (identifier)))))
       (type_expression
-        (type_name
-          (identifier)))
+        (applied_type
+          (type_name
+            (identifier))
+          (type_expression
+            (type_name
+              (identifier)))
+          (type_expression
+            (type_name
+              (identifier)))))
       (block_expression
         (expression
           (application_expression

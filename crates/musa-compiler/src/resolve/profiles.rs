@@ -10,7 +10,7 @@ use musa_score::score::DynamicMark;
 use super::{Resolver, parse_ratio, suggest, trimmed_span};
 
 /// Read the `performance` block into a [`ProfileSet`]. Declarations only —
-/// nothing here is applied until `lower_performance` (roadmap §6.4).
+/// nothing here is applied until exact gesture lowering (roadmap §6.4).
 pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceDecl) -> ProfileSet {
     let mut set = ProfileSet::default();
     for declaration in performance.profiles() {

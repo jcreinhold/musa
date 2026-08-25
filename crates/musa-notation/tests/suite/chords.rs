@@ -18,7 +18,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 
 use musa_notation::{MidiMode, MidiOptions, NotationOptions, NotationTarget, render_midi, render_notation};
-use musa_score::{PerformanceOptions, ScoreSnapshot, lower_performance};
+use musa_score::{ScoreSnapshot, lower_gestures};
 
 /// A lead sheet whose symbol and whose notes deliberately disagree.
 ///
@@ -112,7 +112,7 @@ fn musicxml_keeps_the_symbol_and_the_spelling_apart() {
 
 #[test]
 fn midi_sounds_the_notes_and_not_the_symbol() {
-    let performance = lower_performance(&score(), &PerformanceOptions::default()).expect("lowers");
+    let performance = lower_gestures(&score()).expect("lowers");
     let bytes = render_midi(
         &performance,
         &MidiOptions {

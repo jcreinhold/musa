@@ -201,7 +201,7 @@ fn write_splice(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
 
 /// Write a quotation verbatim, re-anchored at the writer's indent.
 ///
-/// The first line joins the line in progress — `let doubled: Music = events
+/// The first line joins the line in progress — `let doubled: EventTrack<WrittenTime, ScoreFact> = events
 /// EventTrack[WrittenTime, ScoreFact] {` — and the rest keep their depth relative to the
 /// shallowest of them, which is what makes reformatting a file that only
 /// moved sideways leave the quote's shape alone.

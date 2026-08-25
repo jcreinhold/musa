@@ -141,8 +141,8 @@ origin=part:1:cello:voice:0:lower:event:124:2207-2220:886-890:[MotifApplication 
 origin=part:1:cello:voice:0:lower:event:125:2207-2220:891-895:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
 origin=part:1:cello:voice:0:lower:event:126:2207-2220:896-900:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
 origin=part:1:cello:voice:0:lower:event:127:2207-2220:901-905:[MotifApplication { call_site: SourceSpan { start: 2207, end: 2220 } }]
-lane=0:flute:128:77a99b868e94d3a1fcd8ad26f495af1c
-lane=1:cello:128:cdec157cbc055da9a2b4feb1734d95f2
+lane=0:flute:64:47fff6fbbd8875a710115f4a13ea13ff
+lane=1:cello:64:7b843fd3f85d1099223485b4ab96f451
 
 [fixture higher-order-shape]
 identity=7916d9f2ea98fb99c8de1dfc3b4e5b2c
@@ -275,8 +275,8 @@ origin=part:1:cello:voice:0:lower:event:124:485-496:252-256:[RepeatIteration(15)
 origin=part:1:cello:voice:0:lower:event:125:485-496:257-261:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
 origin=part:1:cello:voice:0:lower:event:126:485-496:262-266:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
 origin=part:1:cello:voice:0:lower:event:127:485-496:267-271:[RepeatIteration(15), Inversion { axis: "c4" }, Inversion { axis: "c4" }, MotifApplication { call_site: SourceSpan { start: 485, end: 496 } }]
-lane=0:flute:128:28ebbf99853c854d38038004910b7161
-lane=1:cello:128:d7afa00828b4100bd47697d1e0d7546d
+lane=0:flute:64:759c8e7bb2b411ccfb344aa1879bb935
+lane=1:cello:64:c5f65ba2bc33804ce1e7c6c2e8a30e1b
 
 [fixture declaration-heavy]
 identity=2d218ab8d3ce6d82a87fc2583f1f7ded
@@ -358,7 +358,7 @@ origin=part:0:ensemble:voice:0:line:event:12:3425-3459:2654-2658:[MotifApplicati
 origin=part:0:ensemble:voice:0:line:event:13:3425-3459:2659-2663:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:14:3425-3459:2664-2668:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
 origin=part:0:ensemble:voice:0:line:event:15:3425-3459:2669-2673:[MotifApplication { call_site: SourceSpan { start: 3425, end: 3459 } }]
-lane=0:ensemble:32:4d3083214a373d6db4e73f0fe058c52d
+lane=0:ensemble:16:3da7286337242ff748d1b0fcc79d8222
 
 [fixture audio-bridge]
 identity=9f670408d1267e94642131d9c0b777b1
@@ -371,8 +371,8 @@ origin=part:1:viola:voice:0:countermelody:event:4:791-797:791-797:[]
 origin=part:1:viola:voice:0:countermelody:event:5:798-802:798-802:[]
 origin=part:1:viola:voice:0:countermelody:event:6:803-816:803-816:[]
 origin=part:1:viola:voice:0:countermelody:event:7:817-821:817-821:[]
-lane=0:oboe:8:933115eb67c8e2b25ad3d82406552f0d
-lane=1:viola:8:07918b9a646987c5ff8c93e0f7e2d192
+lane=0:oboe:4:5c2d9983581319fd8280243b8c0350ea
+lane=1:viola:4:101362770a7c8e24d8833341f09b275c
 patch=reed:output=Some(1):oscillator:None:440Hz:1:lowpass:None:1800Hz:0.7
 patch=bow:output=Some(1):oscillator:None:440Hz:0.5:envelope:None:0.015s:0s:1:0.3s
 bus=hall:["reverb"]
