@@ -26,10 +26,13 @@ boundary explicit, tested, and shared by native instruments, samples, mix levels
 
 ## Design
 
-Introduce one private/compiler-facing written-quantity representation containing an exact rational magnitude, unit, and
-enough spelling/span information for diagnostics and token-scoped edits. Decimal syntax denotes the exact decimal
-rational; unit normalization (`ms` versus `s`) is exact. Equality used for compilation is exact value plus dimension;
-source equality still distinguishes spellings where the lossless CST does.
+Introduce one `musa-dsp`-owned [`WrittenQuantity`](../../../crates/musa-dsp/src/intent.rs) representation containing an
+exact rational magnitude and unit. It is public because it is part of the public `StudioSpec` vocabulary the compiler
+produces, not because DSP internals are public. The lossless CST remains the source spelling, and the existing
+`StudioSpec` source spans locate token-scoped diagnostics and edits; do not copy source text into the value or move
+syntax ownership into DSP. Decimal syntax denotes the exact decimal rational; unit normalization (`ms` versus `s`) is
+exact. Equality used for compilation is exact value plus dimension; source equality still distinguishes spellings where
+the lossless CST does.
 
 Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in `musa-dsp`
 plan preparation or the existing performance frame boundary, never during parsing or `StudioSpec` construction. Specify
@@ -41,7 +44,8 @@ conversion and differential parity for previously accepted values.
 
 ## Target
 
-- Exact written quantity in `musa-compiler`; migrated `StudioSpec`, processor arguments, sends, and compiler facts.
+- Exact written quantity in `musa-dsp`; migrated compiler construction, `StudioSpec`, processor arguments, sends, and
+  project facts.
 - One audited conversion module in `musa-dsp`, private to plan preparation.
 - Laws for decimal/ratio equality, unit conversion, edit spelling preservation, range diagnostics, and migrated-corpus
   audio behavior within the documented floating tolerance.
