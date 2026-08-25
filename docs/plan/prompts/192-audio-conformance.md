@@ -27,6 +27,8 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 - The candidate sound/assets specs, roadmap/event track boundaries, interface specification, handbook, SFZ support
   matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
+- Note 79, the prompt README ownership convention, every `stdlib/src/{performance,sound}` declaration, and every Rust
+  projection/primitive-registration join.
 
 ## Design
 
@@ -41,6 +43,11 @@ and observed result. At minimum cover:
 - native sample maps, deterministic selection, SFZ and SoundFont claimed support/loss matrices;
 - musical clips versus fixed cues, transform/tempo/seek/tail behavior;
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
+- source ownership itself: every declarable gesture/control/profile/quantity/instrument/studio/sample/media value and
+  policy is ordinary source; every Rust projection is opaque or read-only, exactly derived, and differentially checked;
+  tooling vocabulary comes from declaration indexes; primitive registries contain only host-owned facts;
+- indexed control key/value/mapping agreement uses the ordinary Miller-pattern unifier, including postponement and
+  ambiguous/ill-scoped refusal, with no sound-specific inference table, coercion, or default;
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 191
   budgets;
 - **the core boundary itself** — executable evidence for every integration risk:
@@ -67,6 +74,10 @@ public surfaces; remove dead migration code and verify that removed source alias
 A red core row is repaired at its owning prompt. If implementation evidence refutes a governing rule, stop and use the
 amendment procedure; this audit may not weaken the rule. This prompt does not yet graduate the language.
 
+Mechanically search public Rust surfaces for mirrors of source `Gesture`, `ControlKey`, `InstrumentSpec`, `StudioSpec`,
+`WrittenQuantity`, sample-map, and media policy declarations. A name alone is not the test: an opaque exact projection
+may survive only when its fields cannot be used to author semantics and the matrix names its source-equivalence law.
+
 ## Target
 
 - `scripts/check-audio-language-conformance.sh`, generated matrix, audit report, and named exceptions (ideally none).
@@ -74,6 +85,7 @@ amendment procedure; this audit may not weaken the rule. This prompt does not ye
   sampler, SFZ, SoundFont, locked package asset, musical clip, and fixed cue.
 - Repairs required solely for specified behavior, with rationale linked to the owning prompt.
 - Public API/dependency/RT audit and final prompt 191 comparison attached.
+- Source/host ownership report with per-projection derivation and primitive-registry exceptions.
 
 ## Check
 

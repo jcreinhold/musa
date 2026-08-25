@@ -29,6 +29,8 @@ before any clip player is written.
   distinction; state the exact Musa behavior as local definitions and laws.
 - Existing `FactKind`, point occurrences, `Progress`, realization/provenance, notation loss reporting, and audio export
   tail behavior.
+- Note 79: media action, fit policy, and playback settings are source declarations; verified bytes, decoded duration,
+  and runtime playback state are host-owned.
 
 ## Design
 
@@ -53,8 +55,11 @@ clip's beat interval transforms normally; its fit policy determines downstream p
 
 Both facts retain Origin and asset identity. Notation renders an optional labelled cue/clip annotation and reports
 losses per backend; the score UI may show a derived physical region, clearly distinguished from event track support.
-Keep Keep prompt 70's generic printed marks valid, but do not infer playback from a matching string; executable media
-uses typed declarations.
+Keep prompt 70's generic printed marks valid, but do not infer playback from a matching string; executable media uses
+typed declarations.
+
+Declare `MediaAction` and fit/playback policy as ordinary source data. Compiler/project representations are exact
+projections of those checked values, not independently constructible Rust media semantics.
 
 ## Target
 

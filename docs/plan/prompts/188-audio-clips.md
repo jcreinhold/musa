@@ -23,6 +23,8 @@ behavior.
 - Prompt 187's normative semantics; prompt 182 asset store; prompt 184 prepared sample playback and resampling; prompt
   177 part isolation; existing offline/live render path, transport seek/loop, and release-tail calculation.
 - Roadmap §§13.2, 13.8, 18 Phase 4. Audio recording and waveform editing remain explicitly outside Musa.
+- Note 79: preparation consumes exact projections of source media declarations; only decoded bytes, routing indices,
+  schedules, and playback state are private Rust data.
 
 ## Design
 
@@ -31,6 +33,9 @@ resolves each semantic cue/clip identity to immutable decoded audio and compact 
 start at `tempo(b)` and retains natural physical duration. A musical clip uses its transformed beat span and explicit
 fit policy. Specify channel conversion, sample-rate conversion, bounds, fades, gain/pan, overlap, retrigger, same-frame
 ordering, and end-of-project tail.
+
+No public Rust cue/clip schema may supply policy absent from the checked source value. The preparation projection is
+opaque/read-only and covered by source-to-projection differential laws.
 
 `crop` stops at the beat span, `loop` repeats deterministically and truncates at it, and `rate` chooses the documented
 constant playback rate required by the source span/policy and changes pitch honestly. No implicit tempo-following or
@@ -54,7 +59,7 @@ shipping it. Do not perform best-effort file I/O in the callback.
 ```sh
 cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -p musa
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cargo bench -p musa-dsp
 cargo insta test --workspace --unreferenced=reject

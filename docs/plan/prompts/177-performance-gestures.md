@@ -6,100 +6,96 @@ depends_on: [119, 174, 176, 176a]
 phase: 3
 ---
 
-# Performance Produces Gestures, Not Knob Addresses
+# Performance Profiles Produce Source-Declared Gestures
 
-> **Governed by the event-track and machine core installed by prompts 127a–127e and 171–174.** Gestures use the same
-> `EventTrack` structure as written facts and reach sound through the checked scheduler.
+> **Repaired twice before implementation.** Commit `b5405b89` moved temporal support out of payloads. Note 79 then
+> caught the uncommitted fixed Rust gesture/control ontology. Both findings stand: occurrence spans own time, and
+> ordinary Musa declarations own musical payload vocabulary and interpretation policy.
 
 ## Task
 
-Introduce the missing instrument-independent performance object between `EventTrack<WrittenTime,ScoreFact>` and a
-scheduled event-source machine. Profiles interpret notation into exact note gestures, technique/grouping information,
-and typed musical control curves; tempo/groove/tuning then schedule those gestures. No gesture names a machine
-primitive, processor, MIDI controller, or render-plan parameter index.
+Introduce the instrument-independent performance object between `EventTrack<WrittenTime, ScoreFact>` and a scheduled
+event-source machine. Declare gestures, indexed controls, profiles, and standard interpretation policy in
+`std::performance`; use a compiler-owned provenance/track bridge only for work source cannot perform. Tempo, groove, and
+tuning then schedule the exact checked gesture track. No gesture names a primitive, processor, MIDI controller, or
+render-plan parameter index.
 
 ## Read
 
-- `docs/rules/constitution.md` §8 (the decision and what it forbids, in particular: no bespoke temporal structure above
-  the core). `docs/rules/events/12-payload-admission.md` from prompt 176a — the rule this prompt's payload must satisfy,
-  written before the payload existed so that it could not be fitted to it.
-- `crates/musa-events/src/{term,timeline,occurrence}.rs` and `tests/laws.rs`, which already prove L1–L24 at a payload
-  that is not `ScoreFact`.
-- `docs/rules/language/08-performance-and-sound.md`; event track `Progress` semantics and backend contract; roadmap
-  §§6.4–6.5.
-- OMT `007-other-aspects-of-notation.md` for dynamics/articulation and `114-core-principles-of-orchestration.md` for why
-  loudness change is not one DSP operation.
-- Current `profile.rs` and `performance.rs`; hairpin, slur, pedal, ornament, grace, groove, tuning, MIDI, and polytempo
-  consumers. Prompt 93's performance-lane baseline.
+- Constitution §§8–9; `docs/rules/language/{00-semantics,02-core-calculus,08-performance-and-sound}.md`; payload
+  admission rule A1–A6 from prompt 176a; note 79.
+- `musa-events` term/timeline/occurrence laws and the track builtins' private-representation/provenance ownership.
+- `stdlib/src/notation`, current profile/performance lowering, and the provisional Rust `Gesture` used by prompts
+  172–174. Treat it as a runtime oracle, not the new source schema.
+- OMT 007 for dynamics/articulation and OMT 114 for why loudness change is not one DSP operation.
+- Peyton Jones chapters 3–6 for source data/pattern translation; the existing Miller-pattern unifier and indexed-family
+  tests for the only admissible omitted-index mechanism.
 
 ## Design
 
-The gesture object is `EventTrack<PerformedTime,Gesture>`, not a new structure. It receives the event-track ordering,
-payload serialization, exact equality, and exact encoding rather than specifying them again. Define `Gesture`, implement
-the revised storable-data contract for it, and add its payload-admission row. State what the exact encoding includes and
-what any separate musical comparison deliberately ignores. Writing a private `Vec<(Ratio,Ratio,Gesture)>` with its own
-ordering or equality is a defect, and prompt 192 audits for it.
+Add a real `std::performance` module. Declare storable source data for gesture identity, note gestures, control curves,
+phrase/group relations, techniques, releases, and their exact canonical schema. Standard controls are ordinary values.
+There is no closed Rust `Gesture`, `ControlKey`, connection, or technique enum as semantic authority.
 
-Nothing is added to `musa-events`: no term form, operation, or public-surface change. `follow`, `together`, and retained
-observations on a gesture track keep their existing laws. A control curve remains payload data; frame sampling stays in
-the scheduler or instrument machine.
+Controls are dependently related rather than dynamically tagged by host code. A source `ControlKind` indexes both
+`ControlKey<K>` and `ControlValue<K>`; a heterogeneous stored control uses an ordinary source family that binds the
+index. A constructor or function may omit `K` only where the existing Miller-pattern unifier uniquely solves it.
+Duplicate, escaping, flex-flex, or unresolved constraints are postponed/refused by the general rules—never guessed by a
+sound-specific table. Add focused elaboration laws for inferred, postponed, ambiguous, and ill-scoped control indices.
 
-A note occurrence's `EventTrack` span carries its performed onset and extent. Its `Gesture` payload carries stable
-gesture/event identity, written pitch until tuning, separation/hold/emphasis intent, symbolic technique tags,
-legato/phrase grouping, per-note controls, and origin — **never an absolute position in any coordinate**. `PartId`
-belongs to the lane, not redundantly to each payload. This is required by payload-admission rule A3 and keeps temporal
-support in the one structure that owns it.
+A performance profile is an ordinary source record/function collection evaluated during finite compilation. It maps a
+public source-declared performance view of notation facts into exact gesture data. Functions never cross a storable
+payload or machine boundary. The host bridge may traverse the opaque written track, attach/reuse provenance, change
+coordinates, enforce work budgets, and construct the performed track; it must not decide dynamic levels, articulation
+meaning, grouping, technique, or standard-control policy. State and test the source/profile result presented to each
+bridge call so there is no hidden host musical input.
 
-MIDI score mode and provenance still need the source event's written support. Record that as a separate, immutable
-`GestureId -> written EventId/span` conversion relation under constitution §6. It is lineage/presentation data: it is
-not part of `Gesture::canonical_key`, is not another ordered temporal container, and cannot affect gesture scheduling.
-Repair `docs/rules/language/08-performance-and-sound.md`'s provisional `NoteGesture.support` field to state this same
-separation before adding the payload-admission row.
+The gesture object is `EventTrack<PerformedTime, Gesture>`, not another container. An occurrence span carries performed
+onset and extent. Its payload carries stable identity, written pitch until tuning, separation/hold/emphasis intent,
+symbolic techniques, grouping, per-note controls, and source-derived origin—but no absolute position in any coordinate.
 
-A lane also carries piecewise exact `ControlCurve`s keyed by semantic `ControlKey` and typed by a small control value
-family. Standard keys include expression, emphasis, separation, brightness, sustain, and legato; namespaced custom keys
-are admitted only with a declaration in prompt 178.
+MIDI score mode and provenance still need written support. Record it in a separate immutable
+`GestureId -> written EventId/span` lineage projection. It is presentation/conversion data, excluded from gesture
+canonical equality and scheduling. Physical attack seconds remain a separately keyed temporary legacy projection and are
+removed at 178.
 
-For a hairpin on `[s,e]`, specify and test `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and
-events `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic
-technique/group identity even when a numeric fallback is also available, so a sample instrument may select legato or
-staccato regions rather than receiving only a gate multiplier.
+For a hairpin on `[s,e]`, the source neutral profile states and tests `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))` with exact
+endpoints and `Progress`. Sampling remains downstream. Preserve symbolic technique/group identity even when a source
+profile also supplies a numeric fallback.
 
-Keep the public compiler facade narrow. Compare (and record) a separate public `PerformanceIntent` artifact with the
-chosen design in which private exact gestures and their non-temporal lineage relation are projected into a
-caller-oriented `PerformancePlan`; publish only the minimum immutable lane/control information required by MIDI and
-`musa-dsp`. Compatibility values that the old renderer alone understands (notably physical attack seconds) are also a
-named projection keyed by `GestureId`, never a gesture control or canonical payload field; prompt 178 deletes that
-projection when the instrument signature owns the mapping. `ParameterId(u32)` is not reused as `ControlKey`.
+Rust consumers receive the minimum opaque/read-only projection needed by scheduling, MIDI, and DSP. Every projected
+field derives from the checked source gesture and has exact/differential laws. No projection is a public construction
+API or alternate canonical encoding.
 
 ## Target
 
-- Private exact gesture construction as `EventTrack<PerformedTime,Gesture>`, its exact encoding and admission-table row,
-  a separately keyed written-support/compatibility conversion record, and revised caller-facing performance facts.
-- Profile-to-gesture interpretation for all existing marks with byte/semantic parity where the old model was expressive
-  enough; explicit retained/fallback information where it was not.
-- Algebraic/property tests for curve endpoints, monotonic hairpins, grouping, exactness, context changes, and
-  scheduling.
-- MIDI remains a separate consumer with documented mappings/losses; no studio dependency enters the compiler pass.
+- `stdlib/src/performance/`: source-declared gesture/control/profile vocabulary, neutral profile, docs, and laws.
+- Pattern-unification tests for indexed controls, including postponement and refusal cases.
+- One provenance-preserving, budgeted host bridge from checked profile results to `EventTrack<PerformedTime, Gesture>`
+  plus separate lineage/temporary compatibility projections.
+- Profile interpretation of all existing marks with parity where the old model was expressive and explicit retained
+  information where it was not.
+- Exact payload encoding/admission row; curve, grouping, scheduling, MIDI-loss, and source↔projection laws.
+- No authoritative Rust musical enums and no studio dependency in the interpretation pass.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-notation -p musa-project
-cargo clippy --all-targets -p musa-compiler -p musa-notation -p musa-project -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler -p musa-notation -p musa-dsp -p musa-project
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -p musa-notation -p musa-dsp -p musa-project -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cargo bench -p musa-compiler
+rg -n "data Gesture|record ControlKey|neutral" stdlib/src/performance
 ```
 
-Commit as `Interpret notation as performance gestures`.
+Commit as `Interpret notation with source performance profiles`.
 
 ## Stop
 
 - No instrument implementation, sample selection, part routing, or DSP parameter resolution.
-- No event-track operation, new term form, or physical-time value in any score or gesture occurrence. Exact physical
-  time and frames appear in scheduling decisions, not in the event payload.
-- No second temporal structure. If `EventTrack<PerformedTime,Gesture>` will not carry something, that is a finding to
-  report against `docs/rules/constitution.md` §8, not a licence to write a parallel container.
-- No universal ontology of expression; standard controls have documented Musa meanings and custom controls remain
-  explicitly declared.
+- No event-track operation, new core term, physical-time payload, or second temporal structure.
+- No universal ontology of expression; standard definitions are edition-pinned library policy and custom declarations
+  remain explicit.
+- No source closure stored in an occurrence/machine and no Rust enum mirroring a source family.
+- No special unifier, coercion, default control kind, or host-side type guess.

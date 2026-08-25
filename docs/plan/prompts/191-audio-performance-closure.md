@@ -26,6 +26,8 @@ no-allocation/no-lock/no-I/O contract.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.
 - The revised machine and identity specifications; prompts 171–173 and 131 completion notes.
+- Note 79: measure source profile/mapping evaluation and source-to-runtime projection separately so an optimization does
+  not quietly turn the projection into semantic authority.
 
 ## Design
 
@@ -39,10 +41,10 @@ Add deterministic workloads which isolate and combine:
 - plan install/retire, seek/loop, Sound/Mix source edit→recompile→prepare→audible update;
 - malformed/adversarial assets and packages outside timed success paths but inside resource bounds.
 
-Measure compiler/profile cost, audio preparation wall/CPU time, allocation count/bytes, peak resident/decoded asset
-memory, prepared-plan size, callback max/p95 time and deadline misses, voices processed/stolen, control evaluation,
-offline throughput, UI response, and cache behavior. Record machine/toolchain, sample rate, block size, corpus digests,
-method, uncertainty, and raw results.
+Measure compiler/source-profile/source-mapping/projection cost, audio preparation wall/CPU time, allocation count/bytes,
+peak resident/decoded asset memory, prepared-plan size, callback max/p95 time and deadline misses, voices
+processed/stolen, control evaluation, offline throughput, UI response, and cache behavior. Record machine/toolchain,
+sample rate, block size, corpus digests, method, uncertainty, and raw results.
 
 **Measure `R1`, and report the result whether or not it is convenient.** Construct presentation pairs with equal exact
 gesture tracks and unequal presentation-only fields; under equal bindings, seed, and complete options they must return
@@ -72,6 +74,8 @@ bounded queue, underrun semantics, and offline determinism must then be specifie
 - The R1 preparation, conditional-frame, lineage-separation, digest-collision, and host-partition differential results,
   with pairs/premises/outcomes stated plainly.
 - Public-surface/dependency audit after optimization.
+- Differential evidence that every optimized Rust projection still equals its checked source value and remains
+  non-authoritative.
 
 ## Check
 

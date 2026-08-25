@@ -35,8 +35,8 @@ audio history
 ```
 
 This flow is implemented through live and offline audio. The native flattening graph and render plan are crate-private;
-the only product facade accepts exact gestures, authored studio intent, and explicit preparation options, then returns
-opaque `PreparedAudio`.
+the product facade accepts exact checked projections of source-declared gestures and studio intent plus explicit
+preparation options, then returns opaque `PreparedAudio`. The projections are not a second Rust sound language.
 
 No intermediate front-end representation crosses its owner's facade. Rowan nodes stay in `musa-syntax`; `Raw`, core
 terms, values, environments, evaluator frames, and unification stay in `musa-calculus`; compiler resolution and
@@ -50,7 +50,8 @@ derivation records stay in `musa-compiler`. Callers receive checked results and 
 | Dependent terms, bidirectional elaboration, NbE, conversion, rechecking | `musa-calculus` | checked facade, never `Value` or evaluator internals |
 | Name/import resolution, host registrations, typed quotation, adapter expansion, musical realization | `musa-compiler` | `compile`, snapshots, diagnostics, adapter edit/print operations |
 | Exact finite event tracks and their laws | `musa-events` | coordinate-indexed tracks, terms, queries, exact encoding/hash |
-| Musical value types and projections | `musa-score` | pitch/time/fact/gesture/snapshot values, no parser or pass |
+| Score value types and projections | `musa-score` | pitch/time/fact/snapshot values, no parser or pass |
+| Declarable sound/performance values and policy | `stdlib/src/{performance,sound}` | checked source declarations; no private runtime state |
 | Engraving plan and export | `musa-notation` | `render_notation` and export results |
 | Machine semantics, scheduling, preparation, offline DSP | `musa-dsp` | `prepare_machine`, `schedule`, `prepare_audio`, opaque prepared values |
 | Device negotiation, transport, callback | `musa-playback` | `AudioEngine` and transport commands |

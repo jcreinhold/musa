@@ -83,6 +83,7 @@ strengthening core equality.
 | `String` | `musa-events` adapter for Rust `String` | the exact UTF-8 string | nothing | two strings receive equal bytes |
 | `Progress` | `musa-events` | every exact ordered `(u,v)` breakpoint | nothing | distinct curves receive one breakpoint list |
 | `ScoreFact` | `musa-compiler` | scope; full fact kind; source span; expansion path | elaboration-only `tied`; `Origin.definition_span`; `Origin.declaration` | a cache, projection, or lineage consumer requires one omitted field to distinguish execution results |
+| `Gesture` | `std::performance`, projected at the compiler/runtime boundary | constructor; stable gesture identity; written pitch; exact controls and normalized-local curves; techniques; group/member identity | presentation `Origin`; separately keyed written-support lineage | a scheduler or instrument distinguishes two payloads whose keys compare equal, or moving an occurrence changes its payload bytes |
 
 The `ScoreFact` row records the implementation as it exists. Its omitted origin fields remain available in the stored
 fact and its interchange form. Core semantic equality does not observe them. A future identity-sensitive preparation

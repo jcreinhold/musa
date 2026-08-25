@@ -24,6 +24,8 @@ source and consumes immutable project/compiler facts.
   budgets; roadmap §14.4; prompts 31 and 119.
 - Prompts 175, 179–186 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
   and Playwright fixtures.
+- Note 79 and the repaired prompt-175 source declaration index; UI vocabulary and defaults come from source, while
+  private primitive/runtime support facts come from the registry.
 
 ## Design
 
@@ -35,14 +37,15 @@ Write the interaction/spec repair before UI code. Progressive disclosure has thr
 3. **Mix:** part-output strips, media-source strips, rooms/buses, sends, routes, and main output. A projected strip does
    not assert that a part is a mixer track; label the binding and retain distinct identities.
 
-Imported/built-in instruments navigate to read-only source/support facts. Asset failures and offline packages have
-loading/error/remediation states. Parameter/control gestures replace source tokens and commit once; playback may use a
-separate prepared-plan update only if source has already become authoritative and prompt 191 measurement requires it.
-Private machine wiring is not editable from a generic property grid or free-form canvas.
+Imported/standard-library instruments navigate to read-only source/support facts. Asset failures and offline packages
+have loading/error/remediation states. Parameter/control gestures replace source tokens and commit once; playback may
+use a separate prepared-plan update only if source has already become authoritative and prompt 191 measurement requires
+it. Private machine wiring is not editable from a generic property grid or free-form canvas.
 
-All terms use prompt 175's authoritative catalogue and the compiler/project facts from prompts 183–188; prompt 190
-carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader grouping, focus
-preservation on recompile, narrow layouts, stale/last-valid plan indication, and reduced-motion behavior.
+All terms use prompt 175's authoritative source declarations/indexes and the compiler/project facts from prompts
+183–188; prompt 190 carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader
+grouping, focus preservation on recompile, narrow layouts, stale/last-valid plan indication, and reduced-motion
+behavior.
 
 ## Target
 

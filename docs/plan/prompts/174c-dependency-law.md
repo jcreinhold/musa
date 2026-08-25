@@ -1,7 +1,7 @@
 ---
 id: 174c
 slug: dependency-law
-status: completed
+status: pending
 depends_on: [174a, 174b]
 phase: 3
 ---
@@ -13,15 +13,16 @@ phase: 3
 Two dependency edges ran backwards for a long time — the values crate on the parser, the audio crate on the compiler —
 and nothing caught either. `AGENTS.md` describes the ladder in a sentence of prose, and prose is not a check: it was
 itself slightly wrong about which crates sit where, and a reader comparing it to `Cargo.toml` had no tool to do so. 174a
-and 174b fixed the two edges. This prompt makes the third one impossible.
+and the repaired 174b fix the two edges without calling a Rust crate the semantic owner of declarable source. This
+prompt makes the dependency mistakes impossible and records that Cargo roles do not decide source-language ownership.
 
 Write the layering down as a rule with a table of assignments, and add a check that reads every workspace member's
 manifest and fails on a violation. A rule the build enforces is worth more than a paragraph in a file nobody diffs.
 
 ## Read
 
-- 174a and 174b, whose Design sections state the rule in prose. This prompt turns those two sentences into the
-  machine-checked form.
+- 174a and repaired 174b, whose Design sections state the dependency and source-ownership rules separately. This prompt
+  checks the former without pretending a Cargo role decides the latter.
 - The dependency edges as they will then stand:
 
   ```sh
@@ -48,7 +49,7 @@ values — while Cargo itself still forbids dependency cycles.
 | Layer | Depends on | Members |
 | --- | --- | --- |
 | theory | nothing in the workspace | `musa-syntax`, `musa-calculus`, `musa-events` |
-| vocabulary | theories and vocabularies | `musa-score`, `musa-dsp` |
+| vocabulary | theories and vocabularies | `musa-score`, `musa-dsp` (runtime value role, not source-declaration ownership) |
 | pipeline | theories, vocabularies | `musa-compiler` |
 | consumer | theories and vocabularies (never the pipeline) | `musa-notation`, `musa-playback` |
 | session | anything below | `musa-project` |
@@ -57,8 +58,8 @@ values — while Cargo itself still forbids dependency cycles.
 The rules that generate it: **a theory crate depends on no other Musa crate; a vocabulary may compose only theories and
 other vocabularies; the pipeline and consumers are sibling roles, and a consumer never names the pipeline; sessions and
 shells may orchestrate anything below them, but nothing depends on a shell.** This admits the deliberate direct shell
-edges: the LSP reads syntax and the DSP catalogue while source is half-typed, and the wasm shell calls the compiler and
-notation facade without manufacturing a project session.
+edges: the LSP reads syntax and source-declaration indexes while source is half-typed, and the wasm shell calls the
+compiler and notation facade without manufacturing a project session.
 
 **Dev-dependencies are exempt, and the check says so out loud.** `musa-notation` and `musa-playback` both take
 `musa-compiler` as a dev-dependency to build a fixture from real source. That is a test reaching upward, which is
@@ -71,6 +72,10 @@ whether the crate or the table is wrong.
 **One table, in one file, and the prose cites it.** The layer assignment lives with the script. `AGENTS.md` and roadmap
 §15 point at it rather than restating it, because a second copy is a second thing obliged to agree.
 
+**Cargo roles and language ownership are orthogonal.** `musa-dsp` may remain in the dependency role named `vocabulary`
+because it exposes opaque runtime/preparation values below consumers. That role does not authorize public Rust mirrors
+of data or policy expressible in `.musa`; the prompt README and sound specification own that separate test.
+
 **A new crate must be assigned.** A workspace member missing from the table is a failure, not a default — otherwise the
 check goes quiet exactly when a crate is added, which is when it is needed.
 
@@ -82,6 +87,7 @@ check goes quiet exactly when a crate is added, which is when it is needed.
 - A negative control: a fixture manifest set the script rejects, so a green run proves the check can fail.
 - `AGENTS.md`: the dependency paragraph replaced by the layer names and a pointer to the table.
 - `docs/plan/roadmap.md` §15: the same, as the plan's own statement of the crate graph.
+- Crate/script documentation no longer describing `musa-dsp` as the owner of editable studio vocabulary.
 
 ## Check
 

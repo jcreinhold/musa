@@ -1223,7 +1223,7 @@ high-level compositional representation
 motif expansion and transformation
   │
   ▼
-normalized ScoreSnapshot + StudioSpec
+normalized ScoreSnapshot + checked source studio value
   │
   ├──► NotationPlan
   └──► PerformancePlan
@@ -1634,9 +1634,10 @@ polyphonic voice allocator
 
 Tuning maps sounding pitches to frequencies. This is deliberately separate from written pitch.
 
-## 13.6 Initial built-in processors
+## 13.6 Initial registered primitives and source wrappers
 
-The first useful set should be small:
+The first useful registered set should be small. Each item has an ordinary `std::sound` wrapper; the host registration
+owns only its private state, formats, bounds, and step:
 
 ### Sources
 
@@ -1958,8 +1959,9 @@ In particular:
   scales, exact time, marks, the score snapshot, exact performed gestures, provenance, diagnostics, and analysis, and
   names no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
-- compiler depends on `musa-dsp` only for the editable studio vocabulary it produces; graph preparation and rendering
-  remain downstream operations;
+- compiler may depend on `musa-dsp` only for an opaque checked preparation projection and primitive-contract queries;
+  editable studio vocabulary remains ordinary source in `stdlib/`, while graph preparation and rendering remain
+  downstream operations;
 - the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
 - the event-track is a leaf on the same terms, and its payloads stay opaque to it (§15.13);
 - audio does not depend on the GUI;
@@ -2829,8 +2831,8 @@ The final conceptual design is:
                               │
             ┌─────────────────┴─────────────────┐
             │                                   │
-    ordinary typed values                   StudioSpec
- theory-owned data, refs, transforms   patches, effects, routing
+    ordinary typed values          ordinary typed sound values
+ theory-owned data, refs, transforms   profiles, instruments, routing
             │                                   │
      finite elaboration                         │
             │                                   │

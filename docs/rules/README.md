@@ -42,7 +42,31 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
 
-The most recent amendment is prompt 170's synchronization of
+The most recent authorized repair is note 79's source/host ownership correction for the candidate sound language. It
+does not change constitution §§4, 8, or 9; it makes the lower-precedence sound page and prompt cone obey them.
+
+1. **The reason.** Prompts 174b–176 made a public Rust `StudioSpec`, surface catalogue, and `WrittenQuantity`
+   authoritative after prompt 167 had already demonstrated equivalent ordinary Musa declarations. The uncommitted
+   prompt-177 implementation repeated the problem with fixed Rust gesture/control enums. Two adjacent semantic
+   vocabularies would drift and require compiler releases for declarable library policy.
+2. **Which current examples no longer work.** No `.musa` example is intentionally rejected. Direct Rust construction of
+   studio, quantity, gesture, control, or instrument semantics stops being a supported public path; those APIs are
+   unreleased and migrate to checked source artifacts and read-only projections.
+3. **The replacement rule in plain language.** Declarable data and total policy live in ordinary `.musa`, normally the
+   standard library. Rust owns only provenance/direct track construction, registered primitive private contracts,
+   verified asset bytes, scheduling/DSP conversion, and private prepared/runtime state. A Rust projection is exactly
+   derived and never independent authority. Dependent sound relationships use the existing Miller-pattern unifier.
+4. **The formal specification and code map.** `language/08-performance-and-sound.md` §0 states the boundary;
+   `../plan/code-map/{implementor-reference,process-runtime,stage-pipeline,spec-to-implementation-map}.md` records the
+   repaired implementation cone.
+5. **How stored files and public APIs migrate.** Source stays canonical and stored values are recomputed from checked,
+   versioned declarations. The unreleased Rust construction APIs are removed or narrowed to opaque projections with
+   differential laws. Private primitive identities/state and decoded/runtime values do not move into source.
+6. **The record.**
+   [`../notes/research/language-design-closure/79-source-owns-the-sound-language.md`](../notes/research/language-design-closure/79-source-owns-the-sound-language.md)
+   preserves the defect, literature, replacement, prompt cone, and user authorization.
+
+Before it, prompt 170's amendment synchronized
 [`across-stages/01-stage-judgments.md`](across-stages/01-stage-judgments.md) §2 with the one-theory decision prompt 143
 already admitted. It changes no accepted source program, but it changes a governing algorithmic claim, so it answers the
 six requirements explicitly.

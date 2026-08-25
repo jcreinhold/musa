@@ -24,6 +24,8 @@ source, while external bytes are named, typed, verified, and loaded only on the 
   model, and every path-opening call.
 - Repository dependency policy before selecting an audio metadata/decoder crate. A new dependency requires a deliberate
   roadmap repair and license/security review in the prompt commit.
+- Note 79's ownership boundary: source declares asset references and policies expressible as data; the host owns
+  verified bytes, filesystem authority, decoder state, and bounded I/O.
 
 ## Design
 
@@ -32,6 +34,10 @@ Resolved asset facts expose only metadata required by project, compiler, UI, and
 objects stay behind the project/audio asset store. Source semantic identity remains score-only where promised; audio
 artifact identity additionally includes asset digests, relevant decoder/format version, realization seed, and render
 options.
+
+Declare the author-facing asset reference/metadata forms in Musa source. A host projection may add verified resolution
+status and opaque store identity because those require filesystem authority; it may not become a second editable asset
+manifest or independently invent source defaults.
 
 Resolution is rooted: project assets stay within the project root; package assets stay within that locked package.
 Reject traversal, escaping symlinks, kind mismatches, digest mismatch, missing files, unsupported encodings, and

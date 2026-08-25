@@ -20,6 +20,8 @@ instrument output. Two parts selecting the same instrument declaration remain tw
 ## Read
 
 - Roadmap §§6.5 narrow bridge; `docs/rules/language/08-performance-and-sound.md` routing-isolation and identity laws.
+- Repaired prompts 177–178 and note 79: routing consumes checked source-declared gesture/instrument projections and must
+  not introduce a Rust routing language.
 - `PerformanceLane`, `lower_studio`/`distinct_patches`, event-window delivery in `plan.rs`, source-output/send lowering,
   default studio, offline renderer, engine prepared machine, and prompt 93's shared-stream ledger entry.
 
@@ -29,6 +31,10 @@ Carry three different identities: stable part, selected instrument declaration, 
 encode one as another or infer routing by display name. Lane-scoped scheduled events bind to one instance during
 preparation and become compact private indices only inside the prepared machine. Note-on/off identity is instance-safe;
 voice stealing in one part cannot end another part's voice.
+
+Part/instrument/route declarations remain source data. Rust receives only the exact checked binding projection needed to
+allocate and connect instances; it owns prepared identities and compact indices, not source routing policy or a public
+independently constructible route schema.
 
 The default instrument is instantiated once per otherwise-unassigned part. A route/send whose source is a part uses that
 part instance's output; a bus source remains a bus. If two parts share one instrument declaration, their sends may
@@ -51,7 +57,7 @@ expected-change ledger entry only when the positive isolation law passes offline
 ```sh
 cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
 cargo clippy --all-targets -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-routing.wav
 ```

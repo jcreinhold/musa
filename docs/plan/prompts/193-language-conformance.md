@@ -53,6 +53,9 @@ matrix where possible; review every manual bridge. At minimum it must cover:
   and the context-neutral boundary;
 - exact performance gestures/control curves, checked scheduling, tempo/tuning realization, typed instrument machines,
   part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 192 row;
+- source/host ownership: declarable sound vocabulary and policy live in ordinary packages, host registrations satisfy
+  only `00-semantics.md`'s ownership test, Rust projections have exact source derivations, and dependent sound
+  relationships use the one pattern unifier rather than a domain-specific solver;
 - parser recovery, formatting idempotence, tree-sitter drift, LSP facts, editor extension assets, desktop navigation,
   all exports, playback scheduling, last-valid-artifact behavior, and prompt 127/184 budgets.
 
@@ -95,6 +98,10 @@ resolves in the workspace is a finding: contextual `Music`, partial/default call
 spellings, public HIR/evaluator types, `StudioGraphSpec`, `compile_graph`, global note streams, raw public DSP parameter
 ids, block-defined feedback, unchecked asset paths, handwritten editor vocabularies, mutable expanded ASTs, and
 source-independent widget state. Removed forms stay removed; do not restore them for compatibility.
+
+Also reject a subtler alternate path: an authoritative Rust `StudioSpec`, `Gesture`/`ControlKey` enum, `InstrumentSpec`,
+quantity/unit table, sample-map ontology, or tooling catalogue that mirrors source declarations. An opaque runtime
+projection is allowed only when prompt 192 names its checked source owner and exact differential law.
 
 Graduation is conditional. If any row lacks implementation or evidence, leave `docs/rules/language/` candidate, repair
 the smallest responsible prompt or add a narrowly scoped follow-up, and stop. Only a fully green score and audio matrix

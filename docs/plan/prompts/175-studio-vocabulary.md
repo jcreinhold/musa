@@ -1,83 +1,80 @@
 ---
 id: 175
 slug: studio-vocabulary
-status: completed
+status: pending
 depends_on: [122, 174b]
 phase: 3
 ---
 
-# One Discoverable Studio Vocabulary
+# One Discoverable Source Studio Vocabulary
 
-> **Governed by the event-track and machine core installed by prompts 127a–127e and 171–174.** Read the revised rules
-> and the core-calculus conformance report before this prompt's Design.
->
-> **Amends `docs/rules/language/08-performance-and-sound.md` §6 before implementation.** The migration row now makes
-> `resonance` the only accepted filter spelling and requires an exact fix for the removed `q` spelling. Note 77 records
-> the reason, affected sources, replacement rule, implementation owner, and migration.
+> **Reopened by note 79.** The first execution centralized public studio vocabulary in a Rust `musa-dsp` catalogue. The
+> primitive registry remains host-owned; the musician-facing declarations and documentation move to ordinary Musa
+> source.
 
 ## Task
 
-Make every built-in studio processor, parameter, control type, unit, and routing term discoverable from one
-authoritative surface catalogue. A musician encountering `oscillator`, `envelope`, `resonance`, `bus`, or `send` gets a
-plain first sentence, a typed signature, units/defaults/range, its built-in origin, and a short example; compiler, LSP,
-desktop, and generated reference material consume the same facts.
+Make every standard studio processor wrapper, parameter, control type, unit, and routing term discoverable from one
+edition-pinned standard-library declaration tree. A musician encountering `oscillator`, `envelope`, `resonance`, `bus`,
+or `send` gets a plain first sentence, typed signature, units/defaults/range, primitive origin where applicable, and a
+short example. Compiler, LSP, desktop, and generated reference material index those declarations rather than a parallel
+Rust surface catalogue.
 
 ## Read
 
-- `docs/rules/language/08-performance-and-sound.md`; roadmap §§7.2, 13.6–13.7, 14.4; prompts 29–31 and 84.
-- `crates/musa-dsp/src/intent.rs`, especially `Processor::params`/`ParamSpec`, and its private graph parameter
-  descriptors; `crates/musa-compiler/src/studio.rs`, which consumes that vocabulary while resolving source; keyword docs
-  and `musa-lsp/src/features/hover.rs::at_studio`.
-- Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
-- The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
-  processor/port descriptors join the build-local primitive registry established by prompts 171–173.
+- `docs/rules/language/{00-semantics,04-templates-and-modules,08-performance-and-sound}.md`, especially §0; note 79.
+- Repaired 174b and `stdlib/src/sound/{mod,graph}.musa`; the source reference generator and declaration index.
+- `musa-dsp`'s primitive registry and private graph descriptors: identity, port/state formats, DSP ranges, smoothing,
+  combination policy, and resource contracts are the host half and must not be copied into source as private state.
+- Prompt 164/note 61's per-entry builtin survey; Peyton Jones chapter 3 and Ousterhout chapters 7–8.
+- Note 77's `q`→`resonance` migration. Its spelling decision remains; only the claimed Rust ownership changes.
 
 ## Design
 
-The `musa-dsp` surface catalogue owns processor spelling, musician-facing summary, longer technical note, parameter
-names, aliases, unit, written range/default, signal role, and example, beside the `StudioSpec` vocabulary prompt 174b
-moved there. The private graph descriptor continues to own the post-conversion DSP range, smoothing, and combination
-policy. Join them by a checked stable key; do not force two different questions into one descriptor and do not introduce
-a new crate for a table. `musa-compiler` consumes the catalogue while resolving source and does not re-export it.
+`std::sound` owns source-facing names, data types, exact written domains/defaults, docs, examples, and wrappers that
+construct machine values from registered primitives. A wrapper's private implementation may name a stable primitive
+registration, but the primitive's state, exact runtime formats, bounds, and step stay in `musa-dsp`.
 
-The catalogue entry also fixes the versioned processor identity and public port/parameter schema which preparation will
-validate. It does not expose private machine state in this prompt. A built-in which cannot supply a first-order
-total-transition/resource contract is marked unavailable to the native process registry rather than admitted through a
-callback-shaped escape hatch.
+Join a source declaration to its primitive registration by stable id/version and check agreement for every port,
+configuration value, unit, range, and declared resource premise. The source declaration is authoritative for what an
+author writes and what tooling presents; the registration is authoritative for what the host can prepare and step.
+Neither table silently supplies facts owned by the other.
 
-Canonicalize filter `resonance`. The removed `q` spelling is a hard error with a certain code action; it is not accepted
-as an alias. Hover explains that resonance is conventionally represented by quality factor Q. Rewrite repository
-fixtures to the one canonical spelling. Terms such as `bus`, `send`, `instrument`, `room`, and `master` are documented
-as studio concepts, not presumed prior knowledge.
+LSP completion/hover on invalid or half-typed source uses the standard-library source index plus CST context. Imported
+declarations navigate to their source. A primitive-backed wrapper reports both its defining source and registered
+primitive identity; it is not labelled as an uninspectable language builtin.
 
-Plain identifiers used as processor calls receive hover/signature/completion just as keywords do. Imported declarations
-show their defining source; built-ins say `builtin`. Generate reference tables and UI labels from the catalogue. Add an
-exhaustive law that every parser/compiler-recognized built-in and every editable parameter has exactly one catalogue
-entry and compatible audio descriptor.
+Keep `resonance` as the only accepted filter spelling. `q` remains a hard error with the exact source fix. Generate
+reference pages and UI labels from source declarations and checked primitive support facts. Add an exhaustive law that
+every parser-recognized standard sound name resolves to one declaration, and every primitive wrapper names one matching
+registration.
 
 ## Target
 
-- Authoritative `musa-dsp` catalogue, consumed directly by the compiler, and schema-agreement checks against the private
-  graph descriptors.
-- LSP hover/signature/completion for processors and parameters, including invalid/half-typed studio source.
-- Sound/Mix labels, descriptions, accessible names, and generated reference page from the same facts.
-- Hard-error `q` diagnostic/fix and migrated canonical examples, with no alias in the checker or runtime.
+- Edition-pinned `std::sound` declaration tree containing the public vocabulary, docs, examples, exact schemas, and
+  primitive wrappers.
+- Primitive-registration/source-declaration agreement checks without exposing private state.
+- LSP hover/signature/completion and desktop/reference facts generated from source indexes.
+- Hard-error `q` diagnostic/fix and canonical `resonance` corpus.
+- Deletion of the authoritative Rust surface catalogue; any remaining registry table documents only host-owned facts.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
-rg -n "resonance|quality factor|builtin" docs/rules/language crates/musa-lsp apps/musa-desktop
+rg -n "resonance|quality factor|registered primitive" stdlib/src/sound docs/rules/language crates/musa-lsp apps/musa-desktop
 ```
 
-Commit as `Make the studio vocabulary discoverable`.
+Commit as `Make the source studio vocabulary discoverable`.
 
 ## Stop
 
-- No new processor merely to make the catalogue look complete.
-- No public DSP registry, dynamic processor plug-in API, or public compiler HIR.
-- No change to score-driven controls or routing; prompts 179–180 own those semantics.
+- No new processor merely to make the declaration tree look complete.
+- No public DSP registry, dynamic native plug-in API, public compiler HIR, or source access to primitive state.
+- No score-driven controls or part routing; prompts 177–180 own those semantics.
+- No handwritten Rust duplicate of a declaration merely to make tooling convenient.

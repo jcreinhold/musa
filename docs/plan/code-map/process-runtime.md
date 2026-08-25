@@ -11,7 +11,8 @@ details; `compile_graph` and caller-block sound no longer exist.
 
 `musa-dsp` owns:
 
-- the versioned studio surface catalogue and editable `StudioSpec` vocabulary consumed by the compiler and tools;
+- the exact checked projection from source-declared studio/instrument values into private preparation data; the source
+  declarations and their documentation remain in `stdlib/`;
 - preparing registered primitives, `identity`, `connect`, `beside`, `feedback`, `copy`, `drop`, and `swap` from the
   compiler's immutable `MachineSpec`;
 - machine validation and structural step semantics;

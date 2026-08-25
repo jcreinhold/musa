@@ -24,6 +24,8 @@ learning its private wiring.
   example and §14.4 progressive disclosure.
 - Current `profile` binding, `assign`/`route`/`send` syntax, default studio, structured studio edits, examples, style
   guide, and prompts 177–180.
+- Note 79 and the prompt README ownership rule: every convenience resolves to source declarations; only registered
+  primitive/runtime boundaries remain host-owned.
 
 ## Design
 
@@ -32,9 +34,10 @@ three independent facts: performance-profile selection, part→instrument bindin
 convenience desugars to an ordinary named bus/effect/send. The expert surface retains explicit instruments, exposed
 controls, buses, sends, routes, and private native machine bodies.
 
-Provide a small versioned built-in instrument library and one stable edition-specific default. Absence of an explicit
-studio therefore remains audible and deterministic, with the effective default visible in hover/inspector and a source
-action to make it explicit. Presets are ordinary read-only Musa declarations, never opaque UI blobs.
+Provide a small versioned standard-library instrument package and one stable edition-specific default. Absence of an
+explicit studio therefore remains audible and deterministic, with the effective default visible in hover/inspector and a
+source action to make it explicit. Presets are ordinary read-only Musa declarations, never generated Rust mirrors or
+opaque UI blobs.
 
 Keep only the chosen canonical expert forms. Removed `patch`, `q`, or other old spellings are hard errors with certain
 source fixes and are absent from the evaluator and runtime. Rewrite all repository source. Diagnostics lead with
@@ -44,8 +47,8 @@ identity/signature detail follows.
 ## Target
 
 - Parser/CST/formatter/tree-sitter/compiler support for the settled simple and expert forms and their desugarings.
-- Built-in default/basic instrument library as ordinary inspectable source or generated declarations with stable
-  versioning and provenance.
+- Default/basic instrument library as ordinary inspectable source declarations with stable versioning and provenance;
+  generated documentation may derive from them, but generated declarations may not derive from a Rust catalogue.
 - Project edit commands for choosing/replacing an instrument/profile and making defaults explicit.
 - Negative fixtures for removed studio syntax and positive fixtures showing the canonical source is concise for ordinary
   selection, room, and send tasks.
@@ -55,7 +58,7 @@ identity/signature detail follows.
 ```sh
 cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test
 find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check

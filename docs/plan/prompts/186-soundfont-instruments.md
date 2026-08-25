@@ -41,6 +41,10 @@ Embedded samples enter prompt 182's verified prepared-asset path under the bank 
 bound chunks, zones, samples, names, and memory. The imported instrument exposes Musa standard controls and documented
 custom controls; raw MIDI controller numbers and generator ids remain adapter-private.
 
+Parsing foreign RIFF bytes and enforcing bounds is host work. The semantic adapter result is the same source-declared
+sample-map/instrument contract used by native and SFZ maps, with exact equality before private normalization. No
+SoundFont-specific Rust public instrument schema becomes authoritative.
+
 ## Target
 
 - SoundFont 2.04 parser/adapter or a justified private dependency plus defensive validation.

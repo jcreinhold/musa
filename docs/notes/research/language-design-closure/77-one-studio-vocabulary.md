@@ -2,6 +2,10 @@
 
 **Status: governs nothing.** This record preserves prompt 175's amendment to the candidate sound specification.
 
+> **Ownership superseded by note 79.** The `q`→`resonance` spelling and migration remain. The claim below that
+> `musa-dsp` owns the editable/source catalogue is preserved as the argument that was later corrected: source
+> declarations own that vocabulary, while `musa-dsp` owns registered primitive and preparation facts.
+
 ## Reason
 
 The sound page promised that filter `q:` would remain accepted temporarily while newly inserted source used

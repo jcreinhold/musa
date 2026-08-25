@@ -1,70 +1,71 @@
 ---
 id: 176
 slug: exact-studio-values
-status: complete
-depends_on: [93, 174, 175]
+status: pending
+depends_on: [93, 174b, 175]
 phase: 3
 ---
 
-# Written Sound Values Stay Exact
+# Written Sound Values Stay Exact in Source
 
-> **Governed by the event-track and machine core installed by prompts 127a–127e and 171–174.** Read its exact
-> storable-data and audio preparation rules before this prompt's Design.
+> **Reopened by note 79.** The first execution correctly removed eager floats and centralized DSP conversion, but made
+> public Rust `WrittenQuantity` part of the language vocabulary. This execution keeps the arithmetic and moves the
+> declarable quantity/unit model to `std::sound`.
 
 ## Task
 
-Repair the studio intent model so a written decimal or ratio with a unit remains exact, source-spelled intent until
-audio preparation. Remove the current eager `f64` conversion from `StudioSpec`; make the one rational/unit→DSP-value
-boundary explicit, tested, and shared by native instruments, samples, mix levels, and later automation.
+Make a written decimal or ratio with a unit remain exact, source-spelled intent through checking and every exact
+projection, until audio preparation performs the one rational/unit→DSP conversion. Remove independently constructible
+Rust quantity semantics while retaining one measured, tested conversion boundary for native instruments, samples, mix
+levels, and later automation.
 
 ## Read
 
-- `docs/rules/language/08-performance-and-sound.md` exactness law; roadmap §§2, 7.2, 10.6, 13.7.
-- Compiler `Value`, profile rational settings, source spans used by prompt 31's structured edits, and every
-  `as_linear`/`as f32`/`as f64` conversion in compiler and audio.
-- Prompt 93's eager-studio-float expected-change entry.
+- `docs/rules/language/08-performance-and-sound.md` §§0 and 7; roadmap §§2, 7.2, 10.6, 13.7; note 79.
+- Repaired 174b/175 and the exact `ParameterValue` declarations in `stdlib/src/sound/graph.musa`.
+- Compiler rational literals and unit tokens, source spans used by structured edits, and every `as_linear`/`as f32`/`as
+  f64` conversion in compiler, project, and audio.
+- The first prompt-176 commit's conversion laws as evidence to preserve, not as authority for the public Rust type.
 
 ## Design
 
-Introduce one `musa-dsp`-owned [`WrittenQuantity`](../../../crates/musa-dsp/src/intent.rs) representation containing an
-exact rational magnitude and unit. It is public because it is part of the public `StudioSpec` vocabulary the compiler
-produces, not because DSP internals are public. The lossless CST remains the source spelling, and the existing
-`StudioSpec` source spans locate token-scoped diagnostics and edits; do not copy source text into the value or move
-syntax ownership into DSP. Decimal syntax denotes the exact decimal rational; unit normalization (`ms` versus `s`) is
-exact. Equality used for compilation is exact value plus dimension; source equality still distinguishes spellings where
-the lossless CST does.
+Declare only the dimensions and units with real callers as ordinary Musa data. An exact quantity contains a reduced
+rational magnitude and a unit/dimension fixed by its source declaration. Decimal syntax denotes its exact decimal
+rational; `ms`↔`s` normalization is exact. The lossless CST owns spelling, so exact value equality may identify `30 ms`
+and `0.03 s` while source equality and token-scoped edits preserve the written form.
 
-Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in `musa-dsp`
-plan preparation or the existing performance frame boundary, never during parsing or `StudioSpec` construction. Specify
-rounding and finite/range failure. A UI edit preserves the written unit and replaces only its token; it does not rewrite
-`30 ms` as `0.03 s`.
+The DSP projection carries exact rational/unit data decoded from one checked source value. It has private fields or an
+opaque constructor, no defaults beyond those declared in source, and a differential law against the source canonical
+encoding. Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts occurs only in
+`musa-dsp` preparation. Specify rounding, finite/range failure, and the exact written value in diagnostics.
 
-Avoid a generic units framework. Implement only the dimensions and operations with real Musa callers; prove exact unit
-conversion and differential parity for previously accepted values.
+Do not build a generic dimensional-analysis framework. Reuse `Ratio`, ordinary indexed data where a dimension must be
+shared, and the existing pattern unifier for omitted indices. There is no unit-specific coercion or host inference
+table.
 
 ## Target
 
-- Exact written quantity in `musa-dsp`; migrated compiler construction, `StudioSpec`, processor arguments, sends, and
-  project facts.
-- One audited conversion module in `musa-dsp`, private to plan preparation.
-- Laws for decimal/ratio equality, unit conversion, edit spelling preservation, range diagnostics, and migrated-corpus
-  audio behavior within the documented floating tolerance.
-- Remove prompt 93's eager-float ledger entry.
+- Exact source quantity/unit declarations in `std::sound` and migrated standard-library studio values.
+- Opaque exact DSP projection derived only from checked source.
+- One audited private conversion module at preparation, retaining the first execution's good exactness and parity laws.
+- Compiler/project/LSP/UI facts that preserve written unit spelling through CST spans rather than Rust vocabulary.
+- Removal or privatization of public Rust `WrittenQuantity`/`Unit` constructors and prompt 93's eager-float ledger row.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
-cargo clippy --all-targets -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
-cargo fmt --check
+cargo nextest run -p musa-calculus -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
+cargo clippy --all-targets -p musa-calculus -p musa-syntax -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp -- -D warnings
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
-rg -n "WrittenQuantity|exact decimal|DSP boundary" docs/rules/language crates/musa-compiler crates/musa-dsp
+rg -n "exact decimal|DSP boundary|quantity" stdlib/src/sound docs/rules/language crates/musa-dsp
 ```
 
-Commit as `Keep written studio values exact`.
+Commit as `Keep source sound quantities exact`.
 
 ## Stop
 
 - No arbitrary dimensional-analysis algebra or new public units crate.
-- No float musical beat positions and no claim that transcendental DSP conversion is rational.
+- No float musical beat positions or claim that transcendental DSP conversion is rational.
 - No processor, routing, instrument, sample, or control feature.
+- No public Rust quantity constructor that can create semantic intent without checked source.

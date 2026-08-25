@@ -26,13 +26,16 @@ choice on the audio thread.
   prompt 182 asset store; current voice allocator, oscillator instrument, render plan, and engine retirement path.
 - Existing allowed dependency lists and decoder/resampler implementations. Measure before adding a large dependency;
   keep its types private if one is justified.
+- Note 79 and the repaired instrument prompts: sample maps and instrument declarations are source values; normalized
+  region tables, decoder state, voices, and resamplers are private runtime projections.
 
 ## Design
 
-Define a private normalized sample-map representation with regions selected by bounded predicates: key/range, velocity
-or normalized expression range, standard/custom technique, trigger/release condition, pedal state, sequence position,
-and deterministic weighted/random selector. A region declares sample asset, root pitch, tuning, gain/pan, playback and
-loop bounds/mode, envelope, exclusive group, and optional release sample.
+Define the author-facing sample-map/region vocabulary as ordinary source data, then derive a private normalized runtime
+projection with regions selected by bounded predicates: key/range, velocity or normalized expression range,
+standard/custom technique, trigger/release condition, pedal state, sequence position, and deterministic weighted/random
+selector. A region declares sample asset, root pitch, tuning, gain/pan, playback and loop bounds/mode, envelope,
+exclusive group, and optional release sample.
 
 Selection is prepared or computed from compact immutable tables. Round-robin is a per-instance deterministic sequence;
 randomized selection is a stateless stable function of realization seed, instrument instance, semantic event identity,
@@ -43,9 +46,13 @@ streaming until measured assets require it. Pitch ratio derives from sounding fr
 Specify interpolation quality, loop boundary behavior, stereo/mono handling, note-off/release, pedal, voice stealing,
 and denormal/NaN safety. Asset failure prevents plan installation rather than failing inside render.
 
+The source map and private normalized table have complete differential laws. Rust callers cannot construct an
+authoritative sample instrument without a checked source map; foreign adapters in 185–186 produce the same declared
+contract before private normalization.
+
 ## Target
 
-- Concrete sample implementation variant and private region/voice runtime in `musa-dsp`.
+- Source-declared sample map/instrument implementation plus private normalized region/voice runtime in `musa-dsp`.
 - Project/audio asset preparation and bounded-memory reporting; no decoder state in compiler facts.
 - Tiny native sample-map fixture exercising pitch regions, velocity layers, round-robin, loop, release, pedal, and
   instrument swapping.
@@ -57,7 +64,7 @@ and denormal/NaN safety. Asset failure prevents plan installation rather than fa
 ```sh
 cargo nextest run -p musa-dsp -p musa-playback -p musa-project -p musa
 cargo clippy --all-targets -p musa-dsp -p musa-playback -p musa-project -p musa -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cargo bench -p musa-dsp
 ```

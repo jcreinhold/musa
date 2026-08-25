@@ -45,6 +45,10 @@ warnings. Never silently approximate a claimed supported opcode.
 The surface selects an SFZ asset through prompt 92's settled instrument syntax and may override only controls the
 imported signature exposes. Generate a readable imported signature/technique/support summary for hover and UI.
 
+The adapter may parse in Rust because it validates foreign bytes under private resource bounds, but its semantic result
+is exactly the same source-declared sample-map/instrument value a Musa package can write. A private normalized
+projection follows only after that equality point; there is no SFZ-only Rust instrument ontology.
+
 ## Target
 
 - Bounded SFZ parser/adapter and support matrix with spec-version labels per opcode.

@@ -6,99 +6,80 @@ depends_on: [174, 175, 176, 177]
 phase: 3
 ---
 
-# Instruments Expose Contracts and Hide Implementations
-
-> **Governed by the event-track and machine core installed by prompts 127a–127e and 171–174.** An instrument is a typed
-> machine contract over private registered primitives, not a separate graph semantics.
+# Source Instruments Expose Contracts and Hide Implementations
 
 ## Task
 
-Make `instrument` the deep gesture-to-audio abstraction. An instrument exposes a typed gesture/control signature and
-hides whether it is implemented by oscillators, samples, or later adapters. Its implementation constructs a
-`Machine<AudioFrameStep,EventBatch<Gesture>,AudioFrame>` from registered primitives and fixed wiring.
+Make `instrument` the deep gesture-to-audio abstraction as an ordinary Musa declaration. Its source-defined signature
+states gestures, indexed controls, techniques, defaults, and output shape; its private source implementation constructs
+a `Machine<AudioFrameStep, EventBatch<Gesture>, AudioFrame>` from registered primitives and fixed wiring. Rust owns
+primitive contracts and preparation, not an `InstrumentSpec` language beside source.
 
 ## Read
 
-- The revised machine, scheduling, and audio rules; `R1` in the revised backend contract.
-- Prompts 171–173 and `docs/plan/code-map/process-runtime.md`; these fix private runtime state, exact preparation,
-  one-frame semantics, and batching premises.
-- `docs/rules/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
-- Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
-- Module-design audit of `musa-compiler`, `musa-dsp`, and `musa-playback`; compare recent history for their facades.
+- `docs/rules/language/08-performance-and-sound.md` §§0, 3–5; repaired 175–177 and note 79.
+- Prompts 171–174 and `docs/plan/code-map/process-runtime.md`: private state, exact preparation, one-frame semantics,
+  batching, and the build-local primitive registry.
+- Source modules/privacy, parameterized records, indexed families, pattern unification, `Storable`, and machine
+  builtins.
+- Current studio/render/project callers and a module-design audit of `musa-compiler`, `musa-dsp`, and `musa-playback`.
+- Peyton Jones chapters 3–6 and Ousterhout chapters 4, 7–8 for source translation and the deep preparation boundary.
 
 ## Design
 
-Implement a source/compiler `InstrumentSpec` with stable identity, `ControlSignature`, defaults, documented technique
-support/fallbacks, output channel shape, and a private implementation body. Native machine bodies may name and modulate
-their own primitives. Outside the body, only exposed controls are addressable. An exposed control has stable key,
-type/unit, default/range, documentation, and an explicit mapping to one or more private parameters.
+Declare `InstrumentSignature`, technique support/fallbacks, channel shape, mappings, and `Instrument` in `std::sound`. A
+signature is storable source data. A private implementation may contain functions while finite source evaluation
+constructs the rechecked storable machine; no function crosses into the running machine.
 
-Delete the old `patch` declaration. Its former spelling is a hard error with a source fix to the new instrument form,
-not an accepted desugaring. A library may export an instrument and its signature but not its private primitives or
-state.
+An exposed control is indexed by the same `ControlKind` used by prompt 177. Its key, accepted value type/unit,
+default/range, rate, docs, and mapping agree by ordinary dependent typing. Omitted kind arguments use the one
+Miller-pattern unifier, including postponement; no instrument-specific compatibility table substitutes for conversion.
+Custom controls are ordinary namespaced declarations.
 
-Compare two real module boundaries in completion notes:
+Native implementation bodies name source wrappers over registered primitives and may address their own private graph
+paths. Outside the body only signature keys are addressable. Finite checking rejects duplicate/missing controls,
+incompatible mappings, private-node access, unsupported techniques, and channel mismatch before preparation.
 
-1. project/compiler pass separate gesture, machine, and routing internals through every caller; or
-2. `musa-dsp` exposes one preparation operation over caller-oriented event tracks, machine values, bindings, and options
-   and returns an opaque prepared machine consumed by offline rendering and the engine.
+Delete the old `patch` declaration with a hard source fix. A library exports its instrument/signature and may keep its
+implementation declarations private through ordinary module privacy. Standard instruments and presets remain readable
+source.
 
-Choose the second unless caller inspection proves otherwise. Primitive state, resolved parameter indices, buffers,
-sample voices, and DSP instances remain private to `musa-dsp`. The engine receives only a prepared, RT-safe machine and
-transport commands.
+`musa-dsp` exposes one deep preparation operation over exact checked projections of gestures, machine values, bindings,
+seed, and complete options, returning opaque `PreparedMachine`/`PreparedAudio`. The conceptual signature is
+`prepare_execution(Gestures, Bindings, Seed, Options) -> Result<PreparedMachine, PrepareError>`, but the Rust facade may
+use opaque exact artifacts rather than mirror the source schema. Primitive state, resolved indices, buffers, voices, and
+DSP instances remain private.
 
-**The prepared machine is the runnable result.** An audio history is not a finite source value, but the finite machine
-that produces it is part of the core language. Preparation is one operation rather than several:
-
-- Implement the conceptual signature
-  `prepare_execution(Gestures, Bindings, Seed, Options) -> Result<PreparedMachine, PrepareError>`. `Options` includes
-  sample rate, channel contract, batching policy, render bounds, and every deterministic quality/acceptance choice. No
-  option remains ambient. This is **the one place a rational becomes a float**; nothing upstream holds sample frames and
-  nothing downstream holds a written-time coordinate.
-- `Gestures` is the exact event-track projection, not a full presentation and not merely a finite digest.
-  Presentation-only origin fields feed a separate `prepare_lineage(GesturePresentation, PreparedMachine)` operation and
-  cannot modify the execution result.
-- The successful result owns the machine built by `schedule`, instrument implementations, routing, and effects. Feedback
-  comes only from the initialized core constructor. One sample frame is the semantic step, independent of caller render
-  partition.
-- **R1** is equality of the complete preparation `Result` under equal complete arguments. Frame equality is conditional
-  on equal allocation/initial state, external inputs, and conforming deterministic processors. Do not strengthen R1 to
-  lineage equality or unconditional cross-device bit equality.
-- A later cache uses a digest only to find candidates and confirms the exact complete versioned argument bytes. A key of
-  `semantic_hash(M) ⊕ bindings ⊕ seed` is incomplete because it omits options and trusts finite hashes.
+R1 is equality of the complete preparation result under equal complete arguments. Presentation lineage is attached by a
+separate non-executing operation. Candidate cache hashes are followed by exact complete argument comparison.
 
 ## Target
 
-- Instrument/signature declarations in language/compiler and hard-error migration fixes for removed patches.
-- Native machine implementation hidden behind `musa-dsp` preparation; curated facade and documented invariants.
-- Instrument-body checking against the machine constructors and registered primitive catalogue from prompts 171–128.
-- Static checking for duplicate/missing controls, incompatible mappings, private-node access, technique support, and
-  channel shape.
-- Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
-  changing their schedule.
-- One preparation operation pure in all complete arguments, plus separate presentation lineage. Test equal semantic
-  event tracks with unequal presentation-only data, every execution-affecting option independently, the whole-machine
-  ordering counterexample, `feedback` cycles, and caller-block partitions.
-- Module-design audit and caller comparison; delete pass-through surface made obsolete by the deep boundary.
+- Source instrument/signature/control-mapping declarations and standard-library examples; no public Rust
+  `InstrumentSpec` mirror.
+- Private source machine bodies over registered primitive wrappers, with complete static conformance diagnostics.
+- Hard-error `patch` migration fix and deletion of the prompt-177 physical-attack compatibility projection.
+- One opaque preparation facade and separate lineage attachment, with replacement, privacy, R1, feedback, option, and
+  block-partition laws.
+- Module-design audit and removal of pass-through surfaces.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-syntax -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
+cargo nextest run -p musa-calculus -p musa-syntax -p musa-compiler -p musa-dsp -p musa-playback -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
 bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
+rg -n "record Instrument|record InstrumentSignature" stdlib/src/sound
 ```
 
-Commit as `Give instruments typed sound contracts`.
+Commit as `Give source instruments typed sound contracts`.
 
 ## Stop
 
-- No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with a
-  native machine as the current case and add sample bodies at prompt 184.
-- No part routing yet, no sample decoding, and no GUI node canvas.
-- No score, context, measure, or notation type crosses into `musa-dsp`.
-- No signal or audio history as a finite source value, and no written-time coordinate past scheduling. The separate
-  lineage query cannot mutate execution.
+- No dynamic native plug-in registry, arbitrary callback closure, part routing, sample decoding, or GUI node canvas.
+- No score/notation type in `musa-dsp`, source evaluator in runtime, or source closure in a machine value.
+- No signal/audio history as finite source data and no written-time coordinate past scheduling.
+- No Rust schema independently constructible as an instrument declaration.

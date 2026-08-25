@@ -25,7 +25,7 @@ must work on half-typed text. The public seams are deliberately narrow:
 | `musa-score` | musical values, snapshots, provenance, diagnostics, analysis | no parsing or pass machinery exists here |
 | `musa-compiler` | imports/names, host registrations, lowering, quotation/adapters, realization | pass types, resolution tables, calculus internals |
 | `musa-notation` | notation plan and exports | planning internals |
-| `musa-dsp` | editable studio vocabulary, graph validation, machine/scheduling target, offline rendering | primitive state, buffers, schedules |
+| `musa-dsp` | primitive contracts, checked source-value projection, graph validation, machine/scheduling target, offline rendering | primitive state, buffers, schedules |
 | `musa-playback` | device negotiation, transport, callback | CPAL and callback internals |
 | `musa-project` | documents, revisions, commands, derived-result coordination | compiler internals |
 
@@ -115,6 +115,11 @@ primitive state, or a private finite representation/work budget. Add the domain'
 **Standard-library operation.** Prefer ordinary Musa in `stdlib/src/`, with its public documentation and module entry.
 The registry survey in note 61 is the precedent: if public data, recursion, privacy, and finite folds can express it, it
 does not belong in Rust.
+
+**Sound declaration.** Gesture/control data, profiles, exact quantities, instrument signatures and mappings, studio
+descriptions, sample maps, instruments, and presets follow the same rule and live in source. A DSP-side value may be an
+opaque checked projection for preparation, but it is not independently constructible vocabulary. The primitive registry
+owns only identity, private state, port/state formats, work/memory bounds, and the deterministic step.
 
 **Diagnostic.** Add a broken fixture and snapshot the complete rendered report. A diagnostic raised in an imported
 adapter becomes a structured `Cause` with that document's spans, not concatenated prose.

@@ -23,6 +23,29 @@ that the ratio varies. OMT `084-drumbeats.md` records both performed and sampled
 realizations, not a deterministic property of pitch content. These are the reasons profiles and instruments interpret
 score facts rather than changing their meaning.
 
+## 0. Source declarations and host boundaries
+
+The sound language is ordinary Musa source. `Gesture`, control kinds and keys, performance profiles, exact quantities
+and units, instrument signatures and mappings, studio descriptions, sample maps, standard instruments, and presets are
+declared in the bundled standard library or another imported Musa package. A construct does not become a Rust builtin
+because it is familiar, editable, discoverable, or performance-sensitive.
+
+The host boundary follows `00-semantics.md`'s ownership test. Rust may preserve provenance while constructing an opaque
+event track, validate and instantiate a registered primitive's private state and resource contract, resolve verified
+asset bytes, schedule exact events into frames, convert exact quantities at the DSP edge, and hold compact prepared
+indices and real-time state. Those are different abstractions from the source declarations.
+
+A caller-oriented Rust value is permitted only as a projection of one checked source value. It is not a public
+construction API or an independent semantic schema: every field has a source derivation, its version follows the source
+declaration, and differential laws compare its complete exact encoding with the checked value. LSP, documentation, and
+structured-editor vocabulary come from declarations and source indexes. They consult the primitive registry only for a
+primitive's genuinely private contract.
+
+Dependent relationships are expressed by ordinary source indices. A control key and its value share a value-kind index;
+omitted indices are solved by the one Miller-pattern unifier of `02-core-calculus.md` §2.1. Sound elaboration has no
+special inference table, default, coercion, or host-side fallback. The ownership repair and migration are recorded in
+[`../../notes/research/language-design-closure/79-source-owns-the-sound-language.md`](../../notes/research/language-design-closure/79-source-owns-the-sound-language.md).
+
 ## 1. Factorization
 
 For every part `l`, preparation follows exactly:
@@ -50,11 +73,11 @@ description; the audio history is what stepping one produces, and is never a val
 instrument, and mix declarations remain independently editable source. One deep `prepare_audio` operation validates and
 binds them into an immutable plan; neither ordinary callers nor the real-time callback assemble these stages piecemeal.
 
-The present independent `PerformancePlan`/`StudioSpec` handoff has the right ownership but an insufficient contract: it
-turns profiles into a few floats before knowing the instrument, discards part identity at graph input, declares but
-ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as if it were musical control. Prompts 127–178
-replace those debts. A rejected combined score-audio object would make notation edits mutate DSP state and would destroy
-independent export, caching, and UI projections.
+The present independent `PerformancePlan`/Rust `StudioSpec` handoff is a pre-cutover compatibility path with the wrong
+semantic owner and an insufficient contract: it turns profiles into a few floats before knowing the instrument, discards
+part identity at graph input, declares but ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as
+if it were musical control. Prompts 127–178 replace those debts. A rejected combined score-audio object would make
+notation edits mutate DSP state and would destroy independent export, caching, and UI projections.
 
 ## 2. Performance gestures
 
@@ -65,24 +88,30 @@ signature `S`, written `EventTrack[PerformedTime, Gesture] ⊨ S`. Its payload v
 NoteGesture {
     instance: GestureId,
     written_pitch: WrittenPitch,
-    support: exact notated interval,
     controls: finite ControlKey ↦ exact value,
     techniques: finite typed requests,
     origin: Origin
 }
-ControlCurve { key: ControlKey, points: list (Beat × exact value), shape: Progress }
+ControlCurve { key: ControlKey, values: Progress indexed by normalized local time }
 PhraseGroup { members: nonempty list GestureId, connection: detached | ordinary | legato }
-ReleaseGesture { instance: GestureId, at: Beat }
+ReleaseGesture { instance: GestureId }
 ```
 
-The witness is specification notation for a track plus a checked conformance judgment `G ⊨ S`; it is not a second type
-index. The core carries exactly one type index, the coordinate (`../events/02-static-semantics.md` K2), so conformance
-is a pass result rather than a dependent type in the source calculus or a public Rust generic over user declarations.
+These are source-declared data in `std::performance`, not Rust enums. The witness is specification notation for a track
+plus a checked conformance judgment `G ⊨ S`; it is not a second type index. The core carries exactly one type index, the
+coordinate (`../events/02-static-semantics.md` K2), so conformance is a pass result rather than a dependent type in the
+source calculus or a public Rust generic over user declarations.
 
-The exact support is still notated time; profiles may produce a distinct exact release beat and connection intent. A
-note's sounding tail remains an instrument behavior and may extend after release. Continuous curves use the event
-track's exact piecewise-linear `Progress`; discontinuities are ordered point changes. Exponential frequency/gain laws
-belong to an instrument's physical mapping, not to normalized gesture arithmetic.
+The occurrence span carries performed onset and extent; a release is a point occurrence. No payload stores an absolute
+position in written, performed, physical, or frame coordinates. A separate immutable lineage projection maps `GestureId`
+to the source `EventId` and written span for notation/MIDI/provenance consumers; it is not a temporal container, part of
+gesture canonical equality, or an input to scheduling. A note's sounding tail remains instrument behavior and may extend
+after release.
+
+Continuous curves store exact piecewise-linear `Progress` over normalized local occurrence time. The containing
+occurrence span supplies `[s,e]`; moving or stretching it leaves identical payload bytes, as payload-admission law L24
+requires. Discontinuities are source-stably ordered point occurrences. Exponential frequency/gain laws belong to an
+instrument's physical mapping, not to normalized gesture arithmetic.
 
 A profile is a named interpretation `R(P,S,−)`. It reads symbolic dynamics, hairpins, accents, staccato, tenuto, fermata
 policy, grace policy, slurs, phrase marks, and groove and emits only controls/gestures admitted by `S`. A hairpin may
@@ -97,9 +126,9 @@ its written shape is `p : [0,1] → [0,1]`, then for `s ≤ b ≤ e`:
 expression(b) = d₀ + (d₁-d₀) · p((b-s)/(e-s)).
 ```
 
-The constructor requires `s<e`, `p(0)=0`, and `p(1)=1`; hence the endpoints are exactly `d₀,d₁`. Breakpoints are the
-union of the hairpin's exact shape points and explicit control changes, sorted by beat with source-stable same-beat
-ordering. Instrument mapping occurs later and cannot change this gesture-level curve.
+The constructor requires `s<e`, `p(0)=0`, and `p(1)=1`; hence the endpoints are exactly `d₀,d₁`. The payload encodes
+each breakpoint at normalized local coordinate `(b-s)/(e-s)`; explicit point changes are separate point occurrences with
+source-stable same-beat ordering. Instrument mapping occurs later and cannot change this gesture-level curve.
 
 Groove maps exact written beat to exact performed beat before tempo. Tempo then maps performed beat to physical time.
 Thus swing survives a tempo change, and tempo never stretches the written event track.
@@ -136,10 +165,11 @@ Libraries may add typed namespaced keys, for example `bow.pressure : normalized`
 `prepared_piano.mallet_position : cm in [0 cm,12 cm]`. Namespacing prevents accidental agreement between unrelated
 controls. A physical custom control reduces swappability by design and must match name, unit, domain, and rate.
 
-`ControlKey` is a semantic key comprising namespace, name, value type, and update rate. During preparation it resolves
-privately to one or more render-plan parameter indices or sample-engine operations. Those indices are not stable, are
-not serializable source addresses, and never enter a profile, gesture, diagnostic identity, or public instrument
-signature.
+`ControlKey<K>` is an indexed source record comprising namespace, name, value kind `K`, and update rate; its paired
+`ControlValue<K>` is fixed by the same index. Standard keys are ordinary values exported by `std::performance`, not
+constructors of a closed host enum. During preparation a key resolves privately to one or more render-plan parameter
+indices or sample-engine operations. Those indices are not stable, are not serializable source addresses, and never
+enter a profile, gesture, diagnostic identity, or public instrument signature.
 
 ## 4. Private implementations and full expressivity
 
@@ -162,16 +192,18 @@ instrument glass conforms note_instrument {
 }
 ```
 
-`oscillator`, `envelope`, `lowpass`, `resonance`, ports, and units are closed built-in vocabulary documented by hover
-and the handbook; they do not arrive from an implicit import. Advanced graph paths are legal only inside the private
-implementation. The `map` clauses prove conformance by implementing semantic controls. A profile can name `brightness`;
-it cannot name `voice.lowpass.cutoff`. Replacing the graph with a sample map preserves the signature while changing
-every private address.
+`oscillator`, `envelope`, `lowpass`, `resonance`, ports, and units are ordinary declarations in the edition-pinned
+`std::sound` import, documented from that source. Their implementation wrappers may name registered primitives whose
+identity, state, port formats, and resource contracts remain private to the host registry. Advanced graph paths are
+legal only inside the private implementation. The `map` clauses prove conformance by implementing semantic controls. A
+profile can name `brightness`; it cannot name `voice.lowpass.cutoff`. Replacing the graph with a sample map preserves
+the signature while changing every private address.
 
 The graph language retains typed audio/control/gate/note ports, explicit delay for cycles, precompiled topology, and
-bounded processors. New built-ins require a musician/audio-engineer definition, units/ranges/defaults, RT-safe
-implementation, partition-law tests, hover text, and a prompt-scoped justification. This is how full instrument design
-remains available without making electrical-engineering vocabulary the entry surface.
+bounded processors. A new registered primitive requires a musician/audio-engineer definition, units/ranges/defaults, an
+RT-safe implementation, partition-law tests, and a prompt-scoped justification; its source wrapper and hover text are
+ordinary library declarations. This is how full instrument design remains available without making
+electrical-engineering vocabulary the entry surface.
 
 ## 5. Identity, selection, and swapping
 
@@ -206,9 +238,9 @@ part violin {
 `PartId` to instrument `i`, and route that part output to `master`. The expert surface spells those as `profile`,
 `assign`, and `route`, and can add sends. A part may instead carry defaults, but after resolution there is exactly one
 selected instrument and profile. The formatter and hover explain `sound`, `assign`, `send`, `room`, `bus`, `route`, and
-every built-in processor. A `room` is a named shared ambience path. A `bus` is the advanced general form: a named
-summing path with an effect chain. `send part -> room at level` copies a part's output to it; `route x -> master`
-selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
+every edition-pinned standard-library processor wrapper. A `room` is a named shared ambience path. A `bus` is the
+advanced general form: a named summing path with an effect chain. `send part -> room at level` copies a part's output to
+it; `route x -> master` selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
 
 `studio { ... }` is a source grouping retained for compatibility and readability. Elaboration separates its assignments,
 instrument implementation declarations, and mix declarations before preparation; it is not a combined score/audio value
@@ -265,8 +297,8 @@ rational trapezoidal integral. Unsupported shapes are rejected rather than sampl
 4. converts those values to the implementation's `f32`/`f64` representation;
 5. allocates voices, state, queues, schedules, and buffers on the control thread.
 
-No eager `f64` is stored in editable `StudioSpec` intent. Diagnostics show the written exact value and, when relevant,
-the prepared approximation.
+No eager `f64` is stored in a checked source studio value or its exact projection. Diagnostics show the written exact
+value and, when relevant, the prepared approximation.
 
 ## 8. Machine and mix laws
 

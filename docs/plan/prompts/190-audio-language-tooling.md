@@ -24,6 +24,8 @@ support, and extension boundaries from generated facts and tested examples.
   prompts 177–189 completion/repair notes.
 - OMT chapters cited by prompt 92/182; SFZ sources cited by prompt 185; SoundFont 2.04 source cited by prompt 186.
 - Current LSP, VS Code, Zed, desktop virtual documents, keyword docs, generated stdlib docs, and handbook checker.
+- Note 79 and repaired 175: declarable vocabulary comes from source declarations/indexes; host registries contribute
+  only registered primitive and foreign-format support facts.
 
 ## Design
 
@@ -37,15 +39,16 @@ Hover/signature/completion/definition/references cover:
 - SFZ/SoundFont support summaries and named unsupported opcodes/generators;
 - musical clips versus fixed-media cues and their tempo/transform behavior.
 
-Generate these from compiler/project catalogues and format support matrices. Syntax answers on invalid source remain in
-`musa-syntax`; semantic answers may use last-valid artifacts with explicit staleness. No editor parses SFZ/SoundFont,
-resolves packages, or interprets control curves independently.
+Generate these from standard-library/imported declaration indexes, compiler/project facts, primitive support facts, and
+format support matrices, each labelled by owner. Syntax answers on invalid source remain in `musa-syntax`; semantic
+answers may use last-valid artifacts with explicit staleness. No editor parses SFZ/SoundFont, resolves packages,
+interprets control curves independently, or reads a handwritten Rust surface catalogue.
 
 Extend the handbook's musician path with choosing/swapping sounds, expression/articulation, rooms/sends, sample banks,
 field recordings, and online libraries. Extend the implementor path with the exact semantic equations and laws, deep
-module boundary, machine preparation lifecycle, RT rules, assets/lockfile, support matrices, and how to add one built-in
-processor or import adapter without widening public internals. Every fenced Musa example compiles; every source/citation
-and generated table is checked.
+module boundary, machine preparation lifecycle, RT rules, assets/lockfile, support matrices, and how to add one source
+primitive wrapper plus registered primitive or one import adapter without widening public internals. Every fenced Musa
+example compiles; every source/citation and generated table is checked.
 
 ## Target
 

@@ -106,6 +106,22 @@ representation: written pitch / MIDI number, notated duration / performed durati
 synthesizer instance, dynamic marking / decibels, articulation / gate multiplier, motif definition / its expansions,
 score ordering / DSP ordering, project source / widget state, audio graph / visual layout.
 
+### Source declarations versus host boundaries
+
+Apply `docs/rules/language/00-semantics.md`'s ownership test before assigning a sound or musical noun to a Rust crate.
+Data families, records, total functions, policies, standard controls, profiles, instrument signatures/mappings, studio
+descriptions, sample maps, instruments, and presets that can be expressed through public values and operations belong in
+ordinary `.musa` source, normally `stdlib/`. Registered primitive state and resource contracts, provenance-preserving
+track construction, verified asset bytes, scheduling, DSP conversion, compact prepared indices, and real-time state
+remain host-owned.
+
+A Rust representation of a source declaration is a caller/runtime projection, never a second authoritative language: it
+is not independently constructible, every field derives from one checked source value, and exact differential laws hold
+the projection to that value. Tooling derives source vocabulary from declarations and source indexes, not a handwritten
+Rust catalogue. Dependent relationships use ordinary source indices and the existing Miller-pattern unifier; no
+domain-specific inference table, default, coercion, or host-side guess is permitted. Note 79 records the repair that
+made this convention explicit.
+
 ### Tests
 
 - `insta` snapshots for CST shapes, diagnostics, formatting, and MEI/LilyPond/MusicXML output (roadmap §17.1).
@@ -409,14 +425,14 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 172 | track-scheduling | 3 | Connect exact event tracks to frame machines with checked decisions |
 | 173 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
 | 174 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
-| 153a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
-| 153b | studio-spec-ownership | 3 | The studio spec moves to musa-dsp; the audio crate stops depending on the compiler |
-| 153c | dependency-law | 3 | The crate layering written down once and enforced by a manifest check |
-| 175 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
-| 176 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 174a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
+| 174b | studio-spec-ownership | 3 | Checked `std::sound` values replace the authoritative Rust `StudioSpec` path |
+| 174c | dependency-law | 3 | Crate layering enforced separately from source-language ownership |
+| 175 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
+| 176 | exact-studio-values | 3 | Exact source quantities through the one audio-preparation conversion |
 | 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
-| 177 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
-| 178 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
+| 177 | performance-gestures | 3 | Source-declared gestures, indexed controls, profiles, and the provenance bridge |
+| 178 | instrument-contracts | 3 | Source instrument signatures/mappings over private registered primitives |
 | 179 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
 | 180 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
 | 181 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
@@ -729,12 +745,15 @@ never by unification, with torsors, group actions, and laws checked by enumerati
 makes knowable. 164–170 survive with their tasks intact and their targets enlarged: the builtin collapse now has the
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
-**175–181 build musical sound on that core.** 175 makes the primitive vocabulary discoverable from one catalogue; 176
-keeps written quantities exact; and 176a's payload rule is revised for the new storable-data boundary. 177 defines
-instrument-independent gestures as `EventTrack<PerformedTime,Gesture>`. 178 makes an instrument a typed machine contract
-over private primitives. 179 preserves part identity through prepared routing, and 180 maps musical controls to private
-parameters only during preparation. 181 gives the surface one clear sound/profile choice while keeping expert machine
-and mix declarations available. Removed patch syntax is a hard error with a certain fix, not a compatibility path.
+**174b–181 build musical sound on that core without a second Rust language.** Repaired 174b cuts the legacy public
+`StudioSpec` path over to checked `std::sound` values, and 174c keeps Cargo roles distinct from source ownership. 175
+makes the source-declared primitive wrappers discoverable and joins them to private host registrations; 176 keeps source
+quantities exact through the one DSP conversion. 176a's payload rule guards the second payload. 177 declares gestures,
+indexed controls, and profiles in `std::performance` and gives opaque track/provenance work to the host. 178 declares
+instrument signatures and mappings in source over private primitives. 179 preserves part identity through prepared
+routing, and 180 evaluates source control mappings before resolving private parameters. 181 gives the surface one clear
+sound/profile choice while keeping expert source machine and mix declarations available. Removed patch syntax is a hard
+error with a certain fix, not a compatibility path. Note 79 records why the completed Rust-vocabulary work was reopened.
 
 **182–188 add external sound without making builds or time implicit.** 182 defines verified content-addressed assets
 before a decoder exists. 183 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from

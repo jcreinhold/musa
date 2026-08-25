@@ -1068,7 +1068,7 @@ recorded duration remains seconds and is never manufactured into a written-time 
 | standalone events | closed term parsing | `≡events` |
 | quote with antiquotation | typed substitution then closure | `≡events` after instantiation |
 | swappable instruments/profiles | signature checking and profile realization | equal gesture type; sound equality not promised |
-| expression hairpin | profile-generated `ControlKey::expression` curve | exact gesture equality |
+| expression hairpin | profile-generated `std::performance::expression` curve | exact gesture equality |
 | shared room | explicit mix-graph sends | frame equality modulo documented deterministic summation order |
 | sampled instrument | sample-map implementation of signature | behavioral conformance, not waveform equality |
 | beat-fitted loop | tempo-scheduled clip gesture | scheduled-lane equality |
