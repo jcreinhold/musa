@@ -1,7 +1,7 @@
 ---
 id: 169
 slug: core-conformance
-status: pending
+status: done
 depends_on: [168]
 phase: 3
 ---
@@ -89,6 +89,10 @@ audio, and the removal of surviving old semantic paths on the sound side. The tw
 not overlap; state which rows belong to which, so that 174 does not redo this prompt and a row does not end up unproved
 because each prompt assumed the other had it.
 
+Concretely, this prompt's matrix ends after a checked track expression has become a valid event term. Prompt 174 imports
+that matrix and begins with event-track runtime algebra, then owns machine steps, scheduling, audio, cross-stage traces,
+and legacy-runtime deletion.
+
 **A failing row is the output.** If an obligation cannot be discharged, this prompt records the smallest program that
 exhibits the failure and stops. A matrix with an honest gap is worth more than a matrix with a row marked green on the
 strength of a related test.
@@ -114,6 +118,7 @@ cargo nextest run --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
+./scripts/check-core-language-conformance.sh
 ./scripts/check-syntax-adapter-conformance.sh
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check

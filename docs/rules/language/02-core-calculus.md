@@ -823,34 +823,40 @@ which close it.
 
 ## 5. Metatheoretic obligations
 
-**This section states obligations; it discharges none of them.** The list grew when the calculus became one theory, and
-it grew in the places the theory actually reaches: unification has to be sound, coverage has to be complete under a
-dependent motive, and the hierarchy has to be consistent. Two obligations the previous list carried are gone, because
-the mechanisms are: there is no measure to be well founded and no index solver to be deterministic.
-`../across-stages/05-metatheory.md` §1a says plainly which of these musa **argues** and which it **tests**, and the
-answer is that none of them is mechanized. **The §5.7–§5.10 numbering is preserved** so that references from
-`../across-stages/` and the prompt stack still land on the obligations they were pointing at.
+The discharge is recorded in
+[`72-core-obligation-matrix.md`](../../notes/research/language-design-closure/72-core-obligation-matrix.md). It gives
+each obligation an implementation owner, executable evidence, and the precise failure that evidence catches; its
+companion
+[privacy and second-path audit](../../notes/research/language-design-closure/73-core-privacy-and-second-path-audit.md)
+checks that no hidden representation or duplicate semantics escaped during the implementation. The executable map is
+`scripts/check-core-language-conformance.sh`.
 
-| Obligation | What discharges it | Owed by |
-| --- | --- | --- |
-| **NbE soundness** — if `quote(eval(t)) = n` then `t ≡ n` | logical-relations argument over the value domain; differential test against a reference reducer | the correction's final phases |
-| **NbE completeness** — convertible terms quote to α-equal normal forms | the same relation, at the identity substitution | the correction's final phases |
-| **Decidability of conversion** — `Γ ⊢ A ≡ B` terminates and is an equivalence | normalization plus α-comparison; equivalence tested as a law | the correction's final phases |
-| **Type preservation** — an elaborated term has the type its judgment gave it | induction over the elaboration rules | the correction's final phases |
-| **Canonicity for closed storable types** — a closed term of a storable type evaluates to a constructor form | canonicity argument over the family declarations | the correction's final phases |
-| **Strong normalization** — every accepted term normalizes | reducibility over the calculus, given §2.4 and §1.1's positivity | the correction's final phases |
-| **Strict positivity ⟹ consistency** — the empty type has no closed inhabitant | positivity plus the predicative, non-cumulative hierarchy (§1) | the correction's final phases |
-| **Coverage completeness** — an accepted `match` covers every constructor, and an unreachable arm is rejected | case-tree compilation (§6.2) | the correction's final phases |
-| **Termination soundness** — an accepted recursive definition denotes a total function | the structural check of §2.4 | the correction's final phases |
-| **Unification soundness** — a solution the unifier commits to makes the two sides convertible | induction over the unification rules, with the pattern-fragment restriction (§2.1) as the premise | prompt 158's re-checker, which re-checks every solved term |
-| **Unification determinacy** — inside the pattern fragment a solution is unique, and outside it nothing is committed | Miller's property for the fragment; a postponement discipline that never defaults | prompt 153 |
-| **Coverage under a dependent motive** — an accepted `match` covers every reachable constructor, and an impossible branch is one unification refutes | case-tree compilation (§6.2) with the index unification of §1.1 | prompts 155 and 156 |
-| **Storability faithfulness** — the structural check accepts exactly the types with no function at any depth | induction over the type's structure; a compile-fail suite for functions in stored positions | the correction's final phases |
-| **Track-construction safety** (§5.7) | re-derived against the surviving calculus | the correction's final phases |
-| **Musical domains are a conservative extension** (§5.8) | re-derived against the surviving calculus | the correction's final phases |
-| **The expansion phase, including law 11** (§5.9) | re-derived against the surviving calculus | the correction's final phases |
-| **Numerals are a conservative extension** (§5.10) | convertibility with the tower at every count, and an elimination that agrees at each | the correction's final phases |
-| **Budget independence** (§4) | the three-outcome law, tested across budget pairs | the correction's final phases |
+That record does **not** promote the arguments to machine proofs. `../across-stages/05-metatheory.md` §1a remains the
+governing account: normalization and its consequences are argued from the implemented calculus and tested against
+falsifying controls; only finite compiler artifacts are independently rechecked. The rechecker is evidence for its own
+row and no other because it shares evaluation and quotation with the terms it audits. **The §5.7–§5.10 numbering is
+preserved** so references from `../across-stages/` and the prompt stack keep their target.
+
+| Obligation | Discharge |
+| --- | --- |
+| NbE soundness and completeness | matrix K1–K2 |
+| Decidable conversion | matrix K3 |
+| Type preservation for elaboration | matrix K4 |
+| Canonicity for closed storable types — constructor, compact numeral, or owner-admitted base literal | matrix K5 |
+| Strong normalization | matrix K6 |
+| Strict positivity ⟹ consistency | matrix K7 |
+| Coverage completeness | matrix K8 |
+| Termination soundness | matrix K9 |
+| Unification soundness and determinacy | matrix K10–K11 |
+| Coverage under a dependent motive | matrix K12 |
+| Storability faithfulness | matrix K13 |
+| Track-construction safety (§5.7) | matrix K14 and its §3 derivation |
+| Musical domains are conservative (§5.8) | matrix K15 and its §4 derivation |
+| Expansion, including law 11 (§5.9) | matrix K16 and its §5 derivation |
+| Numeral conservativity (§5.10) | matrix K17 |
+| Deterministic evaluation and elaboration | matrix K18 |
+| Budget independence and three outcomes (§4) | matrix K19 |
+| Elaboration emits only kernel-accepted programs | matrix K20 |
 
 ### 5.7 Track-construction safety
 

@@ -44,6 +44,9 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [60](60-language-decision-record.md) | How the elaboration language was decided, and then corrected |
 | [61](61-core-boundary-decision-record.md) | How the core boundary was decided |
 | [62](62-course-correction-decision-record.md) | The course correction, and where each of its sections went |
+| [67](language-design-closure/67-the-adapter-boundary-frozen.md) | The frozen adapter boundary and its executable evidence map |
+| [72](language-design-closure/72-core-obligation-matrix.md) | The dependent core's argued obligations paired with falsifying executable controls |
+| [73](language-design-closure/73-core-privacy-and-second-path-audit.md) | The dependent core's source-privacy and duplicate-semantics audit |
 
 ## The core calculus
 

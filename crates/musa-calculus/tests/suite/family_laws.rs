@@ -626,6 +626,27 @@ fn mutual_families_share_one_declaration_and_one_set_of_motives() {
     );
 }
 
+/// §5: strict positivity permits an empty family, but declaration must not
+/// invent a constructor for it. This is the executable premise-control for the
+/// consistency argument: the proof still rules out every other closed normal
+/// form, while this test catches an implementation that silently gives the
+/// empty family a canonical inhabitant.
+#[test]
+fn an_empty_family_has_no_constructor_to_name() {
+    let cx = Cx::new();
+    let group = musa_calculus::declare(&cx, &data(Vec::new(), vec![family("Empty", Vec::new())]))
+        .expect("an empty family is a strictly positive declaration");
+    let cx = cx.declaring(&group);
+    let empty =
+        musa_calculus::check(&cx, &Term::universe(WRITTEN, Sort::ZERO), &var("Empty")).expect("Empty is a type");
+    let error = musa_calculus::check(&cx, &empty, &var("Empty.Impossible"))
+        .expect_err("an empty family declares no constructor");
+    assert!(
+        matches!(refusal("Empty.Impossible", error), Refusal::NoSuchConstructor { .. }),
+        "the family must report that it has no such constructor"
+    );
+}
+
 /// A declaration elaboration must refuse, and the refusal it owes.
 ///
 /// Shared with `elaboration_laws.rs`'s coverage gate rather than kept local:

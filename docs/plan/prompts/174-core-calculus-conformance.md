@@ -20,22 +20,17 @@ This prompt adds no feature.
 - Research `06-proof-outline.md`, every audit in `docs/notes/research/core-calculus/`, and `17-final-review.md`.
 - Revised governing specifications, code map, source/compiler/events/audio facades, stdlib, examples, and book.
 - Earlier K1/K2/K3 and source-language counterexamples named by the final review.
+- Prompt 169's `72-core-obligation-matrix.md`, `73-core-privacy-and-second-path-audit.md`, and the adapter freeze in
+  note 67. They are imported evidence, not rows to restate.
 
 ## Design
 
-Build a conformance matrix from each core rule and theorem to implementation owner and executable evidence. Cover:
+Prompt 169 owns the language: the dependent calculus, bidirectional elaboration, source recursion and case trees, source
+δ registries, `Storable`, track-expression construction, and adapter expansion. Import its K1–K20 matrix and note 67
+without re-proving them. This prompt owns the cutover after that boundary: event-track runtime semantics, machine values
+and steps, scheduling, one-frame audio, complete cross-stage traces, and deletion of legacy runtime paths. Its matrix
+begins where prompt 169 K14 hands it a valid event term. Cover:
 
-- decidable principal inference, value/data-kind preservation, substitution, preservation, progress, determinism, source
-  termination, exhaustive matching, exact encodings, and deterministic resource failure;
-- surface elaborations that add no core term — expression `if`, nominal record update, and `Result`-specific `?` — each
-  shown observationally equal to the core form it elaborates to, at the same charge;
-- adapter termination, determinism, type blindness, path uniqueness, hygiene, edit locality, print round-trip where
-  claimed, and the absence of a second match evaluator;
-- the sealed-step traversal: sealed formation and association, inherited context, repeatability of a captured step,
-  local structural decrease plus the reducibility/fundamental-lemma cases for higher-order `C`/`A`, capture,
-  duplication, delayed use, and nested traversal, opacity, derivation of the bottom-up fold, budget accounting for
-  capture and repeat, and phase conservativity — note 39 §5.3's eleven laws, each with the evidence prompt 127dcfaf
-  attached to it;
 - event-track bounds, algebra, multiplicity, coordinate separation, half-open spans, normalization, and exact equality;
 - finite machine formation, registry uniqueness, one total next step, causality, initialized feedback, chain and
   side-by-side laws, explicit seeds, and structural versus behavioral equality;
@@ -43,7 +38,8 @@ Build a conformance matrix from each core rule and theorem to implementation own
   additive succession, fixed finished state, and input-before-output frame convention;
 - one-frame audio, whole-machine batching premises, callback partition equality, offline/live agreement, and RT
   instrumentation; and
-- derivation-graph coverage for adapter expansion, event reuse, combined inputs, and associative stage composition.
+- derivation-graph coverage from the already-proved adapter output through event reuse, combined inputs, and associative
+  runtime-stage composition.
 
 Run five complete programs: tonal construction with harmony and voicing distinct; flexible/unmeasured time; a phrase-led
 transcription with stated loss; an ensemble-tuning/acoustic target; and a finite live protocol whose machine may run
