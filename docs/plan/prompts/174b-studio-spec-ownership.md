@@ -29,9 +29,10 @@ projection agrees with the canonical source datum. Do not claim the legacy produ
   [`80`](../../notes/research/language-design-closure/80-bridge-before-cutover.md).
 - Prompt 167 and note 66, especially the measured source `StudioDescription`, its deliberately small vocabulary, and the
   explicitly missing bridge; `stdlib/src/{sound/graph,adapters/graph}.musa` in full.
-- `musa-calculus::Datum`, `canonical`, `Literal`, `Payload`, and `Document::{term,value}`. Read `Datum`'s deliberate
-  exclusion of records: `StudioDescription`, `Parameter`, and `PortPath` prove that a host artifact needs a broader
-  type-directed readback, but widening the δ-rule input vocabulary would change a separate contract.
+- `musa-calculus::Datum`, `canonical`, `Literal`, `Payload`, and `Document::{term,value}`; especially
+  `base_laws::what_is_not_canonical_data_reads_back_as_nothing`. Since prompt 157 a record literal is a saturated
+  one-constructor application and therefore already reads as `Datum::Case`; “no record arm” means records do not get a
+  duplicate representation.
 - The legacy `StudioSpec` production callers, only to inventory what this prompt cannot yet replace and to pin a
   differential oracle for prompt 180a.
 - Prompt 164 and note 61 for the builtin-ownership precedent.
@@ -45,12 +46,12 @@ the result of checking and normalizing a closed storable source value in its dec
 qualified root type, source package/schema version, and a complete deterministic exact datum encoding. It contains no
 closures, evaluator environment, source syntax, `Value`, pointer identity, display text, hash-only identity, or float.
 
-Reuse the calculus's existing canonical-data vocabulary where its contract applies, but do not silently widen `Datum`'s
-δ-rule firing domain to admit records. Add the smallest separate generic, type-directed artifact readback and exact
-literal-encoding hook that has this caller. It must represent record fields as well as family constructors without
-adding a sound case to `musa-calculus`, and laws must show that existing δ reduction is byte- and step-identical.
-Constructor and field names are qualified, variable children are framed, and a schema/version change changes the
-artifact identity. A digest may index an artifact but exact bytes decide equality.
+Reuse the calculus's existing canonical-data vocabulary directly: records, enums, and lists all arrive as qualified
+constructor cases, while their declaration says which fields those cases carry. Add only the smallest opaque checked
+wrapper and exact literal-encoding hook that this caller needs; do not add a record or sound case to `Datum`, and do not
+change the δ-rule firing domain. Laws must show existing canonical readback and δ reduction are byte- and
+step-identical. Constructor names and variable children are framed, and a schema/version change changes the artifact
+identity. A digest may index an artifact but exact bytes decide equality.
 
 The `StudioDescription` projection is a structural decoder over that artifact. Its fields are private, its readers are
 read-only, and there is no public field constructor, default, alias, validation table, or Rust-side inference. It

@@ -18,8 +18,8 @@ changed.
 ## Correct order
 
 1. **174b — bridge.** Generalize the calculus's existing canonical-data readback into an opaque checked artifact and
-   prove complete decoding of the small prompt-167 studio value. This is a separate type-directed artifact readback,
-   because δ-rule `Datum` deliberately excludes records and the studio value contains them. The legacy path remains an
+   prove complete decoding of the small prompt-167 studio value. Records need no parallel artifact shape: since prompt
+   157 they are saturated one-constructor applications and already read as `Datum::Case`. The legacy path remains an
    explicitly temporary oracle.
 2. **175–180 — parity.** Declare the discoverable vocabulary, exact quantities, gestures, instruments, routing, and
    control mappings in ordinary source, using the one elaborator and Miller-pattern unifier.
