@@ -49,7 +49,7 @@ import "pkg:orchestra/instruments/strings.musa";
 ```
 
 A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod` tree
-— fetched by exact pin rather than bundled. Prompt 181 adds the fetch layer and the lockfile and no second notion of
+— fetched by exact pin rather than bundled. Prompt 183 adds the fetch layer and the lockfile and no second notion of
 what a package is.
 
 `rev` is a full immutable commit object ID with explicit `sha1:` or `sha256:` algorithm. Branches, tags, version ranges,
@@ -87,7 +87,7 @@ control-side token service with a stable input ordinal. The audio callback consu
 SFZ and SoundFont are interchange adapters, not Musa ontology. SFZ's text regions and opcodes compile into the supported
 `SampleMap` subset; every unsupported opcode is diagnosed by name and policy. SoundFont's banks/presets compile through
 a separate adapter to the same internal contract. Neither format's global defaults, MIDI numbering, modulation IDs, or
-binary layout leaks into an instrument signature. Prompts 182–184 specify supported subsets, licensing metadata,
+binary layout leaks into an instrument signature. Prompts 182 and 184–186 specify supported subsets, licensing metadata,
 streaming/preload budgets, decoding, and conformance fixtures.
 
 ## 4. Three distinct recorded-media semantics
