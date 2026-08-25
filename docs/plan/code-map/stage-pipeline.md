@@ -17,15 +17,15 @@ RawProgram
 checked Term                         typed quotation stops here
     │ musa-compiler: registered realization and provenance
     ▼
-EventTrack<WrittenTime, ScoreFact>
+EventTrack(WrittenTime, ScoreFact)
     ├──────────────► musa-notation ──► MEI / LilyPond / MusicXML / MIDI
     ├──────────────► analysis plus evidence
     │ performance profile and realization
     ▼
-EventTrack<PerformedTime, Gesture>
+EventTrack(PerformedTime, Gesture)
     │ prompt 172: checked scheduling
     ▼
-Schedule<Gesture>
+Schedule(Gesture)
     │ native primitive preparation and instrument binding
     ▼
 PreparedAudio

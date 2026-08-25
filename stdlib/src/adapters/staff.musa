@@ -106,7 +106,7 @@ let level = "generative";
 // range off the node, and an adapter has no operation for reading one.
 data Refusal {
     NoRefusal,
-    Refused(node: Syntax<TokenTree>, why: Text),
+    Refused(node: Syntax(TokenTree), why: Text),
 }
 
 // The first refusal of two, in the order they were written.
@@ -124,20 +124,20 @@ fn first_refusal(found: Refusal, later: Refusal) -> Refusal {
 // that sounds meets it — and a rest is `Silent`, so it does not.
 data Sound {
     Silent,
-    Voice(spelling: Text, node: Syntax<TokenTree>),
+    Voice(spelling: Text, node: Syntax(TokenTree)),
 }
 
 // A tie waiting for what it reaches. It is threaded into every body a form
 // holds, so a tie written across a bar line is met inside the next bar.
 data Hanging {
     Closed,
-    Hangs(spelling: Text, node: Syntax<TokenTree>),
+    Hangs(spelling: Text, node: Syntax(TokenTree)),
 }
 
 // One header field, once it has been read.
 data Given {
     Absent,
-    Stated(given: Syntax<Expr>),
+    Stated(given: Syntax(Expr)),
 }
 
 // The six things a staff says about itself before any notation.
@@ -156,24 +156,24 @@ record Head {
 // a bar measures what it says, a tuplet scales what it holds, and the
 // other three take their body's own span.
 data Form {
-    Barred(beats: Syntax<Expr>, measures: Ratio),
+    Barred(beats: Syntax(Expr), measures: Ratio),
     Slurred,
-    Grouped(played: Syntax<Expr>, against: Syntax<Expr>, factor: Ratio),
-    Looped(times: Syntax<Expr>),
-    Volta(pass: Syntax<Expr>),
+    Grouped(played: Syntax(Expr), against: Syntax(Expr), factor: Ratio),
+    Looped(times: Syntax(Expr)),
+    Volta(pass: Syntax(Expr)),
 }
 
 // One item, placed. Notation is read forwards and stacked newest first,
 // and `sequenced` turns the stack into a right-nested `StaffItem` once.
 data Placed {
-    Sang(spot: NodePath, event: Syntax<Expr>),
-    Nested(spot: NodePath, form: Form, body: Syntax<Expr>),
+    Sang(spot: NodePath, event: Syntax(Expr)),
+    Nested(spot: NodePath, form: Form, body: Syntax(Expr)),
 }
 
 // What one stretch of notation reads to.
 record Reading {
-    region: Syntax<TokenTree>;
-    items: List<Placed>;
+    region: Syntax(TokenTree);
+    items: List(Placed);
     span: Ratio;
     hangs: Hanging;
     head: Head;
@@ -190,7 +190,7 @@ record Reading {
 // Three is still the most a note takes, and that is this adapter's
 // reading of the notation rather than a limit of what it can write: a
 // fourth dot is refused with a sentence, in `dot_read`.
-fn one_more_dot(sofar: Nat) -> Option<Nat> {
+fn one_more_dot(sofar: Nat) -> Option(Nat) {
     match sofar {
         3 -> None,
         _ -> Some(nat_add(sofar, 1)),
@@ -210,21 +210,21 @@ fn dotted_factor(dots: Nat) -> Ratio { match dots { 0 -> 1/1, 1 -> 3/2, 2 -> 7/4
 // refuses `c5/0` where it is written.
 data Length {
     NoLength,
-    Divided(numeral: Syntax<Expr>, dots: Nat, value: Ratio),
-    Spanned(numeral: Syntax<Expr>, span: Ratio),
+    Divided(numeral: Syntax(Expr), dots: Nat, value: Ratio),
+    Spanned(numeral: Syntax(Expr), span: Ratio),
 }
 
 // Whether what is being read is tied on to whatever sounds next.
 data Tying {
     Untied,
-    Tied(node: Syntax<TokenTree>),
+    Tied(node: Syntax(TokenTree)),
 }
 
 // Up to two numbers a form stated in its parentheses.
 data Numbers {
     NoNumbers,
-    OneNumber(first: Syntax<Expr>, value: Ratio),
-    TwoNumbers(first: Syntax<Expr>, count: Ratio, second: Syntax<Expr>, unit: Ratio),
+    OneNumber(first: Syntax(Expr), value: Ratio),
+    TwoNumbers(first: Syntax(Expr), count: Ratio, second: Syntax(Expr), unit: Ratio),
 }
 
 // A braces body that has been read but not yet used.
@@ -244,7 +244,7 @@ record Said {
 data Voiced {
     NoVoices,
     NoPitches(spot: NodePath),
-    Voices(spot: NodePath, spelling: Text, listed: Syntax<Expr>),
+    Voices(spot: NodePath, spelling: Text, listed: Syntax(Expr)),
 }
 
 // The words a header field took after it. `key d major` is the only form
@@ -256,7 +256,7 @@ data Words {
 }
 
 // The one word a field took, if it took exactly one.
-fn only_word(words: Words) -> Option<Said> {
+fn only_word(words: Words) -> Option(Said) {
     match words {
         NoWords -> None,
         OneWord(only) -> Some(only),
@@ -390,7 +390,7 @@ record Pending {
 data State {
     Body(read: Reading, held: Pending),
     Parens(numbers: Numbers, length: Length),
-    Bracket(said: Option<Said>),
+    Bracket(said: Option(Said)),
     Fusing(parts: Parts),
 }
 
@@ -409,8 +409,8 @@ data State {
 record Parts {
     kind: TokenKind;
     spelling: Text;
-    opened: Option<NodePath>;
-    closed: Option<NodePath>;
+    opened: Option(NodePath);
+    closed: Option(NodePath);
 }
 
 // --------------------------------------------------------------- emitting
@@ -429,7 +429,7 @@ let no_head: Head = Head {
 //
 // Constants rather than functions of a place, which is what building the
 // sequence out of a `List` bought: the empty stack needs no node.
-fn nothing_read(region: Syntax<TokenTree>) -> Reading {
+fn nothing_read(region: Syntax(TokenTree)) -> Reading {
     Reading {
         region = region,
         items = [],
@@ -466,17 +466,17 @@ fn nonzero(value: Ratio) -> Ratio {
 // The node the region holds at a path, for a refusal to point at. The
 // region stands in where there is nothing there, which cannot happen for a
 // path the traversal handed out.
-fn node_at(region: Syntax<TokenTree>, spot: NodePath) -> Syntax<TokenTree> {
+fn node_at(region: Syntax(TokenTree), spot: NodePath) -> Syntax(TokenTree) {
     syntax_at(region, spot).fold_from_end(
         region,
-        fn (node: Syntax<TokenTree>, otherwise: Syntax<TokenTree>) -> Syntax<TokenTree> { node },
+        fn (node: Syntax(TokenTree), otherwise: Syntax(TokenTree)) -> Syntax(TokenTree) { node },
     )
 }
 
 // The composer's own node at a path, read by the ordinary parser. This is
 // what splices the token the composer wrote rather than rebuilding one
 // from its spelling, so a note points at the `c5` on the page.
-fn expression_at(region: Syntax<TokenTree>, spot: NodePath) -> Option<Syntax<Expr>> {
+fn expression_at(region: Syntax(TokenTree), spot: NodePath) -> Option(Syntax(Expr)) {
     match syntax_at(region, spot) {
         None -> None,
         Some(node) -> as_expression(node),
@@ -484,13 +484,13 @@ fn expression_at(region: Syntax<TokenTree>, spot: NodePath) -> Option<Syntax<Exp
 }
 
 // Where the compiler has no range for a node.
-fn no_anchor(here: NodePath) -> Syntax<Expr> { quote at here { 0 } }
+fn no_anchor(here: NodePath) -> Syntax(Expr) { quote at here { 0 } }
 
 // The anchor of the node at `here`. An anchor is a number whose meaning is
 // the compiler's table: this adapter hands one over and can read nothing
 // from it. One call per node is the operation's own law, and the one call
 // is in `emitted` below.
-fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
+fn anchored(region: Syntax(TokenTree), here: NodePath) -> Syntax(Expr) {
     match syntax_anchor(region, here) {
         None -> no_anchor(here),
         Some(node) -> match as_expression(node) {
@@ -501,7 +501,7 @@ fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
 }
 
 // `Tie`, as the package spells it.
-fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
+fn tie_of(here: NodePath, tying: Tying) -> Syntax(Expr) {
     match tying {
         Untied -> quote at here {
             Untied
@@ -517,12 +517,12 @@ fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
 //
 // This was four quotes holding `0`, `1`, `2` and `3` — one per value the
 // count could take — because a computed number had no way into a quote.
-fn dot_count(here: NodePath, dots: Nat) -> Syntax<Expr> { syntax_numeral(here, dots) }
+fn dot_count(here: NodePath, dots: Nat) -> Syntax(Expr) { syntax_numeral(here, dots) }
 
 // `WrittenDuration`, as the package spells it. Every caller has already
 // refused `NoLength` against the note it belongs to, so the whole note
 // below stands for nothing a reader can reach.
-fn value_of(here: NodePath, length: Length) -> Syntax<Expr> {
+fn value_of(here: NodePath, length: Length) -> Syntax(Expr) {
     match length {
         NoLength -> quote at here {
             NoteValue(1, 0)
@@ -537,7 +537,7 @@ fn value_of(here: NodePath, length: Length) -> Syntax<Expr> {
 }
 
 // The exact span a stated written value covers.
-fn stated_span(length: Length) -> Option<Ratio> {
+fn stated_span(length: Length) -> Option(Ratio) {
     match length {
         NoLength -> None,
         Divided(numeral, dots, value) -> Some(ratio_div(dotted_factor(dots), value)),
@@ -546,7 +546,7 @@ fn stated_span(length: Length) -> Option<Ratio> {
 }
 
 // `Beats(count, unit)`, from the two numbers a form stated.
-fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
+fn beats_of(here: NodePath, numbers: Numbers) -> Option(Syntax(Expr)) {
     match numbers {
         TwoNumbers(first, count, second, unit) -> Some(quote at here {
             Beats($first, $second)
@@ -560,11 +560,11 @@ fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
 // One item of a written sequence, in front of what follows it.
 fn nested_item(
     spot: NodePath,
-    anchor: Syntax<Expr>,
+    anchor: Syntax(Expr),
     form: Form,
-    body: Syntax<Expr>,
-    after: Syntax<Expr>,
-) -> Syntax<Expr> {
+    body: Syntax(Expr),
+    after: Syntax(Expr),
+) -> Syntax(Expr) {
     match form {
         Barred(beats, measures) -> quote at spot {
             Bar($anchor, $beats, $body, $after)
@@ -586,7 +586,7 @@ fn nested_item(
 
 // The one place `syntax_anchor` is called, so that one node is anchored
 // once — the operation's own law rather than a discipline kept by hand.
-fn emitted(region: Syntax<TokenTree>, item: Placed, after: Syntax<Expr>) -> Syntax<Expr> {
+fn emitted(region: Syntax(TokenTree), item: Placed, after: Syntax(Expr)) -> Syntax(Expr) {
     match item {
         Sang(spot, event) -> quote at spot {
             Sounded(${ anchored(region, spot) }, $event, $after)
@@ -604,12 +604,12 @@ fn emitted(region: Syntax<TokenTree>, item: Placed, after: Syntax<Expr>) -> Synt
 // The stack of placed items, as the right-nested sequence the package
 // holds — newest first, so folding from its start hands each item what
 // follows it.
-fn sequenced(region: Syntax<TokenTree>, here: NodePath, items: List<Placed>) -> Syntax<Expr> {
+fn sequenced(region: Syntax(TokenTree), here: NodePath, items: List(Placed)) -> Syntax(Expr) {
     items.fold_from_start(
         quote at here {
             NoItems
         },
-        fn (after: Syntax<Expr>, item: Placed) -> Syntax<Expr> { emitted(region, item, after) },
+        fn (after: Syntax(Expr), item: Placed) -> Syntax(Expr) { emitted(region, item, after) },
     )
 }
 
@@ -618,7 +618,7 @@ fn sequenced(region: Syntax<TokenTree>, here: NodePath, items: List<Placed>) -> 
 // partition its text, so `f5` and `f#5` being two texts *is* their
 // accidentals differing, which is the mistake worth catching. Reading the
 // parts would buy a sentence naming which part differs, not a verdict.
-fn tie_met(hangs: Hanging, next: Sound) -> Result<Hanging, Refusal> {
+fn tie_met(hangs: Hanging, next: Sound) -> Result(Hanging, Refusal) {
     match hangs {
         Closed -> Ok(Closed),
         Hangs(spelling, node) -> match next {
@@ -661,7 +661,7 @@ fn refusing(read: Reading, spot: NodePath, why: Text) -> Reading {
 fn sounding(
     read: Reading,
     spot: NodePath,
-    event: Syntax<Expr>,
+    event: Syntax(Expr),
     added: Ratio,
     sounds: Sound,
     ties: Hanging,
@@ -693,7 +693,7 @@ fn form_span(form: Form, inner: Ratio) -> Ratio {
 // A bar states its own length and its contents are checked against it. It
 // lands on the bar the composer wrote because the adapter is the one
 // holding a node: the package could find the fault and not point at it.
-fn form_refusal(node: Syntax<TokenTree>, form: Form, inner: Ratio) -> Refusal {
+fn form_refusal(node: Syntax(TokenTree), form: Form, inner: Ratio) -> Refusal {
     match form {
         Barred(beats, measures) -> if ratio_equal(inner, measures) {
             NoRefusal
@@ -728,7 +728,7 @@ fn nesting(read: Reading, spot: NodePath, form: Form, body: Reading) -> Reading 
 // ------------------------------------------------------------- the forms
 
 // What a clef word names.
-fn clef_named(here: NodePath, spelling: Text) -> Option<Syntax<Expr>> {
+fn clef_named(here: NodePath, spelling: Text) -> Option(Syntax(Expr)) {
     match spelling {
         "treble" -> Some(quote at here {
             Treble
@@ -747,7 +747,7 @@ fn clef_named(here: NodePath, spelling: Text) -> Option<Syntax<Expr>> {
 }
 
 // What a spelling word names.
-fn spelling_named(here: NodePath, spelling: Text) -> Option<Syntax<Expr>> {
+fn spelling_named(here: NodePath, spelling: Text) -> Option(Syntax(Expr)) {
     match spelling {
         "shortest_readable" -> Some(quote at here {
             ShortestReadable
@@ -807,7 +807,7 @@ fn chord_read(
     read: Reading,
     spot: NodePath,
     spelling: Text,
-    listed: Syntax<Expr>,
+    listed: Syntax(Expr),
     length: Length,
     tying: Tying,
 ) -> Reading {
@@ -866,7 +866,7 @@ fn meter_read(read: Reading, spot: NodePath, numbers: Numbers, missing: Text) ->
 // `bar (4, 4) { … }` and `pickup (1, 4) { … }` — a measure of stated
 // length. A pickup is a bar with fewer beats in it, so the package has no
 // pickup and there is nothing here to tell the two apart.
-fn barred(spot: NodePath, numbers: Numbers) -> Result<Form, Text> {
+fn barred(spot: NodePath, numbers: Numbers) -> Result(Form, Text) {
     match numbers {
         TwoNumbers(first, count, second, unit) -> Ok(Barred(
             quote at spot {
@@ -880,7 +880,7 @@ fn barred(spot: NodePath, numbers: Numbers) -> Result<Form, Text> {
 
 // `tuplet (3, 2) { … }` — three in the time of two, and the bracket is
 // kept rather than resolved: what the notes become is `realize`'s answer.
-fn grouped(numbers: Numbers) -> Result<Form, Text> {
+fn grouped(numbers: Numbers) -> Result(Form, Text) {
     match numbers {
         TwoNumbers(first, played, second, against) -> match ratio_equal(played, 0/1) {
             true -> Err("this tuplet plays no notes in the time of some"),
@@ -896,12 +896,10 @@ fn grouped(numbers: Numbers) -> Result<Form, Text> {
 // refusal that says it was stated twice. A second statement of the same
 // word is not a correction: nothing here is written in order, so the
 // reader has no way to say which of the two the composer meant.
-fn stating(
-    head: Head,
-    field: Says,
-    given: Syntax<Expr>,
-    node: Syntax<TokenTree>,
-) -> Result<Head, Refusal> {
+fn stating(head: Head, field: Says, given: Syntax(Expr), node: Syntax(TokenTree)) -> Result(
+    Head,
+    Refusal,
+) {
     match field {
         AsInstrument(word) -> match head.instrument {
             Absent -> Ok(head with {
@@ -947,8 +945,8 @@ fn stating(
 fn heading(
     read: Reading,
     field: Says,
-    given: Syntax<Expr>,
-    node: Syntax<TokenTree>,
+    given: Syntax(Expr),
+    node: Syntax(TokenTree),
 ) -> Reading {
     match stating(read.head, field, given, node) {
         Ok(stated) -> read with {
@@ -1005,7 +1003,7 @@ fn named_header(
     read: Reading,
     field: Says,
     said: Said,
-    found: Option<Syntax<Expr>>,
+    found: Option(Syntax(Expr)),
 ) -> Reading {
     match found {
         None -> refusing(read, said.spot, "this staff does not know this word"),
@@ -1027,7 +1025,7 @@ fn named_header(
 // buys back a wrong answer: the built version dropped the sharp of `key f#
 // major` on the floor, because a sharp is a token of its own and the
 // builder was handed only the identifier before it.
-fn key_named(here: NodePath, tonic: Text, mode: Text) -> Option<Syntax<Expr>> {
+fn key_named(here: NodePath, tonic: Text, mode: Text) -> Option(Syntax(Expr)) {
     match text_join([tonic, " ", mode]) {
         "a major" -> Some(quote at here {
             key a major
@@ -1190,12 +1188,10 @@ fn nests_read(
 // What a nesting word makes of the numbers it stated. Written time counts
 // the page and not the performance, so `repeat (2) { … }` covers its body
 // once: how many times it sounds is a reading of the score.
-fn formed(
-    spot: NodePath,
-    form: Nesting,
-    numbers: Numbers,
-    missing: Text,
-) -> Result<Form, Text> {
+fn formed(spot: NodePath, form: Nesting, numbers: Numbers, missing: Text) -> Result(
+    Form,
+    Text,
+) {
     match form {
         AsBar(word) -> barred(spot, numbers),
         AsSlur(word) -> Ok(Slurred),
@@ -1462,7 +1458,7 @@ fn numbered(said: Said) -> Numbered {
 }
 
 // One more of the up-to-two numbers a form states.
-fn one_more_number(numbers: Numbers, numeral: Syntax<Expr>, value: Ratio) -> Numbers {
+fn one_more_number(numbers: Numbers, numeral: Syntax(Expr), value: Ratio) -> Numbers {
     match numbers {
         NoNumbers -> OneNumber(numeral, value),
         OneNumber(first, already) -> TwoNumbers(first, already, numeral, value),
@@ -1471,7 +1467,7 @@ fn one_more_number(numbers: Numbers, numeral: Syntax<Expr>, value: Ratio) -> Num
 }
 
 fn stated_token(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     numbers: Numbers,
     length: Length,
     said: Said,
@@ -1499,10 +1495,10 @@ fn stated_token(
 // line is met inside the next bar rather than carried around it — which is
 // what threading the reader through the recursor's steps buys.
 fn body_reading(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     hangs: Hanging,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> Reading {
     match kids.fold_from_start(
         Body(nothing_read(region) with {
@@ -1516,7 +1512,7 @@ fn body_reading(
 }
 
 // The one word a bracketed child amounts to, where it is a pitch.
-fn sung_said(one: State) -> Option<Said> {
+fn sung_said(one: State) -> Option(Said) {
     match one {
         Bracket(said) -> match said {
             Some(found) -> if token_kind_equal(found.kind, TokenKind::PitchLiteral) {
@@ -1529,25 +1525,25 @@ fn sung_said(one: State) -> Option<Said> {
 }
 
 // Every child of a chord's brackets, read as itself.
-fn pitches_of(kids: List<SyntaxStep<State, State>>) -> List<Said> {
+fn pitches_of(kids: List(SyntaxStep(State, State))) -> List(Said) {
     kids.fold_from_end(
         [],
-        fn (kid: SyntaxStep<State, State>, later: List<Said>) -> List<Said> {
+        fn (kid: SyntaxStep(State, State), later: List(Said)) -> List(Said) {
             sung_said(run_syntax_step(Bracket(None), kid)).fold_from_end(
                 later,
-                fn (said: Said, otherwise: List<Said>) -> List<Said> { Cons(said, later) },
+                fn (said: Said, otherwise: List(Said)) -> List(Said) { Cons(said, later) },
             )
         },
     )
 }
 
-fn spelled_of(region: Syntax<TokenTree>, sung: List<Said>) -> List<Syntax<Expr>> {
+fn spelled_of(region: Syntax(TokenTree), sung: List(Said)) -> List(Syntax(Expr)) {
     sung.fold_from_end(
         [],
-        fn (said: Said, later: List<Syntax<Expr>>) -> List<Syntax<Expr>> {
+        fn (said: Said, later: List(Syntax(Expr))) -> List(Syntax(Expr)) {
             expression_at(region, said.spot).fold_from_end(
                 later,
-                fn (given: Syntax<Expr>, otherwise: List<Syntax<Expr>>) -> List<Syntax<Expr>> {
+                fn (given: Syntax(Expr), otherwise: List(Syntax(Expr))) -> List(Syntax(Expr)) {
                     Cons(given, later)
                 },
             )
@@ -1558,9 +1554,9 @@ fn spelled_of(region: Syntax<TokenTree>, sung: List<Said>) -> List<Syntax<Expr>>
 // The pitches of `[ … ]`, as the list expression the package's `Chord` and
 // `Grace` take, together with the first of them for a tie to meet.
 fn voiced_of(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> Voiced {
     match pitches_of(kids) {
         [] -> NoPitches(here),
@@ -1578,7 +1574,7 @@ fn braces_read(
     read: Reading,
     held: Pending,
     here: NodePath,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> State {
     match held with {
         taken = Took(here, body_reading(read.region, here, read.hangs, kids))
@@ -1597,7 +1593,7 @@ fn parens_read(
     read: Reading,
     held: Pending,
     here: NodePath,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> State {
     match kids.fold_from_start(Parens(NoNumbers, NoLength), run_syntax_step) {
         Parens(stated, exact) -> match exact {
@@ -1616,7 +1612,7 @@ fn brackets_read(
     read: Reading,
     held: Pending,
     here: NodePath,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> State {
     match brackets_cleared(read, held, here) {
         Body(clear, empty) -> Body(
@@ -1670,11 +1666,11 @@ fn entering(here: NodePath, delimiter: Delimiter) -> Entered {
 // for a nested group to be but more of the same. Between brackets a group
 // is not a pitch, for the reason the list at the top of this file gives.
 fn group_read(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     state: State,
     here: NodePath,
     delimiter: Delimiter,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> State {
     if delimiter_equal(delimiter, Delimiter::Fused) {
         fused_read(region, state, here, kids)
@@ -1701,10 +1697,10 @@ fn group_read(
 // three places meet a fused group and all three have to meet it as a
 // lexeme rather than as a group they do not know.
 fn fused_read(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     state: State,
     here: NodePath,
-    kids: List<SyntaxStep<State, State>>,
+    kids: List(SyntaxStep(State, State)),
 ) -> State {
     match kids.fold_from_start(
         Fusing(Parts {
@@ -1765,7 +1761,7 @@ fn part_read(parts: Parts, here: NodePath, kind: TokenKind, spelling: Text) -> S
 // `time (4, 4)` written the way a musician writes it, and the two mean the
 // same because the numerator and the denominator are the same two numbers
 // either way.
-fn lexeme_read(region: Syntax<TokenTree>, state: State, here: NodePath, parts: Parts) -> State {
+fn lexeme_read(region: Syntax(TokenTree), state: State, here: NodePath, parts: Parts) -> State {
     match state {
         Body(read, held) -> body_lexeme(region, read, held, here, parts),
         Parens(numbers, length) -> stated_token(
@@ -1790,7 +1786,7 @@ fn lexeme_read(region: Syntax<TokenTree>, state: State, here: NodePath, parts: P
 }
 
 fn body_lexeme(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     read: Reading,
     held: Pending,
     here: NodePath,
@@ -1825,7 +1821,7 @@ fn body_lexeme(
 // The two numbers a rational states. A rational with a part missing states
 // nothing, which no lexer output reaches, and the reading below is the
 // reading `stated_token` performs between a form's parentheses.
-fn fractioned(region: Syntax<TokenTree>, read: Reading, held: Pending, parts: Parts) -> State {
+fn fractioned(region: Syntax(TokenTree), read: Reading, held: Pending, parts: Parts) -> State {
     match parts.opened {
         None -> Body(read, held),
         Some(numerator) -> match parts.closed {
@@ -1845,7 +1841,7 @@ fn fractioned(region: Syntax<TokenTree>, read: Reading, held: Pending, parts: Pa
 }
 
 // One more number, read from the place the token that spells it stands at.
-fn stated_number(region: Syntax<TokenTree>, numbers: Numbers, spot: NodePath) -> Numbers {
+fn stated_number(region: Syntax(TokenTree), numbers: Numbers, spot: NodePath) -> Numbers {
     match syntax_number(node_at(region, spot)) {
         None -> numbers,
         Some(value) -> match expression_at(region, spot) {
@@ -1857,7 +1853,7 @@ fn stated_number(region: Syntax<TokenTree>, numbers: Numbers, spot: NodePath) ->
 
 // One token, read under the place it stands in.
 fn token_read(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     state: State,
     here: NodePath,
     kind: TokenKind,
@@ -1902,7 +1898,7 @@ fn token_read(
 //
 // The traversal has its own branch for a word, so this staff never asks
 // what kind a word is: it is one already.
-fn word_token(region: Syntax<TokenTree>, state: State, here: NodePath, name: Text) -> State {
+fn word_token(region: Syntax(TokenTree), state: State, here: NodePath, name: Text) -> State {
     match Said {
         spot = here,
         kind = TokenKind::Identifier,
@@ -1921,7 +1917,7 @@ fn word_token(region: Syntax<TokenTree>, state: State, here: NodePath, name: Tex
 
 // A node the fixed lexer could not read. It is a fault where notation was
 // expected and nothing at all where numbers or pitches were.
-fn missing_read(region: Syntax<TokenTree>, state: State, here: NodePath) -> State {
+fn missing_read(region: Syntax(TokenTree), state: State, here: NodePath) -> State {
     match state {
         Body(read, held) -> Body(refusing(read, here, "this staff cannot read this"), held),
         Parens(numbers, length) -> state,
@@ -1934,11 +1930,11 @@ fn missing_read(region: Syntax<TokenTree>, state: State, here: NodePath) -> Stat
 
 // A field the staff had to state.
 fn stated_field(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     field: Given,
     missing: Text,
-) -> Result<Syntax<Expr>, (Syntax<TokenTree>, Text)> {
+) -> Result(Syntax(Expr), (Syntax(TokenTree), Text)) {
     match field {
         Absent -> Err((node_at(region, here), missing)),
         Stated(given) -> Ok(given),
@@ -1947,14 +1943,14 @@ fn stated_field(
 
 fn document_of(
     here: NodePath,
-    instrument: Syntax<Expr>,
-    shift: Syntax<Expr>,
-    written_clef: Syntax<Expr>,
-    tonality: Syntax<Expr>,
-    beats: Syntax<Expr>,
-    spelled: Syntax<Expr>,
-    items: Syntax<Expr>,
-) -> Syntax<Expr> {
+    instrument: Syntax(Expr),
+    shift: Syntax(Expr),
+    written_clef: Syntax(Expr),
+    tonality: Syntax(Expr),
+    beats: Syntax(Expr),
+    spelled: Syntax(Expr),
+    items: Syntax(Expr),
+) -> Syntax(Expr) {
     quote at here {
         Document($instrument, $shift, $written_clef, $tonality, $beats, $spelled, $items)
     }
@@ -1964,10 +1960,10 @@ fn document_of(
 // ask them. Each `?` hands the first refusal straight back out, so what is
 // left on the page is the document being built rather than the six ways it
 // might not be.
-fn documented(
-    here: NodePath,
-    read: Reading,
-) -> Result<Syntax<Expr>, (Syntax<TokenTree>, Text)> {
+fn documented(here: NodePath, read: Reading) -> Result(
+    Syntax(Expr),
+    (Syntax(TokenTree), Text),
+) {
     Ok(document_of(
         here,
         stated_field(
@@ -2010,10 +2006,10 @@ fn documented(
     ))
 }
 
-fn hanging_document(
-    here: NodePath,
-    read: Reading,
-) -> Result<Syntax<Expr>, (Syntax<TokenTree>, Text)> {
+fn hanging_document(here: NodePath, read: Reading) -> Result(
+    Syntax(Expr),
+    (Syntax(TokenTree), Text),
+) {
     match read.hangs {
         Hangs(spelling, node) -> Err((
             node,
@@ -2024,10 +2020,10 @@ fn hanging_document(
 }
 
 // The whole staff, as the one expression a region expands to.
-fn region_read(
-    region: Syntax<TokenTree>,
-    state: State,
-) -> Result<Syntax<Expr>, (Syntax<TokenTree>, Text)> {
+fn region_read(region: Syntax(TokenTree), state: State) -> Result(
+    Syntax(Expr),
+    (Syntax(TokenTree), Text),
+) {
     match state {
         Body(read, held) -> match held.taken {
             Took(spot, body) -> match body.refusal {
@@ -2045,9 +2041,10 @@ fn region_read(
 // The region's own braces are what the traversal is started outside of, so
 // a region written any other way arrives here with nothing taken and is
 // told what a region is written between.
-let expand = fn (
-    region: Syntax<TokenTree>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+let expand = fn (region: Syntax(TokenTree)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     region_read(
         region,
         recurse_syntax(
@@ -2093,11 +2090,10 @@ fn spaced(first: Text, second: Text) -> Text {
 }
 
 // A form that holds notation: its head, its braces, and whatever follows.
-fn wrapped(
-    head: Text,
-    body: Result<Text, Text>,
-    after: Result<Text, Text>,
-) -> Result<Text, Text> { Ok(spaced(text_join([head, " { ", body?, " }"]), after?)) }
+fn wrapped(head: Text, body: Result(Text, Text), after: Result(Text, Text)) -> Result(
+    Text,
+    Text,
+) { Ok(spaced(text_join([head, " { ", body?, " }"]), after?)) }
 
 // The dots after a written value, one per dot. A fold over the count and
 // not a comparison, because the language has no `nat_equal` and needs
@@ -2113,12 +2109,12 @@ fn dotted(dots: Nat) -> Text {
 // this printer can state — an exact span is a `Ratio` and the grammar has
 // no literal for one below zero, so `ratio_literal` answers nothing and
 // the answer here is a sentence rather than a shorter note.
-fn written_value(held: WrittenDuration) -> Result<Text, Text> {
+fn written_value(held: WrittenDuration) -> Result(Text, Text) {
     match held {
         NoteValue(division, dots) -> Ok(text_join(["/", nat_literal(division), dotted(dots)])),
         ExactSpan(span) -> ratio_literal(span).fold_from_end(
             Err("this staff writes no exact span below zero, and this note holds one"),
-            fn (spelt: Text, otherwise: Result<Text, Text>) -> Result<Text, Text> {
+            fn (spelt: Text, otherwise: Result(Text, Text)) -> Result(Text, Text) {
                 Ok(text_join(["(", spelt, ")"]))
             },
         ),
@@ -2128,7 +2124,7 @@ fn written_value(held: WrittenDuration) -> Result<Text, Text> {
 fn tied_on(tied: Tie) -> Text { match tied { Untied -> "", TiedOn -> " ~", } }
 
 // The pitches of a chord or a grace, in the order they are held.
-fn voiced_pitches(voices: List<Pitch>) -> Text {
+fn voiced_pitches(voices: List(Pitch)) -> Text {
     voices.fold_from_start(
         "",
         fn (sofar: Text, sung: Pitch) -> Text { spaced(sofar, pitch_literal(sung)) },
@@ -2136,7 +2132,7 @@ fn voiced_pitches(voices: List<Pitch>) -> Text {
 }
 
 // What is written at one point of the staff.
-fn written_event(event: StaffEvent) -> Result<Text, Text> {
+fn written_event(event: StaffEvent) -> Result(Text, Text) {
     match event {
         Note(spelled, held, tied) -> Ok(text_join([
             pitch_literal(spelled),
@@ -2160,44 +2156,43 @@ fn written_event(event: StaffEvent) -> Result<Text, Text> {
 // `pickup` is printed as the `bar` it is: the package has no pickup, so
 // there is nothing here to tell the two apart, and the round-trip law is
 // stated on the value for exactly this reason.
-fn written_items(items: StaffItem) -> Result<Text, Text> {
+fn written_items(items: StaffItem) -> Result(Text, Text) {
     staff_item_fold(
         Ok(""),
-        fn (anchor: Nat, event: StaffEvent, after: Result<Text, Text>) -> Result<Text, Text> {
+        fn (anchor: Nat, event: StaffEvent, after: Result(Text, Text)) -> Result(Text, Text) {
             Ok(spaced(written_event(event)?, after?))
         },
         fn (
             anchor: Nat,
             beats: Meter,
-            body: Result<Text, Text>,
-            after: Result<Text, Text>,
-        ) -> Result<Text, Text> { wrapped(measured("bar", beats), body, after) },
-        fn (
-            anchor: Nat,
-            body: Result<Text, Text>,
-            after: Result<Text, Text>,
-        ) -> Result<Text, Text> { wrapped("slur", body, after) },
+            body: Result(Text, Text),
+            after: Result(Text, Text),
+        ) -> Result(Text, Text) { wrapped(measured("bar", beats), body, after) },
+        fn (anchor: Nat, body: Result(Text, Text), after: Result(Text, Text)) -> Result(
+            Text,
+            Text,
+        ) { wrapped("slur", body, after) },
         fn (
             anchor: Nat,
             played: Nat,
             against: Nat,
-            body: Result<Text, Text>,
-            after: Result<Text, Text>,
-        ) -> Result<Text, Text> { wrapped(counted("tuplet", played, against), body, after) },
+            body: Result(Text, Text),
+            after: Result(Text, Text),
+        ) -> Result(Text, Text) { wrapped(counted("tuplet", played, against), body, after) },
         fn (
             anchor: Nat,
             times: Nat,
-            body: Result<Text, Text>,
-            after: Result<Text, Text>,
-        ) -> Result<Text, Text> {
+            body: Result(Text, Text),
+            after: Result(Text, Text),
+        ) -> Result(Text, Text) {
             wrapped(text_join(["repeat (", nat_literal(times), ")"]), body, after)
         },
         fn (
             anchor: Nat,
             pass: Nat,
-            body: Result<Text, Text>,
-            after: Result<Text, Text>,
-        ) -> Result<Text, Text> {
+            body: Result(Text, Text),
+            after: Result(Text, Text),
+        ) -> Result(Text, Text) {
             wrapped(text_join(["ending (", nat_literal(pass), ")"]), body, after)
         },
         items,
@@ -2226,10 +2221,10 @@ fn spelling_word(chosen: Spelling) -> Text {
 // any descending one, has no name a reader would take. The document is not
 // made smaller by leaving it out — the loss says which part could not be
 // written.
-fn transposing_word(shift: Interval) -> Result<Text, Text> {
+fn transposing_word(shift: Interval) -> Result(Text, Text) {
     interval_literal(shift).fold_from_end(
         Err("this staff has no written name for the interval this part is transposed by"),
-        fn (spelt: Text, otherwise: Result<Text, Text>) -> Result<Text, Text> {
+        fn (spelt: Text, otherwise: Result(Text, Text)) -> Result(Text, Text) {
             Ok(text_join(["transposing ", spelt]))
         },
     )
@@ -2247,12 +2242,10 @@ fn transposing_word(shift: Interval) -> Result<Text, Text> {
 // replacing that node because replacing it is what the patch does. Every
 // item this adapter emits carries an anchor, so `replace` reaches any note,
 // bar, tuplet, slur, repeat or ending on the page.
-let edit = fn (
-    region: Syntax<TokenTree>,
-    command: Text,
-    anchor: Nat,
-    argument: Text,
-) -> Result<List<Pair<Nat, Text>>, Text> {
+let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(
+    List(Pair(Nat, Text)),
+    Text,
+) {
     match command {
         "replace" -> Ok([(anchor, argument)]),
         _ -> Err("`staff` serves one command, `replace`"),
@@ -2265,7 +2258,7 @@ let edit = fn (
 // written here is a region's *contents* — what goes between the braces of
 // `syntax staff { … }` — because the region's name is the importing file's
 // word for this package and not this package's word for itself.
-let print = fn (document: StaffDocument) -> Result<Text, Text> {
+let print = fn (document: StaffDocument) -> Result(Text, Text) {
     match document {
         Document(instrument, sounding_shift, written_clef, written_key, beats, spelling, items,) -> Ok(text_join(
             [

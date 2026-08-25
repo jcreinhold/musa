@@ -39,8 +39,8 @@ import std::list;
 // makes a member say which division it belongs to: a `Pc(12)` can never
 // stand where a `Pc(24)` is wanted, and neither can be built without saying
 // which it is.
-data Pc(n: Nat) {
-    Class(division: Nat, place: Cyclic(division)): (division),
+data Pc: (n: Nat) -> Type {
+    Class(division: Nat, place: Cyclic(division)): Pc(division),
 }
 
 // The pitch class a number names, reduced into the division.
@@ -53,7 +53,7 @@ fn pc(n: Nat, cycle: Cycle(n), number: Nat) -> Pc(n) { Class(n, place_in(n, cycl
 //
 // A row or a set is written as its numbers, because that is what this domain
 // has instead of letters.
-fn pcs(n: Nat, cycle: Cycle(n), numbers: List<Nat>) -> List<Pc(n)> {
+fn pcs(n: Nat, cycle: Cycle(n), numbers: List(Nat)) -> List(Pc(n)) {
     map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, numbers)
 }
 
@@ -88,14 +88,14 @@ fn inverted_about(n: Nat, cycle: Cycle(n), index: Nat, member: Pc(n)) -> Pc(n) {
 // The whole point of it being a value: `orbit` and `stabilizer` take it
 // beside any other action, so a set class and a row's symmetries are the
 // same two functions asked at different carriers.
-fn class_action(n: Nat, cycle: Cycle(n)) -> Action<Pc(n), Ti> {
+fn class_action(n: Nat, cycle: Cycle(n)) -> Action(Pc(n), Ti) {
     Action {
         act = fn (member: Pc(n), by: Ti) -> Pc(n) { class_moved(n, cycle, member, by) }
     }
 }
 
 // Apply one pitch-class function to every member of a finite list.
-fn map_pc(n: Nat, function: Pc(n) -> Pc(n), members: List<Pc(n)>) -> List<Pc(n)> {
+fn map_pc(n: Nat, function: Pc(n) -> Pc(n), members: List(Pc(n))) -> List(Pc(n)) {
     map(function, members)
 }
 
@@ -111,7 +111,7 @@ fn forget_spelling(spelled: NoteName) -> Pc(12) { pc(12, chromatic, pc12_forget(
 // Spell a pitch class inside one collection — the explicit policy that
 // `forget_spelling` has no inverse without. Absent when the collection holds
 // no note of this pitch class.
-fn spelled_in(member: Pc(12), collection: Scale) -> Option<NoteName> {
+fn spelled_in(member: Pc(12), collection: Scale) -> Option(NoteName) {
     pc12_spelled(class_number(12, member), collection)
 }
 
@@ -122,15 +122,15 @@ fn spelled_in(member: Pc(12), collection: Scale) -> Option<NoteName> {
 // The members are held ascending and without repetition, and the case is
 // `private` so that is a fact about the type rather than a promise: `pcset`
 // is the only way in, and it sorts and deduplicates. That is what the
-// twelve-bit membership word used to buy and what a bare `List<Pc(n)>` would
+// twelve-bit membership word used to buy and what a bare `List(Pc(n))` would
 // give up.
-data PcSet(n: Nat) {
-    private Members(division: Nat, ascending: List<Nat>): (division),
+data PcSet: (n: Nat) -> Type {
+    private Members(division: Nat, ascending: List(Nat)): PcSet(division),
 }
 
 // `sorted`, with `value` in its place — and unchanged where it is already
 // there.
-private fn inserted(value: Nat, sorted: List<Nat>) -> List<Nat> {
+private fn inserted(value: Nat, sorted: List(Nat)) -> List(Nat) {
     match sorted {
         [] -> [value],
         [head, .. tail] -> if value < head {
@@ -142,7 +142,7 @@ private fn inserted(value: Nat, sorted: List<Nat>) -> List<Nat> {
 }
 
 // The numbers, ascending and each once.
-private fn gathered(numbers: List<Nat>) -> List<Nat> {
+private fn gathered(numbers: List(Nat)) -> List(Nat) {
     match numbers {
         [] -> [],
         [head, .. tail] -> inserted(head, gathered(tail)),
@@ -153,13 +153,13 @@ private fn gathered(numbers: List<Nat>) -> List<Nat> {
 //
 // A set cannot hold a duplicate, so this cannot fail: a repetition is a
 // mistake only where order matters, which is `std::post_tonal::serial`.
-fn pcset(n: Nat, cycle: Cycle(n), members: List<Pc(n)>) -> PcSet(n) {
+fn pcset(n: Nat, cycle: Cycle(n), members: List(Pc(n))) -> PcSet(n) {
     Members(n, gathered(map(fn (member: Pc(n)) -> Nat { class_number(n, member) }, members)))
 }
 
 // The members' numbers, ascending. The set's own order and not its normal
 // order.
-private fn numbers_of(n: Nat, set: PcSet(n)) -> List<Nat> {
+private fn numbers_of(n: Nat, set: PcSet(n)) -> List(Nat) {
     match set {
         Members(division, ascending) -> ascending,
     }
@@ -170,7 +170,7 @@ private fn numbers_of(n: Nat, set: PcSet(n)) -> List<Nat> {
 // Named for the set rather than `members_of`, because `std::harmony` already
 // reads the members of a chord class and a piece that reasons about both
 // must be able to import both.
-fn set_members(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Pc(n)> {
+fn set_members(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Pc(n)) {
     map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, numbers_of(n, set))
 }
 
@@ -211,13 +211,13 @@ fn set_inverted(n: Nat, cycle: Cycle(n), set: PcSet(n), index: Nat) -> PcSet(n) 
 // exactly that invariant. The division is inferred from the two operands, so
 // `left == right` is the complete call an author writes.
 impl PcSet {
-    fn equal<{n: Nat}>(left: PcSet(n), right: PcSet(n)) -> Bool {
+    fn equal({n: Nat}, left: PcSet(n), right: PcSet(n)) -> Bool {
         same_numbers(numbers_of(n, left), numbers_of(n, right))
     }
 }
 
 // Whether two ascending lists are the same list.
-private fn same_numbers(left: List<Nat>, right: List<Nat>) -> Bool {
+private fn same_numbers(left: List(Nat), right: List(Nat)) -> Bool {
     match left {
         [] -> match right {
             [] -> true,
@@ -233,7 +233,7 @@ private fn same_numbers(left: List<Nat>, right: List<Nat>) -> Bool {
 }
 
 // The T/I group acting on sets.
-fn set_action(n: Nat, cycle: Cycle(n)) -> Action<PcSet(n), Ti> {
+fn set_action(n: Nat, cycle: Cycle(n)) -> Action(PcSet(n), Ti) {
     Action {
         act = fn (set: PcSet(n), by: Ti) -> PcSet(n) { set_moved(n, cycle, set, by) }
     }
@@ -248,7 +248,7 @@ fn set_action(n: Nat, cycle: Cycle(n)) -> Action<PcSet(n), Ti> {
 // break. Comparing two of these left to right is exactly the convention
 // `101-pitch-class-sets-normal-order-and-transformations.md` states in
 // prose.
-private fn compactness(n: Nat, cycle: Cycle(n), rotation: List<Nat>) -> List<Nat> {
+private fn compactness(n: Nat, cycle: Cycle(n), rotation: List(Nat)) -> List(Nat) {
     match rotation {
         [] -> [],
         [first, .. others] -> concat(
@@ -263,7 +263,7 @@ private fn compactness(n: Nat, cycle: Cycle(n), rotation: List<Nat>) -> List<Nat
 // Both lists are the same length wherever this is asked — two rotations of
 // one set, or two zeroed normal orders of one set class — so running out is
 // not a case that decides anything and answers false.
-private fn reads_lower(left: List<Nat>, right: List<Nat>) -> Bool {
+private fn reads_lower(left: List(Nat), right: List(Nat)) -> Bool {
     match left {
         [] -> false,
         [head, .. tail] -> match right {
@@ -278,24 +278,21 @@ private fn reads_lower(left: List<Nat>, right: List<Nat>) -> Bool {
 }
 
 // Whichever of the two packs more tightly, the earlier winning a tie.
-private fn tighter(
-    n: Nat,
-    cycle: Cycle(n),
-    best: List<Nat>,
-    candidate: List<Nat>,
-) -> List<Nat> {
+private fn tighter(n: Nat, cycle: Cycle(n), best: List(Nat), candidate: List(Nat)) -> List(
+    Nat,
+) {
     if reads_lower(compactness(n, cycle, candidate), compactness(n, cycle, best)) {
         candidate
     } else { best }
 }
 
 // Normal order, as the numbers.
-private fn normal_numbers(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+private fn normal_numbers(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Nat) {
     match rotations(numbers_of(n, set)) {
         [] -> [],
         [first, .. others] -> others.fold_from_start(
             first,
-            fn (best: List<Nat>, candidate: List<Nat>) -> List<Nat> {
+            fn (best: List(Nat), candidate: List(Nat)) -> List(Nat) {
                 tighter(n, cycle, best, candidate)
             },
         ),
@@ -307,12 +304,12 @@ private fn normal_numbers(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
 //
 // Ties break inward — first to last, then first to the one before last, and
 // so on — and finally by the lowest starting pitch class.
-fn normal_order(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Pc(n)> {
+fn normal_order(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Pc(n)) {
     map(fn (number: Nat) -> Pc(n) { pc(n, cycle, number) }, normal_numbers(n, cycle, set))
 }
 
 // The normal order transposed to begin on zero.
-private fn zeroed(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+private fn zeroed(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Nat) {
     match normal_numbers(n, cycle, set) {
         [] -> [],
         [first, .. others] -> map(
@@ -330,8 +327,8 @@ private fn zeroed(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
 // orbit reading below: a set class is the orbit of the set under the T/I
 // group, and this is its canonical representative.
 fn prime_form(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> PcSet(n) {
-    let upright: List<Nat> = zeroed(n, cycle, set);
-    let mirrored: List<Nat> = zeroed(n, cycle, set_inverted(n, cycle, set, 0));
+    let upright: List(Nat) = zeroed(n, cycle, set);
+    let mirrored: List(Nat) = zeroed(n, cycle, set_inverted(n, cycle, set, 0));
     Members(n, gathered(if reads_lower(mirrored, upright) {
         mirrored
     } else { upright }))
@@ -342,7 +339,7 @@ fn prime_form(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> PcSet(n) {
 // `52-the-musical-algebra.md` §2.3's observation, executable — a set class
 // *is* an orbit, and `prime_form` names it. The length of this times the
 // length of `set_symmetries` is `2n`.
-fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<PcSet(n)> {
+fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(PcSet(n)) {
     orbit(
         set_action(n, cycle),
         fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
@@ -352,7 +349,7 @@ fn set_class(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<PcSet(n)> {
 }
 
 // The T/I operations that send the set to itself.
-fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
+fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Ti) {
     stabilizer(
         set_action(n, cycle),
         fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
@@ -367,7 +364,7 @@ fn set_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
 // when more than one of these fixes it (`106-collections.md`): the whole-tone
 // collection is fixed by every even transposition, the octatonic by every
 // third. That is the chapter, and it is a stabilizer and nothing else.
-fn transposition_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> {
+fn transposition_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Ti) {
     stabilizer(
         set_action(n, cycle),
         fn (left: PcSet(n), right: PcSet(n)) -> Bool { left == right },
@@ -377,7 +374,7 @@ fn transposition_symmetries(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Ti> 
 }
 
 // How many pairs among `members` realize `sought` as their interval class.
-private fn pairs_of_class(n: Nat, cycle: Cycle(n), sought: Nat, members: List<Nat>) -> Nat {
+private fn pairs_of_class(n: Nat, cycle: Cycle(n), sought: Nat, members: List(Nat)) -> Nat {
     match members {
         [] -> 0,
         [head, .. others] -> against(n, cycle, sought, head, others) + pairs_of_class(
@@ -395,7 +392,7 @@ private fn against(
     cycle: Cycle(n),
     sought: Nat,
     member: Nat,
-    others: List<Nat>,
+    others: List(Nat),
 ) -> Nat {
     match others {
         [] -> 0,
@@ -411,7 +408,7 @@ private fn against(
 // `103-interval-class-vectors.md` already gives — interval class `n - k` is
 // interval class `k` heard the other way round — so the count is derived from
 // the division rather than written down.
-fn interval_class_vector(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List<Nat> {
+fn interval_class_vector(n: Nat, cycle: Cycle(n), set: PcSet(n)) -> List(Nat) {
     map(
         fn (index: Nat) -> Nat { pairs_of_class(n, cycle, Succ(index), numbers_of(n, set)) },
         range(class_count(n, cycle)),

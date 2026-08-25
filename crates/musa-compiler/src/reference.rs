@@ -283,7 +283,7 @@ mod tests {
     fn a_nullary_function_is_published_as_a_function() {
         let reference = standard_library_reference();
         assert!(
-            reference.contains("`fn do_re_mi_strong() -> List<Bool>`"),
+            reference.contains("`fn do_re_mi_strong() -> List(Bool)`"),
             "{reference}"
         );
     }

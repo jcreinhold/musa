@@ -18,7 +18,7 @@ fact denotes a DSP operation and no Rust table defines musical control policy.
 ## Read
 
 - `docs/rules/language/08-performance-and-sound.md` §§0, 2–4, 7; repaired prompts 177–179 and note 79.
-- Source `ControlKey<K>`/`ControlValue<K>`, instrument mappings, `Progress`, current modulation/smoothing, and MIDI
+- Source `ControlKey(K)`/`ControlValue(K)`, instrument mappings, `Progress`, current modulation/smoothing, and MIDI
   mapping/loss paths.
 - OMT 007 and instrument-specific articulation discussion. Cite terminology while stating normalized control semantics
   and mappings as Musa definitions.

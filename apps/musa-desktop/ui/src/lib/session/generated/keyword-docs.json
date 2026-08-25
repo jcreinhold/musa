@@ -82,7 +82,7 @@
   {
     "spelling": "transpose",
     "summary": "the same music, moved in pitch",
-    "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P5);\n```"
+    "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(P5);\n```"
   },
   {
     "spelling": "down",
@@ -102,7 +102,7 @@
   {
     "spelling": "repeat",
     "summary": "repeat music",
-    "doc": "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, written once. With `ending` blocks inside, the passes differ where the endings say they do. The word is a statement keyword and nothing else: the finite value operation that makes a list of `count` copies is `repeated(value, count)` in `std::list`, spelled apart because `fn repeat` does not parse.\n\n```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeated(true, 4);\n```"
+    "doc": "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, written once. With `ending` blocks inside, the passes differ where the endings say they do. The word is a statement keyword and nothing else: the finite value operation that makes a list of `count` copies is `repeated(value, count)` in `std::list`, spelled apart because `fn repeat` does not parse.\n\n```musa\nrepeat 2 { use verse(); }\nlet pedals: List(Bool) = repeated(true, 4);\n```"
   },
   {
     "spelling": "bar",
@@ -242,17 +242,17 @@
   {
     "spelling": "stretch",
     "summary": "the same music, at a different speed ratio",
-    "doc": "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n```musa\nlet broaden: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = stretch(3/2);\n```"
+    "doc": "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n```musa\nlet broaden: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = stretch(3/2);\n```"
   },
   {
     "spelling": "retrograde",
     "summary": "the block, backwards",
-    "doc": "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function forms are the same classical transformation.\n\n```musa\nlet answer: EventTrack<WrittenTime> = retrograde(subject);\n```"
+    "doc": "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function forms are the same classical transformation.\n\n```musa\nlet answer: EventTrack(WrittenTime) = retrograde(subject);\n```"
   },
   {
     "spelling": "invert",
     "summary": "the block, mirrored in pitch",
-    "doc": "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n```musa\nlet mirror: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = invert(c5);\n```"
+    "doc": "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n```musa\nlet mirror: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = invert(c5);\n```"
   },
   {
     "spelling": "around",
@@ -312,12 +312,12 @@
   {
     "spelling": "music",
     "summary": "a notation-first music value",
-    "doc": "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n```musa\nlet call: EventTrack<WrittenTime> = music { c5/4 d5/4 };\n```"
+    "doc": "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n```musa\nlet call: EventTrack(WrittenTime) = music { c5/4 d5/4 };\n```"
   },
   {
     "spelling": "events",
     "summary": "a quoted event-track composition expression",
-    "doc": "A `events` quote writes a composition term directly, with `${...}` splicing typed `EventTrack<WrittenTime>` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n```musa\nlet doubled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
+    "doc": "A `events` quote writes a composition term directly, with `${...}` splicing typed `EventTrack(WrittenTime)` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n```musa\nlet doubled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
   },
   {
     "spelling": "quote",
@@ -327,22 +327,22 @@
   {
     "spelling": "Option",
     "summary": "a type that may contain one value",
-    "doc": "`Option<T>` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n```musa\nlet found: Option<Pitch> = None;\n```"
+    "doc": "`Option(T)` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n```musa\nlet found: Option(Pitch) = None;\n```"
   },
   {
     "spelling": "List",
     "summary": "a finite ordered collection type",
-    "doc": "`List<T>` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: List<Pitch> = [c4, e4, g4];\n```"
+    "doc": "`List(T)` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: List(Pitch) = [c4, e4, g4];\n```"
   },
   {
     "spelling": "Result",
     "summary": "a value, or the reason there is none",
-    "doc": "`Result<T, E>` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. Unlike `Option<T>` it says *which* way an operation failed, so an operation with two distinct failures returns one rather than asking the caller to re-derive the reason.\n\n```musa\nlet series: Result<ToneRow(12), RowFault> = row(12, chromatic, sketch);\n```"
+    "doc": "`Result(T, E)` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. Unlike `Option(T)` it says *which* way an operation failed, so an operation with two distinct failures returns one rather than asking the caller to re-derive the reason.\n\n```musa\nlet series: Result(ToneRow(12), RowFault) = row(12, chromatic, sketch);\n```"
   },
   {
     "spelling": "match",
     "summary": "handle every form of a finite value",
-    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
+    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: Option(Pitch)) -> Option(Pitch) { match x { None -> None, Some(p) -> Some(p), } }\n```"
   },
   {
     "spelling": "if",
@@ -357,22 +357,22 @@
   {
     "spelling": "Some",
     "summary": "an option containing a value",
-    "doc": "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet tonic: Option<Pitch> = Some(c4);\n```"
+    "doc": "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet tonic: Option(Pitch) = Some(c4);\n```"
   },
   {
     "spelling": "None",
     "summary": "an option containing no value",
-    "doc": "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n```musa\nlet absent: Option<Pitch> = None;\n```"
+    "doc": "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n```musa\nlet absent: Option(Pitch) = None;\n```"
   },
   {
     "spelling": "Ok",
     "summary": "a result carrying the value that was wanted",
-    "doc": "`Ok(value)` constructs the left injection of `Result<T, E>`. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet found: Result<Pitch, Text> = Ok(c4);\n```"
+    "doc": "`Ok(value)` constructs the left injection of `Result(T, E)`. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet found: Result(Pitch, Text) = Ok(c4);\n```"
   },
   {
     "spelling": "Err",
     "summary": "a result carrying the reason there is no value",
-    "doc": "`Err(reason)` constructs the right injection of `Result<T, E>`. The reason is an ordinary value of the error type, not a second channel beside the returned one, so a `match` reads it the way it reads any other case.\n\n```musa\nlet found: Result<Pitch, Text> = Err(\"no pitch spells that class here\");\n```"
+    "doc": "`Err(reason)` constructs the right injection of `Result(T, E)`. The reason is an ordinary value of the error type, not a second channel beside the returned one, so a `match` reads it the way it reads any other case.\n\n```musa\nlet found: Result(Pitch, Text) = Err(\"no pitch spells that class here\");\n```"
   },
   {
     "spelling": "true",
@@ -432,7 +432,7 @@
   {
     "spelling": "enum",
     "summary": "declare a type of alternatives",
-    "doc": "An `enum` declares alternatives, one case at a time. A case may carry nothing, a positional list of types, or named fields, and `match` over the declared cases is how a reader takes one apart with coverage checked.\n\nCases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type says which namespace the word is read in.\n\n```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading<A> {\n    Done(A),\n    Refused { at: NodePath, why: Text },\n}\n```"
+    "doc": "An `enum` declares alternatives, one case at a time. A case may carry nothing, a positional list of types, or named fields, and `match` over the declared cases is how a reader takes one apart with coverage checked.\n\nCases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type says which namespace the word is read in.\n\n```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading(A) {\n    Done(A),\n    Refused { at: NodePath, why: Text },\n}\n```"
   },
   {
     "spelling": "mod",
@@ -442,7 +442,7 @@
   {
     "spelling": "private",
     "summary": "keep a declaration inside its own module",
-    "doc": "`private` before a declaration makes it nameable only inside the module that writes it; siblings in that module read it by its bare name with no ceremony. Everything is public without the marker, because a musa package is a vocabulary — `std::notation::staff` exists to be named — so hiding is the thing worth writing down.\n\nBefore an enum's cases it hides the constructors and leaves the *type* public, which is how a package maintains an invariant: a chord whose symbol has to agree with its tones is built through the function that keeps them in step, and there is no raw constructor to route around it. All the cases or none of them — a mixed enum has no coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received from and passed to whatever its package exports.\n\n```musa\nprivate fn dotted_factor(dots: Nat) -> Ratio { … }\n\nenum Chord {\n    private NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
+    "doc": "`private` before a declaration makes it nameable only inside the module that writes it; siblings in that module read it by its bare name with no ceremony. Everything is public without the marker, because a musa package is a vocabulary — `std::notation::staff` exists to be named — so hiding is the thing worth writing down.\n\nBefore an enum's cases it hides the constructors and leaves the *type* public, which is how a package maintains an invariant: a chord whose symbol has to agree with its tones is built through the function that keeps them in step, and there is no raw constructor to route around it. All the cases or none of them — a mixed enum has no coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received from and passed to whatever its package exports.\n\n```musa\nprivate fn dotted_factor(dots: Nat) -> Ratio { … }\n\nenum Chord {\n    private NamedChord(ChordSymbol, List(Spelling)),\n}\n```"
   },
   {
     "spelling": "impl",

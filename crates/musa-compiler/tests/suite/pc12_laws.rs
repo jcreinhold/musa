@@ -55,9 +55,9 @@ const PRELUDE: &str = r"
     meter 4/4;
 
     fn numbered(member: Pc(12)) -> Nat { class_number(12, member) }
-    fn numbers(held: List<Pc(12)>) -> List<Nat> { map(numbered, held) }
-    fn chromatic_set(written: List<Nat>) -> PcSet(12) { pcset(12, chromatic, pcs(12, chromatic, written)) }
-    fn found(cell: Option<NoteName>) -> Bool { cell.fold_from_end(false, fn (one, otherwise) { true }) }
+    fn numbers(held: List(Pc(12))) -> List(Nat) { map(numbered, held) }
+    fn chromatic_set(written: List(Nat)) -> PcSet(12) { pcset(12, chromatic, pcs(12, chromatic, written)) }
+    fn found(cell: Option(NoteName)) -> Bool { cell.fold_from_end(false, fn (one, otherwise) { true }) }
 ";
 
 /// A piece carrying `bindings` and sounding nothing in particular.
@@ -119,10 +119,10 @@ fn a_pitch_class_set_uses_its_written_namespace_equality() {
     let left: PcSet(12) = chromatic_set([0, 3, 7]);
     let same: PcSet(12) = chromatic_set([7, 3, 0, 3]);
     let other: PcSet(12) = chromatic_set([0, 4, 7]);
-    let operator: Equal<Bool>(left == same, true) = Refl(true);
-    let method: Equal<Bool>(left.equal(same), true) = Refl(true);
-    let qualified: Equal<Bool>(PcSet::equal(left, same), true) = Refl(true);
-    let distinct: Equal<Bool>(left == other, false) = Refl(false);
+    let operator: Equal(Bool, left == same, true) = Refl(true);
+    let method: Equal(Bool, left.equal(same), true) = Refl(true);
+    let qualified: Equal(Bool, PcSet::equal(left, same), true) = Refl(true);
+    let distinct: Equal(Bool, left == other, false) = Refl(false);
 ",
     );
 }
@@ -142,10 +142,10 @@ fn a_declared_type_without_written_equality_has_no_implicit_fallback() {
 fn the_quotient_reduces_modulo_twelve() {
     holds(
         "
-    let eleven: Equal<Nat>(numbered(pc(12, chromatic, 11)), 11) = Refl(11);
-    let thirteen: Equal<Nat>(numbered(pc(12, chromatic, 13)), 1) = Refl(1);
-    let twenty_five: Equal<Nat>(numbered(pc(12, chromatic, 25)), 1) = Refl(1);
-    let twelve: Equal<Nat>(numbered(pc(12, chromatic, 12)), 0) = Refl(0);
+    let eleven: Equal(Nat, numbered(pc(12, chromatic, 11)), 11) = Refl(11);
+    let thirteen: Equal(Nat, numbered(pc(12, chromatic, 13)), 1) = Refl(1);
+    let twenty_five: Equal(Nat, numbered(pc(12, chromatic, 25)), 1) = Refl(1);
+    let twelve: Equal(Nat, numbered(pc(12, chromatic, 12)), 0) = Refl(0);
 ",
     );
 }
@@ -154,10 +154,10 @@ fn the_quotient_reduces_modulo_twelve() {
 fn forgetting_a_spelling_is_total_and_not_injective() {
     holds(
         "
-    let sharp: Equal<Nat>(numbered(forget_spelling(pitchclass_of(c#4))), 1) = Refl(1);
-    let flat: Equal<Nat>(numbered(forget_spelling(pitchclass_of(db4))), 1) = Refl(1);
-    let sharpened: Equal<Nat>(numbered(forget_spelling(pitchclass_of(b#3))), 0) = Refl(0);
-    let doubly: Equal<Nat>(numbered(forget_spelling(pitchclass_of(cbb4))), 10) = Refl(10);
+    let sharp: Equal(Nat, numbered(forget_spelling(pitchclass_of(c#4))), 1) = Refl(1);
+    let flat: Equal(Nat, numbered(forget_spelling(pitchclass_of(db4))), 1) = Refl(1);
+    let sharpened: Equal(Nat, numbered(forget_spelling(pitchclass_of(b#3))), 0) = Refl(0);
+    let doubly: Equal(Nat, numbered(forget_spelling(pitchclass_of(cbb4))), 10) = Refl(10);
 ",
     );
 }
@@ -166,9 +166,9 @@ fn forgetting_a_spelling_is_total_and_not_injective() {
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
     holds(
         "
-    let in_c: Equal<Bool>(found(spelled_in(pc(12, chromatic, 1), scale c major)), false) =
+    let in_c: Equal(Bool, found(spelled_in(pc(12, chromatic, 1), scale c major)), false) =
         Refl(false);
-    let in_d: Equal<Bool>(found(spelled_in(pc(12, chromatic, 1), scale d major)), true) =
+    let in_d: Equal(Bool, found(spelled_in(pc(12, chromatic, 1), scale d major)), true) =
         Refl(true);
 ",
     );
@@ -179,7 +179,7 @@ fn a_set_holds_a_repeated_member_once() {
     holds(
         "
     let triad: PcSet(12) = chromatic_set([0, 0, 4, 7, 7]);
-    let held: Equal<List<Nat>>(numbers(set_members(12, chromatic, triad)), [0, 4, 7]) =
+    let held: Equal(List(Nat), numbers(set_members(12, chromatic, triad)), [0, 4, 7]) =
         Refl([0, 4, 7]);
 ",
     );
@@ -190,9 +190,9 @@ fn a_set_reads_out_ascending_and_normal_order_need_not() {
     holds(
         "
     let set: PcSet(12) = chromatic_set([0, 5, 8]);
-    let ascending: Equal<List<Nat>>(numbers(set_members(12, chromatic, set)), [0, 5, 8]) =
+    let ascending: Equal(List(Nat), numbers(set_members(12, chromatic, set)), [0, 5, 8]) =
         Refl([0, 5, 8]);
-    let normal: Equal<List<Nat>>(numbers(normal_order(12, chromatic, set)), [5, 8, 0]) =
+    let normal: Equal(List(Nat), numbers(normal_order(12, chromatic, set)), [5, 8, 0]) =
         Refl([5, 8, 0]);
 ",
     );
@@ -204,8 +204,8 @@ fn the_interval_class_vector_has_six_entries_and_counts_every_pair() {
         "
     let sixfold: Cycle(6) = Positions(5);
     let triad: PcSet(6) = pcset(6, sixfold, pcs(6, sixfold, [0, 1, 3]));
-    let width: Equal<Nat>(length(interval_class_vector(6, sixfold, triad)), 3) = Refl(3);
-    let counts: Equal<List<Nat>>(interval_class_vector(6, sixfold, triad), [1, 1, 1]) =
+    let width: Equal(Nat, length(interval_class_vector(6, sixfold, triad)), 3) = Refl(3);
+    let counts: Equal(List(Nat), interval_class_vector(6, sixfold, triad), [1, 1, 1]) =
         Refl([1, 1, 1]);
 ",
     );
@@ -216,7 +216,7 @@ fn a_set_class_survives_transposition_and_inversion() {
     holds(
         "
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
-    let upright: Equal<Bool>(
+    let upright: Equal(Bool,
         prime_form(12, chromatic, triad) == chromatic_set([0, 3, 7]),
         true,
     ) = Refl(true);
@@ -226,7 +226,7 @@ fn a_set_class_survives_transposition_and_inversion() {
         "
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
     let moved: PcSet(12) = set_transposed(12, chromatic, triad, 3);
-    let same: Equal<Bool>(
+    let same: Equal(Bool,
         prime_form(12, chromatic, moved) == prime_form(12, chromatic, triad),
         true,
     ) = Refl(true);
@@ -236,7 +236,7 @@ fn a_set_class_survives_transposition_and_inversion() {
         "
     let triad: PcSet(12) = chromatic_set([0, 4, 7]);
     let mirrored: PcSet(12) = set_inverted(12, chromatic, triad, 0);
-    let same: Equal<Bool>(
+    let same: Equal(Bool,
         prime_form(12, chromatic, mirrored) == prime_form(12, chromatic, triad),
         true,
     ) = Refl(true);
@@ -252,7 +252,7 @@ fn the_twelve_class_orbits_and_limited_transpositions_fit_the_language_budget() 
     holds(
         "
     let whole_tone: PcSet(12) = chromatic_set([0, 2, 4, 6, 8, 10]);
-    let whole_tone_fixers: Equal<Nat>(length(
+    let whole_tone_fixers: Equal(Nat, length(
         transposition_symmetries(12, chromatic, whole_tone),
     ), 6) = Refl(6);
 ",
@@ -260,7 +260,7 @@ fn the_twelve_class_orbits_and_limited_transpositions_fit_the_language_budget() 
     holds(
         "
     let octatonic: PcSet(12) = chromatic_set([0, 1, 3, 4, 6, 7, 9, 10]);
-    let octatonic_fixers: Equal<Nat>(length(
+    let octatonic_fixers: Equal(Nat, length(
         transposition_symmetries(12, chromatic, octatonic),
     ), 4) = Refl(4);
 ",
@@ -268,7 +268,7 @@ fn the_twelve_class_orbits_and_limited_transpositions_fit_the_language_budget() 
     holds(
         "
     let generic_hexachord: PcSet(12) = chromatic_set([0, 1, 2, 4, 7, 8]);
-    let full_orbit: Equal<Nat>(length(
+    let full_orbit: Equal(Nat, length(
         set_class(12, chromatic, generic_hexachord),
     ), 24) = Refl(24);
 ",

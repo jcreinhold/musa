@@ -42,8 +42,28 @@ Read [`constitution.md`](constitution.md) for the answers, then [`obligations.md
 5. explains how stored files and public APIs will migrate; and
 6. records the change in [`../notes/research/`](../notes/research/README.md) so the old argument stays visible.
 
-The most recent authorized repair is note 79's source/host ownership correction for the candidate sound language. It
-does not change constitution §§4, 8, or 9; it makes the lower-precedence sound page and prompt cone obey them.
+The most recent authorized repair is note 83's unified dependent-application correction to the candidate language.
+
+1. **The reason.** The surface parsed type arguments and value/index arguments through different delimiters and CST
+   nodes although the dependent core lowered both to one application spine. That duplicated machinery and classified
+   terms before the reached Π checked them.
+2. **Which current examples no longer work.** Every committed use of angle-bracket application and the constructor-only
+   index-result abbreviation is intentionally rejected. The standard library, examples, fixtures, generated source, and
+   pending prompt cone migrate in this change.
+3. **The replacement rule in plain language.** `F(a, b)` is the only application. The Π domain decides each argument's
+   type. Inferred binders use `{A: Type}` in the ordinary parameter list. A family's uniform arguments precede its
+   signature, indices follow `:`, and every indexed constructor names the complete family result.
+4. **The formal specification and code map.** `language/{00-semantics,01-surface,02-core-calculus}.md` state the rule;
+   `../plan/code-map/spec-to-implementation-map.md` maps it to the hand parser, lowerer, calculus, and tree-sitter law.
+5. **How stored files and public APIs migrate.** Source is mechanically rewritten. Checked terms and stored event-track
+   identities do not change because both former spellings already lowered to the same core application. Removed CST node
+   names are unreleased parser API and have no compatibility aliases.
+6. **The record.**
+   [`../notes/research/language-design-closure/83-one-dependent-application.md`](../notes/research/language-design-closure/83-one-dependent-application.md)
+   preserves the defect, literature-derived distinction, replacement, and rejected alternatives.
+
+Before it, note 79's source/host ownership correction repairs the candidate sound language. It does not change
+constitution §§4, 8, or 9; it makes the lower-precedence sound page and prompt cone obey them.
 
 1. **The reason.** Prompts 174b–176 made a public Rust `StudioSpec`, surface catalogue, and `WrittenQuantity`
    authoritative after prompt 167 had already demonstrated equivalent ordinary Musa declarations. The uncommitted

@@ -46,25 +46,25 @@ let level = "readable";
 // Why a region was refused, and the node the refusal is about.
 data Refusal {
     NoRefusal,
-    Refused(node: Syntax<TokenTree>, why: Text),
+    Refused(node: Syntax(TokenTree), why: Text),
 }
 
 // What sounds first in a stretch of notation.
 data Sound {
     Silent,
-    Sounds(spelling: Text, node: Syntax<TokenTree>),
+    Sounds(spelling: Text, node: Syntax(TokenTree)),
 }
 
 // A tie left hanging at the end of a stretch.
 data Hanging {
     Closed,
-    Hangs(spelling: Text, node: Syntax<TokenTree>),
+    Hangs(spelling: Text, node: Syntax(TokenTree)),
 }
 
 // One header field, once it has been read.
 data Given {
     Absent,
-    Stated(node: Syntax<TokenTree>),
+    Stated(node: Syntax(TokenTree)),
 }
 
 // The six things a staff says about itself before any notation.
@@ -86,7 +86,7 @@ data Head {
 // parser, so what comes out of one is already an expression.
 data Reading {
     Reading(
-        items: Syntax<Expr>,
+        items: Syntax(Expr),
         span: Ratio,
         opens: Sound,
         hangs: Hanging,
@@ -106,24 +106,24 @@ data Dots {
 // The written value a note or rest states, waiting for what it belongs to.
 data Length {
     NoLength,
-    Divided(numeral: Syntax<Expr>, dots: Dots, span: Ratio),
-    Spanned(numeral: Syntax<Expr>, span: Ratio),
+    Divided(numeral: Syntax(Expr), dots: Dots, span: Ratio),
+    Spanned(numeral: Syntax(Expr), span: Ratio),
 }
 
 // Whether what is being read is tied on to whatever sounds next.
 data Tying {
     Untied,
-    Tied(node: Syntax<TokenTree>),
+    Tied(node: Syntax(TokenTree)),
 }
 
 // Up to two numbers a form stated in its parentheses.
 data Numbers {
     NoNumbers,
-    OneNumber(first: Syntax<Expr>, value: Ratio),
+    OneNumber(first: Syntax(Expr), value: Ratio),
     TwoNumbers(
-        first: Syntax<Expr>,
+        first: Syntax(Expr),
         count: Ratio,
-        second: Syntax<Expr>,
+        second: Syntax(Expr),
         unit: Ratio,
     ),
 }
@@ -137,7 +137,7 @@ data Taken {
 // The pitches of a chord or a grace group, waiting for what holds them.
 data Voiced {
     NoVoices,
-    Voices(node: Syntax<TokenTree>, spelling: Text, listed: Syntax<Expr>),
+    Voices(node: Syntax(TokenTree), spelling: Text, listed: Syntax(Expr)),
 }
 
 // One word or literal, waiting for the word that says what it was.
@@ -200,7 +200,7 @@ fn nothing_pending(here: NodePath) -> Pending {
 // it goes through the checked parse the same way a composer's own token
 // does — which is the general shape of §1.2's finding rather than a
 // special case of it.
-fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
+fn anchored(region: Syntax(TokenTree), here: NodePath) -> Syntax(Expr) {
     match syntax_anchor(region, here) {
         Some(node) -> match as_expression(node) {
             Some(place) -> place,
@@ -211,7 +211,7 @@ fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
 }
 
 // `Tie`, as the package spells it.
-fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
+fn tie_of(here: NodePath, tying: Tying) -> Syntax(Expr) {
     match tying {
         Untied -> quote at here { Untied },
         Tied(node) -> quote at here { TiedOn },
@@ -220,7 +220,7 @@ fn tie_of(here: NodePath, tying: Tying) -> Syntax<Expr> {
 
 // How many dots the emitted value carries, as the numeral it is written
 // with.
-fn dot_count(here: NodePath, dots: Dots) -> Syntax<Expr> {
+fn dot_count(here: NodePath, dots: Dots) -> Syntax(Expr) {
     match dots {
         NoDots -> quote at here { 0 },
         OneDot -> quote at here { 1 },
@@ -230,7 +230,7 @@ fn dot_count(here: NodePath, dots: Dots) -> Syntax<Expr> {
 }
 
 // `WrittenDuration`, as the package spells it.
-fn written_duration(here: NodePath, length: Length) -> Option<Syntax<Expr>> {
+fn written_duration(here: NodePath, length: Length) -> Option(Syntax(Expr)) {
     match length {
         NoLength -> None,
         Divided(numeral, dots, span) -> Some(quote at here {
@@ -241,7 +241,7 @@ fn written_duration(here: NodePath, length: Length) -> Option<Syntax<Expr>> {
 }
 
 // The exact span a stated written value covers.
-fn stated_span(length: Length) -> Option<Ratio> {
+fn stated_span(length: Length) -> Option(Ratio) {
     match length {
         NoLength -> None,
         Divided(numeral, dots, span) -> Some(span),
@@ -250,7 +250,7 @@ fn stated_span(length: Length) -> Option<Ratio> {
 }
 
 // `Beats(count, unit)`, from the two numbers a form stated.
-fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
+fn beats_of(here: NodePath, numbers: Numbers) -> Option(Syntax(Expr)) {
     match numbers {
         NoNumbers -> None,
         OneNumber(first, value) -> None,
@@ -261,7 +261,7 @@ fn beats_of(here: NodePath, numbers: Numbers) -> Option<Syntax<Expr>> {
 }
 
 // What a stated meter measures, in whole notes.
-fn beats_span(numbers: Numbers) -> Option<Ratio> {
+fn beats_span(numbers: Numbers) -> Option(Ratio) {
     match numbers {
         NoNumbers -> None,
         OneNumber(first, value) -> None,
@@ -273,29 +273,29 @@ fn beats_span(numbers: Numbers) -> Option<Ratio> {
 
 // `call3(here, 1, "Sounded", anchored(region, here), event, items)`.
 fn sounded(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
-    event: Syntax<Expr>,
-    items: Syntax<Expr>,
-) -> Syntax<Expr> {
+    event: Syntax(Expr),
+    items: Syntax(Expr),
+) -> Syntax(Expr) {
     quote at here { Sounded(${ anchored(region, here) }, $event, $items) }
 }
 
 // `call1(spot, 3, "Rest", value)`.
-fn rested(spot: NodePath, value: Syntax<Expr>) -> Syntax<Expr> {
+fn rested(spot: NodePath, value: Syntax(Expr)) -> Syntax(Expr) {
     quote at spot { Rest($value) }
 }
 
 // `call5(spot, 12, "Tuplet", anchored(region, spot), played, against,
 // items, after)`.
 fn tuplet_of(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     spot: NodePath,
-    played: Syntax<Expr>,
-    against: Syntax<Expr>,
-    items: Syntax<Expr>,
-    after: Syntax<Expr>,
-) -> Syntax<Expr> {
+    played: Syntax(Expr),
+    against: Syntax(Expr),
+    items: Syntax(Expr),
+    after: Syntax(Expr),
+) -> Syntax(Expr) {
     quote at spot {
         Tuplet(${ anchored(region, spot) }, $played, $against, $items, $after)
     }
@@ -308,11 +308,11 @@ fn tuplet_of(
 // information — and the malformed case is answered here, at the splice,
 // rather than by the gate against the whole region.
 fn note_of(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     spot: NodePath,
-    value: Syntax<Expr>,
+    value: Syntax(Expr),
     tying: Tying,
-) -> Option<Syntax<Expr>> {
+) -> Option(Syntax(Expr)) {
     match syntax_at(region, spot) {
         None -> None,
         Some(node) -> match as_expression(node) {
@@ -339,7 +339,7 @@ fn stated(here: NodePath) -> Length {
 // The kind decides, and it is compared against a named kind rather than
 // against its spelling — which is the half of the dispatch table prompt 138
 // already retired, standing next to the half quotation retires.
-fn from_token(region: Syntax<TokenTree>, here: NodePath, kind: TokenKind) -> Syntax<Expr> {
+fn from_token(region: Syntax(TokenTree), here: NodePath, kind: TokenKind) -> Syntax(Expr) {
     match written_duration(here, stated(here)) {
         None -> quote at here { NoItems },
         Some(value) -> if token_kind_equal(kind, TokenKind.PitchLiteral) {
@@ -355,7 +355,7 @@ fn from_token(region: Syntax<TokenTree>, here: NodePath, kind: TokenKind) -> Syn
 
 // What anything else at a leaf reads to. A rest states a written value and
 // nothing else, so nothing here needs the region.
-fn from_leaf(here: NodePath) -> Syntax<Expr> {
+fn from_leaf(here: NodePath) -> Syntax(Expr) {
     match written_duration(here, stated(here)) {
         None -> quote at here { NoItems },
         Some(value) -> rested(here, value),
@@ -365,11 +365,11 @@ fn from_leaf(here: NodePath) -> Syntax<Expr> {
 // What a group reads to: parentheses hold a tuplet's two numbers, and
 // every other delimiter holds notation.
 fn from_group(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     delimiter: Delimiter,
-    children: List<Syntax<Expr>>,
-) -> Syntax<Expr> {
+    children: List(Syntax(Expr)),
+) -> Syntax(Expr) {
     if delimiter_equal(delimiter, Delimiter.Parentheses) {
         tuplet_of(
             region,
@@ -392,7 +392,7 @@ fn from_group(
 // The whole region, read the way the staff adapter reads one: every node
 // gets a place of its own, and every construction is minted at the place
 // it was built from.
-fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
+fn built(region: Syntax(TokenTree)) -> Syntax(Expr) {
     syntax_fold_from_leaves(
         fn (here) { quote at here { NoItems } },
         fn (here, kind, text) { from_token(region, here, kind) },
@@ -405,4 +405,4 @@ fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
 // Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
 // total core does not generalize, so `Ok`'s other side is a metavariable
 // nobody solves unless the signature says it.
-let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };
+let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(Expr), Text) { Ok(built(region)) };

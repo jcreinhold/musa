@@ -32,7 +32,7 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
             Code::DependencyCycle,
         ),
         (
-            "let value: EventTrack<WrittenTime> = music { meter 3/4; c4/1 };",
+            "let value: EventTrack(WrittenTime) = music { meter 3/4; c4/1 };",
             Code::Misplaced,
         ),
     ] {

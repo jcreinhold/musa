@@ -141,9 +141,9 @@ fn a_chosen_index_may_call_a_definition() {
         "
             data Peano { Zero, Succ(prev: Peano) }
             fn bump(subject: Peano) -> Peano { Succ(subject) }
-            data Ix(p: Peano) {
-                Here : (Zero),
-                There(q: Peano, seen: Ix(q)) : (bump(q)),
+            data Ix: (p: Peano) -> Type {
+                Here : Ix(Zero),
+                There(q: Peano, seen: Ix(q)) : Ix(bump(q)),
             }
             let one: Ix(Succ(Zero)) = There(Zero, Here);
         ",
@@ -166,11 +166,11 @@ fn a_chosen_index_may_call_a_method_of_this_document() {
             impl Nat {
                 fn add(left: Nat, right: Nat) -> Nat { nat_add(left, right) }
             }
-            data Vect<A>(n: Nat) {
-                Nil : (0),
-                Cons(m: Nat, head: A, tail: Vect<A>(m)) : (m + 1),
+            data Vect(A: Type): (n: Nat) -> Type {
+                Nil : Vect(A, 0),
+                Cons(m: Nat, head: A, tail: Vect(A, m)) : Vect(A, m + 1),
             }
-            let two: Vect<Nat>(2) = Cons(1, 7, Cons(0, 8, Nil));
+            let two: Vect(Nat, 2) = Cons(1, 7, Cons(0, 8, Nil));
         ",
     );
     let (value, _) = document.value("two").expect("`two` is bound");
@@ -208,9 +208,9 @@ fn a_family_and_a_definition_that_name_each_other_are_refused() {
         "
             data Peano { Zero, Succ(prev: Peano) }
             fn bump(subject: Ix(Zero)) -> Peano { Zero }
-            data Ix(p: Peano) {
-                Here : (Zero),
-                There(q: Ix(Zero)) : (bump(q)),
+            data Ix: (p: Peano) -> Type {
+                Here : Ix(Zero),
+                There(q: Ix(Zero)) : Ix(bump(q)),
             }
         ",
     );
@@ -240,7 +240,7 @@ fn two_data_declarations_that_name_each_other_are_refused() {
 
 #[test]
 fn the_phase_vocabulary_is_readable_only_in_a_phase_source() {
-    const WRITTEN: &str = " fn probe(held: Syntax<Expr>) -> Syntax<Expr> { held } ";
+    const WRITTEN: &str = " fn probe(held: Syntax(Expr)) -> Syntax(Expr) { held } ";
     let (ordinary, said) = elaborated(WRITTEN);
     assert!(ordinary.is_none(), "ordinary source cannot name `Syntax`: {said:?}");
     let (phase, said) = faults(&[Source::own(&library(WRITTEN)).in_phase()]);
@@ -268,7 +268,7 @@ fn a_count_and_a_list_read_back_as_canonical_data() {
     let document = document(
         "
             let n: Nat = 3;
-            let xs: List<Nat> = [1, 2];
+            let xs: List(Nat) = [1, 2];
         ",
     );
     let read = |name: &str| {
@@ -336,11 +336,11 @@ fn a_prelude_container_folds_at_the_head_of_its_own_type() {
     let document = document(
         "
             let length: Nat = [1, 2, 3].fold_from_start(0, fn (built: Nat, item: Nat) -> Nat { Succ(built) });
-            let rebuilt: List<Nat> =
-                [1, 2].fold_from_end([], fn (item: Nat, later: List<Nat>) -> List<Nat> { Cons(item, later) });
-            let doubled: List<Bool> = [1, 2].map(fn (item: Nat) -> Bool { True });
+            let rebuilt: List(Nat) =
+                [1, 2].fold_from_end([], fn (item: Nat, later: List(Nat)) -> List(Nat) { Cons(item, later) });
+            let doubled: List(Bool) = [1, 2].map(fn (item: Nat) -> Bool { True });
             let held: Nat = Some(5).fold_from_end(0, fn (found: Nat, fallback: Nat) -> Nat { found });
-            let nothing: Option<Nat> = None;
+            let nothing: Option(Nat) = None;
             let missing: Nat = nothing.fold_from_end(7, fn (found: Nat, fallback: Nat) -> Nat { found });
         ",
     );
@@ -914,7 +914,7 @@ fn an_open_machine_is_refused_until_its_ports_are_written() {
         "the refusal names what was not determined: {said:?}"
     );
 
-    let decided = document(" let decided: Machine<AudioFrameStep, Ratio, Ratio> = identity; ");
+    let decided = document(" let decided: Machine(AudioFrameStep, Ratio, Ratio) = identity; ");
     let machines = decided.machines();
     let (name, described) = machines.first().expect("a written type decides the ports");
     assert_eq!(name, "decided");

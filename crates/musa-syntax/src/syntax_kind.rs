@@ -527,7 +527,7 @@ pub enum SyntaxKind {
     Param,
     /// A comma-separated parameter list.
     ParamList,
-    /// A base, product, option, list, or arrow type.
+    /// A base, product, application, or arrow type.
     TypeExpr,
     /// A reference to a base or named type.
     TypeName,
@@ -535,12 +535,6 @@ pub enum SyntaxKind {
     FunctionType,
     /// `(left, right, ...)` in a type position.
     ProductType,
-    /// `option[type]`.
-    OptionType,
-    /// `list[type]`.
-    ListType,
-    /// `Result<value, error>` — the binary sum, in its one surface spelling.
-    ResultType,
     /// A reference to a value by name.
     NameExpr,
     /// A core scalar literal.
@@ -672,14 +666,6 @@ pub enum SyntaxKind {
     /// strictly positive nominal declaration. A library declares its own data
     /// here rather than asking the compiler for another built-in type.
     DataDecl,
-    /// `<A, B>` on a declaration — the type parameters it abstracts over.
-    TypeParams,
-    /// One type parameter: a name, standing for a type inside the declaration.
-    ///
-    /// `A` or `{n : Nat}` — `01-surface.md` §1's two spellings. Both are
-    /// inferred; the braces are what lets one state the parameter's *type*,
-    /// which the bare form leaves at `Type 0`.
-    TypeParam,
     /// `{A = Nat}` in an argument list — a type parameter supplied by the name
     /// of the binder it fills.
     ///
@@ -701,11 +687,8 @@ pub enum SyntaxKind {
     /// brackets already tell `Pc<A>` from `Pc(12)` at a *use*, and this is that
     /// spelling at the declaration.
     DataIndices,
-    /// `: (n + 1)` after a constructor's fields — the indices it chooses.
-    ///
-    /// A list of ordinary expressions, one per binder in the declaration's
-    /// [`SyntaxKind::DataIndices`], read under that constructor's own fields.
-    DataChosen,
+    /// `: Vec(A, successor(n))` after a constructor's fields.
+    ConstructorResult,
     /// `record Pending { read: Reading; dots: Dots; }` — a declaration of
     /// named fields.
     ///
@@ -760,25 +743,6 @@ pub enum SyntaxKind {
     /// syntax error rather than a puzzle, because a replacement names a place
     /// in the record rather than an expression that computes one.
     FieldPath,
-    /// `Tree<Nat>` — a declared type, applied to its arguments. A bare
-    /// `Motive` is a [`SyntaxKind::TypeName`]; this is the applied form, which
-    /// only a parameterized declaration can be written in.
-    AppliedType,
-    /// `Pc(12)`, `Row(n)`, `Bar(3/4)` — a type carrying an **index**.
-    ///
-    /// Parentheses rather than angle brackets, and the difference is the point:
-    /// `Pc<A>` would be a type built from another type, and `Pc(12)` is a type
-    /// built from a *number*. `docs/rules/language/02-core-calculus.md` §1.5
-    /// spells it this way so the two are distinguishable at a glance, and the
-    /// grammar keeps them apart rather than deciding by what the argument turns
-    /// out to be.
-    ///
-    /// The argument is read as an ordinary expression. Which expressions are
-    /// admissible indices is §1.5's grammar, and the parser is not where it is
-    /// decided: an index is a question only where two of them are compared, so
-    /// the refusal that names the expression belongs to the checker and reaches
-    /// the author with the comparison that could not be made.
-    IndexedType,
     /// `syntax staff { ... }` — one named, delimited adapter region.
     ///
     /// Its contents are *not* ordinary expression syntax: they are read by the

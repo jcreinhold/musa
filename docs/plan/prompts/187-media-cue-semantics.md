@@ -37,7 +37,7 @@ before any clip player is written.
 Define three disjoint constructs:
 
 1. A **sample instrument** is triggered by note gestures and is not a media occurrence (prompts 184–186).
-2. A **musical clip** is an interval occurrence `[s,e)` in `EventTrack<WrittenTime,MediaAction>` with an explicit fit
+2. A **musical clip** is an interval occurrence `[s,e)` in `EventTrack(WrittenTime,MediaAction)` with an explicit fit
    policy. Initial policies are `crop`, `loop`, and honest playback `rate`; rate changes both duration and pitch unless
    a later pitch-preserving warp feature says otherwise.
 3. A **fixed-media cue** is a point occurrence at written position `b` referencing an asset and playback settings. Its

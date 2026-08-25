@@ -12,20 +12,20 @@ meter 4/4;
 key c major;
 
 let home: Scale = scale c major;
-let five: Option<Roman> = triad_numeral(5);
-let five_seventh: Option<Roman> = seventh_numeral(5);
+let five: Option(Roman) = triad_numeral(5);
+let five_seventh: Option(Roman) = seventh_numeral(5);
 
-fn in_home(written: Option<Roman>) -> Option<ChordClass> {
+fn in_home(written: Option(Roman)) -> Option(ChordClass) {
 match written {
 None -> None,
 Some(numbered) -> numeral_chord(home, numbered),
 }
 }
 
-let tonic: Option<ChordClass> = in_home(triad_numeral(1));
-let subdominant: Option<ChordClass> = in_home(triad_numeral(4));
-let dominant: Option<ChordClass> = in_home(five);
-let dominant_seventh: Option<ChordClass> = in_home(five_seventh);
+let tonic: Option(ChordClass) = in_home(triad_numeral(1));
+let subdominant: Option(ChordClass) = in_home(triad_numeral(4));
+let dominant: Option(ChordClass) = in_home(five);
+let dominant_seventh: Option(ChordClass) = in_home(five_seventh);
 
 score {
         part soprano {

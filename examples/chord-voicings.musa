@@ -16,52 +16,52 @@ piece "Chord Voicings" {
     // Two inversions of that one class. An inversion designates a member as
     // the bass; it does not re-root the chord, and `root_of` still answers
     // `c` for both.
-    let first_inversion: Option<ChordClass> = inversion(sonority, 1);
-    let third_inversion: Option<ChordClass> = inversion(sonority, 3);
+    let first_inversion: Option(ChordClass) = inversion(sonority, 1);
+    let third_inversion: Option(ChordClass) = inversion(sonority, 3);
 
     // Sounding an inversion still takes a policy and a register. Close
     // position from the designated bass is the plainest one.
-    fn from_e(content: ChordClass) -> Option<Voicing> { close_position(content, e4) }
-    fn from_b(content: ChordClass) -> Option<Voicing> { close_position(content, b3) }
+    fn from_e(content: ChordClass) -> Option(Voicing) { close_position(content, e4) }
+    fn from_b(content: ChordClass) -> Option(Voicing) { close_position(content, b3) }
 
     // Three voicings, each a policy applied to the same class.
     //
     // Close position stacks the members upward from an absolute bass.
-    let close: Option<Voicing> = close_position(sonority, c4);
+    let close: Option(Voicing) = close_position(sonority, c4);
     // Drop 2 lowers the second note from the top by an octave. It is a
     // different voicing of the same class, not a different chord.
-    let drop_two: Option<Voicing> = drop_position(sonority, c3, 2);
+    let drop_two: Option(Voicing) = drop_position(sonority, c3, 2);
     // The pitches written out by hand: the same four notes, spread wide, with
     // the third on top.
-    let spread: Option<Voicing> = voiced_as(sonority, [c3, g3, b3, e4]);
+    let spread: Option(Voicing) = voiced_as(sonority, [c3, g3, b3, e4]);
 
     // The jazz rootless voicing, with its omission named rather than left to
     // be inferred: position zero is the root, and dropping it is what makes
     // the voicing rootless. The class it voices is still C major seventh.
-    let rootless_close: Option<Voicing> = close.fold_from_end(
+    let rootless_close: Option(Voicing) = close.fold_from_end(
         None,
         fn (found, otherwise) { rootless(found) },
     );
 
     // A voicing sounds only through `play`. A policy whose preconditions fail
     // sounds a rest, so an absent answer is silence rather than a guess.
-    fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
-    fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
+    fn held(chosen: Voicing) -> EventTrack(WrittenTime) { play(chosen, duration_of(1/1)) }
+    fn sounded(chosen: Option(Voicing)) -> EventTrack(WrittenTime) {
         chosen.fold_from_end(music {
             rest/1
         }, fn (found, otherwise) { held(found) })
     }
 
-    let first_bar: EventTrack<WrittenTime> = sounded(
+    let first_bar: EventTrack(WrittenTime) = sounded(
         first_inversion.fold_from_end(None, fn (found, otherwise) { from_e(found) }),
     );
-    let third_bar: EventTrack<WrittenTime> = sounded(
+    let third_bar: EventTrack(WrittenTime) = sounded(
         third_inversion.fold_from_end(None, fn (found, otherwise) { from_b(found) }),
     );
-    let close_bar: EventTrack<WrittenTime> = sounded(close);
-    let drop_bar: EventTrack<WrittenTime> = sounded(drop_two);
-    let spread_bar: EventTrack<WrittenTime> = sounded(spread);
-    let rootless_bar: EventTrack<WrittenTime> = sounded(rootless_close);
+    let close_bar: EventTrack(WrittenTime) = sounded(close);
+    let drop_bar: EventTrack(WrittenTime) = sounded(drop_two);
+    let spread_bar: EventTrack(WrittenTime) = sounded(spread);
+    let rootless_bar: EventTrack(WrittenTime) = sounded(rootless_close);
 
     score {
         part piano {

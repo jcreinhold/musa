@@ -1,6 +1,6 @@
 import std::cyclic;
 import std::list;
-// For `Action<NoteName, Interval>`: every transformation below moves a root
+// For `Action(NoteName, Interval)`: every transformation below moves a root
 // by a written interval, and `up`/`down` is that action written as an
 // operator.
 import std::pitch;
@@ -122,7 +122,7 @@ fn then(first: Triad -> Triad, second: Triad -> Triad, refined: Triad) -> Triad 
 // triad. Composition is what a chain is — no transformation here is a
 // keyword or a special form, so a list of them is ordinary data and this
 // is an ordinary fold.
-fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
+fn chain(steps: List(Triad -> Triad), start: Triad) -> Triad {
     steps.fold_from_start(start, fn (carried, operation) { applied(operation, carried) })
 }
 
@@ -135,7 +135,7 @@ fn applied(operation: Triad -> Triad, carried: Triad) -> Triad { operation(carri
 fn unspelled(spelled: NoteName) -> Pc(12) { forget_spelling(spelled) }
 
 // The three tones of a triad, spelled, from the root upward.
-fn triad_tones(refined: Triad) -> List<NoteName> {
+fn triad_tones(refined: Triad) -> List(NoteName) {
     [triad_root(refined), triad_third(refined), triad_fifth(refined)]
 }
 

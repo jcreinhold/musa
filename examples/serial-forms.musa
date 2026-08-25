@@ -27,60 +27,76 @@ piece "Serial Forms" {
     // A row is written as twelve numbers because a row has no spelling to
     // write. The numbers are reduced into the division, so this list is twelve
     // residues.
-    let generic_numbers: List<Nat> = [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7];
+    let generic_numbers: List(Nat) = [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7];
 
     // The only way into `ToneRow(12)`, and it can fail: one entry per pitch
     // class, each pitch class once. The failure carries its own reason, so a
     // caller that has the failure never has to ask the question again to learn
     // why.
-    let generic: Result<ToneRow(12), RowFault> = row(12, chromatic, generic_numbers);
-    let generic_is_row: Equal<Bool>(is_row(generic), true) = Refl(true);
+    let generic: Result(ToneRow(12), RowFault) = row(12, chromatic, generic_numbers);
+    let generic_is_row: Equal(Bool, is_row(generic), true) = Refl(true);
 
     // Not a row, and the reason says which two ways: the position that repeated
     // and the pitch class that never arrived.
-    let flawed_numbers: List<Nat> = [0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3];
-    let flawed: Result<ToneRow(12), RowFault> = row(12, chromatic, flawed_numbers);
-    let flawed_is_row: Equal<Bool>(is_row(flawed), false) = Refl(false);
-    let flawed_repeats: Equal<List<Nat>>(repeated_positions(flawed_numbers), [3]) = Refl([3]);
-    let flawed_missing: Equal<List<Nat>>(missing_classes(12, chromatic, flawed_numbers), [
+    let flawed_numbers: List(Nat) = [0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3];
+    let flawed: Result(ToneRow(12), RowFault) = row(12, chromatic, flawed_numbers);
+    let flawed_is_row: Equal(Bool, is_row(flawed), false) = Refl(false);
+    let flawed_repeats: Equal(List(Nat), repeated_positions(flawed_numbers), [3]) = Refl([3]);
+    let flawed_missing: Equal(List(Nat), missing_classes(12, chromatic, flawed_numbers), [
         11,
     ]) = Refl([11]);
 
     // # The four labels, one operation each
 
     // P₃: every pitch class transposed by three, order unchanged.
-    let prime_three: Equal<List<Nat>>(form(
-        generic,
-        fn (series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) },
-    ), [3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10],) = Refl([3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10]);
+    let prime_three: Equal(
+        List(Nat),
+        form(
+            generic,
+            fn (series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) },
+        ),
+        [3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10],
+    ) = Refl([3, 4, 7, 0, 8, 11, 6, 1, 5, 2, 9, 10]);
 
     // I₀: every pitch class reflected through zero, order unchanged.
-    let inversion_zero: Equal<List<Nat>>(form(
-        generic,
-        fn (series: ToneRow(12)) -> ToneRow(12) { row_inverted(12, chromatic, series, 0) },
-    ), [0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5],) = Refl([0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5]);
+    let inversion_zero: Equal(
+        List(Nat),
+        form(
+            generic,
+            fn (series: ToneRow(12)) -> ToneRow(12) { row_inverted(12, chromatic, series, 0) },
+        ),
+        [0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5],
+    ) = Refl([0, 11, 8, 3, 7, 4, 9, 2, 10, 1, 6, 5]);
 
     // R: the order reversed, the pitch classes untouched. The two axes are
     // independent, which is why the labels multiply rather than add.
-    let retrograde_form: Equal<List<Nat>>(form(
-        generic,
-        fn (series: ToneRow(12)) -> ToneRow(12) { row_retrograde(12, chromatic, series) },
-    ), [7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0],) = Refl([7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0]);
+    let retrograde_form: Equal(
+        List(Nat),
+        form(
+            generic,
+            fn (series: ToneRow(12)) -> ToneRow(12) { row_retrograde(12, chromatic, series) },
+        ),
+        [7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0],
+    ) = Refl([7, 6, 11, 2, 10, 3, 8, 5, 9, 4, 1, 0]);
 
     // RI₀: both at once, which is the chapter's fourth label and not a fifth
     // kind of thing.
-    let retrograde_inversion_form: Equal<List<Nat>>(form(
-        generic,
-        fn (series: ToneRow(12)) -> ToneRow(12) {
-            row_retrograde_inversion(12, chromatic, series, 0)
-        },
-    ), [5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0],) = Refl([5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0]);
+    let retrograde_inversion_form: Equal(
+        List(Nat),
+        form(
+            generic,
+            fn (series: ToneRow(12)) -> ToneRow(12) {
+                row_retrograde_inversion(12, chromatic, series, 0)
+            },
+        ),
+        [5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0],
+    ) = Refl([5, 6, 1, 10, 2, 9, 4, 7, 3, 8, 11, 0]);
 
     // A row a label sends to itself. The ascending chromatic row is fixed by
     // the retrograde inversion about eleven — one operation, so it fits here;
     // counting *all* the operations that fix a row is `110`'s question and
     // prompt 165's.
-    let ascending: Result<ToneRow(12), RowFault> = row(12, chromatic, [
+    let ascending: Result(ToneRow(12), RowFault) = row(12, chromatic, [
         0,
         1,
         2,
@@ -94,17 +110,21 @@ piece "Serial Forms" {
         10,
         11,
     ]);
-    let ascending_is_symmetric: Equal<Bool>(alike(
-        ascending,
-        fn (series: ToneRow(12)) -> ToneRow(12) {
-            row_retrograde_inversion(12, chromatic, series, 11)
-        },
-    ), true,) = Refl(true);
+    let ascending_is_symmetric: Equal(
+        Bool,
+        alike(
+            ascending,
+            fn (series: ToneRow(12)) -> ToneRow(12) {
+                row_retrograde_inversion(12, chromatic, series, 11)
+            },
+        ),
+        true,
+    ) = Refl(true);
 
     // The spelling projection, and it is not a coercion. C major spells seven
     // of the twelve classes and nothing else, so five positions come back
     // absent — the loss is in the value, where it can be seen.
-    let generic_in_c_major: List<Option<NoteName>> = match generic {
+    let generic_in_c_major: List(Option(NoteName)) = match generic {
         Ok(series) -> row_spelled_in(series, scale c major),
         Err(reason) -> [],
     };
@@ -112,7 +132,7 @@ piece "Serial Forms" {
     // # The helpers, which say nothing new
 
     // Whether a list of numbers was a row.
-    fn is_row(built: Result<ToneRow(12), RowFault>) -> Bool {
+    fn is_row(built: Result(ToneRow(12), RowFault)) -> Bool {
         match built {
             Ok(series) -> true,
             Err(reason) -> false,
@@ -123,9 +143,9 @@ piece "Serial Forms" {
     // The empty list stands for the row that was never built, which the
     // assertions above have already ruled out.
     fn form(
-        built: Result<ToneRow(12), RowFault>,
+        built: Result(ToneRow(12), RowFault),
         operation: ToneRow(12) -> ToneRow(12),
-    ) -> List<Nat> {
+    ) -> List(Nat) {
         match built {
             Ok(series) -> row_numbers(12, operation(series)),
             Err(reason) -> [],
@@ -134,7 +154,7 @@ piece "Serial Forms" {
 
     // Whether an operation returns a row to itself.
     fn alike(
-        built: Result<ToneRow(12), RowFault>,
+        built: Result(ToneRow(12), RowFault),
         operation: ToneRow(12) -> ToneRow(12),
     ) -> Bool {
         match built {

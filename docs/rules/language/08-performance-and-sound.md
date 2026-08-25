@@ -126,7 +126,7 @@ its written shape is `p : [0,1] → [0,1]`, then for `s ≤ b ≤ e`:
 expression(b) = d₀ + (d₁-d₀) · p((b-s)/(e-s)).
 ```
 
-The constructor requires `s<e`, `p(0)=0`, and `p(1)=1`; hence the endpoints are exactly `d₀,d₁`. The payload encodes
+The constructor requires `s(e`, `p(0)=0`, and `p(1)=1`; hence the endpoints are exactly `d₀,d₁`. The payload encodes
 each breakpoint at normalized local coordinate `(b-s)/(e-s)`; explicit point changes are separate point occurrences with
 source-stable same-beat ordering. Instrument mapping occurs later and cannot change this gesture-level curve.
 
@@ -165,8 +165,8 @@ Libraries may add typed namespaced keys, for example `bow.pressure : normalized`
 `prepared_piano.mallet_position : cm in [0 cm,12 cm]`. Namespacing prevents accidental agreement between unrelated
 controls. A physical custom control reduces swappability by design and must match name, unit, domain, and rate.
 
-`ControlKey<K>` is an indexed source record comprising namespace, name, value kind `K`, and update rate; its paired
-`ControlValue<K>` is fixed by the same index. Standard keys are ordinary values exported by `std::performance`, not
+`ControlKey(K)` is an indexed source record comprising namespace, name, value kind `K`, and update rate; its paired
+`ControlValue(K)` is fixed by the same index. Standard keys are ordinary values exported by `std::performance`, not
 constructors of a closed host enum. During preparation a key resolves privately to one or more render-plan parameter
 indices or sample-engine operations. Those indices are not stable, are not serializable source addresses, and never
 enter a profile, gesture, diagnostic identity, or public instrument signature.
@@ -181,7 +181,7 @@ block:
 instrument glass conforms note_instrument {
     implementation graph {
         voice oscillator(sine)
-            |> envelope(attack: 12 ms, decay: 180 ms, sustain: 0.7, release: 600 ms)
+            |) envelope(attack: 12 ms, decay: 180 ms, sustain: 0.7, release: 600 ms)
             |> lowpass(cutoff: 4200 Hz, resonance: 0.8)
             |> output;
 

@@ -659,23 +659,25 @@ fn the_old_function_body_spelling_is_a_migration_error() {
 fn the_old_type_spellings_are_migration_errors() {
     let doc = parse(
         "piece \"Old\" { let subject: music = music { c4/4 }; let spelled: pitchclass = pc_of(c4); \
-         let held: option[voicing] = none; }",
+         let held: option(voicing) = none; }",
     );
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// A type parameter is angle-bracketed. The word respelling runs first, so
-/// the source that meets this refusal in practice is already capitalized: the
-/// brackets are the only thing left wrong. One complaint per parameter, at the
-/// pair, with the pair rewritten as the fix — nested and stacked parameters
-/// included, so `List[Option[Pitch]]` says it twice and means it twice.
+/// Bracketed type application is no longer a compatibility language. It is
+/// rejected and retained losslessly so an editor can replace it as ordinary
+/// source text.
 #[test]
 fn the_old_type_parameter_brackets_are_migration_errors() {
     let doc = parse(
         "piece \"Old\" { let held: Option[Pitch] = None; \
          let many: List[Option[Pitch]] = []; }",
     );
-    insta::assert_snapshot!(print_errors(&doc));
+    assert!(!doc.errors().is_empty());
+    assert_eq!(
+        doc.syntax().to_string(),
+        "piece \"Old\" { let held: Option[Pitch] = None; let many: List[Option[Pitch]] = []; }"
+    );
 }
 
 /// `Some` and `None` move with `Option`, so the lowercase constructors are
@@ -685,7 +687,7 @@ fn the_old_type_parameter_brackets_are_migration_errors() {
 #[test]
 fn the_old_option_constructors_are_migration_errors() {
     let doc = parse(
-        "piece \"Old\" { let held: Option<Pitch> = some(c4); \
+        "piece \"Old\" { let held: Option(Pitch) = some(c4); \
          let chosen: Pitch = match held { none -> c4, some(found) -> found }; }",
     );
     insta::assert_snapshot!(print_errors(&doc));

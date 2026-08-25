@@ -87,7 +87,7 @@ fn a_saved_phrase_is_finished_where_it_is_written_and_no_later_scale_reaches_it(
     // steps go where the scale is, and what a function saves is the part that
     // means the same thing everywhere.
     let saved = piece_with(
-        "    fn opening() -> EventTrack<WrittenTime> { music { c5/8 } }\n\n    let subject: EventTrack<WrittenTime> = opening();",
+        "    fn opening() -> EventTrack(WrittenTime) { music { c5/8 } }\n\n    let subject: EventTrack(WrittenTime) = opening();",
         "        in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/4 }\n        in scale c dorian { use subject; (c5 step 1)/8 (c5 step 2)/4 }",
     );
     assert_eq!(
@@ -104,7 +104,7 @@ fn a_phrase_that_steps_outside_a_scale_is_refused_where_it_is_written() {
     // supply a collection, because no use site can. It is refused at the
     // definition, which is where the mistake is.
     let reported = errors(&piece_with(
-        "    fn figure() -> EventTrack<WrittenTime> { music { c5/8 (c5 step 1)/8 } }",
+        "    fn figure() -> EventTrack(WrittenTime) { music { c5/8 (c5 step 1)/8 } }",
         "        in scale c major { use figure(); }",
     ));
     assert!(
@@ -135,7 +135,7 @@ fn the_scale_distributes_over_sequence_and_overlay() {
     // value is its own lexical region — an `in scale` outside it does not reach
     // in, for the reason a scale at a `use` does not reach the phrase it names.
     let overlaid = pitches(&piece_with(
-        "    let low: EventTrack<WrittenTime> = music { in scale c dorian { (c4 step 2)/2 } };\n    let high: EventTrack<WrittenTime> = music { in scale c dorian { (c5 step 2)/2 } };",
+        "    let low: EventTrack(WrittenTime) = music { in scale c dorian { (c4 step 2)/2 } };\n    let high: EventTrack(WrittenTime) = music { in scale c dorian { (c5 step 2)/2 } };",
         "        use together(low, high);",
     ));
     assert_eq!(overlaid, ["eb4", "eb5"]);
@@ -165,7 +165,7 @@ fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
     // replaces, which is what `map_note_pitches` is for, and the block sequences
     // the three.
     let source = piece_with(
-        "    import std::collections;\n    import std::scale;\n\n    fn sounding(register: Frame, ordinal: Nat) -> EventTrack<WrittenTime> {\n        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, ordinal) }, music { c4/4 })\n    }\n\n    fn triad(register: Frame) -> EventTrack<WrittenTime> { music {\n        use sounding(register, 1);\n        use sounding(register, 3);\n        use sounding(register, 5);\n    } }\n\n    let anchored: EventTrack<WrittenTime> = frame_on(scale c major, c4).fold_from_end(music { rest/4 }, fn (found, otherwise) { triad(found) });",
+        "    import std::collections;\n    import std::scale;\n\n    fn sounding(register: Frame, ordinal: Nat) -> EventTrack(WrittenTime) {\n        map_note_pitches(fn (written: Pitch) -> Pitch { frame_degree(register, ordinal) }, music { c4/4 })\n    }\n\n    fn triad(register: Frame) -> EventTrack(WrittenTime) { music {\n        use sounding(register, 1);\n        use sounding(register, 3);\n        use sounding(register, 5);\n    } }\n\n    let anchored: EventTrack(WrittenTime) = frame_on(scale c major, c4).fold_from_end(music { rest/4 }, fn (found, otherwise) { triad(found) });",
         "        use anchored;",
     );
     assert_eq!(pitches(&source), ["c4", "e4", "g4"]);

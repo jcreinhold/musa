@@ -50,9 +50,9 @@ every domain in this document, and `std::algebra` declares them so that a reader
 
 | Trait | Method | What it asserts |
 | --- | --- | --- |
-| `Group<G>` | `unit`, `compose`, `inverse` | the movers compose associatively, and every move can be undone |
-| `Action<X, G>` | `act` | the movers move a carrier, and composing then moving agrees with moving twice |
-| `Torsor<P, V>` | `difference` | *exactly one* mover joins any ordered pair of points |
+| `Group(G)` | `unit`, `compose`, `inverse` | the movers compose associatively, and every move can be undone |
+| `Action(X, G)` | `act` | the movers move a carrier, and composing then moving agrees with moving twice |
+| `Torsor(P, V)` | `difference` | *exactly one* mover joins any ordered pair of points |
 
 `Interval` is the group; `Pitch` and `SpelledPC` are two carriers of it; `Pitch` alone is a torsor over it, because the
 faithful-action lemma's cancellation step is precisely the uniqueness a torsor asserts. `SpelledPC` is **not** one, and
@@ -61,7 +61,7 @@ many intervals rather than by one. A specification that gave both carriers a tor
 quotient does not exist.
 
 **The carrier is the first parameter.** This began as a resolution key — instance lookup chose on the first parameter,
-and one mover moving several carriers would have put `Action<Interval, Pitch>` and `Action<Interval, SpelledPC>` at one
+and one mover moving several carriers would have put `Action(Interval, Pitch)` and `Action(Interval, SpelledPC)` at one
 head. Prompt 146 deletes that mechanism and the ordering survives it as a reading convention, stated at
 [`../style-guide.md`](../style-guide.md) §6. It also puts the head where method syntax looks: `p up M3` is `p.act(M3)`,
 resolved on `p`.
@@ -69,7 +69,7 @@ resolved on `p`.
 **Time is an action and not a torsor**, for a reason that is about time rather than about the structures. A `Duration`
 is a length and not a displacement — it is nonnegative, and the operation answering the length between two positions
 refuses a second position standing before the first — so the movers have no inverses and `Position` carries
-`Action<Position, Duration>` alone. §4's row and §5's indexed domains carry the same three structures at the moduli they
+`Action(Position, Duration)` alone. §4's row and §5's indexed domains carry the same three structures at the moduli they
 are stated over.
 
 **The laws are prose here and law suites in `05-verification.md` §4.** A structure declaration in this language carries
@@ -92,7 +92,7 @@ constructions. `in scale` changes only generative coordinates; `key` emits a con
 local Dorian phrase from falsely declaring modulation, an interpretive continuum discussed in `050-tonicization.md` and
 `051-extended-tonicization-and-modulation-to-closely-related-keys.md`.
 
-A `Degree` is a signed ordinal relative to a scale. `locate(s,p) : Option<(Degree, Register)>` is partial because a
+A `Degree` is a signed ordinal relative to a scale. `locate(s,p) : Option((Degree, Register))` is partial because a
 chromatic pitch may not belong to `s`. `realize(s,Degree,Register) : Pitch` is total. Register is an integer lift
 through the scale period; it is mandatory whenever a pitch rather than a pitch class is requested.
 
@@ -187,7 +187,7 @@ Voicing(k)         % exactly k voices, in fixed order low to high
 
 `pc12` of §1 is `Pc(12)` and §4's row type is `ToneRow(12)`; the definitions there are unchanged and are the `n = 12`
 instances of these. **`ToneRow` and not `Row`**, which is prompt 164's finding rather than a preference: `std::indexed`
-declares `Row<A>(n)` for a matrix's row, the two names met in one bundled library, and a row of a matrix and a row of
+declares `Row(A, n)` for a matrix's row, the two names met in one bundled library, and a row of a matrix and a row of
 twelve tones are different enough that neither should give up its word to the other. Every count that was a literal in
 §4 is now derived: a row's matrix is `n` rows and not twelve, and the T/I group on `Pc(n)` has exactly `2n` elements and
 not 24. The interval-class vector's `⌊n/2⌋` entries generalize §4's six for the reason §4 already gives — interval class

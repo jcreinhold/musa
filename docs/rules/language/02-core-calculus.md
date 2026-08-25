@@ -159,19 +159,19 @@ A declaration group introduces **inductive families**: type constructors with **
 declaration, and **indices**, which each constructor chooses.
 
 ```text
-data Tree<A> {
-    Leaf,
-    Node(left: Tree<A>, value: A, right: Tree<A>),
+data Tree(A: Type) {
+    Leaf: Tree(A),
+    Node(left: Tree(A), value: A, right: Tree(A)): Tree(A),
 }
 
-data Vec<A> : (n : Nat) -> Type {
-    Nil                                    : Vec<A>(0),
-    Cons(head: A, tail: Vec<A>(n))         : Vec<A>(n + 1),
+data Vec(A: Type) : (n : Nat) -> Type {
+    Nil                                    : Vec(A, 0),
+    Cons(head: A, tail: Vec(A, n))         : Vec(A, n + 1),
 }
 ```
 
 A parameter is the same in every constructor's result; an index is not, and that difference is the whole of what a
-family adds. `Nil` chooses `0` and `Cons` chooses `n + 1`, so matching a `Vec<A>(m)` against `Nil` teaches the checker
+family adds. `Nil` chooses `0` and `Cons` chooses `n + 1`, so matching a `Vec(A, m)` against `Nil` teaches the checker
 that `m` is `0` — which is what *refinement* means and what the previous non-dependent eliminator could not do.
 
 **Elimination is dependent.** The generated eliminator's motive is a **family**, not a type: for `data N : Δ → Type` it
@@ -187,7 +187,7 @@ elaborated rather than matched. §2.1 is the unifier, and it is the same one, no
 **Strict positivity is checked on the declaration group**, so mutually recursive families are checked together. A
 recursive occurrence may not appear to the left of an arrow at any depth: a negative occurrence admits a fixed point,
 and a fixed point admits divergence. An occurrence **nested** inside another family's parameter —
-`Body(items: List<StaffRead>)` — is admitted and carries **no induction hypothesis**: the eliminator's method takes such
+`Body(items: List(StaffRead))` — is admitted and carries **no induction hypothesis**: the eliminator's method takes such
 a field and nothing more, because a hypothesis for it would be a synthesized functorial map rather than an application.
 A fold *through* a container is written with the container's own fold, which is what the corpus already does.
 
@@ -347,8 +347,8 @@ the number itself.
 `Equal` is an ordinary inductive family and `Refl` is its one constructor:
 
 ```text
-data Equal<A> : (x : A) -> (y : A) -> Type {
-    Refl : Equal<A>(x, x),
+data Equal(A: Type) : (x : A) -> (y : A) -> Type {
+    Refl : Equal(A, x, x),
 }
 ```
 
@@ -455,7 +455,7 @@ rationals, or already-validated musical values. It is not a partial term operati
 
 Literal constructors enforce refinements such as nonnegative `Duration`, finite scale members, and row bijectivity.
 These are constructor judgments returning a value or a located diagnostic, and the value they return may be **indexed**
-(§1.1): `fn row(pcs: List<Pc(n)>) -> Result<Row(n), RowFault>` performs the same runtime check it always did and now
+(§1.1): `fn row(pcs: List(Pc(n))) -> Result(Row(n), RowFault)` performs the same runtime check it always did and now
 says in its type which modulus it checked against. That is this section's mechanism gaining a type, not a second one.
 
 The refinement does not thereby become load-bearing in every operation that touches the value. An index is an ordinary
@@ -935,7 +935,7 @@ rules out.
 A syntax adapter runs before name resolution and checking: it is handed the region a composer wrote and answers with the
 syntax that stands there instead. The adapter module is written in this same calculus and checked by this same checker,
 under a **phase environment** that adds three things and takes nothing away — the phase-local types (`Syntax`,
-`NodePath`, and `Syntax<Cat>` the parameterized base type); a separate registry of compiler-owned phase operations; and
+`NodePath`, and `Syntax(Cat)` the parameterized base type); a separate registry of compiler-owned phase operations; and
 the `Reading::Expansion` scope in which those names mean anything at all.
 
 **Law 11 is unchanged and is the load-bearing one.** Ordinary source is read in a scope where none of those names

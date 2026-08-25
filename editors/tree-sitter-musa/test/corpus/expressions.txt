@@ -3,15 +3,15 @@ expression and type grammar
 ==================
 
 piece "Expressions" {
-  let choices: List<(Pitch, Option<Pitch>)> = [(c4, Some(e4)), (g4, None)];
-  fn choose(value: Option<Pitch>, fallback: Pitch) -> Pitch {
+  let choices: List((Pitch, Option(Pitch))) = [(c4, Some(e4)), (g4, None)];
+  fn choose(value: Option(Pitch), fallback: Pitch) -> Pitch {
     match value {
       None -> fallback,
       Some(found) -> found,
     }
   }
   let raised: Pitch = transform(fn (from: Pitch) -> Pitch { choose(Some(from), c4) }, e4);
-  fn melody(root: Pitch) -> EventTrack<WrittenTime, ScoreFact> {
+  fn melody(root: Pitch) -> EventTrack(WrittenTime, ScoreFact) {
     music {
       root/4
       use answer(root);
@@ -28,17 +28,19 @@ piece "Expressions" {
     (let_declaration
       (identifier)
       (type_expression
-        (list_type
-          (type_expression
-            (product_type
-              (type_expression
-                (type_name
-                  (identifier)))
-              (type_expression
-                (option_type
-                  (type_expression
-                    (type_name
-                      (identifier)))))))))
+        (application_expression
+          (type_argument_list
+            (type_expression
+              (product_type
+                (type_expression
+                  (type_name
+                    (identifier)))
+                (type_expression
+                  (application_expression
+                    (type_argument_list
+                      (type_expression
+                        (type_name
+                          (identifier)))))))))))
       (expression
         (list_expression
           (expression
@@ -64,10 +66,11 @@ piece "Expressions" {
         (parameter
           (identifier)
           (type_expression
-            (option_type
-              (type_expression
-                (type_name
-                  (identifier))))))
+            (application_expression
+              (type_argument_list
+                (type_expression
+                  (type_name
+                    (identifier)))))))
         (parameter
           (identifier)
           (type_expression
@@ -145,15 +148,16 @@ piece "Expressions" {
             (type_name
               (identifier)))))
       (type_expression
-        (applied_type
+        (application_expression
           (type_name
             (identifier))
-          (type_expression
-            (type_name
-              (identifier)))
-          (type_expression
-            (type_name
-              (identifier)))))
+          (type_argument_list
+            (expression
+              (name_expression
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))))
       (block_expression
         (expression
           (music_expression
@@ -186,7 +190,7 @@ incomplete match arm recovers
 ==================
 
 piece "Recovery" {
-  let value: Option<Nat> = match value {
+  let value: Option(Nat) = match value {
     None ->
   };
 }
@@ -199,10 +203,11 @@ piece "Recovery" {
     (let_declaration
       (identifier)
       (type_expression
-        (option_type
-          (type_expression
-            (type_name
-              (identifier)))))
+        (application_expression
+          (type_argument_list
+            (type_expression
+              (type_name
+                (identifier))))))
       (expression
         (match_expression
           (expression
@@ -411,8 +416,8 @@ postfix question, including one asked of a call and one chained with an update
 ================================================================================
 
 piece "questions" {
-    fn twice(said: Text) -> Result<Nat, Text> { nat_add(half(said)?, half(said)?) }
-    fn rebuilt(held: Pending) -> Result<Pending, Text> { Ok(reading(held)? with { dots = 1 }) }
+    fn twice(said: Text) -> Result(Nat, Text) { nat_add(half(said)?, half(said)?) }
+    fn rebuilt(held: Pending) -> Result(Pending, Text) { Ok(reading(held)? with { dots = 1 }) }
     score { part p { voice v { c4/4 } } }
 }
 
@@ -430,13 +435,14 @@ piece "questions" {
             (type_name
               (identifier)))))
       (type_expression
-        (result_type
-          (type_expression
-            (type_name
-              (identifier)))
-          (type_expression
-            (type_name
-              (identifier)))))
+        (application_expression
+          (type_argument_list
+            (expression
+              (name_expression
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))))
       (block_expression
         (expression
           (application_expression
@@ -474,13 +480,14 @@ piece "questions" {
             (type_name
               (identifier)))))
       (type_expression
-        (result_type
-          (type_expression
-            (type_name
-              (identifier)))
-          (type_expression
-            (type_name
-              (identifier)))))
+        (application_expression
+          (type_argument_list
+            (expression
+              (name_expression
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))))
       (block_expression
         (expression
           (result_expression

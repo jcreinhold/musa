@@ -116,9 +116,6 @@
 
 (harmony_declaration "harmony" @keyword)
 (performance_declaration "performance" @keyword)
-(option_type "Option" @keyword)
-(list_type "List" @keyword)
-(result_type "Result" @keyword)
 (scale_expression "scale" @keyword)
 (in_scale_statement "scale" @keyword)
 
@@ -250,10 +247,9 @@
 (patch_declaration name: (identifier) @type)
 (bus_declaration name: (identifier) @type)
 
-; A declaration names a type, and the parameters it abstracts over are types
-; the same way.
+; A declaration names a type. Its uniform arguments are ordinary parameters;
+; the annotation, not a second parameter node, says when one ranges over Type.
 (data_declaration name: (identifier) @type)
-(type_parameter (identifier) @type)
 
 ; §1.2 and §1.3's two declarations name types the same way, and so does the
 ; type written in front of a literal or a pattern. An enum *case* is a name in

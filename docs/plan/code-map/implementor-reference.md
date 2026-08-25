@@ -45,7 +45,7 @@ exact rational until the performance/DSP edge.
 5. The prompt-149 kernel rechecker checks the completed term independently. Elaboration is not trusted to certify its
    own output; `crates/musa-calculus/TRUST.md` names the trusted half.
 6. `musa-compiler::elaborate` realizes the checked term through registered finite base values and δ-rules, producing
-   caller-ready facts and `EventTrack<WrittenTime, ScoreFact>` values with provenance.
+   caller-ready facts and `EventTrack(WrittenTime, ScoreFact)` values with provenance.
 
 The compiler's phase-local studio descriptor inference is not source-language typing. Do not add a source construct to
 `infer.rs`, reimplement conversion in the compiler, or expose a calculus `Value` to make a downstream pass convenient.
@@ -61,7 +61,7 @@ scope. Ordinary namespace definitions provide inherent methods—`T.equal(a, b)`
 trait dictionaries. The earlier signature/functor/template and source trait/instance designs were deleted; do not revive
 their terminology in code or documentation.
 
-Reusable music is an ordinary value. A fragment has type `EventTrack<WrittenTime, ScoreFact>` and a motif can be a
+Reusable music is an ordinary value. A fragment has type `EventTrack(WrittenTime, ScoreFact)` and a motif can be a
 function returning one. Lexical context is explicit in a closure or parameter; saving a fragment does not arrange
 dynamic capture.
 
@@ -78,7 +78,7 @@ charge; wall-clock timeouts are cancellation, not language semantics.
 
 ## Typed quotation and adapters
 
-An adapter receives indexed `Syntax<TokenTree>` and must return one checked `Syntax<Expr>`. `quote at anchor { … }` and
+An adapter receives indexed `Syntax(TokenTree)` and must return one checked `Syntax(Expr)`. `quote at anchor { … }` and
 splices build syntax; typed token/delimiter operations classify what the parser already read. `recurse_syntax` is the
 sealed bottom-up boundary, and ordinary folds process the finite children it returns. Adapter state is ordinary Musa
 data. An adapter cannot inspect inferred types, compiler ASTs, or a hidden role allocation.

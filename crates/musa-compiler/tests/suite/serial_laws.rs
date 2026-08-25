@@ -58,25 +58,25 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    let generic_numbers: List<Nat> = [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7];
-    let twelve_numbers: List<Nat> = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-    let flawed_numbers: List<Nat> = [0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3];
+    let generic_numbers: List(Nat) = [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7];
+    let twelve_numbers: List(Nat) = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    let flawed_numbers: List(Nat) = [0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3];
 
-    let generic: Result<ToneRow(12), RowFault> = row(12, chromatic, generic_numbers);
-    let twelve: Result<ToneRow(12), RowFault> = row(12, chromatic, twelve_numbers);
+    let generic: Result(ToneRow(12), RowFault) = row(12, chromatic, generic_numbers);
+    let twelve: Result(ToneRow(12), RowFault) = row(12, chromatic, twelve_numbers);
 
-    fn is_row(built: Result<ToneRow(12), RowFault>) -> Bool {
+    fn is_row(built: Result(ToneRow(12), RowFault)) -> Bool {
         match built { Ok(series) -> true, Err(reason) -> false }
     }
-    fn numbers_of(built: Result<ToneRow(12), RowFault>, operation: ToneRow(12) -> ToneRow(12)) -> List<Nat> {
+    fn numbers_of(built: Result(ToneRow(12), RowFault), operation: ToneRow(12) -> ToneRow(12)) -> List(Nat) {
         match built { Ok(series) -> row_numbers(12, operation(series)), Err(reason) -> [] }
     }
-    fn asked(built: Result<ToneRow(12), RowFault>, question: ToneRow(12) -> Nat) -> Nat {
+    fn asked(built: Result(ToneRow(12), RowFault), question: ToneRow(12) -> Nat) -> Nat {
         match built { Ok(series) -> question(series), Err(reason) -> 0 }
     }
     fn itself(series: ToneRow(12)) -> ToneRow(12) { series }
-    fn spelled_count(cells: List<Option<NoteName>>) -> Nat {
-        length(filter(fn (cell: Option<NoteName>) -> Bool {
+    fn spelled_count(cells: List(Option(NoteName))) -> Nat {
+        length(filter(fn (cell: Option(NoteName)) -> Bool {
             cell.fold_from_end(false, fn (one, otherwise) { true })
         }, cells))
     }
@@ -106,16 +106,16 @@ fn holds(bindings: &str) {
 fn only_a_bijection_is_a_row() {
     holds(
         "
-    let generic_admitted: Equal<Bool>(is_row(generic), true) = Refl(true);
-    let ascent_admitted: Equal<Bool>(is_row(twelve), true) = Refl(true);
-    let repeated_refused: Equal<Bool>(is_row(row(12, chromatic, flawed_numbers)), false) =
+    let generic_admitted: Equal(Bool, is_row(generic), true) = Refl(true);
+    let ascent_admitted: Equal(Bool, is_row(twelve), true) = Refl(true);
+    let repeated_refused: Equal(Bool, is_row(row(12, chromatic, flawed_numbers)), false) =
         Refl(false);
-    let short_refused: Equal<Bool>(is_row(row(12, chromatic, [0, 1, 2])), false) = Refl(false);
-    let long_refused: Equal<Bool>(
+    let short_refused: Equal(Bool, is_row(row(12, chromatic, [0, 1, 2])), false) = Refl(false);
+    let long_refused: Equal(Bool,
         is_row(row(12, chromatic, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0])),
         false,
     ) = Refl(false);
-    let residue_refused: Equal<Bool>(
+    let residue_refused: Equal(Bool,
         is_row(row(12, chromatic, [0, 12, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])),
         false,
     ) = Refl(false);
@@ -127,11 +127,11 @@ fn only_a_bijection_is_a_row() {
 fn a_refusal_says_which_position_repeated_and_which_class_never_came() {
     holds(
         "
-    let repeats: Equal<List<Nat>>(repeated_positions(flawed_numbers), [3]) = Refl([3]);
-    let missing: Equal<List<Nat>>(missing_classes(12, chromatic, flawed_numbers), [11]) =
+    let repeats: Equal(List(Nat), repeated_positions(flawed_numbers), [3]) = Refl([3]);
+    let missing: Equal(List(Nat), missing_classes(12, chromatic, flawed_numbers), [11]) =
         Refl([11]);
-    let row_repeats_nothing: Equal<List<Nat>>(repeated_positions(generic_numbers), []) = Refl([]);
-    let row_misses_nothing: Equal<List<Nat>>(missing_classes(12, chromatic, generic_numbers), []) =
+    let row_repeats_nothing: Equal(List(Nat), repeated_positions(generic_numbers), []) = Refl([]);
+    let row_misses_nothing: Equal(List(Nat), missing_classes(12, chromatic, generic_numbers), []) =
         Refl([]);
 ",
     );
@@ -144,19 +144,19 @@ fn the_refusal_itself_carries_both_reasons() {
     // the sum buys: the reason travels with the failure.
     holds(
         "
-    let flawed: Result<ToneRow(12), RowFault> = row(12, chromatic, flawed_numbers);
-    fn carried(built: Result<ToneRow(12), RowFault>, read: RowFault -> List<Nat>) -> List<Nat> {
+    let flawed: Result(ToneRow(12), RowFault) = row(12, chromatic, flawed_numbers);
+    fn carried(built: Result(ToneRow(12), RowFault), read: RowFault -> List(Nat)) -> List(Nat) {
         match built { Ok(series) -> [], Err(reason) -> read(reason) }
     }
-    fn repeats_of(reason: RowFault) -> List<Nat> {
+    fn repeats_of(reason: RowFault) -> List(Nat) {
         match reason { Fault(repeats, missing) -> repeats }
     }
-    fn missing_of(reason: RowFault) -> List<Nat> {
+    fn missing_of(reason: RowFault) -> List(Nat) {
         match reason { Fault(repeats, missing) -> missing }
     }
-    let carried_repeats: Equal<List<Nat>>(carried(flawed, repeats_of), [3]) = Refl([3]);
-    let carried_missing: Equal<List<Nat>>(carried(flawed, missing_of), [11]) = Refl([11]);
-    let intact: Equal<Bool>(is_row(generic), true) = Refl(true);
+    let carried_repeats: Equal(List(Nat), carried(flawed, repeats_of), [3]) = Refl([3]);
+    let carried_missing: Equal(List(Nat), carried(flawed, missing_of), [11]) = Refl([11]);
+    let intact: Equal(Bool, is_row(generic), true) = Refl(true);
 ",
     );
 }
@@ -165,8 +165,8 @@ fn the_refusal_itself_carries_both_reasons() {
 fn a_row_has_twelve_order_positions() {
     holds(
         "
-    let positions: Equal<Nat>(length(numbers_of(generic, itself)), 12) = Refl(12);
-    let held: Equal<List<Nat>>(
+    let positions: Equal(Nat, length(numbers_of(generic, itself)), 12) = Refl(12);
+    let held: Equal(List(Nat),
         numbers_of(generic, itself),
         [0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7],
     ) = Refl([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
@@ -179,16 +179,16 @@ fn a_tone_row_uses_its_written_namespace_equality() {
     holds(
         "
     fn rows_equal(
-        left: Result<ToneRow(12), RowFault>,
-        right: Result<ToneRow(12), RowFault>,
+        left: Result(ToneRow(12), RowFault),
+        right: Result(ToneRow(12), RowFault),
     ) -> Bool {
         match left {
             Ok(one) -> match right { Ok(other) -> one == other, Err(reason) -> false },
             Err(reason) -> false,
         }
     }
-    let same: Equal<Bool>(rows_equal(generic, generic), true) = Refl(true);
-    let different: Equal<Bool>(rows_equal(generic, twelve), false) = Refl(false);
+    let same: Equal(Bool, rows_equal(generic, generic), true) = Refl(true);
+    let different: Equal(Bool, rows_equal(generic, twelve), false) = Refl(false);
 ",
     );
 }
@@ -197,7 +197,7 @@ fn a_tone_row_uses_its_written_namespace_equality() {
 fn each_label_is_one_operation_on_the_row() {
     holds(
         "
-    let prime_three: Equal<List<Nat>>(
+    let prime_three: Equal(List(Nat),
         numbers_of(generic, fn (series: ToneRow(12)) -> ToneRow(12) {
             row_transposed(12, chromatic, series, 3)
         }),
@@ -207,7 +207,7 @@ fn each_label_is_one_operation_on_the_row() {
     );
     holds(
         "
-    let inversion_zero: Equal<List<Nat>>(
+    let inversion_zero: Equal(List(Nat),
         numbers_of(generic, fn (series: ToneRow(12)) -> ToneRow(12) {
             row_inverted(12, chromatic, series, 0)
         }),
@@ -217,7 +217,7 @@ fn each_label_is_one_operation_on_the_row() {
     );
     holds(
         "
-    let retrograde_form: Equal<List<Nat>>(
+    let retrograde_form: Equal(List(Nat),
         numbers_of(generic, fn (series: ToneRow(12)) -> ToneRow(12) {
             row_retrograde(12, chromatic, series)
         }),
@@ -227,7 +227,7 @@ fn each_label_is_one_operation_on_the_row() {
     );
     holds(
         "
-    let retrograde_inversion: Equal<List<Nat>>(
+    let retrograde_inversion: Equal(List(Nat),
         numbers_of(generic, fn (series: ToneRow(12)) -> ToneRow(12) {
             row_retrograde_inversion(12, chromatic, series, 0)
         }),
@@ -242,11 +242,11 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
     holds(
         "
     fn up_three(series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) }
-    let fixed_as_written: Equal<Nat>(
+    let fixed_as_written: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat { fixed_zero_index(12, series) }),
         0,
     ) = Refl(0);
-    let fixed_when_moved: Equal<Nat>(
+    let fixed_when_moved: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat { fixed_zero_index(12, up_three(series)) }),
         3,
     ) = Refl(3);
@@ -255,7 +255,7 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
     holds(
         "
     fn up_three(series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) }
-    let moveable_as_written: Equal<Nat>(
+    let moveable_as_written: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat {
             moveable_zero_index(12, chromatic, series, series)
         }),
@@ -266,7 +266,7 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
     holds(
         "
     fn up_three(series: ToneRow(12)) -> ToneRow(12) { row_transposed(12, chromatic, series, 3) }
-    let moveable_when_moved: Equal<Nat>(
+    let moveable_when_moved: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat {
             moveable_zero_index(12, chromatic, series, up_three(series))
         }),
@@ -280,7 +280,7 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
 fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     holds(
         "
-    let in_c_major: Equal<Nat>(
+    let in_c_major: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat {
             spelled_count(row_spelled_in(series, scale c major))
         }),
@@ -290,7 +290,7 @@ fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     );
     holds(
         "
-    let octatonically: Equal<Nat>(
+    let octatonically: Equal(Nat,
         asked(generic, fn (series: ToneRow(12)) -> Nat {
             spelled_count(row_spelled_in(series, scale c octatonic_half_whole))
         }),
@@ -300,7 +300,7 @@ fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     );
     holds(
         "
-    let the_row_is_intact: Equal<Nat>(length(numbers_of(generic, itself)), 12) = Refl(12);
+    let the_row_is_intact: Equal(Nat, length(numbers_of(generic, itself)), 12) = Refl(12);
 ",
     );
 }
@@ -311,7 +311,7 @@ fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
 fn a_row_has_four_n_labelled_operations_at_twelve() {
     holds(
         "
-    let labelled: Equal<Nat>(length(row_operations(12, chromatic)), 48) = Refl(48);
+    let labelled: Equal(Nat, length(row_operations(12, chromatic)), 48) = Refl(48);
 ",
     );
 }
@@ -320,10 +320,10 @@ fn a_row_has_four_n_labelled_operations_at_twelve() {
 fn a_generic_row_has_four_n_distinct_forms_at_twelve() {
     holds(
         "
-    fn orbit_size(built: Result<ToneRow(12), RowFault>) -> Nat {
+    fn orbit_size(built: Result(ToneRow(12), RowFault)) -> Nat {
         match built { Ok(series) -> length(row_forms(12, chromatic, series)), Err(reason) -> 0 }
     }
-    let forms: Equal<Nat>(orbit_size(generic), 48) = Refl(48);
+    let forms: Equal(Nat, orbit_size(generic), 48) = Refl(48);
 ",
     );
 }
@@ -332,10 +332,10 @@ fn a_generic_row_has_four_n_distinct_forms_at_twelve() {
 fn a_generic_rows_stabilizer_is_the_identity_at_twelve() {
     holds(
         "
-    fn symmetry_count(built: Result<ToneRow(12), RowFault>) -> Nat {
+    fn symmetry_count(built: Result(ToneRow(12), RowFault)) -> Nat {
         match built { Ok(series) -> length(row_symmetries(12, chromatic, series)), Err(reason) -> 0 }
     }
-    let symmetries: Equal<Nat>(symmetry_count(generic), 1) = Refl(1);
+    let symmetries: Equal(Nat, symmetry_count(generic), 1) = Refl(1);
 ",
     );
 }
@@ -344,10 +344,10 @@ fn a_generic_rows_stabilizer_is_the_identity_at_twelve() {
 fn a_twelve_tone_rows_matrix_has_twelve_rows() {
     holds(
         "
-    fn matrix_size(built: Result<ToneRow(12), RowFault>) -> Nat {
+    fn matrix_size(built: Result(ToneRow(12), RowFault)) -> Nat {
         match built { Ok(series) -> length(matrix(12, chromatic, series)), Err(reason) -> 0 }
     }
-    let rows: Equal<Nat>(matrix_size(generic), 12) = Refl(12);
+    let rows: Equal(Nat, matrix_size(generic), 12) = Refl(12);
 ",
     );
 }

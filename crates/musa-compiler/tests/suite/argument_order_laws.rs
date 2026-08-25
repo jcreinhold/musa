@@ -72,7 +72,7 @@ fn sounding(declarations: &str, sounded: &str) -> Vec<String> {
 
 /// A generic application whose function argument comes *first*, which is the
 /// order the workaround forbade.
-const APPLIED: &str = "fn applied<A, B>(by: A -> B, value: A) -> B { by(value) }";
+const APPLIED: &str = "fn applied({A: Type}, {B: Type}, by: A -> B, value: A) -> B { by(value) }";
 
 /// The whole point: the lambda stands before the argument that says what its
 /// parameter is, and `p` is a `Pitch` anyway.
@@ -93,7 +93,7 @@ fn an_un_annotated_lambda_is_typed_by_an_argument_written_after_it() {
 #[test]
 fn the_same_lambda_types_in_either_slot() {
     let compilation = compile_core(
-        "fn onto<A, B>(value: A, by: A -> B) -> B { by(value) } \
+        "fn onto({A: Type}, {B: Type}, value: A, by: A -> B) -> B { by(value) } \
          let raised: Pitch = onto(c4, fn (p) { p.act(P8) });",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
@@ -103,9 +103,9 @@ fn the_same_lambda_types_in_either_slot() {
 /// looked one argument ahead would pass the last of these and fail the first.
 #[test]
 fn a_lambda_types_in_every_slot_of_a_three_argument_call() {
-    let both = "fn both<A, B>(by: A -> B, first: A, second: A) -> B { by(second) }";
-    let middle = "fn middle<A, B>(first: A, by: A -> B, second: A) -> B { by(second) }";
-    let last = "fn last<A, B>(first: A, second: A, by: A -> B) -> B { by(second) }";
+    let both = "fn both({A: Type}, {B: Type}, by: A -> B, first: A, second: A) -> B { by(second) }";
+    let middle = "fn middle({A: Type}, {B: Type}, first: A, by: A -> B, second: A) -> B { by(second) }";
+    let last = "fn last({A: Type}, {B: Type}, first: A, second: A, by: A -> B) -> B { by(second) }";
     for (declaration, call) in [
         (both, "both(fn (p) { p.act(P8) }, c4, e4)"),
         (middle, "middle(c4, fn (p) { p.act(P8) }, e4)"),
@@ -120,7 +120,7 @@ fn a_lambda_types_in_every_slot_of_a_three_argument_call() {
 #[test]
 fn two_deferred_arguments_are_both_typed_by_the_one_that_is_not() {
     let compilation = compile_core(
-        "fn twice<A>(first: A -> A, second: A -> A, value: A) -> A { second(first(value)) } \
+        "fn twice({A: Type}, first: A -> A, second: A -> A, value: A) -> A { second(first(value)) } \
          let raised: Pitch = twice(fn (p) { p.act(P8) }, fn (q) { q.act(P8) }, c4);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
@@ -132,7 +132,7 @@ fn two_deferred_arguments_are_both_typed_by_the_one_that_is_not() {
 #[test]
 fn the_position_a_call_stands_in_types_a_lambda_no_argument_could() {
     let compilation = compile_core(
-        "fn kept<A>(by: A -> A) -> A -> A { by } \
+        "fn kept({A: Type}, by: A -> A) -> A -> A { by } \
          let raised: Pitch -> Pitch = kept(fn (p) { p.act(P8) });",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
@@ -144,7 +144,7 @@ fn the_position_a_call_stands_in_types_a_lambda_no_argument_could() {
 #[test]
 fn a_parameter_nothing_determines_is_still_refused() {
     let reported = errors(
-        "fn kept<A>(by: A -> A) -> A -> A { by } \
+        "fn kept({A: Type}, by: A -> A) -> A -> A { by } \
          let raised = kept(fn (p) { p });",
     );
     assert!(!reported.is_empty(), "nothing was refused");
@@ -157,8 +157,8 @@ fn a_parameter_nothing_determines_is_still_refused() {
 #[test]
 fn deferring_an_argument_does_not_reorder_what_the_call_does() {
     let sounded = sounding(
-        "fn line<A>(by: A -> A, from: A) -> A { by(from) } \
-         let subject: EventTrack<WrittenTime> = music { c4/4 e4/4 };",
+        "fn line({A: Type}, by: A -> A, from: A) -> A { by(from) } \
+         let subject: EventTrack(WrittenTime) = music { c4/4 e4/4 };",
         "use line(retrograde, subject);",
     );
     assert_eq!(sounded, ["e4", "c4"]);
@@ -169,7 +169,7 @@ fn deferring_an_argument_does_not_reorder_what_the_call_does() {
 #[test]
 fn a_fold_may_take_its_combining_function_first() {
     let compilation = compile_core(
-        "fn folded<A, B>(combine: B -> A -> B, seed: B, values: List<A>) -> B { \
+        "fn folded({A: Type}, {B: Type}, combine: B -> A -> B, seed: B, values: List(A)) -> B { \
              values.fold_from_start(seed, combine) \
          } \
          let total: Nat = folded(fn (carried, each) { carried }, 0, range(4));",
@@ -183,9 +183,9 @@ fn a_fold_may_take_its_combining_function_first() {
 #[test]
 fn compose_names_a_function_at_three_types() {
     let compilation = compile_core(
-        "fn width(values: List<Nat>) -> Nat { 0 } \
+        "fn width(values: List(Nat)) -> Nat { 0 } \
          fn note_at(n: Nat) -> Pitch { c4 } \
-         let sounded: List<Nat> -> Pitch = compose(note_at, width); \
+         let sounded: List(Nat) -> Pitch = compose(note_at, width); \
          let raised: Pitch = sounded(range(4));",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
@@ -197,9 +197,9 @@ fn compose_names_a_function_at_three_types() {
 #[test]
 fn compose_types_an_un_annotated_lambda_from_the_argument_after_it() {
     let compilation = compile_core(
-        "fn width(values: List<Nat>) -> Nat { 0 } \
+        "fn width(values: List(Nat)) -> Nat { 0 } \
          fn note_at(n: Nat) -> Pitch { c4 } \
-         let sounded: List<Nat> -> Pitch = compose(fn (n) { note_at(n) }, width); \
+         let sounded: List(Nat) -> Pitch = compose(fn (n) { note_at(n) }, width); \
          let raised: Pitch = sounded(range(4));",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());

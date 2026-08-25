@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn a_head_that_is_not_one_word_is_left_alone() {
         assert!(
-            codes("impl Duration<WrittenTime> {\n    fn duration_of(n: Nat) -> Nat { n }\n}\n").is_empty(),
+            codes("impl Duration(WrittenTime) {\n    fn duration_of(n: Nat) -> Nat { n }\n}\n").is_empty(),
             "the rule reads a bare head or nothing"
         );
     }

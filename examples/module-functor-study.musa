@@ -10,15 +10,15 @@ import std::context;
 // value of arrow type, so one field form covers values, functions, and music
 // alike.
 record CanonMaterial {
-    subject: EventTrack<WrittenTime>;
-    answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
-    canon: EventTrack<WrittenTime>;
+    subject: EventTrack(WrittenTime);
+    answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime);
+    canon: EventTrack(WrittenTime);
 }
 
 // The subject steps through whatever collection the context named. It reads
 // the context through `TonalContext` and nothing else: a record's fields are
 // its whole interface, so there is nothing else here to read by accident.
-fn canon_subject(context: TonalContext) -> EventTrack<WrittenTime> {
+fn canon_subject(context: TonalContext) -> EventTrack(WrittenTime) {
     music {
         in scale context.collection {
             c5/4
@@ -31,12 +31,12 @@ fn canon_subject(context: TonalContext) -> EventTrack<WrittenTime> {
 
 // The answer, a fifth above. An ordinary music function, and a value of arrow
 // type is what the record's second field holds.
-fn canon_answer(line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P5, line) }
+fn canon_answer(line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P5, line) }
 
 // The canon itself: subject against its own answer, delayed by whatever the
 // caller asked for. The subject arrives as a parameter rather than as a local
 // binding, which is what a `let` in a body would have been anyway.
-fn canon_over(subject: EventTrack<WrittenTime>, gap: Duration<WrittenTime>) -> CanonMaterial {
+fn canon_over(subject: EventTrack(WrittenTime), gap: Duration(WrittenTime)) -> CanonMaterial {
     CanonMaterial {
         subject = subject,
         answer = canon_answer,
@@ -45,7 +45,7 @@ fn canon_over(subject: EventTrack<WrittenTime>, gap: Duration<WrittenTime>) -> C
 }
 
 // The functor, which is a function.
-fn canon(context: TonalContext, gap: Duration<WrittenTime>) -> CanonMaterial {
+fn canon(context: TonalContext, gap: Duration(WrittenTime)) -> CanonMaterial {
     canon_over(canon_subject(context), gap)
 }
 

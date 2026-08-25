@@ -4,8 +4,8 @@
 import std::context;
 
 record CellMaterial {
-    cell: EventTrack<WrittenTime>;
-    answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;
+    cell: EventTrack(WrittenTime);
+    answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime);
 }
 
 fn cell_material(home: TonalContext, lift: Interval) -> CellMaterial {
@@ -18,7 +18,7 @@ fn cell_material(home: TonalContext, lift: Interval) -> CellMaterial {
                 f5/8
             }
         },
-        answer = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) },
+        answer = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(lift, line) },
     }
 }
 
@@ -32,9 +32,9 @@ let cell_g: CellMaterial = cell_material(c_major, P8);
 let cell_h: CellMaterial = cell_material(a_natural_minor, M6);
 
 fn strand(
-    subject: EventTrack<WrittenTime>,
-    transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-) -> EventTrack<WrittenTime> {
+    subject: EventTrack(WrittenTime),
+    transform: EventTrack(WrittenTime) -> EventTrack(WrittenTime),
+) -> EventTrack(WrittenTime) {
     music {
         repeat 4 {
             in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/8 }

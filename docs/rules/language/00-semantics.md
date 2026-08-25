@@ -18,18 +18,18 @@ typed total source expression
     ▼
 values ─────────────┬────────────────────────────────┐
                     │                                │
-      EventTrack<C,A>                         Machine<K,A,B>
+      EventTrack(C,A)                         Machine(K,A,B)
                     │                                │
     closed Term[ScoreFact], core evaluation          │
                     ▼                                │
-    EventTrack<WrittenTime, ScoreFact>               │
+    EventTrack(WrittenTime, ScoreFact)               │
                     │ project facts; realize a named performance profile
                     ▼                                │
-    EventTrack<PerformedTime, Gesture>               │
+    EventTrack(PerformedTime, Gesture)               │
                     │                                │
                     └── schedule(format, policy, time map, track) ──┐
                                                                     ▼
-                                              Schedule<Gesture> = machine + decisions
+                                              Schedule(Gesture) = machine + decisions
                                                                     │ prepare_audio(format, machine)
                                                                     ▼
                                                              PreparedMachine
@@ -40,9 +40,9 @@ values ─────────────┬──────────�
 
 Four things this diagram is asserting:
 
-- There is no implicit `EventTrack<C, EventTrack<C,A>> → EventTrack<C,A>` (`../events/03-denotational-semantics.md`
+- There is no implicit `EventTrack(C, EventTrack(C,A)) → EventTrack(C,A)` (`../events/03-denotational-semantics.md`
   D12). A `music` block chooses `follow` or `together` and elaborates to the corresponding core term.
-- `EventTrack<WrittenTime, ScoreFact>` is the result of evaluating a closed term, not a universal intermediate type.
+- `EventTrack(WrittenTime, ScoreFact)` is the result of evaluating a closed term, not a universal intermediate type.
 - **There is no contextual `Music` stage.** Earlier drafts had one between the typed expression and the closed term;
   prompt 127a deletes it. Reusable material is an ordinary value of an ordinary type (§3).
 - **The machine is not outside this language.** The same expression language builds both columns; what is outside is the
@@ -67,10 +67,10 @@ not value types.
 
 **The expansion phase is these judgments in a second environment, not a second language.** Adapter expansion happens
 before name resolution and elaboration, and an adapter module is checked and evaluated by the same checker and the same
-evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax<Cat>`, `NodePath`, `BindingPath`, and
-`SyntaxStep<C, A>` and a separate registry of compiler-owned phase operations. `Cat` is the two-case index — `Expr` and
+evaluator, under a phase environment `Σφ` that adds the phase-local types `Syntax(Cat)`, `NodePath`, `BindingPath`, and
+`SyntaxStep(C, A)` and a separate registry of compiler-owned phase operations. `Cat` is the two-case index — `Expr` and
 `TokenTree` — that says how a syntax value parses (`11-quotation.md` §1); the untyped `Syntax` it replaces is the same
-tree with nothing claimed about it, which is now spelled `Syntax<TokenTree>`. Ordinary source is read in a scope where
+tree with nothing claimed about it, which is now spelled `Syntax(TokenTree)`. Ordinary source is read in a scope where
 none of those names resolve, so nothing the phase owns can be written, named, or obtained outside it. The one thing that
 crosses back is the answer, which is syntax that stands where the region stood; a sealed step is never part of it,
 because a step is not storable data (`02-core-calculus.md` §1.2, §5.9).

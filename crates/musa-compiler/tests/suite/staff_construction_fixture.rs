@@ -55,12 +55,12 @@ fn piece(region: &str) -> String {
         NoItems,
         Note(sung: Pitch, value: WrittenValue, tie: Tie),
         Rest(value: WrittenValue),
-        Sounded(place: Nat, event: StaffItem, items: List<StaffItem>),
+        Sounded(place: Nat, event: StaffItem, items: List(StaffItem)),
         Tuplet(
             place: Nat,
             played: Nat,
             against: Nat,
-            items: List<StaffItem>,
+            items: List(StaffItem),
             after: StaffItem,
         ),
     }}

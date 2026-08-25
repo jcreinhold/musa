@@ -18,37 +18,18 @@ const MOVED_TYPE_KEYWORDS: &[SyntaxKind] = &[
 ];
 
 impl Parser<'_> {
-    /// Right-associative arrow types; product/list/option types are atoms.
-    /// The arguments inside an index's parentheses, and the `)` that closes
-    /// them.
-    ///
-    /// Comma-separated because a family may declare more than one index, and
-    /// one pair of parentheses reads as one telescope filled — which is the
-    /// shape the declaration wrote it in.
-    fn index_arguments(&mut self) {
-        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
-            self.expr();
-            if self.at(SyntaxKind::Comma) {
-                self.bump();
-            } else {
-                break;
-            }
-        }
-        self.expect(SyntaxKind::RParen, "`)`");
-    }
-
     pub(super) fn type_expr(&mut self) {
         let checkpoint = self.events.len();
         self.type_atom();
-        // `Vect<A>(n)` — an index applied to a type that already took its
-        // parameters. [`Parser::type_atom`] reads the bare-name form `Pc(12)`
-        // itself, because there the `(` is what tells the node apart from a
-        // plain name; here the atom is already decided and the `(` only adds an
-        // argument, so the two spellings meet at the same node kind.
+        let mut applied = false;
         while self.at(SyntaxKind::LParen) {
-            self.start_at(checkpoint, SyntaxKind::IndexedType);
-            self.bump();
-            self.index_arguments();
+            self.start_at(checkpoint, SyntaxKind::ApplyExpr);
+            self.type_arg_list();
+            self.finish();
+            applied = true;
+        }
+        if applied {
+            self.start_at(checkpoint, SyntaxKind::TypeExpr);
             self.finish();
         }
         if self.at(SyntaxKind::Arrow) {
@@ -57,6 +38,33 @@ impl Parser<'_> {
             self.type_expr();
             self.finish();
         }
+    }
+
+    /// Arguments to an application written in a type position. They are terms:
+    /// a type, a value, or a function type are all checked against the reached
+    /// Π's domain by elaboration.
+    fn type_arg_list(&mut self) {
+        self.start(SyntaxKind::ExprArgList);
+        self.bump();
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.start(SyntaxKind::ExprArg);
+            let function_type = (0..64)
+                .map_while(|offset| self.nth_significant(offset))
+                .take_while(|kind| !matches!(kind, SyntaxKind::Comma | SyntaxKind::RParen))
+                .any(|kind| kind == SyntaxKind::Arrow);
+            if self.at(SyntaxKind::LParen) || function_type {
+                self.type_expr();
+            } else {
+                self.expr();
+            }
+            self.finish();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
     }
 
     /// A type is an identifier, a parenthesized or product type, or one of the
@@ -68,41 +76,6 @@ impl Parser<'_> {
     /// was allowed to also be. The removed spellings are read only to be
     /// reported.
     pub(super) fn type_atom(&mut self) {
-        let parameterized = match self.current() {
-            Some(SyntaxKind::OptionKw) => Some(SyntaxKind::OptionType),
-            Some(SyntaxKind::ListKw) => Some(SyntaxKind::ListType),
-            Some(SyntaxKind::Identifier) if self.at_word("option") => Some(SyntaxKind::OptionType),
-            Some(SyntaxKind::Identifier) if self.at_word("list") => Some(SyntaxKind::ListType),
-            _ => None,
-        };
-        if let Some(kind) = parameterized {
-            self.start(kind);
-            self.respelled_type();
-            self.bump();
-            if self.at(SyntaxKind::LBracket) {
-                self.bracketed_parameter();
-            } else {
-                self.expect(SyntaxKind::Less, "`<`");
-                self.type_expr();
-                self.expect(SyntaxKind::Greater, "`>`");
-            }
-            self.finish();
-            return;
-        }
-        if self.at(SyntaxKind::ResultKw) || (self.at(SyntaxKind::Identifier) && self.at_word("result")) {
-            self.start(SyntaxKind::ResultType);
-            self.respelled_type();
-            self.bump();
-            // Two parameters, and no bracketed legacy form: `Result` is new,
-            // so there is no `Result[τ]` anybody could have written.
-            self.expect(SyntaxKind::Less, "`<`");
-            self.type_expr();
-            self.expect(SyntaxKind::Comma, "`,`");
-            self.type_expr();
-            self.expect(SyntaxKind::Greater, "`>`");
-            self.finish();
-            return;
-        }
         if self.at(SyntaxKind::LParen) {
             let checkpoint = self.events.len();
             self.bump();
@@ -120,43 +93,31 @@ impl Parser<'_> {
             self.finish();
             return;
         }
-        self.eat_trivia();
-        // `Tree<Nat>` — a declared type applied to its arguments. Only a
-        // parameterized `data` declaration can be written this way, and which
-        // names are declarations is not a question the parser can answer, so
-        // the shape is what decides the node.
-        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Less) {
-            self.start(SyntaxKind::AppliedType);
-            self.start(SyntaxKind::TypeName);
+        if self.at_any(&[
+            SyntaxKind::Integer,
+            SyntaxKind::Rational,
+            SyntaxKind::TrueKw,
+            SyntaxKind::FalseKw,
+            SyntaxKind::String,
+        ]) {
+            self.start(SyntaxKind::LiteralExpr);
             self.bump();
-            self.finish();
-            self.bump(); // `<`
-            self.type_expr();
-            while self.at(SyntaxKind::Comma) {
-                self.bump();
-                self.type_expr();
-            }
-            self.expect(SyntaxKind::Greater, "`>`");
             self.finish();
             return;
         }
-        // `Pc(12)` — a type carrying an index. `02-core-calculus.md` §1.5 spells
-        // an index in parentheses precisely so that it is not the angle-bracket
-        // form above: `Pc<A>` takes a type and `Pc(12)` takes a number, and the
-        // grammar tells them apart rather than the checker.
-        //
-        // The index is read as an ordinary expression, because §1.5's grammar is
-        // a restriction on what an index may *say* and not a second syntax. An
-        // expression outside it is refused where two indices are compared, with
-        // the comparison that could not be made; refusing it here would be a
-        // complaint with nothing to point at.
-        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::LParen) {
-            self.start(SyntaxKind::IndexedType);
-            self.start(SyntaxKind::TypeName);
+        self.eat_trivia();
+        // A type constructor is a term. Give its application the same
+        // `NameExpr`/`ApplyExpr` tree as every other call; the checker decides
+        // whether each argument inhabits `Type`, `Nat`, or another domain.
+        if self.at_any(&[
+            SyntaxKind::Identifier,
+            SyntaxKind::ListKw,
+            SyntaxKind::OptionKw,
+            SyntaxKind::ResultKw,
+        ]) && self.nth_significant(1) == Some(SyntaxKind::LParen)
+        {
+            self.start(SyntaxKind::NameExpr);
             self.bump();
-            self.finish();
-            self.bump(); // `(`
-            self.index_arguments();
             self.finish();
             return;
         }

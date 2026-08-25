@@ -136,26 +136,26 @@ let fifth: Interval = P5;
 
 fn third(root: Pitch) -> Pitch { root up M3 }
 
-fn transpose_answer(subject: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime> {
+fn transpose_answer(subject: EventTrack(WrittenTime), by: Interval) -> EventTrack(WrittenTime) {
     transpose(by, subject)
 }
 ```
 
 The base types include `Bool`, `Nat`, `Ratio`, `Text`, `Pitch`, `Interval`, `Scale`, `Key`, `ChordClass`, and `Voicing`,
-with `Duration<C>`, `Position<C>`, `EventTrack<C>`, `Option<...>`, `List<...>`, `Result<..., ...>`, products, and arrows
+with `Duration(C)`, `Position(C)`, `EventTrack(C)`, `Option(...)`, `List(...)`, `Result(..., ...)`, products, and arrows
 as constructors. `match` is the case-analysis spelling. A multi-statement musical body is explicitly `music { ... }`;
-`use e;` places an `EventTrack<WrittenTime>` at the current cursor.
+`use e;` places an `EventTrack(WrittenTime)` at the current cursor.
 
 ### Exact time
 
-Time has two types, and they are not the same type. `Duration<C>` is *how much* time — a nonnegative exact rational —
-and `Position<C>` is *when*, an exact rational instant that may be negative. `C` is the coordinate: `WrittenTime` is the
+Time has two types, and they are not the same type. `Duration(C)` is *how much* time — a nonnegative exact rational —
+and `Position(C)` is *when*, an exact rational instant that may be negative. `C` is the coordinate: `WrittenTime` is the
 page's clock and `PhysicalTime` is a real one, and the two do not mix, so a written beat can never be added to a number
 of seconds. Both take their coordinate; `Duration` written alone names no type.
 
 ```musa
-let one_eighth: Duration<WrittenTime> = 1/8;
-let downbeat: Position<WrittenTime> = position_of(0);
+let one_eighth: Duration(WrittenTime) = 1/8;
+let downbeat: Position(WrittenTime) = position_of(0);
 ```
 
 A position plus a duration is a position, two durations add, and two positions do not add at all — there is no name for
@@ -164,18 +164,18 @@ answers with a `Result`:
 
 | Operation | Answers |
 | --- | --- |
-| `ratio_add`, `ratio_sub`, `ratio_mul`, `ratio_div` | `Result<Ratio, Text>` |
+| `ratio_add`, `ratio_sub`, `ratio_mul`, `ratio_div` | `Result(Ratio, Text)` |
 | `ratio_less`, `ratio_equal` | `Bool` |
-| `nat_add`, `nat_mul` | `Result<Nat, Text>` |
-| `nat_sub` | `Option<Nat>` |
-| `duration_of` | `Result<Duration<C>, Text>` |
+| `nat_add`, `nat_mul` | `Result(Nat, Text)` |
+| `nat_sub` | `Option(Nat)` |
+| `duration_of` | `Result(Duration(C), Text)` |
 | `duration_ratio` | `Ratio` |
-| `duration_add`, `duration_scale` | `Result<Duration<C>, Text>` |
+| `duration_add`, `duration_scale` | `Result(Duration(C), Text)` |
 | `duration_less`, `duration_equal` | `Bool` |
-| `position_of` | `Position<C>` |
+| `position_of` | `Position(C)` |
 | `position_ratio` | `Ratio` |
-| `position_shift` | `Result<Position<C>, Text>` |
-| `position_between` | `Result<Duration<C>, Text>` |
+| `position_shift` | `Result(Position(C), Text)` |
+| `position_between` | `Result(Duration(C), Text)` |
 | `position_less`, `position_equal` | `Bool` |
 | `text_equal` | `Bool` |
 
@@ -195,7 +195,7 @@ better when a type is a sum of several cases or a product of named fields.
 
 ```musa
 data Chord {
-    private NamedChord(ChordSymbol, List<Spelling>),
+    private NamedChord(ChordSymbol, List(Spelling)),
     Anonymous(root: Pitch, quality: Quality),
     Silence,
 }
@@ -211,9 +211,9 @@ Beats { Beats(Nat) }` and `enum Bars { Bars(Nat) }` are two types, and so are tw
 Constructors live in the type's namespace, so `Tying::Untied` is the qualified spelling and the bare `Untied` is
 accepted wherever the expected type is already known.
 
-The one thing the three words do not share is the index telescope. `data Vect<A>(n: Nat) { … }` declares a family whose
-constructors say which index each one stands at; writing the same parentheses after an `enum` or a `record` is refused,
-and the refusal says that an indexed family is written with `data`.
+The one thing the three words do not share is the index telescope. `data Vect(A: Type): (n: Nat) -> Type { … }` declares
+a family whose constructors name their complete result, including the index each one selects; writing the same signature
+after an `enum` or a `record` is refused, and the refusal says that an indexed family is written with `data`.
 
 Fields of a record end in `;` and cases of a sum are separated by `,`, which is how a declaration says at a glance which
 of the two it is.
@@ -227,7 +227,7 @@ A text is built in exactly one way, and taken apart in none:
 | `text_join` | `Text` |
 | `nat_literal` | `Text` |
 | `pitch_literal`, `key_literal` | `Text` |
-| `ratio_literal`, `interval_literal` | `Option<Text>` |
+| `ratio_literal`, `interval_literal` | `Option(Text)` |
 
 `text_join` runs a list of texts together in the order they are given. The five spellings answer with **the source
 literal that names the value** — `4`, `3/8`, `c5`, `key d major`, `M2` — so the one law they share is that reading back
@@ -250,7 +250,7 @@ A chord class is content; a voicing is a realization of it. The two are separate
 
 ```musa
 let sonority: ChordClass = chord c major7;   // spells pitch classes; does not sound
-let close: Option<Voicing> = close_position(sonority, c4);
+let close: Option(Voicing) = close_position(sonority, c4);
 
 stack c4 major7/2    // sugar: close position, sounded, register fixed by the written root
 ```

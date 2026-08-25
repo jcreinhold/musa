@@ -66,9 +66,9 @@ fn a_delayed_canon_accepts_a_partially_applied_answer_and_has_maximum_extent() {
 fn function_identity_and_composition_hold_for_contextual_music() {
     let score = snapshot(
         "piece \"unchanged\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn unchanged(value: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { value }
-            fn compose(f: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, g: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, value: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { f(g(value)) }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn unchanged(value: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { value }
+            fn compose(f: EventTrack(WrittenTime) -> EventTrack(WrittenTime), g: EventTrack(WrittenTime) -> EventTrack(WrittenTime), value: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { f(g(value)) }
             score { part p {
                 voice direct { use subject; }
                 voice unchanged { use unchanged(subject); }
@@ -85,7 +85,7 @@ fn function_identity_and_composition_hold_for_contextual_music() {
 fn pitch_mapping_preserves_support_and_non_pitch_fields() {
     let score = snapshot(
         "piece \"mapping\" {
-            let subject: EventTrack<WrittenTime> = music {
+            let subject: EventTrack(WrittenTime) = music {
                 grace { d5 e5 }
                 c4/4 staccato
                 rest/4
@@ -136,7 +136,7 @@ fn pitch_mapping_preserves_support_and_non_pitch_fields() {
 fn mapping_composition_agrees_with_nested_mapping() {
     let score = snapshot(
         "piece \"composition\" {
-            let subject: EventTrack<WrittenTime> = music { c4/2 };
+            let subject: EventTrack(WrittenTime) = music { c4/2 };
             fn pedal(_: Pitch) -> Pitch { e3 }
             fn twice(f: Pitch -> Pitch, p: Pitch) -> Pitch { f(f(p)) }
             fn pedal_twice(p: Pitch) -> Pitch { twice(pedal, p) }
@@ -154,7 +154,7 @@ fn mapping_composition_agrees_with_nested_mapping() {
 fn block_and_function_transpose_agree_musically_but_keep_provenance() {
     let score = snapshot(
         "piece \"agreement\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 e4/4 };
+            let subject: EventTrack(WrittenTime) = music { c4/4 e4/4 };
             score { part p {
                 voice block { transpose up P8 { use subject; } }
                 voice function { use transpose(P8, subject); }
@@ -184,10 +184,10 @@ fn block_and_function_transpose_agree_musically_but_keep_provenance() {
 fn every_existing_transform_has_one_block_and_function_meaning() {
     let score = snapshot(
         "piece \"transform functions\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 e4/4 };
-            let broader: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { stretch(2/1, line) };
-            let backwards: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = retrograde;
-            let mirror: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { invert(c4, line) };
+            let subject: EventTrack(WrittenTime) = music { c4/4 e4/4 };
+            let broader: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { stretch(2/1, line) };
+            let backwards: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = retrograde;
+            let mirror: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { invert(c4, line) };
             score { part p {
                 voice stretch_block { stretch 2 { use subject; } }
                 voice stretch_function { use broader(subject); }
@@ -207,8 +207,8 @@ fn every_existing_transform_has_one_block_and_function_meaning() {
 #[test]
 fn wrong_higher_order_arguments_are_rejected_statically() {
     for declaration in [
-        "fn wrong(n: Nat) -> Nat { n } let bad: EventTrack<WrittenTime> = map_note_pitches(wrong, music { c4/1 });",
-        "fn answer_pitch(p: Pitch) -> Pitch { p } let bad: EventTrack<WrittenTime> = map_note_pitches(answer_pitch, 1);",
+        "fn wrong(n: Nat) -> Nat { n } let bad: EventTrack(WrittenTime) = map_note_pitches(wrong, music { c4/1 });",
+        "fn answer_pitch(p: Pitch) -> Pitch { p } let bad: EventTrack(WrittenTime) = map_note_pitches(answer_pitch, 1);",
     ] {
         let source = format!("piece \"wrong\" {{ {declaration} score {{ part p {{ voice v {{ c4/1 }} }} }} }}");
         let compilation = compile_text(&source);
@@ -228,7 +228,7 @@ fn wrong_higher_order_arguments_are_rejected_statically() {
 fn distinct_mappers_and_call_sites_do_not_alias_shared_instantiations() {
     let score = snapshot(
         "piece \"cache separation\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 };
+            let subject: EventTrack(WrittenTime) = music { c4/4 };
             fn low(_: Pitch) -> Pitch { c3 }
             fn high(_: Pitch) -> Pitch { c5 }
             score { part p { voice v {

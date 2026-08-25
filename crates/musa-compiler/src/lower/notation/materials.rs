@@ -63,7 +63,7 @@ impl Lowering<'_> {
 
     #[expect(
         clippy::arithmetic_side_effects,
-        reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::extent` makes; scoped to this function because it is the only arithmetic on it"
+        reason = "`Ratio(i64)` addition is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::extent` makes; scoped to this function because it is the only arithmetic on it"
     )]
     pub(crate) fn mobile(&mut self, node: &SyntaxNode, origin: Origin, reading: Reading) -> Option<Raw> {
         let statement = musa_syntax::ast::MobileStmt::cast(node.clone())?;

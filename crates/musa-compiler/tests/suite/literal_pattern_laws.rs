@@ -30,7 +30,7 @@ fn answer(annotation: &str, subject: &str, pattern: &str) -> String {
             "piece \"Literal patterns\" {{\n\
              \x20   let subject: {annotation} = {subject};\n\
              \x20   let chosen: Interval = match subject {{ {pattern} -> P1, _ -> P8 }};\n\
-             \x20   let tune: EventTrack<WrittenTime> = transpose(chosen, music {{ c4/1 }});\n\n\
+             \x20   let tune: EventTrack(WrittenTime) = transpose(chosen, music {{ c4/1 }});\n\n\
              \x20   tempo 1/4 = 84;\n\
              \x20   meter 4/4;\n\n\
              \x20   score {{ part p {{ voice v {{ use tune; }} }} }}\n\
@@ -117,9 +117,9 @@ fn a_literal_pattern_matches_nothing_else() {
 fn a_duration_is_matched_through_the_ratio_it_is_made_of() {
     let source = SourceDocument::new(
         "piece \"Durations\" {\n\
-         \x20   let held: Duration<WrittenTime> = duration_of(3/8);\n\
+         \x20   let held: Duration(WrittenTime) = duration_of(3/8);\n\
          \x20   let chosen: Interval = match duration_ratio(held) { 3/8 -> P1, _ -> P8 };\n\
-         \x20   let tune: EventTrack<WrittenTime> = transpose(chosen, music { c4/1 });\n\n\
+         \x20   let tune: EventTrack(WrittenTime) = transpose(chosen, music { c4/1 });\n\n\
          \x20   score { part p { voice v { use tune; } } }\n\
          }\n"
         .to_owned(),

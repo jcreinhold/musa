@@ -153,6 +153,9 @@ impl Parser<'_> {
             Some(SyntaxKind::Identifier) if self.at_constructor() => self.option_expr(),
             Some(
                 SyntaxKind::Identifier
+                | SyntaxKind::ListKw
+                | SyntaxKind::OptionKw
+                | SyntaxKind::ResultKw
                 | SyntaxKind::RepeatKw
                 | SyntaxKind::TransposeKw
                 | SyntaxKind::StretchKw

@@ -147,7 +147,7 @@ const BREAKS: [(u32, &str, &str); 7] = [
     ),
     (
         114,
-        "a type parameter is angle-bracketed: `Option<Pitch>` replaces `Option[Pitch]`, and `[` means a list",
+        "a type parameter is angle-bracketed: `Option(Pitch)` replaces `Option[Pitch]`, and `[` means a list",
         "parser::the_old_type_parameter_brackets_are_migration_errors",
     ),
     (

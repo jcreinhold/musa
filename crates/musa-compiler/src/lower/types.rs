@@ -2,15 +2,15 @@
 //!
 //! Short, and for the reason the module documentation gives: a written type is
 //! almost always a name and an argument list, and the core is what knows whether
-//! the name resolves and whether the arity is right. What is left here is the
-//! four spellings the grammar gives their own node kinds — `Option<τ>`,
-//! `List<τ>`, `Result<τ, τ>`, `τ -> τ` — and the three base types that take an
-//! *index* rather than a type argument.
+//! the name resolves and whether the arity is right. Application therefore uses
+//! the same value-lowering path in type and term positions. What is left here is
+//! the structural type syntax (`τ -> τ` and products) and the base names whose
+//! host representation needs a coordinate or registry lookup.
 
-use musa_calculus::{Origin, Raw};
+use musa_calculus::{Origin, Raw, Sort};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
-use super::{Lowering, applied, child, children, is_expr_node, is_type_node, paired};
+use super::{Lowering, applied, child, children, is_type_node, paired};
 use crate::phase::Coordinate;
 use musa_score::diagnose::{Code, Diagnostic};
 
@@ -31,20 +31,14 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         match node.kind() {
             SyntaxKind::TypeExpr => {
-                let inner = child(node, is_type_node)?;
-                self.ty(&inner)
+                let inner = child(node, |kind| is_type_node(kind) || kind == SyntaxKind::ApplyExpr)?;
+                if inner.kind() == SyntaxKind::ApplyExpr {
+                    self.value(&inner)
+                } else {
+                    self.ty(&inner)
+                }
             }
             SyntaxKind::TypeName => self.named_type(node, origin),
-            SyntaxKind::AppliedType => self.applied_type(node, origin),
-            SyntaxKind::IndexedType => self.indexed_type(node, origin),
-            SyntaxKind::OptionType => self.one_argument(node, origin, "Option"),
-            SyntaxKind::ListType => self.one_argument(node, origin, "List"),
-            SyntaxKind::ResultType => {
-                let parts = children(node, is_type_node);
-                let value = self.ty(parts.first()?)?;
-                let error = self.ty(parts.get(1)?)?;
-                Some(applied(origin, Raw::hosted(origin, "Result"), [value, error]))
-            }
             SyntaxKind::FunctionType => {
                 let parts = children(node, is_type_node);
                 let domain = self.ty(parts.first()?)?;
@@ -75,50 +69,6 @@ impl Lowering<'_> {
         }
     }
 
-    /// `Pc(12)` — a type constructor applied to a *value*.
-    ///
-    /// The head is read as a type and the argument as an ordinary
-    /// *expression*, which is the whole of the difference from
-    /// [`Lowering::applied_type`]: `Pc<A>` takes a type and `Pc(12)` takes a
-    /// number, and the two spellings are what keep the positions apart.
-    ///
-    /// One raw term for both, because the core has one: `Pc(12)` elaborates to
-    /// the application `Pc 12`, decided by ordinary conversion. It was a
-    /// wrapper of its own until prompt 151 deleted the index stratum, and the
-    /// spelling outlived it because nothing else in the surface applies a type
-    /// constructor to a value — angle brackets take types.
-    ///
-    /// Whether the head *can* take the argument is not asked here. `Nat(12)`
-    /// is refused where every other misapplication is, by the core, which is
-    /// the only reader that knows what `Nat` is.
-    fn indexed_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        let head = child(node, is_type_node)?;
-        let indices: Option<Vec<Raw>> = children(node, is_expr_node)
-            .iter()
-            .map(|written| self.expr(written))
-            .collect();
-        let indices = indices?;
-        // `Vect<A>(n)` — a head that already took its *parameters* takes its
-        // indices in the same call. One call rather than a call inside an
-        // application, because §1.3 measures completeness on the declaration:
-        // `Vect A` alone is a prefix, and a prefix that claimed to be a whole
-        // call would be refused for the argument the parentheses were about to
-        // supply.
-        if head.kind() == SyntaxKind::AppliedType {
-            return self.applied_type_with(&head, origin, indices);
-        }
-        let ty = self.ty(&head)?;
-        Some(applied(origin, ty, indices))
-    }
-
-    /// `Option<τ>` and `List<τ>`, which have their own node kinds because the
-    /// grammar spells them that way, and one raw term because the core does not.
-    fn one_argument(&mut self, node: &SyntaxNode, origin: Origin, family: &'static str) -> Option<Raw> {
-        let inner = child(node, is_type_node)?;
-        let member = self.ty(&inner)?;
-        Some(Raw::app(origin, Raw::var(origin, family), member))
-    }
-
     /// A bare type name.
     ///
     /// The order is the one the old checker used and for the same reason: the
@@ -132,6 +82,9 @@ impl Lowering<'_> {
     fn named_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let written = node.to_string();
         let written = written.trim();
+        if written == "Type" {
+            return Some(Raw::universe(origin, Sort::ZERO));
+        }
         if let Some(spelled) = compiler_type(written) {
             return Some(Raw::var(origin, spelled));
         }
@@ -162,53 +115,6 @@ impl Lowering<'_> {
         Some(Raw::var(origin, written))
     }
 
-    /// A type applied to arguments.
-    fn applied_type(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
-        self.applied_type_with(node, origin, Vec::new())
-    }
-
-    /// The same, with index arguments the enclosing
-    /// [`SyntaxKind::IndexedType`] already read, appended to the written ones.
-    fn applied_type_with(&mut self, node: &SyntaxNode, origin: Origin, indices: Vec<Raw>) -> Option<Raw> {
-        // The head is the first type child and the arguments are the rest: an
-        // argument may itself be a bare `TypeName`, so telling them apart by kind
-        // would take `Pair<Nat>` for a `Pair` of nothing.
-        let parts = children(node, is_type_node);
-        let (head, arguments) = parts.split_first()?;
-        let written = head.to_string();
-        let written = written.trim().to_owned();
-        // `Duration<C>`, `Position<C>`, and `Syntax<Cat>` take an *index* rather
-        // than a type: nothing inhabits `WrittenTime` or `Expr`, and the word is
-        // read from the argument node's own text. That is what keeps a coordinate
-        // and a category out of the type argument position, so there is no way to
-        // write `List<WrittenTime>`.
-        // The two position-restricted heads take no index of their own, and
-        // an index written after one is applied to what it denotes rather than
-        // dropped: `Duration<C>(3)` is refused by the core, which knows what
-        // `Duration` is, and not silently read as `Duration<C>`.
-        if let Some((index, help)) = self.indexed_base(&written) {
-            let base = self.written_index(index, &written, node, arguments, help)?;
-            return Some(applied(origin, base, indices));
-        }
-        if matches!(written.as_str(), "Machine" | "Primitive") {
-            let base = self.machine_type(node, origin, &written, head, arguments)?;
-            return Some(applied(origin, base, indices));
-        }
-        let head = self.ty(head)?;
-        let arguments: Option<Vec<Raw>> = arguments.iter().map(|child| self.ty(child)).collect();
-        // A *call* rather than an iterated application, which is what makes the
-        // under-applied direction reportable. `Option<Nat, Nat>` still earns
-        // `NotAFunction` from `Option`'s own kind, as the module doc says; what
-        // a spine cannot say is that a parameter went *unwritten*, because a
-        // prefix of an application does not know it is a prefix. `SyntaxStep<Text>`
-        // otherwise reaches the annotation as a `Type 0 → Type 0` and is refused
-        // as "not a type", which names neither the arity nor the argument left
-        // out. §1.3's completeness rule reads both off the declaration.
-        let mut arguments = arguments?;
-        arguments.extend(indices);
-        Some(Raw::call(origin, head, arguments))
-    }
-
     /// `Machine<K, A, B>` and `Primitive<K, A, B>`: a step tag, then two ports.
     ///
     /// The step is position-restricted the way an index word is, and for the
@@ -229,7 +135,7 @@ impl Lowering<'_> {
     /// on the registered signatures, so `Machine<K, Ratio -> Ratio, …>` is
     /// refused by the elaborator rather than by a second reading of the same
     /// written type.
-    fn machine_type(
+    pub(super) fn machine_type(
         &mut self,
         node: &SyntaxNode,
         origin: Origin,
@@ -244,7 +150,7 @@ impl Lowering<'_> {
                     format!("`{written}` takes 3 type arguments: a step, an input port, and an output port"),
                 )
                 .at(crate::resolve::trimmed_span(node), "written here")
-                .help(format!("write `{written}<AudioFrameStep, τ, τ>`")),
+                .help(format!("write `{written}(AudioFrameStep, τ, τ)`")),
             );
         };
         let word = step.to_string();
@@ -255,10 +161,16 @@ impl Lowering<'_> {
                     .help("a step says what one step of the machine counts; `AudioFrameStep` is one".to_owned()),
             );
         }
-        let head = self.ty(head)?;
+        let head = self.value(head)?;
         let read = [step, input, output]
             .into_iter()
-            .map(|child| self.ty(child))
+            .map(|child| {
+                if is_type_node(child.kind()) {
+                    self.ty(child)
+                } else {
+                    self.value(child)
+                }
+            })
             .collect::<Option<Vec<Raw>>>()?;
         Some(applied(origin, head, read))
     }
@@ -268,7 +180,7 @@ impl Lowering<'_> {
     /// Called only where [`Lowering::indexed_base`] has already said `written`
     /// is one of them, so there is no fourth answer to give: the index is read
     /// from the argument's own text, or the reading is refused at the node.
-    fn written_index(
+    pub(super) fn written_index(
         &mut self,
         index: Index,
         written: &str,
@@ -319,7 +231,7 @@ impl Lowering<'_> {
     /// bare word and [`Lowering::applied_type`] to read the argument as an
     /// index. Two lists would be two answers to "is `Syntax` a type here", and
     /// the phase scope is exactly where they would disagree.
-    fn indexed_base(&self, written: &str) -> Option<(Index, String)> {
+    pub(super) fn indexed_base(&self, written: &str) -> Option<(Index, String)> {
         match written {
             // `EventTrack` is here rather than in [`compiler_type`] because it is
             // registered at `Coordinate → Type 0` exactly as the two tagged
@@ -329,11 +241,11 @@ impl Lowering<'_> {
             // written the way its duration always was.
             "Duration" | "Position" | "EventTrack" => Some((
                 Index::Coordinate,
-                format!("write `{written}<WrittenTime>`, or `<PhysicalTime>` for clock time"),
+                format!("write `{written}(WrittenTime)`, or `(PhysicalTime)` for clock time"),
             )),
             "Syntax" if self.in_phase => Some((
                 Index::Category,
-                "write `Syntax<Expr>` for a tree that parses as an expression, or `Syntax<TokenTree>`".to_owned(),
+                "write `Syntax(Expr)` for a tree that parses as an expression, or `Syntax(TokenTree)`".to_owned(),
             )),
             _ => None,
         }
@@ -345,8 +257,8 @@ impl Lowering<'_> {
 /// Not a type argument: nothing inhabits `WrittenTime` or `Expr`, so the word is
 /// read from the argument node's own text and becomes a literal.
 #[derive(Clone, Copy)]
-enum Index {
-    /// `Duration<C>` and `Position<C>`, indexed by a [`Coordinate`].
+pub(super) enum Index {
+    /// `Duration(C)` and `Position(C)`, indexed by a [`Coordinate`].
     Coordinate,
     /// `Syntax<Cat>`, indexed by a syntax category.
     Category,

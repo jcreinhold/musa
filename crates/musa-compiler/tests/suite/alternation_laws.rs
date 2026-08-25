@@ -28,7 +28,7 @@ fn piece(body: &str) -> musa_compiler::Compilation {
     let source = SourceDocument::new(
         format!(
             "piece \"Alternation\" {{ {DECLARATIONS} {body} \
-             let tune: EventTrack<WrittenTime> = transpose(chosen, music {{ c4/1 }}); \
+             let tune: EventTrack(WrittenTime) = transpose(chosen, music {{ c4/1 }}); \
              tempo 1/4 = 84; meter 4/4; \
              score {{ part p {{ voice v {{ use tune; }} }} }} }}"
         ),

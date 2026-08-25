@@ -17,16 +17,16 @@ fn root_of(content: ChordClass) -> NoteName { chord_root(content) }
 
 // The bass a chord class designates, when it designates one. Absent means
 // no bass was chosen — it does not mean the root.
-fn bass_of(content: ChordClass) -> Option<NoteName> { chord_bass(content) }
+fn bass_of(content: ChordClass) -> Option(NoteName) { chord_bass(content) }
 
 // The spelled intervals above the root, lowest first, beginning at the
 // unison. Spelled: a major third is a third, never a diminished fourth.
-fn members_of(content: ChordClass) -> List<Interval> { chord_members(content) }
+fn members_of(content: ChordClass) -> List(Interval) { chord_members(content) }
 
 // A true inversion: the numbered member becomes the designated bass.
 // Positions are counted from zero, so position one is first inversion.
 // Absent when the class has no such member.
-fn inversion(content: ChordClass, position: Nat) -> Option<ChordClass> {
+fn inversion(content: ChordClass, position: Nat) -> Option(ChordClass) {
     chord_inversion(content, position)
 }
 
@@ -38,7 +38,7 @@ fn slash_bass(content: ChordClass, bass: NoteName) -> ChordClass { chord_over(co
 // The triad refinement, when the content really is a major or minor
 // triad. This is the domain a neo-Riemannian transformation acts on, and
 // the proof that it applies is this `option` being present.
-fn as_triad(content: ChordClass) -> Option<Triad> { chord_triad(content) }
+fn as_triad(content: ChordClass) -> Option(Triad) { chord_triad(content) }
 
 // Forget the refinement: every triad is a chord class.
 fn triad_content(refined: Triad) -> ChordClass { triad_chord(refined) }

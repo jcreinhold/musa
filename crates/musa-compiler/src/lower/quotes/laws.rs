@@ -78,9 +78,9 @@ fn whole(quoted: &str) -> Syntax {
         "
     let level = \"readable\";
 
-    let quoting = fn (here: NodePath) -> Syntax<Expr> {{ {quoted} }};
+    let quoting = fn (here: NodePath) -> Syntax(Expr) {{ {quoted} }};
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{
         Ok(forget(syntax_fold_from_leaves(
             fn (here) {{ quoting(here) }},
             fn (here, kind, spelling) {{ quoting(here) }},

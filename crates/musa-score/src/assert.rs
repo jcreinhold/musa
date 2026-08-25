@@ -222,7 +222,7 @@ impl ParamType {
             Self::Scale => "Scale",
             Self::Chord => "ChordClass",
             Self::Count => "Nat",
-            Self::Ranges => "List<(Pitch, Pitch)>",
+            Self::Ranges => "List((Pitch, Pitch))",
             // Likewise a word: a rule id names a row of the analysis rule
             // registry, and the registry is not a value in the language.
             Self::Rule => "rule id",

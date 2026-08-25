@@ -45,8 +45,8 @@ fn library(declarations: &str) -> String {
 #[test]
 fn a_parameterized_record_is_constructed_and_projected() {
     let refused = errors(&library(
-        "record Cell<A> { spot: Nat; value: A; } \
-         let one: Cell<Nat> = Cell { spot = 0, value = 1 }; \
+        "record Cell(A: Type) { spot: Nat; value: A; } \
+         let one: Cell(Nat) = Cell { spot = 0, value = 1 }; \
          let held: Nat = one.value;",
     ));
     assert!(refused.is_empty(), "{refused:?}");
@@ -59,7 +59,7 @@ fn a_parameterized_record_is_constructed_and_projected() {
 #[test]
 fn a_headed_literal_solves_its_parameters_from_its_fields() {
     let refused = errors(&library(
-        "record Cell<A> { spot: Nat; value: A; } \
+        "record Cell(A: Type) { spot: Nat; value: A; } \
          let one = Cell { spot = 0, value = 1 }; \
          let held: Nat = one.value;",
     ));
@@ -71,7 +71,7 @@ fn a_headed_literal_solves_its_parameters_from_its_fields() {
 #[test]
 fn a_parameter_no_field_mentions_is_not_guessed() {
     let refused = errors(&library(
-        "record Tagged<A> { spot: Nat; } let one = Tagged { spot = 0 };",
+        "record Tagged(A: Type) { spot: Nat; } let one = Tagged { spot = 0 };",
     ));
     assert!(!refused.is_empty(), "an unsolved parameter must be refused");
 }
@@ -83,9 +83,9 @@ fn a_parameter_no_field_mentions_is_not_guessed() {
 #[test]
 fn the_literal_and_its_goal_must_name_one_family() {
     let refused = errors(&library(
-        "record Cell<A> { spot: Nat; value: A; } \
-         record Other<A> { spot: Nat; value: A; } \
-         let one: Cell<Nat> = Other { spot = 0, value = 1 };",
+        "record Cell(A: Type) { spot: Nat; value: A; } \
+         record Other(A: Type) { spot: Nat; value: A; } \
+         let one: Cell(Nat) = Other { spot = 0, value = 1 };",
     ));
     assert_eq!(
         refused,
@@ -99,8 +99,8 @@ fn the_literal_and_its_goal_must_name_one_family() {
 #[test]
 fn a_record_pattern_still_finds_its_family_from_the_subject() {
     let refused = errors(&library(
-        "record Cell<A> { spot: Nat; value: A; } \
-         fn spot_of(cell: Cell<Nat>) -> Nat { match cell { Cell(spot, value) -> spot, } } \
+        "record Cell(A: Type) { spot: Nat; value: A; } \
+         fn spot_of(cell: Cell(Nat)) -> Nat { match cell { Cell(spot, value) -> spot, } } \
          let one: Nat = spot_of(Cell { spot = 3, value = 1 });",
     ));
     assert!(refused.is_empty(), "{refused:?}");
@@ -137,10 +137,10 @@ fn the_structures_at_written_pitch_are_values_that_compute() {
          let nothing: Interval = (interval_group.unit)(P5); \
          let moved: Pitch = (pitch_action.act)(c4, M3); \
          let apart: Interval = (pitch_torsor.difference)(c4, g4); \
-         fn by_record() -> EventTrack<WrittenTime> { \
+         fn by_record() -> EventTrack(WrittenTime) { \
              music { (c4 up fifth)/4 moved/4 (c4 up apart)/4 (c4 up nothing)/4 } \
          } \
-         fn by_hand() -> EventTrack<WrittenTime> { music { g4/4 e4/4 g4/4 c4/4 } } \
+         fn by_hand() -> EventTrack(WrittenTime) { music { g4/4 e4/4 g4/4 c4/4 } } \
          score { part p { voice a { use by_record(); } voice b { use by_hand(); } } } }",
     );
     let errors: Vec<&musa_score::Diagnostic> = compilation

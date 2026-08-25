@@ -382,9 +382,9 @@ fn the_variant_forms_round_trip_and_format_to_a_fixpoint() {
 #[test]
 fn an_index_telescope_parses_under_every_word_and_is_refused_later() {
     for source in [
-        "piece \"x\" {\n    data Vect<A>(n: Nat) {\n        Nil : (0),\n    }\n}\n",
-        "piece \"x\" {\n    record Pending(n: Nat) {\n        read: Nat;\n    }\n}\n",
-        "piece \"x\" {\n    enum Reading(n: Nat) {\n        Done,\n    }\n}\n",
+        "piece \"x\" {\n    data Vect(A: Type): (n: Nat) -> Type {\n        Nil : Vect(A, 0),\n    }\n}\n",
+        "piece \"x\" {\n    record Pending: (n: Nat) -> Type {\n        read: Nat;\n    }\n}\n",
+        "piece \"x\" {\n    enum Reading: (n: Nat) -> Type {\n        Done,\n    }\n}\n",
     ] {
         let parsed = parse(source);
         assert!(parsed.errors().is_empty(), "{source}\n{:?}", parsed.errors());

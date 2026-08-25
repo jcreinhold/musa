@@ -12,27 +12,25 @@ self-delimiting and do not take `;`. No added production is newline-sensitive.
 The normative schematic grammar is:
 
 ```ebnf
-type         := type-name type-args? | "(" type ")" | "(" type "," type ("," type)* ")"
+type         := type-name | call | "(" type ")" | "(" type "," type ("," type)* ")"
               | fn-type
 fn-type      := type "->" type | "(" (type ("," type)*)? ")" "->" type
 type-name    := (module-path "::")? IDENT
-type-args    := "<" type ("," type)* ">" index-args?
-type-params  := "<" type-param ("," type-param)* ">"
-type-param   := IDENT | "{" IDENT (":" type)? "}"          % braces mark an inferred parameter
-index-params := "(" IDENT ":" type ("," IDENT ":" type)* ")"
-index-args   := "(" expr ("," expr)* ")"                    % a type applied to index arguments
 visibility   := "private"
 binding      := visibility? "let" IDENT (":" type)? "=" expr ";"
-function     := visibility? "fn" IDENT type-params? "(" params? ")" "->" type block
-param        := IDENT (":" type)? ("=" expr)?
-data         := visibility? "data" IDENT type-params? index-params? "{" data-case ("," data-case)* ","? "}"
+function     := visibility? "fn" IDENT "(" params? ")" "->" type block
+param        := IDENT (":" type)? | "{" IDENT ":" type "}"  % inferred binder; same Π, omitted at calls
+data         := visibility? "data" IDENT ("(" params? ")")? data-signature?
+                "{" data-case ("," data-case)* ","? "}"
+data-signature := ":" "(" data-field ("," data-field)* ")" "->" "Type"
 data-case    := visibility? IDENT ("(" data-field ("," data-field)* ")")? (":" type)?
-                                                             % the result type names the indices it chooses
+                                                             % indexed constructors name the complete result
 data-field   := IDENT ":" type | type                        % named, or positional: the latter names a type and no field
-record       := visibility? "record" IDENT type-params? index-params? "{" field-decl* "}"
+record       := visibility? "record" IDENT ("(" params? ")")? data-signature? "{" field-decl* "}"
                                                              % a telescope parses here and §1.3 refuses it by this word
 field-decl   := IDENT ":" type ";"
-enum         := visibility? "enum" IDENT type-params? index-params? "{" (enum-case ("," enum-case)* ","?)? "}"
+enum         := visibility? "enum" IDENT ("(" params? ")")? data-signature?
+                "{" (enum-case ("," enum-case)* ","?)? "}"
                                                              % and here
 enum-case    := visibility? IDENT ("(" type ("," type)* ")" | "{" field-decl* "}")?
 impl         := visibility? "impl" type "{" function* "}"          % the type's namespace, opened
@@ -104,10 +102,10 @@ way to write it down; §1.6's own `fold_from_start` declaration needs one, and n
 recursor's four-argument branches.
 
 **A parameter in a function type is unnamed, and the codomain therefore cannot mention it.** `fn-type` above lists
-*types*, so `(x: G) -> Equal<G>(compose(unit(x), x), x)` does not parse — the parser asks for `)` after `x` — and
+*types*, so `(x: G) -> Equal(G, compose(unit(x), x), x)` does not parse — the parser asks for `)` after `x` — and
 `fn (x: G) -> …` is not a type either. A `fn` declaration's parameter list is the only place in this language where an
 author names a Π binder, which is why a declaration may *have* a dependent type it cannot *write*: `std::indexed`'s
-`row_top` has type `(size: Nat) -> Row<A>(Succ(size)) -> A`, the form `02-core-calculus.md` §1 calls the only function
+`row_top` has type `(size: Nat) -> Row(A, Succ(size)) -> A`, the form `02-core-calculus.md` §1 calls the only function
 type, and that type cannot be annotated, stored in a field, or returned.
 
 This is a gap and it is recorded as one. It is **not** what stops a structure from carrying its laws, which is the use
@@ -225,12 +223,12 @@ evaluation to one order across both spellings is what keeps `p with { f = e }` a
 `use theme() with { note 3 = a5; }` the `with` belongs to the statement, because that is where a reader's eye already
 puts it. Only the top level of a `use` value is affected; an update written inside an argument is an ordinary update.
 
-`e?` carries a failure outward. Where `e : Result<A, E>`, the whole expression has type `A` and denotes what `e`
+`e?` carries a failure outward. Where `e : Result(A, E)`, the whole expression has type `A` and denotes what `e`
 succeeded with; where `e` fails, the answer around the `?` is that same `Err` value. Four things are fixed about it.
 
 - `e` is evaluated exactly once, however much of the answer is written around the `?`.
-- The error types are identical. There is no conversion, widening, or coercion: a `Result<A, E₁>` asked inside an answer
-  of `Result<B, E₂>` is refused, naming both. A function's written type is supposed to say which failures come out of
+- The error types are identical. There is no conversion, widening, or coercion: a `Result(A, E₁)` asked inside an answer
+  of `Result(B, E₂)` is refused, naming both. A function's written type is supposed to say which failures come out of
   it, and a silent conversion would make that sentence untrue. A caller with a different failure matches on it and says
   what it means here.
 - The answer the `?` leaves is the enclosing *function*'s. Written directly in a function's body, or in a branch whose
@@ -271,11 +269,11 @@ for them has earned admission. The two list folds become the `Iterable` methods 
 §1.6, which changes the notation and not the count: two directions, two names, one signature.
 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Scale`, `Key`,
-`Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Analysis<A>`, and `EventTrack[C, A]`. The chromatic quotient and
+`Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Analysis(A)`, and `EventTrack[C, A]`. The chromatic quotient and
 the twelve-tone row were on this list until prompt 164 and are not compiler-owned types any more: `std::post_tonal`
 declares `Pc(n)`, `PcSet(n)`, and `ToneRow(n)` over `std::cyclic`'s `Cycle(n)`, so the modulus is an argument rather
 than a spelling, and §5 of `03-musical-domains.md` is where they are defined. Products, lists, and arrows are the
-constructors described in `02-core-calculus.md`; `Option<A>` and `Result<A, E>` are enums declared in `std` rather than
+constructors described in `02-core-calculus.md`; `Option(A)` and `Result(A, E)` are enums declared in `std` rather than
 grammar (§1.3). A `data`, `record`, or `enum` declaration adds a type of its own, so this list is no longer closed by
 the compiler. Declaration kinds are not types. Every type is spelled with a capital and every music statement keyword is
 not, which is what lets `key c major;` set a key and `Key` name the type of what it set without either word looking the
@@ -285,18 +283,15 @@ settles it in the lexer. `NoteName` is the letter and accidental as written, wit
 *and* enharmonic equivalence (Open Music Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class,
 and `Pc(12)` is the class it names.
 
-**A type parameter is angle-bracketed, and now users write them.** `data`, `record`, `enum`, and `fn` all take `<A, B>`,
-and a type is applied as `List<Pitch>` or `Vec<A, n>`. That is a real change: the previous rule said `Option`, `List`,
-and `Analysis` were the only parameterized types and there was no user-written type application at all. The argument for
-`<>` survives the change intact, and the ambiguity that makes it expensive elsewhere still cannot arise:
+**Application has one spelling.** `F(a, b)` is the application form whether `F` answers a value, a type, or another
+function. `List(Pitch)`, `Vec(A, n)`, and `map(function, values)` therefore share one CST node and one core application
+spine. The reached Π domain decides whether each argument checks at `Type`, `Nat`, or another type; punctuation does not
+classify the argument first. `<` remains only the comparison operator.
 
-- **`<>` belongs to the type grammar and `[]` to the term grammar**, and the parser always knows which one it is in. So
-  `[` is free to serve the list literal `[c4, d4]`, the list pattern `[x, ..xs]`, and indexing `xs[i]` — three spellings
-  of one idea — without ever appearing in a type.
-- **There is no term-level type application.** A type parameter is solved by elaboration (`02-core-calculus.md` §2.1),
-  never written, so a `<` in term position is always the comparison operator and `f<a>(b)` has exactly one reading. This
-  is the rule that keeps `<>` cheap, and it is why the language admits type parameters without admitting the ambiguity
-  they usually bring.
+An inferred binder is written in the ordinary declaration parameter list: `fn identity({A: Type}, value: A) -> A`. The
+braces say that a call normally omits that argument; `identity(value)` lets pattern unification solve it and
+`identity({A = Nat}, value)` fills it explicitly. This is inferred versus written filling of the same Π, not a separate
+kind of application.
 
 Four former spellings are **hard errors carrying an applicable fix**, on the same precedent as `use` in import position
 and for the same reason — a language that accepts both spellings has a mixed corpus forever, and the fix machinery makes
@@ -306,7 +301,7 @@ one spelling affordable:
 | --- | --- | --- |
 | `fn f(x: τ) -> υ = e;` | `fn f(x: τ) -> υ { e }` | a function body is a block expression |
 | a lowercase type name, and `pitchclass` | `UpperCamelCase`, and `NoteName` | a type is spelled with a capital |
-| `option[τ]`, `list[τ]` | `Option<τ>`, `List<τ>` | a type parameter is angle-bracketed |
+| `option[τ]`, `list[τ]` | `Option(τ)`, `List(τ)` | every application uses parentheses |
 | `data D { … }` | `record D { … }`, `enum D { … }` | a product and a sum are read differently and get different words |
 
 The last row is the only one whose fix is not mechanical: the tool offers `record` when the declaration has one case and
@@ -408,8 +403,8 @@ Five rules fix it.
   is nothing, because nothing else used it: no two records in `stdlib/` or `examples/` declare the same field set, so
   the change is a rule about programs nobody has written. An author who wants two quantities kept apart now gets that by
   default.
-- **Parameters are allowed and are ordinary**: `record Cell<A> { at: Nat; value: A; }`. A record that must carry an
-  operation carries it as a field, which after prompt 146 is how a structure is written at all: `Group` is a record
+- **Parameters are allowed and are ordinary**: `record Cell(A: Type) { at: Nat; value: A; }`. A record that must carry
+  an operation carries it as a field, which after prompt 146 is how a structure is written at all: `Group` is a record
   whose fields are its unit, its composition, and its inverse, so there is no constraint left for a `where` to discharge
   at construction.
 - **It adds no term to the calculus, and after prompt 157 it adds no *shape* either.** A `record` declaration elaborates
@@ -435,7 +430,7 @@ enum Tying { Untied, TiedOn }
 
 enum TokenKind { PitchLiteral, Rational, Whitespace, LineComment, BlockComment }
 
-enum Reading<A> {
+enum Reading(A: Type) {
     Done(A),
     Refused { at: NodePath, why: Text },
 }
@@ -481,19 +476,22 @@ or where neither of the other two reads better.
 `02-core-calculus.md` §5's consistency obligation is about and the one `P -> Empty` uses to say *not P*. A `match` on a
 value of it has no arms, and every arm it does not have is covered.
 
-**A declaration may carry indices, and `data` is where they are written.** A constructor's result type names the indices
-it chooses — `Nil : Vec<A>(0)`, `Cons(head: A, tail: Vec<A>(n)) : Vec<A>(n + 1)` — and matching on such a value refines
-the index in each branch (`02-core-calculus.md` §1.1). `enum` and `record` are the two spellings that do not write one:
-`enum` for several nullary or positional cases, `record` for one case with named fields. A telescope written after
-either of their names *parses* and is then refused, naming the word the author wrote and saying that an indexed family
-is written with `data`. The grammar admits what it cannot mean on purpose: a parser that stopped at the `(` would report
-the brace it wanted rather than where indices go, which is the one place a spelling could still lie once `data` is the
-union of the three. This reverses what this paragraph said before, which was that parameters-and-no-indices was final on
-the evidence that no committed program narrows a type by matching; prompt 143's amendment answers that evidence — the
-corpus was writing the workaround, seventeen compiler builtins spent on one modulus, rather than exhibiting no demand.
+**A declaration separates uniform arguments from indices, and `data` is where indices are written.** Uniform arguments
+are ordinary declaration binders: `data Vec(A: Type): (length: Nat) -> Type`. The signature after `:` names the indices
+constructors choose. Every indexed constructor writes the complete family result — `Nil: Vec(A, 0)`,
+`Cons(n: Nat, head: A, tail: Vec(A, n)): Vec(A, n + 1)` — and matching on such a value refines the index in each branch
+(`02-core-calculus.md` §1.1). `enum` and `record` are the two spellings that do not write one: `enum` for several
+nullary or positional cases, `record` for one case with named fields. A telescope written after either of their names
+*parses* and is then refused, naming the word the author wrote and saying that an indexed family is written with `data`.
+The grammar admits what it cannot mean on purpose: a parser that stopped at the `(` would report the brace it wanted
+rather than where indices go, which is the one place a spelling could still lie once `data` is the union of the three.
+This reverses what this paragraph said before, which was that parameters-and-no-indices was final on the evidence that
+no committed program narrows a type by matching; prompt 143's amendment answers that evidence — the corpus was writing
+the workaround, seventeen compiler builtins spent on one modulus, rather than exhibiting no demand. Uniformity is
+declared, never inferred from constructor bodies: editing a constructor therefore cannot silently change the eliminator.
 `Syntax` is not among the beneficiaries, and `11-quotation.md` §1 measures why: it is indexed by `Cat` and stays a
 compiler-owned base type, because the thing that would make refining its index worth having is an eliminator it does not
-have. `Option<A>` and `Result<A, E>` become ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`,
+have. `Option(A)` and `Result(A, E)` become ordinary enums declared in `std` rather than grammar; `Some`, `None`, `Ok`,
 and `Err` read exactly as before under the bare-constructor rule, and `option_fold` is replaced by the `match` that was
 always underneath it.
 
@@ -507,8 +505,8 @@ constructor and leaves the type public, so a package can maintain an invariant t
 
 ```musa
 enum Chord {
-    private NamedChord(ChordSymbol, List<Spelling>),
-    private AnonymousChord(List<Spelling>),
+    private NamedChord(ChordSymbol, List(Spelling)),
+    private AnonymousChord(List(Spelling)),
 }
 
 fn build(symbol: ChordSymbol) -> Chord { Chord::NamedChord(symbol, tones_of(symbol)) }
@@ -567,7 +565,7 @@ wearing a costume.
 
 Three things replace it, and each is smaller than what it replaces:
 
-- **A structure becomes a record.** `trait Group<G>` becomes `record Group(G : Type) { unit: G; compose: G -> G -> G;
+- **A structure becomes a record.** `trait Group(G)` becomes `record Group(G : Type) { unit: G; compose: G -> G -> G;
   inverse: G -> G; }`, and an instance becomes an ordinary value. This is strictly more than the trait had, because a
   record is first-class: a function may take two groups, return one, or hold a list of them. `stdlib/src/algebra.musa`'s
   own comments name all three of those as things the trait could not do.
@@ -576,7 +574,7 @@ Three things replace it, and each is smaller than what it replaces:
   type that ruled each out says more than "no instance found".
 - **Open dispatch, where anything genuinely wants it, is a macro's job** — `11-quotation.md`, and prompt 160.
 
-An `impl` block declares items in the type's namespace: `impl Duration { fn of(r: Ratio) -> Result<Duration, RangeError>
+An `impl` block declares items in the type's namespace: `impl Duration { fn of(r: Ratio) -> Result(Duration, RangeError)
 { … } }`. That is what an `impl` is now and all it ever does — a namespace, not a dispatch mechanism. The block is a
 prefix and nothing more: a function written in it is a function written at the top level with one more word in its name,
 and `Duration.of` is that name.
@@ -650,7 +648,7 @@ and the type that failed to separate them listed. Two rules keep this from becom
 - **An operator resolves only when the expected type or the head argument's type is known.** There is no search and no
   defaulting; an unresolved operator names the type it could not separate the candidates by, and lists them.
 - **An operation that can fail keeps its failing shape.** `ratio_div` answers `Result` today and `x / y` answers
-  `Result` tomorrow; `xs[i]` answers `Option<A>` for a list, because a list index can be out of range. A partial
+  `Result` tomorrow; `xs[i]` answers `Option(A)` for a list, because a list index can be out of range. A partial
   operator is how a total language quietly grows a hole, and the shape is the thing that stops it. A container whose
   index type cannot be out of range may have a total instance; the language does not promise one here.
 
@@ -662,7 +660,7 @@ arithmetic error the two types exist to catch.
 
 ### 1.6 Collections at the surface
 
-A list literal has a type: `[c4, d4, e4] : List<Pitch>`. The elements are checked against one type, and an empty `[]`
+A list literal has a type: `[c4, d4, e4] : List(Pitch)`. The elements are checked against one type, and an empty `[]`
 takes its element type from the position it is written in — in an inferring position with nothing to take it from, it is
 refused, and the diagnostic names the annotation to write.
 
@@ -674,7 +672,7 @@ catamorphism was a stand-in for the one `List` already implies. `map`, `filter`,
 functions — one set per container, reached by exact receiver like any other method: `xs.map(f)`, `xs.filter(keep)`,
 `xs.fold_from_end(zero, step)`.
 
-`collect` is where "no return-type-directed overloading" needs saying precisely. `let out: List<Nat> = xs.collect();`
+`collect` is where "no return-type-directed overloading" needs saying precisely. `let out: List(Nat) = xs.collect();`
 works because the answer type is fixed by *checking* against the annotation, and a type fixed by checking is not a
 search. `xs.collect()` in an inferring position is refused, naming the answer type as the thing it could not determine.
 The refused design is the other one: choosing which definition to use *because* of a return type nobody has written down
@@ -800,18 +798,18 @@ Interpretation is named and non-blocking:
 analysis harmony = roman_numerals(chorale(), in: key c major);
 ```
 
-This produces `Analysis<roman_numeral>`; it neither changes nor validates the score unless an explicit assertion reads a
+This produces `Analysis(roman_numeral)`; it neither changes nor validates the score unless an explicit assertion reads a
 decidable property of the result.
 
 ## 5. Chords, rows, and explicit register
 
 ```musa
 let sonority: ChordClass = chord c major7;
-let close: Option<Voicing> = close_position(sonority, c4);
-let open: Option<Voicing> = drop_position(sonority, c3, 2);
+let close: Option(Voicing) = close_position(sonority, c4);
+let open: Option(Voicing) = drop_position(sonority, c3, 2);
 
 fn sound(chosen: Voicing) -> EventTrack[WrittenTime, ScoreFact] { play(chosen, duration_of(1/2)) }
-fn sounded(chosen: Option<Voicing>) -> EventTrack[WrittenTime, ScoreFact] {
+fn sounded(chosen: Option(Voicing)) -> EventTrack[WrittenTime, ScoreFact] {
     match chosen {
         Some(voicing) -> sound(voicing),
         None -> music { rest/2 },
@@ -825,12 +823,12 @@ use open_bar;
 
 stack c4 major7/2
 
-let row: Result<ToneRow(12), RowFault> = row(12, chromatic, [0, 1, 4, 2, 6, 5, 10, 7, 8, 11, 9, 3]);
-let symmetric: Result<ToneRow(12), RowFault> = row(12, chromatic, [0, 6, 2, 8, 4, 10, 5, 11, 7, 1, 9, 3]);
+let row: Result(ToneRow(12), RowFault) = row(12, chromatic, [0, 1, 4, 2, 6, 5, 10, 7, 8, 11, 9, 3]);
+let symmetric: Result(ToneRow(12), RowFault) = row(12, chromatic, [0, 6, 2, 8, 4, 10, 5, 11, 7, 1, 9, 3]);
 ```
 
 `chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A voicing
-policy is an ordinary named function that selects those and returns `Option<Voicing>`, absent when its preconditions do
+policy is an ordinary named function that selects those and returns `Option(Voicing)`, absent when its preconditions do
 not hold — a bass the class does not contain, or a register the written range cannot reach. `play` alone creates sounded
 music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the absolute root fixing
 register; `stack c major7/2` is rejected, because a pitch class chooses no register. `row` admits a `ToneRow(n)` only
@@ -1092,7 +1090,7 @@ is a rule nobody can implement, which is why the third column is not optional.
 | two records, same fields | one is accepted where the other is expected, by §1.2 | — (this is the priced consequence, and the fix a diagnostic would offer is `enum`) |
 | enum declaration | `enum Tying { Untied, TiedOn }` ⇝ an inductive family | a case named twice — *duplicate case*, pointing at both |
 | one declaration, three words | `data`, `enum`, and `record` write the same family, and a `data` case may be marked `private` and may write its arguments positionally | — (all three are read down one path, so there is no third form left for a diagnostic to be about) |
-| index telescope | `data Vect<A>(n: Nat) { Nil : (0), … }` ⇝ an indexed family | `record Pending(n: Nat) { … }` or `enum Reading(n: Nat) { … }` — *a `record`/`enum` declaration takes no index telescope* (`misplaced`), saying an indexed family is written with `data` |
+| index telescope | `data Vect(A: Type): (n: Nat) -> Type { Nil : Vect(A, 0), … }` ⇝ an indexed family | `record Pending(n: Nat) { … }` or `enum Reading(n: Nat) { … }` — *a `record`/`enum` declaration takes no index telescope* (`misplaced`), saying an indexed family is written with `data` |
 | qualified constructor | `Tying::Untied` ⇝ the family's constructor | `Tying::Tied` — *no such case*, listing the declared cases |
 | bare constructor, checking | `let t: Tying = Untied;` ⇝ the same constructor | `let t = Untied;` — *bare constructor needs an expected type*, with the qualified form as the fix |
 | enum pattern | `match t { Untied -> …, TiedOn -> … }` ⇝ a case tree | a missing case — *non-exhaustive match*, naming the cases left out; an arm no constraint reaches — *unreachable arm* |
@@ -1102,12 +1100,12 @@ is a rule nobody can implement, which is why the third column is not optional.
 | misplaced marker | — | `private use x;` — *`private` does not mark this*, since only a declaration can be private |
 | redundant marker | — | `private` on a structure member — *this is already private*, naming the signature that hides everything it does not list |
 | operator at a known head | `x == y` ⇝ `x.equal(y)`, which is `Pitch::equal(x, y)` at `x : Pitch` | `x == y` where `x : A` is a parameter — *method on variable*, with `Pitch::equal(x, y)` as the fix |
-| failing operator shape | `a / b : Result<Ratio, ArithmeticError>` | an author treating it as a `Ratio` — the ordinary type error, and the `?` or `match` as the fix |
-| indexing | `xs[i] : Option<A>` ⇝ `xs.at(i)`, which is `List::at(xs, i)` at a list | indexing a type whose namespace declares no `at` — *no method for type*, naming the type and `at` |
+| failing operator shape | `a / b : Result(Ratio, ArithmeticError)` | an author treating it as a `Ratio` — the ordinary type error, and the `?` or `match` as the fix |
+| indexing | `xs[i] : Option(A)` ⇝ `xs.at(i)`, which is `List::at(xs, i)` at a list | indexing a type whose namespace declares no `at` — *no method for type*, naming the type and `at` |
 | method call | `xs.map(f)` ⇝ `List::map(xs, f)`, one lookup on the receiver's head | `x.m(y)` where `x : A` is a parameter — *method on variable*, with `Head::m(x, y)` as the fix |
 | qualified path | `std::tonal::TokenKind::PitchLiteral` ⇝ that constructor | a lowercase segment after a capitalized one — *a type namespace holds one item*, pointing at the extra segment |
-| inherent constructor | `Duration::of(r) : Result<Duration, RangeError>` | an unqualified `of(r)` chosen by its result type — *unresolved name*, since return-type-directed overloading does not exist to find it |
-| list literal | `[c4, d4] : List<Pitch>` | `[]` in an inferring position — *element type unknown*, with the annotation as the fix |
-| `collect` | `let out: List<Nat> = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *type parameter not determined*, naming `D` |
+| inherent constructor | `Duration::of(r) : Result(Duration, RangeError)` | an unqualified `of(r)` chosen by its result type — *unresolved name*, since return-type-directed overloading does not exist to find it |
+| list literal | `[c4, d4] : List(Pitch)` | `[]` in an inferring position — *element type unknown*, with the annotation as the fix |
+| `collect` | `let out: List(Nat) = xs.collect();` ⇝ `D` fixed by checking | `xs.collect()` in an inferring position — *type parameter not determined*, naming `D` |
 | comprehension | — | `[f(x) for x in xs]` — *no comprehension*, with `xs.map(f)` as the fix |
 | `data` | `data Motive { Silence, Sounded(pitch: Pitch, held: Duration) }` ⇝ an inductive family | a constructor holding the family to the left of an arrow — *non-positive occurrence*, naming the constructor and the field |

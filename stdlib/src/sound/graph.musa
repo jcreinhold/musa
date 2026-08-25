@@ -60,7 +60,7 @@ record Parameter {
 // Every declaration the adapter can read from a studio region.
 data StudioDecl {
     Input(anchor: Nat, name: Text, kind: PortKind),
-    Node(anchor: Nat, name: Text, descriptor: Text, parameters: List<Parameter>),
+    Node(anchor: Nat, name: Text, descriptor: Text, parameters: List(Parameter)),
     Output(anchor: Nat, name: Text, kind: PortKind),
     Connect(anchor: Nat, source_path: PortPath, target_path: PortPath),
     Bind(anchor: Nat, part_name: Text, node: Text),
@@ -69,7 +69,7 @@ data StudioDecl {
 // A complete finite description, still independent of any running processor.
 record StudioDescription {
     schema_version: Nat;
-    declarations: List<StudioDecl>;
+    declarations: List(StudioDecl);
 }
 
 // A description whose names, settings, ports, bindings, and cycles were checked.
@@ -88,7 +88,7 @@ data StudioError {
     WrongPortDirection(anchor: Nat, path: PortPath),
     PortKindMismatch(anchor: Nat, source: PortKind, target: PortKind),
     UnknownBinding(anchor: Nat, part_name: Text, node: Text),
-    InstantaneousCycle(anchors: List<Nat>),
+    InstantaneousCycle(anchors: List(Nat)),
 }
 
 // One declaration name and its anchor, private to duplicate checking.
@@ -98,7 +98,7 @@ private record Named {
 }
 
 // Build a description from declarations already in written order.
-fn make_description(declarations: List<StudioDecl>) -> StudioDescription {
+fn make_description(declarations: List(StudioDecl)) -> StudioDescription {
     StudioDescription {
         schema_version = 1,
         declarations = declarations
@@ -128,7 +128,7 @@ private fn at_most_ten_seconds(value: Ratio) -> Bool {
 
 // Read a normalized value only when its source index proves the requested
 // dimension. There is no host-side unit coercion or fallback.
-private fn linear_magnitude(quantity: ExactQuantity) -> Option<Ratio> {
+private fn linear_magnitude(quantity: ExactQuantity) -> Option(Ratio) {
     match quantity {
         Exact(LinearAmplitude, Written(inner, value, Linear)) -> Some(value),
         _ -> None,
@@ -136,7 +136,7 @@ private fn linear_magnitude(quantity: ExactQuantity) -> Option<Ratio> {
 }
 
 // Read seconds only when the source index and unit both prove time.
-private fn seconds_magnitude(quantity: ExactQuantity) -> Option<Ratio> {
+private fn seconds_magnitude(quantity: ExactQuantity) -> Option(Ratio) {
     match quantity {
         Exact(Time, Written(inner, value, Seconds)) -> Some(value),
         _ -> None,
@@ -163,7 +163,7 @@ private fn descriptor_known(descriptor: Text) -> Bool {
 }
 
 // Check one parameter against its descriptor's name, unit, and range.
-private fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<StudioError> {
+private fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option(StudioError) {
     match descriptor {
         "poly_sine" -> match parameter.name {
             "voices" -> match parameter.value {
@@ -237,13 +237,12 @@ private fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<S
 }
 
 // Return the first invalid parameter in written order, if there is one.
-private fn parameters_checked(
-    descriptor: Text,
-    parameters: List<Parameter>,
-) -> Option<StudioError> {
+private fn parameters_checked(descriptor: Text, parameters: List(Parameter)) -> Option(
+    StudioError,
+) {
     parameters.fold_from_start(
         None,
-        fn (found: Option<StudioError>, parameter: Parameter) -> Option<StudioError> {
+        fn (found: Option(StudioError), parameter: Parameter) -> Option(StudioError) {
             match found {
                 Some(error) -> Some(error),
                 None -> parameter_checked(descriptor, parameter),
@@ -253,7 +252,7 @@ private fn parameters_checked(
 }
 
 // Resolve one port declared by a known processor descriptor.
-private fn descriptor_port(descriptor: Text, port: Text) -> Option<PortInfo> {
+private fn descriptor_port(descriptor: Text, port: Text) -> Option(PortInfo) {
     match descriptor {
         "poly_sine" -> match port {
             "notes" -> Some(PortInfo {
@@ -297,10 +296,10 @@ private fn descriptor_port(descriptor: Text, port: Text) -> Option<PortInfo> {
 }
 
 // Resolve an external or processor port from a complete description.
-private fn port_of(description: StudioDescription, path: PortPath) -> Option<PortInfo> {
+private fn port_of(description: StudioDescription, path: PortPath) -> Option(PortInfo) {
     (description.declarations).fold_from_start(
         None,
-        fn (found: Option<PortInfo>, declaration: StudioDecl) -> Option<PortInfo> {
+        fn (found: Option(PortInfo), declaration: StudioDecl) -> Option(PortInfo) {
             match found {
                 Some(info) -> Some(info),
                 None -> match declaration {
@@ -352,7 +351,7 @@ private fn connection_checked(
     anchor: Nat,
     source_path: PortPath,
     target_path: PortPath,
-) -> Option<StudioError> {
+) -> Option(StudioError) {
     match port_of(description, source_path) {
         None -> Some(UnknownPort(anchor, source_path)),
         Some(source) -> if direction_is_output(source.direction) {
@@ -369,7 +368,7 @@ private fn connection_checked(
 }
 
 // Project the namespace-bearing declarations and ignore edges and bindings.
-private fn named(declaration: StudioDecl) -> Option<Named> {
+private fn named(declaration: StudioDecl) -> Option(Named) {
     match declaration {
         Input(anchor, name, kind) -> Some(Named {
             anchor = anchor,
@@ -388,15 +387,14 @@ private fn named(declaration: StudioDecl) -> Option<Named> {
 }
 
 // Find a second declaration carrying the same graph-level name.
-private fn duplicate_checked(
-    description: StudioDescription,
-    declaration: StudioDecl,
-) -> Option<StudioError> {
+private fn duplicate_checked(description: StudioDescription, declaration: StudioDecl) -> Option(
+    StudioError,
+) {
     match named(declaration) {
         None -> None,
         Some(current) -> (description.declarations).fold_from_start(
             None,
-            fn (found: Option<StudioError>, other: StudioDecl) -> Option<StudioError> {
+            fn (found: Option(StudioError), other: StudioDecl) -> Option(StudioError) {
                 match found {
                     Some(error) -> Some(error),
                     None -> match named(other) {
@@ -441,15 +439,15 @@ private fn node_exists(description: StudioDescription, sought: Text) -> Bool {
 // forever.
 private fn connection_path(
     remaining: Nat,
-    declarations: List<StudioDecl>,
+    declarations: List(StudioDecl),
     current: Text,
     target: Text,
-) -> Option<List<Nat>> {
+) -> Option(List(Nat)) {
     match remaining {
         Zero -> None,
         Succ(fewer) -> declarations.fold_from_start(
             None,
-            fn (found: Option<List<Nat>>, declaration: StudioDecl) -> Option<List<Nat>> {
+            fn (found: Option(List(Nat)), declaration: StudioDecl) -> Option(List(Nat)) {
                 match found {
                     Some(path) -> Some(path),
                     None -> match declaration {
@@ -477,10 +475,9 @@ private fn connection_path(
 }
 
 // Return every connection anchor in the first cycle closed by this edge.
-private fn cycle_checked(
-    description: StudioDescription,
-    declaration: StudioDecl,
-) -> Option<StudioError> {
+private fn cycle_checked(description: StudioDescription, declaration: StudioDecl) -> Option(
+    StudioError,
+) {
     match declaration {
         Connect(anchor, source_path, target_path) -> match connection_path(
             length(description.declarations),
@@ -499,7 +496,7 @@ private fn cycle_checked(
 private fn declaration_checked(
     description: StudioDescription,
     declaration: StudioDecl,
-) -> Option<StudioError> {
+) -> Option(StudioError) {
     match duplicate_checked(description, declaration) {
         Some(error) -> Some(error),
         None -> match declaration {
@@ -525,10 +522,10 @@ private fn declaration_checked(
 }
 
 // Validate every declaration and return the first complaint in written order.
-fn validate(description: StudioDescription) -> Result<CheckedStudio, StudioError> {
+fn validate(description: StudioDescription) -> Result(CheckedStudio, StudioError) {
     match(description.declarations).fold_from_start(
         None,
-        fn (found: Option<StudioError>, declaration: StudioDecl) -> Option<StudioError> {
+        fn (found: Option(StudioError), declaration: StudioDecl) -> Option(StudioError) {
             match found {
                 Some(error) -> Some(error),
                 None -> declaration_checked(description, declaration),

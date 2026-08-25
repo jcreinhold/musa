@@ -44,9 +44,9 @@ fn module(emit: &str) -> String {
         "
     let level = \"readable\";
 {emit}
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(forget(built(region))) }};
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {{
         syntax_fold_from_leaves(
             fn (here) {{ emit(here, []) }},
             fn (here, kind, text) {{ emit(here, []) }},
@@ -65,7 +65,7 @@ fn module(emit: &str) -> String {
 fn unspread() -> String {
     module(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { $..kids }
     };
 ",
@@ -76,7 +76,7 @@ fn unspread() -> String {
 fn sound() -> String {
     module(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { 1 }
     };
 ",
@@ -229,11 +229,11 @@ fn every_diagnostic_of_a_module_with_two_faults_arrives() {
     // two places, each with the note that says why.
     let broken = module(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { $..kids }
     };
 
-    let also = fn (here: NodePath) -> Syntax<Expr> {
+    let also = fn (here: NodePath) -> Syntax(Expr) {
         quote at here { (fn (held: Nat) { held })(held_g0) }
     };
 ",

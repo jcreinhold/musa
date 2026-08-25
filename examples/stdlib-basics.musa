@@ -4,20 +4,20 @@ piece "Standard Library Basics" {
     import std::core;
     import std::list;
 
-    let subject: EventTrack<WrittenTime> = music {
+    let subject: EventTrack(WrittenTime) = music {
         c4/4
         d4/4
     };
 
     fn same_pitch(p: Pitch) -> Pitch { p }
 
-    let answer: EventTrack<WrittenTime> = compose_music(
-        fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) },
+    let answer: EventTrack(WrittenTime) = compose_music(
+        fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) },
         retrograde,
         subject,
     );
     let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });
-    let counting: List<Nat> = naturals(4);
+    let counting: List(Nat) = naturals(4);
 
     score {
         part strings {

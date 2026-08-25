@@ -52,7 +52,7 @@
 
 use std::sync::Arc;
 
-use musa_calculus::{Name, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Sort, Visibility};
+use musa_calculus::{Name, Origin, Raw, RawBinder, RawConstructor, RawData, RawFamily, Visibility};
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use super::types::compiler_type;
@@ -173,9 +173,13 @@ impl Lowering<'_> {
         let origin = self.origin(node);
         let visibility = visibility_of(node);
         let name = declared_name(node)?;
-        let params = self.type_parameters(node);
+        let params = self
+            .parameters(node)?
+            .iter()
+            .map(|parameter| self.declared_field(parameter))
+            .collect::<Option<Vec<_>>>()?;
         let indices = self.index_telescope(node)?;
-        let constructors = self.cases(node, &name, visibility)?;
+        let constructors = self.cases(node, &name, visibility, &params, indices.len())?;
         // No `where` clause is read here: `01-surface.md` §1's `where_clause`
         // is called from `trait`, `impl`, and a `fn` signature, and none of the
         // three type declarations is among them.
@@ -199,18 +203,34 @@ impl Lowering<'_> {
     /// directly, which makes the declaration itself the one case — spelled the
     /// same as the family, since `01-surface.md` §1.2 is a declaration of one
     /// shape and there is no second name for it to take.
-    fn cases(&mut self, node: &SyntaxNode, name: &Name, declared: Visibility) -> Option<Vec<RawConstructor>> {
+    fn cases(
+        &mut self,
+        node: &SyntaxNode,
+        name: &Name,
+        declared: Visibility,
+        params: &[RawBinder],
+        index_count: usize,
+    ) -> Option<Vec<RawConstructor>> {
         let written = match node.kind() {
             SyntaxKind::DataDecl => children(node, |kind| kind == SyntaxKind::DataVariant),
             SyntaxKind::EnumDecl => children(node, |kind| kind == SyntaxKind::EnumCase),
             // A record is its own case, so the node the fields hang off is the
             // declaration and the constructor is read straight from it.
-            _ => return Some(vec![self.constructor(node, Arc::clone(name), declared)?]),
+            _ => {
+                return Some(vec![self.constructor(
+                    node,
+                    Arc::clone(name),
+                    declared,
+                    name,
+                    params,
+                    index_count,
+                )?]);
+            }
         };
         let mut built = Vec::new();
         for case in &written {
             let case_name = declared_name(case)?;
-            built.push(self.constructor(case, case_name, declared)?);
+            built.push(self.constructor(case, case_name, declared, name, params, index_count)?);
         }
         Some(built)
     }
@@ -232,7 +252,15 @@ impl Lowering<'_> {
     /// declaration — so an unmarked case has to answer the same as its
     /// neighbours, and the declaration's marker is the one answer that is the
     /// same for all of them.
-    fn constructor(&mut self, node: &SyntaxNode, name: Name, declared: Visibility) -> Option<RawConstructor> {
+    fn constructor(
+        &mut self,
+        node: &SyntaxNode,
+        name: Name,
+        declared: Visibility,
+        family: &Name,
+        params: &[RawBinder],
+        index_count: usize,
+    ) -> Option<RawConstructor> {
         let origin = self.origin(node);
         let mut fields = Vec::new();
         for written in node.children() {
@@ -255,7 +283,7 @@ impl Lowering<'_> {
                 declared
             },
             fields,
-            chosen: self.chosen_indices(node)?,
+            chosen: self.chosen_indices(node, family, params, index_count)?,
         })
     }
 
@@ -293,22 +321,61 @@ impl Lowering<'_> {
         Some(built)
     }
 
-    /// `: (n + 1)` — the indices a constructor chooses, or nothing.
+    /// The selected suffix of a constructor's complete family result.
     ///
     /// Read as ordinary expressions. Whether there are the right *number* of
     /// them is the core's question, not this one's: it holds the declaration's
     /// telescope and answers with
     /// [`Refusal::IndexCount`](musa_calculus::Refusal::IndexCount) at this very
     /// origin.
-    fn chosen_indices(&mut self, node: &SyntaxNode) -> Option<Vec<Raw>> {
-        let Some(written) = child(node, |kind| kind == SyntaxKind::DataChosen) else {
+    fn chosen_indices(
+        &mut self,
+        node: &SyntaxNode,
+        family: &Name,
+        params: &[RawBinder],
+        index_count: usize,
+    ) -> Option<Vec<Raw>> {
+        let Some(written) = child(node, |kind| kind == SyntaxKind::ConstructorResult) else {
             return Some(Vec::new());
         };
-        let mut built = Vec::new();
-        for chosen in children(&written, is_expr_node) {
-            built.push(self.expr(&chosen)?);
+        let result = child(&written, is_type_node)?;
+        let mut arguments = Vec::new();
+        let head = application_spine(&result, &mut arguments)?;
+        if head.trim() != family.as_ref() {
+            return self.refuse(
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    format!("a constructor of `{family}` must return `{family}`"),
+                )
+                .at(trimmed_span(&written), format!("returns `{}`", head.trim())),
+            );
         }
-        Some(built)
+        let expected = params.len().saturating_add(index_count);
+        if arguments.len() != expected {
+            return self.refuse(
+                Diagnostic::error(Code::WrongArity, format!("`{family}` takes {expected} arguments"))
+                    .at(trimmed_span(&written), format!("{} written", arguments.len())),
+            );
+        }
+        for (argument, parameter) in arguments.iter().zip(params) {
+            if argument.to_string().trim() != parameter.name.as_ref() {
+                return self.refuse(
+                    Diagnostic::error(Code::TypeMismatch, format!("parameter `{}` is uniform", parameter.name))
+                        .at(trimmed_span(argument), "a constructor may not replace it"),
+                );
+            }
+        }
+        arguments
+            .get(params.len()..)?
+            .iter()
+            .map(|chosen| {
+                if is_type_node(chosen.kind()) {
+                    self.ty(chosen)
+                } else {
+                    self.expr(chosen)
+                }
+            })
+            .collect()
     }
 
     // ---- namespaces ----
@@ -329,14 +396,6 @@ impl Lowering<'_> {
     /// on. Each `fn` writes its own, which is where a reader looks anyway.
     fn namespace(&mut self, node: &SyntaxNode) -> Option<Vec<(SyntaxNode, Definition)>> {
         let head = self.namespace_head(node)?;
-        if let Some(list) = child(node, |kind| kind == SyntaxKind::TypeParams) {
-            return self.refuse(
-                Diagnostic::error(Code::Misplaced, "an `impl` block takes no type parameters")
-                    .at(trimmed_span(&list), "written here")
-                    .note("the block names a namespace, and a namespace is one name")
-                    .help("write the parameters on each `fn` inside it"),
-            );
-        }
         let mut declared = Vec::new();
         for written in children(node, |kind| kind == SyntaxKind::FnDecl) {
             let mut definition = self.function(&written)?;
@@ -409,11 +468,12 @@ impl Lowering<'_> {
             let at = self.origin(parameter);
             let bound = declared_name(parameter)?;
             let written = child(parameter, is_type_node)?;
-            ty = Raw::pi(at, Arc::clone(&bound), self.ty(&written)?, ty);
-            value = Raw::lam(at, bound, value);
-        }
-        for parameter in self.type_parameters(node).iter().rev() {
-            ty = Raw::parameter_pi(origin, Arc::clone(&parameter.name), parameter.ty.clone(), ty);
+            if writes(parameter, SyntaxKind::LBrace) {
+                ty = Raw::parameter_pi(at, bound, self.ty(&written)?, ty);
+            } else {
+                ty = Raw::pi(at, Arc::clone(&bound), self.ty(&written)?, ty);
+                value = Raw::lam(at, bound, value);
+            }
         }
         Some(Definition {
             origin,
@@ -487,37 +547,26 @@ impl Lowering<'_> {
             ty: self.ty(&written)?,
         })
     }
+}
 
-    /// `<A, B>`, `<{n : Nat}>` — the parameters a declaration abstracts over.
-    ///
-    /// `01-surface.md` §1's two spellings, and the braced one is here for the
-    /// half the bare one cannot say: a parameter's own type. `A` means
-    /// `{A : Type 0}` and that is what it lowers to, so the bare form is not a
-    /// second rule — it is this one with the type left out.
-    ///
-    /// The filling is not decided here, because a [`RawBinder`] does not carry
-    /// one: the caller writes them into a Π at the filling its own declaration
-    /// wants, and [`RawTrait`], [`RawImpl`], and [`RawMethod`] leave the choice
-    /// to `musa-calculus`.
-    fn type_parameters(&mut self, node: &SyntaxNode) -> Vec<RawBinder> {
-        let Some(list) = child(node, |kind| kind == SyntaxKind::TypeParams) else {
-            return Vec::new();
-        };
-        children(&list, |kind| kind == SyntaxKind::TypeParam)
-            .iter()
-            .filter_map(|written| {
-                let at = self.origin(written);
-                let ty = match child(written, is_type_node) {
-                    Some(stated) => self.ty(&stated)?,
-                    None => Raw::universe(at, Sort::ZERO),
-                };
-                Some(RawBinder {
-                    name: declared_name(written)?,
-                    ty,
-                })
-            })
-            .collect()
+fn application_spine(node: &SyntaxNode, arguments: &mut Vec<SyntaxNode>) -> Option<String> {
+    let node = if node.kind() == SyntaxKind::TypeExpr {
+        child(node, |kind| {
+            kind == SyntaxKind::ApplyExpr || kind == SyntaxKind::NameExpr
+        })?
+    } else {
+        node.clone()
+    };
+    if node.kind() == SyntaxKind::NameExpr {
+        return Some(node.to_string());
     }
+    let head = child(&node, is_expr_node)?;
+    let name = application_spine(&head, arguments)?;
+    let list = child(&node, |kind| kind == SyntaxKind::ExprArgList)?;
+    for argument in children(&list, |kind| kind == SyntaxKind::ExprArg) {
+        arguments.push(child(&argument, |kind| is_expr_node(kind) || is_type_node(kind))?);
+    }
+    Some(name)
 }
 
 /// The name a declaration binds: the first identifier it writes itself.

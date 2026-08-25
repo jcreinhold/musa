@@ -42,7 +42,7 @@ import std::list;
 //   equation is refused there.
 // - **Not `Equal`, and not the absence of tactics.** Induction goes through
 //   whenever the operation is written by matching. Writing
-//   `fn cong<A, B>(f: A -> B, x: A, y: A, same: Equal<A>(x, y)) -> Equal<B>(f(x), f(y))`
+//   `fn cong({A: Type}, {B: Type}, f: A -> B, x: A, y: A, same: Equal(A, x, y)) -> Equal(B, f(x), f(y))`
 //   as one `match` on `Refl` type-checks, and with it a proof of
 //   `plus(x, Zero) = x` by induction on `x` type-checks, for a `plus`
 //   written the way `number_of` below is.
@@ -87,7 +87,7 @@ import std::list;
 // read for its *type* and never for its value, so `P5.unit()` is `P1` and so
 // is `m2.unit()`. Written as a field it is what a caller of the record
 // supplies; written as `Interval.unit` it is what `P5.unit()` finds.
-record Group<G> {
+record Group(G: Type) {
     // The element that changes nothing.
     unit: G -> G;
 
@@ -116,7 +116,7 @@ record Group<G> {
 // pitch class — and the carrier is what a reader is asking about, so it is
 // what the parameter list says first. It is also where `x.act(g)` looks:
 // the receiver decides which `act` runs.
-record Action<X, G> {
+record Action(X: Type, G: Type) {
     // Move one member of the carrier by one mover.
     act: X -> G -> X;
 }
@@ -132,7 +132,7 @@ record Action<X, G> {
 // **Two points never add.** `a + b` for two pitches or two positions is the
 // single arithmetic error the point/mover split exists to catch, so there
 // is no field here that could spell it.
-record Torsor<P, V> {
+record Torsor(P: Type, V: Type) {
     // The mover carrying `start` to `finish`. Unique — that is the claim.
     difference: P -> P -> V;
 }
@@ -146,16 +146,15 @@ record Torsor<P, V> {
 // between a position and a later one is asked for by name —
 // `position_between` — where the caller can see the order it must supply.
 //
-// At written time, and not at clock time. `Position<PhysicalTime>` is a
+// At written time, and not at clock time. `Position(PhysicalTime)` is a
 // performance coordinate and the two do not unify, which is roadmap §2's
 // layer table; a second `act` at that coordinate would be one word claiming
 // the pair is one structure. The namespace is keyed on `Position` alone, so
 // the coordinate is written where it belongs — in the signature.
 impl Position {
-    fn act(
-        subject: Position<WrittenTime>,
-        operation: Duration<WrittenTime>,
-    ) -> Position<WrittenTime> { position_shift(subject, operation) }
+    fn act(subject: Position(WrittenTime), operation: Duration(WrittenTime)) -> Position(
+        WrittenTime,
+    ) { position_shift(subject, operation) }
 }
 
 // # Orbit and stabilizer, once for every finite action
@@ -181,7 +180,7 @@ impl Position {
 // caller is what knew the carrier was finite.
 
 // Whether `built` already holds a member equal to `value`.
-private fn already<X>(same: X -> X -> Bool, built: List<X>, value: X) -> Bool {
+private fn already({X: Type}, same: X -> X -> Bool, built: List(X), value: X) -> Bool {
     any(fn (seen: X) -> Bool { same(seen, value) }, built)
 }
 
@@ -194,7 +193,7 @@ private fn already<X>(same: X -> X -> Bool, built: List<X>, value: X) -> Bool {
 // budget. The order a caller sees is unchanged: the group's own, first
 // occurrence winning, which is what makes a canonical representative a
 // question about the answer rather than about this function.
-private fn adding<X>(same: X -> X -> Bool, built: List<X>, value: X) -> List<X> {
+private fn adding({X: Type}, same: X -> X -> Bool, built: List(X), value: X) -> List(X) {
     if already(same, built, value) {
         built
     } else { Cons(value, built) }
@@ -205,16 +204,18 @@ private fn adding<X>(same: X -> X -> Bool, built: List<X>, value: X) -> List<X> 
 // Order is the group's own, first occurrence winning, and duplicates are
 // dropped — which is what makes the *length* of this the count that
 // `row12_forms` was: how many distinct rows the labelled forms produce.
-fn orbit<X, G>(
-    action: Action<X, G>,
+fn orbit(
+    {X: Type},
+    {G: Type},
+    action: Action(X, G),
     same: X -> X -> Bool,
-    group: List<G>,
+    group: List(G),
     point: X,
-) -> List<X> {
+) -> List(X) {
     reverse(
         group.fold_from_start(
             [],
-            fn (built: List<X>, by: G) -> List<X> { adding(same, built, action.act(point, by)) },
+            fn (built: List(X), by: G) -> List(X) { adding(same, built, action.act(point, by)) },
         ),
     )
 }
@@ -224,9 +225,11 @@ fn orbit<X, G>(
 // Its length times the orbit's is the size of the group, which is the
 // orbit-stabilizer accounting `110-row-properties.md` asks the four form
 // labels to do on their own.
-fn stabilizer<X, G>(
-    action: Action<X, G>,
+fn stabilizer(
+    {X: Type},
+    {G: Type},
+    action: Action(X, G),
     same: X -> X -> Bool,
-    group: List<G>,
+    group: List(G),
     point: X,
-) -> List<G> { filter(fn (by: G) -> Bool { same(action.act(point, by), point) }, group) }
+) -> List(G) { filter(fn (by: G) -> Bool { same(action.act(point, by), point) }, group) }

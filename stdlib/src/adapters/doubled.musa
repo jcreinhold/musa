@@ -29,8 +29,8 @@
 //
 // A `;` is how a writer ends a statement, so a region holding one was written
 // against some other reader. That is the one thing this adapter refuses, and
-// refusing is what makes both halves of `Syntax -> Result<Syntax, (Syntax,
-// Text)>` reachable in a fixture rather than only one of them.
+// refusing is what makes both halves of `Syntax -> Result(Syntax, (Syntax,
+// Text))` reachable in a fixture rather than only one of them.
 //
 // It points with a node rather than with a place. `syntax_at` gives back the
 // *input* node at a path, its source information intact, and the compiler reads
@@ -46,18 +46,18 @@
 // declared in — the phase checks and evaluates the whole module, not one
 // spliced expression. Even a fixture this small is better for it: `Refusal`
 // says what the first fold is looking for, and `first_refusal` says how two of
-// them combine, where before both were an anonymous `Option<Syntax>` and a
+// them combine, where before both were an anonymous `Option(Syntax)` and a
 // nested fold a reader had to decode.
 
 // What the first fold is looking for: a node this adapter will not read,
 // or nothing wrong yet.
 //
-// A `data` rather than an `Option<Syntax>`, and the difference is the
+// A `data` rather than an `Option(Syntax)`, and the difference is the
 // name. Two fields would be indistinguishable from any other pair of a
 // node and an absence; `Refusal` says which question this fold is asking.
 data Refusal {
     Nothing,
-    Found(node: Syntax<TokenTree>),
+    Found(node: Syntax(TokenTree)),
 }
 
 // The first refusal among two, in the order they were written.
@@ -81,10 +81,10 @@ let first_refusal = fn (found: Refusal, later: Refusal) -> Refusal {
 // keeps the fold's step one line long. Both parameters are annotated,
 // which an adapter can do because the phase's own types have a spelling in
 // the module it is written in.
-let found_at = fn (region: Syntax<TokenTree>, here: NodePath) -> Refusal {
+let found_at = fn (region: Syntax(TokenTree), here: NodePath) -> Refusal {
     syntax_at(region, here).fold_from_end(
         Nothing,
-        fn (node: Syntax<TokenTree>, absent: Refusal) -> Refusal { Found(node) },
+        fn (node: Syntax(TokenTree), absent: Refusal) -> Refusal { Found(node) },
     )
 };
 
@@ -94,7 +94,7 @@ let found_at = fn (region: Syntax<TokenTree>, here: NodePath) -> Refusal {
 // held no printer would be refused there rather than found out later.
 //
 // Editable and not generative, and the reason is worth writing down. A
-// region of this adapter produces `(EventTrack<WrittenTime>, Nat)`, and a
+// region of this adapter produces `(EventTrack(WrittenTime), Nat)`, and a
 // printer would have
 // to write a musical value back as source text — which the source language
 // gives it no way to do. The spellings of prompt 127dcfah are the reader's
@@ -105,9 +105,10 @@ let found_at = fn (region: Syntax<TokenTree>, here: NodePath) -> Refusal {
 // staff adapter's problem, and prompt 127dcf is where it is solved.
 let level = "editable";
 
-let expand = fn (
-    region: Syntax<TokenTree>,
-) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+let expand = fn (region: Syntax(TokenTree)) -> Result(
+    Syntax(TokenTree),
+    Pair(Syntax(TokenTree), Text),
+) {
     match syntax_fold_from_leaves(
         fn (here) { Nothing },
         // Where the refusal is found and where it is pointed are the same
@@ -162,9 +163,9 @@ let expand = fn (
                         syntax_anchor(region, here).fold_from_end(
                             syntax_token(syntax_built(here, 12, 0), TokenKind::Integer, "0"),
                             fn (
-                                anchored: Syntax<TokenTree>,
-                                unanchored: Syntax<TokenTree>,
-                            ) -> Syntax<TokenTree> { anchored },
+                                anchored: Syntax(TokenTree),
+                                unanchored: Syntax(TokenTree),
+                            ) -> Syntax(TokenTree) { anchored },
                         ),
                     ])
                 }
@@ -189,12 +190,10 @@ let expand = fn (
 // outside the named range is touched, because nothing else is returned; and
 // re-expanding the patched region agrees with replacing that node, because
 // replacing the node is exactly what the patch does.
-let edit = fn (
-    region: Syntax<TokenTree>,
-    command: Text,
-    anchor: Nat,
-    argument: Text,
-) -> Result<List<Pair<Nat, Text>>, Text> {
+let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(
+    List(Pair(Nat, Text)),
+    Text,
+) {
     match command {
         "replace" -> Ok([(anchor, argument)]),
         _ -> Err("`doubled` serves one command, `replace`"),

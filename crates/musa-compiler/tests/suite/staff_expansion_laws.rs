@@ -40,25 +40,25 @@ const PRELUDE: &str = r"
 import std::notation::staff;
 import syntax std::adapters::staff as staff;
 
-fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
+fn one(start: Position(WrittenTime), held: Duration(WrittenTime)) -> EventTrack(WrittenTime) {
     shift(position_between(position_of(0/1), start), stretch(duration_ratio(held), music { c5/1 }))
 }
 
-fn heard(spans: WrittenSpans) -> EventTrack<WrittenTime> {
+fn heard(spans: WrittenSpans) -> EventTrack(WrittenTime) {
     written_spans_fold(
         music { rest/1 },
         fn (
             anchor: Nat,
-            start: Position<WrittenTime>,
-            held: Duration<WrittenTime>,
+            start: Position(WrittenTime),
+            held: Duration(WrittenTime),
             tied: Tie,
-            after: EventTrack<WrittenTime>,
-        ) -> EventTrack<WrittenTime> { together(one(start, held), after) },
+            after: EventTrack(WrittenTime),
+        ) -> EventTrack(WrittenTime) { together(one(start, held), after) },
         spans,
     )
 }
 
-fn shown(answer: Result<Realization, Text>) -> EventTrack<WrittenTime> {
+fn shown(answer: Result(Realization, Text)) -> EventTrack(WrittenTime) {
     match answer {
         Ok(reached) -> heard(reached.spans),
         Err(why) -> music { rest/1 },
@@ -71,7 +71,7 @@ fn source(region: &str, sounded: &str) -> String {
     format!(
         "piece \"Staff expansion laws\" {{\n{PRELUDE}\n\
          let page: StaffDocument = syntax staff {{\n{region}\n}};\n\
-         let sounded: EventTrack<WrittenTime> = {sounded};\n\
+         let sounded: EventTrack(WrittenTime) = {sounded};\n\
          meter 4/4;\nkey c major;\n\
          score {{ part p {{ voice v {{ use sounded; }} }} }}\n}}\n"
     )

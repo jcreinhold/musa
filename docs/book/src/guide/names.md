@@ -6,29 +6,29 @@ right one is mostly a matter of noticing what varies.
 | What varies | Reach for |
 | --- | --- |
 | nothing — the same phrase, repeated | a `motif` |
-| a pitch, an interval, a duration | a `fn` returning `EventTrack<WrittenTime>` |
+| a pitch, an interval, a duration | a `fn` returning `EventTrack(WrittenTime)` |
 | a *bundle* of facts that must travel together | a `record`, and a `fn` over it |
 
 ## 1. Functions over music
 
-A function takes values and returns one. `EventTrack<WrittenTime>` — a track of written events, which is what `music { …
+A function takes values and returns one. `EventTrack(WrittenTime)` — a track of written events, which is what `music { …
 }` builds — is an ordinary value, so a function can take music and return music. From `examples/canon-functions.musa`:
 
 ```musa
 fn canon(
-    subject: EventTrack<WrittenTime>,
-    answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-    gap: Duration<WrittenTime>,
-) -> EventTrack<WrittenTime> { together(subject, shift(gap, answer(subject))) }
+    subject: EventTrack(WrittenTime),
+    answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime),
+    gap: Duration(WrittenTime),
+) -> EventTrack(WrittenTime) { together(subject, shift(gap, answer(subject))) }
 ```
 
-`EventTrack<WrittenTime> -> EventTrack<WrittenTime>` is a function type, so `answer` is a transformation the caller
+`EventTrack(WrittenTime) -> EventTrack(WrittenTime)` is a function type, so `answer` is a transformation the caller
 supplies rather than one this function picked:
 
 ```musa
-let octave_answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (
-    line: EventTrack<WrittenTime>,
-) -> EventTrack<WrittenTime> { transpose(P8, line) };
+let octave_answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = fn (
+    line: EventTrack(WrittenTime),
+) -> EventTrack(WrittenTime) { transpose(P8, line) };
 ```
 
 That right-hand side is an **anonymous function**: a declaration's own words without its name. It is here because
@@ -58,10 +58,9 @@ name what each note's pitch becomes:
 ```musa
 fn pedal(_: Pitch) -> Pitch { c3 }
 
-fn harmonize(
-    subject: EventTrack<WrittenTime>,
-    answer_pitch: Pitch -> Pitch,
-) -> EventTrack<WrittenTime> { together(subject, map_note_pitches(answer_pitch, subject)) }
+fn harmonize(subject: EventTrack(WrittenTime), answer_pitch: Pitch -> Pitch) -> EventTrack(
+    WrittenTime,
+) { together(subject, map_note_pitches(answer_pitch, subject)) }
 ```
 
 The restriction is what keeps a function from becoming a second score model. A harmonizer written this way cannot see
@@ -77,9 +76,9 @@ function. From `examples/template-study.musa`:
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same function, two voices, two identities.
 fn answer(
-    subject: EventTrack<WrittenTime>,
-    transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-) -> EventTrack<WrittenTime> { transform(subject) }
+    subject: EventTrack(WrittenTime),
+    transform: EventTrack(WrittenTime) -> EventTrack(WrittenTime),
+) -> EventTrack(WrittenTime) { transform(subject) }
 ```
 
 A voice folds one in with `use`, and calling the same function twice makes two voices:
@@ -88,7 +87,7 @@ A voice folds one in with `use`, and calling the same function twice makes two v
             voice upper {
                 use answer(
                     subject,
-                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                         transpose(P8, line)
                     },
                 );
@@ -96,7 +95,7 @@ A voice folds one in with `use`, and calling the same function twice makes two v
             voice higher {
                 use answer(
                     subject,
-                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                         transpose(P15, line)
                     },
                 );
@@ -148,7 +147,7 @@ A function from one record to another is what a functor was. From `examples/modu
 // The subject steps through whatever collection the context named. It reads
 // the context through `TonalContext` and nothing else: a record's fields are
 // its whole interface, so there is nothing else here to read by accident.
-fn canon_subject(context: TonalContext) -> EventTrack<WrittenTime> {
+fn canon_subject(context: TonalContext) -> EventTrack(WrittenTime) {
     music {
         in scale context.collection {
             c5/4
@@ -179,7 +178,7 @@ else the value's *maker* knows is not reachable through it. What a module wants 
     // promises spelled pitches, not the frame it spells them from, so moving
     // this one changes nothing anyone outside can name. That is what sealing
     // was, written with the visibility the language already had.
-    private let c_major_home: Option<Frame> = frame_on(scale c ionian, c4);
+    private let c_major_home: Option(Frame) = frame_on(scale c ionian, c4);
 ```
 
 **A call is a call.** The function's body is checked once, where it is written, so every span an editor points at is the

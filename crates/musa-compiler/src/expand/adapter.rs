@@ -271,7 +271,7 @@ pub fn adapter_edits(
         crate::phase::EditFailure::NotAnEditor(_) => AdapterEditError::Broken(Box::new(refusal(
             site,
             format!("`{}`'s `edit` is not an editor", import.path),
-            "an adapter module declares `let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> { … };`",
+            "an adapter module declares `let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(List(Pair(Nat, Text)), Text) { … };`",
         ))),
         crate::phase::EditFailure::NoAnswer => AdapterEditError::Broken(Box::new(refusal(
             site,

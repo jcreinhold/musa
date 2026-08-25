@@ -112,9 +112,11 @@ impl Pitch {
 // written intervals are one.
 //
 // Nothing consumed these before they could be written. A `record` with a
-// parameter was a declaration nothing could construct, so `Group<Interval>`
+// parameter was a declaration nothing could construct, so `Group(Interval)`
 // was a claim about a value that did not exist.
-let interval_group: Group<Interval> = Group {
+let interval_group: Group(
+    Interval,
+) = Group {
     unit = Interval::unit,
     compose = Interval::compose,
     inverse = Interval::inverse,
@@ -123,12 +125,12 @@ let interval_group: Group<Interval> = Group {
 // The action, at the carrier that keeps its octave. Not at `NoteName`,
 // whose action is real and whose record is prompt 164's: the quotient has
 // an action and no torsor, and saying so needs both here.
-let pitch_action: Action<Pitch, Interval> = Action {
+let pitch_action: Action(Pitch, Interval) = Action {
     act = Pitch::act
 };
 
 // And simply transitively at `Pitch`: exactly one written interval carries
 // any pitch to any other, which is the lemma `Pitch.difference` computes.
-let pitch_torsor: Torsor<Pitch, Interval> = Torsor {
+let pitch_torsor: Torsor(Pitch, Interval) = Torsor {
     difference = Pitch::difference
 };

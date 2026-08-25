@@ -300,9 +300,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::TypeName
         | SyntaxKind::FunctionType
         | SyntaxKind::ProductType
-        | SyntaxKind::OptionType
-        | SyntaxKind::ListType
-        | SyntaxKind::ResultType
         | SyntaxKind::NameExpr
         | SyntaxKind::LiteralExpr
         | SyntaxKind::ParenExpr
@@ -333,12 +330,10 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::BlockExpr
         | SyntaxKind::ModDecl
         | SyntaxKind::DataDecl
-        | SyntaxKind::TypeParams
-        | SyntaxKind::TypeParam
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
         | SyntaxKind::DataIndices
-        | SyntaxKind::DataChosen
+        | SyntaxKind::ConstructorResult
         | SyntaxKind::RecordDecl
         | SyntaxKind::FieldDecl
         | SyntaxKind::EnumDecl
@@ -349,7 +344,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::RecordPattern
         | SyntaxKind::FieldPattern
         | SyntaxKind::FieldPath
-        | SyntaxKind::AppliedType
         | SyntaxKind::PitchExpr
         | SyntaxKind::EventsQuote
         | SyntaxKind::EventsHole
@@ -362,8 +356,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::ImplDecl
         | SyntaxKind::BinaryExpr
         | SyntaxKind::MethodCallExpr
-        | SyntaxKind::IndexExpr
-        | SyntaxKind::IndexedType => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::IndexExpr => panic!("`{kind:?}` is a node, not a token"),
 
         // The parts of a composite literal. The lexer emits `c#5` as one
         // token and the parser splits it (`parser/literals.rs`), so a part

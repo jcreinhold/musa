@@ -76,8 +76,8 @@ fn voices(score: &ScoreSnapshot) -> Vec<Vec<ScoreEvent>> {
 fn one_declaration_serves_two_types() {
     let score = snapshot(
         "piece \"principal\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn unchanged<A>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn unchanged({A: Type}, value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice music_use { use unchanged(subject); }
@@ -89,7 +89,7 @@ fn one_declaration_serves_two_types() {
     assert_eq!(
         shape(&lanes[0]),
         shape(&lanes[1]),
-        "unchanged at `EventTrack<WrittenTime>` changes nothing"
+        "unchanged at `EventTrack(WrittenTime)` changes nothing"
     );
     assert_eq!(
         shape(&lanes[0]),
@@ -105,9 +105,9 @@ fn one_declaration_serves_two_types() {
 fn a_higher_order_parameter_is_written_as_an_arrow() {
     let score = snapshot(
         "piece \"higher order\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn twice<A>(f: A -> A, value: A) -> A { f(f(value)) }
-            fn unchanged<A>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn twice({A: Type}, f: A -> A, value: A) -> A { f(f(value)) }
+            fn unchanged({A: Type}, value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice twice_over { use twice(unchanged, subject); }
@@ -130,7 +130,7 @@ fn a_higher_order_parameter_is_written_as_an_arrow() {
 fn an_inferred_type_travels_between_declarations() {
     let compilation = compile_text(
         "piece \"chained\" {
-            fn unchanged<A>(value: A) -> A { value }
+            fn unchanged({A: Type}, value: A) -> A { value }
             let held = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
@@ -151,7 +151,7 @@ fn an_inferred_type_travels_between_declarations() {
 fn hover_shows_a_signature_in_written_spelling() {
     let compilation = compile_text(
         "piece \"hover\" {
-            fn unchanged<A>(value: A) -> A { value }
+            fn unchanged({A: Type}, value: A) -> A { value }
             let held: Pitch = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
@@ -162,9 +162,10 @@ fn hover_shows_a_signature_in_written_spelling() {
         .iter()
         .find(|item| item.name == "unchanged")
         .expect("the piece documents its `fn`");
-    assert_eq!(item.signature, "fn unchanged<A>(value: A) -> A");
+    assert_eq!(item.signature, "fn unchanged({A: Type}, value: A) -> A");
     assert_eq!(item.result.as_ref().map(|result| result.name.as_str()), Some("A"));
-    assert_eq!(item.parameters[0].ty.name, "A");
+    assert_eq!(item.parameters[0].ty.name, "Type");
+    assert_eq!(item.parameters[1].ty.name, "A");
 }
 
 /// Where the program really does not decide, elaboration says so at the place
@@ -207,7 +208,7 @@ fn a_parameter_with_no_type_is_a_located_error() {
 fn an_annotation_still_decides_against_inference() {
     let compilation = compile_text(
         "piece \"annotated\" {
-            fn unchanged<A>(value: A) -> A { value }
+            fn unchanged({A: Type}, value: A) -> A { value }
             let held: Nat = unchanged(c4);
             score { part p { voice v { c4/4 } } }
         }",
@@ -225,8 +226,8 @@ fn an_annotation_still_decides_against_inference() {
 fn a_braced_type_parameter_with_no_type_is_the_bare_one() {
     let score = snapshot(
         "piece \"braced\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn unchanged<{A}>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn unchanged({A: Type}, value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice braced { use unchanged(subject); }
@@ -249,8 +250,8 @@ fn a_braced_type_parameter_with_no_type_is_the_bare_one() {
 fn an_inferred_parameter_may_be_a_value_and_is_then_supplied_by_name() {
     let score = snapshot(
         "piece \"named\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn tagged({n : Nat}, {A: Type}, value: A) -> A { value }
             score { part p {
                 voice direct { use subject; }
                 voice tagged_use { use tagged({n = 0}, subject); }
@@ -267,8 +268,8 @@ fn an_inferred_parameter_may_be_a_value_and_is_then_supplied_by_name() {
 fn a_parameter_nothing_determines_and_nothing_names_is_refused() {
     let compilation = compile_text(
         "piece \"unnamed\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn tagged({n : Nat}, {A: Type}, value: A) -> A { value }
             score { part p { voice v { use tagged(subject); } } }
         }",
     );
@@ -284,8 +285,8 @@ fn a_parameter_nothing_determines_and_nothing_names_is_refused() {
 fn a_supplied_name_the_signature_does_not_bear_is_reported_with_the_ones_it_does() {
     let compilation = compile_text(
         "piece \"misnamed\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 };
-            fn tagged<{n : Nat}, A>(value: A) -> A { value }
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 };
+            fn tagged({n : Nat}, {A: Type}, value: A) -> A { value }
             score { part p { voice v { use tagged({m = 0}, subject); } } }
         }",
     );

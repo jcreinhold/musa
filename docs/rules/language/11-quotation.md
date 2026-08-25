@@ -144,7 +144,7 @@ splice := "$" IDENT | "${" expr "}" | "$.." IDENT
 
 - `${ e }` splices the value of one expression where one node stands, and `$x` is its shorthand for the case where that
   expression is a name. The position's category and the value's must be the *same* category — §1 leaves no rule that
-  bridges them, so a `Syntax<Expr>` reaching a token-tree position goes through a `forget` written at the splice — and a
+  bridges them, so a `Syntax(Expr)` reaching a token-tree position goes through a `forget` written at the splice — and a
   mismatch is a compile-time error naming both categories and pointing at the splice.
 - The expression form is not a convenience. A block holds exactly one expression and there is no `let` inside it
   (`01-surface.md` §1), so a splice argument that is *computed* — `${ dot_count(here, dots) }`,
@@ -337,7 +337,7 @@ the four properties above are what discharge them for this form.
 | `recurse_syntax` and its inherited context | traversing syntax of unknown shape is a different job from matching a known one, and prompt 127dcfaf's design is the right answer to it |
 | `run_syntax_step`, and sealing | a step still carries its own child and algebra, so nothing a pattern binds can be re-associated with a different traversal |
 | `syntax_fold_from_leaves` | derived at `C = Unit` by law 9, and named so the eagerness is visible |
-| `SyntaxStep<C, A>` is never storable | it holds four closures and a child (`02-core-calculus.md` §1.2); a pattern binds syntax, which is storable, so this form does not weaken the boundary |
+| `SyntaxStep(C, A)` is never storable | it holds four closures and a child (`02-core-calculus.md` §1.2); a pattern binds syntax, which is storable, so this form does not weaken the boundary |
 | paths derived, `SourceInfo` unreadable, scopes unforgeable | 127da's three guarantees, none of which quotation touches |
 
 **What does not survive:**
@@ -386,7 +386,7 @@ about quotation: a raw payload says what the material is and nothing about where
 `restrict` move occurrences rather than rewriting payloads. `01-surface.md` §7 keeps both.
 
 **The merge is refused, and the reason is written here so a later reader finds it rather than rediscovering it.** A
-single `Quote<Stage, Cat>` would have two instantiations sharing no operation but the word "quote": one splices values
+single `Quote(Stage, Cat)` would have two instantiations sharing no operation but the word "quote": one splices values
 into a language with no functions, at a stage where types are already known; the other splices trees into trees, at a
 phase where nothing has been elaborated yet. `02-core-calculus.md` §6.1 keeps those two stages apart on purpose, and a
 type that spanned them would be the contextual-`Music` mistake in a new place — a generality whose only content is that

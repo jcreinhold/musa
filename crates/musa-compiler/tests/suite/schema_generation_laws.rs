@@ -51,27 +51,27 @@ const PRELUDE: &str = r"
     meter 4/4;
 
     let collection: Scale = scale c major;
-    let register: Option<Frame> = frame_on(collection, c4);
+    let register: Option(Frame) = frame_on(collection, c4);
 
     fn placed(written: Degree) -> Pitch { match register {
         None -> c0,
         Some(located) -> frame_pitch(located, written),
     } }
 
-    fn degree_note(written: Degree) -> EventTrack<WrittenTime> {
+    fn degree_note(written: Degree) -> EventTrack(WrittenTime) {
         map_note_pitches(fn (ignored: Pitch) -> Pitch { placed(written) }, music { c0/1 })
     }
 
-    fn after(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, shift(duration_of(1/1), carried)) }
-    fn laid_out(values: List<EventTrack<WrittenTime>>) -> EventTrack<WrittenTime> { values.fold_from_start(music { rest/1 }, fn (carried, one) { after(one, carried) }) }
-    fn line(written: List<Degree>) -> EventTrack<WrittenTime> { retrograde(laid_out(map(degree_note, written))) }
+    fn after(one: EventTrack(WrittenTime), carried: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { together(one, shift(duration_of(1/1), carried)) }
+    fn laid_out(values: List(EventTrack(WrittenTime))) -> EventTrack(WrittenTime) { values.fold_from_start(music { rest/1 }, fn (carried, one) { after(one, carried) }) }
+    fn line(written: List(Degree)) -> EventTrack(WrittenTime) { retrograde(laid_out(map(degree_note, written))) }
 
-    fn spelled(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> { match content {
+    fn spelled(bass: Pitch, content: Option(ChordClass)) -> EventTrack(WrittenTime) { match content {
         None -> music { rest/1 },
         Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { match chosen {
+    fn stacked(chosen: Option(Voicing)) -> EventTrack(WrittenTime) { match chosen {
         None -> music { rest/1 },
         Some(spread) -> sound_for(spread, duration_of(1/1)),
     } }

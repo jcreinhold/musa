@@ -29,7 +29,7 @@ fn piece(body: &str) -> musa_compiler::Compilation {
     let source = SourceDocument::new(
         format!(
             "piece \"Nested patterns\" {{ {DECLARATIONS} {body} \
-             let tune: EventTrack<WrittenTime> = transpose(chosen, music {{ c4/1 }}); \
+             let tune: EventTrack(WrittenTime) = transpose(chosen, music {{ c4/1 }}); \
              tempo 1/4 = 84; meter 4/4; \
              score {{ part p {{ voice v {{ use tune; }} }} }} }}"
         ),
@@ -107,7 +107,7 @@ fn an_inexhaustive_nested_match_is_refused_where_it_always_was() {
 fn a_nested_list_pattern_parses_and_lowers() {
     for (subject, expected) in [("[Loud(1), Quiet]", "c5"), ("[Quiet, Loud(1)]", "c4")] {
         let answer = sounded(&format!(
-            "let subject: List<Inner> = {subject}; \
+            "let subject: List(Inner) = {subject}; \
              let chosen: Interval = match subject {{ \
                  [] -> P1, [Loud(count), .. others] -> P8, [Quiet, .. others] -> P1, \
              }};"

@@ -9,6 +9,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Capability | State | Owner and executable evidence |
 | --- | --- | --- |
 | Lossless surface syntax, declarations, records, data, modules, visibility, patterns, operators, and typed quotation | implemented | `musa-syntax`; parser/formatter/tree-sitter laws |
+| One dependent application syntax, inferred binders, and explicit family parameter/index boundary | implemented | `musa-syntax::parser`, `musa-compiler::lower`, and `tree-sitter-musa`; prompt-176c CST, lowering, migration, and drift laws |
 | Dependent terms, Π types, universes, records with η, lets, and registered base types | implemented | `musa-calculus::kernel`; conversion and rechecker laws |
 | Bidirectional elaboration and implicit retained indices | implemented | `musa-calculus::elaboration`; bidirectional, numeral, and index laws |
 | Scoped metavariables and Miller-pattern unification | implemented | `musa-calculus::elaboration::unify`; scope, permutation, weakening, flex-flex, occurs, and postponement laws |
@@ -85,8 +86,8 @@ an exhaustion. The largest retained measurements and their derivation are in not
 
 ## Typed quotation and adapters
 
-The parser produces a lossless token tree. `musa-compiler::quote` exposes it to a phase as indexed `Syntax<TokenTree>`
-and requires an adapter to return one checked `Syntax<Expr>`. Anchors, binders, references, built nodes, token kinds,
+The parser produces a lossless token tree. `musa-compiler::quote` exposes it to a phase as indexed `Syntax(TokenTree)`
+and requires an adapter to return one checked `Syntax(Expr)`. Anchors, binders, references, built nodes, token kinds,
 and delimiters are typed operations over that value; an adapter cannot reach inferred source types or compiler-private
 ASTs. Quotation constructs source syntax, splices checked fragments, and preserves source and generated provenance.
 
@@ -111,7 +112,7 @@ There is no privileged library evaluator.
 
 ## Event-track and runtime boundary
 
-The checked written result elaborates to `EventTrack<WrittenTime, ScoreFact>`. `musa-events` owns exact positions and
+The checked written result elaborates to `EventTrack(WrittenTime, ScoreFact)`. `musa-events` owns exact positions and
 durations, typed occurrences, `empty`, `event`, `follow`, `together`, `map_payloads`, `duration`, queries,
 normalization, exact versioned encoding, and semantic hash. It is a leaf: syntax, musical domains, machines, and audio
 do not enter it.
@@ -122,7 +123,7 @@ finite event track through an exact finite time map and explicit versioned polic
 decision record, and an allocation-free cursor/countdown source. Its bounds cover map entries, occurrences, messages,
 batches, and frame representation; its merger injects opaque handles into recursive disjoint namespaces before sorting.
 
-Production audio lowers directly to exact `EventTrack<PerformedTime, Gesture>` lanes, checks them through `Schedule`,
+Production audio lowers directly to exact `EventTrack(PerformedTime, Gesture)` lanes, checks them through `Schedule`,
 then prepares registered one-frame native instruments. Prompt 174 deleted the legacy frame-scheduled performance value;
 MIDI and debug consumers now read the same exact `GesturePlan` and choose no audio-frame lattice. Note 77 records the
 complete derivation audit. The graph flattening is private and has no caller-defined block width or public compilation

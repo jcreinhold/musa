@@ -15,7 +15,7 @@ impl Lowering<'_> {
     /// The same sum over a chosen subsequence, which is what a repeat's body is.
     #[expect(
         clippy::arithmetic_side_effects,
-        reason = "`Ratio<i64>` addition is exact mathematical arithmetic rather than raw integer ops; `extent` measures written durations"
+        reason = "`Ratio(i64)` addition is exact mathematical arithmetic rather than raw integer ops; `extent` measures written durations"
     )]
     pub(crate) fn reached(&self, statements: impl Iterator<Item = SyntaxNode>) -> Ratio<i64> {
         let mut total = Ratio::ZERO;
@@ -28,7 +28,7 @@ impl Lowering<'_> {
     /// How long one statement lasts.
     #[expect(
         clippy::arithmetic_side_effects,
-        reason = "`Ratio<i64>` multiplication is exact mathematical arithmetic rather than raw integer ops; `extent` reads a tuplet's written ratio"
+        reason = "`Ratio(i64)` multiplication is exact mathematical arithmetic rather than raw integer ops; `extent` reads a tuplet's written ratio"
     )]
     pub(crate) fn lasts(&self, statement: &SyntaxNode) -> Ratio<i64> {
         match statement.kind() {

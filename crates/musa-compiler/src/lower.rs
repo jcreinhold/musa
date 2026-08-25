@@ -573,16 +573,23 @@ impl<'a> Lowering<'a> {
             else {
                 continue;
             };
-            // `Syntax<Expr>` written out, and nothing else: an applied type
-            // whose head is the `Syntax` word and whose one index is the
-            // `Expr` one — the same reading [`types`] gives it, kept syntactic
-            // because the lowering has no types to ask.
+            // `Syntax(Expr)` written out, and nothing else: the one ordinary
+            // application node whose head is `Syntax` and whose one argument
+            // is `Expr`. This stays syntactic because lowering has no inferred
+            // types to ask, but it follows the same CST path as every call.
             let expression = child(parameter, is_type_node).is_some_and(|written| {
-                let parts = children(&written, is_type_node);
-                matches!(
-                    parts.split_first(),
-                    Some((head, [index])) if head.to_string().trim() == "Syntax" && index.to_string().trim() == "Expr"
-                )
+                let Some(application) = child(&written, |kind| kind == SyntaxKind::ApplyExpr) else {
+                    return false;
+                };
+                let Some(head) = child(&application, |kind| kind == SyntaxKind::NameExpr) else {
+                    return false;
+                };
+                let Some(arguments) = child(&application, |kind| kind == SyntaxKind::ExprArgList) else {
+                    return false;
+                };
+                let arguments = children(&arguments, |kind| kind == SyntaxKind::ExprArg);
+                head.to_string().trim() == "Syntax"
+                    && matches!(arguments.as_slice(), [argument] if argument.to_string().trim() == "Expr")
             });
             self.scrutinee_categories.push((name, expression));
             pushed = pushed.saturating_add(1);
@@ -596,7 +603,7 @@ impl<'a> Lowering<'a> {
             .truncate(self.scrutinee_categories.len().saturating_sub(pushed));
     }
 
-    /// Whether `name`'s nearest remembered parameter was written `Syntax<Expr>`.
+    /// Whether `name`'s nearest remembered parameter was written `Syntax(Expr)`.
     pub(super) fn scrutinee_is_expression(&self, name: &str) -> bool {
         self.scrutinee_categories
             .iter()
@@ -808,7 +815,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
 /// Whether a node kind is one of the written type forms.
 ///
 /// The grammar's own list, asked rather than restated. A copy of it here went
-/// stale the moment `IndexedType` joined the grammar: `Nat(12)` parsed, and
+/// stale the moment indexed application joined the grammar: `Nat(12)` parsed, and
 /// every reader that finds an annotation with this predicate looked straight
 /// past it, so a parameter written at an indexed type lowered as a λ with no
 /// domain and the author was told their parameter needed a type. The list that

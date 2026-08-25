@@ -31,32 +31,32 @@ use musa_score::ScoreEventKind;
 const PRELUDE: &str = r#"
 import std::notation::staff;
 
-fn one(start: Position<WrittenTime>, held: Duration<WrittenTime>) -> EventTrack<WrittenTime> {
+fn one(start: Position(WrittenTime), held: Duration(WrittenTime)) -> EventTrack(WrittenTime) {
     shift(position_between(position_of(0/1), start), stretch(duration_ratio(held), music { c5/1 }))
 }
 
-fn heard(spans: WrittenSpans) -> EventTrack<WrittenTime> {
+fn heard(spans: WrittenSpans) -> EventTrack(WrittenTime) {
     written_spans_fold(
         music { rest/1 },
         fn (
             anchor: Nat,
-            start: Position<WrittenTime>,
-            held: Duration<WrittenTime>,
+            start: Position(WrittenTime),
+            held: Duration(WrittenTime),
             tied: Tie,
-            after: EventTrack<WrittenTime>,
-        ) -> EventTrack<WrittenTime> { together(one(start, held), after) },
+            after: EventTrack(WrittenTime),
+        ) -> EventTrack(WrittenTime) { together(one(start, held), after) },
         spans,
     )
 }
 
-fn shown(answer: Result<Realization, Text>) -> EventTrack<WrittenTime> {
+fn shown(answer: Result(Realization, Text)) -> EventTrack(WrittenTime) {
     match answer {
         Ok(reached) -> heard(reached.spans),
         Err(why) -> music { rest/1 },
     }
 }
 
-fn base_span(value: WrittenDuration) -> Duration<WrittenTime> {
+fn base_span(value: WrittenDuration) -> Duration(WrittenTime) {
     match value {
         // No value this bridge is handed divides the whole note by zero, so
         // the refusing arm never runs; it is written because the package's
@@ -70,15 +70,15 @@ fn base_span(value: WrittenDuration) -> Duration<WrittenTime> {
     }
 }
 
-fn spelled_one(start: Position<WrittenTime>, value: WrittenDuration) -> EventTrack<WrittenTime> {
+fn spelled_one(start: Position(WrittenTime), value: WrittenDuration) -> EventTrack(WrittenTime) {
     one(start, base_span(value))
 }
 
-fn engraved(answer: Result<Spelled, Text>) -> EventTrack<WrittenTime> {
+fn engraved(answer: Result(Spelled, Text)) -> EventTrack(WrittenTime) {
     match answer {
         Ok(chosen) -> spelled_fold(
             music { rest/1 },
-            fn (anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            fn (anchor: Nat, start: Position(WrittenTime), value: WrittenDuration, after: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                 together(spelled_one(start, value), after)
             },
             chosen,
@@ -202,7 +202,7 @@ fn touched(items: StaffItem) -> Nat {
     )
 }
 
-fn counted(total: Nat) -> EventTrack<WrittenTime> {
+fn counted(total: Nat) -> EventTrack(WrittenTime) {
     stretch(ratio_div(ratio_of(total), 64/1), music { c5/1 })
 }
 ";

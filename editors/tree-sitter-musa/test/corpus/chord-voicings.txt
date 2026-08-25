@@ -6,8 +6,8 @@ piece "Chord Voicings" {
   import std::harmony;
   import std::voicing;
   let sonority: ChordClass = chord c major7;
-  let close: Option<Voicing> = close_position(sonority, c4);
-  fn held(chosen: Voicing) -> EventTrack<WrittenTime, ScoreFact> {
+  let close: Option(Voicing) = close_position(sonority, c4);
+  fn held(chosen: Voicing) -> EventTrack(WrittenTime, ScoreFact) {
     play(chosen, 1/1)
   }
   score {
@@ -43,10 +43,11 @@ piece "Chord Voicings" {
     (let_declaration
       (identifier)
       (type_expression
-        (option_type
-          (type_expression
-            (type_name
-              (identifier)))))
+        (application_expression
+          (type_argument_list
+            (type_expression
+              (type_name
+                (identifier))))))
       (expression
         (application_expression
           (name_expression
@@ -69,15 +70,16 @@ piece "Chord Voicings" {
             (type_name
               (identifier)))))
       (type_expression
-        (applied_type
+        (application_expression
           (type_name
             (identifier))
-          (type_expression
-            (type_name
-              (identifier)))
-          (type_expression
-            (type_name
-              (identifier)))))
+          (type_argument_list
+            (expression
+              (name_expression
+                (identifier)))
+            (expression
+              (name_expression
+                (identifier))))))
       (block_expression
         (expression
           (application_expression

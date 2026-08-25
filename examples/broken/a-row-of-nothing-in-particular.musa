@@ -3,11 +3,11 @@
 // element to read one off. Musa never defaults an unknown to a guess and never
 // generalizes a definition the author did not write parameters for, so the
 // unknown is reported where it was written. `Row::Empty` under an annotation —
-// `let none: Row<Pitch>(Zero) = Row::Empty;` — answers it.
+// `let none: Row(Pitch, Zero) = Row::Empty;` — answers it.
 piece "A Row Of Nothing In Particular" {
     import std::indexed;
 
-    fn how_long<A>(of: Row<A>(Zero)) -> Nat {
+    fn how_long({A: Type}, of: Row(A, Zero)) -> Nat {
         0
     }
 

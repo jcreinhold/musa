@@ -22,17 +22,17 @@ fn nat_ratio(value: Nat) -> Ratio {
     }
 }
 
-fn anchored_note(anchor: Nat) -> EventTrack<WrittenTime> {
+fn anchored_note(anchor: Nat) -> EventTrack(WrittenTime) {
     shift(
         position_between(position_of(0/1), position_of(nat_ratio(anchor))),
         music { c5/4 },
     )
 }
 
-fn anchors_at(anchors: List<Nat>) -> EventTrack<WrittenTime> {
+fn anchors_at(anchors: List(Nat)) -> EventTrack(WrittenTime) {
     anchors.fold_from_start(
         music { rest/1 },
-        fn (heard: EventTrack<WrittenTime>, anchor: Nat) -> EventTrack<WrittenTime> {
+        fn (heard: EventTrack(WrittenTime), anchor: Nat) -> EventTrack(WrittenTime) {
             together(heard, anchored_note(anchor))
         },
     )
@@ -66,7 +66,7 @@ fn source(region: &str, observation: &str) -> String {
     format!(
         "piece \"Graph adapter laws\" {{\n{IMPORTS}\n\
          let description: StudioDescription = syntax graph {{\n{region}\n}};\n\
-         let heard: EventTrack<WrittenTime> = {observation};\n\
+         let heard: EventTrack(WrittenTime) = {observation};\n\
          meter 4/4;\nkey c major;\n\
          score {{ part proof {{ voice observed {{ use heard; }} }} }}\n\
          }}\n"

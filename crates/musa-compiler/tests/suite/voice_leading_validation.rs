@@ -795,7 +795,7 @@ fn every_departure_cites_its_page() {
             assert!(!rule.states().is_empty(), "{name}: {} states nothing", rule.id());
             assert!(
                 rule.cites().starts_with("OMT "),
-                "{name}: {} cites {:?}, which is not a page of Open EventTrack<WrittenTime> Theory",
+                "{name}: {} cites {:?}, which is not a page of Open EventTrack(WrittenTime) Theory",
                 rule.id(),
                 rule.cites()
             );

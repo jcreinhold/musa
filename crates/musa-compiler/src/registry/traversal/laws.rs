@@ -47,7 +47,7 @@ fn subject() -> Syntax {
 /// What the old evaluator answers for `transformer` on the region.
 fn old(transformer: &str) -> Syntax {
     let written = format!(
-        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok({transformer}) }}"
+        "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok({transformer}) }}"
     );
     expand_region(&written, REGION, expansion()).expect("the old evaluator runs the transformer")
 }

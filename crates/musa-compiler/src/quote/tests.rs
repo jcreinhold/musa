@@ -68,7 +68,7 @@ fn count(node: &Syntax) -> usize {
 /// there is a diagnostic to read it out of.
 fn transformer(missing: &str, token: &str, identifier: &str, group: &str) -> String {
     format!(
-        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(syntax_fold_from_leaves(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
+        "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(syntax_fold_from_leaves(fn (here) {{ {missing} }}, fn (here, kind, text) {{ {token} }}, \
          fn (here, name) {{ {identifier} }}, fn (here, delimiter, children) {{ {group} }}, region)) }}"
     )
 }

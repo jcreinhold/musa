@@ -2,7 +2,7 @@
   "document": 0,
   "name": "events-splice.musa",
   "kind": "piece",
-  "source": "// An event track quote is the one place Musa lets a composer write the assembly the\n// compiler normally writes for them. `events EventTrack[WrittenTime, ScoreFact] { ... }` is a\n// composition expression of the temporal events — the same grammar a\n// `.musa.events` file is written in — and `${...}` splices ordinary Musa music\n// into it. What it buys is placement no surface constructor spells; what it\n// costs is stated at the bottom of this file.\npiece \"Events Splice\" {\n    meter 4/4;\n\n    // Ordinary music, checked the ordinary way. Nothing about it knows it is\n    // going to be quoted.\n    let subject: EventTrack<WrittenTime> = music {\n        c4/4\n        d4/4\n        e4/4\n        f4/4\n    };\n\n    // One term, assembled by hand. `${subject}` is a hole: it is instantiated\n    // once, here, under this piece's context, and bound to a fresh name the\n    // compiler chooses — so nothing written inside the quote can capture it,\n    // whatever the quote happens to call its own bindings.\n    //\n    // `subj` is referenced three times and elaborated once. That is sharing, and\n    // it is why the three references below are three placements of the *same*\n    // facts rather than three re-readings of `subject`.\n    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n        let subj = ${subject} in\n        together {\n            subj;\n            // Diminution, a measure later. The halving is written in the\n            // host, not as a raw `scale by`: renotating is a payload\n            // operation and the event track never touches payloads, so raw scaling\n            // would move these notes without changing what is written on\n            // them. A second hole is a second instantiation, and gets a locus\n            // of its own.\n            shift by 1 ${stretch(1/2, subject)};\n            // Observation: the fourth note alone, read out of the material\n            // through a window and placed at the start of the last measure.\n            // Restricting keeps the extent, so this branch still runs to 2.\n            shift by 1 restrict from 3/4 to 1 subj;\n            // Raw material, written as facts. A payload states what the\n            // material *is*; it states no scope and no origin, because the\n            // use decides which voice this lands in and the quote is where it\n            // came from. Writing either is refused.\n            track 2 {\n                occurrence \"note c2 1\" from 0 to 1;\n                occurrence \"note g2 1\" from 1 to 2;\n            };\n        }\n    };\n\n    score {\n        part ensemble {\n            voice line {\n                // The guarantees the quote keeps are exact time and payload\n                // typing: the term's extent is 2 whole notes, computed from\n                // its structure, and every payload in it is a `ScoreFact`.\n                //\n                // The guarantees it does *not* keep are the theory ones, and\n                // an assertion around the completed quote is how they come\n                // back. This claim is checked against the assembled facts, so\n                // it sees the raw notes and the spliced ones alike.\n                assert pitches_in(scale c major) {\n                    use assembled;\n                }\n            }\n        }\n    }\n\n    // What a quote gives up, precisely:\n    //\n    // A hole is instantiated once and the facts it produced are frozen from\n    // then on. A raw `shift`, `scale` or `restrict` around a reference moves\n    // facts that already exist; it does not re-elaborate the hole under the\n    // context the reference sits in. So an assertion that passed *inside*\n    // `subject` — that it fills a measure, say — says nothing about the\n    // diminished copy above, which fills half of one. Bar alignment, scale\n    // membership and chord realization are properties of where facts land,\n    // and raw placement is exactly the freedom to land them elsewhere.\n    //\n    // Raw `shift`, `scale` and `restrict` are operations on *time*. `shift`\n    // and `restrict` want nothing of the payloads and are safe to write here;\n    // `scale` halves every span and leaves every written value alone, which\n    // is why the diminution above is spelled `${stretch(1/2, subject)}` and\n    // not `scale by 1/2`. Raw scaling is for material whose written values\n    // already say what was meant.\n    //\n    // Every fact that leaves a quote records a `splice` step in its expansion\n    // path, at the locus it was assembled at, so Origin can say that a note\n    // with no surface statement behind it came from here.\n}\n",
+  "source": "// An event track quote is the one place Musa lets a composer write the assembly the\n// compiler normally writes for them. `events EventTrack[WrittenTime, ScoreFact] { ... }` is a\n// composition expression of the temporal events — the same grammar a\n// `.musa.events` file is written in — and `${...}` splices ordinary Musa music\n// into it. What it buys is placement no surface constructor spells; what it\n// costs is stated at the bottom of this file.\npiece \"Events Splice\" {\n    meter 4/4;\n\n    // Ordinary music, checked the ordinary way. Nothing about it knows it is\n    // going to be quoted.\n    let subject: EventTrack(WrittenTime) = music {\n        c4/4\n        d4/4\n        e4/4\n        f4/4\n    };\n\n    // One term, assembled by hand. `${subject}` is a hole: it is instantiated\n    // once, here, under this piece's context, and bound to a fresh name the\n    // compiler chooses — so nothing written inside the quote can capture it,\n    // whatever the quote happens to call its own bindings.\n    //\n    // `subj` is referenced three times and elaborated once. That is sharing, and\n    // it is why the three references below are three placements of the *same*\n    // facts rather than three re-readings of `subject`.\n    let assembled: EventTrack(\n        WrittenTime,\n    ) = events EventTrack[WrittenTime, ScoreFact] {\n        let subj = ${subject} in\n        together {\n            subj;\n            // Diminution, a measure later. The halving is written in the\n            // host, not as a raw `scale by`: renotating is a payload\n            // operation and the event track never touches payloads, so raw scaling\n            // would move these notes without changing what is written on\n            // them. A second hole is a second instantiation, and gets a locus\n            // of its own.\n            shift by 1 ${stretch(1/2, subject)};\n            // Observation: the fourth note alone, read out of the material\n            // through a window and placed at the start of the last measure.\n            // Restricting keeps the extent, so this branch still runs to 2.\n            shift by 1 restrict from 3/4 to 1 subj;\n            // Raw material, written as facts. A payload states what the\n            // material *is*; it states no scope and no origin, because the\n            // use decides which voice this lands in and the quote is where it\n            // came from. Writing either is refused.\n            track 2 {\n                occurrence \"note c2 1\" from 0 to 1;\n                occurrence \"note g2 1\" from 1 to 2;\n            };\n        }\n    };\n\n    score {\n        part ensemble {\n            voice line {\n                // The guarantees the quote keeps are exact time and payload\n                // typing: the term's extent is 2 whole notes, computed from\n                // its structure, and every payload in it is a `ScoreFact`.\n                //\n                // The guarantees it does *not* keep are the theory ones, and\n                // an assertion around the completed quote is how they come\n                // back. This claim is checked against the assembled facts, so\n                // it sees the raw notes and the spliced ones alike.\n                assert pitches_in(scale c major) {\n                    use assembled;\n                }\n            }\n        }\n    }\n\n    // What a quote gives up, precisely:\n    //\n    // A hole is instantiated once and the facts it produced are frozen from\n    // then on. A raw `shift`, `scale` or `restrict` around a reference moves\n    // facts that already exist; it does not re-elaborate the hole under the\n    // context the reference sits in. So an assertion that passed *inside*\n    // `subject` — that it fills a measure, say — says nothing about the\n    // diminished copy above, which fills half of one. Bar alignment, scale\n    // membership and chord realization are properties of where facts land,\n    // and raw placement is exactly the freedom to land them elsewhere.\n    //\n    // Raw `shift`, `scale` and `restrict` are operations on *time*. `shift`\n    // and `restrict` want nothing of the payloads and are safe to write here;\n    // `scale` halves every span and leaves every written value alone, which\n    // is why the diminution above is spelled `${stretch(1/2, subject)}` and\n    // not `scale by 1/2`. Raw scaling is for material whose written values\n    // already say what was meant.\n    //\n    // Every fact that leaves a quote records a `splice` step in its expansion\n    // path, at the locus it was assembled at, so Origin can say that a note\n    // with no surface statement behind it came from here.\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -71,8 +71,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -83,10 +83,10 @@
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 658,
@@ -98,8 +98,8 @@
               "end": 662
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -143,8 +143,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -155,23 +155,23 @@
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "supportedBy": [
             {
-              "start": 1274,
-              "end": 2564
+              "start": 1289,
+              "end": 2579
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -215,8 +215,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -227,10 +227,10 @@
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 671,
@@ -242,8 +242,8 @@
               "end": 675
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -287,8 +287,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -299,10 +299,10 @@
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 684,
@@ -314,8 +314,8 @@
               "end": 688
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -359,8 +359,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -371,10 +371,10 @@
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 697,
@@ -386,8 +386,8 @@
               "end": 701
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -431,8 +431,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -448,10 +448,10 @@
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-1",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 658,
@@ -463,8 +463,8 @@
               "end": 662
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -508,8 +508,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -520,23 +520,23 @@
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "supportedBy": [
             {
-              "start": 1274,
-              "end": 2564
+              "start": 1289,
+              "end": 2579
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -580,8 +580,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -597,10 +597,10 @@
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-1",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 671,
@@ -612,8 +612,8 @@
               "end": 675
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -657,8 +657,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -674,10 +674,10 @@
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-1",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 684,
@@ -689,8 +689,8 @@
               "end": 688
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -734,8 +734,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -751,10 +751,10 @@
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-1",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 697,
@@ -766,8 +766,8 @@
               "end": 701
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -811,8 +811,8 @@
               "label": "assembled",
               "kind": "occurrence",
               "span": {
-                "start": 3250,
-                "end": 3264
+                "start": 3265,
+                "end": 3279
               }
             },
             {
@@ -823,10 +823,10 @@
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-0",
-          "line": 27,
+          "line": 29,
           "span": {
-            "start": 1274,
-            "end": 2564
+            "start": 1289,
+            "end": 2579
           },
           "definitionSpan": {
             "start": 697,
@@ -838,8 +838,8 @@
               "end": 701
             },
             {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           ],
           "decision": null
@@ -859,8 +859,8 @@
             "label": "assembled",
             "kind": "occurrence",
             "span": {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           },
           {
@@ -873,10 +873,10 @@
         "motif": "assembled",
         "declaration": null,
         "useSite": {
-          "start": 3250,
-          "end": 3264
+          "start": 3265,
+          "end": 3279
         },
-        "line": 65,
+        "line": 67,
         "events": [
           "event-0",
           "event-1",
@@ -899,8 +899,8 @@
             "label": "assembled",
             "kind": "occurrence",
             "span": {
-              "start": 3250,
-              "end": 3264
+              "start": 3265,
+              "end": 3279
             }
           },
           {
@@ -918,10 +918,10 @@
         "motif": "assembled",
         "declaration": null,
         "useSite": {
-          "start": 3250,
-          "end": 3264
+          "start": 3265,
+          "end": 3279
         },
-        "line": 65,
+        "line": 67,
         "events": [
           "event-5",
           "event-7",
@@ -995,10 +995,10 @@
     {
       "name": "subject",
       "kind": "value",
-      "signature": "let subject: EventTrack<WrittenTime>",
+      "signature": "let subject: EventTrack(WrittenTime)",
       "summary": "Ordinary music, checked the ordinary way. Nothing about it knows it is going to be quoted.",
       "result": {
-        "name": "EventTrack<WrittenTime>",
+        "name": "EventTrack(WrittenTime)",
         "distinction": null
       },
       "parameters": [],
@@ -1015,10 +1015,10 @@
     {
       "name": "assembled",
       "kind": "value",
-      "signature": "let assembled: EventTrack<WrittenTime>",
+      "signature": "let assembled: EventTrack( WrittenTime, )",
       "summary": "One term, assembled by hand. `${subject}` is a hole: it is instantiated once, here, under this piece's context, and bound to a fresh name the compiler chooses — so nothing written inside the quote can capture it, whatever the quote happens to call its own bindings.  `subj` is referenced three times and elaborated once. That is sharing, and it is why the three references below are three placements of the *same* facts rather than three re-readings of `subject`.",
       "result": {
-        "name": "EventTrack<WrittenTime>",
+        "name": "EventTrack( WrittenTime, )",
         "distinction": null
       },
       "parameters": [],
@@ -1044,12 +1044,12 @@
       "external": null,
       "uses": [
         {
-          "start": 1339,
-          "end": 1346
+          "start": 1354,
+          "end": 1361
         },
         {
-          "start": 1834,
-          "end": 1841
+          "start": 1849,
+          "end": 1856
         }
       ]
     },
@@ -1063,8 +1063,8 @@
       "external": null,
       "uses": [
         {
-          "start": 3254,
-          "end": 3263
+          "start": 3269,
+          "end": 3278
         }
       ]
     },
@@ -1072,8 +1072,8 @@
       "name": "ensemble",
       "kind": "part",
       "declaration": {
-        "start": 2592,
-        "end": 2600
+        "start": 2607,
+        "end": 2615
       },
       "external": null,
       "uses": []
@@ -1082,8 +1082,8 @@
       "name": "line",
       "kind": "voice",
       "declaration": {
-        "start": 2621,
-        "end": 2625
+        "start": 2636,
+        "end": 2640
       },
       "external": null,
       "uses": []

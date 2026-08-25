@@ -248,7 +248,7 @@ impl Reading {
     /// fifteenths, and neither statement has to know the other is there.
     #[expect(
         clippy::arithmetic_side_effects,
-        reason = "`Ratio<i64>` multiplication is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::lasts` makes below; scoped here because it is the only arithmetic on a reading"
+        reason = "`Ratio(i64)` multiplication is exact mathematical arithmetic rather than raw integer ops, the same argument `Lowering::lasts` makes below; scoped here because it is the only arithmetic on a reading"
     )]
     fn inside(self, factor: Ratio<i64>) -> Self {
         Self {

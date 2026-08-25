@@ -25,7 +25,7 @@ From `examples/scale-context.musa`:
 let home: Key = key c minor;
 let default_collection: Scale = key_scale(home);
 let raised_seventh: Scale = harmonic_minor_on(scale_root(default_collection));
-let anchored: Option<Frame> = frame_on(default_collection, c5);
+let anchored: Option(Frame) = frame_on(default_collection, c5);
 ```
 
 `key_scale` gives the collection a key *suggests*. It is a default a passage may refuse, not a fact the key contains.
@@ -102,13 +102,13 @@ as many voicings as you like, and they are not equal to each other:
 
 ```musa
 // Close position stacks the members upward from an absolute bass.
-let close: Option<Voicing> = close_position(sonority, c4);
+let close: Option(Voicing) = close_position(sonority, c4);
 // Drop 2 lowers the second note from the top by an octave. It is a
 // different voicing of the same class, not a different chord.
-let drop_two: Option<Voicing> = drop_position(sonority, c3, 2);
+let drop_two: Option(Voicing) = drop_position(sonority, c3, 2);
 // The pitches written out by hand: the same four notes, spread wide, with
 // the third on top.
-let spread: Option<Voicing> = voiced_as(sonority, [c3, g3, b3, e4]);
+let spread: Option(Voicing) = voiced_as(sonority, [c3, g3, b3, e4]);
 ```
 
 The `Option` is load-bearing. `close_position` is absent when the bass you asked for is not a member of the class *as
@@ -120,8 +120,8 @@ Sounding one takes `play`, and an absent voicing becomes silence rather than a g
 ```musa
 // A voicing sounds only through `play`. A policy whose preconditions fail
 // sounds a rest, so an absent answer is silence rather than a guess.
-fn held(chosen: Voicing) -> EventTrack<WrittenTime> { play(chosen, duration_of(1/1)) }
-fn sounded(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
+fn held(chosen: Voicing) -> EventTrack(WrittenTime) { play(chosen, duration_of(1/1)) }
+fn sounded(chosen: Option(Voicing)) -> EventTrack(WrittenTime) {
     chosen.fold_from_end(music {
         rest/1
     }, fn (found, otherwise) { held(found) })
@@ -153,8 +153,8 @@ and no collection, because the quality is the collection's. From `examples/tonal
 // The numerals, as values. A numeral is absent when it cannot be written:
 // `triad_numeral(8)` has no answer, and neither does a triad in third
 // inversion.
-let one: Option<Roman> = triad_numeral(1);
-let two: Option<Roman> = triad_numeral(2);
+let one: Option(Roman) = triad_numeral(1);
+let two: Option(Roman) = triad_numeral(2);
 ```
 
 Give a numeral a collection and it stacks:
@@ -163,8 +163,8 @@ Give a numeral a collection and it stacks:
 // The diatonic harmonies of C major. `ii` is minor and `V` is major
 // because those are the notes in the collection, not because either was
 // asked for.
-let tonic: Option<ChordClass> = in_major(one);
-let supertonic: Option<ChordClass> = in_major(two);
+let tonic: Option(ChordClass) = in_major(one);
+let supertonic: Option(ChordClass) = in_major(two);
 ```
 
 `ii` comes out minor and `V` comes out major because of the notes in the collection, not because anyone asked for a
@@ -197,7 +197,7 @@ set and for a bell pattern in a cycle of pulses.
 
 The remaining bundled modules are the plumbing: `std::core` for exact rationals and the small total operations,
 `std::list` for finite lists, and `std::pitch` for the named written intervals. `std::indexed` is a smaller and stranger
-one: its types carry a number or a duration *in the type*, so a `Row<PitchClass>(12)` is a twelve-tone row and nothing
+one: its types carry a number or a duration *in the type*, so a `Row(PitchClass, 12)` is a twelve-tone row and nothing
 else can be written where one is asked for, and a `Measure` is a bar that already adds up. Reading the first element of
 a `Row` needs no case for the empty one, because an empty row cannot stand where a non-empty one was asked for. Most
 pieces never name it; the modules that do stop writing the check by hand.

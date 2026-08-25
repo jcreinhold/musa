@@ -29,7 +29,7 @@
 // descend first and accumulate later. `Succ` rather than `nat_add`: the successor
 // constructor *is* "one more", so counting needs no arithmetic and no
 // failure case.
-private fn counting_from(count: Nat, first: Nat) -> List<Nat> {
+private fn counting_from(count: Nat, first: Nat) -> List(Nat) {
     match count {
         Zero -> [],
         Succ(fewer) -> Cons(first, counting_from(fewer, Succ(first))),
@@ -37,14 +37,14 @@ private fn counting_from(count: Nat, first: Nat) -> List<Nat> {
 }
 
 // The natural numbers from zero up to, but not including, `count`.
-fn range(count: Nat) -> List<Nat> { counting_from(count, 0) }
+fn range(count: Nat) -> List(Nat) { counting_from(count, 0) }
 
 // One value, `count` times, as finite data.
 //
 // Not `repeat`: that word opens a repeated passage in a score, so it is a
 // statement keyword and cannot also be a function name. The past participle
 // is what the list *is* rather than what a player does.
-fn repeated<A>(value: A, count: Nat) -> List<A> {
+fn repeated({A: Type}, value: A, count: Nat) -> List(A) {
     match count {
         Zero -> [],
         Succ(fewer) -> Cons(value, repeated(value, fewer)),
@@ -52,7 +52,7 @@ fn repeated<A>(value: A, count: Nat) -> List<A> {
 }
 
 // Apply `function` to every member, in order.
-fn map<A, B>(function: A -> B, values: List<A>) -> List<B> {
+fn map({A: Type}, {B: Type}, function: A -> B, values: List(A)) -> List(B) {
     match values {
         [] -> [],
         [head, .. tail] -> Cons(function(head), map(function, tail)),
@@ -60,7 +60,7 @@ fn map<A, B>(function: A -> B, values: List<A>) -> List<B> {
 }
 
 // Keep the members for which `predicate` answers true, in order.
-fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A> {
+fn filter({A: Type}, predicate: A -> Bool, values: List(A)) -> List(A) {
     match values {
         [] -> [],
         [head, .. tail] -> if predicate(head) {
@@ -74,7 +74,7 @@ fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A> {
 // Costs the length of `first` and nothing for `second`, which is why the
 // module docs say an answer built by folding and appending costs the square:
 // this is the append, and folding it over n members walks n prefixes.
-fn concat<A>(first: List<A>, second: List<A>) -> List<A> {
+fn concat({A: Type}, first: List(A), second: List(A)) -> List(A) {
     match first {
         [] -> second,
         [head, .. tail] -> Cons(head, concat(tail, second)),
@@ -82,7 +82,7 @@ fn concat<A>(first: List<A>, second: List<A>) -> List<A> {
 }
 
 // How many members a list has.
-fn length<A>(values: List<A>) -> Nat {
+fn length({A: Type}, values: List(A)) -> Nat {
     match values {
         [] -> 0,
         [head, .. tail] -> Succ(length(tail)),
@@ -95,7 +95,7 @@ fn length<A>(values: List<A>) -> Nat {
 // one member at a time to the end costs the square of the length and this
 // costs the length. The accumulator comes after the argument the recursion
 // descends on, for §2.4's reason.
-private fn reversing<A>(values: List<A>, built: List<A>) -> List<A> {
+private fn reversing({A: Type}, values: List(A), built: List(A)) -> List(A) {
     match values {
         [] -> built,
         [head, .. tail] -> reversing(tail, Cons(head, built)),
@@ -103,10 +103,10 @@ private fn reversing<A>(values: List<A>, built: List<A>) -> List<A> {
 }
 
 // The members in the opposite order.
-fn reverse<A>(values: List<A>) -> List<A> { reversing(values, []) }
+fn reverse({A: Type}, values: List(A)) -> List(A) { reversing(values, []) }
 
 // The first `count` members, or all of them where there are fewer.
-fn take<A>(count: Nat, values: List<A>) -> List<A> {
+fn take({A: Type}, count: Nat, values: List(A)) -> List(A) {
     match count {
         Zero -> [],
         Succ(fewer) -> match values {
@@ -118,7 +118,7 @@ fn take<A>(count: Nat, values: List<A>) -> List<A> {
 
 // Everything but the first `count` members, or nothing where there are
 // fewer.
-fn drop<A>(count: Nat, values: List<A>) -> List<A> {
+fn drop({A: Type}, count: Nat, values: List(A)) -> List(A) {
     match count {
         Zero -> values,
         Succ(fewer) -> match values {
@@ -133,17 +133,17 @@ fn drop<A>(count: Nat, values: List<A>) -> List<A> {
 // A rotation and not a shift: nothing is lost, so rotating by the length
 // gives the list back. `102-set-class-and-prime-form.md`'s normal order is
 // chosen from among these.
-fn rotated<A>(count: Nat, values: List<A>) -> List<A> {
+fn rotated({A: Type}, count: Nat, values: List(A)) -> List(A) {
     concat(drop(count, values), take(count, values))
 }
 
 // Every rotation of the list, starting with the list itself.
-fn rotations<A>(values: List<A>) -> List<List<A>> {
-    map(fn (count: Nat) -> List<A> { rotated(count, values) }, range(length(values)))
+fn rotations({A: Type}, values: List(A)) -> List(List(A)) {
+    map(fn (count: Nat) -> List(A) { rotated(count, values) }, range(length(values)))
 }
 
 // Whether any member answers true.
-fn any<A>(predicate: A -> Bool, values: List<A>) -> Bool {
+fn any({A: Type}, predicate: A -> Bool, values: List(A)) -> Bool {
     match values {
         [] -> false,
         [head, .. tail] -> if predicate(head) {
@@ -153,7 +153,7 @@ fn any<A>(predicate: A -> Bool, values: List<A>) -> Bool {
 }
 
 // Whether every member answers true.
-fn all<A>(predicate: A -> Bool, values: List<A>) -> Bool {
+fn all({A: Type}, predicate: A -> Bool, values: List(A)) -> Bool {
     match values {
         [] -> true,
         [head, .. tail] -> if predicate(head) {
@@ -163,19 +163,19 @@ fn all<A>(predicate: A -> Bool, values: List<A>) -> Bool {
 }
 
 // The natural numbers from zero up to, but not including, count.
-fn naturals(count: Nat) -> List<Nat> { range(count) }
+fn naturals(count: Nat) -> List(Nat) { range(count) }
 
 // Apply one pitch function to every member of a finite pitch list.
-fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch> {
+fn map_pitches(function: Pitch -> Pitch, values: List(Pitch)) -> List(Pitch) {
     map(function, values)
 }
 
 // Keep the pitches for which predicate returns true.
-fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch> {
+fn filter_pitches(predicate: Pitch -> Bool, values: List(Pitch)) -> List(Pitch) {
     filter(predicate, values)
 }
 
 // Repeat one contextual music value count times as finite data.
-fn repeat_music(value: EventTrack<WrittenTime>, count: Nat) -> List<EventTrack<WrittenTime>> {
+fn repeat_music(value: EventTrack(WrittenTime), count: Nat) -> List(EventTrack(WrittenTime)) {
     repeated(value, count)
 }

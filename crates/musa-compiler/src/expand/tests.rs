@@ -29,7 +29,7 @@ fn messages(expansion: &Expansion) -> Vec<String> {
 /// A transformer that answers `Ok` with `emitted`, whatever the region held.
 fn answering(emitted: &str) -> String {
     format!(
-        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
+        "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(syntax_fold_from_leaves(fn (here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (here, name) {{ syntax_identifier(syntax_built(here, 2, 0), name) }}, \
              fn (here, delimiter, children) {{ {emitted} }}, region)) }}"
@@ -315,7 +315,7 @@ fn a_refusal_that_points_at_a_generated_node_lands_on_the_region_and_says_so() {
     // whichever node reaches the top carries `Generated` and nothing else.
     let refused = r#"Err((syntax_token(syntax_built(here, 9, 0), TokenKind.Error, ""), "nothing here is mine"))"#;
     let refusing = format!(
-        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
+        "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ syntax_fold_from_leaves(fn (here) {{ {refused} }}, fn (here, kind, text) {{ {refused} }}, \
              fn (here, name) {{ {refused} }}, fn (here, delimiter, children) {{ {refused} }}, region) }}"
     );
     let read = musa_syntax::parse("c4");
@@ -720,7 +720,7 @@ fn a_readable_adapters_region_is_read_only_rather_than_broken() {
 const MOTTO: &str = r#"
     let level = "generative";
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {
         Ok(syntax_fold_from_leaves(
             fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
@@ -730,7 +730,7 @@ const MOTTO: &str = r#"
         ))
     };
 
-    let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> {
+    let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(List(Pair(Nat, Text)), Text) {
         match command {
             "replace" -> Ok([(anchor, argument)]),
             _ -> Err("`motto` serves one command, `replace`"),
@@ -830,10 +830,10 @@ fn a_printer_reads_the_packages_type_and_its_own_modules_declarations() {
     const CLEFS: &str = r#"
     let level = "generative";
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };
-    let edit = fn (region: Syntax<TokenTree>, command: Text, anchor: Nat, argument: Text) -> Result<List<Pair<Nat, Text>>, Text> { Err("`clefs` serves no command") };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(region) };
+    let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(List(Pair(Nat, Text)), Text) { Err("`clefs` serves no command") };
 
-    let unreached = fn (region: Syntax<TokenTree>) -> Syntax<TokenTree> { region };
+    let unreached = fn (region: Syntax(TokenTree)) -> Syntax(TokenTree) { region };
 
     let named = fn (written: Clef) -> Text {
         match written {
@@ -844,7 +844,7 @@ fn a_printer_reads_the_packages_type_and_its_own_modules_declarations() {
         }
     };
 
-    let print = fn (written: Clef) -> Result<Text, Text> {
+    let print = fn (written: Clef) -> Result(Text, Text) {
         Ok(text_join(["clef ", named(written)]))
     };
 
@@ -965,7 +965,7 @@ const REGIONS: [&str; 4] = ["a", "together(a)", "together(a, b)", "together(inne
 /// the root is read under.
 fn recursing(initial: &str, group: &str) -> String {
     format!(
-        "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(recurse_syntax(\
+        "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(recurse_syntax(\
              fn (c, here) {{ syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }}, \
              fn (c, here, kind, text) {{ syntax_token(syntax_built(here, 1, 0), kind, text) }}, \
              fn (c, here, name) {{ syntax_identifier(syntax_built(here, 2, 0), c) }}, \
@@ -1107,7 +1107,7 @@ fn law_9_the_derived_fold_is_the_recursor_at_a_context_nothing_reads() {
         "\"\"",
         r#"syntax_group(syntax_built(here, 3, 0), delimiter, kids.map(fn (kid) { run_syntax_step("", kid) }))"#,
     );
-    let fold = "fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(syntax_fold_from_leaves(\
+    let fold = "fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(syntax_fold_from_leaves(\
              fn (here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, \"\") }, \
              fn (here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) }, \
              fn (here, name) { syntax_identifier(syntax_built(here, 2, 0), \"\") }, \
@@ -1202,7 +1202,7 @@ fn law_2_a_step_carried_into_a_nested_recursor_still_runs_its_own_algebra() {
     // re-associate a step with itself, the captured steps would come back
     // `inner`. They do not, and no ownership check is what stops it —
     // there is no operation that would let the inner traversal try.
-    let hostile = r#"fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(recurse_syntax(
+    let hostile = r#"fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(recurse_syntax(
             fn (c, here) { syntax_token(syntax_built(here, 0, 0), TokenKind.Error, "") },
             fn (c, here, kind, text) { syntax_token(syntax_built(here, 1, 0), kind, text) },
             fn (c, here, name) { syntax_identifier(syntax_built(here, 2, 0), "outer") },

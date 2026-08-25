@@ -23,7 +23,7 @@ data SurfacePort {
 
 /// One valid first-order input and result shape for a processor.
 record PortContract {
-    inputs: List<SurfacePort>;
+    inputs: List(SurfacePort);
     result: SurfacePort;
 }
 
@@ -31,7 +31,7 @@ record PortContract {
 // The ordinary Miller-pattern unifier solves that index while each contract
 // is checked; there is no sound-specific unit inference path.
 /// One exact parameter contract indexed by the dimension all its values share.
-data ParameterContract(dimension: SoundDimension) {
+data ParameterContract: (dimension: SoundDimension) -> Type {
     ParameterFields(
         contract_dimension: SoundDimension,
         name: Text,
@@ -39,7 +39,7 @@ data ParameterContract(dimension: SoundDimension) {
         default: SoundQuantity(contract_dimension),
         minimum: SoundQuantity(contract_dimension),
         maximum: SoundQuantity(contract_dimension),
-    ): (contract_dimension),
+    ): ParameterContract(contract_dimension),
 }
 
 // Existential packaging keeps differently dimensioned parameters in one
@@ -63,10 +63,10 @@ record ProcessorContract {
     details: Text;
     signature: Text;
     role: SignalRole;
-    ports: List<PortContract>;
+    ports: List(PortContract);
     example: Text;
-    parameters: List<SomeParameterContract>;
-    primitives: List<PrimitiveRequirement>;
+    parameters: List(SomeParameterContract);
+    primitives: List(PrimitiveRequirement);
 }
 
 /// Documentation and written shape for one standard studio term.
@@ -81,8 +81,8 @@ record StudioTermContract {
 /// The edition-pinned finite studio vocabulary crossing the checked boundary.
 record StudioVocabularyArtifact {
     schema_version: Nat;
-    processors: List<ProcessorContract>;
-    terms: List<StudioTermContract>;
+    processors: List(ProcessorContract);
+    terms: List(StudioTermContract);
 }
 
 /// Construct an exact frequency quantity for a catalogue declaration.
@@ -194,7 +194,7 @@ private fn primitive(id: Text) -> PrimitiveRequirement {
 }
 
 /// The public shape shared by unary audio processors.
-private let audio_processor_ports: List<PortContract> = [
+private let audio_processor_ports: List(PortContract) = [
     PortContract {
         inputs = [Audio],
         result = Audio
@@ -202,7 +202,7 @@ private let audio_processor_ports: List<PortContract> = [
 ];
 
 /// The public shape shared by unary control processors.
-private let control_processor_ports: List<PortContract> = [
+private let control_processor_ports: List(PortContract) = [
     PortContract {
         inputs = [Control],
         result = Control
@@ -210,7 +210,7 @@ private let control_processor_ports: List<PortContract> = [
 ];
 
 /// The two context-selected public shapes of an oscillator.
-private let oscillator_ports: List<PortContract> = [
+private let oscillator_ports: List(PortContract) = [
     PortContract {
         inputs = [NoteEvents],
         result = Audio

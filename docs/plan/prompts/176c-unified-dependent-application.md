@@ -1,7 +1,7 @@
 ---
 id: 176c
 slug: unified-dependent-application
-status: pending
+status: done
 depends_on: [170, 176b]
 phase: 3
 ---
@@ -63,8 +63,9 @@ data Vec(A: Type): (length: Nat) -> Type {
 
 `A` is scoped once over every constructor and fixed in every result. `length` belongs to the family signature; a
 constructor supplies its value in its complete result, and matching may refine it. A family with no uniform arguments
-may begin its signature immediately: `data ControlKey: ControlKind -> Type { ... }`. An unindexed `data`, `enum`, or
-`record` may omit the redundant `: Type` and constructor result exactly where the result is uniquely determined.
+may begin its signature immediately: `data ControlKey: (kind: ControlKind) -> Type { ... }`. An unindexed `data`,
+`enum`, or `record` may omit the redundant `: Type` and constructor result exactly where the result is uniquely
+determined.
 
 Do not add an `index` keyword or infer uniformity from constructor bodies. Treating every family argument as an index
 would change motives and require constructors to rebind declaration-wide context; inferring uniformity would make a

@@ -28,9 +28,9 @@ import std::list;
 // reads its own chosen index out of its own fields
 // (`02-core-calculus.md` §1.1): `Origin(besides)` stands at `Succ(besides)`,
 // so a cycle of twelve is one position and eleven besides.
-data Cyclic(n: Nat) {
-    Origin(besides: Nat): (Succ(besides)),
-    After(besides: Nat, earlier: Cyclic(besides)): (Succ(besides)),
+data Cyclic: (n: Nat) -> Type {
+    Origin(besides: Nat): Cyclic(Succ(besides)),
+    After(besides: Nat, earlier: Cyclic(besides)): Cyclic(Succ(besides)),
 }
 
 // A cycle of `n` positions, as a value.
@@ -39,8 +39,8 @@ data Cyclic(n: Nat) {
 // total. An author names the division — `03-musical-domains.md` §5's
 // "naming the division is something an author does" — and names it once:
 // `chromatic` below is that name for twelve.
-data Cycle(n: Nat) {
-    Positions(besides: Nat): (Succ(besides)),
+data Cycle: (n: Nat) -> Type {
+    Positions(besides: Nat): Cycle(Succ(besides)),
 }
 
 // A transposition or an inversion: the operations that preserve a cycle's
@@ -214,24 +214,24 @@ fn moved(n: Nat, place: Cyclic(n), by: Ti) -> Cyclic(n) {
 //
 // A record and not a class: prompt 143 made a structure a value, so this can
 // be passed to `orbit` and `stabilizer` beside any other action.
-fn rotation(n: Nat) -> Action<Cyclic(n), Ti> {
+fn rotation(n: Nat) -> Action(Cyclic(n), Ti) {
     Action {
         act = fn (place: Cyclic(n), by: Ti) -> Cyclic(n) { moved(n, place, by) }
     }
 }
 
 // Every position of the cycle, ascending from zero.
-fn positions(n: Nat, cycle: Cycle(n)) -> List<Cyclic(n)> {
+fn positions(n: Nat, cycle: Cycle(n)) -> List(Cyclic(n)) {
     map(fn (number: Nat) -> Cyclic(n) { place_in(n, cycle, number) }, range(size_of(n, cycle)))
 }
 
 // The n transpositions of the cycle.
-fn transpositions(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+fn transpositions(n: Nat, cycle: Cycle(n)) -> List(Ti) {
     map(fn (steps: Nat) -> Ti { Transpose(steps) }, range(size_of(n, cycle)))
 }
 
 // The n inversions of the cycle.
-fn inversions(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+fn inversions(n: Nat, cycle: Cycle(n)) -> List(Ti) {
     map(fn (about: Nat) -> Ti { Invert(about) }, range(size_of(n, cycle)))
 }
 
@@ -272,11 +272,11 @@ private fn halved(count: Nat) -> Nat {
 // and not written down, which is `03-musical-domains.md` §5's "every count
 // that was a literal in §4 is now derived".
 //
-// The list and the `Group<Ti>` below are two different things and both are
+// The list and the `Group(Ti)` below are two different things and both are
 // wanted: `orbit` and `stabilizer` walk the elements, and composition is
 // what makes a chain of transformations an object before anything is
 // applied.
-fn ti_operations(n: Nat, cycle: Cycle(n)) -> List<Ti> {
+fn ti_operations(n: Nat, cycle: Cycle(n)) -> List(Ti) {
     concat(transpositions(n, cycle), inversions(n, cycle))
 }
 
@@ -343,7 +343,7 @@ fn ti_inverse(n: Nat, cycle: Cycle(n), by: Ti) -> Ti {
 // `unit` takes an element and reads it for its type alone, which is the
 // record's own convention: every operation of a cycle has the same unit,
 // and it is the rotation by nothing.
-fn ti_group(n: Nat, cycle: Cycle(n)) -> Group<Ti> {
+fn ti_group(n: Nat, cycle: Cycle(n)) -> Group(Ti) {
     Group {
         unit = fn (whichever: Ti) -> Ti { Transpose(0) },
         compose = fn (later: Ti, earlier: Ti) -> Ti { ti_compose(n, cycle, later, earlier) },

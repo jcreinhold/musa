@@ -8,7 +8,7 @@ inspect the private flattening as a substitute for prepared-machine identity.
 
 | Question | Example | Fields it may ignore |
 | --- | --- | --- |
-| Do these values have the same meaning in this representation? | `EventTrack<WrittenTime, ScoreFact>` | construction order and fields excluded by the payload equality rule |
+| Do these values have the same meaning in this representation? | `EventTrack(WrittenTime, ScoreFact)` | construction order and fields excluded by the payload equality rule |
 | Did these results come through the same recorded conversions? | an origin path | insertion order and exact duplicate paths |
 | Are these the same prepared instructions for the audio engine? | `PreparedMachine` | source locations used only by the editor |
 | Did these two runs produce the same observable output? | audio-history or conformance comparison | only differences allowed by the named comparison rule |

@@ -255,11 +255,11 @@ fn core_pressure() -> String {
     }
     source.push_str(
         "\n    let deep: Nat = depth_63(0);\n\
-         \x20   let counted: List<Nat> = naturals(512);\n\
+         \x20   let counted: List(Nat) = naturals(512);\n\
          \x20   let folded: Nat = counted.fold_from_start(0, fn (carried, one) { keep(one, carried) });\n\n\
-         \x20   let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };\n\
-         \x20   let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };\n\
-         \x20   let answer: EventTrack<WrittenTime> = compose_music(raise, retrograde, subject);\n\n\
+         \x20   let raise: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) };\n\
+         \x20   let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 e4/4 f4/4 };\n\
+         \x20   let answer: EventTrack(WrittenTime) = compose_music(raise, retrograde, subject);\n\n\
          \x20   score {\n\
          \x20       part strings {\n\
          \x20           voice line {\n\
@@ -288,8 +288,8 @@ fn template_pressure() -> String {
          // A record built eight times, nested use sites, scale contexts, and an import.\n\n\
          import std::context;\n\n\
          record CellMaterial {\n\
-         \x20   cell: EventTrack<WrittenTime>;\n\
-         \x20   answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime>;\n\
+         \x20   cell: EventTrack(WrittenTime);\n\
+         \x20   answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime);\n\
          }\n\n\
          fn cell_material(home: TonalContext, lift: Interval) -> CellMaterial {\n\
          \x20   CellMaterial {\n\
@@ -301,7 +301,7 @@ fn template_pressure() -> String {
          \x20               f5/8\n\
          \x20           }\n\
          \x20       },\n\
-         \x20       answer = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(lift, line) },\n\
+         \x20       answer = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(lift, line) },\n\
          \x20   }\n\
          }\n\n",
     );
@@ -317,9 +317,9 @@ fn template_pressure() -> String {
     }
     source.push_str(
         "\nfn strand(\n\
-         \x20   subject: EventTrack<WrittenTime>,\n\
-         \x20   transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,\n\
-         ) -> EventTrack<WrittenTime> {\n\
+         \x20   subject: EventTrack(WrittenTime),\n\
+         \x20   transform: EventTrack(WrittenTime) -> EventTrack(WrittenTime),\n\
+         ) -> EventTrack(WrittenTime) {\n\
          \x20   music {\n\
          \x20       repeat 4 {\n\
          \x20           in scale c major { use subject; (c5 step 1)/8 (c5 step 2)/8 }\n\
@@ -379,18 +379,18 @@ fn analysis_pressure() -> String {
              meter 4/4;\n\
              key c major;\n\n\
              let home: Scale = scale c major;\n\
-             let five: Option<Roman> = triad_numeral(5);\n\
-             let five_seventh: Option<Roman> = seventh_numeral(5);\n\n\
-             fn in_home(written: Option<Roman>) -> Option<ChordClass> {\n\
+             let five: Option(Roman) = triad_numeral(5);\n\
+             let five_seventh: Option(Roman) = seventh_numeral(5);\n\n\
+             fn in_home(written: Option(Roman)) -> Option(ChordClass) {\n\
                  match written {\n\
                      None -> None,\n\
                      Some(numbered) -> numeral_chord(home, numbered),\n\
                  }\n\
              }\n\n\
-             let tonic: Option<ChordClass> = in_home(triad_numeral(1));\n\
-             let subdominant: Option<ChordClass> = in_home(triad_numeral(4));\n\
-             let dominant: Option<ChordClass> = in_home(five);\n\
-             let dominant_seventh: Option<ChordClass> = in_home(five_seventh);\n\n\
+             let tonic: Option(ChordClass) = in_home(triad_numeral(1));\n\
+             let subdominant: Option(ChordClass) = in_home(triad_numeral(4));\n\
+             let dominant: Option(ChordClass) = in_home(five);\n\
+             let dominant_seventh: Option(ChordClass) = in_home(five_seventh);\n\n\
              score {\n",
     );
     // One chord per bar. The soprano walks a figure over each chord so the
@@ -448,14 +448,14 @@ fn events_pressure() -> String {
     for index in 0..32 {
         let _ = writeln!(
             source,
-            "    let cell_{index}: EventTrack<WrittenTime> = music {{ {}4/8 {}4/8 {}4/8 {}4/8 }};",
+            "    let cell_{index}: EventTrack(WrittenTime) = music {{ {}4/8 {}4/8 {}4/8 {}4/8 }};",
             letter(index),
             letter(index.saturating_add(2)),
             letter(index.saturating_add(4)),
             letter(index.saturating_add(6)),
         );
     }
-    source.push_str("\n    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n");
+    source.push_str("\n    let assembled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] {\n");
     for index in 0..32 {
         let _ = writeln!(source, "        let held_{index} = ${{cell_{index}}} in");
     }

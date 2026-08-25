@@ -6,11 +6,11 @@
 //! # Why the signature is the author's own words
 //!
 //! Because a signature is a thing a reader *writes*. `fn walked(items: StaffItem)
-//! -> (Position<WrittenTime> -> Result<Realization, Text>)` is what the file
+//! -> (Position(WrittenTime) -> Result(Realization, Text))` is what the file
 //! says, and a reader who copies it back out has written a declaration that
 //! compiles. The elaborated type is the same type spelled in the core's
-//! vocabulary — a base type applied rather than in angle brackets, an arrow with
-//! a binder name, `Machine K A B` where the surface writes `Machine<K, A, B>`
+//! vocabulary — a base type applied as a core spine, an arrow with a binder
+//! name, `Machine K A B` where the surface writes `Machine(K, A, B)`
 //! (`02-core-calculus.md` §7) — and printing that back would be a second
 //! translation, out of the surface and then guessing its way back in.
 //!
@@ -30,7 +30,7 @@
 
 use musa_syntax::{SyntaxKind, SyntaxNode};
 
-use super::{child, children, is_type_node};
+use super::{child, is_type_node};
 use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 use crate::resolve::NameKind;
 
@@ -57,7 +57,7 @@ pub(crate) fn documented(
     let result = states_a_result(kind)
         .then(|| written_result(node).or_else(|| inferred().map(TypeNote::new)))
         .flatten();
-    let mut signature = format!("{word} {name}{}", type_parameters(node));
+    let mut signature = format!("{word} {name}");
     // The empty parameter list is written for a `fn` that has one, because a
     // nullary `fn` is *called* with one: a reader shown `let do_re_mi_strong:
     // List<Bool>` would write the name bare and be told it is a function.
@@ -126,22 +126,6 @@ fn states_a_result(kind: NameKind) -> bool {
     matches!(kind, NameKind::Value | NameKind::Function)
 }
 
-/// `<A, B>`, or nothing where none were written.
-fn type_parameters(node: &SyntaxNode) -> String {
-    let Some(list) = child(node, |kind| kind == SyntaxKind::TypeParams) else {
-        return String::new();
-    };
-    let written: Vec<String> = children(&list, |kind| kind == SyntaxKind::TypeParam)
-        .iter()
-        .map(collapsed)
-        .collect();
-    if written.is_empty() {
-        String::new()
-    } else {
-        format!("<{}>", written.join(", "))
-    }
-}
-
 /// The parameters this declaration wrote, in order.
 ///
 /// A parameter with no written type is labelled by its name alone, which is what
@@ -154,10 +138,15 @@ fn parameters(node: &SyntaxNode) -> Vec<ParameterDoc> {
         .filter_map(|parameter| {
             let name = crate::resolve::token_text(parameter, SyntaxKind::Identifier)?;
             let ty = written_result(parameter);
+            let label = ty
+                .as_ref()
+                .map_or_else(|| name.clone(), |ty| format!("{name}: {}", ty.name));
             Some(ParameterDoc {
-                label: ty
-                    .as_ref()
-                    .map_or_else(|| name.clone(), |ty| format!("{name}: {}", ty.name)),
+                label: if super::writes(parameter, SyntaxKind::LBrace) {
+                    format!("{{{label}}}")
+                } else {
+                    label
+                },
                 name,
                 ty: ty.unwrap_or_else(|| TypeNote::new(String::new())),
             })
@@ -185,8 +174,8 @@ fn collapsed(node: &SyntaxNode) -> String {
 /// `(x : Nat) → Nat` has been shown a type they cannot write, and a reader shown
 /// nothing has been shown that the declaration wrote none. The shapes that do
 /// have one are the ones a `let` without an annotation ends up at — a base type,
-/// a declared family, a definition standing for a type, each with its arguments
-/// in angle brackets, and the arrow that declares no parameter.
+/// a declared family, a definition standing for a type, each with its ordinary
+/// argument list, and the arrow that declares no parameter.
 pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
     let mut head = ty;
     let mut arguments: Vec<&musa_calculus::Term> = Vec::new();
@@ -207,7 +196,7 @@ pub(crate) fn spelled(ty: &musa_calculus::Term) -> Option<String> {
         Some(if written.is_empty() {
             String::new()
         } else {
-            format!("<{}>", written.join(", "))
+            format!("({})", written.join(", "))
         })
     };
     match *head.shape() {

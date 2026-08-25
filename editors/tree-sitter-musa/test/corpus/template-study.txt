@@ -8,7 +8,7 @@ template-study: reusable material as ordinary functions, and one piece
 // source any number of pieces may import and call. The piece itself never was
 // reusable, because a file is one piece however the piece got there
 // (docs/rules/language/01-surface.md §6).
-fn theme() -> EventTrack<WrittenTime> {
+fn theme() -> EventTrack(WrittenTime) {
     music {
         c4/4
         d4/4
@@ -20,15 +20,15 @@ fn theme() -> EventTrack<WrittenTime> {
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same function, two voices, two identities.
 fn answer(
-    subject: EventTrack<WrittenTime>,
-    transform: EventTrack<WrittenTime> -> EventTrack<WrittenTime>,
-) -> EventTrack<WrittenTime> { transform(subject) }
+    subject: EventTrack(WrittenTime),
+    transform: EventTrack(WrittenTime) -> EventTrack(WrittenTime),
+) -> EventTrack(WrittenTime) { transform(subject) }
 
 // What was a template's parameter list is the file's lexical root. The study
 // exists in whatever key these say.
 let mode: Scale = scale g mixolydian;
 
-let subject: EventTrack<WrittenTime> = theme();
+let subject: EventTrack(WrittenTime) = theme();
 
 piece "Study" {
     meter 4/4;
@@ -44,7 +44,7 @@ piece "Study" {
             voice upper {
                 use answer(
                     subject,
-                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                         transpose(P8, line)
                     },
                 );
@@ -52,7 +52,7 @@ piece "Study" {
             voice higher {
                 use answer(
                     subject,
-                    fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                         transpose(P15, line)
                     },
                 );
@@ -74,12 +74,13 @@ piece "Study" {
     (identifier)
     (parameter_list)
     (type_expression
-      (applied_type
+      (application_expression
         (type_name
           (identifier))
-        (type_expression
-          (type_name
-            (identifier)))))
+        (type_argument_list
+          (type_expression
+            (type_name
+              (identifier))))))
     (block_expression
       (expression
         (music_expression
@@ -107,35 +108,39 @@ piece "Study" {
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier))))))
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier)))))))
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier))))
-          (type_expression
-            (applied_type
-              (type_name
-                (identifier))
+            (type_argument_list
               (type_expression
                 (type_name
-                  (identifier))))))))
+                  (identifier)))))
+          (type_expression
+            (application_expression
+              (type_name
+                (identifier))
+              (type_argument_list
+                (type_expression
+                  (type_name
+                    (identifier)))))))))
     (type_expression
-      (applied_type
+      (application_expression
         (type_name
           (identifier))
-        (type_expression
-          (type_name
-            (identifier)))))
+        (type_argument_list
+          (type_expression
+            (type_name
+              (identifier))))))
     (block_expression
       (expression
         (application_expression
@@ -161,12 +166,13 @@ piece "Study" {
   (let_declaration
     (identifier)
     (type_expression
-      (applied_type
+      (application_expression
         (type_name
           (identifier))
-        (type_expression
-          (type_name
-            (identifier)))))
+        (type_argument_list
+          (type_expression
+            (type_name
+              (identifier))))))
     (expression
       (application_expression
         (name_expression
@@ -213,19 +219,21 @@ piece "Study" {
                           (parameter
                             (identifier)
                             (type_expression
-                              (applied_type
+                              (application_expression
                                 (type_name
                                   (identifier))
-                                (type_expression
-                                  (type_name
-                                    (identifier)))))))
+                                (type_argument_list
+                                  (type_expression
+                                    (type_name
+                                      (identifier))))))))
                         (type_expression
-                          (applied_type
+                          (application_expression
                             (type_name
                               (identifier))
-                            (type_expression
-                              (type_name
-                                (identifier)))))
+                            (type_argument_list
+                              (type_expression
+                                (type_name
+                                  (identifier))))))
                         (block_expression
                           (expression
                             (application_expression
@@ -258,19 +266,21 @@ piece "Study" {
                           (parameter
                             (identifier)
                             (type_expression
-                              (applied_type
+                              (application_expression
                                 (type_name
                                   (identifier))
-                                (type_expression
-                                  (type_name
-                                    (identifier)))))))
+                                (type_argument_list
+                                  (type_expression
+                                    (type_name
+                                      (identifier))))))))
                         (type_expression
-                          (applied_type
+                          (application_expression
                             (type_name
                               (identifier))
-                            (type_expression
-                              (type_name
-                                (identifier)))))
+                            (type_argument_list
+                              (type_expression
+                                (type_name
+                                  (identifier))))))
                         (block_expression
                           (expression
                             (application_expression

@@ -6,8 +6,8 @@
 piece "A Numeral Has No Collection" {
     import std::tonal::harmony;
 
-    let five: Option<Roman> = triad_numeral(5);
-    let dominant: Option<ChordClass> = five;
+    let five: Option(Roman) = triad_numeral(5);
+    let dominant: Option(ChordClass) = five;
 
     score {
         part solo {

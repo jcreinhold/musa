@@ -16,20 +16,20 @@ data SoundDimension {
 
 // A unit chooses its dimension in its constructor result. That shared index is
 // checked by the ordinary elaborator and Miller-pattern unifier.
-data SoundUnit(dimension: SoundDimension) {
-    Hertz: (Frequency),
-    Linear: (LinearAmplitude),
-    Decibels: (Level),
-    Seconds: (Time),
+data SoundUnit: (dimension: SoundDimension) -> Type {
+    Hertz: SoundUnit(Frequency),
+    Linear: SoundUnit(LinearAmplitude),
+    Decibels: SoundUnit(Level),
+    Seconds: SoundUnit(Time),
 }
 
 // One exact normalized magnitude and a unit of the same dimension.
-data SoundQuantity(dimension: SoundDimension) {
+data SoundQuantity: (dimension: SoundDimension) -> Type {
     Written(
         quantity_dimension: SoundDimension,
         magnitude: Ratio,
         unit: SoundUnit(quantity_dimension),
-    ): (quantity_dimension),
+    ): SoundQuantity(quantity_dimension),
 }
 
 // A storable envelope for consumers that accept quantities of several

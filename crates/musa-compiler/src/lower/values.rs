@@ -18,7 +18,7 @@
 //!   callee — which is the core's, one pass later. Prompt 142's migration writes
 //!   the arguments in order.
 
-use musa_calculus::{Origin, Raw, RawArm, RawPattern};
+use musa_calculus::{Origin, Raw, RawArm, RawPattern, Sort};
 use musa_syntax::ast::AstNode as _;
 use musa_syntax::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -177,6 +177,18 @@ impl Lowering<'_> {
             && let Some(literal) = phase_literal(&written)
         {
             return Some(Raw::lit(origin, literal));
+        }
+        // Types are terms in Musa, so a type name has the same core spelling
+        // wherever it occurs. In particular, an argument of `Option(NoteName)`
+        // is parsed by the one application grammar as a `NameExpr`; it must not
+        // lose the surface-to-core spelling that a bare annotation receives.
+        // This is deliberately not application-head-specific: `Type` and every
+        // compiler-owned type may be passed as an ordinary dependent argument.
+        if written == "Type" {
+            return Some(Raw::universe(origin, Sort::ZERO));
+        }
+        if let Some(spelled) = super::types::compiler_type(&written) {
+            return Some(Raw::var(origin, spelled));
         }
         if self.naming.reads_whole(&written) {
             if self.here {
@@ -438,6 +450,17 @@ impl Lowering<'_> {
     /// about the written head, not about any type.
     fn application(&mut self, node: &SyntaxNode, origin: Origin) -> Option<Raw> {
         let head = child(node, is_expr_node)?;
+        if head.kind() == SyntaxKind::NameExpr
+            && let Some(written) = written_name(&head)
+        {
+            let written_arguments = written_arguments(node);
+            if let Some((index, help)) = self.indexed_base(&written) {
+                return self.written_index(index, &written, node, &written_arguments, help);
+            }
+            if matches!(written.as_str(), "Machine" | "Primitive") {
+                return self.machine_type(node, origin, &written, &head, &written_arguments);
+            }
+        }
         let Written {
             arguments,
             slots,
@@ -599,7 +622,7 @@ impl Lowering<'_> {
                         .note("a field's name is written at the declaration; a use passes values by position"),
                 );
             }
-            let expression = child(&argument, is_expr_node)?;
+            let expression = child(&argument, |kind| is_expr_node(kind) || super::is_type_node(kind))?;
             if is_section_hole(&expression) {
                 // Minted rather than named after the parameter, because the
                 // parameter's name is the callee's and this reading has no
@@ -612,7 +635,11 @@ impl Lowering<'_> {
                 written.slots.push((at, bound));
                 continue;
             }
-            written.arguments.push(self.value(&expression)?);
+            written.arguments.push(if super::is_type_node(expression.kind()) {
+                self.ty(&expression)?
+            } else {
+                self.value(&expression)?
+            });
         }
         Some(written)
     }
@@ -1374,6 +1401,9 @@ fn written_name(node: &SyntaxNode) -> Option<String> {
         matches!(
             token.kind(),
             SyntaxKind::Identifier
+                | SyntaxKind::ListKw
+                | SyntaxKind::OptionKw
+                | SyntaxKind::ResultKw
                 | SyntaxKind::TransposeKw
                 | SyntaxKind::StretchKw
                 | SyntaxKind::RetrogradeKw
@@ -1411,7 +1441,7 @@ fn written_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
     };
     children(&list, |kind| kind == SyntaxKind::ExprArg)
         .into_iter()
-        .filter_map(|argument| child(&argument, is_expr_node))
+        .filter_map(|argument| child(&argument, |kind| is_expr_node(kind) || is_type_node(kind)))
         .collect()
 }
 

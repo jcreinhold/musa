@@ -49,7 +49,7 @@ fn errors(declarations: &str) -> Vec<(Code, String)> {
 fn a_lambda_specializes_a_higher_order_call() {
     let compilation = compile_core(
         "fn risen(by: Nat, from: Nat) -> Nat { from } \
-         let walk: List<Nat> = map(fn (from: Nat) -> Nat { risen(2, from) }, range(4));",
+         let walk: List(Nat) = map(fn (from: Nat) -> Nat { risen(2, from) }, range(4));",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -85,10 +85,10 @@ fn a_lambda_captures_the_parameter_of_the_function_that_writes_it() {
     let raised = |interval: &str| {
         format!(
             "piece \"Capture\" {{ import std::core; \
-             fn raised(by: Interval, line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {{ \
-                 compose_music(fn (inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {{ transpose(by, inner) }}, retrograde, line) \
+             fn raised(by: Interval, line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {{ \
+                 compose_music(fn (inner: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {{ transpose(by, inner) }}, retrograde, line) \
              }} \
-             let subject: EventTrack<WrittenTime> = music {{ c4/4 e4/4 }}; \
+             let subject: EventTrack(WrittenTime) = music {{ c4/4 e4/4 }}; \
              score {{ part p {{ voice v {{ use raised({interval}, subject); }} }} }} }}"
         )
     };
@@ -100,7 +100,7 @@ fn a_lambda_captures_the_parameter_of_the_function_that_writes_it() {
 /// same way any other expression does (prompt 127aa).
 #[test]
 fn a_lambda_may_omit_the_annotations_a_declaration_may_omit() {
-    let compilation = compile_core("let walk: List<Nat> = map(fn (from) { identity_nat(from) }, range(4));");
+    let compilation = compile_core("let walk: List(Nat) = map(fn (from) { identity_nat(from) }, range(4));");
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
 
@@ -123,7 +123,7 @@ fn a_call_that_omits_an_argument_is_refused_by_name() {
 /// builtin is a call with a missing argument like any other.
 #[test]
 fn an_under_applied_builtin_is_refused() {
-    let reported = errors("let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8);");
+    let reported = errors("let raise: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(P8);");
     assert!(
         reported.iter().any(|(code, _)| *code == Code::WrongArity),
         "{reported:?}"
@@ -177,7 +177,7 @@ fn a_lambda_is_a_value_and_may_be_stored() {
 /// and a value.
 #[test]
 fn a_section_names_the_function_a_call_is_waiting_for() {
-    let reported = errors("let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8, _);");
+    let reported = errors("let raise: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(P8, _);");
     assert!(reported.is_empty(), "{reported:?}");
 }
 
@@ -211,13 +211,13 @@ fn a_section_applied_is_the_call_it_came_from() {
     let piece = |declarations: &str, used: &str| {
         format!(
             "piece \"Sections\" {{ import std::core; \
-             let subject: EventTrack<WrittenTime> = music {{ c4/4 e4/4 }}; {declarations} \
+             let subject: EventTrack(WrittenTime) = music {{ c4/4 e4/4 }}; {declarations} \
              score {{ part p {{ voice v {{ use {used}; }} }} }} }}"
         )
     };
     let whole = sounding(&piece("", "transpose(P8, subject)"));
     let sectioned = sounding(&piece(
-        "let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P8, _);",
+        "let raise: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(P8, _);",
         "raise(subject)",
     ));
     assert_eq!(sectioned, whole);
@@ -230,10 +230,10 @@ fn a_section_applied_is_the_call_it_came_from() {
 #[test]
 fn two_sections_read_left_to_right() {
     let reported =
-        errors("let moved: Interval -> EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(_, _);");
+        errors("let moved: Interval -> EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(_, _);");
     assert!(reported.is_empty(), "{reported:?}");
     let swapped =
-        errors("let moved: EventTrack<WrittenTime> -> Interval -> EventTrack<WrittenTime> = transpose(_, _);");
+        errors("let moved: EventTrack(WrittenTime) -> Interval -> EventTrack(WrittenTime) = transpose(_, _);");
     assert!(!swapped.is_empty(), "the other order was accepted");
 }
 

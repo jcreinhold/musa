@@ -153,13 +153,13 @@ fn every_written_base_type_lowers_to_a_type_the_core_accepts() {
         "Triad",
         "Roman",
         "Voicing",
-        "Duration<WrittenTime>",
-        "Position<PhysicalTime>",
+        "Duration(WrittenTime)",
+        "Position(PhysicalTime)",
         // The type a fragment inhabits, written the way its duration is. This
         // is the ledger's replacement for `Music`, and it is a *written* type
         // rather than a contextual one: a track of beats and a track of seconds
         // are different types, and neither depends on where it is used.
-        "EventTrack<WrittenTime>",
+        "EventTrack(WrittenTime)",
     ] {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
@@ -173,7 +173,7 @@ fn every_written_base_type_lowers_to_a_type_the_core_accepts() {
 #[test]
 fn a_written_constructor_lowers_to_the_family_applied() {
     let cx = host();
-    for written in ["Option<Nat>", "List<Text>", "Result<Ratio, Text>", "List<List<Pitch>>"] {
+    for written in ["Option(Nat)", "List(Text)", "Result(Ratio, Text)", "List(List(Pitch))"] {
         let (raw, complaints) = lowered_type(written);
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
@@ -206,7 +206,7 @@ fn a_written_arrow_lowers_to_a_pi_nothing_refers_through() {
 #[test]
 fn a_name_the_compiler_does_not_own_is_written_through_for_the_core_to_resolve() {
     let cx = host();
-    let (raw, complaints) = lowered_type("List<A>");
+    let (raw, complaints) = lowered_type("List(A)");
     assert!(
         complaints.is_empty(),
         "lowering holds no context, so it has nothing to complain with"
@@ -236,13 +236,9 @@ fn a_bare_indexed_type_is_refused_where_it_is_written() {
 
 /// `T(i)` in a type reaches the core as the application it is.
 ///
-/// The surface's one spelling that applies a type constructor to a *value*:
-/// `Pc<A>` is the type-argument form and `applied_type` owns it, while `Pc(12)`
-/// hands a head a number. Prompt 151 deleted the index stratum that once gave
-/// `T(i)` a shape of its own, so the whole of the path — parser to
-/// `IndexedType`, [`Lowering::ty`] to `Raw::app`, elaborator to ordinary
-/// application — has to hold, and nothing else in the crate would notice if the
-/// parentheses were dropped on the way down.
+/// Types and values share one application spelling and one CST node. `Pc(12)`
+/// therefore follows the same `ApplyExpr` path as `Option(NoteName)`, and the
+/// reached Π domain—not a parser category—decides what the argument means.
 ///
 /// The *refusal* is what the law ends at. Neither `Nat` nor `Ratio` takes an
 /// argument, so both end where an application of a non-function ends — which is
@@ -256,7 +252,7 @@ fn an_index_written_in_a_type_reaches_the_core_as_an_application() {
         assert!(complaints.is_empty(), "`{written}` lowers without complaint");
         let raw = raw.unwrap_or_else(|| panic!("`{written}` lowers"));
         assert!(
-            matches!(*raw.shape(), RawShape::App { .. }),
+            matches!(*raw.shape(), RawShape::App { .. } | RawShape::Call { .. }),
             "`{written}` lowers to the application it writes, not to its head alone"
         );
         let Err(musa_calculus::ElabError::Refused(refusal)) = musa_calculus::check(&cx, &type0(), &raw) else {
@@ -272,12 +268,12 @@ fn an_index_written_in_a_type_reaches_the_core_as_an_application() {
 #[test]
 fn a_phase_type_is_readable_only_where_an_adapter_is_read() {
     let cx = host();
-    let (raw, complaints) = lowered_type_in("Syntax<Expr>", true);
-    assert!(complaints.is_empty(), "`Syntax<Expr>` lowers inside the phase");
-    let raw = raw.expect("`Syntax<Expr>` lowers inside the phase");
+    let (raw, complaints) = lowered_type_in("Syntax(Expr)", true);
+    assert!(complaints.is_empty(), "`Syntax(Expr)` lowers inside the phase");
+    let raw = raw.expect("`Syntax(Expr)` lowers inside the phase");
     musa_calculus::check(&cx, &type0(), &raw).expect("`Syntax ⟨expr⟩` is a type");
 
-    let (raw, complaints) = lowered_type("Syntax<Expr>");
+    let (raw, complaints) = lowered_type("Syntax(Expr)");
     assert!(
         complaints.is_empty(),
         "outside the phase the word is written through, not complained about here"
@@ -419,7 +415,7 @@ fn a_conditional_lowers_to_the_two_armed_boolean_match() {
 #[test]
 fn a_question_lowers_to_a_match_that_evaluates_its_subject_once() {
     let cx = host();
-    let root = parsed(" fn probe(r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(r?) } ");
+    let root = parsed(" fn probe(r: Result(Nat, Text)) -> Result(Nat, Text) { Ok(r?) } ");
     let node = first(&root, SyntaxKind::BlockExpr);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();
@@ -620,7 +616,7 @@ fn inhabits_its_written_type(cx: &Cx, written: &str, defined: &Definition) {
 
 #[test]
 fn a_data_declaration_lowers_to_a_family_the_core_declares() {
-    let written = "data Motive { Silence, Sounded(sung: Pitch, held: Duration<WrittenTime>) }";
+    let written = "data Motive { Silence, Sounded(sung: Pitch, held: Duration(WrittenTime)) }";
     let data = declaration(written, SyntaxKind::DataDecl);
     assert_eq!(
         cases(&data),
@@ -637,7 +633,7 @@ fn a_data_declaration_lowers_to_a_family_the_core_declares() {
 /// fields have names worth writing.
 #[test]
 fn an_enum_lowers_a_positional_case_by_position_and_a_named_one_by_name() {
-    let written = "enum Reading<A> { Done(A), Refused { place: Text; why: Text; } }";
+    let written = "enum Reading(A: Type) { Done(A), Refused { place: Text; why: Text; } }";
     let data = declaration(written, SyntaxKind::EnumDecl);
     assert_eq!(
         cases(&data),
@@ -699,8 +695,11 @@ fn the_three_spellings_of_one_declaration_are_one_family() {
     // And the positional form, which `data` could not write before 161 and
     // which is the other half of what made `enum` a third form.
     let positional = [
-        ("data Reading<A> { Done(A), Refused(Text) }", SyntaxKind::DataDecl),
-        ("enum Reading<A> { Done(A), Refused(Text) }", SyntaxKind::EnumDecl),
+        (
+            "data Reading(A: Type) { Done(A): Reading(A), Refused(Text): Reading(A) }",
+            SyntaxKind::DataDecl,
+        ),
+        ("enum Reading(A: Type) { Done(A), Refused(Text) }", SyntaxKind::EnumDecl),
     ];
     let read: Vec<String> = positional
         .iter()
@@ -774,11 +773,11 @@ fn an_unmarked_case_takes_the_declarations_marker_under_every_spelling() {
 fn an_index_telescope_is_refused_by_the_word_that_wrote_it() {
     for (written, kind, word) in [
         (
-            "record Pending(n: Nat) { read: Nat; }",
+            "record Pending: (n: Nat) -> Type { read: Nat; }",
             SyntaxKind::RecordDecl,
             "record",
         ),
-        ("enum Reading(n: Nat) { Done }", SyntaxKind::EnumDecl, "enum"),
+        ("enum Reading: (n: Nat) -> Type { Done }", SyntaxKind::EnumDecl, "enum"),
     ] {
         let (item, complaints) = lowered_item(written, kind);
         assert!(item.is_none(), "`{written}` is refused");
@@ -798,7 +797,10 @@ fn an_index_telescope_is_refused_by_the_word_that_wrote_it() {
         );
     }
     // And `data`, which is the word that may: the same telescope is read.
-    let data = declaration("data Vect<A>(n: Nat) { Nil : (0) }", SyntaxKind::DataDecl);
+    let data = declaration(
+        "data Vect(A: Type): (n: Nat) -> Type { Nil : Vect(A, 0) }",
+        SyntaxKind::DataDecl,
+    );
     assert_eq!(
         data.families.first().expect("one family").indices.len(),
         1,
@@ -810,7 +812,7 @@ fn an_index_telescope_is_refused_by_the_word_that_wrote_it() {
 /// makes a written `Cell<Nat>` the application `Cell Nat`.
 #[test]
 fn a_parameterized_record_puts_its_parameter_on_the_family() {
-    let written = "record Cell<A> { index: Nat; value: A; }";
+    let written = "record Cell(A: Type) { index: Nat; value: A; }";
     let data = declaration(written, SyntaxKind::RecordDecl);
     assert_eq!(
         cases(&data),
@@ -833,7 +835,7 @@ fn a_parameterized_record_puts_its_parameter_on_the_family() {
         .expect("`Cell` is in scope once the group is declared");
     assert!(
         musa_calculus::convertible_types(&cx, &declared, &expected).expect("both are types"),
-        "a record's parameter is explicit, because a written `Cell<Nat>` is `Cell Nat`"
+        "a record's parameter is explicit, because a written `Cell(Nat)` is `Cell Nat`"
     );
 }
 
@@ -926,7 +928,7 @@ fn a_second_block_at_one_head_adds_to_the_same_namespace() {
 /// still owns the reading of.
 #[test]
 fn a_form_with_no_core_shape_is_refused_at_the_node_with_its_prompt_named() {
-    let root = parsed(" fn read(node: Syntax<TokenTree>) -> Nat { match node { quote { a } -> 1, } } ");
+    let root = parsed(" fn read(node: Syntax(TokenTree)) -> Nat { match node { quote { a } -> 1, } } ");
     let node = first(&root, SyntaxKind::Pattern);
     let mut resolver = Resolver::new();
     let mut sites = Sites::default();

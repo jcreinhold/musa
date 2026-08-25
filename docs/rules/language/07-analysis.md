@@ -41,7 +41,7 @@ Each kind states, in the doc comment of the module that implements it:
 1. **The abstract domain.** What its findings *are*, as a set. Not "chord labels" — the actual objects, with the
    coordinates they carry.
 2. **The abstraction map α.** How the concrete score projection (`ScoreSnapshot`, itself a projection of a
-   `EventTrack<WrittenTime, ScoreFact>`) maps into that domain. Every finding must be the image of something under α.
+   `EventTrack(WrittenTime, ScoreFact)`) maps into that domain. Every finding must be the image of something under α.
 3. **The soundness claim.** What γ, the concretization, admits: the set of concrete scores a report is consistent with.
    This is what a finding licenses a reader to conclude — and, equally, what it does not.
 

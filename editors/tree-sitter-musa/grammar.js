@@ -122,6 +122,7 @@ module.exports = grammar({
     // parser looks three tokens ahead for `{ IDENT =`
     // (Parser::at_field_init); here both readings are explored.
     [$.name_expression, $.record_literal_expression],
+    [$.type_name, $.name_expression],
   ],
 
   // `identifier` as the word token steers error recovery toward spelling
@@ -194,7 +195,8 @@ module.exports = grammar({
         optional('private'),
         'data',
         field('name', $.identifier),
-        optional($.type_parameter_list),
+        optional($.parameter_list),
+        optional($.data_signature),
         '{',
         optional(seq($.data_variant, repeat(seq(',', $.data_variant)), optional(','))),
         '}',
@@ -206,6 +208,7 @@ module.exports = grammar({
         optional(
           seq('(', optional(seq($.data_field, repeat(seq(',', $.data_field)), optional(','))), ')'),
         ),
+        optional($.constructor_result),
       ),
 
     data_field: ($) => seq(field('name', $.identifier), ':', field('type', $.type_expression)),
@@ -221,7 +224,8 @@ module.exports = grammar({
         optional('private'),
         'record',
         field('name', $.identifier),
-        optional($.type_parameter_list),
+        optional($.parameter_list),
+        optional($.data_signature),
         '{',
         repeat($.field_declaration),
         '}',
@@ -238,7 +242,8 @@ module.exports = grammar({
         optional('private'),
         'enum',
         field('name', $.identifier),
-        optional($.type_parameter_list),
+        optional($.parameter_list),
+        optional($.data_signature),
         '{',
         optional(seq($.enum_case, repeat(seq(',', $.enum_case)), optional(','))),
         '}',
@@ -273,14 +278,17 @@ module.exports = grammar({
         '}',
       ),
 
-    // Parser::type_params — the types a declaration abstracts over. A
-    // parameter is a name and nothing else: it has no kind to write, because
-    // the only kind a declaration's parameter can have is the one every
-    // storable type has.
-    type_parameter_list: ($) =>
-      seq('<', optional(seq($.type_parameter, repeat(seq(',', $.type_parameter)), optional(','))), '>'),
+    data_signature: ($) =>
+      seq(
+        ':',
+        '(',
+        optional(seq($.data_field, repeat(seq(',', $.data_field)), optional(','))),
+        ')',
+        '->',
+        'Type',
+      ),
 
-    type_parameter: ($) => $.identifier,
+    constructor_result: ($) => seq(':', field('type', $.type_expression)),
 
     // --- Piece level (Parser::piece_decl) -------------------------------
 
@@ -434,7 +442,6 @@ module.exports = grammar({
         optional('private'),
         'fn',
         field('name', $.identifier),
-        optional($.type_parameter_list),
         $.parameter_list,
         optional(seq('->', field('result', $.type_expression))),
         field('body', $.block_expression),
@@ -445,7 +452,11 @@ module.exports = grammar({
 
     // No default: `x: τ = e` is a syntax error in the hand parser, so it is
     // not a clean parse here either.
-    parameter: ($) => seq(field('name', $.identifier), optional(seq(':', field('type', $.type_expression)))),
+    parameter: ($) =>
+      choice(
+        seq(field('name', $.identifier), optional(seq(':', field('type', $.type_expression)))),
+        seq('{', field('name', $.identifier), ':', field('type', $.type_expression), '}'),
+      ),
 
     // Function arrows associate right. Parentheses group a single type and
     // a comma makes a product; option/list are the only type constructors.
@@ -455,15 +466,10 @@ module.exports = grammar({
         $._type_atom,
       ),
 
-    _type_atom: ($) => choice($._unindexed_type_atom, $.indexed_type),
-
-    _unindexed_type_atom: ($) =>
+    _type_atom: ($) =>
       choice(
         $.type_name,
-        $.applied_type,
-        $.option_type,
-        $.list_type,
-        $.result_type,
+        alias($._type_application, $.application_expression),
         seq('(', $.type_expression, ')'),
         $.product_type,
       ),
@@ -472,38 +478,23 @@ module.exports = grammar({
     // keyword stands here: `key` is a statement and `Key` is a type
     // (Parser::type_atom).
     type_name: ($) => $.identifier,
-    // `Tree<Nat>` — a declared type applied to its arguments. Which names are
-    // declarations is a fact about the program, not about this file, so the
-    // shape is what decides the node here exactly as it does in the hand
-    // parser (Parser::type_atom).
-    applied_type: ($) =>
-      seq(field('name', $.type_name), '<', $.type_expression, repeat(seq(',', $.type_expression)), '>'),
-    // `Pc(12)`, `Equal<Nat>(left, right)` — a type carrying one or more
-    // indices. Parentheses may follow an atom that already took type
-    // parameters, exactly as Parser::type_expr loops after Parser::type_atom.
-    // Each telescope is a comma-separated list of ordinary expressions; what
-    // an index may *say* is a checker restriction and not a second syntax.
-    indexed_type: ($) =>
-      seq(
-        field('base', $._unindexed_type_atom),
-        repeat1($.type_index_argument_list),
-      ),
-    type_index_argument_list: ($) =>
+    // Types are terms. This aliases the type-position production to the same
+    // visible application node used by value calls; the reached Π domain
+    // decides whether an argument is a type, an index, or another value.
+    _type_application: ($) =>
+      seq(field('function', choice($.type_name, 'Option', 'List', 'Result')), repeat1($.type_argument_list)),
+    type_argument_list: ($) =>
       seq(
         '(',
         optional(
           seq(
-            field('index', $.expression),
-            repeat(seq(',', field('index', $.expression))),
+            field('argument', choice($.type_expression, $.expression)),
+            repeat(seq(',', field('argument', choice($.type_expression, $.expression)))),
             optional(','),
           ),
         ),
         ')',
       ),
-    option_type: ($) => seq('Option', '<', $.type_expression, '>'),
-    list_type: ($) => seq('List', '<', $.type_expression, '>'),
-    // The binary sum, in its one surface spelling (Parser::type_atom).
-    result_type: ($) => seq('Result', '<', $.type_expression, ',', $.type_expression, '>'),
     product_type: ($) =>
       seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
 

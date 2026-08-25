@@ -20,7 +20,6 @@
 (data_variant name: (identifier) @local.definition)
 (record_declaration name: (identifier) @local.definition)
 (enum_declaration name: (identifier) @local.definition)
-(type_parameter (identifier) @local.definition)
 (enum_case name: (identifier) @local.definition)
 (record_literal_expression type: (identifier) @local.reference)
 (path_expression type: (identifier) @local.reference)

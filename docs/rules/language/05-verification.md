@@ -43,7 +43,7 @@ nothing else. The family is:
 | `pitches_in(Scale)` | every sounded note is spelled as a member of the collection | OMT `013` |
 | `realizes(ChordClass, policy)` | the sounded classes stand in the policy's relation to the chord's members, and the designated bass, if there is one, is the lowest note | OMT `017`–`019` |
 | `voices(Nat)` | wherever anything sounds, exactly that many notes sound at once | OMT `022` |
-| `within_ranges(List<(Pitch, Pitch)>)` | each voice of each sonority, counted from the bottom, lies in the range given for it | OMT `022` §Range |
+| `within_ranges(List((Pitch, Pitch)))` | each voice of each sonority, counted from the bottom, lies in the range given for it | OMT `022` §Range |
 
 The realization policy is one of three words — `exactly`, `may_omit`, `may_add` — and not a value of an
 elaboration-language type: three inhabitants no function can take or return would be language surface with no caller.
@@ -84,10 +84,10 @@ Implementations must test the following at the equality named in `00-semantics.m
    exists.
 7. **Pitch action:** identity, composition, and cancellation from `03-musical-domains.md`, stated over the records
    `stdlib/src/algebra.musa` declares — traits, which an earlier statement of this line named, were deleted at prompt
-   146. `Group<Interval>`: `compose` is associative, `unit` is neutral on both sides, and `compose(g, inverse(g))` is
-   `unit`. `Action<Pitch, Interval>` and `Action<NoteName, Interval>`: `act(x, unit(g))` is `x`, and `act(x, compose(g,
-   h))` is `act(act(x, h), g)`. `Torsor<Pitch, Interval>`: `act(a, difference(a, b))` is `b` — the cancellation step,
-   and the one law that separates a torsor from a carrier with an action. The absent `Torsor<NoteName, Interval>` is
+   146. `Group(Interval)`: `compose` is associative, `unit` is neutral on both sides, and `compose(g, inverse(g))` is
+   `unit`. `Action(Pitch, Interval)` and `Action(NoteName, Interval)`: `act(x, unit(g))` is `x`, and `act(x, compose(g,
+   h))` is `act(act(x, h), g)`. `Torsor(Pitch, Interval)`: `act(a, difference(a, b))` is `b` — the cancellation step,
+   and the one law that separates a torsor from a carrier with an action. The absent `Torsor(NoteName, Interval)` is
    part of the law rather than a gap in it: `P8` fixes every spelled class, so the difference is not unique and the
    suite checks that no instance claims it is.
 8. **Scale round trip:** `locate(realize(...))` on members returns the canonical degree/register.
@@ -118,7 +118,7 @@ stuck for an abstract `x`; every carrier in `stdlib/src/algebra.musa` and `stdli
 arithmetic before it reaches a normal form; and `Pitch`, `NoteName`, `Interval` and `Triad` are base types with no
 eliminator at all. `stdlib/src/algebra.musa`'s own module comment carries the measurement and the refused terms.
 
-What *is* checked by the compiler is the closed case. `Equal<Ti>(ti_compose(12, chromatic, Transpose(0), Transpose(3)),
+What *is* checked by the compiler is the closed case. `Equal(Ti, ti_compose(12, chromatic, Transpose(0), Transpose(3)),
 Transpose(3))` is inhabited by `Refl`, and the fixtures in `examples/` are made of exactly such bindings: a wrong number
 there is a type error rather than a failing assertion. A law is the quantified form of those, and quantifying is the
 step that does not survive.

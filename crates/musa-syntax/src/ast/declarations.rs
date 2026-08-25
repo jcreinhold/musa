@@ -281,12 +281,11 @@ pub(crate) fn written_type(node: &SyntaxNode) -> Option<SyntaxNode> {
 /// The type parameters written on a declaration.
 pub(crate) fn type_parameters(node: &SyntaxNode) -> Vec<String> {
     node.children()
-        .find(|child| child.kind() == SyntaxKind::TypeParams)
+        .find_map(ParamList::cast)
         .map(|params| {
-            params
-                .children()
-                .filter(|child| child.kind() == SyntaxKind::TypeParam)
-                .filter_map(|param| token_text(&param, SyntaxKind::Identifier))
+            children::<FnParam>(&params.0)
+                .into_iter()
+                .filter_map(|param| param.name())
                 .collect()
         })
         .unwrap_or_default()

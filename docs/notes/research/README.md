@@ -48,6 +48,7 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [72](language-design-closure/72-core-obligation-matrix.md) | The dependent core's argued obligations paired with falsifying executable controls |
 | [73](language-design-closure/73-core-privacy-and-second-path-audit.md) | The dependent core's source-privacy and duplicate-semantics audit |
 | [74](language-design-closure/74-language-pass-closure-blocker.md) | The governing first-order-instantiation contradiction that blocks prompt 170's closure audit |
+| [83](language-design-closure/83-one-dependent-application.md) | Why dependent application has one surface form while family parameters and indices remain distinct declaration roles |
 
 ## The core calculus
 

@@ -51,14 +51,14 @@ fn errors(compilation: &musa_compiler::Compilation) -> String {
 #[test]
 fn a_declaration_names_a_type_and_its_constructors() {
     let compilation = compile_data(
-        "data Shape { Silence, Sounded(held: Duration<WrittenTime>), Then(first: Shape, second: Shape) } \
+        "data Shape { Silence, Sounded(held: Duration(WrittenTime)), Then(first: Shape, second: Shape) } \
          record Sides { left: Nat; right: Bool; } \
          let quiet: Shape = Silence; \
          let held: Shape = Sounded(duration_of(1/4)); \
          let sequenced: Shape = Then(quiet, held); \
-         fn one(held: Duration<WrittenTime>) -> Nat { 1 } \
+         fn one(held: Duration(WrittenTime)) -> Nat { 1 } \
          fn joined(first: Nat, second: Nat) -> Nat { first } \
-         fn shape_fold(shape: Shape, silence: Nat, sounded: Duration<WrittenTime> -> Nat, then: Nat -> Nat -> Nat) \
+         fn shape_fold(shape: Shape, silence: Nat, sounded: Duration(WrittenTime) -> Nat, then: Nat -> Nat -> Nat) \
              -> Nat { \
              match shape { \
                  Silence -> silence, \
@@ -89,19 +89,19 @@ fn folding_with_the_music_cases_is_the_music_the_plan_denotes() {
         &SourceDocument::new(
             "piece \"Folded\" { \
              data Gesture { Plain, Higher(by: Interval, inner: Gesture) } \
-             let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 }; \
-             fn raised(by: Interval, inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(by, inner) } \
+             let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 }; \
+             fn raised(by: Interval, inner: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(by, inner) } \
              let plan: Gesture = Higher(P8, Higher(P5, Plain)); \
-             fn gesture_fold(plan: Gesture, plain: EventTrack<WrittenTime>, \
-                 higher: Interval -> EventTrack<WrittenTime> -> EventTrack<WrittenTime>) \
-                 -> EventTrack<WrittenTime> { \
+             fn gesture_fold(plan: Gesture, plain: EventTrack(WrittenTime), \
+                 higher: Interval -> EventTrack(WrittenTime) -> EventTrack(WrittenTime)) \
+                 -> EventTrack(WrittenTime) { \
                  match plan { \
                      Plain -> plain, \
                      Higher(by, inner) -> higher(by, gesture_fold(inner, plain, higher)), \
                  } \
              } \
-             let folded: EventTrack<WrittenTime> = gesture_fold(plan, subject, raised); \
-             let written: EventTrack<WrittenTime> = transpose(P8, transpose(P5, subject)); \
+             let folded: EventTrack(WrittenTime) = gesture_fold(plan, subject, raised); \
+             let written: EventTrack(WrittenTime) = transpose(P8, transpose(P5, subject)); \
              score { part p { voice by_fold { use folded; } voice by_hand { use written; } } } }",
             "fold-law.musa",
         ),
@@ -218,15 +218,20 @@ fn a_declaration_that_stores_a_function_is_a_type_with_no_storable_instance() {
 /// the written type, not the declaration.
 #[test]
 fn a_declaration_instantiated_at_the_wrong_arity_is_rejected() {
-    let compilation =
-        compile_data("data Sided<A> { Both(left: A, right: A) } fn wrong(p: Sided<Nat, Bool>) -> Nat { 0 }");
+    let compilation = compile_data(
+        "data Sided(A: Type) { Both(left: A, right: A): Sided(A) } \
+         fn wrong(p: Sided(Nat, Bool)) -> Nat { 0 }",
+    );
     let reported = errors(&compilation);
     assert!(
         reported.contains("this is applied to an argument, but its type is not a function type"),
         "{reported}"
     );
 
-    let bare = compile_data("data Sided<A> { Both(left: A, right: A) } fn wrong(p: Sided) -> Nat { 0 }");
+    let bare = compile_data(
+        "data Sided(A: Type) { Both(left: A, right: A): Sided(A) } \
+         fn wrong(p: Sided) -> Nat { 0 }",
+    );
     let reported = errors(&bare);
     assert!(
         reported.contains("this stands where a type is needed, but it is not one"),

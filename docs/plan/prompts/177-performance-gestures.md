@@ -14,7 +14,7 @@ phase: 3
 
 ## Task
 
-Introduce the instrument-independent performance object between `EventTrack<WrittenTime, ScoreFact>` and a scheduled
+Introduce the instrument-independent performance object between `EventTrack(WrittenTime, ScoreFact)` and a scheduled
 event-source machine. Declare gestures, indexed controls, profiles, and standard interpretation policy in
 `std::performance`; use a compiler-owned provenance/track bridge only for work source cannot perform. Tempo, groove, and
 tuning then schedule the exact checked gesture track. No gesture names a primitive, processor, MIDI controller, or
@@ -38,7 +38,7 @@ phrase/group relations, techniques, releases, and their exact canonical schema. 
 There is no closed Rust `Gesture`, `ControlKey`, connection, or technique enum as semantic authority.
 
 Controls are dependently related rather than dynamically tagged by host code. A source `ControlKind` indexes both
-`ControlKey<K>` and `ControlValue<K>`; a heterogeneous stored control uses an ordinary source family that binds the
+`ControlKey(K)` and `ControlValue(K)`; a heterogeneous stored control uses an ordinary source family that binds the
 index. A constructor or function may omit `K` only where the existing Miller-pattern unifier uniquely solves it.
 Duplicate, escaping, flex-flex, or unresolved constraints are postponed/refused by the general rules—never guessed by a
 sound-specific table. Add focused elaboration laws for inferred, postponed, ambiguous, and ill-scoped control indices.
@@ -50,7 +50,7 @@ coordinates, enforce work budgets, and construct the performed track; it must no
 meaning, grouping, technique, or standard-control policy. State and test the source/profile result presented to each
 bridge call so there is no hidden host musical input.
 
-The gesture object is `EventTrack<PerformedTime, Gesture>`, not another container. An occurrence span carries performed
+The gesture object is `EventTrack(PerformedTime, Gesture)`, not another container. An occurrence span carries performed
 onset and extent. Its payload carries stable identity, written pitch until tuning, separation/hold/emphasis intent,
 symbolic techniques, grouping, per-note controls, and source-derived origin—but no absolute position in any coordinate.
 
@@ -71,7 +71,7 @@ API or alternate canonical encoding.
 
 - `stdlib/src/performance/`: source-declared gesture/control/profile vocabulary, neutral profile, docs, and laws.
 - Pattern-unification tests for indexed controls, including postponement and refusal cases.
-- One provenance-preserving, budgeted host bridge from checked profile results to `EventTrack<PerformedTime, Gesture>`
+- One provenance-preserving, budgeted host bridge from checked profile results to `EventTrack(PerformedTime, Gesture)`
   plus separate lineage/temporary compatibility projections.
 - Profile interpretation of all existing marks with parity where the old model was expressive and explicit retained
   information where it was not.

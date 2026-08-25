@@ -7,7 +7,7 @@ piece "Anonymous Functions" {
     import std::core;
     import std::list;
 
-    let subject: EventTrack<WrittenTime> = music {
+    let subject: EventTrack(WrittenTime) = music {
         c4/4
         e4/4
         g4/4
@@ -17,9 +17,9 @@ piece "Anonymous Functions" {
     // `compose_music` takes two transformations. Neither is `transpose`, which
     // takes an interval as well as a passage — so the interval is supplied
     // here, in a function of the passage alone.
-    fn raised(by: Interval, line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+    fn raised(by: Interval, line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
         compose_music(
-            fn (inner: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> {
+            fn (inner: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
                 transpose(by, inner)
             },
             retrograde,
@@ -29,11 +29,11 @@ piece "Anonymous Functions" {
 
     // `by` is this call's argument, and no declaration could have named it:
     // that is the whole job the anonymous function does.
-    let answer: EventTrack<WrittenTime> = raised(P8, subject);
+    let answer: EventTrack(WrittenTime) = raised(P8, subject);
 
     // The types may be left out where a declaration may leave them out; the
     // position the lambda stands in says what they are.
-    let counted: List<Nat> = map(fn (index) { identity_nat(index) }, range(4));
+    let counted: List(Nat) = map(fn (index) { identity_nat(index) }, range(4));
 
     score {
         part strings {

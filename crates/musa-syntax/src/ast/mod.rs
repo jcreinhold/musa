@@ -305,15 +305,7 @@ pub(crate) use binding_wrapper;
 pub fn is_type(kind: SyntaxKind) -> bool {
     matches!(
         kind,
-        SyntaxKind::TypeExpr
-            | SyntaxKind::TypeName
-            | SyntaxKind::FunctionType
-            | SyntaxKind::ProductType
-            | SyntaxKind::OptionType
-            | SyntaxKind::ListType
-            | SyntaxKind::ResultType
-            | SyntaxKind::AppliedType
-            | SyntaxKind::IndexedType
+        SyntaxKind::TypeExpr | SyntaxKind::TypeName | SyntaxKind::FunctionType | SyntaxKind::ProductType
     )
 }
 
@@ -337,9 +329,7 @@ pub use declarations::{
     ParamList, RecordDecl,
 };
 
-pub use types::{
-    AppliedType, FunctionType, IndexedType, ListType, OptionType, ProductType, ResultType, TypeExpr, TypeName,
-};
+pub use types::{FunctionType, ProductType, TypeExpr, TypeName};
 
 pub use expressions::{
     ApplyExpr, ExprArg, ExprArgList, FieldInit, FieldPath, FieldPattern, FieldUpdate, IfExpr, LambdaExpr, ListExpr,

@@ -254,7 +254,7 @@ fn an_undecided_machine_is_a_value_and_not_yet_a_projection() {
         complaint(&used)
     );
 
-    let decided = compile_machines("let m: Machine<AudioFrameStep, Ratio, Ratio> = identity;");
+    let decided = compile_machines("let m: Machine(AudioFrameStep, Ratio, Ratio) = identity;");
     assert!(errors(&decided).is_empty(), "{}", complaint(&decided));
     assert_eq!(machine(&decided, "m").input(), "Ratio");
     assert_eq!(decided.machine_names(), vec!["m"]);
@@ -305,7 +305,7 @@ fn the_order_of_a_chain_is_part_of_its_identity() {
 /// one this law is about.
 #[test]
 fn a_port_that_holds_a_function_is_refused_where_it_is_written() {
-    let compiled = compile_machines("let m: Machine<AudioFrameStep, Ratio -> Ratio, Ratio -> Ratio> = identity;");
+    let compiled = compile_machines("let m: Machine(AudioFrameStep, Ratio -> Ratio, Ratio -> Ratio) = identity;");
     assert_eq!(errors(&compiled), vec![Code::TypeMismatch]);
     assert!(
         complaint(&compiled).contains("not storable data") && complaint(&compiled).contains("Ratio → Ratio"),
@@ -338,7 +338,7 @@ fn a_closure_cannot_be_carried_through_a_feedback_loop() {
 /// well-typed core term. So the position is restricted where the position is.
 #[test]
 fn a_step_position_takes_a_step_and_nothing_else() {
-    let compiled = compile_machines("let m: Machine<Nat, Ratio, Ratio> = identity;");
+    let compiled = compile_machines("let m: Machine(Nat, Ratio, Ratio) = identity;");
     assert_eq!(errors(&compiled), vec![Code::WrongArity]);
     assert!(complaint(&compiled).contains("not a step"), "{}", complaint(&compiled));
 }

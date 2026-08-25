@@ -22,23 +22,23 @@ record TonalContext {
 
     // The written pitch a numbered degree names, in this context's own
     // register. Absent when the context has no register to spell in.
-    spell: Nat -> Option<Pitch>;
+    spell: Nat -> Option(Pitch);
 
     // How this context voices a chord class. Absent when the class
     // cannot be voiced from the register it chose.
-    voicing_for: ChordClass -> Option<Voicing>;
+    voicing_for: ChordClass -> Option(Voicing);
 }
 
 // The register C major's degrees are spelled in. Private: a context
 // promises spelled pitches, not the frame it spells them from, so moving
 // this one changes nothing anyone outside can name. That is what sealing
 // was, written with the visibility the language already had.
-private let c_major_home: Option<Frame> = frame_on(scale c ionian, c4);
+private let c_major_home: Option(Frame) = frame_on(scale c ionian, c4);
 
 // C major's degree spelling, read out of the register above. Private for
 // the same reason the register is: what a context promises is the
 // function's answers, not which function it happens to be.
-private fn c_major_spell(ordinal: Nat) -> Option<Pitch> {
+private fn c_major_spell(ordinal: Nat) -> Option(Pitch) {
     match c_major_home {
         None -> None,
         Some(register) -> Some(frame_degree(register, ordinal)),
@@ -46,7 +46,7 @@ private fn c_major_spell(ordinal: Nat) -> Option<Pitch> {
 }
 
 // C major's close-position voicing, from middle C upward.
-private fn c_major_voicing(content: ChordClass) -> Option<Voicing> {
+private fn c_major_voicing(content: ChordClass) -> Option(Voicing) {
     close_position(content, c4)
 }
 
@@ -60,10 +60,10 @@ let c_major: TonalContext = TonalContext {
 
 // The register A natural minor's degrees are spelled in, an octave and a
 // third below C major's.
-private let a_minor_home: Option<Frame> = frame_on(scale a aeolian, a3);
+private let a_minor_home: Option(Frame) = frame_on(scale a aeolian, a3);
 
 // A natural minor's degree spelling, read out of its own register.
-private fn a_minor_spell(ordinal: Nat) -> Option<Pitch> {
+private fn a_minor_spell(ordinal: Nat) -> Option(Pitch) {
     match a_minor_home {
         None -> None,
         Some(register) -> Some(frame_degree(register, ordinal)),
@@ -71,7 +71,7 @@ private fn a_minor_spell(ordinal: Nat) -> Option<Pitch> {
 }
 
 // A natural minor's close-position voicing, from the A below middle C.
-private fn a_minor_voicing(content: ChordClass) -> Option<Voicing> {
+private fn a_minor_voicing(content: ChordClass) -> Option(Voicing) {
     close_position(content, a3)
 }
 

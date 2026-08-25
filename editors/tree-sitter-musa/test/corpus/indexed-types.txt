@@ -1,23 +1,26 @@
 ==================
-a type constructor is applied to a value in parentheses, and to a type in angle brackets
+a type constructor and a function use the same application parentheses
 ==================
 
-data Cell<A> {
+data Cell: (A: Type) -> Type {
   Held(value: A),
 }
 
 fn transpose(p: Pc(12)) -> Pc(12) { p }
 
-fn compare<A>(proof: Equal<A>(left, right,)) -> Equal<List<A>>(left, right) { proof }
+fn compare({A: Type}, proof: Equal(A, left, right,)) -> Equal(List(A), left, right) { proof }
 
 ---
 
 (source_file
   (data_declaration
     (identifier)
-    (type_parameter_list
-      (type_parameter
-        (identifier)))
+    (data_signature
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
     (data_variant
       (identifier)
       (data_field
@@ -31,18 +34,18 @@ fn compare<A>(proof: Equal<A>(left, right,)) -> Equal<List<A>>(left, right) { pr
       (parameter
         (identifier)
         (type_expression
-          (indexed_type
+          (application_expression
             (type_name
               (identifier))
-            (type_index_argument_list
+            (type_argument_list
               (expression
                 (literal_expression
                   (integer))))))))
     (type_expression
-      (indexed_type
+      (application_expression
         (type_name
           (identifier))
-        (type_index_argument_list
+        (type_argument_list
           (expression
             (literal_expression
               (integer))))))
@@ -52,21 +55,22 @@ fn compare<A>(proof: Equal<A>(left, right,)) -> Equal<List<A>>(left, right) { pr
           (identifier)))))
   (function_declaration
     (identifier)
-    (type_parameter_list
-      (type_parameter
-        (identifier)))
     (parameter_list
       (parameter
         (identifier)
         (type_expression
-          (indexed_type
-            (applied_type
-              (type_name
-                (identifier))
-              (type_expression
-                (type_name
-                  (identifier))))
-            (type_index_argument_list
+          (type_name
+            (identifier))))
+      (parameter
+        (identifier)
+        (type_expression
+          (application_expression
+            (type_name
+              (identifier))
+            (type_argument_list
+              (expression
+                (name_expression
+                  (identifier)))
               (expression
                 (name_expression
                   (identifier)))
@@ -74,16 +78,16 @@ fn compare<A>(proof: Equal<A>(left, right,)) -> Equal<List<A>>(left, right) { pr
                 (name_expression
                   (identifier))))))))
     (type_expression
-      (indexed_type
-        (applied_type
-          (type_name
-            (identifier))
+      (application_expression
+        (type_name
+          (identifier))
+        (type_argument_list
           (type_expression
-            (list_type
-              (type_expression
-                (type_name
-                  (identifier))))))
-        (type_index_argument_list
+            (application_expression
+              (type_argument_list
+                (type_expression
+                  (type_name
+                    (identifier))))))
           (expression
             (name_expression
               (identifier)))

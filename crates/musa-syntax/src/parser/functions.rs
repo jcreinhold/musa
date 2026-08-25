@@ -54,9 +54,6 @@ impl Parser<'_> {
         self.visibility();
         self.bump(); // fn
         self.expect(SyntaxKind::Identifier, "a function name");
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
         self.param_list();
         if self.at(SyntaxKind::Arrow) {
             self.bump();
@@ -103,10 +100,17 @@ impl Parser<'_> {
         self.expect(SyntaxKind::LParen, "`(`");
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
             self.start(SyntaxKind::Param);
+            let inferred = self.at(SyntaxKind::LBrace);
+            if inferred {
+                self.bump();
+            }
             self.expect(SyntaxKind::Identifier, "a parameter name");
             if self.at(SyntaxKind::Colon) {
                 self.bump();
                 self.type_expr();
+            }
+            if inferred {
+                self.expect(SyntaxKind::RBrace, "`}`");
             }
             if self.at(SyntaxKind::Equals) {
                 let equals = self.significant().map(|token| token.range.start());
@@ -148,87 +152,5 @@ impl Parser<'_> {
             .with_help("a call supplies every declared parameter — write the value at each call site instead")
             .with_fix("delete the default", String::new()),
         );
-    }
-
-    /// The one complaint `Option[τ]` gets, and the tree it still produces.
-    ///
-    /// Located at the whole bracketed parameter rather than at either bracket,
-    /// because the fix rewrites a *pair* and an edit offered on one half alone
-    /// would leave the other behind. The inner type is parsed into the node it
-    /// belongs to, so a file with one old parameter gets one complaint and the
-    /// declaration around it is still checked.
-    ///
-    /// In doubly-obsolete source — `option[voicing]`, with both an old word
-    /// and old brackets — this range contains the inner type's own
-    /// respelling fix, and the replacement carries the inner text over
-    /// unrespelled. That is deliberate: the bracket complaint fixes brackets and
-    /// the word complaint fixes the word, and nothing here applies both at once.
-    /// `musa check --fix` rewrites warnings only, and an editor
-    /// applies one code action, reparses, and finds the other complaint waiting
-    /// at its new place. Respelling inside this fix would make one offer quietly
-    /// do two jobs.
-    pub(super) fn bracketed_parameter(&mut self) {
-        let open = self.significant().map(|token| token.range);
-        self.bump();
-        self.type_expr();
-        let close = self.significant().filter(|token| token.kind == SyntaxKind::RBracket);
-        let Some((open, close)) = open.zip(close.map(|token| token.range)) else {
-            // No closing `]`: the ordinary missing-token complaint says more
-            // than a migration note about a parameter that was never finished.
-            self.expect(SyntaxKind::RBracket, "`]`");
-            return;
-        };
-        self.bump();
-        if self.cascading() {
-            return;
-        }
-        let range = TextRange::new(open.start(), close.end());
-        let inner = &self.source[usize::from(open.end())..usize::from(close.start())];
-        self.errors.push(
-            SyntaxError::new(range, "a type parameter is angle-bracketed", "this is `<…>`")
-                .with_help(
-                    "`[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer \
-                     takes `<` and `>` and the character reads one way",
-                )
-                .with_fix("write `<…>`", format!("<{inner}>")),
-        );
-    }
-
-    /// `<A, B>`, `<{n : Nat}>` — the type parameters a declaration abstracts
-    /// over.
-    ///
-    /// `01-surface.md` §1's `type-param := IDENT | "{" IDENT (":" type)? "}"`.
-    /// Both spellings are inferred at every use site; the braced one is the
-    /// only way to say what the parameter's own type is, which a dependent
-    /// signature needs and `A` cannot express.
-    pub(super) fn type_params(&mut self) {
-        self.start(SyntaxKind::TypeParams);
-        self.bump(); // `<`
-        while !self.at(SyntaxKind::Greater) && self.current().is_some() {
-            if self.at(SyntaxKind::Identifier) {
-                self.start(SyntaxKind::TypeParam);
-                self.bump();
-                self.finish();
-            } else if self.at(SyntaxKind::LBrace) {
-                self.start(SyntaxKind::TypeParam);
-                self.bump(); // `{`
-                self.expect(SyntaxKind::Identifier, "a type parameter name");
-                if self.at(SyntaxKind::Colon) {
-                    self.bump();
-                    self.type_expr();
-                }
-                self.expect(SyntaxKind::RBrace, "`}`");
-                self.finish();
-            } else {
-                self.expected("a type parameter name, or `>`");
-                self.recover(&[SyntaxKind::Identifier, SyntaxKind::Greater, SyntaxKind::LBrace]);
-                break;
-            }
-            if self.at(SyntaxKind::Comma) {
-                self.bump();
-            }
-        }
-        self.expect(SyntaxKind::Greater, "`>`");
-        self.finish();
     }
 }

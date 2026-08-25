@@ -9,7 +9,7 @@ piece "Events Splice" {
 
     // Ordinary music, checked the ordinary way. Nothing about it knows it is
     // going to be quoted.
-    let subject: EventTrack<WrittenTime> = music {
+    let subject: EventTrack(WrittenTime) = music {
         c4/4
         d4/4
         e4/4
@@ -24,7 +24,9 @@ piece "Events Splice" {
     // `subj` is referenced three times and elaborated once. That is sharing, and
     // it is why the three references below are three placements of the *same*
     // facts rather than three re-readings of `subject`.
-    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
+    let assembled: EventTrack(
+        WrittenTime,
+    ) = events EventTrack[WrittenTime, ScoreFact] {
         let subj = ${subject} in
         together {
             subj;

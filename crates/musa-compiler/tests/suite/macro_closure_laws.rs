@@ -307,7 +307,7 @@ fn an_adapter_cannot_read_where_a_node_is() {
     for spelling in ["syntax_span", "syntax_range", "syntax_source_info"] {
         let module = probe(&format!(
             "
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{
         Err((region, {spelling}(region)))
     }};
 "
@@ -337,7 +337,7 @@ fn an_adapter_cannot_read_where_a_node_is() {
 fn an_adapter_that_calls_itself_is_refused() {
     let module = probe(
         "
-    fn expand(region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+    fn expand(region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {
         expand(region)
     }
 ",

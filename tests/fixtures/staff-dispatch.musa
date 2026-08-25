@@ -82,7 +82,7 @@ data StaffWord {
 // misspelling can hide. Fifteen literals, once each, against the
 // twenty-one `text_equal` sites over thirteen literals the string version
 // spread through the reader.
-fn staff_word(spelling: Text) -> Option<StaffWord> {
+fn staff_word(spelling: Text) -> Option(StaffWord) {
     if text_equal(spelling, "rest") {
         Some(Rest)
     } else if text_equal(spelling, "bar") {
@@ -126,7 +126,7 @@ fn staff_word(spelling: Text) -> Option<StaffWord> {
 // constructor to `StaffWord` and this stops compiling until it is read —
 // which is the whole reason the lookup is worth writing, since it is not
 // shorter than the chain it replaced.
-fn word_read(here: NodePath, word: StaffWord) -> Syntax<Expr> {
+fn word_read(here: NodePath, word: StaffWord) -> Syntax(Expr) {
     match word {
         Rest -> rest_read(here),
         Bar -> bar_read(here),
@@ -149,33 +149,33 @@ fn word_read(here: NodePath, word: StaffWord) -> Syntax<Expr> {
 // The nine readers. Each one stands where the trial's does and answers
 // with the form its word opens; what the real reader threads through them
 // is `Pending`, which is prompt 142's.
-fn rest_read(here: NodePath) -> Syntax<Expr> { quote at here { Rested } }
+fn rest_read(here: NodePath) -> Syntax(Expr) { quote at here { Rested } }
 
-fn bar_read(here: NodePath) -> Syntax<Expr> { quote at here { Barred } }
+fn bar_read(here: NodePath) -> Syntax(Expr) { quote at here { Barred } }
 
-fn slur_read(here: NodePath) -> Syntax<Expr> { quote at here { Slurred } }
+fn slur_read(here: NodePath) -> Syntax(Expr) { quote at here { Slurred } }
 
-fn tuplet_read(here: NodePath) -> Syntax<Expr> { quote at here { Tupleted } }
+fn tuplet_read(here: NodePath) -> Syntax(Expr) { quote at here { Tupleted } }
 
-fn grace_read(here: NodePath) -> Syntax<Expr> { quote at here { Graced } }
+fn grace_read(here: NodePath) -> Syntax(Expr) { quote at here { Graced } }
 
-fn repeated_read(here: NodePath) -> Syntax<Expr> { quote at here { Repeated } }
+fn repeated_read(here: NodePath) -> Syntax(Expr) { quote at here { Repeated } }
 
-fn time_header(here: NodePath) -> Syntax<Expr> { quote at here { Timed } }
+fn time_header(here: NodePath) -> Syntax(Expr) { quote at here { Timed } }
 
-fn meter_header(here: NodePath) -> Syntax<Expr> { quote at here { Metered } }
+fn meter_header(here: NodePath) -> Syntax(Expr) { quote at here { Metered } }
 
-fn literal_header(here: NodePath) -> Syntax<Expr> { quote at here { Stated } }
+fn literal_header(here: NodePath) -> Syntax(Expr) { quote at here { Stated } }
 
-fn named_header(here: NodePath) -> Syntax<Expr> { quote at here { Named } }
+fn named_header(here: NodePath) -> Syntax(Expr) { quote at here { Named } }
 
-fn key_header(here: NodePath) -> Syntax<Expr> { quote at here { Keyed } }
+fn key_header(here: NodePath) -> Syntax(Expr) { quote at here { Keyed } }
 
 // A word this notation does not have. The string version reached its `_ ->`
 // arm here too — the difference is that this is the only arm that can be
 // reached by accident, and it is one arm rather than the default of a
 // fifteen-way chain.
-fn named_read(here: NodePath, spelling: Text) -> Syntax<Expr> {
+fn named_read(here: NodePath, spelling: Text) -> Syntax(Expr) {
     match staff_word(spelling) {
         None -> quote at here { Unknown },
         Some(word) -> word_read(here, word),
@@ -200,7 +200,7 @@ fn trivial(kind: TokenKind) -> Bool {
 // the kind's *spelling*. A kind is now a value of a declared type, and
 // `word_read` is where anything that is none of these goes — which is the
 // seam between this half and the last one.
-fn body_token(here: NodePath, kind: TokenKind, spelling: Text) -> Syntax<Expr> {
+fn body_token(here: NodePath, kind: TokenKind, spelling: Text) -> Syntax(Expr) {
     if trivial(kind) {
         quote at here { NoItems }
     } else if token_kind_equal(kind, TokenKind.Tilde) {
@@ -226,7 +226,7 @@ fn body_token(here: NodePath, kind: TokenKind, spelling: Text) -> Syntax<Expr> {
 // it is. Three delimiters, three places a reader can be: braces hold a
 // body, parentheses hold what a form states, brackets hold a chord's
 // pitches.
-fn entered(here: NodePath, delimiter: Delimiter, children: List<Syntax<Expr>>) -> Syntax<Expr> {
+fn entered(here: NodePath, delimiter: Delimiter, children: List(Syntax(Expr))) -> Syntax(Expr) {
     if delimiter_equal(delimiter, Delimiter.Braces) {
         quote at here { Body([$..children]) }
     } else if delimiter_equal(delimiter, Delimiter.Parentheses) {
@@ -241,7 +241,7 @@ fn entered(here: NodePath, delimiter: Delimiter, children: List<Syntax<Expr>>) -
 // The region, read the way the staff adapter reads one. Every node is
 // asked exactly one of the three questions, and which one it is asked is
 // decided by the traversal rather than by a pattern over its shape.
-fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
+fn built(region: Syntax(TokenTree)) -> Syntax(Expr) {
     syntax_fold_from_leaves(
         fn (here) { quote at here { NoItems } },
         fn (here, kind, text) { body_token(here, kind, text) },
@@ -254,4 +254,4 @@ fn built(region: Syntax<TokenTree>) -> Syntax<Expr> {
 // Annotated, as `stdlib/src/adapters/staff.musa`'s own `expand` is: the
 // total core does not generalize, so `Ok`'s other side is a metavariable
 // nobody solves unless the signature says it.
-let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<Expr>, Text> { Ok(built(region)) };
+let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(Expr), Text) { Ok(built(region)) };

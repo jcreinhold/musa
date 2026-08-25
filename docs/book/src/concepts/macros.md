@@ -14,8 +14,8 @@ A package module that declares a level and an `expand`:
 
 ```musa
     let expand = fn (
-        region: Syntax<TokenTree>,
-    ) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+        region: Syntax(TokenTree),
+    ) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {
 ```
 
 An ordinary `let`, at an ordinary function type, inside an ordinary `library`. It may declare its own data and its own
@@ -24,7 +24,7 @@ helpers, and it does, because it is an ordinary library and not a dialect:
 ```musa
     data Refusal {
         Nothing,
-        Found(node: Syntax<TokenTree>),
+        Found(node: Syntax(TokenTree)),
     }
 ```
 
@@ -50,13 +50,13 @@ The region's contents are read by the fixed lexer and grouper — an adapter doe
 
 ## The two categories
 
-`Syntax` takes a category, and there are two. `Syntax<TokenTree>` is a tree somebody wrote and nobody parsed;
-`Syntax<Expr>` is a tree that has been read as an expression, which is a claim, established by running the ordinary
+`Syntax` takes a category, and there are two. `Syntax(TokenTree)` is a tree somebody wrote and nobody parsed;
+`Syntax(Expr)` is a tree that has been read as an expression, which is a claim, established by running the ordinary
 parser:
 
 ```text
-as_expression : Syntax<TokenTree> -> Option<Syntax<Expr>>
-forget        : Syntax<Expr> -> Syntax<TokenTree>
+as_expression : Syntax(TokenTree) -> Option(Syntax(Expr))
+forget        : Syntax(Expr) -> Syntax(TokenTree)
 ```
 
 Both directions are written. Musa has no subtyping, so an `Expr` standing where a `TokenTree` is wanted goes through

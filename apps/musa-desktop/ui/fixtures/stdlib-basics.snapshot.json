@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n\n    let subject: EventTrack<WrittenTime> = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: EventTrack<WrittenTime> = compose_music(\n        fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(duration_of(1/2), answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n\n    let subject: EventTrack(WrittenTime) = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: EventTrack(WrittenTime) = compose_music(\n        fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });\n    let counting: List(Nat) = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(duration_of(1/2), answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -579,13 +579,37 @@
     {
       "name": "compose",
       "kind": "function",
-      "signature": "fn compose<A, B, C>(after: B -> C, before: A -> B) -> A -> C",
+      "signature": "fn compose({A: Type}, {B: Type}, {C: Type}, after: B -> C, before: A -> B) -> A -> C",
       "summary": "Apply `before`, then `after`. The composition is the answer, not a value it was applied to: `compose(f, g)` names the function, and `compose(f, g)(x)` runs it.",
       "result": {
         "name": "A -> C",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "B",
+          "label": "{B: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "C",
+          "label": "{C: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "after",
           "label": "after: B -> C",
@@ -615,26 +639,26 @@
     {
       "name": "compose_music",
       "kind": "function",
-      "signature": "fn compose_music(first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>, second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>) -> EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+      "signature": "fn compose_music(first: EventTrack(WrittenTime) -> EventTrack(WrittenTime), second: EventTrack(WrittenTime) -> EventTrack(WrittenTime)) -> EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
       "summary": "Apply the second musical transformation, then the first.",
       "result": {
-        "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+        "name": "EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
         "distinction": null
       },
       "parameters": [
         {
           "name": "first",
-          "label": "first: EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+          "label": "first: EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
           "ty": {
-            "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+            "name": "EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
             "distinction": null
           }
         },
         {
           "name": "second",
-          "label": "second: EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+          "label": "second: EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
           "ty": {
-            "name": "EventTrack<WrittenTime> -> EventTrack<WrittenTime>",
+            "name": "EventTrack(WrittenTime) -> EventTrack(WrittenTime)",
             "distinction": null
           }
         }
@@ -644,8 +668,8 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 605,
-        "end": 618
+        "start": 629,
+        "end": 642
       }
     },
     {
@@ -680,17 +704,17 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/core.musa",
-        "start": 886,
-        "end": 899
+        "start": 910,
+        "end": 923
       }
     },
     {
       "name": "counting_from",
       "kind": "function",
-      "signature": "fn counting_from(count: Nat, first: Nat) -> List<Nat>",
+      "signature": "fn counting_from(count: Nat, first: Nat) -> List(Nat)",
       "summary": "Finite lists: how one is built, and the two ways one is read.  Every function here is written over `List`'s own constructors and nothing else. That is the point of the module rather than an implementation detail: `List` is a declared family with a generated recursor, so a fold over it is ordinary source, and a compiler builtin for one would be a second reduction rule for a type that already has one. `02-core-calculus.md` §5.8 admits a builtin that hides something; a traversal of a list whose constructors the language writes hides nothing.  # Where the folds went  A list is read by `xs.fold_from_start(seed, combine)` and `xs.fold_from_end(seed, combine)`, which are `List`'s own two definitions and not functions of this module. One spelling per direction, and every container that can be walked answers to the same two words in its own namespace — which is what a per-type `list_fold_from_start` beside an `option_fold` beside a `nat_fold` could never be.  What stays here is what a fold does not say as well. `map` and `filter` below are written over `List`'s own constructors and cost the length; building an answer by folding and appending costs its square, because appending to the end of a list walks it. The natural numbers from `first`, `count` of them, ascending.  The accumulator is `first` and it comes after the argument the recursion descends on, because §2.4's measure holds everything written *before* that argument fixed: a walk that both descends and accumulates has to descend first and accumulate later. `Succ` rather than `nat_add`: the successor constructor *is* \"one more\", so counting needs no arithmetic and no failure case.",
       "result": {
-        "name": "List<Nat>",
+        "name": "List(Nat)",
         "distinction": null
       },
       "parameters": [
@@ -723,10 +747,10 @@
     {
       "name": "range",
       "kind": "function",
-      "signature": "fn range(count: Nat) -> List<Nat>",
+      "signature": "fn range(count: Nat) -> List(Nat)",
       "summary": "The natural numbers from zero up to, but not including, `count`.",
       "result": {
-        "name": "List<Nat>",
+        "name": "List(Nat)",
         "distinction": null
       },
       "parameters": [
@@ -751,13 +775,21 @@
     {
       "name": "repeated",
       "kind": "function",
-      "signature": "fn repeated<A>(value: A, count: Nat) -> List<A>",
+      "signature": "fn repeated({A: Type}, value: A, count: Nat) -> List(A)",
       "summary": "One value, `count` times, as finite data.  Not `repeat`: that word opens a repeated passage in a score, so it is a statement keyword and cannot also be a function name. The past participle is what the list *is* rather than what a player does.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "value",
           "label": "value: A",
@@ -787,13 +819,29 @@
     {
       "name": "map",
       "kind": "function",
-      "signature": "fn map<A, B>(function: A -> B, values: List<A>) -> List<B>",
+      "signature": "fn map({A: Type}, {B: Type}, function: A -> B, values: List(A)) -> List(B)",
       "summary": "Apply `function` to every member, in order.",
       "result": {
-        "name": "List<B>",
+        "name": "List(B)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "B",
+          "label": "{B: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "function",
           "label": "function: A -> B",
@@ -804,9 +852,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -816,20 +864,28 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2525,
-        "end": 2528
+        "start": 2533,
+        "end": 2536
       }
     },
     {
       "name": "filter",
       "kind": "function",
-      "signature": "fn filter<A>(predicate: A -> Bool, values: List<A>) -> List<A>",
+      "signature": "fn filter({A: Type}, predicate: A -> Bool, values: List(A)) -> List(A)",
       "summary": "Keep the members for which `predicate` answers true, in order.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "predicate",
           "label": "predicate: A -> Bool",
@@ -840,9 +896,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -852,33 +908,41 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 2768,
-        "end": 2774
+        "start": 2792,
+        "end": 2798
       }
     },
     {
       "name": "concat",
       "kind": "function",
-      "signature": "fn concat<A>(first: List<A>, second: List<A>) -> List<A>",
+      "signature": "fn concat({A: Type}, first: List(A), second: List(A)) -> List(A)",
       "summary": "The members of `first`, then the members of `second`.  Costs the length of `first` and nothing for `second`, which is why the module docs say an answer built by folding and appending costs the square: this is the append, and folding it over n members walks n prefixes.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
         {
-          "name": "first",
-          "label": "first: List<A>",
+          "name": "A",
+          "label": "{A: Type}",
           "ty": {
-            "name": "List<A>",
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "first",
+          "label": "first: List(A)",
+          "ty": {
+            "name": "List(A)",
             "distinction": null
           }
         },
         {
           "name": "second",
-          "label": "second: List<A>",
+          "label": "second: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -888,14 +952,14 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3302,
-        "end": 3308
+        "start": 3334,
+        "end": 3340
       }
     },
     {
       "name": "length",
       "kind": "function",
-      "signature": "fn length<A>(values: List<A>) -> Nat",
+      "signature": "fn length({A: Type}, values: List(A)) -> Nat",
       "summary": "How many members a list has.",
       "result": {
         "name": "Nat",
@@ -903,10 +967,18 @@
       },
       "parameters": [
         {
-          "name": "values",
-          "label": "values: List<A>",
+          "name": "A",
+          "label": "{A: Type}",
           "ty": {
-            "name": "List<A>",
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List(A)",
+          "ty": {
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -916,33 +988,41 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3503,
-        "end": 3509
+        "start": 3543,
+        "end": 3549
       }
     },
     {
       "name": "reversing",
       "kind": "function",
-      "signature": "fn reversing<A>(values: List<A>, built: List<A>) -> List<A>",
+      "signature": "fn reversing({A: Type}, values: List(A), built: List(A)) -> List(A)",
       "summary": "The members in the opposite order.  Written over an accumulator rather than over `concat`, because appending one member at a time to the end costs the square of the length and this costs the length. The accumulator comes after the argument the recursion descends on, for §2.4's reason.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
         {
-          "name": "values",
-          "label": "values: List<A>",
+          "name": "A",
+          "label": "{A: Type}",
           "ty": {
-            "name": "List<A>",
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List(A)",
+          "ty": {
+            "name": "List(A)",
             "distinction": null
           }
         },
         {
           "name": "built",
-          "label": "built: List<A>",
+          "label": "built: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -952,25 +1032,33 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 3946,
-        "end": 3955
+        "start": 3994,
+        "end": 4003
       }
     },
     {
       "name": "reverse",
       "kind": "function",
-      "signature": "fn reverse<A>(values: List<A>) -> List<A>",
+      "signature": "fn reverse({A: Type}, values: List(A)) -> List(A)",
       "summary": "The members in the opposite order.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
         {
-          "name": "values",
-          "label": "values: List<A>",
+          "name": "A",
+          "label": "{A: Type}",
           "ty": {
-            "name": "List<A>",
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List(A)",
+          "ty": {
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -980,20 +1068,28 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4158,
-        "end": 4165
+        "start": 4214,
+        "end": 4221
       }
     },
     {
       "name": "take",
       "kind": "function",
-      "signature": "fn take<A>(count: Nat, values: List<A>) -> List<A>",
+      "signature": "fn take({A: Type}, count: Nat, values: List(A)) -> List(A)",
       "summary": "The first `count` members, or all of them where there are fewer.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "count",
           "label": "count: Nat",
@@ -1004,9 +1100,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1016,20 +1112,28 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4295,
-        "end": 4299
+        "start": 4359,
+        "end": 4363
       }
     },
     {
       "name": "drop",
       "kind": "function",
-      "signature": "fn drop<A>(count: Nat, values: List<A>) -> List<A>",
+      "signature": "fn drop({A: Type}, count: Nat, values: List(A)) -> List(A)",
       "summary": "Everything but the first `count` members, or nothing where there are fewer.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "count",
           "label": "count: Nat",
@@ -1040,9 +1144,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1052,20 +1156,28 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 4610,
-        "end": 4614
+        "start": 4682,
+        "end": 4686
       }
     },
     {
       "name": "rotated",
       "kind": "function",
-      "signature": "fn rotated<A>(count: Nat, values: List<A>) -> List<A>",
+      "signature": "fn rotated({A: Type}, count: Nat, values: List(A)) -> List(A)",
       "summary": "The members from `count` onward, then the members before it.  A rotation and not a shift: nothing is lost, so rotating by the length gives the list back. `102-set-class-and-prime-form.md`'s normal order is chosen from among these.",
       "result": {
-        "name": "List<A>",
+        "name": "List(A)",
         "distinction": null
       },
       "parameters": [
+        {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
         {
           "name": "count",
           "label": "count: Nat",
@@ -1076,9 +1188,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1088,25 +1200,33 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5080,
-        "end": 5087
+        "start": 5160,
+        "end": 5167
       }
     },
     {
       "name": "rotations",
       "kind": "function",
-      "signature": "fn rotations<A>(values: List<A>) -> List<List<A>>",
+      "signature": "fn rotations({A: Type}, values: List(A)) -> List(List(A))",
       "summary": "Every rotation of the list, starting with the list itself.",
       "result": {
-        "name": "List<List<A>>",
+        "name": "List(List(A))",
         "distinction": null
       },
       "parameters": [
         {
-          "name": "values",
-          "label": "values: List<A>",
+          "name": "A",
+          "label": "{A: Type}",
           "ty": {
-            "name": "List<A>",
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
+          "name": "values",
+          "label": "values: List(A)",
+          "ty": {
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1116,14 +1236,14 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5254,
-        "end": 5263
+        "start": 5342,
+        "end": 5351
       }
     },
     {
       "name": "any",
       "kind": "function",
-      "signature": "fn any<A>(predicate: A -> Bool, values: List<A>) -> Bool",
+      "signature": "fn any({A: Type}, predicate: A -> Bool, values: List(A)) -> Bool",
       "summary": "Whether any member answers true.",
       "result": {
         "name": "Bool",
@@ -1131,6 +1251,14 @@
       },
       "parameters": [
         {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
           "name": "predicate",
           "label": "predicate: A -> Bool",
           "ty": {
@@ -1140,9 +1268,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1152,14 +1280,14 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5431,
-        "end": 5434
+        "start": 5527,
+        "end": 5530
       }
     },
     {
       "name": "all",
       "kind": "function",
-      "signature": "fn all<A>(predicate: A -> Bool, values: List<A>) -> Bool",
+      "signature": "fn all({A: Type}, predicate: A -> Bool, values: List(A)) -> Bool",
       "summary": "Whether every member answers true.",
       "result": {
         "name": "Bool",
@@ -1167,6 +1295,14 @@
       },
       "parameters": [
         {
+          "name": "A",
+          "label": "{A: Type}",
+          "ty": {
+            "name": "Type",
+            "distinction": null
+          }
+        },
+        {
           "name": "predicate",
           "label": "predicate: A -> Bool",
           "ty": {
@@ -1176,9 +1312,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<A>",
+          "label": "values: List(A)",
           "ty": {
-            "name": "List<A>",
+            "name": "List(A)",
             "distinction": null
           }
         }
@@ -1188,17 +1324,17 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5683,
-        "end": 5686
+        "start": 5787,
+        "end": 5790
       }
     },
     {
       "name": "naturals",
       "kind": "function",
-      "signature": "fn naturals(count: Nat) -> List<Nat>",
+      "signature": "fn naturals(count: Nat) -> List(Nat)",
       "summary": "The natural numbers from zero up to, but not including, count.",
       "result": {
-        "name": "List<Nat>",
+        "name": "List(Nat)",
         "distinction": null
       },
       "parameters": [
@@ -1216,17 +1352,17 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 5963,
-        "end": 5971
+        "start": 6075,
+        "end": 6083
       }
     },
     {
       "name": "map_pitches",
       "kind": "function",
-      "signature": "fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch>",
+      "signature": "fn map_pitches(function: Pitch -> Pitch, values: List(Pitch)) -> List(Pitch)",
       "summary": "Apply one pitch function to every member of a finite pitch list.",
       "result": {
-        "name": "List<Pitch>",
+        "name": "List(Pitch)",
         "distinction": null
       },
       "parameters": [
@@ -1240,9 +1376,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<Pitch>",
+          "label": "values: List(Pitch)",
           "ty": {
-            "name": "List<Pitch>",
+            "name": "List(Pitch)",
             "distinction": null
           }
         }
@@ -1252,17 +1388,17 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6086,
-        "end": 6097
+        "start": 6198,
+        "end": 6209
       }
     },
     {
       "name": "filter_pitches",
       "kind": "function",
-      "signature": "fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch>",
+      "signature": "fn filter_pitches(predicate: Pitch -> Bool, values: List(Pitch)) -> List(Pitch)",
       "summary": "Keep the pitches for which predicate returns true.",
       "result": {
-        "name": "List<Pitch>",
+        "name": "List(Pitch)",
         "distinction": null
       },
       "parameters": [
@@ -1276,9 +1412,9 @@
         },
         {
           "name": "values",
-          "label": "values: List<Pitch>",
+          "label": "values: List(Pitch)",
           "ty": {
-            "name": "List<Pitch>",
+            "name": "List(Pitch)",
             "distinction": null
           }
         }
@@ -1288,25 +1424,25 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6248,
-        "end": 6262
+        "start": 6360,
+        "end": 6374
       }
     },
     {
       "name": "repeat_music",
       "kind": "function",
-      "signature": "fn repeat_music(value: EventTrack<WrittenTime>, count: Nat) -> List<EventTrack<WrittenTime>>",
+      "signature": "fn repeat_music(value: EventTrack(WrittenTime), count: Nat) -> List(EventTrack(WrittenTime))",
       "summary": "Repeat one contextual music value count times as finite data.",
       "result": {
-        "name": "List<EventTrack<WrittenTime>>",
+        "name": "List(EventTrack(WrittenTime))",
         "distinction": null
       },
       "parameters": [
         {
           "name": "value",
-          "label": "value: EventTrack<WrittenTime>",
+          "label": "value: EventTrack(WrittenTime)",
           "ty": {
-            "name": "EventTrack<WrittenTime>",
+            "name": "EventTrack(WrittenTime)",
             "distinction": null
           }
         },
@@ -1324,17 +1460,17 @@
       "site": {
         "where": "library",
         "uri": "musa-stdlib:/std/list.musa",
-        "start": 6428,
-        "end": 6440
+        "start": 6540,
+        "end": 6552
       }
     },
     {
       "name": "subject",
       "kind": "value",
-      "signature": "let subject: EventTrack<WrittenTime>",
+      "signature": "let subject: EventTrack(WrittenTime)",
       "summary": null,
       "result": {
-        "name": "EventTrack<WrittenTime>",
+        "name": "EventTrack(WrittenTime)",
         "distinction": null
       },
       "parameters": [],
@@ -1380,10 +1516,10 @@
     {
       "name": "answer",
       "kind": "value",
-      "signature": "let answer: EventTrack<WrittenTime>",
+      "signature": "let answer: EventTrack(WrittenTime)",
       "summary": null,
       "result": {
-        "name": "EventTrack<WrittenTime>",
+        "name": "EventTrack(WrittenTime)",
         "distinction": null
       },
       "parameters": [],
@@ -1420,10 +1556,10 @@
     {
       "name": "counting",
       "kind": "value",
-      "signature": "let counting: List<Nat>",
+      "signature": "let counting: List(Nat)",
       "summary": null,
       "result": {
-        "name": "List<Nat>",
+        "name": "List(Nat)",
         "distinction": null
       },
       "parameters": [],

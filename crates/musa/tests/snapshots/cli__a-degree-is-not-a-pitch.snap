@@ -4,12 +4,12 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 conversion-mismatch
 
-  × expected `Option<Pitch>`, found `Option<Degree>`
+  × expected `Option(Pitch)`, found `Option(Degree)`
     ╭─[examples/broken/a-degree-is-not-a-pitch.musa:10:31]
   9 │     let home: Scale = scale c major;
- 10 │     let start: Option<Pitch> = degree_in(home, c4);
+ 10 │     let start: Option(Pitch) = degree_in(home, c4);
     ·                               ──────────┬─────────
-    ·                                         ╰── this has type `Option<Degree>`
+    ·                                         ╰── this has type `Option(Degree)`
  11 │ 
     ╰────
   help: a degree is an ordinal with no octave: `frame_on` registers the collection, and

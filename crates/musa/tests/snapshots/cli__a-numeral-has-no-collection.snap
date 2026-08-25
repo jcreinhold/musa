@@ -4,12 +4,12 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 conversion-mismatch
 
-  × expected `Option<ChordClass>`, found `Option<Roman>`
+  × expected `Option(ChordClass)`, found `Option(Roman)`
     ╭─[examples/broken/a-numeral-has-no-collection.musa:10:40]
-  9 │     let five: Option<Roman> = triad_numeral(5);
- 10 │     let dominant: Option<ChordClass> = five;
+  9 │     let five: Option(Roman) = triad_numeral(5);
+ 10 │     let dominant: Option(ChordClass) = five;
     ·                                        ──┬─
-    ·                                          ╰── this has type `Option<Roman>`
+    ·                                          ╰── this has type `Option(Roman)`
  11 │ 
     ╰────
   help: a numeral carries no collection: `numeral_chord(collection, written)` reads it in one

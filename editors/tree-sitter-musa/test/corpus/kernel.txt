@@ -52,7 +52,7 @@ an event track quote is an expression, and `${...}` is the way back out
 ======================================================================================================================================================
 
 piece "q" {
-    let a: EventTrack<WrittenTime, ScoreFact> = events EventTrack[WrittenTime, ScoreFact] {
+    let a: EventTrack(WrittenTime, ScoreFact) = events EventTrack[WrittenTime, ScoreFact] {
         let x = ${subject} in
         together {
             x;
@@ -72,15 +72,16 @@ piece "q" {
     (let_declaration
       name: (identifier)
       type: (type_expression
-        (applied_type
-          name: (type_name
+        (application_expression
+          function: (type_name
             (identifier))
-          (type_expression
-            (type_name
-              (identifier)))
-          (type_expression
-            (type_name
-              (identifier)))))
+          (type_argument_list
+            argument: (expression
+              (name_expression
+                (identifier)))
+            argument: (expression
+              (name_expression
+                (identifier))))))
       value: (expression
         (events_quote
           constructor: (identifier)

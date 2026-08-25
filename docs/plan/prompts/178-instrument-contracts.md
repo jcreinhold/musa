@@ -12,7 +12,7 @@ phase: 3
 
 Make `instrument` the deep gesture-to-audio abstraction as an ordinary Musa declaration. Its source-defined signature
 states gestures, indexed controls, techniques, defaults, and output shape; its private source implementation constructs
-a `Machine<AudioFrameStep, EventBatch<Gesture>, AudioFrame>` from registered primitives and fixed wiring. Rust owns
+a `Machine(AudioFrameStep, EventBatch(Gesture), AudioFrame)` from registered primitives and fixed wiring. Rust owns
 primitive contracts and preparation, not an `InstrumentSpec` language beside source.
 
 ## Read
@@ -47,7 +47,7 @@ source.
 
 `musa-dsp` exposes one deep preparation operation over exact checked projections of gestures, machine values, bindings,
 seed, and complete options, returning opaque `PreparedMachine`/`PreparedAudio`. The conceptual signature is
-`prepare_execution(Gestures, Bindings, Seed, Options) -> Result<PreparedMachine, PrepareError>`, but the Rust facade may
+`prepare_execution(Gestures, Bindings, Seed, Options) -> Result(PreparedMachine, PrepareError)`, but the Rust facade may
 use opaque exact artifacts rather than mirror the source schema. Primitive state, resolved indices, buffers, voices, and
 DSP instances remain private.
 

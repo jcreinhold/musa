@@ -6,7 +6,7 @@ piece "A Note Name Has No Octave" {
     import std::scale;
 
     let home: Scale = scale c major;
-    let tonic: Option<Pitch> = degree_class(home, 1);
+    let tonic: Option(Pitch) = degree_class(home, 1);
 
     score {
         part solo {

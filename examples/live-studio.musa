@@ -29,7 +29,7 @@ piece "Live studio" {
         bind clarinet -> lead;
     };
 
-    let checked: Result<CheckedStudio, StudioError> = validate(live_studio);
+    let checked: Result(CheckedStudio, StudioError) = validate(live_studio);
 
     meter 4/4;
     key c major;

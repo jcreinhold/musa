@@ -63,9 +63,9 @@ fn piece(region: &str) -> String {
         Dotted,
         Numbered,
         Sung,
-        Body(items: List<StaffRead>),
-        Stating(items: List<StaffRead>),
-        Voiced(items: List<StaffRead>),
+        Body(items: List(StaffRead)),
+        Stating(items: List(StaffRead)),
+        Voiced(items: List(StaffRead)),
     }}
 
     let read: StaffRead = syntax staff {{ {region} }};

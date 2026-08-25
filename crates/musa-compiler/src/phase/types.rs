@@ -138,18 +138,18 @@ impl std::fmt::Display for Type {
             Self::Nat => out.write_str("Nat"),
             Self::Ratio => out.write_str("Ratio"),
             Self::Text => out.write_str("Text"),
-            Self::Sum(value, error) => write!(out, "Result<{value}, {error}>"),
-            Self::Option(member) => write!(out, "Option<{member}>"),
-            Self::List(member) => write!(out, "List<{member}>"),
+            Self::Sum(value, error) => write!(out, "Result({value}, {error})"),
+            Self::Option(member) => write!(out, "Option({member})"),
+            Self::List(member) => write!(out, "List({member})"),
             // These print in a transformer's diagnostics in the spelling an
             // adapter writes them, and nowhere else: ordinary source may write
             // none of them, because they are read only where `in_phase` holds.
-            Self::Syntax(category) => write!(out, "Syntax<{}>", category.name()),
+            Self::Syntax(category) => write!(out, "Syntax({})", category.name()),
             Self::NodePath => out.write_str("NodePath"),
             Self::BindingPath => out.write_str("BindingPath"),
             Self::TokenKind => out.write_str("TokenKind"),
             Self::Delimiter => out.write_str("Delimiter"),
-            Self::SyntaxStep { context, answer } => write!(out, "SyntaxStep<{context}, {answer}>"),
+            Self::SyntaxStep { context, answer } => write!(out, "SyntaxStep({context}, {answer})"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);

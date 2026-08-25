@@ -8,7 +8,7 @@ data Shape {
   Then(first: Shape, second: Shape),
 }
 
-data Pair<A, B> {
+data Pair: (A: Type, B: Type) -> Type {
   Both(left: A, right: B),
 }
 
@@ -20,7 +20,7 @@ fn describe(shape: Shape) -> Nat {
   }
 }
 
-fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
+fn left_of(both: Pair(Nat, Nat)) -> Nat { both.left }
 
 ---
 
@@ -55,11 +55,17 @@ fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
             (identifier))))))
   (data_declaration
     (identifier)
-    (type_parameter_list
-      (type_parameter
-        (identifier))
-      (type_parameter
-        (identifier)))
+    (data_signature
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier))))
+      (data_field
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
     (data_variant
       (identifier)
       (data_field
@@ -121,15 +127,16 @@ fn left_of(both: Pair<Nat, Nat>) -> Nat { both.left }
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier)))
-            (type_expression
-              (type_name
-                (identifier)))))))
+            (type_argument_list
+              (expression
+                (name_expression
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))
@@ -163,7 +170,7 @@ fn loudness(wrapped: Wrapper) -> Nat {
   }
 }
 
-fn opening(dynamics: List<Dynamic>) -> Nat {
+fn opening(dynamics: List(Dynamic)) -> Nat {
   match dynamics {
     [] -> 0,
     [Loud(level), .. others] -> level,
@@ -178,14 +185,14 @@ fn marked(marking: Marking) -> Nat {
   }
 }
 
-fn paired(both: Pair<Dynamic, Nat>) -> Nat {
+fn paired(both: Pair(Dynamic, Nat)) -> Nat {
   match both {
     (Loud(level), after) -> level,
     (Quiet, after) -> after,
   }
 }
 
-fn held(maybe: Option<Dynamic>) -> Nat {
+fn held(maybe: Option(Dynamic)) -> Nat {
   match maybe {
     Some(Loud(level)) -> level,
     Some(Quiet) -> 0,
@@ -264,10 +271,11 @@ fn held(maybe: Option<Dynamic>) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (list_type
-            (type_expression
-              (type_name
-                (identifier)))))))
+          (application_expression
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))
@@ -349,15 +357,16 @@ fn held(maybe: Option<Dynamic>) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier)))
-            (type_expression
-              (type_name
-                (identifier)))))))
+            (type_argument_list
+              (expression
+                (name_expression
+                  (identifier)))
+              (expression
+                (name_expression
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))
@@ -393,10 +402,11 @@ fn held(maybe: Option<Dynamic>) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (option_type
-            (type_expression
-              (type_name
-                (identifier)))))))
+          (application_expression
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))

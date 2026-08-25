@@ -180,7 +180,7 @@ static TRANSPOSE: KeywordDoc = doc!(
     "the same music, moved in pitch",
     "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have \
      the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n\
-     ```musa\nlet answer: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = transpose(P5);\n```"
+     ```musa\nlet answer: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = transpose(P5);\n```"
 );
 static UP: KeywordDoc = doc!(
     "up",
@@ -210,7 +210,7 @@ static REPEAT: KeywordDoc = doc!(
      written once. With `ending` blocks inside, the passes differ where the endings say they do. The word is a \
      statement keyword and nothing else: the finite value operation that makes a list of `count` copies is \
      `repeated(value, count)` in `std::list`, spelled apart because `fn repeat` does not parse.\n\n\
-     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeated(true, 4);\n```"
+     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List(Bool) = repeated(true, 4);\n```"
 );
 static ASSERT: KeywordDoc = doc!(
     "assert",
@@ -293,28 +293,28 @@ static STRETCH: KeywordDoc = doc!(
     "the same music, at a different speed ratio",
     "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as \
      long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n\
-     ```musa\nlet broaden: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = stretch(3/2);\n```"
+     ```musa\nlet broaden: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = stretch(3/2);\n```"
 );
 static RETROGRADE: KeywordDoc = doc!(
     "retrograde",
     "the block, backwards",
     "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function \
      forms are the same classical transformation.\n\n\
-     ```musa\nlet answer: EventTrack<WrittenTime> = retrograde(subject);\n```"
+     ```musa\nlet answer: EventTrack(WrittenTime) = retrograde(subject);\n```"
 );
 static INVERT: KeywordDoc = doc!(
     "invert",
     "the block, mirrored in pitch",
     "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. \
      `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n\
-     ```musa\nlet mirror: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = invert(c5);\n```"
+     ```musa\nlet mirror: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = invert(c5);\n```"
 );
 
 static SHIFT_FUNCTION: KeywordDoc = doc!(
     "shift",
     "the same music, entering later",
     "`shift` delays music by an exact written duration without adding a rest event. Supply only the delay to make \
-     a reusable entrance function.\n\n```musa\nlet later: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = shift(duration_of(1/2));\n```"
+     a reusable entrance function.\n\n```musa\nlet later: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = shift(duration_of(1/2));\n```"
 );
 static TOGETHER_FUNCTION: KeywordDoc = doc!(
     "together",
@@ -525,13 +525,13 @@ static MUSIC: KeywordDoc = doc!(
     "music",
     "a notation-first music value",
     "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
-     ```musa\nlet call: EventTrack<WrittenTime> = music { c5/4 d5/4 };\n```"
+     ```musa\nlet call: EventTrack(WrittenTime) = music { c5/4 d5/4 };\n```"
 );
 static EVENTS: KeywordDoc = doc!(
     "events",
     "a quoted event-track composition expression",
-    "A `events` quote writes a composition term directly, with `${...}` splicing typed `EventTrack<WrittenTime>` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
-     ```musa\nlet doubled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
+    "A `events` quote writes a composition term directly, with `${...}` splicing typed `EventTrack(WrittenTime)` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
+     ```musa\nlet doubled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] {\n    let s = ${subject} in together { s; shift by 1/2 s; }\n};\n```"
 );
 static QUOTE: KeywordDoc = doc!(
     "quote",
@@ -544,42 +544,42 @@ static QUOTE: KeywordDoc = doc!(
 static OPTION: KeywordDoc = doc!(
     "Option",
     "a type that may contain one value",
-    "`Option<T>` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n\
-     ```musa\nlet found: Option<Pitch> = None;\n```"
+    "`Option(T)` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n\
+     ```musa\nlet found: Option(Pitch) = None;\n```"
 );
 static LIST: KeywordDoc = doc!(
     "List",
     "a finite ordered collection type",
-    "`List<T>` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
-     ```musa\nlet tones: List<Pitch> = [c4, e4, g4];\n```"
+    "`List(T)` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
+     ```musa\nlet tones: List(Pitch) = [c4, e4, g4];\n```"
 );
 static RESULT: KeywordDoc = doc!(
     "Result",
     "a value, or the reason there is none",
-    "`Result<T, E>` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. \
-     Unlike `Option<T>` it says *which* way an operation failed, so an operation with two distinct failures returns one \
+    "`Result(T, E)` is the binary sum, in the one shape this language has a use for: either `Ok(value)` or `Err(reason)`. \
+     Unlike `Option(T)` it says *which* way an operation failed, so an operation with two distinct failures returns one \
      rather than asking the caller to re-derive the reason.\n\n\
-     ```musa\nlet series: Result<ToneRow(12), RowFault> = row(12, chromatic, sketch);\n```"
+     ```musa\nlet series: Result(ToneRow(12), RowFault) = row(12, chromatic, sketch);\n```"
 );
 static OK: KeywordDoc = doc!(
     "Ok",
     "a result carrying the value that was wanted",
-    "`Ok(value)` constructs the left injection of `Result<T, E>`. It carries its type's capital because it is one of that \
+    "`Ok(value)` constructs the left injection of `Result(T, E)`. It carries its type's capital because it is one of that \
      type's two constructors.\n\n\
-     ```musa\nlet found: Result<Pitch, Text> = Ok(c4);\n```"
+     ```musa\nlet found: Result(Pitch, Text) = Ok(c4);\n```"
 );
 static ERR: KeywordDoc = doc!(
     "Err",
     "a result carrying the reason there is no value",
-    "`Err(reason)` constructs the right injection of `Result<T, E>`. The reason is an ordinary value of the error type, not \
+    "`Err(reason)` constructs the right injection of `Result(T, E)`. The reason is an ordinary value of the error type, not \
      a second channel beside the returned one, so a `match` reads it the way it reads any other case.\n\n\
-     ```musa\nlet found: Result<Pitch, Text> = Err(\"no pitch spells that class here\");\n```"
+     ```musa\nlet found: Result(Pitch, Text) = Err(\"no pitch spells that class here\");\n```"
 );
 static MATCH: KeywordDoc = doc!(
     "match",
     "handle every form of a finite value",
     "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
-     ```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
+     ```musa\nfn keep(x: Option(Pitch)) -> Option(Pitch) { match x { None -> None, Some(p) -> Some(p), } }\n```"
 );
 static IF: KeywordDoc = doc!(
     "if",
@@ -597,13 +597,13 @@ static SOME: KeywordDoc = doc!(
     "Some",
     "an option containing a value",
     "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n\
-     ```musa\nlet tonic: Option<Pitch> = Some(c4);\n```"
+     ```musa\nlet tonic: Option(Pitch) = Some(c4);\n```"
 );
 static NONE: KeywordDoc = doc!(
     "None",
     "an option containing no value",
     "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n\
-     ```musa\nlet absent: Option<Pitch> = None;\n```"
+     ```musa\nlet absent: Option(Pitch) = None;\n```"
 );
 static TRUE: KeywordDoc = doc!(
     "true",
@@ -725,7 +725,7 @@ static ENUM: KeywordDoc = doc!(
      Cases live in the type's namespace — `Tying::Untied` — so two enums may declare a case of the same name without \
      colliding. The bare spelling is accepted wherever the expected type is already known, which is where the type \
      says which namespace the word is read in.\n\n\
-     ```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading<A> {\n    Done(A),\n    Refused { at: NodePath, why: \
+     ```musa\nenum Tying { Untied, TiedOn }\n\nenum Reading(A) {\n    Done(A),\n    Refused { at: NodePath, why: \
      Text },\n}\n```"
 );
 
@@ -741,7 +741,7 @@ static PRIVATE: KeywordDoc = doc!(
      coverage rule worth explaining — and outside the module such a type is not taken apart by `match`, but received \
      from and passed to whatever its package exports.\n\n\
      ```musa\nprivate fn dotted_factor(dots: Nat) -> Ratio { … }\n\nenum Chord {\n    private \
-     NamedChord(ChordSymbol, List<Spelling>),\n}\n```"
+     NamedChord(ChordSymbol, List(Spelling)),\n}\n```"
 );
 static IMPL: KeywordDoc = doc!(
     "impl",
@@ -982,9 +982,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::TypeName
         | SyntaxKind::FunctionType
         | SyntaxKind::ProductType
-        | SyntaxKind::OptionType
-        | SyntaxKind::ListType
-        | SyntaxKind::ResultType
         | SyntaxKind::NameExpr
         | SyntaxKind::LiteralExpr
         | SyntaxKind::ParenExpr
@@ -1032,14 +1029,10 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::StackStmt
         | SyntaxKind::ModDecl
         | SyntaxKind::DataDecl
-        | SyntaxKind::TypeParams
-        | SyntaxKind::TypeParam
         | SyntaxKind::DataVariant
         | SyntaxKind::DataField
         | SyntaxKind::DataIndices
-        | SyntaxKind::DataChosen
-        | SyntaxKind::AppliedType
-        | SyntaxKind::IndexedType
+        | SyntaxKind::ConstructorResult
         | SyntaxKind::EqualsEquals
         | SyntaxKind::Plus
         | SyntaxKind::Star

@@ -3,7 +3,7 @@
 // voices. A quote that spells a scope has answered a question it was not asked,
 // and a printed fact pasted in unedited is how it usually happens.
 piece "Quote Claims A Voice" {
-    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
+    let assembled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] {
         track 1 {
             occurrence "voice 0 0 note c4 1 [0:0]" from 0 to 1;
         }

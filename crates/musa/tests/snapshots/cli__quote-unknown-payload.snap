@@ -7,7 +7,7 @@ unsupported-payload
   × this build has no meaning for `Sample` payloads
    ╭─[examples/broken/quote-unknown-payload.musa:6:77]
  5 │ piece "Quote Unknown Payload" {
- 6 │     let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, Sample] {
+ 6 │     let assembled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, Sample] {
    ·                                                                             ───┬──
    ·                                                                                ╰── no payload type by this name
  7 │         track 1 {

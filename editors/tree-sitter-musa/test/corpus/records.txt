@@ -7,7 +7,7 @@ record Region {
   span: Nat;
 }
 
-record Pending<A> {
+record Pending(A: Type) {
   read: A;
   region: Region;
 }
@@ -25,9 +25,9 @@ fn start() -> Region { Region { anchor = 0, span = 1 } }
 
 fn untied() -> Tying { Tying::Untied }
 
-fn shift(held: Pending<Nat>) -> Pending<Nat> { held with { region.anchor = 1 } }
+fn shift(held: Pending(Nat)) -> Pending(Nat) { held with { region.anchor = 1 } }
 
-fn width(held: Pending<Nat>) -> Nat { held.region.span }
+fn width(held: Pending(Nat)) -> Nat { held.region.span }
 
 fn tied(what: Tying) -> Nat {
   match what {
@@ -37,7 +37,7 @@ fn tied(what: Tying) -> Nat {
   }
 }
 
-fn reading(held: Pending<Nat>) -> Nat {
+fn reading(held: Pending(Nat)) -> Nat {
   match held {
     Pending { read = r } -> r,
   }
@@ -66,9 +66,12 @@ fn anchored(where_: Region) -> Nat {
           (identifier)))))
   (record_declaration
     (identifier)
-    (type_parameter_list
-      (type_parameter
-        (identifier)))
+    (parameter_list
+      (parameter
+        (identifier)
+        (type_expression
+          (type_name
+            (identifier)))))
     (field_declaration
       (identifier)
       (type_expression
@@ -139,19 +142,21 @@ fn anchored(where_: Region) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier)))))))
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier))))))))
     (type_expression
-      (applied_type
+      (application_expression
         (type_name
           (identifier))
-        (type_expression
-          (type_name
-            (identifier)))))
+        (type_argument_list
+          (type_expression
+            (type_name
+              (identifier))))))
     (block_expression
       (expression
         (record_update_expression
@@ -170,12 +175,13 @@ fn anchored(where_: Region) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier)))))))
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))
@@ -236,12 +242,13 @@ fn anchored(where_: Region) -> Nat {
       (parameter
         (identifier)
         (type_expression
-          (applied_type
+          (application_expression
             (type_name
               (identifier))
-            (type_expression
-              (type_name
-                (identifier)))))))
+            (type_argument_list
+              (type_expression
+                (type_name
+                  (identifier))))))))
     (type_expression
       (type_name
         (identifier)))

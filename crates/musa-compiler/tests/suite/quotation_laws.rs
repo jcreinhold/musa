@@ -65,9 +65,9 @@ fn probe(body: &str) -> String {
 fn folding(emit: &str) -> String {
     probe(&format!(
         "{emit}
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(forget(built(region))) }};
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {{
         syntax_fold_from_leaves(
             fn (here) {{ emit(here, []) }},
             fn (here, kind, text) {{ emit(here, []) }},
@@ -157,9 +157,9 @@ fn a_spliced_value_arrives_where_the_splice_stood() {
     // have annotated that way.
     let module = folding(
         r#"
-    let inner = fn (here: NodePath) -> Syntax<Expr> { quote at here { "spliced" } };
+    let inner = fn (here: NodePath) -> Syntax(Expr) { quote at here { "spliced" } };
 
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { (1, ${ inner(here) }) }
     };
 "#,
@@ -190,11 +190,11 @@ fn a_spread_arrives_with_the_separators_its_position_supplies() {
     // the spread's first element is minted by the same rule.
     let module = probe(
         r#"
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { one(here) },
             fn (here, kind, text) { one(here) },
@@ -232,13 +232,13 @@ fn an_empty_spread_leaves_no_separator_behind() {
     // stray comma is not source the ordinary reader accepts.
     let module = probe(
         r"
-    let nothing: List<Syntax<Expr>> = [];
+    let nothing: List(Syntax(Expr)) = [];
 
-    let empty = fn (here: NodePath) -> Syntax<Expr> { quote at here { [$..nothing] } };
+    let empty = fn (here: NodePath) -> Syntax(Expr) { quote at here { [$..nothing] } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { empty(here) },
             fn (here, kind, text) { empty(here) },
@@ -249,7 +249,7 @@ fn an_empty_spread_leaves_no_separator_behind() {
     };
 ",
     );
-    let found = errors("", "held: List<List<Nat>>", "1", &module);
+    let found = errors("", "held: List(List(Nat))", "1", &module);
     assert!(
         found.is_empty(),
         "a leaf's empty spread left a separator behind: {found:?}"
@@ -265,9 +265,9 @@ fn a_quoted_binder_does_not_capture_a_spliced_name() {
     // two types, so the annotation says which one happened.
     let module = folding(
         r"
-    let inner = fn (here: NodePath) -> Syntax<Expr> { quote at here { held } };
+    let inner = fn (here: NodePath) -> Syntax(Expr) { quote at here { held } };
 
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { (fn (held: Nat) { ${ inner(here) } })(1) }
     };
 ",
@@ -293,7 +293,7 @@ fn a_quoted_binder_and_a_quoted_use_of_it_are_one_name() {
     // though neither `held` is spelled `held` in the answer.
     let module = folding(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { (fn (held: Nat) { held })(1) }
     };
 ",
@@ -313,7 +313,7 @@ fn two_literal_positions_in_one_quote_are_two_nodes() {
     // Nobody counts, and the duplicate-place gate is the evidence.
     let module = folding(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { (1, 1, 1) }
     };
 ",
@@ -334,16 +334,16 @@ fn two_quotes_at_one_anchor_are_two_sites() {
     // role integers were for.
     let module = folding(
         r"
-    let left = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let left = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let right = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let right = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { [${ left(here) }, ${ right(here) }] }
     };
 ",
     );
-    let found = errors("", "held: List<Nat>", "a", &module);
+    let found = errors("", "held: List(Nat)", "a", &module);
     assert!(
         found.is_empty(),
         "two quotes at one anchor were treated as one site: {found:?}"
@@ -359,14 +359,14 @@ fn one_quote_used_twice_at_one_anchor_is_one_site() {
     // what it must not do is pass.
     let module = folding(
         r"
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { [${ one(here) }, ${ one(here) }] }
     };
 ",
     );
-    let found = errors("", "held: List<Nat>", "a", &module);
+    let found = errors("", "held: List(Nat)", "a", &module);
     assert!(
         found.iter().any(|error| error.contains("not a well-formed expression")),
         "one quote at one anchor twice was mistaken for two nodes: {found:?}"
@@ -382,11 +382,11 @@ fn a_quote_takes_its_identity_from_the_anchor_it_is_evaluated_with() {
     // nothing collided.
     let module = probe(
         r"
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { (1, 1) } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { (1, 1) } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { one(here) },
             fn (here, kind, text) { one(here) },
@@ -397,7 +397,7 @@ fn a_quote_takes_its_identity_from_the_anchor_it_is_evaluated_with() {
     };
 ",
     );
-    let found = errors("", "held: List<(Nat, Nat)>", "1 2 3", &module);
+    let found = errors("", "held: List((Nat, Nat))", "1 2 3", &module);
     assert!(
         found.is_empty(),
         "one helper at three anchors collided with itself: {found:?}"
@@ -422,11 +422,11 @@ fn what_a_quote_builds_is_charged() {
     // about what a quote builds).
     let narrow = probe(
         r"
-    let narrow = fn (here: NodePath) -> Syntax<Expr> { quote at here { [1] } };
+    let narrow = fn (here: NodePath) -> Syntax(Expr) { quote at here { [1] } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { narrow(here) },
             fn (here, kind, text) { narrow(here) },
@@ -471,15 +471,15 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
     // accepted either way.
     let module = probe(
         r"
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let spread = fn (here: NodePath, items: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let spread = fn (here: NodePath, items: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { [$..items] }
     };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { spread(here, [one(here)]) },
             fn (here, kind, text) { spread(here, [one(here)]) },
@@ -494,12 +494,12 @@ fn an_adapter_helper_is_inferred_in_the_phase_it_is_checked_in() {
     // a group of leaves, so each leaf's one-element list arrives inside the
     // group's own spread. A literal the callee's parameter had not decided
     // could not have reached `List<Nat>`.
-    let found = errors("", "held: List<List<Nat>>", "1", &module);
+    let found = errors("", "held: List(List(Nat))", "1", &module);
     assert!(
         found.is_empty(),
         "a list literal whose element type the callee's parameter decides was refused: {found:?}"
     );
-    let refused = errors("", "held: List<Nat>", "1", &module);
+    let refused = errors("", "held: List(Nat)", "1", &module);
     assert!(
         !refused.is_empty(),
         "the leaves' lists were not built at all, so the half above proves nothing"
@@ -520,7 +520,7 @@ fn a_quote_in_an_inferring_position_builds_at_expr() {
         r"
     let unannotated = fn (here: NodePath) { quote at here { 1 } };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {
         Ok(forget(syntax_fold_from_leaves(
             fn (here) { unannotated(here) },
             fn (here, kind, text) { unannotated(here) },
@@ -534,7 +534,7 @@ fn a_quote_in_an_inferring_position_builds_at_expr() {
     let found = plain("a", &module);
     assert!(
         found.is_empty(),
-        "an unannotated quote was refused, or inferred as something other than `Syntax<Expr>`: {found:?}"
+        "an unannotated quote was refused, or inferred as something other than `Syntax(Expr)`: {found:?}"
     );
 }
 
@@ -545,11 +545,11 @@ fn a_splice_of_the_wrong_category_names_both_categories() {
     // operation that establishes the claim by running the parser.
     let module = probe(
         r"
-    let loose = fn (here: NodePath, tree: Syntax<TokenTree>) -> Syntax<Expr> {
+    let loose = fn (here: NodePath, tree: Syntax(TokenTree)) -> Syntax(Expr) {
         quote at here { [$tree] }
     };
 
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {
         Ok(syntax_fold_from_leaves(
             fn (here) { loose(here, region) },
             fn (here, kind, text) { loose(here, region) },
@@ -576,7 +576,7 @@ fn a_spread_where_nothing_spreads_names_the_position() {
     // is no separator there and no room for a second node.
     let module = folding(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { $..kids }
     };
 ",
@@ -596,7 +596,7 @@ fn a_quote_may_not_write_a_name_its_own_hygiene_could_produce() {
     // — the author reading that line is the one who can rename it.
     let module = folding(
         r"
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { (fn (held: Nat) { held })(held_g0) }
     };
 ",
@@ -639,11 +639,11 @@ fn two_refusals_in_one_module_arrive_as_two() {
     // note that says why, which is the part that says which refusal it is.
     let module = folding(
         r"
-    let also = fn (here: NodePath) -> Syntax<Expr> {
+    let also = fn (here: NodePath) -> Syntax(Expr) {
         quote at here { (fn (held: Nat) { held })(held_g0) }
     };
 
-    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {
+    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {
         quote at here { $..kids }
     };
 ",

@@ -152,7 +152,9 @@ normally writes event-track terms for you. `events { ... }` is the one place you
 surface constructor spells. From `examples/events-splice.musa`:
 
 ```musa
-let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
+let assembled: EventTrack(
+    WrittenTime,
+) = events EventTrack[WrittenTime, ScoreFact] {
     let subj = ${subject} in
     together {
         subj;

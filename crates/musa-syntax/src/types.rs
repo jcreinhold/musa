@@ -103,7 +103,7 @@ pub const RESPELLED_TYPES: &[(&str, &str)] = &[
     ("Pc12", "Pc(12)"),
     ("PcSet12", "PcSet(12)"),
     ("Row12", "ToneRow(12)"),
-    ("music", "EventTrack<WrittenTime>"),
+    ("music", "EventTrack(WrittenTime)"),
     ("option", "Option"),
     ("list", "List"),
     ("result", "Result"),

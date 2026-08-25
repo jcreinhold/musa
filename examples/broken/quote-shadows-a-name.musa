@@ -3,12 +3,12 @@
 // outright (K7) rather than picking one of the two meanings — including here,
 // where the quote is being written by hand and the mistake is easy to make.
 piece "Quote Shadows A Name" {
-    let theme: EventTrack<WrittenTime> = music {
+    let theme: EventTrack(WrittenTime) = music {
         c4/4
         d4/4
     };
 
-    let assembled: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] {
+    let assembled: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] {
         let material = ${theme} in
         let material = track 1/2 {
             occurrence "note g4 1/2" from 0 to 1/2;

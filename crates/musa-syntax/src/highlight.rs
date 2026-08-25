@@ -425,9 +425,6 @@ impl TokenClass {
             | SyntaxKind::TypeName
             | SyntaxKind::FunctionType
             | SyntaxKind::ProductType
-            | SyntaxKind::OptionType
-            | SyntaxKind::ListType
-            | SyntaxKind::ResultType
             | SyntaxKind::NameExpr
             | SyntaxKind::LiteralExpr
             | SyntaxKind::ParenExpr
@@ -465,12 +462,10 @@ impl TokenClass {
             | SyntaxKind::StackStmt
             | SyntaxKind::ModDecl
             | SyntaxKind::DataDecl
-            | SyntaxKind::TypeParams
-            | SyntaxKind::TypeParam
             | SyntaxKind::DataVariant
             | SyntaxKind::DataField
             | SyntaxKind::DataIndices
-            | SyntaxKind::DataChosen
+            | SyntaxKind::ConstructorResult
             | SyntaxKind::RecordDecl
             | SyntaxKind::FieldDecl
             | SyntaxKind::EnumDecl
@@ -480,9 +475,7 @@ impl TokenClass {
             | SyntaxKind::PathExpr
             | SyntaxKind::RecordPattern
             | SyntaxKind::FieldPattern
-            | SyntaxKind::FieldPath
-            | SyntaxKind::AppliedType
-            | SyntaxKind::IndexedType => return None,
+            | SyntaxKind::FieldPath => return None,
 
             // The parts of a composite literal, for the same reason as a node
             // kind: highlighting reads the *lexer's* stream, and the lexer

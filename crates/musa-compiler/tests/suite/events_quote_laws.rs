@@ -40,8 +40,8 @@ use num_rational::Ratio;
 fn piece(body: &str) -> String {
     format!(
         "piece \"Q\" {{\n\
-         let subject: EventTrack<WrittenTime> = music {{ c4/4 d4/4 e4/4 f4/4 }};\n\
-         let assembled: EventTrack<WrittenTime> = {body};\n\
+         let subject: EventTrack(WrittenTime) = music {{ c4/4 d4/4 e4/4 f4/4 }};\n\
+         let assembled: EventTrack(WrittenTime) = {body};\n\
          score {{ part p {{ voice v {{ use assembled; }} }} }}\n\
          }}\n"
     )
@@ -475,7 +475,7 @@ fn a_quotes_time_stays_exact() {
 fn a_raw_transform_can_invalidate_a_placement_claim() {
     let inside = errors(
         "piece \"Q\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 e4/4 f4/4 };
             score { part p { voice v { assert fills_meter() { use subject; } } } }
         }",
     );
@@ -483,8 +483,8 @@ fn a_raw_transform_can_invalidate_a_placement_claim() {
 
     let outside = errors(
         "piece \"Q\" {
-            let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };
-            let halved: EventTrack<WrittenTime> = events EventTrack[WrittenTime, ScoreFact] { scale by 1/2 ${subject} };
+            let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 e4/4 f4/4 };
+            let halved: EventTrack(WrittenTime) = events EventTrack[WrittenTime, ScoreFact] { scale by 1/2 ${subject} };
             score { part p { voice v { assert fills_meter() { use halved; } } } }
         }",
     );

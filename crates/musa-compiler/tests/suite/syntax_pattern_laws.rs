@@ -54,9 +54,9 @@ fn probe(body: &str) -> String {
 fn deciding(decide: &str) -> String {
     probe(&format!(
         "{decide}
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(forget(built(region))) }};
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {{
         syntax_fold_from_leaves(
             fn (here) {{ decide(here, region) }},
             fn (here, kind, text) {{ decide(here, region) }},
@@ -151,21 +151,21 @@ fn match_after_build_binds_what_the_quote_spliced() {
     // written where the type is still open.
     let module = deciding(
         r#"
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
-    let two = fn (here: NodePath) -> Syntax<Expr> { quote at here { "two" } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
+    let two = fn (here: NodePath) -> Syntax(Expr) { quote at here { "two" } };
 
-    let sum = fn (here: NodePath, x: Syntax<Expr>, y: Syntax<Expr>) -> Syntax<Expr> {
+    let sum = fn (here: NodePath, x: Syntax(Expr), y: Syntax(Expr)) -> Syntax(Expr) {
         quote at here { $x + $y }
     };
 
-    let split = fn (here: NodePath, built: Syntax<Expr>) -> Syntax<Expr> {
+    let split = fn (here: NodePath, built: Syntax(Expr)) -> Syntax(Expr) {
         match built {
             quote { $a + $b } -> quote at here { ($a, $b) },
             _ -> quote at here { "unmatched" },
         }
     };
 
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         split(here, sum(here, one(here), two(here)))
     };
 "#,
@@ -190,7 +190,7 @@ fn a_literal_name_is_matched_and_not_bound() {
     // a pattern that matches everything.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { thing } } -> quote at here { 1 },
             _ -> quote at here { "other" },
@@ -214,7 +214,7 @@ fn a_name_the_pattern_took_literally_is_reported_where_the_arm_uses_it() {
     // that was left off — so the report names the identifier and the repair.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { thing } } -> quote at here { ${ thing } },
             _ -> quote at here { "other" },
@@ -240,7 +240,7 @@ fn a_derived_node_and_a_source_node_match_alike() {
     // Literally one pattern: `braced` is the same text in all three modules,
     // and only the node handed to it differs.
     const BRACED: &str = r#"
-    let braced = fn (here: NodePath, node: Syntax<TokenTree>) -> Syntax<Expr> {
+    let braced = fn (here: NodePath, node: Syntax(TokenTree)) -> Syntax(Expr) {
         match node {
             quote { { $inside } } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -249,7 +249,7 @@ fn a_derived_node_and_a_source_node_match_alike() {
 "#;
     let source = deciding(&format!(
         "{BRACED}
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {{
         braced(here, region)
     }};
 "
@@ -259,9 +259,9 @@ fn a_derived_node_and_a_source_node_match_alike() {
 
     let derived = deciding(&format!(
         "{BRACED}
-    let made = fn (here: NodePath) -> Syntax<Expr> {{ quote at here {{ {{ 1 }} }} }};
+    let made = fn (here: NodePath) -> Syntax(Expr) {{ quote at here {{ {{ 1 }} }} }};
 
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {{
         braced(here, forget(made(here)))
     }};
 "
@@ -277,9 +277,9 @@ fn a_derived_node_and_a_source_node_match_alike() {
     // other arm.
     let other = deciding(&format!(
         "{BRACED}
-    let made = fn (here: NodePath) -> Syntax<Expr> {{ quote at here {{ (1, 2) }} }};
+    let made = fn (here: NodePath) -> Syntax(Expr) {{ quote at here {{ (1, 2) }} }};
 
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {{
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {{
         braced(here, forget(made(here)))
     }};
 "
@@ -300,7 +300,7 @@ fn a_comment_between_two_elements_does_not_defeat_a_match() {
     // composer runs the formatter over the region it reads.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { ($x, $y) } } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -330,14 +330,14 @@ fn a_spread_binds_the_run_it_stands_among() {
     // block separates nothing.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { $..items } } -> counted(here, items),
             _ -> quote at here { "unmatched" },
         }
     };
 
-    let counted = fn (here: NodePath, items: List<Syntax<TokenTree>>) -> Syntax<Expr> {
+    let counted = fn (here: NodePath, items: List(Syntax(TokenTree))) -> Syntax(Expr) {
         match items {
             [] -> quote at here { "none" },
             [first, ..others] -> quote at here { 1 },
@@ -361,7 +361,7 @@ fn a_match_of_shapes_still_needs_the_arm_that_says_what_this_reads() {
     // says what it reads, which is why §4 calls it not defensive style.
     let module = deciding(
         r"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { $..items } } -> quote at here { 1 },
         }
@@ -383,7 +383,7 @@ fn two_arms_of_one_shape_are_one_arm() {
     // shape however its holes are spelled.
     let module = deciding(
         r"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { $..items } } -> quote at here { 1 },
             quote { { $..other } } -> quote at here { 2 },
@@ -401,7 +401,7 @@ fn two_arms_of_one_shape_are_one_arm() {
     // shape and not about quote patterns in general.
     let distinct = deciding(
         r"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { ($x, $y) } } -> quote at here { 1 },
             quote { { $..other } } -> quote at here { 2 },
@@ -421,7 +421,7 @@ fn two_spreads_in_one_group_are_refused() {
     // second one, where the repair is.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { f($..xs, $..ys) } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -444,7 +444,7 @@ fn a_spread_where_one_node_stands_is_refused() {
     // construction has no separator to write, matching has no run to bind.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { $..everything } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -467,7 +467,7 @@ fn a_braced_splice_in_a_pattern_is_refused() {
     // grammar that would have to be kept in step with the first.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { ${ region } } } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -489,7 +489,7 @@ fn a_pattern_against_a_value_that_is_not_syntax_is_refused() {
     // which type was matched rather than only that the pattern was wrong.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match 1 {
             quote { { $a } } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
@@ -517,7 +517,7 @@ fn a_pattern_decides_a_known_shape() {
     // its own.
     let module = deciding(
         r#"
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { ($x, $y) } } -> quote at here { 1 },
             quote { { [$..voiced] } } -> quote at here { 2 },
@@ -551,11 +551,11 @@ fn the_recursor_traverses_an_unknown_shape() {
     // why prompt 140 deletes neither form — see [`a_pattern_decides_a_known_shape`].
     let module = probe(
         r#"
-    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(forget(built(region))) };
+    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(forget(built(region))) };
 
-    let one = fn (here: NodePath) -> Syntax<Expr> { quote at here { 1 } };
+    let one = fn (here: NodePath) -> Syntax(Expr) { quote at here { 1 } };
 
-    let built = fn (region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let built = fn (region: Syntax(TokenTree)) -> Syntax(Expr) {
         syntax_fold_from_leaves(
             fn (here) { one(here) },
             fn (here, kind, text) { one(here) },
@@ -585,14 +585,14 @@ fn two_refused_patterns_in_one_module_arrive_as_two() {
     // difference between them is written.
     let module = deciding(
         r#"
-    let also = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let also = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { { ${ region } } } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },
         }
     };
 
-    let decide = fn (here: NodePath, region: Syntax<TokenTree>) -> Syntax<Expr> {
+    let decide = fn (here: NodePath, region: Syntax(TokenTree)) -> Syntax(Expr) {
         match region {
             quote { f($..xs, $..ys) } -> quote at here { 1 },
             _ -> quote at here { "unmatched" },

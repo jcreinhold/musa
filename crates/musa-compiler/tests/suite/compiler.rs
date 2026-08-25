@@ -214,8 +214,8 @@ fn nested_motifs_and_duration_parameters_expand() {
     // language admits no silent `Ratio` → `Duration` conversion — the corpus's
     // own spelling is `duration_of(1/2)` (canon-functions.musa:23).
     let source = "piece \"x\" {
-        motif cell(d: Duration<WrittenTime>) { c4 d d4 d }
-        motif pair(d: Duration<WrittenTime>) { use cell(d); use cell(d); }
+        motif cell(d: Duration(WrittenTime)) { c4 d d4 d }
+        motif pair(d: Duration(WrittenTime)) { use cell(d); use cell(d); }
         score { part p { voice v { use pair(duration_of(1/16)); use pair(duration_of(1/8)); } } }
     }";
     let compilation = compile_source(source);

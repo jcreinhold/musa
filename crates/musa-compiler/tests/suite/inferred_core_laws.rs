@@ -72,11 +72,11 @@ fn errors(compilation: &musa_compiler::Compilation) -> Vec<Code> {
 #[test]
 fn a_written_binder_admits_every_instance_a_caller_asks_for() {
     let compilation = compile_core(
-        "fn unchanged<A>(value: A) -> A { value } \
-         fn pair_up<A, B>(left: A, right: B) -> A { unchanged(left) } \
+        "fn unchanged({A: Type}, value: A) -> A { value } \
+         fn pair_up({A: Type}, {B: Type}, left: A, right: B) -> A { unchanged(left) } \
          let counted: Nat = unchanged(3); \
          let sounded: Pitch = unchanged(c4); \
-         let listed: List<Nat> = unchanged(range(3)); \
+         let listed: List(Nat) = unchanged(range(3)); \
          let chosen: Nat = pair_up(1, c4);",
     );
     assert!(
@@ -132,10 +132,10 @@ fn a_deeply_nested_finite_program_evaluates_to_its_value() {
     // progress-and-termination claim is weaker for it: the eliminators still
     // nest, and the value is still the one a reader computes by hand.
     let compilation = compile_core(
-        "let rows: List<List<Nat>> = map(fn (index: Nat) { range(index) }, range(4)); \
-         let widths: List<Nat> = map(fn (row: List<Nat>) { row.fold_from_start(0, fn (running: Nat, member: Nat) { running }) }, rows); \
+        "let rows: List(List(Nat)) = map(fn (index: Nat) { range(index) }, range(4)); \
+         let widths: List(Nat) = map(fn (row: List(Nat)) { row.fold_from_start(0, fn (running: Nat, member: Nat) { running }) }, rows); \
          let total: Nat = widths.fold_from_start(7, fn (running: Nat, width: Nat) { running }); \
-         let repeated: List<Nat> = rows.fold_from_start(range(3), fn (running: List<Nat>, row: List<Nat>) { running });",
+         let repeated: List(Nat) = rows.fold_from_start(range(3), fn (running: List(Nat), row: List(Nat)) { running });",
     );
     assert!(
         !compilation.has_errors(),
@@ -184,7 +184,7 @@ fn each_refused_shape_is_refused_by_name() {
         ),
         (
             "a match that leaves a case out",
-            "data Shape { Silence, Sounded(held: Duration<WrittenTime>) } \
+            "data Shape { Silence, Sounded(held: Duration(WrittenTime)) } \
              fn named(shape: Shape) -> Nat { match shape { Silence -> 0 } }",
             // `IncompleteMatch`, not `NonExhaustiveMatch`: coverage is decided
             // while the `match` is compiled to a recursor, so the refusal names
@@ -201,7 +201,8 @@ fn each_refused_shape_is_refused_by_name() {
         // `WrongArity` here would be asserting a message nothing produces.
         (
             "a data instantiation at the wrong arity",
-            "data Pair<A> { Both(left: A, right: A) } fn wrong(p: Pair<Nat, Bool>) -> Nat { 0 }",
+            "data Pair(A: Type) { Both(left: A, right: A): Pair(A) } \
+             fn wrong(p: Pair(Nat, Bool)) -> Nat { 0 }",
             Code::TypeMismatch,
         ),
     ];
@@ -239,8 +240,8 @@ fn each_refused_shape_is_refused_by_name() {
 fn a_function_may_not_hide_where_an_encoding_is_required() {
     for holding in [
         "data Box { Hold(transform: Nat -> Nat) }",
-        "data Box { Hold(transforms: List<Nat -> Nat>) }",
-        "data Box { Hold(transform: Option<Nat -> Nat>) }",
+        "data Box { Hold(transforms: List(Nat -> Nat)) }",
+        "data Box { Hold(transform: Option(Nat -> Nat)) }",
     ] {
         let declared = compile_core(holding);
         assert!(
@@ -250,7 +251,7 @@ fn a_function_may_not_hide_where_an_encoding_is_required() {
         );
     }
 
-    let payload = compile_core("let held: EventTrack<WrittenTime, Nat -> Nat> = empty_track();");
+    let payload = compile_core("let held: EventTrack(WrittenTime, Nat -> Nat) = empty_track();");
     assert!(
         !errors(&payload).is_empty(),
         "an event-track payload that holds a function was admitted"

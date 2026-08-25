@@ -10,7 +10,7 @@ import std::list;
 // profile's question and never appears here.
 //
 // The shape is direct recursion rather than lists of children. A
-// generated fold replaces one constructor layer, so a `List<StaffItem>`
+// generated fold replaces one constructor layer, so a `List(StaffItem)`
 // field would arrive as the list it is, its elements never folded, and a
 // total traversal could not be written over it. Every sequence is
 // therefore a constructor carrying the rest of its sequence, and every
@@ -62,8 +62,8 @@ data Spelling {
 data StaffEvent {
     Note(spelled: Pitch, held: WrittenDuration, tied: Tie),
     Rest(silent: WrittenDuration),
-    Chord(voices: List<Pitch>, sustained: WrittenDuration, joined: Tie),
-    Grace(ornaments: List<Pitch>),
+    Chord(voices: List(Pitch), sustained: WrittenDuration, joined: Tie),
+    Grace(ornaments: List(Pitch)),
     MeterChange(beats: Meter),
 }
 
@@ -95,7 +95,8 @@ data StaffItem {
 // and `bar` are keywords, and a fold that spelled half its cases one way
 // and half another would read worse than one that spells all seven as what
 // the case *did*.
-fn staff_item_fold<A>(
+fn staff_item_fold(
+    {A: Type},
     nothing: A,
     sounded: Nat -> StaffEvent -> A -> A,
     barred: Nat -> Meter -> A -> A -> A,
@@ -175,8 +176,8 @@ data WrittenSpans {
     NoSpans,
     Span(
         anchor: Nat,
-        start: Position<WrittenTime>,
-        held: Duration<WrittenTime>,
+        start: Position(WrittenTime),
+        held: Duration(WrittenTime),
         tied: Tie,
         after: WrittenSpans,
     ),
@@ -192,10 +193,11 @@ data WrittenSpans {
 // reason `std::list` states at length: the termination measure holds the
 // arguments before the recursive position fixed, so the argument that
 // descends is the first one.
-private fn folded_spans<A>(
+private fn folded_spans(
+    {A: Type},
     spans: WrittenSpans,
     empty: A,
-    combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
+    combine: Nat -> Position(WrittenTime) -> Duration(WrittenTime) -> Tie -> A -> A,
 ) -> A {
     match spans {
         NoSpans -> empty,
@@ -215,30 +217,32 @@ private fn folded_spans<A>(
 // A fold over a declared family is ordinary source. The core names a
 // family's recursor after the family and compiles `match` to it, so this
 // is written once, here, beside the family it reads.
-fn written_spans_fold<A>(
+fn written_spans_fold(
+    {A: Type},
     empty: A,
-    combine: Nat -> Position<WrittenTime> -> Duration<WrittenTime> -> Tie -> A -> A,
+    combine: Nat -> Position(WrittenTime) -> Duration(WrittenTime) -> Tie -> A -> A,
     spans: WrittenSpans,
 ) -> A { folded_spans(spans, empty, combine) }
 
 // What a traversal reached: the spans it found, and where it stopped.
 record Realization {
     spans: WrittenSpans;
-    at_end: Position<WrittenTime>;
+    at_end: Position(WrittenTime);
 }
 
 // A realized span with the written value `engrave` chose for it.
 data Spelled {
     NoSpelling,
-    Written(anchor: Nat, start: Position<WrittenTime>, value: WrittenDuration, after: Spelled),
+    Written(anchor: Nat, start: Position(WrittenTime), value: WrittenDuration, after: Spelled),
 }
 
 // The catamorphism over spelled spans, its list first for the same reason
 // [`folded_spans`] gives.
-private fn folded_spelling<A>(
+private fn folded_spelling(
+    {A: Type},
     spelled: Spelled,
     empty: A,
-    combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
+    combine: Nat -> Position(WrittenTime) -> WrittenDuration -> A -> A,
 ) -> A {
     match spelled {
         NoSpelling -> empty,
@@ -253,9 +257,10 @@ private fn folded_spelling<A>(
 
 // Read spelled spans from the end: `combine` sees each span's chosen
 // written value together with what the spans after it produced.
-fn spelled_fold<A>(
+fn spelled_fold(
+    {A: Type},
     empty: A,
-    combine: Nat -> Position<WrittenTime> -> WrittenDuration -> A -> A,
+    combine: Nat -> Position(WrittenTime) -> WrittenDuration -> A -> A,
     spelled: Spelled,
 ) -> A { folded_spelling(spelled, empty, combine) }
 
@@ -297,7 +302,7 @@ fn ratio_of(count: Nat) -> Ratio {
 // that binds nothing is an ordinary expression, evaluated where it stands.
 // Written this way the division lives under a binder and is reached only
 // when the count is one the reader can divide by.
-private fn exact_quotient(amount: Ratio, parts: Nat, because: Text) -> Result<Ratio, Text> {
+private fn exact_quotient(amount: Ratio, parts: Nat, because: Text) -> Result(Ratio, Text) {
     match parts {
         Zero -> Err(because),
         Succ(fewer) -> Ok(ratio_div(amount, ratio_of(parts))),
@@ -305,7 +310,7 @@ private fn exact_quotient(amount: Ratio, parts: Nat, because: Text) -> Result<Ra
 }
 
 // What one undotted note value covers: the whole note divided.
-fn division_span(division: Nat) -> Result<Ratio, Text> {
+fn division_span(division: Nat) -> Result(Ratio, Text) {
     exact_quotient(
         1/1,
         division,
@@ -338,7 +343,7 @@ fn dotted_span(base: Ratio, dots: Nat) -> Ratio {
 
 // The exact span a written value covers, or the sentence saying why none
 // does.
-fn written_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text> {
+fn written_span(value: WrittenDuration) -> Result(Duration(WrittenTime), Text) {
     match value {
         NoteValue(division, dots) -> match division_span(division) {
             Ok(base) -> Ok(duration_of(dotted_span(base, dots))),
@@ -349,7 +354,7 @@ fn written_span(value: WrittenDuration) -> Result<Duration<WrittenTime>, Text> {
 }
 
 // The bar a meter measures.
-fn meter_span(beats: Meter) -> Result<Duration<WrittenTime>, Text> {
+fn meter_span(beats: Meter) -> Result(Duration(WrittenTime), Text) {
     match beats {
         Beats(count, unit) -> match division_span(unit) {
             Ok(one) -> Ok(duration_of(ratio_mul(one, ratio_of(count)))),
@@ -364,8 +369,8 @@ fn joined_spans(first: WrittenSpans, second: WrittenSpans) -> WrittenSpans {
         second,
         fn (
             anchor: Nat,
-            start: Position<WrittenTime>,
-            held: Duration<WrittenTime>,
+            start: Position(WrittenTime),
+            held: Duration(WrittenTime),
             tied: Tie,
             after: WrittenSpans,
         ) -> WrittenSpans { Span(anchor, start, held, tied, after) },
@@ -375,7 +380,7 @@ fn joined_spans(first: WrittenSpans, second: WrittenSpans) -> WrittenSpans {
 
 // A traversal that has run out of items reaches nothing and stays where
 // it is.
-fn stopped(here: Position<WrittenTime>) -> Result<Realization, Text> {
+fn stopped(here: Position(WrittenTime)) -> Result(Realization, Text) {
     Ok(Realization {
         spans = NoSpans,
         at_end = here
@@ -385,10 +390,10 @@ fn stopped(here: Position<WrittenTime>) -> Result<Realization, Text> {
 // A nested form — a bar, a slur, a tuplet's siblings, a repeat, an ending
 // — is its body followed by what comes after it.
 fn nested(
-    body: (Position<WrittenTime> -> Result<Realization, Text>),
-    after: (Position<WrittenTime> -> Result<Realization, Text>),
-    here: Position<WrittenTime>,
-) -> Result<Realization, Text> {
+    body: (Position(WrittenTime) -> Result(Realization, Text)),
+    after: (Position(WrittenTime) -> Result(Realization, Text)),
+    here: Position(WrittenTime),
+) -> Result(Realization, Text) {
     match body(here) {
         Ok(inner) -> match after(inner.at_end) {
             Ok(later) -> Ok(Realization {
@@ -408,7 +413,7 @@ fn nested(
 // the tie reaches is usually in the next one. Joining last is what lets a
 // tie cross a barline, a slur, or a repeat without any of the three
 // knowing about ties.
-fn joined_ties(spans: WrittenSpans) -> Result<WrittenSpans, Text> {
+fn joined_ties(spans: WrittenSpans) -> Result(WrittenSpans, Text) {
     match spans {
         NoSpans -> Ok(NoSpans),
         Span(anchor, start, held, tied, after) -> match joined_ties(after) {
@@ -441,9 +446,9 @@ fn placed(
     anchor: Nat,
     held: WrittenDuration,
     tied: Tie,
-    here: Position<WrittenTime>,
-    after: (Position<WrittenTime> -> Result<Realization, Text>),
-) -> Result<Realization, Text> {
+    here: Position(WrittenTime),
+    after: (Position(WrittenTime) -> Result(Realization, Text)),
+) -> Result(Realization, Text) {
     let span = written_span(held)?;
     match after(position_shift(here, span)) {
         Ok(later) -> Ok(Realization {
@@ -462,9 +467,9 @@ fn placed(
 fn sounded_span(
     anchor: Nat,
     event: StaffEvent,
-    here: Position<WrittenTime>,
-    after: (Position<WrittenTime> -> Result<Realization, Text>),
-) -> Result<Realization, Text> {
+    here: Position(WrittenTime),
+    after: (Position(WrittenTime) -> Result(Realization, Text)),
+) -> Result(Realization, Text) {
     match event {
         Note(spelled, held, tied) -> placed(anchor, held, tied, here, after),
         Rest(silent) -> placed(anchor, silent, Untied, here, after),
@@ -478,9 +483,9 @@ fn sounded_span(
 // against `here`. This is how a tuplet's inside becomes its outside.
 fn rescaled(
     factor: Ratio,
-    here: Position<WrittenTime>,
-    point: Position<WrittenTime>,
-) -> Position<WrittenTime> {
+    here: Position(WrittenTime),
+    point: Position(WrittenTime),
+) -> Position(WrittenTime) {
     position_of(ratio_add(position_ratio(here), ratio_mul(factor, position_ratio(point))))
 }
 
@@ -488,7 +493,7 @@ fn rescaled(
 // factor.
 fn rescaled_spans(
     factor: Ratio,
-    here: Position<WrittenTime>,
+    here: Position(WrittenTime),
     spans: WrittenSpans,
 ) -> WrittenSpans {
     // Written as its own recursion rather than through the fold: the seed
@@ -513,7 +518,7 @@ fn rescaled_spans(
 // A tuplet that plays nothing is refused for the reason `division_span`
 // gives: nothing in the time of two is not a tuplet, and the reader who
 // wrote it should hear that rather than the core's division rule.
-fn tuplet_factor(played: Nat, against: Nat) -> Result<Ratio, Text> {
+fn tuplet_factor(played: Nat, against: Nat) -> Result(Ratio, Text) {
     exact_quotient(
         ratio_of(against),
         played,
@@ -526,10 +531,10 @@ fn tuplet_factor(played: Nat, against: Nat) -> Result<Ratio, Text> {
 fn tupleted(
     played: Nat,
     against: Nat,
-    body: (Position<WrittenTime> -> Result<Realization, Text>),
-    after: (Position<WrittenTime> -> Result<Realization, Text>),
-    here: Position<WrittenTime>,
-) -> Result<Realization, Text> {
+    body: (Position(WrittenTime) -> Result(Realization, Text)),
+    after: (Position(WrittenTime) -> Result(Realization, Text)),
+    here: Position(WrittenTime),
+) -> Result(Realization, Text) {
     match tuplet_factor(played, against) {
         Ok(factor) -> match body(position_of(0/1)) {
             Ok(inner) -> match after(rescaled(factor, here, inner.at_end)) {
@@ -555,34 +560,34 @@ fn tupleted(
 // runs the other way: what a suffix covers is known before where it
 // begins, so each case answers "given a starting point, this is what I
 // reach" rather than a value that would have needed the point already.
-fn walked(items: StaffItem) -> (Position<WrittenTime> -> Result<Realization, Text>) {
+fn walked(items: StaffItem) -> (Position(WrittenTime) -> Result(Realization, Text)) {
     staff_item_fold(
         stopped,
         fn (
             anchor: Nat,
             event: StaffEvent,
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 sounded_span(anchor, event, here, after)
             }
         },
         fn (
             anchor: Nat,
             beats: Meter,
-            body: (Position<WrittenTime> -> Result<Realization, Text>),
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            body: (Position(WrittenTime) -> Result(Realization, Text)),
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 nested(body, after, here)
             }
         },
         fn (
             anchor: Nat,
-            body: (Position<WrittenTime> -> Result<Realization, Text>),
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            body: (Position(WrittenTime) -> Result(Realization, Text)),
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 nested(body, after, here)
             }
         },
@@ -590,30 +595,30 @@ fn walked(items: StaffItem) -> (Position<WrittenTime> -> Result<Realization, Tex
             anchor: Nat,
             played: Nat,
             against: Nat,
-            body: (Position<WrittenTime> -> Result<Realization, Text>),
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            body: (Position(WrittenTime) -> Result(Realization, Text)),
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 tupleted(played, against, body, after, here)
             }
         },
         fn (
             anchor: Nat,
             times: Nat,
-            body: (Position<WrittenTime> -> Result<Realization, Text>),
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            body: (Position(WrittenTime) -> Result(Realization, Text)),
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 nested(body, after, here)
             }
         },
         fn (
             anchor: Nat,
             pass: Nat,
-            body: (Position<WrittenTime> -> Result<Realization, Text>),
-            after: (Position<WrittenTime> -> Result<Realization, Text>),
-        ) -> (Position<WrittenTime> -> Result<Realization, Text>) {
-            fn (here: Position<WrittenTime>) -> Result<Realization, Text> {
+            body: (Position(WrittenTime) -> Result(Realization, Text)),
+            after: (Position(WrittenTime) -> Result(Realization, Text)),
+        ) -> (Position(WrittenTime) -> Result(Realization, Text)) {
+            fn (here: Position(WrittenTime)) -> Result(Realization, Text) {
                 nested(body, after, here)
             }
         },
@@ -648,7 +653,7 @@ fn document_spelling(page: StaffDocument) -> Spelling {
 //
 // Ties are joined afterwards, over the flat spans, so that a tie reaches
 // whatever sounds next however deeply either of them is nested.
-fn realize(document: StaffDocument) -> Result<Realization, Text> {
+fn realize(document: StaffDocument) -> Result(Realization, Text) {
     match walked(document_items(document))(position_of(0/1)) {
         Ok(reached) -> match joined_ties(reached.spans) {
             Ok(spans) -> Ok(Realization {
@@ -662,7 +667,7 @@ fn realize(document: StaffDocument) -> Result<Realization, Text> {
 }
 
 // How much written time a document covers altogether.
-fn written_extent(document: StaffDocument) -> Result<Duration<WrittenTime>, Text> {
+fn written_extent(document: StaffDocument) -> Result(Duration(WrittenTime), Text) {
     match realize(document) {
         Ok(reached) -> Ok(position_between(position_of(0/1), reached.at_end)),
         Err(why) -> Err(why),
@@ -682,7 +687,7 @@ fn written_extent(document: StaffDocument) -> Result<Duration<WrittenTime>, Text
 // every step of a twenty-one-value search, nested inside whatever depth
 // the caller had already reached. A table the module already knows is a
 // table the module should write down.
-private let readable_spellings: List<(WrittenDuration, Ratio)> = [
+private let readable_spellings: List((WrittenDuration, Ratio)) = [
     (NoteValue(1, 0), 1/1),
     (NoteValue(2, 0), 1/2),
     (NoteValue(4, 0), 1/4),
@@ -708,7 +713,7 @@ private let readable_spellings: List<(WrittenDuration, Ratio)> = [
 
 // The note values a reader is expected to read at sight, shortest
 // spelling first: no dots before one dot, and one before two.
-let readable_values: List<WrittenDuration> = map(
+let readable_values: List(WrittenDuration) = map(
     fn (spelling: (WrittenDuration, Ratio)) -> WrittenDuration {
         match spelling {
             (value, covers) -> value,
@@ -724,10 +729,9 @@ let readable_values: List<WrittenDuration> = map(
 // which a fold's answer type does not say until the fold is done. Here
 // both answers are checked against the type this signature states. It also
 // stops at the first match, which the fold could not.
-private fn first_covering(
-    spellings: List<(WrittenDuration, Ratio)>,
-    held: Ratio,
-) -> Option<WrittenDuration> {
+private fn first_covering(spellings: List((WrittenDuration, Ratio)), held: Ratio) -> Option(
+    WrittenDuration,
+) {
     match spellings {
         [] -> None,
         // The head is named and then taken apart, because a list pattern
@@ -741,7 +745,7 @@ private fn first_covering(
 }
 
 // The first readable value that covers a span exactly, if one does.
-fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
+fn readable(held: Duration(WrittenTime)) -> Option(WrittenDuration) {
     first_covering(readable_spellings, duration_ratio(held))
 }
 
@@ -750,7 +754,7 @@ fn readable(held: Duration<WrittenTime>) -> Option<WrittenDuration> {
 // This is the choice expansion deliberately left open, and it is made
 // here so that a span nothing readable spells is a complaint about the
 // document's spelling policy rather than a note quietly rounded.
-fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDuration, Text> {
+fn spelled_as(policy: Spelling, held: Duration(WrittenTime)) -> Result(WrittenDuration, Text) {
     match policy {
         ExactValues -> Ok(ExactSpan(duration_ratio(held))),
         ShortestReadable -> match readable(held) {
@@ -761,7 +765,7 @@ fn spelled_as(policy: Spelling, held: Duration<WrittenTime>) -> Result<WrittenDu
 }
 
 // Every realized span with the written value chosen for it.
-fn engrave(document: StaffDocument) -> Result<Spelled, Text> {
+fn engrave(document: StaffDocument) -> Result(Spelled, Text) {
     match realize(document) {
         Ok(reached) -> spelled_spans(document_spelling(document), reached.spans),
         Err(why) -> Err(why),
@@ -770,7 +774,7 @@ fn engrave(document: StaffDocument) -> Result<Spelled, Text> {
 
 // The spelling choice, made once per span and refused once for all of
 // them.
-fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text> {
+fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result(Spelled, Text) {
     match spans {
         NoSpans -> Ok(NoSpelling),
         Span(anchor, start, held, tied, after) -> match spelled_spans(policy, after) {

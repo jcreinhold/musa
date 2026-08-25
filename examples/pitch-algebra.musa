@@ -33,7 +33,7 @@ piece "Pitch Algebra" {
     // The two are one operation — `interval_group.compose` **is**
     // `Interval::compose` — so the line below and `two_octaves` above compute
     // the same interval two ways.
-    fn twice(g: Group<Interval>, x: Interval) -> Interval { g.compose(x, x) }
+    fn twice(g: Group(Interval), x: Interval) -> Interval { g.compose(x, x) }
 
     let doubled_octave: Interval = twice(interval_group, P8);
 
@@ -59,7 +59,7 @@ piece "Pitch Algebra" {
     // that answered the wrong interval would render them as two pitches.
     let arrived: Pitch = round_trip(c4, e4);
 
-    fn law() -> EventTrack<WrittenTime> {
+    fn law() -> EventTrack(WrittenTime) {
         music {
             arrived/4
             e4/4
@@ -69,7 +69,7 @@ piece "Pitch Algebra" {
     // `up` and `down` are `act` written as an operator, so this line makes the
     // same moves the bindings above make. That equivalence is the point of
     // naming the action: nothing in the notation changed.
-    fn line(root: Pitch) -> EventTrack<WrittenTime> {
+    fn line(root: Pitch) -> EventTrack(WrittenTime) {
         music {
             root/4
             (root up major_third)/4
@@ -82,7 +82,7 @@ piece "Pitch Algebra" {
     // span the same number of semitones and are different intervals, so `e4`
     // and `fb4` are two notes here and would be one in any language that read
     // an interval off a semitone count.
-    fn spelling() -> EventTrack<WrittenTime> {
+    fn spelling() -> EventTrack(WrittenTime) {
         music {
             (c4 up major_third)/4
             (c4 up diminished_fourth)/4

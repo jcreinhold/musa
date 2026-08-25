@@ -75,12 +75,12 @@ fn depth_0(seed: Nat) -> Nat { range(1).fold_from_start(seed, fn (carried, index
     fn depth_63(seed: Nat) -> Nat { depth_62(seed) }
 
     let deep: Nat = depth_63(0);
-    let counted: List<Nat> = naturals(512);
+    let counted: List(Nat) = naturals(512);
     let folded: Nat = counted.fold_from_start(0, fn (carried, one) { keep(one, carried) });
 
-    let raise: EventTrack<WrittenTime> -> EventTrack<WrittenTime> = fn (line: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { transpose(P8, line) };
-    let subject: EventTrack<WrittenTime> = music { c4/4 d4/4 e4/4 f4/4 };
-    let answer: EventTrack<WrittenTime> = compose_music(raise, retrograde, subject);
+    let raise: EventTrack(WrittenTime) -> EventTrack(WrittenTime) = fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) };
+    let subject: EventTrack(WrittenTime) = music { c4/4 d4/4 e4/4 f4/4 };
+    let answer: EventTrack(WrittenTime) = compose_music(raise, retrograde, subject);
 
     score {
         part strings {

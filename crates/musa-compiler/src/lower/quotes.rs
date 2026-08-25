@@ -299,7 +299,7 @@ impl Lowering<'_> {
                     crate::resolve::trimmed_span(node),
                     "this is syntax, and a piece is not written in syntax",
                 )
-                .note("`Syntax<Cat>` exists in the expansion phase; a piece can neither name one nor obtain one"),
+                .note("`Syntax(Cat)` exists in the expansion phase; a piece can neither name one nor obtain one"),
         )
     }
 

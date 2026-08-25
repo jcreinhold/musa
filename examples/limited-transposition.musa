@@ -27,60 +27,77 @@ piece "Limited Transposition" {
     import std::post_tonal::pcset;
 
     // The twelve transpositions, derived from the division rather than listed.
-    let available: Equal<Nat>(length(transpositions(12, chromatic)), 12) = Refl(12);
+    let available: Equal(Nat, length(transpositions(12, chromatic)), 12) = Refl(12);
 
     // The tritone divides the octave in two, so six transpositions exhaust it
     // and two — T₀ and T₆ — leave it alone.
     let tritone: PcSet(12) = chromatic_set([0, 6]);
-    let tritone_transpositions: Equal<Nat>(length(moves(tritone)), 6) = Refl(6);
-    let tritone_fixers: Equal<Nat>(length(
-        transposition_symmetries(12, chromatic, tritone),
-    ), 2) = Refl(2);
+    let tritone_transpositions: Equal(Nat, length(moves(tritone)), 6) = Refl(6);
+    let tritone_fixers: Equal(
+        Nat,
+        length(transposition_symmetries(12, chromatic, tritone)),
+        2,
+    ) = Refl(2);
 
     // The augmented triad divides it in three: four distinct transpositions,
     // three operations fixing it.
     let augmented: PcSet(12) = chromatic_set([0, 4, 8]);
-    let augmented_transpositions: Equal<Nat>(length(moves(augmented)), 4) = Refl(4);
-    let augmented_fixers: Equal<Nat>(length(
-        transposition_symmetries(12, chromatic, augmented),
-    ), 3) = Refl(3);
+    let augmented_transpositions: Equal(Nat, length(moves(augmented)), 4) = Refl(4);
+    let augmented_fixers: Equal(
+        Nat,
+        length(transposition_symmetries(12, chromatic, augmented)),
+        3,
+    ) = Refl(3);
 
     // The diminished seventh chord divides it in four, which is why there are
     // only three of them — the count the chapter gives the octatonic collection
     // this chord is a subset of.
     let diminished: PcSet(12) = chromatic_set([0, 3, 6, 9]);
-    let diminished_transpositions: Equal<Nat>(length(moves(diminished)), 3) = Refl(3);
-    let diminished_fixers: Equal<Nat>(length(
-        transposition_symmetries(12, chromatic, diminished),
-    ), 4,) = Refl(4);
+    let diminished_transpositions: Equal(Nat, length(moves(diminished)), 3) = Refl(3);
+    let diminished_fixers: Equal(
+        Nat,
+        length(transposition_symmetries(12, chromatic, diminished)),
+        4,
+    ) = Refl(4);
 
     // And a collection with no symmetry at all, so the property reads as a
     // property and not as arithmetic that always comes out the same way: the
     // major triad has all twelve transpositions and only the identity fixes it.
     let major: PcSet(12) = chromatic_set([0, 4, 7]);
-    let major_transpositions: Equal<Nat>(length(moves(major)), 12) = Refl(12);
-    let major_fixers: Equal<Nat>(length(
-        transposition_symmetries(12, chromatic, major),
-    ), 1) = Refl(1);
+    let major_transpositions: Equal(Nat, length(moves(major)), 12) = Refl(12);
+    let major_fixers: Equal(
+        Nat,
+        length(transposition_symmetries(12, chromatic, major)),
+        1,
+    ) = Refl(1);
 
     // Each pair above multiplies to twelve, which is not a coincidence about
     // pitch: it is the orbit-stabilizer count, and it holds for every finite
     // group acting on anything. `transposition_symmetries` is `stabilizer` with
     // the transpositions handed to it, and saying so directly gives the same
     // answer as asking through the name.
-    let augmented_directly: Equal<Nat>(length(
-        stabilizer(set_action(12, chromatic), alike, transpositions(12, chromatic), augmented),
-    ), 3,) = Refl(3);
+    let augmented_directly: Equal(
+        Nat,
+        length(
+            stabilizer(
+                set_action(12, chromatic),
+                alike,
+                transpositions(12, chromatic),
+                augmented,
+            ),
+        ),
+        3,
+    ) = Refl(3);
 
     // # The helpers, which say nothing new
 
     // The distinct collections the transpositions reach from this one.
-    fn moves(collection: PcSet(12)) -> List<PcSet(12)> {
+    fn moves(collection: PcSet(12)) -> List(PcSet(12)) {
         orbit(set_action(12, chromatic), alike, transpositions(12, chromatic), collection)
     }
 
     // A set of pitch classes at twelve, from the numbers the chapter writes.
-    fn chromatic_set(written: List<Nat>) -> PcSet(12) {
+    fn chromatic_set(written: List(Nat)) -> PcSet(12) {
         pcset(12, chromatic, pcs(12, chromatic, written))
     }
 

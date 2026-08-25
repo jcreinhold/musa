@@ -34,95 +34,95 @@ piece "Tonal construction" {
     // The numerals, as values. A numeral is absent when it cannot be written:
     // `triad_numeral(8)` has no answer, and neither does a triad in third
     // inversion.
-    let one: Option<Roman> = triad_numeral(1);
-    let two: Option<Roman> = triad_numeral(2);
-    let four: Option<Roman> = triad_numeral(4);
-    let five: Option<Roman> = triad_numeral(5);
-    let five_seventh: Option<Roman> = seventh_numeral(5);
-    let six: Option<Roman> = triad_numeral(6);
+    let one: Option(Roman) = triad_numeral(1);
+    let two: Option(Roman) = triad_numeral(2);
+    let four: Option(Roman) = triad_numeral(4);
+    let five: Option(Roman) = triad_numeral(5);
+    let five_seventh: Option(Roman) = seventh_numeral(5);
+    let six: Option(Roman) = triad_numeral(6);
 
     // `V6`: the same numeral with the third in the bass. The figure is a
     // position in the stack, and the register it lands in is chosen below.
-    let five_first_inversion: Option<Roman> = numeral(5, 3, 1);
+    let five_first_inversion: Option(Roman) = numeral(5, 3, 1);
 
     // The diatonic harmonies of C major. `ii` is minor and `V` is major
     // because those are the notes in the collection, not because either was
     // asked for.
-    let tonic: Option<ChordClass> = in_major(one);
-    let supertonic: Option<ChordClass> = in_major(two);
-    let subdominant: Option<ChordClass> = in_major(four);
-    let dominant: Option<ChordClass> = in_major(five);
-    let dominant_sixth: Option<ChordClass> = in_major(five_first_inversion);
+    let tonic: Option(ChordClass) = in_major(one);
+    let supertonic: Option(ChordClass) = in_major(two);
+    let subdominant: Option(ChordClass) = in_major(four);
+    let dominant: Option(ChordClass) = in_major(five);
+    let dominant_sixth: Option(ChordClass) = in_major(five_first_inversion);
 
     // The same numerals in the parallel minor, which answer differently
     // without being asked differently. `V` is minor here; the major dominant
     // of a minor key is the harmonic collection's, and that is `minor_dominant`
     // and `harmonic_dominant` side by side rather than a silent choice.
-    let minor_tonic: Option<ChordClass> = in_minor(one);
-    let minor_dominant: Option<ChordClass> = in_minor(five);
-    let harmonic_dominant: Option<ChordClass> = in_harmonic_minor(five);
+    let minor_tonic: Option(ChordClass) = in_minor(one);
+    let minor_dominant: Option(ChordClass) = in_minor(five);
+    let harmonic_dominant: Option(ChordClass) = in_harmonic_minor(five);
 
     // A secondary dominant: `V/V`, read in G major. D major, not the D minor
     // that C major stacks on its second degree.
-    let applied_dominant: Option<ChordClass> = tonicizing(degree_of(5), five);
+    let applied_dominant: Option(ChordClass) = tonicizing(degree_of(5), five);
 
     // `V7/vi`, read in A major — the seventh chord that tonicizes the sixth
     // degree.
-    let applied_seventh: Option<ChordClass> = tonicizing(degree_of(6), five_seventh);
+    let applied_seventh: Option(ChordClass) = tonicizing(degree_of(6), five_seventh);
 
     // Mixture: `bVI` of C major is `VI` of C minor, borrowed whole. No degree
     // is altered here, because borrowing is not alteration.
-    let borrowed_submediant: Option<ChordClass> = mixed(six);
-    let borrowed_subdominant: Option<ChordClass> = mixed(four);
+    let borrowed_submediant: Option(ChordClass) = mixed(six);
+    let borrowed_subdominant: Option(ChordClass) = mixed(four);
 
     // The Neapolitan, on the lowered second degree of C major. The alteration
     // is written into the degree, where a reader can see it.
-    let naples: Option<ChordClass> = neapolitan(home, lower(degree_of(2)));
+    let naples: Option(ChordClass) = neapolitan(home, lower(degree_of(2)));
 
     // The augmented sixths, on the lowered sixth degree. In C major that is a
     // lowered degree; in C minor it would be the plain sixth, and the caller
     // writing the degree is what keeps the two apart.
-    let italian: Option<ChordClass> = italian_sixth(home, lower(degree_of(6)));
-    let french: Option<ChordClass> = french_sixth(home, lower(degree_of(6)));
-    let german: Option<ChordClass> = german_sixth(home, lower(degree_of(6)));
+    let italian: Option(ChordClass) = italian_sixth(home, lower(degree_of(6)));
+    let french: Option(ChordClass) = french_sixth(home, lower(degree_of(6)));
+    let german: Option(ChordClass) = german_sixth(home, lower(degree_of(6)));
 
     // Two altered dominants, on the same degree, differing only in which
     // members are present. Neither is the default.
-    let flat_nine: Option<ChordClass> = altered_dominant(home, chord c dom7b9);
-    let sharp_five: Option<ChordClass> = altered_dominant(home, chord c dom7s5);
+    let flat_nine: Option(ChordClass) = altered_dominant(home, chord c dom7b9);
+    let sharp_five: Option(ChordClass) = altered_dominant(home, chord c dom7s5);
 
     // Reading a numeral in a named collection. Written three times rather than
     // once with the collection as a parameter, because each one is a decision
     // the piece is making and a reader should see it made.
-    fn in_major(written: Option<Roman>) -> Option<ChordClass> {
+    fn in_major(written: Option(Roman)) -> Option(ChordClass) {
         match written {
             None -> None,
             Some(numbered) -> numeral_chord(home, numbered),
         }
     }
 
-    fn in_minor(written: Option<Roman>) -> Option<ChordClass> {
+    fn in_minor(written: Option(Roman)) -> Option(ChordClass) {
         match written {
             None -> None,
             Some(numbered) -> numeral_chord(parallel_minor, numbered),
         }
     }
 
-    fn in_harmonic_minor(written: Option<Roman>) -> Option<ChordClass> {
+    fn in_harmonic_minor(written: Option(Roman)) -> Option(ChordClass) {
         match written {
             None -> None,
             Some(numbered) -> numeral_chord(harmonic, numbered),
         }
     }
 
-    fn mixed(written: Option<Roman>) -> Option<ChordClass> {
+    fn mixed(written: Option(Roman)) -> Option(ChordClass) {
         match written {
             None -> None,
             Some(numbered) -> borrowed(home, parallel_minor, numbered),
         }
     }
 
-    fn tonicizing(target: Degree, written: Option<Roman>) -> Option<ChordClass> {
+    fn tonicizing(target: Degree, written: Option(Roman)) -> Option(ChordClass) {
         match written {
             None -> None,
             Some(numbered) -> secondary(home, target, tonicizing_mode, numbered),
@@ -133,7 +133,7 @@ piece "Tonal construction" {
     // bass. It is absent when the bass is not a member of the class as
     // spelled, which is why every chord below names its own bass instead of
     // sharing one.
-    fn stacked(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> {
+    fn stacked(bass: Pitch, content: Option(ChordClass)) -> EventTrack(WrittenTime) {
         match content {
             None -> music {
                 rest/1
@@ -142,7 +142,7 @@ piece "Tonal construction" {
         }
     }
 
-    fn voiced(chosen: Option<Voicing>) -> EventTrack<WrittenTime> {
+    fn voiced(chosen: Option(Voicing)) -> EventTrack(WrittenTime) {
         match chosen {
             None -> music {
                 rest/1
@@ -154,30 +154,30 @@ piece "Tonal construction" {
     // The diatonic progression, each chord over a bass that is one of its own
     // members. `V6` takes B in the bass because the numeral put the third
     // there, and this piece chooses which B.
-    let phrase_one: EventTrack<WrittenTime> = stacked(c3, tonic);
-    let phrase_two: EventTrack<WrittenTime> = stacked(d3, supertonic);
-    let phrase_three: EventTrack<WrittenTime> = stacked(g3, dominant);
-    let phrase_four: EventTrack<WrittenTime> = stacked(b2, dominant_sixth);
-    let phrase_five: EventTrack<WrittenTime> = stacked(c3, tonic);
+    let phrase_one: EventTrack(WrittenTime) = stacked(c3, tonic);
+    let phrase_two: EventTrack(WrittenTime) = stacked(d3, supertonic);
+    let phrase_three: EventTrack(WrittenTime) = stacked(g3, dominant);
+    let phrase_four: EventTrack(WrittenTime) = stacked(b2, dominant_sixth);
+    let phrase_five: EventTrack(WrittenTime) = stacked(c3, tonic);
 
     // The same five bars in the parallel minor, plus the harmonic collection's
     // dominant, so the two dominants are heard next to each other.
-    let minor_one: EventTrack<WrittenTime> = stacked(c3, minor_tonic);
-    let minor_two: EventTrack<WrittenTime> = stacked(g3, minor_dominant);
-    let minor_three: EventTrack<WrittenTime> = stacked(g3, harmonic_dominant);
-    let minor_four: EventTrack<WrittenTime> = stacked(c3, minor_tonic);
+    let minor_one: EventTrack(WrittenTime) = stacked(c3, minor_tonic);
+    let minor_two: EventTrack(WrittenTime) = stacked(g3, minor_dominant);
+    let minor_three: EventTrack(WrittenTime) = stacked(g3, harmonic_dominant);
+    let minor_four: EventTrack(WrittenTime) = stacked(c3, minor_tonic);
 
     // The chromatic chords, each on a bass drawn from its own spelling.
-    let chromatic_one: EventTrack<WrittenTime> = stacked(d3, applied_dominant);
-    let chromatic_two: EventTrack<WrittenTime> = stacked(e3, applied_seventh);
-    let chromatic_three: EventTrack<WrittenTime> = stacked(ab3, borrowed_submediant);
-    let chromatic_four: EventTrack<WrittenTime> = stacked(f3, borrowed_subdominant);
-    let chromatic_five: EventTrack<WrittenTime> = stacked(db3, naples);
-    let chromatic_six: EventTrack<WrittenTime> = stacked(ab3, italian);
-    let chromatic_seven: EventTrack<WrittenTime> = stacked(ab3, french);
-    let chromatic_eight: EventTrack<WrittenTime> = stacked(ab3, german);
-    let chromatic_nine: EventTrack<WrittenTime> = stacked(g3, flat_nine);
-    let chromatic_ten: EventTrack<WrittenTime> = stacked(g3, sharp_five);
+    let chromatic_one: EventTrack(WrittenTime) = stacked(d3, applied_dominant);
+    let chromatic_two: EventTrack(WrittenTime) = stacked(e3, applied_seventh);
+    let chromatic_three: EventTrack(WrittenTime) = stacked(ab3, borrowed_submediant);
+    let chromatic_four: EventTrack(WrittenTime) = stacked(f3, borrowed_subdominant);
+    let chromatic_five: EventTrack(WrittenTime) = stacked(db3, naples);
+    let chromatic_six: EventTrack(WrittenTime) = stacked(ab3, italian);
+    let chromatic_seven: EventTrack(WrittenTime) = stacked(ab3, french);
+    let chromatic_eight: EventTrack(WrittenTime) = stacked(ab3, german);
+    let chromatic_nine: EventTrack(WrittenTime) = stacked(g3, flat_nine);
+    let chromatic_ten: EventTrack(WrittenTime) = stacked(g3, sharp_five);
 
     meter 4/4;
 

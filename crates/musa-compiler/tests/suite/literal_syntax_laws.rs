@@ -50,9 +50,9 @@ const PROBE: &str = "probe::adapter";
 /// is comes from a traversal.
 fn adapter(emit: &str) -> String {
     format!(
-        "\n    let level = \"readable\";\n{emit}\n    let expand = fn (region: Syntax<TokenTree>) -> \
-         Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> {{ Ok(forget(built(region))) }};\n\n    let built = \
-         fn (region: Syntax<TokenTree>) -> Syntax<Expr> {{\n        syntax_fold_from_leaves(\n            fn (here) \
+        "\n    let level = \"readable\";\n{emit}\n    let expand = fn (region: Syntax(TokenTree)) -> \
+         Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) {{ Ok(forget(built(region))) }};\n\n    let built = \
+         fn (region: Syntax(TokenTree)) -> Syntax(Expr) {{\n        syntax_fold_from_leaves(\n            fn (here) \
          {{ emit(here, []) }},\n            fn (here, kind, text) {{ emit(here, []) }},\n            fn (here, name) \
          {{ emit(here, []) }},\n            fn (here, delimiter, children) {{ emit(here, children) }},\n            \
          region,\n        )\n    }};\n\n"
@@ -120,13 +120,13 @@ fn whole(message: &str, note: Option<&str>, help: Option<&str>) -> String {
 /// Declared in the piece rather than imported so that each law is one document
 /// and reads as one: these are `stdlib/src/indexed.musa`'s `Equal` at two fixed
 /// carriers, and nothing about the laws depends on the parameterized version.
-const EQUALITIES: &str = "    data SameNat(left: Nat, right: Nat) { ReflNat(only: Nat): (only, only) }\n    data \
-                          SameText(left: Text, right: Text) { ReflText(only: Text): (only, only) }\n\n";
+const EQUALITIES: &str = "    data SameNat: (left: Nat, right: Nat) -> Type { ReflNat(only: Nat): SameNat(only, only) }\n    data \
+                          SameText: (left: Text, right: Text) -> Type { ReflText(only: Text): SameText(only, only) }\n\n";
 
 /// An adapter that answers with `ReflNat` wrapped around a numeral for `value`.
 fn numeral_probe(value: &str) -> String {
     adapter(&format!(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {{ quote at here {{ ReflNat(${{ \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {{ quote at here {{ ReflNat(${{ \
          syntax_numeral(here, {value}) }}) }} }};"
     ))
 }
@@ -134,7 +134,7 @@ fn numeral_probe(value: &str) -> String {
 /// The same, for a text.
 fn text_probe(value: &str) -> String {
     adapter(&format!(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {{ quote at here {{ ReflText(${{ \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {{ quote at here {{ ReflText(${{ \
          syntax_text(here, {value}) }}) }} }};"
     ))
 }
@@ -208,7 +208,7 @@ fn the_reader_reads_back_the_number_the_numeral_was_written_from() {
     // failed answers with a `Text` where the piece annotated a `Nat`.
     let read_back = |written: &str, expected: &str| {
         adapter(&format!(
-            "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> {{\n        match \
+            "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) {{\n        match \
              syntax_number(forget(syntax_numeral(here, {written}))) {{\n            None -> quote at here {{ \"not a \
              number\" }},\n            Some(read) -> if ratio_equal(read, {expected}) {{ quote at here {{ 1 }} }} \
              else {{ quote at here {{ \"a different number\" }} }},\n        }}\n    }};"
@@ -232,7 +232,7 @@ fn a_literal_stands_at_a_place_derived_from_the_path_it_was_given() {
     // builder at one path stand at one place and the gate says so — the same
     // one-call-per-path obligation `11-quotation.md` §5 states of the anchor.
     let twice = adapter(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> { quote at here { (${ \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) { quote at here { (${ \
          syntax_numeral(here, 1) }, ${ syntax_numeral(here, 2) }) } };",
     );
     let refused = errors("", "pair: (Nat, Nat)", &twice);
@@ -246,7 +246,7 @@ fn a_literal_stands_at_a_place_derived_from_the_path_it_was_given() {
     // And two paths are two places. `syntax_built` is how an adapter derives a
     // second one, which is the same answer the anchor's law gives.
     let apart = adapter(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> { quote at here { (${ \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) { quote at here { (${ \
          syntax_numeral(here, 1) }, ${ syntax_numeral(syntax_built(here, 0, 0), 2) }) } };",
     );
     let found = errors("", "pair: (Nat, Nat)", &apart);
@@ -257,7 +257,7 @@ fn a_literal_stands_at_a_place_derived_from_the_path_it_was_given() {
     // collide with each other. Without that the reservation would hold one
     // builder and this prompt would have added a second silently.
     let together = adapter(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> { quote at here { (${ \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) { quote at here { (${ \
          syntax_numeral(here, 1) }, ${ syntax_text(here, \"two\") }) } };",
     );
     let found = errors("", "pair: (Nat, Text)", &together);
@@ -274,13 +274,13 @@ fn a_literal_is_an_expression_without_the_parser_having_run() {
     // adapter's whole answer is the literal itself, which is how the expansion
     // gate sees it: `check_expression` runs over what `expand` returns.
     let numeral = adapter(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> { syntax_numeral(here, 7) };",
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) { syntax_numeral(here, 7) };",
     );
     let found = errors("", "held: Nat", &numeral);
     assert!(found.is_empty(), "a bare numeral is not an expression: {found:?}");
 
     let text = adapter(
-        "    let emit = fn (here: NodePath, kids: List<Syntax<Expr>>) -> Syntax<Expr> { syntax_text(here, \"said\") \
+        "    let emit = fn (here: NodePath, kids: List(Syntax(Expr))) -> Syntax(Expr) { syntax_text(here, \"said\") \
          };",
     );
     let found = errors("", "held: Text", &text);

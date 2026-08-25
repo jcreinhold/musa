@@ -19,11 +19,11 @@ impl Parser<'_> {
         self.visibility();
         self.bump(); // data
         self.expect(SyntaxKind::Identifier, "a type name");
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
         if self.at(SyntaxKind::LParen) {
-            self.data_indices();
+            self.param_list();
+        }
+        if self.at(SyntaxKind::Colon) {
+            self.data_signature();
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
@@ -119,11 +119,11 @@ impl Parser<'_> {
         self.visibility();
         self.bump(); // record
         self.expect(SyntaxKind::Identifier, "a type name");
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
         if self.at(SyntaxKind::LParen) {
-            self.data_indices();
+            self.param_list();
+        }
+        if self.at(SyntaxKind::Colon) {
+            self.data_signature();
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
@@ -162,11 +162,11 @@ impl Parser<'_> {
         self.visibility();
         self.bump(); // enum
         self.expect(SyntaxKind::Identifier, "a type name");
-        if self.at(SyntaxKind::Less) {
-            self.type_params();
-        }
         if self.at(SyntaxKind::LParen) {
-            self.data_indices();
+            self.param_list();
+        }
+        if self.at(SyntaxKind::Colon) {
+            self.data_signature();
         }
         self.expect(SyntaxKind::LBrace, "`{`");
         // An enum with no cases at all is admitted, and deliberately: `enum
@@ -245,17 +245,12 @@ impl Parser<'_> {
         self.finish();
     }
 
-    /// `(n: Nat)` after a declaration's name — its index telescope.
-    ///
-    /// The same named-and-typed shape a constructor's field list has, because
-    /// it is the same kind of thing: a telescope, where a later binder's type
-    /// may mention an earlier one. What tells it from
-    /// [`Parser::type_params`] is the bracket, and the bracket is what
-    /// `02-core-calculus.md` §1.1 makes the difference between a parameter and
-    /// an index turn on.
-    pub(super) fn data_indices(&mut self) {
+    /// `: (n: Nat) -> Type` — the part of a family's signature whose values
+    /// constructors choose.
+    pub(super) fn data_signature(&mut self) {
         self.start(SyntaxKind::DataIndices);
-        self.bump(); // `(`
+        self.bump(); // `:`
+        self.expect(SyntaxKind::LParen, "`(`");
         while !self.at(SyntaxKind::RParen) && self.current().is_some() {
             if self.at(SyntaxKind::Identifier) {
                 self.start(SyntaxKind::DataField);
@@ -273,28 +268,16 @@ impl Parser<'_> {
             }
         }
         self.expect(SyntaxKind::RParen, "`)`");
+        self.expect(SyntaxKind::Arrow, "`->`");
+        self.expect(SyntaxKind::Identifier, "`Type`");
         self.finish();
     }
 
-    /// `: (n + 1)` after a constructor's fields — the indices it chooses.
-    ///
-    /// Parenthesized so that the comma between two indices cannot be read as
-    /// the comma between two variants, and so that the list reads as the dual
-    /// of the declaration's own `(n: Nat)`: one names the positions, the other
-    /// fills them.
-    pub(super) fn data_chosen(&mut self) {
-        self.start(SyntaxKind::DataChosen);
+    /// `: Vec(A, successor(n))` — a constructor's complete result type.
+    pub(super) fn constructor_result(&mut self) {
+        self.start(SyntaxKind::ConstructorResult);
         self.bump(); // `:`
-        self.expect(SyntaxKind::LParen, "`(`");
-        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
-            self.expr();
-            if self.at(SyntaxKind::Comma) {
-                self.bump();
-            } else {
-                break;
-            }
-        }
-        self.expect(SyntaxKind::RParen, "`)`");
+        self.type_expr();
         self.finish();
     }
 
@@ -332,7 +315,7 @@ impl Parser<'_> {
             self.expect(SyntaxKind::RParen, "`)`");
         }
         if self.at(SyntaxKind::Colon) {
-            self.data_chosen();
+            self.constructor_result();
         }
         self.finish();
     }

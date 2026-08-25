@@ -751,7 +751,7 @@ fn semantic_tokens_cover_a_broken_document() {
     // A document mid-edit: an unrecognized span, an unterminated string. The
     // lexer is total, so the tokens are too.
     let broken =
-        "piece \"x\" {\n    fn choose(x: Option<Nat>) -> Nat = match x { None ->\n    @@ mid-edit \"unterminated\n}\n";
+        "piece \"x\" {\n    fn choose(x: Option(Nat)) -> Nat = match x { None ->\n    @@ mid-edit \"unterminated\n}\n";
     let mut server = Server::start();
     let (uri, _) = server.open("broken", broken);
     let tokens = server
@@ -1057,9 +1057,9 @@ fn hover_on_a_keyword_reports_its_documentation() {
 #[test]
 fn hover_on_a_controlled_music_function_explains_its_boundary() {
     let source = "piece \"hover builtin\" {
-        let subject: EventTrack<WrittenTime> = music { c4/1 };
+        let subject: EventTrack(WrittenTime) = music { c4/1 };
         fn same(p: Pitch) -> Pitch { p }
-        let transformed: EventTrack<WrittenTime> = map_note_pitches(same, subject);
+        let transformed: EventTrack(WrittenTime) = map_note_pitches(same, subject);
         score { part p { voice v { use transformed; } } }
     }";
     let mut server = Server::start();
@@ -1086,7 +1086,7 @@ fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
     let content = hover_markdown(&mut server, &uri, at(TOOLING, "lifted(what"));
     // The signature the checker settled on — not the text.
     assert!(
-        content.contains("fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>"),
+        content.contains("fn lifted(what: EventTrack(WrittenTime), by: Interval) -> EventTrack(WrittenTime)"),
         "{content}"
     );
     // The comment block above the declaration, as prose.
@@ -1114,7 +1114,7 @@ fn hover_draws_the_distinction_between_a_domain_and_the_one_it_is_confused_with(
 fn hover_marks_a_deprecated_binding_with_what_to_write_instead() {
     let mut server = Server::start();
     let (uri, _) = server.open("tooling", TOOLING);
-    let content = hover_markdown(&mut server, &uri, at(TOOLING, "theme: EventTrack<WrittenTime>"));
+    let content = hover_markdown(&mut server, &uri, at(TOOLING, "theme: EventTrack(WrittenTime)"));
     assert!(content.contains("**Deprecated**"), "{content}");
     assert!(content.contains("write `subject` instead"), "{content}");
     server.stop();
@@ -1130,7 +1130,7 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
     let signature = help.signatures.first().expect("one signature");
     assert_eq!(
         signature.label,
-        "fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>"
+        "fn lifted(what: EventTrack(WrittenTime), by: Interval) -> EventTrack(WrittenTime)"
     );
     let parameters = signature.parameters.as_ref().expect("parameters");
     let labels: Vec<&str> = parameters
@@ -1142,7 +1142,7 @@ fn signature_help_names_the_parameter_the_caret_is_on() {
         .collect();
     assert_eq!(
         labels,
-        ["what: EventTrack<WrittenTime>", "by: Interval"],
+        ["what: EventTrack(WrittenTime)", "by: Interval"],
         "{parameters:?}"
     );
     assert_eq!(help.active_parameter, Some(0));
@@ -1273,7 +1273,7 @@ fn completion_in_a_events_hole_offers_only_what_a_hole_may_splice() {
         assert!(
             item.detail
                 .as_deref()
-                .is_some_and(|detail| detail.contains("EventTrack<WrittenTime>")),
+                .is_some_and(|detail| detail.contains("EventTrack(WrittenTime)")),
             "a hole may splice only music: {item:?}"
         );
     }
@@ -1289,8 +1289,8 @@ fn symbols_list_the_declarations_written_here_and_no_others() {
     for expected in [
         "record Centred: Type",
         "let home: Centred",
-        "fn lifted(what: EventTrack<WrittenTime>, by: Interval) -> EventTrack<WrittenTime>",
-        "let subject: EventTrack<WrittenTime>",
+        "fn lifted(what: EventTrack(WrittenTime), by: Interval) -> EventTrack(WrittenTime)",
+        "let subject: EventTrack(WrittenTime)",
     ] {
         assert!(names.contains(&expected), "`{expected}` missing: {names:?}");
     }

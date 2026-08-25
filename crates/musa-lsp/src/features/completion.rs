@@ -173,7 +173,7 @@ fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String,
         for item in snapshot.items().iter().filter(|item| {
             item.result
                 .as_ref()
-                .is_some_and(|result| result.name == "EventTrack<WrittenTime>")
+                .is_some_and(|result| result.name == "EventTrack(WrittenTime)")
         }) {
             site(items, &item.name, CompletionItemKind::VALUE, item.signature.clone());
         }

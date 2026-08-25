@@ -132,11 +132,11 @@ fn run_printer(
     source.push_str("fn printer");
     source.push_str(&printer.params);
     if !printer.says_answer {
-        source.push_str(" -> Result<Text, Text>");
+        source.push_str(" -> Result(Text, Text)");
     }
     source.push(' ');
     source.push_str(&printer.answer);
-    source.push_str("\nlet printed: Result<Text, Text> = printer(");
+    source.push_str("\nlet printed: Result(Text, Text) = printer(");
     source.push_str(value);
     source.push_str(");\n}\n");
 

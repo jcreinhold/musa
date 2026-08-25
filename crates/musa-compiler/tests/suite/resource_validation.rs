@@ -106,10 +106,10 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
 /// is asserted here as it is rather than as it should be.
 #[test]
 fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
-    let accepted = compile_declarations("let values: List<Nat> = range(8000);");
+    let accepted = compile_declarations("let values: List(Nat) = range(8000);");
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
-    let refused = compile_declarations("let values: List<Nat> = range(200000);");
+    let refused = compile_declarations("let values: List(Nat) = range(200000);");
     let diagnostic = refused
         .diagnostics()
         .iter()
@@ -148,14 +148,14 @@ fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
 /// twice.
 #[test]
 fn a_value_deeper_than_the_host_stack_is_freed_rather_than_aborting() {
-    let built = compile_declarations("let values: List<Nat> = range(8000);");
+    let built = compile_declarations("let values: List(Nat) = range(8000);");
     assert!(!built.has_errors(), "{:?}", built.diagnostics());
     drop(built);
 }
 
 #[test]
 fn matches_reject_missing_and_unreachable_cases_separately() {
-    let missing = compile_declarations("fn choose(value: Option<Nat>) -> Nat { match value { None -> 0 } }");
+    let missing = compile_declarations("fn choose(value: Option(Nat)) -> Nat { match value { None -> 0 } }");
     assert!(
         missing
             .diagnostics()
@@ -192,11 +192,11 @@ fn matches_reject_missing_and_unreachable_cases_separately() {
 fn a_match_over_a_sum_must_answer_for_both_injections() {
     for (declarations, missing) in [
         (
-            "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Ok(found) -> found } }",
+            "fn taken(outcome: Result(Nat, Text)) -> Nat { match outcome { Ok(found) -> found } }",
             "Result.Err",
         ),
         (
-            "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Err(said) -> 0 } }",
+            "fn taken(outcome: Result(Nat, Text)) -> Nat { match outcome { Err(said) -> 0 } }",
             "Result.Ok",
         ),
     ] {
@@ -219,7 +219,7 @@ fn a_match_over_a_sum_must_answer_for_both_injections() {
     }
 
     let both = compile_declarations(
-        "fn taken(outcome: Result<Nat, Text>) -> Nat { match outcome { Ok(found) -> found, Err(said) -> 0 } }",
+        "fn taken(outcome: Result(Nat, Text)) -> Nat { match outcome { Ok(found) -> found, Err(said) -> 0 } }",
     );
     assert!(!both.has_errors(), "{:?}", both.diagnostics());
 }

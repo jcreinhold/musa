@@ -42,21 +42,21 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn spelled(bass: Pitch, content: Option<ChordClass>) -> EventTrack<WrittenTime> { match content {
+    fn spelled(bass: Pitch, content: Option(ChordClass)) -> EventTrack(WrittenTime) { match content {
         None -> music { rest/1 },
         Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: Option<Voicing>) -> EventTrack<WrittenTime> { match chosen {
+    fn stacked(chosen: Option(Voicing)) -> EventTrack(WrittenTime) { match chosen {
         None -> music { rest/1 },
         Some(spread) -> sound_for(spread, duration_of(1/1)),
     } }
 
-    fn tick(one: EventTrack<WrittenTime>, carried: EventTrack<WrittenTime>) -> EventTrack<WrittenTime> { together(one, carried) }
-    fn beat() -> EventTrack<WrittenTime> { music { c4/1 } }
-    fn tally(count: Nat) -> EventTrack<WrittenTime> { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
+    fn tick(one: EventTrack(WrittenTime), carried: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { together(one, carried) }
+    fn beat() -> EventTrack(WrittenTime) { music { c4/1 } }
+    fn tally(count: Nat) -> EventTrack(WrittenTime) { repeated(beat(), count).fold_from_start(music { rest/1 }, fn (carried, one) { tick(one, carried) }) }
 
-    fn numeral_in(collection: Scale, written: Option<Roman>) -> Option<ChordClass> { match written {
+    fn numeral_in(collection: Scale, written: Option(Roman)) -> Option(ChordClass) { match written {
             None -> None,
             Some(numbered) -> numeral_chord(collection, numbered),
         } }
@@ -111,7 +111,7 @@ fn sounded(bindings: &str, expression: &str) -> Vec<WrittenPitch> {
 /// the collection itself computed, which is what every caller below does.
 fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
     let sounded = sounded(
-        &format!("{bindings}\n    let probed: EventTrack<WrittenTime> = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: EventTrack(WrittenTime) = spelled({bass}, {content});"),
         "probed",
     );
     sounded
@@ -124,7 +124,7 @@ fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
 fn keyed(collection: &str, tonic: &str) -> String {
     format!(
         "    let collection: Scale = {collection};
-    let register: Option<Frame> = frame_on(collection, {tonic});
+    let register: Option(Frame) = frame_on(collection, {tonic});
     fn root_of_degree(written: Degree) -> Pitch {{ match register {{
         None -> c0,
         Some(placed) -> frame_pitch(placed, written),
@@ -482,7 +482,7 @@ fn the_augmented_sixths_spell_their_sixth_as_a_sixth() {
 /// law that the letters cannot state.
 fn sounded_semitones(bindings: &str, bass: &str, content: &str) -> Vec<i64> {
     sounded(
-        &format!("{bindings}\n    let probed: EventTrack<WrittenTime> = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: EventTrack(WrittenTime) = spelled({bass}, {content});"),
         "probed",
     )
     .into_iter()
@@ -554,11 +554,11 @@ fn a_numeral_that_cannot_be_written_is_not_a_numeral() {
 fn a_numerals_parts_are_what_it_was_built_from() {
     let reader = |accessor: &str| {
         format!(
-            "    fn read(written: Option<Roman>) -> Nat {{ match written {{
+            "    fn read(written: Option(Roman)) -> Nat {{ match written {{
         None -> 0,
         Some(numbered) -> {accessor}(numbered),
     }} }}
-    let counted: EventTrack<WrittenTime> = tally(read(numeral(6, 4, 2)));"
+    let counted: EventTrack(WrittenTime) = tally(read(numeral(6, 4, 2)));"
         )
     };
     assert_eq!(sounded(&reader("numeral_step"), "counted").len(), 6, "the degree");

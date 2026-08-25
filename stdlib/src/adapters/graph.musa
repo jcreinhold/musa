@@ -17,7 +17,7 @@ let level = "generative";
 
 data Refusal {
     NoRefusal,
-    Refused(node: Syntax<TokenTree>, why: Text),
+    Refused(node: Syntax(TokenTree), why: Text),
 }
 
 // One significant node from the fixed token tree.
@@ -25,24 +25,24 @@ data Atom {
     Word(spot: NodePath, spelling: Text),
     Value(spot: NodePath, kind: TokenKind),
     Mark(spot: NodePath, kind: TokenKind, spelling: Text),
-    Group(spot: NodePath, delimiter: Delimiter, children: List<Atom>),
+    Group(spot: NodePath, delimiter: Delimiter, children: List(Atom)),
 }
 
 record Collected {
-    atoms: List<Atom>;
+    atoms: List(Atom);
     refusal: Refusal;
 }
 
 record Parsed {
-    pending: List<Atom>;
-    declarations: List<Syntax<Expr>>;
+    pending: List(Atom);
+    declarations: List(Syntax(Expr));
     refusal: Refusal;
 }
 
 record Parameters {
-    pending: List<Atom>;
-    built: List<Syntax<Expr>>;
-    names: List<Text>;
+    pending: List(Atom);
+    built: List(Syntax(Expr));
+    names: List(Text);
     refusal: Refusal;
 }
 
@@ -53,14 +53,14 @@ fn first_refusal(found: Refusal, later: Refusal) -> Refusal {
     }
 }
 
-fn node_at(region: Syntax<TokenTree>, spot: NodePath) -> Syntax<TokenTree> {
+fn node_at(region: Syntax(TokenTree), spot: NodePath) -> Syntax(TokenTree) {
     syntax_at(region, spot).fold_from_end(
         region,
-        fn (node: Syntax<TokenTree>, absent: Syntax<TokenTree>) -> Syntax<TokenTree> { node },
+        fn (node: Syntax(TokenTree), absent: Syntax(TokenTree)) -> Syntax(TokenTree) { node },
     )
 }
 
-fn refusing(region: Syntax<TokenTree>, spot: NodePath, why: Text) -> Refusal {
+fn refusing(region: Syntax(TokenTree), spot: NodePath, why: Text) -> Refusal {
     Refused(node_at(region, spot), why)
 }
 
@@ -73,16 +73,16 @@ fn spot_of(atom: Atom) -> NodePath {
     }
 }
 
-fn expression_at(region: Syntax<TokenTree>, spot: NodePath) -> Option<Syntax<Expr>> {
+fn expression_at(region: Syntax(TokenTree), spot: NodePath) -> Option(Syntax(Expr)) {
     match syntax_at(region, spot) {
         None -> None,
         Some(node) -> as_expression(node),
     }
 }
 
-fn no_anchor(here: NodePath) -> Syntax<Expr> { quote at here { 0 } }
+fn no_anchor(here: NodePath) -> Syntax(Expr) { quote at here { 0 } }
 
-fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
+fn anchored(region: Syntax(TokenTree), here: NodePath) -> Syntax(Expr) {
     match syntax_anchor(region, here) {
         None -> no_anchor(here),
         Some(node) -> match as_expression(node) {
@@ -134,11 +134,11 @@ fn token_collected(
 }
 
 fn group_collected(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     state: Collected,
     here: NodePath,
     delimiter: Delimiter,
-    kids: List<SyntaxStep<Collected, Collected>>,
+    kids: List(SyntaxStep(Collected, Collected)),
 ) -> Collected {
     if delimiter_equal(delimiter, Delimiter::Fused) {
         state with {
@@ -160,7 +160,7 @@ fn group_collected(
     }
 }
 
-fn collect(region: Syntax<TokenTree>) -> Collected {
+fn collect(region: Syntax(TokenTree)) -> Collected {
     recurse_syntax(
         fn (state, here) {
             state with {
@@ -190,20 +190,19 @@ fn is_mark(atom: Atom, expected: TokenKind) -> Bool {
     }
 }
 
-fn text_syntax(here: NodePath, value: Text) -> Syntax<Expr> { syntax_text(here, value) }
+fn text_syntax(here: NodePath, value: Text) -> Syntax(Expr) { syntax_text(here, value) }
 
-fn has_name(names: List<Text>, sought: Text) -> Bool {
+fn has_name(names: List(Text), sought: Text) -> Bool {
     names.fold_from_start(
         false,
         fn (found: Bool, name: Text) -> Bool { if found { true } else { name == sought } },
     )
 }
 
-fn parameter_of(
-    region: Syntax<TokenTree>,
-    atoms: List<Atom>,
-    names: List<Text>,
-) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+fn parameter_of(region: Syntax(TokenTree), atoms: List(Atom), names: List(Text)) -> Result(
+    Pair(Text, Syntax(Expr)),
+    Pair(Syntax(TokenTree), Text),
+) {
     match atoms {
         [] -> Err((region, "an empty parameter states nothing")),
         [first, .. tail] -> match first {
@@ -217,14 +216,14 @@ fn parameter_of(
 }
 
 fn built_parameter(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     name_spot: NodePath,
     name: Text,
     value_spot: NodePath,
     value_kind: TokenKind,
     seconds: Bool,
-    names: List<Text>,
-) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    names: List(Text),
+) -> Result(Pair(Text, Syntax(Expr)), Pair(Syntax(TokenTree), Text)) {
     if has_name(names, name) {
         Err((node_at(region, name_spot), "this node states the same parameter twice"))
     } else {
@@ -274,14 +273,14 @@ fn built_parameter(
 }
 
 fn parameter_after_value(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     name_spot: NodePath,
     name: Text,
     value_spot: NodePath,
     value_kind: TokenKind,
-    tail: List<Atom>,
-    names: List<Text>,
-) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    tail: List(Atom),
+    names: List(Text),
+) -> Result(Pair(Text, Syntax(Expr)), Pair(Syntax(TokenTree), Text)) {
     match tail {
         [] -> built_parameter(region, name_spot, name, value_spot, value_kind, false, names),
         [unit, .. after_unit] -> match unit {
@@ -316,12 +315,12 @@ fn parameter_after_value(
 }
 
 fn parameter_after_name(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     name_spot: NodePath,
     name: Text,
-    tail: List<Atom>,
-    names: List<Text>,
-) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    tail: List(Atom),
+    names: List(Text),
+) -> Result(Pair(Text, Syntax(Expr)), Pair(Syntax(TokenTree), Text)) {
     match tail {
         [] -> Err((node_at(region, name_spot), "a parameter is written as `name = value`")),
         [equal, .. after_equal] -> match equal {
@@ -358,7 +357,7 @@ fn parameter_after_name(
     }
 }
 
-fn finish_parameter(region: Syntax<TokenTree>, state: Parameters) -> Parameters {
+fn finish_parameter(region: Syntax(TokenTree), state: Parameters) -> Parameters {
     match state.refusal {
         Refused(node, why) -> state,
         NoRefusal -> match reverse(state.pending) {
@@ -383,16 +382,16 @@ fn finish_parameter(region: Syntax<TokenTree>, state: Parameters) -> Parameters 
     }
 }
 
-fn parameter_step(region: Syntax<TokenTree>, state: Parameters, atom: Atom) -> Parameters {
+fn parameter_step(region: Syntax(TokenTree), state: Parameters, atom: Atom) -> Parameters {
     if is_mark(atom, TokenKind::Semicolon) {
         finish_parameter(region, state)
     } else { state with { pending = Cons(atom, state.pending) } }
 }
 
-fn parameters_of(
-    region: Syntax<TokenTree>,
-    atoms: List<Atom>,
-) -> Result<List<Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+fn parameters_of(region: Syntax(TokenTree), atoms: List(Atom)) -> Result(
+    List(Syntax(Expr)),
+    Pair(Syntax(TokenTree), Text),
+) {
     match finish_parameter(
         region,
         atoms.fold_from_start(
@@ -413,13 +412,13 @@ fn parameters_of(
 }
 
 fn input_or_output(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
-    kind_atoms: List<Atom>,
+    kind_atoms: List(Atom),
     input: Bool,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match kind_atoms {
         [] -> Err((node_at(region, here), "this port has no kind")),
         [first, .. tail] -> match first {
@@ -442,13 +441,13 @@ fn input_or_output(
 }
 
 fn built_port(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
-    kind: Syntax<Expr>,
+    kind: Syntax(Expr),
     input: Bool,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match anchored(region, here) {
         anchor -> if input {
             Ok(quote at here {
@@ -463,13 +462,13 @@ fn built_port(
 }
 
 fn audio_kind(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
     group: Atom,
     input: Bool,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match group {
         Group(group_spot, delimiter, children) -> if delimiter_equal(
             delimiter,
@@ -523,15 +522,15 @@ fn audio_kind(
 }
 
 fn port_kind_after_word(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
     kind_spot: NodePath,
     kind_name: Text,
-    tail: List<Atom>,
+    tail: List(Atom),
     input: Bool,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match kind_name {
         "control" -> match tail {
             [] -> built_port(
@@ -585,10 +584,10 @@ fn port_kind_after_word(
     }
 }
 
-fn statement_of(
-    region: Syntax<TokenTree>,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+fn statement_of(region: Syntax(TokenTree), atoms: List(Atom)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     match atoms {
         [] -> Err((region, "an empty declaration states nothing")),
         [first, .. tail] -> match first {
@@ -613,11 +612,11 @@ fn statement_of(
 }
 
 fn port_statement(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
-    atoms: List<Atom>,
+    atoms: List(Atom),
     input: Bool,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match atoms {
         [] -> Err((node_at(region, here), "an input or output needs a name")),
         [name_atom, .. after_name] -> match name_atom {
@@ -650,7 +649,7 @@ fn port_statement(
 }
 
 fn built_node(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
@@ -658,8 +657,8 @@ fn built_node(
     descriptor: Text,
     body_spot: NodePath,
     delimiter: Delimiter,
-    body: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    body: List(Atom),
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     if delimiter_equal(delimiter, Delimiter::Braces) {
         match parameters_of(region, body) {
             Err(problem) -> Err(problem),
@@ -678,14 +677,14 @@ fn built_node(
 }
 
 fn node_after_descriptor(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
     descriptor_spot: NodePath,
     descriptor: Text,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    atoms: List(Atom),
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match atoms {
         [] -> Err((node_at(region, descriptor_spot), "a node writes its parameters in braces")),
         [body_atom, .. after_body] -> match after_body {
@@ -715,12 +714,12 @@ fn node_after_descriptor(
 }
 
 fn node_after_equal(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     name_spot: NodePath,
     name: Text,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    atoms: List(Atom),
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match atoms {
         [] -> Err((node_at(region, name_spot), "a node needs a descriptor")),
         [descriptor_atom, .. after_descriptor] -> match descriptor_atom {
@@ -741,11 +740,10 @@ fn node_after_equal(
     }
 }
 
-fn node_statement(
-    region: Syntax<TokenTree>,
-    here: NodePath,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+fn node_statement(region: Syntax(TokenTree), here: NodePath, atoms: List(Atom)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     match atoms {
         [] -> Err((node_at(region, here), "a node needs a name")),
         [name_atom, .. after_name] -> match name_atom {
@@ -778,7 +776,7 @@ fn node_statement(
 }
 
 fn built_connection(
-    region: Syntax<TokenTree>,
+    region: Syntax(TokenTree),
     here: NodePath,
     source_node_spot: NodePath,
     source_node: Text,
@@ -788,7 +786,7 @@ fn built_connection(
     target_node: Text,
     target_port_spot: NodePath,
     target_port: Text,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+) -> Result(Syntax(Expr), Pair(Syntax(TokenTree), Text)) {
     match anchored(region, here) {
         anchor -> Ok(quote at here {
             Connect(
@@ -806,11 +804,10 @@ fn built_connection(
     }
 }
 
-fn connection_statement(
-    region: Syntax<TokenTree>,
-    here: NodePath,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+fn connection_statement(region: Syntax(TokenTree), here: NodePath, atoms: List(Atom)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     match atoms {
         [source_node_atom, .. a] -> match source_node_atom {
             Word(source_node_spot, source_node) -> match a {
@@ -921,11 +918,10 @@ fn connection_statement(
     }
 }
 
-fn binding_statement(
-    region: Syntax<TokenTree>,
-    here: NodePath,
-    atoms: List<Atom>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+fn binding_statement(region: Syntax(TokenTree), here: NodePath, atoms: List(Atom)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     match atoms {
         [part_atom, .. after_part] -> match part_atom {
             Word(part_spot, part_name) -> match after_part {
@@ -966,7 +962,7 @@ fn binding_statement(
     }
 }
 
-fn finish_statement(region: Syntax<TokenTree>, state: Parsed) -> Parsed {
+fn finish_statement(region: Syntax(TokenTree), state: Parsed) -> Parsed {
     match state.refusal {
         Refused(node, why) -> state,
         NoRefusal -> match reverse(state.pending) {
@@ -987,13 +983,13 @@ fn finish_statement(region: Syntax<TokenTree>, state: Parsed) -> Parsed {
     }
 }
 
-fn statement_step(region: Syntax<TokenTree>, state: Parsed, atom: Atom) -> Parsed {
+fn statement_step(region: Syntax(TokenTree), state: Parsed, atom: Atom) -> Parsed {
     if is_mark(atom, TokenKind::Semicolon) {
         finish_statement(region, state)
     } else { state with { pending = Cons(atom, state.pending) } }
 }
 
-fn parsed(region: Syntax<TokenTree>, atoms: List<Atom>) -> Parsed {
+fn parsed(region: Syntax(TokenTree), atoms: List(Atom)) -> Parsed {
     finish_statement(
         region,
         atoms.fold_from_start(
@@ -1007,9 +1003,10 @@ fn parsed(region: Syntax<TokenTree>, atoms: List<Atom>) -> Parsed {
     )
 }
 
-let expand = fn (
-    region: Syntax<TokenTree>,
-) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+let expand = fn (region: Syntax(TokenTree)) -> Result(
+    Syntax(Expr),
+    Pair(Syntax(TokenTree), Text),
+) {
     match collect(region) {
         Collected { atoms, refusal = Refused(node, why) } -> Err((node, why)),
         Collected { atoms, refusal = NoRefusal } -> match reverse(atoms) {
@@ -1052,12 +1049,10 @@ let expand = fn (
 
 // Replace one parameter value and no other byte. The parameter's value anchor
 // is kept in `Parameter`, so callers do not need to rediscover a range.
-let edit = fn (
-    region: Syntax<TokenTree>,
-    command: Text,
-    anchor: Nat,
-    argument: Text,
-) -> Result<List<Pair<Nat, Text>>, Text> {
+let edit = fn (region: Syntax(TokenTree), command: Text, anchor: Nat, argument: Text) -> Result(
+    List(Pair(Nat, Text)),
+    Text,
+) {
     match command {
         "set_parameter" -> Ok([(anchor, argument)]),
         _ -> Err("`graph` serves one command, `set_parameter`"),
@@ -1072,7 +1067,7 @@ fn port_kind_text(kind: PortKind) -> Text {
     }
 }
 
-fn parameter_value_text(value: ParameterValue) -> Result<Text, Text> {
+fn parameter_value_text(value: ParameterValue) -> Result(Text, Text) {
     match value {
         Count(number) -> Ok(nat_literal(number)),
         ExactValue(Exact(dimension, Written(inner, number, unit))) -> match ratio_literal(
@@ -1089,14 +1084,14 @@ fn parameter_value_text(value: ParameterValue) -> Result<Text, Text> {
     }
 }
 
-fn parameter_text(parameter: Parameter) -> Result<Text, Text> {
+fn parameter_text(parameter: Parameter) -> Result(Text, Text) {
     Ok(text_join([parameter.name, " = ", parameter_value_text(parameter.value)?, ";"]))
 }
 
-fn parameters_text(parameters: List<Parameter>) -> Result<Text, Text> {
+fn parameters_text(parameters: List(Parameter)) -> Result(Text, Text) {
     parameters.fold_from_start(
         Ok(""),
-        fn (sofar: Result<Text, Text>, parameter: Parameter) -> Result<Text, Text> {
+        fn (sofar: Result(Text, Text), parameter: Parameter) -> Result(Text, Text) {
             Ok(text_join([sofar?, " ", parameter_text(parameter)?]))
         },
     )
@@ -1104,7 +1099,7 @@ fn parameters_text(parameters: List<Parameter>) -> Result<Text, Text> {
 
 fn path_text(path: PortPath) -> Text { text_join([path.node, ".", path.port]) }
 
-fn declaration_text(declaration: StudioDecl) -> Result<Text, Text> {
+fn declaration_text(declaration: StudioDecl) -> Result(Text, Text) {
     match declaration {
         Input(anchor, name, kind) -> Ok(text_join([
             "input ",
@@ -1140,10 +1135,10 @@ fn declaration_text(declaration: StudioDecl) -> Result<Text, Text> {
     }
 }
 
-fn declarations_text(declarations: List<StudioDecl>) -> Result<Text, Text> {
+fn declarations_text(declarations: List(StudioDecl)) -> Result(Text, Text) {
     declarations.fold_from_start(
         Ok(""),
-        fn (sofar: Result<Text, Text>, declaration: StudioDecl) -> Result<Text, Text> {
+        fn (sofar: Result(Text, Text), declaration: StudioDecl) -> Result(Text, Text) {
             Ok(text_join([sofar?, " ", declaration_text(declaration)?]))
         },
     )
@@ -1151,6 +1146,6 @@ fn declarations_text(declarations: List<StudioDecl>) -> Result<Text, Text> {
 
 // A canonical new region. Printing does not edit existing source and therefore
 // does not promise to retain its comments or whitespace.
-let print = fn (description: StudioDescription) -> Result<Text, Text> {
+let print = fn (description: StudioDescription) -> Result(Text, Text) {
     Ok(declarations_text(description.declarations)?)
 };

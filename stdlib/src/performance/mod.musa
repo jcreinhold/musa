@@ -22,14 +22,14 @@ data UpdateRate {
 // A key states its index in the constructor result. At uses such as
 // `Control(expression, NormalizedValue(1/2))`, the ordinary Miller-pattern
 // unifier infers the one shared kind from both arguments.
-data ControlKey(kind: ControlKind) {
+data ControlKey: (kind: ControlKind) -> Type {
     Key(
         key_kind: ControlKind,
         namespace: Text,
         name: Text,
         summary: Text,
         update_rate: UpdateRate,
-    ): (key_kind),
+    ): ControlKey(key_kind),
 }
 
 data Connection {
@@ -38,9 +38,9 @@ data Connection {
     Legato,
 }
 
-data ControlValue(kind: ControlKind) {
-    NormalizedValue(value: Ratio): (Normalized),
-    ConnectionValue(connection: Connection): (PhraseConnection),
+data ControlValue: (kind: ControlKind) -> Type {
+    NormalizedValue(value: Ratio): ControlValue(Normalized),
+    ConnectionValue(connection: Connection): ControlValue(PhraseConnection),
 }
 
 // Existential packaging retains the shared index while allowing unlike
@@ -52,7 +52,8 @@ data SomeControl {
 // `kind` is intentionally omitted at call sites. It is solved only by
 // unifying the two indexed arguments; a disagreement is a normal type error
 // and an unresolved kind is never defaulted.
-fn some_control<{kind: ControlKind}>(
+fn some_control(
+    {kind: ControlKind},
     control_key: ControlKey(kind),
     value: ControlValue(kind),
 ) -> SomeControl { Control(kind, control_key, value) }
@@ -122,7 +123,7 @@ record GestureId {
 record TechniqueRequest {
     namespace: Text;
     name: Text;
-    arguments: List<Ratio>;
+    arguments: List(Ratio);
 }
 
 data NonEmptyGestureIds {
@@ -134,8 +135,8 @@ data Gesture {
     NoteGesture(
         instance: GestureId,
         written_pitch: Pitch,
-        controls: List<SomeControl>,
-        techniques: List<TechniqueRequest>,
+        controls: List(SomeControl),
+        techniques: List(TechniqueRequest),
     ),
     ControlCurve(control_key: ControlKey(Normalized), values: Progress),
     PhraseGroup(members: NonEmptyGestureIds, connection: Connection),
@@ -155,11 +156,11 @@ record HairpinView {
 record NotationView {
     instance: GestureId;
     written_pitch: Pitch;
-    dynamic_mark: Option<Text>;
-    marks: List<Text>;
-    hairpin: Option<HairpinView>;
-    connection: Option<Connection>;
-    techniques: List<TechniqueRequest>;
+    dynamic_mark: Option(Text);
+    marks: List(Text);
+    hairpin: Option(HairpinView);
+    connection: Option(Connection);
+    techniques: List(TechniqueRequest);
 }
 
 /// One source-declared reading of a written dynamic marking.
@@ -174,23 +175,23 @@ record MarkRule {
     emphasis: Ratio;
     separation: Ratio;
     sustain: Ratio;
-    techniques: List<TechniqueRequest>;
+    techniques: List(TechniqueRequest);
 }
 
 /// A finite, storable collection of source interpretation rules.
 record PerformanceProfile {
-    dynamics: List<DynamicRule>;
-    marks: List<MarkRule>;
+    dynamics: List(DynamicRule);
+    marks: List(MarkRule);
 }
 
 /// Exact musical intent returned by one finite profile evaluation.
 record ProfileResult {
-    controls: List<SomeControl>;
-    techniques: List<TechniqueRequest>;
+    controls: List(SomeControl);
+    techniques: List(TechniqueRequest);
 }
 
 /// Find a declared dynamic level, returning neutral expression when absent.
-private fn dynamic_level(rules: List<DynamicRule>, sought: Text) -> Ratio {
+private fn dynamic_level(rules: List(DynamicRule), sought: Text) -> Ratio {
     match rules {
         [] -> 1/1,
         [rule, .. later] -> if text_equal(rule.name, sought) {
@@ -200,7 +201,7 @@ private fn dynamic_level(rules: List<DynamicRule>, sought: Text) -> Ratio {
 }
 
 /// Collect the exact controls declared for the marks on one notation view.
-private fn marked_controls(rules: List<MarkRule>, marks: List<Text>) -> List<SomeControl> {
+private fn marked_controls(rules: List(MarkRule), marks: List(Text)) -> List(SomeControl) {
     match rules {
         [] -> [],
         [rule, .. later] -> if member_text(rule.name, marks) {
@@ -219,7 +220,7 @@ private fn marked_controls(rules: List<MarkRule>, marks: List<Text>) -> List<Som
 }
 
 /// Whether one exact spelling occurs in a finite list.
-private fn member_text(sought: Text, values: List<Text>) -> Bool {
+private fn member_text(sought: Text, values: List(Text)) -> Bool {
     match values {
         [] -> false,
         [value, .. later] -> if text_equal(value, sought) {
@@ -343,7 +344,7 @@ let neutral: PerformanceProfile = PerformanceProfile {
 /// Versioned finite root frozen by the generic checked-source boundary.
 record PerformanceVocabularyArtifact {
     schema_version: Nat;
-    standard_controls: List<SomeControl>;
+    standard_controls: List(SomeControl);
     neutral_profile: PerformanceProfile;
 }
 

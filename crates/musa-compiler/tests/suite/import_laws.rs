@@ -161,7 +161,7 @@ fn a_missing_import_names_the_path_it_looked_for() {
 ///
 /// Small on purpose — what is under test is which file the import found, not
 /// what the module in it does, so the module does as little as a module can.
-const ECHO: &str = "\n    let level = \"readable\";\n    let expand = fn (region: Syntax<TokenTree>) -> Result<Syntax<TokenTree>, Pair<Syntax<TokenTree>, Text>> { Ok(region) };\n\n";
+const ECHO: &str = "\n    let level = \"readable\";\n    let expand = fn (region: Syntax(TokenTree)) -> Result(Syntax(TokenTree), Pair(Syntax(TokenTree), Text)) { Ok(region) };\n\n";
 
 /// A syntax import resolves by the path its statement *has*, and a path in
 /// quotes is the path without them.
@@ -295,8 +295,8 @@ fn two_modules_exporting_one_name_are_both_named() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\";"),
         &[
-            ("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } "),
-            ("b.musa", " fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } "),
+            ("a.musa", " fn rise() -> EventTrack(WrittenTime) { music { c5/4 } } "),
+            ("b.musa", " fn rise() -> EventTrack(WrittenTime) { music { g5/4 } } "),
         ],
     );
     let messages = errors(&compilation);
@@ -316,8 +316,8 @@ fn an_alias_resolves_a_collision_by_qualifying_one_import() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\" as low; motif fall() { use low.rise(); }"),
         &[
-            ("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } "),
-            ("b.musa", " fn rise() -> EventTrack<WrittenTime> { music { g5/4 } } "),
+            ("a.musa", " fn rise() -> EventTrack(WrittenTime) { music { c5/4 } } "),
+            ("b.musa", " fn rise() -> EventTrack(WrittenTime) { music { g5/4 } } "),
         ],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
@@ -335,7 +335,7 @@ fn a_qualified_import_does_not_also_bind_flat() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"a.musa\" as high; motif fall() { use rise(); }"),
-        &[("a.musa", " fn rise() -> EventTrack<WrittenTime> { music { c5/4 } } ")],
+        &[("a.musa", " fn rise() -> EventTrack(WrittenTime) { music { c5/4 } } ")],
     );
     let messages = errors(&compilation);
     assert!(
@@ -437,7 +437,7 @@ fn a_private_declaration_is_an_ordinary_name_inside_its_own_file() {
 /// keyed on the source rather than the file would break exactly this.
 #[test]
 fn a_voice_names_the_private_declarations_of_its_own_file() {
-    let source = "private fn hidden() -> EventTrack<WrittenTime> { music { c5/2 d5/2 } }\n\
+    let source = "private fn hidden() -> EventTrack(WrittenTime) { music { c5/2 d5/2 } }\n\
          piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; \
          score { part p { voice v { use hidden(); } } } }\n";
     let compilation = compile_with("p.musa", source, &[]);

@@ -2,9 +2,9 @@ use musa_syntax::{BarSpacing, SyntaxElement, SyntaxKind, format, parse};
 
 const EXPRESSIONS: &str = r#"piece "Expressions" {
     let fifth: Interval = P5;
-    let paths: List<(Pitch, Option<Pitch>)> = [(c4, Some(e4)), (g4, None)];
+    let paths: List((Pitch, Option(Pitch))) = [(c4, Some(e4)), (g4, None)];
 
-    fn choose(value: Option<Pitch>, fallback: Pitch) -> Pitch { match value {
+    fn choose(value: Option(Pitch), fallback: Pitch) -> Pitch { match value {
         None -> fallback,
         Some(found) -> found,
     } }
@@ -13,15 +13,15 @@ const EXPRESSIONS: &str = r#"piece "Expressions" {
 
     let raised: Pitch = transform(fn (from: Pitch) -> Pitch { choose(Some(from), c4) }, e4);
 
-    fn reason(outcome: Result<Pitch, Text>) -> Text { match outcome {
+    fn reason(outcome: Result(Pitch, Text)) -> Text { match outcome {
         Ok(found) -> "",
         Err(said) -> said,
     } }
 
-    let attempted: Result<Pitch, Text> = Ok(c4);
-    let refused: Result<Pitch, Text> = Err("no such note");
+    let attempted: Result(Pitch, Text) = Ok(c4);
+    let refused: Result(Pitch, Text) = Err("no such note");
 
-    fn melody(root: Pitch) -> EventTrack<WrittenTime> { music {
+    fn melody(root: Pitch) -> EventTrack(WrittenTime) { music {
         root/4
         use answer(root);
     } }
@@ -52,9 +52,6 @@ fn expression_cst_has_one_role_for_each_surface_form() {
         SyntaxKind::FnDecl,
         SyntaxKind::FunctionType,
         SyntaxKind::ProductType,
-        SyntaxKind::ListType,
-        SyntaxKind::OptionType,
-        SyntaxKind::ResultType,
         SyntaxKind::ProductExpr,
         SyntaxKind::ListExpr,
         SyntaxKind::OptionExpr,
@@ -80,9 +77,6 @@ fn expression_cst_has_one_role_for_each_surface_form() {
                         | SyntaxKind::FnDecl
                         | SyntaxKind::FunctionType
                         | SyntaxKind::ProductType
-                        | SyntaxKind::ListType
-                        | SyntaxKind::OptionType
-                        | SyntaxKind::ResultType
                         | SyntaxKind::ProductExpr
                         | SyntaxKind::ListExpr
                         | SyntaxKind::OptionExpr
@@ -120,7 +114,7 @@ fn incomplete_expressions_recover_without_losing_source() {
         "piece \"x\" { fn f(x: Nat) -> { x } }",
         "piece \"x\" { let x: Nat = f(1; }",
         "piece \"x\" { let x: Nat -> = 1; }",
-        "piece \"x\" { let x: Option<Nat> = match x { None -> }; }",
+        "piece \"x\" { let x: Option(Nat) = match x { None -> }; }",
         "piece \"x\" { let x: Nat = match x {}; }",
     ] {
         let document = parse(broken);
@@ -131,7 +125,7 @@ fn incomplete_expressions_recover_without_losing_source() {
 
 #[test]
 fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
-    let source = "piece \"x\" { fn p() -> EventTrack<WrittenTime> { music { c4/4 use answer(c4); } } }";
+    let source = "piece \"x\" { fn p() -> EventTrack(WrittenTime) { music { c4/4 use answer(c4); } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -145,14 +139,14 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
         root.descendants()
             .filter(|node| node.kind() == SyntaxKind::ApplyExpr)
             .count(),
-        1
+        2
     );
 }
 
 #[test]
 fn pitch_translation_is_a_single_non_associative_expression_layer() {
     let source = r#"piece "pitch" {
-        fn turn(root: Pitch, by: Interval) -> EventTrack<WrittenTime> { music {
+        fn turn(root: Pitch, by: Interval) -> EventTrack(WrittenTime) { music {
             (root up M2)/4
             ((root up by) down m2)/4
         } }
@@ -211,7 +205,7 @@ fn diminished_interval_spelling_does_not_steal_the_note_d4() {
 #[test]
 fn repeat_is_a_statement_keyword_and_the_list_operation_is_a_name() {
     let source =
-        "piece \"x\" { let copies: List<Nat> = repeated(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
+        "piece \"x\" { let copies: List(Nat) = repeated(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -219,7 +213,7 @@ fn repeat_is_a_statement_keyword_and_the_list_operation_is_a_name() {
         root.descendants()
             .filter(|node| node.kind() == SyntaxKind::ApplyExpr)
             .count(),
-        1
+        2
     );
     assert_eq!(
         root.descendants()
@@ -415,7 +409,7 @@ fn a_use_statement_keeps_its_with_and_an_expression_does_not() {
             0,
         ),
         (
-            "piece \"x\" { data P { P(a: Nat) } fn t(p: P) -> EventTrack<WrittenTime> { music { c4/4 } } \
+            "piece \"x\" { data P { P(a: Nat) } fn t(p: P) -> EventTrack(WrittenTime) { music { c4/4 } } \
              score { part p { voice v { use t(held with { a = 1 }); } } } }",
             1,
             0,
@@ -447,17 +441,17 @@ fn a_use_statement_keeps_its_with_and_an_expression_does_not() {
 fn a_question_takes_the_whole_expression_before_it() {
     for (source, questions) in [
         (
-            "piece \"x\" { fn f(r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(r?) } }",
+            "piece \"x\" { fn f(r: Result(Nat, Text)) -> Result(Nat, Text) { Ok(r?) } }",
             1,
         ),
         (
-            "piece \"x\" { fn f(r: Result<Result<Nat, Text>, Text>) -> Result<Nat, Text> { Ok(r??) } }",
+            "piece \"x\" { fn f(r: Result(Result(Nat, Text), Text)) -> Result(Nat, Text) { Ok(r??) } }",
             2,
         ),
         (
-            "piece \"x\" { data P { P(a: Result<Nat, Text>) } \
-             fn f(p: P, r: Result<Nat, Text>) -> Result<Nat, Text> { Ok(g(p with { a = r })?) } \
-             fn g(p: P) -> Result<Nat, Text> { match p { P(a) -> a } } }",
+            "piece \"x\" { data P { P(a: Result(Nat, Text)) } \
+             fn f(p: P, r: Result(Nat, Text)) -> Result(Nat, Text) { Ok(g(p with { a = r })?) } \
+             fn g(p: P) -> Result(Nat, Text) { match p { P(a) -> a } } }",
             1,
         ),
     ] {
@@ -507,7 +501,7 @@ fn a_sub_position_of_a_pattern_holds_another_pattern() {
 
     fn wrapped(o: Outer) -> Nat { match o { Wrap(Loud(count)) -> count, Wrap(Quiet) -> 0 } }
 
-    fn listed(l: List<Inner>) -> Nat {
+    fn listed(l: List(Inner)) -> Nat {
         match l { [] -> 0, [Loud(count), .. others] -> count, [Quiet, .. others] -> 0 }
     }
 
@@ -515,7 +509,7 @@ fn a_sub_position_of_a_pattern_holds_another_pattern() {
         match m { Marking { written = Loud(count) } -> count, Marking { written = Quiet } -> 0 }
     }
 
-    fn held(h: Option<Inner>) -> Nat {
+    fn held(h: Option(Inner)) -> Nat {
         match h { Some(Loud(count)) -> count, Some(Quiet) -> 0, None -> 0 }
     }
 
@@ -620,7 +614,7 @@ fn a_binding_is_one_expression_holding_its_body() {
 
     fn in_an_arm(written: Bool) -> Text { match written { True -> let word = "yes"; word, False -> "no" } }
 
-    fn in_a_quote(x: Syntax<TokenTree>) -> Syntax<TokenTree> { quote at here { let held = $x; held } }
+    fn in_a_quote(x: Syntax(TokenTree)) -> Syntax(TokenTree) { quote at here { let held = $x; held } }
 
 "#;
     let parsed = parse(source);

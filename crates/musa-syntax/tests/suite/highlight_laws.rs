@@ -129,8 +129,8 @@ fn module_names_are_names_not_keywords() {
 fn the_borrowed_words_stay_keywords_in_keyword_positions() {
     let cases: &[(&str, &str)] = &[
         ("piece \"P\" { harmony { at 1:1 C; } }", "harmony"),
-        ("piece \"P\" { let xs: List<Pitch> = []; }", "List"),
-        ("piece \"P\" { let x: Option<Pitch> = None; }", "Option"),
+        ("piece \"P\" { let xs: List(Pitch) = []; }", "List"),
+        ("piece \"P\" { let x: Option(Pitch) = None; }", "Option"),
         ("piece \"P\" { let p: Pitch = c4; }", "Pitch"),
         ("piece \"P\" { let s: Scale = scale c dorian; }", "scale"),
     ];

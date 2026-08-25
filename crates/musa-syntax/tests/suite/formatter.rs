@@ -133,16 +133,14 @@ fn a_short_duration_closes_up_to_its_note() {
     assert_semantics_preserved(source, &formatted);
 }
 
-/// A type parameter closes up to its type on both sides, however loosely it
-/// was written and however deep it nests. `Option<Pitch>` is one word the way
-/// `c5/4.` is one note — a gap after `<` reads as a comparison, which is the
-/// one thing the character never means here.
+/// A type application closes up around its ordinary argument list, however
+/// loosely it was written and however deep it nests.
 #[test]
 fn a_type_parameter_closes_up_to_its_type() {
-    let source = "piece \"T\" { let held: Option < Pitch > = None;\nlet many: List < Option < Pitch > > = []; }";
+    let source = "piece \"T\" { let held: Option ( Pitch ) = None;\nlet many: List ( Option ( Pitch ) ) = []; }";
     let formatted = fmt(source);
-    assert!(formatted.contains("Option<Pitch>"), "got:\n{formatted}");
-    assert!(formatted.contains("List<Option<Pitch>>"), "got:\n{formatted}");
+    assert!(formatted.contains("Option(Pitch)"), "got:\n{formatted}");
+    assert!(formatted.contains("List(Option(Pitch))"), "got:\n{formatted}");
     assert_eq!(fmt(&formatted), formatted, "idempotence");
     assert_semantics_preserved(source, &formatted);
 }
@@ -578,11 +576,11 @@ fn a_match_arms_braced_body_keeps_its_comma_on_its_line() {
 /// statements, and this language writes only a *bar* horizontally.
 #[test]
 fn a_music_body_stacks_however_short_it_is() {
-    let source = "piece \"P\" {\nfn figure() -> EventTrack<WrittenTime> { music { c5/4 } }\n}\n";
+    let source = "piece \"P\" {\nfn figure() -> EventTrack(WrittenTime) { music { c5/4 } }\n}\n";
     let formatted = fmt(source);
     assert!(
         formatted.contains(
-            "    fn figure() -> EventTrack<WrittenTime> {\n        music {\n            c5/4\n        }\n    }\n"
+            "    fn figure() -> EventTrack(WrittenTime) {\n        music {\n            c5/4\n        }\n    }\n"
         ),
         "{formatted}"
     );
@@ -614,15 +612,18 @@ fn a_declaration_writes_one_constructor_to_a_line() {
     assert_semantics_preserved(source, &formatted);
 }
 
-/// A parameter list binds to the name it abstracts — `Pair<A, B>`, never
-/// `Pair <A, B>` — and a declaration with one constructor is still a list.
+/// Uniform family parameters use the declaration's ordinary binder list.
 #[test]
 fn a_parameterized_declaration_keeps_its_parameters_on_its_name() {
-    let source = "\ndata Pair < A , B > { Both ( left : A , right : B ) , }\n\n";
+    let source = "\ndata Pair ( A : Type , B : Type ) { Both ( left : A , right : B ) , }\n\n";
     let formatted = fmt(source);
     assert_eq!(
         formatted,
-        concat!("data Pair<A, B> {\n", "    Both(left: A, right: B),\n", "}\n",),
+        concat!(
+            "data Pair(A: Type, B: Type) {\n",
+            "    Both(left: A, right: B),\n",
+            "}\n",
+        ),
         "{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotent");
@@ -669,26 +670,26 @@ fn a_constructor_too_wide_for_its_line_stacks_its_fields() {
     assert_semantics_preserved(source, &formatted);
 }
 
-/// The budget is the *line*, not the list. A parameter list that would fit on
-/// its own is still too wide when the return type written after it does not
-/// fit behind it — which is the whole of why a list is measured with
-/// everything up to the next place the line can be cut.
+/// The budget is the *line*, not a privileged kind of list. The return
+/// application's argument list is the first honest break in this signature.
 #[test]
 fn a_parameter_list_is_measured_with_what_follows_it() {
     let source = concat!(
         "\n",
-        "fn rescaled(factor: Ratio, here: Position<WrittenTime>, point: Position<WrittenTime>,) ",
-        "-> Result<Position<WrittenTime>, Text> { point }\n",
+        "fn rescaled(factor: Ratio, here: Position(WrittenTime), point: Position(WrittenTime),) ",
+        "-> Result(Position(WrittenTime), Text) { point }\n",
         "\n",
     );
     let formatted = fmt(source);
     assert!(
-        formatted.contains("fn rescaled(\n    factor: Ratio,\n"),
-        "the head is too long for one line, so its parameters stack:\n{formatted}"
+        formatted.contains(
+            "fn rescaled(factor: Ratio, here: Position(WrittenTime), point: Position(WrittenTime)) -> Result(\n"
+        ),
+        "the signature breaks at the return application's argument list:\n{formatted}"
     );
     assert!(
-        formatted.contains(") -> Result<Position<WrittenTime>, Text> { point }\n"),
-        "and the return type stays with the paren that closes them:\n{formatted}"
+        formatted.contains("\n) { point }\n"),
+        "the call closes at its own indentation before the body:\n{formatted}"
     );
     assert!(widest_line(&formatted) <= MEASURE, "{formatted}");
     assert_eq!(fmt(&formatted), formatted, "idempotent");

@@ -281,7 +281,7 @@ piece "Bad control" {
 #[test]
 fn an_unresolved_control_index_is_refused_instead_of_defaulted() {
     let source = r#"import std::performance;
-fn unstated<{kind: ControlKind}>() -> ControlKind { kind }
+fn unstated({kind: ControlKind}) -> ControlKind { kind }
 let ambiguous: ControlKind = unstated();
 piece "Unresolved control" {
     meter 4/4;

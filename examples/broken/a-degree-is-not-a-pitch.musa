@@ -7,7 +7,7 @@ piece "A Degree Is Not A Pitch" {
     import std::scale;
 
     let home: Scale = scale c major;
-    let start: Option<Pitch> = degree_in(home, c4);
+    let start: Option(Pitch) = degree_in(home, c4);
 
     score {
         part solo {

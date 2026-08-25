@@ -21,7 +21,7 @@ fn scale_degrees(collection: Scale) -> Nat { scale_size(collection) }
 
 // The degree a written pitch occupies, when it occupies one. Membership is
 // spelled: `eb5` and `d#5` answer differently.
-fn degree_in(collection: Scale, written: Pitch) -> Option<Degree> {
+fn degree_in(collection: Scale, written: Pitch) -> Option(Degree) {
     scale_pitch(collection, written)
 }
 
@@ -39,7 +39,7 @@ fn degree_is_present(located: Degree) -> Bool { true }
 
 // The register frame a scale takes on one absolute tonic pitch. It is
 // absent when that pitch is not the scale's tonic class.
-fn frame_on(collection: Scale, root: Pitch) -> Option<Frame> { pitch_frame(collection, root) }
+fn frame_on(collection: Scale, root: Pitch) -> Option(Frame) { pitch_frame(collection, root) }
 
 // The written pitch a numbered degree names in one register frame.
 fn frame_degree(register: Frame, ordinal: Nat) -> Pitch {
@@ -47,7 +47,7 @@ fn frame_degree(register: Frame, ordinal: Nat) -> Pitch {
 }
 
 // The tonic, third, and fifth degrees of a frame, in register.
-fn frame_triad(register: Frame) -> List<Pitch> {
+fn frame_triad(register: Frame) -> List(Pitch) {
     [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)]
 }
 
@@ -57,14 +57,14 @@ fn frame_triad(register: Frame) -> List<Pitch> {
 // an octave and something must choose it. A Roman numeral has no octave
 // to choose — `V` in C major is the class `g`, and which `g` sounds is
 // the voicing's business. Absent only for an ordinal no score can write.
-fn degree_class(collection: Scale, ordinal: Nat) -> Option<NoteName> {
+fn degree_class(collection: Scale, ordinal: Nat) -> Option(NoteName) {
     scale_class(collection, degree_of(ordinal))
 }
 
 // The same for a degree that already carries an alteration, so that a
 // `raise` or `lower` composes into the spelling rather than being lost.
 // This is how a borrowed or Neapolitan degree is spelled without a frame.
-fn altered_class(collection: Scale, altered: Degree) -> Option<NoteName> {
+fn altered_class(collection: Scale, altered: Degree) -> Option(NoteName) {
     scale_class(collection, altered)
 }
 
@@ -78,17 +78,17 @@ fn altered_class(collection: Scale, altered: Degree) -> Option<NoteName> {
 // could not. Absent for an altered degree, which is not asking for the
 // collection's own chord, and absent when the collection stacks to a
 // sonority the chord vocabulary cannot name.
-fn degree_chord(collection: Scale, written: Degree, members: Nat) -> Option<ChordClass> {
+fn degree_chord(collection: Scale, written: Degree, members: Nat) -> Option(ChordClass) {
     scale_chord(collection, written, members)
 }
 
 // The diatonic triad on a degree.
-fn degree_triad(collection: Scale, written: Degree) -> Option<ChordClass> {
+fn degree_triad(collection: Scale, written: Degree) -> Option(ChordClass) {
     scale_chord(collection, written, 3)
 }
 
 // The diatonic seventh chord on a degree.
-fn degree_seventh(collection: Scale, written: Degree) -> Option<ChordClass> {
+fn degree_seventh(collection: Scale, written: Degree) -> Option(ChordClass) {
     scale_chord(collection, written, 4)
 }
 
