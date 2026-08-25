@@ -261,7 +261,7 @@ fn a_printed_graph_reads_back_to_the_same_valid_description() {
         &document,
         &CompileOptions::default(),
         "std::adapters::graph",
-        "StudioDescription { declarations = [
+        "StudioDescription { schema_version = 1, declarations = [
             Input(1, \"notes\", NoteEvents),
             Node(2, \"lead\", \"poly_sine\", [Parameter { anchor = 3, name = \"voices\", value = Count(16) }]),
             Output(4, \"main\", Audio(2)),

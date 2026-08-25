@@ -1,7 +1,7 @@
 ---
 id: 174b
 slug: studio-spec-ownership
-status: pending
+status: done
 depends_on: [167, 174, 174a]
 phase: 3
 ---

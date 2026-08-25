@@ -230,6 +230,20 @@ impl Document {
         self.term(&Raw::var(Origin::UNKNOWN, name))
     }
 
+    /// Freeze one bound source value behind the generic checked-data boundary.
+    pub(crate) fn checked_source(
+        &self,
+        name: &str,
+        schema: &musa_calculus::SourceSchema,
+    ) -> Result<musa_calculus::CheckedSource, musa_calculus::CheckedSourceError> {
+        musa_calculus::checked_source(
+            &self.cx,
+            &Raw::var(Origin::UNKNOWN, name),
+            schema,
+            crate::registry::source_literal,
+        )
+    }
+
     /// The normal form of `raw` in this document's context, with its type.
     ///
     /// Goes through [`musa_calculus::infer`] rather than reaching into the group,

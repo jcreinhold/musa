@@ -2385,6 +2385,7 @@ dependencies = [
  "hound",
  "indexmap 2.14.0",
  "insta",
+ "musa-calculus",
  "musa-events",
  "musa-score",
  "num-bigint",

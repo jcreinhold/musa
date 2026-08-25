@@ -61,6 +61,7 @@ mod reference;
 /// The compiler's own operations as `musa-calculus` registrations.
 mod registry;
 mod resolve;
+mod source_value;
 mod studio;
 
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
@@ -88,6 +89,8 @@ pub use musa_events::{EventsTokenClass, events_bindings, events_classify, events
 
 pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
+pub use crate::source_value::checked_source_value;
+pub use musa_calculus::{CheckedSource, SourceSchema};
 /// The event track's semantic digest, re-exported so a consumer can hold a
 /// compilation's identity without depending on the event track directly.
 pub use musa_events::SemanticHash;

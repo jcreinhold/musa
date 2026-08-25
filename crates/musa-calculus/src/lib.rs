@@ -100,6 +100,7 @@ pub use crate::elaboration::raw::{
 pub use crate::elaboration::refuse::Undescended;
 pub use crate::elaboration::refuse::{ElabError, Mismatch, PathStep, Refusal};
 pub use crate::elaboration::storable::requiring_storable;
+pub use crate::kernel::artifact::{CheckedSource, SourceDatum, SourceDatumKind, SourceLiteral, SourceSchema};
 pub use crate::kernel::base::{
     Answer, Base, Builtin, Datum, Extern, Family, Literal, Payload, Registry, Rewrite, Rule,
 };
@@ -124,6 +125,99 @@ use crate::kernel::eval::eval;
 use crate::kernel::quote::{Mode, quote, quote_type};
 use crate::kernel::room::with_room;
 use crate::kernel::scope::Scope;
+
+/// Why a source expression could not become an exact checked artifact.
+#[derive(Debug)]
+pub enum CheckedSourceError {
+    /// Ordinary source elaboration failed.
+    Elaboration(ElabError),
+    /// Normalization or canonical readback failed inside the kernel.
+    Core(CoreError),
+    /// The expression inferred at a different root type than the schema names.
+    WrongRoot {
+        /// What the schema requires.
+        expected: Name,
+        /// What inference produced, when it had a rigid named head.
+        found: Option<Name>,
+    },
+    /// The checked value is not finite canonical data.
+    NotCanonical,
+    /// The owner of a registered base literal supplied no exact encoding.
+    UnsupportedLiteral(Literal),
+}
+
+impl std::fmt::Display for CheckedSourceError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Elaboration(error) => write!(formatter, "{error}"),
+            Self::Core(error) => write!(formatter, "{error}"),
+            Self::WrongRoot { expected, found } => match found {
+                Some(found) => write!(formatter, "expected checked `{expected}` data, found `{found}`"),
+                None => write!(formatter, "expected checked `{expected}` data, found a non-data type"),
+            },
+            Self::NotCanonical => formatter.write_str("the checked expression is not canonical finite data"),
+            Self::UnsupportedLiteral(literal) => {
+                write!(formatter, "the owner supplied no exact encoding for `{literal}`")
+            }
+        }
+    }
+}
+
+impl std::error::Error for CheckedSourceError {}
+
+/// Check, normalize, and freeze one source expression as exact canonical data.
+///
+/// `encode_literal` is the registered base type owner's half of the bridge:
+/// the core knows when two opaque literals are equal but cannot invent their
+/// stable bytes. The callback must return equal bytes for equal literals.
+/// Constructors, counts, framing, and schema identity are encoded here.
+///
+/// # Errors
+///
+/// Returns [`CheckedSourceError::Elaboration`] when the expression does not
+/// check, [`CheckedSourceError::Core`] when normalization fails,
+/// [`CheckedSourceError::WrongRoot`] when its inferred type is not the schema's
+/// root, [`CheckedSourceError::NotCanonical`] for a function or other
+/// non-data value, and [`CheckedSourceError::UnsupportedLiteral`] when a base
+/// owner has no exact encoding.
+pub fn checked_source(
+    cx: &Cx,
+    raw: &Raw,
+    schema: &SourceSchema,
+    encode_literal: impl Fn(&Literal) -> Option<SourceLiteral> + Sync,
+) -> Result<CheckedSource, CheckedSourceError> {
+    with_room(|| {
+        let (term, ty) = infer(cx, raw).map_err(CheckedSourceError::Elaboration)?;
+        let normal = normalize(cx, &ty, &term).map_err(CheckedSourceError::Core)?;
+        let normal_ty = normalize_type(cx, &ty).map_err(CheckedSourceError::Core)?;
+        let found = named_head(&normal_ty).cloned();
+        if found.as_deref() != Some(schema.root_type()) {
+            return Err(CheckedSourceError::WrongRoot {
+                expected: Arc::from(schema.root_type()),
+                found,
+            });
+        }
+        let datum = canonical(cx, &normal).ok_or(CheckedSourceError::NotCanonical)?;
+        CheckedSource::from_datum(schema.clone(), &datum, &encode_literal)
+            .map_err(CheckedSourceError::UnsupportedLiteral)
+    })
+}
+
+fn named_head(mut term: &Term) -> Option<&Name> {
+    while let Shape::App { function, .. } = term.shape() {
+        term = function;
+    }
+    match term.shape() {
+        Shape::Named { name, .. } => Some(name),
+        Shape::Meta(_)
+        | Shape::MetaAt { .. }
+        | Shape::Var(_)
+        | Shape::Lit(_)
+        | Shape::Universe(_)
+        | Shape::Bind { .. }
+        | Shape::App { .. } => None,
+    }
+}
 
 /// Run a host's whole checking transaction with §4.1's derived stack room.
 ///

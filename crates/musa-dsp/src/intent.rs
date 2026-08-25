@@ -1,10 +1,9 @@
-//! Editable studio intent (roadmap §6.5, §7.1): patches, buses, and the
-//! bindings that connect a score to a sound.
+//! Temporary compatibility oracle for the pre-source studio path.
 //!
-//! The bridge from score to studio is deliberately narrow — a part is
-//! *assigned* to a patch and a patch output is *routed* to a bus, and that is
-//! the whole of it. Nothing in this module knows what a note is, and nothing
-//! in the score knows what an oscillator is (§2: part ≠ synthesizer).
+//! Ordinary declarations in `std::sound` own the language. This Rust mirror is
+//! retained only until prompt 180a can compare every accepted legacy case with
+//! the checked-source path and delete it. New semantic callers and constructs
+//! must use source declarations plus the opaque checked artifact.
 //!
 //! ```text
 //! studio {
@@ -17,11 +16,9 @@
 //! }
 //! ```
 //!
-//! A `StudioSpec` is **editable intent**, not a render plan: written values
-//! keep the unit they were written in (`-15 dB` stays decibels), and the
-//! conversion to the private render graph happens once, at the graph boundary.
-//! That is what lets a studio UI show the user what they
-//! typed rather than what the compiler made of it.
+//! While it remains, `StudioSpec` is editable intent rather than a render plan:
+//! written values retain units and source spans so differential tests can prove
+//! that the source-owned replacement loses neither meaning nor edit identity.
 
 use indexmap::IndexMap;
 use num_rational::Ratio;

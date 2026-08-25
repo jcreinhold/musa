@@ -15,6 +15,7 @@ testing = []
 
 [dependencies]
 indexmap = "2"
+musa-calculus = { workspace = true }
 musa-events = { workspace = true }
 musa-score = { workspace = true }
 num-bigint = "0.4"

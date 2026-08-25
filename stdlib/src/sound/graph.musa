@@ -68,6 +68,7 @@ data StudioDecl {
 
 // A complete finite description, still independent of any running processor.
 record StudioDescription {
+    schema_version: Nat;
     declarations: List<StudioDecl>;
 }
 
@@ -99,6 +100,7 @@ private record Named {
 // Build a description from declarations already in written order.
 fn make_description(declarations: List<StudioDecl>) -> StudioDescription {
     StudioDescription {
+        schema_version = 1,
         declarations = declarations
     }
 }

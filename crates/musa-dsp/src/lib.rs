@@ -21,6 +21,7 @@ mod plan;
 mod primitive;
 mod quantity;
 mod schedule;
+mod source;
 mod spec;
 mod studio;
 mod voice;
@@ -41,6 +42,11 @@ pub use crate::schedule::{
     AudioFormat, BoundaryCollision, BoundaryKind, ChannelLayout, CollapsePolicy, EventBatch, EventHandle, EventMessage,
     FrameRounding, MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy,
     ScheduledSource, SourceState, TimeDecision, TimeMap, merge_schedules, schedule,
+};
+pub use crate::source::{
+    ParameterProjection, ParameterValueKind, PortKindProjection, PortKindTag, PortPathProjection, StudioDeclaration,
+    StudioDeclarationKind, StudioDescription, StudioDescriptionError, decode_studio_description,
+    studio_description_schema,
 };
 
 #[cfg(test)]

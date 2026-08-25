@@ -20,7 +20,8 @@ Delete the independently constructible Rust `StudioSpec` language and the `musa-
 - `docs/rules/language/08-performance-and-sound.md` in full; notes
   [`79`](../../notes/research/language-design-closure/79-source-owns-the-sound-language.md) and
   [`80`](../../notes/research/language-design-closure/80-bridge-before-cutover.md).
-- Prompts 174b and 175–180, their checked-artifact/projection laws, and the production-gap inventory 174b records.
+- Prompts 174b and 175–180, their checked-artifact/projection laws, and the exhaustive
+  [production-gap inventory](../../notes/research/language-design-closure/81-studio-production-gap.md) recorded by 174b.
 - Every remaining `StudioSpec`, `WrittenQuantity`, `Processor`, `Unit`, patch/bus/send/route/modulation catalogue, and
   construction caller across compiler, DSP, project, LSP, desktop facts, tests, and examples.
 - Prompt 167's adapter path and the ordinary surface lowerer: both must reach the same source declarations and checked

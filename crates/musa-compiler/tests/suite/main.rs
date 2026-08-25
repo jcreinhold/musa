@@ -16,6 +16,7 @@ mod audio_support;
 mod bars;
 mod binding_laws;
 mod cause_laws;
+mod checked_source_laws;
 mod chord_construction_laws;
 mod compiler;
 mod complete_call_laws;

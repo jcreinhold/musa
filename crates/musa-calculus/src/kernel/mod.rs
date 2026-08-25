@@ -6,6 +6,7 @@
 //! [`crate`]'s invariants and checked by `boundary_laws.rs`, because Rust
 //! cannot say "a module may not see its sibling".
 
+pub(crate) mod artifact;
 pub(crate) mod base;
 pub(crate) mod budget;
 pub(crate) mod case_tree;

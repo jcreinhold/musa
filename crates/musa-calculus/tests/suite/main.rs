@@ -15,6 +15,7 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
+mod artifact_laws;
 mod base_laws;
 mod boundary_laws;
 mod budget_laws;

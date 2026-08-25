@@ -237,6 +237,32 @@ where
         .map(|held| &held.value)
 }
 
+/// Exact bytes for the base literals admitted to a checked source artifact.
+///
+/// Deliberately smaller than the registry: syntax, event tracks, machines,
+/// provenance, and notation values are opaque host objects rather than source
+/// package data. The studio trial needs only `Text` and `Ratio`; counts and
+/// declared cases are encoded by `musa-calculus` itself.
+pub(crate) fn source_literal(value: &Literal) -> Option<musa_calculus::SourceLiteral> {
+    let musa_calculus::Shape::Named { name, .. } = value.ty().shape() else {
+        return None;
+    };
+    match &**name {
+        "Text" => Some(musa_calculus::SourceLiteral::new(
+            Arc::clone(name),
+            held::<String>(value)?.as_bytes(),
+        )),
+        "Ratio" => {
+            let ratio = held::<num_rational::Ratio<i64>>(value)?;
+            let mut bytes = Vec::with_capacity(16);
+            bytes.extend_from_slice(&ratio.numer().to_be_bytes());
+            bytes.extend_from_slice(&ratio.denom().to_be_bytes());
+            Some(musa_calculus::SourceLiteral::new(Arc::clone(name), bytes))
+        }
+        _ => None,
+    }
+}
+
 /// The value of domain `T` a *closed normal form* holds.
 ///
 /// [`held`] one layer further out, and the outermost one there is: a δ-rule is
