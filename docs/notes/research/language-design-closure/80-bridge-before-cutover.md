@@ -26,7 +26,7 @@ changed.
 3. **180a — cutover.** Only after source can represent every accepted production case, derive the private DSP projection
    from checked source, migrate compiler/project/LSP/desktop callers, remove public Rust construction, and delete the
    `musa-compiler -> musa-dsp` edge.
-4. **174c — enforce.** Record and mechanically check the crate graph after the edge is actually gone.
+4. **180b — enforce.** Record and mechanically check the crate graph after the edge is actually gone.
 
 This is the same translation discipline Peyton Jones chapter 3 describes: first establish a meaning-preserving bridge,
 then lower the rich source construct to a smaller substrate. It also follows Ousterhout chapters 7–8: the temporary

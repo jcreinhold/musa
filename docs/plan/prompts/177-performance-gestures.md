@@ -2,7 +2,7 @@
 id: 177
 slug: performance-gestures
 status: pending
-depends_on: [119, 174, 176, 176a]
+depends_on: [119, 174, 176, 176a, 176b]
 phase: 3
 ---
 

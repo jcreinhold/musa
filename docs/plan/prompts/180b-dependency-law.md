@@ -1,5 +1,5 @@
 ---
-id: 174c
+id: 180b
 slug: dependency-law
 status: pending
 depends_on: [174a, 180a]

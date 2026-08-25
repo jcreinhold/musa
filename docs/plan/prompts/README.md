@@ -427,15 +427,16 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 174 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 174a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
 | 174b | studio-spec-ownership | 3 | Generic checked-value bridge, proved on the finite source studio trial |
-| 174c | dependency-law | 3 | Crate layering enforced after cutover, separately from source-language ownership |
 | 175 | exact-studio-values | 3 | Exact source quantities through the one audio-preparation conversion |
 | 176 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
 | 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
+| 176b | performance-source-foundation | 3 | Importable source performance vocabulary and indexed-control checking before the track bridge |
 | 177 | performance-gestures | 3 | Source-declared gestures, indexed controls, profiles, and the provenance bridge |
 | 178 | instrument-contracts | 3 | Source instrument signatures/mappings over private registered primitives |
 | 179 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
 | 180 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
 | 180a | source-studio-cutover | 3 | Production studio semantics converge on checked source; the Rust language and backward edge leave |
+| 180b | dependency-law | 3 | Crate layering enforced after cutover, separately from source-language ownership |
 | 181 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
 | 182 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
 | 183 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
@@ -750,11 +751,12 @@ seventeen to collapse, and the staff rewrite is the gate for the correction and 
 checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 175 first
 declares exact source quantities and keeps them exact through the one DSP conversion. 176 then makes processor contracts
 and the rest of the source studio vocabulary discoverable and joins primitive-backed declarations to private host
-registrations. 176a's payload rule guards the second payload. 177 declares gestures, indexed controls, and profiles in
+registrations. 176a's payload rule guards the second payload. 176b makes `std::performance`, its source data, and its
+ordinary indexed-control checking available before 177 declares gestures, indexed controls, and profiles in
 `std::performance` and gives opaque track/provenance work to the host. 178 supplies the executable registered-primitive
 wrappers and declares instrument signatures, mappings, and private machine bodies in source. 179 preserves part identity
 through prepared routing, and 180 evaluates source control mappings before resolving private parameters. Once that
-source side has production parity, 180a deletes the legacy public `StudioSpec` path and the compiler-to-DSP edge; 174c
+source side has production parity, 180a deletes the legacy public `StudioSpec` path and the compiler-to-DSP edge; 180b
 then enforces the resulting Cargo roles separately from source ownership. 181 gives the surface one clear sound/profile
 choice while keeping expert source machine and mix declarations available. Removed patch syntax is a hard error with a
 certain fix, not a compatibility path. Notes 79–82 record why the Rust-vocabulary work was reopened, why bridging must

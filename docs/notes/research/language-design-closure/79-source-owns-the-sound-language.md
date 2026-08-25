@@ -73,7 +73,7 @@ source fix, not evidence that Rust owns the public catalogue.
 
 - Reopen 174b: establish the generic checked canonical-data bridge and prove it on prompt 167's deliberately small
   `StudioDescription` value without claiming premature production parity.
-- Reorder 174c after the source cutover, then restate the crate-role check without calling `musa-dsp` the owner of
+- Renumber the dependency-law prompt as 180b after the source cutover, then restate the crate-role check without calling `musa-dsp` the owner of
   editable source vocabulary.
 - Reopen 175: retain exact arithmetic and the one float boundary, but make exact quantity a source declaration.
 - Reopen 176: split source declarations/documentation from the private primitive registry.
