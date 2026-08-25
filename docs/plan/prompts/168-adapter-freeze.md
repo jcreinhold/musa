@@ -1,7 +1,7 @@
 ---
 id: 168
 slug: adapter-freeze
-status: pending
+status: done
 depends_on: [167]
 phase: 3
 ---
@@ -29,8 +29,8 @@ exists: quotation and syntax patterns changed what has to be proved.
 - `docs/notes/research/language-design-closure/26-language-design-decision.md` §§9–10 — the admission conditions, the
   nine proof obligations, and the promotion gate.
 - `docs/rules/across-stages/05-metatheory.md` §§1–1a — the live specification's rule for keeping mathematical proof,
-  implementation evidence, and open obligations distinct, and its explicit record that superseded review drafts live
-  in history rather than in the current notes tree.
+  implementation evidence, and open obligations distinct, and its explicit record that superseded review drafts live in
+  history rather than in the current notes tree.
 - The deleted historical `34-proof-review.md`, `35-proof-repair.md`, `36-final-proof-review.md`, and
   `37-final-blocker.md` at `d0f4a527^` (`git show d0f4a527^:<path>`) — what the previous freeze got wrong, consulted as
   historical evidence rather than restored against the notes-retention policy. Read `37` twice: an operation that could
@@ -73,10 +73,10 @@ publish the blocker beside the note, and hand the decision back.
 `scripts/check-syntax-adapter-conformance.sh` is that map, and it runs the evidence rather than describing it.
 
 **Hostile review, repair, re-review, until it holds.** This prompt completes only when the final review says correct
-under the stated contracts with no fatal, high, or medium finding. Record this freeze, each review, and each repair under
-`docs/notes/research/language-design-closure/`. Summarize and cite the historical predecessor failures by commit rather
-than restoring the superseded notebook pages that `d0f4a527` deliberately deleted; a freeze whose own failed attempts
-are invisible is still a freeze nobody can audit.
+under the stated contracts with no fatal, high, or medium finding. Record this freeze, each review, and each repair
+under `docs/notes/research/language-design-closure/`. Summarize and cite the historical predecessor failures by commit
+rather than restoring the superseded notebook pages that `d0f4a527` deliberately deleted; a freeze whose own failed
+attempts are invisible is still a freeze nobody can audit.
 
 ## Target
 
