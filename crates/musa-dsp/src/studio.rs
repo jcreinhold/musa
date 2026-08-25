@@ -21,7 +21,7 @@
 //! partial rather than a 15 dB cut on the whole instrument.
 //!
 //! **One note stream.** Every patch reads the same scheduled events, because
-//! that is what [`crate::RenderPlan`] delivers today. A studio that assigns
+//! that is what the private one-frame plan delivers today. A studio that assigns
 //! two parts to two different patches gets both patches sounding both parts;
 //! [`lower_studio`] says so rather than pretending otherwise.
 
@@ -31,7 +31,7 @@ use crate::spec::{FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSp
 
 /// What a lowering produced besides the graph.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct StudioLowering {
+pub(crate) struct StudioLowering {
     /// Things the studio asked for that the graph could not honour exactly.
     /// Not errors: the graph renders, and the caller decides whether to show
     /// them (the CLI prints them; the desktop app surfaces them in the Sound
@@ -57,10 +57,10 @@ const MAX_MIX: usize = 8;
 /// studio produces the default instrument graph, which is what makes a piece
 /// with no `studio` block render exactly as it did before studios existed
 /// (§14.8).
-pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
+pub(crate) fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
     let mut lowering = StudioLowering::default();
     if studio.is_empty() {
-        return (crate::poly_sine_spec(POLYPHONY), lowering);
+        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);
     }
 
     let mut graph = StudioGraphSpec::new();

@@ -1,19 +1,12 @@
-# musa audio-bridge compatibility manifest v1
+# musa audio-bridge compatibility manifest v2
 # Test oracle only; timing and allocation samples live in docs/rules/language/06-elaboration-baseline.md.
-lane=0:oboe:8:cf9a0e4790fa306d
-lane=1:viola:8:c287199da385b732
+lane=0:oboe:4:a7f67ee6cb3da77c
+lane=1:viola:4:7aca140335f63586
 sample-rate=48000
-frames=240000
-events=16
+gestures=8
 block-size=64
-graph=40255321b3956ca3
-lowering-notes=["2 patches share one note stream: every assigned part sounds through all of them"]
-release-tail-bits=3e99999a
-wav=ade054ca22b410f5
-ignored-parameter-event=true
+frames=254400
+wav=850e24083d0dd472
 block-size=256
-graph=40255321b3956ca3
-lowering-notes=["2 patches share one note stream: every assigned part sounds through all of them"]
-release-tail-bits=3e99999a
-wav=469bbde3e360bc5c
-ignored-parameter-event=true
+frames=254400
+wav=850e24083d0dd472

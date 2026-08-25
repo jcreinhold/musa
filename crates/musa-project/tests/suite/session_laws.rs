@@ -229,9 +229,17 @@ fn digest(bytes: &[u8]) -> u64 {
 /// limited — and the limiter never engages; its only effect here is 240
 /// frames of master latency. Again the instrument changed, not
 /// interpretation.
+///
+/// The fourth re-pin is the one-frame semantic cutover. The former graph
+/// recomputed modulation and feedback at caller-block boundaries, so changing
+/// a host partition changed the samples. The prepared machine now advances
+/// every primitive once per frame; the exact gesture oracle proves 64- and
+/// 256-frame host partitions are byte-identical. The score interpretation is
+/// unchanged, while the instrument's previously block-defined execution is
+/// deliberately not.
 #[test]
 fn an_unprofiled_piece_renders_the_golden_audio() -> Result {
-    const GOLDEN: u64 = 0x891a_11e0_0dd6_bdb9;
+    const GOLDEN: u64 = 0x1d3b_2ba1_3816_ac71;
     let bytes = session().export(ExportRequest::Wav)?;
     assert_eq!(
         digest(bytes.as_bytes()),

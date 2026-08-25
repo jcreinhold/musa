@@ -97,10 +97,9 @@ and keeps last-valid results; expanding an origin chain does not recompile.
 
 ## Runtime boundary
 
-The governing runtime pipeline is checked track → schedule → prepared machine → one-frame step. Prompts 171–173 still
-own that migration. Until then, current `StudioGraphSpec`, `compile_graph`, and `RenderPlan` are production APIs but are
-not evidence that the machine calculus or one-frame rule is implemented. Do not delete them before callers migrate, and
-do not describe their caller-block feedback or modulation as the governing semantics.
+The governing runtime pipeline is checked track → schedule → prepared machine → one-frame step, and it is the production
+audio path. `StudioGraphSpec` and `RenderPlan` are crate-private flattening details; `compile_graph` and caller-block
+sound are deleted. Offline and live host buffers repeat the same opaque `PreparedAudio::step`.
 
 Runtime preparation consumes already rechecked finite language values. It may validate primitive descriptors, port
 types, formats, capacities, memory, and work bounds; it must not evaluate source or add a second payload-admission rule.

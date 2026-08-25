@@ -8,12 +8,9 @@
 use musa_compiler::StudioSpec;
 
 use musa_playback::PreparedPlaybackPlan;
-use musa_score::{PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, lower_performance};
+use musa_score::{PerformanceEvent, PerformanceOptions, ScoreSnapshot, lower_gestures, lower_performance};
 
 use crate::error::ProjectError;
-
-/// Audio block size for the studio graph.
-const BLOCK_SIZE: usize = 128;
 
 /// The sample rate the whole chain runs at: the performance lowering's rate,
 /// so frame numbers from the compiler are frame numbers in the render.
@@ -22,33 +19,54 @@ pub(crate) fn sample_rate() -> u32 {
 }
 
 /// Performance lowering → default instrument graph → frame-sorted events.
-fn build(
-    score: &ScoreSnapshot,
-    studio: &StudioSpec,
-) -> Result<(musa_dsp::RenderPlan, Vec<PerformanceEvent>, u64), ProjectError> {
-    let performance = lower_performance(score, &PerformanceOptions::default())
-        .map_err(|e| ProjectError::Performance(e.to_string()))?;
+fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::PreparedAudio, ProjectError> {
+    let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let sample_rate = sample_rate();
-    let events = collect_events(&performance);
-    let options = musa_dsp::GraphOptions {
-        sample_rate,
-        block_size: BLOCK_SIZE,
-    };
-    // An empty studio lowers to the default instrument, so this one call
-    // covers both the zero-setup piece and the fully patched one (§14.8).
-    let (spec, lowering) = musa_dsp::lower_studio(studio, &options);
-    let plan = musa_dsp::compile_graph(&spec, &options).map_err(|e| ProjectError::Performance(e.to_string()))?;
-    // A second of room, plus however long the studio's longest release is:
-    // an export must contain the end of the sound, not the end of the notes.
-    let tail =
-        u64::from(sample_rate).saturating_add((f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64);
-    let frames = events
-        .iter()
-        .map(PerformanceEvent::frame)
-        .max()
-        .unwrap_or(0)
-        .saturating_add(tail);
-    Ok((plan, events, frames))
+    let rate = std::num::NonZeroU32::new(sample_rate)
+        .ok_or_else(|| ProjectError::Performance("the audio sample rate must be nonzero".to_owned()))?;
+    let format = musa_dsp::AudioFormat::new(rate, musa_dsp::ChannelLayout::Stereo);
+    let maximum = u64::from(sample_rate).saturating_mul(60 * 60 * 24);
+    let policy = musa_dsp::SchedulePolicy::new(
+        1,
+        musa_dsp::FrameRounding::NearestTiesLater,
+        musa_dsp::CollapsePolicy::Ordered,
+        [
+            musa_dsp::MessageKind::End,
+            musa_dsp::MessageKind::Point,
+            musa_dsp::MessageKind::Begin,
+        ],
+        musa_dsp::ScheduleLimits {
+            max_frame: maximum,
+            max_time_map_entries: 2_000_001,
+            max_occurrences: 1_000_000,
+            max_messages: 2_000_000,
+            max_batches: 2_000_000,
+        },
+    )
+    .map_err(|error| ProjectError::Performance(error.to_string()))?;
+    musa_dsp::prepare_audio(
+        &gestures,
+        studio,
+        musa_dsp::AudioOptions {
+            format,
+            schedule: policy,
+            tuning: PerformanceOptions::default().tuning,
+            render_seed: 0x4D55_5341,
+            limits: musa_dsp::AudioLimits {
+                max_primitives: 10_000,
+                max_state_bytes: 1 << 30,
+                // The scheduling policy admits two million same-frame
+                // messages; preparation prices that adversarial batch even
+                // though ordinary scores spread them over time.
+                max_step_work: 1_000_000_000,
+            },
+            // A minimum second beyond the studio-declared release remains an
+            // explicit product export/playback policy.
+            tail_frames: u64::from(sample_rate),
+            max_total_frames: maximum.saturating_add(u64::from(sample_rate) * 10),
+        },
+    )
+    .map_err(|error| ProjectError::Performance(error.to_string()))
 }
 
 /// The chain prepared for the engine.
@@ -56,8 +74,7 @@ fn build(
 /// # Errors
 /// [`ProjectError::Performance`] if lowering or graph compilation fails.
 pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<PreparedPlaybackPlan, ProjectError> {
-    let (plan, events, frames) = build(score, studio)?;
-    Ok(PreparedPlaybackPlan::new(plan, events, frames))
+    Ok(PreparedPlaybackPlan::new(build(score, studio)?))
 }
 
 /// The same chain rendered offline to 32-bit float stereo WAV bytes.
@@ -66,8 +83,8 @@ pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Prep
 /// [`ProjectError::Performance`] if lowering, graph compilation, or WAV
 /// encoding fails.
 pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u8>, ProjectError> {
-    let (mut plan, events, frames) = build(score, studio)?;
-    let audio = musa_dsp::render_offline(&mut plan, &events, frames);
+    let mut prepared = build(score, studio)?;
+    let audio = musa_dsp::render_offline(&mut prepared);
     wav_bytes(&audio)
 }
 
@@ -119,17 +136,6 @@ fn polymetric(score: &ScoreSnapshot) -> bool {
         .parts()
         .iter()
         .any(|(id, _)| score.meter_at(musa_score::Scope::Part { part: id.0 }, musa_score::MusicalTime::ZERO) != piece)
-}
-
-/// All lanes' events merged into one frame-sorted slice.
-fn collect_events(performance: &PerformancePlan) -> Vec<PerformanceEvent> {
-    let mut events: Vec<PerformanceEvent> = performance
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter().cloned())
-        .collect();
-    events.sort_by_key(PerformanceEvent::frame);
-    events
 }
 
 /// Encode rendered audio as a 32-bit float stereo WAV (§13.8).

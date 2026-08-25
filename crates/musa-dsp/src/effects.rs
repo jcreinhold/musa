@@ -5,7 +5,7 @@
 //! decays to a stated time, a limiter whose ceiling is a guarantee — is easier
 //! to state and test directly than to obtain from a graph library and then
 //! verify anyway. Nothing here allocates outside its constructor: every line
-//! is sized in `compile_graph` and never resized (§13.2).
+//! is sized during audio preparation and never resized (§13.2).
 //!
 //! FP arithmetic is the subject matter; the workspace lint is allowed at
 //! module scope as it is in the other DSP modules.
@@ -252,7 +252,7 @@ impl Reverb {
 ///
 /// The price is [`Self::LOOKAHEAD`] of latency on the master bus — identical
 /// in the offline render and the live stream because both run the same
-/// `RenderPlan::render` (§13.8) — and three delay lines sized once in the
+/// the one-frame prepared machine (§13.8) — and three delay lines sized once in the
 /// constructor, never at render time (§13.2). Recovery is a slow one-pole so
 /// a loud passage does not leave the following bars ducked. Stereo is limited
 /// as one signal: two independent limiters would move the image whenever one

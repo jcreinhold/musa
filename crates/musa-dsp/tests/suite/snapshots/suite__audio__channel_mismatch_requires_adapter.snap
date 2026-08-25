@@ -1,5 +1,0 @@
----
-source: crates/musa-dsp/tests/audio.rs
-expression: "compile_graph(&spec, &OPTIONS).err().expect(\"channels\").to_string()"
----
-port mismatch: audio/1 into audio/2

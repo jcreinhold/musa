@@ -12,15 +12,9 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
+use super::support::silent_plan;
 use musa_playback::testing::{CallbackCore, Message};
 use musa_playback::{AudioEngine, EngineConfig, EngineError, PreparedPlaybackPlan, TransportCommand};
-
-/// A plan with a real render graph but no events, `total_frames` long.
-fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
-    let options = musa_dsp::GraphOptions::default();
-    let render_plan = musa_dsp::compile_graph(&musa_dsp::poly_sine_spec(4), &options).expect("graph");
-    PreparedPlaybackPlan::new(render_plan, Vec::new(), total_frames)
-}
 
 struct Rig {
     core: CallbackCore,

@@ -15,22 +15,23 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
-use musa_dsp::{
-    EventSlice, GraphError, GraphOptions, ProcessorSpec, StudioGraphSpec, compile_graph, lower_studio, render_offline,
+use musa_dsp::testing::{
+    GraphError, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, lower_studio, prepare_graph,
 };
-use musa_score::{PerformanceOptions, lower_performance};
+
+use super::support::render_source;
 
 const RATE: u32 = 48_000;
 const OPTIONS: GraphOptions = GraphOptions {
     sample_rate: RATE,
-    block_size: 128,
+    render_seed: 0,
 };
 
 /// Render a graph with no events, as interleaved stereo.
 fn render(spec: &StudioGraphSpec, frames: usize) -> Vec<f32> {
-    let mut plan = compile_graph(spec, &OPTIONS).expect("the graph is valid");
+    let mut plan = prepare_graph(spec, RATE).expect("the graph is valid");
     let mut output = vec![0.0f32; frames * 2];
-    plan.render(&EventSlice::empty(), &mut output, frames);
+    plan.render(&[], &mut output);
     output
 }
 
@@ -57,29 +58,11 @@ fn piece(studio: &str) -> String {
     )
 }
 
-/// The scheduled events of a piece whose one note lasts a quarter of a
-/// second — short enough that what is heard a second later is a tail.
-fn one_note() -> Vec<musa_score::PerformanceEvent> {
-    let source = "piece \"x\" { tempo 1/4 = 240; meter 4/4; \
-                  score { part violin { voice v { c4/4 rest/2 } } } }"
-        .to_owned();
-    let compilation = compile(&SourceDocument::new(&source, "test.musa"), &CompileOptions::default());
-    let score = compilation.into_snapshot().expect("the piece compiles");
-    let plan = lower_performance(&score, &PerformanceOptions::default()).expect("the piece performs");
-    let mut events: Vec<musa_score::PerformanceEvent> = plan
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter().cloned())
-        .collect();
-    events.sort_by_key(musa_score::PerformanceEvent::frame);
-    events
-}
-
 /// A one-sample impulse into a stereo signal, as a graph a delay can be
 /// hung off: a constant through a gain that opens for exactly one frame is
 /// not expressible, so the impulse is written into the buffer by rendering a
 /// noise-free source and reading the delay's own response instead.
-fn impulse_graph(effect: ProcessorSpec) -> (StudioGraphSpec, musa_dsp::NodeId) {
+fn impulse_graph(effect: ProcessorSpec) -> (StudioGraphSpec, NodeId) {
     let mut graph = StudioGraphSpec::new();
     let source = graph.add_node(ProcessorSpec::Sine);
     let stereo = graph.add_node(ProcessorSpec::MonoToStereo);
@@ -127,7 +110,7 @@ fn a_feedback_loop_without_a_delay_is_rejected() {
     graph.connect(gain, 0, mixer, 1);
     graph.set_output(mixer);
 
-    assert!(matches!(compile_graph(&graph, &OPTIONS), Err(GraphError::Cycle)));
+    assert!(matches!(prepare_graph(&graph, RATE), Err(GraphError::Cycle)));
 }
 
 /// A delay in a graph is the delay that was written: the effect arrives after
@@ -150,7 +133,7 @@ fn a_delay_in_a_graph_arrives_when_it_said_it_would() {
     dry.connect(source, 0, stereo, 0);
     dry.set_output(stereo);
     for graph in [&mut graph, &mut dry] {
-        graph.set_param(musa_dsp::NodeId(0), "frequency", 20.0).expect("a sine");
+        graph.set_param(NodeId(0), "frequency", 20.0).expect("a sine");
     }
 
     let frames = RATE as usize * 4;
@@ -171,13 +154,12 @@ fn a_delay_in_a_graph_arrives_when_it_said_it_would() {
 /// stopped, the room is still audible where the dry patch is silent.
 #[test]
 fn a_reverb_keeps_sounding_after_the_note_stops() {
-    let events = one_note();
     let tail_energy = |studio: &str| {
-        let (graph, _) = lower_studio(&studio_of(&piece(studio)), &OPTIONS);
-        let mut plan = compile_graph(&graph, &OPTIONS).expect("the graph is valid");
-        let samples = render_offline(&mut plan, &events, u64::from(RATE) * 4)
-            .samples()
-            .to_vec();
+        let source = format!(
+            "piece \"x\" {{ tempo 1/4 = 240; meter 4/4; \
+             score {{ part violin {{ voice v {{ c4/4 rest/2 }} }} }} studio {{ {studio} }} }}"
+        );
+        let samples = render_source(&source, RATE as usize * 4);
         // The note has been over for a second by here (interleaved stereo,
         // so twice the frame count).
         let from = RATE as usize * 2 * 2;
@@ -265,27 +247,7 @@ fn an_effected_render_is_deterministic() {
          bus hall { reverb(room: 0.7); } \
          assign violin -> p; send violin -> hall at -12 dB; route violin -> master; route hall -> master;",
     );
-    let compilation = compile(&SourceDocument::new(&source, "test.musa"), &CompileOptions::default());
-    assert!(!compilation.has_errors());
-    let (score, studio) = compilation.into_parts();
-    let score = score.expect("the piece compiles");
-    let plan = lower_performance(&score, &PerformanceOptions::default()).expect("the piece performs");
-    let mut performance: Vec<musa_score::PerformanceEvent> = plan
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter().cloned())
-        .collect();
-    performance.sort_by_key(musa_score::PerformanceEvent::frame);
-    let (graph, _) = lower_studio(&studio, &OPTIONS);
-    let once = render_offline(
-        &mut compile_graph(&graph, &OPTIONS).expect("the graph is valid"),
-        &performance,
-        u64::from(RATE) * 2,
-    );
-    let twice = render_offline(
-        &mut compile_graph(&graph, &OPTIONS).expect("the graph is valid"),
-        &performance,
-        u64::from(RATE) * 2,
-    );
-    assert_eq!(once.samples(), twice.samples());
+    let once = render_source(&source, RATE as usize * 2);
+    let twice = render_source(&source, RATE as usize * 2);
+    assert_eq!(once, twice);
 }

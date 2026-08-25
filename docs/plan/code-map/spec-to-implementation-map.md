@@ -27,10 +27,10 @@ the code that implements it. `implemented` means the public compiler path reache
 | Staff and studio adapters on one frozen interface | implemented | `stdlib/src/adapters/{staff,graph}.musa`; adapter law suites |
 | Tonal and post-tonal packages over indexed families | implemented | `stdlib/src/{tonal,post_tonal}`; generic-row and corpus laws |
 | Source-to-adapter-to-event-track provenance | implemented | compiler derivation records and prompt-169 K1–K20 matrix |
-| Provenance composition through scheduling and audio | pending | prompts 171–174 |
-| Exact machine reference step and primitive registry | implemented | `musa-dsp/src/machine.rs`; prompt 173 still migrates the production DSP graph and callback |
+| Provenance composition through scheduling and audio | partial | exact gesture payloads and opaque occurrence handles reach audio; prompt 174 completes the derivation audit |
+| Exact machine reference step and primitive registry | implemented | `musa-dsp/src/{machine,primitive,plan}.rs`; structural and native one-frame registries |
 | Checked event-track scheduling into frame sources | implemented | `musa-dsp::schedule`; exact-map, decision, collapse, merge, countdown, seek, and bound laws |
-| One-frame DSP meaning and opaque prepared machine | pending | prompt 173; `compile_graph`, `StudioGraphSpec`, and `RenderPlan` remain live only until that migration |
+| One-frame DSP meaning and opaque prepared machine | implemented | exact gestures → checked `Schedule` → `PreparedAudio`; live/offline repeated-step partition and RT laws |
 
 ## Trusted boundary
 
@@ -121,8 +121,7 @@ finite event track through an exact finite time map and explicit versioned polic
 decision record, and an allocation-free cursor/countdown source. Its bounds cover map entries, occurrences, messages,
 batches, and frame representation; its merger injects opaque handles into recursive disjoint namespaces before sorting.
 
-The current DSP graph and `PerformancePlan` remain the production implementation until prompt 173 replaces them with
-one-frame registered instruments and cuts callers directly through the checked schedule. They are not adapted into the
-new operation: note 24 records why wrapping an already-frame-tagged, floating payload would create the forbidden second
-schedule. Prompt 174 audits the complete cross-stage derivation and deletes every surviving legacy runtime path. Calling
-those APIs current is accurate; treating them as the governing machine semantics is not.
+Production audio lowers directly to exact `EventTrack<PerformedTime, Gesture>` lanes, checks them through `Schedule`,
+then prepares registered one-frame native instruments. It never translates the legacy already-frame-tagged
+`PerformancePlan`; that value remains only at MIDI/debug consumers pending prompt 174's complete derivation and deletion
+audit. The graph flattening is private and has no caller-defined block width or public compilation API.

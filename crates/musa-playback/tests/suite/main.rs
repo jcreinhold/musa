@@ -7,4 +7,5 @@
 mod engine;
 mod machine;
 mod rt;
+mod support;
 mod transport_regressions;

@@ -1,4 +1,5 @@
 [package]
+autotests = false
 description = "Declarative studio graph compiler, DSP processors, and deterministic offline rendering"
 edition.workspace = true
 license.workspace = true

@@ -46,7 +46,10 @@ fn four_thousand_source_steps(bencher: Bencher<'_, '_>) {
     )
     .expect("policy");
     let scheduled = schedule(
-        AudioFormat::new(NonZeroU32::new(48_000).expect("sample rate")),
+        AudioFormat::new(
+            NonZeroU32::new(48_000).expect("sample rate"),
+            musa_dsp::ChannelLayout::Stereo,
+        ),
         policy,
         &map,
         &track,

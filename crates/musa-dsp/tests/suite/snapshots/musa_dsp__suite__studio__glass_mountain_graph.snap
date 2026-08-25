@@ -1,5 +1,5 @@
 ---
-source: crates/musa-dsp/tests/studio.rs
+source: crates/musa-dsp/src/../tests/suite/studio.rs
 expression: "format!(\"{graph:#?}\")"
 ---
 StudioGraphSpec {

@@ -27,7 +27,9 @@ use crate::pitch::WrittenPitch;
 use crate::profile::{ArticulationRealization, PerformanceProfile};
 use crate::score::{EventId, Meter, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
 use crate::time::MusicalTime;
+use musa_events::{Canonical, Duration, EventTrack, Occurrence, PerformedTime, PhysicalTime, Position, Span, track};
 use num_rational::Ratio;
+use std::fmt::Write as _;
 
 /// Equal temperament with a configurable concert A (roadmap §8.1: the
 /// concrete default now, a service boundary later).
@@ -79,7 +81,6 @@ impl Default for PerformanceOptions {
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegratedTempoMap {
     points: Vec<TempoPoint>,
-    sample_rate: u32,
 }
 
 /// One tempo segment: from `position` (whole notes), at `seconds_per_whole`
@@ -189,7 +190,7 @@ impl IntegratedTempoMap {
     /// `scope` is polytempo, and it is only an argument: `Tempo` inherits by
     /// `Override` (`scope.rs`), so a part that states its own marking reads
     /// its own and every other scope reads the piece's.
-    pub fn new(snapshot: &ScoreSnapshot, scope: crate::Scope, options: &PerformanceOptions) -> Self {
+    pub fn new(snapshot: &ScoreSnapshot, scope: crate::Scope) -> Self {
         let mut marks: Vec<(MusicalTime, &crate::score::TempoMarking)> = snapshot
             .tempos()
             .changes(scope)
@@ -227,10 +228,7 @@ impl IntegratedTempoMap {
                 seconds_offset,
             });
         }
-        Self {
-            points,
-            sample_rate: options.sample_rate,
-        }
+        Self { points }
     }
 
     /// Seconds per quarter note at the start of the piece — what a metrical
@@ -239,11 +237,6 @@ impl IntegratedTempoMap {
         self.points
             .first()
             .map_or(0.5, |point| ratio_to_f64(point.seconds_per_whole) / 4.0)
-    }
-
-    /// The sample rate the frames were scheduled against.
-    pub fn sample_rate(&self) -> u32 {
-        self.sample_rate
     }
 
     /// The tempo segments, in playing order: what an exporter needs to write
@@ -255,12 +248,12 @@ impl IntegratedTempoMap {
     /// constant of the map, because the shape is normative and the sampling
     /// is the consumer's policy (docs/rules/events/07) — the same rule a hairpin's
     /// `Progress` is read under, and the reason both are one type.
-    pub fn segments(&self, steps_per_whole: u32) -> Vec<TempoSegment> {
+    pub fn segments(&self, steps_per_whole: u32, sample_rate: u32) -> Vec<TempoSegment> {
         let mut segments = Vec::with_capacity(self.points.len());
         for (index, point) in self.points.iter().enumerate() {
             let next = self.points.get(index.saturating_add(1)).map(|point| point.position);
             let Some(ramp) = point.ramp.as_ref() else {
-                segments.push(self.segment_at(point.position, point.seconds_per_whole));
+                segments.push(self.segment_at(point.position, point.seconds_per_whole, sample_rate));
                 continue;
             };
             // Cut at the next marking: past it, this segment says nothing.
@@ -281,13 +274,14 @@ impl IntegratedTempoMap {
                 segments.push(self.segment_at(
                     MusicalTime::new(point.position.as_ratio() + along),
                     point.rate_at(ramp, local),
+                    sample_rate,
                 ));
             }
             // The rate the ramp arrived at, stated once where it arrives —
             // unless the next marking got there first and states its own.
             let ends = point.position.as_ratio() + ramp.over;
             if next.is_none_or(|next| ends < next.as_ratio()) {
-                segments.push(self.segment_at(MusicalTime::new(ends), ramp.to));
+                segments.push(self.segment_at(MusicalTime::new(ends), ramp.to, sample_rate));
             }
         }
         segments
@@ -295,16 +289,32 @@ impl IntegratedTempoMap {
 
     /// One exported segment: a position, the frame it falls on, and the rate
     /// in force there.
-    fn segment_at(&self, position: MusicalTime, seconds_per_whole: Ratio<i64>) -> TempoSegment {
+    fn segment_at(&self, position: MusicalTime, seconds_per_whole: Ratio<i64>, sample_rate: u32) -> TempoSegment {
         TempoSegment {
             position,
-            frame: self.frames(position),
+            frame: self.frames(position, sample_rate),
             seconds_per_quarter: ratio_to_f64(seconds_per_whole) / 4.0,
         }
     }
 
     /// The absolute frame of a symbolic position (monotone; §22).
-    pub fn frames(&self, position: MusicalTime) -> u64 {
+    pub fn frames(&self, position: MusicalTime, sample_rate: u32) -> u64 {
+        let seconds = self.physical_seconds(position);
+        // One rounding, at the end: segment offsets above are exact.
+        let frames = seconds * Ratio::from_integer(i64::from(sample_rate.max(1)));
+        ratio_to_f64(frames).round().max(0.0) as u64
+    }
+
+    /// Exact physical seconds at a position after performance-time warping.
+    ///
+    /// This is the time-map answer consumed by checked scheduling. It does
+    /// not round to a frame and therefore remains independent of the audio
+    /// format chosen later.
+    pub fn physical(&self, position: Position<PerformedTime>) -> Position<PhysicalTime> {
+        Position::new(self.physical_seconds(MusicalTime::new(position.as_ratio())))
+    }
+
+    fn physical_seconds(&self, position: MusicalTime) -> Ratio<i64> {
         let Some(point) = self
             .points
             .iter()
@@ -312,12 +322,9 @@ impl IntegratedTempoMap {
             .find(|point| point.position <= position)
             .or_else(|| self.points.first())
         else {
-            return 0;
+            return Ratio::ZERO;
         };
-        let seconds = point.seconds_offset + point.elapsed(position.as_ratio() - point.position.as_ratio());
-        // One rounding, at the end: the segment offsets above are exact.
-        let frames = seconds * Ratio::from_integer(i64::from(self.sample_rate.max(1)));
-        ratio_to_f64(frames).round().max(0.0) as u64
+        point.seconds_offset + point.elapsed(position.as_ratio() - point.position.as_ratio())
     }
 }
 
@@ -380,6 +387,103 @@ pub struct PerformedNote {
     /// a performance, and a notation program reading a score-mode export must
     /// not be handed an interpretation to draw.
     pub notated_on: u64,
+}
+
+/// One exact instrument-independent instruction in performed time.
+///
+/// Pitch stays written and loudness/attack stay rational here. Tuning and
+/// conversion to floating-point DSP parameters belong to audio preparation,
+/// after checked scheduling has fixed the occurrence's frame boundaries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Gesture {
+    /// Written pitch after score transposition, before an instrument tunes it.
+    pub pitch: WrittenPitch,
+    /// The score occurrence this gesture realizes.
+    pub event: EventId,
+    /// Complete source and expansion provenance.
+    pub origin: Origin,
+    /// Exact abstract loudness; one is neutral.
+    pub amplitude: Ratio<i64>,
+    /// Exact requested attack time in physical seconds; zero means unstated.
+    pub attack_seconds: Ratio<i64>,
+    /// Where the source occurrence begins on the unwarped page.
+    pub notated_on: MusicalTime,
+    /// Where the source occurrence ends on the unwarped page.
+    pub notated_off: MusicalTime,
+}
+
+impl Canonical for Gesture {
+    const OWNER_TYPE_ID: &'static str = "musa.score.Gesture";
+    const QUOTIENT_VERSION: u32 = 1;
+
+    /// Every stored field participates. The representation is deliberately
+    /// textual and versioned: it is an ordering/equality key for finite track
+    /// preparation, never an audio parameter codec.
+    fn canonical_key(&self) -> String {
+        let mut key = String::new();
+        let _ = write!(
+            key,
+            "{}|{}|{}|{}|{}|{}|{}|{}|{:?}|{:?}|{:?}",
+            self.pitch,
+            self.event.0,
+            self.amplitude,
+            self.attack_seconds,
+            self.notated_on,
+            self.notated_off,
+            self.origin.source_span.start,
+            self.origin.source_span.end,
+            self.origin.expansion_path,
+            self.origin.definition_span,
+            self.origin.declaration,
+        );
+        key
+    }
+}
+
+/// One part's exact gesture track and the map that gives performed positions
+/// physical meaning. Parts remain separate because polytempo means they can
+/// carry different maps.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GestureLane {
+    part: PartId,
+    name: String,
+    track: EventTrack<PerformedTime, Gesture>,
+    tempo: IntegratedTempoMap,
+}
+
+impl GestureLane {
+    /// The part this lane realizes.
+    pub const fn part(&self) -> PartId {
+        self.part
+    }
+
+    /// The source part name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Exact finite performed gestures.
+    pub const fn track(&self) -> &EventTrack<PerformedTime, Gesture> {
+        &self.track
+    }
+
+    /// Answer one finite scheduler query in exact physical seconds.
+    pub fn physical(&self, position: Position<PerformedTime>) -> Position<PhysicalTime> {
+        self.tempo.physical(position)
+    }
+}
+
+/// Exact performance preparation before frame scheduling or tuning.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GesturePlan {
+    lanes: Vec<GestureLane>,
+}
+
+impl GesturePlan {
+    /// One exact lane per part, in source order.
+    pub fn lanes(&self) -> &[GestureLane] {
+        &self.lanes
+    }
 }
 
 /// One scheduled performance event.
@@ -479,6 +583,7 @@ pub struct KeyChange {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PerformancePlan {
     tempo: IntegratedTempoMap,
+    sample_rate: u32,
     meters: Vec<MeterChange>,
     keys: Vec<KeyChange>,
     lanes: Vec<PerformanceLane>,
@@ -495,6 +600,11 @@ impl PerformancePlan {
     /// reading rather than the piece.
     pub fn tempo(&self) -> &IntegratedTempoMap {
         &self.tempo
+    }
+
+    /// Explicit frame lattice used by this legacy scheduled plan.
+    pub const fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     /// Whether the lanes were scheduled against different tempo maps.
@@ -533,6 +643,127 @@ pub enum PerformanceError {
     Unsupported(String),
 }
 
+/// Lower a score into exact, instrument-independent performed gesture tracks.
+///
+/// Groove, grace policy, articulation, and dynamic interpretation are fixed;
+/// tempo remains an exact map queried later by checked scheduling. No frame,
+/// frequency, or floating-point audio value is chosen here.
+///
+/// # Errors
+/// [`PerformanceError`] if the resulting finite performed track violates its
+/// exact bounds.
+pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceError> {
+    let marks = Interpretation::collect(score);
+    let curves = hairpin_curves(score);
+    let graces = grace_index(score);
+    let mut lanes = Vec::new();
+    for (id, part) in score.parts().iter() {
+        let profile = score.profiles().for_part(part.name());
+        let scope = crate::Scope::Part { part: id.0 };
+        let tempo = IntegratedTempoMap::new(score, scope);
+        let clock = Clock {
+            tempo: &tempo,
+            meters: score.meters(),
+            scope,
+            groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
+        };
+        let policy = profile.map_or(crate::GracePolicy::DEFAULT, PerformanceProfile::grace);
+        let mut pending = Vec::new();
+        for (_, voice) in part.voices() {
+            let mut dynamic = None;
+            let mut curve_from: Option<Ratio<i64>> = None;
+            let mut floor = MusicalTime::ZERO;
+            let mut previous = 0..0;
+            for event in voice.events() {
+                if let Some(mark) = marks.dynamics.get(&event.id) {
+                    dynamic = Some(*mark);
+                }
+                let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
+                    profile.realize(marks.articulations_of(event.id))
+                });
+                let level = dynamic
+                    .zip(profile)
+                    .and_then(|(mark, profile)| profile.amplitude(mark))
+                    .unwrap_or(Ratio::ONE);
+                let amplitude = match curves.get(&event.id) {
+                    None => {
+                        curve_from = None;
+                        level
+                    }
+                    Some(curve) => {
+                        let from = *curve_from.get_or_insert(level);
+                        let to = profile
+                            .and_then(|profile| profile.amplitude(curve.target))
+                            .unwrap_or(Ratio::ONE);
+                        let reached = from + (to - from) * curve.fraction;
+                        if curve.fraction == Ratio::ONE {
+                            dynamic = Some(curve.target);
+                            curve_from = None;
+                        }
+                        reached
+                    }
+                };
+                let interpreted = Interpreted {
+                    gate: realization.gate * realization.hold,
+                    attack: realization.attack,
+                    amplitude,
+                };
+                let leaning: Vec<GraceSlot> = graces
+                    .get(&event.id)
+                    .map_or(&[][..], Vec::as_slice)
+                    .iter()
+                    .map(|grace| GraceSlot {
+                        pitch: grace.pitch,
+                        gate: profile.map_or(Ratio::ONE, |profile| {
+                            let realized = profile.realize(&grace.articulations);
+                            realized.gate * realized.hold
+                        }),
+                    })
+                    .collect();
+                let lowered = lower_gesture_event(&clock, event, &interpreted, &leaning, policy, floor, &mut pending);
+                if let Some(at) = lowered.anticipated {
+                    let performed = clock.performed(at);
+                    for index in previous.clone() {
+                        if let Some(gesture) = pending.get_mut(index) {
+                            gesture.end = gesture.end.min(performed);
+                        }
+                    }
+                }
+                if !matches!(event.kind, ScoreEventKind::Rest) {
+                    floor =
+                        event.onset + crate::time::MusicalDuration::new(event.notated_duration.value.as_ratio() / 2);
+                }
+                previous = lowered.pushed;
+            }
+        }
+        let ambient = clock.performed(MusicalTime::ZERO + part.span());
+        let end = pending
+            .iter()
+            .map(|gesture| gesture.end)
+            .max()
+            .unwrap_or(ambient)
+            .max(ambient);
+        let duration =
+            Duration::new(end.as_ratio()).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
+        let occurrences = pending
+            .into_iter()
+            .map(|gesture| {
+                Span::new(gesture.start, gesture.end)
+                    .map(|span| Occurrence::new(span, gesture.payload))
+                    .map_err(|error| PerformanceError::Unsupported(error.to_string()))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let track = track(duration, occurrences).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
+        lanes.push(GestureLane {
+            part: part.id(),
+            name: part.name().to_owned(),
+            track,
+            tempo,
+        });
+    }
+    Ok(GesturePlan { lanes })
+}
+
 /// Lower a score into a frame-scheduled `PerformancePlan`.
 ///
 /// # Errors
@@ -542,7 +773,7 @@ pub fn lower_performance(
     score: &ScoreSnapshot,
     options: &PerformanceOptions,
 ) -> Result<PerformancePlan, PerformanceError> {
-    let reference = IntegratedTempoMap::new(score, crate::Scope::Piece, options);
+    let reference = IntegratedTempoMap::new(score, crate::Scope::Piece);
     let marks = Interpretation::collect(score);
     // The hairpin index covers the whole piece: an event belongs to exactly
     // one voice, so one map keyed by event id serves every voice.
@@ -558,7 +789,7 @@ pub fn lower_performance(
         // parts at different speeds are two maps and nothing else: the frames
         // this produces are absolute, so the engine merges lanes at different
         // tempos exactly as it merges lanes at the same one.
-        let speed = IntegratedTempoMap::new(score, scope, options);
+        let speed = IntegratedTempoMap::new(score, scope);
         polytempo |= speed != reference;
         // The groove is the part's, because feel is an ensemble's sections
         // disagreeing on purpose: a swung horn over a straight bass is a
@@ -630,8 +861,8 @@ pub fn lower_performance(
                 };
                 let interpreted = Interpreted {
                     gate: realization.gate * realization.hold,
-                    attack: ratio_to_f32(realization.attack),
-                    amplitude: ratio_to_f32(amplitude),
+                    attack: realization.attack,
+                    amplitude,
                 };
                 // A grace note's own marks are read by the same profile that
                 // reads the principal's: a staccato grace is short for the same
@@ -666,7 +897,7 @@ pub fn lower_performance(
                 // may already have ended it sooner — a staccato note does not
                 // get *longer* because the next note has a grace.
                 if let Some(at) = lowered.anticipated {
-                    let frame = clock.frames(at);
+                    let frame = clock.frames(at, options.sample_rate);
                     for index in previous.clone() {
                         if let Some(PerformanceEvent::NoteOff { frame: off, .. }) = events.get_mut(index) {
                             *off = (*off).min(frame);
@@ -697,7 +928,7 @@ pub fn lower_performance(
         .meters()
         .changes(crate::Scope::Piece)
         .map(|(at, meter)| MeterChange {
-            frame: reference.frames(at),
+            frame: reference.frames(at, options.sample_rate),
             meter: *meter,
         })
         .collect();
@@ -705,12 +936,13 @@ pub fn lower_performance(
         .keys()
         .changes(crate::Scope::Piece)
         .map(|(at, key)| KeyChange {
-            frame: reference.frames(at),
+            frame: reference.frames(at, options.sample_rate),
             key: *key,
         })
         .collect();
     Ok(PerformancePlan {
         tempo: reference,
+        sample_rate: options.sample_rate,
         meters,
         keys,
         lanes,
@@ -738,15 +970,21 @@ struct Clock<'a> {
 }
 
 impl Clock<'_> {
-    /// The frame a written instant is played at.
-    fn frames(&self, at: MusicalTime) -> u64 {
+    /// The exact performed position after this part's groove warp.
+    fn performed(&self, at: MusicalTime) -> Position<PerformedTime> {
         let meter = self.meters.at(self.scope, at).copied().unwrap_or_default();
-        self.tempo.frames(self.groove.warp(meter, at))
+        Position::new(self.groove.warp(meter, at).as_ratio())
+    }
+
+    /// The frame a written instant is played at.
+    fn frames(&self, at: MusicalTime, sample_rate: u32) -> u64 {
+        self.tempo
+            .frames(MusicalTime::new(self.performed(at).as_ratio()), sample_rate)
     }
 
     /// The frame a written instant sits at *on the page* — tempo, no groove.
-    fn written_frames(&self, at: MusicalTime) -> u64 {
-        self.tempo.frames(at)
+    fn written_frames(&self, at: MusicalTime, sample_rate: u32) -> u64 {
+        self.tempo.frames(at, sample_rate)
     }
 }
 
@@ -757,9 +995,79 @@ struct Interpreted {
     /// nothing downstream could tell them apart.
     gate: Ratio<i64>,
     /// Requested attack in seconds.
-    attack: f32,
+    attack: Ratio<i64>,
     /// Loudness in `0..=1`.
-    amplitude: f32,
+    amplitude: Ratio<i64>,
+}
+
+struct PendingGesture {
+    start: Position<PerformedTime>,
+    end: Position<PerformedTime>,
+    payload: Gesture,
+}
+
+/// Exact counterpart of [`lower_event`]. It deliberately shares the same
+/// stealing and interpretation inputs; the only difference is that it stops
+/// at performed positions instead of choosing frames and frequency.
+#[allow(clippy::too_many_arguments)]
+fn lower_gesture_event(
+    clock: &Clock<'_>,
+    event: &ScoreEvent,
+    interpreted: &Interpreted,
+    leaning: &[GraceSlot],
+    policy: crate::GracePolicy,
+    floor: MusicalTime,
+    gestures: &mut Vec<PendingGesture>,
+) -> Lowered {
+    let pitches: &[WrittenPitch] = match &event.kind {
+        ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
+        ScoreEventKind::Chord { pitches } => pitches,
+        ScoreEventKind::Rest => &[],
+    };
+    let written = event.notated_duration.value;
+    let notated_end = event.onset + written;
+    let stolen = steal(event, written, leaning.len(), policy, floor);
+    let mut at = stolen.graces_start_at;
+    for slot in leaning {
+        let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * slot.gate);
+        gestures.push(PendingGesture {
+            start: clock.performed(at),
+            end: clock.performed(at + sounds),
+            payload: Gesture {
+                pitch: slot.pitch,
+                event: event.id,
+                origin: event.origin.clone(),
+                amplitude: interpreted.amplitude,
+                attack_seconds: interpreted.attack,
+                notated_on: event.onset,
+                notated_off: notated_end,
+            },
+        });
+        at = at + stolen.each;
+    }
+    let sounded_start = stolen.principal_starts_at;
+    let sounded_end =
+        sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * interpreted.gate);
+    let first = gestures.len();
+    for pitch in pitches {
+        gestures.push(PendingGesture {
+            start: clock.performed(sounded_start),
+            end: clock.performed(sounded_end),
+            payload: Gesture {
+                pitch: *pitch,
+                event: event.id,
+                origin: event.origin.clone(),
+                amplitude: interpreted.amplitude,
+                attack_seconds: interpreted.attack,
+                notated_on: event.onset,
+                notated_off: notated_end,
+            },
+        });
+    }
+    Lowered {
+        pushed: first..gestures.len(),
+        anticipated: stolen.anticipated,
+    }
 }
 
 /// The score's marks indexed by the event they belong to, so interpretation
@@ -910,8 +1218,8 @@ fn lower_event(
     };
     let written = event.notated_duration.value;
     let notated_end = event.onset + written;
-    let notated_off = clock.written_frames(notated_end);
-    let notated_on = clock.written_frames(event.onset);
+    let notated_off = clock.written_frames(notated_end, options.sample_rate);
+    let notated_on = clock.written_frames(event.onset, options.sample_rate);
     let stolen = steal(event, written, leaning.len(), policy, floor);
     let mut at = stolen.graces_start_at;
     for slot in leaning {
@@ -919,7 +1227,7 @@ fn lower_event(
         *next_instance = next_instance.saturating_add(1);
         let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * slot.gate);
         events.push(PerformanceEvent::NoteOn {
-            frame: clock.frames(at),
+            frame: clock.frames(at, options.sample_rate),
             note: PerformedNote {
                 pitch: slot.pitch,
                 frequency: options.tuning.frequency(&slot.pitch),
@@ -928,15 +1236,15 @@ fn lower_event(
                 // principal's written span because a grace has none of its own.
                 event: event.id,
                 origin: event.origin.clone(),
-                amplitude: interpreted.amplitude,
-                attack: interpreted.attack,
+                amplitude: ratio_to_f32(interpreted.amplitude),
+                attack: ratio_to_f32(interpreted.attack),
                 notated_off,
                 notated_on,
             },
             instance,
         });
         events.push(PerformanceEvent::NoteOff {
-            frame: clock.frames(at + sounds),
+            frame: clock.frames(at + sounds, options.sample_rate),
             instance,
         });
         at = at + stolen.each;
@@ -944,8 +1252,8 @@ fn lower_event(
     let sounded_start = stolen.principal_starts_at;
     let sounded_end =
         sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * interpreted.gate);
-    let on_frame = clock.frames(sounded_start);
-    let off_frame = clock.frames(sounded_end);
+    let on_frame = clock.frames(sounded_start, options.sample_rate);
+    let off_frame = clock.frames(sounded_end, options.sample_rate);
     let first = events.len();
     for pitch in pitches {
         let instance = VoiceInstanceId(*next_instance);
@@ -955,8 +1263,8 @@ fn lower_event(
             frequency: options.tuning.frequency(pitch),
             event: event.id,
             origin: event.origin.clone(),
-            amplitude: interpreted.amplitude,
-            attack: interpreted.attack,
+            amplitude: ratio_to_f32(interpreted.amplitude),
+            attack: ratio_to_f32(interpreted.attack),
             notated_off,
             notated_on,
         };

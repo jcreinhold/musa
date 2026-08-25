@@ -19,7 +19,11 @@ fn engine_and_offline_harnesses_share_one_step() {
         vec![SpecNode::primitive(descriptor("count", 1).expect("registered"), stored)],
     );
     let prepared = prepare_machine(&spec).expect("counter prepares");
-    let offline = musa_dsp::testing::run_machine_offline(&prepared, [Value::Unit, Value::Unit]).expect("valid inputs");
+    let mut offline_machine = prepared.start();
+    let offline = [offline_machine.step(Value::Unit), offline_machine.step(Value::Unit)]
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .expect("valid inputs");
     let mut callback = MachineCallbackHarness::new(&prepared);
     let live = [callback.frame(Value::Unit), callback.frame(Value::Unit)]
         .into_iter()

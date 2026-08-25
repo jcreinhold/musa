@@ -15,15 +15,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::time::Duration;
 
+use super::support::silent_plan;
 use musa_playback::testing::{CallbackCore, Message};
 use musa_playback::{PreparedPlaybackPlan, TransportCommand};
 
 const BLOCK_FRAMES: usize = 256;
 
 fn plan(total_frames: u64) -> PreparedPlaybackPlan {
-    let options = musa_dsp::GraphOptions::default();
-    let render_plan = musa_dsp::compile_graph(&musa_dsp::poly_sine_spec(4), &options).expect("graph compiles");
-    PreparedPlaybackPlan::new(render_plan, Vec::new(), total_frames)
+    silent_plan(total_frames)
 }
 
 struct Harness {

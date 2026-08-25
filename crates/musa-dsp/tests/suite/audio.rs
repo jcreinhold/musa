@@ -10,14 +10,15 @@
 // Test arithmetic on sample indices/frames is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_dsp::{EventSlice, GraphOptions, ProcessorSpec, StudioGraphSpec, compile_graph};
+use musa_dsp::testing::{ProcessorSpec, StudioGraphSpec, prepare_graph, prepare_graph_seeded};
+use musa_dsp::{AudioFormat, AudioPrepareError, ChannelLayout, prepare_audio};
+use musa_score::{Tuning, lower_gestures};
+
+use super::support::{options, parts};
 
 // --- Helpers -----------------------------------------------------------------
 
-const OPTIONS: GraphOptions = GraphOptions {
-    sample_rate: 48_000,
-    block_size: 128,
-};
+const RATE: u32 = 48_000;
 
 /// sine → gain → pan → mixer(1) → output.
 fn voice_spec(frequency: f32, gain: f32, pan: f32) -> StudioGraphSpec {
@@ -37,9 +38,9 @@ fn voice_spec(frequency: f32, gain: f32, pan: f32) -> StudioGraphSpec {
 }
 
 fn render(spec: &StudioGraphSpec, frames: usize) -> Vec<f32> {
-    let mut plan = compile_graph(spec, &OPTIONS).expect("compiles");
+    let mut plan = prepare_graph(spec, RATE).expect("compiles");
     let mut output = vec![0.0; frames * 2];
-    plan.render(&EventSlice::empty(), &mut output, frames);
+    plan.render(&[], &mut output);
     output
 }
 
@@ -64,12 +65,12 @@ fn oscillator_frequency_accuracy() {
 fn oscillator_phase_continuity_across_blocks() {
     // One long render equals the same render split mid-block and at odd sizes.
     let whole = render(&voice_spec(440.0, 1.0, 0.0), 5000);
-    let mut plan = compile_graph(&voice_spec(440.0, 1.0, 0.0), &OPTIONS).expect("compiles");
+    let mut plan = prepare_graph(&voice_spec(440.0, 1.0, 0.0), RATE).expect("compiles");
     let mut split = vec![0.0; 5000 * 2];
     let mut rest = split.as_mut_slice();
     for chunk in [100usize, 128, 1, 4771] {
         let (head, tail) = rest.split_at_mut(chunk * 2);
-        plan.render(&EventSlice::empty(), head, chunk);
+        plan.render(&[], head);
         rest = tail;
     }
     assert_eq!(whole, split, "block boundaries must be inaudible");
@@ -128,7 +129,7 @@ fn cycle_is_rejected() {
     spec.connect(a, 0, b, 0);
     spec.connect(b, 0, a, 0);
     spec.set_output(b);
-    insta::assert_snapshot!(compile_graph(&spec, &OPTIONS).err().expect("cycle").to_string());
+    insta::assert_snapshot!(prepare_graph(&spec, RATE).err().expect("cycle").to_string());
 }
 
 #[test]
@@ -138,7 +139,7 @@ fn port_mismatch_is_rejected() {
     let gain = spec.add_node(ProcessorSpec::Gain);
     spec.connect(constant, 0, gain, 0); // control into audio
     spec.set_output(gain);
-    insta::assert_snapshot!(compile_graph(&spec, &OPTIONS).err().expect("mismatch").to_string());
+    insta::assert_snapshot!(prepare_graph(&spec, RATE).err().expect("mismatch").to_string());
 }
 
 #[test]
@@ -148,14 +149,14 @@ fn channel_mismatch_requires_adapter() {
     let mixer = spec.add_node(ProcessorSpec::Mixer { inputs: 1 }); // stereo in
     spec.connect(sine, 0, mixer, 0);
     spec.set_output(mixer);
-    insta::assert_snapshot!(compile_graph(&spec, &OPTIONS).err().expect("channels").to_string());
+    insta::assert_snapshot!(prepare_graph(&spec, RATE).err().expect("channels").to_string());
 }
 
 #[test]
 fn missing_output_is_rejected() {
     let mut spec = StudioGraphSpec::new();
     spec.add_node(ProcessorSpec::Sine);
-    insta::assert_snapshot!(compile_graph(&spec, &OPTIONS).err().expect("no output").to_string());
+    insta::assert_snapshot!(prepare_graph(&spec, RATE).err().expect("no output").to_string());
 }
 
 // --- Silence, determinism, adversarial parameters ------------------------------
@@ -175,6 +176,74 @@ fn disconnected_graph_renders_silence() {
 fn two_renders_are_byte_equal() {
     let spec = voice_spec(440.0, 0.8, -0.3);
     assert_eq!(render(&spec, 4096), render(&spec, 4096));
+}
+
+#[test]
+fn stochastic_primitives_obey_the_explicit_render_seed() {
+    let mut spec = StudioGraphSpec::new();
+    let noise = spec.add_node(ProcessorSpec::Noise);
+    let stereo = spec.add_node(ProcessorSpec::MonoToStereo);
+    spec.connect(noise, 0, stereo, 0);
+    spec.set_output(stereo);
+    let render = |seed| {
+        let mut plan = prepare_graph_seeded(&spec, RATE, seed).expect("noise graph");
+        let mut output = vec![0.0; 512];
+        plan.render(&[], &mut output);
+        output
+    };
+    assert_eq!(render(17), render(17));
+    assert_ne!(render(17), render(18));
+}
+
+#[test]
+fn production_preparation_refuses_layout_tuning_and_resource_violations() {
+    let (score, studio) =
+        parts("piece \"bounds\" { tempo quarter = 60; meter 4/4; key c major; score { part p { voice v { c5/4 } } } }");
+    let gestures = lower_gestures(&score).expect("gestures");
+
+    let mut mono = options(0);
+    mono.format = AudioFormat::new(mono.format.sample_rate(), ChannelLayout::Mono);
+    assert!(matches!(
+        prepare_audio(&gestures, &studio, mono),
+        Err(AudioPrepareError::UnsupportedLayout(ChannelLayout::Mono))
+    ));
+
+    let mut invalid_tuning = options(0);
+    invalid_tuning.tuning = Tuning { concert_a: f64::NAN };
+    assert!(matches!(
+        prepare_audio(&gestures, &studio, invalid_tuning),
+        Err(AudioPrepareError::InvalidTuning(value)) if value.is_nan()
+    ));
+
+    let mut bounded = options(0);
+    bounded.limits.max_primitives = 0;
+    assert!(matches!(
+        prepare_audio(&gestures, &studio, bounded),
+        Err(AudioPrepareError::ResourceLimit {
+            resource: "primitive count",
+            ..
+        })
+    ));
+
+    let mut memory = options(0);
+    memory.limits.max_state_bytes = 0;
+    assert!(matches!(
+        prepare_audio(&gestures, &studio, memory),
+        Err(AudioPrepareError::ResourceLimit {
+            resource: "retained state bytes",
+            ..
+        })
+    ));
+
+    let mut work = options(0);
+    work.limits.max_step_work = 0;
+    assert!(matches!(
+        prepare_audio(&gestures, &studio, work),
+        Err(AudioPrepareError::ResourceLimit {
+            resource: "one-frame work",
+            ..
+        })
+    ));
 }
 
 #[test]
@@ -207,7 +276,7 @@ fn offline_render_writes_wav() {
             &path,
             hound::WavSpec {
                 channels: 2,
-                sample_rate: OPTIONS.sample_rate,
+                sample_rate: RATE,
                 bits_per_sample: 16,
                 sample_format: hound::SampleFormat::Int,
             },

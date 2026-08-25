@@ -14,7 +14,7 @@ use crate::spec::{ProcessorSpec, StudioGraphSpec};
 /// under the ceiling, so the limiter sits at unity gain — transparent, aside
 /// from its fixed lookahead latency — until a genuinely hot mix reaches full
 /// scale.
-pub fn poly_sine_spec(voices: u8) -> StudioGraphSpec {
+pub(crate) fn poly_sine_spec(voices: u8) -> StudioGraphSpec {
     let mut spec = StudioGraphSpec::new();
     let synth = spec.add_node(ProcessorSpec::PolySine { voices });
     let master = spec.add_node(ProcessorSpec::Limiter);

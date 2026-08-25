@@ -1,4 +1,4 @@
-//! The real-time contract as a test, not a hope (§13.2): `RenderPlan::render`
+//! The real-time contract as a test, not a hope (§13.2): repeated frame steps
 //! must not allocate.
 //!
 //! A `#[global_allocator]` is process-wide, and this file shares its binary
@@ -20,7 +20,7 @@ use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use musa_dsp::{EventSlice, GraphOptions, ProcessorSpec, StudioGraphSpec, compile_graph};
+use musa_dsp::testing::{ProcessorSpec, StudioGraphSpec, prepare_graph};
 
 thread_local! {
     /// Allocations made by the current thread since it started.
@@ -65,12 +65,11 @@ fn render_allocates_nothing() {
     spec.connect(sine, 0, pan, 0);
     spec.connect(pan, 0, mixer, 0);
     spec.set_output(mixer);
-    let options = GraphOptions::default();
-    let mut plan = compile_graph(&spec, &options).expect("compiles");
+    let mut plan = prepare_graph(&spec, 48_000).expect("compiles");
     let mut output = vec![0.0; 4096];
-    plan.render(&EventSlice::empty(), &mut output, 2048); // warm up
+    plan.render(&[], &mut output); // warm up
     let before = allocs();
-    plan.render(&EventSlice::empty(), &mut output, 2048);
+    plan.render(&[], &mut output);
     let after = allocs();
     assert_eq!(before, after, "render allocated {} times", after.saturating_sub(before));
 }

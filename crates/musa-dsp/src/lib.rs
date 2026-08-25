@@ -1,18 +1,13 @@
-//! The declarative studio graph: `StudioGraphSpec` (editable, serializable
-//! intent) → compiled `RenderPlan` (preallocated execution) (roadmap §13.3,
-//! §13.8).
+//! Checked scheduling and one-frame audio execution.
 //!
-//! Owns: graph validation (port-kind/channel compatibility, cycle rejection),
-//! topological scheduling, buffer allocation, the processor set, and
-//! deterministic offline rendering. Must never contain: musical semantics
-//! (it consumes scheduled `PerformanceEvent`s, never scores), CPAL or
-//! threads (those belong to `musa-playback`), or real-time violations — `RenderPlan::render`
-//! allocates nothing and takes no locks (§13.2).
-//!
-//! Facade (roadmap §15.5): [`compile_graph`], [`RenderPlan::render`]. The
-//! graph compiler hides validation, topological sort, and buffer allocation;
-//! callers see `build` and `render` (§3).
+//! [`prepare_audio`] consumes exact performed gestures plus authored studio
+//! intent and returns opaque [`PreparedAudio`]. Preparation validates and
+//! allocates the closed native primitive graph; both offline rendering and
+//! the live callback then repeat the same event-before-output frame step.
+//! CPAL and threads remain in `musa-playback`; the step path never allocates,
+//! locks, logs, or performs I/O.
 
+mod audio;
 mod effects;
 mod envelope;
 mod error;
@@ -21,38 +16,84 @@ mod instrument;
 mod machine;
 mod offline;
 mod plan;
+mod primitive;
 mod schedule;
 mod spec;
 mod studio;
 mod voice;
 
-pub use crate::error::GraphError;
-pub use crate::instrument::poly_sine_spec;
+pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_audio};
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
-pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
+pub use crate::primitive::AudioLimits;
 pub use crate::schedule::{
-    AudioFormat, BoundaryCollision, BoundaryKind, CollapsePolicy, EventBatch, EventHandle, EventMessage, FrameRounding,
-    MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy, ScheduledSource, SourceState,
-    TimeDecision, TimeMap, merge_schedules, schedule,
+    AudioFormat, BoundaryCollision, BoundaryKind, ChannelLayout, CollapsePolicy, EventBatch, EventHandle, EventMessage,
+    FrameRounding, MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy,
+    ScheduledSource, SourceState, TimeDecision, TimeMap, merge_schedules, schedule,
 };
-pub use crate::spec::{
-    Combination, FilterKind, GraphOptions, MAX_DELAY, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing,
-    StudioGraphSpec, Unit, Waveform,
-};
-pub use crate::studio::{StudioLowering, lower_studio};
-pub use crate::voice::VoiceAllocator;
 
+#[cfg(test)]
+extern crate self as musa_dsp;
+
+#[cfg(test)]
+#[path = "../tests/suite/main.rs"]
+mod suite;
+
+#[cfg(test)]
 #[doc(hidden)]
 pub mod testing {
     //! Cross-crate semantic harnesses. Production callers prepare and start a
     //! machine directly; tests use this to prove offline iteration calls that
     //! same one-step operation rather than a block-specific interpreter.
 
-    use crate::{MachineValue, PreparedMachine, StepError};
+    use musa_score::{Gesture, Tuning};
+
+    use crate::{EventMessage, MachineValue, PreparedMachine, StepError};
+
+    pub(crate) use crate::error::GraphError;
+    pub(crate) use crate::instrument::poly_sine_spec;
+    pub(crate) use crate::spec::{
+        Combination, FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Unit, Waveform,
+    };
+    pub(crate) use crate::studio::lower_studio;
+
+    /// One-frame harness for primitive and private-flattening laws.
+    pub(crate) struct PreparedGraph(crate::plan::RenderPlan);
+
+    /// Validate and allocate a private graph with one-frame execution.
+    pub(crate) fn prepare_graph(spec: &StudioGraphSpec, sample_rate: u32) -> Result<PreparedGraph, GraphError> {
+        prepare_graph_seeded(spec, sample_rate, 0)
+    }
+
+    /// Validate and allocate the test graph with an explicit stochastic seed.
+    pub(crate) fn prepare_graph_seeded(
+        spec: &StudioGraphSpec,
+        sample_rate: u32,
+        render_seed: u64,
+    ) -> Result<PreparedGraph, GraphError> {
+        crate::plan::prepare_plan(
+            spec,
+            &GraphOptions {
+                sample_rate,
+                render_seed,
+            },
+        )
+        .map(PreparedGraph)
+    }
+
+    impl PreparedGraph {
+        /// Run repeated reference steps, delivering `first` before frame zero.
+        pub(crate) fn render(&mut self, first: &[EventMessage<Gesture>], output: &mut [f32]) {
+            for (index, frame) in output.as_chunks_mut::<2>().0.iter_mut().enumerate() {
+                let messages = if index == 0 { first } else { &[] };
+                let [left, right] = self.0.step(messages, Tuning::default());
+                *frame = [left, right];
+            }
+        }
+    }
 
     /// Run a finite input history from the exact start state.
-    pub fn run_machine_offline(
+    pub(crate) fn run_machine_offline(
         machine: &PreparedMachine,
         inputs: impl IntoIterator<Item = MachineValue>,
     ) -> Result<Vec<MachineValue>, StepError> {

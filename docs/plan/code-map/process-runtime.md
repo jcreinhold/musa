@@ -3,9 +3,9 @@
 This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to their implementation in
 `musa-dsp` and `musa-playback`. Prompt 171 supplies the checked reference semantics in `musa-dsp/src/machine.rs`: typed
 preparation, a closed functional primitive table, explicit start, private combined state, and one structural step.
-`StudioGraphSpec`, `compile_graph`, `RenderPlan`, caller-block feedback, and block-rate modulation remain the old
-production path until prompt 173 migrates and deletes them, as recorded in the
-[`clean-break ledger`](../clean-break-ledger.md).
+Prompt 173 migrated the production path directly from exact gesture tracks through checked schedules into opaque
+`PreparedAudio`. `StudioGraphSpec`, its validation error, and the flattened `RenderPlan` are crate-private preparation
+details; `compile_graph` and caller-block sound no longer exist.
 
 ## 1. Crate boundary
 
@@ -16,18 +16,18 @@ production path until prompt 173 migrates and deletes them, as recorded in the
 - machine validation and structural step semantics;
 - the closed primitive registry;
 - primitive state formats;
-- later scheduling and audio preparation; and
+- checked scheduling and bounded audio preparation; and
 - the reference implementation of one audio step, which is one sample frame.
 
 `musa-playback` owns:
 
 - device negotiation;
-- later installing and retiring prepared machines in the production callback;
+- installing and retiring prepared audio machines in the production callback;
 - transport state; and
 - calling the prepared step from the audio callback.
 
-The engine does not inspect a machine's primitives or state. The device-free playback harness and offline harness
-already run the same `StartedMachine::step`; prompt 173 puts that call in the production callback.
+The engine does not inspect primitives or state. Offline rendering and the device callback both fill host buffers by
+repeating `PreparedAudio::step`; their partition equality is an executable law.
 
 ## 2. Reference preparation happens before start
 
@@ -68,7 +68,8 @@ The engine can satisfy an arbitrary device request by repeating steps, or by a v
 state private. Tests render the same duration under many caller-buffer partitions. Feedback, modulation, envelopes, and
 media playback must agree in every partition (R1-batch).
 
-Today’s caller-buffer-sensitive feedback does not meet this rule. It remains a known implementation gap.
+Every current native feedback, modulation, envelope, smoother, and effect now advances under this rule. The old 64-frame
+and 256-frame audio-bridge digests differed; the migrated oracle makes them byte-identical.
 
 ## 5. Registered-primitive contract
 
@@ -84,7 +85,7 @@ Each reference registration now provides:
 A native primitive receives no arbitrary closure or host callback. A future plug-in adapter must state what happens on
 failure or nondeterminism. It does not automatically inherit the native-primitive theorem.
 
-## 6. Publishing a prepared machine to the callback (prompt 173)
+## 6. Publishing a prepared machine to the callback
 
 The control thread creates every buffer, state value, step-order table, media map, and primitive instance. It sends the
 finished machine through the existing bounded lock-free queue.
@@ -114,5 +115,6 @@ Prompt 171 covers:
 - the old whole-node scheduling counterexample; and
 - equality between offline and device-free playback use of the prepared step.
 
-Prompts 172–173 add scheduling, production audio-format checks, caller-buffer partition laws, and callback RT
-instrumentation to the migrated machine path. The old graph tests remain required until that clean break.
+Prompts 172–173 add scheduling, stereo-format, tuning, seed, registry, capacity, retained-memory and worst-step-work
+checks, caller-buffer partition laws, and callback RT instrumentation. Primitive graph laws remain internal tests of the
+private flattening; no graph constructor or compiler is a public semantic alternative.

@@ -431,7 +431,8 @@ impl ScoreFacts {
             .collect();
         // The same tempo integration the performance lowering uses, at the
         // same options, so a frame here is the frame the engine will report.
-        let tempo = IntegratedTempoMap::new(score, Scope::Piece, &PerformanceOptions::default());
+        let sample_rate = PerformanceOptions::default().sample_rate;
+        let tempo = IntegratedTempoMap::new(score, Scope::Piece);
         // Unfolded: the fact index reports where a moment *sounds*, which is
         // the coordinate the snapshot's own barlines are built over. The
         // piece's, for the piece-wide markers below; an event's bar number is
@@ -522,8 +523,8 @@ impl ScoreFacts {
                         clef: score
                             .clef_at(part.id(), musa_score::MusicalTime::new(onset))
                             .map(|clef| clef.name().to_owned()),
-                        onset_frames: tempo.frames(event.onset),
-                        end_frames: tempo.frames(end),
+                        onset_frames: tempo.frames(event.onset, sample_rate),
+                        end_frames: tempo.frames(end, sample_rate),
                         origin,
                     });
                 }
@@ -535,7 +536,7 @@ impl ScoreFacts {
             });
         }
 
-        let outline = outline_facts(score, &events, &lines, &bars, &tempo);
+        let outline = outline_facts(score, &events, &lines, &bars, &tempo, sample_rate);
         // The same fallback performance uses: a piece with no metronome mark
         // is played at the default speed rather than not played.
         let opening = score
@@ -583,6 +584,7 @@ fn outline_facts(
     lines: &LineIndex,
     bars: &musa_score::BarLines,
     tempo: &IntegratedTempoMap,
+    sample_rate: u32,
 ) -> Vec<OutlineFacts> {
     let mut rows: Vec<(u64, OutlineFacts)> = Vec::new();
     // A section runs until the next one; the last runs to the end of the
@@ -592,12 +594,12 @@ fn outline_facts(
         .annotations()
         .sections()
         .iter()
-        .map(|section| tempo.frames(section.at))
+        .map(|section| tempo.frames(section.at, sample_rate))
         .collect();
     for (index, section) in score.annotations().sections().iter().enumerate() {
         let position = bars.at(section.at);
         let (bar, beat_in_bar) = (position.measure, position.beat);
-        let frames = tempo.frames(section.at);
+        let frames = tempo.frames(section.at, sample_rate);
         // The notehead a reader would look at: the first one that has not
         // already gone by when the marker is reached.
         let event = events

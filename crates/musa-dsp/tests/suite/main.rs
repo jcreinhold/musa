@@ -12,4 +12,5 @@ mod machine;
 mod rt;
 mod schedule;
 mod studio;
+mod support;
 mod synth;

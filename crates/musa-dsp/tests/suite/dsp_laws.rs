@@ -16,25 +16,25 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_compiler::{CompileOptions, Processor, SourceDocument, compile};
-use musa_dsp::{
-    Combination, EventSlice, FilterKind, GraphOptions, ProcessorSpec, StudioGraphSpec, Unit, Waveform, compile_graph,
-    lower_studio, render_offline,
+use musa_dsp::testing::{
+    Combination, FilterKind, GraphOptions, ProcessorSpec, StudioGraphSpec, Unit, Waveform, lower_studio, prepare_graph,
 };
-use musa_score::{PerformanceEvent, PerformanceOptions, lower_performance};
+
+use super::support::render_source;
 
 const RATE: u32 = 48_000;
 const OPTIONS: GraphOptions = GraphOptions {
     sample_rate: RATE,
-    block_size: 128,
+    render_seed: 0,
 };
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
 
 /// Render `frames` of a graph with no events, as interleaved stereo.
 fn render(spec: &StudioGraphSpec, frames: usize) -> Vec<f32> {
-    let mut plan = compile_graph(spec, &OPTIONS).expect("the graph is valid");
+    let mut plan = prepare_graph(spec, RATE).expect("the graph is valid");
     let mut output = vec![0.0f32; frames * 2];
-    plan.render(&EventSlice::empty(), &mut output, frames);
+    plan.render(&[], &mut output);
     output
 }
 
@@ -214,7 +214,7 @@ fn a_modulation_of_an_undeclared_parameter_is_rejected() {
     let control = spec.add_node(ProcessorSpec::Constant);
     spec.modulate(control, 0, sine, "cutoff");
     spec.set_output(sine);
-    assert!(compile_graph(&spec, &OPTIONS).is_err(), "a sine has no cutoff");
+    assert!(prepare_graph(&spec, RATE).is_err(), "a sine has no cutoff");
 }
 
 /// A modulation from an audio output is rejected: control is a port kind,
@@ -226,7 +226,7 @@ fn a_modulation_from_an_audio_output_is_rejected() {
     let other = spec.add_node(ProcessorSpec::Sine);
     spec.modulate(other, 0, sine, "frequency");
     spec.set_output(sine);
-    assert!(compile_graph(&spec, &OPTIONS).is_err(), "audio is not control");
+    assert!(prepare_graph(&spec, RATE).is_err(), "audio is not control");
 }
 
 /// A modulated render is as deterministic as an unmodulated one: the LFO's
@@ -258,9 +258,8 @@ fn a_modulated_render_is_deterministic() {
     assert_eq!(render(&spec, 12_000), render(&spec, 12_000));
 }
 
-/// A swept cutoff moves smoothly: with block-rate parameters and no
-/// smoothing the difference between consecutive blocks would show up as a
-/// step in the output every 128 frames.
+/// A swept cutoff moves smoothly: frame-rate modulation still needs smoothing
+/// when a discontinuous control asks for a large coefficient jump.
 #[test]
 fn a_swept_cutoff_does_not_step() {
     let mut spec = StudioGraphSpec::new();
@@ -307,26 +306,20 @@ fn a_swept_cutoff_does_not_step() {
 /// own response test.
 #[test]
 fn the_roadmap_patch_sounds_like_a_pad() {
-    let events = &glass_mountain_events();
-    let last = events.iter().map(PerformanceEvent::frame).max().unwrap_or(0);
-    let voice = |blend: f32, release: f32| {
-        let mut spec = StudioGraphSpec::new();
-        let synth = spec.add_node(ProcessorSpec::PolySine { voices: 16 });
-        for (name, value) in [
-            ("attack", 0.03),
-            ("decay", 1.8),
-            ("sustain", 0.65),
-            ("release", release),
-            ("ratio", 2.0),
-            ("blend", blend),
-        ] {
-            spec.set_param(synth, name, value).expect("the synth declares it");
-        }
-        spec.set_output(synth);
-        render_events(&spec, events, last + 3 * u64::from(RATE))
+    let voice = |shimmer_db: f32, release: f32| {
+        let source = format!(
+            "piece \"pad\" {{ tempo quarter = 60; meter 4/4; \
+             score {{ part violin {{ voice v {{ c4/4 }} }} }} \
+             studio {{ patch p {{ carrier = oscillator(sine); \
+             shimmer = oscillator(sine, ratio: 2) |> gain({shimmer_db} dB); \
+             mix(carrier, shimmer) |> envelope(adsr(attack: 30 ms, decay: 1.8 s, \
+             sustain: 0.65, release: {release} s)) |> output; }} \
+             assign violin -> p; route violin -> master; }} }}"
+        );
+        render_source(&source, RATE as usize * 4)
     };
-    let pad = voice(0.177_827_94, 3.5);
-    let plain = voice(0.0, 0.05);
+    let pad = voice(-15.0, 3.5);
+    let plain = voice(-120.0, 0.05);
     assert!(
         high_frequency_energy(&pad) > high_frequency_energy(&plain) * 1.05,
         "the partial must be audible above the fundamental"
@@ -334,7 +327,7 @@ fn the_roadmap_patch_sounds_like_a_pad() {
     // Two seconds after the last note-off the pad is still fading and the
     // default instrument has been silent for most of that time.
     let tail = |samples: &[f32]| -> f32 {
-        let from = (last as usize + 2 * RATE as usize) * 2;
+        let from = 3 * RATE as usize * 2;
         samples
             .get(from..)
             .unwrap_or(&[])
@@ -381,42 +374,17 @@ fn the_roadmap_studio_renders() {
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
     let studio = compilation.into_parts().1;
-    let (graph, lowering) = lower_studio(&studio, &OPTIONS);
+    let (_, lowering) = lower_studio(&studio, &OPTIONS);
     assert!(
         (lowering.release_tail - 3.5).abs() < 1e-6,
         "the export must leave room for the patch's release"
     );
-    let events = &glass_mountain_events();
-    let frames = events.iter().map(PerformanceEvent::frame).max().unwrap_or(0) + 4 * u64::from(RATE);
-    let samples = render_events(&graph, events, frames);
+    let samples = render_source(GLASS_MOUNTAIN, RATE as usize * 4);
     assert!(samples.iter().all(|sample| sample.is_finite()));
     assert!(
         samples.iter().any(|sample| sample.abs() > 0.01),
         "a patched piece must be audible"
     );
-}
-
-/// The example's scheduled events, in frame order.
-fn glass_mountain_events() -> Vec<PerformanceEvent> {
-    let compilation = compile(
-        &SourceDocument::new(GLASS_MOUNTAIN, "glass-mountain.musa"),
-        &CompileOptions::default(),
-    );
-    let score = compilation.into_snapshot().expect("the example compiles");
-    let plan = lower_performance(&score, &PerformanceOptions::default()).expect("the example lowers");
-    let mut events: Vec<PerformanceEvent> = plan
-        .lanes()
-        .iter()
-        .flat_map(|lane| lane.events().iter().cloned())
-        .collect();
-    events.sort_by_key(PerformanceEvent::frame);
-    events
-}
-
-/// Render a graph with scheduled events.
-fn render_events(spec: &StudioGraphSpec, events: &[PerformanceEvent], frames: u64) -> Vec<f32> {
-    let mut plan = compile_graph(spec, &OPTIONS).expect("the graph is valid");
-    render_offline(&mut plan, events, frames).samples().to_vec()
 }
 
 /// The left channel of an interleaved stereo render.

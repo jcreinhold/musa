@@ -12,11 +12,11 @@
 #![allow(clippy::expect_used)]
 
 use musa_compiler::{CompileOptions, SourceDocument, StudioSpec, compile};
-use musa_dsp::{GraphOptions, compile_graph, lower_studio, poly_sine_spec};
+use musa_dsp::testing::{GraphOptions, lower_studio, poly_sine_spec, prepare_graph};
 
 const OPTIONS: GraphOptions = GraphOptions {
     sample_rate: 48_000,
-    block_size: 128,
+    render_seed: 0,
 };
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
@@ -58,7 +58,7 @@ fn a_patch_stage_becomes_a_node_between_the_synth_and_master() {
     assert!(rendered.contains("Biquad"), "the filter is a filter now: {rendered}");
     assert!(rendered.contains("800.0"), "the written cutoff reaches it: {rendered}");
     assert!(lowering.notes.is_empty(), "{:?}", lowering.notes);
-    compile_graph(&graph, &OPTIONS).expect("the lowered graph is valid");
+    prepare_graph(&graph, OPTIONS.sample_rate).expect("the lowered graph is valid");
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn a_send_reaches_its_bus_and_the_bus_reaches_master() {
          assign violin -> p; route violin -> master; send violin -> hall at -18 dB; route hall -> master;",
     ));
     let (graph, _) = lower_studio(&studio, &OPTIONS);
-    compile_graph(&graph, &OPTIONS).expect("the send path is a valid graph");
+    prepare_graph(&graph, OPTIONS.sample_rate).expect("the send path is a valid graph");
     // Patch and bus both arrive at master, so they must meet in a mixer.
     assert!(format!("{graph:#?}").contains("Mixer"));
 }
@@ -85,13 +85,13 @@ fn a_studio_that_routes_nothing_says_so_and_still_renders() {
         "{:?}",
         lowering.notes
     );
-    compile_graph(&graph, &OPTIONS).expect("a silent graph is still a valid graph");
+    prepare_graph(&graph, OPTIONS.sample_rate).expect("a silent graph is still a valid graph");
 }
 
 #[test]
 fn the_roadmap_example_lowers_to_a_compilable_graph() {
     let (graph, lowering) = lower_studio(&studio_of(GLASS_MOUNTAIN), &OPTIONS);
-    compile_graph(&graph, &OPTIONS).expect("glass-mountain's studio must render");
+    prepare_graph(&graph, OPTIONS.sample_rate).expect("glass-mountain's studio must render");
     // Both parts go to the one patch, so nothing is double-sounded and the
     // shared-note-stream note must not appear.
     assert!(

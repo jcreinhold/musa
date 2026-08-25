@@ -37,7 +37,7 @@ impl Default for EngineConfig {
 /// retirements can be outstanding, and the retirement queue cannot fill. The
 /// callback's hold-back path is therefore unreachable in this configuration
 /// and exists only so that misuse degrades into back-pressure rather than
-/// into a `RenderPlan` being destroyed on the audio thread.
+/// into a prepared audio machine being destroyed on the audio thread.
 const COMMAND_CAPACITY: usize = 64;
 
 /// The audio engine. Owns the stream and queue ends; the rest of

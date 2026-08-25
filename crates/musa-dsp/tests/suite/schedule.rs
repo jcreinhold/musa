@@ -63,7 +63,7 @@ fn policy(rounding: FrameRounding, collapse: CollapsePolicy) -> SchedulePolicy {
 }
 
 fn format() -> AudioFormat {
-    AudioFormat::new(NonZeroU32::new(10).expect("nonzero"))
+    AudioFormat::new(NonZeroU32::new(10).expect("nonzero"), musa_dsp::ChannelLayout::Stereo)
 }
 
 fn messages<C: musa_events::Coordinate>(schedule: &Schedule<C, u8>) -> Vec<(u64, MessageKind, u8)> {

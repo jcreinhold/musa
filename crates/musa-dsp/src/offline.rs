@@ -1,9 +1,7 @@
 //! Deterministic offline rendering (roadmap §13.8: offline == live — this
-//! executes the same `RenderPlan::render` a live stream will).
+//! executes the same repeated one-frame operation as the live callback).
 
-use musa_score::PerformanceEvent;
-
-use crate::plan::{EventSlice, RenderPlan};
+use crate::PreparedAudio;
 
 /// Interleaved stereo f32 samples plus the sample rate.
 #[derive(Clone, Debug, PartialEq)]
@@ -24,12 +22,14 @@ impl RenderedAudio {
     }
 }
 
-/// Render `frames` of the plan with `events` (sorted by frame) scheduled.
-/// Deterministic: same plan, events, and frame count → identical samples.
-pub fn render_offline(plan: &mut RenderPlan, events: &[PerformanceEvent], frames: u64) -> RenderedAudio {
+/// Render the prepared machine's remaining finite extent.
+/// Deterministic: equal preparation and starting state yield equal samples.
+pub fn render_offline(audio: &mut PreparedAudio) -> RenderedAudio {
     const CHUNK: u64 = 4096;
     let mut samples = Vec::new();
-    let mut rendered = 0u64;
+    let frames = audio.total_frames().saturating_sub(audio.position());
+    let sample_rate = audio.sample_rate();
+    let mut rendered = 0_u64;
     let mut buffer = vec![0.0f32; (2 * CHUNK) as usize];
     while rendered < frames {
         let count = frames.saturating_sub(rendered).min(CHUNK);
@@ -37,12 +37,9 @@ pub fn render_offline(plan: &mut RenderPlan, events: &[PerformanceEvent], frames
         let Some(chunk) = buffer.get_mut(..len) else {
             break;
         };
-        plan.render(&EventSlice::new(events), chunk, count as usize);
+        audio.render(chunk);
         samples.extend_from_slice(chunk);
         rendered = rendered.saturating_add(count);
     }
-    RenderedAudio {
-        samples,
-        sample_rate: plan.sample_rate(),
-    }
+    RenderedAudio { samples, sample_rate }
 }

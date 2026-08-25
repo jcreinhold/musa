@@ -4,21 +4,19 @@
 
 /// A node's identity within a spec.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NodeId(pub u32);
+pub(crate) struct NodeId(pub u32);
 
 /// The kind of a port: what flows through it (§13.4). Compatibility is
 /// exact equality — conversions require explicit adapter processors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PortKind {
+pub(crate) enum PortKind {
     /// Audio-rate samples with a fixed channel count.
     Audio {
         /// Channels (1 = mono, 2 = stereo).
         channels: u8,
     },
-    /// Control-rate scalar (block-rate constant).
+    /// Control scalar advanced once per audio frame.
     Control,
-    /// A gate (note on/off as control).
-    Gate,
     /// Scheduled note events.
     NoteEvents,
 }
@@ -28,7 +26,6 @@ impl std::fmt::Display for PortKind {
         match self {
             Self::Audio { channels } => write!(f, "audio/{channels}"),
             Self::Control => write!(f, "control"),
-            Self::Gate => write!(f, "gate"),
             Self::NoteEvents => write!(f, "note-events"),
         }
     }
@@ -39,31 +36,29 @@ impl std::fmt::Display for PortKind {
 /// Re-exported from `musa-compiler` rather than declared again: the language
 /// checks `1400 Hz` against the same `Hz` the DSP descriptor names, so the
 /// two cannot drift apart.
-pub use musa_compiler::Unit;
+pub(crate) use musa_compiler::Unit;
 
 /// Parameter smoothing applied to value changes (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Smoothing {
+pub(crate) enum Smoothing {
     /// No smoothing (step change).
     None,
-    /// Linear ramp over one block.
-    BlockRamp,
+    /// One-pole slew advanced once per frame.
+    FrameSlew,
 }
 
 /// How a modulation signal combines with the base value (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Combination {
+pub(crate) enum Combination {
     /// Replace the base value.
     Replace,
-    /// Add to the base value.
-    Add,
     /// Multiply the base value.
     Multiply,
 }
 
 /// One parameter's contract (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ParameterDescriptor {
+pub(crate) struct ParameterDescriptor {
     /// The parameter name (language-facing).
     pub name: &'static str,
     /// Its unit.
@@ -80,7 +75,7 @@ pub struct ParameterDescriptor {
 
 /// A low-frequency oscillator's shape (§13.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Waveform {
+pub(crate) enum Waveform {
     /// A sine, the shape a modulation reaches for unless it says otherwise.
     Sine,
     /// A linear rise and fall.
@@ -95,11 +90,11 @@ pub enum Waveform {
 /// has to know before it renders; making it the parameter's range is what
 /// turns "the line is not that long" from a render-time surprise into
 /// something the patch is told at compile time.
-pub const MAX_DELAY: f32 = 2.0;
+pub(crate) const MAX_DELAY: f32 = 2.0;
 
 /// A biquad's response (§13.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FilterKind {
+pub(crate) enum FilterKind {
     /// Passes below the cutoff.
     LowPass,
     /// Passes above the cutoff.
@@ -109,7 +104,7 @@ pub enum FilterKind {
 /// The processor a node runs. Every variant knows its static port list and
 /// parameter descriptors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProcessorSpec {
+pub(crate) enum ProcessorSpec {
     /// Sine oscillator, phase-continuous (§13.5). Params: `frequency` (Hz).
     /// Output: mono audio.
     Sine,
@@ -159,9 +154,7 @@ pub enum ProcessorSpec {
     /// Low-frequency oscillator at control rate. Params: `frequency` (Hz).
     /// Output: control.
     ///
-    /// One value per block, held across it (§13.6's control rate): a
-    /// modulation target reads one value per block anyway, so computing a
-    /// sample-rate sine for it would buy nothing but cycles.
+    /// One value per audio frame (§13.6's control path).
     Lfo {
         /// Its shape.
         waveform: Waveform,
@@ -210,7 +203,7 @@ pub enum ProcessorSpec {
 
 impl ProcessorSpec {
     /// Input port kinds, in index order.
-    pub fn input_ports(&self) -> Vec<PortKind> {
+    pub(crate) fn input_ports(self) -> Vec<PortKind> {
         match self {
             Self::Sine | Self::Noise | Self::Constant | Self::Lfo { .. } => Vec::new(),
             Self::PolySine { .. } => vec![PortKind::NoteEvents],
@@ -223,14 +216,14 @@ impl ProcessorSpec {
             | Self::Reverb
             | Self::Limiter => vec![PortKind::Audio { channels: 2 }],
             Self::Scale | Self::Bias | Self::Clamp | Self::Smooth => vec![PortKind::Control],
-            Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
-            Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(*inputs)],
+            Self::Passthrough { channels } => vec![PortKind::Audio { channels }],
+            Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(inputs)],
             Self::StereoToMono => vec![PortKind::Audio { channels: 2 }],
         }
     }
 
     /// Output port kinds, in index order.
-    pub fn output_ports(&self) -> Vec<PortKind> {
+    pub(crate) fn output_ports(self) -> Vec<PortKind> {
         match self {
             Self::Sine | Self::Noise | Self::Gain => vec![PortKind::Audio { channels: 1 }],
             Self::Splitter => vec![PortKind::Audio { channels: 1 }, PortKind::Audio { channels: 1 }],
@@ -250,19 +243,19 @@ impl ProcessorSpec {
             | Self::Limiter => {
                 vec![PortKind::Audio { channels: 2 }]
             }
-            Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
+            Self::Passthrough { channels } => vec![PortKind::Audio { channels }],
             Self::StereoToMono => vec![PortKind::Audio { channels: 1 }],
         }
     }
 
     /// Parameter descriptors, in declaration order.
-    pub fn parameters(&self) -> &'static [ParameterDescriptor] {
+    pub(crate) fn parameters(self) -> &'static [ParameterDescriptor] {
         const FREQUENCY: ParameterDescriptor = ParameterDescriptor {
             name: "frequency",
             unit: Unit::Hz,
             range: (0.0, 20_000.0),
             default: 440.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         };
         const VALUE: ParameterDescriptor = ParameterDescriptor {
@@ -278,7 +271,7 @@ impl ProcessorSpec {
             unit: Unit::Linear,
             range: (0.0, 16.0),
             default: 1.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Multiply,
         };
         const PAN: ParameterDescriptor = ParameterDescriptor {
@@ -286,7 +279,7 @@ impl ProcessorSpec {
             unit: Unit::Linear,
             range: (-1.0, 1.0),
             default: 0.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         };
         // The names and units here are the ones the language writes
@@ -300,7 +293,7 @@ impl ProcessorSpec {
             unit: Unit::Hz,
             range: (10.0, 20_000.0),
             default: 20_000.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         };
         const Q: ParameterDescriptor = ParameterDescriptor {
@@ -308,7 +301,7 @@ impl ProcessorSpec {
             unit: Unit::Linear,
             range: (0.05, 20.0),
             default: std::f32::consts::FRAC_1_SQRT_2,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         };
         const FILTER: &[ParameterDescriptor] = &[CUTOFF, Q];
@@ -392,7 +385,7 @@ impl ProcessorSpec {
             unit: Unit::Hz,
             range: (-100_000.0, 100_000.0),
             default: 1.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         }];
         const OFFSET: &[ParameterDescriptor] = &[ParameterDescriptor {
@@ -400,7 +393,7 @@ impl ProcessorSpec {
             unit: Unit::Hz,
             range: (-100_000.0, 100_000.0),
             default: 0.0,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Replace,
         }];
         const BOUNDS: &[ParameterDescriptor] = &[
@@ -429,7 +422,7 @@ impl ProcessorSpec {
             unit: Unit::Linear,
             range: (0.0, 1.0),
             default: 0.3,
-            smoothing: Smoothing::BlockRamp,
+            smoothing: Smoothing::FrameSlew,
             combination: Combination::Multiply,
         };
         const DELAY: &[ParameterDescriptor] = &[
@@ -438,7 +431,7 @@ impl ProcessorSpec {
                 unit: Unit::Seconds,
                 range: (0.0, MAX_DELAY),
                 default: 0.25,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             // Feedback stops short of one: at one a delay never decays, and
@@ -448,7 +441,7 @@ impl ProcessorSpec {
                 unit: Unit::Linear,
                 range: (0.0, 0.95),
                 default: 0.3,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             MIX,
@@ -459,7 +452,7 @@ impl ProcessorSpec {
                 unit: Unit::Hz,
                 range: (0.0, 20.0),
                 default: 0.6,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             ParameterDescriptor {
@@ -467,7 +460,7 @@ impl ProcessorSpec {
                 unit: Unit::Seconds,
                 range: (0.0, 0.01),
                 default: 0.004,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             ParameterDescriptor { default: 0.4, ..MIX },
@@ -478,7 +471,7 @@ impl ProcessorSpec {
                 unit: Unit::Linear,
                 range: (0.0, 1.0),
                 default: 0.5,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             ParameterDescriptor {
@@ -486,7 +479,7 @@ impl ProcessorSpec {
                 unit: Unit::Linear,
                 range: (0.0, 1.0),
                 default: 0.5,
-                smoothing: Smoothing::BlockRamp,
+                smoothing: Smoothing::FrameSlew,
                 combination: Combination::Replace,
             },
             // A bus that exists to be a reverb is all reverb; a reverb in a
@@ -547,9 +540,9 @@ impl ProcessorSpec {
 }
 
 /// A declarative studio graph: nodes, connections, parameters. Editable;
-/// compiled into a `RenderPlan` by `compile_graph`.
+/// lowered privately into the prepared one-frame audio machine.
 #[derive(Clone, Debug, Default)]
-pub struct StudioGraphSpec {
+pub(crate) struct StudioGraphSpec {
     nodes: Vec<Node>,
     connections: Vec<Connection>,
     modulations: Vec<ModulationEdge>,
@@ -589,12 +582,12 @@ pub(crate) struct Connection {
 
 impl StudioGraphSpec {
     /// An empty graph.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     /// Add a node; returns its identity.
-    pub fn add_node(&mut self, processor: ProcessorSpec) -> NodeId {
+    pub(crate) fn add_node(&mut self, processor: ProcessorSpec) -> NodeId {
         let id = NodeId(u32::try_from(self.nodes.len()).unwrap_or(u32::MAX));
         self.nodes.push(Node {
             id,
@@ -609,12 +602,17 @@ impl StudioGraphSpec {
     ///
     /// # Errors
     /// [`GraphError::UnknownNode`] / [`GraphError::InvalidParameter`].
-    pub fn set_param(&mut self, node: NodeId, name: &'static str, value: f32) -> Result<(), crate::GraphError> {
+    pub(crate) fn set_param(
+        &mut self,
+        node: NodeId,
+        name: &'static str,
+        value: f32,
+    ) -> Result<(), crate::error::GraphError> {
         let Some(entry) = self.nodes.iter_mut().find(|entry| entry.id == node) else {
-            return Err(crate::GraphError::UnknownNode(node));
+            return Err(crate::error::GraphError::UnknownNode(node));
         };
         if entry.processor.descriptor(name).is_none() || !value.is_finite() {
-            return Err(crate::GraphError::InvalidParameter {
+            return Err(crate::error::GraphError::InvalidParameter {
                 node,
                 name: name.to_string(),
             });
@@ -628,7 +626,7 @@ impl StudioGraphSpec {
     }
 
     /// Connect an output port to an input port.
-    pub fn connect(&mut self, from: NodeId, from_port: usize, to: NodeId, to_port: usize) {
+    pub(crate) fn connect(&mut self, from: NodeId, from_port: usize, to: NodeId, to_port: usize) {
         self.connections.push(Connection {
             from,
             from_port,
@@ -639,9 +637,9 @@ impl StudioGraphSpec {
 
     /// Connect a control output to a named parameter of another node.
     ///
-    /// Both ends are checked in `compile_graph`, not here, so a spec under
+    /// Both ends are checked during audio preparation, not here, so a spec under
     /// construction can be written in any order.
-    pub fn modulate(&mut self, from: NodeId, from_port: usize, to: NodeId, param: &'static str) {
+    pub(crate) fn modulate(&mut self, from: NodeId, from_port: usize, to: NodeId, param: &'static str) {
         self.modulations.push(ModulationEdge {
             from,
             from_port,
@@ -652,7 +650,7 @@ impl StudioGraphSpec {
 
     /// Designate the graph's master output node (its first output port must
     /// be stereo audio, or mono audio adapted via `MonoToStereo`).
-    pub fn set_output(&mut self, node: NodeId) {
+    pub(crate) fn set_output(&mut self, node: NodeId) {
         self.output = Some(node);
     }
 
@@ -670,6 +668,12 @@ impl StudioGraphSpec {
 
     pub(crate) fn output(&self) -> Option<NodeId> {
         self.output
+    }
+
+    pub(crate) fn output_kind(&self) -> Option<PortKind> {
+        self.output
+            .and_then(|node| self.processor_of(node))
+            .and_then(|processor| processor.output_ports().first().copied())
     }
 
     pub(crate) fn node(&self, id: NodeId) -> Option<&Node> {
@@ -703,20 +707,11 @@ impl Node {
     }
 }
 
-/// Options for graph compilation.
+/// Options for private one-frame graph preparation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GraphOptions {
+pub(crate) struct GraphOptions {
     /// Samples per second.
     pub sample_rate: u32,
-    /// Frames per processing block (render works in blocks of this size).
-    pub block_size: usize,
-}
-
-impl Default for GraphOptions {
-    fn default() -> Self {
-        Self {
-            sample_rate: 48_000,
-            block_size: 128,
-        }
-    }
+    /// Explicit whole-render seed from which stochastic primitive state is derived.
+    pub render_seed: u64,
 }

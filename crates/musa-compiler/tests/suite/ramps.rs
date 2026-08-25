@@ -57,7 +57,7 @@ fn frames_at(score: &ScoreSnapshot, whole_notes: i64) -> u64 {
     )
     .expect("schedules")
     .tempo()
-    .frames(MusicalTime::new(Ratio::from_integer(whole_notes)))
+    .frames(MusicalTime::new(Ratio::from_integer(whole_notes)), RATE)
 }
 
 /// The arithmetic, on a case a reader can do in their head.
@@ -157,7 +157,7 @@ fn a_ramp_is_the_sum_of_its_parts_at_every_point() {
     )
     .expect("schedules");
     let map = plan.tempo();
-    let at = |sixths: i64| map.frames(MusicalTime::new(Ratio::new(sixths, 6)));
+    let at = |sixths: i64| map.frames(MusicalTime::new(Ratio::new(sixths, 6)), RATE);
     let mut previous = 0;
     for sixths in 1..=36 {
         let now = at(sixths);

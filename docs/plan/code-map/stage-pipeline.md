@@ -26,17 +26,17 @@ EventTrack<PerformedTime, Gesture>
     │ prompt 172: checked scheduling
     ▼
 Schedule<Gesture>
-    │ prompts 171 and 173: machine preparation and instrument binding
+    │ native primitive preparation and instrument binding
     ▼
-PreparedMachine
+PreparedAudio
     │ one exact sample-frame step
     ▼
 audio history
 ```
 
-The written half through `EventTrack<WrittenTime, ScoreFact>` is implemented. The machine/scheduling names are the
-governing target; current audio callers still use `StudioGraphSpec`, `compile_graph`, and `RenderPlan` until prompts
-171–173 migrate and delete that path. The clean-break ledger records this explicit reassignment.
+This flow is implemented through live and offline audio. The native flattening graph and render plan are crate-private;
+the only product facade accepts exact gestures, authored studio intent, and explicit preparation options, then returns
+opaque `PreparedAudio`.
 
 No intermediate front-end representation crosses its owner's facade. Rowan nodes stay in `musa-syntax`; `Raw`, core
 terms, values, environments, evaluator frames, and unification stay in `musa-calculus`; compiler resolution and
@@ -52,7 +52,7 @@ derivation records stay in `musa-compiler`. Callers receive checked results and 
 | Exact finite event tracks and their laws | `musa-events` | coordinate-indexed tracks, terms, queries, exact encoding/hash |
 | Musical value types and projections | `musa-score` | pitch/time/fact/gesture/snapshot values, no parser or pass |
 | Engraving plan and export | `musa-notation` | `render_notation` and export results |
-| Machine semantics, scheduling, preparation, offline DSP | `musa-dsp` | current graph facade; opaque prepared machine after prompt 173 |
+| Machine semantics, scheduling, preparation, offline DSP | `musa-dsp` | `prepare_machine`, `schedule`, `prepare_audio`, opaque prepared values |
 | Device negotiation, transport, callback | `musa-playback` | `AudioEngine` and transport commands |
 | Documents, revisions, commands, derived-result coordination | `musa-project` | `ProjectSession` |
 | CLI, LSP, desktop, web | shell crates and apps | user-facing commands and results |

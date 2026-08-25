@@ -13,15 +13,14 @@
 //! Envelope and oscillator arithmetic per sample is total and bounded.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_score::VoiceInstanceId;
-
 use crate::envelope::{Adsr, AdsrSettings, AdsrSteps};
+use crate::schedule::EventHandle;
 
 /// One synthesizer voice: oscillator phase, frequency, envelope, and
 /// allocation bookkeeping.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Voice {
-    instance: VoiceInstanceId,
+    instance: Option<EventHandle>,
     frequency: f32,
     phase: f64,
     envelope: Adsr,
@@ -44,7 +43,7 @@ struct Voice {
 
 impl Voice {
     const FREE: Self = Self {
-        instance: VoiceInstanceId(0),
+        instance: None,
         frequency: 0.0,
         phase: 0.0,
         envelope: Adsr::IDLE,
@@ -62,7 +61,7 @@ impl Voice {
 
 /// A fixed voice pool with a steal-oldest policy (§13.5).
 #[derive(Clone, Debug)]
-pub struct VoiceAllocator {
+pub(crate) struct VoiceAllocator {
     voices: Vec<Voice>,
     settings: AdsrSettings,
     steps: AdsrSteps,
@@ -86,7 +85,7 @@ impl VoiceAllocator {
     /// A pool of `voices` voices with the default envelope (a 5 ms attack and
     /// a 50 ms release — enough not to click, short enough not to be an
     /// interpretation).
-    pub fn new(voices: u8, sample_rate: u32) -> Self {
+    pub(crate) fn new(voices: u8, sample_rate: u32) -> Self {
         let settings = AdsrSettings::default();
         Self {
             voices: vec![Voice::FREE; usize::from(voices)],
@@ -137,7 +136,7 @@ impl VoiceAllocator {
     /// profile), which is a request rather than an envelope: it replaces the
     /// patch's attack for this note and leaves the rest of the shape alone.
     /// Zero means the note asked for nothing.
-    pub fn note_on(&mut self, instance: VoiceInstanceId, frequency: f32, amplitude: f32, attack: f32) {
+    pub(crate) fn note_on(&mut self, instance: &EventHandle, frequency: f32, amplitude: f32, attack: f32) {
         let slot = self.voices.iter().position(Voice::is_free).or_else(|| {
             self.voices
                 .iter()
@@ -146,7 +145,7 @@ impl VoiceAllocator {
                 .map(|(index, _)| index)
         });
         if let Some(voice) = slot.and_then(|i| self.voices.get_mut(i)) {
-            voice.instance = instance;
+            voice.instance = Some(instance.clone());
             voice.frequency = frequency;
             voice.amplitude = amplitude;
             voice.phase = 0.0;
@@ -159,9 +158,9 @@ impl VoiceAllocator {
     }
 
     /// Release the voice sounding `instance`, if any.
-    pub fn note_off(&mut self, instance: VoiceInstanceId) {
+    pub(crate) fn note_off(&mut self, instance: &EventHandle) {
         for voice in &mut self.voices {
-            if voice.held && voice.instance == instance {
+            if voice.held && voice.instance.as_ref() == Some(instance) {
                 voice.held = false;
                 voice.envelope.release(&voice.steps);
             }
@@ -169,12 +168,14 @@ impl VoiceAllocator {
     }
 
     /// Voices currently making sound (gated or decaying).
-    pub fn sounding(&self) -> usize {
+    #[cfg(test)]
+    fn sounding(&self) -> usize {
         self.voices.iter().filter(|voice| !voice.is_free()).count()
     }
 
     /// Voices currently gated (for tests and future voice-count telemetry).
-    pub fn gated(&self) -> usize {
+    #[cfg(test)]
+    fn gated(&self) -> usize {
         self.voices.iter().filter(|voice| voice.held).count()
     }
 
@@ -182,7 +183,7 @@ impl VoiceAllocator {
     /// (the oscillator bank of §13.5; the poly synth processor mixes the
     /// result to stereo). The sum carries the pool's fixed headroom — see
     /// [`Self::scale`].
-    pub fn render(&mut self, output: &mut [f32], count: usize, sample_rate: f64) {
+    pub(crate) fn render(&mut self, output: &mut [f32], count: usize, sample_rate: f64) {
         for i in 0..count {
             let mut mix = 0.0f32;
             for voice in &mut self.voices {
@@ -206,6 +207,7 @@ impl VoiceAllocator {
                 let level = voice.envelope.tick(&voice.steps);
                 if voice.envelope.is_idle() {
                     voice.held = false;
+                    voice.instance = None;
                 }
                 // Fused: one rounding for the scale-and-accumulate, which is
                 // both cheaper and closer than the two-step form. With the
@@ -229,4 +231,55 @@ fn shape(settings: AdsrSettings, sample_rate: u32, attack: f32) -> AdsrSteps {
         settings
     };
     AdsrSteps::new(settings, sample_rate)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::arithmetic_side_effects)]
+
+    use super::*;
+
+    const RATE: u32 = 48_000;
+
+    #[test]
+    fn allocator_steals_oldest_and_matches_only_live_handles() {
+        let mut allocator = VoiceAllocator::new(2, RATE);
+        let [first, second, third] = [EventHandle::root(0), EventHandle::root(1), EventHandle::root(2)];
+        allocator.note_on(&first, 220.0, 1.0, 0.0);
+        let mut buffer = [0.0; 64];
+        allocator.render(&mut buffer, 64, f64::from(RATE));
+        allocator.note_on(&second, 330.0, 1.0, 0.0);
+        allocator.note_on(&third, 440.0, 1.0, 0.0);
+        assert_eq!(allocator.gated(), 2);
+        allocator.note_off(&first);
+        assert_eq!(allocator.gated(), 2);
+        allocator.note_off(&second);
+        assert_eq!(allocator.gated(), 1);
+        allocator.note_off(&third);
+        assert_eq!(allocator.gated(), 0);
+    }
+
+    #[test]
+    fn allocator_reuses_a_fully_released_voice() {
+        let mut allocator = VoiceAllocator::new(1, RATE);
+        let first = EventHandle::root(0);
+        allocator.note_on(&first, 440.0, 1.0, 0.0);
+        allocator.note_off(&first);
+        let mut buffer = vec![0.0; 4_800];
+        allocator.render(&mut buffer, 4_800, f64::from(RATE));
+        assert_eq!(allocator.sounding(), 0);
+        allocator.note_on(&EventHandle::root(1), 440.0, 1.0, 0.0);
+        assert_eq!(allocator.gated(), 1);
+    }
+
+    #[test]
+    fn pool_sum_carries_fixed_headroom() {
+        let mut allocator = VoiceAllocator::new(16, RATE);
+        allocator.note_on(&EventHandle::root(0), 440.0, 1.0, 0.0);
+        let mut buffer = vec![0.0; RATE as usize / 2];
+        let count = buffer.len();
+        allocator.render(&mut buffer, count, f64::from(RATE));
+        let peak = buffer.iter().fold(0.0_f32, |worst, sample| worst.max(sample.abs()));
+        assert!((peak - 0.25).abs() < 0.01, "got {peak}");
+    }
 }

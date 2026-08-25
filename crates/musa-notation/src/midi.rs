@@ -127,9 +127,12 @@ struct TickSegment {
 
 impl Ticks {
     fn new(performance: &PerformancePlan, ticks_per_quarter: u16) -> Self {
-        let rate = f64::from(performance.tempo().sample_rate());
+        let rate = f64::from(performance.sample_rate());
         let mut segments: Vec<TickSegment> = Vec::new();
-        for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
+        for segment in performance
+            .tempo()
+            .segments(TEMPO_STEPS_PER_WHOLE, performance.sample_rate())
+        {
             let frames_per_quarter = segment.seconds_per_quarter * rate;
             let per_frame = if frames_per_quarter > 0.0 {
                 f64::from(ticks_per_quarter) / frames_per_quarter
@@ -176,7 +179,10 @@ impl Ticks {
 /// here and nowhere else.
 fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
     let mut absolute: Vec<(u64, u8, MetaMessage<'static>)> = Vec::new();
-    for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
+    for segment in performance
+        .tempo()
+        .segments(TEMPO_STEPS_PER_WHOLE, performance.sample_rate())
+    {
         let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
         absolute.push((
             ticks.of(segment.frame),

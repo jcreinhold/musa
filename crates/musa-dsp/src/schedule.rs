@@ -16,17 +16,32 @@ use num_rational::Ratio;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AudioFormat {
     sample_rate: NonZeroU32,
+    layout: ChannelLayout,
+}
+
+/// Native sample-frame channel layout.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChannelLayout {
+    /// One sample per frame.
+    Mono,
+    /// Left and right samples per frame.
+    Stereo,
 }
 
 impl AudioFormat {
-    /// A format at the stated nonzero frames per second.
-    pub const fn new(sample_rate: NonZeroU32) -> Self {
-        Self { sample_rate }
+    /// A format at the stated nonzero frames per second and explicit layout.
+    pub const fn new(sample_rate: NonZeroU32, layout: ChannelLayout) -> Self {
+        Self { sample_rate, layout }
     }
 
     /// Frames per physical second.
     pub const fn sample_rate(self) -> NonZeroU32 {
         self.sample_rate
+    }
+
+    /// Samples carried by one physical frame.
+    pub const fn layout(self) -> ChannelLayout {
+        self.layout
     }
 }
 
@@ -162,6 +177,11 @@ impl SchedulePolicy {
         self.version
     }
 
+    /// Finite table and per-frame-message bounds carried by this policy.
+    pub const fn limits(self) -> ScheduleLimits {
+        self.limits
+    }
+
     fn rank(self, kind: MessageKind) -> usize {
         self.order.iter().position(|candidate| *candidate == kind).unwrap_or(3)
     }
@@ -240,7 +260,7 @@ impl std::fmt::Debug for EventHandle {
 }
 
 impl EventHandle {
-    fn root(ordinal: usize) -> Self {
+    pub(crate) fn root(ordinal: usize) -> Self {
         Self {
             namespace: Arc::from([]),
             ordinal,

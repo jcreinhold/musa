@@ -1,8 +1,8 @@
 # Exact equality and stored data
 
 This page explains how the implementation stores values that may be compared, cached, or loaded after a restart.
-Event-track identity is current; prepared-machine identity is the prompt-173 target and must not be inferred from the
-current render-plan cache.
+Event-track identity and explicit prepared-audio arguments are current. No render-plan cache exists, and callers cannot
+inspect the private flattening as a substitute for prepared-machine identity.
 
 ## 1. Do not use one equality for every job
 

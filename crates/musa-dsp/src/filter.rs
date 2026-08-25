@@ -9,9 +9,8 @@
 //! `[10 Hz, 0.45·sr]` and `q` to a sane band *before* the coefficients are
 //! computed, and a non-finite request is refused rather than propagated, so
 //! no setting a modulation can reach produces a NaN in the output (§17.5).
-//! Coefficients are recomputed at block rate from parameters that arrive
-//! already smoothed (see `plan.rs`), which is what keeps a swept cutoff from
-//! zippering.
+//! Coefficients are recomputed after each frame's smoothed parameters arrive
+//! (see `plan.rs`), which is what keeps a swept cutoff from zippering.
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::spec::FilterKind;
@@ -113,9 +112,7 @@ impl Coefficients {
     /// `count` samples.
     ///
     /// Interpolating the coefficients rather than jumping to them is what
-    /// makes a swept cutoff a sweep: parameters arrive once per block, and a
-    /// filter that changed its response at each block boundary would put a
-    /// step into the signal every 128 frames.
+    /// makes a swept cutoff a sweep when the target changes between frames.
     pub(crate) fn step_to(&self, target: &Self, count: usize) -> Self {
         let steps = count.max(1) as f32;
         Self {

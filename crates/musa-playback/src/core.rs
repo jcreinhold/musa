@@ -16,31 +16,23 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use musa_dsp::{EventSlice, RenderPlan};
-use musa_score::PerformanceEvent;
+use musa_dsp::PreparedAudio;
 
 /// A playback plan prepared entirely on the control side: compiled graph,
 /// scheduled events, total duration. The callback only executes it.
 pub struct PreparedPlaybackPlan {
-    render_plan: RenderPlan,
-    events: Vec<PerformanceEvent>,
-    /// Total frames including the release tail.
-    total_frames: u64,
+    audio: PreparedAudio,
 }
 
 impl PreparedPlaybackPlan {
-    /// Bundle a compiled render plan with its scheduled events.
-    pub fn new(render_plan: RenderPlan, events: Vec<PerformanceEvent>, total_frames: u64) -> Self {
-        Self {
-            render_plan,
-            events,
-            total_frames,
-        }
+    /// Wrap audio prepared completely on the control thread.
+    pub const fn new(audio: PreparedAudio) -> Self {
+        Self { audio }
     }
 
     /// The total duration in frames (tail included).
     pub fn total_frames(&self) -> u64 {
-        self.total_frames
+        self.audio.total_frames()
     }
 }
 
@@ -129,7 +121,7 @@ impl CallbackCore {
     /// no-drop guarantee structural rather than a hope: a command that would
     /// retire a second plan simply stays queued until the control thread
     /// drains the retirement queue. Transport commands behind it are delayed
-    /// by a block or two, which is inaudible; destroying a `RenderPlan` in
+    /// by a block or two, which is inaudible; destroying prepared audio in
     /// the callback would not be.
     fn consume_commands(&mut self) {
         if let Some(pending) = self.pending_retire.take() {
@@ -168,7 +160,7 @@ impl CallbackCore {
             }
             TransportCommand::Seek { frame } => {
                 if let Some(plan) = self.installed.as_mut() {
-                    plan.render_plan.seek(frame);
+                    plan.audio.seek(frame);
                     self.position.store(frame, Ordering::Relaxed);
                 }
             }
@@ -200,17 +192,18 @@ impl CallbackCore {
         }
         let mut done = 0usize;
         while done < frames {
-            let cursor = installed.render_plan.cursor();
+            let cursor = installed.audio.position();
             // Next hard boundary: loop end or piece end.
-            let boundary = self
-                .loop_region
-                .map_or(installed.total_frames, |(_, end)| end.min(installed.total_frames));
+            let boundary = self.loop_region.map_or_else(
+                || installed.audio.total_frames(),
+                |(_, end)| end.min(installed.audio.total_frames()),
+            );
             if cursor >= boundary {
                 // Wrap only to a start that lies before the boundary;
                 // otherwise the region is unplayable against this plan and
                 // wrapping would make no progress. Stop instead.
                 match self.loop_region {
-                    Some((start, _)) if start < boundary => installed.render_plan.seek(start),
+                    Some((start, _)) if start < boundary => installed.audio.seek(start),
                     Some(_) | None => {
                         self.playing = false;
                         self.playing_flag.store(false, Ordering::Relaxed);
@@ -230,12 +223,10 @@ impl CallbackCore {
             else {
                 break;
             };
-            installed
-                .render_plan
-                .render(&EventSlice::new(&installed.events), chunk, count);
+            installed.audio.render(chunk);
             done = done.saturating_add(count);
         }
-        self.position.store(installed.render_plan.cursor(), Ordering::Relaxed);
+        self.position.store(installed.audio.position(), Ordering::Relaxed);
         // Anything after an early stop is silence.
         if done < frames
             && let Some(rest) = output.get_mut(done.saturating_mul(2)..)

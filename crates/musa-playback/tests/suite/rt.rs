@@ -20,6 +20,7 @@ use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
+use super::support::silent_plan;
 use musa_playback::testing::{CallbackCore, Message};
 use musa_playback::{PreparedPlaybackPlan, TransportCommand};
 
@@ -55,12 +56,6 @@ unsafe impl GlobalAlloc for CountingAllocator {
 
 #[global_allocator]
 static ALLOCATOR: CountingAllocator = CountingAllocator;
-
-fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
-    let options = musa_dsp::GraphOptions::default();
-    let render_plan = musa_dsp::compile_graph(&musa_dsp::poly_sine_spec(8), &options).expect("graph");
-    PreparedPlaybackPlan::new(render_plan, Vec::new(), total_frames)
-}
 
 #[test]
 fn the_callback_path_allocates_nothing() {
