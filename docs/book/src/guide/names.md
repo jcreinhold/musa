@@ -259,3 +259,8 @@ can be read without reading the one before it — and a bar that does not hold w
 against that bar. What the region expands to is one call to `std::notation::staff`'s `Document` constructor: the adapter
 reads, and the package decides what the reading means. `examples/staff-page.musa` is a page that uses every item it
 reads.
+
+The same boundary serves a structurally different language. `std::adapters::graph` reads the finite studio region in
+`examples/live-studio.musa` into `std::sound::graph`'s `StudioDescription`. The adapter checks the local grammar and
+retains anchors; the ordinary package validates descriptor names, parameters, directed ports, bindings, and cycles.
+Neither operation allocates a processor or runs a signal.

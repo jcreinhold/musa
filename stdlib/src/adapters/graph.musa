@@ -1,0 +1,1152 @@
+// `graph` — read a finite studio description as ordinary Musa data.
+//
+// The adapter owns spelling only: names, punctuation, units, duplicate
+// parameter text, and the grammar of a connection. `std::sound::graph` owns
+// descriptor, range, port, binding, and cycle validation. Nothing here
+// allocates a processor or advances a signal.
+//
+// The fixed lexer does not preserve lines as groups, so declarations end in
+// semicolons. Braces hold a node's parameter declarations. The traversal
+// collects each group independently; parsing then walks the finite token list
+// from left to right and stacks answers for one final reversal.
+import std::list;
+import std::sound::graph;
+
+let level = "generative";
+
+data Refusal {
+    NoRefusal,
+    Refused(node: Syntax<TokenTree>, why: Text),
+}
+
+// One significant node from the fixed token tree.
+data Atom {
+    Word(spot: NodePath, spelling: Text),
+    Value(spot: NodePath, kind: TokenKind),
+    Mark(spot: NodePath, kind: TokenKind, spelling: Text),
+    Group(spot: NodePath, delimiter: Delimiter, children: List<Atom>),
+}
+
+record Collected {
+    atoms: List<Atom>;
+    refusal: Refusal;
+}
+
+record Parsed {
+    pending: List<Atom>;
+    declarations: List<Syntax<Expr>>;
+    refusal: Refusal;
+}
+
+record Parameters {
+    pending: List<Atom>;
+    built: List<Syntax<Expr>>;
+    names: List<Text>;
+    refusal: Refusal;
+}
+
+fn first_refusal(found: Refusal, later: Refusal) -> Refusal {
+    match found {
+        Refused(node, why) -> found,
+        NoRefusal -> later,
+    }
+}
+
+fn node_at(region: Syntax<TokenTree>, spot: NodePath) -> Syntax<TokenTree> {
+    syntax_at(region, spot).fold_from_end(
+        region,
+        fn (node: Syntax<TokenTree>, absent: Syntax<TokenTree>) -> Syntax<TokenTree> { node },
+    )
+}
+
+fn refusing(region: Syntax<TokenTree>, spot: NodePath, why: Text) -> Refusal {
+    Refused(node_at(region, spot), why)
+}
+
+fn spot_of(atom: Atom) -> NodePath {
+    match atom {
+        Word(spot, spelling) -> spot,
+        Value(spot, kind) -> spot,
+        Mark(spot, kind, spelling) -> spot,
+        Group(spot, delimiter, children) -> spot,
+    }
+}
+
+fn expression_at(region: Syntax<TokenTree>, spot: NodePath) -> Option<Syntax<Expr>> {
+    match syntax_at(region, spot) {
+        None -> None,
+        Some(node) -> as_expression(node),
+    }
+}
+
+fn no_anchor(here: NodePath) -> Syntax<Expr> { quote at here { 0 } }
+
+fn anchored(region: Syntax<TokenTree>, here: NodePath) -> Syntax<Expr> {
+    match syntax_anchor(region, here) {
+        None -> no_anchor(here),
+        Some(node) -> match as_expression(node) {
+            None -> no_anchor(here),
+            Some(anchor) -> anchor,
+        },
+    }
+}
+
+fn significant(kind: TokenKind) -> Bool {
+    if token_kind_equal(kind, TokenKind::Whitespace) {
+        false
+    } else if token_kind_equal(kind, TokenKind::LineComment) {
+        false
+    } else if token_kind_equal(kind, TokenKind::BlockComment) {
+        false
+    } else { true }
+}
+
+fn token_collected(
+    state: Collected,
+    here: NodePath,
+    kind: TokenKind,
+    spelling: Text,
+) -> Collected {
+    if significant(kind) {
+        if token_kind_equal(kind, TokenKind::Integer) {
+            state with {
+                atoms = Cons(Value(here, kind), state.atoms)
+            }
+        } else if token_kind_equal(kind, TokenKind::String) {
+            state with {
+                atoms = Cons(Value(here, kind), state.atoms)
+            }
+        } else if token_kind_equal(kind, TokenKind::ScaleKw) {
+            state with {
+                atoms = Cons(Word(here, spelling), state.atoms)
+            }
+        } else if token_kind_equal(kind, TokenKind::OutputKw) {
+            state with {
+                atoms = Cons(Word(here, spelling), state.atoms)
+            }
+        } else if token_kind_equal(kind, TokenKind::InKw) {
+            state with {
+                atoms = Cons(Word(here, spelling), state.atoms)
+            }
+        } else { state with { atoms = Cons(Mark(here, kind, spelling), state.atoms) } }
+    } else { state }
+}
+
+fn group_collected(
+    region: Syntax<TokenTree>,
+    state: Collected,
+    here: NodePath,
+    delimiter: Delimiter,
+    kids: List<SyntaxStep<Collected, Collected>>,
+) -> Collected {
+    if delimiter_equal(delimiter, Delimiter::Fused) {
+        state with {
+            atoms = Cons(Value(here, TokenKind::Rational), state.atoms)
+        }
+    } else {
+        match kids.fold_from_start(
+            Collected {
+                atoms = [],
+                refusal = NoRefusal
+            },
+            run_syntax_step,
+        ) {
+            inside -> state with {
+                atoms = Cons(Group(here, delimiter, reverse(inside.atoms)), state.atoms),
+                refusal = first_refusal(state.refusal, inside.refusal),
+            },
+        }
+    }
+}
+
+fn collect(region: Syntax<TokenTree>) -> Collected {
+    recurse_syntax(
+        fn (state, here) {
+            state with {
+                refusal = first_refusal(
+                    state.refusal,
+                    refusing(region, here, "this graph cannot read this token"),
+                )
+            }
+        },
+        fn (state, here, kind, text) { token_collected(state, here, kind, text) },
+        fn (state, here, name) { state with { atoms = Cons(Word(here, name), state.atoms) } },
+        fn (state, here, delimiter, kids) {
+            group_collected(region, state, here, delimiter, kids)
+        },
+        Collected {
+            atoms = [],
+            refusal = NoRefusal
+        },
+        region,
+    )
+}
+
+fn is_mark(atom: Atom, expected: TokenKind) -> Bool {
+    match atom {
+        Mark(spot, kind, spelling) -> token_kind_equal(kind, expected),
+        _ -> false,
+    }
+}
+
+fn text_syntax(here: NodePath, value: Text) -> Syntax<Expr> { syntax_text(here, value) }
+
+fn has_name(names: List<Text>, sought: Text) -> Bool {
+    names.fold_from_start(
+        false,
+        fn (found: Bool, name: Text) -> Bool { if found { true } else { name == sought } },
+    )
+}
+
+fn parameter_of(
+    region: Syntax<TokenTree>,
+    atoms: List<Atom>,
+    names: List<Text>,
+) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((region, "an empty parameter states nothing")),
+        [first, .. tail] -> match first {
+            Word(name_spot, name) -> parameter_after_name(region, name_spot, name, tail, names),
+            _ -> Err((
+                node_at(region, spot_of(first)),
+                "a parameter is written as `name = value` or `name = value s`"
+            )),
+        },
+    }
+}
+
+fn built_parameter(
+    region: Syntax<TokenTree>,
+    name_spot: NodePath,
+    name: Text,
+    value_spot: NodePath,
+    value_kind: TokenKind,
+    seconds: Bool,
+    names: List<Text>,
+) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    if has_name(names, name) {
+        Err((node_at(region, name_spot), "this node states the same parameter twice"))
+    } else {
+        match expression_at(region, value_spot) {
+            None -> Err((
+                node_at(region, value_spot),
+                "this parameter value is not an expression"
+            )),
+            Some(value) -> match anchored(region, value_spot) {
+                anchor -> if seconds {
+                    Ok((
+                        name,
+                        quote at name_spot {
+                            Parameter {
+                                anchor = $anchor,
+                                name = ${ text_syntax(name_spot, name) },
+                                value = Seconds($value),
+                            }
+                        }
+                    ))
+                } else if token_kind_equal(value_kind, TokenKind::Integer) {
+                    Ok((
+                        name,
+                        quote at name_spot {
+                            Parameter {
+                                anchor = $anchor,
+                                name = ${ text_syntax(name_spot, name) },
+                                value = Count($value),
+                            }
+                        }
+                    ))
+                } else {
+                    Ok((
+                        name,
+                        quote at name_spot {
+                            Parameter {
+                                anchor = $anchor,
+                                name = ${ text_syntax(name_spot, name) },
+                                value = Plain($value),
+                            }
+                        }
+                    ))
+                },
+            },
+        }
+    }
+}
+
+fn parameter_after_value(
+    region: Syntax<TokenTree>,
+    name_spot: NodePath,
+    name: Text,
+    value_spot: NodePath,
+    value_kind: TokenKind,
+    tail: List<Atom>,
+    names: List<Text>,
+) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    match tail {
+        [] -> built_parameter(region, name_spot, name, value_spot, value_kind, false, names),
+        [unit, .. after_unit] -> match unit {
+            Mark(unit_spot, unit_kind, unit_text) -> if token_kind_equal(
+                unit_kind,
+                TokenKind::UnitS,
+            ) {
+                match after_unit {
+                    [] -> built_parameter(
+                        region,
+                        name_spot,
+                        name,
+                        value_spot,
+                        value_kind,
+                        true,
+                        names,
+                    ),
+                    [extra, .. extras] -> Err((
+                        node_at(region, spot_of(extra)),
+                        "nothing follows a parameter's unit"
+                    )),
+                }
+            } else {
+                Err((node_at(region, unit_spot), "this graph writes time parameters in `s`"))
+            },
+            _ -> Err((
+                node_at(region, spot_of(unit)),
+                "this graph writes time parameters in `s`"
+            )),
+        },
+    }
+}
+
+fn parameter_after_name(
+    region: Syntax<TokenTree>,
+    name_spot: NodePath,
+    name: Text,
+    tail: List<Atom>,
+    names: List<Text>,
+) -> Result<Pair<Text, Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    match tail {
+        [] -> Err((node_at(region, name_spot), "a parameter is written as `name = value`")),
+        [equal, .. after_equal] -> match equal {
+            Mark(equal_spot, equal_kind, equal_text) -> if token_kind_equal(
+                equal_kind,
+                TokenKind::Equals,
+            ) {
+                match after_equal {
+                    [] -> Err((node_at(region, equal_spot), "this parameter has no value")),
+                    [value, .. after_value] -> match value {
+                        Value(value_spot, value_kind) -> parameter_after_value(
+                            region,
+                            name_spot,
+                            name,
+                            value_spot,
+                            value_kind,
+                            after_value,
+                            names,
+                        ),
+                        _ -> Err((
+                            node_at(region, spot_of(value)),
+                            "this parameter value is not an expression"
+                        )),
+                    },
+                }
+            } else {
+                Err((node_at(region, equal_spot), "a parameter is written as `name = value`"))
+            },
+            _ -> Err((
+                node_at(region, spot_of(equal)),
+                "a parameter is written as `name = value`"
+            )),
+        },
+    }
+}
+
+fn finish_parameter(region: Syntax<TokenTree>, state: Parameters) -> Parameters {
+    match state.refusal {
+        Refused(node, why) -> state,
+        NoRefusal -> match reverse(state.pending) {
+            [] -> state,
+            atoms -> match parameter_of(region, atoms, state.names) {
+                Err(problem) -> match problem {
+                    (node, why) -> state with {
+                        pending = [],
+                        refusal = Refused(node, why)
+                    },
+                },
+                Ok(answer) -> match answer {
+                    (name, built) -> Parameters {
+                        pending = [],
+                        built = Cons(built, state.built),
+                        names = Cons(name, state.names),
+                        refusal = NoRefusal,
+                    },
+                },
+            },
+        },
+    }
+}
+
+fn parameter_step(region: Syntax<TokenTree>, state: Parameters, atom: Atom) -> Parameters {
+    if is_mark(atom, TokenKind::Semicolon) {
+        finish_parameter(region, state)
+    } else { state with { pending = Cons(atom, state.pending) } }
+}
+
+fn parameters_of(
+    region: Syntax<TokenTree>,
+    atoms: List<Atom>,
+) -> Result<List<Syntax<Expr>>, Pair<Syntax<TokenTree>, Text>> {
+    match finish_parameter(
+        region,
+        atoms.fold_from_start(
+            Parameters {
+                pending = [],
+                built = [],
+                names = [],
+                refusal = NoRefusal
+            },
+            fn (state: Parameters, atom: Atom) -> Parameters {
+                parameter_step(region, state, atom)
+            },
+        ),
+    ) {
+        Parameters { pending, built, names, refusal = Refused(node, why) } -> Err((node, why)),
+        Parameters { pending, built, names, refusal = NoRefusal } -> Ok(reverse(built)),
+    }
+}
+
+fn input_or_output(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    kind_atoms: List<Atom>,
+    input: Bool,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match kind_atoms {
+        [] -> Err((node_at(region, here), "this port has no kind")),
+        [first, .. tail] -> match first {
+            Word(kind_spot, kind_name) -> port_kind_after_word(
+                region,
+                here,
+                name_spot,
+                name,
+                kind_spot,
+                kind_name,
+                tail,
+                input,
+            ),
+            _ -> Err((
+                node_at(region, spot_of(first)),
+                "a port kind is `control`, `note_events`, or `audio(n)`"
+            )),
+        },
+    }
+}
+
+fn built_port(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    kind: Syntax<Expr>,
+    input: Bool,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match anchored(region, here) {
+        anchor -> if input {
+            Ok(quote at here {
+                Input($anchor, ${ text_syntax(name_spot, name) }, $kind)
+            })
+        } else {
+            Ok(quote at here {
+                Output($anchor, ${ text_syntax(name_spot, name) }, $kind)
+            })
+        },
+    }
+}
+
+fn audio_kind(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    group: Atom,
+    input: Bool,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match group {
+        Group(group_spot, delimiter, children) -> if delimiter_equal(
+            delimiter,
+            Delimiter::Parentheses,
+        ) {
+            match children {
+                [] -> Err((
+                    node_at(region, group_spot),
+                    "an audio channel count is a whole number"
+                )),
+                [value, .. after_value] -> match value {
+                    Value(value_spot, value_kind) -> match after_value {
+                        [] -> match expression_at(region, value_spot) {
+                            None -> Err((
+                                node_at(region, value_spot),
+                                "an audio channel count is a whole number"
+                            )),
+                            Some(channels) -> built_port(
+                                region,
+                                here,
+                                name_spot,
+                                name,
+                                quote at value_spot {
+                                    Audio($channels)
+                                },
+                                input,
+                            ),
+                        },
+                        [extra, .. extras] -> Err((
+                            node_at(region, spot_of(extra)),
+                            "an audio kind has one channel count"
+                        )),
+                    },
+                    _ -> Err((
+                        node_at(region, spot_of(value)),
+                        "an audio channel count is a whole number"
+                    )),
+                },
+            }
+        } else {
+            Err((
+                node_at(region, group_spot),
+                "an audio kind writes its channels in parentheses"
+            ))
+        },
+        _ -> Err((
+            node_at(region, spot_of(group)),
+            "an audio kind writes its channels in parentheses"
+        )),
+    }
+}
+
+fn port_kind_after_word(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    kind_spot: NodePath,
+    kind_name: Text,
+    tail: List<Atom>,
+    input: Bool,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match kind_name {
+        "control" -> match tail {
+            [] -> built_port(
+                region,
+                here,
+                name_spot,
+                name,
+                quote at kind_spot {
+                    Control
+                },
+                input,
+            ),
+            [extra, .. extras] -> Err((
+                node_at(region, spot_of(extra)),
+                "nothing follows `control`"
+            )),
+        },
+        "note_events" -> match tail {
+            [] -> built_port(
+                region,
+                here,
+                name_spot,
+                name,
+                quote at kind_spot {
+                    NoteEvents
+                },
+                input,
+            ),
+            [extra, .. extras] -> Err((
+                node_at(region, spot_of(extra)),
+                "nothing follows `note_events`"
+            )),
+        },
+        "audio" -> match tail {
+            [] -> Err((
+                node_at(region, kind_spot),
+                "an audio kind writes its channels in parentheses"
+            )),
+            [group, .. after_group] -> match after_group {
+                [] -> audio_kind(region, here, name_spot, name, group, input),
+                [extra, .. extras] -> Err((
+                    node_at(region, spot_of(extra)),
+                    "nothing follows an audio kind"
+                )),
+            },
+        },
+        _ -> Err((
+            node_at(region, kind_spot),
+            "a port kind is `control`, `note_events`, or `audio(n)`"
+        )),
+    }
+}
+
+fn statement_of(
+    region: Syntax<TokenTree>,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((region, "an empty declaration states nothing")),
+        [first, .. tail] -> match first {
+            Word(here, word) -> match word {
+                "input" -> port_statement(region, here, tail, true),
+                "output" -> port_statement(region, here, tail, false),
+                "instrument" -> node_statement(region, here, tail),
+                "processor" -> node_statement(region, here, tail),
+                "connect" -> connection_statement(region, here, tail),
+                "bind" -> binding_statement(region, here, tail),
+                _ -> Err((
+                    node_at(region, here),
+                    "this graph reads an input, node, output, connection, or binding"
+                )),
+            },
+            _ -> Err((
+                node_at(region, spot_of(first)),
+                "this graph reads an input, node, output, connection, or binding"
+            )),
+        },
+    }
+}
+
+fn port_statement(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    atoms: List<Atom>,
+    input: Bool,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((node_at(region, here), "an input or output needs a name")),
+        [name_atom, .. after_name] -> match name_atom {
+            Word(name_spot, name) -> match after_name {
+                [] -> Err((
+                    node_at(region, name_spot),
+                    "an input or output writes `name: kind`"
+                )),
+                [colon, .. kind_atoms] -> match colon {
+                    Mark(colon_spot, colon_kind, colon_text) -> if token_kind_equal(
+                        colon_kind,
+                        TokenKind::Colon,
+                    ) {
+                        input_or_output(region, here, name_spot, name, kind_atoms, input)
+                    } else {
+                        Err((
+                            node_at(region, colon_spot),
+                            "an input or output writes `name: kind`"
+                        ))
+                    },
+                    _ -> Err((
+                        node_at(region, spot_of(colon)),
+                        "an input or output writes `name: kind`"
+                    )),
+                },
+            },
+            _ -> Err((node_at(region, spot_of(name_atom)), "an input or output needs a name")),
+        },
+    }
+}
+
+fn built_node(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    descriptor_spot: NodePath,
+    descriptor: Text,
+    body_spot: NodePath,
+    delimiter: Delimiter,
+    body: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    if delimiter_equal(delimiter, Delimiter::Braces) {
+        match parameters_of(region, body) {
+            Err(problem) -> Err(problem),
+            Ok(parameters) -> match anchored(region, here) {
+                anchor -> Ok(quote at here {
+                    Node(
+                        $anchor,
+                        ${ text_syntax(name_spot, name) },
+                        ${ text_syntax(descriptor_spot, descriptor) },
+                        [$..parameters],
+                    )
+                }),
+            },
+        }
+    } else { Err((node_at(region, body_spot), "a node writes its parameters in braces")) }
+}
+
+fn node_after_descriptor(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    descriptor_spot: NodePath,
+    descriptor: Text,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((node_at(region, descriptor_spot), "a node writes its parameters in braces")),
+        [body_atom, .. after_body] -> match after_body {
+            [] -> match body_atom {
+                Group(body_spot, delimiter, body) -> built_node(
+                    region,
+                    here,
+                    name_spot,
+                    name,
+                    descriptor_spot,
+                    descriptor,
+                    body_spot,
+                    delimiter,
+                    body,
+                ),
+                _ -> Err((
+                    node_at(region, spot_of(body_atom)),
+                    "a node writes its parameters in braces"
+                )),
+            },
+            [extra, .. extras] -> Err((
+                node_at(region, spot_of(extra)),
+                "nothing follows a node's parameter block"
+            )),
+        },
+    }
+}
+
+fn node_after_equal(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    name_spot: NodePath,
+    name: Text,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((node_at(region, name_spot), "a node needs a descriptor")),
+        [descriptor_atom, .. after_descriptor] -> match descriptor_atom {
+            Word(descriptor_spot, descriptor) -> node_after_descriptor(
+                region,
+                here,
+                name_spot,
+                name,
+                descriptor_spot,
+                descriptor,
+                after_descriptor,
+            ),
+            _ -> Err((
+                node_at(region, spot_of(descriptor_atom)),
+                "a node needs a descriptor name"
+            )),
+        },
+    }
+}
+
+fn node_statement(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [] -> Err((node_at(region, here), "a node needs a name")),
+        [name_atom, .. after_name] -> match name_atom {
+            Word(name_spot, name) -> match after_name {
+                [] -> Err((
+                    node_at(region, name_spot),
+                    "a node is written as `name = descriptor`"
+                )),
+                [equal, .. after_equal] -> match equal {
+                    Mark(equal_spot, equal_kind, equal_text) -> if token_kind_equal(
+                        equal_kind,
+                        TokenKind::Equals,
+                    ) {
+                        node_after_equal(region, here, name_spot, name, after_equal)
+                    } else {
+                        Err((
+                            node_at(region, equal_spot),
+                            "a node is written as `name = descriptor`"
+                        ))
+                    },
+                    _ -> Err((
+                        node_at(region, spot_of(equal)),
+                        "a node is written as `name = descriptor`"
+                    )),
+                },
+            },
+            _ -> Err((node_at(region, spot_of(name_atom)), "a node needs a name")),
+        },
+    }
+}
+
+fn built_connection(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    source_node_spot: NodePath,
+    source_node: Text,
+    source_port_spot: NodePath,
+    source_port: Text,
+    target_node_spot: NodePath,
+    target_node: Text,
+    target_port_spot: NodePath,
+    target_port: Text,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match anchored(region, here) {
+        anchor -> Ok(quote at here {
+            Connect(
+                $anchor,
+                PortPath {
+                    node = ${ text_syntax(source_node_spot, source_node) },
+                    port = ${ text_syntax(source_port_spot, source_port) },
+                },
+                PortPath {
+                    node = ${ text_syntax(target_node_spot, target_node) },
+                    port = ${ text_syntax(target_port_spot, target_port) },
+                },
+            )
+        }),
+    }
+}
+
+fn connection_statement(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [source_node_atom, .. a] -> match source_node_atom {
+            Word(source_node_spot, source_node) -> match a {
+                [source_dot, .. b] -> if is_mark(source_dot, TokenKind::Dot) {
+                    match b {
+                        [source_port_atom, .. c] -> match source_port_atom {
+                            Word(source_port_spot, source_port) -> match c {
+                                [arrow, .. d] -> if is_mark(arrow, TokenKind::Arrow) {
+                                    match d {
+                                        [target_node_atom, .. e] -> match target_node_atom {
+                                            Word(target_node_spot, target_node) -> match e {
+                                                [target_dot, .. f] -> if is_mark(
+                                                    target_dot,
+                                                    TokenKind::Dot,
+                                                ) {
+                                                    match f {
+                                                        [target_port_atom, .. tail] -> match target_port_atom {
+                                                            Word(target_port_spot, target_port) -> match tail {
+                                                                [] -> built_connection(
+                                                                    region,
+                                                                    here,
+                                                                    source_node_spot,
+                                                                    source_node,
+                                                                    source_port_spot,
+                                                                    source_port,
+                                                                    target_node_spot,
+                                                                    target_node,
+                                                                    target_port_spot,
+                                                                    target_port,
+                                                                ),
+                                                                [extra, .. extras] -> Err((
+                                                                    node_at(
+                                                                        region,
+                                                                        spot_of(extra),
+                                                                    ),
+                                                                    "nothing follows a connection"
+                                                                )),
+                                                            },
+                                                            _ -> Err((
+                                                                node_at(
+                                                                    region,
+                                                                    spot_of(target_port_atom),
+                                                                ),
+                                                                "a port path is `node.port`"
+                                                            )),
+                                                        },
+                                                        [] -> Err((
+                                                            node_at(
+                                                                region,
+                                                                spot_of(target_dot),
+                                                            ),
+                                                            "a port path needs a port name"
+                                                        )),
+                                                    }
+                                                } else {
+                                                    Err((
+                                                        node_at(region, spot_of(target_dot)),
+                                                        "a port path is `node.port`"
+                                                    ))
+                                                },
+                                                [] -> Err((
+                                                    node_at(region, spot_of(target_node_atom)),
+                                                    "a port path is `node.port`"
+                                                )),
+                                            },
+                                            _ -> Err((
+                                                node_at(region, spot_of(target_node_atom)),
+                                                "a connection needs a target node"
+                                            )),
+                                        },
+                                        [] -> Err((
+                                            node_at(region, spot_of(arrow)),
+                                            "a connection needs a target"
+                                        )),
+                                    }
+                                } else {
+                                    Err((
+                                        node_at(region, spot_of(arrow)),
+                                        "a connection points with `->`"
+                                    ))
+                                },
+                                [] -> Err((
+                                    node_at(region, spot_of(source_port_atom)),
+                                    "a connection points with `->`"
+                                )),
+                            },
+                            _ -> Err((
+                                node_at(region, spot_of(source_port_atom)),
+                                "a port path is `node.port`"
+                            )),
+                        },
+                        [] -> Err((
+                            node_at(region, spot_of(source_dot)),
+                            "a port path needs a port name"
+                        )),
+                    }
+                } else {
+                    Err((node_at(region, spot_of(source_dot)), "a port path is `node.port`"))
+                },
+                [] -> Err((node_at(region, source_node_spot), "a port path is `node.port`")),
+            },
+            _ -> Err((
+                node_at(region, spot_of(source_node_atom)),
+                "a connection needs a source node"
+            )),
+        },
+        [] -> Err((node_at(region, here), "a connection needs a source port")),
+    }
+}
+
+fn binding_statement(
+    region: Syntax<TokenTree>,
+    here: NodePath,
+    atoms: List<Atom>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match atoms {
+        [part_atom, .. after_part] -> match part_atom {
+            Word(part_spot, part_name) -> match after_part {
+                [arrow, .. after_arrow] -> if is_mark(arrow, TokenKind::Arrow) {
+                    match after_arrow {
+                        [node_atom, .. tail] -> match node_atom {
+                            Word(node_spot, node) -> match tail {
+                                [] -> match anchored(region, here) {
+                                    anchor -> Ok(quote at here {
+                                        Bind(
+                                            $anchor,
+                                            ${ text_syntax(part_spot, part_name) },
+                                            ${ text_syntax(node_spot, node) },
+                                        )
+                                    }),
+                                },
+                                [extra, .. extras] -> Err((
+                                    node_at(region, spot_of(extra)),
+                                    "nothing follows a binding"
+                                )),
+                            },
+                            _ -> Err((
+                                node_at(region, spot_of(node_atom)),
+                                "a binding needs a node name"
+                            )),
+                        },
+                        [] -> Err((
+                            node_at(region, spot_of(arrow)),
+                            "a binding needs a node name"
+                        )),
+                    }
+                } else { Err((node_at(region, spot_of(arrow)), "a binding points with `->`")) },
+                [] -> Err((node_at(region, part_spot), "a binding points with `->`")),
+            },
+            _ -> Err((node_at(region, spot_of(part_atom)), "a binding needs a part name")),
+        },
+        [] -> Err((node_at(region, here), "a binding needs a part name")),
+    }
+}
+
+fn finish_statement(region: Syntax<TokenTree>, state: Parsed) -> Parsed {
+    match state.refusal {
+        Refused(node, why) -> state,
+        NoRefusal -> match reverse(state.pending) {
+            [] -> state,
+            atoms -> match statement_of(region, atoms) {
+                Err(problem) -> match problem {
+                    (node, why) -> state with {
+                        pending = [],
+                        refusal = Refused(node, why)
+                    },
+                },
+                Ok(declaration) -> state with {
+                    pending = [],
+                    declarations = Cons(declaration, state.declarations),
+                },
+            },
+        },
+    }
+}
+
+fn statement_step(region: Syntax<TokenTree>, state: Parsed, atom: Atom) -> Parsed {
+    if is_mark(atom, TokenKind::Semicolon) {
+        finish_statement(region, state)
+    } else { state with { pending = Cons(atom, state.pending) } }
+}
+
+fn parsed(region: Syntax<TokenTree>, atoms: List<Atom>) -> Parsed {
+    finish_statement(
+        region,
+        atoms.fold_from_start(
+            Parsed {
+                pending = [],
+                declarations = [],
+                refusal = NoRefusal
+            },
+            fn (state: Parsed, atom: Atom) -> Parsed { statement_step(region, state, atom) },
+        ),
+    )
+}
+
+let expand = fn (
+    region: Syntax<TokenTree>,
+) -> Result<Syntax<Expr>, Pair<Syntax<TokenTree>, Text>> {
+    match collect(region) {
+        Collected { atoms, refusal = Refused(node, why) } -> Err((node, why)),
+        Collected { atoms, refusal = NoRefusal } -> match reverse(atoms) {
+            [] -> Err((region, "a graph region is written in braces")),
+            [first, .. tail] -> match tail {
+                [] -> match first {
+                    Group(here, delimiter, children) -> if delimiter_equal(
+                        delimiter,
+                        Delimiter::Braces,
+                    ) {
+                        match parsed(region, children) {
+                            Parsed { pending, declarations, refusal = Refused(node, why) } -> Err((
+                                node,
+                                why
+                            )),
+                            Parsed { pending, declarations, refusal = NoRefusal } -> match reverse(
+                                declarations,
+                            ) {
+                                ordered -> Ok(quote at here {
+                                    make_description([$..ordered])
+                                }),
+                            },
+                        }
+                    } else {
+                        Err((node_at(region, here), "a graph region is written in braces"))
+                    },
+                    _ -> Err((
+                        node_at(region, spot_of(first)),
+                        "a graph region is written in braces"
+                    )),
+                },
+                [extra, .. extras] -> Err((
+                    node_at(region, spot_of(extra)),
+                    "a graph region is one brace group"
+                )),
+            },
+        },
+    }
+};
+
+// Replace one parameter value and no other byte. The parameter's value anchor
+// is kept in `Parameter`, so callers do not need to rediscover a range.
+let edit = fn (
+    region: Syntax<TokenTree>,
+    command: Text,
+    anchor: Nat,
+    argument: Text,
+) -> Result<List<Pair<Nat, Text>>, Text> {
+    match command {
+        "set_parameter" -> Ok([(anchor, argument)]),
+        _ -> Err("`graph` serves one command, `set_parameter`"),
+    }
+};
+
+fn port_kind_text(kind: PortKind) -> Text {
+    match kind {
+        Audio(channels) -> text_join(["audio(", nat_literal(channels), ")"]),
+        Control -> "control",
+        NoteEvents -> "note_events",
+    }
+}
+
+fn parameter_value_text(value: ParameterValue) -> Result<Text, Text> {
+    match value {
+        Count(number) -> Ok(nat_literal(number)),
+        Plain(number) -> match ratio_literal(number) {
+            None -> Err("this parameter's exact value has no source literal"),
+            Some(spelling) -> Ok(spelling),
+        },
+        Seconds(number) -> match ratio_literal(number) {
+            None -> Err("this time parameter's exact value has no source literal"),
+            Some(spelling) -> Ok(text_join([spelling, " s"])),
+        },
+    }
+}
+
+fn parameter_text(parameter: Parameter) -> Result<Text, Text> {
+    Ok(text_join([parameter.name, " = ", parameter_value_text(parameter.value)?, ";"]))
+}
+
+fn parameters_text(parameters: List<Parameter>) -> Result<Text, Text> {
+    parameters.fold_from_start(
+        Ok(""),
+        fn (sofar: Result<Text, Text>, parameter: Parameter) -> Result<Text, Text> {
+            Ok(text_join([sofar?, " ", parameter_text(parameter)?]))
+        },
+    )
+}
+
+fn path_text(path: PortPath) -> Text { text_join([path.node, ".", path.port]) }
+
+fn declaration_text(declaration: StudioDecl) -> Result<Text, Text> {
+    match declaration {
+        Input(anchor, name, kind) -> Ok(text_join([
+            "input ",
+            name,
+            ": ",
+            port_kind_text(kind),
+            ";",
+        ])),
+        Node(anchor, name, descriptor, parameters) -> Ok(text_join([
+            "processor ",
+            name,
+            " = ",
+            descriptor,
+            " {",
+            parameters_text(parameters)?,
+            " };",
+        ])),
+        Output(anchor, name, kind) -> Ok(text_join([
+            "output ",
+            name,
+            ": ",
+            port_kind_text(kind),
+            ";",
+        ])),
+        Connect(anchor, source_path, target_path) -> Ok(text_join([
+            "connect ",
+            path_text(source_path),
+            " -> ",
+            path_text(target_path),
+            ";",
+        ])),
+        Bind(anchor, part_name, node) -> Ok(text_join(["bind ", part_name, " -> ", node, ";"])),
+    }
+}
+
+fn declarations_text(declarations: List<StudioDecl>) -> Result<Text, Text> {
+    declarations.fold_from_start(
+        Ok(""),
+        fn (sofar: Result<Text, Text>, declaration: StudioDecl) -> Result<Text, Text> {
+            Ok(text_join([sofar?, " ", declaration_text(declaration)?]))
+        },
+    )
+}
+
+// A canonical new region. Printing does not edit existing source and therefore
+// does not promise to retain its comments or whitespace.
+let print = fn (description: StudioDescription) -> Result<Text, Text> {
+    Ok(declarations_text(description.declarations)?)
+};

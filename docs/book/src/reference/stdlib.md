@@ -23,6 +23,7 @@ The modules:
 | `std::post_tonal::pcset` | Pitch-class sets at any division: normal order, prime form, set classes |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
+| `std::sound::graph` | Finite studio descriptions and validation of descriptors, ports, parameters, bindings, and cycles |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
 | `std::transformational` | Neo-Riemannian transformations on triads |
 | `std::voicing` | Voicing policies: close and drop positions |
@@ -76,6 +77,14 @@ adapter expands, and its regions are read-only; an *editable* one also answers s
 own region; a *generative* one also writes a new region for a value it is handed. `doubled` is editable and says so.
 `staff` is generative: it serves one command, `replace`, which puts new text where the node an anchor names stands, and
 it writes a whole page back out of a `StaffDocument`.
+
+`std::adapters::graph` is the generative reader for `std::sound::graph`. Its semicolon-terminated region states graph
+inputs and outputs, instrument and processor nodes, parameters, directed connections, and instrument bindings. Reading
+checks the local spelling and produces a finite `StudioDescription`; the ordinary package's `validate` then checks
+descriptor contracts, exact port kinds and directions, parameter units and ranges, binding targets, and instantaneous
+cycles. The adapter allocates no processor and advances no signal. It serves `set_parameter` as an anchored minimal edit
+and prints a canonical graph; [`examples/live-studio.musa`](../../../../examples/live-studio.musa) is the complete
+trial.
 
 Writing back is not the same claim as reading. A printed page says what the value said — realize the page a printer
 wrote and you get the spans the value held — but it is new text, so it preserves no comment, no blank line, and no

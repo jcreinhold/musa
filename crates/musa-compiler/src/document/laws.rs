@@ -673,6 +673,7 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("house", include_str!("../../../../examples/house.musa")),
     ("in-c", include_str!("../../../../examples/in-c.musa")),
     ("invention", include_str!("../../../../examples/invention.musa")),
+    ("live-studio", include_str!("../../../../examples/live-studio.musa")),
     ("loop-lengths", include_str!("../../../../examples/loop-lengths.musa")),
     ("mobile", include_str!("../../../../examples/mobile.musa")),
     ("modulation", include_str!("../../../../examples/modulation.musa")),
@@ -766,6 +767,14 @@ fn the_doubled_adapter_elaborates() {
 fn the_staff_adapter_elaborates() {
     let said = adapter(include_str!("../../../../stdlib/src/adapters/staff.musa"));
     assert!(said.is_empty(), "the staff adapter elaborates whole: {said:?}");
+}
+
+/// `stdlib/src/adapters/graph.musa`, elaborated in phase scope with its
+/// ordinary finite-description package.
+#[test]
+fn the_graph_adapter_elaborates() {
+    let said = adapter(include_str!("../../../../stdlib/src/adapters/graph.musa"));
+    assert!(said.is_empty(), "the graph adapter elaborates whole: {said:?}");
 }
 
 /// One adapter, read the way the expansion phase reads one.

@@ -1,0 +1,506 @@
+import std::list;
+
+// A finite studio graph description.
+//
+// This package allocates no processor, advances no signal, and reads no
+// device. Every declaration carries the adapter anchor of the syntax that
+// produced it, so validation returns a value naming the declaration at fault.
+
+data PortKind {
+    Audio(channels: Nat),
+    Control,
+    NoteEvents,
+}
+
+// Equality is an ordinary definition in the declared type's namespace.
+impl PortKind {
+    fn equal(left: PortKind, right: PortKind) -> Bool {
+        match(left, right) {
+            (Audio(left_channels), Audio(right_channels)) -> left_channels == right_channels,
+            (Control, Control) -> true,
+            (NoteEvents, NoteEvents) -> true,
+            _ -> false,
+        }
+    }
+}
+
+// Whether a resolved port receives a connection or sends one.
+data PortDirection {
+    InputPort,
+    OutputPort,
+}
+
+// One node and one port on it, kept as two names rather than reparsed text.
+record PortPath {
+    node: Text;
+    port: Text;
+}
+
+// One resolved descriptor port, private to graph validation.
+private record PortInfo {
+    kind: PortKind;
+    direction: PortDirection;
+}
+
+// The unit remains part of the written value. Conversion belongs at the DSP
+// edge, after validation has checked the descriptor's contract.
+data ParameterValue {
+    Count(value: Nat),
+    Plain(value: Ratio),
+    Seconds(value: Ratio),
+}
+
+// One written setting, including the anchor of its value.
+record Parameter {
+    anchor: Nat;
+    name: Text;
+    value: ParameterValue;
+}
+
+// Every declaration the adapter can read from a studio region.
+data StudioDecl {
+    Input(anchor: Nat, name: Text, kind: PortKind),
+    Node(anchor: Nat, name: Text, descriptor: Text, parameters: List<Parameter>),
+    Output(anchor: Nat, name: Text, kind: PortKind),
+    Connect(anchor: Nat, source_path: PortPath, target_path: PortPath),
+    Bind(anchor: Nat, part_name: Text, node: Text),
+}
+
+// A complete finite description, still independent of any running processor.
+record StudioDescription {
+    declarations: List<StudioDecl>;
+}
+
+// A description whose names, settings, ports, bindings, and cycles were checked.
+record CheckedStudio {
+    description: StudioDescription;
+}
+
+// Every graph-level refusal `validate` can return, with its source anchor.
+data StudioError {
+    UnknownDescriptor(anchor: Nat, descriptor: Text),
+    DuplicateName(first: Nat, second: Nat, name: Text),
+    UnknownParameter(anchor: Nat, descriptor: Text, name: Text),
+    ParameterUnitMismatch(anchor: Nat, name: Text),
+    ParameterOutOfRange(anchor: Nat, name: Text),
+    UnknownPort(anchor: Nat, path: PortPath),
+    WrongPortDirection(anchor: Nat, path: PortPath),
+    PortKindMismatch(anchor: Nat, source: PortKind, target: PortKind),
+    UnknownBinding(anchor: Nat, part_name: Text, node: Text),
+    InstantaneousCycle(anchors: List<Nat>),
+}
+
+// One declaration name and its anchor, private to duplicate checking.
+private record Named {
+    anchor: Nat;
+    name: Text;
+}
+
+// Build a description from declarations already in written order.
+fn make_description(declarations: List<StudioDecl>) -> StudioDescription {
+    StudioDescription {
+        declarations = declarations
+    }
+}
+
+// Recover the finite written description from a checked one.
+fn description_of(checked: CheckedStudio) -> StudioDescription { checked.description }
+
+// Whether an exact value fits an inclusive normalized parameter range.
+private fn between_zero_and_one(value: Ratio) -> Bool {
+    if value < 0/1 {
+        false
+    } else if 1/1 < value {
+        false
+    } else { true }
+}
+
+// Whether a time is nonnegative and within the trial descriptors' bound.
+private fn at_most_ten_seconds(value: Ratio) -> Bool {
+    if value < 0/1 {
+        false
+    } else if 10/1 < value {
+        false
+    } else { true }
+}
+
+// Whether a polyphonic voice count fits the finite descriptor range.
+private fn count_in_voice_range(value: Nat) -> Bool {
+    if value == 0 {
+        false
+    } else if value < 129 {
+        true
+    } else { false }
+}
+
+// Whether the trial package declares this processor descriptor.
+private fn descriptor_known(descriptor: Text) -> Bool {
+    match descriptor {
+        "poly_sine" -> true,
+        "scale" -> true,
+        "reverb" -> true,
+        _ -> false,
+    }
+}
+
+// Check one parameter against its descriptor's name, unit, and range.
+private fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<StudioError> {
+    match descriptor {
+        "poly_sine" -> match parameter.name {
+            "voices" -> match parameter.value {
+                Count(value) -> if count_in_voice_range(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            "attack" -> match parameter.value {
+                Seconds(value) -> if at_most_ten_seconds(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            "release" -> match parameter.value {
+                Seconds(value) -> if at_most_ten_seconds(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),
+        },
+        "scale" -> match parameter.name {
+            "factor" -> match parameter.value {
+                Plain(value) -> None,
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),
+        },
+        "reverb" -> match parameter.name {
+            "room" -> match parameter.value {
+                Plain(value) -> if between_zero_and_one(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            "damping" -> match parameter.value {
+                Plain(value) -> if between_zero_and_one(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            "mix" -> match parameter.value {
+                Plain(value) -> if between_zero_and_one(value) {
+                    None
+                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+            },
+            _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),
+        },
+        _ -> Some(UnknownDescriptor(parameter.anchor, descriptor)),
+    }
+}
+
+// Return the first invalid parameter in written order, if there is one.
+private fn parameters_checked(
+    descriptor: Text,
+    parameters: List<Parameter>,
+) -> Option<StudioError> {
+    parameters.fold_from_start(
+        None,
+        fn (found: Option<StudioError>, parameter: Parameter) -> Option<StudioError> {
+            match found {
+                Some(error) -> Some(error),
+                None -> parameter_checked(descriptor, parameter),
+            }
+        },
+    )
+}
+
+// Resolve one port declared by a known processor descriptor.
+private fn descriptor_port(descriptor: Text, port: Text) -> Option<PortInfo> {
+    match descriptor {
+        "poly_sine" -> match port {
+            "notes" -> Some(PortInfo {
+                kind = NoteEvents,
+                direction = InputPort
+            }),
+            "expression" -> Some(PortInfo {
+                kind = Control,
+                direction = InputPort
+            }),
+            "audio" -> Some(PortInfo {
+                kind = Audio(2),
+                direction = OutputPort
+            }),
+            _ -> None,
+        },
+        "scale" -> match port {
+            "control_in" -> Some(PortInfo {
+                kind = Control,
+                direction = InputPort
+            }),
+            "control" -> Some(PortInfo {
+                kind = Control,
+                direction = OutputPort
+            }),
+            _ -> None,
+        },
+        "reverb" -> match port {
+            "audio_in" -> Some(PortInfo {
+                kind = Audio(2),
+                direction = InputPort
+            }),
+            "audio" -> Some(PortInfo {
+                kind = Audio(2),
+                direction = OutputPort
+            }),
+            _ -> None,
+        },
+        _ -> None,
+    }
+}
+
+// Resolve an external or processor port from a complete description.
+private fn port_of(description: StudioDescription, path: PortPath) -> Option<PortInfo> {
+    (description.declarations).fold_from_start(
+        None,
+        fn (found: Option<PortInfo>, declaration: StudioDecl) -> Option<PortInfo> {
+            match found {
+                Some(info) -> Some(info),
+                None -> match declaration {
+                    Input(anchor, name, kind) -> if name == path.node {
+                        if path.port == "out" {
+                            Some(PortInfo {
+                                kind = kind,
+                                direction = OutputPort
+                            })
+                        } else { None }
+                    } else { None },
+                    Node(anchor, name, descriptor, parameters) -> if name == path.node {
+                        descriptor_port(descriptor, path.port)
+                    } else { None },
+                    Output(anchor, name, kind) -> if name == path.node {
+                        if path.port == "in" {
+                            Some(PortInfo {
+                                kind = kind,
+                                direction = InputPort
+                            })
+                        } else { None }
+                    } else { None },
+                    _ -> None,
+                },
+            }
+        },
+    )
+}
+
+// Whether a resolved port may stand at the source of a connection.
+private fn direction_is_output(direction: PortDirection) -> Bool {
+    match direction {
+        OutputPort -> true,
+        InputPort -> false
+    }
+}
+
+// Whether a resolved port may stand at the target of a connection.
+private fn direction_is_input(direction: PortDirection) -> Bool {
+    match direction {
+        InputPort -> true,
+        OutputPort -> false
+    }
+}
+
+// Check both ends, their direction, and their exact port-kind agreement.
+private fn connection_checked(
+    description: StudioDescription,
+    anchor: Nat,
+    source_path: PortPath,
+    target_path: PortPath,
+) -> Option<StudioError> {
+    match port_of(description, source_path) {
+        None -> Some(UnknownPort(anchor, source_path)),
+        Some(source) -> if direction_is_output(source.direction) {
+            match port_of(description, target_path) {
+                None -> Some(UnknownPort(anchor, target_path)),
+                Some(target) -> if direction_is_input(target.direction) {
+                    if source.kind == target.kind {
+                        None
+                    } else { Some(PortKindMismatch(anchor, source.kind, target.kind)) }
+                } else { Some(WrongPortDirection(anchor, target_path)) },
+            }
+        } else { Some(WrongPortDirection(anchor, source_path)) },
+    }
+}
+
+// Project the namespace-bearing declarations and ignore edges and bindings.
+private fn named(declaration: StudioDecl) -> Option<Named> {
+    match declaration {
+        Input(anchor, name, kind) -> Some(Named {
+            anchor = anchor,
+            name = name
+        }),
+        Node(anchor, name, descriptor, parameters) -> Some(Named {
+            anchor = anchor,
+            name = name
+        }),
+        Output(anchor, name, kind) -> Some(Named {
+            anchor = anchor,
+            name = name
+        }),
+        _ -> None,
+    }
+}
+
+// Find a second declaration carrying the same graph-level name.
+private fn duplicate_checked(
+    description: StudioDescription,
+    declaration: StudioDecl,
+) -> Option<StudioError> {
+    match named(declaration) {
+        None -> None,
+        Some(current) -> (description.declarations).fold_from_start(
+            None,
+            fn (found: Option<StudioError>, other: StudioDecl) -> Option<StudioError> {
+                match found {
+                    Some(error) -> Some(error),
+                    None -> match named(other) {
+                        None -> None,
+                        Some(candidate) -> if current.name == candidate.name {
+                            if current.anchor == candidate.anchor {
+                                None
+                            } else {
+                                Some(DuplicateName(
+                                    candidate.anchor,
+                                    current.anchor,
+                                    current.name,
+                                ))
+                            }
+                        } else { None },
+                    },
+                }
+            },
+        ),
+    }
+}
+
+// Whether a binding target names a declared processor node.
+private fn node_exists(description: StudioDescription, sought: Text) -> Bool {
+    (description.declarations).fold_from_start(
+        false,
+        fn (found: Bool, declaration: StudioDecl) -> Bool {
+            if found {
+                true
+            } else {
+                match declaration {
+                    Node(anchor, name, descriptor, parameters) -> name == sought,
+                    _ -> false,
+                }
+            }
+        },
+    )
+}
+
+// Find one path from `current` to `target`. The first argument decreases on
+// every recursive call, so malformed cyclic input cannot make validation run
+// forever.
+private fn connection_path(
+    remaining: Nat,
+    declarations: List<StudioDecl>,
+    current: Text,
+    target: Text,
+) -> Option<List<Nat>> {
+    match remaining {
+        Zero -> None,
+        Succ(fewer) -> declarations.fold_from_start(
+            None,
+            fn (found: Option<List<Nat>>, declaration: StudioDecl) -> Option<List<Nat>> {
+                match found {
+                    Some(path) -> Some(path),
+                    None -> match declaration {
+                        Connect(anchor, source_path, target_path) -> if source_path.node == current {
+                            if target_path.node == target {
+                                Some([anchor])
+                            } else {
+                                match connection_path(
+                                    fewer,
+                                    declarations,
+                                    target_path.node,
+                                    target,
+                                ) {
+                                    Some(path) -> Some(Cons(anchor, path)),
+                                    None -> None,
+                                }
+                            }
+                        } else { None },
+                        _ -> None,
+                    },
+                }
+            },
+        ),
+    }
+}
+
+// Return every connection anchor in the first cycle closed by this edge.
+private fn cycle_checked(
+    description: StudioDescription,
+    declaration: StudioDecl,
+) -> Option<StudioError> {
+    match declaration {
+        Connect(anchor, source_path, target_path) -> match connection_path(
+            length(description.declarations),
+            description.declarations,
+            target_path.node,
+            source_path.node,
+        ) {
+            Some(path) -> Some(InstantaneousCycle(Cons(anchor, path))),
+            None -> None,
+        },
+        _ -> None,
+    }
+}
+
+// Check one declaration against the complete graph around it.
+private fn declaration_checked(
+    description: StudioDescription,
+    declaration: StudioDecl,
+) -> Option<StudioError> {
+    match duplicate_checked(description, declaration) {
+        Some(error) -> Some(error),
+        None -> match declaration {
+            Input(anchor, name, kind) -> None,
+            Node(anchor, name, descriptor, parameters) -> if descriptor_known(descriptor) {
+                parameters_checked(descriptor, parameters)
+            } else { Some(UnknownDescriptor(anchor, descriptor)) },
+            Output(anchor, name, kind) -> None,
+            Connect(anchor, source_path, target_path) -> match connection_checked(
+                description,
+                anchor,
+                source_path,
+                target_path,
+            ) {
+                Some(error) -> Some(error),
+                None -> cycle_checked(description, declaration),
+            },
+            Bind(anchor, part_name, node) -> if node_exists(description, node) {
+                None
+            } else { Some(UnknownBinding(anchor, part_name, node)) },
+        },
+    }
+}
+
+// Validate every declaration and return the first complaint in written order.
+fn validate(description: StudioDescription) -> Result<CheckedStudio, StudioError> {
+    match(description.declarations).fold_from_start(
+        None,
+        fn (found: Option<StudioError>, declaration: StudioDecl) -> Option<StudioError> {
+            match found {
+                Some(error) -> Some(error),
+                None -> declaration_checked(description, declaration),
+            }
+        },
+    ) {
+        Some(error) -> Err(error),
+        None -> Ok(CheckedStudio {
+            description = description
+        }),
+    }
+}

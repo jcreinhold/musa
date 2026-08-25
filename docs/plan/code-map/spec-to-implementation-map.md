@@ -1143,6 +1143,13 @@ finding. The trial's dispatch program compiles today as `tests/fixtures/staff-di
 pattern at all — which is [note 43](../../notes/research/language-design-closure/43-dependent-language-trial.md) §2's
 own finding about where the form belongs, since a pattern is written in Musa and staff notation is not.
 
+**The independent second witness is done.** Prompt 167 adds `stdlib/src/adapters/graph.musa` and the ordinary finite
+description and validator in `stdlib/src/sound/graph.musa`. It uses the same compiler-facing surface and no private
+input, while its musical structure is a directed graph rather than a written sequence. Thirteen executable laws cover
+the seven reading groups, four source-anchored validation errors, minimal editing, and printer re-expansion. The size,
+shared rows, asymmetries, paper-trial divergences, and temporary gap to legacy `StudioSpec` are recorded in
+[note 66](../../notes/research/language-design-closure/66-the-studio-rewrite-measured.md).
+
 ## Quotation in the core
 
 > A quotation as a core term: the template a literal, instantiation and matching δ-rules.

@@ -53,6 +53,7 @@
     { "file": "in-c.musa", "events": false },
     { "file": "invention.musa", "events": false },
     { "file": "limited-transposition.musa", "events": false },
+    { "file": "live-studio.musa", "events": false },
     { "file": "loop-lengths.musa", "events": false },
     { "file": "mobile.musa", "events": false },
     { "file": "modulation.musa", "events": false },

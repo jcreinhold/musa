@@ -1,0 +1,7 @@
+// Sound descriptions: finite data that says what a studio graph contains.
+//
+// A description is not a running processor and has no musical extent. The
+// graph package validates written intent; the later machine cutover decides
+// how a checked value becomes a running machine.
+
+mod graph;

@@ -1,0 +1,50 @@
+// A studio region states a finite graph. It allocates no processor and runs no
+// signal; `validate` checks the description as ordinary Musa data.
+piece "Live studio" {
+    import std::sound::graph;
+    import syntax std::adapters::graph as graph;
+
+    let live_studio: StudioDescription = syntax graph {
+        input notes: note_events;
+        input expression: control;
+        instrument lead = poly_sine {
+            voices = 16;
+            attack = 3/100 s;
+            release = 7/10 s;
+        };
+        processor expression_depth = scale {
+            factor = 1/2;
+        };
+        processor room = reverb {
+            room = 4/5;
+            damping = 11/20;
+            mix = 3/10;
+        };
+        output main: audio(2);
+        connect notes.out -> lead.notes;
+        connect expression.out -> expression_depth.control_in;
+        connect expression_depth.control -> lead.expression;
+        connect lead.audio -> room.audio_in;
+        connect room.audio -> main.in;
+        bind clarinet -> lead;
+    };
+
+    let checked: Result<CheckedStudio, StudioError> = validate(live_studio);
+
+    meter 4/4;
+    key c major;
+    score {
+        part proof {
+            voice graph_is_valid {
+                use match checked {
+                    Ok(reached) -> music {
+                        c5/1
+                    },
+                    Err(problem) -> music {
+                        rest/1
+                    },
+                };
+            }
+        }
+    }
+}

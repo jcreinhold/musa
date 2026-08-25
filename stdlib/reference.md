@@ -266,6 +266,35 @@ searches the filesystem.
 - `fn raise(from: Degree) -> Degree` — Raise a degree chromatically without moving its coordinate.
 - `fn lower(from: Degree) -> Degree` — Lower a degree chromatically without moving its coordinate.
 
+## `std::sound::graph`
+
+- `record PortPath: Type` — One node and one port on it, kept as two names rather than reparsed text.
+- `record PortInfo` — One resolved descriptor port, private to graph validation.
+- `record Parameter: Type` — One written setting, including the anchor of its value.
+- `record StudioDescription: Type` — A complete finite description, still independent of any running processor.
+- `record CheckedStudio: Type` — A description whose names, settings, ports, bindings, and cycles were checked.
+- `record Named` — One declaration name and its anchor, private to duplicate checking.
+- `fn make_description(declarations: List<StudioDecl>) -> StudioDescription` — Build a description from declarations already in written order.
+- `fn description_of(checked: CheckedStudio) -> StudioDescription` — Recover the finite written description from a checked one.
+- `fn between_zero_and_one(value: Ratio) -> Bool` — Whether an exact value fits an inclusive normalized parameter range.
+- `fn at_most_ten_seconds(value: Ratio) -> Bool` — Whether a time is nonnegative and within the trial descriptors' bound.
+- `fn count_in_voice_range(value: Nat) -> Bool` — Whether a polyphonic voice count fits the finite descriptor range.
+- `fn descriptor_known(descriptor: Text) -> Bool` — Whether the trial package declares this processor descriptor.
+- `fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<StudioError>` — Check one parameter against its descriptor's name, unit, and range.
+- `fn parameters_checked(descriptor: Text, parameters: List<Parameter>) -> Option<StudioError>` — Return the first invalid parameter in written order, if there is one.
+- `fn descriptor_port(descriptor: Text, port: Text) -> Option<PortInfo>` — Resolve one port declared by a known processor descriptor.
+- `fn port_of(description: StudioDescription, path: PortPath) -> Option<PortInfo>` — Resolve an external or processor port from a complete description.
+- `fn direction_is_output(direction: PortDirection) -> Bool` — Whether a resolved port may stand at the source of a connection.
+- `fn direction_is_input(direction: PortDirection) -> Bool` — Whether a resolved port may stand at the target of a connection.
+- `fn connection_checked(description: StudioDescription, anchor: Nat, source_path: PortPath, target_path: PortPath) -> Option<StudioError>` — Check both ends, their direction, and their exact port-kind agreement.
+- `fn named(declaration: StudioDecl) -> Option<Named>` — Project the namespace-bearing declarations and ignore edges and bindings.
+- `fn duplicate_checked(description: StudioDescription, declaration: StudioDecl) -> Option<StudioError>` — Find a second declaration carrying the same graph-level name.
+- `fn node_exists(description: StudioDescription, sought: Text) -> Bool` — Whether a binding target names a declared processor node.
+- `fn connection_path(remaining: Nat, declarations: List<StudioDecl>, current: Text, target: Text) -> Option<List<Nat>>` — Find one path from `current` to `target`. The first argument decreases on every recursive call, so malformed cyclic input cannot make validation run forever.
+- `fn cycle_checked(description: StudioDescription, declaration: StudioDecl) -> Option<StudioError>` — Return every connection anchor in the first cycle closed by this edge.
+- `fn declaration_checked(description: StudioDescription, declaration: StudioDecl) -> Option<StudioError>` — Check one declaration against the complete graph around it.
+- `fn validate(description: StudioDescription) -> Result<CheckedStudio, StudioError>` — Validate every declaration and return the first complaint in written order.
+
 ## `std::tonal::harmony`
 
 - `fn numeral(ordinal: Nat, members: Nat, position: Nat) -> Option<Roman>` — The numeral three numbers describe, when they describe one. Absent when the ordinal is outside `I`–`vii`, when the stack is smaller than a triad or larger than a thirteenth, or when the bass position names a member the stack does not have — a third inversion of a triad is not a numeral that is hard to realize, it is not a numeral. OMT 020 and 021.

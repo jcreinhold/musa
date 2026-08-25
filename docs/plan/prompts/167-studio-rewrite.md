@@ -1,7 +1,7 @@
 ---
 id: 167
 slug: studio-rewrite
-status: pending
+status: done
 depends_on: [166, 166a]
 phase: 3
 ---

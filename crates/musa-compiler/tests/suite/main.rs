@@ -29,6 +29,7 @@ mod events_subset_laws;
 mod expression_stage;
 mod finite_data_laws;
 mod graces;
+mod graph_adapter_laws;
 mod groove;
 mod higher_order_music_laws;
 mod import_laws;
