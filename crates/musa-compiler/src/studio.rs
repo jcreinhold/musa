@@ -1,7 +1,8 @@
-//! Resolve surface `studio` declarations into [`StudioSpec`].
+//! Resolve surface `studio` declarations into the temporary [`StudioSpec`] oracle.
 //!
-//! The editable vocabulary belongs to `musa-dsp`; this module is only the
-//! compiler pass that reads source and constructs one value of that vocabulary.
+//! Ordinary declarations in `std::sound` own the editable vocabulary. This
+//! legacy compiler path remains only for differential migration through prompt
+//! 180a and must gain no new semantic construct or caller.
 
 use indexmap::IndexMap;
 use musa_dsp::{

@@ -1,7 +1,7 @@
 ---
 id: 175
 slug: exact-studio-values
-status: pending
+status: done
 depends_on: [93, 174b]
 phase: 3
 ---

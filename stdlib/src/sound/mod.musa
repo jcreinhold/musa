@@ -4,4 +4,5 @@
 // graph package validates written intent; the later machine cutover decides
 // how a checked value becomes a running machine.
 
+mod quantity;
 mod graph;

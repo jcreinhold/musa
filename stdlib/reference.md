@@ -278,6 +278,8 @@ searches the filesystem.
 - `fn description_of(checked: CheckedStudio) -> StudioDescription` — Recover the finite written description from a checked one.
 - `fn between_zero_and_one(value: Ratio) -> Bool` — Whether an exact value fits an inclusive normalized parameter range.
 - `fn at_most_ten_seconds(value: Ratio) -> Bool` — Whether a time is nonnegative and within the trial descriptors' bound.
+- `fn linear_magnitude(quantity: ExactQuantity) -> Option<Ratio>` — Read a normalized value only when its source index proves the requested dimension. There is no host-side unit coercion or fallback.
+- `fn seconds_magnitude(quantity: ExactQuantity) -> Option<Ratio>` — Read seconds only when the source index and unit both prove time.
 - `fn count_in_voice_range(value: Nat) -> Bool` — Whether a polyphonic voice count fits the finite descriptor range.
 - `fn descriptor_known(descriptor: Text) -> Bool` — Whether the trial package declares this processor descriptor.
 - `fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<StudioError>` — Check one parameter against its descriptor's name, unit, and range.
@@ -294,6 +296,16 @@ searches the filesystem.
 - `fn cycle_checked(description: StudioDescription, declaration: StudioDecl) -> Option<StudioError>` — Return every connection anchor in the first cycle closed by this edge.
 - `fn declaration_checked(description: StudioDescription, declaration: StudioDecl) -> Option<StudioError>` — Check one declaration against the complete graph around it.
 - `fn validate(description: StudioDescription) -> Result<CheckedStudio, StudioError>` — Validate every declaration and return the first complaint in written order.
+
+## `std::sound::quantity`
+
+- `record ExactQuantityArtifact: Type` — The versioned checked-artifact root consumed at the DSP boundary.
+- `fn hertz(magnitude: Ratio) -> ExactQuantity` — An exact frequency in hertz.
+- `fn linear(magnitude: Ratio) -> ExactQuantity` — An exact dimensionless linear amplitude or factor.
+- `fn decibels(magnitude: Ratio) -> ExactQuantity` — An exact logarithmic amplitude level in decibels.
+- `fn seconds(magnitude: Ratio) -> ExactQuantity` — An exact physical duration in seconds.
+- `fn milliseconds(magnitude: Ratio) -> ExactQuantity` — Milliseconds normalize exactly into the source base unit. The CST retains the written `ms` token for diagnostics and token-scoped edits.
+- `fn quantity_artifact(quantity: ExactQuantity) -> ExactQuantityArtifact` — Wrap a quantity in the versioned value consumed by a host boundary.
 
 ## `std::tonal::harmony`
 

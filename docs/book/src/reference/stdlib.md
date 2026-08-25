@@ -24,6 +24,7 @@ The modules:
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
 | `std::sound::graph` | Finite studio descriptions and validation of descriptors, ports, parameters, bindings, and cycles |
+| `std::sound::quantity` | Exact indexed sound dimensions, units, quantities, and their checked boundary artifact |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
 | `std::transformational` | Neo-Riemannian transformations on triads |
 | `std::voicing` | Voicing policies: close and drop positions |
@@ -85,6 +86,12 @@ descriptor contracts, exact port kinds and directions, parameter units and range
 cycles. The adapter allocates no processor and advances no signal. It serves `set_parameter` as an anchored minimal edit
 and prints a canonical graph; [`examples/live-studio.musa`](../../../../examples/live-studio.musa) is the complete
 trial.
+
+`std::sound::quantity` declares frequency, linear amplitude, level, and physical time as source data. A `SoundUnit(d)`
+and `SoundQuantity(d)` share the same index, so the ordinary type checker refuses (for example) seconds where frequency
+is required. Magnitudes remain exact ratios; `milliseconds(30/1)` and `seconds(3/100)` produce the same checked value,
+while the lossless source tree still retains which spelling the author wrote. Floating-point conversion happens only
+when DSP preparation needs a physical representation.
 
 Writing back is not the same claim as reading. A printed page says what the value said — realize the page a printer
 wrote and you get the spans the value held — but it is new text, so it preserves no comment, no blank line, and no

@@ -25,11 +25,11 @@ use num_rational::Ratio;
 
 use musa_score::origin::SourceSpan;
 
-/// A parameter's physical unit (§7.2: units are part of the syntax).
+/// Temporary unit mirror for the pre-source studio compatibility oracle.
 ///
-/// This is the **one** unit declaration in the workspace, so a language-level
-/// `1400 Hz` and a DSP-level cutoff descriptor cannot disagree about what
-/// `Hz` is.
+/// `std::sound::quantity::SoundUnit` is authoritative. This enum remains only
+/// for the legacy production path compared and deleted by prompt 180a; new
+/// semantic callers must decode a checked source quantity instead.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unit {
     /// Hertz.
@@ -54,7 +54,7 @@ impl Unit {
     }
 }
 
-/// A written parameter value, in the unit it was written in.
+/// Temporary exact quantity for the pre-source studio compatibility oracle.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WrittenQuantity {
     /// The exact magnitude, normalized to the unit's base (`ms` becomes

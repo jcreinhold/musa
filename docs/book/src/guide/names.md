@@ -264,3 +264,7 @@ The same boundary serves a structurally different language. `std::adapters::grap
 `examples/live-studio.musa` into `std::sound::graph`'s `StudioDescription`. The adapter checks the local grammar and
 retains anchors; the ordinary package validates descriptor names, parameters, directed ports, bindings, and cycles.
 Neither operation allocates a processor or runs a signal.
+
+The parameter values it produces use `std::sound::quantity`, where the unit and quantity share a source type index.
+Milliseconds normalize exactly to seconds there; the original token remains in the lossless source for an editor, and
+only later DSP preparation converts the checked rational to a floating physical value.

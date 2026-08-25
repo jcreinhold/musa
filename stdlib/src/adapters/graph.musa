@@ -11,6 +11,7 @@
 // from left to right and stacks answers for one final reversal.
 import std::list;
 import std::sound::graph;
+import std::sound::quantity;
 
 let level = "generative";
 
@@ -240,7 +241,7 @@ fn built_parameter(
                             Parameter {
                                 anchor = $anchor,
                                 name = ${ text_syntax(name_spot, name) },
-                                value = Seconds($value),
+                                value = ExactValue(seconds($value)),
                             }
                         }
                     ))
@@ -262,7 +263,7 @@ fn built_parameter(
                             Parameter {
                                 anchor = $anchor,
                                 name = ${ text_syntax(name_spot, name) },
-                                value = Plain($value),
+                                value = ExactValue(linear($value)),
                             }
                         }
                     ))
@@ -1074,13 +1075,16 @@ fn port_kind_text(kind: PortKind) -> Text {
 fn parameter_value_text(value: ParameterValue) -> Result<Text, Text> {
     match value {
         Count(number) -> Ok(nat_literal(number)),
-        Plain(number) -> match ratio_literal(number) {
+        ExactValue(Exact(dimension, Written(inner, number, unit))) -> match ratio_literal(
+            number,
+        ) {
             None -> Err("this parameter's exact value has no source literal"),
-            Some(spelling) -> Ok(spelling),
-        },
-        Seconds(number) -> match ratio_literal(number) {
-            None -> Err("this time parameter's exact value has no source literal"),
-            Some(spelling) -> Ok(text_join([spelling, " s"])),
+            Some(spelling) -> match unit {
+                Hertz -> Ok(text_join([spelling, " Hz"])),
+                Linear -> Ok(spelling),
+                Decibels -> Ok(text_join([spelling, " dB"])),
+                Seconds -> Ok(text_join([spelling, " s"])),
+            },
         },
     }
 }

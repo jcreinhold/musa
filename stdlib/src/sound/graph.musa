@@ -1,4 +1,5 @@
 import std::list;
+import std::sound::quantity;
 
 // A finite studio graph description.
 //
@@ -46,8 +47,7 @@ private record PortInfo {
 // edge, after validation has checked the descriptor's contract.
 data ParameterValue {
     Count(value: Nat),
-    Plain(value: Ratio),
-    Seconds(value: Ratio),
+    ExactValue(value: ExactQuantity),
 }
 
 // One written setting, including the anchor of its value.
@@ -126,6 +126,23 @@ private fn at_most_ten_seconds(value: Ratio) -> Bool {
     } else { true }
 }
 
+// Read a normalized value only when its source index proves the requested
+// dimension. There is no host-side unit coercion or fallback.
+private fn linear_magnitude(quantity: ExactQuantity) -> Option<Ratio> {
+    match quantity {
+        Exact(LinearAmplitude, Written(inner, value, Linear)) -> Some(value),
+        _ -> None,
+    }
+}
+
+// Read seconds only when the source index and unit both prove time.
+private fn seconds_magnitude(quantity: ExactQuantity) -> Option<Ratio> {
+    match quantity {
+        Exact(Time, Written(inner, value, Seconds)) -> Some(value),
+        _ -> None,
+    }
+}
+
 // Whether a polyphonic voice count fits the finite descriptor range.
 private fn count_in_voice_range(value: Nat) -> Bool {
     if value == 0 {
@@ -156,43 +173,61 @@ private fn parameter_checked(descriptor: Text, parameter: Parameter) -> Option<S
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             "attack" -> match parameter.value {
-                Seconds(value) -> if at_most_ten_seconds(value) {
-                    None
-                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                ExactValue(quantity) -> match seconds_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> if at_most_ten_seconds(value) {
+                        None
+                    } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             "release" -> match parameter.value {
-                Seconds(value) -> if at_most_ten_seconds(value) {
-                    None
-                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                ExactValue(quantity) -> match seconds_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> if at_most_ten_seconds(value) {
+                        None
+                    } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),
         },
         "scale" -> match parameter.name {
             "factor" -> match parameter.value {
-                Plain(value) -> None,
+                ExactValue(quantity) -> match linear_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> None,
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),
         },
         "reverb" -> match parameter.name {
             "room" -> match parameter.value {
-                Plain(value) -> if between_zero_and_one(value) {
-                    None
-                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                ExactValue(quantity) -> match linear_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> if between_zero_and_one(value) {
+                        None
+                    } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             "damping" -> match parameter.value {
-                Plain(value) -> if between_zero_and_one(value) {
-                    None
-                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                ExactValue(quantity) -> match linear_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> if between_zero_and_one(value) {
+                        None
+                    } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             "mix" -> match parameter.value {
-                Plain(value) -> if between_zero_and_one(value) {
-                    None
-                } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                ExactValue(quantity) -> match linear_magnitude(quantity) {
+                    None -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
+                    Some(value) -> if between_zero_and_one(value) {
+                        None
+                    } else { Some(ParameterOutOfRange(parameter.anchor, parameter.name)) },
+                },
                 _ -> Some(ParameterUnitMismatch(parameter.anchor, parameter.name)),
             },
             _ -> Some(UnknownParameter(parameter.anchor, descriptor, parameter.name)),

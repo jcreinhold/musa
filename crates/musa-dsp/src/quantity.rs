@@ -1,9 +1,11 @@
 //! The audited exact-quantity → floating DSP boundary.
 //!
-//! Written values stay rational through parsing, resolution, facts, and graph
-//! intent. Plan preparation calls only these functions. Division uses IEEE-754
-//! round-to-nearest; transcendental decibel conversion then uses the platform
-//! `powf`, as DSP coefficients necessarily do.
+//! Written values stay rational through checked source projection (and the
+//! temporary legacy oracle) until plan preparation calls these functions.
+//! Division uses IEEE-754 round-to-nearest; transcendental decibel conversion
+//! then uses the platform `powf`, as DSP coefficients necessarily do. Source
+//! validation owns ranges. Preparation rejects non-finite results while
+//! retaining the exact quantity for its diagnostic.
 
 use num_rational::Ratio;
 

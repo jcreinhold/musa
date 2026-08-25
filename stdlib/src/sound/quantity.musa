@@ -1,0 +1,75 @@
+// Exact quantities written for sound preparation.
+//
+// A quantity stays rational and dimensioned here. The lossless source tree
+// keeps whether an author wrote `30 ms` or `0.03 s`; checked equality uses the
+// exact normalized value. Floating-point conversion belongs to DSP
+// preparation, never to these constructors.
+
+// The four dimensions currently used by native sound preparation. This is a
+// closed standard-library declaration, not a host inference table.
+data SoundDimension {
+    Frequency,
+    LinearAmplitude,
+    Level,
+    Time,
+}
+
+// A unit chooses its dimension in its constructor result. That shared index is
+// checked by the ordinary elaborator and Miller-pattern unifier.
+data SoundUnit(dimension: SoundDimension) {
+    Hertz: (Frequency),
+    Linear: (LinearAmplitude),
+    Decibels: (Level),
+    Seconds: (Time),
+}
+
+// One exact normalized magnitude and a unit of the same dimension.
+data SoundQuantity(dimension: SoundDimension) {
+    Written(
+        quantity_dimension: SoundDimension,
+        magnitude: Ratio,
+        unit: SoundUnit(quantity_dimension),
+    ): (quantity_dimension),
+}
+
+// A storable envelope for consumers that accept quantities of several
+// dimensions. The dimension is data and also indexes the enclosed value.
+data ExactQuantity {
+    Exact(dimension: SoundDimension, value: SoundQuantity(dimension)),
+}
+
+// The versioned checked-artifact root consumed at the DSP boundary.
+record ExactQuantityArtifact {
+    schema_version: Nat;
+    quantity: ExactQuantity;
+}
+
+// An exact frequency in hertz.
+fn hertz(magnitude: Ratio) -> ExactQuantity {
+    Exact(Frequency, Written(Frequency, magnitude, Hertz))
+}
+
+// An exact dimensionless linear amplitude or factor.
+fn linear(magnitude: Ratio) -> ExactQuantity {
+    Exact(LinearAmplitude, Written(LinearAmplitude, magnitude, Linear))
+}
+
+// An exact logarithmic amplitude level in decibels.
+fn decibels(magnitude: Ratio) -> ExactQuantity {
+    Exact(Level, Written(Level, magnitude, Decibels))
+}
+
+// An exact physical duration in seconds.
+fn seconds(magnitude: Ratio) -> ExactQuantity { Exact(Time, Written(Time, magnitude, Seconds)) }
+
+// Milliseconds normalize exactly into the source base unit. The CST retains
+// the written `ms` token for diagnostics and token-scoped edits.
+fn milliseconds(magnitude: Ratio) -> ExactQuantity { seconds(ratio_div(magnitude, 1000/1)) }
+
+// Wrap a quantity in the versioned value consumed by a host boundary.
+fn quantity_artifact(quantity: ExactQuantity) -> ExactQuantityArtifact {
+    ExactQuantityArtifact {
+        schema_version = 1,
+        quantity = quantity
+    }
+}

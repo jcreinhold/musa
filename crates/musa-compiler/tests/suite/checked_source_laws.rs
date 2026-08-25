@@ -5,7 +5,8 @@
 
 use musa_compiler::{CompileOptions, SourceDocument, SourceSchema, checked_source_value};
 use musa_dsp::{
-    ParameterValueKind, PortKindTag, StudioDeclarationKind, StudioDescriptionError, decode_studio_description,
+    ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
+    StudioDescriptionError, decode_exact_quantity, decode_studio_description, exact_quantity_schema,
     studio_description_schema,
 };
 use num_rational::Ratio;
@@ -60,6 +61,105 @@ fn checked(region: &str, schema: &SourceSchema) -> musa_compiler::CheckedSource 
     .unwrap_or_else(|diagnostics| panic!("source value should check: {diagnostics:#?}"))
 }
 
+fn quantity_source(expression: &str) -> String {
+    format!(
+        r#"import std::sound::quantity;
+let quantity: ExactQuantityArtifact = quantity_artifact({expression});
+piece "Exact source quantity" {{
+    meter 4/4;
+    key c major;
+    score {{ part proof {{ voice observed {{ rest/1 }} }} }}
+}}
+"#
+    )
+}
+
+fn checked_quantity(expression: &str) -> musa_compiler::CheckedSource {
+    checked_source_value(
+        &SourceDocument::new(quantity_source(expression), "checked-quantity-laws.musa"),
+        &CompileOptions::default(),
+        "quantity",
+        &exact_quantity_schema(),
+    )
+    .unwrap_or_else(|diagnostics| panic!("source quantity should check: {diagnostics:#?}"))
+}
+
+#[test]
+fn source_quantities_keep_exact_dimensions_until_dsp_preparation() {
+    let cases = [
+        (
+            "hertz(440/1)",
+            SoundDimension::Frequency,
+            SoundUnit::Hertz,
+            Ratio::from_integer(440),
+        ),
+        (
+            "linear(1/10)",
+            SoundDimension::LinearAmplitude,
+            SoundUnit::Linear,
+            Ratio::new(1, 10),
+        ),
+        (
+            "decibels(ratio_sub(0/1, 6/1))",
+            SoundDimension::Level,
+            SoundUnit::Decibels,
+            Ratio::from_integer(-6),
+        ),
+        (
+            "seconds(3/100)",
+            SoundDimension::Time,
+            SoundUnit::Seconds,
+            Ratio::new(3, 100),
+        ),
+    ];
+    for (source, dimension, unit, magnitude) in cases {
+        let artifact = checked_quantity(source);
+        let checked = decode_exact_quantity(&artifact).expect("the checked source schema decodes");
+        let quantity = checked.quantity();
+        assert_eq!(quantity.dimension(), dimension);
+        assert_eq!(quantity.unit(), unit);
+        assert_eq!(quantity.magnitude(), &magnitude);
+        assert_eq!(checked.exact_source_bytes(), artifact.exact_bytes());
+    }
+}
+
+#[test]
+fn milliseconds_and_seconds_have_one_exact_checked_value() {
+    let milliseconds = checked_quantity("milliseconds(30/1)");
+    let ratio = checked_quantity("seconds(3/100)");
+    assert_eq!(milliseconds.exact_bytes(), ratio.exact_bytes());
+}
+
+#[test]
+fn a_graph_artifact_is_not_a_quantity_artifact() {
+    let graph = checked("input control_in: control;", &studio_description_schema());
+    assert_eq!(decode_exact_quantity(&graph), Err(ExactQuantityError::WrongSchema));
+}
+
+#[test]
+fn source_indices_refuse_a_quantity_with_the_wrong_unit_witness() {
+    let source = r#"import std::sound::quantity;
+let quantity: ExactQuantityArtifact = quantity_artifact(
+    Exact(Frequency, Written(Time, 1/1, Seconds))
+);
+piece "Ill-indexed source quantity" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    let result = checked_source_value(
+        &SourceDocument::new(source, "ill-indexed-quantity.musa"),
+        &CompileOptions::default(),
+        "quantity",
+        &exact_quantity_schema(),
+    );
+    assert!(
+        result.is_err(),
+        "the ordinary dependent checker must refuse mismatched indices"
+    );
+}
+
 #[test]
 fn the_complete_trial_projects_every_source_field_exactly() {
     let artifact = checked(TRIAL, &studio_description_schema());
@@ -99,6 +199,12 @@ fn the_complete_trial_projects_every_source_field_exactly() {
     assert_eq!(voices.value_kind(), ParameterValueKind::Count);
     assert_eq!(voices.count(), Some(16));
     assert_eq!(attack.ratio(), Some(&Ratio::new(3, 100)));
+    assert_eq!(
+        attack
+            .exact_quantity()
+            .map(|quantity| (quantity.dimension(), quantity.unit())),
+        Some((SoundDimension::Time, SoundUnit::Seconds))
+    );
     assert_eq!(release.ratio(), Some(&Ratio::new(7, 10)));
     assert_eq!(expression_depth.descriptor(), Some("scale"));
     assert_eq!(room.descriptor(), Some("reverb"));

@@ -44,9 +44,10 @@ pub use crate::schedule::{
     ScheduledSource, SourceState, TimeDecision, TimeMap, merge_schedules, schedule,
 };
 pub use crate::source::{
-    ParameterProjection, ParameterValueKind, PortKindProjection, PortKindTag, PortPathProjection, StudioDeclaration,
-    StudioDeclarationKind, StudioDescription, StudioDescriptionError, decode_studio_description,
-    studio_description_schema,
+    CheckedExactQuantity, ExactQuantityError, ExactQuantityProjection, ParameterProjection, ParameterValueKind,
+    PortKindProjection, PortKindTag, PortPathProjection, SoundDimension, SoundUnit, StudioDeclaration,
+    StudioDeclarationKind, StudioDescription, StudioDescriptionError, decode_exact_quantity, decode_studio_description,
+    exact_quantity_schema, studio_description_schema,
 };
 
 #[cfg(test)]

@@ -1,9 +1,9 @@
-//! Read-only host projection of checked `std::sound::graph` data.
+//! Read-only host projections of checked `std::sound` data.
 //!
-//! This module knows the shape of the source package's interchange value, not
-//! the meaning of a valid studio. Names, descriptors, ranges, ports, cycles,
-//! defaults, and inference remain ordinary Musa definitions. The decoder only
-//! refuses a mismatched or structurally incomplete checked artifact.
+//! This module knows the shape of source package interchange values, not their
+//! validation policy. Names, descriptors, ranges, units, defaults, and
+//! inference remain ordinary Musa definitions. Decoders only refuse a
+//! mismatched or structurally incomplete checked artifact.
 
 use musa_calculus::{CheckedSource, SourceDatum, SourceDatumKind, SourceSchema};
 use num_rational::Ratio;
@@ -13,11 +13,135 @@ use thiserror::Error;
 const SCHEMA_NAME: &str = "std.sound.graph.StudioDescription";
 const ROOT_TYPE: &str = "StudioDescription";
 const SCHEMA_VERSION: u64 = 1;
+const QUANTITY_SCHEMA_NAME: &str = "std.sound.quantity.ExactQuantityArtifact";
+const QUANTITY_ROOT_TYPE: &str = "ExactQuantityArtifact";
+const QUANTITY_SCHEMA_VERSION: u64 = 1;
 
 /// The exact consumer contract for `std::sound::graph::StudioDescription`.
 #[must_use]
 pub fn studio_description_schema() -> SourceSchema {
     SourceSchema::new(SCHEMA_NAME, ROOT_TYPE, SCHEMA_VERSION)
+}
+
+/// The exact consumer contract for `std::sound::quantity::ExactQuantityArtifact`.
+#[must_use]
+pub fn exact_quantity_schema() -> SourceSchema {
+    SourceSchema::new(QUANTITY_SCHEMA_NAME, QUANTITY_ROOT_TYPE, QUANTITY_SCHEMA_VERSION)
+}
+
+/// A source-owned sound dimension.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SoundDimension {
+    /// Cycles per second.
+    Frequency,
+    /// A dimensionless linear amplitude or factor.
+    LinearAmplitude,
+    /// A logarithmic amplitude level.
+    Level,
+    /// Elapsed physical time.
+    Time,
+}
+
+/// A normalized unit declared by `std::sound::quantity`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SoundUnit {
+    /// Hertz.
+    Hertz,
+    /// Dimensionless linear amplitude.
+    Linear,
+    /// Decibels.
+    Decibels,
+    /// Seconds.
+    Seconds,
+}
+
+/// An opaque exact projection of one checked source quantity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExactQuantityProjection {
+    dimension: SoundDimension,
+    magnitude: Ratio<i64>,
+    unit: SoundUnit,
+}
+
+impl ExactQuantityProjection {
+    /// The source index shared by the quantity and its unit.
+    #[must_use]
+    pub const fn dimension(&self) -> SoundDimension {
+        self.dimension
+    }
+
+    /// The exact reduced magnitude in the source base unit.
+    #[must_use]
+    pub const fn magnitude(&self) -> &Ratio<i64> {
+        &self.magnitude
+    }
+
+    /// The normalized source unit.
+    #[must_use]
+    pub const fn unit(&self) -> SoundUnit {
+        self.unit
+    }
+}
+
+/// One standalone exact quantity together with its complete checked identity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CheckedExactQuantity {
+    quantity: ExactQuantityProjection,
+    exact_source: Arc<[u8]>,
+}
+
+impl CheckedExactQuantity {
+    /// The exact dimensioned source quantity.
+    #[must_use]
+    pub const fn quantity(&self) -> &ExactQuantityProjection {
+        &self.quantity
+    }
+
+    /// The complete checked source bytes this projection came from.
+    #[must_use]
+    pub fn exact_source_bytes(&self) -> &[u8] {
+        &self.exact_source
+    }
+}
+
+/// Why a checked artifact is not an exact source quantity.
+#[derive(Clone, Debug, Error, PartialEq, Eq)]
+pub enum ExactQuantityError {
+    /// The artifact names another consumer schema or source version.
+    #[error("expected checked source schema `{QUANTITY_SCHEMA_NAME}` version {QUANTITY_SCHEMA_VERSION}")]
+    WrongSchema,
+    /// A canonical constructor, index witness, literal, or field count does not match the source declaration.
+    #[error("malformed ExactQuantityArtifact at {path}: {expected}")]
+    Malformed {
+        /// Structural position within the value.
+        path: String,
+        /// Required shape at that position.
+        expected: &'static str,
+    },
+}
+
+/// Decode one complete checked quantity without performing unit conversion.
+///
+/// # Errors
+///
+/// Refuses the wrong schema, malformed exact framing, and any disagreement
+/// among the source dimension index, quantity witness, and unit witness.
+pub fn decode_exact_quantity(source: &CheckedSource) -> Result<CheckedExactQuantity, ExactQuantityError> {
+    if !source.has_valid_framing() {
+        return Err(quantity_malformed("artifact", "complete exact framing"));
+    }
+    if source.schema() != &exact_quantity_schema() {
+        return Err(ExactQuantityError::WrongSchema);
+    }
+    let [version, quantity] =
+        quantity_case_fields(source.root(), "ExactQuantityArtifact.ExactQuantityArtifact", "root")?;
+    if quantity_nat(version, "root.schema_version")? != QUANTITY_SCHEMA_VERSION {
+        return Err(quantity_malformed("root.schema_version", "the checked schema version"));
+    }
+    Ok(CheckedExactQuantity {
+        quantity: quantity_value(quantity, "root.quantity")?,
+        exact_source: source.exact_bytes().into(),
+    })
 }
 
 /// A complete read-only projection of a checked source studio description.
@@ -239,13 +363,17 @@ impl PortPathProjection {
     }
 }
 
-/// Which exact source parameter-value constructor was projected.
+/// Which exact source parameter-value kind was projected.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParameterValueKind {
     /// A natural-number count.
     Count,
     /// A dimensionless exact ratio.
     Plain,
+    /// An exact ratio of hertz.
+    Hertz,
+    /// An exact ratio of decibels.
+    Decibels,
     /// An exact ratio of seconds.
     Seconds,
 }
@@ -253,8 +381,7 @@ pub enum ParameterValueKind {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ParameterValue {
     Count(u64),
-    Plain(Ratio<i64>),
-    Seconds(Ratio<i64>),
+    Exact(ExactQuantityProjection),
 }
 
 /// One source parameter with its anchor, name, and exact value.
@@ -278,13 +405,17 @@ impl ParameterProjection {
         &self.name
     }
 
-    /// Which exact source value constructor was used.
+    /// Which exact source value kind was used.
     #[must_use]
     pub const fn value_kind(&self) -> ParameterValueKind {
         match self.value {
             ParameterValue::Count(_) => ParameterValueKind::Count,
-            ParameterValue::Plain(_) => ParameterValueKind::Plain,
-            ParameterValue::Seconds(_) => ParameterValueKind::Seconds,
+            ParameterValue::Exact(ref value) => match value.dimension {
+                SoundDimension::Frequency => ParameterValueKind::Hertz,
+                SoundDimension::LinearAmplitude => ParameterValueKind::Plain,
+                SoundDimension::Level => ParameterValueKind::Decibels,
+                SoundDimension::Time => ParameterValueKind::Seconds,
+            },
         }
     }
 
@@ -293,7 +424,7 @@ impl ParameterProjection {
     pub const fn count(&self) -> Option<u64> {
         match self.value {
             ParameterValue::Count(value) => Some(value),
-            ParameterValue::Plain(_) | ParameterValue::Seconds(_) => None,
+            ParameterValue::Exact(_) => None,
         }
     }
 
@@ -301,7 +432,16 @@ impl ParameterProjection {
     #[must_use]
     pub const fn ratio(&self) -> Option<&Ratio<i64>> {
         match &self.value {
-            ParameterValue::Plain(value) | ParameterValue::Seconds(value) => Some(value),
+            ParameterValue::Exact(value) => Some(&value.magnitude),
+            ParameterValue::Count(_) => None,
+        }
+    }
+
+    /// The complete exact source quantity, when this is not a count.
+    #[must_use]
+    pub const fn exact_quantity(&self) -> Option<&ExactQuantityProjection> {
+        match &self.value {
+            ParameterValue::Exact(value) => Some(value),
             ParameterValue::Count(_) => None,
         }
     }
@@ -440,16 +580,17 @@ fn parameter_value(datum: SourceDatum<'_>, path: &str) -> Result<ParameterValue,
             Ok(ParameterValue::Count(nat(value, path)?))
         }
         Some(SourceDatumKind::Case {
-            constructor: "ParameterValue.Plain",
+            constructor: "ParameterValue.ExactValue",
         }) => {
             let [value] = fields(datum, path)?;
-            Ok(ParameterValue::Plain(ratio(value, path)?))
-        }
-        Some(SourceDatumKind::Case {
-            constructor: "ParameterValue.Seconds",
-        }) => {
-            let [value] = fields(datum, path)?;
-            Ok(ParameterValue::Seconds(ratio(value, path)?))
+            quantity_value(value, path)
+                .map(ParameterValue::Exact)
+                .map_err(|error| match error {
+                    ExactQuantityError::WrongSchema => malformed(path, "an exact source quantity"),
+                    ExactQuantityError::Malformed { path, expected } => {
+                        StudioDescriptionError::Malformed { path, expected }
+                    }
+                })
         }
         _ => Err(malformed(path, "a ParameterValue constructor")),
     }
@@ -539,28 +680,126 @@ fn text(datum: SourceDatum<'_>, path: &str) -> Result<String, StudioDescriptionE
     }
 }
 
-fn ratio(datum: SourceDatum<'_>, path: &str) -> Result<Ratio<i64>, StudioDescriptionError> {
+fn quantity_value(datum: SourceDatum<'_>, path: &str) -> Result<ExactQuantityProjection, ExactQuantityError> {
+    let [dimension, value] = quantity_case_fields(datum, "ExactQuantity.Exact", path)?;
+    let dimension = quantity_dimension(dimension, &field(path, "dimension"))?;
+    let [inner_dimension, magnitude, unit] =
+        quantity_case_fields(value, "SoundQuantity.Written", &field(path, "value"))?;
+    let inner_dimension = quantity_dimension(inner_dimension, &field(path, "value.dimension"))?;
+    let unit = quantity_unit(unit, &field(path, "value.unit"))?;
+    if dimension != inner_dimension || dimension != unit_dimension(unit) {
+        return Err(quantity_malformed(path, "matching source dimension and unit indices"));
+    }
+    Ok(ExactQuantityProjection {
+        dimension,
+        magnitude: quantity_ratio(magnitude, &field(path, "value.magnitude"))?,
+        unit,
+    })
+}
+
+fn quantity_dimension(datum: SourceDatum<'_>, path: &str) -> Result<SoundDimension, ExactQuantityError> {
+    let Some(SourceDatumKind::Case { constructor }) = datum.kind() else {
+        return Err(quantity_malformed(path, "a SoundDimension constructor"));
+    };
+    let [] = quantity_fields(datum, path)?;
+    match constructor {
+        "SoundDimension.Frequency" => Ok(SoundDimension::Frequency),
+        "SoundDimension.LinearAmplitude" => Ok(SoundDimension::LinearAmplitude),
+        "SoundDimension.Level" => Ok(SoundDimension::Level),
+        "SoundDimension.Time" => Ok(SoundDimension::Time),
+        _ => Err(quantity_malformed(path, "a SoundDimension constructor")),
+    }
+}
+
+fn quantity_unit(datum: SourceDatum<'_>, path: &str) -> Result<SoundUnit, ExactQuantityError> {
+    let Some(SourceDatumKind::Case { constructor }) = datum.kind() else {
+        return Err(quantity_malformed(path, "a SoundUnit constructor"));
+    };
+    let [] = quantity_fields(datum, path)?;
+    match constructor {
+        "SoundUnit.Hertz" => Ok(SoundUnit::Hertz),
+        "SoundUnit.Linear" => Ok(SoundUnit::Linear),
+        "SoundUnit.Decibels" => Ok(SoundUnit::Decibels),
+        "SoundUnit.Seconds" => Ok(SoundUnit::Seconds),
+        _ => Err(quantity_malformed(path, "a SoundUnit constructor")),
+    }
+}
+
+const fn unit_dimension(unit: SoundUnit) -> SoundDimension {
+    match unit {
+        SoundUnit::Hertz => SoundDimension::Frequency,
+        SoundUnit::Linear => SoundDimension::LinearAmplitude,
+        SoundUnit::Decibels => SoundDimension::Level,
+        SoundUnit::Seconds => SoundDimension::Time,
+    }
+}
+
+fn quantity_nat(datum: SourceDatum<'_>, path: &str) -> Result<u64, ExactQuantityError> {
+    match datum.kind() {
+        Some(SourceDatumKind::Count { family: "Nat", count }) => Ok(count),
+        _ => Err(quantity_malformed(path, "a Nat")),
+    }
+}
+
+fn quantity_ratio(datum: SourceDatum<'_>, path: &str) -> Result<Ratio<i64>, ExactQuantityError> {
     let Some(SourceDatumKind::Literal { type_name, bytes }) = datum.kind() else {
-        return Err(malformed(path, "Ratio"));
+        return Err(quantity_malformed(path, "Ratio"));
     };
     if type_name != "Ratio" || bytes.len() != 16 {
-        return Err(malformed(path, "an exact Ratio encoding"));
+        return Err(quantity_malformed(path, "an exact Ratio encoding"));
     }
     let (numerator, denominator) = bytes.split_at(8);
-    let numerator = i64::from_be_bytes(numerator.try_into().map_err(|_| malformed(path, "Ratio numerator"))?);
+    let numerator = i64::from_be_bytes(
+        numerator
+            .try_into()
+            .map_err(|_| quantity_malformed(path, "Ratio numerator"))?,
+    );
     let denominator = i64::from_be_bytes(
         denominator
             .try_into()
-            .map_err(|_| malformed(path, "Ratio denominator"))?,
+            .map_err(|_| quantity_malformed(path, "Ratio denominator"))?,
     );
     if denominator <= 0 {
-        return Err(malformed(path, "a normalized Ratio"));
+        return Err(quantity_malformed(path, "a normalized Ratio"));
     }
     let value = Ratio::new(numerator, denominator);
     if value.numer() != &numerator || value.denom() != &denominator {
-        return Err(malformed(path, "a normalized Ratio"));
+        return Err(quantity_malformed(path, "a normalized Ratio"));
     }
     Ok(value)
+}
+
+fn quantity_case_fields<'a, const COUNT: usize>(
+    datum: SourceDatum<'a>,
+    constructor: &str,
+    path: &str,
+) -> Result<[SourceDatum<'a>; COUNT], ExactQuantityError> {
+    match datum.kind() {
+        Some(SourceDatumKind::Case { constructor: found }) if found == constructor => quantity_fields(datum, path),
+        _ => Err(quantity_malformed(path, "the required source constructor")),
+    }
+}
+
+fn quantity_fields<'a, const COUNT: usize>(
+    datum: SourceDatum<'a>,
+    path: &str,
+) -> Result<[SourceDatum<'a>; COUNT], ExactQuantityError> {
+    let Some(direct) = datum.fields() else {
+        return Err(quantity_malformed(path, "valid canonical child framing"));
+    };
+    let Some(fields): Option<Vec<_>> = direct.collect() else {
+        return Err(quantity_malformed(path, "valid canonical child indices"));
+    };
+    fields
+        .try_into()
+        .map_err(|_| quantity_malformed(path, "the exact source field count"))
+}
+
+fn quantity_malformed(path: &str, expected: &'static str) -> ExactQuantityError {
+    ExactQuantityError::Malformed {
+        path: path.to_owned(),
+        expected,
+    }
 }
 
 fn case_fields<'a, const COUNT: usize>(
