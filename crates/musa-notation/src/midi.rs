@@ -13,9 +13,10 @@
 //!   profile, velocity from the prevailing dynamic. It is what you hand to a
 //!   sampler.
 //!
-//! Both read the same exact [`GesturePlan`], whose occurrence span is the
-//! performed fact and whose payload carries the written span (§2: notated
-//! duration ≠ performed duration). Frame scheduling belongs only to audio.
+//! Both read the same exact [`GesturePlan`]. Its occurrence span is the
+//! performed fact; its separate immutable lineage projection carries written
+//! support (§2: notated duration ≠ performed duration). Frame scheduling
+//! belongs only to audio.
 
 // Frame→tick conversion is exact for musa's magnitudes; the workspace
 // arithmetic lint is allowed at module scope for that reason.
@@ -24,7 +25,7 @@
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, Track, TrackEvent, TrackEventKind};
 use musa_events::{PerformedTime, Position};
-use musa_score::{GestureLane, GesturePlan, MusicalTime, WrittenPitch};
+use musa_score::{EventId, GestureLane, GesturePlan, MusicalTime, WrittenPitch};
 use num_rational::Ratio;
 
 use crate::error::RenderError;
@@ -265,9 +266,13 @@ fn lane_track<'a>(
     let mut absolute: Vec<(u64, u8, MidiMessage)> = Vec::new();
     for occurrence in lane.track().occurrences() {
         let note = occurrence.payload();
-        let key = midi_key(note.pitch).ok_or_else(|| RenderError::Unsupported {
-            event: note.event,
-            what: format!("written pitch {} is outside MIDI's range", note.pitch),
+        let lineage = lane.lineage(note.instance()).ok_or_else(|| RenderError::Unsupported {
+            event: EventId(0),
+            what: format!("gesture {} has no written lineage", note.instance()),
+        })?;
+        let key = midi_key(note.pitch()).ok_or_else(|| RenderError::Unsupported {
+            event: lineage.event(),
+            what: format!("written pitch {} is outside MIDI's range", note.pitch()),
         })?;
         // Score mode reads the written positions, not the performed span.
         // The part's groove is in the scheduled frame, and a
@@ -276,14 +281,14 @@ fn lane_track<'a>(
         // module exists not to do.
         let (on, off, velocity) = match options.mode {
             MidiMode::Score => (
-                reference_seconds(performance, note.notated_on()),
-                reference_seconds(performance, note.notated_off()),
+                reference_seconds(performance, lineage.written_on()),
+                reference_seconds(performance, lineage.written_off()),
                 NEUTRAL_VELOCITY,
             ),
             MidiMode::Performance => (
                 lane.physical(occurrence.span().start()).as_ratio(),
                 lane.physical(occurrence.span().end()).as_ratio(),
-                velocity_of(note.amplitude),
+                velocity_of(note.amplitude()),
             ),
         };
         absolute.push((

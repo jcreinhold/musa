@@ -78,6 +78,7 @@ pub struct PreparedAudio {
     plan: RenderPlan,
     schedule: Schedule<PerformedTime, Gesture>,
     source: ScheduledSource<Gesture>,
+    attacks: Box<[(u64, num_rational::Ratio<i64>)]>,
     tuning: Tuning,
     sample_rate: u32,
     total_frames: u64,
@@ -120,7 +121,7 @@ impl PreparedAudio {
             return [0.0; 2];
         }
         let (_, messages) = self.source.step();
-        let frame = self.plan.step(messages, self.tuning);
+        let frame = self.plan.step(messages, self.tuning, &self.attacks);
         self.position = self.position.saturating_add(1);
         frame
     }
@@ -174,6 +175,22 @@ pub fn prepare_audio(
     check_resources(required, options.limits)?;
     let plan = prepare_plan(&graph, &graph_options).map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let schedule = schedule_gestures(gestures, options)?;
+    let mut attacks = Vec::new();
+    for lane in gestures.lanes() {
+        for occurrence in lane.track().occurrences() {
+            let instance = occurrence.payload().instance();
+            let compatibility = lane.compatibility(instance).ok_or_else(|| {
+                AudioPrepareError::Primitive(format!("gesture {instance} has no attack compatibility projection"))
+            })?;
+            attacks.push((instance, compatibility.attack_seconds()));
+        }
+    }
+    attacks.sort_by_key(|(instance, _)| *instance);
+    if attacks.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+        return Err(AudioPrepareError::Primitive(
+            "gesture attack compatibility contains a duplicate identity".to_owned(),
+        ));
+    }
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
     let total_frames = schedule
@@ -189,6 +206,7 @@ pub fn prepare_audio(
         plan,
         schedule,
         source,
+        attacks: attacks.into_boxed_slice(),
         tuning: options.tuning,
         sample_rate,
         total_frames,

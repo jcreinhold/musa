@@ -78,9 +78,7 @@ pub use crate::imports::{
     ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
     standard_library_modules, standard_library_source,
 };
-pub use crate::performance_source::{
-    PerformanceBridgeError, checked_performance_interpretations, lower_gestures,
-};
+pub use crate::performance_source::{PerformanceBridgeError, checked_performance_interpretations, lower_gestures};
 /// Events text as an editor sees it, re-exported so a language server can
 /// colour and outline an event track document without a second copy of the grammar
 /// and without depending on `musa-events` itself.

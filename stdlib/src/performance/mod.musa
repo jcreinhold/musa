@@ -203,21 +203,53 @@ private fn timing_rule(timing: LegacyMarkTiming) -> MarkRule {
         arguments = []
     };
     if text_equal(timing.name, "staccato") {
-        MarkRule { name = timing.name, gate = timing.gate, attack_seconds = timing.attack_seconds, hold = timing.hold,
-            emphasis = 0/1, separation = 1/1, sustain = 0/1, techniques = [written] }
+        MarkRule {
+            name = timing.name,
+            gate = timing.gate,
+            attack_seconds = timing.attack_seconds,
+            hold = timing.hold,
+            emphasis = 0/1,
+            separation = 1/1,
+            sustain = 0/1,
+            techniques = [written]
+        }
     } else if text_equal(timing.name, "accent") {
-        MarkRule { name = timing.name, gate = timing.gate, attack_seconds = timing.attack_seconds, hold = timing.hold,
-            emphasis = 1/1, separation = 0/1, sustain = 0/1, techniques = [written] }
+        MarkRule {
+            name = timing.name,
+            gate = timing.gate,
+            attack_seconds = timing.attack_seconds,
+            hold = timing.hold,
+            emphasis = 1/1,
+            separation = 0/1,
+            sustain = 0/1,
+            techniques = [written]
+        }
     } else if text_equal(timing.name, "tenuto") {
-        MarkRule { name = timing.name, gate = timing.gate, attack_seconds = timing.attack_seconds, hold = timing.hold,
-            emphasis = 0/1, separation = 0/1, sustain = 1/1, techniques = [written] }
+        MarkRule {
+            name = timing.name,
+            gate = timing.gate,
+            attack_seconds = timing.attack_seconds,
+            hold = timing.hold,
+            emphasis = 0/1,
+            separation = 0/1,
+            sustain = 1/1,
+            techniques = [written]
+        }
     } else {
-        MarkRule { name = timing.name, gate = timing.gate, attack_seconds = timing.attack_seconds, hold = timing.hold,
-            emphasis = 0/1, separation = 0/1, sustain = 0/1, techniques = [written] }
+        MarkRule {
+            name = timing.name,
+            gate = timing.gate,
+            attack_seconds = timing.attack_seconds,
+            hold = timing.hold,
+            emphasis = 0/1,
+            separation = 0/1,
+            sustain = 0/1,
+            techniques = [written]
+        }
     }
 }
 
-private fn timing_rules(timings: List<LegacyMarkTiming>) -> List<MarkRule> {
+private fn timing_rules(timings: List(LegacyMarkTiming)) -> List(MarkRule) {
     match timings {
         [] -> [],
         [timing, .. later] -> Cons(timing_rule(timing), timing_rules(later)),
@@ -225,14 +257,19 @@ private fn timing_rules(timings: List<LegacyMarkTiming>) -> List<MarkRule> {
 }
 
 /// Build the compatibility surface profile as ordinary source policy.
-fn profile_from_legacy(dynamics: List<DynamicRule>, timings: List<LegacyMarkTiming>) -> PerformanceProfile {
-    PerformanceProfile { dynamics = dynamics, marks = timing_rules(timings) }
+fn profile_from_legacy(
+    dynamics: List(DynamicRule),
+    timings: List(LegacyMarkTiming),
+) -> PerformanceProfile {
+    PerformanceProfile {
+        dynamics = dynamics,
+        marks = timing_rules(timings)
+    }
 }
 
 /// Exact musical intent returned by one finite profile evaluation.
 record ProfileResult {
     gesture: Gesture;
-    expression: Ratio;
     gate: Ratio;
     attack_seconds: Ratio;
     hold: Ratio;
@@ -253,7 +290,7 @@ record InterpretationRequest {
 /// Versioned checked results returned to the provenance/track bridge.
 record PerformanceInterpretationArtifact {
     schema_version: Nat;
-    results: List<ProfileResult>;
+    results: List(ProfileResult);
 }
 
 /// Find a declared dynamic level, returning neutral expression when absent.
@@ -286,7 +323,9 @@ private fn marked_controls(rules: List(MarkRule), marks: List(Text)) -> List(Som
 }
 
 /// Collect symbolic techniques without collapsing them into numeric controls.
-private fn marked_techniques(rules: List<MarkRule>, marks: List<Text>) -> List<TechniqueRequest> {
+private fn marked_techniques(rules: List(MarkRule), marks: List(Text)) -> List(
+    TechniqueRequest,
+) {
     match rules {
         [] -> [],
         [rule, .. later] -> if member_text(rule.name, marks) {
@@ -296,11 +335,27 @@ private fn marked_techniques(rules: List<MarkRule>, marks: List<Text>) -> List<T
 }
 
 /// Fold the legacy temporal projections declared by matching mark rules.
-private fn mark_timing(rules: List<MarkRule>, marks: List<Text>, gate: Ratio, attack: Ratio, hold: Ratio) -> MarkTiming {
+private fn mark_timing(
+    rules: List(MarkRule),
+    marks: List(Text),
+    gate: Ratio,
+    attack: Ratio,
+    hold: Ratio,
+) -> MarkTiming {
     match rules {
-        [] -> MarkTiming { gate = gate, attack_seconds = attack, hold = hold },
+        [] -> MarkTiming {
+            gate = gate,
+            attack_seconds = attack,
+            hold = hold
+        },
         [rule, .. later] -> if member_text(rule.name, marks) {
-            mark_timing(later, marks, ratio_mul(gate, rule.gate), rule.attack_seconds, ratio_mul(hold, rule.hold))
+            mark_timing(
+                later,
+                marks,
+                ratio_mul(gate, rule.gate),
+                rule.attack_seconds,
+                ratio_mul(hold, rule.hold),
+            )
         } else { mark_timing(later, marks, gate, attack, hold) },
     }
 }
@@ -341,10 +396,10 @@ fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
             curve.reached,
         ),
     };
-    let controls: List<SomeControl> = Cons(
-            some_control(expression, NormalizedValue(sounding)),
-            marked_controls(policy.marks, view.marks),
-        );
+    let controls: List(SomeControl) = Cons(
+        some_control(expression, NormalizedValue(sounding)),
+        marked_controls(policy.marks, view.marks),
+    );
     let timing: MarkTiming = mark_timing(policy.marks, view.marks, 1/1, 0/1, 1/1);
     ProfileResult {
         gesture = NoteGesture(
@@ -353,7 +408,6 @@ fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
             controls,
             concat(view.techniques, marked_techniques(policy.marks, view.marks)),
         ),
-        expression = sounding,
         gate = timing.gate,
         attack_seconds = timing.attack_seconds,
         hold = timing.hold
@@ -361,10 +415,13 @@ fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
 }
 
 /// Interpret a finite request list in source order.
-fn interpret_all(requests: List<InterpretationRequest>) -> List<ProfileResult> {
+fn interpret_all(requests: List(InterpretationRequest)) -> List(ProfileResult) {
     match requests {
         [] -> [],
-        [request, .. later] -> Cons(interpret(request.policy, request.view), interpret_all(later)),
+        [request, .. later] -> Cons(
+            interpret(request.policy, request.view),
+            interpret_all(later),
+        ),
     }
 }
 

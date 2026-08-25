@@ -219,7 +219,10 @@ fn encode_datum(datum: SourceDatum<'_>, bytes: &mut Vec<u8>) {
     let mut work = vec![datum];
     while let Some(next) = work.pop() {
         match next.kind() {
-            Some(SourceDatumKind::Literal { type_name, bytes: literal }) => {
+            Some(SourceDatumKind::Literal {
+                type_name,
+                bytes: literal,
+            }) => {
                 bytes.push(0);
                 framed(bytes, type_name.as_bytes());
                 framed(bytes, literal);

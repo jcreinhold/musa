@@ -260,6 +260,72 @@ fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
     );
 }
 
+#[test]
+fn checked_source_results_drive_the_performed_span_and_projection() {
+    let compilation = compile(
+        &SourceDocument::new(
+            r#"piece "Source-driven performance" {
+                meter 4/4;
+                key c major;
+                score { part violin { voice line { c4/4 } } }
+            }"#,
+            "source-driven-performance.musa",
+        ),
+        &CompileOptions::default(),
+    );
+    assert!(!compilation.has_errors(), "{:#?}", compilation.diagnostics());
+    let artifact = checked_source_value(
+        &SourceDocument::new(
+            r#"import std::performance;
+let performance_interpretation: PerformanceInterpretationArtifact = PerformanceInterpretationArtifact {
+    schema_version = 1,
+    results = [
+        ProfileResult {
+            gesture = NoteGesture(
+                GestureId { value = 0 },
+                c4,
+                [some_control(expression, NormalizedValue(1/4))],
+                [],
+            ),
+            gate = 1/2,
+            attack_seconds = 1/100,
+            hold = 1/1
+        },
+    ]
+};
+piece "Checked source result" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#,
+            "checked-source-performance-result.musa",
+        ),
+        &CompileOptions::default(),
+        "performance_interpretation",
+        &SourceSchema::new(
+            "std.performance.PerformanceInterpretationArtifact",
+            "PerformanceInterpretationArtifact",
+            1,
+        ),
+    )
+    .unwrap_or_else(|diagnostics| panic!("source result should check: {diagnostics:#?}"));
+    let plan = musa_score::lower_gestures_from_checked(compilation.snapshot().expect("score"), &[artifact])
+        .expect("checked source result lowers mechanically");
+    let occurrence = plan.lanes()[0].track().occurrences().first().expect("one gesture");
+    assert_eq!(occurrence.span().start().as_ratio(), Ratio::ZERO);
+    assert_eq!(occurrence.span().end().as_ratio(), Ratio::new(1, 8));
+    assert_eq!(occurrence.payload().amplitude(), Ratio::new(1, 4));
+    assert_eq!(
+        plan.lanes()[0]
+            .compatibility(occurrence.payload().instance())
+            .expect("temporary compatibility projection")
+            .attack_seconds(),
+        Ratio::new(1, 100)
+    );
+    assert!(!occurrence.payload().exact_source_bytes().is_empty());
+}
+
 fn checked_performance_value(binding: &str, declaration: &str, root_type: &str) -> musa_compiler::CheckedSource {
     let source = format!(
         r#"import std::performance;
@@ -285,6 +351,26 @@ fn a_control_kind_is_inferred_by_the_general_pattern_unifier() {
     let artifact = checked_performance_value(
         "inferred",
         "let inferred: SomeControl = some_control(expression, NormalizedValue(1/2));",
+        "SomeControl",
+    );
+    assert!(artifact.has_valid_framing());
+}
+
+#[test]
+fn a_control_index_blocked_by_a_lambda_is_settled_by_later_arguments() {
+    let artifact = checked_performance_value(
+        "postponed",
+        r#"fn transformed_control(
+    {kind: ControlKind},
+    transform: ControlValue(kind) -> ControlValue(kind),
+    control_key: ControlKey(kind),
+    value: ControlValue(kind),
+) -> SomeControl { some_control(control_key, transform(value)) }
+let postponed: SomeControl = transformed_control(
+    fn (value) { value },
+    expression,
+    NormalizedValue(1/2),
+);"#,
         "SomeControl",
     );
     assert!(artifact.has_valid_framing());
@@ -336,6 +422,34 @@ piece "Unresolved control" {
 }
 
 #[test]
+fn a_control_index_cannot_escape_the_lambda_scope_that_names_it() {
+    let source = r#"import std::performance;
+fn escaping_control_kind(
+    {kind: ControlKind},
+    choose: (local: ControlKind) -> ControlKey(kind),
+) -> ControlKind { kind }
+let escaped: ControlKind = escaping_control_kind(
+    fn (local: ControlKind) -> ControlKey(local) { expression },
+);
+piece "Escaping control index" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    assert!(
+        checked_source_value(
+            &SourceDocument::new(source, "escaping-control-index.musa"),
+            &CompileOptions::default(),
+            "escaped",
+            &SourceSchema::new("test.performance.ControlKind", "ControlKind", 1),
+        )
+        .is_err(),
+        "an index created outside `local` must not be solved to that inner binder"
+    );
+}
+
+#[test]
 fn the_source_hairpin_law_has_exact_endpoints_and_midpoint() {
     for (binding, expression, expected) in [
         ("start", "hairpin_expression(1/4, 3/4, 0/1)", "1/4"),
@@ -346,6 +460,27 @@ fn the_source_hairpin_law_has_exact_endpoints_and_midpoint() {
         let wanted = checked_performance_value("wanted", &format!("let wanted: Ratio = {expected};"), "Ratio");
         assert_eq!(actual.root().kind(), wanted.root().kind());
     }
+}
+
+#[test]
+fn phrase_group_identity_retains_membership_order_and_connection() {
+    let legato = checked_performance_value(
+        "group",
+        "let group: Gesture = PhraseGroup(More(GestureId { value = 2 }, One(GestureId { value = 5 })), Legato);",
+        "Gesture",
+    );
+    let detached = checked_performance_value(
+        "group",
+        "let group: Gesture = PhraseGroup(More(GestureId { value = 2 }, One(GestureId { value = 5 })), Detached);",
+        "Gesture",
+    );
+    let reordered = checked_performance_value(
+        "group",
+        "let group: Gesture = PhraseGroup(More(GestureId { value = 5 }, One(GestureId { value = 2 })), Legato);",
+        "Gesture",
+    );
+    assert_ne!(legato.exact_bytes(), detached.exact_bytes());
+    assert_ne!(legato.exact_bytes(), reordered.exact_bytes());
 }
 
 #[test]

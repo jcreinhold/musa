@@ -72,9 +72,9 @@ pub use crate::machine::{MACHINE_SPEC_VERSION, MachineSpec, PortSchema, SpecForm
 pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
-    Gesture, GestureLane, GesturePlan, IntegratedTempoMap, KeyChange, MeterChange, PerformanceError,
-    PerformanceOptions, PerformanceRequests, PerformanceView, TempoSegment, Tuning, lower_gestures,
-    lower_gestures_from_checked, performance_requests,
+    Gesture, GestureCompatibility, GestureLane, GestureLineage, GesturePlan, IntegratedTempoMap, KeyChange,
+    MeterChange, PerformanceError, PerformanceOptions, PerformanceRequests, PerformanceView, TempoSegment, Tuning,
+    lower_gestures, lower_gestures_from_checked, performance_requests,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};

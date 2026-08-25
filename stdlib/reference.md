@@ -179,14 +179,24 @@ searches the filesystem.
 - `record NotationView: Type` — Complete musical notation input presented to one profile call.
 - `record DynamicRule: Type` — One source-declared reading of a written dynamic marking.
 - `record MarkRule: Type` — One source-declared reading of a written articulation mark.
+- `record LegacyMarkTiming: Type` — Legacy surface timing declarations transcribed without host interpretation.
 - `record PerformanceProfile: Type` — A finite, storable collection of source interpretation rules.
+- `fn timing_rule(timing: LegacyMarkTiming) -> MarkRule`
+- `fn timing_rules(timings: List(LegacyMarkTiming)) -> List(MarkRule)`
+- `fn profile_from_legacy(dynamics: List(DynamicRule), timings: List(LegacyMarkTiming)) -> PerformanceProfile` — Build the compatibility surface profile as ordinary source policy.
 - `record ProfileResult: Type` — Exact musical intent returned by one finite profile evaluation.
+- `record MarkTiming`
+- `record InterpretationRequest: Type` — One finite request presented to the source interpreter by the host bridge.
+- `record PerformanceInterpretationArtifact: Type` — Versioned checked results returned to the provenance/track bridge.
 - `fn dynamic_level(rules: List(DynamicRule), sought: Text) -> Ratio` — Find a declared dynamic level, returning neutral expression when absent.
 - `fn marked_controls(rules: List(MarkRule), marks: List(Text)) -> List(SomeControl)` — Collect the exact controls declared for the marks on one notation view.
+- `fn marked_techniques(rules: List(MarkRule), marks: List(Text)) -> List( TechniqueRequest, )` — Collect symbolic techniques without collapsing them into numeric controls.
+- `fn mark_timing(rules: List(MarkRule), marks: List(Text), gate: Ratio, attack: Ratio, hold: Ratio) -> MarkTiming` — Fold the legacy temporal projections declared by matching mark rules.
 - `fn member_text(sought: Text, values: List(Text)) -> Bool` — Whether one exact spelling occurs in a finite list.
 - `fn level_of(policy: PerformanceProfile, view: NotationView) -> Ratio` — The prevailing expression level a profile gives one notation view.
 - `fn hairpin_expression(from: Ratio, target_level: Ratio, reached: Ratio) -> Ratio` — Exact affine interpolation for a hairpin sample. `reached` is the result of applying its source `Progress` at normalized local time; no sampling density or physical mapping is chosen here.
 - `fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult` — Interpret one complete notation view as exact controls and techniques.
+- `fn interpret_all(requests: List(InterpretationRequest)) -> List(ProfileResult)` — Interpret a finite request list in source order.
 - `let neutral: PerformanceProfile` — The edition-pinned neutral policy is ordinary data. Its defaults retain symbolic intent: staccato requests separation, accent requests emphasis, tenuto requests sustain, and fermata remains a named technique rather than a host duration multiplier.
 - `record PerformanceVocabularyArtifact: Type` — Versioned finite root frozen by the generic checked-source boundary.
 - `let performance_vocabulary: PerformanceVocabularyArtifact` — Edition-pinned standard controls and neutral profile for host/tooling consumers.

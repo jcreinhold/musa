@@ -5,12 +5,12 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile, lower_gestures};
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, PreparedAudio,
     ScheduleLimits, SchedulePolicy, prepare_audio, render_offline,
 };
-use musa_score::{Tuning, lower_gestures};
+use musa_score::Tuning;
 
 #[global_allocator]
 static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();

@@ -100,7 +100,7 @@ pub mod testing {
         pub fn render(&mut self, first: &[EventMessage<Gesture>], output: &mut [f32]) {
             for (index, frame) in output.as_chunks_mut::<2>().0.iter_mut().enumerate() {
                 let messages = if index == 0 { first } else { &[] };
-                let [left, right] = self.0.step(messages, Tuning::default());
+                let [left, right] = self.0.step(messages, Tuning::default(), &[]);
                 *frame = [left, right];
             }
         }

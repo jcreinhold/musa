@@ -8,7 +8,8 @@
     reason = "a score accepted by the compiler must lower to its exact gesture boundary"
 )]
 
-use musa_score::{EventId, GestureLane, ScoreSnapshot, WrittenPitch, lower_gestures};
+use musa_compiler::lower_gestures;
+use musa_score::{EventId, GestureLane, ScoreSnapshot, WrittenPitch};
 use num_rational::Ratio;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -41,16 +42,17 @@ pub(crate) fn notes_in(lane: &GestureLane) -> Vec<ExactNote> {
         .map(|occurrence| {
             let span = occurrence.span();
             let gesture = occurrence.payload();
+            let lineage = lane.lineage(gesture.instance()).expect("gesture lineage");
             ExactNote {
                 on_seconds: lane.physical(span.start()).as_ratio(),
                 off_seconds: lane.physical(span.end()).as_ratio(),
                 on_performed: span.start().as_ratio(),
                 off_performed: span.end().as_ratio(),
-                notated_on: gesture.notated_on().as_ratio(),
-                notated_off: gesture.notated_off().as_ratio(),
+                notated_on: lineage.written_on().as_ratio(),
+                notated_off: lineage.written_off().as_ratio(),
                 amplitude: gesture.amplitude(),
                 pitch: gesture.pitch(),
-                event: gesture.event(),
+                event: lineage.event(),
             }
         })
         .collect();

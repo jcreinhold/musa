@@ -23,7 +23,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::groove::Groove;
-use crate::origin::{ExpansionStep, Origin};
+use crate::origin::Origin;
 use crate::pitch::WrittenPitch;
 use crate::profile::{ArticulationRealization, PerformanceProfile};
 use crate::score::{EventId, Meter, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
@@ -348,7 +348,7 @@ fn ratio_to_f64(value: Ratio<i64>) -> f64 {
 
 /// One exact instrument-independent instruction in performed time.
 ///
-/// Pitch stays written and loudness/attack stay rational here. Tuning and
+/// Pitch stays written and expression stays rational here. Tuning and
 /// conversion to floating-point DSP parameters belong to audio preparation,
 /// after checked scheduling has fixed the occurrence's frame boundaries.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -357,23 +357,11 @@ pub struct Gesture {
     instance: u64,
     /// Written pitch after score transposition, before an instrument tunes it.
     pitch: WrittenPitch,
-    /// The score occurrence this gesture realizes.
-    event: EventId,
-    /// Complete source and expansion provenance.
-    origin: Origin,
     /// Exact abstract loudness; one is neutral.
     amplitude: Ratio<i64>,
-    /// Exact requested attack time in physical seconds; zero means unstated.
-    attack_seconds: Ratio<i64>,
-    /// Where the source occurrence begins on the unwarped page.
-    notated_on: MusicalTime,
-    /// Where the source occurrence ends on the unwarped page.
-    notated_off: MusicalTime,
     /// Exact checked source gesture framing. Empty only on the retained
     /// pre-177 differential oracle used by compatibility tests.
     source_exact: Arc<[u8]>,
-    /// Differential oracle only: the legacy span calculation's exact gate.
-    legacy_gate: Ratio<i64>,
 }
 
 impl Gesture {
@@ -387,29 +375,9 @@ impl Gesture {
         self.pitch
     }
 
-    /// Source score event in the temporary written-lineage projection.
-    pub const fn event(&self) -> EventId {
-        self.event
-    }
-
     /// Exact abstract expression projection used by compatibility consumers.
     pub const fn amplitude(&self) -> Ratio<i64> {
         self.amplitude
-    }
-
-    /// Temporary physical-attack compatibility projection, removed at 178.
-    pub const fn attack_seconds(&self) -> Ratio<i64> {
-        self.attack_seconds
-    }
-
-    /// Written onset retained for score-mode MIDI compatibility.
-    pub const fn notated_on(&self) -> MusicalTime {
-        self.notated_on
-    }
-
-    /// Written end retained for score-mode MIDI compatibility.
-    pub const fn notated_off(&self) -> MusicalTime {
-        self.notated_off
     }
 
     /// Exact checked source framing of the opaque gesture payload.
@@ -436,27 +404,13 @@ impl Canonical for Gesture {
         let mut key = String::new();
         let _ = write!(
             key,
-            "pitch={},{},{};event={};",
+            "pitch={},{},{};instance={};",
             self.pitch.letter.as_char(),
             self.pitch.accidental.0,
             self.pitch.octave,
-            self.event.0
+            self.instance
         );
         write_ratio(&mut key, "amplitude", self.amplitude);
-        write_ratio(&mut key, "attack", self.attack_seconds);
-        write_ratio(&mut key, "notated-on", self.notated_on.as_ratio());
-        write_ratio(&mut key, "notated-off", self.notated_off.as_ratio());
-        write_span(&mut key, "source", self.origin.source_span);
-        write_span(&mut key, "definition", self.origin.definition_span);
-        let _ = write!(
-            key,
-            "declaration={};path={};",
-            self.origin.declaration.0,
-            self.origin.expansion_path.len()
-        );
-        for step in &self.origin.expansion_path {
-            write_expansion_step(&mut key, step);
-        }
         key
     }
 }
@@ -465,79 +419,13 @@ fn write_ratio(key: &mut String, name: &str, value: Ratio<i64>) {
     let _ = write!(key, "{name}={}/{};", value.numer(), value.denom());
 }
 
-fn write_span(key: &mut String, name: &str, span: crate::SourceSpan) {
-    let _ = write!(key, "{name}={},{};", span.start, span.end);
-}
-
-fn write_text(key: &mut String, name: &str, value: &str) {
-    let _ = write!(key, "{name}={}:{};", value.len(), value);
-}
-
-/// Encode the provenance sum by constructor. Keeping this match exhaustive is
-/// part of the identity contract: adding a constructor cannot silently make
-/// two gestures equal or inherit an unstable `Debug` spelling.
-fn write_expansion_step(key: &mut String, step: &ExpansionStep) {
-    match step {
-        ExpansionStep::MotifApplication { call_site } => {
-            key.push_str("motif;");
-            write_span(key, "call", *call_site);
-        }
-        ExpansionStep::RepeatIteration(iteration) => {
-            let _ = write!(key, "repeat={iteration};");
-        }
-        ExpansionStep::Transposition(interval) => {
-            let _ = write!(key, "transpose={},{};", interval.diatonic_steps, interval.semitones);
-        }
-        ExpansionStep::Stretch(factor) => {
-            key.push_str("stretch;");
-            write_ratio(key, "factor", *factor);
-        }
-        ExpansionStep::Retrograde => key.push_str("retrograde;"),
-        ExpansionStep::Inversion { axis } => {
-            key.push_str("invert;");
-            write_text(key, "axis", axis);
-        }
-        ExpansionStep::MapNotePitches => key.push_str("map-note-pitches;"),
-        ExpansionStep::ScaleContext { scale } => {
-            key.push_str("scale-context;");
-            write_text(key, "scale", scale);
-        }
-        ExpansionStep::TemplateInstance {
-            template,
-            alias,
-            site,
-            identity,
-        } => {
-            key.push_str("template-instance;");
-            write_text(key, "template", template);
-            write_text(key, "alias", alias);
-            write_span(key, "site", *site);
-            write_text(key, "identity", identity);
-        }
-        ExpansionStep::Assertion { claim } => {
-            key.push_str("assertion;");
-            write_text(key, "claim", claim);
-        }
-        ExpansionStep::EventsSplice { at } => {
-            key.push_str("events-splice;");
-            write_ratio(key, "at", *at);
-        }
-        ExpansionStep::Specialization { override_site } => {
-            key.push_str("specialization;");
-            write_span(key, "override", *override_site);
-        }
-    }
-}
-
 #[cfg(test)]
 mod gesture_identity_laws {
     use musa_events::Canonical as _;
     use num_rational::Ratio;
 
     use super::Gesture;
-    use crate::{
-        Accidental, DeclarationId, EventId, ExpansionStep, Letter, MusicalTime, Origin, SourceSpan, WrittenPitch,
-    };
+    use crate::{Accidental, Letter, WrittenPitch};
 
     fn gesture(axis: &str) -> Gesture {
         Gesture {
@@ -547,19 +435,8 @@ mod gesture_identity_laws {
                 accidental: Accidental::NATURAL,
                 octave: 4,
             },
-            event: EventId(1),
-            origin: Origin {
-                source_span: SourceSpan::new(1, 2),
-                definition_span: SourceSpan::new(3, 4),
-                declaration: DeclarationId(5),
-                expansion_path: vec![ExpansionStep::Inversion { axis: axis.to_owned() }],
-            },
             amplitude: Ratio::ONE,
-            attack_seconds: Ratio::ZERO,
-            notated_on: MusicalTime::ZERO,
-            notated_off: MusicalTime::new(Ratio::new(1, 4)),
-            source_exact: Arc::from([]),
-            legacy_gate: Ratio::ONE,
+            source_exact: format!("axis={axis}").into_bytes().into(),
         }
     }
 
@@ -576,11 +453,68 @@ mod gesture_identity_laws {
 /// One part's exact gesture track and the map that gives performed positions
 /// physical meaning. Parts remain separate because polytempo means they can
 /// carry different maps.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GestureLineage {
+    instance: u64,
+    event: EventId,
+    written_on: MusicalTime,
+    written_off: MusicalTime,
+    origin: Origin,
+}
+
+impl GestureLineage {
+    /// Stable source-declared identity of the gesture this entry describes.
+    pub const fn instance(&self) -> u64 {
+        self.instance
+    }
+
+    /// Written score event realized by the gesture.
+    pub const fn event(&self) -> EventId {
+        self.event
+    }
+
+    /// Written onset before performance-time warping.
+    pub const fn written_on(&self) -> MusicalTime {
+        self.written_on
+    }
+
+    /// Written end before performance-time warping.
+    pub const fn written_off(&self) -> MusicalTime {
+        self.written_off
+    }
+
+    /// Complete source and expansion provenance of the written event.
+    pub const fn origin(&self) -> &Origin {
+        &self.origin
+    }
+}
+
+/// Temporary keyed compatibility data retained until prompt 178.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GestureCompatibility {
+    instance: u64,
+    attack_seconds: Ratio<i64>,
+}
+
+impl GestureCompatibility {
+    /// Stable gesture identity this temporary projection accompanies.
+    pub const fn instance(&self) -> u64 {
+        self.instance
+    }
+
+    /// Legacy requested attack in exact physical seconds.
+    pub const fn attack_seconds(&self) -> Ratio<i64> {
+        self.attack_seconds
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GestureLane {
     part: PartId,
     name: String,
     track: EventTrack<PerformedTime, Gesture>,
+    lineage: Vec<GestureLineage>,
+    compatibility: Vec<GestureCompatibility>,
     tempo: IntegratedTempoMap,
 }
 
@@ -598,6 +532,22 @@ impl GestureLane {
     /// Exact finite performed gestures.
     pub const fn track(&self) -> &EventTrack<PerformedTime, Gesture> {
         &self.track
+    }
+
+    /// Immutable written support and provenance for one gesture identity.
+    pub fn lineage(&self, instance: u64) -> Option<&GestureLineage> {
+        self.lineage
+            .binary_search_by_key(&instance, GestureLineage::instance)
+            .ok()
+            .and_then(|index| self.lineage.get(index))
+    }
+
+    /// Temporary physical-attack projection keyed by gesture identity.
+    pub fn compatibility(&self, instance: u64) -> Option<&GestureCompatibility> {
+        self.compatibility
+            .binary_search_by_key(&instance, GestureCompatibility::instance)
+            .ok()
+            .and_then(|index| self.compatibility.get(index))
     }
 
     /// Answer one finite scheduler query in exact physical seconds.
@@ -778,9 +728,37 @@ struct SourceReading {
     exact_gesture: Arc<[u8]>,
 }
 
-fn source_readings(
-    artifacts: &[musa_calculus::CheckedSource],
-) -> Result<Vec<Vec<SourceReading>>, PerformanceError> {
+#[derive(Clone, Debug)]
+struct PreparedGesture {
+    instance: u64,
+    pitch: WrittenPitch,
+    expression: Ratio<i64>,
+    gate: Ratio<i64>,
+    attack: Ratio<i64>,
+    exact_gesture: Arc<[u8]>,
+}
+
+impl SourceReading {
+    fn prepare(
+        self,
+        expected_instance: u64,
+        expected_pitch: WrittenPitch,
+    ) -> Result<PreparedGesture, PerformanceError> {
+        if self.instance != expected_instance || self.pitch != expected_pitch {
+            return Err(source_shape("the requested gesture identity and written pitch"));
+        }
+        Ok(PreparedGesture {
+            instance: self.instance,
+            pitch: self.pitch,
+            expression: self.expression,
+            gate: self.gate * self.hold,
+            attack: self.attack,
+            exact_gesture: self.exact_gesture,
+        })
+    }
+}
+
+fn source_readings(artifacts: &[musa_calculus::CheckedSource]) -> Result<Vec<Vec<SourceReading>>, PerformanceError> {
     artifacts.iter().map(source_lane).collect()
 }
 
@@ -795,19 +773,40 @@ fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceRead
     }
     let [_, results] = source_fields::<2>(artifact.root(), "PerformanceInterpretationArtifact")?;
     source_list(results, |result| {
-        let [gesture, expression, gate, attack, hold] = source_fields::<5>(result, "ProfileResult")?;
-        let [instance, pitch, _, _] = source_fields::<4>(gesture, "NoteGesture")?;
+        let [gesture, gate, attack, hold] = source_fields::<4>(result, "ProfileResult")?;
+        let [instance, pitch, controls, _] = source_fields::<4>(gesture, "NoteGesture")?;
         let [instance] = source_fields::<1>(instance, "GestureId")?;
         Ok(SourceReading {
             instance: source_nat(instance)?,
             pitch: source_pitch(pitch)?,
-            expression: source_ratio(expression)?,
+            expression: source_expression(controls)?,
             gate: source_ratio(gate)?,
             attack: source_ratio(attack)?,
             hold: source_ratio(hold)?,
             exact_gesture: gesture.exact_bytes().into(),
         })
     })
+}
+
+fn source_expression(controls: musa_calculus::SourceDatum<'_>) -> Result<Ratio<i64>, PerformanceError> {
+    let controls = source_list(controls, |control| {
+        let [_, key, value] = source_fields::<3>(control, "Control")?;
+        let [_, namespace, name, _, _] = source_fields::<5>(key, "Key")?;
+        if source_text(namespace)? == "std.performance" && source_text(name)? == "expression" {
+            let [value] = source_fields::<1>(value, "NormalizedValue")?;
+            Ok(Some(source_ratio(value)?))
+        } else {
+            Ok(None)
+        }
+    })?;
+    let mut expression = controls.into_iter().flatten();
+    let value = expression
+        .next()
+        .ok_or_else(|| source_shape("one standard expression control"))?;
+    if expression.next().is_some() {
+        return Err(source_shape("one standard expression control"));
+    }
+    Ok(value)
 }
 
 fn source_fields<'a, const COUNT: usize>(
@@ -873,11 +872,31 @@ fn source_ratio(datum: musa_calculus::SourceDatum<'_>) -> Result<Ratio<i64>, Per
     Ok(Ratio::new(numerator, denominator))
 }
 
+fn source_text(datum: musa_calculus::SourceDatum<'_>) -> Result<&str, PerformanceError> {
+    let Some(musa_calculus::SourceDatumKind::Literal { type_name, bytes }) = datum.kind() else {
+        return Err(source_shape("Text"));
+    };
+    if !type_name.ends_with("Text") {
+        return Err(source_shape("Text"));
+    }
+    std::str::from_utf8(bytes).map_err(|_| source_shape("Text"))
+}
+
 fn source_pitch(datum: musa_calculus::SourceDatum<'_>) -> Result<WrittenPitch, PerformanceError> {
     let Some(musa_calculus::SourceDatumKind::Literal { type_name, bytes }) = datum.kind() else {
         return Err(source_shape("Pitch"));
     };
-    let [letter, accidental_a, accidental_b, accidental_c, accidental_d, octave_a, octave_b, octave_c, octave_d] = bytes
+    let [
+        letter,
+        accidental_a,
+        accidental_b,
+        accidental_c,
+        accidental_d,
+        octave_a,
+        octave_b,
+        octave_c,
+        octave_d,
+    ] = bytes
     else {
         return Err(source_shape("Pitch"));
     };
@@ -913,6 +932,13 @@ fn source_shape(expected: &str) -> PerformanceError {
 /// [`PerformanceError`] if the resulting finite performed track violates its
 /// exact bounds.
 pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceError> {
+    lower_gestures_with_source(score, None)
+}
+
+fn lower_gestures_with_source(
+    score: &ScoreSnapshot,
+    readings: Option<Vec<Vec<SourceReading>>>,
+) -> Result<GesturePlan, PerformanceError> {
     let reference = IntegratedTempoMap::new(score, crate::Scope::Piece);
     let marks = Interpretation::collect(score);
     let curves = hairpin_curves(score);
@@ -920,7 +946,31 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
     let mut lanes = Vec::new();
     let mut polytempo = false;
     let mut next_instance = 0_u64;
-    for (id, part) in score.parts().iter() {
+    if readings
+        .as_ref()
+        .is_some_and(|lanes| lanes.len() != score.parts().len())
+    {
+        return Err(source_shape("one interpretation artifact per gesture lane"));
+    }
+    let mut source_lanes = readings
+        .map(|lanes| {
+            lanes
+                .into_iter()
+                .map(|lane| {
+                    let expected = lane.len();
+                    let by_instance: std::collections::HashMap<_, _> =
+                        lane.into_iter().map(|reading| (reading.instance, reading)).collect();
+                    if by_instance.len() != expected {
+                        Err(source_shape("one result per distinct gesture identity"))
+                    } else {
+                        Ok(by_instance)
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .transpose()?;
+    for (lane_index, (id, part)) in score.parts().iter().enumerate() {
+        let mut source = source_lanes.as_mut().map(|lanes| &mut lanes[lane_index]);
         let profile = score.profiles().for_part(part.name());
         let scope = crate::Scope::Part { part: id.0 };
         let tempo = IntegratedTempoMap::new(score, scope);
@@ -941,58 +991,80 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
                 if let Some(mark) = marks.dynamics.get(&event.id) {
                     dynamic = Some(*mark);
                 }
-                let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
-                    profile.realize(marks.articulations_of(event.id))
-                });
-                let level = dynamic
-                    .zip(profile)
-                    .and_then(|(mark, profile)| profile.amplitude(mark))
-                    .unwrap_or(Ratio::ONE);
-                let amplitude = match curves.get(&event.id) {
-                    None => {
-                        curve_from = None;
-                        level
-                    }
-                    Some(curve) => {
-                        let from = *curve_from.get_or_insert(level);
-                        let to = profile
-                            .and_then(|profile| profile.amplitude(curve.target))
-                            .unwrap_or(Ratio::ONE);
-                        let reached = from + (to - from) * curve.fraction;
-                        if curve.fraction == Ratio::ONE {
-                            dynamic = Some(curve.target);
+                let legacy = if source.is_none() {
+                    let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
+                        profile.realize(marks.articulations_of(event.id))
+                    });
+                    let level = dynamic
+                        .zip(profile)
+                        .and_then(|(mark, profile)| profile.amplitude(mark))
+                        .unwrap_or(Ratio::ONE);
+                    let amplitude = match curves.get(&event.id) {
+                        None => {
                             curve_from = None;
+                            level
                         }
-                        reached
-                    }
-                };
-                let interpreted = Interpreted {
-                    gate: realization.gate * realization.hold,
-                    attack: realization.attack,
-                    amplitude,
-                };
-                let leaning: Vec<GraceSlot> = graces
-                    .get(&event.id)
-                    .map_or(&[][..], Vec::as_slice)
-                    .iter()
-                    .map(|grace| GraceSlot {
-                        pitch: grace.pitch,
-                        gate: profile.map_or(Ratio::ONE, |profile| {
-                            let realized = profile.realize(&grace.articulations);
-                            realized.gate * realized.hold
-                        }),
+                        Some(curve) => {
+                            let from = *curve_from.get_or_insert(level);
+                            let to = profile
+                                .and_then(|profile| profile.amplitude(curve.target))
+                                .unwrap_or(Ratio::ONE);
+                            let reached = from + (to - from) * curve.fraction;
+                            if curve.fraction == Ratio::ONE {
+                                dynamic = Some(curve.target);
+                                curve_from = None;
+                            }
+                            reached
+                        }
+                    };
+                    Some(Interpreted {
+                        gate: realization.gate * realization.hold,
+                        attack: realization.attack,
+                        amplitude,
                     })
-                    .collect();
-                let lowered = lower_gesture_event(
-                    &clock,
-                    event,
-                    &interpreted,
-                    &leaning,
-                    policy,
-                    floor,
-                    &mut next_instance,
-                    &mut pending,
-                );
+                } else {
+                    None
+                };
+                let mut leaning = Vec::new();
+                for grace in graces.get(&event.id).map_or(&[][..], Vec::as_slice) {
+                    let prepared = take_prepared(source.as_deref_mut(), next_instance, grace.pitch, || {
+                        let realized = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
+                            profile.realize(&grace.articulations)
+                        });
+                        Interpreted {
+                            gate: realized.gate * realized.hold,
+                            attack: legacy.as_ref().map_or(Ratio::ZERO, |value| value.attack),
+                            amplitude: legacy.as_ref().map_or(Ratio::ONE, |value| value.amplitude),
+                        }
+                    })?;
+                    next_instance = next_instance.saturating_add(1);
+                    leaning.push(prepared);
+                }
+                let pitches: &[WrittenPitch] = match &event.kind {
+                    ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
+                    ScoreEventKind::Chord { pitches } => pitches,
+                    ScoreEventKind::Rest => &[],
+                };
+                let mut principals = Vec::with_capacity(pitches.len());
+                for pitch in pitches {
+                    let prepared = take_prepared(source.as_deref_mut(), next_instance, *pitch, || {
+                        legacy.as_ref().map_or(
+                            Interpreted {
+                                gate: Ratio::ONE,
+                                attack: Ratio::ZERO,
+                                amplitude: Ratio::ONE,
+                            },
+                            |value| Interpreted {
+                                gate: value.gate,
+                                attack: value.attack,
+                                amplitude: value.amplitude,
+                            },
+                        )
+                    })?;
+                    next_instance = next_instance.saturating_add(1);
+                    principals.push(prepared);
+                }
+                let lowered = lower_gesture_event(&clock, event, &leaning, &principals, policy, floor, &mut pending);
                 if let Some(at) = lowered.anticipated {
                     let performed = clock.performed(at);
                     for index in previous.clone() {
@@ -1008,6 +1080,9 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
                 previous = lowered.pushed;
             }
         }
+        if source.as_ref().is_some_and(|remaining| !remaining.is_empty()) {
+            return Err(source_shape("one consumed result for every requested gesture"));
+        }
         let ambient = clock.performed(MusicalTime::ZERO + part.span());
         let end = pending
             .iter()
@@ -1017,19 +1092,27 @@ pub fn lower_gestures(score: &ScoreSnapshot) -> Result<GesturePlan, PerformanceE
             .max(ambient);
         let duration =
             Duration::new(end.as_ratio()).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
+        let mut lineage = Vec::with_capacity(pending.len());
+        let mut compatibility = Vec::with_capacity(pending.len());
         let occurrences = pending
             .into_iter()
             .map(|gesture| {
+                lineage.push(gesture.lineage);
+                compatibility.push(gesture.compatibility);
                 Span::new(gesture.start, gesture.end)
                     .map(|span| Occurrence::new(span, gesture.payload))
                     .map_err(|error| PerformanceError::Unsupported(error.to_string()))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        lineage.sort_by_key(GestureLineage::instance);
+        compatibility.sort_by_key(GestureCompatibility::instance);
         let track = track(duration, occurrences).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
         lanes.push(GestureLane {
             part: part.id(),
             name: part.name().to_owned(),
             track,
+            lineage,
+            compatibility,
             tempo,
         });
     }
@@ -1068,49 +1151,30 @@ pub fn lower_gestures_from_checked(
     artifacts: &[musa_calculus::CheckedSource],
 ) -> Result<GesturePlan, PerformanceError> {
     let readings = source_readings(artifacts)?;
-    let mut plan = lower_gestures(score)?;
-    if readings.len() != plan.lanes.len() {
-        return Err(source_shape("one interpretation artifact per gesture lane"));
+    lower_gestures_with_source(score, Some(readings))
+}
+
+fn take_prepared(
+    source: Option<&mut std::collections::HashMap<u64, SourceReading>>,
+    instance: u64,
+    pitch: WrittenPitch,
+    legacy: impl FnOnce() -> Interpreted,
+) -> Result<PreparedGesture, PerformanceError> {
+    if let Some(source) = source {
+        return source
+            .remove(&instance)
+            .ok_or_else(|| source_shape("a result for every requested gesture"))?
+            .prepare(instance, pitch);
     }
-    for (lane, source) in plan.lanes.iter_mut().zip(readings) {
-        let by_instance: std::collections::HashMap<_, _> = source
-            .into_iter()
-            .map(|reading| (reading.instance, reading))
-            .collect();
-        let mut seen = std::collections::HashSet::new();
-        let occurrences = lane
-            .track
-            .occurrences()
-            .iter()
-            .map(|occurrence| {
-                let mut gesture = occurrence.payload().clone();
-                let reading = by_instance
-                    .get(&gesture.instance)
-                    .ok_or_else(|| source_shape("a result for every requested gesture"))?;
-                if !seen.insert(gesture.instance)
-                    || reading.pitch != gesture.pitch
-                    || reading.expression != gesture.amplitude
-                    || reading.attack != gesture.attack_seconds
-                    || reading.gate * reading.hold != gesture.legacy_gate
-                {
-                    return Err(PerformanceError::Unsupported(
-                        "checked source performance disagrees with the retained compatibility oracle".to_owned(),
-                    ));
-                }
-                gesture.pitch = reading.pitch;
-                gesture.amplitude = reading.expression;
-                gesture.attack_seconds = reading.attack;
-                gesture.source_exact = Arc::clone(&reading.exact_gesture);
-                Ok(Occurrence::new(occurrence.span(), gesture))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        if seen.len() != by_instance.len() {
-            return Err(source_shape("one consumed result for every requested gesture"));
-        }
-        lane.track = track(lane.track.duration(), occurrences)
-            .map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
-    }
-    Ok(plan)
+    let legacy = legacy();
+    Ok(PreparedGesture {
+        instance,
+        pitch,
+        expression: legacy.amplitude,
+        gate: legacy.gate,
+        attack: legacy.attack,
+        exact_gesture: Arc::from([]),
+    })
 }
 
 /// Written time to exact performed time, for one part.
@@ -1154,6 +1218,8 @@ struct PendingGesture {
     start: Position<PerformedTime>,
     end: Position<PerformedTime>,
     payload: Gesture,
+    lineage: GestureLineage,
+    compatibility: GestureCompatibility,
 }
 
 /// Lower one event with the shared grace-stealing and interpretation rules,
@@ -1162,65 +1228,67 @@ struct PendingGesture {
 fn lower_gesture_event(
     clock: &Clock<'_>,
     event: &ScoreEvent,
-    interpreted: &Interpreted,
-    leaning: &[GraceSlot],
+    leaning: &[PreparedGesture],
+    principals: &[PreparedGesture],
     policy: crate::GracePolicy,
     floor: MusicalTime,
-    next_instance: &mut u64,
     gestures: &mut Vec<PendingGesture>,
 ) -> Lowered {
-    let pitches: &[WrittenPitch] = match &event.kind {
-        ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
-        ScoreEventKind::Chord { pitches } => pitches,
-        ScoreEventKind::Rest => &[],
-    };
     let written = event.notated_duration.value;
     let notated_end = event.onset + written;
     let stolen = steal(event, written, leaning.len(), policy, floor);
     let mut at = stolen.graces_start_at;
-    for slot in leaning {
-        let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * slot.gate);
+    for prepared in leaning {
+        let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * prepared.gate);
         gestures.push(PendingGesture {
             start: clock.performed(at),
             end: clock.performed(at + sounds),
             payload: Gesture {
-                instance: *next_instance,
-                pitch: slot.pitch,
+                instance: prepared.instance,
+                pitch: prepared.pitch,
+                amplitude: prepared.expression,
+                source_exact: Arc::clone(&prepared.exact_gesture),
+            },
+            lineage: GestureLineage {
+                instance: prepared.instance,
                 event: event.id,
+                written_on: event.onset,
+                written_off: notated_end,
                 origin: event.origin.clone(),
-                amplitude: interpreted.amplitude,
-                attack_seconds: interpreted.attack,
-                notated_on: event.onset,
-                notated_off: notated_end,
-                source_exact: Arc::from([]),
-                legacy_gate: slot.gate,
+            },
+            compatibility: GestureCompatibility {
+                instance: prepared.instance,
+                attack_seconds: prepared.attack,
             },
         });
-        *next_instance = next_instance.saturating_add(1);
         at = at + stolen.each;
     }
     let sounded_start = stolen.principal_starts_at;
-    let sounded_end =
-        sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * interpreted.gate);
     let first = gestures.len();
-    for pitch in pitches {
+    for prepared in principals {
+        let sounded_end =
+            sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * prepared.gate);
         gestures.push(PendingGesture {
             start: clock.performed(sounded_start),
             end: clock.performed(sounded_end),
             payload: Gesture {
-                instance: *next_instance,
-                pitch: *pitch,
+                instance: prepared.instance,
+                pitch: prepared.pitch,
+                amplitude: prepared.expression,
+                source_exact: Arc::clone(&prepared.exact_gesture),
+            },
+            lineage: GestureLineage {
+                instance: prepared.instance,
                 event: event.id,
+                written_on: event.onset,
+                written_off: notated_end,
                 origin: event.origin.clone(),
-                amplitude: interpreted.amplitude,
-                attack_seconds: interpreted.attack,
-                notated_on: event.onset,
-                notated_off: notated_end,
-                source_exact: Arc::from([]),
-                legacy_gate: interpreted.gate,
+            },
+            compatibility: GestureCompatibility {
+                instance: prepared.instance,
+                attack_seconds: prepared.attack,
             },
         });
-        *next_instance = next_instance.saturating_add(1);
     }
     Lowered {
         pushed: first..gestures.len(),
@@ -1331,13 +1399,6 @@ fn grace_index(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Vec<
         group.sort_by_key(|grace| grace.index);
     }
     index
-}
-
-/// One grace note as the clock sees it: a pitch and how much of its stolen
-/// slot it actually sounds.
-struct GraceSlot {
-    pitch: WrittenPitch,
-    gate: Ratio<i64>,
 }
 
 /// What the voice loop needs to know about an event it has just lowered.

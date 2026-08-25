@@ -150,17 +150,27 @@ enum ProcessorInstance {
 
 impl ProcessorInstance {
     /// Deliver a scheduled event. Only event-consuming processors act.
-    fn apply_event(&mut self, event: &EventMessage<Gesture>, tuning: Tuning) {
+    fn apply_event(
+        &mut self,
+        event: &EventMessage<Gesture>,
+        tuning: Tuning,
+        attacks: &[(u64, num_rational::Ratio<i64>)],
+    ) {
         let Self::PolySine { allocator } = self else {
             return;
         };
         match event {
             EventMessage::Begin(handle, gesture) => {
+                let attack = attacks
+                    .binary_search_by_key(&gesture.instance(), |(instance, _)| *instance)
+                    .ok()
+                    .and_then(|index| attacks.get(index))
+                    .map_or(num_rational::Ratio::ZERO, |(_, attack)| *attack);
                 allocator.note_on(
                     handle,
                     tuning.frequency(&gesture.pitch()) as f32,
                     ratio_to_f32(gesture.amplitude()),
-                    ratio_to_f32(gesture.attack_seconds()),
+                    ratio_to_f32(attack),
                 );
             }
             EventMessage::End(handle) => allocator.note_off(handle),
@@ -677,13 +687,18 @@ impl RenderPlan {
     /// Event input is applied before the processors produce this frame. Every
     /// processor, feedback edge, modulation source, and smoother therefore
     /// advances once regardless of the host callback partition.
-    pub(crate) fn step(&mut self, events: &[EventMessage<Gesture>], tuning: Tuning) -> [f32; 2] {
+    pub(crate) fn step(
+        &mut self,
+        events: &[EventMessage<Gesture>],
+        tuning: Tuning,
+        attacks: &[(u64, num_rational::Ratio<i64>)],
+    ) -> [f32; 2] {
         const FRAME_WIDTH: usize = 1;
         let sample_rate = f64::from(self.sample_rate);
         for step in &mut self.schedule {
             if step.takes_events {
                 for event in events {
-                    step.instance.apply_event(event, tuning);
+                    step.instance.apply_event(event, tuning, attacks);
                 }
             }
             process_step(step, &mut self.buffers, 1, sample_rate, FRAME_WIDTH);

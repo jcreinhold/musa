@@ -7,8 +7,9 @@
 
 use musa_dsp::StudioSpec;
 
+use musa_compiler::lower_gestures;
 use musa_playback::PreparedPlaybackPlan;
-use musa_score::{PerformanceOptions, ScoreSnapshot, lower_gestures};
+use musa_score::{PerformanceOptions, ScoreSnapshot};
 
 use crate::error::ProjectError;
 
@@ -177,6 +178,9 @@ pub(crate) fn performance_dump(score: &ScoreSnapshot) -> Result<String, ProjectE
         for occurrence in lane.track().occurrences() {
             let span = occurrence.span();
             let gesture = occurrence.payload();
+            let lineage = lane.lineage(gesture.instance()).ok_or_else(|| {
+                ProjectError::Performance(format!("gesture {} has no written lineage", gesture.instance()))
+            })?;
             let _ = writeln!(
                 out,
                 "  {}..{} {} amplitude={} event-{:x}",
@@ -184,7 +188,7 @@ pub(crate) fn performance_dump(score: &ScoreSnapshot) -> Result<String, ProjectE
                 span.end(),
                 gesture.pitch(),
                 gesture.amplitude(),
-                gesture.event().0
+                lineage.event().0
             );
         }
     }
