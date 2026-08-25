@@ -47,8 +47,8 @@ callback-shaped escape hatch.
 
 Canonicalize filter `resonance`. The removed `q` spelling is a hard error with a certain code action; it is not accepted
 as an alias. Hover explains that resonance is conventionally represented by quality factor Q. Rewrite repository
-fixtures to the one canonical spelling. Terms such as `bus`, `send`, `instrument`, `room`, and `main` are documented as
-studio concepts, not presumed prior knowledge.
+fixtures to the one canonical spelling. Terms such as `bus`, `send`, `instrument`, `room`, and `master` are documented
+as studio concepts, not presumed prior knowledge.
 
 Plain identifiers used as processor calls receive hover/signature/completion just as keywords do. Imported declarations
 show their defining source; built-ins say `builtin`. Generate reference tables and UI labels from the catalogue. Add an
