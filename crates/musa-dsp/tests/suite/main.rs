@@ -10,5 +10,6 @@ mod effects_laws;
 mod elaboration_compatibility;
 mod machine;
 mod rt;
+mod schedule;
 mod studio;
 mod synth;

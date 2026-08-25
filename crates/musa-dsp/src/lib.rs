@@ -21,6 +21,7 @@ mod instrument;
 mod machine;
 mod offline;
 mod plan;
+mod schedule;
 mod spec;
 mod studio;
 mod voice;
@@ -30,6 +31,11 @@ pub use crate::instrument::poly_sine_spec;
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
+pub use crate::schedule::{
+    AudioFormat, BoundaryCollision, BoundaryKind, CollapsePolicy, EventBatch, EventHandle, EventMessage, FrameRounding,
+    MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy, ScheduledSource, SourceState,
+    TimeDecision, TimeMap, merge_schedules, schedule,
+};
 pub use crate::spec::{
     Combination, FilterKind, GraphOptions, MAX_DELAY, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing,
     StudioGraphSpec, Unit, Waveform,

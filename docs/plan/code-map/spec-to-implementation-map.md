@@ -29,7 +29,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Source-to-adapter-to-event-track provenance | implemented | compiler derivation records and prompt-169 K1–K20 matrix |
 | Provenance composition through scheduling and audio | pending | prompts 171–174 |
 | Exact machine reference step and primitive registry | implemented | `musa-dsp/src/machine.rs`; prompt 173 still migrates the production DSP graph and callback |
-| Checked event-track scheduling into frame sources | pending | prompt 172 |
+| Checked event-track scheduling into frame sources | implemented | `musa-dsp::schedule`; exact-map, decision, collapse, merge, countdown, seek, and bound laws |
 | One-frame DSP meaning and opaque prepared machine | pending | prompt 173; `compile_graph`, `StudioGraphSpec`, and `RenderPlan` remain live only until that migration |
 
 ## Trusted boundary
@@ -115,8 +115,14 @@ durations, typed occurrences, `empty`, `event`, `follow`, `together`, `map_paylo
 normalization, exact versioned encoding, and semantic hash. It is a leaf: syntax, musical domains, machines, and audio
 do not enter it.
 
-The machine half of the prompt-127a cutover is deliberately still pending. The current DSP graph and render plan remain
-the production implementation until prompts 171–173 replace them with a functional primitive registry, one exact machine
-step, checked scheduling, and one-frame audio. Prompt 174 then audits the complete cross-stage derivation and deletes
-every surviving legacy runtime path. Calling those APIs current is accurate; treating them as the governing machine
-semantics is not.
+The reference machine step and checked scheduling are implemented in `musa-dsp`. `machine.rs` prepares the closed
+primitive registry and interprets every structural form one exact step at a time. `schedule.rs` converts an admitted
+finite event track through an exact finite time map and explicit versioned policy into immutable frame batches, a full
+decision record, and an allocation-free cursor/countdown source. Its bounds cover map entries, occurrences, messages,
+batches, and frame representation; its merger injects opaque handles into recursive disjoint namespaces before sorting.
+
+The current DSP graph and `PerformancePlan` remain the production implementation until prompt 173 replaces them with
+one-frame registered instruments and cuts callers directly through the checked schedule. They are not adapted into the
+new operation: note 24 records why wrapping an already-frame-tagged, floating payload would create the forbidden second
+schedule. Prompt 174 audits the complete cross-stage derivation and deletes every surviving legacy runtime path. Calling
+those APIs current is accurate; treating them as the governing machine semantics is not.
