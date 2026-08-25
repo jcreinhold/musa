@@ -6,11 +6,11 @@ depends_on: [168]
 phase: 3
 ---
 
-> **Reinstated and repaired by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
-> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** Conformance is stated against the
-> surviving calculus — the small core of note 50 plus the index stratum of 142d — and not against the dependent core
-> prompt 129 specified. Rows of the old matrix whose mechanism is deleted are struck with the note that deleted them,
-> not marked green.
+> **Reinstated by notes [`51`](../../notes/research/language-design-closure/51-the-terseness-audit.md) and
+> [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md), then repointed by
+> [`53`](../../notes/research/language-design-closure/53-one-theory.md).** Conformance is stated against the dependent
+> core prompts 143–162 implemented. Rows of an old matrix whose mechanism was later replaced are struck with the note
+> that replaced them, not marked green.
 
 # Discharge the Core's Obligation Matrix
 
@@ -28,9 +28,11 @@ second-path audits the old core carried run against the new one. This prompt add
 - Every law suite added by prompts 133–141, and the freeze from prompt 168. What is already proved is not proved again;
   what is *partly* proved is the interesting column, and the matrix has to say which is which rather than marking a row
   green because a related test passes.
-- `docs/notes/research/language-design-closure/33-metatheory.md`, `34-proof-review.md`, `35-proof-repair.md`,
-  `36-final-proof-review.md`, and `37-final-blocker.md` — the previous matrix, its reviews, and the blocker found at the
-  last gate. The lesson from `37` is procedural: the obligation that fails is the one nobody wrote a program for.
+- `docs/notes/research/language-design-closure/33-metatheory.md` and the deleted historical `34-proof-review.md`,
+  `35-proof-repair.md`, `36-final-proof-review.md`, and `37-final-blocker.md` at `d0f4a527^`
+  (`git show d0f4a527^:<path>`) — the previous matrix, its reviews, and the blocker found at the last gate, consulted as
+  historical evidence rather than restored against the notes-retention policy. The lesson from `37` is procedural: the
+  obligation that fails is the one nobody wrote a program for.
 - `docs/rules/language/02-core-calculus.md` §5.7 (track-construction safety) and §5.9 (the expansion phase, including
   law 11) — prompt 129 carried these forward as obligations to re-derive, and this is the prompt that owes the
   derivation over the dependent core.
@@ -84,8 +86,8 @@ undocumented one always is.
 **The boundary with prompt 174, stated.** This prompt owns the *language*: the core calculus, its elaboration, the
 expansion phase, and the storable-data boundary. Prompt 174 owns the *cutover*: machine values, scheduling, one-frame
 audio, and the removal of surviving old semantic paths on the sound side. The two matrices reference each other and do
-not overlap; state which rows belong to which, so that a row does not end up unproved because each prompt assumed the
-other had it.
+not overlap; state which rows belong to which, so that 174 does not redo this prompt and a row does not end up unproved
+because each prompt assumed the other had it.
 
 **A failing row is the output.** If an obligation cannot be discharged, this prompt records the smallest program that
 exhibits the failure and stops. A matrix with an honest gap is worth more than a matrix with a row marked green on the
