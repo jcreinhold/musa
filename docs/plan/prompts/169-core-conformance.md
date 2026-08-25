@@ -42,7 +42,7 @@ second-path audits the old core carried run against the new one. This prompt add
   something else. A claim there that this pass falsified is a governing-document repair, and whether to make it is stop
   condition 4, not a decision inside this prompt.
 - Prompt [174](174-core-calculus-conformance.md) — the later audit of the machine and audio path. This prompt must not
-  do 153's job, and 153 must not have to redo this one, so the boundary between them is stated explicitly here.
+  do 174's job, and 174 must not have to redo this one, so the boundary between them is stated explicitly here.
 
 ## Design
 
