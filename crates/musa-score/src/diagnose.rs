@@ -369,9 +369,8 @@ pub struct Fix {
 
 /// One replacement inside a [`Fix`].
 ///
-/// Deliberately not `musa_syntax::TextEdit`: the compiler does not depend on
-/// the CST for this, and a diagnostic crossing to the app must not drag Rowan's
-/// vocabulary with it (roadmap §10.6).
+/// Deliberately not a syntax-layer text edit: a diagnostic crossing to the app
+/// must not drag Rowan's vocabulary with it (roadmap §10.6).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FixEdit {
     /// The bytes to replace. An empty range inserts.

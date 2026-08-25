@@ -199,7 +199,22 @@ fn prove(
                 bars: here.as_ref().unwrap_or(bars),
                 meter_written: resolver.meter_written,
             };
-            if let Some(diagnostic) = musa_score::assert::check(&claim, &passage, &settled) {
+            if let Some(failure) = musa_score::assert::check(&claim, &passage, &settled) {
+                let (diagnostic, rest_fill) = failure.into_parts();
+                let diagnostic = match rest_fill {
+                    Some(fill) => {
+                        let written = musa_score::assert::fraction(fill.duration.as_ratio());
+                        let rest = format!("rest{}", musa_syntax::spell_duration(&written));
+                        let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
+                        match fill.content_end {
+                            Some(at) => {
+                                filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}"))
+                            }
+                            None => filled,
+                        }
+                    }
+                    None => diagnostic,
+                };
                 resolver.report(diagnostic);
             }
         }

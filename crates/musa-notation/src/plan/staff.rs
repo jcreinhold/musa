@@ -142,7 +142,7 @@ pub(super) fn plan_staff(
 pub(super) fn beat_group_at(meter: Meter, onset: Ratio<i64>) -> Option<(usize, Ratio<i64>)> {
     let unit = Ratio::new(1, i64::from(meter.denominator()));
     let mut end = Ratio::from_integer(0);
-    for (index, group) in musa_score::beat_groups(meter.numerator(), meter.denominator())
+    for (index, group) in musa_syntax::beat_groups(meter.numerator(), meter.denominator())
         .into_iter()
         .enumerate()
     {

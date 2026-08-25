@@ -87,12 +87,3 @@ pub use crate::score::{
     SectionMark, SlurSpan, TempoMarking, TupletSpan, Voice, VoiceId,
 };
 pub use crate::time::{MusicalDuration, MusicalTime};
-
-/// How a bar divides into the groups a player hears.
-///
-/// A fact about a [`score::Meter`], so it is named here, where meters are.
-/// It is *implemented* one crate down, beside the formatter that spaces a bar
-/// by the same boundaries the engraver beams by — two readers of one table,
-/// and a second copy of it would be a second convention. Which crate holds the
-/// table is not something a caller should have to know.
-pub use musa_syntax::beat_groups;

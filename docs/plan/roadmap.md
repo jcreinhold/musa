@@ -1956,7 +1956,7 @@ passes                     musa-compiler
                      ← calculus, event track, language, score
 
 outputs         musa-notation                  musa-dsp
-                 ← score                  ← score, compiler
+          ← syntax, events, score          ← score, compiler
                                                  │
                                              musa-playback
                                           ← score, audio
@@ -1971,8 +1971,8 @@ No dependency points upward.
 In particular:
 
 - the musical values sit below the pipeline that computes them (§15.15): `musa-score` holds written pitch, chords,
-  scales, exact time, marks, the score snapshot, the performance plan, provenance, diagnostics, and analysis, and names
-  no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
+  scales, exact time, marks, the score snapshot, exact performed gestures, provenance, diagnostics, and analysis, and
+  names no pass at all — which is why `musa-notation` depends on it and not on `musa-compiler`;
 - compiler does not depend on rendering;
 - compiler does not depend on audio;
 - the core does not depend on the compiler, on `musa-syntax`, or on anything musical (§15.12);
@@ -2467,7 +2467,7 @@ Owns:
 - exact rational musical time, meters, bar lines, and grooves;
 - marks and their vocabulary;
 - `ScoreSnapshot` and everything on it — parts, voices, events, spans, annotations;
-- `PerformancePlan`, performance profiles, and realization decisions;
+- exact performed gesture tracks, performance profiles, and realization decisions;
 - provenance (`Origin`, `ExpansionStep`, `SourceSpan`, `SourceMap`) and the derivation graph;
 - diagnostics;
 - analysis and assertion checking, which read a finished score and report what they saw.
@@ -2480,14 +2480,14 @@ Dependencies:
 ```text
 indexmap
 musa-events
-musa-syntax
 num-rational
 serde
 thiserror
 ```
 
-`musa-syntax` is here for two things only: the assertion reporter spells a duration with the formatter's speller, and
-`beat_groups` is re-exported so that a caller asking how a bar divides need not know which crate holds the table.
+Only `musa-events` is another workspace dependency. Surface spelling remains in `musa-syntax`; consumers that need both
+written form and musical values name both dependencies directly. Assertion checking returns an exact missing duration,
+and the compiler spells the corresponding source fix where those two abstractions meet.
 
 Public interface: wide, and deliberately. This is a vocabulary, not an algorithm behind a facade, and §2's separations —
 written pitch is not a MIDI number, notated duration is not performed duration — are enforced by *which type* a value

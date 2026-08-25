@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 musa-events = { workspace = true }
 musa-score = { workspace = true }
+musa-syntax = { workspace = true }
 num-rational = "0.4"
 quick-xml = "0.41"
 thiserror = "2"

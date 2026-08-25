@@ -108,6 +108,41 @@ pub struct Settled<'a> {
     pub meter_written: bool,
 }
 
+/// A failed written claim and any exact semantic repair information its
+/// checking stage can determine.
+///
+/// This layer never spells source. [`RestFill`] is deliberately an exact
+/// duration and insertion locus; `musa-compiler`, where score values meet the
+/// surface language, turns it into the composer's `rest/…` spelling.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClaimFailure {
+    diagnostic: Diagnostic,
+    rest_fill: Option<RestFill>,
+}
+
+impl ClaimFailure {
+    fn plain(diagnostic: Diagnostic) -> Self {
+        Self {
+            diagnostic,
+            rest_fill: None,
+        }
+    }
+
+    /// Separate the semantic diagnostic from its optional exact rest fill.
+    pub fn into_parts(self) -> (Diagnostic, Option<RestFill>) {
+        (self.diagnostic, self.rest_fill)
+    }
+}
+
+/// The exact rest that would fill a short measured passage.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RestFill {
+    /// How much written time is missing.
+    pub duration: MusicalDuration,
+    /// Where the rest can be inserted, absent for an empty passage.
+    pub content_end: Option<u32>,
+}
+
 /// How exactly a passage must match the chord it claims to realize.
 ///
 /// Three modes because they are three different claims, and a single
@@ -489,14 +524,14 @@ impl Claim {
 /// claims are declared, and each arm reports at most one thing: the *smallest*
 /// witness, because a passage with four notes outside its scale is one mistake
 /// with four instances and a composer fixes the first one first.
-pub fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
+pub fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> Option<ClaimFailure> {
     match claim {
         Claim::FillsMeter => fills_meter(passage, settled),
-        Claim::PitchesIn(scale) => pitches_in(passage, *scale),
-        Claim::Realizes { chord, policy } => realizes(passage, *chord, *policy),
-        Claim::Voices(count) => voices(passage, *count),
-        Claim::WithinRanges(ranges) => within_ranges(passage, ranges),
-        Claim::Follows(rule) => follows(passage, *rule),
+        Claim::PitchesIn(scale) => pitches_in(passage, *scale).map(ClaimFailure::plain),
+        Claim::Realizes { chord, policy } => realizes(passage, *chord, *policy).map(ClaimFailure::plain),
+        Claim::Voices(count) => voices(passage, *count).map(ClaimFailure::plain),
+        Claim::WithinRanges(ranges) => within_ranges(passage, ranges).map(ClaimFailure::plain),
+        Claim::Follows(rule) => follows(passage, *rule).map(ClaimFailure::plain),
     }
 }
 
@@ -510,13 +545,13 @@ pub fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> Option<
 /// `bar` says "this bar", and an `assert fills_meter()` says "this passage",
 /// because it is not a bar and calling it one would be the diagnostic lying
 /// about what is on the page.
-pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
+pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<ClaimFailure> {
     let here = settled.bars.measure_at(passage.at);
     // Inside an unmeasured stretch there is no measure for the passage to be
     // one of. Refused rather than ignored: the claim cannot be checked, and a
     // claim nobody checks is exactly what this module exists to prevent.
     if !here.meter.is_measured() {
-        return Some(
+        return Some(ClaimFailure::plain(
             Diagnostic::error(
                 Code::DoesNotAddUp,
                 format!("a `{}` here has no measure to be one of", passage.noun),
@@ -527,7 +562,7 @@ pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnosti
                 passage.noun
             ))
             .note("`senza { ... }` and `meter none;` say the barlines stop; a `bar` says where one falls"),
-        );
+        ));
     }
     let measure = here.duration().as_ratio();
     let written = passage.extent.as_ratio();
@@ -566,13 +601,14 @@ pub fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnosti
     Some(if long {
         // Which note to remove is the composer's decision, and a fix that
         // guesses is worse than a help line that does not.
-        diagnostic.help("shorten a duration, or move the last of these into the next bar")
+        ClaimFailure::plain(diagnostic.help("shorten a duration, or move the last of these into the next bar"))
     } else {
-        let rest = format!("rest{}", musa_syntax::spell_duration(&fraction(difference)));
-        let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
-        match passage.content_end {
-            Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),
-            None => filled,
+        ClaimFailure {
+            diagnostic,
+            rest_fill: Some(RestFill {
+                duration: MusicalDuration::new(difference),
+                content_end: passage.content_end,
+            }),
         }
     })
 }

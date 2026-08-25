@@ -1,7 +1,7 @@
 ---
 id: 174a
 slug: score-without-syntax
-status: pending
+status: done
 depends_on: [174]
 phase: 3
 ---
