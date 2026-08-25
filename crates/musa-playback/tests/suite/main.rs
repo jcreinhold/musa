@@ -5,5 +5,6 @@
 //! `target/debug/deps`. See `docs/notes/toolchain/slow-test-suite.md`.
 
 mod engine;
+mod machine;
 mod rt;
 mod transport_regressions;

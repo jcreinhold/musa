@@ -1,55 +1,60 @@
 # Preparing a machine for real-time use
 
-This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to the prompt-171–173 target in
-`musa-dsp` and `musa-playback`. It describes the required implementation, not the current graph path: today
-`StudioGraphSpec`, `compile_graph`, `RenderPlan`, caller-block feedback, and block-rate modulation remain live. Prompt
-173 owns their migration and deletion, as recorded in the [`clean-break ledger`](../clean-break-ledger.md).
+This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to their implementation in
+`musa-dsp` and `musa-playback`. Prompt 171 supplies the checked reference semantics in `musa-dsp/src/machine.rs`: typed
+preparation, a closed functional primitive table, explicit start, private combined state, and one structural step.
+`StudioGraphSpec`, `compile_graph`, `RenderPlan`, caller-block feedback, and block-rate modulation remain the old
+production path until prompt 173 migrates and deletes them, as recorded in the
+[`clean-break ledger`](../clean-break-ledger.md).
 
 ## 1. Crate boundary
 
 `musa-dsp` owns:
 
-- machine construction from registered primitives, `identity`, `connect`, `beside`, `feedback`, `copy`, `drop`, `swap`;
-- machine validation and whole-machine step ordering;
+- preparing registered primitives, `identity`, `connect`, `beside`, `feedback`, `copy`, `drop`, and `swap` from the
+  compiler's immutable `MachineSpec`;
+- machine validation and structural step semantics;
 - the closed primitive registry;
 - primitive state formats;
-- scheduling and audio preparation; and
-- the offline implementation of one audio step, which is one sample frame.
+- later scheduling and audio preparation; and
+- the reference implementation of one audio step, which is one sample frame.
 
 `musa-playback` owns:
 
 - device negotiation;
-- installing and retiring prepared machines;
+- later installing and retiring prepared machines in the production callback;
 - transport state; and
 - calling the prepared step from the audio callback.
 
-The engine does not inspect a machine's primitives or buffers. Offline rendering runs the same prepared step without
-CPAL.
+The engine does not inspect a machine's primitives or state. The device-free playback harness and offline harness
+already run the same `StartedMachine::step`; prompt 173 puts that call in the production callback.
 
-## 2. Preparation happens before the callback
+## 2. Reference preparation happens before start
 
-The target `prepare_audio` operation performs these steps:
+`prepare_machine` now performs these steps:
 
-1. Check every option and instrument or studio binding.
-2. Build closed registered primitives with typed ports.
-3. Add only the `feedback` edges that the source or a primitive's contract requested.
-4. Build the ordinary-wire dependency graph over whole primitives.
-5. Reject missing inputs, type mismatches, duplicate drivers, and cycles that cross no `feedback`.
-6. Choose a fixed step order.
-7. Compute buffer and state sizes and allocate control-side storage.
-8. Return an opaque prepared machine or a stable preparation error.
+1. Check the finite bottom-up projection is one tree, with children preceding parents, and enforce node and depth
+   bounds.
+2. Match every primitive id/version against both the compiler descriptor and the closed runtime registration.
+3. Solve the structural port equations by first-order unification with an occurs check, fixing the root to the exact
+   owned port schemas the compiler handed across the trusted boundary.
+4. Decode primitive configuration and explicit feedback initials once, at their solved storable schemas.
+5. Sum declared private-state and step-work bounds.
+6. Build a private structural tree and return it inert as `PreparedMachine`.
 
-Every recoverable failure occurs here. The callback never discovers that a port is missing or that more memory is
-needed.
+`PreparedMachine::start` explicitly constructs the combined state, returned only inside `StartedMachine`. A dynamic
+caller can still offer a value of the wrong external schema; `step` refuses it before state changes. No source syntax,
+core term, resolver, evaluator, or payload checker is available at this boundary.
 
-## 3. Store a whole-machine step order
+## 3. Execute the structural equations, not a schedule
 
-The prepared machine stores primitive order, not port order. During one step, a primitive runs once after all of its
-current inputs are available. Machine inputs and old `feedback` values are available at the start. New `feedback` values
-are committed after all primitives run.
+The reference implementation deliberately executes the finite structural tree. `connect` runs its left child and hands
+that current result immediately to its right child; `beside` runs the two components on the two input members;
+`feedback` supplies its stored old value, takes one child step, and commits the returned next value afterward. There is
+no node order, port schedule, inferred register edge, or zero-delay loop.
 
-Grouping independent primitives or processing several steps with SIMD is allowed only when tests show the same output
-and next state as the simple step rule.
+A later flattening may store a control program rather than the tree, and batching may group repeated steps, only when
+differential tests show the same outputs and final private state as this implementation.
 
 ## 4. The step is one sample frame
 
@@ -67,19 +72,19 @@ Today’s caller-buffer-sensitive feedback does not meet this rule. It remains a
 
 ## 5. Registered-primitive contract
 
-Each registered primitive provides:
+Each reference registration now provides:
 
 - input, output, and state formats;
 - deterministic initialization from prepared parameters and seed;
 - a total finite step function;
 - memory and work bounds;
-- rules for clipping, NaN, and infinity; and
+- exact total arithmetic or a finite non-arithmetic operation; and
 - an operation version.
 
 A native primitive receives no arbitrary closure or host callback. A future plug-in adapter must state what happens on
 failure or nondeterminism. It does not automatically inherit the native-primitive theorem.
 
-## 6. Publishing a prepared machine to the callback
+## 6. Publishing a prepared machine to the callback (prompt 173)
 
 The control thread creates every buffer, state value, step-order table, media map, and primitive instance. It sends the
 finished machine through the existing bounded lock-free queue.
@@ -97,15 +102,17 @@ The callback:
 Sample rate and channel layout are preparation inputs. A device change creates a new prepared machine; it does not
 mutate the current one behind the callback’s back.
 
-## 7. Required tests
+## 7. Current and successor tests
 
-The implementation is not complete until it passes:
+Prompt 171 covers:
 
-- the known machine whose ports look acyclic but whose whole primitives cannot be ordered;
-- missing, duplicate, and mismatched port tests;
-- rejection of ordinary-wire cycles and acceptance of `feedback` edges;
-- totality and determinism tests over small reference primitives;
+- every structural constructor and every reference primitive;
+- malformed trees, registry conflicts, stored-value codecs, and typed port mismatch;
+- totality and determinism over the small reference family;
 - causality tests on every input prefix;
-- all caller-buffer partitions for feedback and other stateful primitives;
-- equality between offline and live use of the prepared step; and
-- instrumentation that detects allocation, locks, I/O, logging, or large destruction in the callback.
+- the first output and subsequent Boolean negation of initialized feedback;
+- the old whole-node scheduling counterexample; and
+- equality between offline and device-free playback use of the prepared step.
+
+Prompts 172–173 add scheduling, production audio-format checks, caller-buffer partition laws, and callback RT
+instrumentation to the migrated machine path. The old graph tests remain required until that clean break.

@@ -28,7 +28,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Tonal and post-tonal packages over indexed families | implemented | `stdlib/src/{tonal,post_tonal}`; generic-row and corpus laws |
 | Source-to-adapter-to-event-track provenance | implemented | compiler derivation records and prompt-169 K1–K20 matrix |
 | Provenance composition through scheduling and audio | pending | prompts 171–174 |
-| Exact machine reference step and primitive registry | pending | prompt 171; current DSP graph is not the governing machine semantics |
+| Exact machine reference step and primitive registry | implemented | `musa-dsp/src/machine.rs`; prompt 173 still migrates the production DSP graph and callback |
 | Checked event-track scheduling into frame sources | pending | prompt 172 |
 | One-frame DSP meaning and opaque prepared machine | pending | prompt 173; `compile_graph`, `StudioGraphSpec`, and `RenderPlan` remain live only until that migration |
 

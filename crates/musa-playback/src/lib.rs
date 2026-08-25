@@ -28,4 +28,27 @@ pub mod testing {
     //! against a fake output without an audio device. Not part of the
     //! facade; hidden so no real caller depends on it.
     pub use crate::core::{CallbackCore, Message};
+
+    use musa_dsp::{MachineValue, PreparedMachine, StartedMachine, StepError};
+
+    /// A device-free frame harness proving the engine side calls the same
+    /// prepared one-step interpreter as offline execution.
+    pub struct MachineCallbackHarness {
+        running: StartedMachine,
+    }
+
+    impl MachineCallbackHarness {
+        /// Start an opaque prepared machine exactly once.
+        #[must_use]
+        pub fn new(machine: &PreparedMachine) -> Self {
+            Self {
+                running: machine.start(),
+            }
+        }
+
+        /// Process one callback frame through the semantic step.
+        pub fn frame(&mut self, input: MachineValue) -> Result<MachineValue, StepError> {
+            self.running.step(input)
+        }
+    }
 }

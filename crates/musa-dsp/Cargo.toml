@@ -12,6 +12,8 @@ workspace = true
 [dependencies]
 musa-compiler = { workspace = true }
 musa-score = { workspace = true }
+num-bigint = "0.4"
+num-rational = "0.4"
 thiserror = "2"
 tracing = "0.1"
 
@@ -23,3 +25,7 @@ insta = "1"
 [[bench]]
 harness = false
 name = "audio_bridge"
+
+[[bench]]
+harness = false
+name = "machine_step"

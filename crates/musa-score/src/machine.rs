@@ -4,13 +4,13 @@
 //! A machine is a *description* of a stepping process, never the history it
 //! produces. This module owns the two things about that description which are
 //! not the evaluator's business: which primitive units this build knows about,
-//! and how a finished machine is handed to the crate that will one day run it.
+//! and how a finished machine is handed to the crate that runs it.
 //!
-//! What runs a machine is not here and is not anywhere yet. §1's `State(p)`,
-//! `start_p`, and `step_p` belong to a primitive's owner, and prompt 171 is
-//! where they arrive. A descriptor states what a unit *is* — its name, its
-//! version, the step it counts in, its ports, and the shape of its
-//! configuration — which is exactly what the type checker needs and no more.
+//! What runs a machine is not here. §1's `State(p)`, `start_p`, and `step_p`
+//! belong to `musa-dsp`'s primitive owner. A descriptor states what a unit *is*
+//! — its name, its version, the step it counts in, its ports, and the shape of
+//! its configuration — which is exactly what the type checker needs and no
+//! more.
 
 /// One kind of machine step — `docs/rules/language/02-core-calculus.md` §1's
 /// `K`.
@@ -94,6 +94,52 @@ pub enum PortShape {
     Product(&'static [Self]),
 }
 
+/// An owned, exact port schema in a finished [`MachineSpec`].
+///
+/// This is the compiler-to-runtime bridge for port types.  The adjacent
+/// [`PortShape`] is a static registry declaration; this form can represent the
+/// products inferred for structural wiring without asking a runtime to parse
+/// source spelling.  Keeping it to storable constructors makes invalid runtime
+/// values unrepresentable at this boundary.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum PortSchema {
+    Unit,
+    Bool,
+    Nat,
+    Ratio,
+    Pair(Box<Self>, Box<Self>),
+}
+
+impl PortSchema {
+    /// The source-facing spelling retained for diagnostics and inspection.
+    #[must_use]
+    pub fn spelling(&self) -> String {
+        match self {
+            Self::Unit => "Unit".to_owned(),
+            Self::Bool => "Bool".to_owned(),
+            Self::Nat => "Nat".to_owned(),
+            Self::Ratio => "Ratio".to_owned(),
+            Self::Pair(first, second) => format!("({}, {})", first.spelling(), second.spelling()),
+        }
+    }
+}
+
+impl From<PortShape> for PortSchema {
+    fn from(shape: PortShape) -> Self {
+        match shape {
+            PortShape::Unit => Self::Unit,
+            PortShape::Bool => Self::Bool,
+            PortShape::Nat => Self::Nat,
+            PortShape::Ratio => Self::Ratio,
+            PortShape::Product(members) => {
+                let mut members = members.iter().copied().map(Self::from).rev();
+                let Some(last) = members.next() else { return Self::Unit };
+                members.fold(last, |second, first| Self::Pair(Box::new(first), Box::new(second)))
+            }
+        }
+    }
+}
+
 impl PortShape {
     /// Whether a value of this shape is one this language can write.
     ///
@@ -158,7 +204,7 @@ const fn all_same(ours: &[PortShape], theirs: &[PortShape]) -> bool {
 /// layout, configuration codec, start function, step function, and resource
 /// contract. What a descriptor holds is the part of that the *compiler* needs
 /// — the ports it must type and the configuration it must check — and the
-/// pair is what will select the rest when prompt 171 supplies it.
+/// pair selects the rest in `musa-dsp`'s runtime registry.
 ///
 /// This is a build-local execution rule, not a promise of persistent compiled
 /// identity: the same name at the same version is one unit within one build,
@@ -203,10 +249,10 @@ impl PrimitiveDescriptor {
 /// The small deterministic reference family this build registers.
 ///
 /// A descriptor says what a unit *is*, which is what the compiler needs; §1's
-/// `State(p)`, `start_p`, and `step_p` are the unit owner's and arrive with
-/// prompt 171's runtime. That split is why a name is registered here before
-/// anything can step it: the ports a machine is wired at are the compiler's to
-/// decide, and what one step does is not.
+/// `State(p)`, `start_p`, and `step_p` are the unit owner's in `musa-dsp`.
+/// That split is why a name is registered here before anything can step it:
+/// the ports a machine is wired at are the compiler's to decide, and what one
+/// step does is not.
 ///
 /// The family is deliberately small and deliberately plain. Between them these
 /// five declare every shape the port vocabulary spells, a unit whose input is a
@@ -266,6 +312,18 @@ const REACHED: PrimitiveDescriptor = PrimitiveDescriptor {
     configuration: PortShape::Nat,
 };
 
+/// The smallest state-free body that makes §3's feedback equation observable:
+/// it returns the stored Boolean and its negation.  Wrapped in `feedback`, its
+/// output alternates from the explicit initial value with no inferred delay.
+const DELAY_NOT: PrimitiveDescriptor = PrimitiveDescriptor {
+    id: "delay_not",
+    version: 1,
+    step: StepTag::AudioFrameStep,
+    input: PortShape::Product(&[PortShape::Unit, PortShape::Bool]),
+    output: PortShape::Product(&[PortShape::Bool, PortShape::Bool]),
+    configuration: PortShape::Bool,
+};
+
 /// A unit whose step counts something else, registered by the law suite and by
 /// no real build.
 ///
@@ -283,11 +341,19 @@ const OTHER_STEP: PrimitiveDescriptor = PrimitiveDescriptor {
 
 /// Every primitive this build registers.
 #[cfg(not(test))]
-const REGISTERED: &[PrimitiveDescriptor] = &[COUNT, SCALE_BY_ONE, SCALE_AND_OFFSET, MIX, REACHED];
+const REGISTERED: &[PrimitiveDescriptor] = &[COUNT, SCALE_BY_ONE, SCALE_AND_OFFSET, MIX, REACHED, DELAY_NOT];
 
 /// Every primitive the law suite's build registers.
 #[cfg(test)]
-const REGISTERED: &[PrimitiveDescriptor] = &[COUNT, SCALE_BY_ONE, SCALE_AND_OFFSET, MIX, REACHED, OTHER_STEP];
+const REGISTERED: &[PrimitiveDescriptor] = &[
+    COUNT,
+    SCALE_BY_ONE,
+    SCALE_AND_OFFSET,
+    MIX,
+    REACHED,
+    DELAY_NOT,
+    OTHER_STEP,
+];
 
 /// Registration rejects a conflict, at build time.
 ///
@@ -503,14 +569,17 @@ impl SpecNode {
 /// bytes, so a cache keyed on it cannot confuse two units that differ only in
 /// a configuration value.
 ///
-/// Its named consumer is `musa-dsp`, at prompt 173's `prepare_audio`.
+/// Its named consumer is `musa-dsp`'s `prepare_machine`; prompt 173 adds the
+/// audio-format-specific preparation around it.
 ///
 /// [`digest`]: MachineSpec::digest
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MachineSpec {
     step: &'static str,
-    input: String,
-    output: String,
+    input: PortSchema,
+    output: PortSchema,
+    input_spelling: String,
+    output_spelling: String,
     nodes: Vec<SpecNode>,
     digest: u128,
 }
@@ -526,12 +595,16 @@ impl MachineSpec {
     ///
     /// The root is the last node, which is what building bottom-up gives and
     /// what a consumer walking children needs.
-    pub fn new(step: StepTag, input: String, output: String, nodes: Vec<SpecNode>) -> Self {
-        let digest = digest_of(step, &input, &output, &nodes);
+    pub fn new(step: StepTag, input: PortSchema, output: PortSchema, nodes: Vec<SpecNode>) -> Self {
+        let input_spelling = input.spelling();
+        let output_spelling = output.spelling();
+        let digest = digest_of(step, &input_spelling, &output_spelling, &nodes);
         Self {
             step: step.spelling(),
             input,
             output,
+            input_spelling,
+            output_spelling,
             nodes,
             digest,
         }
@@ -546,12 +619,24 @@ impl MachineSpec {
     /// The machine's input port type, as source writes it.
     #[must_use]
     pub fn input(&self) -> &str {
-        &self.input
+        &self.input_spelling
     }
 
     /// The machine's output port type, as source writes it.
     #[must_use]
     pub fn output(&self) -> &str {
+        &self.output_spelling
+    }
+
+    /// The exact input schema, without reparsing [`Self::input`].
+    #[must_use]
+    pub const fn input_schema(&self) -> &PortSchema {
+        &self.input
+    }
+
+    /// The exact output schema, without reparsing [`Self::output`].
+    #[must_use]
+    pub const fn output_schema(&self) -> &PortSchema {
         &self.output
     }
 
@@ -628,7 +713,9 @@ pub fn framed(bytes: &mut Vec<u8>, part: &[u8]) {
 // other law suites carry the same allowance for the same reason.
 #[allow(clippy::expect_used)]
 mod tests {
-    use super::{MachineSpec, PortShape, SpecForm, SpecNode, StepTag, descriptor, registered_ids, versions_of};
+    use super::{
+        MachineSpec, PortSchema, PortShape, SpecForm, SpecNode, StepTag, descriptor, registered_ids, versions_of,
+    };
 
     #[test]
     fn one_id_and_version_select_one_unit() {
@@ -656,14 +743,14 @@ mod tests {
         let unit = descriptor("scale", 1).expect("registered");
         let one = MachineSpec::new(
             StepTag::AudioFrameStep,
-            "Ratio".to_owned(),
-            "Ratio".to_owned(),
+            PortSchema::Ratio,
+            PortSchema::Ratio,
             vec![SpecNode::primitive(unit, vec![2])],
         );
         let other = MachineSpec::new(
             StepTag::AudioFrameStep,
-            "Ratio".to_owned(),
-            "Ratio".to_owned(),
+            PortSchema::Ratio,
+            PortSchema::Ratio,
             vec![SpecNode::primitive(unit, vec![3])],
         );
         assert_ne!(
@@ -673,8 +760,8 @@ mod tests {
         );
         let again = MachineSpec::new(
             StepTag::AudioFrameStep,
-            "Ratio".to_owned(),
-            "Ratio".to_owned(),
+            PortSchema::Ratio,
+            PortSchema::Ratio,
             vec![SpecNode::primitive(unit, vec![2])],
         );
         assert_eq!(
@@ -689,13 +776,8 @@ mod tests {
     #[test]
     fn the_step_tag_is_part_of_exact_identity() {
         let nodes = vec![SpecNode::wiring(SpecForm::Identity, Vec::new())];
-        let audio = MachineSpec::new(
-            StepTag::AudioFrameStep,
-            "Nat".to_owned(),
-            "Nat".to_owned(),
-            nodes.clone(),
-        );
-        let other = MachineSpec::new(StepTag::TestStep, "Nat".to_owned(), "Nat".to_owned(), nodes);
+        let audio = MachineSpec::new(StepTag::AudioFrameStep, PortSchema::Nat, PortSchema::Nat, nodes.clone());
+        let other = MachineSpec::new(StepTag::TestStep, PortSchema::Nat, PortSchema::Nat, nodes);
         assert_ne!(
             audio.digest(),
             other.digest(),
@@ -706,13 +788,8 @@ mod tests {
     #[test]
     fn the_ports_are_part_of_exact_identity() {
         let nodes = vec![SpecNode::wiring(SpecForm::Identity, Vec::new())];
-        let over_nats = MachineSpec::new(
-            StepTag::AudioFrameStep,
-            "Nat".to_owned(),
-            "Nat".to_owned(),
-            nodes.clone(),
-        );
-        let over_ratios = MachineSpec::new(StepTag::AudioFrameStep, "Ratio".to_owned(), "Ratio".to_owned(), nodes);
+        let over_nats = MachineSpec::new(StepTag::AudioFrameStep, PortSchema::Nat, PortSchema::Nat, nodes.clone());
+        let over_ratios = MachineSpec::new(StepTag::AudioFrameStep, PortSchema::Ratio, PortSchema::Ratio, nodes);
         assert_ne!(over_nats.digest(), over_ratios.digest());
     }
 }

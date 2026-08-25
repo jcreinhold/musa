@@ -18,6 +18,7 @@ mod envelope;
 mod error;
 mod filter;
 mod instrument;
+mod machine;
 mod offline;
 mod plan;
 mod spec;
@@ -26,6 +27,7 @@ mod voice;
 
 pub use crate::error::GraphError;
 pub use crate::instrument::poly_sine_spec;
+pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
 pub use crate::spec::{
@@ -34,3 +36,21 @@ pub use crate::spec::{
 };
 pub use crate::studio::{StudioLowering, lower_studio};
 pub use crate::voice::VoiceAllocator;
+
+#[doc(hidden)]
+pub mod testing {
+    //! Cross-crate semantic harnesses. Production callers prepare and start a
+    //! machine directly; tests use this to prove offline iteration calls that
+    //! same one-step operation rather than a block-specific interpreter.
+
+    use crate::{MachineValue, PreparedMachine, StepError};
+
+    /// Run a finite input history from the exact start state.
+    pub fn run_machine_offline(
+        machine: &PreparedMachine,
+        inputs: impl IntoIterator<Item = MachineValue>,
+    ) -> Result<Vec<MachineValue>, StepError> {
+        let mut running = machine.start();
+        inputs.into_iter().map(|input| running.step(input)).collect()
+    }
+}

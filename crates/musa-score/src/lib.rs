@@ -68,7 +68,7 @@ pub use crate::derivation::Derivation;
 pub use crate::diagnose::{Cause, Code, Diagnostic, Fix, FixEdit, Label, Severity};
 pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
-pub use crate::machine::{MACHINE_SPEC_VERSION, MachineSpec, SpecForm, SpecNode};
+pub use crate::machine::{MACHINE_SPEC_VERSION, MachineSpec, PortSchema, SpecForm, SpecNode};
 pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{

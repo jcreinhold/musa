@@ -226,7 +226,13 @@ fn port(cx: &Cx, shape: musa_score::machine::PortShape) -> Result<Term, ElabErro
 /// program a source file can write: §2's forms are polymorphic in their ports,
 /// and a declaration that leaves them undetermined is refused for that before it
 /// is ever read back.
-pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, String)> {
+pub(crate) fn ports(
+    ty: &Term,
+) -> Option<(
+    musa_score::machine::StepTag,
+    musa_score::machine::PortSchema,
+    musa_score::machine::PortSchema,
+)> {
     let (head, arguments) = spine(ty);
     let musa_calculus::Shape::Named {
         ref name,
@@ -242,11 +248,23 @@ pub(crate) fn ports(ty: &Term) -> Option<(musa_score::machine::StepTag, String, 
     let [step, input, output] = arguments[..] else {
         return None;
     };
-    Some((
-        musa_score::machine::StepTag::named(&spelled(step)?)?,
-        spelled(input)?,
-        spelled(output)?,
-    ))
+    Some((step_tag(step)?, schema(input)?, schema(output)?))
+}
+
+/// The registered step tag denoted by a closed base type.
+fn step_tag(ty: &Term) -> Option<musa_score::machine::StepTag> {
+    let (head, arguments) = spine(ty);
+    let musa_calculus::Shape::Named {
+        ref name,
+        role: musa_calculus::Role::Base,
+        ..
+    } = *head.shape()
+    else {
+        return None;
+    };
+    arguments
+        .is_empty()
+        .then(|| musa_score::machine::StepTag::named(name))?
 }
 
 /// The nodes `normal` describes, children before parents.
@@ -399,14 +417,21 @@ fn write_stored(datum: &musa_calculus::Datum, bytes: &mut Vec<u8>) -> Option<()>
 /// product prints as source writes it. [`None`] for anything else, which is
 /// what makes an undecided port answer no projection: a metavariable and a
 /// variable have no spelling a consumer could prepare.
-fn spelled(ty: &Term) -> Option<String> {
+fn schema(ty: &Term) -> Option<musa_score::machine::PortSchema> {
+    use musa_score::machine::PortSchema;
     let (head, arguments) = spine(ty);
     match *head.shape() {
         musa_calculus::Shape::Named {
             ref name,
             role: musa_calculus::Role::Base,
             ..
-        } if arguments.is_empty() => Some(name.to_string()),
+        } if arguments.is_empty() => match &**name {
+            "Unit" => Some(PortSchema::Unit),
+            "Bool" => Some(PortSchema::Bool),
+            "Nat" => Some(PortSchema::Nat),
+            "Ratio" => Some(PortSchema::Ratio),
+            _ => None,
+        },
         musa_calculus::Shape::Named {
             ref name,
             role:
@@ -415,14 +440,18 @@ fn spelled(ty: &Term) -> Option<String> {
                 | musa_calculus::Role::Recursor,
             ..
         } => {
-            let name = name.to_string();
-            if name == "Pair" {
+            if &**name == "Pair" {
                 let [first, second] = arguments[..] else {
                     return None;
                 };
-                return Some(format!("({}, {})", spelled(first)?, spelled(second)?));
+                return Some(PortSchema::Pair(Box::new(schema(first)?), Box::new(schema(second)?)));
             }
-            arguments.is_empty().then_some(name)
+            match (&**name, arguments.is_empty()) {
+                ("Unit", true) => Some(PortSchema::Unit),
+                ("Bool", true) => Some(PortSchema::Bool),
+                ("Nat", true) => Some(PortSchema::Nat),
+                _ => None,
+            }
         }
         // Written out rather than left to a wildcard, so that a shape added to
         // the core has to be classified here before this crate builds again —

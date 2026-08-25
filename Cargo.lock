@@ -2384,6 +2384,8 @@ dependencies = [
  "insta",
  "musa-compiler",
  "musa-score",
+ "num-bigint",
+ "num-rational",
  "thiserror 2.0.20",
  "tracing",
 ]

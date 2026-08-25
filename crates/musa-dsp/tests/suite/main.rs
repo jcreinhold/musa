@@ -8,6 +8,7 @@ mod audio;
 mod dsp_laws;
 mod effects_laws;
 mod elaboration_compatibility;
+mod machine;
 mod rt;
 mod studio;
 mod synth;
