@@ -1,7 +1,7 @@
 ---
 id: 178
 slug: instrument-contracts
-status: pending
+status: done
 depends_on: [174, 175, 176, 177]
 phase: 3
 ---
@@ -12,8 +12,8 @@ phase: 3
 
 Make `instrument` the deep gesture-to-audio abstraction as an ordinary Musa declaration. Its source-defined signature
 states gestures, indexed controls, techniques, defaults, and output shape; its private source implementation constructs
-a `Machine(AudioFrameStep, EventBatch(Gesture), AudioFrame)` from registered primitives and fixed wiring. Rust owns
-primitive contracts and preparation, not an `InstrumentSpec` language beside source.
+the registered machine components and fixed wiring that the product-level preparation operation composes with the
+scheduled gesture source. Rust owns primitive contracts and preparation, not an `InstrumentSpec` language beside source.
 
 ## Read
 
@@ -40,12 +40,15 @@ Custom controls are ordinary namespaced declarations.
 
 This prompt supplies the executable source wrappers deliberately deferred by prompt 176. Native implementation bodies
 name those wrappers over registered primitives and may address their own private graph paths. Outside the body only
-signature keys are addressable. Finite checking rejects duplicate/missing controls, incompatible mappings, private-node
-access, unsupported techniques, and channel mismatch before preparation.
+signature keys are addressable. The current registry's storable port vocabulary is deliberately smaller than the source
+`Gesture` and audio-frame vocabulary, so do not forge an `EventBatch(Gesture)` port in Rust: the deep preparation facade
+owns composition with the already checked scheduler until prompts 179–180 add part routing and control delivery. Finite
+checking rejects duplicate/missing controls, incompatible mappings, private-node access, unsupported techniques, and
+channel mismatch before preparation.
 
 Do not delete or extend the old `patch` path here. Note 80 and prompt 180a retain it unchanged as the differential
-migration oracle until checked source reaches complete studio parity; prompt 181 removes the compatibility spelling
-with its hard source fix. This prompt adds no new semantic authority to that Rust path. A library exports its
+migration oracle until checked source reaches complete studio parity; prompt 181 removes the compatibility spelling with
+its hard source fix. This prompt adds no new semantic authority to that Rust path. A library exports its
 instrument/signature and may keep its implementation declarations private through ordinary module privacy. Standard
 instruments and presets remain readable source.
 
@@ -62,7 +65,8 @@ separate non-executing operation. Candidate cache hashes are followed by exact c
 
 - Source instrument/signature/control-mapping declarations and standard-library examples built from ordinary Musa
   constructs; no parser keyword, special elaborator, or public Rust `InstrumentSpec` mirror.
-- Private source machine bodies over registered primitive wrappers, with complete static conformance diagnostics.
+- Private source machine components over registered primitive wrappers, separately projected and rechecked before the
+  product-level facade composes them with scheduling, with complete static conformance diagnostics.
 - Deletion of the prompt-177 physical-attack compatibility projection. The unchanged `patch` oracle remains temporary
   until prompt 180a, and its surface spelling is removed by prompt 181.
 - One opaque preparation facade and separate lineage attachment, with replacement, privacy, R1, feedback, option, and

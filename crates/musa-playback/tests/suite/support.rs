@@ -2,10 +2,12 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_compiler::{
+    CompileOptions, SourceDocument, checked_standard_instrument_machine, checked_standard_instruments, compile,
+};
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, ScheduleLimits,
-    SchedulePolicy, prepare_audio,
+    SchedulePolicy, prepare_execution,
 };
 use musa_playback::PreparedPlaybackPlan;
 use musa_score::{Tuning, lower_gestures};
@@ -17,6 +19,8 @@ pub(crate) fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
     let compilation = compile(&SourceDocument::new(EMPTY, "silent.musa"), &CompileOptions::default());
     let score = compilation.snapshot().expect("silent fixture compiles");
     let gestures = lower_gestures(score).expect("empty gesture track");
+    let instruments = checked_standard_instruments().expect("standard instruments check");
+    let instrument_machine = checked_standard_instrument_machine().expect("standard instrument machine checks");
     let format = AudioFormat::new(
         std::num::NonZeroU32::new(RATE).expect("nonzero rate"),
         ChannelLayout::Stereo,
@@ -35,8 +39,10 @@ pub(crate) fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
         },
     )
     .expect("schedule policy");
-    let audio = prepare_audio(
+    let audio = prepare_execution(
         &gestures,
+        &instruments,
+        &instrument_machine,
         compilation.studio(),
         AudioOptions {
             format,

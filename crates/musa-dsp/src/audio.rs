@@ -6,6 +6,7 @@
 //! by offline rendering and the live callback.
 #![allow(clippy::arithmetic_side_effects)]
 
+use musa_calculus::CheckedSource;
 use musa_events::{Duration, PerformedTime, PhysicalTime, Position, empty};
 use musa_score::{Gesture, GesturePlan, Tuning};
 
@@ -51,6 +52,9 @@ pub enum AudioPrepareError {
     /// Exact studio intent failed conversion or a private DSP range check.
     #[error("studio value preparation failed: {0}")]
     StudioValue(String),
+    /// Checked source instrument declarations failed schema or contract checks.
+    #[error("instrument contract preparation failed: {0}")]
+    InstrumentContract(String),
     /// The requested tail makes the finite playback extent unacceptable.
     #[error("audio extent {actual} frames exceeds explicit limit {limit}")]
     FrameLimit { actual: u64, limit: u64 },
@@ -75,10 +79,16 @@ pub enum AudioPrepareError {
 /// A fully scheduled, allocated audio machine. Its graph, state, buffers,
 /// event cursor, and handle tables are intentionally inaccessible.
 pub struct PreparedAudio {
+    // Retain the complete exact checked argument. A digest or the queried
+    // fields below cannot stand in for preparation identity (R1).
+    _instrument_contracts: crate::InstrumentContracts,
+    // The source instrument component is prepared through the governing
+    // machine calculus even while the migration oracle supplies production
+    // oscillator execution. Prompt 180a removes that oracle.
+    _instrument_machine: crate::PreparedMachine,
     plan: RenderPlan,
     schedule: Schedule<PerformedTime, Gesture>,
     source: ScheduledSource<Gesture>,
-    attacks: Box<[(u64, num_rational::Ratio<i64>)]>,
     tuning: Tuning,
     sample_rate: u32,
     total_frames: u64,
@@ -121,7 +131,7 @@ impl PreparedAudio {
             return [0.0; 2];
         }
         let (_, messages) = self.source.step();
-        let frame = self.plan.step(messages, self.tuning, &self.attacks);
+        let frame = self.plan.step(messages, self.tuning);
         self.position = self.position.saturating_add(1);
         frame
     }
@@ -144,8 +154,41 @@ impl PreparedAudio {
 /// # Errors
 /// [`AudioPrepareError`] names the scheduling, primitive, or extent check that
 /// refused preparation.
-pub fn prepare_audio(
+pub fn prepare_execution(
     gestures: &GesturePlan,
+    instruments: &CheckedSource,
+    instrument_machine: &musa_score::MachineSpec,
+    studio: &StudioSpec,
+    options: AudioOptions,
+) -> Result<PreparedAudio, AudioPrepareError> {
+    let contracts = crate::decode_instrument_contracts(instruments)
+        .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?;
+    let basic = contracts.declaration("std.sound.basic_sine@1").ok_or_else(|| {
+        AudioPrepareError::InstrumentContract("the edition-one basic instrument is absent".to_owned())
+    })?;
+    if basic.channels() != 2 {
+        return Err(AudioPrepareError::InstrumentContract(
+            "the edition-one basic instrument must promise stereo output".to_owned(),
+        ));
+    }
+    if !basic
+        .controls()
+        .iter()
+        .any(|control| control.namespace() == "std.performance" && control.name() == "expression")
+    {
+        return Err(AudioPrepareError::InstrumentContract(
+            "the edition-one basic instrument does not accept standard expression".to_owned(),
+        ));
+    }
+    let instrument_machine = crate::prepare_machine(instrument_machine)
+        .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?;
+    prepare_audio(gestures, contracts, instrument_machine, studio, options)
+}
+
+fn prepare_audio(
+    gestures: &GesturePlan,
+    instrument_contracts: crate::InstrumentContracts,
+    instrument_machine: crate::PreparedMachine,
     studio: &StudioSpec,
     options: AudioOptions,
 ) -> Result<PreparedAudio, AudioPrepareError> {
@@ -175,25 +218,6 @@ pub fn prepare_audio(
     check_resources(required, options.limits)?;
     let plan = prepare_plan(&graph, &graph_options).map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let schedule = schedule_gestures(gestures, options)?;
-    let mut attacks = Vec::new();
-    for lane in gestures.lanes() {
-        for occurrence in lane.track().occurrences() {
-            let instance = occurrence.payload().instance();
-            let compatibility = lane.compatibility(instance).ok_or_else(|| {
-                AudioPrepareError::Primitive(format!("gesture {instance} has no attack compatibility projection"))
-            })?;
-            attacks.push((instance, compatibility.attack_seconds()));
-        }
-    }
-    attacks.sort_by_key(|(instance, _)| *instance);
-    if attacks
-        .windows(2)
-        .any(|pair| matches!(pair, [left, right] if left.0 == right.0))
-    {
-        return Err(AudioPrepareError::Primitive(
-            "gesture attack compatibility contains a duplicate identity".to_owned(),
-        ));
-    }
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
     let total_frames = schedule
@@ -206,10 +230,11 @@ pub fn prepare_audio(
         })?;
     let source = schedule.source();
     Ok(PreparedAudio {
+        _instrument_contracts: instrument_contracts,
+        _instrument_machine: instrument_machine,
         plan,
         schedule,
         source,
-        attacks: attacks.into_boxed_slice(),
         tuning: options.tuning,
         sample_rate,
         total_frames,

@@ -153,3 +153,66 @@ piece "Performance vocabulary" {
         ),
     )
 }
+
+/// Check the edition-pinned standard instruments and their private machines.
+///
+/// The compiler returns only the generic checked artifact. Instrument schema,
+/// mapping, and implementation policy remain declarations in `std::sound`;
+/// the DSP boundary may derive a read-only preparation projection from this
+/// exact value.
+///
+/// # Errors
+///
+/// Returns standard-library import, checking, normalization, or artifact
+/// diagnostics. A bundled instrument that fails here is a build defect.
+pub fn checked_standard_instruments() -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
+    const PROBE: &str = r#"import std::sound::instrument;
+piece "Standard instruments" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    checked_source_value(
+        &SourceDocument::new(PROBE, "musa-stdlib:/standard-instruments.musa"),
+        &CompileOptions::default(),
+        "standard_instruments",
+        &musa_calculus::SourceSchema::new(
+            "std.sound.instrument.InstrumentExecutionArtifact",
+            "InstrumentExecutionArtifact",
+            1,
+        ),
+    )
+}
+
+/// Check and project the private registered-machine component of the bundled
+/// basic instrument.
+///
+/// Machine values deliberately use their existing distinct compiler
+/// projection rather than pretending to be canonical record data. The binding
+/// remains private to `std::sound::instrument`; this operation is the narrow
+/// preparation seam that may name it.
+///
+/// # Errors
+///
+/// Returns diagnostics from checking the declaring module, or a build-defect
+/// diagnostic when the edition-pinned private binding is absent.
+pub fn checked_standard_instrument_machine() -> Result<musa_score::MachineSpec, Vec<Diagnostic>> {
+    const URI: &str = "musa-stdlib:/std/sound/instrument.musa";
+    let source = crate::standard_library_source(URI).ok_or_else(|| {
+        vec![Diagnostic::error(
+            Code::Import,
+            "the bundled instrument module is absent",
+        )]
+    })?;
+    let compilation = crate::compile(&SourceDocument::new(source, URI), &CompileOptions::default());
+    if compilation.has_errors() {
+        return Err(compilation.diagnostics().to_vec());
+    }
+    compilation.machine("basic_sine_machine").cloned().ok_or_else(|| {
+        vec![Diagnostic::error(
+            Code::NotAValue,
+            "the bundled basic instrument has no checked machine component",
+        )]
+    })
+}

@@ -1,10 +1,12 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, SourceDocument, compile};
+use musa_compiler::{
+    CompileOptions, SourceDocument, checked_standard_instrument_machine, checked_standard_instruments, compile,
+};
 use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, PreparedAudio,
-    ScheduleLimits, SchedulePolicy, StudioSpec, prepare_audio,
+    ScheduleLimits, SchedulePolicy, StudioSpec,
 };
 use musa_score::{ScoreSnapshot, Tuning, lower_gestures};
 
@@ -53,7 +55,20 @@ pub(crate) fn options(tail_frames: u64) -> AudioOptions {
 pub(crate) fn prepare(source: &str, tail_frames: u64) -> PreparedAudio {
     let (score, studio) = parts(source);
     let gestures = lower_gestures(&score).expect("gestures");
-    prepare_audio(&gestures, &studio, options(tail_frames)).expect("audio")
+    prepare_gestures(&gestures, &studio, options(tail_frames)).expect("audio")
+}
+
+pub(crate) fn prepare_gestures(
+    gestures: &musa_score::GesturePlan,
+    studio: &StudioSpec,
+    options: AudioOptions,
+) -> Result<PreparedAudio, musa_dsp::AudioPrepareError> {
+    let diagnostic = |diagnostics: Vec<musa_score::Diagnostic>| {
+        musa_dsp::AudioPrepareError::InstrumentContract(format!("{diagnostics:#?}"))
+    };
+    let instruments = checked_standard_instruments().map_err(diagnostic)?;
+    let instrument_machine = checked_standard_instrument_machine().map_err(diagnostic)?;
+    musa_dsp::prepare_execution(gestures, &instruments, &instrument_machine, studio, options)
 }
 
 pub(crate) fn render_source(source: &str, frames: usize) -> Vec<f32> {

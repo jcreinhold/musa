@@ -11,10 +11,10 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_dsp::testing::{ProcessorSpec, StudioGraphSpec, prepare_graph, prepare_graph_seeded};
-use musa_dsp::{AudioFormat, AudioPrepareError, ChannelLayout, prepare_audio};
+use musa_dsp::{AudioFormat, AudioPrepareError, ChannelLayout};
 use musa_score::{Tuning, lower_gestures};
 
-use super::audio_support::{options, parts};
+use super::audio_support::{options, parts, prepare_gestures};
 
 // --- Helpers -----------------------------------------------------------------
 
@@ -204,21 +204,21 @@ fn production_preparation_refuses_layout_tuning_and_resource_violations() {
     let mut mono = options(0);
     mono.format = AudioFormat::new(mono.format.sample_rate(), ChannelLayout::Mono);
     assert!(matches!(
-        prepare_audio(&gestures, &studio, mono),
+        prepare_gestures(&gestures, &studio, mono),
         Err(AudioPrepareError::UnsupportedLayout(ChannelLayout::Mono))
     ));
 
     let mut invalid_tuning = options(0);
     invalid_tuning.tuning = Tuning { concert_a: f64::NAN };
     assert!(matches!(
-        prepare_audio(&gestures, &studio, invalid_tuning),
+        prepare_gestures(&gestures, &studio, invalid_tuning),
         Err(AudioPrepareError::InvalidTuning(value)) if value.is_nan()
     ));
 
     let mut bounded = options(0);
     bounded.limits.max_primitives = 0;
     assert!(matches!(
-        prepare_audio(&gestures, &studio, bounded),
+        prepare_gestures(&gestures, &studio, bounded),
         Err(AudioPrepareError::ResourceLimit {
             resource: "primitive count",
             ..
@@ -228,7 +228,7 @@ fn production_preparation_refuses_layout_tuning_and_resource_violations() {
     let mut memory = options(0);
     memory.limits.max_state_bytes = 0;
     assert!(matches!(
-        prepare_audio(&gestures, &studio, memory),
+        prepare_gestures(&gestures, &studio, memory),
         Err(AudioPrepareError::ResourceLimit {
             resource: "retained state bytes",
             ..
@@ -238,7 +238,7 @@ fn production_preparation_refuses_layout_tuning_and_resource_violations() {
     let mut work = options(0);
     work.limits.max_step_work = 0;
     assert!(matches!(
-        prepare_audio(&gestures, &studio, work),
+        prepare_gestures(&gestures, &studio, work),
         Err(AudioPrepareError::ResourceLimit {
             resource: "one-frame work",
             ..

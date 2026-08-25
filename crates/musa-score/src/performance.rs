@@ -489,32 +489,12 @@ impl GestureLineage {
     }
 }
 
-/// Temporary keyed compatibility data retained until prompt 178.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GestureCompatibility {
-    instance: u64,
-    attack_seconds: Ratio<i64>,
-}
-
-impl GestureCompatibility {
-    /// Stable gesture identity this temporary projection accompanies.
-    pub const fn instance(&self) -> u64 {
-        self.instance
-    }
-
-    /// Legacy requested attack in exact physical seconds.
-    pub const fn attack_seconds(&self) -> Ratio<i64> {
-        self.attack_seconds
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct GestureLane {
     part: PartId,
     name: String,
     track: EventTrack<PerformedTime, Gesture>,
     lineage: Vec<GestureLineage>,
-    compatibility: Vec<GestureCompatibility>,
     tempo: IntegratedTempoMap,
 }
 
@@ -540,14 +520,6 @@ impl GestureLane {
             .binary_search_by_key(&instance, GestureLineage::instance)
             .ok()
             .and_then(|index| self.lineage.get(index))
-    }
-
-    /// Temporary physical-attack projection keyed by gesture identity.
-    pub fn compatibility(&self, instance: u64) -> Option<&GestureCompatibility> {
-        self.compatibility
-            .binary_search_by_key(&instance, GestureCompatibility::instance)
-            .ok()
-            .and_then(|index| self.compatibility.get(index))
     }
 
     /// Answer one finite scheduler query in exact physical seconds.
@@ -777,7 +749,6 @@ struct SourceReading {
     pitch: WrittenPitch,
     expression: Ratio<i64>,
     gate: Ratio<i64>,
-    attack: Ratio<i64>,
     hold: Ratio<i64>,
     exact_gesture: Arc<[u8]>,
 }
@@ -788,7 +759,6 @@ struct PreparedGesture {
     pitch: WrittenPitch,
     expression: Ratio<i64>,
     gate: Ratio<i64>,
-    attack: Ratio<i64>,
     exact_gesture: Arc<[u8]>,
 }
 
@@ -806,7 +776,6 @@ impl SourceReading {
             pitch: self.pitch,
             expression: self.expression,
             gate: self.gate * self.hold,
-            attack: self.attack,
             exact_gesture: self.exact_gesture,
         })
     }
@@ -827,7 +796,7 @@ fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceRead
     }
     let [_, results] = source_fields::<2>(artifact.root(), "PerformanceInterpretationArtifact")?;
     source_list(results, |result| {
-        let [gesture, gate, attack, hold] = source_fields::<4>(result, "ProfileResult")?;
+        let [gesture, gate, hold] = source_fields::<3>(result, "ProfileResult")?;
         let [instance, pitch, controls, _] = source_fields::<4>(gesture, "NoteGesture")?;
         let [instance] = source_fields::<1>(instance, "GestureId")?;
         Ok(SourceReading {
@@ -835,7 +804,6 @@ fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceRead
             pitch: source_pitch(pitch)?,
             expression: source_expression(controls)?,
             gate: source_ratio(gate)?,
-            attack: source_ratio(attack)?,
             hold: source_ratio(hold)?,
             exact_gesture: gesture.exact_bytes().into(),
         })
@@ -1083,7 +1051,6 @@ fn lower_gestures_with_source(
                     };
                     Some(Interpreted {
                         gate: realization.gate * realization.hold,
-                        attack: realization.attack,
                         amplitude,
                     })
                 } else {
@@ -1097,7 +1064,6 @@ fn lower_gestures_with_source(
                         });
                         Interpreted {
                             gate: realized.gate * realized.hold,
-                            attack: legacy.as_ref().map_or(Ratio::ZERO, |value| value.attack),
                             amplitude: legacy.as_ref().map_or(Ratio::ONE, |value| value.amplitude),
                         }
                     })?;
@@ -1115,12 +1081,10 @@ fn lower_gestures_with_source(
                         legacy.as_ref().map_or(
                             Interpreted {
                                 gate: Ratio::ONE,
-                                attack: Ratio::ZERO,
                                 amplitude: Ratio::ONE,
                             },
                             |value| Interpreted {
                                 gate: value.gate,
-                                attack: value.attack,
                                 amplitude: value.amplitude,
                             },
                         )
@@ -1157,26 +1121,22 @@ fn lower_gestures_with_source(
         let duration =
             Duration::new(end.as_ratio()).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
         let mut lineage = Vec::with_capacity(pending.len());
-        let mut compatibility = Vec::with_capacity(pending.len());
         let occurrences = pending
             .into_iter()
             .map(|gesture| {
                 lineage.push(gesture.lineage);
-                compatibility.push(gesture.compatibility);
                 Span::new(gesture.start, gesture.end)
                     .map(|span| Occurrence::new(span, gesture.payload))
                     .map_err(|error| PerformanceError::Unsupported(error.to_string()))
             })
             .collect::<Result<Vec<_>, _>>()?;
         lineage.sort_by_key(GestureLineage::instance);
-        compatibility.sort_by_key(GestureCompatibility::instance);
         let track = track(duration, occurrences).map_err(|error| PerformanceError::Unsupported(error.to_string()))?;
         lanes.push(GestureLane {
             part: part.id(),
             name: part.name().to_owned(),
             track,
             lineage,
-            compatibility,
             tempo,
         });
     }
@@ -1235,7 +1195,6 @@ fn take_prepared(
         pitch,
         expression: legacy.amplitude,
         gate: legacy.gate,
-        attack: legacy.attack,
         exact_gesture: Arc::from([]),
     })
 }
@@ -1271,8 +1230,6 @@ struct Interpreted {
     /// hold already folded in: both are multipliers on the written value and
     /// nothing downstream could tell them apart.
     gate: Ratio<i64>,
-    /// Requested attack in seconds.
-    attack: Ratio<i64>,
     /// Loudness in `0..=1`.
     amplitude: Ratio<i64>,
 }
@@ -1282,7 +1239,6 @@ struct PendingGesture {
     end: Position<PerformedTime>,
     payload: Gesture,
     lineage: GestureLineage,
-    compatibility: GestureCompatibility,
 }
 
 /// Lower one event with the shared grace-stealing and interpretation rules,
@@ -1319,10 +1275,6 @@ fn lower_gesture_event(
                 written_off: notated_end,
                 origin: event.origin.clone(),
             },
-            compatibility: GestureCompatibility {
-                instance: prepared.instance,
-                attack_seconds: prepared.attack,
-            },
         });
         at = at + stolen.each;
     }
@@ -1346,10 +1298,6 @@ fn lower_gesture_event(
                 written_on: event.onset,
                 written_off: notated_end,
                 origin: event.origin.clone(),
-            },
-            compatibility: GestureCompatibility {
-                instance: prepared.instance,
-                attack_seconds: prepared.attack,
             },
         });
     }

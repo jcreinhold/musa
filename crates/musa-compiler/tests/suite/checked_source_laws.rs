@@ -5,12 +5,13 @@
 
 use musa_compiler::{
     CompileOptions, SourceDocument, SourceSchema, checked_performance_interpretations, checked_source_value,
-    checked_standard_performance_vocabulary, checked_standard_studio_vocabulary, compile,
+    checked_standard_instrument_machine, checked_standard_instruments, checked_standard_performance_vocabulary,
+    checked_standard_studio_vocabulary, compile, standard_library_source,
 };
 use musa_dsp::{
     ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
-    StudioDescriptionError, check_studio_vocabulary, decode_exact_quantity, decode_studio_description,
-    decode_studio_vocabulary, exact_quantity_schema, studio_description_schema,
+    StudioDescriptionError, check_studio_vocabulary, decode_exact_quantity, decode_instrument_contracts,
+    decode_studio_description, decode_studio_vocabulary, exact_quantity_schema, studio_description_schema,
 };
 use num_rational::Ratio;
 
@@ -227,6 +228,128 @@ fn standard_performance_vocabulary_is_checked_source_data() {
 }
 
 #[test]
+fn standard_instruments_are_checked_source_data_with_private_machines() {
+    let artifact = checked_standard_instruments()
+        .unwrap_or_else(|diagnostics| panic!("standard instruments should check: {diagnostics:#?}"));
+    assert!(artifact.has_valid_framing());
+    assert_eq!(
+        artifact.schema().name(),
+        "std.sound.instrument.InstrumentExecutionArtifact"
+    );
+    assert!(!artifact.exact_bytes().is_empty());
+    let projected = decode_instrument_contracts(&artifact).expect("checked instrument schema projects");
+    assert_eq!(projected.exact_source_bytes(), artifact.exact_bytes());
+    let basic = projected
+        .declaration("std.sound.basic_sine@1")
+        .expect("edition-one basic instrument");
+    assert_eq!((basic.name(), basic.channels()), ("note_instrument", 2));
+    assert_eq!(basic.implementation_id(), basic.declaration_id());
+    assert!(
+        basic
+            .controls()
+            .iter()
+            .any(|control| control.namespace() == "std.performance" && control.name() == "expression")
+    );
+    let machine = checked_standard_instrument_machine()
+        .unwrap_or_else(|diagnostics| panic!("private instrument machine should check: {diagnostics:#?}"));
+    assert_eq!(
+        (machine.step(), machine.input(), machine.output()),
+        ("AudioFrameStep", "Ratio", "Ratio")
+    );
+    musa_dsp::prepare_machine(&machine).expect("the source machine agrees with the runtime registry");
+}
+
+fn checked_instrument_module(source: &str) -> Result<musa_compiler::CheckedSource, Vec<musa_score::Diagnostic>> {
+    checked_source_value(
+        &SourceDocument::new(source, "musa-stdlib:/std/sound/instrument.musa"),
+        &CompileOptions::default(),
+        "standard_instruments",
+        &SourceSchema::new(
+            "std.sound.instrument.InstrumentExecutionArtifact",
+            "InstrumentExecutionArtifact",
+            1,
+        ),
+    )
+}
+
+#[test]
+fn private_instrument_policy_changes_exact_execution_identity() {
+    let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
+    let original = checked_instrument_module(source).expect("original module checks");
+    let revised_source = source.replacen(
+        "maps_normalized(brightness, \"voice\", \"brightness\"",
+        "maps_normalized(brightness, \"voice\", \"tone\"",
+        1,
+    );
+    assert_ne!(revised_source, source, "the fixture must revise one private target");
+    let revised = checked_instrument_module(&revised_source).expect("compatible private replacement checks");
+    assert_ne!(original.exact_bytes(), revised.exact_bytes());
+    let original = decode_instrument_contracts(&original).expect("original projects");
+    let revised = decode_instrument_contracts(&revised).expect("replacement projects");
+    let original = original
+        .declaration("std.sound.basic_sine@1")
+        .expect("original basic instrument");
+    let revised = revised
+        .declaration("std.sound.basic_sine@1")
+        .expect("replacement basic instrument");
+    assert_eq!(
+        original.controls(),
+        revised.controls(),
+        "the public signature is unchanged"
+    );
+    assert_ne!(
+        original.implementation_exact_bytes(),
+        revised.implementation_exact_bytes(),
+        "private mapping policy participates in exact preparation identity"
+    );
+}
+
+#[test]
+fn instrument_mapping_indices_use_the_general_unifier() {
+    let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
+    let mismatched = source.replacen(
+        "maps_normalized(brightness, \"voice\", \"brightness\"",
+        "maps_normalized(phrase_relation, \"voice\", \"brightness\"",
+        1,
+    );
+    assert_ne!(mismatched, source, "the fixture must revise the indexed key");
+    assert!(
+        checked_instrument_module(&mismatched).is_err(),
+        "a phrase key cannot satisfy the normalized mapping index"
+    );
+}
+
+#[test]
+fn a_private_instrument_body_is_not_a_client_address() {
+    let compilation = compile(
+        &SourceDocument::new(
+            r#"import std::sound::instrument;
+let forbidden = basic_sine_body;
+piece "Private instrument" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#,
+            "private-instrument-client.musa",
+        ),
+        &CompileOptions::default(),
+    );
+    assert!(
+        compilation.has_errors(),
+        "a client must not name a private implementation body"
+    );
+    assert!(
+        compilation
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("private")),
+        "the refusal should explain the visibility boundary: {:#?}",
+        compilation.diagnostics()
+    );
+}
+
+#[test]
 fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
     let source = r#"piece "Checked performance" {
         meter 4/4;
@@ -289,7 +412,6 @@ let performance_interpretation: PerformanceInterpretationArtifact = PerformanceI
                 [],
             ),
             gate = 1/2,
-            attack_seconds = 1/100,
             hold = 1/1
         },
     ]
@@ -318,12 +440,6 @@ piece "Checked source result" {
     assert_eq!(occurrence.span().start().as_ratio(), Ratio::ZERO);
     assert_eq!(occurrence.span().end().as_ratio(), Ratio::new(1, 8));
     assert_eq!(occurrence.payload().amplitude(), Ratio::new(1, 4));
-    assert_eq!(
-        lane.compatibility(occurrence.payload().instance())
-            .expect("temporary compatibility projection")
-            .attack_seconds(),
-        Ratio::new(1, 100)
-    );
     assert!(!occurrence.payload().exact_source_bytes().is_empty());
 }
 

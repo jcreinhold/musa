@@ -1,0 +1,216 @@
+// Instrument contracts and native implementations.
+//
+// The public declaration says what musical gestures an instrument accepts.
+// The machine and its graph-local targets remain in the declaring module and
+// cross to the host only in a checked, versioned execution artifact.
+
+import std::list;
+import std::performance;
+
+/// The channel layout an instrument promises at its public output.
+data ChannelShape {
+    Mono,
+    Stereo,
+}
+
+/// Whether unsupported technique intent is an error or retained as notation.
+data TechniqueFallback {
+    TechniqueRequired,
+    NotationOnlyWarning,
+}
+
+/// One namespaced technique accepted by an instrument signature.
+record TechniqueSupport {
+    namespace: Text;
+    name: Text;
+    fallback: TechniqueFallback;
+}
+
+/// One control accepted by a signature, indexed with its exact default value.
+data ControlRequirement: (kind: ControlKind) -> Type {
+    RequiredControl(
+        control_kind: ControlKind,
+        control_key: ControlKey(control_kind),
+        default_value: ControlValue(control_kind),
+    ): ControlRequirement(control_kind),
+}
+
+/// Existential packaging for unlike indexed controls in one signature.
+data SomeControlRequirement {
+    AcceptsControl(kind: ControlKind, requirement: ControlRequirement(kind)),
+}
+
+/// Package one requirement after the general pattern unifier settles its kind.
+fn accepts_control(
+    {kind: ControlKind},
+    control_key: ControlKey(kind),
+    default_value: ControlValue(kind),
+) -> SomeControlRequirement {
+    AcceptsControl(kind, RequiredControl(kind, control_key, default_value))
+}
+
+/// The complete public behavioral contract of one source instrument.
+record InstrumentSignature {
+    name: Text;
+    summary: Text;
+    controls: List(SomeControlRequirement);
+    techniques: List(TechniqueSupport);
+    channels: ChannelShape;
+}
+
+// A target is private graph structure, never a public control address.
+private record ParameterTarget {
+    node: Text;
+    parameter: Text;
+}
+
+// Transfer policies are source data. Prompt 180 evaluates these into exact
+// private primitive parameter values during preparation.
+private data NormalizedTransfer {
+    LinearTransfer(minimum: Ratio, maximum: Ratio),
+    InverseTransfer(minimum: Ratio, maximum: Ratio),
+}
+
+// The mapping index is shared with the public key. A key and mapping of unlike
+// kinds therefore fail ordinary conversion rather than a sound-specific test.
+private data ControlMapping: (kind: ControlKind) -> Type {
+    NormalizedMapping(
+        mapping_kind: ControlKind,
+        control_key: ControlKey(mapping_kind),
+        target: ParameterTarget,
+        transfer: NormalizedTransfer,
+    ): ControlMapping(mapping_kind),
+}
+
+private data SomeControlMapping {
+    MapsControl(kind: ControlKind, mapping: ControlMapping(kind)),
+}
+
+/// Bind one normalized musical control to a private primitive parameter.
+private fn maps_normalized(
+    control_key: ControlKey(Normalized),
+    node: Text,
+    parameter: Text,
+    transfer: NormalizedTransfer,
+) -> SomeControlMapping {
+    MapsControl(
+        Normalized,
+        NormalizedMapping(
+            Normalized,
+            control_key,
+            ParameterTarget {
+                node = node,
+                parameter = parameter
+            },
+            transfer,
+        ),
+    )
+}
+
+// The implementation type and every binding of it are private. The public
+// `Instrument` below carries only a stable declaration identity and signature.
+private record NativeInstrumentBody {
+    declaration_id: Text;
+    machine: Machine(AudioFrameStep, Ratio, Ratio);
+    mappings: List(SomeControlMapping);
+}
+
+// Canonical private intent crosses the checked boundary; the machine itself
+// crosses through the distinct machine projection. Including the mappings here
+// makes any implementation-policy change part of exact preparation identity.
+private record InstrumentImplementationContract {
+    declaration_id: Text;
+    mappings: List(SomeControlMapping);
+}
+
+/// Retain the exact private mapping policy beside its stable declaration.
+private fn implementation_contract(
+    body: NativeInstrumentBody,
+) -> InstrumentImplementationContract {
+    InstrumentImplementationContract {
+        declaration_id = body.declaration_id,
+        mappings = body.mappings
+    }
+}
+
+/// A source instrument value exposes its contract, never graph-local paths.
+record Instrument {
+    declaration_id: Text;
+    signature: InstrumentSignature;
+}
+
+// Registered primitive wrappers are ordinary functions. The primitive call
+// is the only host-owned leaf; composition and configuration remain source.
+private fn scale_frame(factor: Ratio) -> Machine(AudioFrameStep, Ratio, Ratio) {
+    machine(primitive("scale", 1, factor))
+}
+
+/// Mix two exact reference channels with explicit gains.
+private fn mix_frames(left: Ratio, right: Ratio) -> Machine(
+    AudioFrameStep,
+    (Ratio, Ratio),
+    Ratio,
+) { machine(primitive("mix", 1, (left, right))) }
+
+// A machine remains its own checked projection rather than being smuggled
+// through canonical record data. Keeping the binding at module scope lets the
+// compiler recognize its Machine type without exposing it to importers.
+private let basic_sine_machine: Machine(AudioFrameStep, Ratio, Ratio) = connect(
+    copy,
+    mix_frames(1/1, 0/1),
+);
+
+/// The edition-one basic instrument's private machine and control mappings.
+private let basic_sine_body: NativeInstrumentBody = NativeInstrumentBody {
+    declaration_id = "std.sound.basic_sine@1",
+    machine = basic_sine_machine,
+    mappings = [
+        maps_normalized(expression, "voice", "gain", LinearTransfer(0/1, 1/1)),
+        maps_normalized(brightness, "voice", "brightness", LinearTransfer(0/1, 1/1)),
+        maps_normalized(emphasis, "voice", "attack", InverseTransfer(1/1, 0/1)),
+    ]
+};
+
+/// Edition-one note instrument contract shared by the basic native preset.
+let note_instrument: InstrumentSignature = InstrumentSignature {
+    name = "note_instrument",
+    summary = "Accepts note, release, and phrase gestures and produces stereo audio.",
+    controls = [
+        accepts_control(expression, NormalizedValue(1/1)),
+        accepts_control(emphasis, NormalizedValue(0/1)),
+        accepts_control(separation, NormalizedValue(0/1)),
+        accepts_control(brightness, NormalizedValue(1/2)),
+        accepts_control(sustain, NormalizedValue(0/1)),
+        accepts_control(phrase_relation, ConnectionValue(Ordinary)),
+    ],
+    techniques = [
+        TechniqueSupport {
+            namespace = "std.performance",
+            name = "fermata",
+            fallback = NotationOnlyWarning
+        },
+    ],
+    channels = Stereo
+};
+
+/// Stable edition-one zero-setup instrument declaration.
+let basic_sine: Instrument = Instrument {
+    declaration_id = "std.sound.basic_sine@1",
+    signature = note_instrument
+};
+
+// This root is the only route from a private body to host preparation. It is
+// produced and checked as one source value; no Rust instrument schema can
+// independently construct or amend it.
+record InstrumentExecutionArtifact {
+    schema_version: Nat;
+    instruments: List(Instrument);
+    implementation_contracts: List(InstrumentImplementationContract);
+}
+
+/// Versioned checked standard instrument declarations and private machines.
+let standard_instruments: InstrumentExecutionArtifact = InstrumentExecutionArtifact {
+    schema_version = 1,
+    instruments = [basic_sine],
+    implementation_contracts = [implementation_contract(basic_sine_body)]
+};

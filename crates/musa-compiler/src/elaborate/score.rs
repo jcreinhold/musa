@@ -307,7 +307,7 @@ pub(super) fn elaborate_material(
         .map(|(from, imported)| crate::document::Source::imported(imported.syntax(), from))
         .chain(std::iter::once(crate::document::Source::own(library.syntax())))
         .collect();
-    drop(crate::document::elaborate(resolver, &sources));
+    let machines = crate::document::elaborate(resolver, &sources).map_or_else(Vec::new, |document| document.machines());
     if resolver
         .diagnostics
         .iter()
@@ -330,7 +330,9 @@ pub(super) fn elaborate_material(
         .collect();
     let mut references = std::mem::take(&mut resolver.references);
     crate::studio::resolve(None, &studios, &[], &mut references, &mut resolver.diagnostics);
-    Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_material()
+    Compilation::new(None, std::mem::take(&mut resolver.diagnostics))
+        .with_machines(machines)
+        .into_material()
 }
 
 pub(super) fn elaborate_libraries(

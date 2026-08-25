@@ -1,9 +1,10 @@
 //! Checked scheduling and one-frame audio execution.
 //!
-//! [`prepare_audio`] consumes exact performed gestures plus authored studio
-//! intent and returns opaque [`PreparedAudio`]. Preparation validates and
-//! allocates the closed native primitive graph; both offline rendering and
-//! the live callback then repeat the same event-before-output frame step.
+//! [`prepare_execution`] consumes exact performed gestures, checked source
+//! instruments, their machine projection, and temporary authored studio
+//! intent, then returns opaque [`PreparedAudio`]. Preparation validates and
+//! allocates the closed native primitive graph; both offline rendering and the
+//! live callback then repeat the same event-before-output frame step.
 //! CPAL and threads remain in `musa-playback`; the step path never allocates,
 //! locks, logs, or performs I/O.
 
@@ -13,6 +14,7 @@ mod envelope;
 mod error;
 mod filter;
 mod instrument;
+mod instrument_source;
 mod intent;
 mod machine;
 mod offline;
@@ -25,7 +27,11 @@ mod spec;
 mod studio;
 mod voice;
 
-pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_audio};
+pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_execution};
+pub use crate::instrument_source::{
+    InstrumentContract, InstrumentContracts, InstrumentContractsError, InstrumentControlContract,
+    InstrumentTechniqueContract, decode_instrument_contracts, instrument_contracts_schema,
+};
 pub use crate::intent::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit,
     WrittenQuantity, written_ratio,
@@ -100,7 +106,7 @@ pub mod testing {
         pub fn render(&mut self, first: &[EventMessage<Gesture>], output: &mut [f32]) {
             for (index, frame) in output.as_chunks_mut::<2>().0.iter_mut().enumerate() {
                 let messages = if index == 0 { first } else { &[] };
-                let [left, right] = self.0.step(messages, Tuning::default(), &[]);
+                let [left, right] = self.0.step(messages, Tuning::default());
                 *frame = [left, right];
             }
         }

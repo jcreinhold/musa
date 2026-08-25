@@ -355,6 +355,26 @@ searches the filesystem.
 - `fn declaration_checked(description: StudioDescription, declaration: StudioDecl) -> Option(StudioError)` — Check one declaration against the complete graph around it.
 - `fn validate(description: StudioDescription) -> Result(CheckedStudio, StudioError)` — Validate every declaration and return the first complaint in written order.
 
+## `std::sound::instrument`
+
+- `record TechniqueSupport: Type` — One namespaced technique accepted by an instrument signature.
+- `fn accepts_control({kind: ControlKind}, control_key: ControlKey(kind), default_value: ControlValue(kind)) -> SomeControlRequirement` — Package one requirement after the general pattern unifier settles its kind.
+- `record InstrumentSignature: Type` — The complete public behavioral contract of one source instrument.
+- `record ParameterTarget` — A target is private graph structure, never a public control address.
+- `fn maps_normalized(control_key: ControlKey(Normalized), node: Text, parameter: Text, transfer: NormalizedTransfer) -> SomeControlMapping` — Bind one normalized musical control to a private primitive parameter.
+- `record NativeInstrumentBody` — The implementation type and every binding of it are private. The public `Instrument` below carries only a stable declaration identity and signature.
+- `record InstrumentImplementationContract` — Canonical private intent crosses the checked boundary; the machine itself crosses through the distinct machine projection. Including the mappings here makes any implementation-policy change part of exact preparation identity.
+- `fn implementation_contract(body: NativeInstrumentBody) -> InstrumentImplementationContract` — Retain the exact private mapping policy beside its stable declaration.
+- `record Instrument: Type` — A source instrument value exposes its contract, never graph-local paths.
+- `fn scale_frame(factor: Ratio) -> Machine(AudioFrameStep, Ratio, Ratio)` — Registered primitive wrappers are ordinary functions. The primitive call is the only host-owned leaf; composition and configuration remain source.
+- `fn mix_frames(left: Ratio, right: Ratio) -> Machine( AudioFrameStep, (Ratio, Ratio), Ratio, )` — Mix two exact reference channels with explicit gains.
+- `let basic_sine_machine: Machine(AudioFrameStep, Ratio, Ratio)` — A machine remains its own checked projection rather than being smuggled through canonical record data. Keeping the binding at module scope lets the compiler recognize its Machine type without exposing it to importers.
+- `let basic_sine_body: NativeInstrumentBody` — The edition-one basic instrument's private machine and control mappings.
+- `let note_instrument: InstrumentSignature` — Edition-one note instrument contract shared by the basic native preset.
+- `let basic_sine: Instrument` — Stable edition-one zero-setup instrument declaration.
+- `record InstrumentExecutionArtifact: Type` — This root is the only route from a private body to host preparation. It is produced and checked as one source value; no Rust instrument schema can independently construct or amend it.
+- `let standard_instruments: InstrumentExecutionArtifact` — Versioned checked standard instrument declarations and private machines.
+
 ## `std::sound::quantity`
 
 - `record ExactQuantityArtifact: Type` — The versioned checked-artifact root consumed at the DSP boundary.

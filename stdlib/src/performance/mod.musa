@@ -273,7 +273,6 @@ fn profile_from_legacy(
 record ProfileResult {
     gesture: Gesture;
     gate: Ratio;
-    attack_seconds: Ratio;
     hold: Ratio;
 }
 
@@ -412,7 +411,6 @@ fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
             concat(view.techniques, marked_techniques(policy.marks, view.marks)),
         ),
         gate = timing.gate,
-        attack_seconds = timing.attack_seconds,
         hold = timing.hold
     }
 }

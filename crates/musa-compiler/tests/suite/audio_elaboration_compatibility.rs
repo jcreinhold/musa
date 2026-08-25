@@ -9,10 +9,9 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_dsp::prepare_audio;
 use musa_score::{GesturePlan, lower_gestures};
 
-use super::audio_support::options;
+use super::audio_support::{options, prepare_gestures};
 
 type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -94,7 +93,7 @@ fn manifest() -> Result<String> {
     );
 
     for block_size in BLOCK_SIZES {
-        let mut audio = prepare_audio(&gestures, &studio, options(u64::from(SAMPLE_RATE)))?;
+        let mut audio = prepare_gestures(&gestures, &studio, options(u64::from(SAMPLE_RATE)))?;
         let frames = audio.total_frames();
         let mut samples = vec![0.0; usize::try_from(frames.saturating_mul(2))?];
         for chunk in samples.chunks_mut(block_size.saturating_mul(2)) {

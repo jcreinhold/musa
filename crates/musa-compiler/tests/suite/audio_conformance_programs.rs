@@ -2,7 +2,7 @@
 
 #![allow(clippy::expect_used)]
 
-use musa_dsp::{MachineValue, prepare_audio, prepare_machine};
+use musa_dsp::{MachineValue, prepare_machine};
 use musa_events::{Canonical, Duration, Occurrence, PerformedTime, Position, Span, track};
 use musa_score::machine::{MachineSpec, PortSchema as Port, SpecForm, SpecNode, StepTag, descriptor};
 use musa_score::{Tuning, lower_gestures};
@@ -30,7 +30,7 @@ fn unmeasured_time_runs_without_manufacturing_a_meter() {
             .is_measured()
     );
     let gestures = lower_gestures(&score).expect("exact gestures");
-    let mut audio = prepare_audio(&gestures, &studio, support::options(0)).expect("one-frame audio");
+    let mut audio = support::prepare_gestures(&gestures, &studio, support::options(0)).expect("one-frame audio");
     let mut frames = [0.0; 256];
     audio.render(&mut frames);
     assert!(frames.iter().all(|sample| sample.is_finite()));
@@ -84,7 +84,7 @@ fn ensemble_tuning_is_configuration_not_a_rewritten_pitch() {
     let written = occurrence.payload().pitch();
     let mut options = support::options(0);
     options.tuning = Tuning { concert_a: 432.0 };
-    let mut audio = prepare_audio(&gestures, &studio, options).expect("configured instrument machine");
+    let mut audio = support::prepare_gestures(&gestures, &studio, options).expect("configured instrument machine");
     assert_eq!(occurrence.payload().pitch(), written);
     assert!(audio.step().iter().all(|sample| sample.is_finite()));
 }

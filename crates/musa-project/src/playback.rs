@@ -21,6 +21,10 @@ pub(crate) fn sample_rate() -> u32 {
 /// Exact gesture lowering → checked scheduling → prepared audio machine.
 fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::PreparedAudio, ProjectError> {
     let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
+    let instruments = musa_compiler::checked_standard_instruments()
+        .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
+    let instrument_machine = musa_compiler::checked_standard_instrument_machine()
+        .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
     let sample_rate = sample_rate();
     let rate = std::num::NonZeroU32::new(sample_rate)
         .ok_or_else(|| ProjectError::Performance("the audio sample rate must be nonzero".to_owned()))?;
@@ -44,8 +48,10 @@ fn build(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<musa_dsp::Prepare
         },
     )
     .map_err(|error| ProjectError::Performance(error.to_string()))?;
-    musa_dsp::prepare_audio(
+    musa_dsp::prepare_execution(
         &gestures,
+        &instruments,
+        &instrument_machine,
         studio,
         musa_dsp::AudioOptions {
             format,
