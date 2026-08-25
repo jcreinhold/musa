@@ -2,7 +2,7 @@
 id: 175
 slug: studio-vocabulary
 status: pending
-depends_on: [122, 174]
+depends_on: [122, 174b]
 phase: 3
 ---
 
@@ -21,7 +21,8 @@ desktop, and generated reference material consume the same facts.
 ## Read
 
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§7.2, 13.6–13.7, 14.4; prompts 29–31 and 84.
-- `crates/musa-compiler/src/studio.rs`, especially `Processor::params`/`ParamSpec`; `musa-dsp` parameter descriptors;
+- `crates/musa-dsp/src/intent.rs`, especially `Processor::params`/`ParamSpec`, and its private graph parameter
+  descriptors; `crates/musa-compiler/src/studio.rs`, which consumes that vocabulary while resolving source;
   keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
 - The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
@@ -29,10 +30,12 @@ desktop, and generated reference material consume the same facts.
 
 ## Design
 
-The compiler-side surface catalogue owns processor spelling, musician-facing summary, longer technical note, parameter
-names, aliases, unit, written range/default, signal role, and example. The audio descriptor continues to own the
-post-conversion DSP range, smoothing, and combination policy. Join them by a checked stable key; do not force two
-different questions into one descriptor and do not introduce a new crate for a table.
+The `musa-dsp` surface catalogue owns processor spelling, musician-facing summary, longer technical note, parameter
+names, aliases, unit, written range/default, signal role, and example, beside the `StudioSpec` vocabulary prompt 174b
+moved there. The private graph descriptor continues to own the post-conversion DSP range, smoothing, and combination
+policy. Join them by a checked stable key; do not force two different questions into one descriptor and do not
+introduce a new crate for a table. `musa-compiler` consumes the catalogue while resolving source and does not re-export
+it.
 
 The catalogue entry also fixes the versioned processor identity and public port/parameter schema which preparation will
 validate. It does not expose private machine state in this prompt. A built-in which cannot supply a first-order
@@ -51,7 +54,8 @@ entry and compatible audio descriptor.
 
 ## Target
 
-- Authoritative compiler catalogue and schema-agreement checks against `musa-dsp` descriptors.
+- Authoritative `musa-dsp` catalogue, consumed directly by the compiler, and schema-agreement checks against the
+  private graph descriptors.
 - LSP hover/signature/completion for processors and parameters, including invalid/half-typed studio source.
 - Sound/Mix labels, descriptions, accessible names, and generated reference page from the same facts.
 - Hard-error `q` diagnostic/fix and migrated canonical examples, with no alias in the checker or runtime.
