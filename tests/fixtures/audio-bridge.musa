@@ -38,9 +38,14 @@ diminuendo to p { c4/4 > g3/4 a3/4 staccato f3/4 }
 }
 }
 
+instrument reed conforms note_instrument {
+implementation graph { oscillator(sine) |> lowpass(cutoff: 1800 Hz, resonance: 0.7) |> output; }
+}
+instrument bow conforms note_instrument {
+implementation graph { oscillator(sine, ratio: 0.5) |> envelope(adsr(attack: 15 ms, release: 300 ms)) |> output; }
+}
+
 studio {
-patch reed { oscillator(sine) |> lowpass(cutoff: 1800 Hz, resonance: 0.7) |> output; }
-patch bow { oscillator(sine, ratio: 0.5) |> envelope(adsr(attack: 15 ms, release: 300 ms)) |> output; }
 bus hall { reverb(room: 0.55, mix: 0.25); }
 lfo = oscillator(sine, frequency: 0.5 Hz) |> scale(200 Hz);
 modulate lfo -> reed.lowpass.cutoff;

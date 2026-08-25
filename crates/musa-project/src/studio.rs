@@ -19,6 +19,7 @@
 //! never written is inserted, in the unit it is declared in.
 
 use musa_dsp::{SoundUnit, StudioExecution, StudioGraphProjection};
+use musa_syntax::ast::AstNode as _;
 use serde::Serialize;
 
 use crate::command::TextEdit;
@@ -115,6 +116,12 @@ pub struct AssignmentFacts {
     /// mention — which keeps the built-in instrument rather than going silent
     /// (§14.8), and which the workspace shows as such.
     pub patch: Option<String>,
+    /// The effective source declaration, including the edition default.
+    pub instrument: String,
+    /// The effective source performance profile, including the edition default.
+    pub profile: String,
+    /// Whether source made the instrument choice explicit.
+    pub explicit: bool,
 }
 
 /// `send violin -> hall at -18 dB;`
@@ -170,7 +177,12 @@ impl StudioFacts {
     ///
     /// The score is needed for one thing only: the list of parts, so a part
     /// the studio never mentions still gets a row.
-    pub(crate) fn derive(studio: &StudioExecution, spans: &musa_compiler::StudioSpans, parts: &[String]) -> Self {
+    pub(crate) fn derive(
+        studio: &StudioExecution,
+        spans: &musa_compiler::StudioSpans,
+        score: &musa_score::ScoreSnapshot,
+        parts: &[String],
+    ) -> Self {
         Self {
             declared: studio.declared(),
             patches: containers(studio, spans, ContainerKind::Patch),
@@ -178,12 +190,22 @@ impl StudioFacts {
             signals: containers(studio, spans, ContainerKind::Signal),
             assignments: parts
                 .iter()
-                .map(|part| AssignmentFacts {
-                    part: part.clone(),
-                    patch: studio
+                .map(|part| {
+                    let written = studio
                         .assignments()
                         .find(|assignment| assignment.part() == part)
-                        .map(|assignment| assignment.instrument().to_owned()),
+                        .map(|assignment| assignment.instrument().to_owned());
+                    AssignmentFacts {
+                        part: part.clone(),
+                        instrument: written.clone().unwrap_or_else(|| "std.sound.basic_sine@1".to_owned()),
+                        profile: score
+                            .profiles()
+                            .name_for_part(part)
+                            .unwrap_or("std.performance.neutral")
+                            .to_owned(),
+                        explicit: written.is_some(),
+                        patch: written,
+                    }
                 })
                 .collect(),
             sends: studio
@@ -291,6 +313,20 @@ fn span(source: musa_score::SourceSpan) -> Span {
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum StudioEdit {
+    /// Choose or replace both halves of a part's musician-facing sound sentence.
+    ChooseSound {
+        /// The part, as the score declares it.
+        part: String,
+        /// The source instrument declaration or qualified standard name.
+        instrument: String,
+        /// The source performance-profile declaration or qualified standard name.
+        profile: String,
+    },
+    /// Write the edition defaults explicitly for a part that currently inherits them.
+    MakeSoundExplicit {
+        /// The part, as the score declares it.
+        part: String,
+    },
     /// Point a part at a different patch. Rewrites the existing `assign`'s
     /// patch name, or writes a new `assign` if the part had none.
     AssignPatch {
@@ -328,6 +364,14 @@ pub enum StudioEdit {
 /// How a failed studio edit names itself.
 pub(crate) fn describe(edit: &StudioEdit) -> String {
     match *edit {
+        StudioEdit::ChooseSound {
+            ref part,
+            ref instrument,
+            ref profile,
+        } => format!("choosing {instrument} using {profile} for {part}"),
+        StudioEdit::MakeSoundExplicit { ref part } => {
+            format!("making {part}'s default sound explicit")
+        }
         StudioEdit::AssignPatch {
             ref part, ref patch, ..
         } => format!("assigning {part} to {patch}"),
@@ -357,6 +401,12 @@ pub(crate) fn edits_for(
     edit: &StudioEdit,
 ) -> Result<Vec<TextEdit>, ProjectError> {
     match *edit {
+        StudioEdit::ChooseSound {
+            ref part,
+            ref instrument,
+            ref profile,
+        } => choose_sound(studio, source, part, instrument, profile),
+        StudioEdit::MakeSoundExplicit { ref part } => make_sound_explicit(studio, source, part),
         StudioEdit::AssignPatch {
             ref part, ref patch, ..
         } => assign_patch(studio, spans, source, part, patch),
@@ -373,6 +423,82 @@ pub(crate) fn edits_for(
             decibels,
         } => set_send_level(studio, spans, source, sender, bus, decibels),
     }
+}
+
+fn make_sound_explicit(studio: &StudioExecution, source: &str, part: &str) -> Result<Vec<TextEdit>, ProjectError> {
+    let parsed = musa_syntax::parse(source);
+    let root = parsed.syntax();
+    let piece = musa_syntax::ast::PieceDecl::from_root(&root)
+        .ok_or_else(|| missing("this document has no piece to choose a sound for"))?;
+    let profile = piece
+        .score()
+        .into_iter()
+        .flat_map(|score| score.parts())
+        .find(|candidate| candidate.name().as_deref() == Some(part))
+        .and_then(|written| written.profile())
+        .and_then(|written| written.name())
+        .unwrap_or_else(|| "std::performance::neutral".to_owned());
+    choose_sound(studio, source, part, "std::sound::instrument::basic_sine", &profile)
+}
+
+fn choose_sound(
+    studio: &StudioExecution,
+    source: &str,
+    part: &str,
+    instrument: &str,
+    profile: &str,
+) -> Result<Vec<TextEdit>, ProjectError> {
+    let is_default = matches!(
+        instrument,
+        "basic_sine" | "std::sound::basic_sine" | "std::sound::instrument::basic_sine"
+    );
+    if !is_default && !studio.patches().any(|candidate| candidate.name() == instrument) {
+        return Err(missing(format!("there is no instrument named `{instrument}`")));
+    }
+    let parsed = musa_syntax::parse(source);
+    let root = parsed.syntax();
+    let piece = musa_syntax::ast::PieceDecl::from_root(&root)
+        .ok_or_else(|| missing("this document has no piece to choose a sound for"))?;
+    let written = piece
+        .score()
+        .into_iter()
+        .flat_map(|score| score.parts())
+        .find(|candidate| candidate.name().as_deref() == Some(part))
+        .ok_or_else(|| missing(format!("there is no part named `{part}`")))?;
+    if let Some(sound) = written.sound() {
+        let range = sound.syntax().text_range();
+        return Ok(vec![TextEdit::new(
+            Span {
+                start: u32::from(range.start()),
+                end: u32::from(range.end()),
+            },
+            format!("sound {instrument} using {profile};"),
+        )]);
+    }
+    if let Some(selected_profile) = written.profile() {
+        let range = selected_profile.syntax().text_range();
+        return Ok(vec![TextEdit::new(
+            Span {
+                start: u32::from(range.start()),
+                end: u32::from(range.end()),
+            },
+            format!("sound {instrument} using {profile};"),
+        )]);
+    }
+    let range = written.syntax().text_range();
+    let start = usize::from(range.start());
+    let end = usize::from(range.end());
+    let part_source = source
+        .get(start..end)
+        .ok_or_else(|| missing("the part's source span is outside this document"))?;
+    let brace = part_source
+        .find('{')
+        .ok_or_else(|| missing("this part block is unfinished"))?;
+    let at = u32::try_from(start.saturating_add(brace).saturating_add(1)).unwrap_or(u32::MAX);
+    Ok(vec![TextEdit::new(
+        Span { start: at, end: at },
+        format!("\n            sound {instrument} using {profile};"),
+    )])
 }
 
 fn missing(what: impl Into<String>) -> ProjectError {

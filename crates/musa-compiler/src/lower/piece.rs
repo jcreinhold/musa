@@ -208,17 +208,36 @@ impl Lowering<'_> {
                 tracks.push(read.track.clone());
                 voices.push(read);
             }
+            let explicit_profile = written.profile().map(|statement| {
+                (
+                    statement.name().unwrap_or_default(),
+                    crate::resolve::trimmed_span(statement.syntax()),
+                )
+            });
+            let concise_profile = written.sound().map(|statement| {
+                (
+                    statement.profile().unwrap_or_default(),
+                    crate::resolve::trimmed_span(statement.syntax()),
+                )
+            });
+            if let (Some((_, first)), Some((_, second))) = (&explicit_profile, &concise_profile) {
+                whole = false;
+                self.refuse::<()>(
+                    Diagnostic::error(
+                        Code::DuplicateName,
+                        format!("part `{name}` chooses two performance profiles"),
+                    )
+                    .at(*second, "the concise sound choice selects one here")
+                    .also(*first, "the expert profile selection is here")
+                    .help("keep the `sound ... using ...;` statement, or keep the separate `profile` statement"),
+                );
+            }
             parts.push(Part {
                 id,
                 name_span: crate::resolve::token_span(written.syntax(), musa_syntax::SyntaxKind::Identifier),
                 name,
                 meter: counted,
-                profile: written.profile().map(|statement| {
-                    (
-                        statement.name().unwrap_or_default(),
-                        crate::resolve::trimmed_span(statement.syntax()),
-                    )
-                }),
+                profile: concise_profile.or(explicit_profile),
                 voices,
             });
         }

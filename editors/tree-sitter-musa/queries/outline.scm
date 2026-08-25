@@ -54,5 +54,11 @@
 (patch_declaration
   name: (identifier) @name) @item
 
+(instrument_declaration
+  name: (identifier) @name) @item
+
+(room_declaration
+  name: (identifier) @name) @item
+
 (bus_declaration
   name: (identifier) @name) @item

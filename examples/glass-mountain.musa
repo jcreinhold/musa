@@ -54,8 +54,8 @@ piece "Glass Mountain" {
     // oscillators and envelope are the voice, the filter and its modulation
     // shape it, and the hall is a send to a reverb bus that returns to the
     // master.
-    studio {
-        patch glass_pad {
+    instrument glass_pad conforms note_instrument {
+        implementation graph {
             carrier = oscillator(sine);
             shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);
 
@@ -64,14 +64,16 @@ piece "Glass Mountain" {
                 |> lowpass(cutoff: 1400 Hz, resonance: 0.7)
                 |> output;
         }
+    }
 
+    studio {
         lfo = oscillator(sine, frequency: 0.08 Hz)
             |> scale(250 Hz)
             |> bias(1400 Hz);
 
         modulate lfo -> glass_pad.lowpass.cutoff;
 
-        bus hall {
+        room hall {
             reverb(room: 0.82, damping: 0.55);
         }
 

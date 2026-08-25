@@ -6,7 +6,7 @@ with its place; `musa explain <code>` prints the rule behind one.
 | Code | Fires when |
 | --- | --- |
 | `unused-material` | A `motif` or `fragment` is declared and never used |
-| `unassigned-patch` | A `patch` is wired but no `assign` connects a part to it |
+| `unassigned-instrument` | An `instrument` is wired but no `sound` or expert `assign` connects a part to it |
 | `redundant-marking` | A tempo, meter, or key marking states the value already in force |
 | `copied-bars` | Three or more identical bars appear in one voice |
 

@@ -468,12 +468,20 @@ pub enum SyntaxKind {
     SettingStmt,
     /// `profile <name>;` inside a part: which profile realizes it.
     ProfileStmt,
+    /// `sound <instrument> using <profile>;` inside a part.
+    SoundStmt,
     /// `studio { ... }`
     StudioDecl,
+    /// `instrument <name> conforms <signature> { ... }`
+    InstrumentDecl,
+    /// `implementation graph { ... }` inside an instrument.
+    InstrumentImplementation,
     /// `patch <name> { ... }`
     PatchDecl,
     /// `bus <name> { ... }`
     BusDecl,
+    /// `room <name> { ... }`
+    RoomDecl,
     /// `<name> = <chain>;` — a named signal.
     SignalBinding,
     /// `<chain>;` — an unnamed chain, terminal in its patch or bus.

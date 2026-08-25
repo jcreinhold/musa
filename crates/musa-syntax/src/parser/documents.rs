@@ -94,6 +94,8 @@ impl Parser<'_> {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
+            } else if self.at_word("instrument") {
+                self.instrument_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
             } else if self.at(SyntaxKind::TempoKw) {
@@ -191,6 +193,8 @@ impl Parser<'_> {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
+            } else if self.at_word("instrument") {
+                self.instrument_decl();
             } else {
                 self.expected_with_help(
                     "a declaration",

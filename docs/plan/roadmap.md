@@ -81,9 +81,9 @@ The design should therefore use this policy:
 
 For example, the GUI may let the user choose “Warm Pad” from one menu. Internally, that command creates:
 
-1. a patch declaration;
-2. a binding from a score part to the patch;
-3. a route from the patch to the master bus.
+1. an instrument declaration;
+2. a binding from a score part to the instrument;
+3. a route from the part output to the master bus.
 
 The user gets one easy action. The core still receives three simple facts.
 
@@ -1826,7 +1826,7 @@ Score, parts, transport, note inspector.
 
 ### Sound
 
-Patch graph and selected-part sound controls.
+Instrument implementation graph and selected-part sound controls.
 
 ### Mix
 

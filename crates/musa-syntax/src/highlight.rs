@@ -476,6 +476,10 @@ impl TokenClass {
             | SyntaxKind::RecordPattern
             | SyntaxKind::FieldPattern
             | SyntaxKind::FieldPath => return None,
+            SyntaxKind::SoundStmt
+            | SyntaxKind::InstrumentDecl
+            | SyntaxKind::InstrumentImplementation
+            | SyntaxKind::RoomDecl => return None,
 
             // The parts of a composite literal, for the same reason as a node
             // kind: highlighting reads the *lexer's* stream, and the lexer

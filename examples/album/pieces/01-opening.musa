@@ -11,7 +11,7 @@ piece "Opening" {
 
     score {
         part reeds {
-            profile album;
+            sound reed using album;
             clef treble;
 
             voice lead {
@@ -41,8 +41,4 @@ piece "Opening" {
         }
     }
 
-    studio {
-        assign reeds -> reed;
-        route reeds -> master;
-    }
 }

@@ -170,7 +170,7 @@ machines. They enter only the mix graph:
 ```musa
 studio {
     route pulse -> master;
-    room field_room { decay: 1.2 s; }
+    room field_room { reverb(room: 0.74, damping: 0.6, mix: 1); }
     send harbor -> field_room at -18 dB;
     route harbor -> master;
     route field_room -> master;

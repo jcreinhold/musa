@@ -1,7 +1,7 @@
 ---
 id: 181
 slug: ergonomic-sound-bindings
-status: pending
+status: complete
 depends_on: [125, 174, 178, 179, 180, 180a]
 phase: 3
 ---
@@ -34,15 +34,28 @@ three independent facts: performance-profile selection, part→instrument bindin
 convenience desugars to an ordinary named bus/effect/send. The expert surface retains explicit instruments, exposed
 controls, buses, sends, routes, and private native machine bodies.
 
+The new sound words are **contextual heads, not lexer keywords**. The parser recognizes `sound`, `using`, `instrument`,
+`from`, `conforms`, `implementation`, `graph`, and `room` only where the surrounding production requires them; each
+remains an ordinary identifier in value, field, parameter, and pattern positions. Tree-sitter must expose the same
+identifier leaves. This adds musical declarations without shrinking the ordinary dependently typed language or inventing
+a separate application form.
+
+Do not add an inline control-declaration sublanguage. Public controls, their indexed kinds/defaults, techniques, and
+channel shape are fields of the ordinary source `InstrumentSignature` installed by prompt 178; `conforms` names that
+value. The concise declaration supplies only stable identity and a private implementation. Repeating signature fields
+inside a parser-owned block would create a second contract language and make Rust, rather than `std::sound`, its owner.
+
 Provide a small versioned standard-library instrument package and one stable edition-specific default. Absence of an
 explicit studio therefore remains audible and deterministic, with the effective default visible in hover/inspector and a
 source action to make it explicit. Presets are ordinary read-only Musa declarations, never generated Rust mirrors or
 opaque UI blobs.
 
-Keep only the chosen canonical expert forms. Removed `patch`, `q`, or other old spellings are hard errors with certain
-source fixes and are absent from the evaluator and runtime. Rewrite all repository source. Diagnostics lead with
-musician language: missing sound, unsupported technique, incompatible control, or unconnected output; technical
-identity/signature detail follows.
+Keep only the chosen canonical expert forms in new source. `patch` remains accepted only for the one-edition
+compatibility window promised by `08-performance-and-sound.md` §6, with a deprecation and an exact conversion to an
+`instrument ... conforms note_instrument { implementation graph { ... } }` declaration; repository source uses the
+canonical form. Removed `q` and any other spelling with no compatibility promise are hard errors with certain source
+fixes and are absent from the evaluator and runtime. Diagnostics lead with musician language: missing sound, unsupported
+technique, incompatible control, or unconnected output; technical identity/signature detail follows.
 
 ## Target
 
@@ -50,8 +63,8 @@ identity/signature detail follows.
 - Default/basic instrument library as ordinary inspectable source declarations with stable versioning and provenance;
   generated documentation may derive from them, but generated declarations may not derive from a Rust catalogue.
 - Project edit commands for choosing/replacing an instrument/profile and making defaults explicit.
-- Negative fixtures for removed studio syntax and positive fixtures showing the canonical source is concise for ordinary
-  selection, room, and send tasks.
+- Negative fixtures for removed studio syntax, a deprecation/fix fixture for compatibility `patch`, and positive
+  fixtures showing the canonical source is concise for ordinary selection, room, and send tasks.
 
 ## Check
 

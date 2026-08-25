@@ -14,7 +14,7 @@
 // places: listing twenty-odd variants would be noise that says nothing.
 #![allow(clippy::wildcard_enum_match_arm)]
 
-use musa_syntax::ast::{PieceDecl, VoiceItem};
+use musa_syntax::ast::{AstNode, PieceDecl, VoiceItem};
 use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, parse};
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
@@ -103,6 +103,57 @@ fn glass_mountain_parses_cleanly() {
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
     assert_round_trip(GLASS_MOUNTAIN);
     insta::assert_snapshot!(print_tree(&doc.syntax()));
+}
+
+#[test]
+fn sound_declarations_are_structural_but_their_words_stay_identifiers() {
+    let source = r#"instrument glass conforms note_instrument {
+    implementation graph { oscillator(sine) |> output; }
+}
+piece "Sound" {
+    meter 4/4;
+    key c major;
+    score { part piano { sound glass using neutral; voice notes { c4/1 } } }
+    studio { room hall { reverb(room: 0.8); } send piano -> hall at -12 dB; route hall -> master; }
+}
+"#;
+    let doc = parse(source);
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    for kind in [
+        SyntaxKind::InstrumentDecl,
+        SyntaxKind::InstrumentImplementation,
+        SyntaxKind::SoundStmt,
+        SyntaxKind::RoomDecl,
+    ] {
+        assert!(
+            doc.syntax().descendants().any(|node| node.kind() == kind),
+            "missing {kind:?}"
+        );
+    }
+    let instrument = doc
+        .syntax()
+        .descendants()
+        .find_map(musa_syntax::ast::InstrumentDecl::cast)
+        .expect("instrument declaration");
+    assert_eq!(instrument.signature().as_deref(), Some("note_instrument"));
+    for word in [
+        "instrument",
+        "conforms",
+        "implementation",
+        "graph",
+        "sound",
+        "using",
+        "room",
+    ] {
+        assert!(
+            doc.syntax()
+                .descendants_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .any(|token| token.kind() == SyntaxKind::Identifier && token.text() == word),
+            "{word} was globally reserved instead of remaining contextual"
+        );
+    }
+    assert_round_trip(source);
 }
 
 #[test]

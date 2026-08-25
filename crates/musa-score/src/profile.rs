@@ -235,6 +235,11 @@ impl ProfileSet {
         self.profiles.get(self.parts.get(part)?)
     }
 
+    /// The declaration name selected for a part, when it wrote one.
+    pub fn name_for_part(&self, part: &str) -> Option<&str> {
+        self.parts.get(part).map(String::as_str)
+    }
+
     /// Whether the piece declares no profiles at all — the case that must
     /// reproduce the pre-profile behavior exactly.
     pub fn is_empty(&self) -> bool {

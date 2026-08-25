@@ -504,7 +504,10 @@
     "assignments": [
       {
         "part": "strings",
-        "patch": null
+        "patch": null,
+        "instrument": "std.sound.basic_sine@1",
+        "profile": "std.performance.neutral",
+        "explicit": false
       }
     ],
     "sends": [],

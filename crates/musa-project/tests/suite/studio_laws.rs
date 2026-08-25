@@ -60,6 +60,104 @@ fn set(session: &mut ProjectSession, edit: StudioEdit) -> Result<(), ProjectErro
     session.apply(ProjectCommand::EditStudio(edit)).map(|_| ())
 }
 
+const DEFAULT_SOUND: &str = r#"piece "Default" {
+    meter 4/4;
+    key c major;
+    score { part lead { voice one { c4/1 } } }
+}
+"#;
+
+#[test]
+fn inherited_sound_is_visible_and_can_be_made_explicit() {
+    let mut session = ProjectSession::from_text(DEFAULT_SOUND.to_owned(), "default-sound.musa");
+    let assignment = facts(&session).assignments.into_iter().next().expect("one part");
+    assert_eq!(assignment.instrument, "std.sound.basic_sine@1");
+    assert_eq!(assignment.profile, "std.performance.neutral");
+    assert!(!assignment.explicit);
+
+    set(
+        &mut session,
+        StudioEdit::MakeSoundExplicit {
+            part: "lead".to_owned(),
+        },
+    )
+    .expect("the default is a source action");
+    assert!(source(&session).contains("sound std::sound::instrument::basic_sine using std::performance::neutral;"));
+    assert!(facts(&session).assignments.first().expect("one assignment").explicit);
+}
+
+#[test]
+fn making_an_inherited_instrument_explicit_preserves_a_written_profile() {
+    let fixture = r#"piece "Profile" {
+    meter 4/4;
+    key c major;
+    performance { profile clear { dynamic f { amplitude = 1; } } }
+    score { part lead { profile clear; voice one { c4/1 } } }
+}
+"#;
+    let mut session = ProjectSession::from_text(fixture.to_owned(), "profile-default.musa");
+    set(
+        &mut session,
+        StudioEdit::MakeSoundExplicit {
+            part: "lead".to_owned(),
+        },
+    )
+    .expect("the inherited instrument can be made explicit");
+    let written = source(&session);
+    assert!(!written.contains("profile clear;"));
+    assert!(written.contains("sound std::sound::instrument::basic_sine using clear;"));
+}
+
+#[test]
+fn choosing_again_replaces_one_sound_sentence() {
+    let fixture = r#"piece "Choice" {
+    meter 4/4;
+    key c major;
+    instrument glass conforms note_instrument {
+        implementation graph { oscillator(sine) |> output; }
+    }
+    score { part lead { sound glass using neutral; voice one { c4/1 } } }
+}
+"#;
+    let mut session = ProjectSession::from_text(fixture.to_owned(), "choice.musa");
+    set(
+        &mut session,
+        StudioEdit::ChooseSound {
+            part: "lead".to_owned(),
+            instrument: "std::sound::instrument::basic_sine".to_owned(),
+            profile: "std::performance::neutral".to_owned(),
+        },
+    )
+    .expect("the existing sentence is replaceable");
+    let written = source(&session);
+    assert_eq!(written.matches("sound ").count(), 1);
+    assert!(written.contains("sound std::sound::instrument::basic_sine using std::performance::neutral;"));
+}
+
+#[test]
+fn choosing_sound_replaces_an_expert_profile_instead_of_duplicating_it() {
+    let fixture = r#"piece "Profile" {
+    meter 4/4;
+    key c major;
+    performance { profile clear { dynamic f { amplitude = 1; } } }
+    score { part lead { profile clear; voice one { c4/1 } } }
+}
+"#;
+    let mut session = ProjectSession::from_text(fixture.to_owned(), "profile-choice.musa");
+    set(
+        &mut session,
+        StudioEdit::ChooseSound {
+            part: "lead".to_owned(),
+            instrument: "std::sound::instrument::basic_sine".to_owned(),
+            profile: "clear".to_owned(),
+        },
+    )
+    .expect("the expert profile is folded into the concise sentence");
+    let written = source(&session);
+    assert!(!written.contains("profile clear;"));
+    assert!(written.contains("sound std::sound::instrument::basic_sine using clear;"));
+}
+
 /// A patch that writes a value in milliseconds and leaves a reverb's `mix`
 /// unwritten, so a test can see what an edit does to each.
 const CAREFUL: &str = r#"piece "Careful" {

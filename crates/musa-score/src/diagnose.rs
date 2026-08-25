@@ -81,8 +81,9 @@ pub enum Code {
     /// `bar` is not checked: it plays where it stands, so its name is an
     /// address, not a promise of reuse.
     UnusedMaterial,
-    /// A `patch` no `assign` connects to a part (style guide §1).
-    UnassignedPatch,
+    /// An `instrument` no `sound` or expert `assign` connects to a part
+    /// (style guide §1).
+    UnassignedInstrument,
     /// A tempo, meter, or key marking that states the value already in
     /// force (style guide §2).
     RedundantMarking,
@@ -279,7 +280,7 @@ code_table! {
     UnreachablePattern => "unreachable-pattern",
     UnsupportedLanguageStage => "unsupported-language-stage",
     UnusedMaterial => "unused-material",
-    UnassignedPatch => "unassigned-patch",
+    UnassignedInstrument => "unassigned-instrument",
     RedundantMarking => "redundant-marking",
     CopiedBars => "copied-bars",
     UnmetClaim => "unmet-claim",

@@ -241,10 +241,12 @@ impl Parser<'_> {
                 self.tempo_stmt();
             } else if self.at(SyntaxKind::ProfileKw) {
                 self.profile_stmt();
+            } else if self.at_word("sound") {
+                self.sound_stmt();
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
             } else {
-                self.expected("`clef`, `meter`, `tempo`, `profile`, or `voice`");
+                self.expected("`clef`, `meter`, `tempo`, `profile`, `sound`, or `voice`");
                 self.recover(PART_RECOVERY);
             }
         }
@@ -267,6 +269,39 @@ impl Parser<'_> {
         self.expect(SyntaxKind::Identifier, "a profile name");
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
+    }
+
+    /// `sound <instrument> using <profile>;` — the ordinary one-action sound choice.
+    pub(super) fn sound_stmt(&mut self) {
+        self.start(SyntaxKind::SoundStmt);
+        self.bump(); // sound
+        self.qualified_sound_name("an instrument name");
+        if self.at_word("using") {
+            self.bump();
+        } else {
+            self.expected("`using`");
+        }
+        self.qualified_sound_name("a performance profile name");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    fn qualified_sound_name(&mut self, what: &str) {
+        if self.at_any(super::documents::MODULE_NAME) {
+            self.bump();
+            while self.at(SyntaxKind::Colon) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
+                self.bump();
+                self.bump();
+                if self.at_any(super::documents::MODULE_NAME) {
+                    self.bump();
+                } else {
+                    self.expected(what);
+                    break;
+                }
+            }
+        } else {
+            self.expected(what);
+        }
     }
 
     /// `voice name { ... }`

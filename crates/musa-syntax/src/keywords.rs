@@ -1040,6 +1040,10 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::BinaryExpr
         | SyntaxKind::MethodCallExpr
         | SyntaxKind::IndexExpr => return None,
+        SyntaxKind::SoundStmt
+        | SyntaxKind::InstrumentDecl
+        | SyntaxKind::InstrumentImplementation
+        | SyntaxKind::RoomDecl => return None,
     };
     Some(doc)
 }

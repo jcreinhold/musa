@@ -12,7 +12,7 @@ piece "Waltz" {
 
     score {
         part reeds {
-            profile album;
+            sound reed using album;
             clef treble;
 
             voice lead {
@@ -31,8 +31,4 @@ piece "Waltz" {
         }
     }
 
-    studio {
-        assign reeds -> reed;
-        route reeds -> master;
-    }
 }

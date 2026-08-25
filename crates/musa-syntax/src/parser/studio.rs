@@ -45,6 +45,8 @@ impl Parser<'_> {
             }
             if self.at(SyntaxKind::PatchKw) {
                 self.patch_decl();
+            } else if self.at_word("room") {
+                self.room_decl();
             } else if self.at(SyntaxKind::BusKw) {
                 self.bus_decl();
             } else if self.at(SyntaxKind::ModulateKw) {
@@ -58,7 +60,7 @@ impl Parser<'_> {
             } else if self.at(SyntaxKind::Identifier) {
                 self.signal_binding();
             } else {
-                self.expected("`patch`, `bus`, `modulate`, `assign`, `route`, `send`, or a signal binding");
+                self.expected("`room`, `patch`, `bus`, `modulate`, `assign`, `route`, `send`, or a signal binding");
                 self.recover(STUDIO_RECOVERY);
             }
         }
@@ -72,6 +74,86 @@ impl Parser<'_> {
         self.expect(SyntaxKind::Identifier, "a patch name");
         self.expect(SyntaxKind::LBrace, "`{`");
         self.chain_body("patch");
+        self.finish();
+    }
+
+    /// `room <name> { <effect chain> }` — a named shared ambience path.
+    pub(super) fn room_decl(&mut self) {
+        self.start(SyntaxKind::RoomDecl);
+        self.bump(); // room
+        self.expect(SyntaxKind::Identifier, "a room name");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.chain_body("room");
+        self.finish();
+    }
+
+    /// `instrument <name> [from <asset>] conforms <signature> ...`.
+    pub(super) fn instrument_decl(&mut self) {
+        self.start(SyntaxKind::InstrumentDecl);
+        self.bump(); // instrument
+        self.expect(SyntaxKind::Identifier, "an instrument name");
+        if self.at_word("from") {
+            self.bump();
+            self.expect(SyntaxKind::String, "an asset path in quotes");
+        }
+        if self.at_word("conforms") {
+            self.bump();
+        } else {
+            self.expected("`conforms`");
+        }
+        if self.at_any(super::documents::MODULE_NAME) {
+            self.bump();
+            while self.at(SyntaxKind::Colon) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
+                self.bump();
+                self.bump();
+                if self.at_any(super::documents::MODULE_NAME) {
+                    self.bump();
+                } else {
+                    self.expected("an instrument signature name");
+                    break;
+                }
+            }
+        } else {
+            self.expected("an instrument signature name");
+        }
+        if self.at(SyntaxKind::Semicolon) {
+            self.bump();
+            self.finish();
+            return;
+        }
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                if let Some(error) = self.unclosed("`instrument` block") {
+                    self.errors.push(error);
+                }
+                break;
+            }
+            if self.at_word("implementation") {
+                self.instrument_implementation();
+            } else {
+                self.expected("an `implementation` declaration");
+                self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace]);
+            }
+        }
+        self.finish();
+    }
+
+    /// `implementation graph { <signal bindings and chains> }`.
+    fn instrument_implementation(&mut self) {
+        self.start(SyntaxKind::InstrumentImplementation);
+        self.bump(); // implementation
+        if self.at_word("graph") {
+            self.bump();
+        } else {
+            self.expected("`graph`");
+        }
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.chain_body("implementation graph");
         self.finish();
     }
 

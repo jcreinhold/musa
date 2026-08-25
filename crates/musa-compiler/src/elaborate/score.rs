@@ -135,6 +135,12 @@ fn assign_profile(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, part: &
     let Some((profile, span)) = &part.profile else {
         return;
     };
+    // The edition default is an ordinary standard-library declaration. Its
+    // explicit spelling has exactly the same checked policy as omission, so
+    // there is no piece-local profile record to install.
+    if matches!(profile.as_str(), "neutral" | "std::performance::neutral") {
+        return;
+    }
     if snapshot.profiles().declares(profile) {
         snapshot.profiles_mut().assign(&part.name, profile.clone());
         return;
@@ -328,8 +334,22 @@ pub(super) fn elaborate_material(
         .filter_map(|(_, imported)| imported.studio())
         .chain(library.studio())
         .collect();
+    let instruments: Vec<musa_syntax::ast::InstrumentDecl> = libraries
+        .each()
+        .flat_map(|(_, imported)| imported.instruments())
+        .chain(library.instruments())
+        .collect();
     let mut references = std::mem::take(&mut resolver.references);
-    crate::studio::resolve(None, &studios, &[], &mut references, &mut resolver.diagnostics);
+    crate::studio::resolve(
+        None,
+        &studios,
+        &instruments,
+        &[],
+        &[],
+        &[],
+        &mut references,
+        &mut resolver.diagnostics,
+    );
     Compilation::new(None, std::mem::take(&mut resolver.diagnostics))
         .with_machines(machines)
         .into_material()

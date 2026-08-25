@@ -66,6 +66,7 @@ mod scale_context_laws;
 mod schema_generation_laws;
 mod serial_laws;
 mod sharing_laws;
+mod sound_surface_laws;
 mod staff_construction_fixture;
 mod staff_dispatch_fixture;
 mod staff_expansion_laws;

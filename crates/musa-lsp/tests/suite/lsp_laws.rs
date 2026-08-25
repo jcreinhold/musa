@@ -366,12 +366,12 @@ fn references_can_exclude_the_declaration() {
 }
 
 #[test]
-fn references_on_a_patch_find_the_declaration_and_the_assigns() {
+fn references_on_an_instrument_find_the_declaration_and_assignments() {
     let mut server = Server::start();
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
     let answer = server.client.request::<References>(reference_params(
         &uri,
-        shifted(at(GLASS_MOUNTAIN, "patch glass_pad"), 6),
+        shifted(at(GLASS_MOUNTAIN, "instrument glass_pad"), 11),
         true,
     ));
     let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
@@ -380,7 +380,7 @@ fn references_on_a_patch_find_the_declaration_and_the_assigns() {
     // Both parts are assigned to the pad: one declaration, two uses. The
     // `modulate lfo -> glass_pad.lowpass.cutoff` property path is not one.
     let mut expected: Vec<u32> = [
-        at(GLASS_MOUNTAIN, "patch glass_pad").line,
+        at(GLASS_MOUNTAIN, "instrument glass_pad").line,
         at(GLASS_MOUNTAIN, "assign violin -> glass_pad").line,
         at(GLASS_MOUNTAIN, "assign strings -> glass_pad").line,
     ]
@@ -923,13 +923,13 @@ fn folds_are_the_brace_blocks_and_the_comment_runs() {
             "no comment fold at `{needle}` (line {line}): {starts:?}"
         );
     }
-    // Every brace pair in the fixture spans lines: thirteen region folds and
+    // Every brace pair in the fixture spans lines: fourteen region folds and
     // two comment runs, no more.
     let regions = ranges
         .iter()
         .filter(|range| range.kind == Some(FoldingRangeKind::Region))
         .count();
-    assert_eq!(regions, 13, "{starts:?}");
+    assert_eq!(regions, 14, "{starts:?}");
     server.stop();
 }
 

@@ -316,11 +316,27 @@ Sine selects a smooth periodic waveform. It is the waveform provided by the stan
 
 ### `studio`
 
-A studio block connects a score to authored sound. It owns patches, buses, signals, assignments, sends, routes, and modulations without changing score facts.
+A studio block connects a score to authored sound. It groups buses, rooms, signals, expert assignments, sends, routes, and modulations without changing score facts.
 
 - Shape: `studio { StudioItem* }`
 - Origin: `std::sound::catalogue`
 - Example: `studio { route violin -> master; }`
+
+### `sound`
+
+A sound sentence chooses how one score part is performed and heard. Inside a part it selects one source instrument and profile and routes that part to master; the declarations remain independent facts after elaboration.
+
+- Shape: `sound Instrument using PerformanceProfile;`
+- Origin: `std::sound::catalogue`
+- Example: `sound solo_strings using lyrical;`
+
+### `using`
+
+Using introduces the performance profile in a sound sentence. It is contextual syntax in a sound binding and remains an ordinary identifier everywhere else.
+
+- Shape: `sound Instrument using PerformanceProfile;`
+- Origin: `std::sound::catalogue`
+- Example: `sound solo_strings using lyrical;`
 
 ### `assign`
 
@@ -348,15 +364,23 @@ At introduces a send's written level. The following value is required in decibel
 
 ### `instrument`
 
-An instrument turns performed gestures into sound. Its public source signature is separate from its private machine implementation.
+An instrument turns performed gestures into sound. Its public source signature is separate from its private machine implementation; instrument is contextual and remains an ordinary identifier elsewhere.
 
-- Shape: `InstrumentSignature -> Machine`
+- Shape: `instrument Name conforms InstrumentSignature { implementation graph { SignalChain* } }`
 - Origin: `std::sound::catalogue`
-- Example: `sound solo_strings using lyrical;`
+- Example: `instrument glass conforms note_instrument { implementation graph { oscillator(sine) |> output; } }`
+
+### `implementation`
+
+An implementation supplies the private machine behind an instrument signature. Graph paths and physical controls stay inside this block and do not enter score gestures or the public instrument contract.
+
+- Shape: `implementation graph { SignalChain* }`
+- Origin: `std::sound::catalogue`
+- Example: `implementation graph { oscillator(sine) |> output; }`
 
 ### `patch`
 
-Patch is the temporary pre-cutover spelling for an instrument implementation. Prompt 178 replaces it with source instrument declarations; it is documented here only for the migration window.
+Patch is the deprecated previous-edition spelling for an instrument implementation. It remains accepted only during the promised one-edition migration window and carries an exact source fix to the canonical instrument declaration.
 
 - Shape: `patch Name { SignalChain* }`
 - Origin: `std::sound::catalogue`
@@ -404,11 +428,11 @@ The master is the studio's final audio destination. Prepared audio applies the f
 
 ### `room`
 
-Room is the apparent size of a reverb space. It ranges from zero to one and belongs to the reverb contract.
+A room is a named shared ambience path. Its body is an ordinary effect chain; the reverb processor separately documents its dimensionless room parameter.
 
-- Shape: `room: Ratio = 0.5`
+- Shape: `room Name { SignalChain* }`
 - Origin: `std::sound::catalogue`
-- Example: `reverb(room: 0.82)`
+- Example: `room hall { reverb(room: 0.82, damping: 0.45, mix: 1); }`
 
 ### `output`
 

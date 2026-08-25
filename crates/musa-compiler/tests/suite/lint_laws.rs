@@ -109,26 +109,27 @@ fn a_named_bar_is_an_address_not_a_rumour() {
 }
 
 #[test]
-fn an_unassigned_patch_is_dead_wiring() {
+fn an_unassigned_instrument_is_dead_wiring() {
     let source = piece(
-        "studio {\n    patch pad {\n        oscillator(sine) |> output;\n    }\n}",
+        "instrument pad conforms note_instrument {\n    implementation graph {\n        oscillator(sine) |> output;\n    }\n}",
         "",
     );
-    let lints = coded(&source, Code::UnassignedPatch);
+    let lints = coded(&source, Code::UnassignedInstrument);
     let [lint] = lints.as_slice() else {
-        panic!("expected one unassigned-patch warning: {lints:?}");
+        panic!("expected one unassigned-instrument warning: {lints:?}");
     };
     assert!(lint.message.contains("realizes no part"), "{}", lint.message);
 }
 
 #[test]
-fn an_assigned_patch_is_silent() {
+fn a_sound_selected_instrument_is_silent() {
     let source = piece(
-        "studio {\n    patch pad {\n        oscillator(sine) |> output;\n    }\n\n    assign piano -> pad;\n}",
+        "instrument pad conforms note_instrument {\n    implementation graph {\n        oscillator(sine) |> output;\n    }\n}",
         "",
-    );
+    )
+    .replace("        part piano {", "        part piano {\n            sound pad using neutral;");
     assert!(
-        coded(&source, Code::UnassignedPatch).is_empty(),
+        coded(&source, Code::UnassignedInstrument).is_empty(),
         "{:?}",
         warnings_of(&source)
     );
@@ -341,7 +342,10 @@ fn the_examples_are_lint_clean() {
                     diagnostic.severity == Severity::Warning
                         && matches!(
                             diagnostic.code,
-                            Code::UnusedMaterial | Code::UnassignedPatch | Code::RedundantMarking | Code::CopiedBars
+                            Code::UnusedMaterial
+                                | Code::UnassignedInstrument
+                                | Code::RedundantMarking
+                                | Code::CopiedBars
                         )
                 })
                 .map(|diagnostic| format!("{}: {}", diagnostic.code, diagnostic.message))

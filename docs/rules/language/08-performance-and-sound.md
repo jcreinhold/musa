@@ -182,7 +182,7 @@ block:
 instrument glass conforms note_instrument {
     implementation graph {
         voice oscillator(sine)
-            |) envelope(attack: 12 ms, decay: 180 ms, sustain: 0.7, release: 600 ms)
+            |> envelope(attack: 12 ms, decay: 180 ms, sustain: 0.7, release: 600 ms)
             |> lowpass(cutoff: 4200 Hz, resonance: 0.8)
             |> output;
 
@@ -243,14 +243,22 @@ every edition-pinned standard-library processor wrapper. A `room` is a named sha
 advanced general form: a named summing path with an effect chain. `send part -> room at level` copies a part's output to
 it; `route x -> master` selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
 
+These surface words are contextual, not globally reserved: outside their structural positions, `sound`, `using`,
+`instrument`, `from`, `conforms`, `implementation`, `graph`, and `room` remain ordinary identifiers. A room's body is an
+ordinary effect chain, for example `room hall { reverb(room: 0.82, damping: 0.45, mix: 1); }`; it does not introduce a
+second parameter language or claim an exact decay-time control the standard reverb does not provide. The signature named
+after `conforms` is the ordinary `std::sound` value that owns exposed controls, techniques, and channel shape; those
+fields are deliberately not repeated in a parser-owned instrument sublanguage.
+
 `studio { ... }` is a source grouping retained for compatibility and readability. Elaboration separates its assignments,
 instrument implementation declarations, and mix declarations before preparation; it is not a combined score/audio value
 or one mutable compiler object.
 
-An unbound part uses the language-edition declarations `std.sound.basic_sine` and `std.performance.neutral` and is
-routed to `master`. This preserves audible zero-setup playback without hiding the effective choice: hover and the Sound
-inspector show both declarations, and “make sound explicit” inserts
-`sound std.sound.basic_sine using std.performance.neutral;`. Changing that default requires a language edition change.
+An unbound part uses the language-edition declarations `std::sound::instrument::basic_sine` and
+`std::performance::neutral` and is routed to `master`. This preserves audible zero-setup playback without hiding the
+effective choice: hover and the Sound inspector show both declarations, and “make sound explicit” inserts
+`sound std::sound::instrument::basic_sine using std::performance::neutral;`. Its exact preparation identity remains
+`std.sound.basic_sine@1`; changing that default requires a language edition change.
 
 Existing studio source migrates by this table; format never rewrites a user's expert graph implicitly:
 

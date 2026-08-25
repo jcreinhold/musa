@@ -210,15 +210,17 @@ fn the_roadmap_example_compiles_and_resolves() {
     insta::assert_snapshot!("glass_mountain_studio", format!("{studio:#?}"));
 }
 
-/// Every processor the language names has DSP behind it, so a patch that
+/// Every processor the language names has DSP behind it, so an instrument that
 /// uses one is not merely accepted — it is accepted without a word of
 /// apology.
 #[test]
 fn a_written_effect_compiles_without_a_warning() {
-    let compilation = compile_text(&piece(
-        "patch p { oscillator(sine) |> reverb(room: 0.5) |> delay(time: 250 ms) |> chorus() |> output; } \
-         assign violin -> p; route violin -> master;",
-    ));
+    let compilation = compile_text(
+        "piece \"x\" { tempo 1/4 = 60; meter 4/4; \
+         instrument p conforms note_instrument { implementation graph { \
+         oscillator(sine) |> reverb(room: 0.5) |> delay(time: 250 ms) |> chorus() |> output; } } \
+         score { part violin { sound p using neutral; voice v { c4/1 } } } }",
+    );
     assert!(!compilation.has_errors(), "the effects are part of the language");
     let warnings: Vec<&str> = compilation
         .diagnostics()

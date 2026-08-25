@@ -19,6 +19,8 @@ pub enum StudioItem {
     Patch(PatchDecl),
     /// `bus name { ... }`
     Bus(BusDecl),
+    /// `room name { ... }`
+    Room(RoomDecl),
     /// `name = chain;`
     Signal(SignalBinding),
     /// `modulate a -> b.c.d;`
@@ -48,6 +50,7 @@ impl StudioDecl {
                 PatchDecl::cast(node.clone())
                     .map(StudioItem::Patch)
                     .or_else(|| BusDecl::cast(node.clone()).map(StudioItem::Bus))
+                    .or_else(|| RoomDecl::cast(node.clone()).map(StudioItem::Room))
                     .or_else(|| SignalBinding::cast(node.clone()).map(StudioItem::Signal))
                     .or_else(|| ModulateStmt::cast(node.clone()).map(StudioItem::Modulate))
                     .or_else(|| AssignStmt::cast(node.clone()).map(StudioItem::Assign))
@@ -60,6 +63,99 @@ impl StudioDecl {
 
 chain_container!(PatchDecl, SyntaxKind::PatchDecl, "patch");
 chain_container!(BusDecl, SyntaxKind::BusDecl, "bus");
+/// `room name { ... }`.
+pub struct RoomDecl(SyntaxNode);
+wrapper!(RoomDecl, SyntaxKind::RoomDecl);
+
+impl RoomDecl {
+    /// The room's name.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+            .map(|token| token.text().to_owned())
+    }
+
+    /// Named signals in source order.
+    pub fn signals(&self) -> Vec<SignalBinding> {
+        children(&self.0)
+    }
+
+    /// Terminal chains in source order.
+    pub fn chains(&self) -> Vec<ChainStmt> {
+        children(&self.0)
+    }
+}
+
+/// `instrument glass conforms note_instrument { implementation graph { ... } }`.
+pub struct InstrumentDecl(SyntaxNode);
+wrapper!(InstrumentDecl, SyntaxKind::InstrumentDecl);
+
+impl InstrumentDecl {
+    /// The declaration name.
+    pub fn name(&self) -> Option<String> {
+        self.name_token().map(|token| token.text().to_owned())
+    }
+
+    /// The declaration-name token, excluding the contextual `instrument` head.
+    pub fn name_token(&self) -> Option<SyntaxToken> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+    }
+
+    /// The optional immutable asset path, without quotes.
+    pub fn asset(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| super::unquote(&text))
+    }
+
+    /// The ordinary source `InstrumentSignature` named after `conforms`.
+    pub fn signature(&self) -> Option<String> {
+        let mut tokens = self
+            .0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| !token.kind().is_trivia());
+        tokens.find(|token| token.kind() == SyntaxKind::Identifier && token.text() == "conforms")?;
+        let mut segments = Vec::new();
+        for token in tokens {
+            let kind = token.kind();
+            if kind == SyntaxKind::Identifier {
+                segments.push(token.text().to_owned());
+            } else if matches!(kind, SyntaxKind::Semicolon | SyntaxKind::LBrace) {
+                break;
+            } else if kind != SyntaxKind::Colon {
+                return None;
+            }
+        }
+        (!segments.is_empty()).then(|| segments.join("::"))
+    }
+
+    /// The private native graph, when the declaration supplies one.
+    pub fn implementation(&self) -> Option<InstrumentImplementation> {
+        child(&self.0)
+    }
+}
+
+/// `implementation graph { ... }`.
+pub struct InstrumentImplementation(SyntaxNode);
+wrapper!(InstrumentImplementation, SyntaxKind::InstrumentImplementation);
+
+impl InstrumentImplementation {
+    /// Named local signals in source order.
+    pub fn signals(&self) -> Vec<SignalBinding> {
+        children(&self.0)
+    }
+
+    /// Terminal chains in source order.
+    pub fn chains(&self) -> Vec<ChainStmt> {
+        children(&self.0)
+    }
+}
 
 /// `carrier = oscillator(sine);`
 pub struct SignalBinding(SyntaxNode);

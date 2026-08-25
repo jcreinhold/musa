@@ -78,20 +78,30 @@ path         := IDENT "." IDENT
 sound-bind   := "sound" expr "using" expr ";"
 instrument   := "instrument" IDENT ("from" STRING)? "conforms" path
                 (";" | "{" instrument-item* "}")
-instrument-item := control-decl | implementation
-control-decl := "control" path ":" control-domain ("in" range)? "=" quantity ";"
+instrument-item := implementation
 profile      := "profile" IDENT "for" path "{" profile-rule* "}"
 profile-rule := notation-selector "->" control-assignment ";"
 clip         := "clip" IDENT "from" STRING "fit" duration "by" ("rate" | "loop" | "crop") ";"
 fixed-media  := "fixed_media" IDENT "from" STRING ";"
 cue          := "cue" IDENT "at" position ("repeat" NAT)? ";"
-room         := "room" IDENT "{" room-setting* "}"
+room         := "room" IDENT "{" signal-chain* "}"
 fallback     := "unsupported" "technique" IDENT "->" "notation_only" "warning" ";"
 import       := "import" (STRING | module-path) ("as" IDENT)? ";"
 module-path  := IDENT ("::" IDENT)*
 mod-decl     := "mod" IDENT ";"
 module-file  := mod-decl+                                    % one at least: an empty file owes a piece
 ```
+
+The quoted words introduced by the sound productions are **contextual heads**, not globally reserved lexer tokens.
+`sound`, `using`, `instrument`, `from`, `conforms`, `implementation`, `graph`, and `room` are recognized in the
+structural positions shown above and remain ordinary identifiers in expressions, fields, parameters, and patterns. The
+tree-sitter grammar exposes the same identifier leaves. Sound declarations therefore enrich the one Musa language; they
+do not remove useful names from its dependent core or introduce a separate kind of application.
+
+An instrument's exposed controls are not a second block grammar. They are indexed fields of the ordinary source
+`InstrumentSignature` named after `conforms`, along with techniques and channel shape. Custom contracts are constructed
+with the same records, data, functions, and applications as every other Musa value; the instrument block supplies only
+the private implementation.
 
 Function arrows associate right, and a function type may name more than one parameter. `(B, A) -> B` is a function of
 two arguments, not a function of one pair: a parenthesized type list immediately followed by `->` is a parameter list,
@@ -1029,7 +1039,7 @@ studio {
     assign marimba -> mallets;
     send violin -> concert_hall at -12 dB;
     send marimba -> concert_hall at -16 dB;
-    room concert_hall { decay: 1.8 s; }
+    room concert_hall { reverb(room: 0.82, damping: 0.45, mix: 1); }
     route violin -> master;
     route marimba -> master;
     route concert_hall -> master;

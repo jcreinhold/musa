@@ -12,7 +12,8 @@ use crate::studio_model::{
 use indexmap::IndexMap;
 use musa_score::origin::SourceSpan;
 use musa_syntax::ast::{
-    Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
+    Arg, AstNode as _, BusDecl, CallExpr, InstrumentDecl, PatchDecl, RoomDecl, SendStmt, SignalChain, SignalStage,
+    SoundStmt, StudioDecl, StudioItem,
 };
 use num_rational::Ratio;
 
@@ -74,6 +75,9 @@ fn complain(node: &musa_syntax::SyntaxNode, what: &str, diagnostics: &mut Vec<Di
 pub(crate) fn resolve(
     decl: Option<&StudioDecl>,
     imported: &[StudioDecl],
+    imported_instruments: &[InstrumentDecl],
+    instruments: &[InstrumentDecl],
+    sounds: &[(String, SoundStmt)],
     parts: &[String],
     references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
@@ -85,6 +89,7 @@ pub(crate) fn resolve(
         for item in library.items() {
             match item {
                 StudioItem::Patch(_) | StudioItem::Signal(_) => items.push(item),
+                StudioItem::Room(ref node) => complain(node.syntax(), "room", diagnostics),
                 StudioItem::Bus(ref node) => complain(node.syntax(), "bus", diagnostics),
                 StudioItem::Modulate(ref node) => complain(node.syntax(), "modulate", diagnostics),
                 StudioItem::Assign(ref node) => complain(node.syntax(), "assign", diagnostics),
@@ -98,13 +103,33 @@ pub(crate) fn resolve(
     let main_start = items.len();
     items.extend(decl.map(StudioDecl::items).unwrap_or_default());
 
+    for instrument in imported_instruments {
+        declare_instrument(instrument, &mut spec, diagnostics);
+    }
+    for instrument in instruments {
+        declare_instrument(instrument, &mut spec, diagnostics);
+        let name = instrument.name().unwrap_or_default();
+        if !name.is_empty()
+            && spec.has_patch(&name)
+            && let Some(span) = instrument.name_token().as_ref().map(crate::resolve::source_span_of)
+        {
+            references.declare(crate::resolve::NameKind::Patch, &name, span);
+        }
+    }
+
     // Two passes: patches, buses, and signals first, so the bindings that
     // follow can be checked against them regardless of writing order. A
     // studio reads top-down, but it does not have to be written that way.
     for (index, item) in items.iter().enumerate() {
         match item {
-            StudioItem::Patch(patch) => declare_patch(patch, &mut spec, diagnostics),
+            StudioItem::Patch(patch) => {
+                declare_patch(patch, &mut spec, diagnostics);
+                if index >= main_start {
+                    deprecate_patch(patch, diagnostics);
+                }
+            }
             StudioItem::Bus(bus) => declare_bus(bus, &mut spec, diagnostics),
+            StudioItem::Room(room) => declare_room(room, &mut spec, diagnostics),
             StudioItem::Signal(signal) => {
                 let name = signal.name().unwrap_or_default();
                 let mut built = SurfaceGraph::default();
@@ -131,6 +156,53 @@ pub(crate) fn resolve(
                 references.declare(crate::resolve::NameKind::Patch, &name, span);
             }
         }
+    }
+
+    for (part, sound) in sounds {
+        let instrument = sound.instrument().unwrap_or_default();
+        let span = Some(span_of(sound.syntax()));
+        if !parts.contains(part) {
+            diagnostics.push(
+                Diagnostic::error(Code::UnknownName, format!("unknown part `{part}`"))
+                    .maybe_at(span, "no part with this name"),
+            );
+            continue;
+        }
+        let is_default = matches!(
+            instrument.as_str(),
+            "basic_sine" | "std::sound::basic_sine" | "std::sound::instrument::basic_sine"
+        );
+        if !is_default && !spec.has_patch(&instrument) {
+            diagnostics.push(
+                Diagnostic::error(Code::UnknownName, format!("missing sound `{instrument}`"))
+                    .maybe_at(span, "no instrument declaration with this name")
+                    .help("declare the instrument, import the package that owns it, or choose `std::sound::instrument::basic_sine`"),
+            );
+            continue;
+        }
+        let patch_span = sound
+            .instrument_token()
+            .map(|token| crate::resolve::source_span_of(&token));
+        if !is_default && let Some(span) = patch_span {
+            references.record_use(crate::resolve::NameKind::Patch, &instrument, span);
+        }
+        let selected = if is_default {
+            "std.sound.basic_sine@1".to_owned()
+        } else {
+            instrument
+        };
+        spec.assign(
+            part.clone(),
+            SurfaceAssignment {
+                patch: selected,
+                patch_span,
+            },
+        );
+        spec.push_route(SurfaceRoute {
+            source: part.clone(),
+            destination: "master".to_owned(),
+            span,
+        });
     }
 
     for item in &items {
@@ -220,7 +292,7 @@ pub(crate) fn resolve(
                     spec.push_modulation(modulation);
                 }
             }
-            StudioItem::Patch(_) | StudioItem::Bus(_) | StudioItem::Signal(_) => {}
+            StudioItem::Patch(_) | StudioItem::Bus(_) | StudioItem::Room(_) | StudioItem::Signal(_) => {}
         }
     }
     diagnose_bus_cycles(&spec, diagnostics);
@@ -639,6 +711,79 @@ fn declare_patch(decl: &PatchDecl, spec: &mut SurfaceStudio, diagnostics: &mut V
     }
 }
 
+fn declare_instrument(decl: &InstrumentDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
+    let name = decl.name().unwrap_or_default();
+    let signature = decl.signature().unwrap_or_default();
+    if !matches!(
+        signature.as_str(),
+        "note_instrument" | "std::sound::note_instrument" | "std::sound::instrument::note_instrument"
+    ) {
+        diagnostics.push(
+            Diagnostic::error(
+                Code::UnsupportedLanguageStage,
+                format!("instrument `{name}` names a custom source signature that preparation cannot project yet"),
+            )
+            .at(trimmed_span(decl.syntax()), "the declaration is valid, but its contract projection is pending")
+            .help("use the edition `std::sound::instrument::note_instrument` contract until custom signature projection lands"),
+        );
+        return;
+    }
+    let Some(implementation) = decl.implementation() else {
+        if decl.asset().is_some() {
+            diagnostics.push(
+                Diagnostic::error(
+                    Code::UnsupportedLanguageStage,
+                    format!("instrument `{name}` names an asset adapter that is not installed yet"),
+                )
+                .at(
+                    trimmed_span(decl.syntax()),
+                    "the declaration is valid, but its adapter is pending",
+                )
+                .help("use an `implementation graph` instrument until the sample-adapter prompt lands"),
+            );
+        } else {
+            diagnostics.push(
+                Diagnostic::error(Code::Studio, format!("instrument `{name}` has no implementation"))
+                    .at(trimmed_span(decl.syntax()), "a source contract alone produces no sound")
+                    .help("supply `implementation graph { ... }` or an immutable asset adapter"),
+            );
+        }
+        return;
+    };
+    let Some(graph) = build_container(&implementation.signals(), &implementation.chains(), diagnostics) else {
+        return;
+    };
+    if graph.output().is_none() {
+        diagnostics.push(
+            Diagnostic::error(Code::Studio, format!("instrument `{name}` never reaches `output`"))
+                .at(trimmed_span(decl.syntax()), "this implementation ends nowhere"),
+        );
+        return;
+    }
+    if !spec.insert_patch(name.clone(), graph) {
+        diagnostics.push(
+            Diagnostic::error(Code::DuplicateName, format!("duplicate instrument `{name}`"))
+                .at(trimmed_span(decl.syntax()), "declared again here"),
+        );
+    }
+}
+
+fn deprecate_patch(decl: &PatchDecl, diagnostics: &mut Vec<Diagnostic>) {
+    let written = decl.syntax().text().to_string();
+    let Some(body) = written.find('{').and_then(|at| written.get(at..)) else {
+        return;
+    };
+    let name = decl.name().unwrap_or_default();
+    let replacement = format!("instrument {name} conforms note_instrument {{ implementation graph {body} }}");
+    let span = trimmed_span(decl.syntax());
+    diagnostics.push(
+        Diagnostic::warning(Code::Syntax, "`patch` is the previous edition's instrument spelling")
+            .at(span, "accepted during the compatibility window")
+            .help("write an instrument declaration with a private graph implementation")
+            .fix("convert this patch to an instrument", span, replacement),
+    );
+}
+
 fn declare_bus(decl: &BusDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
     let name = decl.name().unwrap_or_default();
     // A bus's input is whatever is sent to it, so its chain needs no
@@ -662,6 +807,32 @@ fn declare_bus(decl: &BusDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<D
     if !spec.insert_bus(name.clone(), bus) {
         diagnostics.push(
             Diagnostic::error(Code::DuplicateName, format!("duplicate bus `{name}`"))
+                .at(trimmed_span(decl.syntax()), "declared again here"),
+        );
+    }
+}
+
+fn declare_room(decl: &RoomDecl, spec: &mut SurfaceStudio, diagnostics: &mut Vec<Diagnostic>) {
+    let name = decl.name().unwrap_or_default();
+    let Some(mut room) = build_container(&decl.signals(), &decl.chains(), diagnostics) else {
+        return;
+    };
+    if room.output().is_none() {
+        let last = room.nodes().len().checked_sub(1);
+        match last {
+            Some(index) => room.set_output(index),
+            None => {
+                diagnostics.push(
+                    Diagnostic::error(Code::Studio, format!("room `{name}` has no ambience effect"))
+                        .at(trimmed_span(decl.syntax()), "empty room"),
+                );
+                return;
+            }
+        }
+    }
+    if !spec.insert_bus(name.clone(), room) {
+        diagnostics.push(
+            Diagnostic::error(Code::DuplicateName, format!("duplicate room or bus `{name}`"))
                 .at(trimmed_span(decl.syntax()), "declared again here"),
         );
     }

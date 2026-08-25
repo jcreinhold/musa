@@ -2,6 +2,7 @@
 
 use super::FnDecl;
 use super::FragmentDecl;
+use super::InstrumentDecl;
 use super::LetDecl;
 use super::MotifDecl;
 use super::PerformanceDecl;
@@ -97,6 +98,11 @@ impl PieceDecl {
     /// The `studio` block, if present.
     pub fn studio(&self) -> Option<StudioDecl> {
         child(&self.0)
+    }
+
+    /// Instrument declarations owned by this piece.
+    pub fn instruments(&self) -> Vec<InstrumentDecl> {
+        children(&self.0)
     }
 }
 
@@ -237,6 +243,11 @@ impl Document {
     /// Its `studio` block, if it has one.
     pub fn studio(&self) -> Option<StudioDecl> {
         child(&self.0)
+    }
+
+    /// Reusable instrument declarations exported by this file.
+    pub fn instruments(&self) -> Vec<InstrumentDecl> {
+        children(&self.0)
     }
 
     /// Any `tempo` written at the root, where a piece is what one belongs to.

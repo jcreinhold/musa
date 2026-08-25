@@ -19,9 +19,26 @@ pub(crate) fn lower_studio(
     piece: &PieceDecl,
     snapshot: &ScoreSnapshot,
     imported: &[musa_syntax::ast::StudioDecl],
+    imported_instruments: &[musa_syntax::ast::InstrumentDecl],
 ) -> crate::studio_model::SurfaceStudio {
     let studio = piece.studio();
-    if studio.is_none() && imported.is_empty() {
+    let instruments = piece.instruments();
+    let sounds: Vec<(String, musa_syntax::ast::SoundStmt)> = piece
+        .score()
+        .map(|score| {
+            score
+                .parts()
+                .into_iter()
+                .filter_map(|part| Some((part.name()?, part.sound()?)))
+                .collect()
+        })
+        .unwrap_or_default();
+    if studio.is_none()
+        && imported.is_empty()
+        && instruments.is_empty()
+        && imported_instruments.is_empty()
+        && sounds.is_empty()
+    {
         return crate::studio_model::SurfaceStudio::default();
     }
     let parts: Vec<String> = snapshot
@@ -32,6 +49,9 @@ pub(crate) fn lower_studio(
     crate::studio::resolve(
         studio.as_ref(),
         imported,
+        imported_instruments,
+        &instruments,
+        &sounds,
         &parts,
         &mut resolver.references,
         &mut resolver.diagnostics,

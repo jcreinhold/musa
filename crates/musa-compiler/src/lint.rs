@@ -38,7 +38,7 @@ pub(crate) fn lint(
     let source = document.text();
     let mut lints = Vec::new();
     unused_material(document, source, references, &mut lints);
-    unassigned_patch(document, source, references, studio, &mut lints);
+    unassigned_instrument(document, source, references, studio, &mut lints);
     redundant_marking(piece, source, &mut lints);
     copied_bars(piece, &mut lints);
     redundant_name_prefix(document, &mut lints);
@@ -204,10 +204,10 @@ fn unused_material(document: &ParsedDocument, source: &str, references: &Referen
     }
 }
 
-/// Guide §1, one layer down: a `patch` no `assign` speaks is a cable that
-/// ends in the air. Patches in imported libraries are their own documents'
-/// business; only declarations in this one are checked.
-fn unassigned_patch(
+/// Guide §1, one layer down: an `instrument` no `sound` or expert `assign`
+/// speaks is a cable that ends in the air. Instruments in imported libraries
+/// are their own documents' business; only declarations in this one are checked.
+fn unassigned_instrument(
     document: &ParsedDocument,
     source: &str,
     references: &ReferenceIndex,
@@ -220,18 +220,22 @@ fn unassigned_patch(
         if entry.kind != NameKind::Patch || assigned.contains(&entry.name.as_str()) {
             continue;
         }
-        let Some(statement) = statement_node(document, declaration.start, &[SyntaxKind::PatchDecl]) else {
+        let Some(statement) = statement_node(
+            document,
+            declaration.start,
+            &[SyntaxKind::InstrumentDecl, SyntaxKind::PatchDecl],
+        ) else {
             continue;
         };
-        if suppressed(&statement, Code::UnassignedPatch) {
+        if suppressed(&statement, Code::UnassignedInstrument) {
             continue;
         }
         lints.push(
-            Diagnostic::warning(Code::UnassignedPatch, "this patch realizes no part")
+            Diagnostic::warning(Code::UnassignedInstrument, "this instrument realizes no part")
                 .at(declaration, "declared here")
-                .help("assign a part to it (`assign violin -> glass_pad;`), or delete it — as written it is wired to silence")
+                .help("choose it in a part (`sound glass_pad using neutral;`), use expert `assign`, or delete it — as written it is wired to silence")
                 .note("docs/rules/style-guide.md §1: a name is a promise")
-                .fix("delete this patch", delete_lines(source, &statement), ""),
+                .fix("delete this instrument", delete_lines(source, &statement), ""),
         );
     }
 }

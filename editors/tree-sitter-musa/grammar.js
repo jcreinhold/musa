@@ -155,6 +155,7 @@ module.exports = grammar({
               $.enum_declaration,
               $.impl_declaration,
               $.performance_declaration,
+              $.instrument_declaration,
               $.studio_declaration,
             ),
           ),
@@ -314,6 +315,7 @@ module.exports = grammar({
             $.impl_declaration,
             $.score_declaration,
             $.performance_declaration,
+            $.instrument_declaration,
             $.studio_declaration,
           ),
         ),
@@ -1038,6 +1040,7 @@ module.exports = grammar({
             $.meter_statement,
             $.tempo_statement,
             $.profile_statement,
+            $.sound_statement,
             $.voice_declaration,
           ),
         ),
@@ -1049,6 +1052,18 @@ module.exports = grammar({
 
     // Parser::profile_stmt — which profile realizes this part.
     profile_statement: ($) => seq('profile', field('name', $.identifier), ';'),
+
+    // Parser::sound_stmt — one readable action over three independent facts.
+    sound_statement: ($) =>
+      seq(
+        alias('sound', $.identifier),
+        field('instrument', $.sound_name),
+        alias('using', $.identifier),
+        field('profile', $.sound_name),
+        ';',
+      ),
+
+    sound_name: ($) => seq($._module_name, repeat(seq(':', ':', $._module_name))),
 
     // Parser::voice_decl — the braces are the declaration's own, no Block.
     voice_declaration: ($) =>
@@ -1104,6 +1119,7 @@ module.exports = grammar({
         repeat(
           choice(
             $.patch_declaration,
+            $.room_declaration,
             $.bus_declaration,
             $.modulate_statement,
             $.assign_statement,
@@ -1120,6 +1136,37 @@ module.exports = grammar({
 
     bus_declaration: ($) =>
       seq('bus', field('name', $.identifier), '{', repeat(choice($.signal_binding, $.chain_statement)), '}'),
+
+    // Parser::room_decl — a concise named ambience bus.
+    room_declaration: ($) =>
+      seq(alias('room', $.identifier), field('name', $.identifier), '{', repeat(choice($.signal_binding, $.chain_statement)), '}'),
+
+    // Parser::instrument_decl and instrument_implementation.
+    instrument_declaration: ($) =>
+      seq(
+        alias('instrument', $.identifier),
+        field('name', $.identifier),
+        optional(seq(alias('from', $.identifier), field('asset', $.string))),
+        alias('conforms', $.identifier),
+        field('signature', $.sound_name),
+        choice(
+          ';',
+          seq(
+            '{',
+            repeat($.instrument_implementation),
+            '}',
+          ),
+        ),
+      ),
+
+    instrument_implementation: ($) =>
+      seq(
+        alias('implementation', $.identifier),
+        alias('graph', $.identifier),
+        '{',
+        repeat(choice($.signal_binding, $.chain_statement)),
+        '}',
+      ),
 
     // Parser::signal_binding — `<name> = <chain>;`
     signal_binding: ($) => seq(field('name', $.identifier), '=', $.signal_chain, ';'),

@@ -31,6 +31,12 @@
 (patch_declaration
   name: (identifier) @name) @definition.type
 
+(instrument_declaration
+  name: (identifier) @name) @definition.type
+
+(room_declaration
+  name: (identifier) @name) @definition.type
+
 (bus_declaration
   name: (identifier) @name) @definition.type
 

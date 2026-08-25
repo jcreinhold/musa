@@ -10,10 +10,13 @@ piece "Missing Unit" {
         }
     }
 
-    studio {
-        patch warm {
+    instrument warm conforms note_instrument {
+        implementation graph {
             oscillator(sine) |> lowpass(cutoff: 1400) |> output;
         }
+    }
+
+    studio {
         assign piano -> warm;
     }
 }

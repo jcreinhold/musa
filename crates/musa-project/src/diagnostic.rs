@@ -425,10 +425,10 @@ pub fn explain(code: &str) -> Option<&'static str> {
              Fixed:\n    \
              voice right { use answer(); c4/4 }"
         }
-        musa_score::Code::UnassignedPatch => {
-            "A `patch` is declared in the studio and no `assign` connects it to a \
-             part (style guide §1). Wiring with nothing at the end of it costs DSP \
-             to build and makes silence: assign a part to it, or delete it."
+        musa_score::Code::UnassignedInstrument => {
+            "An `instrument` is declared and no `sound` or expert `assign` connects \
+             it to a part (style guide §1). Wiring with nothing at the end of it \
+             costs DSP to build and makes silence: choose it, or delete it."
         }
         musa_score::Code::RedundantMarking => {
             "A tempo, meter, or key marking states the value already in force \

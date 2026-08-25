@@ -1,0 +1,95 @@
+================================================================================
+contextual sound surface
+================================================================================
+
+instrument glass conforms note_instrument {
+    implementation graph {
+        oscillator(sine) |> output;
+    }
+}
+
+piece "Sound" {
+    meter 4/4;
+    key c major;
+    score {
+        part piano {
+            sound glass using neutral;
+            voice notes { c4/1 }
+        }
+    }
+    studio {
+        room hall { reverb(room: 0.8); }
+        send piano -> hall at -12 dB;
+        route hall -> master;
+    }
+}
+
+---
+
+(source_file
+  (instrument_declaration
+    (identifier)
+    (identifier)
+    (identifier)
+    (sound_name
+      (identifier))
+    (instrument_implementation
+      (identifier)
+      (identifier)
+      (chain_statement
+        (signal_chain
+          (stage
+            (call_expression
+              (identifier)
+              (argument_list
+                (argument
+                  (name_reference
+                    (identifier))))))
+          (stage
+            (name_reference))))))
+  (piece_declaration
+    (string)
+    (meter_statement
+      (rational))
+    (key_statement
+      (pitch_class
+        (identifier))
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (sound_statement
+          (identifier)
+          (sound_name
+            (identifier))
+          (identifier)
+          (sound_name
+            (identifier)))
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))
+    (studio_declaration
+      (room_declaration
+        (identifier)
+        (identifier)
+        (chain_statement
+          (signal_chain
+            (stage
+              (call_expression
+                (identifier)
+                (argument_list
+                  (argument
+                    (identifier)
+                    (value_literal
+                      (float)))))))))
+      (send_statement
+        (identifier)
+        (identifier)
+        (value_literal
+          (integer)
+          (unit)))
+      (route_statement
+        (identifier)))))

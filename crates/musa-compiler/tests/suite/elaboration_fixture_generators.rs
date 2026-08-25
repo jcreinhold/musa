@@ -200,9 +200,13 @@ fn audio_bridge() -> String {
                      }\n\
                  }\n\
              }\n\n\
+             instrument reed conforms note_instrument {\n\
+                 implementation graph { oscillator(sine) |> lowpass(cutoff: 1800 Hz, resonance: 0.7) |> output; }\n\
+             }\n\
+             instrument bow conforms note_instrument {\n\
+                 implementation graph { oscillator(sine, ratio: 0.5) |> envelope(adsr(attack: 15 ms, release: 300 ms)) |> output; }\n\
+             }\n\n\
              studio {\n\
-                 patch reed { oscillator(sine) |> lowpass(cutoff: 1800 Hz, resonance: 0.7) |> output; }\n\
-                 patch bow { oscillator(sine, ratio: 0.5) |> envelope(adsr(attack: 15 ms, release: 300 ms)) |> output; }\n\
                  bus hall { reverb(room: 0.55, mix: 0.25); }\n\
                  lfo = oscillator(sine, frequency: 0.5 Hz) |> scale(200 Hz);\n\
                  modulate lfo -> reed.lowpass.cutoff;\n\

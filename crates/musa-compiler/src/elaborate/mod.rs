@@ -180,7 +180,11 @@ pub(crate) fn elaborate_parsed(
     }
     let imported_studios: Vec<musa_syntax::ast::StudioDecl> =
         libraries.each().filter_map(|(_, library)| library.studio()).collect();
-    let studio = resolve::lower_studio(resolver, &piece, &snapshot, &imported_studios);
+    let imported_instruments: Vec<musa_syntax::ast::InstrumentDecl> = libraries
+        .each()
+        .flat_map(|(_, library)| library.instruments())
+        .collect();
+    let studio = resolve::lower_studio(resolver, &piece, &snapshot, &imported_studios, &imported_instruments);
     if resolver
         .diagnostics
         .iter()
@@ -195,7 +199,12 @@ pub(crate) fn elaborate_parsed(
     let references = std::mem::take(&mut resolver.references);
     let lints = crate::lint::lint(document, &piece, &references, &studio);
     resolver.diagnostics.extend(lints);
-    let (studio_source, studio_spans) = match crate::studio::checked_source(&studio, piece.studio().is_some()) {
+    let declared = piece.studio().is_some()
+        || !piece.instruments().is_empty()
+        || piece
+            .score()
+            .is_some_and(|score| score.parts().iter().any(|part| part.sound().is_some()));
+    let (studio_source, studio_spans) = match crate::studio::checked_source(&studio, declared) {
         Ok(source) => source,
         Err(mut diagnostics) => {
             resolver.diagnostics.append(&mut diagnostics);

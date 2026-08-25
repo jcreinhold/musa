@@ -2,7 +2,7 @@
   "document": 0,
   "name": "glass-mountain.musa",
   "kind": "piece",
-  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh(e5);\n\n                transpose down P5 {\n                    use sigh(e5);\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, resonance: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: Pitch) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh(e5);\n\n                transpose down P5 {\n                    use sigh(e5);\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    instrument glass_pad conforms note_instrument {\n        implementation graph {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, resonance: 0.7)\n                |> output;\n        }\n    }\n\n    studio {\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        room hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -1286,8 +1286,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1435,
-                  "end": 1436
+                  "start": 1479,
+                  "end": 1480
                 },
                 "modulatedBy": null
               }
@@ -1319,8 +1319,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1446,
-                  "end": 1452
+                  "start": 1490,
+                  "end": 1496
                 },
                 "modulatedBy": null
               }
@@ -1361,8 +1361,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1531,
-                  "end": 1536
+                  "start": 1575,
+                  "end": 1580
                 },
                 "modulatedBy": null
               },
@@ -1384,8 +1384,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1545,
-                  "end": 1550
+                  "start": 1589,
+                  "end": 1594
                 },
                 "modulatedBy": null
               },
@@ -1407,8 +1407,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1561,
-                  "end": 1565
+                  "start": 1605,
+                  "end": 1609
                 },
                 "modulatedBy": null
               },
@@ -1430,8 +1430,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1576,
-                  "end": 1581
+                  "start": 1620,
+                  "end": 1625
                 },
                 "modulatedBy": null
               }
@@ -1463,8 +1463,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1619,
-                  "end": 1626
+                  "start": 1663,
+                  "end": 1670
                 },
                 "modulatedBy": "lfo"
               },
@@ -1486,8 +1486,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1639,
-                  "end": 1642
+                  "start": 1683,
+                  "end": 1686
                 },
                 "modulatedBy": null
               }
@@ -1527,8 +1527,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1888,
-                  "end": 1892
+                  "start": 1952,
+                  "end": 1956
                 },
                 "modulatedBy": null
               },
@@ -1550,8 +1550,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1903,
-                  "end": 1907
+                  "start": 1967,
+                  "end": 1971
                 },
                 "modulatedBy": null
               },
@@ -1611,8 +1611,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1724,
-                  "end": 1731
+                  "start": 1787,
+                  "end": 1794
                 },
                 "modulatedBy": null
               },
@@ -1664,8 +1664,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1754,
-                  "end": 1760
+                  "start": 1817,
+                  "end": 1823
                 },
                 "modulatedBy": null
               }
@@ -1697,8 +1697,8 @@
                 },
                 "written": true,
                 "span": {
-                  "start": 1782,
-                  "end": 1789
+                  "start": 1845,
+                  "end": 1852
                 },
                 "modulatedBy": null
               }
@@ -1710,11 +1710,17 @@
     "assignments": [
       {
         "part": "violin",
-        "patch": "glass_pad"
+        "patch": "glass_pad",
+        "instrument": "glass_pad",
+        "profile": "std.performance.neutral",
+        "explicit": true
       },
       {
         "part": "strings",
-        "patch": "glass_pad"
+        "patch": "glass_pad",
+        "instrument": "glass_pad",
+        "profile": "std.performance.neutral",
+        "explicit": true
       }
     ],
     "sends": [
@@ -1726,8 +1732,8 @@
           "denominator": 1
         },
         "span": {
-          "start": 2092,
-          "end": 2098
+          "start": 2156,
+          "end": 2162
         }
       },
       {
@@ -1738,8 +1744,8 @@
           "denominator": 1
         },
         "span": {
-          "start": 2132,
-          "end": 2138
+          "start": 2196,
+          "end": 2202
         }
       }
     ],
@@ -1825,16 +1831,16 @@
       "external": null,
       "uses": [
         {
-          "start": 1936,
-          "end": 1942
+          "start": 2000,
+          "end": 2006
         },
         {
-          "start": 2009,
-          "end": 2015
+          "start": 2073,
+          "end": 2079
         },
         {
-          "start": 2074,
-          "end": 2080
+          "start": 2138,
+          "end": 2144
         }
       ]
     },
@@ -1858,16 +1864,16 @@
       "external": null,
       "uses": [
         {
-          "start": 1972,
-          "end": 1979
+          "start": 2036,
+          "end": 2043
         },
         {
-          "start": 2041,
-          "end": 2048
+          "start": 2105,
+          "end": 2112
         },
         {
-          "start": 2113,
-          "end": 2120
+          "start": 2177,
+          "end": 2184
         }
       ]
     },
@@ -1895,18 +1901,18 @@
       "name": "glass_pad",
       "kind": "patch",
       "declaration": {
-        "start": 1337,
-        "end": 1346
+        "start": 1325,
+        "end": 1334
       },
       "external": null,
       "uses": [
         {
-          "start": 1946,
-          "end": 1955
+          "start": 2010,
+          "end": 2019
         },
         {
-          "start": 1983,
-          "end": 1992
+          "start": 2047,
+          "end": 2056
         }
       ]
     }

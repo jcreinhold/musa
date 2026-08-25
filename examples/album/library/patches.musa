@@ -1,8 +1,7 @@
-// The sounds the album is played with, written once. A library's `studio`
-// declares patches and signals — the building blocks — and leaves the wiring
-// to the piece, which is the only thing that knows what parts it has.
-studio {
-    patch reed {
+// The sounds the album is played with, written once. A library declares
+// instruments and leaves their part bindings to the piece that has the parts.
+instrument reed conforms note_instrument {
+    implementation graph {
         oscillator(sine)
             |> envelope(adsr(attack: 20 ms, decay: 0.4 s, sustain: 0.7, release: 0.6 s))
             |> lowpass(cutoff: 2200 Hz, resonance: 0.6)

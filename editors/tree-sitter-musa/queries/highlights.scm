@@ -116,6 +116,14 @@
 
 (harmony_declaration "harmony" @keyword)
 (performance_declaration "performance" @keyword)
+((sound_statement (identifier) @keyword)
+ (#any-of? @keyword "sound" "using"))
+((instrument_declaration (identifier) @keyword)
+ (#any-of? @keyword "instrument" "from" "conforms"))
+((instrument_implementation (identifier) @keyword)
+ (#any-of? @keyword "implementation" "graph"))
+((room_declaration (identifier) @keyword)
+ (#eq? @keyword "room"))
 (scale_expression "scale" @keyword)
 (in_scale_statement "scale" @keyword)
 
@@ -245,6 +253,8 @@
 
 (part_declaration name: (identifier) @type)
 (patch_declaration name: (identifier) @type)
+(instrument_declaration name: (identifier) @type)
+(room_declaration name: (identifier) @type)
 (bus_declaration name: (identifier) @type)
 
 ; A declaration names a type. Its uniform arguments are ordinary parameters;

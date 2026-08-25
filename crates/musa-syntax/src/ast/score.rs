@@ -136,6 +136,11 @@ impl PartDecl {
         child(&self.0)
     }
 
+    /// The concise instrument/profile choice, if written.
+    pub fn sound(&self) -> Option<SoundStmt> {
+        child(&self.0)
+    }
+
     /// The part's own meter, if it declares one — polymeter.
     ///
     /// Only a `meter` written directly in the part block: a `meter` inside a
@@ -160,6 +165,68 @@ impl ProfileStmt {
     /// The named profile.
     pub fn name(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Identifier)
+    }
+}
+
+/// `sound solo_strings using lyrical;` inside a part.
+pub struct SoundStmt(SyntaxNode);
+wrapper!(SoundStmt, SyntaxKind::SoundStmt);
+
+impl SoundStmt {
+    fn names(&self) -> (String, String) {
+        let mut instrument = String::new();
+        let mut profile = String::new();
+        let mut reading_profile = false;
+        for token in self.0.children_with_tokens().filter_map(SyntaxElement::into_token) {
+            if token.kind() == SyntaxKind::Identifier && token.text() == "using" {
+                reading_profile = true;
+            } else if matches!(
+                token.kind(),
+                SyntaxKind::Identifier | SyntaxKind::PerformanceKw | SyntaxKind::PitchKw | SyntaxKind::ScaleKw
+            ) {
+                if token.text() == "sound" && !reading_profile && instrument.is_empty() {
+                    continue;
+                }
+                let name = if reading_profile { &mut profile } else { &mut instrument };
+                if !name.is_empty() {
+                    name.push_str("::");
+                }
+                name.push_str(token.text());
+            }
+        }
+        (instrument, profile)
+    }
+
+    /// The chosen instrument name or qualified path.
+    pub fn instrument(&self) -> Option<String> {
+        let (instrument, _) = self.names();
+        (!instrument.is_empty()).then_some(instrument)
+    }
+
+    /// The first token of the chosen instrument path.
+    pub fn instrument_token(&self) -> Option<SyntaxToken> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .skip_while(|token| token.kind() != SyntaxKind::Identifier || token.text() != "sound")
+            .skip(1)
+            .find(|token| !token.kind().is_trivia())
+    }
+
+    /// The chosen performance profile name or qualified path.
+    pub fn profile(&self) -> Option<String> {
+        let (_, profile) = self.names();
+        (!profile.is_empty()).then_some(profile)
+    }
+
+    /// The first token of the chosen profile path.
+    pub fn profile_token(&self) -> Option<SyntaxToken> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .skip_while(|token| token.kind() != SyntaxKind::Identifier || token.text() != "using")
+            .skip(1)
+            .find(|token| !token.kind().is_trivia())
     }
 }
 

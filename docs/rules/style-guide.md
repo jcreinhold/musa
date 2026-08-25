@@ -13,17 +13,17 @@ disagree, the guide is the authority and the rule is too coarse — say so by re
 
 ## 1. A name is a promise
 
-Every declaration that takes a name — `motif`, `fragment`, `part`, `voice`, `patch` — spends the reader's attention on
-the promise that the name will be spoken again. A motif nobody uses is not an abstraction; it is a rumour of one, and
+Every declaration that takes a name — `motif`, `fragment`, `part`, `voice`, `instrument` — spends the reader's attention
+on the promise that the name will be spoken again. A motif nobody uses is not an abstraction; it is a rumour of one, and
 the reader hunts the score for a use that does not exist. Delete it, or use it.
 
 The named `bar` is the exception that proves the reading: it plays where it stands, so its name is an *address* — for
 edit sites and provenance — not a promise of reuse. An unused one costs nothing.
 
-The same holds in the studio one layer down: a `patch` is wiring, and wiring no `assign` connects to a part is a cable
-that ends in the air. It costs DSP to build and silence to hear.
+The same holds on the sound side: an `instrument` implementation that no `sound` or expert `assign` connects to a part
+is wiring that ends in the air. It costs DSP to build and silence to hear.
 
-Enforced: `unused-material` (a `motif` or `fragment` declared and never used), `unassigned-patch`.
+Enforced: `unused-material` (a `motif` or `fragment` declared and never used), `unassigned-instrument`.
 
 ## 2. A marking changes something
 

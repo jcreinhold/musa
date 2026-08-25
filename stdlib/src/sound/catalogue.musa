@@ -583,8 +583,22 @@ let studio_vocabulary: StudioVocabularyArtifact = StudioVocabularyArtifact {
             spelling = "studio",
             summary = "A studio block connects a score to authored sound.",
             signature = "studio { StudioItem* }",
-            details = "It owns patches, buses, signals, assignments, sends, routes, and modulations without changing score facts.",
+            details = "It groups buses, rooms, signals, expert assignments, sends, routes, and modulations without changing score facts.",
             example = "studio { route violin -> master; }"
+        },
+        StudioTermContract {
+            spelling = "sound",
+            summary = "A sound sentence chooses how one score part is performed and heard.",
+            signature = "sound Instrument using PerformanceProfile;",
+            details = "Inside a part it selects one source instrument and profile and routes that part to master; the declarations remain independent facts after elaboration.",
+            example = "sound solo_strings using lyrical;"
+        },
+        StudioTermContract {
+            spelling = "using",
+            summary = "Using introduces the performance profile in a sound sentence.",
+            signature = "sound Instrument using PerformanceProfile;",
+            details = "It is contextual syntax in a sound binding and remains an ordinary identifier everywhere else.",
+            example = "sound solo_strings using lyrical;"
         },
         StudioTermContract {
             spelling = "assign",
@@ -610,15 +624,22 @@ let studio_vocabulary: StudioVocabularyArtifact = StudioVocabularyArtifact {
         StudioTermContract {
             spelling = "instrument",
             summary = "An instrument turns performed gestures into sound.",
-            signature = "InstrumentSignature -> Machine",
-            details = "Its public source signature is separate from its private machine implementation.",
-            example = "sound solo_strings using lyrical;"
+            signature = "instrument Name conforms InstrumentSignature { implementation graph { SignalChain* } }",
+            details = "Its public source signature is separate from its private machine implementation; instrument is contextual and remains an ordinary identifier elsewhere.",
+            example = "instrument glass conforms note_instrument { implementation graph { oscillator(sine) |> output; } }"
+        },
+        StudioTermContract {
+            spelling = "implementation",
+            summary = "An implementation supplies the private machine behind an instrument signature.",
+            signature = "implementation graph { SignalChain* }",
+            details = "Graph paths and physical controls stay inside this block and do not enter score gestures or the public instrument contract.",
+            example = "implementation graph { oscillator(sine) |> output; }"
         },
         StudioTermContract {
             spelling = "patch",
-            summary = "Patch is the temporary pre-cutover spelling for an instrument implementation.",
+            summary = "Patch is the deprecated previous-edition spelling for an instrument implementation.",
             signature = "patch Name { SignalChain* }",
-            details = "Prompt 178 replaces it with source instrument declarations; it is documented here only for the migration window.",
+            details = "It remains accepted only during the promised one-edition migration window and carries an exact source fix to the canonical instrument declaration.",
             example = "patch soft { oscillator(sine) |> output; }"
         },
         StudioTermContract {
@@ -658,10 +679,10 @@ let studio_vocabulary: StudioVocabularyArtifact = StudioVocabularyArtifact {
         },
         StudioTermContract {
             spelling = "room",
-            summary = "Room is the apparent size of a reverb space.",
-            signature = "room: Ratio = 0.5",
-            details = "It ranges from zero to one and belongs to the reverb contract.",
-            example = "reverb(room: 0.82)"
+            summary = "A room is a named shared ambience path.",
+            signature = "room Name { SignalChain* }",
+            details = "Its body is an ordinary effect chain; the reverb processor separately documents its dimensionless room parameter.",
+            example = "room hall { reverb(room: 0.82, damping: 0.45, mix: 1); }"
         },
         StudioTermContract {
             spelling = "output",

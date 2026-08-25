@@ -6,7 +6,7 @@ not-a-value
 
   × `cutoff` is written in `Hz`
     ╭─[examples/broken/missing-unit.musa:15:41]
- 14 │         patch warm {
+ 14 │         implementation graph {
  15 │             oscillator(sine) |> lowpass(cutoff: 1400) |> output;
     ·                                         ──────┬─────
     ·                                               ╰── expected `Hz`

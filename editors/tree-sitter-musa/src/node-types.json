@@ -1898,6 +1898,79 @@
     }
   },
   {
+    "type": "instrument_declaration",
+    "named": true,
+    "fields": {
+      "asset": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "signature": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sound_name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "instrument_implementation",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "instrument_implementation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "chain_statement",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "signal_binding",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "invert_statement",
     "named": true,
     "fields": {
@@ -2863,6 +2936,10 @@
           "named": true
         },
         {
+          "type": "sound_statement",
+          "named": true
+        },
+        {
           "type": "tempo_statement",
           "named": true
         },
@@ -3093,6 +3170,10 @@
         },
         {
           "type": "import_statement",
+          "named": true
+        },
+        {
+          "type": "instrument_declaration",
           "named": true
         },
         {
@@ -3781,6 +3862,40 @@
     }
   },
   {
+    "type": "room_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "chain_statement",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "signal_binding",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "route_statement",
     "named": true,
     "fields": {
@@ -4082,6 +4197,57 @@
     }
   },
   {
+    "type": "sound_name",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "sound_statement",
+    "named": true,
+    "fields": {
+      "instrument": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sound_name",
+            "named": true
+          }
+        ]
+      },
+      "profile": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sound_name",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "source_file",
     "named": true,
     "root": true,
@@ -4116,6 +4282,10 @@
         },
         {
           "type": "import_statement",
+          "named": true
+        },
+        {
+          "type": "instrument_declaration",
           "named": true
         },
         {
@@ -4352,6 +4522,10 @@
         },
         {
           "type": "patch_declaration",
+          "named": true
+        },
+        {
+          "type": "room_declaration",
           "named": true
         },
         {

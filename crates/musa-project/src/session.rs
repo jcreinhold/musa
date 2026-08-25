@@ -1044,7 +1044,8 @@ impl ProjectSession {
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
                     let facts = crate::facts::ScoreFacts::derive(&score, &self.source, &decisions, derivation.as_ref());
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
-                    let studio_facts = crate::studio::StudioFacts::derive(&studio_execution, &studio_spans, &parts);
+                    let studio_facts =
+                        crate::studio::StudioFacts::derive(&studio_execution, &studio_spans, &score, &parts);
                     let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();
                     let items = items.iter().map(crate::facts::ItemFact::from_compiler).collect();
                     self.valid = Some(ValidArtifacts {

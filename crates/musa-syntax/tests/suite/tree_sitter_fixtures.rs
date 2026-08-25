@@ -268,9 +268,13 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::GraceRule
         | SyntaxKind::SettingStmt
         | SyntaxKind::ProfileStmt
+        | SyntaxKind::SoundStmt
         | SyntaxKind::StudioDecl
+        | SyntaxKind::InstrumentDecl
+        | SyntaxKind::InstrumentImplementation
         | SyntaxKind::PatchDecl
         | SyntaxKind::BusDecl
+        | SyntaxKind::RoomDecl
         | SyntaxKind::SignalBinding
         | SyntaxKind::ChainStmt
         | SyntaxKind::SignalChain
