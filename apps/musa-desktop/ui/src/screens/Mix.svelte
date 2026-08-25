@@ -21,6 +21,8 @@
   import { volumeOf, type ContainerFacts } from "../lib/state/snapshot";
   import type { StudioEditDto } from "../lib/session/generated/StudioEditDto";
 
+  const exact = (value: { numerator: number; denominator: number }) => value.numerator / value.denominator;
+
   let {
     session,
     onshow,
@@ -124,7 +126,7 @@
                     min={sendMin}
                     max={sendMax}
                     step="0.1"
-                    value={send.decibels}
+                    value={exact(send.decibels)}
                     disabled={!session.live}
                     onchange={(event) =>
                       edit({
@@ -135,7 +137,7 @@
                       })}
                   />
                   <output class="send-value" for={`send-${send.source}-${send.bus}`}
-                    >{send.decibels.toFixed(1)}<span class="unit">dB</span></output
+                    >{exact(send.decibels).toFixed(1)}<span class="unit">dB</span></output
                   >
                 </div>
               {/each}

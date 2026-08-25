@@ -48,6 +48,9 @@ pub enum AudioPrepareError {
     /// Native primitive graph validation or preparation failed.
     #[error("audio primitive preparation failed: {0}")]
     Primitive(String),
+    /// Exact studio intent failed conversion or a private DSP range check.
+    #[error("studio value preparation failed: {0}")]
+    StudioValue(String),
     /// The requested tail makes the finite playback extent unacceptable.
     #[error("audio extent {actual} frames exceeds explicit limit {limit}")]
     FrameLimit { actual: u64, limit: u64 },
@@ -157,6 +160,9 @@ pub fn prepare_audio(
         render_seed: options.render_seed,
     };
     let (graph, lowering) = lower_studio(studio, &graph_options);
+    if !lowering.errors.is_empty() {
+        return Err(AudioPrepareError::StudioValue(lowering.errors.join("; ")));
+    }
     if graph.output_kind() != Some(crate::spec::PortKind::Audio { channels: 2 }) {
         return Err(AudioPrepareError::Primitive(
             "native graph output must be one stereo frame".to_owned(),

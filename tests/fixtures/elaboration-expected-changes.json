@@ -7,11 +7,6 @@
       "repaired_by": "studio-vocabulary"
     },
     {
-      "defect": "eager-studio-f64-conversion",
-      "observation": "StudioSpec stores resolved parameter magnitudes as f64 instead of exact written values",
-      "repaired_by": "exact-studio-values"
-    },
-    {
       "defect": "graph-topology-modulation-address",
       "observation": "modulate resolves through a processor-name-or-label graph address rather than a stable declared control path",
       "repaired_by": "expressive-control-realization"

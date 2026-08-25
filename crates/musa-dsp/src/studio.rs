@@ -26,7 +26,7 @@
 //! [`lower_studio`] says so rather than pretending otherwise.
 
 use crate::spec::{FilterKind, GraphOptions, NodeId, ProcessorSpec, StudioGraphSpec, Waveform};
-use crate::{NodeIndex, Patch, Processor, StudioNode, StudioSpec};
+use crate::{NodeIndex, ParamSpec, Patch, Processor, StudioNode, StudioSpec, Unit, WrittenQuantity, written_ratio};
 
 /// What a lowering produced besides the graph.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -36,6 +36,10 @@ pub struct StudioLowering {
     /// them (the CLI prints them; the desktop app surfaces them in the Sound
     /// workspace).
     pub notes: Vec<String>,
+    /// Invalid exact intent refused at the DSP boundary. Compiler-produced
+    /// specs have already passed the same public ranges; this catches
+    /// programmatic construction and any future producer drift.
+    pub errors: Vec<String>,
     /// The longest release any patch asks for, in seconds.
     ///
     /// An offline render needs it to know when the piece is over. A fixed
@@ -58,6 +62,10 @@ const MAX_MIX: usize = 8;
 /// (§14.8).
 pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGraphSpec, StudioLowering) {
     let mut lowering = StudioLowering::default();
+    validate_exact_intent(studio, &mut lowering);
+    if !lowering.errors.is_empty() {
+        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);
+    }
     if studio.is_empty() {
         return (crate::instrument::poly_sine_spec(POLYPHONY), lowering);
     }
@@ -105,7 +113,7 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
             let Some(from) = source_output(studio, &send.source, &patch_outputs) else {
                 continue;
             };
-            let level = send.level.as_linear();
+            let level = crate::quantity::linear(send.level);
             match levels.iter_mut().find(|(node, _)| *node == from) {
                 Some(existing) => {
                     lowering.notes.push(format!(
@@ -171,6 +179,71 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
     (graph, lowering)
 }
 
+/// Recheck the public exact contract where intent crosses into floating DSP.
+///
+/// The language compiler performs these checks while resolving source, but
+/// [`StudioSpec`] is also a public construction API. Keeping this check here
+/// prevents another producer from bypassing the declared units and writable
+/// ranges before the lossy conversion below.
+fn validate_exact_intent(studio: &StudioSpec, lowering: &mut StudioLowering) {
+    for (container, patch) in studio.patches().chain(studio.buses()).chain(studio.signals()) {
+        for node in patch.nodes() {
+            for (index, value) in node.params.iter().enumerate() {
+                let Some(value) = value else { continue };
+                let Some(declared) = node.processor.params().get(index) else {
+                    lowering.errors.push(format!(
+                        "`{container}` has an undeclared parameter on `{}`",
+                        node.processor.name()
+                    ));
+                    continue;
+                };
+                if value.unit != declared.unit {
+                    lowering.errors.push(format!(
+                        "`{container}.{}.{}` has unit {:?}, expected {:?}",
+                        node.processor.name(),
+                        declared.name,
+                        value.unit,
+                        declared.unit
+                    ));
+                } else if value.magnitude < declared.range.0 || value.magnitude > declared.range.1 {
+                    lowering.errors.push(format!(
+                        "`{container}.{}.{}` exact value {} is outside written range {}–{}",
+                        node.processor.name(),
+                        declared.name,
+                        format_quantity(*value),
+                        written_ratio(declared.range.0),
+                        written_ratio(declared.range.1)
+                    ));
+                }
+            }
+        }
+    }
+
+    for send in studio.sends() {
+        if send.level.unit != Unit::Decibels {
+            lowering.errors.push(format!(
+                "send `{} -> {}` has unit {:?}, expected {:?}",
+                send.source,
+                send.bus,
+                send.level.unit,
+                Unit::Decibels
+            ));
+        } else if !crate::quantity::linear(send.level).is_finite() {
+            lowering.errors.push(format!(
+                "send `{} -> {}` cannot be represented finitely at the DSP boundary",
+                send.source, send.bus
+            ));
+        }
+    }
+}
+
+fn format_quantity(value: WrittenQuantity) -> String {
+    match value.unit.spelling() {
+        Some(unit) => format!("{} {unit}", written_ratio(value.magnitude)),
+        None => written_ratio(value.magnitude),
+    }
+}
+
 /// Where each addressable patch stage ended up: `(patch, stage, node)`.
 ///
 /// A `modulate` path names a patch and a stage, and this is what turns that
@@ -181,8 +254,8 @@ type Addresses<'a> = Vec<(&'a str, NodeIndex, NodeId)>;
 /// rejected value means the graph is not what the studio asked for, and
 /// silence about that is how a mix goes wrong invisibly.
 fn set_param(graph: &mut StudioGraphSpec, node: NodeId, name: &'static str, value: f64, lowering: &mut StudioLowering) {
-    if graph.set_param(node, name, value as f32).is_err() {
-        lowering.notes.push(format!("`{name}` could not be set to {value}"));
+    if graph.set_param(node, name, crate::quantity::f64_to_f32(value)).is_err() {
+        lowering.errors.push(format!("`{name}` could not be set to {value}"));
     }
 }
 
@@ -338,7 +411,8 @@ fn partial(patch: &Patch, index: NodeIndex) -> Option<(f64, f64)> {
         Processor::Oscillator => Some((ratio_of(node), 1.0)),
         Processor::Gain => {
             let source = patch.nodes().get(*node.inputs.first()?)?;
-            let level = node.params.first()?.as_linear();
+            let declared = node.processor.params().first()?;
+            let level = crate::quantity::linear(value_or_default(node, 0, declared));
             (source.processor == Processor::Oscillator).then(|| (ratio_of(source), level))
         }
         Processor::Mix
@@ -361,8 +435,10 @@ fn ratio_of(node: &StudioNode) -> f64 {
         .params()
         .iter()
         .position(|param| param.name == "ratio")
-        .and_then(|index| node.params.get(index))
-        .map_or(1.0, |value| value.as_linear())
+        .and_then(|index| node.processor.params().get(index).map(|declared| (index, declared)))
+        .map_or(1.0, |(index, declared)| {
+            crate::quantity::linear(value_or_default(node, index, declared))
+        })
 }
 
 /// The release time an `envelope` stage writes, in seconds.
@@ -372,7 +448,8 @@ fn release_of(node: &StudioNode) -> Option<f32> {
         .params()
         .iter()
         .position(|param| param.name == "release")?;
-    Some(node.params.get(index)?.as_linear() as f32)
+    let declared = node.processor.params().get(index)?;
+    Some(crate::quantity::linear_f32(value_or_default(node, index, declared)))
 }
 
 /// Copy a stage's written values onto its node, by the names both sides
@@ -384,14 +461,23 @@ fn release_of(node: &StudioNode) -> Option<f32> {
 /// the patch. `gain` is written in dB and applied linearly; every other
 /// parameter is the number that was written.
 fn set_stage_params(graph: &mut StudioGraphSpec, id: NodeId, node: &StudioNode, lowering: &mut StudioLowering) {
-    for (declared, value) in node.processor.params().iter().zip(&node.params) {
+    for (index, declared) in node.processor.params().iter().enumerate() {
         let known = graph
             .processor_of(id)
             .is_some_and(|processor| processor.descriptor(declared.dsp_name).is_some());
         if known {
-            set_param(graph, id, declared.dsp_name, value.as_linear(), lowering);
+            let value = value_or_default(node, index, declared);
+            set_param(graph, id, declared.dsp_name, crate::quantity::linear(value), lowering);
         }
     }
+}
+
+fn value_or_default(node: &StudioNode, index: usize, declared: &ParamSpec) -> WrittenQuantity {
+    node.params
+        .get(index)
+        .copied()
+        .flatten()
+        .unwrap_or_else(|| WrittenQuantity::new(declared.default, declared.unit))
 }
 
 /// Wire every `modulate` into the parameter it names.

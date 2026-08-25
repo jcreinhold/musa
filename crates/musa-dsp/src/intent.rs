@@ -24,6 +24,7 @@
 //! typed rather than what the compiler made of it.
 
 use indexmap::IndexMap;
+use num_rational::Ratio;
 
 use musa_score::origin::SourceSpan;
 
@@ -57,23 +58,64 @@ impl Unit {
 }
 
 /// A written parameter value, in the unit it was written in.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Value {
-    /// The magnitude, normalized to the unit's base (`ms` becomes seconds).
-    pub magnitude: f64,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WrittenQuantity {
+    /// The exact magnitude, normalized to the unit's base (`ms` becomes
+    /// seconds). Decimal syntax denotes its decimal rational exactly.
+    pub magnitude: Ratio<i64>,
     /// The dimension it carries.
     pub unit: Unit,
 }
 
-impl Value {
-    /// The value as a linear multiplier: decibels become a ratio, everything
-    /// else is already one. The single place dB→linear happens.
-    pub fn as_linear(self) -> f64 {
-        match self.unit {
-            Unit::Decibels => 10f64.powf(self.magnitude / 20.0),
-            Unit::Hz | Unit::Linear | Unit::Seconds => self.magnitude,
-        }
+impl WrittenQuantity {
+    /// Construct an exact normalized quantity.
+    pub const fn new(magnitude: Ratio<i64>, unit: Unit) -> Self {
+        Self { magnitude, unit }
     }
+}
+
+/// Write an exact catalogue quantity without introducing a floating value.
+/// Terminating rationals use decimal notation; the rest use `numerator/denominator`.
+pub fn written_ratio(value: Ratio<i64>) -> String {
+    let denominator = *value.denom();
+    let mut reduced = denominator;
+    while reduced % 2 == 0 {
+        reduced /= 2;
+    }
+    while reduced % 5 == 0 {
+        reduced /= 5;
+    }
+    if reduced != 1 {
+        return value.to_string();
+    }
+    let numerator = i128::from(*value.numer());
+    let denominator = i128::from(denominator);
+    let negative = numerator < 0;
+    let numerator = numerator.abs();
+    let Some(whole) = numerator.checked_div(denominator) else {
+        return value.to_string();
+    };
+    let Some(mut remainder) = numerator.checked_rem(denominator) else {
+        return value.to_string();
+    };
+    if remainder == 0 {
+        return format!("{}{whole}", if negative { "-" } else { "" });
+    }
+    let mut fraction = String::new();
+    while remainder != 0 {
+        let Some(scaled) = remainder.checked_mul(10) else {
+            return value.to_string();
+        };
+        let Some(digit) = scaled.checked_div(denominator) else {
+            return value.to_string();
+        };
+        fraction.push(char::from_digit(u32::try_from(digit).unwrap_or(0), 10).unwrap_or('0'));
+        let Some(next) = scaled.checked_rem(denominator) else {
+            return value.to_string();
+        };
+        remainder = next;
+    }
+    format!("{}{}.{}", if negative { "-" } else { "" }, whole, fraction)
 }
 
 /// A processor the studio language can name.
@@ -111,7 +153,7 @@ pub enum Processor {
 }
 
 /// One declared parameter of a processor.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParamSpec {
     /// The name it is written with.
     pub name: &'static str,
@@ -126,7 +168,7 @@ pub struct ParamSpec {
     /// The unit it must be written in.
     pub unit: Unit,
     /// Its value when the patch does not say.
-    pub default: f64,
+    pub default: Ratio<i64>,
     /// The range a control may write, in the unit above — a decibel gain runs
     /// from −60 to +12, not from 0 to 1.
     ///
@@ -135,7 +177,7 @@ pub struct ParamSpec {
     /// accept in linear terms, and this bounds what a composer means by
     /// turning a knob all the way up. They answer different questions, and a
     /// slider needs this one.
-    pub range: (f64, f64),
+    pub range: (Ratio<i64>, Ratio<i64>),
 }
 
 impl Processor {
@@ -177,8 +219,8 @@ impl Processor {
             dsp_name: &'static str,
             former_names: &'static [&'static str],
             unit: Unit,
-            default: f64,
-            range: (f64, f64),
+            default: Ratio<i64>,
+            range: (Ratio<i64>, Ratio<i64>),
             summary: &'static str,
         ) -> ParamSpec {
             ParamSpec {
@@ -191,14 +233,17 @@ impl Processor {
                 range,
             }
         }
+        const fn r(numerator: i64, denominator: i64) -> Ratio<i64> {
+            Ratio::new_raw(numerator, denominator)
+        }
         const OSCILLATOR: &[ParamSpec] = &[
             spec(
                 "frequency",
                 "frequency",
                 &[],
                 Unit::Hz,
-                1.0,
-                (0.0, 200.0),
+                r(1, 1),
+                (r(0, 1), r(200, 1)),
                 "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
             ),
             spec(
@@ -206,8 +251,8 @@ impl Processor {
                 "ratio",
                 &[],
                 Unit::Linear,
-                1.0,
-                (0.25, 16.0),
+                r(1, 1),
+                (r(1, 4), r(16, 1)),
                 "Scales the pitch supplied by the score.",
             ),
         ];
@@ -216,8 +261,8 @@ impl Processor {
             "gain",
             &[],
             Unit::Decibels,
-            0.0,
-            (-60.0, 12.0),
+            r(0, 1),
+            (r(-60, 1), r(12, 1)),
             "Sets level in decibels.",
         )];
         // Written defaults are the built-in voice envelope, so `envelope()`
@@ -228,8 +273,8 @@ impl Processor {
                 "attack",
                 &[],
                 Unit::Seconds,
-                0.005,
-                (0.0, 5.0),
+                r(1, 200),
+                (r(0, 1), r(5, 1)),
                 "Sets the rise time after a note begins.",
             ),
             spec(
@@ -237,8 +282,8 @@ impl Processor {
                 "decay",
                 &[],
                 Unit::Seconds,
-                0.0,
-                (0.0, 10.0),
+                r(0, 1),
+                (r(0, 1), r(10, 1)),
                 "Sets the time to reach the sustain level.",
             ),
             spec(
@@ -246,8 +291,8 @@ impl Processor {
                 "sustain",
                 &[],
                 Unit::Linear,
-                1.0,
-                (0.0, 1.0),
+                r(1, 1),
+                (r(0, 1), r(1, 1)),
                 "Sets the held level while a note continues.",
             ),
             spec(
@@ -255,8 +300,8 @@ impl Processor {
                 "release",
                 &[],
                 Unit::Seconds,
-                0.05,
-                (0.0, 10.0),
+                r(1, 20),
+                (r(0, 1), r(10, 1)),
                 "Sets the fade time after a note ends.",
             ),
         ];
@@ -266,8 +311,8 @@ impl Processor {
                 "cutoff",
                 &[],
                 Unit::Hz,
-                20_000.0,
-                (20.0, 20_000.0),
+                r(20_000, 1),
+                (r(20, 1), r(20_000, 1)),
                 "Sets the boundary frequency.",
             ),
             spec(
@@ -275,8 +320,8 @@ impl Processor {
                 "q",
                 &["q"],
                 Unit::Linear,
-                std::f64::consts::FRAC_1_SQRT_2,
-                (0.1, 20.0),
+                r(1_767_766_952_966_369, 2_500_000_000_000_000),
+                (r(1, 10), r(20, 1)),
                 "Emphasizes the cutoff, conventionally represented by quality factor Q.",
             ),
         ];
@@ -286,8 +331,8 @@ impl Processor {
                 "cutoff",
                 &[],
                 Unit::Hz,
-                20.0,
-                (20.0, 20_000.0),
+                r(20, 1),
+                (r(20, 1), r(20_000, 1)),
                 "Sets the boundary frequency.",
             ),
             spec(
@@ -295,8 +340,8 @@ impl Processor {
                 "q",
                 &["q"],
                 Unit::Linear,
-                std::f64::consts::FRAC_1_SQRT_2,
-                (0.1, 20.0),
+                r(1_767_766_952_966_369, 2_500_000_000_000_000),
+                (r(1, 10), r(20, 1)),
                 "Emphasizes the cutoff, conventionally represented by quality factor Q.",
             ),
         ];
@@ -306,8 +351,8 @@ impl Processor {
                 "room",
                 &[],
                 Unit::Linear,
-                0.5,
-                (0.0, 1.0),
+                r(1, 2),
+                (r(0, 1), r(1, 1)),
                 "Sets the apparent room size.",
             ),
             spec(
@@ -315,8 +360,8 @@ impl Processor {
                 "damping",
                 &[],
                 Unit::Linear,
-                0.5,
-                (0.0, 1.0),
+                r(1, 2),
+                (r(0, 1), r(1, 1)),
                 "Controls high-frequency absorption.",
             ),
             spec(
@@ -324,8 +369,8 @@ impl Processor {
                 "mix",
                 &[],
                 Unit::Linear,
-                1.0,
-                (0.0, 1.0),
+                r(1, 1),
+                (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
             ),
         ];
@@ -339,8 +384,8 @@ impl Processor {
                 "time",
                 &[],
                 Unit::Seconds,
-                0.25,
-                (0.0, 2.0),
+                r(1, 4),
+                (r(0, 1), r(2, 1)),
                 "Sets the interval before each repeat.",
             ),
             spec(
@@ -348,8 +393,8 @@ impl Processor {
                 "feedback",
                 &[],
                 Unit::Linear,
-                0.3,
-                (0.0, 0.95),
+                r(3, 10),
+                (r(0, 1), r(19, 20)),
                 "Sets how much delayed sound repeats.",
             ),
             spec(
@@ -357,8 +402,8 @@ impl Processor {
                 "mix",
                 &[],
                 Unit::Linear,
-                0.3,
-                (0.0, 1.0),
+                r(3, 10),
+                (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
             ),
         ];
@@ -368,8 +413,8 @@ impl Processor {
                 "rate",
                 &[],
                 Unit::Hz,
-                0.6,
-                (0.0, 20.0),
+                r(3, 5),
+                (r(0, 1), r(20, 1)),
                 "Sets how quickly the doubled voice moves.",
             ),
             spec(
@@ -377,8 +422,8 @@ impl Processor {
                 "depth",
                 &[],
                 Unit::Seconds,
-                0.004,
-                (0.0, 0.01),
+                r(1, 250),
+                (r(0, 1), r(1, 100)),
                 "Sets the maximum delay variation.",
             ),
             spec(
@@ -386,8 +431,8 @@ impl Processor {
                 "mix",
                 &[],
                 Unit::Linear,
-                0.4,
-                (0.0, 1.0),
+                r(2, 5),
+                (r(0, 1), r(1, 1)),
                 "Balances dry and processed audio.",
             ),
         ];
@@ -396,8 +441,8 @@ impl Processor {
             "factor",
             &[],
             Unit::Hz,
-            1.0,
-            (0.0, 20_000.0),
+            r(1, 1),
+            (r(0, 1), r(20_000, 1)),
             "Multiplies each control value.",
         )];
         const BIAS: &[ParamSpec] = &[spec(
@@ -405,8 +450,8 @@ impl Processor {
             "offset",
             &[],
             Unit::Hz,
-            0.0,
-            (0.0, 20_000.0),
+            r(0, 1),
+            (r(0, 1), r(20_000, 1)),
             "Adds to each control value.",
         )];
         const CLAMP: &[ParamSpec] = &[
@@ -415,8 +460,8 @@ impl Processor {
                 "min",
                 &[],
                 Unit::Hz,
-                0.0,
-                (0.0, 20_000.0),
+                r(0, 1),
+                (r(0, 1), r(20_000, 1)),
                 "Sets the lowest output value.",
             ),
             spec(
@@ -424,8 +469,8 @@ impl Processor {
                 "max",
                 &[],
                 Unit::Hz,
-                20_000.0,
-                (0.0, 20_000.0),
+                r(20_000, 1),
+                (r(0, 1), r(20_000, 1)),
                 "Sets the highest output value.",
             ),
         ];
@@ -434,8 +479,8 @@ impl Processor {
             "time",
             &[],
             Unit::Seconds,
-            0.02,
-            (0.0, 1.0),
+            r(1, 50),
+            (r(0, 1), r(1, 1)),
             "Sets how quickly the control catches its target.",
         )];
         match self {
@@ -465,7 +510,7 @@ impl Processor {
 pub type NodeIndex = usize;
 
 /// One processor instance inside a patch.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StudioNode {
     /// What it runs.
     pub processor: Processor,
@@ -473,7 +518,7 @@ pub struct StudioNode {
     /// what a `modulate` path addresses.
     pub label: Option<String>,
     /// Resolved parameter values, in the processor's declaration order.
-    pub params: Vec<Value>,
+    pub params: Vec<Option<WrittenQuantity>>,
     /// Where each parameter's *written* value is, parallel to `params`, and
     /// `None` for a parameter the patch left to its default.
     ///
@@ -490,7 +535,7 @@ pub struct StudioNode {
 }
 
 /// A patch or a bus: a graph of nodes with one designated output.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Patch {
     nodes: Vec<StudioNode>,
     output: Option<NodeIndex>,
@@ -539,14 +584,14 @@ pub struct Modulation {
 }
 
 /// `send violin -> hall at -18 dB;`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Send {
     /// The part or bus sending.
     pub source: String,
     /// The bus receiving.
     pub bus: String,
     /// How much of the signal is sent.
-    pub level: Value,
+    pub level: WrittenQuantity,
     /// Where the level was written, for an editor that rewrites it.
     pub level_span: Option<SourceSpan>,
 }
@@ -572,7 +617,7 @@ pub struct Route {
 
 /// The compiled studio: everything a graph builder needs, with every name
 /// already resolved (§10.6).
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StudioSpec {
     patches: IndexMap<String, Patch>,
     buses: IndexMap<String, Patch>,

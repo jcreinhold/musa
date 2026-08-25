@@ -12,8 +12,9 @@
 #![allow(clippy::expect_used)]
 
 use musa_compiler::{CompileOptions, SourceDocument, compile};
-use musa_dsp::StudioSpec;
 use musa_dsp::testing::{GraphOptions, lower_studio, poly_sine_spec, prepare_graph};
+use musa_dsp::{Assignment, Patch, Processor, Route, StudioNode, StudioSpec, Unit, WrittenQuantity};
+use num_rational::Ratio;
 
 const OPTIONS: GraphOptions = GraphOptions {
     sample_rate: 48_000,
@@ -128,4 +129,45 @@ fn lowering_is_deterministic() {
     let second = lower_studio(&studio, &OPTIONS);
     assert_eq!(format!("{:#?}", first.0), format!("{:#?}", second.0));
     assert_eq!(first.1, second.1);
+}
+
+#[test]
+fn the_dsp_boundary_refuses_programmatic_values_outside_its_range() {
+    let mut patch = Patch::default();
+    let source = patch.push(StudioNode {
+        processor: Processor::Oscillator,
+        label: None,
+        params: vec![None, None],
+        param_spans: vec![None, None],
+        span: None,
+        inputs: vec![],
+    });
+    let gain = patch.push(StudioNode {
+        processor: Processor::Gain,
+        label: None,
+        params: vec![Some(WrittenQuantity::new(Ratio::from_integer(100), Unit::Decibels))],
+        param_spans: vec![None],
+        span: None,
+        inputs: vec![source],
+    });
+    patch.set_output(gain);
+    let mut studio = StudioSpec::default();
+    assert!(studio.insert_patch("p".to_owned(), patch));
+    studio.assign(
+        "violin".to_owned(),
+        Assignment {
+            patch: "p".to_owned(),
+            patch_span: None,
+        },
+    );
+    studio.push_route(Route {
+        source: "violin".to_owned(),
+        destination: "master".to_owned(),
+    });
+
+    let (_, lowering) = lower_studio(&studio, &OPTIONS);
+    assert_eq!(
+        lowering.errors,
+        ["`p.gain.gain` exact value 100 dB is outside written range -60–12"]
+    );
 }

@@ -1201,10 +1201,19 @@
               {
                 "name": "frequency",
                 "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
-                "value": 1.0,
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "unit": "Hz",
-                "minimum": 0.0,
-                "maximum": 200.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 200,
+                  "denominator": 1
+                },
                 "written": false,
                 "span": null,
                 "modulatedBy": null
@@ -1212,10 +1221,19 @@
               {
                 "name": "ratio",
                 "summary": "Scales the pitch supplied by the score.",
-                "value": 1.0,
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "unit": "",
-                "minimum": 0.25,
-                "maximum": 16.0,
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 4
+                },
+                "maximum": {
+                  "numerator": 16,
+                  "denominator": 1
+                },
                 "written": false,
                 "span": null,
                 "modulatedBy": null
@@ -1233,10 +1251,19 @@
               {
                 "name": "frequency",
                 "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
-                "value": 1.0,
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "unit": "Hz",
-                "minimum": 0.0,
-                "maximum": 200.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 200,
+                  "denominator": 1
+                },
                 "written": false,
                 "span": null,
                 "modulatedBy": null
@@ -1244,10 +1271,19 @@
               {
                 "name": "ratio",
                 "summary": "Scales the pitch supplied by the score.",
-                "value": 2.0,
+                "value": {
+                  "numerator": 2,
+                  "denominator": 1
+                },
                 "unit": "",
-                "minimum": 0.25,
-                "maximum": 16.0,
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 4
+                },
+                "maximum": {
+                  "numerator": 16,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1435,
@@ -1268,10 +1304,19 @@
               {
                 "name": "gain",
                 "summary": "Sets level in decibels.",
-                "value": -15.0,
+                "value": {
+                  "numerator": -15,
+                  "denominator": 1
+                },
                 "unit": "dB",
-                "minimum": -60.0,
-                "maximum": 12.0,
+                "minimum": {
+                  "numerator": -60,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 12,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1446,
@@ -1301,10 +1346,19 @@
               {
                 "name": "attack",
                 "summary": "Sets the rise time after a note begins.",
-                "value": 0.03,
+                "value": {
+                  "numerator": 3,
+                  "denominator": 100
+                },
                 "unit": "s",
-                "minimum": 0.0,
-                "maximum": 5.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 5,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1531,
@@ -1315,10 +1369,19 @@
               {
                 "name": "decay",
                 "summary": "Sets the time to reach the sustain level.",
-                "value": 1.8,
+                "value": {
+                  "numerator": 9,
+                  "denominator": 5
+                },
                 "unit": "s",
-                "minimum": 0.0,
-                "maximum": 10.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 10,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1545,
@@ -1329,10 +1392,19 @@
               {
                 "name": "sustain",
                 "summary": "Sets the held level while a note continues.",
-                "value": 0.65,
+                "value": {
+                  "numerator": 13,
+                  "denominator": 20
+                },
                 "unit": "",
-                "minimum": 0.0,
-                "maximum": 1.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1561,
@@ -1343,10 +1415,19 @@
               {
                 "name": "release",
                 "summary": "Sets the fade time after a note ends.",
-                "value": 3.5,
+                "value": {
+                  "numerator": 7,
+                  "denominator": 2
+                },
                 "unit": "s",
-                "minimum": 0.0,
-                "maximum": 10.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 10,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1576,
@@ -1367,10 +1448,19 @@
               {
                 "name": "cutoff",
                 "summary": "Sets the boundary frequency.",
-                "value": 1400.0,
+                "value": {
+                  "numerator": 1400,
+                  "denominator": 1
+                },
                 "unit": "Hz",
-                "minimum": 20.0,
-                "maximum": 20000.0,
+                "minimum": {
+                  "numerator": 20,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 20000,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1619,
@@ -1381,10 +1471,19 @@
               {
                 "name": "resonance",
                 "summary": "Emphasizes the cutoff, conventionally represented by quality factor Q.",
-                "value": 0.7,
+                "value": {
+                  "numerator": 7,
+                  "denominator": 10
+                },
                 "unit": "",
-                "minimum": 0.1,
-                "maximum": 20.0,
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 10
+                },
+                "maximum": {
+                  "numerator": 20,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1639,
@@ -1413,10 +1512,19 @@
               {
                 "name": "room",
                 "summary": "Sets the apparent room size.",
-                "value": 0.82,
+                "value": {
+                  "numerator": 41,
+                  "denominator": 50
+                },
                 "unit": "",
-                "minimum": 0.0,
-                "maximum": 1.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1888,
@@ -1427,10 +1535,19 @@
               {
                 "name": "damping",
                 "summary": "Controls high-frequency absorption.",
-                "value": 0.55,
+                "value": {
+                  "numerator": 11,
+                  "denominator": 20
+                },
                 "unit": "",
-                "minimum": 0.0,
-                "maximum": 1.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1903,
@@ -1441,10 +1558,19 @@
               {
                 "name": "mix",
                 "summary": "Balances dry and processed audio.",
-                "value": 1.0,
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "unit": "",
-                "minimum": 0.0,
-                "maximum": 1.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "written": false,
                 "span": null,
                 "modulatedBy": null
@@ -1470,10 +1596,19 @@
               {
                 "name": "frequency",
                 "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
-                "value": 0.08,
+                "value": {
+                  "numerator": 2,
+                  "denominator": 25
+                },
                 "unit": "Hz",
-                "minimum": 0.0,
-                "maximum": 200.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 200,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1724,
@@ -1484,10 +1619,19 @@
               {
                 "name": "ratio",
                 "summary": "Scales the pitch supplied by the score.",
-                "value": 1.0,
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
                 "unit": "",
-                "minimum": 0.25,
-                "maximum": 16.0,
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 4
+                },
+                "maximum": {
+                  "numerator": 16,
+                  "denominator": 1
+                },
                 "written": false,
                 "span": null,
                 "modulatedBy": null
@@ -1505,10 +1649,19 @@
               {
                 "name": "factor",
                 "summary": "Multiplies each control value.",
-                "value": 250.0,
+                "value": {
+                  "numerator": 250,
+                  "denominator": 1
+                },
                 "unit": "Hz",
-                "minimum": 0.0,
-                "maximum": 20000.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 20000,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1754,
@@ -1529,10 +1682,19 @@
               {
                 "name": "offset",
                 "summary": "Adds to each control value.",
-                "value": 1400.0,
+                "value": {
+                  "numerator": 1400,
+                  "denominator": 1
+                },
                 "unit": "Hz",
-                "minimum": 0.0,
-                "maximum": 20000.0,
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 20000,
+                  "denominator": 1
+                },
                 "written": true,
                 "span": {
                   "start": 1782,
@@ -1559,7 +1721,10 @@
       {
         "source": "violin",
         "bus": "hall",
-        "decibels": -18.0,
+        "decibels": {
+          "numerator": -18,
+          "denominator": 1
+        },
         "span": {
           "start": 2092,
           "end": 2098
@@ -1568,7 +1733,10 @@
       {
         "source": "strings",
         "bus": "hall",
-        "decibels": -14.0,
+        "decibels": {
+          "numerator": -14,
+          "denominator": 1
+        },
         "span": {
           "start": 2132,
           "end": 2138

@@ -113,7 +113,7 @@ fn the_facts_report_what_the_compiler_resolved() {
 
     assert!(studio.declared);
     let cutoff = param(&studio, "glass_pad", "lowpass", "cutoff");
-    assert!((cutoff.value - 1400.0).abs() < 1e-9, "{cutoff:?}");
+    assert_eq!((cutoff.value.numerator, cutoff.value.denominator), (1400, 1));
     assert_eq!(cutoff.unit, "Hz");
     assert!(cutoff.written);
     assert_eq!(cutoff.summary, "Sets the boundary frequency.");
@@ -146,7 +146,7 @@ fn a_parameter_the_patch_left_alone_reads_as_its_default() {
         .expect("the hall bus is a reverb");
     assert!(!mix.written);
     assert!(mix.span.is_none());
-    assert!((mix.value - 1.0).abs() < 1e-9, "{mix:?}");
+    assert_eq!((mix.value.numerator, mix.value.denominator), (1, 1));
 }
 
 #[test]

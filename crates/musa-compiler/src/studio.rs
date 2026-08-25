@@ -4,35 +4,46 @@
 //! compiler pass that reads source and constructs one value of that vocabulary.
 
 use indexmap::IndexMap;
-use musa_dsp::{Assignment, Modulation, NodeIndex, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value};
+use musa_dsp::{
+    Assignment, Modulation, NodeIndex, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, WrittenQuantity,
+};
 use musa_score::origin::SourceSpan;
 use musa_syntax::ast::{
     Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
 };
+use num_rational::Ratio;
 
 use crate::resolve::{span_of, trimmed_span};
 use musa_score::diagnose::{Code, Diagnostic};
 
-/// Read a written number and unit suffix into a [`Value`].
+/// Read an exact decimal or ratio and its unit into a [`WrittenQuantity`].
 ///
 /// `ms` is folded into seconds here, which is why the spec carries no
 /// millisecond unit: the dimension is time, and the suffix is a scale.
-fn parse_value(number: &str, suffix: Option<&str>) -> Option<Value> {
-    let magnitude: f64 = number.parse().ok()?;
+fn parse_value(number: &str, suffix: Option<&str>) -> Option<WrittenQuantity> {
+    let magnitude = match number.split_once('/') {
+        Some((numerator, denominator)) => {
+            let denominator = denominator.parse().ok()?;
+            if denominator == 0 {
+                return None;
+            }
+            Ratio::new(numerator.parse().ok()?, denominator)
+        }
+        None => musa_score::profile::parse_decimal(number)?,
+    };
     let unit = match suffix {
         None => Unit::Linear,
         Some("Hz") => Unit::Hz,
         Some("dB") => Unit::Decibels,
         Some("s") => Unit::Seconds,
         Some("ms") => {
-            return Some(Value {
-                magnitude: magnitude / 1000.0,
-                unit: Unit::Seconds,
-            });
+            let magnitude =
+                musa_score::time::exact_arithmetic(magnitude, Ratio::from_integer(1000), musa_score::time::Exact::Div)?;
+            return Some(WrittenQuantity::new(magnitude, Unit::Seconds));
         }
         Some(_) => return None,
     };
-    Some(Value { magnitude, unit })
+    Some(WrittenQuantity::new(magnitude, unit))
 }
 
 /// What a library's `studio` may not write.
@@ -479,14 +490,7 @@ fn lower_call(
         );
         return None;
     };
-    let mut params: Vec<Value> = processor
-        .params()
-        .iter()
-        .map(|declared| Value {
-            magnitude: declared.default,
-            unit: declared.unit,
-        })
-        .collect();
+    let mut params: Vec<Option<WrittenQuantity>> = vec![None; processor.params().len()];
     let mut param_spans: Vec<Option<SourceSpan>> = vec![None; params.len()];
     let mut inputs: Vec<NodeIndex> = upstream.into_iter().collect();
     let mut positional = 0usize;
@@ -559,7 +563,7 @@ fn is_argument_group(call: &CallExpr) -> bool {
 fn bind_argument(
     arg: &Arg,
     processor: Processor,
-    params: &mut [Value],
+    params: &mut [Option<WrittenQuantity>],
     spans: &mut [Option<SourceSpan>],
     positional: &mut usize,
     diagnostics: &mut Vec<Diagnostic>,
@@ -686,7 +690,7 @@ fn bind_argument(
         return;
     }
     if let Some(slot) = params.get_mut(index) {
-        *slot = value;
+        *slot = Some(value);
     }
     if let Some(slot) = spans.get_mut(index) {
         // The literal's own range, unit included: replacing it replaces what

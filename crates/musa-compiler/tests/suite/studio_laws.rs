@@ -125,13 +125,9 @@ fn written_units_are_kept_rather_than_converted() {
         "patch p { oscillator(sine) |> gain(-6 dB) |> output; } assign violin -> p; route violin -> master;",
     ));
     let gain = studio.patch("p").expect("declared").nodes().get(1).expect("the gain");
-    let level = gain.params.first().copied().expect("declared parameter");
+    let level = gain.params.first().copied().flatten().expect("written parameter");
     assert_eq!(level.unit, Unit::Decibels);
-    assert!((level.magnitude - -6.0).abs() < 1e-9);
-    assert!(
-        (level.as_linear() - 0.501_187).abs() < 1e-5,
-        "dB→linear once, at the edge"
-    );
+    assert_eq!(level.magnitude, num_rational::Ratio::from_integer(-6));
 }
 
 #[test]
@@ -146,11 +142,44 @@ fn milliseconds_are_seconds_written_smaller() {
         .nodes()
         .get(1)
         .expect("the envelope");
-    let attack = envelope.params.first().copied().expect("attack");
+    let attack = envelope.params.first().copied().flatten().expect("attack");
     assert_eq!(attack.unit, Unit::Seconds);
-    assert!(
-        (attack.magnitude - 0.030).abs() < 1e-9,
-        "a millisecond is not a dimension"
+    assert_eq!(attack.magnitude, num_rational::Ratio::new(3, 100));
+}
+
+#[test]
+fn decimal_ratio_and_scaled_time_have_exact_meanings() {
+    let value = |written: &str| {
+        let studio = studio_of(&piece(&format!(
+            "patch p {{ oscillator(sine) |> lowpass(resonance: {written}) |> output; }} \
+             assign violin -> p; route violin -> master;"
+        )));
+        studio
+            .patch("p")
+            .expect("patch")
+            .nodes()
+            .get(1)
+            .and_then(|node| node.params.get(1))
+            .copied()
+            .flatten()
+            .expect("written resonance")
+            .magnitude
+    };
+    assert_eq!(
+        value("0.1"),
+        value("1/10"),
+        "decimal syntax denotes its exact decimal rational"
+    );
+
+    let studio = studio_of(&piece(
+        "patch p { oscillator(sine) |> envelope(adsr(attack: 100 ms, decay: 0.1 s)) |> output; } \
+         assign violin -> p; route violin -> master;",
+    ));
+    let envelope = studio.patch("p").expect("patch").nodes().get(1).expect("envelope");
+    assert_eq!(
+        envelope.params.first().copied().flatten().expect("attack").magnitude,
+        envelope.params.get(1).copied().flatten().expect("decay").magnitude,
+        "millisecond normalization is exact"
     );
 }
 
@@ -234,6 +263,20 @@ fn a_parameter_outside_the_catalogues_written_range_is_rejected() {
         .find(|diagnostic| diagnostic.message.contains("`resonance` must be between"))
         .expect("the public range is checked");
     assert_eq!(diagnostic.code, Code::OutOfRange);
+}
+
+#[test]
+fn an_exact_ratio_just_beyond_a_range_is_rejected() {
+    let compilation = compile_text(&piece(
+        "patch p { oscillator(sine) |> lowpass(cutoff: 200001/10 Hz) |> output; } assign violin -> p;",
+    ));
+    assert!(
+        compilation
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.code == Code::OutOfRange),
+        "range checking must not round 20000.1 onto the boundary"
+    );
 }
 
 #[test]

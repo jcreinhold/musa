@@ -3,9 +3,9 @@
 //!
 //! Two halves, and they are deliberately the same two halves the score has.
 //! [`StudioFacts`] is what the interface *displays*: patches, their stages,
-//! every parameter's value and unit, the buses, the sends, and which patch
-//! realizes each part — all display-ready, so a fader renders a number it was
-//! handed rather than converting one. [`StudioEdit`] is what a knob *does*:
+//! every parameter's exact value and unit, the buses, the sends, and which
+//! patch realizes each part. The UI may project a rational onto a control,
+//! but it never becomes the authority. [`StudioEdit`] is what a knob *does*:
 //! musical intent in, [`TextEdit`]s out.
 //!
 //! The rule that shapes both is roadmap §11: the `.musa` source is the one
@@ -18,12 +18,13 @@
 //! rewritten in the unit it was written in, and only a parameter that was
 //! never written is inserted, in the unit it is declared in.
 
-use musa_dsp::{Modulation, NodeIndex, StudioSpec, Unit, Value};
+use musa_dsp::{Modulation, NodeIndex, StudioSpec, Unit};
 use serde::Serialize;
 
 use crate::command::TextEdit;
 use crate::diagnostic::Span;
 use crate::error::ProjectError;
+use crate::facts::Fraction;
 
 /// Which of the studio's three namespaces a container lives in.
 ///
@@ -41,7 +42,7 @@ pub enum ContainerKind {
 }
 
 /// One processor stage inside a patch, as the Sound workspace draws it.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StageFacts {
     /// The stage's index within its container — the key an edit names it by.
@@ -64,22 +65,22 @@ pub struct StageFacts {
 }
 
 /// One parameter of one stage.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParamFacts {
     /// The name it is written with: `cutoff`.
     pub name: String,
     /// Plain catalogue sentence for labels, hover, and accessibility.
     pub summary: String,
-    /// Its value in the unit's base — seconds, hertz, decibels, or a plain
-    /// ratio. Written `30 ms` reads back as `0.03`.
-    pub value: f64,
+    /// Its exact value in the unit's base — seconds, hertz, decibels, or a
+    /// plain ratio. Written `30 ms` reads back as `3/100` seconds.
+    pub value: Fraction,
     /// How the unit is written (`Hz`, `dB`, `s`), or empty for a plain ratio.
     pub unit: String,
     /// The smallest value a control may write, in the unit above.
-    pub minimum: f64,
+    pub minimum: Fraction,
     /// The largest.
-    pub maximum: f64,
+    pub maximum: Fraction,
     /// Whether the patch wrote this value. False means it is the default, and
     /// the interface should show it as inherited rather than as chosen.
     pub written: bool,
@@ -93,7 +94,7 @@ pub struct ParamFacts {
 }
 
 /// A patch, bus, or signal, with its stages.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContainerFacts {
     /// Which namespace it lives in.
@@ -117,7 +118,7 @@ pub struct AssignmentFacts {
 }
 
 /// `send violin -> hall at -18 dB;`
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SendFacts {
     /// The part or bus sending.
@@ -127,7 +128,7 @@ pub struct SendFacts {
     /// The level in decibels, whichever unit it was written in. One scale for
     /// every fader is the point: a mixer that showed some sends in dB and
     /// others as ratios would be asking the composer to convert.
-    pub decibels: f64,
+    pub decibels: Fraction,
     /// Where the written level is.
     pub span: Option<Span>,
 }
@@ -143,7 +144,7 @@ pub struct RouteFacts {
 }
 
 /// Everything the Sound and Mix workspaces display.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StudioFacts {
     /// Whether the piece declares a `studio` block at all. False means every
@@ -188,7 +189,7 @@ impl StudioFacts {
                 .map(|send| SendFacts {
                     source: send.source.clone(),
                     bus: send.bus.clone(),
-                    decibels: level_decibels(send.level),
+                    decibels: Fraction::from_ratio(send.level.magnitude),
                     span: send.level_span.map(span),
                 })
                 .collect(),
@@ -236,10 +237,16 @@ fn containers(studio: &StudioSpec, kind: ContainerKind) -> Vec<ContainerFacts> {
                             .map(|(at, declared)| ParamFacts {
                                 name: declared.name.to_owned(),
                                 summary: declared.summary.to_owned(),
-                                value: node.params.get(at).map_or(declared.default, |value| value.magnitude),
+                                value: Fraction::from_ratio(
+                                    node.params
+                                        .get(at)
+                                        .copied()
+                                        .flatten()
+                                        .map_or(declared.default, |value| value.magnitude),
+                                ),
                                 unit: declared.unit.spelling().unwrap_or_default().to_owned(),
-                                minimum: declared.range.0,
-                                maximum: declared.range.1,
+                                minimum: Fraction::from_ratio(declared.range.0),
+                                maximum: Fraction::from_ratio(declared.range.1),
                                 written: node.param_spans.get(at).copied().flatten().is_some(),
                                 span: node.param_spans.get(at).copied().flatten().map(span),
                                 modulated_by: modulator(studio, name, index, declared.name),
@@ -268,23 +275,6 @@ fn span(source: musa_score::SourceSpan) -> Span {
     Span {
         start: source.start,
         end: source.end,
-    }
-}
-
-/// A level in decibels, whatever unit it was written in.
-fn level_decibels(level: Value) -> f64 {
-    match level.unit {
-        Unit::Decibels => level.magnitude,
-        // `as_linear` is the identity for the other units, and a ratio of
-        // zero or less has no decibel value: silence is the floor.
-        Unit::Hz | Unit::Linear | Unit::Seconds => {
-            let linear = level.as_linear();
-            if linear > 0.0 {
-                20.0 * linear.log10()
-            } else {
-                f64::NEG_INFINITY
-            }
-        }
     }
 }
 

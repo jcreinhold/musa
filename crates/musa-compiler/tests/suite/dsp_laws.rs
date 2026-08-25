@@ -80,7 +80,8 @@ fn the_language_and_the_dsp_agree_about_every_shared_parameter() {
                 declared.name
             );
             assert!(
-                (descriptor.default - declared.default as f32).abs() < 1e-6,
+                (descriptor.default - (*declared.default.numer() as f32 / *declared.default.denom() as f32)).abs()
+                    < 1e-6,
                 "`{}.{}` defaults differently on the two sides",
                 written.name(),
                 declared.name

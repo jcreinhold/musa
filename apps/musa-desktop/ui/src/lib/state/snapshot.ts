@@ -337,20 +337,19 @@ export interface HeaderFact {
 /**
  * One parameter of one stage, as the Sound workspace reads it.
  *
- * `value` is in the unit's base — seconds, hertz, decibels, or a plain ratio —
- * and `unit` is how the language writes it. The frontend converts nothing:
- * `30 ms` arrives as `0.03` with unit `s`, and an edit sends `0.05` back and
- * the core decides how to spell it.
+ * `value` is an exact fraction in the unit's base — seconds, hertz, decibels,
+ * or a plain ratio — and `unit` is how the language writes it. A range input
+ * receives a numeric projection, but the source and compiled facts stay exact.
  */
 export interface ParamFacts {
   name: string;
   /** Plain catalogue sentence used by labels and assistive technology. */
   summary: string;
-  value: number;
+  value: Fraction;
   unit: string;
   /** What a control may write, in that unit. */
-  minimum: number;
-  maximum: number;
+  minimum: Fraction;
+  maximum: Fraction;
   /** False when the patch never wrote it and this is the declared default. */
   written: boolean;
   span: Span | null;
@@ -383,7 +382,7 @@ export interface AssignmentFacts {
 export interface SendFacts {
   source: string;
   bus: string;
-  decibels: number;
+  decibels: Fraction;
   span: Span | null;
 }
 

@@ -12,14 +12,8 @@ StudioSpec {
                         "carrier",
                     ),
                     params: [
-                        Value {
-                            magnitude: 1.0,
-                            unit: Hz,
-                        },
-                        Value {
-                            magnitude: 1.0,
-                            unit: Linear,
-                        },
+                        None,
+                        None,
                     ],
                     param_spans: [
                         None,
@@ -37,14 +31,16 @@ StudioSpec {
                     processor: Oscillator,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 1.0,
-                            unit: Hz,
-                        },
-                        Value {
-                            magnitude: 2.0,
-                            unit: Linear,
-                        },
+                        None,
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 2,
+                                    denom: 1,
+                                },
+                                unit: Linear,
+                            },
+                        ),
                     ],
                     param_spans: [
                         None,
@@ -69,10 +65,15 @@ StudioSpec {
                         "shimmer",
                     ),
                     params: [
-                        Value {
-                            magnitude: -15.0,
-                            unit: Decibels,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: -15,
+                                    denom: 1,
+                                },
+                                unit: Decibels,
+                            },
+                        ),
                     ],
                     param_spans: [
                         Some(
@@ -112,22 +113,42 @@ StudioSpec {
                     processor: Envelope,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 0.03,
-                            unit: Seconds,
-                        },
-                        Value {
-                            magnitude: 1.8,
-                            unit: Seconds,
-                        },
-                        Value {
-                            magnitude: 0.65,
-                            unit: Linear,
-                        },
-                        Value {
-                            magnitude: 3.5,
-                            unit: Seconds,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 3,
+                                    denom: 100,
+                                },
+                                unit: Seconds,
+                            },
+                        ),
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 9,
+                                    denom: 5,
+                                },
+                                unit: Seconds,
+                            },
+                        ),
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 13,
+                                    denom: 20,
+                                },
+                                unit: Linear,
+                            },
+                        ),
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 7,
+                                    denom: 2,
+                                },
+                                unit: Seconds,
+                            },
+                        ),
                     ],
                     param_spans: [
                         Some(
@@ -169,14 +190,24 @@ StudioSpec {
                     processor: Lowpass,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 1400.0,
-                            unit: Hz,
-                        },
-                        Value {
-                            magnitude: 0.7,
-                            unit: Linear,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 1400,
+                                    denom: 1,
+                                },
+                                unit: Hz,
+                            },
+                        ),
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 7,
+                                    denom: 10,
+                                },
+                                unit: Linear,
+                            },
+                        ),
                     ],
                     param_spans: [
                         Some(
@@ -215,18 +246,25 @@ StudioSpec {
                     processor: Reverb,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 0.82,
-                            unit: Linear,
-                        },
-                        Value {
-                            magnitude: 0.55,
-                            unit: Linear,
-                        },
-                        Value {
-                            magnitude: 1.0,
-                            unit: Linear,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 41,
+                                    denom: 50,
+                                },
+                                unit: Linear,
+                            },
+                        ),
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 11,
+                                    denom: 20,
+                                },
+                                unit: Linear,
+                            },
+                        ),
+                        None,
                     ],
                     param_spans: [
                         Some(
@@ -264,14 +302,16 @@ StudioSpec {
                     processor: Oscillator,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 0.08,
-                            unit: Hz,
-                        },
-                        Value {
-                            magnitude: 1.0,
-                            unit: Linear,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 2,
+                                    denom: 25,
+                                },
+                                unit: Hz,
+                            },
+                        ),
+                        None,
                     ],
                     param_spans: [
                         Some(
@@ -294,10 +334,15 @@ StudioSpec {
                     processor: Scale,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 250.0,
-                            unit: Hz,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 250,
+                                    denom: 1,
+                                },
+                                unit: Hz,
+                            },
+                        ),
                     ],
                     param_spans: [
                         Some(
@@ -321,10 +366,15 @@ StudioSpec {
                     processor: Bias,
                     label: None,
                     params: [
-                        Value {
-                            magnitude: 1400.0,
-                            unit: Hz,
-                        },
+                        Some(
+                            WrittenQuantity {
+                                magnitude: Ratio {
+                                    numer: 1400,
+                                    denom: 1,
+                                },
+                                unit: Hz,
+                            },
+                        ),
                     ],
                     param_spans: [
                         Some(
@@ -388,8 +438,11 @@ StudioSpec {
         Send {
             source: "violin",
             bus: "hall",
-            level: Value {
-                magnitude: -18.0,
+            level: WrittenQuantity {
+                magnitude: Ratio {
+                    numer: -18,
+                    denom: 1,
+                },
                 unit: Decibels,
             },
             level_span: Some(
@@ -402,8 +455,11 @@ StudioSpec {
         Send {
             source: "strings",
             bus: "hall",
-            level: Value {
-                magnitude: -14.0,
+            level: WrittenQuantity {
+                magnitude: Ratio {
+                    numer: -14,
+                    denom: 1,
+                },
                 unit: Decibels,
             },
             level_span: Some(

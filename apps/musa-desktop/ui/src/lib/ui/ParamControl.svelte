@@ -37,9 +37,12 @@
 
   /** Where the handle is while the pointer holds it, before the core answers. */
   let dragging = $state<number | null>(null);
-  const shown = $derived(dragging ?? param.value);
+  const exact = (value: { numerator: number; denominator: number }) => value.numerator / value.denominator;
+  const minimum = $derived(exact(param.minimum));
+  const maximum = $derived(exact(param.maximum));
+  const shown = $derived(dragging ?? exact(param.value));
 
-  const span = $derived(Math.max(param.maximum - param.minimum, Number.EPSILON));
+  const span = $derived(Math.max(maximum - minimum, Number.EPSILON));
   /**
    * A round step near a thousandth of the range: fine enough that a drag feels
    * continuous, and a power of ten so the value under the handle is a number a
@@ -64,8 +67,8 @@
     {id}
     class="track"
     type="range"
-    min={param.minimum}
-    max={param.maximum}
+    min={minimum}
+    max={maximum}
     {step}
     value={shown}
     disabled={!editable}

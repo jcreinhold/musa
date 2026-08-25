@@ -82,7 +82,7 @@ pub struct SurfaceSchema {
 }
 
 /// Complete public documentation and schema for one built-in processor.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProcessorDoc {
     /// Versioned public identity.
     pub key: BuiltinKey,
@@ -535,9 +535,9 @@ pub fn reference_markdown() -> String {
                     parameter.name,
                     parameter.summary,
                     parameter.unit.spelling().unwrap_or("Ratio"),
-                    parameter.default,
-                    parameter.range.0,
-                    parameter.range.1,
+                    crate::written_ratio(parameter.default),
+                    crate::written_ratio(parameter.range.0),
+                    crate::written_ratio(parameter.range.1),
                 );
             }
             out.push('\n');
@@ -614,7 +614,8 @@ mod tests {
                             entry.key.name, parameter.name, parameter.dsp_name,
                         )
                     });
-                let converted = |value: f64| {
+                let converted = |value| {
+                    let value = crate::quantity::ratio_to_f64(value);
                     if parameter.unit == crate::Unit::Decibels {
                         10f64.powf(value / 20.0)
                     } else {

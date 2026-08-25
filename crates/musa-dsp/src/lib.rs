@@ -19,6 +19,7 @@ mod machine;
 mod offline;
 mod plan;
 mod primitive;
+mod quantity;
 mod schedule;
 mod spec;
 mod studio;
@@ -30,7 +31,8 @@ pub use crate::catalogue::{
     processor as processor_doc, reference_markdown as studio_reference, term as studio_term,
 };
 pub use crate::intent::{
-    Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
+    Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit,
+    WrittenQuantity, written_ratio,
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};

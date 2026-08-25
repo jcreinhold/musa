@@ -373,8 +373,8 @@ origin=part:1:viola:voice:0:countermelody:event:6:803-816:803-816:[]
 origin=part:1:viola:voice:0:countermelody:event:7:817-821:817-821:[]
 lane=0:oboe:4:5c2d9983581319fd8280243b8c0350ea
 lane=1:viola:4:101362770a7c8e24d8833341f09b275c
-patch=reed:output=Some(1):oscillator:None:1Hz:1:lowpass:None:1800Hz:0.7
-patch=bow:output=Some(1):oscillator:None:1Hz:0.5:envelope:None:0.015s:0s:1:0.3s
+patch=reed:output=Some(1):oscillator:None:default:default:lowpass:None:1800Hz:7/10
+patch=bow:output=Some(1):oscillator:None:default:1/2:envelope:None:3/200s:default:default:3/10s
 bus=hall:["reverb"]
 assign=oboe->reed
 assign=viola->bow

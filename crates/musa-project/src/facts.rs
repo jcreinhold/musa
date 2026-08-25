@@ -36,6 +36,16 @@ impl Fraction {
     }
 }
 
+impl std::fmt::Display for Fraction {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.denominator == 1 {
+            write!(formatter, "{}", self.numerator)
+        } else {
+            write!(formatter, "{}/{}", self.numerator, self.denominator)
+        }
+    }
+}
+
 /// What kind of thing an event is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

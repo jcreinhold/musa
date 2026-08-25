@@ -229,7 +229,12 @@ fn manifest() -> Result<String> {
             for node in patch.nodes() {
                 let _ = write!(out, ":{}:{:?}", node.processor.name(), node.label);
                 for value in &node.params {
-                    let _ = write!(out, ":{}{}", value.magnitude, value.unit.spelling().unwrap_or(""));
+                    match value {
+                        Some(value) => {
+                            let _ = write!(out, ":{}{}", value.magnitude, value.unit.spelling().unwrap_or(""));
+                        }
+                        None => out.push_str(":default"),
+                    }
                 }
             }
             out.push('\n');
@@ -315,7 +320,6 @@ fn every_expected_change_names_one_repairing_prompt() -> Result {
     let prompts = repository().join("docs/plan/prompts");
     for (defect, slug) in [
         ("processor-hover-gap", "studio-vocabulary"),
-        ("eager-studio-f64-conversion", "exact-studio-values"),
         ("graph-topology-modulation-address", "expressive-control-realization"),
         ("shared-note-stream-warning", "part-instrument-routing"),
         ("ignored-parameter-event", "expressive-control-realization"),
@@ -340,7 +344,7 @@ fn every_expected_change_names_one_repairing_prompt() -> Result {
             "no prompt file for {slug}"
         );
     }
-    assert_eq!(LEDGER.matches("\"defect\"").count(), 5);
+    assert_eq!(LEDGER.matches("\"defect\"").count(), 4);
     assert!(!LEDGER.contains("repair_prompt"), "the ledger names prompts by slug");
     Ok(())
 }

@@ -88,9 +88,9 @@ fn at_studio_catalogue(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
             processor.key.name,
             parameter.summary,
             parameter.unit.spelling().unwrap_or("Ratio"),
-            parameter.default,
-            parameter.range.0,
-            parameter.range.1,
+            musa_dsp::written_ratio(parameter.default),
+            musa_dsp::written_ratio(parameter.range.0),
+            musa_dsp::written_ratio(parameter.range.1),
         )
     };
     let range = token.text_range();
@@ -138,9 +138,9 @@ fn parameters_markdown(params: &[musa_dsp::ParamSpec]) -> String {
                 param.name,
                 param.summary,
                 param.unit.spelling().unwrap_or("Ratio"),
-                param.default,
-                param.range.0,
-                param.range.1
+                musa_dsp::written_ratio(param.default),
+                musa_dsp::written_ratio(param.range.0),
+                musa_dsp::written_ratio(param.range.1)
             )
         })
         .collect::<Vec<_>>()
