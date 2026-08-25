@@ -638,26 +638,70 @@ pub enum PerformanceError {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PerformanceView {
     /// Stable source gesture identity within this finite preparation.
-    pub instance: u64,
+    instance: u64,
     /// Written pitch before tuning.
-    pub pitch: WrittenPitch,
+    pitch: WrittenPitch,
     /// Prevailing written dynamic, when any.
-    pub dynamic: Option<crate::score::DynamicMark>,
+    dynamic: Option<crate::score::DynamicMark>,
     /// Written note marks in source order.
-    pub marks: Vec<crate::Mark>,
+    marks: Vec<crate::Mark>,
     /// Hairpin target and exact reached progress at this event.
-    pub hairpin: Option<(crate::score::DynamicMark, Ratio<i64>)>,
+    hairpin: Option<(crate::score::DynamicMark, Ratio<i64>)>,
+}
+
+impl PerformanceView {
+    /// Stable identity assigned to the requested source gesture.
+    pub const fn instance(&self) -> u64 {
+        self.instance
+    }
+
+    /// Written pitch before tuning.
+    pub const fn pitch(&self) -> WrittenPitch {
+        self.pitch
+    }
+
+    /// Prevailing written dynamic, when one has appeared.
+    pub const fn dynamic(&self) -> Option<crate::score::DynamicMark> {
+        self.dynamic
+    }
+
+    /// Written note marks in source order.
+    pub fn marks(&self) -> &[crate::Mark] {
+        &self.marks
+    }
+
+    /// Hairpin target and reached local progress, when under a hairpin.
+    pub const fn hairpin(&self) -> Option<(crate::score::DynamicMark, Ratio<i64>)> {
+        self.hairpin
+    }
 }
 
 /// One part's finite source-performance request batch.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PerformanceRequests {
     /// Part whose occurrences receive the answers.
-    pub part: PartId,
+    part: PartId,
     /// Parsed declarations only; interpretation remains source-owned.
-    pub profile: Option<PerformanceProfile>,
+    profile: Option<PerformanceProfile>,
     /// Views in the exact order gesture lowering consumes them.
-    pub views: Vec<PerformanceView>,
+    views: Vec<PerformanceView>,
+}
+
+impl PerformanceRequests {
+    /// Part whose occurrences receive this batch's answers.
+    pub const fn part(&self) -> PartId {
+        self.part
+    }
+
+    /// Parsed declarations presented to source without host interpretation.
+    pub const fn profile(&self) -> Option<&PerformanceProfile> {
+        self.profile.as_ref()
+    }
+
+    /// Notation views in the exact order assigned stable identities.
+    pub fn views(&self) -> &[PerformanceView] {
+        &self.views
+    }
 }
 
 /// Project every notation input the source performance policy receives.
@@ -705,6 +749,16 @@ pub fn performance_requests(score: &ScoreSnapshot) -> Vec<PerformanceRequests> {
                         hairpin,
                     });
                     next_instance = next_instance.saturating_add(1);
+                }
+                // Reaching the end of a written hairpin makes its target the
+                // prevailing notation fact for following events. This is a
+                // projection of the score's written state, not a host choice
+                // about the target's expression value; source policy still
+                // supplies that value.
+                if let Some(curve) = curves.get(&event.id)
+                    && curve.fraction == Ratio::ONE
+                {
+                    dynamic = Some(curve.target);
                 }
             }
         }
@@ -816,7 +870,7 @@ fn source_fields<'a, const COUNT: usize>(
     let Some(musa_calculus::SourceDatumKind::Case { constructor }) = datum.kind() else {
         return Err(source_shape(expected));
     };
-    if !constructor.rsplit('.').next().is_some_and(|name| name == expected) {
+    if constructor.rsplit('.').next() != Some(expected) {
         return Err(source_shape(expected));
     }
     let fields = datum
@@ -864,8 +918,9 @@ fn source_ratio(datum: musa_calculus::SourceDatum<'_>) -> Result<Ratio<i64>, Per
     if !type_name.ends_with("Ratio") || bytes.len() != 16 {
         return Err(source_shape("Ratio"));
     }
-    let numerator = i64::from_be_bytes(bytes[..8].try_into().map_err(|_| source_shape("Ratio"))?);
-    let denominator = i64::from_be_bytes(bytes[8..].try_into().map_err(|_| source_shape("Ratio"))?);
+    let (numerator, denominator) = bytes.split_at_checked(8).ok_or_else(|| source_shape("Ratio"))?;
+    let numerator = i64::from_be_bytes(numerator.try_into().map_err(|_| source_shape("Ratio"))?);
+    let denominator = i64::from_be_bytes(denominator.try_into().map_err(|_| source_shape("Ratio"))?);
     if denominator == 0 {
         return Err(source_shape("Ratio"));
     }
@@ -924,9 +979,11 @@ fn source_shape(expected: &str) -> PerformanceError {
 
 /// Lower a score into exact, instrument-independent performed gesture tracks.
 ///
-/// Groove, grace policy, articulation, and dynamic interpretation are fixed;
-/// tempo remains an exact map queried later by checked scheduling. No frame,
-/// frequency, or floating-point audio value is chosen here.
+/// This retained pre-177 oracle fixes groove, grace, articulation, and dynamic
+/// interpretation in Rust for differential tests. Production compilation uses
+/// checked `std::performance` results through [`lower_gestures_from_checked`].
+/// No frame, frequency, or floating-point
+/// audio value is chosen here.
 ///
 /// # Errors
 /// [`PerformanceError`] if the resulting finite performed track violates its
@@ -960,17 +1017,24 @@ fn lower_gestures_with_source(
                     let expected = lane.len();
                     let by_instance: std::collections::HashMap<_, _> =
                         lane.into_iter().map(|reading| (reading.instance, reading)).collect();
-                    if by_instance.len() != expected {
-                        Err(source_shape("one result per distinct gesture identity"))
-                    } else {
+                    if by_instance.len() == expected {
                         Ok(by_instance)
+                    } else {
+                        Err(source_shape("one result per distinct gesture identity"))
                     }
                 })
                 .collect::<Result<Vec<_>, _>>()
         })
         .transpose()?;
     for (lane_index, (id, part)) in score.parts().iter().enumerate() {
-        let mut source = source_lanes.as_mut().map(|lanes| &mut lanes[lane_index]);
+        let mut source = match source_lanes.as_mut() {
+            Some(lanes) => Some(
+                lanes
+                    .get_mut(lane_index)
+                    .ok_or_else(|| source_shape("one interpretation artifact per gesture lane"))?,
+            ),
+            None => None,
+        };
         let profile = score.profiles().for_part(part.name());
         let scope = crate::Scope::Part { part: id.0 };
         let tempo = IntegratedTempoMap::new(score, scope);
@@ -1137,15 +1201,14 @@ fn lower_gestures_with_source(
 
 /// Build the performed track from checked `std::performance` results.
 ///
-/// The retained Rust lowering supplies only coordinate conversion, grace
-/// placement, provenance, and a differential oracle for the pre-177 corpus.
-/// Every projected musical field is replaced by the checked source answer;
-/// disagreement is an error rather than a host-side fallback.
+/// The retained lowering supplies coordinate conversion, grace placement, and
+/// provenance. Every projected musical field comes from the checked source
+/// answer; the old Rust interpretation is not evaluated on this path.
 ///
 /// # Errors
 ///
 /// Returns [`PerformanceError`] for a wrong/malformed artifact, a request/result
-/// mismatch, a source↔legacy differential mismatch, or an invalid exact track.
+/// mismatch, or an invalid exact track.
 pub fn lower_gestures_from_checked(
     score: &ScoreSnapshot,
     artifacts: &[musa_calculus::CheckedSource],

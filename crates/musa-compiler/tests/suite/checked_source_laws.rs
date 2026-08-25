@@ -245,9 +245,10 @@ fn a_performance_request_batch_is_interpreted_as_checked_source_data() {
     let artifacts = checked_performance_interpretations(compilation.snapshot().expect("score"))
         .unwrap_or_else(|diagnostics| panic!("performance requests should check: {diagnostics:#?}"));
     assert_eq!(artifacts.len(), 1);
-    assert!(artifacts[0].has_valid_framing());
+    let artifact = artifacts.first().expect("one part produces one artifact");
+    assert!(artifact.has_valid_framing());
     assert_eq!(
-        artifacts[0].schema().name(),
+        artifact.schema().name(),
         "std.performance.PerformanceInterpretationArtifact"
     );
     let plan = musa_compiler::lower_gestures(compilation.snapshot().expect("score"))
@@ -312,13 +313,13 @@ piece "Checked source result" {
     .unwrap_or_else(|diagnostics| panic!("source result should check: {diagnostics:#?}"));
     let plan = musa_score::lower_gestures_from_checked(compilation.snapshot().expect("score"), &[artifact])
         .expect("checked source result lowers mechanically");
-    let occurrence = plan.lanes()[0].track().occurrences().first().expect("one gesture");
+    let lane = plan.lanes().first().expect("one gesture lane");
+    let occurrence = lane.track().occurrences().first().expect("one gesture");
     assert_eq!(occurrence.span().start().as_ratio(), Ratio::ZERO);
     assert_eq!(occurrence.span().end().as_ratio(), Ratio::new(1, 8));
     assert_eq!(occurrence.payload().amplitude(), Ratio::new(1, 4));
     assert_eq!(
-        plan.lanes()[0]
-            .compatibility(occurrence.payload().instance())
+        lane.compatibility(occurrence.payload().instance())
             .expect("temporary compatibility projection")
             .attack_seconds(),
         Ratio::new(1, 100)
@@ -360,7 +361,7 @@ fn a_control_kind_is_inferred_by_the_general_pattern_unifier() {
 fn a_control_index_blocked_by_a_lambda_is_settled_by_later_arguments() {
     let artifact = checked_performance_value(
         "postponed",
-        r#"fn transformed_control(
+        r"fn transformed_control(
     {kind: ControlKind},
     transform: ControlValue(kind) -> ControlValue(kind),
     control_key: ControlKey(kind),
@@ -370,7 +371,7 @@ let postponed: SomeControl = transformed_control(
     fn (value) { value },
     expression,
     NormalizedValue(1/2),
-);"#,
+);",
         "SomeControl",
     );
     assert!(artifact.has_valid_framing());

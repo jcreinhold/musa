@@ -1,7 +1,7 @@
 # musa audio-bridge compatibility manifest v2
 # Test oracle only; timing and allocation samples live in docs/rules/language/06-elaboration-baseline.md.
-lane=0:oboe:4:a7f67ee6cb3da77c
-lane=1:viola:4:7aca140335f63586
+lane=0:oboe:4:12b63e5405c634a0
+lane=1:viola:4:808e0584b6f47ca5
 sample-rate=48000
 gestures=8
 block-size=64

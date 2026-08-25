@@ -186,7 +186,10 @@ pub fn prepare_audio(
         }
     }
     attacks.sort_by_key(|(instance, _)| *instance);
-    if attacks.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+    if attacks
+        .windows(2)
+        .any(|pair| matches!(pair, [left, right] if left.0 == right.0))
+    {
         return Err(AudioPrepareError::Primitive(
             "gesture attack compatibility contains a duplicate identity".to_owned(),
         ));

@@ -64,6 +64,16 @@ fn prepare() -> PreparedAudio {
     .expect("audio prepares")
 }
 
+#[divan::bench(sample_count = 10)]
+fn interpret_performance_source(bencher: divan::Bencher<'_, '_>) {
+    let compilation = compile(
+        &SourceDocument::new(SOURCE, "tests/fixtures/audio-bridge.musa"),
+        &CompileOptions::default(),
+    );
+    let score = compilation.snapshot().expect("fixture compiles");
+    bencher.bench(|| lower_gestures(divan::black_box(score)).expect("fixture gestures"));
+}
+
 #[divan::bench(sample_count = 30)]
 fn render_audio_bridge(bencher: divan::Bencher<'_, '_>) {
     bencher

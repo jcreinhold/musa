@@ -196,6 +196,7 @@ record PerformanceProfile {
     marks: List(MarkRule);
 }
 
+/// Translate one compatibility timing declaration into source-owned intent.
 private fn timing_rule(timing: LegacyMarkTiming) -> MarkRule {
     let written: TechniqueRequest = TechniqueRequest {
         namespace = "std.performance.written-mark",
@@ -249,6 +250,7 @@ private fn timing_rule(timing: LegacyMarkTiming) -> MarkRule {
     }
 }
 
+/// Translate compatibility timing declarations in their written order.
 private fn timing_rules(timings: List(LegacyMarkTiming)) -> List(MarkRule) {
     match timings {
         [] -> [],
@@ -275,6 +277,7 @@ record ProfileResult {
     hold: Ratio;
 }
 
+/// Temporary temporal compatibility fields kept outside gesture identity.
 private record MarkTiming {
     gate: Ratio;
     attack_seconds: Ratio;
@@ -430,40 +433,10 @@ fn interpret_all(requests: List(InterpretationRequest)) -> List(ProfileResult) {
 // tenuto requests sustain, and fermata remains a named technique rather than a
 // host duration multiplier.
 let neutral: PerformanceProfile = PerformanceProfile {
-    dynamics = [
-        DynamicRule {
-            name = "ppp",
-            expression = 1/8
-        },
-        DynamicRule {
-            name = "pp",
-            expression = 1/4
-        },
-        DynamicRule {
-            name = "p",
-            expression = 3/8
-        },
-        DynamicRule {
-            name = "mp",
-            expression = 1/2
-        },
-        DynamicRule {
-            name = "mf",
-            expression = 5/8
-        },
-        DynamicRule {
-            name = "f",
-            expression = 3/4
-        },
-        DynamicRule {
-            name = "ff",
-            expression = 7/8
-        },
-        DynamicRule {
-            name = "fff",
-            expression = 1/1
-        },
-    ],
+    // With no explicit profile, a written dynamic remains notation and the
+    // signature default remains unchanged. Conventional level mappings are
+    // policy, so `neutral` must not smuggle one in.
+    dynamics = [],
     marks = [
         MarkRule {
             name = "staccato",

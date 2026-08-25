@@ -181,11 +181,11 @@ searches the filesystem.
 - `record MarkRule: Type` — One source-declared reading of a written articulation mark.
 - `record LegacyMarkTiming: Type` — Legacy surface timing declarations transcribed without host interpretation.
 - `record PerformanceProfile: Type` — A finite, storable collection of source interpretation rules.
-- `fn timing_rule(timing: LegacyMarkTiming) -> MarkRule`
-- `fn timing_rules(timings: List(LegacyMarkTiming)) -> List(MarkRule)`
+- `fn timing_rule(timing: LegacyMarkTiming) -> MarkRule` — Translate one compatibility timing declaration into source-owned intent.
+- `fn timing_rules(timings: List(LegacyMarkTiming)) -> List(MarkRule)` — Translate compatibility timing declarations in their written order.
 - `fn profile_from_legacy(dynamics: List(DynamicRule), timings: List(LegacyMarkTiming)) -> PerformanceProfile` — Build the compatibility surface profile as ordinary source policy.
 - `record ProfileResult: Type` — Exact musical intent returned by one finite profile evaluation.
-- `record MarkTiming`
+- `record MarkTiming` — Temporary temporal compatibility fields kept outside gesture identity.
 - `record InterpretationRequest: Type` — One finite request presented to the source interpreter by the host bridge.
 - `record PerformanceInterpretationArtifact: Type` — Versioned checked results returned to the provenance/track bridge.
 - `fn dynamic_level(rules: List(DynamicRule), sought: Text) -> Ratio` — Find a declared dynamic level, returning neutral expression when absent.

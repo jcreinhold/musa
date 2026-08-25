@@ -82,20 +82,20 @@ fn checked_batch(batch: &PerformanceRequests) -> Result<musa_calculus::CheckedSo
     let _ = writeln!(
         source,
         "let selected_profile: PerformanceProfile = {};",
-        profile(batch.profile.as_ref())
+        profile(batch.profile())
     );
     source.push_str("let performance_requests: List(InterpretationRequest) = [\n");
-    for view in &batch.views {
+    for view in batch.views() {
         let marks = view
-            .marks
+            .marks()
             .iter()
             .map(|mark| quoted(mark.name()))
             .collect::<Vec<_>>()
             .join(", ");
         let dynamic = view
-            .dynamic
+            .dynamic()
             .map_or_else(|| "None".to_owned(), |mark| format!("Some({})", quoted(mark.name())));
-        let hairpin = view.hairpin.map_or_else(
+        let hairpin = view.hairpin().map_or_else(
             || "None".to_owned(),
             |(target, reached)| {
                 format!(
@@ -108,14 +108,18 @@ fn checked_batch(batch: &PerformanceRequests) -> Result<musa_calculus::CheckedSo
         let _ = writeln!(
             source,
             "    InterpretationRequest {{ policy = selected_profile, view = NotationView {{ instance = GestureId {{ value = {} }}, written_pitch = {}, dynamic_mark = {}, marks = [{}], hairpin = {}, connection = None, techniques = [] }} }},",
-            view.instance, view.pitch, dynamic, marks, hairpin
+            view.instance(),
+            view.pitch(),
+            dynamic,
+            marks,
+            hairpin
         );
     }
     source.push_str(
         "];\nlet performance_interpretation: PerformanceInterpretationArtifact = PerformanceInterpretationArtifact {\n    schema_version = 1,\n    results = interpret_all(performance_requests)\n};\npiece \"Performance bridge\" { meter 4/4; key c major; score { part proof { voice observed { rest/1 } } } }\n",
     );
     checked_source_value(
-        &SourceDocument::new(source, format!("musa-performance:/part-{}.musa", batch.part.0)),
+        &SourceDocument::new(source, format!("musa-performance:/part-{}.musa", batch.part().0)),
         &CompileOptions::default(),
         "performance_interpretation",
         &musa_calculus::SourceSchema::new(

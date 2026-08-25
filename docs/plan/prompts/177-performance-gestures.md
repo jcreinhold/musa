@@ -1,7 +1,7 @@
 ---
 id: 177
 slug: performance-gestures
-status: in-progress
+status: done
 depends_on: [119, 174, 176, 176a, 176b, 176c]
 phase: 3
 ---
