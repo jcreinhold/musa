@@ -1,7 +1,7 @@
 ---
 id: 176b
 slug: performance-source-foundation
-status: pending
+status: done
 depends_on: [176, 176a]
 phase: 3
 ---

@@ -20,6 +20,15 @@ use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, parse};
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
 const INVENTION: &str = include_str!("../../../../examples/invention.musa");
 
+#[test]
+fn a_reserved_word_may_name_a_qualified_module_segment() {
+    let source =
+        "import std::performance;\npiece \"P\" { meter 4/4; key c major; score { part p { voice v { rest/1 } } } }";
+    let document = parse(source);
+    assert_eq!(document.errors(), &[], "errors: {}", print_errors(&document));
+    assert_round_trip(source);
+}
+
 fn print_tree(node: &SyntaxNode) -> String {
     let mut lines = Vec::new();
     write_node(node, 0, &mut lines);

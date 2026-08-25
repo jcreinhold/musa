@@ -6,13 +6,14 @@ use crate::{SyntaxError, SyntaxKind};
 /// What may name a module inside an import path.
 ///
 /// A module may be called after a type or a domain — `pitch`, `scale`,
-/// `harmony` — and the lexer writes the keyword token wherever the word
+/// `harmony`, `performance` — and the lexer writes the keyword token wherever the word
 /// appears. The path position is what makes the word a name. `list` and
 /// `option` left this list when they stopped being keywords: the types are
 /// `List` and `Option`, and the files that hold them are ordinary names.
 pub(crate) const MODULE_NAME: &[SyntaxKind] = &[
     SyntaxKind::Identifier,
     SyntaxKind::HarmonyKw,
+    SyntaxKind::PerformanceKw,
     SyntaxKind::PitchKw,
     SyntaxKind::ScaleKw,
 ];

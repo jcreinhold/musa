@@ -164,6 +164,33 @@ searches the filesystem.
 - `fn engrave(document: StaffDocument) -> Result<Spelled, Text>` — Every realized span with the written value chosen for it.
 - `fn spelled_spans(policy: Spelling, spans: WrittenSpans) -> Result<Spelled, Text>` — The spelling choice, made once per span and refused once for all of them.
 
+## `std::performance`
+
+- `fn some_control<{kind: ControlKind}>(control_key: ControlKey(kind), value: ControlValue(kind)) -> SomeControl` — `kind` is intentionally omitted at call sites. It is solved only by unifying the two indexed arguments; a disagreement is a normal type error and an unresolved kind is never defaulted.
+- `let expression: ControlKey(Normalized)` — Sustained relative-intensity intention, independent of gain or velocity.
+- `let emphasis: ControlKey(Normalized)` — Per-note attack-salience intention.
+- `let separation: ControlKey(Normalized)` — Per-transition perceptual-detachment intention.
+- `let brightness: ControlKey(Normalized)` — Continuous relative spectral-brightness intention.
+- `let sustain: ControlKey(Normalized)` — Continuous continuation-after-release intention.
+- `let phrase_relation: ControlKey(PhraseConnection)` — Typed grouping relation among the gestures of a phrase.
+- `record GestureId: Type` — Stable identity shared by a gesture and its separate host lineage entry.
+- `record TechniqueRequest: Type` — A request remains symbolic even when an instrument also supplies a numeric fallback. Namespacing permits libraries to extend the vocabulary without a closed Rust enum.
+- `record HairpinView: Type` — A notation view contains every musical input visible to an ordinary profile call. It deliberately contains no host provenance, frame, primitive, or DSP address. The bridge supplies one value per written occurrence.
+- `record NotationView: Type` — Complete musical notation input presented to one profile call.
+- `record DynamicRule: Type` — One source-declared reading of a written dynamic marking.
+- `record MarkRule: Type` — One source-declared reading of a written articulation mark.
+- `record PerformanceProfile: Type` — A finite, storable collection of source interpretation rules.
+- `record ProfileResult: Type` — Exact musical intent returned by one finite profile evaluation.
+- `fn dynamic_level(rules: List<DynamicRule>, sought: Text) -> Ratio` — Find a declared dynamic level, returning neutral expression when absent.
+- `fn marked_controls(rules: List<MarkRule>, marks: List<Text>) -> List<SomeControl>` — Collect the exact controls declared for the marks on one notation view.
+- `fn member_text(sought: Text, values: List<Text>) -> Bool` — Whether one exact spelling occurs in a finite list.
+- `fn level_of(policy: PerformanceProfile, view: NotationView) -> Ratio` — The prevailing expression level a profile gives one notation view.
+- `fn hairpin_expression(from: Ratio, target_level: Ratio, reached: Ratio) -> Ratio` — Exact affine interpolation for a hairpin sample. `reached` is the result of applying its source `Progress` at normalized local time; no sampling density or physical mapping is chosen here.
+- `fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult` — Interpret one complete notation view as exact controls and techniques.
+- `let neutral: PerformanceProfile` — The edition-pinned neutral policy is ordinary data. Its defaults retain symbolic intent: staccato requests separation, accent requests emphasis, tenuto requests sustain, and fermata remains a named technique rather than a host duration multiplier.
+- `record PerformanceVocabularyArtifact: Type` — Versioned finite root frozen by the generic checked-source boundary.
+- `let performance_vocabulary: PerformanceVocabularyArtifact` — Edition-pinned standard controls and neutral profile for host/tooling consumers.
+
 ## `std::pitch`
 
 - `let unison: Interval` — Open Music Theory `016-intervals.md` supplies the conventional generic/specific interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies the spelling distinction retained by these values. The written unison has no staff displacement and no chromatic displacement.

@@ -124,3 +124,32 @@ piece "Studio vocabulary" {
         ),
     )
 }
+
+/// Check the edition-pinned performance vocabulary as ordinary source.
+///
+/// Gesture and control meanings live in `std::performance`; this bridge only
+/// requests its finite, normalized artifact from the ordinary checker.
+///
+/// # Errors
+///
+/// Returns standard-library import, checking, normalization, or artifact
+/// diagnostics. A bundled vocabulary that fails here is a build defect.
+pub fn checked_standard_performance_vocabulary() -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
+    const PROBE: &str = r#"import std::performance;
+piece "Performance vocabulary" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    checked_source_value(
+        &SourceDocument::new(PROBE, "musa-stdlib:/performance-vocabulary.musa"),
+        &CompileOptions::default(),
+        "performance_vocabulary",
+        &musa_calculus::SourceSchema::new(
+            "std.performance.PerformanceVocabularyArtifact",
+            "PerformanceVocabularyArtifact",
+            1,
+        ),
+    )
+}

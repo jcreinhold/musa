@@ -89,7 +89,9 @@ pub use musa_events::{EventsTokenClass, events_bindings, events_classify, events
 
 pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
-pub use crate::source_value::{checked_source_value, checked_standard_studio_vocabulary};
+pub use crate::source_value::{
+    checked_source_value, checked_standard_performance_vocabulary, checked_standard_studio_vocabulary,
+};
 pub use musa_calculus::{CheckedSource, SourceSchema};
 /// The event track's semantic digest, re-exported so a consumer can hold a
 /// compilation's identity without depending on the event track directly.

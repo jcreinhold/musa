@@ -1,0 +1,362 @@
+// Performance intent: exact finite data between notation and instruments.
+//
+// Open Music Theory 007 separates written dynamics, articulation, and grouping
+// from the instrument-dependent acts that realize them. OMT 114 makes the
+// consequence concrete: a crescendo can change density, register, or forces,
+// and therefore is not a disguised gain ramp. This module records the musical
+// intention. Instruments in prompt 178 decide how to realize it.
+
+// The value kind is an index, not a host tag inspected after checking.
+data ControlKind {
+    Normalized,
+    PhraseConnection,
+}
+
+data UpdateRate {
+    PerNote,
+    PerTransition,
+    Continuous,
+    PerGroup,
+}
+
+// A key states its index in the constructor result. At uses such as
+// `Control(expression, NormalizedValue(1/2))`, the ordinary Miller-pattern
+// unifier infers the one shared kind from both arguments.
+data ControlKey(kind: ControlKind) {
+    Key(
+        key_kind: ControlKind,
+        namespace: Text,
+        name: Text,
+        summary: Text,
+        update_rate: UpdateRate,
+    ): (key_kind),
+}
+
+data Connection {
+    Detached,
+    Ordinary,
+    Legato,
+}
+
+data ControlValue(kind: ControlKind) {
+    NormalizedValue(value: Ratio): (Normalized),
+    ConnectionValue(connection: Connection): (PhraseConnection),
+}
+
+// Existential packaging retains the shared index while allowing unlike
+// controls in one finite list. There is no dynamic host-side kind guess.
+data SomeControl {
+    Control(kind: ControlKind, control_key: ControlKey(kind), value: ControlValue(kind)),
+}
+
+// `kind` is intentionally omitted at call sites. It is solved only by
+// unifying the two indexed arguments; a disagreement is a normal type error
+// and an unresolved kind is never defaulted.
+fn some_control<{kind: ControlKind}>(
+    control_key: ControlKey(kind),
+    value: ControlValue(kind),
+) -> SomeControl { Control(kind, control_key, value) }
+
+/// Sustained relative-intensity intention, independent of gain or velocity.
+let expression: ControlKey(Normalized) = Key(
+    Normalized,
+    "std.performance",
+    "expression",
+    "Sustained relative intensity; not gain, velocity, or decibels.",
+    Continuous,
+);
+
+/// Per-note attack-salience intention.
+let emphasis: ControlKey(Normalized) = Key(
+    Normalized,
+    "std.performance",
+    "emphasis",
+    "Attack salience relative to neighbouring gestures.",
+    PerNote,
+);
+
+/// Per-transition perceptual-detachment intention.
+let separation: ControlKey(Normalized) = Key(
+    Normalized,
+    "std.performance",
+    "separation",
+    "Requested perceptual detachment; not a universal gate multiplier.",
+    PerTransition,
+);
+
+/// Continuous relative spectral-brightness intention.
+let brightness: ControlKey(Normalized) = Key(
+    Normalized,
+    "std.performance",
+    "brightness",
+    "Relative spectral-brightness intention; not filter cutoff.",
+    Continuous,
+);
+
+/// Continuous continuation-after-release intention.
+let sustain: ControlKey(Normalized) = Key(
+    Normalized,
+    "std.performance",
+    "sustain",
+    "Requested continuation after release; not pedal position or seconds.",
+    Continuous,
+);
+
+/// Typed grouping relation among the gestures of a phrase.
+let phrase_relation: ControlKey(PhraseConnection) = Key(
+    PhraseConnection,
+    "std.performance",
+    "phrase",
+    "A typed relation among gestures in one phrase group.",
+    PerGroup,
+);
+
+/// Stable identity shared by a gesture and its separate host lineage entry.
+record GestureId {
+    value: Nat;
+}
+
+// A request remains symbolic even when an instrument also supplies a numeric
+// fallback. Namespacing permits libraries to extend the vocabulary without a
+// closed Rust enum.
+record TechniqueRequest {
+    namespace: Text;
+    name: Text;
+    arguments: List<Ratio>;
+}
+
+data NonEmptyGestureIds {
+    One(member: GestureId),
+    More(member: GestureId, later: NonEmptyGestureIds),
+}
+
+data Gesture {
+    NoteGesture(
+        instance: GestureId,
+        written_pitch: Pitch,
+        controls: List<SomeControl>,
+        techniques: List<TechniqueRequest>,
+    ),
+    ControlCurve(control_key: ControlKey(Normalized), values: Progress),
+    PhraseGroup(members: NonEmptyGestureIds, connection: Connection),
+    ReleaseGesture(instance: GestureId),
+}
+
+// A notation view contains every musical input visible to an ordinary profile
+// call. It deliberately contains no host provenance, frame, primitive, or DSP
+// address. The bridge supplies one value per written occurrence.
+record HairpinView {
+    target: Text;
+    reached: Ratio;
+    shape: Progress;
+}
+
+/// Complete musical notation input presented to one profile call.
+record NotationView {
+    instance: GestureId;
+    written_pitch: Pitch;
+    dynamic_mark: Option<Text>;
+    marks: List<Text>;
+    hairpin: Option<HairpinView>;
+    connection: Option<Connection>;
+    techniques: List<TechniqueRequest>;
+}
+
+/// One source-declared reading of a written dynamic marking.
+record DynamicRule {
+    name: Text;
+    expression: Ratio;
+}
+
+/// One source-declared reading of a written articulation mark.
+record MarkRule {
+    name: Text;
+    emphasis: Ratio;
+    separation: Ratio;
+    sustain: Ratio;
+    techniques: List<TechniqueRequest>;
+}
+
+/// A finite, storable collection of source interpretation rules.
+record PerformanceProfile {
+    dynamics: List<DynamicRule>;
+    marks: List<MarkRule>;
+}
+
+/// Exact musical intent returned by one finite profile evaluation.
+record ProfileResult {
+    controls: List<SomeControl>;
+    techniques: List<TechniqueRequest>;
+}
+
+/// Find a declared dynamic level, returning neutral expression when absent.
+private fn dynamic_level(rules: List<DynamicRule>, sought: Text) -> Ratio {
+    match rules {
+        [] -> 1/1,
+        [rule, .. later] -> if text_equal(rule.name, sought) {
+            rule.expression
+        } else { dynamic_level(later, sought) },
+    }
+}
+
+/// Collect the exact controls declared for the marks on one notation view.
+private fn marked_controls(rules: List<MarkRule>, marks: List<Text>) -> List<SomeControl> {
+    match rules {
+        [] -> [],
+        [rule, .. later] -> if member_text(rule.name, marks) {
+            Cons(
+                some_control(emphasis, NormalizedValue(rule.emphasis)),
+                Cons(
+                    some_control(separation, NormalizedValue(rule.separation)),
+                    Cons(
+                        some_control(sustain, NormalizedValue(rule.sustain)),
+                        marked_controls(later, marks),
+                    ),
+                ),
+            )
+        } else { marked_controls(later, marks) },
+    }
+}
+
+/// Whether one exact spelling occurs in a finite list.
+private fn member_text(sought: Text, values: List<Text>) -> Bool {
+    match values {
+        [] -> false,
+        [value, .. later] -> if text_equal(value, sought) {
+            true
+        } else { member_text(sought, later) },
+    }
+}
+
+/// The prevailing expression level a profile gives one notation view.
+private fn level_of(policy: PerformanceProfile, view: NotationView) -> Ratio {
+    match view.dynamic_mark {
+        None -> 1/1,
+        Some(name) -> dynamic_level(policy.dynamics, name),
+    }
+}
+
+// Exact affine interpolation for a hairpin sample. `reached` is the result of
+// applying its source `Progress` at normalized local time; no sampling density
+// or physical mapping is chosen here.
+fn hairpin_expression(from: Ratio, target_level: Ratio, reached: Ratio) -> Ratio {
+    ratio_add(from, ratio_mul(ratio_sub(target_level, from), reached))
+}
+
+/// Interpret one complete notation view as exact controls and techniques.
+fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
+    let prevailing = level_of(policy, view);
+    let sounding: Ratio = match view.hairpin {
+        None -> prevailing,
+        Some(curve) -> hairpin_expression(
+            prevailing,
+            dynamic_level(policy.dynamics, curve.target),
+            curve.reached,
+        ),
+    };
+    ProfileResult {
+        controls = Cons(
+            some_control(expression, NormalizedValue(sounding)),
+            marked_controls(policy.marks, view.marks),
+        ),
+        techniques = view.techniques
+    }
+}
+
+// The edition-pinned neutral policy is ordinary data. Its defaults retain
+// symbolic intent: staccato requests separation, accent requests emphasis,
+// tenuto requests sustain, and fermata remains a named technique rather than a
+// host duration multiplier.
+let neutral: PerformanceProfile = PerformanceProfile {
+    dynamics = [
+        DynamicRule {
+            name = "ppp",
+            expression = 1/8
+        },
+        DynamicRule {
+            name = "pp",
+            expression = 1/4
+        },
+        DynamicRule {
+            name = "p",
+            expression = 3/8
+        },
+        DynamicRule {
+            name = "mp",
+            expression = 1/2
+        },
+        DynamicRule {
+            name = "mf",
+            expression = 5/8
+        },
+        DynamicRule {
+            name = "f",
+            expression = 3/4
+        },
+        DynamicRule {
+            name = "ff",
+            expression = 7/8
+        },
+        DynamicRule {
+            name = "fff",
+            expression = 1/1
+        },
+    ],
+    marks = [
+        MarkRule {
+            name = "staccato",
+            emphasis = 0/1,
+            separation = 1/1,
+            sustain = 0/1,
+            techniques = []
+        },
+        MarkRule {
+            name = "accent",
+            emphasis = 1/1,
+            separation = 0/1,
+            sustain = 0/1,
+            techniques = []
+        },
+        MarkRule {
+            name = "tenuto",
+            emphasis = 0/1,
+            separation = 0/1,
+            sustain = 1/1,
+            techniques = []
+        },
+        MarkRule {
+            name = "fermata",
+            emphasis = 0/1,
+            separation = 0/1,
+            sustain = 1/1,
+            techniques = [
+                TechniqueRequest {
+                    namespace = "std.performance",
+                    name = "fermata",
+                    arguments = []
+                },
+            ]
+        },
+    ]
+};
+
+/// Versioned finite root frozen by the generic checked-source boundary.
+record PerformanceVocabularyArtifact {
+    schema_version: Nat;
+    standard_controls: List<SomeControl>;
+    neutral_profile: PerformanceProfile;
+}
+
+/// Edition-pinned standard controls and neutral profile for host/tooling consumers.
+let performance_vocabulary: PerformanceVocabularyArtifact = PerformanceVocabularyArtifact {
+    schema_version = 1,
+    standard_controls = [
+        some_control(expression, NormalizedValue(1/1)),
+        some_control(emphasis, NormalizedValue(0/1)),
+        some_control(separation, NormalizedValue(0/1)),
+        some_control(brightness, NormalizedValue(1/2)),
+        some_control(sustain, NormalizedValue(0/1)),
+        some_control(phrase_relation, ConnectionValue(Ordinary)),
+    ],
+    neutral_profile = neutral
+};

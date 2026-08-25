@@ -2,7 +2,7 @@
 //!
 //! A package is a directory with a manifest and a source root. The tree under
 //! that root is its `mod` declarations — `src/lib.musa` names the top level,
-//! and a directory module names its own children in `mod.musa` — and it is
+//! and a directory module names itself and its children in `mod.musa` — and it is
 //! *only* those declarations. Nothing here scans a directory looking for
 //! importable files.
 //!
@@ -130,6 +130,11 @@ impl<'a> Package<'a> {
                 self.modules.insert(path, text);
             } else if let Some(text) = available.get(branch.as_str()) {
                 reached.insert(branch.clone());
+                // A directory module is a module as well as the namespace of
+                // its children. This is what makes `import std::performance`
+                // read `performance/mod.musa`; requiring a dummy leaf facade
+                // would make the filesystem shape leak into source paths.
+                self.modules.insert(path.clone(), text);
                 self.descend(available, reached, &format!("{path}::"), &branch, text);
             } else {
                 self.faults.push(Fault::Missing {
@@ -174,8 +179,8 @@ mod tests {
         assert_eq!(package.faults(), &[]);
         assert_eq!(
             package.modules().map(|(path, _)| path).collect::<Vec<_>>(),
-            ["core", "tonal::harmony"],
-            "a directory module is a path segment, not a module of its own"
+            ["core", "tonal", "tonal::harmony"],
+            "a directory module is importable and also namespaces its children"
         );
     }
 

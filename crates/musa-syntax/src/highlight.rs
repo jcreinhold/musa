@@ -500,7 +500,8 @@ impl TokenClass {
     }
 }
 
-/// The keywords a module name may borrow: `harmony`, `pitch`, `scale` — the
+/// The keywords a module name may borrow: `harmony`, `performance`, `pitch`,
+/// `scale` — the
 /// parser's `MODULE_NAME` minus `Identifier`.
 ///
 /// The lexer writes the keyword token wherever the word appears, and the
@@ -514,7 +515,12 @@ impl TokenClass {
 /// `stdlib/src/list.musa` and `stdlib/src/option.musa` are no longer here
 /// because their names are no longer keywords: the types they hold are
 /// `List` and `Option`, and a file name is written the way a file name is.
-pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[SyntaxKind::HarmonyKw, SyntaxKind::PitchKw, SyntaxKind::ScaleKw];
+pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[
+    SyntaxKind::HarmonyKw,
+    SyntaxKind::PerformanceKw,
+    SyntaxKind::PitchKw,
+    SyntaxKind::ScaleKw,
+];
 
 /// Every token of the source with its class, *where it stands* accounted
 /// for.

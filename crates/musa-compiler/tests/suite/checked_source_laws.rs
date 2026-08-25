@@ -4,7 +4,8 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    CompileOptions, SourceDocument, SourceSchema, checked_source_value, checked_standard_studio_vocabulary,
+    CompileOptions, SourceDocument, SourceSchema, checked_source_value, checked_standard_performance_vocabulary,
+    checked_standard_studio_vocabulary,
 };
 use musa_dsp::{
     ExactQuantityError, ParameterValueKind, PortKindTag, SoundDimension, SoundUnit, StudioDeclarationKind,
@@ -211,6 +212,106 @@ fn standard_studio_vocabulary_is_checked_source_data() {
     );
     check_studio_vocabulary(&vocabulary).expect("source contracts agree with registered primitive support");
     assert_eq!(vocabulary.exact_source_bytes(), artifact.exact_bytes());
+}
+
+#[test]
+fn standard_performance_vocabulary_is_checked_source_data() {
+    let artifact = checked_standard_performance_vocabulary()
+        .unwrap_or_else(|diagnostics| panic!("standard performance vocabulary should check: {diagnostics:#?}"));
+    assert_eq!(
+        artifact.schema().name(),
+        "std.performance.PerformanceVocabularyArtifact"
+    );
+    assert!(artifact.has_valid_framing());
+    assert!(!artifact.exact_bytes().is_empty());
+}
+
+fn checked_performance_value(binding: &str, declaration: &str, root_type: &str) -> musa_compiler::CheckedSource {
+    let source = format!(
+        r#"import std::performance;
+{declaration}
+piece "Performance value" {{
+    meter 4/4;
+    key c major;
+    score {{ part proof {{ voice observed {{ rest/1 }} }} }}
+}}
+"#
+    );
+    checked_source_value(
+        &SourceDocument::new(source, "performance-value-laws.musa"),
+        &CompileOptions::default(),
+        binding,
+        &SourceSchema::new(format!("test.performance.{root_type}"), root_type, 1),
+    )
+    .unwrap_or_else(|diagnostics| panic!("performance value should check: {diagnostics:#?}"))
+}
+
+#[test]
+fn a_control_kind_is_inferred_by_the_general_pattern_unifier() {
+    let artifact = checked_performance_value(
+        "inferred",
+        "let inferred: SomeControl = some_control(expression, NormalizedValue(1/2));",
+        "SomeControl",
+    );
+    assert!(artifact.has_valid_framing());
+}
+
+#[test]
+fn disagreeing_control_indices_are_refused_without_a_sound_specific_fallback() {
+    let source = r#"import std::performance;
+let bad: SomeControl = some_control(expression, ConnectionValue(Legato));
+piece "Bad control" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    assert!(
+        checked_source_value(
+            &SourceDocument::new(source, "bad-control-index.musa"),
+            &CompileOptions::default(),
+            "bad",
+            &SourceSchema::new("test.performance.SomeControl", "SomeControl", 1),
+        )
+        .is_err(),
+        "a normalized key and phrase value must not acquire a guessed common kind"
+    );
+}
+
+#[test]
+fn an_unresolved_control_index_is_refused_instead_of_defaulted() {
+    let source = r#"import std::performance;
+fn unstated<{kind: ControlKind}>() -> ControlKind { kind }
+let ambiguous: ControlKind = unstated();
+piece "Unresolved control" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    assert!(
+        checked_source_value(
+            &SourceDocument::new(source, "unresolved-control-index.musa"),
+            &CompileOptions::default(),
+            "ambiguous",
+            &SourceSchema::new("test.performance.ControlKind", "ControlKind", 1),
+        )
+        .is_err(),
+        "neither standard controls nor sound code may default an unsolved index"
+    );
+}
+
+#[test]
+fn the_source_hairpin_law_has_exact_endpoints_and_midpoint() {
+    for (binding, expression, expected) in [
+        ("start", "hairpin_expression(1/4, 3/4, 0/1)", "1/4"),
+        ("middle", "hairpin_expression(1/4, 3/4, 1/2)", "1/2"),
+        ("end", "hairpin_expression(1/4, 3/4, 1/1)", "3/4"),
+    ] {
+        let actual = checked_performance_value(binding, &format!("let {binding}: Ratio = {expression};"), "Ratio");
+        let wanted = checked_performance_value("wanted", &format!("let wanted: Ratio = {expected};"), "Ratio");
+        assert_eq!(actual.root().kind(), wanted.root().kind());
+    }
 }
 
 #[test]
