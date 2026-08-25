@@ -24,6 +24,15 @@ frame at a time. Make every time, rounding, collision, ordering, and identity de
 
 ## Design
 
+> **Cutover-order repair.** The pre-cutover `PerformancePlan` cannot be a caller of this operation. Its
+> `PerformanceEvent` is already frame-tagged, contains approximate `f32`/`f64` interpretation, and is consumed by the
+> old public graph plan. Wrapping those events in a `Schedule` would schedule a schedule, invent canonical encodings for
+> floats, and leave two frame authorities. Converting the resulting `EventBatch<A>` to sound instead requires the
+> registered instrument primitives and one-frame plan that prompt 173 owns. This prompt therefore installs and proves
+> the checked scheduler without adapting `PerformancePlan`; prompt 173 cuts the production audio callers directly from
+> exact admitted gesture tracks to this source, and prompt 174 deletes `PerformancePlan` and checks that no second frame
+> schedule survives. Note 24 records why this is a dependency repair rather than a weakened scheduling judgment.
+
 Implement
 
 ```text
@@ -50,7 +59,8 @@ output frame `j`; positive occurrences use `[start,end)`.
 ## Target
 
 - Exact `TimeMap`, `SchedulePolicy`, decision/error records, event batches/handles, source machine, and batch merger.
-- Migration of existing frame-scheduling callers to the checked operation with no second frame-event container.
+- A scheduler facade ready for prompt 173's direct production cutover; no adapter from the already-frame-tagged
+  `PerformancePlan` and no second frame-event container introduced here.
 - Laws for exact-once boundaries, determinism, monotonicity, half-open spans, point/collapsed events, handle renaming,
   unequal tracks, occurrence-local `together`, additive `follow`, finished-state memory, seek, and adversarial bounds.
 - Plain diagnostics that show written boundary, exact physical value, chosen frame, and policy.

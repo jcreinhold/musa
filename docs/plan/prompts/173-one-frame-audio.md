@@ -45,6 +45,8 @@ source language again.
 ## Target
 
 - Complete native processor migration to registered primitives and one-frame reference execution.
+- Direct cutover of production audio preparation from exact admitted gesture tracks through prompt 172's `Schedule`;
+  never wrap or translate the legacy already-frame-tagged `PerformancePlan`.
 - One `prepare_audio`/prepared-machine facade shared by offline and live paths.
 - Clean deletion of caller-block feedback, block-rate modulation meaning, and obsolete public graph APIs.
 - Differential partition, feedback, envelope, modulation, random-seed, NaN, silence, allocation, lock, I/O, logging, and
