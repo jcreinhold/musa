@@ -5,16 +5,6 @@
       "defect": "processor-hover-gap",
       "observation": "built-in studio processors are plain identifiers and receive no processor hover",
       "repaired_by": "studio-vocabulary"
-    },
-    {
-      "defect": "graph-topology-modulation-address",
-      "observation": "modulate resolves through a processor-name-or-label graph address rather than a stable declared control path",
-      "repaired_by": "expressive-control-realization"
-    },
-    {
-      "defect": "ignored-parameter-event",
-      "observation": "PerformanceEvent::Parameter is sorted and delivered but ignored by the render plan",
-      "repaired_by": "expressive-control-realization"
     }
   ]
 }

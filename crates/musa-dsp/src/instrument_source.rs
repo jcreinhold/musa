@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use musa_calculus::{CheckedSource, SourceDatum, SourceDatumKind, SourceSchema};
+use num_rational::Ratio;
 use thiserror::Error;
 
 const SCHEMA_NAME: &str = "std.sound.instrument.InstrumentExecutionArtifact";
@@ -25,6 +26,9 @@ pub struct InstrumentControlContract {
     kind: String,
     namespace: String,
     name: String,
+    update_rate: String,
+    default_ratio: Option<Ratio<i64>>,
+    default_symbol: Option<String>,
     default_exact: Arc<[u8]>,
 }
 
@@ -41,8 +45,67 @@ impl InstrumentControlContract {
         &self.name
     }
 
+    pub fn update_rate(&self) -> &str {
+        &self.update_rate
+    }
+
+    pub const fn default_ratio(&self) -> Option<Ratio<i64>> {
+        self.default_ratio
+    }
+
+    pub fn default_symbol(&self) -> Option<&str> {
+        self.default_symbol.as_deref()
+    }
+
     pub fn default_exact_bytes(&self) -> &[u8] {
         &self.default_exact
+    }
+}
+
+/// One read-only exact mapping projected from a checked private source body.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InstrumentControlMapping {
+    kind: String,
+    namespace: String,
+    name: String,
+    node: String,
+    parameter: String,
+    minimum: Option<Ratio<i64>>,
+    maximum: Option<Ratio<i64>>,
+    inverse: bool,
+    connection_values: Option<[Ratio<i64>; 3]>,
+}
+
+impl InstrumentControlMapping {
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn node(&self) -> &str {
+        &self.node
+    }
+
+    pub fn parameter(&self) -> &str {
+        &self.parameter
+    }
+
+    pub const fn transfer(&self) -> Option<(Ratio<i64>, Ratio<i64>, bool)> {
+        match (self.minimum, self.maximum) {
+            (Some(minimum), Some(maximum)) => Some((minimum, maximum, self.inverse)),
+            _ => None,
+        }
+    }
+
+    pub const fn connection_values(&self) -> Option<[Ratio<i64>; 3]> {
+        self.connection_values
     }
 }
 
@@ -75,6 +138,7 @@ pub struct InstrumentContract {
     name: String,
     summary: String,
     controls: Vec<InstrumentControlContract>,
+    mappings: Vec<InstrumentControlMapping>,
     techniques: Vec<InstrumentTechniqueContract>,
     channels: u8,
     implementation_id: String,
@@ -96,6 +160,10 @@ impl InstrumentContract {
 
     pub fn controls(&self) -> &[InstrumentControlContract] {
         &self.controls
+    }
+
+    pub fn mappings(&self) -> &[InstrumentControlMapping] {
+        &self.mappings
     }
 
     pub fn techniques(&self) -> &[InstrumentTechniqueContract] {
@@ -172,7 +240,9 @@ pub fn decode_instrument_contracts(source: &CheckedSource) -> Result<InstrumentC
         ));
     }
     let mut declarations = Vec::with_capacity(instruments.len());
-    for (mut declaration, (implementation_id, implementation_exact)) in instruments.into_iter().zip(implementations) {
+    for (mut declaration, (implementation_id, mappings, implementation_exact)) in
+        instruments.into_iter().zip(implementations)
+    {
         if declaration.declaration_id != implementation_id {
             return Err(malformed(
                 "root.implementation_contracts",
@@ -180,6 +250,31 @@ pub fn decode_instrument_contracts(source: &CheckedSource) -> Result<InstrumentC
             ));
         }
         declaration.implementation_id = implementation_id;
+        for mapping in &mappings {
+            if !declaration.controls.iter().any(|control| {
+                control.kind == mapping.kind && control.namespace == mapping.namespace && control.name == mapping.name
+            }) {
+                return Err(malformed(
+                    "root.implementation_contracts",
+                    "every private mapping to implement one exposed control at the same source index",
+                ));
+            }
+        }
+        let mut targets = std::collections::HashSet::new();
+        if mappings.iter().any(|mapping| {
+            !targets.insert((
+                mapping.namespace.as_str(),
+                mapping.name.as_str(),
+                mapping.node.as_str(),
+                mapping.parameter.as_str(),
+            ))
+        }) {
+            return Err(malformed(
+                "root.implementation_contracts",
+                "distinct targets per mapped control",
+            ));
+        }
+        declaration.mappings = mappings;
         declaration.implementation_exact = implementation_exact;
         declarations.push(declaration);
     }
@@ -205,6 +300,7 @@ fn instrument(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentContract, 
         name: text(name, &format!("{path}.signature.name"))?,
         summary: text(summary, &format!("{path}.signature.summary"))?,
         controls: list(controls, &format!("{path}.signature.controls"), control)?,
+        mappings: Vec::new(),
         techniques: list(techniques, &format!("{path}.signature.techniques"), technique)?,
         channels: match constructor(channels) {
             Some("Mono") => 1,
@@ -216,10 +312,14 @@ fn instrument(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentContract, 
     })
 }
 
-fn implementation(datum: SourceDatum<'_>, path: &str) -> Result<(String, Arc<[u8]>), InstrumentContractsError> {
-    let [declaration_id, _mappings] = fields::<2>(datum, "InstrumentImplementationContract", path)?;
+fn implementation(
+    datum: SourceDatum<'_>,
+    path: &str,
+) -> Result<(String, Vec<InstrumentControlMapping>, Arc<[u8]>), InstrumentContractsError> {
+    let [declaration_id, mappings] = fields::<2>(datum, "InstrumentImplementationContract", path)?;
     Ok((
         text(declaration_id, &format!("{path}.declaration_id"))?,
+        list(mappings, &format!("{path}.mappings"), mapping)?,
         datum.exact_bytes().into(),
     ))
 }
@@ -233,16 +333,130 @@ fn control(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentControlContra
     if constructor(requirement_kind) != Some(kind.as_str()) {
         return Err(malformed(path, "one shared control-kind index"));
     }
-    let [key_kind, namespace, name, _, _] = fields::<5>(key, "Key", path)?;
+    let [key_kind, namespace, name, _, update_rate] = fields::<5>(key, "Key", path)?;
     if constructor(key_kind) != Some(kind.as_str()) {
         return Err(malformed(path, "a key at the requirement's control kind"));
     }
+    let default_ratio = numeric_control_value(default, &kind, &format!("{path}.default_value"))?;
+    let default_symbol = symbolic_control_value(default, &kind, &format!("{path}.default_value"))?;
     Ok(InstrumentControlContract {
         kind,
         namespace: text(namespace, &format!("{path}.namespace"))?,
         name: text(name, &format!("{path}.name"))?,
+        update_rate: constructor(update_rate)
+            .ok_or_else(|| malformed(&format!("{path}.update_rate"), "an UpdateRate constructor"))?
+            .to_owned(),
+        default_ratio,
+        default_symbol,
         default_exact: default.exact_bytes().into(),
     })
+}
+
+fn mapping(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentControlMapping, InstrumentContractsError> {
+    let [kind, mapping] = fields::<2>(datum, "MapsControl", path)?;
+    let kind = constructor(kind)
+        .ok_or_else(|| malformed(&format!("{path}.kind"), "a ControlKind constructor"))?
+        .to_owned();
+    let (key, target, minimum, maximum, inverse, connection_values) = match constructor(mapping) {
+        Some("NormalizedMapping") => {
+            let [mapping_kind, key, target, transfer] = fields::<4>(mapping, "NormalizedMapping", path)?;
+            if constructor(mapping_kind) != Some(kind.as_str()) || kind != "Normalized" {
+                return Err(malformed(path, "one shared normalized mapping index"));
+            }
+            let [minimum, maximum] = transfer
+                .fields()
+                .ok_or_else(|| malformed(path, "a normalized transfer"))?
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| malformed(path, "a normalized transfer"))?
+                .try_into()
+                .map_err(|_| malformed(path, "two transfer endpoints"))?;
+            let inverse = match constructor(transfer) {
+                Some("LinearTransfer") => false,
+                Some("InverseTransfer") => true,
+                _ => return Err(malformed(path, "LinearTransfer or InverseTransfer")),
+            };
+            (
+                key,
+                target,
+                Some(ratio(minimum, path)?),
+                Some(ratio(maximum, path)?),
+                inverse,
+                None,
+            )
+        }
+        Some("ExactRatioMapping") => {
+            let [key, target] = fields::<2>(mapping, "ExactRatioMapping", path)?;
+            if kind != "ExactRatio" {
+                return Err(malformed(path, "one shared exact-ratio mapping index"));
+            }
+            (key, target, None, None, false, None)
+        }
+        Some("ConnectionMapping") => {
+            let [key, target, transfer] = fields::<3>(mapping, "ConnectionMapping", path)?;
+            if kind != "PhraseConnection" {
+                return Err(malformed(path, "one shared phrase-connection mapping index"));
+            }
+            let [detached, ordinary, legato] = fields::<3>(transfer, "ConnectionTransfer", path)?;
+            (
+                key,
+                target,
+                None,
+                None,
+                false,
+                Some([ratio(detached, path)?, ratio(ordinary, path)?, ratio(legato, path)?]),
+            )
+        }
+        _ => return Err(malformed(path, "a ControlMapping constructor")),
+    };
+    let [key_kind, namespace, name, _, _] = fields::<5>(key, "Key", path)?;
+    if constructor(key_kind) != Some(kind.as_str()) {
+        return Err(malformed(path, "a key at the mapping's control kind"));
+    }
+    let [node, parameter] = fields::<2>(target, "ParameterTarget", path)?;
+    Ok(InstrumentControlMapping {
+        kind,
+        namespace: text(namespace, &format!("{path}.namespace"))?,
+        name: text(name, &format!("{path}.name"))?,
+        node: text(node, &format!("{path}.target.node"))?,
+        parameter: text(parameter, &format!("{path}.target.parameter"))?,
+        minimum,
+        maximum,
+        inverse,
+        connection_values,
+    })
+}
+
+fn symbolic_control_value(
+    datum: SourceDatum<'_>,
+    kind: &str,
+    path: &str,
+) -> Result<Option<String>, InstrumentContractsError> {
+    if kind != "PhraseConnection" {
+        return Ok(None);
+    }
+    let [connection] = fields::<1>(datum, "ConnectionValue", path)?;
+    constructor(connection)
+        .map(str::to_owned)
+        .map(Some)
+        .ok_or_else(|| malformed(path, "a Connection constructor"))
+}
+
+fn numeric_control_value(
+    datum: SourceDatum<'_>,
+    kind: &str,
+    path: &str,
+) -> Result<Option<Ratio<i64>>, InstrumentContractsError> {
+    match kind {
+        "Normalized" => {
+            let [value] = fields::<1>(datum, "NormalizedValue", path)?;
+            Ok(Some(ratio(value, path)?))
+        }
+        "ExactRatio" => {
+            let [value] = fields::<1>(datum, "ExactRatioValue", path)?;
+            Ok(Some(ratio(value, path)?))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn technique(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentTechniqueContract, InstrumentContractsError> {
@@ -317,6 +531,21 @@ fn text(datum: SourceDatum<'_>, path: &str) -> Result<String, InstrumentContract
                 .map_err(|_| malformed(path, "UTF-8 Text"))
         }
         _ => Err(malformed(path, "Text")),
+    }
+}
+
+fn ratio(datum: SourceDatum<'_>, path: &str) -> Result<Ratio<i64>, InstrumentContractsError> {
+    match datum.kind() {
+        Some(SourceDatumKind::Literal { type_name, bytes }) if type_name.ends_with("Ratio") && bytes.len() == 16 => {
+            let (numerator, denominator) = bytes.split_at(8);
+            let numerator = i64::from_be_bytes(numerator.try_into().map_err(|_| malformed(path, "Ratio"))?);
+            let denominator = i64::from_be_bytes(denominator.try_into().map_err(|_| malformed(path, "Ratio"))?);
+            if denominator == 0 {
+                return Err(malformed(path, "a nonzero Ratio denominator"));
+            }
+            Ok(Ratio::new(numerator, denominator))
+        }
+        _ => Err(malformed(path, "Ratio")),
     }
 }
 

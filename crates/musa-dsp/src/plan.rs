@@ -34,6 +34,9 @@ pub(crate) struct RenderPlan {
 }
 
 struct Step {
+    node: NodeId,
+    processor: ProcessorSpec,
+    written_params: Vec<(&'static str, f32)>,
     instance: ProcessorInstance,
     /// Buffer index per input port (silence/zero buffers when unconnected).
     inputs: Vec<usize>,
@@ -45,6 +48,33 @@ struct Step {
     event_input: Option<usize>,
     /// Control connections into this node's parameters (§13.7).
     modulations: Vec<ParamLink>,
+    /// Source-mapped parameters, resolved to this private prepared step.
+    automations: Vec<AutomatedParameter>,
+}
+
+/// One private parameter handle valid only for this prepared plan.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct PreparedParameterId {
+    step: usize,
+    parameter: usize,
+}
+
+/// One already-evaluated parameter instruction. No source key or function
+/// crosses into the running machine.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct PreparedParameterEvent {
+    pub(crate) target: PreparedParameterId,
+    pub(crate) value: f32,
+    /// Linear transitions advance after the current frame and reach the target
+    /// exactly after this many frame boundaries. Zero is an ordered step.
+    pub(crate) ramp_frames: u64,
+}
+
+struct AutomatedParameter {
+    descriptor: ParameterDescriptor,
+    current: f32,
+    target: f32,
+    remaining: u64,
 }
 
 /// One resolved modulation: where the control value comes from, what the
@@ -56,6 +86,8 @@ struct ParamLink {
     descriptor: ParameterDescriptor,
     /// The value the spec wrote, which the modulation combines with.
     base: f32,
+    /// Source-mapped base parameter on the same step, when present.
+    automation: Option<usize>,
     /// The value last handed to the processor — the smoother's state.
     current: f32,
     /// One-pole coefficient applied per reference frame.
@@ -159,7 +191,11 @@ impl ProcessorInstance {
                 allocator.note_on(
                     handle,
                     tuning.frequency(&gesture.pitch()) as f32,
-                    ratio_to_f32(gesture.amplitude()),
+                    if gesture.exact_source_bytes().is_empty() {
+                        ratio_to_f32(gesture.amplitude())
+                    } else {
+                        1.0
+                    },
                     0.0,
                 );
             }
@@ -471,18 +507,23 @@ pub(crate) fn prepare_routed_plan(
                     buffer: port_buffers.get(&(edge.from, edge.from_port)).copied().unwrap_or(0),
                     descriptor,
                     base,
+                    automation: None,
                     current: base,
                     coefficient: frame_coefficient(descriptor.smoothing, options.sample_rate),
                 })
             })
             .collect();
         schedule.push(Step {
+            node: *id,
+            processor,
+            written_params: spec.params_of(*id).to_vec(),
             instance: ProcessorInstance::instantiate(spec, *id, processor, options.sample_rate, options.render_seed),
             inputs,
             outputs,
             taken,
             event_input,
             modulations,
+            automations: Vec::new(),
         });
     }
 
@@ -689,6 +730,94 @@ fn channels_of(kind: PortKind) -> usize {
 }
 
 impl RenderPlan {
+    /// Resolve one checked private source target to a compact plan-local id.
+    pub(crate) fn resolve_parameter(
+        &mut self,
+        node: NodeId,
+        name: &str,
+    ) -> Result<Option<PreparedParameterId>, GraphError> {
+        let Some(step_index) = self.schedule.iter().position(|step| step.node == node) else {
+            return Ok(None);
+        };
+        let step = self.schedule.get_mut(step_index).ok_or(GraphError::UnknownNode(node))?;
+        if let Some(parameter) = step
+            .automations
+            .iter()
+            .position(|parameter| parameter.descriptor.name == name)
+        {
+            return Ok(Some(PreparedParameterId {
+                step: step_index,
+                parameter,
+            }));
+        }
+        let descriptor = step
+            .processor
+            .descriptor(name)
+            .ok_or_else(|| GraphError::InvalidParameter {
+                node,
+                name: name.to_owned(),
+            })?;
+        let current = step
+            .written_params
+            .iter()
+            .find(|(candidate, _)| *candidate == descriptor.name)
+            .map_or(descriptor.default, |(_, value)| *value);
+        let parameter = step.automations.len();
+        step.automations.push(AutomatedParameter {
+            descriptor,
+            current,
+            target: current,
+            remaining: 0,
+        });
+        for link in &mut step.modulations {
+            if link.descriptor.name == descriptor.name {
+                link.automation = Some(parameter);
+            }
+        }
+        Ok(Some(PreparedParameterId {
+            step: step_index,
+            parameter,
+        }))
+    }
+
+    /// Whether the expert studio source explicitly set this private target.
+    /// Signature defaults fill omissions; they do not erase a value the
+    /// selected instrument implementation already wrote.
+    pub(crate) fn parameter_is_written(&self, target: PreparedParameterId) -> bool {
+        self.schedule
+            .get(target.step)
+            .and_then(|step| {
+                step.automations
+                    .get(target.parameter)
+                    .map(|parameter| (step, parameter))
+            })
+            .is_some_and(|(step, parameter)| {
+                step.written_params
+                    .iter()
+                    .any(|(name, _)| *name == parameter.descriptor.name)
+            })
+    }
+
+    /// Apply already-resolved events in their source-stable same-frame order.
+    pub(crate) fn apply_parameter_events(&mut self, events: &[PreparedParameterEvent]) {
+        for event in events {
+            let Some(step) = self.schedule.get_mut(event.target.step) else {
+                continue;
+            };
+            let Some(parameter) = step.automations.get_mut(event.target.parameter) else {
+                continue;
+            };
+            let (low, high) = parameter.descriptor.range;
+            let value = event.value.clamp(low, high);
+            parameter.target = value;
+            parameter.remaining = event.ramp_frames;
+            if event.ramp_frames == 0 {
+                parameter.current = value;
+                step.instance
+                    .set_param(parameter.descriptor.name, value, self.sample_rate as f32);
+            }
+        }
+    }
     /// Deliver one prepared lane's events to only the instrument instances
     /// bound to that lane. This mutates no graph buffers and allocates nothing.
     pub(crate) fn apply_events(&mut self, input: usize, events: &[EventMessage<Gesture>], tuning: Tuning) {
@@ -708,6 +837,7 @@ impl RenderPlan {
         let sample_rate = f64::from(self.sample_rate);
         for step in &mut self.schedule {
             process_step(step, &mut self.buffers, 1, sample_rate, FRAME_WIDTH);
+            advance_automations(step, self.sample_rate as f32);
         }
         self.master_frame(FRAME_WIDTH)
     }
@@ -758,18 +888,37 @@ fn apply_modulations(step: &mut Step, buffers: &[Box<[f32]>], sample_rate: f32) 
         // parameter keeps what the patch wrote rather than propagating a NaN
         // into a filter coefficient (§17.5's NaN-freedom).
         let signal = signal.filter(|value| value.is_finite()).unwrap_or(link.base);
+        let base = link
+            .automation
+            .and_then(|index| step.automations.get(index))
+            .map_or(link.base, |parameter| parameter.current);
         let combined = match link.descriptor.combination {
             Combination::Replace => signal,
-            Combination::Multiply => link.base * signal,
+            Combination::Multiply => base * signal,
         };
         let (low, high) = link.descriptor.range;
         let target = if combined.is_finite() {
             combined.clamp(low, high)
         } else {
-            link.base
+            base
         };
         link.current = link.coefficient.mul_add(target - link.current, link.current);
         step.instance.set_param(link.descriptor.name, link.current, sample_rate);
+    }
+}
+
+fn advance_automations(step: &mut Step, sample_rate: f32) {
+    for parameter in &mut step.automations {
+        if parameter.remaining == 0 {
+            continue;
+        }
+        parameter.current += (parameter.target - parameter.current) / parameter.remaining as f32;
+        parameter.remaining = parameter.remaining.saturating_sub(1);
+        if parameter.remaining == 0 {
+            parameter.current = parameter.target;
+        }
+        step.instance
+            .set_param(parameter.descriptor.name, parameter.current, sample_rate);
     }
 }
 
@@ -1190,5 +1339,78 @@ fn process(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod control_mapping_laws {
+    use super::*;
+
+    fn prepared_gain() -> Result<(RenderPlan, PreparedParameterId), String> {
+        let spec = crate::instrument::poly_sine_spec(1);
+        let mut plan = prepare_plan(
+            &spec,
+            &GraphOptions {
+                sample_rate: 48_000,
+                render_seed: 0,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+        let target = plan
+            .resolve_parameter(NodeId(0), "gain")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "the synth should be reachable".to_owned())?;
+        Ok((plan, target))
+    }
+
+    fn current(plan: &RenderPlan, target: PreparedParameterId) -> Option<f32> {
+        plan.schedule
+            .get(target.step)
+            .and_then(|step| step.automations.get(target.parameter))
+            .map(|parameter| parameter.current)
+    }
+
+    #[test]
+    fn a_prepared_linear_ramp_reaches_its_endpoint_exactly() -> Result<(), String> {
+        let (mut plan, target) = prepared_gain()?;
+        plan.apply_parameter_events(&[PreparedParameterEvent {
+            target,
+            value: 0.0,
+            ramp_frames: 4,
+        }]);
+        let mut reached = Vec::new();
+        for _ in 0..4 {
+            let _ = plan.finish_step();
+            reached.push(current(&plan, target).ok_or_else(|| "resolved gain disappeared".to_owned())?);
+        }
+        assert_eq!(
+            reached.into_iter().map(f32::to_bits).collect::<Vec<_>>(),
+            [0.75, 0.5, 0.25, 0.0].map(f32::to_bits)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn same_frame_parameter_events_follow_source_order() -> Result<(), String> {
+        let (mut plan, target) = prepared_gain()?;
+        plan.apply_parameter_events(&[
+            PreparedParameterEvent {
+                target,
+                value: 0.25,
+                ramp_frames: 0,
+            },
+            PreparedParameterEvent {
+                target,
+                value: 0.75,
+                ramp_frames: 0,
+            },
+        ]);
+        assert_eq!(
+            current(&plan, target)
+                .ok_or_else(|| "resolved gain disappeared".to_owned())?
+                .to_bits(),
+            0.75f32.to_bits()
+        );
+        Ok(())
     }
 }

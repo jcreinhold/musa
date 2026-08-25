@@ -12,6 +12,7 @@ import std::list;
 data ControlKind {
     Normalized,
     PhraseConnection,
+    ExactRatio,
 }
 
 data UpdateRate {
@@ -43,6 +44,7 @@ data Connection {
 data ControlValue: (kind: ControlKind) -> Type {
     NormalizedValue(value: Ratio): ControlValue(Normalized),
     ConnectionValue(connection: Connection): ControlValue(PhraseConnection),
+    ExactRatioValue(value: Ratio): ControlValue(ExactRatio),
 }
 
 // Existential packaging retains the shared index while allowing unlike
@@ -194,6 +196,8 @@ record LegacyMarkTiming {
 record PerformanceProfile {
     dynamics: List(DynamicRule);
     marks: List(MarkRule);
+    controls: List(SomeControl);
+    default_connection: Option(Connection);
 }
 
 /// Translate one compatibility timing declaration into source-owned intent.
@@ -265,7 +269,9 @@ fn profile_from_legacy(
 ) -> PerformanceProfile {
     PerformanceProfile {
         dynamics = dynamics,
-        marks = timing_rules(timings)
+        marks = timing_rules(timings),
+        controls = [],
+        default_connection = None
     }
 }
 
@@ -380,6 +386,20 @@ private fn level_of(policy: PerformanceProfile, view: NotationView) -> Ratio {
     }
 }
 
+/// Realize an explicit or profile-default phrase relation as one typed control.
+private fn connection_controls(policy: PerformanceProfile, view: NotationView) -> List(
+    SomeControl,
+) {
+    let selected: Option(Connection) = match view.connection {
+        None -> policy.default_connection,
+        Some(connection) -> Some(connection),
+    };
+    match selected {
+        None -> [],
+        Some(connection) -> [some_control(phrase_relation, ConnectionValue(connection))],
+    }
+}
+
 // Exact affine interpolation for a hairpin sample. `reached` is the result of
 // applying its source `Progress` at normalized local time; no sampling density
 // or physical mapping is chosen here.
@@ -400,7 +420,10 @@ fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult {
     };
     let controls: List(SomeControl) = Cons(
         some_control(expression, NormalizedValue(sounding)),
-        marked_controls(policy.marks, view.marks),
+        concat(
+            marked_controls(policy.marks, view.marks),
+            concat(connection_controls(policy, view), policy.controls),
+        ),
     );
     let timing: MarkTiming = mark_timing(policy.marks, view.marks, 1/1, 0/1, 1/1);
     ProfileResult {
@@ -482,7 +505,9 @@ let neutral: PerformanceProfile = PerformanceProfile {
                 },
             ]
         },
-    ]
+    ],
+    controls = [],
+    default_connection = None
 };
 
 /// Versioned finite root frozen by the generic checked-source boundary.

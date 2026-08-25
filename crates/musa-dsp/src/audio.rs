@@ -9,9 +9,10 @@
 use musa_calculus::CheckedSource;
 use musa_events::{Duration, PerformedTime, PhysicalTime, Position, empty};
 use musa_score::{Gesture, GesturePlan, PartId, Tuning};
+use num_rational::Ratio;
 
 use crate::StudioSpec;
-use crate::plan::{RenderPlan, prepare_routed_plan};
+use crate::plan::{PreparedParameterEvent, PreparedParameterId, RenderPlan, prepare_routed_plan};
 use crate::primitive::{AudioLimits, resources};
 use crate::schedule::{
     AudioFormat, ChannelLayout, Schedule, ScheduleError, SchedulePolicy, ScheduledSource, TimeDecision, TimeMap,
@@ -110,6 +111,13 @@ struct InstrumentInstanceBinding {
 struct PreparedLane {
     instance: PreparedInstrumentId,
     source: ScheduledSource<Gesture>,
+    controls: Vec<PreparedControlBatch>,
+    control_cursor: usize,
+}
+
+struct PreparedControlBatch {
+    frame: u64,
+    events: Box<[PreparedParameterEvent]>,
 }
 
 impl PreparedAudio {
@@ -139,6 +147,7 @@ impl PreparedAudio {
         self.position = frame.min(self.total_frames);
         for lane in &mut self.lanes {
             lane.source.seek(self.position);
+            lane.control_cursor = lane.controls.partition_point(|batch| batch.frame < self.position);
         }
     }
 
@@ -150,6 +159,12 @@ impl PreparedAudio {
             return [0.0; 2];
         }
         for lane in &mut self.lanes {
+            if let Some(batch) = lane.controls.get(lane.control_cursor)
+                && batch.frame == self.position
+            {
+                self.plan.apply_parameter_events(&batch.events);
+                lane.control_cursor = lane.control_cursor.saturating_add(1);
+            }
             let (_, messages) = lane.source.step();
             self.plan.apply_events(lane.instance.0, messages, self.tuning);
         }
@@ -214,6 +229,11 @@ fn prepare_audio(
     studio: &StudioSpec,
     options: AudioOptions,
 ) -> Result<PreparedAudio, AudioPrepareError> {
+    let basic = instrument_contracts
+        .declaration("std.sound.basic_sine@1")
+        .ok_or_else(|| {
+            AudioPrepareError::InstrumentContract("the edition-one basic instrument is absent".to_owned())
+        })?;
     if options.format.layout() != ChannelLayout::Stereo {
         return Err(AudioPrepareError::UnsupportedLayout(options.format.layout()));
     }
@@ -264,9 +284,22 @@ fn prepare_audio(
             _instance: PreparedInstrumentId(instance),
         });
     }
-    let plan = prepare_routed_plan(&graph, &graph_options, &event_inputs)
+    let mut plan = prepare_routed_plan(&graph, &graph_options, &event_inputs)
         .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let (schedule, lane_schedules) = schedule_gestures(gestures, options)?;
+    let mut lane_controls = Vec::with_capacity(lane_schedules.len());
+    for (instance, lane_schedule) in lane_schedules.iter().enumerate() {
+        let input = part_inputs.get(instance).ok_or_else(|| {
+            AudioPrepareError::StudioValue("a scheduled lane has no prepared instrument input".to_owned())
+        })?;
+        let declaration = instrument_contracts.declaration(&input.declaration).unwrap_or(basic);
+        lane_controls.push(prepare_control_batches(
+            &mut plan,
+            input.node,
+            declaration,
+            lane_schedule,
+        )?);
+    }
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
     let total_frames = schedule
@@ -279,10 +312,13 @@ fn prepare_audio(
         })?;
     let lanes = lane_schedules
         .iter()
+        .zip(lane_controls)
         .enumerate()
-        .map(|(instance, schedule)| PreparedLane {
+        .map(|(instance, (schedule, controls))| PreparedLane {
             instance: PreparedInstrumentId(instance),
             source: schedule.source(),
+            controls,
+            control_cursor: 0,
         })
         .collect();
     Ok(PreparedAudio {
@@ -297,6 +333,193 @@ fn prepare_audio(
         total_frames,
         position: 0,
     })
+}
+
+struct ResolvedControlMapping {
+    kind: String,
+    namespace: String,
+    name: String,
+    continuous: bool,
+    target: PreparedParameterId,
+    transfer: Option<(Ratio<i64>, Ratio<i64>, bool)>,
+    connection_values: Option<[Ratio<i64>; 3]>,
+}
+
+fn prepare_control_batches(
+    plan: &mut RenderPlan,
+    node: crate::spec::NodeId,
+    declaration: &crate::InstrumentContract,
+    schedule: &Schedule<PerformedTime, Gesture>,
+) -> Result<Vec<PreparedControlBatch>, AudioPrepareError> {
+    use std::collections::BTreeMap;
+
+    let mut mappings = Vec::with_capacity(declaration.mappings().len());
+    let mut defaults = Vec::new();
+    for mapping in declaration.mappings() {
+        if mapping.node() != "voice" {
+            return Err(AudioPrepareError::InstrumentContract(format!(
+                "private target `{}` is not supplied by the native instrument instance",
+                mapping.node()
+            )));
+        }
+        let Some(target) = plan
+            .resolve_parameter(node, mapping.parameter())
+            .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?
+        else {
+            continue;
+        };
+        let requirement = declaration
+            .controls()
+            .iter()
+            .find(|control| {
+                control.kind() == mapping.kind()
+                    && control.namespace() == mapping.namespace()
+                    && control.name() == mapping.name()
+            })
+            .ok_or_else(|| {
+                AudioPrepareError::InstrumentContract(format!(
+                    "mapping for `{}::{}` has no matching exposed control",
+                    mapping.namespace(),
+                    mapping.name()
+                ))
+            })?;
+        let default = mapped_control_value(
+            requirement.default_ratio(),
+            requirement.default_symbol(),
+            mapping.transfer(),
+            mapping.connection_values(),
+        )?;
+        if !plan.parameter_is_written(target) {
+            defaults.push(PreparedParameterEvent {
+                target,
+                value: default,
+                ramp_frames: 0,
+            });
+        }
+        mappings.push(ResolvedControlMapping {
+            kind: mapping.kind().to_owned(),
+            namespace: mapping.namespace().to_owned(),
+            name: mapping.name().to_owned(),
+            continuous: requirement.update_rate() == "Continuous",
+            target,
+            transfer: mapping.transfer(),
+            connection_values: mapping.connection_values(),
+        });
+    }
+    plan.apply_parameter_events(&defaults);
+
+    let mut points: BTreeMap<PreparedParameterId, Vec<(u64, f32, bool)>> = BTreeMap::new();
+    for (frame, batch) in schedule.batches() {
+        for message in batch.messages() {
+            let crate::schedule::EventMessage::Begin(_, gesture) = message else {
+                continue;
+            };
+            for control in gesture.controls() {
+                let accepted = declaration.controls().iter().any(|requirement| {
+                    requirement.kind() == control.kind()
+                        && requirement.namespace() == control.namespace()
+                        && requirement.name() == control.name()
+                });
+                if !accepted {
+                    return Err(AudioPrepareError::InstrumentContract(format!(
+                        "instrument `{}` does not accept control `{}::{}` at source kind `{}`",
+                        declaration.declaration_id(),
+                        control.namespace(),
+                        control.name(),
+                        control.kind()
+                    )));
+                }
+                for mapping in mappings.iter().filter(|mapping| {
+                    mapping.kind == control.kind()
+                        && mapping.namespace == control.namespace()
+                        && mapping.name == control.name()
+                }) {
+                    points.entry(mapping.target).or_default().push((
+                        frame,
+                        mapped_control_value(
+                            control.ratio(),
+                            control.symbol(),
+                            mapping.transfer,
+                            mapping.connection_values,
+                        )?,
+                        mapping.continuous,
+                    ));
+                }
+            }
+        }
+    }
+
+    let mut batches: BTreeMap<u64, Vec<PreparedParameterEvent>> = BTreeMap::new();
+    for (target, values) in points {
+        for (index, &(frame, value, continuous)) in values.iter().enumerate() {
+            batches.entry(frame).or_default().push(PreparedParameterEvent {
+                target,
+                value,
+                ramp_frames: 0,
+            });
+            if continuous
+                && let Some(&(next_frame, next_value, _)) = values.get(index.saturating_add(1))
+                && next_frame > frame
+            {
+                batches.entry(frame).or_default().push(PreparedParameterEvent {
+                    target,
+                    value: next_value,
+                    ramp_frames: next_frame.saturating_sub(frame),
+                });
+            }
+        }
+    }
+    Ok(batches
+        .into_iter()
+        .map(|(frame, events)| PreparedControlBatch {
+            frame,
+            events: events.into_boxed_slice(),
+        })
+        .collect())
+}
+
+fn mapped_value(value: Ratio<i64>, transfer: Option<(Ratio<i64>, Ratio<i64>, bool)>) -> Result<f32, AudioPrepareError> {
+    let exact = match transfer {
+        Some((minimum, maximum, inverse)) => {
+            let along = if inverse { Ratio::ONE - value } else { value };
+            minimum + (maximum - minimum) * along
+        }
+        None => value,
+    };
+    let value = *exact.numer() as f64 / *exact.denom() as f64;
+    if !value.is_finite() || value < f64::from(f32::MIN) || value > f64::from(f32::MAX) {
+        return Err(AudioPrepareError::InstrumentContract(format!(
+            "mapped exact value {}/{} is not a finite DSP parameter",
+            exact.numer(),
+            exact.denom()
+        )));
+    }
+    Ok(value as f32)
+}
+
+fn mapped_control_value(
+    ratio: Option<Ratio<i64>>,
+    symbol: Option<&str>,
+    transfer: Option<(Ratio<i64>, Ratio<i64>, bool)>,
+    connection_values: Option<[Ratio<i64>; 3]>,
+) -> Result<f32, AudioPrepareError> {
+    if let Some(value) = ratio {
+        return mapped_value(value, transfer);
+    }
+    let values = connection_values.ok_or_else(|| {
+        AudioPrepareError::InstrumentContract("a symbolic control has no declared transfer".to_owned())
+    })?;
+    let exact = match symbol {
+        Some("Detached") => values[0],
+        Some("Ordinary") => values[1],
+        Some("Legato") => values[2],
+        _ => {
+            return Err(AudioPrepareError::InstrumentContract(
+                "a phrase-connection mapping received an unsupported source constructor".to_owned(),
+            ));
+        }
+    };
+    mapped_value(exact, None)
 }
 
 fn check_resources(actual: crate::primitive::AudioResources, limits: AudioLimits) -> Result<(), AudioPrepareError> {

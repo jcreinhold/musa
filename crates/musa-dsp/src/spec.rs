@@ -324,6 +324,30 @@ impl ProcessorSpec {
         // instrument the one it has always been.
         const VOICE: &[ParameterDescriptor] = &[
             ParameterDescriptor {
+                name: "gain",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 1.0,
+                smoothing: Smoothing::FrameSlew,
+                combination: Combination::Multiply,
+            },
+            ParameterDescriptor {
+                name: "expression_timbre",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 0.0,
+                smoothing: Smoothing::FrameSlew,
+                combination: Combination::Multiply,
+            },
+            ParameterDescriptor {
+                name: "connection_release",
+                unit: Unit::Seconds,
+                range: (0.0, 2.0),
+                default: 0.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
                 name: "attack",
                 unit: Unit::Seconds,
                 range: (0.0, 20.0),

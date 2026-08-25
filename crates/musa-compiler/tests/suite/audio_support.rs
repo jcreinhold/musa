@@ -8,7 +8,7 @@ use musa_dsp::{
     AudioFormat, AudioLimits, AudioOptions, ChannelLayout, CollapsePolicy, FrameRounding, MessageKind, PreparedAudio,
     ScheduleLimits, SchedulePolicy, StudioSpec,
 };
-use musa_score::{ScoreSnapshot, Tuning, lower_gestures};
+use musa_score::{ScoreSnapshot, Tuning};
 
 pub(crate) const RATE: u32 = 48_000;
 
@@ -53,8 +53,10 @@ pub(crate) fn options(tail_frames: u64) -> AudioOptions {
 }
 
 pub(crate) fn prepare(source: &str, tail_frames: u64) -> PreparedAudio {
-    let (score, studio) = parts(source);
-    let gestures = lower_gestures(&score).expect("gestures");
+    let compilation = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default());
+    assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+    let gestures = musa_compiler::lower_gestures(compilation.snapshot().expect("score")).expect("source gestures");
+    let (_, studio) = compilation.into_parts();
     prepare_gestures(&gestures, &studio, options(tail_frames)).expect("audio")
 }
 

@@ -359,6 +359,8 @@ pub struct Gesture {
     pitch: WrittenPitch,
     /// Exact abstract loudness; one is neutral.
     amplitude: Ratio<i64>,
+    /// Read-only projection of every checked source control on this gesture.
+    controls: Vec<GestureControl>,
     /// Exact checked source gesture framing. Empty only on the retained
     /// pre-177 differential oracle used by compatibility tests.
     source_exact: Arc<[u8]>,
@@ -380,9 +382,62 @@ impl Gesture {
         self.amplitude
     }
 
+    /// Exact source-declared controls in source order.
+    pub fn controls(&self) -> &[GestureControl] {
+        &self.controls
+    }
+
     /// Exact checked source framing of the opaque gesture payload.
     pub fn exact_source_bytes(&self) -> &[u8] {
         &self.source_exact
+    }
+}
+
+/// A read-only exact projection of one checked source control.
+///
+/// This is not a construction API or a closed musical vocabulary. Names and
+/// kinds are carried exactly from the edition-pinned source declaration; the
+/// optional ratio exists only for source value kinds whose payload is a
+/// rational and remains absent for symbolic values such as phrase connection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GestureControl {
+    kind: String,
+    namespace: String,
+    name: String,
+    update_rate: String,
+    ratio: Option<Ratio<i64>>,
+    symbol: Option<String>,
+}
+
+impl GestureControl {
+    /// Source family-index constructor spelling.
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    /// Source-declared namespace.
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    /// Source-declared key name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Source-declared update-rate constructor spelling.
+    pub fn update_rate(&self) -> &str {
+        &self.update_rate
+    }
+
+    /// Exact rational payload for numeric source control kinds.
+    pub const fn ratio(&self) -> Option<Ratio<i64>> {
+        self.ratio
+    }
+
+    /// Source constructor spelling for a symbolic control value.
+    pub fn symbol(&self) -> Option<&str> {
+        self.symbol.as_deref()
     }
 }
 
@@ -436,6 +491,7 @@ mod gesture_identity_laws {
                 octave: 4,
             },
             amplitude: Ratio::ONE,
+            controls: Vec::new(),
             source_exact: format!("axis={axis}").into_bytes().into(),
         }
     }
@@ -748,6 +804,7 @@ struct SourceReading {
     instance: u64,
     pitch: WrittenPitch,
     expression: Ratio<i64>,
+    controls: Vec<GestureControl>,
     gate: Ratio<i64>,
     hold: Ratio<i64>,
     exact_gesture: Arc<[u8]>,
@@ -758,6 +815,7 @@ struct PreparedGesture {
     instance: u64,
     pitch: WrittenPitch,
     expression: Ratio<i64>,
+    controls: Vec<GestureControl>,
     gate: Ratio<i64>,
     exact_gesture: Arc<[u8]>,
 }
@@ -775,6 +833,7 @@ impl SourceReading {
             instance: self.instance,
             pitch: self.pitch,
             expression: self.expression,
+            controls: self.controls,
             gate: self.gate * self.hold,
             exact_gesture: self.exact_gesture,
         })
@@ -799,10 +858,20 @@ fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceRead
         let [gesture, gate, hold] = source_fields::<3>(result, "ProfileResult")?;
         let [instance, pitch, controls, _] = source_fields::<4>(gesture, "NoteGesture")?;
         let [instance] = source_fields::<1>(instance, "GestureId")?;
+        let controls = source_controls(controls)?;
+        let expression = controls
+            .iter()
+            .filter(|control| control.namespace == "std.performance" && control.name == "expression")
+            .filter_map(|control| control.ratio)
+            .collect::<Vec<_>>();
+        let [expression] = expression.as_slice() else {
+            return Err(source_shape("one standard expression control"));
+        };
         Ok(SourceReading {
             instance: source_nat(instance)?,
             pitch: source_pitch(pitch)?,
-            expression: source_expression(controls)?,
+            expression: *expression,
+            controls,
             gate: source_ratio(gate)?,
             hold: source_ratio(hold)?,
             exact_gesture: gesture.exact_bytes().into(),
@@ -810,25 +879,48 @@ fn source_lane(artifact: &musa_calculus::CheckedSource) -> Result<Vec<SourceRead
     })
 }
 
-fn source_expression(controls: musa_calculus::SourceDatum<'_>) -> Result<Ratio<i64>, PerformanceError> {
-    let controls = source_list(controls, |control| {
-        let [_, key, value] = source_fields::<3>(control, "Control")?;
-        let [_, namespace, name, _, _] = source_fields::<5>(key, "Key")?;
-        if source_text(namespace)? == "std.performance" && source_text(name)? == "expression" {
-            let [value] = source_fields::<1>(value, "NormalizedValue")?;
-            Ok(Some(source_ratio(value)?))
-        } else {
-            Ok(None)
+fn source_controls(controls: musa_calculus::SourceDatum<'_>) -> Result<Vec<GestureControl>, PerformanceError> {
+    source_list(controls, |control| {
+        let [kind, key, value] = source_fields::<3>(control, "Control")?;
+        let kind = source_constructor(kind)?.to_owned();
+        let [key_kind, namespace, name, _, update_rate] = source_fields::<5>(key, "Key")?;
+        if source_constructor(key_kind)? != kind {
+            return Err(source_shape("one shared control-kind index"));
         }
-    })?;
-    let mut expression = controls.into_iter().flatten();
-    let value = expression
+        let (ratio, symbol) = match kind.as_str() {
+            "Normalized" => {
+                let [value] = source_fields::<1>(value, "NormalizedValue")?;
+                (Some(source_ratio(value)?), None)
+            }
+            "ExactRatio" => {
+                let [value] = source_fields::<1>(value, "ExactRatioValue")?;
+                (Some(source_ratio(value)?), None)
+            }
+            "PhraseConnection" => {
+                let [connection] = source_fields::<1>(value, "ConnectionValue")?;
+                (None, Some(source_constructor(connection)?.to_owned()))
+            }
+            _ => (None, None),
+        };
+        Ok(GestureControl {
+            kind,
+            namespace: source_text(namespace)?.to_owned(),
+            name: source_text(name)?.to_owned(),
+            update_rate: source_constructor(update_rate)?.to_owned(),
+            ratio,
+            symbol,
+        })
+    })
+}
+
+fn source_constructor(datum: musa_calculus::SourceDatum<'_>) -> Result<&str, PerformanceError> {
+    let Some(musa_calculus::SourceDatumKind::Case { constructor }) = datum.kind() else {
+        return Err(source_shape("source constructor"));
+    };
+    constructor
+        .rsplit('.')
         .next()
-        .ok_or_else(|| source_shape("one standard expression control"))?;
-    if expression.next().is_some() {
-        return Err(source_shape("one standard expression control"));
-    }
-    Ok(value)
+        .ok_or_else(|| source_shape("source constructor"))
 }
 
 fn source_fields<'a, const COUNT: usize>(
@@ -1194,6 +1286,7 @@ fn take_prepared(
         instance,
         pitch,
         expression: legacy.amplitude,
+        controls: Vec::new(),
         gate: legacy.gate,
         exact_gesture: Arc::from([]),
     })
@@ -1266,6 +1359,7 @@ fn lower_gesture_event(
                 instance: prepared.instance,
                 pitch: prepared.pitch,
                 amplitude: prepared.expression,
+                controls: prepared.controls.clone(),
                 source_exact: Arc::clone(&prepared.exact_gesture),
             },
             lineage: GestureLineage {
@@ -1290,6 +1384,7 @@ fn lower_gesture_event(
                 instance: prepared.instance,
                 pitch: prepared.pitch,
                 amplitude: prepared.expression,
+                controls: prepared.controls.clone(),
                 source_exact: Arc::clone(&prepared.exact_gesture),
             },
             lineage: GestureLineage {

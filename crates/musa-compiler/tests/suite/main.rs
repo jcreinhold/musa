@@ -34,6 +34,7 @@ mod events_interop;
 mod events_quote_laws;
 mod events_subset_laws;
 mod expression_stage;
+mod expressive_control_laws;
 mod finite_data_laws;
 mod graces;
 mod graph_adapter_laws;

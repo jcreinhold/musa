@@ -71,6 +71,13 @@ private data NormalizedTransfer {
     InverseTransfer(minimum: Ratio, maximum: Ratio),
 }
 
+/// Exact private parameter values selected by each phrase relation.
+private record ConnectionTransfer {
+    detached: Ratio;
+    ordinary: Ratio;
+    legato: Ratio;
+}
+
 // The mapping index is shared with the public key. A key and mapping of unlike
 // kinds therefore fail ordinary conversion rather than a sound-specific test.
 private data ControlMapping: (kind: ControlKind) -> Type {
@@ -80,7 +87,60 @@ private data ControlMapping: (kind: ControlKind) -> Type {
         target: ParameterTarget,
         transfer: NormalizedTransfer,
     ): ControlMapping(mapping_kind),
+    ExactRatioMapping(
+        control_key: ControlKey(ExactRatio),
+        target: ParameterTarget,
+    ): ControlMapping(ExactRatio),
+    ConnectionMapping(
+        control_key: ControlKey(PhraseConnection),
+        target: ParameterTarget,
+        transfer: ConnectionTransfer,
+    ): ControlMapping(PhraseConnection),
 }
+
+/// Bind phrase connection to a private parameter through an exact source table.
+private fn maps_connection(
+    control_key: ControlKey(PhraseConnection),
+    node: Text,
+    parameter: Text,
+    transfer: ConnectionTransfer,
+) -> SomeControlMapping {
+    MapsControl(
+        PhraseConnection,
+        ConnectionMapping(
+            control_key,
+            ParameterTarget {
+                node = node,
+                parameter = parameter
+            },
+            transfer,
+        ),
+    )
+}
+
+/// Bind one concrete dimensionless ratio directly to a private parameter.
+private fn maps_exact_ratio(
+    control_key: ControlKey(ExactRatio),
+    node: Text,
+    parameter: Text,
+) -> SomeControlMapping {
+    MapsControl(
+        ExactRatio,
+        ExactRatioMapping(control_key, ParameterTarget {
+            node = node,
+            parameter = parameter
+        }),
+    )
+}
+
+/// A physical oscillator-bank control deliberately specific to this instrument.
+let basic_sine_partial_ratio: ControlKey(ExactRatio) = Key(
+    ExactRatio,
+    "std.sound.basic_sine",
+    "partial_ratio",
+    "Frequency ratio of the basic sine instrument's second partial.",
+    Continuous,
+);
 
 private data SomeControlMapping {
     MapsControl(kind: ControlKind, mapping: ControlMapping(kind)),
@@ -166,8 +226,22 @@ private let basic_sine_body: NativeInstrumentBody = NativeInstrumentBody {
     machine = basic_sine_machine,
     mappings = [
         maps_normalized(expression, "voice", "gain", LinearTransfer(0/1, 1/1)),
-        maps_normalized(brightness, "voice", "brightness", LinearTransfer(0/1, 1/1)),
-        maps_normalized(emphasis, "voice", "attack", InverseTransfer(1/1, 0/1)),
+        maps_normalized(expression, "voice", "expression_timbre", InverseTransfer(0/1, 1/4)),
+        maps_normalized(brightness, "voice", "blend", LinearTransfer(0/1, 1/1)),
+        maps_normalized(emphasis, "voice", "attack", InverseTransfer(2/1000, 5/1000)),
+        maps_normalized(separation, "voice", "release", InverseTransfer(1/100, 1/5)),
+        maps_normalized(sustain, "voice", "release", LinearTransfer(1/20, 1/1)),
+        maps_connection(
+            phrase_relation,
+            "voice",
+            "connection_release",
+            ConnectionTransfer {
+                detached = 0/1,
+                ordinary = 0/1,
+                legato = 1/5
+            },
+        ),
+        maps_exact_ratio(basic_sine_partial_ratio, "voice", "ratio"),
     ]
 };
 
@@ -179,9 +253,10 @@ let note_instrument: InstrumentSignature = InstrumentSignature {
         accepts_control(expression, NormalizedValue(1/1)),
         accepts_control(emphasis, NormalizedValue(0/1)),
         accepts_control(separation, NormalizedValue(0/1)),
-        accepts_control(brightness, NormalizedValue(1/2)),
+        accepts_control(brightness, NormalizedValue(0/1)),
         accepts_control(sustain, NormalizedValue(0/1)),
         accepts_control(phrase_relation, ConnectionValue(Ordinary)),
+        accepts_control(basic_sine_partial_ratio, ExactRatioValue(2/1)),
     ],
     techniques = [
         TechniqueSupport {
@@ -197,6 +272,18 @@ let note_instrument: InstrumentSignature = InstrumentSignature {
 let basic_sine: Instrument = Instrument {
     declaration_id = "std.sound.basic_sine@1",
     signature = note_instrument
+};
+
+/// A source-only profile demonstrating standard and instrument-specific controls.
+let basic_sine_demo_profile: PerformanceProfile = PerformanceProfile {
+    dynamics = [],
+    marks = [],
+    controls = [
+        some_control(brightness, NormalizedValue(3/4)),
+        some_control(sustain, NormalizedValue(1/3)),
+        some_control(basic_sine_partial_ratio, ExactRatioValue(3/1)),
+    ],
+    default_connection = Some(Legato)
 };
 
 // This root is the only route from a private body to host preparation. It is

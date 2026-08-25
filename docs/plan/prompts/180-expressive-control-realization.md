@@ -1,7 +1,7 @@
 ---
 id: 180
 slug: expressive-control-realization
-status: pending
+status: done
 depends_on: [174, 177, 178, 179]
 phase: 3
 ---

@@ -23,7 +23,6 @@
 use midly::{MidiMessage, Smf, Timing, TrackEventKind};
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_notation::{MidiMode, MidiOptions, render_midi};
-use musa_score::lower_gestures;
 
 const PROFILE_FIXTURE: &str = include_str!("../../../../examples/profile-fixture.musa");
 const TUPLET_FIXTURE: &str = include_str!("../../../../examples/tuplet-fixture.musa");
@@ -32,7 +31,7 @@ fn midi_of(source: &str, mode: MidiMode) -> Vec<u8> {
     let score = compile(&SourceDocument::new(source, "test.musa"), &CompileOptions::default())
         .into_snapshot()
         .expect("compiles");
-    let performance = lower_gestures(&score).expect("lowers");
+    let performance = musa_compiler::lower_gestures(&score).expect("checked source performance lowers");
     render_midi(
         &performance,
         &MidiOptions {
@@ -192,6 +191,22 @@ fn output_is_deterministic() {
     for mode in [MidiMode::Score, MidiMode::Performance] {
         assert_eq!(midi_of(PROFILE_FIXTURE, mode), midi_of(PROFILE_FIXTURE, mode));
     }
+}
+
+#[test]
+fn midi_explicitly_loses_sound_only_emphasis_control() {
+    let piece = |mark: &str| {
+        format!(
+            "piece \"MIDI control loss\" {{ tempo 1/4 = 120; meter 4/4; key c major; \
+             performance {{ profile shaped {{ mark accent {{ gate = 1/1; attack = 0 ms; }} }} }} \
+             score {{ part lead {{ profile shaped; voice line {{ c4/4 {mark} }} }} }} }}"
+        )
+    };
+    assert_eq!(
+        midi_of(&piece(""), MidiMode::Performance),
+        midi_of(&piece("accent"), MidiMode::Performance),
+        "SMF has no source emphasis control: equal pitch, span, and expression deliberately produce equal bytes"
+    );
 }
 
 /// A MIDI file is a performance, so it swings; a score-mode file is a

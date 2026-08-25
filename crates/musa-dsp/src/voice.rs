@@ -70,6 +70,12 @@ pub(crate) struct VoiceAllocator {
     ratio: f64,
     /// How much of that partial is mixed in; `0` is one sine per voice.
     blend: f32,
+    /// Additional partial energy contributed by source expression mapping.
+    expression_timbre: f32,
+    /// Instrument-global gain reached only through a checked control mapping.
+    gain: f32,
+    /// Additional release time selected by typed phrase connection mapping.
+    connection_release: f32,
     /// Fixed headroom applied to the pool sum: `1/√voices`, so the typical
     /// (incoherent-phase) sum of a full pool lands near full scale instead
     /// of `voices` times over it. Per-voice `amplitude` stays neutral — the
@@ -94,6 +100,9 @@ impl VoiceAllocator {
             sample_rate,
             ratio: 2.0,
             blend: 0.0,
+            expression_timbre: 0.0,
+            gain: 1.0,
+            connection_release: 0.0,
             // `max(1)`: an empty pool renders silence whatever the scale is.
             scale: f64::from(voices.max(1)).sqrt().recip() as f32,
         }
@@ -119,12 +128,23 @@ impl VoiceAllocator {
                 self.blend = value;
                 return;
             }
+            "expression_timbre" => {
+                self.expression_timbre = value;
+                return;
+            }
+            "gain" => {
+                self.gain = value;
+                return;
+            }
+            "connection_release" => {
+                self.connection_release = value;
+            }
             _ => return,
         }
         self.steps = AdsrSteps::new(self.settings, self.sample_rate);
         let (settings, rate) = (self.settings, self.sample_rate);
         for voice in &mut self.voices {
-            voice.steps = shape(settings, rate, voice.attack_request);
+            voice.steps = shape(settings, rate, voice.attack_request, self.connection_release);
         }
     }
 
@@ -152,7 +172,7 @@ impl VoiceAllocator {
             voice.age = 0;
             voice.held = true;
             voice.attack_request = attack;
-            voice.steps = shape(self.settings, self.sample_rate, attack);
+            voice.steps = shape(self.settings, self.sample_rate, attack, self.connection_release);
             voice.envelope.gate(&voice.steps);
         }
     }
@@ -196,9 +216,10 @@ impl VoiceAllocator {
                 // and no drift between the two. A blend of zero skips it
                 // rather than adding a scaled zero.
                 let mut sample = (2.0 * std::f64::consts::PI * voice.phase).sin() as f32;
-                if self.blend != 0.0 {
+                let partial_mix = (self.blend + self.expression_timbre).clamp(0.0, 1.0);
+                if partial_mix != 0.0 {
                     let partial = (2.0 * std::f64::consts::PI * voice.phase * self.ratio).sin() as f32;
-                    sample = self.blend.mul_add(partial, sample);
+                    sample = partial_mix.mul_add(partial, sample);
                 }
                 voice.phase += f64::from(voice.frequency) / sample_rate;
                 if voice.phase >= 1.0 {
@@ -216,7 +237,7 @@ impl VoiceAllocator {
                 mix = (sample * level).mul_add(voice.amplitude, mix);
             }
             if let Some(slot) = output.get_mut(i) {
-                *slot = mix * self.scale;
+                *slot = mix * self.scale * self.gain;
             }
         }
     }
@@ -224,12 +245,13 @@ impl VoiceAllocator {
 
 /// The shape a voice plays: the patch's, with a positive attack request
 /// substituted for the written one.
-fn shape(settings: AdsrSettings, sample_rate: u32, attack: f32) -> AdsrSteps {
-    let settings = if attack > 0.0 {
+fn shape(settings: AdsrSettings, sample_rate: u32, attack: f32, connection_release: f32) -> AdsrSteps {
+    let mut settings = if attack > 0.0 {
         AdsrSettings { attack, ..settings }
     } else {
         settings
     };
+    settings.release += connection_release;
     AdsrSteps::new(settings, sample_rate)
 }
 

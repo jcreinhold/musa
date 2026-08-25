@@ -318,11 +318,8 @@ fn existing_language_behavior_matches_the_migration_oracle() -> Result {
 fn every_expected_change_names_one_repairing_prompt() -> Result {
     const LEDGER: &str = include_str!("../../../../tests/fixtures/elaboration-expected-changes.json");
     let prompts = repository().join("docs/plan/prompts");
-    for (defect, slug) in [
-        ("processor-hover-gap", "studio-vocabulary"),
-        ("graph-topology-modulation-address", "expressive-control-realization"),
-        ("ignored-parameter-event", "expressive-control-realization"),
-    ] {
+    {
+        let (defect, slug) = ("processor-hover-gap", "studio-vocabulary");
         let entry = LEDGER
             .split('{')
             .find(|entry| entry.contains(&format!("\"defect\": \"{defect}\"")))
@@ -343,7 +340,9 @@ fn every_expected_change_names_one_repairing_prompt() -> Result {
             "no prompt file for {slug}"
         );
     }
-    assert_eq!(LEDGER.matches("\"defect\"").count(), 3);
+    assert!(!LEDGER.contains("graph-topology-modulation-address"));
+    assert!(!LEDGER.contains("ignored-parameter-event"));
+    assert_eq!(LEDGER.matches("\"defect\"").count(), 1);
     assert!(
         !LEDGER.contains("shared-note-stream-warning"),
         "part-instrument-routing repaired the shared stream rather than preserving it"

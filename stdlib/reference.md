@@ -194,6 +194,7 @@ searches the filesystem.
 - `fn mark_timing(rules: List(MarkRule), marks: List(Text), gate: Ratio, attack: Ratio, hold: Ratio) -> MarkTiming` — Fold the legacy temporal projections declared by matching mark rules.
 - `fn member_text(sought: Text, values: List(Text)) -> Bool` — Whether one exact spelling occurs in a finite list.
 - `fn level_of(policy: PerformanceProfile, view: NotationView) -> Ratio` — The prevailing expression level a profile gives one notation view.
+- `fn connection_controls(policy: PerformanceProfile, view: NotationView) -> List( SomeControl, )` — Realize an explicit or profile-default phrase relation as one typed control.
 - `fn hairpin_expression(from: Ratio, target_level: Ratio, reached: Ratio) -> Ratio` — Exact affine interpolation for a hairpin sample. `reached` is the result of applying its source `Progress` at normalized local time; no sampling density or physical mapping is chosen here.
 - `fn interpret(policy: PerformanceProfile, view: NotationView) -> ProfileResult` — Interpret one complete notation view as exact controls and techniques.
 - `fn interpret_all(requests: List(InterpretationRequest)) -> List(ProfileResult)` — Interpret a finite request list in source order.
@@ -361,6 +362,10 @@ searches the filesystem.
 - `fn accepts_control({kind: ControlKind}, control_key: ControlKey(kind), default_value: ControlValue(kind)) -> SomeControlRequirement` — Package one requirement after the general pattern unifier settles its kind.
 - `record InstrumentSignature: Type` — The complete public behavioral contract of one source instrument.
 - `record ParameterTarget` — A target is private graph structure, never a public control address.
+- `record ConnectionTransfer` — Exact private parameter values selected by each phrase relation.
+- `fn maps_connection(control_key: ControlKey(PhraseConnection), node: Text, parameter: Text, transfer: ConnectionTransfer) -> SomeControlMapping` — Bind phrase connection to a private parameter through an exact source table.
+- `fn maps_exact_ratio(control_key: ControlKey(ExactRatio), node: Text, parameter: Text) -> SomeControlMapping` — Bind one concrete dimensionless ratio directly to a private parameter.
+- `let basic_sine_partial_ratio: ControlKey(ExactRatio)` — A physical oscillator-bank control deliberately specific to this instrument.
 - `fn maps_normalized(control_key: ControlKey(Normalized), node: Text, parameter: Text, transfer: NormalizedTransfer) -> SomeControlMapping` — Bind one normalized musical control to a private primitive parameter.
 - `record NativeInstrumentBody` — The implementation type and every binding of it are private. The public `Instrument` below carries only a stable declaration identity and signature.
 - `record InstrumentImplementationContract` — Canonical private intent crosses the checked boundary; the machine itself crosses through the distinct machine projection. Including the mappings here makes any implementation-policy change part of exact preparation identity.
@@ -372,6 +377,7 @@ searches the filesystem.
 - `let basic_sine_body: NativeInstrumentBody` — The edition-one basic instrument's private machine and control mappings.
 - `let note_instrument: InstrumentSignature` — Edition-one note instrument contract shared by the basic native preset.
 - `let basic_sine: Instrument` — Stable edition-one zero-setup instrument declaration.
+- `let basic_sine_demo_profile: PerformanceProfile` — A source-only profile demonstrating standard and instrument-specific controls.
 - `record InstrumentExecutionArtifact: Type` — This root is the only route from a private body to host preparation. It is produced and checked as one source value; no Rust instrument schema can independently construct or amend it.
 - `let standard_instruments: InstrumentExecutionArtifact` — Versioned checked standard instrument declarations and private machines.
 

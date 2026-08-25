@@ -250,6 +250,28 @@ fn standard_instruments_are_checked_source_data_with_private_machines() {
             .iter()
             .any(|control| control.namespace() == "std.performance" && control.name() == "expression")
     );
+    assert!(basic.controls().iter().any(|control| control.kind() == "ExactRatio"
+        && control.namespace() == "std.sound.basic_sine"
+        && control.name() == "partial_ratio"
+        && control.default_ratio() == Some(Ratio::from_integer(2))));
+    assert!(
+        basic
+            .mappings()
+            .iter()
+            .filter(|mapping| { mapping.namespace() == "std.performance" && mapping.name() == "expression" })
+            .count()
+            >= 2,
+        "one source control may map to several private parameters"
+    );
+    assert!(
+        basic.mappings().iter().any(|mapping| {
+            mapping.namespace() == "std.sound.basic_sine"
+                && mapping.name() == "partial_ratio"
+                && mapping.parameter() == "ratio"
+                && mapping.transfer().is_none()
+        }),
+        "the physical custom control crosses as an exact direct mapping"
+    );
     let machine = checked_standard_instrument_machine()
         .unwrap_or_else(|diagnostics| panic!("private instrument machine should check: {diagnostics:#?}"));
     assert_eq!(
@@ -277,8 +299,8 @@ fn private_instrument_policy_changes_exact_execution_identity() {
     let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
     let original = checked_instrument_module(source).expect("original module checks");
     let revised_source = source.replacen(
-        "maps_normalized(brightness, \"voice\", \"brightness\"",
-        "maps_normalized(brightness, \"voice\", \"tone\"",
+        "maps_normalized(brightness, \"voice\", \"blend\"",
+        "maps_normalized(brightness, \"voice\", \"expression_timbre\"",
         1,
     );
     assert_ne!(revised_source, source, "the fixture must revise one private target");
@@ -308,8 +330,8 @@ fn private_instrument_policy_changes_exact_execution_identity() {
 fn instrument_mapping_indices_use_the_general_unifier() {
     let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
     let mismatched = source.replacen(
-        "maps_normalized(brightness, \"voice\", \"brightness\"",
-        "maps_normalized(phrase_relation, \"voice\", \"brightness\"",
+        "maps_normalized(brightness, \"voice\", \"blend\"",
+        "maps_normalized(phrase_relation, \"voice\", \"blend\"",
         1,
     );
     assert_ne!(mismatched, source, "the fixture must revise the indexed key");
