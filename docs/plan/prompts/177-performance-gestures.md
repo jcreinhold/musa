@@ -86,7 +86,7 @@ cargo clippy --all-targets -p musa-calculus -p musa-compiler -p musa-notation -p
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo insta test --workspace --unreferenced=reject
 cargo bench -p musa-compiler
-rg -n "data Gesture|record ControlKey|neutral" stdlib/src/performance
+rg -n "data Gesture|data ControlKey|neutral" stdlib/src/performance
 ```
 
 Commit as `Interpret notation with source performance profiles`.
