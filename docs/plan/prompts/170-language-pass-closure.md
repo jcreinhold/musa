@@ -29,8 +29,9 @@ feature.
 - All of `docs/rules/language/`, `docs/rules/events/`, `docs/rules/across-stages/`, `docs/rules/constitution.md`,
   `docs/rules/obligations.md`, and `docs/rules/style-guide.md` — read for contradictions with each other, not only with
   the code.
-- `docs/plan/roadmap.md`, `docs/plan/clean-break-ledger.md`, `docs/plan/code-map/`, and
-  `docs/plan/language-design-closure.md`.
+- `docs/plan/roadmap.md`, `docs/plan/clean-break-ledger.md`, `docs/plan/code-map/`, the prompt-stack README, and prompts
+  128–170. The deleted `docs/plan/language-design-closure.md` is historical only; commit `d0f4a527` removed that
+  self-described superseded plan in favor of the live prompts and retained decision notes.
 - `docs/book/` in full. The book teaches, quotes fixtures, and generates signatures from the compiler's own record; a
   language change that leaves the book teaching the old one is the most user-visible drift this pass can produce.
 - Prompts [171](171-machine-runtime.md), [172](172-track-scheduling.md), [173](173-one-frame-audio.md), and
