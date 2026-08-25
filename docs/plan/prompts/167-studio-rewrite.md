@@ -2,7 +2,7 @@
 id: 167
 slug: studio-rewrite
 status: pending
-depends_on: [166]
+depends_on: [166, 166a]
 phase: 3
 ---
 
@@ -10,15 +10,22 @@ phase: 3
 > [`52`](../../notes/research/language-design-closure/52-the-musical-algebra.md).** The second adapter, on the language
 > of 142a–142e. Its generality claim is now sharper: the two adapters must differ in every musical row and in no
 > compiler-facing row, and neither may need a builtin the other does not.
+>
+> **Repaired after prompt 166a and against the live cutover boundary.** Ordinary source cannot store the expansion
+> phase's `Syntax` values, so declaration anchors are the `Nat` values produced by `syntax_anchor`, exactly as in the
+> staff package. The current Rust `StudioSpec` is the pre-cutover sound path; there is no source-value bridge by which
+> it could consume `StudioDescription`, and prompt 174 explicitly owns deleting that path. This prompt proves that
+> ordinary Musa can describe and validate the finite graph. It does not pretend that an unused source value already
+> drives the render-plan compiler.
 
 # Write the Studio Adapter as an Unprivileged Package on the New Language
 
 ## Task
 
-The second adapter. Write the complete studio-graph adapter and the studio description package it expands into, as
-ordinary unprivileged Musa on the new language, and discharge the eight-item coverage list. One adapter proves nothing
+The second adapter. Write the complete studio-graph adapter and the finite studio description package it expands into,
+as ordinary unprivileged Musa on the new language, and discharge the eight coverage groups. One adapter proves nothing
 about generality; two adapters with different musical ideas and one syntax machinery is what the trial is for. This
-prompt absorbs 127dcg, whose file is deleted rather than repaired.
+prompt absorbs 127dcg, whose historical superseded file remains because completed prompts and notes link to it.
 
 ## Read
 
@@ -32,8 +39,9 @@ prompt absorbs 127dcg, whose file is deleted rather than repaired.
   differ in every musical row and in no compiler-facing row.
 - `docs/rules/constitution.md` §4 and §7 — a graph *description* is finite data; the process it describes is not. The
   adapter neither allocates a processor nor steps audio.
-- `crates/musa-dsp/src/` — the existing studio graph spec and its render-plan compiler. The adapter produces a
-  description; what already exists consumes one, and the two must not become two ontologies.
+- `crates/musa-dsp/src/` and `crates/musa-compiler`'s `StudioSpec` — the existing pre-cutover studio path. Compare its
+  vocabulary and finite-graph invariants with the source package, but do not claim it consumes a core value when no such
+  bridge exists. Prompt 174 owns the clean break; this prompt records the temporary parallel representation.
 - Prompt [166](166-staff-rewrite.md)'s measurement and its per-section breakdown — the method this prompt reuses, and
   the staff numbers this adapter's numbers are compared against.
 - Prompt 132's studio program, written on paper before any of this existed. A divergence between that program and this
@@ -46,6 +54,18 @@ unit spelling, duplicate parameter text on one node, and the grammar of a connec
 `validate`, an ordinary total package function: descriptors, parameter units and ranges, named ports, exact port-kind
 equality, bindings, and instantaneous cycles. Every declaration carries its anchor, so `validate`'s complaint about the
 fourth connection is a complaint about the fourth connection rather than about the region.
+
+**Use the language that exists.** The region is imported as `std::adapters::graph` and written with braces. An ordinary
+package value carries `Nat` anchors, never phase-local `Syntax`; the adapter obtains each one from `syntax_anchor` on a
+node it was handed. `PortKind.equal` is one written namespace definition, as prompt 166a decided — there is no `Eq`
+instance. The eight coverage groups are processors, named ports, connections, parameters, instrument bindings, graph
+inputs, graph outputs, and the four required diagnostic classes collectively. The edit and printer laws are separate
+obligations rather than a ninth and tenth reading feature.
+
+**The source description is not wired to audio in this prompt.** `StudioDescription` is the finite value the future
+machine cutover can consume. The existing built-in `studio` grammar still produces Rust `StudioSpec`, and keeping that
+legacy route temporarily is work already assigned to prompt 174. This trial compares their vocabulary and invariants and
+records the gap; adding an implicit bridge or claiming one exists would be a second hidden semantic path.
 
 **This is where the generality claim is actually tested.** The staff adapter drove every design decision in prompts
 138–141, so it is the worst possible witness for whether those decisions generalize. The studio adapter was chosen
@@ -68,7 +88,7 @@ can produce.
 
 - `stdlib/src/studio/graph.musa` — the description data, `validate`, and the error type its complaints are values of.
 - `stdlib/src/adapters/graph.musa` — the adapter, declared generative, with `expand`, `edit`, and `print`.
-- `examples/live-studio.musa` — the trial block, covering all eight items, compiling.
+- `examples/live-studio.musa` — the trial block, covering all eight groups, compiling as a finite description.
 - Tests: one per coverage item; the four §3.4 diagnostics carrying the anchors they name; the §3.5 edit that replaces
   `3/10` with `2/5` and moves nothing else; the printer round-trip law at the level the adapter claims.
 - §4's table filled in from what was actually built, and the staff/studio asymmetry, recorded under
