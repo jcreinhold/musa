@@ -374,7 +374,7 @@ fn execute_command(
             return Err(format!("`{}` takes one bundled module URI", params.command));
         };
         let uri = uri.as_str().ok_or_else(|| "the argument is a URI string".to_owned())?;
-        return features::bundled::execute(uri);
+        return features::bundled::execute(uri, workspace.library_source(uri));
     }
     if params.command == features::adapter::ADAPTER_EDIT {
         let [uri, offset, command, anchor, argument] = params.arguments.as_slice() else {

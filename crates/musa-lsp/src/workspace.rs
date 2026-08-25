@@ -148,6 +148,13 @@ impl Workspace {
             .insert(uri.as_str().to_owned(), Document::new(uri, source, version));
     }
 
+    /// Read one immutable virtual module from any open project's exact closure.
+    pub(crate) fn library_source(&self, uri: &str) -> Option<&str> {
+        self.documents
+            .values()
+            .find_map(|document| document.snapshot().cause_source(uri))
+    }
+
     /// Replace a document's whole text (the sync kind this server declares).
     ///
     /// A change to a URI that was never opened is a client bug; it is opened

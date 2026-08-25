@@ -282,7 +282,20 @@ Patches, modulation, assignment, and routing are covered in [Write for the studi
 ```musa
 import std::pitch;
 import "lib/my-matters.musa";
+import orchestra::instruments::strings;
 ```
 
 A quoted path resolves relative to the importing file. `std::` names the bundled [standard library](stdlib.md); it is
-reserved, never searched on disk, and there is no implicit prelude.
+reserved, never searched on disk, and there is no implicit prelude. Any other first segment names an exact package alias
+from the project manifest:
+
+```toml
+[packages.orchestra]
+git = "https://example.org/musa/orchestra.git"
+rev = "sha1:8f42000000000000000000000000000000000000"
+```
+
+`musa fetch` is the sole network operation. It writes the exact source/asset graph to `musa.lock` and a disposable
+project-local cache; compilation verifies the complete locked file table and works offline. Package definitions open at
+read-only `musa-package:` documents. An instrument may select locked package data with its existing source clause,
+`from "pkg:orchestra/assets/solo-violin.sfz"`; `pkg:` is not a second module-import syntax.

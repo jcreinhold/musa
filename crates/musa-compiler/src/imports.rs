@@ -39,21 +39,82 @@ use musa_score::origin::SourceSpan;
 /// modules are available without being inserted here.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ImportSources {
-    files: HashMap<String, String>,
+    files: HashMap<String, ImportFile>,
+    resolutions: HashMap<(String, String), String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ImportFile {
+    text: String,
+    read_only: bool,
+    active: bool,
 }
 
 impl ImportSources {
     /// Record one file's text under the path importers will name it by.
     pub fn insert(&mut self, path: impl Into<String>, text: impl Into<String>) {
-        self.files.insert(path.into(), text.into());
+        self.insert_file(path, text, false);
+    }
+
+    /// Record verified package source that an editor may navigate to but not edit.
+    pub fn insert_read_only(&mut self, path: impl Into<String>, text: impl Into<String>) {
+        self.insert_file(path, text, true);
+    }
+
+    fn insert_file(&mut self, path: impl Into<String>, text: impl Into<String>, read_only: bool) {
+        self.files.insert(
+            path.into(),
+            ImportFile {
+                text: text.into(),
+                read_only,
+                active: !read_only,
+            },
+        );
+    }
+
+    /// Mark a preloaded read-only source as part of this compilation's closure.
+    pub fn activate(&mut self, path: &str) {
+        if let Some(file) = self.files.get_mut(path) {
+            file.active = true;
+        }
+    }
+
+    /// Bind one written import in one document to an exact virtual document.
+    ///
+    /// Package aliases are local to a resolved package node, so this mapping
+    /// is deliberately importer-sensitive. Callers construct it only from a
+    /// verified lock closure; the compiler continues to perform no I/O.
+    pub fn insert_resolution(
+        &mut self,
+        importer: impl Into<String>,
+        written: impl Into<String>,
+        resolved: impl Into<String>,
+    ) {
+        self.resolutions
+            .insert((importer.into(), written.into()), resolved.into());
+    }
+
+    /// Resolve an import using exact package bindings, then ordinary path rules.
+    #[must_use]
+    pub fn resolve(&self, importer: &str, written: &str) -> String {
+        self.resolutions
+            .get(&(importer.to_owned(), written.to_owned()))
+            .cloned()
+            .unwrap_or_else(|| resolve_import(importer, written))
     }
 
     /// The text of a resolved path, if it was provided.
     pub fn get(&self, path: &str) -> Option<&str> {
         self.files
             .get(path)
-            .map(String::as_str)
+            .map(|file| file.text.as_str())
             .or_else(|| standard_library_source(path))
+    }
+
+    /// Whether the source is immutable package or bundled-library input.
+    #[must_use]
+    pub fn is_read_only(&self, path: &str) -> bool {
+        standard_library_source(path).is_some() || self.files.get(path).is_some_and(|file| file.read_only)
     }
 
     /// Whether any file was provided at all.
@@ -67,7 +128,10 @@ impl ImportSources {
     /// project asset resolver must inspect the files the project handed to
     /// compilation, not rediscover or re-read them from their names.
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.files.iter().map(|(path, source)| (path.as_str(), source.as_str()))
+        self.files
+            .iter()
+            .filter(|(_, source)| source.active)
+            .map(|(path, source)| (path.as_str(), source.text.as_str()))
     }
 }
 
@@ -166,6 +230,32 @@ pub fn standard_library_modules() -> impl Iterator<Item = (String, &'static str)
     standard_library()
         .modules()
         .map(|(path, source)| (standard_library_uri(path), source))
+}
+
+/// Validate one package's declared module tree and return module-to-file facts.
+///
+/// `files` contains every `.musa` file below the manifest's source root, with
+/// portable `/`-separated relative paths. The compiler owns this validation so
+/// fetched and bundled packages cannot drift into two module semantics.
+///
+/// # Errors
+/// Returns every missing or undeclared module-tree fault in stable traversal
+/// order. No module mapping is published when any fault exists.
+pub fn package_module_files(files: &[(String, String)]) -> Result<Vec<(String, String)>, Vec<String>> {
+    let borrowed: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, source)| (path.as_str(), source.as_str()))
+        .collect();
+    let package = Package::read(&borrowed);
+    let faults: Vec<String> = package.faults().iter().map(|fault| fault.message()).collect();
+    if faults.is_empty() {
+        Ok(package
+            .module_files()
+            .map(|(module, file)| (module.to_owned(), file.to_owned()))
+            .collect())
+    } else {
+        Err(faults)
+    }
 }
 
 /// Everything wrong with the bundled library's own declarations.
@@ -320,7 +410,7 @@ impl Loader<'_> {
         span: SourceSpan,
         alias: Option<String>,
     ) {
-        let path = resolve_import(importer, written);
+        let path = self.sources.resolve(importer, written);
         if self.stack.contains(&path) {
             let cycle = self
                 .stack

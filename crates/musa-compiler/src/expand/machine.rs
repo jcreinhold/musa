@@ -74,7 +74,7 @@ pub(crate) fn expand_one(
             "a syntax import stands in the fixed module header, before any definition that uses it",
         ))));
     }
-    let uri = crate::imports::resolve_import(source.name(), &import.path);
+    let uri = options.imports.resolve(source.name(), &import.path);
     let adapter_source = options.imports.get(&uri).ok_or_else(|| {
         Box::new(refusal(
             site,

@@ -30,7 +30,7 @@ pub(crate) fn expand(source: &SourceDocument, options: &CompileOptions) -> Expan
     // package, so a file that overstates one is wrong whether or not it went on
     // to write a region.
     for import in &imports {
-        let uri = crate::imports::resolve_import(source.name(), &import.path);
+        let uri = options.imports.resolve(source.name(), &import.path);
         let Some(adapter_source) = options.imports.get(&uri) else {
             // Reported at the region that needed it, where a reader can see
             // what the missing module was for.
@@ -212,7 +212,7 @@ pub fn adapter_edits(
         .iter()
         .find(|import| import.alias == name)
         .ok_or(AdapterEditError::NoRegion)?;
-    let uri = crate::imports::resolve_import(source.name(), &import.path);
+    let uri = options.imports.resolve(source.name(), &import.path);
     let adapter_source = options.imports.get(&uri).ok_or_else(|| {
         AdapterEditError::Broken(Box::new(refusal(
             site,
@@ -400,7 +400,7 @@ pub fn adapter_print(
         ))
     };
     let broken = |message: String, help: &'static str| broken_by(message, help, Vec::new());
-    let uri = crate::imports::resolve_import(at.name(), adapter);
+    let uri = options.imports.resolve(at.name(), adapter);
     let adapter_source = options.imports.get(&uri).ok_or_else(|| {
         broken(
             format!("`{adapter}` is not a module this compilation can read"),

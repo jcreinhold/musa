@@ -11,7 +11,8 @@ use std::process::ExitCode;
 
 use musa_project::{
     AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, Logging, MidiMode, MusicalTime,
-    ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory, lock_assets,
+    ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory, fetch_packages, lock_assets,
+    verify_packages,
 };
 
 fn main() -> ExitCode {
@@ -32,6 +33,7 @@ fn main() -> ExitCode {
         Some("events") => with_seed(args.get(1..).unwrap_or_default(), cmd_events),
         Some("analyze") => with_seed(args.get(1..).unwrap_or_default(), cmd_analyze),
         Some("assets") => cmd_assets(args.get(1..).unwrap_or_default()),
+        Some("fetch") => cmd_fetch(args.get(1..).unwrap_or_default()),
         Some(other) if !other.starts_with('-') => {
             eprintln!("error: `{other}` is not a musa command");
             eprintln!();
@@ -102,12 +104,47 @@ fn print_usage() {
     println!("  musa assets list <project|piece>          list immutable asset facts");
     println!("  musa assets verify <project|piece>        verify the offline locked closure");
     println!("  musa assets lock <project|piece>          explicitly rewrite local asset locks");
+    println!("  musa fetch <project|piece>                fetch exact pinned source packages");
+    println!("      --locked                              verify lock/cache only; no network or writes");
     println!("  --seed <n>  on check, render and events: which performance to compile");
     println!();
     println!("Everywhere:");
     println!("  -v, -vv, -vvv   say more about what musa is doing, on stderr");
     println!("  -q              say only what failed");
     println!("  MUSA_LOG        a filter, in place of the dial: `MUSA_LOG=musa_compiler=debug`");
+}
+
+/// Materialize the project's exact package graph and rewrite its package lock.
+fn cmd_fetch(args: &[String]) -> ExitCode {
+    let locked = args.iter().any(|argument| argument == "--locked");
+    let paths: Vec<&str> = args
+        .iter()
+        .filter(|argument| argument.as_str() != "--locked")
+        .map(String::as_str)
+        .collect();
+    let [path] = paths.as_slice() else {
+        eprintln!("error: fetch needs a project folder or piece");
+        return ExitCode::FAILURE;
+    };
+    let result = if locked {
+        verify_packages(path)
+    } else {
+        fetch_packages(path)
+    };
+    match result {
+        Ok(count) => {
+            if locked {
+                eprintln!("verified {count} exact package root(s) offline");
+            } else {
+                eprintln!("fetched {count} exact package(s)");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 /// Inspect or explicitly regenerate a project's immutable local asset lock.

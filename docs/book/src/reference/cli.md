@@ -22,6 +22,8 @@ musa events --check <file.musa.events>  parse, check, and evaluate events text
 musa assets list <project|piece>        list immutable asset facts
 musa assets verify <project|piece>      verify manifest, lock, and raw bytes
 musa assets lock <project|piece>        explicitly regenerate the local asset lock
+musa fetch <project|piece>              fetch exact-pinned package source and assets
+    --locked                            verify the existing lock/cache offline; write nothing
 --seed <n>  on check, render and event track: which performance to compile
 ```
 
@@ -36,6 +38,10 @@ musa assets lock <project|piece>        explicitly regenerate the local asset lo
   stays inside the project, and atomically writes deterministic SHA-256 identities to `musa.lock`. `list` and `verify`
   never modify it. A missing or stale lock is an error; no ordinary build chooses bytes by filename or modification
   time.
+- `fetch` is the only package command that contacts a remote. Each `[packages.<alias>]` entry names a public HTTPS or
+  explicit local Git repository and a full algorithm-tagged commit such as `sha1:…`; there are no ranges, registries, or
+  automatic updates. Ordinary checking, editing, playback, and export read the verified `musa.lock` and project-local
+  content cache without network access. `fetch --locked` checks that closure without changing it.
 
 ## `.musaignore`
 

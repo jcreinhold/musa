@@ -49,6 +49,11 @@ pub struct ProjectMeta {
     /// A malformed asset table must invalidate assets without erasing the
     /// project's unrelated title, ordering, or formatting metadata.
     pub(crate) asset_error: Option<String>,
+    /// Exact remote package requirements keyed by source-visible alias.
+    pub(crate) packages: BTreeMap<String, crate::packages::PackageRequirement>,
+    /// A malformed package table invalidates package resolution without
+    /// erasing unrelated project metadata.
+    pub(crate) package_error: Option<String>,
 }
 
 /// The `musa.toml` above `path`, if there is one.
@@ -84,6 +89,10 @@ pub(crate) fn read(directory: &Path) -> Option<ProjectMeta> {
         Ok(assets) => (assets, None),
         Err(error) => (BTreeMap::new(), Some(error)),
     };
+    let (packages, package_error) = match file.package_requirements() {
+        Ok(packages) => (packages, None),
+        Err(error) => (BTreeMap::new(), Some(error)),
+    };
     Some(ProjectMeta {
         root: directory.to_path_buf(),
         name: file.project.name,
@@ -92,6 +101,8 @@ pub(crate) fn read(directory: &Path) -> Option<ProjectMeta> {
         bar_spacing: bar_spacing(file.format.bars.as_deref()),
         assets,
         asset_error,
+        packages,
+        package_error,
     })
 }
 
@@ -124,6 +135,8 @@ pub(crate) struct ProjectFile {
     format: FormatSection,
     #[serde(default)]
     assets: Option<toml::Value>,
+    #[serde(default)]
+    packages: Option<toml::Value>,
 }
 
 impl ProjectFile {
@@ -149,6 +162,38 @@ impl ProjectFile {
         crate::assets::validate_logical_paths(policies.keys().map(String::as_str))?;
         Ok(policies)
     }
+
+    pub(crate) fn package_requirements(&self) -> Result<BTreeMap<String, crate::packages::PackageRequirement>, String> {
+        let Some(toml::Value::Table(packages)) = self.packages.as_ref() else {
+            return if self.packages.is_none() {
+                Ok(BTreeMap::new())
+            } else {
+                Err("`packages` must be a table keyed by source-visible alias".to_owned())
+            };
+        };
+        packages
+            .iter()
+            .map(|(alias, value)| {
+                if !valid_package_alias(alias) {
+                    return Err(format!("package alias `{alias}` is not a Musa identifier"));
+                }
+                let requirement: crate::packages::PackageRequirement = value
+                    .clone()
+                    .try_into()
+                    .map_err(|error| format!("package `{alias}` has invalid requirement: {error}"))?;
+                crate::packages::validate_requirement(alias, &requirement)?;
+                Ok((alias.clone(), requirement))
+            })
+            .collect()
+    }
+}
+
+fn valid_package_alias(alias: &str) -> bool {
+    let mut bytes = alias.bytes();
+    bytes
+        .next()
+        .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 
 #[derive(Default, Deserialize)]

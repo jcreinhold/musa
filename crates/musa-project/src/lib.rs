@@ -44,8 +44,10 @@ mod export;
 mod facts;
 mod imports;
 mod library;
+mod lock;
 mod logging;
 mod midi;
+mod packages;
 mod playback;
 mod position;
 mod project;
@@ -73,6 +75,7 @@ pub use crate::facts::{
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::MidiEntry;
+pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
 pub use crate::session::ProjectSession;

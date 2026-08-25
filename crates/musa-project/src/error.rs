@@ -99,6 +99,10 @@ pub enum ProjectError {
     /// The project asset manifest, lock, or verified closure is invalid.
     #[error("cannot resolve assets: {0}")]
     Assets(String),
+
+    /// The exact package graph, cache, or fetch operation is invalid.
+    #[error("cannot resolve packages: {0}")]
+    Packages(String),
 }
 
 impl ProjectError {

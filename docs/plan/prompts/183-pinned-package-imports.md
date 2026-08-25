@@ -1,7 +1,7 @@
 ---
 id: 183
 slug: pinned-package-imports
-status: in-progress
+status: done
 depends_on: [99, 104, 110, 174, 182]
 phase: 4
 ---

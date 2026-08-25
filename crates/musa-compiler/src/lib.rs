@@ -78,7 +78,7 @@ pub use crate::events_text::{
 };
 pub use crate::expand::{AdapterEdit, AdapterEditError, AdapterPrintError, adapter_edits, adapter_print};
 pub use crate::imports::{
-    ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
+    ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, package_module_files, resolve_import, standard_library_module,
     standard_library_modules, standard_library_source,
 };
 pub use crate::performance_source::{PerformanceBridgeError, checked_performance_interpretations, lower_gestures};

@@ -90,7 +90,9 @@ pub(crate) fn documented(
             uri: uri.map(str::to_owned),
             span: crate::resolve::token_span(node, SyntaxKind::Identifier)
                 .unwrap_or_else(|| crate::resolve::trimmed_span(node)),
-            read_only: uri.is_some_and(|uri| crate::imports::standard_library_source(uri).is_some()),
+            read_only: uri.is_some_and(|uri| {
+                uri.starts_with("musa-package:/") || crate::imports::standard_library_source(uri).is_some()
+            }),
         },
         deprecation: summary.as_deref().and_then(crate::docs::deprecation_in),
         summary,

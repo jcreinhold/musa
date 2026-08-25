@@ -49,7 +49,7 @@ fn declared(snapshot: &musa_project::ProjectSnapshot<'_>, name: &str) -> Option<
         label: item.signature.clone(),
         documentation: Some(Documentation::MarkupContent(MarkupContent {
             kind: MarkupKind::Markdown,
-            value: super::items::markdown(item),
+            value: super::items::markdown(snapshot, item),
         })),
         parameters: Some(
             item.parameters

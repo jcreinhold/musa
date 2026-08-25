@@ -166,7 +166,7 @@ fn run_printer(
     let mut sources = Vec::new();
     for (importer, libraries) in [(at.name(), &composers), (imports.document, &adapters)] {
         for (from, library) in libraries.each() {
-            let document = crate::imports::resolve_import(importer, from.path);
+            let document = imports.sources.resolve(importer, from.path);
             if seen.insert((document, from.qualifier.map(str::to_owned))) {
                 sources.push(crate::document::Source::imported(library.syntax(), from));
             }

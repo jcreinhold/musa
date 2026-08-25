@@ -175,7 +175,7 @@ fn parameters_markdown(params: &[musa_dsp::StudioParameterContract]) -> String {
 /// reader wants to know about a name is what it is.
 fn at_item(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
     let (item, span) = super::items::at(snapshot, byte)?;
-    Some(answer(lines, span, super::items::markdown(item)))
+    Some(answer(lines, span, super::items::markdown(snapshot, item)))
 }
 
 fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {

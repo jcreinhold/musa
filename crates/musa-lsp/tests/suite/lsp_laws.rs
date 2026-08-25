@@ -479,6 +479,87 @@ fn bundled_names_keep_source_maps_docs_and_read_only_identity() {
 }
 
 #[test]
+fn exact_package_definitions_open_as_read_only_virtual_source() {
+    let write = |path: &std::path::Path, text: &str| {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).expect("fixture directory");
+        }
+        std::fs::write(path, text).expect("fixture file");
+    };
+    let git = |root: &std::path::Path, args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .expect("Git fixture command");
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        String::from_utf8(output.stdout).expect("Git UTF-8").trim().to_owned()
+    };
+    let remote = tempfile::tempdir().expect("remote");
+    write(
+        &remote.path().join("musa.toml"),
+        "[package]\nname = \"tools\"\nlanguage_version = 1\n\n[build]\nsource = \"src\"\n",
+    );
+    write(&remote.path().join("src/lib.musa"), "mod math;\n");
+    write(
+        &remote.path().join("src/math.musa"),
+        "fn doubled(n: Nat) -> Nat { n + n }\n",
+    );
+    git(remote.path(), &["init", "--quiet"]);
+    git(remote.path(), &["config", "user.name", "Musa Test"]);
+    git(remote.path(), &["config", "user.email", "musa@example.invalid"]);
+    git(remote.path(), &["add", "."]);
+    git(remote.path(), &["commit", "--quiet", "-m", "fixture"]);
+    let revision = git(remote.path(), &["rev-parse", "HEAD"]);
+
+    let project = tempfile::tempdir().expect("project");
+    write(
+        &project.path().join("musa.toml"),
+        &format!(
+            "[project]\nname = \"LSP package\"\n\n[packages.tools]\ngit = \"{}\"\nrev = \"sha1:{revision}\"\n",
+            remote.path().display()
+        ),
+    );
+    let source = "piece \"Package\" {\n    import tools::math;\n    let four: Nat = doubled(2);\n    score { part p { voice v { c4/1 } } }\n}\n";
+    let piece = project.path().join("piece.musa");
+    write(&piece, source);
+    musa_project::fetch_packages(project.path()).expect("fetch exact package");
+
+    let mut server = Server::start();
+    let uri = Uri::from_str(&format!("file://{}", piece.display())).expect("piece URI");
+    server.client.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: uri.clone(),
+            language_id: "musa".to_owned(),
+            version: 1,
+            text: source.to_owned(),
+        },
+    });
+    let published = server.client.notification::<PublishDiagnostics>();
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+    let definition = server
+        .client
+        .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
+            text_document_position_params: position_params(&uri, at(source, "doubled")),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        });
+    let definition: GotoDefinitionResponse = serde_json::from_value(definition).expect("definition");
+    let GotoDefinitionResponse::Scalar(location) = definition else {
+        panic!("expected one definition");
+    };
+    assert!(location.uri.as_str().starts_with("musa-package:/"));
+    let answer = server.client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.bundledSource".to_owned(),
+        arguments: vec![serde_json::Value::String(location.uri.to_string())],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert_eq!(answer.as_str(), Some("fn doubled(n: Nat) -> Nat { n + n }\n"));
+    server.stop();
+}
+
+#[test]
 fn rename_rewrites_exactly_the_recorded_spans() {
     let mut server = Server::start();
     let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);

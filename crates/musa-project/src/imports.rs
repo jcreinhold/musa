@@ -14,7 +14,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use musa_compiler::{ImportSources, resolve_import};
+use musa_compiler::ImportSources;
 use musa_syntax::ast::{ImportStmt, PieceDecl};
 
 /// Everything `source` imports, transitively.
@@ -22,15 +22,24 @@ use musa_syntax::ast::{ImportStmt, PieceDecl};
 /// `name` is the document name the compiler will see, because imports
 /// resolve against it: the paths this returns are exactly the keys the
 /// compiler will look up.
-pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>) {
-    let mut sources = ImportSources::default();
+pub(crate) fn closure(name: &str, source: &str, mut sources: ImportSources) -> (ImportSources, Vec<PathBuf>) {
     let mut files = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     let mut pending: Vec<(String, String)> = vec![(name.to_owned(), source.to_owned())];
     while let Some((importer, text)) = pending.pop() {
         for written in written_imports(&text) {
-            let path = resolve_import(&importer, &written);
+            let path = sources.resolve(&importer, &written);
             if !seen.insert(path.clone()) {
+                continue;
+            }
+            // Embedded and fetched package sources already belong to the
+            // closed world. The compiler walks their own imports with the
+            // importer-sensitive exact resolution map.
+            if let Some(text) = sources.get(&path).map(str::to_owned) {
+                if path.starts_with("musa-package:/") {
+                    sources.activate(&path);
+                    pending.push((path, text));
+                }
                 continue;
             }
             let Ok(text) = std::fs::read_to_string(&path) else {

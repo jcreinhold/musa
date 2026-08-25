@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{BufReader, Read as _, Write as _};
+use std::io::{BufReader, Read as _};
 use std::path::{Path, PathBuf};
 
 use musa_syntax::ast::{Document, PieceDecl};
@@ -23,7 +23,6 @@ use crate::position::Lines;
 /// No initial asset is allowed to make an ordinary verification consume more
 /// than four gibibytes. Decoders may impose narrower prepared-audio budgets.
 const MAX_ASSET_BYTES: u64 = 4 * 1024 * 1024 * 1024;
-const LOCK_VERSION: u32 = 1;
 
 /// The physical format family an asset declaration promises.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -223,6 +222,14 @@ pub(crate) struct AssetPolicy {
     pub(crate) source: Option<String>,
 }
 
+/// Verified package-owned asset metadata, never raw bytes or a cache path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct PackageAsset {
+    pub(crate) policy: AssetPolicy,
+    pub(crate) digest: String,
+    pub(crate) bytes: u64,
+}
+
 pub(crate) fn validate_policy(path: &str, policy: &AssetPolicy) -> Result<(), String> {
     let Some((adapter, version)) = policy.adapter.rsplit_once('@') else {
         return Err(format!(
@@ -256,21 +263,6 @@ pub(crate) fn validate_logical_paths<'a>(paths: impl Iterator<Item = &'a str>) -
     Ok(())
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct LockedAsset {
-    kind: AssetKind,
-    adapter: String,
-    digest: String,
-    bytes: u64,
-}
-
-#[derive(Default, Deserialize, Serialize)]
-struct LockFile {
-    version: u32,
-    #[serde(default)]
-    assets: BTreeMap<String, LockedAsset>,
-}
-
 #[derive(Clone)]
 struct AssetUse {
     path: String,
@@ -289,12 +281,23 @@ struct AssetUse {
 pub fn asset_inventory(path: impl AsRef<Path>) -> Result<AssetInventory, ProjectError> {
     let (root, source) = locate(path.as_ref())?;
     let policies = read_policies(&root)?;
-    let lock = read_lock(&root)?;
+    let lock = crate::lock::read(&root)?;
+    let package_assets = if let Some(project) = crate::project::read(&root) {
+        if let Some(error) = project.package_error {
+            return Err(ProjectError::Packages(error));
+        }
+        let document = source
+            .as_ref()
+            .map_or("musa-assets:/project.musa", |(name, _)| name.as_str());
+        crate::packages::offline(&root, &project.packages, document)?.assets
+    } else {
+        BTreeMap::new()
+    };
     let uses = match source {
         Some((name, text)) => source_uses(&name, &text, true),
         None => project_uses(&root)?,
     };
-    Ok(resolve(&root, &policies, lock.as_ref(), uses, None))
+    Ok(resolve(&root, &policies, lock.as_ref(), uses, None, &package_assets))
 }
 
 /// Write a deterministic `musa.lock` for all manifest-declared local assets.
@@ -313,8 +316,11 @@ pub fn lock_assets(path: impl AsRef<Path>) -> Result<AssetInventory, ProjectErro
         Some((name, text)) => source_uses(&name, &text, true),
         None => project_uses(&root)?,
     };
-    let generated = generate_lock(&root, &policies)?;
-    let inventory = resolve(&root, &policies, Some(&generated), uses, None);
+    let assets = generate_lock(&root, &policies)?;
+    let mut generated = crate::lock::read(&root)?.unwrap_or_default();
+    generated.version = crate::lock::VERSION;
+    generated.assets = assets;
+    let inventory = resolve(&root, &policies, Some(&generated), uses, None, &BTreeMap::new());
     if !inventory.is_verified() {
         let detail = inventory
             .facts()
@@ -323,17 +329,7 @@ pub fn lock_assets(path: impl AsRef<Path>) -> Result<AssetInventory, ProjectErro
             .unwrap_or("the generated asset closure is not verified");
         return Err(ProjectError::Assets(detail.to_owned()));
     }
-    let encoded = toml::to_string_pretty(&generated).map_err(|error| ProjectError::Assets(error.to_string()))?;
-    let destination = root.join("musa.lock");
-    let mut temporary =
-        tempfile::NamedTempFile::new_in(&root).map_err(|error| ProjectError::io(root.display(), error))?;
-    temporary
-        .write_all(encoded.as_bytes())
-        .and_then(|()| temporary.as_file().sync_all())
-        .map_err(|error| ProjectError::io(destination.display(), error))?;
-    temporary
-        .persist(&destination)
-        .map_err(|error| ProjectError::io(destination.display(), error.error))?;
+    crate::lock::write(&root, &generated)?;
     Ok(inventory)
 }
 
@@ -343,6 +339,7 @@ pub(crate) fn session_inventory(
     name: &str,
     source: &str,
     imports: &musa_compiler::ImportSources,
+    package_assets: &BTreeMap<String, PackageAsset>,
 ) -> AssetInventory {
     if let Some(error) = project.and_then(|meta| meta.asset_error.as_deref()) {
         return AssetInventory::manifest_error(error);
@@ -353,7 +350,14 @@ pub(crate) fn session_inventory(
         .or_else(|| path.and_then(Path::parent).map(Path::to_path_buf));
     let Some(root) = root else {
         let uses = source_uses(name, source, true);
-        return resolve(Path::new("."), &BTreeMap::new(), None, uses, Some(source));
+        return resolve(
+            Path::new("."),
+            &BTreeMap::new(),
+            None,
+            uses,
+            Some(source),
+            package_assets,
+        );
     };
     let policies = if let Some(project) = project {
         project.assets.clone()
@@ -365,7 +369,7 @@ pub(crate) fn session_inventory(
     } else {
         BTreeMap::new()
     };
-    let lock = match read_lock(&root) {
+    let lock = match crate::lock::read(&root) {
         Ok(lock) => lock,
         Err(error) => {
             return AssetInventory::boundary_error(
@@ -382,7 +386,7 @@ pub(crate) fn session_inventory(
             .iter()
             .flat_map(|(document, text)| source_uses(document, text, false)),
     );
-    resolve(&root, &policies, lock.as_ref(), uses, Some(source))
+    resolve(&root, &policies, lock.as_ref(), uses, Some(source), package_assets)
 }
 
 fn locate(path: &Path) -> Result<(PathBuf, Option<(String, String)>), ProjectError> {
@@ -409,6 +413,9 @@ fn project_uses(root: &Path) -> Result<Vec<AssetUse>, ProjectError> {
             }
             let path = entry.path();
             if kind.is_dir() {
+                if path == root.join(".musa") {
+                    continue;
+                }
                 visit(root, &path, uses)?;
             } else if kind.is_file() && path.extension().is_some_and(|extension| extension == "musa") {
                 let source = std::fs::read_to_string(&path).map_err(|error| ProjectError::io(path.display(), error))?;
@@ -433,26 +440,10 @@ fn read_policies(root: &Path) -> Result<BTreeMap<String, AssetPolicy>, ProjectEr
         .map_err(|error| ProjectError::Assets(format!("{}: {error}", path.display())))
 }
 
-fn read_lock(root: &Path) -> Result<Option<LockFile>, ProjectError> {
-    let path = root.join("musa.lock");
-    let text = match std::fs::read_to_string(&path) {
-        Ok(text) => text,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(ProjectError::io(path.display(), error)),
-    };
-    let lock: LockFile = toml::from_str(&text)
-        .map_err(|error| ProjectError::Assets(format!("{} is not a valid lock: {error}", path.display())))?;
-    if lock.version != LOCK_VERSION {
-        return Err(ProjectError::Assets(format!(
-            "{} uses asset lock version {}, but this build reads {LOCK_VERSION}",
-            path.display(),
-            lock.version
-        )));
-    }
-    Ok(Some(lock))
-}
-
-fn generate_lock(root: &Path, policies: &BTreeMap<String, AssetPolicy>) -> Result<LockFile, ProjectError> {
+fn generate_lock(
+    root: &Path,
+    policies: &BTreeMap<String, AssetPolicy>,
+) -> Result<BTreeMap<String, crate::lock::LockedAsset>, ProjectError> {
     let canonical_root = std::fs::canonicalize(root).map_err(|error| ProjectError::io(root.display(), error))?;
     let mut assets = BTreeMap::new();
     for (logical, policy) in policies {
@@ -486,7 +477,7 @@ fn generate_lock(root: &Path, policies: &BTreeMap<String, AssetPolicy>) -> Resul
         let digest = digest_file(&canonical)?;
         assets.insert(
             logical.clone(),
-            LockedAsset {
+            crate::lock::LockedAsset {
                 kind: policy.kind,
                 adapter: policy.adapter.clone(),
                 digest,
@@ -494,19 +485,18 @@ fn generate_lock(root: &Path, policies: &BTreeMap<String, AssetPolicy>) -> Resul
             },
         );
     }
-    Ok(LockFile {
-        version: LOCK_VERSION,
-        assets,
-    })
+    Ok(assets)
 }
 
 fn resolve(
     root: &Path,
     policies: &BTreeMap<String, AssetPolicy>,
-    lock: Option<&LockFile>,
+    lock: Option<&crate::lock::LockFile>,
     uses: Vec<AssetUse>,
     open_source: Option<&str>,
+    package_assets: &BTreeMap<String, PackageAsset>,
 ) -> AssetInventory {
+    let (package_uses, uses): (Vec<_>, Vec<_>) = uses.into_iter().partition(|used| used.path.starts_with("pkg:"));
     let mut by_path: BTreeMap<String, Vec<AssetUse>> = BTreeMap::new();
     for used in uses {
         by_path.entry(used.path.clone()).or_default().push(used);
@@ -546,6 +536,61 @@ fn resolve(
         }
         facts.push(fact);
     }
+    let mut package_origins: BTreeMap<String, Vec<AssetUse>> = BTreeMap::new();
+    for used in package_uses {
+        package_origins.entry(used.path.clone()).or_default().push(used);
+    }
+    for logical in package_assets.keys() {
+        package_origins.entry(logical.clone()).or_default();
+    }
+    for (logical, origins) in package_origins {
+        let primary = origins.first();
+        let (status, detail, package) = match package_assets.get(&logical) {
+            Some(package)
+                if package.policy.kind.accepts(Path::new(&logical))
+                    && (!origins.iter().any(|origin| origin.instrument)
+                        || package.policy.kind.supports_instrument()) =>
+            {
+                (AssetStatus::Verified, None, Some(package))
+            }
+            Some(package) => (
+                AssetStatus::KindMismatch,
+                Some(format!(
+                    "`{logical}` does not match declared kind {} and its source use",
+                    package.policy.kind
+                )),
+                Some(package),
+            ),
+            None => (
+                AssetStatus::Undeclared,
+                Some(format!(
+                    "declare `{logical}` in the selected package's `[assets]` table and run `musa fetch`"
+                )),
+                None,
+            ),
+        };
+        let fact = AssetFact {
+            path: logical,
+            kind: package.map(|asset| asset.policy.kind),
+            digest: status
+                .is_verified()
+                .then(|| package.map(|asset| asset.digest.clone()))
+                .flatten(),
+            bytes: package.map(|asset| asset.bytes),
+            adapter: package.map(|asset| asset.policy.adapter.clone()),
+            license: package.and_then(|asset| asset.policy.license.clone()),
+            source: package.and_then(|asset| asset.policy.source.clone()),
+            status,
+            origin: primary.map(|origin| origin.document.clone()),
+            span: primary.and_then(|origin| origin.span),
+            detail,
+        };
+        if !status.is_verified() {
+            diagnostics.push(diagnostic(&fact, open_source));
+        }
+        facts.push(fact);
+    }
+    facts.sort_by(|left, right| left.path.cmp(&right.path));
     let identity = closure_identity(&facts);
     AssetInventory {
         facts,
@@ -559,7 +604,7 @@ fn verify_one(
     canonical_root: Option<&Path>,
     logical: &str,
     policy: Option<&AssetPolicy>,
-    locked: Option<&LockedAsset>,
+    locked: Option<&crate::lock::LockedAsset>,
     origins: &[AssetUse],
 ) -> (AssetStatus, Option<String>, Option<u64>, Option<String>) {
     let Some(policy) = policy else {

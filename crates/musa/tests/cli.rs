@@ -711,3 +711,64 @@ source = "CLI fixture"
 
     std::fs::remove_dir_all(&root)
 }
+
+/// Fetch is the only online package command; `--locked` is verification only.
+#[test]
+fn fetch_materializes_once_and_locked_verification_stays_offline() -> std::io::Result<()> {
+    let remote = temp_dir("package-command-remote")?;
+    std::fs::create_dir_all(remote.join("src"))?;
+    std::fs::write(
+        remote.join("musa.toml"),
+        "[package]\nname = \"tools\"\nlanguage_version = 1\n\n[build]\nsource = \"src\"\n",
+    )?;
+    std::fs::write(remote.join("src/lib.musa"), "mod math;\n")?;
+    std::fs::write(remote.join("src/math.musa"), "fn doubled(n: Nat) -> Nat { n + n }\n")?;
+    let git = |arguments: &[&str]| -> std::io::Result<String> {
+        let output = Command::new("git").arg("-C").arg(&remote).args(arguments).output()?;
+        assert!(
+            output.status.success(),
+            "git {arguments:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+    };
+    git(&["init", "--quiet"])?;
+    git(&["config", "user.name", "Musa Test"])?;
+    git(&["config", "user.email", "musa@example.invalid"])?;
+    git(&["add", "."])?;
+    git(&["commit", "--quiet", "-m", "fixture"])?;
+    let revision = git(&["rev-parse", "HEAD"])?;
+
+    let project = temp_dir("package-command-project")?;
+    let manifest = |revision: &str| {
+        format!(
+            "[project]\nname = \"Package CLI\"\n\n[packages.tools]\ngit = \"{}\"\nrev = \"sha1:{revision}\"\n",
+            remote.display()
+        )
+    };
+    std::fs::write(project.join("musa.toml"), manifest(&revision))?;
+    let path = project.to_string_lossy();
+    let fetched = musa(&["fetch", &path])?;
+    assert!(
+        fetched.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&fetched.stderr)
+    );
+    assert!(String::from_utf8_lossy(&fetched.stderr).contains("fetched 1 exact package"));
+
+    let unavailable = remote.with_extension("unavailable");
+    std::fs::rename(&remote, &unavailable)?;
+    let locked = musa(&["fetch", "--locked", &path])?;
+    assert!(
+        locked.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&locked.stderr)
+    );
+    assert!(String::from_utf8_lossy(&locked.stderr).contains("verified 1 exact package root"));
+
+    std::fs::write(project.join("musa.toml"), manifest(&"0".repeat(40)))?;
+    let drifted = musa(&["fetch", "--locked", &path])?;
+    assert!(!drifted.status.success());
+    std::fs::remove_dir_all(&project)?;
+    std::fs::remove_dir_all(&unavailable)
+}

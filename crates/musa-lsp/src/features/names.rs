@@ -25,7 +25,7 @@ pub(crate) fn references(document: &Document, uri: &Uri, params: &ReferenceParam
     }
     if params.context.include_declaration
         && let Some(external) = &entry.external_declaration
-        && let Some(source) = musa_project::standard_library_source(&external.uri)
+        && let Some(source) = document.snapshot().cause_source(&external.uri)
         && let Ok(external_uri) = Uri::from_str(&external.uri)
     {
         locations.push(Location {

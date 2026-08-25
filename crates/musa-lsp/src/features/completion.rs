@@ -107,7 +107,8 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
     // motifs, and the modules and templates a piece is assembled from, each
     // offered with the signature the checker settled on rather than with a
     // guess about what it is.
-    for item in document.snapshot().items() {
+    let snapshot = document.snapshot();
+    for item in snapshot.items() {
         let kind = match item.kind {
             NameKind::Value => CompletionItemKind::CONSTANT,
             NameKind::Function => CompletionItemKind::FUNCTION,
@@ -123,7 +124,7 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
             detail: Some(item.signature.clone()),
             documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
                 kind: lsp_types::MarkupKind::Markdown,
-                value: super::items::markdown(item),
+                value: super::items::markdown(&snapshot, item),
             })),
             tags: item.deprecation.as_ref().map(|_| vec![CompletionItemTag::DEPRECATED]),
             ..CompletionItem::default()

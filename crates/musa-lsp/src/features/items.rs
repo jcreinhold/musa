@@ -53,7 +53,7 @@ pub(crate) fn named<'a>(snapshot: &'a ProjectSnapshot<'_>, name: &str) -> Option
 /// declaration says it is superseded; then the signature, because that is the
 /// question; then the prose; then the one line that tells this type from the
 /// one it is confused with; then where it is written.
-pub(crate) fn markdown(item: &ItemFact) -> String {
+pub(crate) fn markdown(snapshot: &ProjectSnapshot<'_>, item: &ItemFact) -> String {
     let mut text = String::new();
     if let Some(instead) = &item.deprecation {
         text.push_str("**Deprecated** — ");
@@ -78,7 +78,7 @@ pub(crate) fn markdown(item: &ItemFact) -> String {
         text.push_str("` — ");
         text.push_str(distinction);
     }
-    if let Some(where_from) = origin_line(item) {
+    if let Some(where_from) = origin_line(snapshot, item) {
         text.push_str("\n\n");
         text.push_str(&where_from);
     }
@@ -92,12 +92,12 @@ pub(crate) fn markdown(item: &ItemFact) -> String {
 /// only way to reach it and an edit has nowhere to land. An ordinary import
 /// names its path. A local declaration says nothing — the reader is looking at
 /// it.
-fn origin_line(item: &ItemFact) -> Option<String> {
+fn origin_line(snapshot: &ProjectSnapshot<'_>, item: &ItemFact) -> Option<String> {
     let uri = item.uri.as_deref()?;
     if !item.read_only {
         return Some(format!("*Imported from `{uri}`*"));
     }
-    let source = musa_project::standard_library_source(uri)?;
+    let source = snapshot.cause_source(uri)?;
     let line = LineIndex::new(source).range(item.span).start.line.saturating_add(1);
-    Some(format!("*Bundled Musa source · read-only* — [{uri}]({uri}#L{line})"))
+    Some(format!("*Immutable Musa source · read-only* — [{uri}]({uri}#L{line})"))
 }

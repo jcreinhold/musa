@@ -142,7 +142,7 @@ impl<'session> ProjectSnapshot<'session> {
     ///
     /// `None` for a key this compilation was not handed, which is also when
     /// the cause's own positions are absent.
-    pub fn cause_source(&self, document: &str) -> Option<&str> {
+    pub fn cause_source(&self, document: &str) -> Option<&'session str> {
         self.imports.get(document)
     }
 

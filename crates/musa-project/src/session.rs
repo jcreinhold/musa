@@ -18,6 +18,20 @@ use crate::project::ProjectMeta;
 use crate::snapshot::{PlaybackState, ProjectSnapshot, ValidArtifacts};
 use crate::template::Template;
 
+fn package_diagnostic(message: &str, detail: &str) -> Diagnostic {
+    Diagnostic {
+        severity: crate::diagnostic::Severity::Error,
+        code: "package-lock".to_owned(),
+        message: message.to_owned(),
+        labels: Vec::new(),
+        help: Some(detail.to_owned()),
+        note: Some("package checking is offline; change exact pins and run `musa fetch` explicitly".to_owned()),
+        fixes: Vec::new(),
+        causes: Vec::new(),
+        span: None,
+    }
+}
+
 /// One open `.musa` project.
 ///
 /// The single owner of everything between the source text and the outside
@@ -963,7 +977,33 @@ impl ProjectSession {
     /// stays on screen and playback keeps running from the last revision
     /// that made sense (roadmap §14.7).
     fn recompile(&mut self) -> ProjectUpdate {
-        let (imports, import_paths) = crate::imports::closure(&self.name, &self.source);
+        let (package_sources, package_assets, package_diagnostic) = match self.project.as_ref() {
+            Some(project) if project.package_error.is_some() => (
+                musa_compiler::ImportSources::default(),
+                std::collections::BTreeMap::new(),
+                project
+                    .package_error
+                    .as_ref()
+                    .map(|error| package_diagnostic("project package policy is invalid", error)),
+            ),
+            Some(project) => match crate::packages::offline(&project.root, &project.packages, &self.name) {
+                Ok(closure) => (closure.sources, closure.assets, None),
+                Err(error) => (
+                    musa_compiler::ImportSources::default(),
+                    std::collections::BTreeMap::new(),
+                    Some(package_diagnostic(
+                        "project package closure is unavailable",
+                        &error.to_string(),
+                    )),
+                ),
+            },
+            None => (
+                musa_compiler::ImportSources::default(),
+                std::collections::BTreeMap::new(),
+                None,
+            ),
+        };
+        let (imports, import_paths) = crate::imports::closure(&self.name, &self.source, package_sources);
         self.imports = imports;
         self.import_paths = import_paths;
         self.assets = crate::assets::session_inventory(
@@ -972,6 +1012,7 @@ impl ProjectSession {
             &self.name,
             &self.source,
             &self.imports,
+            &package_assets,
         );
         let document = SourceDocument::new(self.source.clone(), self.name.clone());
         let compilation = musa_compiler::compile(&document, &self.options());
@@ -982,13 +1023,15 @@ impl ProjectSession {
             .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines, &self.imports))
             .collect();
         diagnostics.extend(self.assets.diagnostics().iter().cloned());
+        let package_failed = package_diagnostic.is_some();
+        diagnostics.extend(package_diagnostic);
         let diagnostics_changed = diagnostics != self.diagnostics;
         self.diagnostics = diagnostics;
 
         let revision = self.revision;
         let identity = compilation.identity();
         let kind = compilation.kind();
-        let had_errors = compilation.has_errors() || !self.assets.is_verified();
+        let had_errors = compilation.has_errors() || !self.assets.is_verified() || package_failed;
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
         // The reference record travels with the successful compile, like

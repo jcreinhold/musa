@@ -30,6 +30,7 @@ use musa_syntax::ast::ModDecl;
 /// answer.
 pub(crate) struct Package<'a> {
     modules: BTreeMap<String, &'a str>,
+    module_files: BTreeMap<String, String>,
     faults: Vec<Fault>,
 }
 
@@ -75,6 +76,7 @@ impl<'a> Package<'a> {
         let available: BTreeMap<&str, &'a str> = files.iter().copied().collect();
         let mut package = Self {
             modules: BTreeMap::new(),
+            module_files: BTreeMap::new(),
             faults: Vec::new(),
         };
         let mut reached: BTreeSet<String> = BTreeSet::new();
@@ -126,8 +128,9 @@ impl<'a> Package<'a> {
             let leaf = at(&format!("{name}.musa"));
             let branch = at(&format!("{name}/mod.musa"));
             if let Some(text) = available.get(leaf.as_str()) {
-                reached.insert(leaf);
-                self.modules.insert(path, text);
+                reached.insert(leaf.clone());
+                self.modules.insert(path.clone(), text);
+                self.module_files.insert(path, leaf);
             } else if let Some(text) = available.get(branch.as_str()) {
                 reached.insert(branch.clone());
                 // A directory module is a module as well as the namespace of
@@ -135,6 +138,7 @@ impl<'a> Package<'a> {
                 // read `performance/mod.musa`; requiring a dummy leaf facade
                 // would make the filesystem shape leak into source paths.
                 self.modules.insert(path.clone(), text);
+                self.module_files.insert(path.clone(), branch.clone());
                 self.descend(available, reached, &format!("{path}::"), &branch, text);
             } else {
                 self.faults.push(Fault::Missing {
@@ -153,6 +157,13 @@ impl<'a> Package<'a> {
     /// Every module the tree declares, in path order.
     pub(crate) fn modules(&self) -> impl Iterator<Item = (&str, &'a str)> {
         self.modules.iter().map(|(path, source)| (path.as_str(), *source))
+    }
+
+    /// Each declared module path and the source-root-relative file that owns it.
+    pub(crate) fn module_files(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.module_files
+            .iter()
+            .map(|(module, file)| (module.as_str(), file.as_str()))
     }
 
     /// Everything wrong with the package, in the order it was found.

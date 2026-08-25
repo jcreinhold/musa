@@ -20,7 +20,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Deterministic work, nesting, constructed-node, and logical-byte limits | implemented | `musa-calculus::Budget`; exact-boundary and corpus-budget laws |
 | Host registrations for source base types, constructors, and δ-rules | implemented | `musa-compiler::registry` and `prelude`; ownership and conformance laws |
 | CST-to-raw lowering, whole-document elaboration, and independent kernel recheck | implemented | `musa-compiler::{lower,document,elaborate}`; prompt-149 trusted boundary |
-| Imports, real module tree, `private`, and generated reference documentation | implemented | `musa-compiler::{imports,package,reference}` and `stdlib/` |
+| Imports, real module tree, exact-pinned offline packages, `private`, and generated reference documentation | implemented | `musa-compiler::{imports,package,reference}`, `musa-project::{packages,lock}`, and `stdlib/` |
 | Typed syntax values, provenance-preserving quotation, anchors, splices, and adapter expansion | implemented | `musa-compiler::{quote,phase,expand}`; adapter and origin laws |
 | Compiler diagnostics with causes across documents | implemented | compiler → project → LSP/desktop; rendered diagnostic laws |
 | Collections needed by committed programs | implemented | surface list forms, core lists, and `std::list`; collection/corpus laws |

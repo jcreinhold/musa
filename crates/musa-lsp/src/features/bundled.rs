@@ -27,8 +27,15 @@ pub(crate) const BUNDLED_SOURCE: &str = "musa.bundledSource";
 /// A URI no bundled module answers to. Refused rather than answered with an
 /// empty document: a reader shown a blank standard library would conclude the
 /// module is empty.
-pub(crate) fn execute(uri: &str) -> Result<Value, String> {
-    let source =
-        musa_project::standard_library_source(uri).ok_or_else(|| format!("`{uri}` is not a bundled Musa module"))?;
+pub(crate) fn execute(uri: &str, project_source: Option<&str>) -> Result<Value, String> {
+    let source = project_source
+        .or_else(|| musa_project::standard_library_source(uri))
+        .ok_or_else(|| {
+            if uri.starts_with("musa-stdlib:") {
+                format!("`{uri}` is not a bundled Musa module")
+            } else {
+                format!("`{uri}` is not a readable immutable Musa module")
+            }
+        })?;
     Ok(Value::String(source.to_owned()))
 }

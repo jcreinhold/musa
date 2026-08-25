@@ -99,7 +99,7 @@ fn at_named_definition(
         }));
     }
     let external = name.external_declaration.as_ref()?;
-    let source = musa_project::standard_library_source(&external.uri)?;
+    let source = snapshot.cause_source(&external.uri)?;
     let uri = Uri::from_str(&external.uri).ok()?;
     Some(GotoDefinitionResponse::Scalar(Location {
         uri,
