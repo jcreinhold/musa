@@ -16,16 +16,16 @@ phase: 3
 
 ## Task
 
-Twenty-two prompts changed what Musa is. Audit `docs/rules/`, `docs/plan/`, `docs/book/`, `docs/plan/code-map/`, and
+The language pass changed what Musa is. Audit `docs/rules/`, `docs/plan/`, `docs/book/`, `docs/plan/code-map/`, and
 `AGENTS.md` for anything that still describes the old language, repair the surviving prompts so they name the new one,
 and leave the stack in a state where prompt 171 can start without rediscovering any of this. This prompt adds no
 feature.
 
 ## Read
 
-- Every commit of prompts 128–169 (`git log --oneline 127dcfb..HEAD`), and every note they wrote under
-  `docs/notes/research/language-design-closure/`. The repairs this prompt makes are the ones those commits implied and
-  did not have standing to make.
+- Every implementation and repair commit from prompts 128–169 (`git log --oneline e0178129^..HEAD`), and every note they
+  wrote under `docs/notes/research/language-design-closure/`. The repairs this prompt makes are the ones those commits
+  implied and did not have standing to make.
 - All of `docs/rules/language/`, `docs/rules/events/`, `docs/rules/across-stages/`, `docs/rules/constitution.md`,
   `docs/rules/obligations.md`, and `docs/rules/style-guide.md` — read for contradictions with each other, not only with
   the code.
@@ -34,13 +34,13 @@ feature.
 - `docs/book/` in full. The book teaches, quotes fixtures, and generates signatures from the compiler's own record; a
   language change that leaves the book teaching the old one is the most user-visible drift this pass can produce.
 - Prompts [171](171-machine-runtime.md), [172](172-track-scheduling.md), [173](173-one-frame-audio.md), and
-  [174](174-core-calculus-conformance.md), and the sound block at 154 and beyond — the prompts that have to run next.
+  [174](174-core-calculus-conformance.md), and the sound block at 175 and beyond — the prompts that have to run next.
 - `AGENTS.md`'s prompt count and its description of the 127 block, which this pass changed.
 
 ## Design
 
 **Repair at reach, not speculatively.** 171–174 are next and are repaired here in full: their `depends_on`, their Read
-sections, and any Design that assumed rank-1 inference, contextual `Music`, or the old phase API. The sound block at 154
+sections, and any Design that assumed rank-1 inference, contextual `Music`, or the old phase API. The sound block at 175
 and beyond is repaired *when reached*, under the prompt README's §6 procedure — pre-repairing eighteen prompts against a
 language whose implementation is four prompts old is guesswork, and guesswork committed to the plan is worse than a gap,
 because the next reader cannot tell which parts were checked.
@@ -92,7 +92,8 @@ than note 39 §11.2 estimated.
 
 - Contradiction audit across `docs/rules/`, `docs/plan/`, `docs/book/`, `docs/plan/code-map/`, and `AGENTS.md`, with
   every repair made and every blocker published.
-- Prompts 171–174 repaired: `depends_on` naming 149, Read and Design sections naming the language that exists.
+- Prompts 171–174 repaired: their dependency chain runs through 170–173, and their Read and Design sections import
+  prompt 149's trusted boundary and name the language that exists.
 - `docs/plan/clean-break-ledger.md` closed or reassigned, row by row.
 - `AGENTS.md`: prompt count, the 127-block description, and the `docs/rules/language/` graduation prompt reference, all
   correct.
