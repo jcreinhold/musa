@@ -227,7 +227,14 @@ Existing studio source migrates by this table; format never rewrites a user's ex
 | `assign part -> P;` | expert part-to-instrument binding | remains canonical |
 | `profile p;` in a part | expert profile selection | remains canonical |
 | `route` / `send` | explicit mix routing | remains canonical |
-| filter parameter `q:` | filter parameter `resonance:` | `q` accepted with a deprecation/fix; newly inserted source uses `resonance` |
+| filter parameter `q:` | filter parameter `resonance:` | `q` is a hard error with an exact fix; there is one accepted spelling |
+
+Prompt 175 amends the last row. The earlier compatibility promise predated a catalogue capable of naming a canonical
+parameter and its fix, and no released stored format or public runtime identity encoded `q`; keeping both spellings
+would make every catalogue consumer and structured editor carry an alias indefinitely. Existing repository sources are
+migrated atomically, while an older source receives a certain replacement rather than an ambiguous rejection. The
+argument and migration inventory remain in
+[`../../notes/research/language-design-closure/77-one-studio-vocabulary.md`](../../notes/research/language-design-closure/77-one-studio-vocabulary.md).
 
 Unsupported realization is explicit:
 

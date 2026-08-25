@@ -10,6 +10,10 @@ phase: 3
 
 > **Governed by the event-track and machine core installed by prompts 127a–127e and 171–174.** Read the revised rules
 > and the core-calculus conformance report before this prompt's Design.
+>
+> **Amends `docs/rules/language/08-performance-and-sound.md` §6 before implementation.** The migration row now makes
+> `resonance` the only accepted filter spelling and requires an exact fix for the removed `q` spelling. Note 77 records
+> the reason, affected sources, replacement rule, implementation owner, and migration.
 
 ## Task
 
@@ -22,8 +26,8 @@ desktop, and generated reference material consume the same facts.
 
 - `docs/rules/language/08-performance-and-sound.md`; roadmap §§7.2, 13.6–13.7, 14.4; prompts 29–31 and 84.
 - `crates/musa-dsp/src/intent.rs`, especially `Processor::params`/`ParamSpec`, and its private graph parameter
-  descriptors; `crates/musa-compiler/src/studio.rs`, which consumes that vocabulary while resolving source;
-  keyword docs and `musa-lsp/src/features/hover.rs::at_studio`.
+  descriptors; `crates/musa-compiler/src/studio.rs`, which consumes that vocabulary while resolving source; keyword docs
+  and `musa-lsp/src/features/hover.rs::at_studio`.
 - Existing Sound/Mix facts and all hard-coded processor/parameter name matches. Count them before choosing an owner.
 - The revised machine and audio specifications and `docs/plan/code-map/process-runtime.md`; the catalogue's stable
   processor/port descriptors join the build-local primitive registry established by prompts 171–173.
@@ -33,9 +37,8 @@ desktop, and generated reference material consume the same facts.
 The `musa-dsp` surface catalogue owns processor spelling, musician-facing summary, longer technical note, parameter
 names, aliases, unit, written range/default, signal role, and example, beside the `StudioSpec` vocabulary prompt 174b
 moved there. The private graph descriptor continues to own the post-conversion DSP range, smoothing, and combination
-policy. Join them by a checked stable key; do not force two different questions into one descriptor and do not
-introduce a new crate for a table. `musa-compiler` consumes the catalogue while resolving source and does not re-export
-it.
+policy. Join them by a checked stable key; do not force two different questions into one descriptor and do not introduce
+a new crate for a table. `musa-compiler` consumes the catalogue while resolving source and does not re-export it.
 
 The catalogue entry also fixes the versioned processor identity and public port/parameter schema which preparation will
 validate. It does not expose private machine state in this prompt. A built-in which cannot supply a first-order
@@ -54,8 +57,8 @@ entry and compatible audio descriptor.
 
 ## Target
 
-- Authoritative `musa-dsp` catalogue, consumed directly by the compiler, and schema-agreement checks against the
-  private graph descriptors.
+- Authoritative `musa-dsp` catalogue, consumed directly by the compiler, and schema-agreement checks against the private
+  graph descriptors.
 - LSP hover/signature/completion for processors and parameters, including invalid/half-typed studio source.
 - Sound/Mix labels, descriptions, accessible names, and generated reference page from the same facts.
 - Hard-error `q` diagnostic/fix and migrated canonical examples, with no alias in the checker or runtime.
