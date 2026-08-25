@@ -74,6 +74,33 @@ fn render_allocates_nothing() {
     assert_eq!(before, after, "render allocated {} times", after.saturating_sub(before));
 }
 
+#[test]
+fn sampler_note_and_frame_steps_allocate_nothing() {
+    let prepared = super::sampler_laws::prepared();
+    let gestures = super::sampler_laws::gesture_plan();
+    let gesture = super::sampler_laws::first_gesture(&gestures);
+    let token = prepared.selector(17, 4).select(gesture, "").expect("token");
+    let handle = crate::schedule::EventHandle::root(0);
+    let mut runtime = prepared.runtime();
+    let mut output = [0.0; 512];
+    runtime.note_on(&handle, token);
+    runtime.render(&mut output); // warm the thread-local allocator path
+    let before = allocs();
+    runtime.note_off(&handle);
+    runtime.note_on(&handle, token);
+    runtime.render(&mut output);
+    runtime.set_pedal(true);
+    runtime.note_off(&handle);
+    runtime.set_pedal(false);
+    let after = allocs();
+    assert_eq!(
+        before,
+        after,
+        "sampler callback path allocated {} times",
+        after.saturating_sub(before)
+    );
+}
+
 /// The measurement is the current thread's, not the process's.
 ///
 /// Without this the contract above is only as strong as the test binary is

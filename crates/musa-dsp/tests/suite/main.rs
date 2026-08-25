@@ -15,6 +15,7 @@ mod expressive_control_laws;
 mod machine;
 mod routing_laws;
 mod rt;
+mod sampler_laws;
 mod schedule;
 mod studio_laws;
 mod studio_lowering_laws;

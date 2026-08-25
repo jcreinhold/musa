@@ -281,3 +281,6 @@ Instrument behavior follows the same ownership rule. `std::sound::instrument` de
 requirements, technique fallbacks, and the standard instruments as ordinary Musa values. Its registered-machine
 components and graph-local parameter targets stay private to the declaring module; preparation receives their checked
 projections, not a second Rust `InstrumentSpec` language.
+
+`std::sound::sample` follows that boundary for native sample maps: regions, selection policies, loops, and envelopes are
+ordinary Musa data, while the Rust runtime only prepares and renders the checked source artifact.

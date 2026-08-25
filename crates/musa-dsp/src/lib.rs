@@ -21,6 +21,8 @@ mod offline;
 mod plan;
 mod primitive;
 mod quantity;
+mod sample_source;
+mod sampler;
 mod schedule;
 mod source;
 mod spec;
@@ -36,6 +38,11 @@ pub use crate::instrument_source::{
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::primitive::{AudioLimits, VocabularyAgreementError, check_studio_vocabulary};
+pub use crate::sample_source::{SampleMap, SampleMapError, decode_sample_map, sample_map_schema};
+pub use crate::sampler::{
+    PreparedSampleMap, SampleRuntime, SampleSelectionToken, SampleSelector, SamplerLimits, SamplerPrepareError,
+    SamplerResources, prepare_sample_map,
+};
 pub use crate::schedule::{
     AudioFormat, BoundaryCollision, BoundaryKind, ChannelLayout, CollapsePolicy, EventBatch, EventHandle, EventMessage,
     FrameRounding, MessageKind, RoundingChoice, Schedule, ScheduleError, ScheduleLimits, SchedulePolicy,

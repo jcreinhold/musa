@@ -14,6 +14,7 @@ workspace = true
 testing = []
 
 [dependencies]
+hound = "3"
 indexmap = "2"
 musa-calculus = { workspace = true }
 musa-events = { workspace = true }
@@ -25,7 +26,6 @@ tracing = "0.1"
 
 [dev-dependencies]
 divan = "0.1.21"
-hound = "3"
 insta = "1"
 musa-compiler = { workspace = true }
 
@@ -40,3 +40,7 @@ name = "machine_step"
 [[bench]]
 harness = false
 name = "schedule_step"
+
+[[bench]]
+harness = false
+name = "sampler"

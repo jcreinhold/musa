@@ -423,6 +423,15 @@ searches the filesystem.
 - `fn milliseconds(magnitude: Ratio) -> ExactQuantity` — Milliseconds normalize exactly into the source base unit. The CST retains the written `ms` token for diagnostics and token-scoped edits.
 - `fn quantity_artifact(quantity: ExactQuantity) -> ExactQuantityArtifact` — Wrap a quantity in the versioned value consumed by a host boundary.
 
+## `std::sound::sample`
+
+- `record SampleEnvelope: Type` — Exact source envelope values, in physical seconds and linear amplitude.
+- `record SampleRegion: Type` — One immutable audio region and every predicate or playback rule it owns.
+- `record SampleMap: Type` — A complete source-declared sample instrument implementation.
+- `record SampleInstrument: Type` — One ordinary source instrument contract paired with its sample-map body. The body is private implementation policy to consumers of the instrument; adapters construct this same value before native normalization.
+- `fn sample_instrument(contract: Instrument, implementation: SampleMap) -> SampleInstrument` — Pair a public instrument contract with a source-declared sample map.
+- `record SampleMapArtifact: Type` — The versioned checked boundary consumed by native preparation and adapters.
+
 ## `std::tonal::harmony`
 
 - `fn numeral(ordinal: Nat, members: Nat, position: Nat) -> Option(Roman)` — The numeral three numbers describe, when they describe one. Absent when the ordinal is outside `I`–`vii`, when the stack is smaller than a triad or larger than a thirteenth, or when the bass position names a member the stack does not have — a third inversion of a triad is not a numeral that is hard to realize, it is not a numeral. OMT 020 and 021.

@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufReader, Read as _};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use musa_syntax::ast::{Document, PieceDecl};
 use serde::{Deserialize, Serialize};
@@ -150,6 +151,7 @@ pub struct AssetInventory {
     facts: Vec<AssetFact>,
     diagnostics: Vec<Diagnostic>,
     identity: [u8; 32],
+    root: Option<PathBuf>,
 }
 
 impl AssetInventory {
@@ -178,6 +180,7 @@ impl AssetInventory {
             facts: Vec::new(),
             diagnostics: vec![diagnostic],
             identity: closure_identity(&[]),
+            root: None,
         }
     }
 
@@ -199,6 +202,50 @@ impl AssetInventory {
     pub(crate) const fn identity(&self) -> [u8; 32] {
         self.identity
     }
+
+    pub(crate) fn read_verified(&self, logical: &str) -> Result<Arc<[u8]>, ProjectError> {
+        let fact = self
+            .facts
+            .iter()
+            .find(|fact| fact.path == logical && fact.status == AssetStatus::Verified)
+            .ok_or_else(|| ProjectError::Assets(format!("sample asset `{logical}` is not in the verified closure")))?;
+        let root = self
+            .root
+            .as_deref()
+            .ok_or_else(|| ProjectError::Assets("the verified asset closure has no project root".to_owned()))?;
+        let relative = safe_relative(logical).map_err(ProjectError::Assets)?;
+        let canonical_root = std::fs::canonicalize(root).map_err(|error| ProjectError::io(root.display(), error))?;
+        let path = root.join(relative);
+        let canonical = std::fs::canonicalize(&path).map_err(|error| ProjectError::io(path.display(), error))?;
+        if !canonical.starts_with(&canonical_root) {
+            return Err(ProjectError::Assets(format!(
+                "sample asset `{logical}` follows a symlink outside the project"
+            )));
+        }
+        let expected = fact
+            .bytes
+            .ok_or_else(|| ProjectError::Assets(format!("sample asset `{logical}` has no locked byte length")))?;
+        let capacity = usize::try_from(expected)
+            .map_err(|_| ProjectError::Assets(format!("sample asset `{logical}` is too large for this platform")))?;
+        let file = File::open(&canonical).map_err(|error| ProjectError::io(canonical.display(), error))?;
+        let mut reader = BufReader::new(file).take(expected.saturating_add(1));
+        let mut bytes = Vec::with_capacity(capacity);
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(|error| ProjectError::io(canonical.display(), error))?;
+        if bytes.len() != capacity {
+            return Err(ProjectError::Assets(format!(
+                "sample asset `{logical}` changed length after verification"
+            )));
+        }
+        let actual = format!("sha256:{:x}", Sha256::digest(&bytes));
+        if fact.digest.as_deref() != Some(actual.as_str()) {
+            return Err(ProjectError::Assets(format!(
+                "sample asset `{logical}` changed content after verification"
+            )));
+        }
+        Ok(bytes.into())
+    }
 }
 
 impl Default for AssetInventory {
@@ -207,6 +254,7 @@ impl Default for AssetInventory {
             facts: Vec::new(),
             diagnostics: Vec::new(),
             identity: closure_identity(&[]),
+            root: None,
         }
     }
 }
@@ -596,6 +644,7 @@ fn resolve(
         facts,
         diagnostics,
         identity,
+        root: Some(root.to_path_buf()),
     }
 }
 

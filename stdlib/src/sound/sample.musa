@@ -1,0 +1,109 @@
+// Source-owned sample-instrument declarations.
+//
+// These values describe musical selection and playback policy. Decoded PCM,
+// lookup tables, resampler cursors, envelopes, and voices are private host
+// projections prepared from one checked SampleMapArtifact.
+
+import std::sound::instrument;
+
+/// Why a region begins sounding.
+data SampleTrigger {
+    AttackTrigger,
+    ReleaseTrigger,
+}
+
+/// Which sustain state admits a region.
+data SamplePedalCondition {
+    AnyPedal,
+    PedalUp,
+    PedalDown,
+}
+
+/// Which source phrase connection admits a region.
+data SampleConnectionCondition {
+    AnyConnection,
+    DetachedConnection,
+    OrdinaryConnection,
+    LegatoConnection,
+}
+
+/// How a finite sample region continues at its loop boundary.
+data SampleLoopMode {
+    NoLoop,
+    ForwardLoop,
+    AlternatingLoop,
+}
+
+/// How equally applicable regions choose one variation.
+data SampleSelectionPolicy {
+    FirstRegion,
+    RoundRobin,
+    StableWeighted,
+}
+
+/// Exact source envelope values, in physical seconds and linear amplitude.
+record SampleEnvelope {
+    attack_seconds: Ratio;
+    decay_seconds: Ratio;
+    sustain_level: Ratio;
+    release_seconds: Ratio;
+}
+
+/// One immutable audio region and every predicate or playback rule it owns.
+record SampleRegion {
+    asset: Text;
+    key_low: Nat;
+    key_high: Nat;
+    root_key: Nat;
+    expression_low: Ratio;
+    expression_high: Ratio;
+    technique: Text;
+    connection: SampleConnectionCondition;
+    trigger: SampleTrigger;
+    pedal: SamplePedalCondition;
+    sequence_group: Nat;
+    sequence_position: Nat;
+    sequence_length: Nat;
+    weight: Nat;
+    priority: Nat;
+    tune_cents: Ratio;
+    gain: Ratio;
+    pan: Ratio;
+    start_frame: Nat;
+    end_frame: Nat;
+    loop_start: Nat;
+    loop_end: Nat;
+    loop_mode: SampleLoopMode;
+    envelope: SampleEnvelope;
+    exclusive_group: Nat;
+}
+
+/// A complete source-declared sample instrument implementation.
+record SampleMap {
+    declaration_id: Text;
+    selection: SampleSelectionPolicy;
+    voices: Nat;
+    regions: List(SampleRegion);
+}
+
+/// One ordinary source instrument contract paired with its sample-map body.
+/// The body is private implementation policy to consumers of the instrument;
+/// adapters construct this same value before native normalization.
+record SampleInstrument {
+    contract: Instrument;
+    implementation: SampleMap;
+}
+
+/// Pair a public instrument contract with a source-declared sample map.
+fn sample_instrument(contract: Instrument, implementation: SampleMap) -> SampleInstrument {
+    SampleInstrument {
+        contract = contract,
+        implementation = implementation
+    }
+}
+
+/// The versioned checked boundary consumed by native preparation and adapters.
+record SampleMapArtifact {
+    schema_version: Nat;
+    sample_map: SampleMap;
+}

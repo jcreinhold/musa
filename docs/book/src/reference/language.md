@@ -277,6 +277,22 @@ Two parts can play the same marks and read them differently: a staccato is not a
 
 Patches, modulation, assignment, and routing are covered in [Write for the studio](../how-to/studio.md).
 
+## Native sample maps
+
+`std::sound::sample` declares `SampleMap`, `SampleRegion`, selection policy, loop and envelope values, and the
+`SampleInstrument` pairing as ordinary Musa data. A checked `SampleMapArtifact` is the only authority the native runtime
+accepts. Regions may select exact key and expression ranges, custom techniques, phrase connection, pedal and
+attack/release state, and deterministic sequence policy; they retain logical asset paths rather than audio bytes.
+
+Project preparation resolves those paths through the verified asset closure, rechecks length and digest at the exact
+read used by decoding, and preloads bounded mono or stereo WAV PCM. The prepared projection privately holds the region
+index, interpolation and loop bounds, fixed voice pool, and envelope state. Selection happens before the audio step and
+produces an opaque token derived from the realization seed, instrument instance, semantic gesture identity, and source
+policy. The frame step consumes tokens and touches no filesystem, allocator, lock, logger, or random generator.
+
+SFZ and SoundFont are subsequent foreign adapters into this same checked source value; they do not define alternate
+instrument semantics.
+
 ## Imports
 
 ```musa

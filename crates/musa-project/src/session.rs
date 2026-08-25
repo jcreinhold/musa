@@ -152,6 +152,37 @@ struct HistoryEntry {
 }
 
 impl ProjectSession {
+    /// Prepare one source-declared native sample map against this project's
+    /// verified local asset closure. Raw bytes remain inside the project-to-DSP
+    /// boundary and are rechecked at the exact read consumed by decoding.
+    ///
+    /// # Errors
+    /// Returns source diagnostics, an unverified or changed asset error, or a
+    /// bounded native sampler preparation failure.
+    pub fn prepare_sample_map(
+        &self,
+        binding: &str,
+        limits: musa_dsp::SamplerLimits,
+    ) -> Result<musa_dsp::PreparedSampleMap, ProjectError> {
+        if !self.assets.is_verified() {
+            return Err(ProjectError::Assets(
+                "the project asset closure is not verified".to_owned(),
+            ));
+        }
+        let document = SourceDocument::new(self.source.clone(), self.name.clone());
+        let checked =
+            musa_compiler::checked_source_value(&document, &self.options(), binding, &musa_dsp::sample_map_schema())
+                .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
+        let map =
+            musa_dsp::decode_sample_map(&checked).map_err(|error| ProjectError::Performance(error.to_string()))?;
+        musa_dsp::prepare_sample_map(
+            map,
+            |logical| self.assets.read_verified(logical).map_err(|error| error.to_string()),
+            limits,
+        )
+        .map_err(|error| ProjectError::Performance(error.to_string()))
+    }
+
     /// Open an existing `.musa` file.
     ///
     /// A file that does not compile still opens: the session reports its

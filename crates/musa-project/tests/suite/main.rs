@@ -17,6 +17,7 @@ mod project_laws;
 mod provenance_laws;
 mod realization_laws;
 mod resource_session;
+mod sampler_laws;
 mod session_laws;
 mod studio_laws;
 mod ui_fixtures_generators;
