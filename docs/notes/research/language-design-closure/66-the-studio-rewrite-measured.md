@@ -86,8 +86,9 @@ The paper program could not be copied literally:
 - The paper ports used `expression_depth.control` and `room.audio` as both input and output. Exact direction validation
   requires `control_in`/`control` and `audio_in`/`audio`, making the topology unambiguous.
 - Ordinary source cannot store phase `Syntax`, so declarations carry the `Nat` from `syntax_anchor`.
-- No bridge currently turns `StudioDescription` into the legacy Rust `StudioSpec`. The source description is finite and
-  validates completely, but it does not drive DSP until prompt 174's cutover.
+- No bridge currently turns `StudioDescription` into a checked host artifact or the legacy Rust `StudioSpec`. The source
+  description is finite and validates completely; prompt 174b adds the bridge and prompt 180a performs the production
+  cutover after the source vocabulary reaches parity.
 - The printer normalizes both `instrument` and `processor` nodes to `processor`. `StudioDecl::Node` deliberately stores
   no distinction, so the law is value-level re-expansion, not textual identity.
 

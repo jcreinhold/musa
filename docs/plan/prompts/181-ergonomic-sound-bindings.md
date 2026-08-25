@@ -2,7 +2,7 @@
 id: 181
 slug: ergonomic-sound-bindings
 status: pending
-depends_on: [125, 174, 178, 179, 180]
+depends_on: [125, 174, 178, 179, 180, 180a]
 phase: 3
 ---
 
@@ -23,7 +23,7 @@ learning its private wiring.
 - `docs/rules/language/01-surface.md` and `08-performance-and-sound.md` spellings/desugarings; roadmap §2's Warm Pad
   example and §14.4 progressive disclosure.
 - Current `profile` binding, `assign`/`route`/`send` syntax, default studio, structured studio edits, examples, style
-  guide, and prompts 177–180.
+  guide, prompts 177–180, and 180a's completed source cutover.
 - Note 79 and the prompt README ownership rule: every convenience resolves to source declarations; only registered
   primitive/runtime boundaries remain host-owned.
 

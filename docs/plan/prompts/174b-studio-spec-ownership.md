@@ -6,84 +6,93 @@ depends_on: [167, 174, 174a]
 phase: 3
 ---
 
-# Checked Source Owns Studio Intent
+# Bridge Checked Source Values Without Inventing a Host Language
 
-> **Reopened by note 79.** The first execution moved the legacy Rust `StudioSpec` from `musa-compiler` to `musa-dsp`.
-> That repaired a Cargo edge but missed the prior question: prompt 167 had already proved that studio intent is
-> declarable ordinary Musa data. This execution removes the Rust vocabulary as semantic authority.
+> **Reopened by note 79 and reordered by note 80.** The first execution moved the legacy Rust `StudioSpec` from
+> `musa-compiler` to `musa-dsp`. Note 79 established that ordinary source owns declarable sound semantics. Preparation
+> then exposed a second fact: prompt 167's source graph is an intentionally small adapter trial and cannot yet represent
+> the production path's patches, buses, sends, modulation, or full processor set. Deleting that path here would either
+> reject accepted source or smuggle prompts 175–180 into this one. This prompt builds the checked-value bridge; prompt
+> 180a performs the clean cutover after those declarations exist.
 
 ## Task
 
-Cut the production studio path over from the independently constructed Rust `StudioSpec` to the checked
-`std::sound::graph::StudioDescription` value produced by the ordinary adapter and evaluator. Keep a narrow exact
-projection for DSP preparation and caller facts, but make it impossible for Rust callers to construct a competing studio
-language.
+Give a successfully checked, evaluated, closed source value a narrow host-facing artifact that can cross from the
+compiler to a sibling consumer without exposing the evaluator's `Value` or re-parsing printed text. Exercise it on
+`std::sound::graph::StudioDescription`: decode the complete exact trial value into a read-only projection and prove the
+projection agrees with the canonical source datum. Do not claim the legacy production `StudioSpec` has been replaced.
 
 ## Read
 
-- `docs/rules/language/00-semantics.md`'s ownership test and `08-performance-and-sound.md` §0; note
-  [`79`](../../notes/research/language-design-closure/79-source-owns-the-sound-language.md).
-- Prompt 167 and note 66, especially the measured source `StudioDescription` and the explicitly missing bridge to the
-  legacy Rust path; `stdlib/src/{sound/graph,adapters/graph}.musa` in full.
-- The public `musa-dsp::StudioSpec`/`WrittenQuantity` callers in compiler, project, LSP, UI facts, preparation, and
-  tests; distinguish editable semantics from a consumer projection and from private render state.
+- `docs/rules/language/00-semantics.md`'s ownership test and `08-performance-and-sound.md` §0; notes
+  [`79`](../../notes/research/language-design-closure/79-source-owns-the-sound-language.md) and
+  [`80`](../../notes/research/language-design-closure/80-bridge-before-cutover.md).
+- Prompt 167 and note 66, especially the measured source `StudioDescription`, its deliberately small vocabulary, and the
+  explicitly missing bridge; `stdlib/src/{sound/graph,adapters/graph}.musa` in full.
+- `musa-calculus::Datum`, `canonical`, `Literal`, `Payload`, and `Document::{term,value}`. Read `Datum`'s deliberate
+  exclusion of records: `StudioDescription`, `Parameter`, and `PortPath` prove that a host artifact needs a broader
+  type-directed readback, but widening the δ-rule input vocabulary would change a separate contract.
+- The legacy `StudioSpec` production callers, only to inventory what this prompt cannot yet replace and to pin a
+  differential oracle for prompt 180a.
 - Prompt 164 and note 61 for the builtin-ownership precedent.
-- Peyton Jones chapter 3 and Ousterhout chapters 7–8: source-to-substrate translation and the cost of adjacent layers
-  exposing the same abstraction.
+- Peyton Jones chapter 3 and Ousterhout chapters 7–8: semantics-preserving source-to-substrate translation and the cost
+  of adjacent layers exposing the same abstraction.
 
 ## Design
 
-`StudioDescription`, its exact quantity/unit data, validation errors, and total validation functions are ordinary source
-declarations. The graph adapter returns one such expression with complete anchors; the one checker and evaluator accept
-it. Compiler/project facts derive from that checked value and the lossless CST. Structured edits still rewrite source
-tokens; no mutable or independently editable Rust AST replaces them.
+The bridge is generic canonical source data, not a public compiler HIR and not a studio AST. It is constructible only as
+the result of checking and normalizing a closed storable source value in its declaration context. It carries the
+qualified root type, source package/schema version, and a complete deterministic exact datum encoding. It contains no
+closures, evaluator environment, source syntax, `Value`, pointer identity, display text, hash-only identity, or float.
 
-The DSP boundary may decode the checked value into a private or field-private exact preparation projection. That
-projection:
+Reuse the calculus's existing canonical-data vocabulary where its contract applies, but do not silently widen `Datum`'s
+δ-rule firing domain to admit records. Add the smallest separate generic, type-directed artifact readback and exact
+literal-encoding hook that has this caller. It must represent record fields as well as family constructors without
+adding a sound case to `musa-calculus`, and laws must show that existing δ reduction is byte- and step-identical.
+Constructor and field names are qualified, variable children are framed, and a schema/version change changes the
+artifact identity. A digest may index an artifact but exact bytes decide equality.
 
-- is constructible only from a successfully checked source artifact;
-- carries a source schema/version and complete exact canonical bytes;
-- has no independent defaults, aliases, validation policy, or public field constructors;
-- is compared field-for-field and byte-for-byte with the source value by differential laws; and
-- becomes floating point or compact runtime indices only during later preparation.
+The `StudioDescription` projection is a structural decoder over that artifact. Its fields are private, its readers are
+read-only, and there is no public field constructor, default, alias, validation table, or Rust-side inference. It
+decodes every declaration, anchor, port kind, path, parameter, exact value, and list position. Source `validate` owns
+graph validity; projection decoding owns only schema agreement and malformed-artifact refusal.
 
-Registered primitive identity, private port/state formats, work/memory bounds, and runtime descriptor agreement remain
-host-owned. A source processor wrapper may name one registered primitive; this prompt does not expose its state or make
-the registry source data.
-
-Remove the public Rust `StudioSpec`, `Processor`, `Unit`, `WrittenQuantity`, routing enums, and node-tree construction
-surface where those items duplicate source declarations. A small opaque artifact or read-only project fact is allowed
-only with a real caller and the derivation law above. Do not expose calculus `Value` to achieve the cutover.
+The existing Rust `StudioSpec` remains a temporary compatibility path in this prompt because it represents more than the
+source trial. Mark it and its construction APIs internal/deprecated where that does not break repository callers,
+inventory every remaining semantic difference, and add no new use. Prompt 175 adds the source vocabulary, 176 exact
+quantities, 177–180 the performance/instrument/routing/control semantics, and 180a deletes the path and the
+`musa-compiler -> musa-dsp` dependency.
 
 ## Target
 
-- Production compilation and preparation consume the checked `std::sound` result, not the legacy grammar-to-Rust
-  `StudioSpec` path.
-- An opaque exact DSP preparation projection with schema/version and complete source-equivalence laws.
-- Compiler/project/LSP/desktop facts and edits derived from checked source plus CST/resolution spans.
-- Legacy Rust construction APIs deleted or made private differential oracles, then deleted when parity is established.
-- Code map, roadmap, crate docs, and dependency descriptions naming source as the semantic owner.
+- A generic opaque checked canonical-data artifact, produced by the existing checker/evaluator and usable without
+  exposing calculus `Value` or re-parsing display text.
+- A complete read-only projection of the prompt-167 `StudioDescription` trial, including schema/version and exact
+  source-datum equivalence laws.
+- Negative laws for wrong root type/version, malformed framing, incomplete fields, reordered declarations, and an
+  unchecked or noncanonical value.
+- An explicit production-gap inventory covering every legacy patch/bus/send/modulation/processor construct that blocks
+  cutover, linked from prompt 180a.
+- No new authoritative Rust declaration vocabulary and no new production dependency on `StudioSpec`.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-calculus -p musa-compiler -p musa-dsp -p musa-project -p musa-lsp
-cargo nextest run --run-ignored all
-cargo clippy --workspace --all-targets -- -D warnings
+cargo nextest run -p musa-calculus -p musa-compiler -p musa-dsp
+cargo clippy --all-targets -p musa-calculus -p musa-compiler -p musa-dsp -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 cargo insta test --workspace --unreferenced=reject
-rg -n "pub (struct|enum) (StudioSpec|WrittenQuantity|Processor|Unit)" crates
+rg -n "CheckedSource|Canonical.*Artifact|StudioDescription" crates/musa-calculus crates/musa-compiler crates/musa-dsp
 ```
 
-The final `rg` is empty unless a surviving item is an explicitly documented opaque projection rather than source
-vocabulary; any exception is named in the completion note and audited again at prompt 192.
-
-Commit as `Make checked source authoritative for studio intent`.
+Commit as `Bridge checked source values to host consumers`.
 
 ## Stop
 
-- No new processor, instrument, control, routing feature, or syntax spelling.
-- No source evaluator, type checker, or resolver in `musa-dsp`; it receives an already checked exact artifact.
-- No public calculus value, public primitive state, or editable projection beside source.
+- No production studio cutover or deletion of accepted patch/bus/send/modulation behavior; prompt 180a.
+- No new processor, instrument, control, routing feature, or syntax spelling; prompts 175–180.
+- No source evaluator, type checker, or resolver in `musa-dsp`; it receives checked canonical data.
+- No public calculus `Value`, evaluator environment, editable projection, display-text parser, or sound-specific
+  calculus case.
 - No float conversion, scheduling, or machine instantiation; prompts 176 and 178 own those boundaries.

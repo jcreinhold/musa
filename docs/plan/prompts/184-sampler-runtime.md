@@ -2,7 +2,7 @@
 id: 184
 slug: sampler-runtime
 status: pending
-depends_on: [174, 177, 178, 179, 180, 182]
+depends_on: [174, 177, 178, 179, 180, 180a, 182]
 phase: 4
 ---
 

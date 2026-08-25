@@ -71,19 +71,25 @@ source fix, not evidence that Rust owns the public catalogue.
 
 ## Dependency-cone repair
 
-- Reopen 174b: cut the legacy Rust `StudioSpec` path over to the checked `std::sound` value and an opaque DSP
-  preparation projection.
-- Reopen 174c: restate the crate-role check without calling `musa-dsp` the owner of editable source vocabulary.
+- Reopen 174b: establish the generic checked canonical-data bridge and prove it on prompt 167's deliberately small
+  `StudioDescription` value without claiming premature production parity.
+- Reorder 174c after the source cutover, then restate the crate-role check without calling `musa-dsp` the owner of
+  editable source vocabulary.
 - Reopen 175: split source declarations/documentation from the private primitive registry.
 - Reopen 176: retain exact arithmetic and the one float boundary, but make exact quantity a source declaration.
 - Repair 177–181: gestures, indexed controls, profiles, signatures, mappings, instruments, and defaults are ordinary
   source; host code performs only the owned bridges above.
+- Add 180a: after 175–180 supply production parity, cut the legacy Rust `StudioSpec` path over to checked source and an
+  opaque DSP preparation projection, then delete the compiler-to-DSP edge.
 - Repair 184–186: native/SFZ/SoundFont adapters produce the source-declared sample-map/instrument contract before
   private preparation.
 - Repair 189–193: editor facts and documentation derive from source declarations, and conformance mechanically rejects
   authoritative Rust mirrors.
 
 Prompts outside that cone still inherit the ownership rule from the prompt README.
+
+Note 80 records why the bridge and cutover cannot be the same early prompt: the prompt-167 trial does not yet express
+the production path's patches, buses, sends, modulation, or full processor vocabulary.
 
 ## Migration and identity
 

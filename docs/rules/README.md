@@ -56,7 +56,8 @@ does not change constitution §§4, 8, or 9; it makes the lower-precedence sound
    standard library. Rust owns only provenance/direct track construction, registered primitive private contracts,
    verified asset bytes, scheduling/DSP conversion, and private prepared/runtime state. A Rust projection is exactly
    derived and never independent authority. Dependent sound relationships use the existing Miller-pattern unifier.
-4. **The formal specification and code map.** `language/08-performance-and-sound.md` §0 states the boundary;
+4. **The formal specification and code map.** `language/08-performance-and-sound.md` §0 states the boundary,
+   `events/12-payload-admission.md` records Gesture's source-owned payload contract;
    `../plan/code-map/{implementor-reference,process-runtime,stage-pipeline,spec-to-implementation-map}.md` records the
    repaired implementation cone.
 5. **How stored files and public APIs migrate.** Source stays canonical and stored values are recomputed from checked,
@@ -64,7 +65,9 @@ does not change constitution §§4, 8, or 9; it makes the lower-precedence sound
    differential laws. Private primitive identities/state and decoded/runtime values do not move into source.
 6. **The record.**
    [`../notes/research/language-design-closure/79-source-owns-the-sound-language.md`](../notes/research/language-design-closure/79-source-owns-the-sound-language.md)
-   preserves the defect, literature, replacement, prompt cone, and user authorization.
+   preserves the defect, literature, replacement, prompt cone, and user authorization;
+   [`../notes/research/language-design-closure/80-bridge-before-cutover.md`](../notes/research/language-design-closure/80-bridge-before-cutover.md)
+   records the parity prerequisite that separates the checked-value bridge from the later production cutover.
 
 Before it, prompt 170's amendment synchronized
 [`across-stages/01-stage-judgments.md`](across-stages/01-stage-judgments.md) §2 with the one-theory decision prompt 143

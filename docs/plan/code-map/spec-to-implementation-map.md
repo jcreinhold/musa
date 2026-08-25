@@ -25,7 +25,7 @@ the code that implements it. `implemented` means the public compiler path reache
 | Collections needed by committed programs | implemented | surface list forms, core lists, and `std::list`; collection/corpus laws |
 | Finite coordinate-indexed event tracks and exact versioned encoding | implemented | `musa-events`; algebra, normalization, encoding, and hash laws |
 | Staff and studio adapters on one frozen interface | implemented | `stdlib/src/adapters/{staff,graph}.musa`; adapter law suites |
-| Source-owned sound declarations versus host-owned runtime boundaries | pending | note 79; reopened prompts 174b–176 and repaired prompts 177–193 |
+| Source-owned sound declarations versus host-owned runtime boundaries | pending | notes 79–80; checked bridge at 174b, parity at 175–180, cutover at 180a, audits through 193 |
 | Tonal and post-tonal packages over indexed families | implemented | `stdlib/src/{tonal,post_tonal}`; generic-row and corpus laws |
 | Source-to-adapter-to-event-track provenance | implemented | compiler derivation records and prompt-169 K1–K20 matrix |
 | Provenance composition through scheduling and audio | implemented | provisional exact gesture projections retain complete origins; opaque occurrence handles reach audio; note 77 R14 audits derivation reuse and associative stage composition; prompt 177 replaces the provisional payload vocabulary with source declarations |

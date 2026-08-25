@@ -2,7 +2,7 @@
 id: 174c
 slug: dependency-law
 status: pending
-depends_on: [174a, 174b]
+depends_on: [174a, 180a]
 phase: 3
 ---
 
@@ -13,15 +13,16 @@ phase: 3
 Two dependency edges ran backwards for a long time — the values crate on the parser, the audio crate on the compiler —
 and nothing caught either. `AGENTS.md` describes the ladder in a sentence of prose, and prose is not a check: it was
 itself slightly wrong about which crates sit where, and a reader comparing it to `Cargo.toml` had no tool to do so. 174a
-and the repaired 174b fix the two edges without calling a Rust crate the semantic owner of declarable source. This
-prompt makes the dependency mistakes impossible and records that Cargo roles do not decide source-language ownership.
+and the source cutover at 180a fix the two edges without calling a Rust crate the semantic owner of declarable source.
+This prompt makes the dependency mistakes impossible and records that Cargo roles do not decide source-language
+ownership.
 
 Write the layering down as a rule with a table of assignments, and add a check that reads every workspace member's
 manifest and fails on a violation. A rule the build enforces is worth more than a paragraph in a file nobody diffs.
 
 ## Read
 
-- 174a and repaired 174b, whose Design sections state the dependency and source-ownership rules separately. This prompt
+- 174a and prompt 180a, whose Design sections state the dependency and source-ownership rules separately. This prompt
   checks the former without pretending a Cargo role decides the latter.
 - The dependency edges as they will then stand:
 
@@ -103,7 +104,7 @@ the pipeline. Revert it; the check passes.
 
 ## Stop
 
-- **No crate moves, no code moves, no renames.** 174a and 174b did the moving; this prompt only writes down and enforces
+- **No crate moves, no code moves, no renames.** 174a and 180a did the moving; this prompt only writes down and enforces
   what they achieved.
 - **Do not touch `docs/rules/`.** The crate graph is directive, not governing. If the law seems to need a governing
   statement, that is a finding to report, not an amendment to make here.

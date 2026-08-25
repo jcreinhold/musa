@@ -426,8 +426,8 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 173 | one-frame-audio | 3 | Make one audio frame the reference meaning for every DSP unit |
 | 174 | core-calculus-conformance | 3 | Prove and audit the clean cutover before sound-language work resumes |
 | 174a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
-| 174b | studio-spec-ownership | 3 | Checked `std::sound` values replace the authoritative Rust `StudioSpec` path |
-| 174c | dependency-law | 3 | Crate layering enforced separately from source-language ownership |
+| 174b | studio-spec-ownership | 3 | Generic checked-value bridge, proved on the finite source studio trial |
+| 174c | dependency-law | 3 | Crate layering enforced after cutover, separately from source-language ownership |
 | 175 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
 | 176 | exact-studio-values | 3 | Exact source quantities through the one audio-preparation conversion |
 | 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
@@ -435,6 +435,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 178 | instrument-contracts | 3 | Source instrument signatures/mappings over private registered primitives |
 | 179 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
 | 180 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
+| 180a | source-studio-cutover | 3 | Production studio semantics converge on checked source; the Rust language and backward edge leave |
 | 181 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
 | 182 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
 | 183 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
@@ -745,15 +746,18 @@ never by unification, with torsors, group actions, and laws checked by enumerati
 makes knowable. 164–170 survive with their tasks intact and their targets enlarged: the builtin collapse now has the
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
-**174b–181 build musical sound on that core without a second Rust language.** Repaired 174b cuts the legacy public
-`StudioSpec` path over to checked `std::sound` values, and 174c keeps Cargo roles distinct from source ownership. 175
-makes the source-declared primitive wrappers discoverable and joins them to private host registrations; 176 keeps source
+**174b–181 build musical sound on that core without a second Rust language.** Repaired 174b first establishes a generic
+checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 175 makes the
+source-declared primitive wrappers discoverable and joins them to private host registrations; 176 keeps source
 quantities exact through the one DSP conversion. 176a's payload rule guards the second payload. 177 declares gestures,
 indexed controls, and profiles in `std::performance` and gives opaque track/provenance work to the host. 178 declares
 instrument signatures and mappings in source over private primitives. 179 preserves part identity through prepared
-routing, and 180 evaluates source control mappings before resolving private parameters. 181 gives the surface one clear
-sound/profile choice while keeping expert source machine and mix declarations available. Removed patch syntax is a hard
-error with a certain fix, not a compatibility path. Note 79 records why the completed Rust-vocabulary work was reopened.
+routing, and 180 evaluates source control mappings before resolving private parameters. Once that source side has
+production parity, 180a deletes the legacy public `StudioSpec` path and the compiler-to-DSP edge; 174c then enforces the
+resulting Cargo roles separately from source ownership. 181 gives the surface one clear sound/profile choice while
+keeping expert source machine and mix declarations available. Removed patch syntax is a hard error with a certain fix,
+not a compatibility path. Notes 79–80 record why the Rust-vocabulary work was reopened and why bridging must precede
+cutover.
 
 **182–188 add external sound without making builds or time implicit.** 182 defines verified content-addressed assets
 before a decoder exists. 183 adds exact-pinned fetch/lock/offline packages while keeping package edges separate from

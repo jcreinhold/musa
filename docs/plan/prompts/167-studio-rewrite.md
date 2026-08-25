@@ -14,8 +14,8 @@ phase: 3
 > **Repaired after prompt 166a and against the live cutover boundary.** Ordinary source cannot store the expansion
 > phase's `Syntax` values, so declaration anchors are the `Nat` values produced by `syntax_anchor`, exactly as in the
 > staff package. The current Rust `StudioSpec` is the pre-cutover sound path; there is no source-value bridge by which
-> it could consume `StudioDescription`, and prompt 174 explicitly owns deleting that path. This prompt proves that
-> ordinary Musa can describe and validate the finite graph. It does not pretend that an unused source value already
+> it could consume `StudioDescription`; prompt 174b owns the bridge and 180a owns deleting that path. This prompt proves
+> that ordinary Musa can describe and validate the finite graph. It does not pretend that an unused source value already
 > drives the render-plan compiler.
 >
 > **Repaired after the first executable parse.** `studio` remains a statement keyword and is not one of the three domain
@@ -46,7 +46,8 @@ prompt absorbs 127dcg, whose historical superseded file remains because complete
   adapter neither allocates a processor nor steps audio.
 - `crates/musa-dsp/src/` and `crates/musa-compiler`'s `StudioSpec` — the existing pre-cutover studio path. Compare its
   vocabulary and finite-graph invariants with the source package, but do not claim it consumes a core value when no such
-  bridge exists. Prompt 174 owns the clean break; this prompt records the temporary parallel representation.
+  bridge exists. Prompt 174b owns the bridge and 180a the clean break; this prompt records the temporary parallel
+  representation.
 - Prompt [166](166-staff-rewrite.md)'s measurement and its per-section breakdown — the method this prompt reuses, and
   the staff numbers this adapter's numbers are compared against.
 - Prompt 132's studio program, written on paper before any of this existed. A divergence between that program and this
@@ -70,8 +71,9 @@ ninth and tenth reading feature.
 
 **The source description is not wired to audio in this prompt.** `StudioDescription` is the finite value the future
 machine cutover can consume. The existing built-in `studio` grammar still produces Rust `StudioSpec`, and keeping that
-legacy route temporarily is work already assigned to prompt 174. This trial compares their vocabulary and invariants and
-records the gap; adding an implicit bridge or claiming one exists would be a second hidden semantic path.
+legacy route temporarily is work assigned to prompt 180a after the source vocabulary reaches parity. This trial compares
+their vocabulary and invariants and records the gap; adding an implicit bridge or claiming one exists would be a second
+hidden semantic path.
 
 **This is where the generality claim is actually tested.** The staff adapter drove every design decision in prompts
 138–141, so it is the worst possible witness for whether those decisions generalize. The studio adapter was chosen
