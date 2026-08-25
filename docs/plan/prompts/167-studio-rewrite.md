@@ -17,6 +17,11 @@ phase: 3
 > it could consume `StudioDescription`, and prompt 174 explicitly owns deleting that path. This prompt proves that
 > ordinary Musa can describe and validate the finite graph. It does not pretend that an unused source value already
 > drives the render-plan compiler.
+>
+> **Repaired after the first executable parse.** `studio` remains a statement keyword and is not one of the three domain
+> keywords admitted as a module-name segment, so `mod studio;` is rejected. Teaching the parser a fourth special case
+> would be the new language feature this trial must report rather than add. The ordinary value package is therefore
+> `std::sound::graph`; the phase module remains the unambiguous `std::adapters::graph`.
 
 # Write the Studio Adapter as an Unprivileged Package on the New Language
 
@@ -55,12 +60,13 @@ unit spelling, duplicate parameter text on one node, and the grammar of a connec
 equality, bindings, and instantaneous cycles. Every declaration carries its anchor, so `validate`'s complaint about the
 fourth connection is a complaint about the fourth connection rather than about the region.
 
-**Use the language that exists.** The region is imported as `std::adapters::graph` and written with braces. An ordinary
-package value carries `Nat` anchors, never phase-local `Syntax`; the adapter obtains each one from `syntax_anchor` on a
-node it was handed. `PortKind.equal` is one written namespace definition, as prompt 166a decided — there is no `Eq`
-instance. The eight coverage groups are processors, named ports, connections, parameters, instrument bindings, graph
-inputs, graph outputs, and the four required diagnostic classes collectively. The edit and printer laws are separate
-obligations rather than a ninth and tenth reading feature.
+**Use the language that exists.** The region is imported as `std::adapters::graph` and written with braces; its ordinary
+value lives in `std::sound::graph`, because `studio` is not a legal module-name token. An ordinary package value carries
+`Nat` anchors, never phase-local `Syntax`; the adapter obtains each one from `syntax_anchor` on a node it was handed.
+`PortKind.equal` is one written namespace definition, as prompt 166a decided — there is no `Eq` instance. The eight
+coverage groups are processors, named ports, connections, parameters, instrument bindings, graph inputs, graph outputs,
+and the four required diagnostic classes collectively. The edit and printer laws are separate obligations rather than a
+ninth and tenth reading feature.
 
 **The source description is not wired to audio in this prompt.** `StudioDescription` is the finite value the future
 machine cutover can consume. The existing built-in `studio` grammar still produces Rust `StudioSpec`, and keeping that
@@ -86,7 +92,7 @@ can produce.
 
 ## Target
 
-- `stdlib/src/studio/graph.musa` — the description data, `validate`, and the error type its complaints are values of.
+- `stdlib/src/sound/graph.musa` — the description data, `validate`, and the error type its complaints are values of.
 - `stdlib/src/adapters/graph.musa` — the adapter, declared generative, with `expand`, `edit`, and `print`.
 - `examples/live-studio.musa` — the trial block, covering all eight groups, compiling as a finite description.
 - Tests: one per coverage item; the four §3.4 diagnostics carrying the anchors they name; the §3.5 edit that replaces
@@ -103,7 +109,7 @@ cargo nextest run --run-ignored all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa -- format --check stdlib/src/studio/graph.musa stdlib/src/adapters/graph.musa
+cargo run -p musa -- format --check stdlib/src/sound/graph.musa stdlib/src/adapters/graph.musa
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make docs-check
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 ```
