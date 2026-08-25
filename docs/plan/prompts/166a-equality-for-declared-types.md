@@ -28,6 +28,9 @@ as an explicit `match`, and implement the answer.
   the compiler owns the seven definitions and why `Bool` remains absent. This prompt does not move that boundary.
 - `docs/rules/language/01-surface.md` §1.4 and §1.5. Traits are gone; an `impl T` block is a namespace, and `==` is
   surface syntax for an ordinary definition named `equal`, selected by type-directed disambiguation.
+- `docs/rules/language/02-core-calculus.md` §1 and §2.1, and prompt [154](154-implicit-arguments.md). Indices are
+  ordinary retained arguments, and an indexed namespace function binds one as an inferred value parameter —
+  `fn equal<{n : Nat}>(left: PcSet(n), right: PcSet(n))` — so a two-operand call can determine it from the operands.
 - Prompt [164](164-builtin-collapse.md), especially its repaired statement that there is no `Eq`, instance table, or
   dictionary, and the `Nat.equal` implementation it installed.
 - Prompt [166](166-staff-rewrite.md)'s corpus. Count before deciding: how many declared types it contains, which values
@@ -48,7 +51,8 @@ as an explicit `match`, and implement the answer.
   ordinary namespace rule. This is one dedicated equality facility, not a general `deriving` mechanism.
 - **Written.** The compiler generates nothing. An author writes
   `impl T { fn equal(left: T, right: T) -> Bool { ... } }`; `==`, `.equal`, and `T::equal` are then three surface
-  spellings of that one definition. Existing semantic comparisons migrate only where the corpus uses them.
+  spellings of that one definition. An indexed type binds its index as an inferred value parameter. Existing semantic
+  comparisons migrate only where the corpus uses them.
 - **Neither.** Declared types compare by explicit `match` or by domain-named predicates. `==` works only for heads with
   an `equal` definition already in scope.
 
@@ -59,8 +63,8 @@ neither.
 If generation wins, it must answer three refusals explicitly:
 
 - A function field is not equatable; the diagnostic names that field.
-- An indexed family's index is erased at quotation and does not participate in value equality. Values are compared at
-  the already-known common indexed type, never across two indices.
+- An indexed family's index is retained and fixes the common type at which values are compared. The generated function
+  binds it as an inferred value parameter; it does not compare values across two indices.
 - A registered base field with no compiler-owned `equal` definition stops generation rather than inventing equality.
 
 Whichever route wins, the compiler-owned seven do not move. A written namespace definition is not an instance: there is
