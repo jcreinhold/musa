@@ -47,6 +47,7 @@ the decision it records has been absorbed or reversed, and the page goes.
 | [67](language-design-closure/67-the-adapter-boundary-frozen.md) | The frozen adapter boundary and its executable evidence map |
 | [72](language-design-closure/72-core-obligation-matrix.md) | The dependent core's argued obligations paired with falsifying executable controls |
 | [73](language-design-closure/73-core-privacy-and-second-path-audit.md) | The dependent core's source-privacy and duplicate-semantics audit |
+| [74](language-design-closure/74-language-pass-closure-blocker.md) | The governing first-order-instantiation contradiction that blocks prompt 170's closure audit |
 
 ## The core calculus
 
