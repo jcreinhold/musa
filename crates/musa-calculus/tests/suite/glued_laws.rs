@@ -93,6 +93,18 @@ fn a_definitions_body_is_evaluated_once_however_many_uses_it_has() {
         one_spend.steps,
         many_spend.steps - one_spend.steps
     );
+    assert!(
+        many_spend.constructed_nodes - one_spend.constructed_nodes <= 7 * 16,
+        "seven more names construct references, not the named value again: {} + {} nodes",
+        one_spend.constructed_nodes,
+        many_spend.constructed_nodes - one_spend.constructed_nodes
+    );
+    assert!(
+        many_spend.logical_bytes - one_spend.logical_bytes <= 7 * 32,
+        "seven more names wire references, not the named value again: {} + {} bytes",
+        one_spend.logical_bytes,
+        many_spend.logical_bytes - one_spend.logical_bytes
+    );
 }
 
 /// The folded comparison, stated as a spend law: two uses of one definition

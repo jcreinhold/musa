@@ -656,11 +656,11 @@ third outcome rather than folded into refusal, because a rejection that depends 
 acceptance a property of the machine.
 
 A project whose next charge exceeds the deterministic budget is exhausted at that operation. The diagnostic names the
-operation, metric, attempted amount, and limit. The current defaults are 200,000 reduction steps, 100,000 constructed
-value nodes, 1,048,576 logical value bytes, 2,048 instantiated prelude entries, and 1,000,000 estimated occurrences,
-with 320 nested evaluation levels. These are language-version constants, not timeouts or machine-memory observations;
-the course correction re-derives them against the simplified checker and records the derivation in its final report.
-Interactive cancellation remains an external compiler operation, not a language effect.
+operation, metric, attempted amount, and limit. The current defaults are 2,000,000 reduction steps, 1,000,000
+constructed value nodes, 16,777,216 logical value bytes, 2,048 instantiated prelude entries, and 1,000,000 estimated
+occurrences, with 320 nested evaluation levels. These are language-version constants, not timeouts or machine-memory
+observations; the course correction re-derives them against the simplified checker and records the derivation in its
+final report. Interactive cancellation remains an external compiler operation, not a language effect.
 
 **The step count admits more programs since prompt 165b, and the reason is the paragraph above rather than a new
 number.** "A value is charged once, where it is constructed" is a claim about δ as much as about data. A use of a
@@ -704,6 +704,23 @@ node — 516 frames deep on a workload whose nesting reading was 2 — while bei
 level each. What that costs is a constant of the term's type and not of how far a recursion went: the measured minimum
 for a definition calling itself is 11 levels rather than 3, and it is the same 11 at one call, ten, a hundred and three
 thousand.
+
+**Prompt 165 then makes the size half of the table real and re-derives the three core aggregate limits together.** The
+replacement checker had no constructed-node or logical-byte counters, so the published 100,000-node and 1 MiB limits
+decided nothing. Raising steps alone consequently admitted a region about 3,400 groups deep until the operating system
+killed the process for memory. Values are now charged at the construction locus this section specifies: core cells and
+their immediate wiring in the evaluator, canonical data as it is realized, and registered payloads by a deterministic
+logical shape supplied by their owner. Naming and projection laws show that an existing value is not charged again.
+
+The new numbers are a cost-table version bump, not a timeout adjustment. With the counters open for measurement, the
+largest `Spend` of one calculus operation during each complete compilation was: `examples/in-c.musa` at 29,113 steps /
+54,258 nodes / 1,280,938 bytes, `examples/staff-page.musa` at 180,873 / 99,672 / 167,222, the 1,572-occurrence desktop
+fixture at 355,992 / 239,394 / 1,319,043, and the largest required post-tonal binding — a generic row's 48 distinct
+forms at twelve — at 1,081,475 / 574,098 / 596,344. The round limits above leave 85% step headroom, 74% node headroom,
+and more than twelve times the logical bytes of those maxima. The widening admits the large-score, diatonic-sequence,
+pressure, and full post-tonal classes; accepted values do not change. Its safety side is narrowing: a generated region
+1,500 groups deep now exhausts constructed nodes at 1,001,185 of 1,000,000 instead of reaching the former unmetered
+memory path.
 
 ### 4.1 Nesting, and the room to reach the limit
 
@@ -756,17 +773,14 @@ from the other end, the corpus now needs almost none of the limit: the standard 
 levels, and at the *same* 62 for a region of nothing, a region of one item, a region of four, and `staff-page.musa`'s 77
 lines, because the peak is the depth of the adapter's own source and no longer moves with what it reads.
 
-**The limit stays at 320 all the same, and that is a decision rather than an omission.** The corpus argues for something
-far smaller — five times smaller — and the argument against lowering it is the obligation above rather than the cost
-table. The elaborator's own `check` and `infer` still stand inside one another charged nothing, so this counter is the
-only thing that turns a deeply written term into a refusal instead of an abort, and because the room is *derived* from
-the limit, lowering the limit lowers the stack that backstop runs on. Charging that recursion is what makes a smaller
-limit arguable; until then, moving it would be a version bump paid for nothing. What was re-derived instead is the frame
-ceiling, and it went up rather than down: with the evaluator's cheap frames gone, a level is now bought by the
-traversal, by `quote`, and by that uncharged elaborator descent, and a level costs between 60 and 64 KiB in a debug
-build where it used to cost about 10. `crates/musa-calculus/src/kernel/room.rs` carries the measurement and the command
-that produced it. `../../notes/research/language-design-closure/54-the-nesting-limit.md` records the derivation this
-closes.
+**The limit stays at 320 all the same, and prompt 165 makes that a tested decision rather than an omission.** `check`
+and `infer` now charge as they descend, so a deeply written term reaches the nesting refusal from the top rather than
+outrunning a counter that only saw the values on the way back. The evaluator's demanded terms and application spine use
+its explicit control stack; a voice's length is work rather than host depth. The remaining adapter path is bounded by
+constructed nodes: a 1,500-level generated region refuses at 1,001,185 of 1,000,000. With `NESTING` held at 320, the
+finished debug-build room bisection on arm64 aborts at `320 × 72 KiB` and reaches that refusal at `320 × 80 KiB`;
+`kernel::room` retains 128 KiB per level for target and future-frame margin and carries the command that measures it.
+Lowering 320 would now narrow the language and shrink that room together, with no corpus need for either change.
 
 **The limit did not move at prompt 165b; what it counts did.** Reading a δ-builtin's argument into canonical data and
 building its answer back out are structural walks over *data*, and each charged one level per level of the data — so a
@@ -801,14 +815,11 @@ measures work done and the one a traversal was always spending. `crates/musa-com
 `a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop` carries the measurement, restated from 120 groups to 400
 with the bisection that found the boundary.
 
-**What this does not yet buy is a larger step limit**, and the reason belongs here because it is about this table rather
-than about that change. Two of the metrics §4 publishes — 100,000 constructed value nodes and 1,048,576 logical value
-bytes — are not enforced: `Budget::LANGUAGE` leaves them open, as the paragraph in §4 about un-limited metrics says. So
-`reduction steps` is doing duty as a memory bound as well as a work bound, and it is not one. At 200,000 the depth it
-admits is about 680 groups, which a host holds comfortably. Raised to a million it admits about 3,400, and a region that
-deep is killed for memory rather than refused — which is the same defect this section is about, one metric further
-along. The step limit is therefore not re-derived until the metrics that bound *size* are enforced, and
-`../../notes/research/language-design-closure/64-the-argument-nobody-reads.md` records the measurement that says so.
+**The larger step limit is safe only because the size limits now fire first.** At the new table a pathological nested
+region crosses the constructed-node counter before the work counter can admit it to the old memory cliff. The law in
+`expand/tests.rs` runs that refusal through the same diagnostic boundary as a real adapter region and pins the metric,
+attempted amount, limit, code, and source span. Note 64 records the failed step-only experiment and the measurements
+which close it.
 
 ## 5. Metatheoretic obligations
 

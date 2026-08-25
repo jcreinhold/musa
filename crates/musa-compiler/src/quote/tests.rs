@@ -35,7 +35,7 @@ fn generated(node: &Syntax, into: &mut Vec<NodePath>) {
         into.push(path.clone());
     }
     if let Syntax::Group { children, .. } = node {
-        for child in children {
+        for child in children.iter() {
             generated(child, into);
         }
     }
@@ -46,7 +46,7 @@ fn identifiers<'a>(node: &'a Syntax, into: &mut Vec<&'a Syntax>) {
         into.push(node);
     }
     if let Syntax::Group { children, .. } = node {
-        for child in children {
+        for child in children.iter() {
             identifiers(child, into);
         }
     }

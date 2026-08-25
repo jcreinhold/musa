@@ -72,7 +72,7 @@ pub(crate) fn followed(origin: Origin, tracks: Vec<Raw>) -> Raw {
 /// The obvious accumulator is a left spine — `follow(follow(follow(nothing, a),
 /// b), c)` — and it is as deep as the block is long. The evaluator descends that
 /// spine, spending several frames per `follow`, so
-/// [`crate::phase_budget::NESTING`]'s 256 levels are reached at some sixty
+/// The former evaluator's 256 nesting levels were reached at some sixty
 /// statements: `examples/in-c.musa`'s fifty-three-figure voice is refused for
 /// nesting, and a voice of a hundred notes would be. It also costs quadratic
 /// work, since each `follow` translates everything accumulated so far.
@@ -94,19 +94,70 @@ pub(crate) fn followed(origin: Origin, tracks: Vec<Raw>) -> Raw {
 #[derive(Default)]
 pub(crate) struct Placed {
     /// `(count, track)` for each completed subtree, sizes strictly decreasing.
-    stack: Vec<(usize, Raw)>,
+    stack: Vec<(usize, DurationPiece)>,
+}
+
+/// One balanced prefix piece together with the concatenations that built it.
+///
+/// The children are retained only for duration reads. They do not add a second
+/// meaning to the term: [`musa_events::sequence`] defines the parent's duration
+/// as the sum of its children, which is the same equation [`Placed`] used to
+/// build the parent with `follow`.
+#[derive(Clone)]
+pub(crate) struct DurationPiece(std::sync::Arc<DurationPieceNode>);
+
+struct DurationPieceNode {
+    raw: Raw,
+    children: Option<[DurationPiece; 2]>,
+}
+
+impl DurationPiece {
+    fn leaf(raw: Raw) -> Self {
+        Self(std::sync::Arc::new(DurationPieceNode { raw, children: None }))
+    }
+
+    fn joined(raw: Raw, earlier: Self, later: Self) -> Self {
+        Self(std::sync::Arc::new(DurationPieceNode {
+            raw,
+            children: Some([earlier, later]),
+        }))
+    }
+
+    /// The track this piece denotes.
+    pub(crate) fn raw(&self) -> &Raw {
+        &self.0.raw
+    }
+
+    /// The two pieces whose sequence built this one, when it is not a leaf.
+    pub(crate) fn children(&self) -> Option<&[Self; 2]> {
+        self.0.children.as_ref()
+    }
+
+    /// This piece and its duration decomposition under one transformation.
+    pub(crate) fn transformed(&self, under: &impl Fn(Raw) -> Raw) -> Self {
+        let raw = under(self.raw().clone());
+        match self.children() {
+            Some([earlier, later]) => Self::joined(raw, earlier.transformed(under), later.transformed(under)),
+            None => Self::leaf(raw),
+        }
+    }
 }
 
 impl Placed {
     /// One more track, after everything placed so far.
     pub(crate) fn place(&mut self, origin: Origin, track: Raw) {
         let mut count = 1;
-        let mut built = track;
-        while self.stack.last().is_some_and(|&(top, _)| top == count) {
+        let mut built = DurationPiece::leaf(track);
+        while self.stack.last().is_some_and(|(top, _)| *top == count) {
             let Some((_, earlier)) = self.stack.pop() else {
                 break;
             };
-            built = applied(origin, Raw::hosted(origin, "follow"), [earlier, built]);
+            let raw = applied(
+                origin,
+                Raw::hosted(origin, "follow"),
+                [earlier.raw().clone(), built.raw().clone()],
+            );
+            built = DurationPiece::joined(raw, earlier, built);
             count = count.saturating_mul(2);
         }
         self.stack.push((count, built));
@@ -121,7 +172,7 @@ impl Placed {
     /// a *measurement* of the prefix, rather than the prefix itself, pay for
     /// each piece once however many claims stand after it. See
     /// [`crate::document::Document::began`].
-    pub(crate) fn pieces(&self) -> impl Iterator<Item = &Raw> {
+    pub(crate) fn pieces(&self) -> impl Iterator<Item = &DurationPiece> {
         self.stack.iter().map(|(_, piece)| piece)
     }
 
@@ -135,7 +186,7 @@ impl Placed {
         self.stack
             .iter()
             .fold(Raw::lit(origin, crate::registry::empty_track()), |built, (_, next)| {
-                applied(origin, Raw::hosted(origin, "follow"), [built, next.clone()])
+                applied(origin, Raw::hosted(origin, "follow"), [built, next.raw().clone()])
             })
     }
 }

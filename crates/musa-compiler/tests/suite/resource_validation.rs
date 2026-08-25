@@ -46,8 +46,9 @@
 //! whatever the room happened to be. `musa-calculus`'s `Neutral` reclaims its
 //! spine with an explicit worklist now. What is left is the metric that was
 //! always supposed to bind: a recursive call is [`Metric::Steps`] rather than
-//! nesting levels, and a list too long to build is refused at 200,000
-//! reduction steps.
+//! nesting levels. Prompt 165 subsequently made the construction metrics real
+//! and re-derived the table, so the large aggregate law below accepts either
+//! deterministic work or node exhaustion.
 //!
 //! `monomorphization_has_its_own_finite_limit` is gone, and not quietly. It
 //! asserted that 2,049 declarations reading one prelude generic are refused at
@@ -90,9 +91,10 @@ fn compile_declarations(declarations: &str) -> musa_compiler::Compilation {
 /// no snapshot, so exhaustion publishes neither a partial value nor a partial
 /// score. Neither count is small any more. Eight thousand elements is two
 /// orders of magnitude past the sixty the nesting limit used to admit, and
-/// fifty thousand is past the step budget by a factor of three; prompt 165a is
-/// what moved both, and the count that is now unreachable is recorded above
-/// rather than asserted here.
+/// two hundred thousand is past the re-derived work or construction budget;
+/// prompt 165a is what moved the recursion wall, and prompt 165 made the size
+/// counters real, so which deterministic counter binds is part of the cost
+/// table rather than this publication law.
 ///
 /// The metric and the limit are read out of the message because that is where
 /// the new core puts them: a `ResourceLimit` from `musa-calculus` arrives with no
@@ -107,7 +109,7 @@ fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
     let accepted = compile_declarations("let values: List<Nat> = range(8000);");
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
-    let refused = compile_declarations("let values: List<Nat> = range(50000);");
+    let refused = compile_declarations("let values: List<Nat> = range(200000);");
     let diagnostic = refused
         .diagnostics()
         .iter()
@@ -116,10 +118,14 @@ fn an_aggregate_past_the_budget_is_refused_and_publishes_nothing() {
         panic!("a list past the budget is refused: {:?}", refused.diagnostics())
     };
     assert!(
-        found.message.contains(musa_calculus::Metric::Steps.name())
+        (found.message.contains(musa_calculus::Metric::Steps.name())
             && found
                 .message
-                .contains(&musa_calculus::Budget::LANGUAGE.steps().to_string()),
+                .contains(&musa_calculus::Budget::LANGUAGE.steps().to_string()))
+            || (found.message.contains(musa_calculus::Metric::ConstructedNodes.name())
+                && found
+                    .message
+                    .contains(&musa_calculus::Budget::LANGUAGE.constructed_node_limit().to_string(),)),
         "the refusal names its metric and limit: {}",
         found.message
     );

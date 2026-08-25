@@ -336,12 +336,19 @@ impl Compilation {
 /// and every backend after it are shared. Which alternative a text is, is a
 /// question about its first line and is asked by `musa-syntax`.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
-    // One span for the whole compilation, named by the document. Everything
-    // the pipeline says about a piece hangs under it, so two compilations
-    // interleaved in a session's log are still two readable accounts. The
-    // fields are the caller's own arguments: nothing is computed to fill them.
+    // Create the span on the caller's thread, where its subscriber lives, and
+    // enter the same span on the room thread so every pipeline event remains
+    // its child. The fields are the caller's own arguments: nothing is
+    // computed to fill them.
     let span = tracing::info_span!("compile", document = source.name(), bytes = source.text().len());
-    let _entered = span.enter();
+    musa_calculus::with_stack_room(|| {
+        let _entered = span.enter();
+        compile_in_room(source, options)
+    })
+}
+
+/// [`compile`] after its one stack-room boundary has been arranged.
+fn compile_in_room(source: &SourceDocument, options: &CompileOptions) -> Compilation {
     let alternative = musa_syntax::alternative(source.text());
     let compilation = match alternative {
         musa_syntax::DocumentAlternative::Events => crate::events_text::compile_events(source),

@@ -215,6 +215,37 @@ fn a_set_class_survives_transposition_and_inversion() {
     );
 }
 
+/// The post-tonal workload prompt 165 reserved until the replacement checker's
+/// cost table was re-derived: the full T/I action at twelve, not the division-
+/// six proxy the example used while 200,000 steps was the language wall.
+#[test]
+fn the_twelve_class_orbits_and_limited_transpositions_fit_the_language_budget() {
+    holds(
+        "
+    let whole_tone: PcSet(12) = chromatic_set([0, 2, 4, 6, 8, 10]);
+    let whole_tone_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, whole_tone),
+    ), 6) = Refl(6);
+",
+    );
+    holds(
+        "
+    let octatonic: PcSet(12) = chromatic_set([0, 1, 3, 4, 6, 7, 9, 10]);
+    let octatonic_fixers: Equal<Nat>(length(
+        transposition_symmetries(12, chromatic, octatonic),
+    ), 4) = Refl(4);
+",
+    );
+    holds(
+        "
+    let generic_hexachord: PcSet(12) = chromatic_set([0, 1, 2, 4, 7, 8]);
+    let full_orbit: Equal<Nat>(length(
+        set_class(12, chromatic, generic_hexachord),
+    ), 24) = Refl(24);
+",
+    );
+}
+
 #[test]
 fn the_bundled_libraries_import_like_any_other() {
     let errors = errors_of(&probe(""));

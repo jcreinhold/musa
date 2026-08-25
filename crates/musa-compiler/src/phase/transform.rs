@@ -48,75 +48,9 @@ pub(crate) fn expand_syntax(
     imports: PhaseImports<'_>,
     subject: &crate::quote::Syntax,
 ) -> (Result<crate::quote::Syntax, ExpansionFailure>, PhaseWork) {
-    // Built here and lent inwards rather than made on the other side of
-    // `with_room`: what a run charged is reported by the caller that asked for
-    // it, and a total kept on a scoped thread would go out of scope with it.
     let mut spent = musa_calculus::Spend::default();
-    let answer = with_room(adapter_source, imports, subject, &mut spent);
+    let answer = run_transformer(adapter_source, imports, subject.clone(), &mut spent);
     (answer, PhaseWork::of(spent))
-}
-
-/// Run one transformer with enough stack for the nesting the budget allows.
-///
-/// The budget is the guard: `Budget::LANGUAGE`'s nesting limit is what turns a
-/// region too deep to read into a refusal that names an operation and a place
-/// (`../rules/language/02-core-calculus.md` §4). This is what makes that
-/// refusal *reachable*. A limit no host can afford to run up to is a limit the
-/// process dies before hitting, and not dying is the whole exercise. Neither
-/// half stands in for the other: room alone only moves the cliff, and a limit
-/// alone only promises a diagnostic the machine may not live to print.
-///
-/// The room is `NESTING × FRAME_CEILING`, derived rather than picked, so
-/// raising the published limit cannot quietly outrun the stack that honours it.
-///
-/// A host with no threads — the wasm shell — takes the second path and runs on
-/// the stack it was linked with, where the room is a link-time setting instead.
-/// The budget does not move, so both hosts accept and refuse exactly the same
-/// programs; they differ only in what they survive.
-///
-/// **A threaded host that refuses us a thread is a third thing, and it is
-/// traced rather than passed over.** The wasm shell never had threads and
-/// arranges its room elsewhere, so taking that path says nothing; a spawn that
-/// *fails* is this obligation going unmet, and the expansion that follows runs
-/// on a stack it was not promised. It still runs — most regions are nowhere
-/// near the limit, and refusing them all would be a worse answer than the risk
-/// — but a region deep enough to earn a refusal will abort the process instead
-/// of printing one, and an abort nothing warned about reads as a compiler that
-/// crashed. `kernel::room` in `musa-calculus` carries the same event for the
-/// same reason.
-fn with_room(
-    adapter_source: &str,
-    imports: PhaseImports<'_>,
-    subject: &crate::quote::Syntax,
-    spent: &mut musa_calculus::Spend,
-) -> Result<crate::quote::Syntax, ExpansionFailure> {
-    let room = usize::try_from(crate::phase_budget::NESTING.saturating_mul(crate::phase_budget::FRAME_CEILING))
-        .unwrap_or(usize::MAX);
-    let mut answer = None;
-    if !cfg!(target_family = "wasm") {
-        std::thread::scope(|scope| {
-            let run = || answer = Some(run_transformer(adapter_source, imports, subject.clone(), spent));
-            match std::thread::Builder::new().stack_size(room).spawn_scoped(scope, run) {
-                Ok(running) => {
-                    if let Err(panic) = running.join() {
-                        // A panic inside is a compiler fault. Resuming it on
-                        // this side keeps it looking like one, rather than like
-                        // a phase that quietly answered nothing.
-                        std::panic::resume_unwind(panic);
-                    }
-                }
-                Err(refused) => tracing::warn!(
-                    room,
-                    nesting = crate::phase_budget::NESTING,
-                    error = %refused,
-                    "the host would not give us the stack the nesting limit derives; this expansion \
-                     runs on the caller's own stack, where a region deep enough to be refused may \
-                     abort the process instead of earning the refusal"
-                ),
-            }
-        });
-    }
-    answer.unwrap_or_else(|| run_transformer(adapter_source, imports, subject.clone(), spent))
 }
 
 fn run_transformer(

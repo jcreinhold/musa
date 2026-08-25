@@ -123,18 +123,29 @@ const HERE: Origin = Origin::UNKNOWN;
 
 /// A musical value as a core literal's payload.
 ///
-/// One implementation rather than one per domain. [`Payload`]'s three methods
-/// each need one thing of the value it wraps — `PartialEq` for [`Payload::same`],
-/// [`fmt::Display`] for [`Payload::shown`], and `'static` for
-/// [`Payload::as_any`] — and every inert domain in this compiler already has all
-/// three. Adding a domain is therefore adding a row to [`bases`] and nothing
-/// else.
+/// One implementation rather than one per domain. [`Payload`] needs equality,
+/// a diagnostic spelling, a deterministic logical shape, and a host downcast.
+/// Every inert scalar gets the fixed-width wire-cell default (text uses its
+/// byte length); composite payloads such as syntax and event tracks supply
+/// their already-computed shape at the construction site. Adding a scalar
+/// domain is still one row in [`bases`].
 ///
 /// `Send + Sync` is inherited rather than chosen: a literal rides inside a
 /// [`Term`], and terms cross threads wherever more than one document compiles at
 /// once.
-#[derive(Debug, PartialEq, Eq)]
-struct Domain<T>(T);
+#[derive(Debug)]
+struct Domain<T> {
+    value: T,
+    logical_shape: (u64, u64),
+}
+
+impl<T: PartialEq> PartialEq for Domain<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl<T: Eq> Eq for Domain<T> {}
 
 impl<T> Payload for Domain<T>
 where
@@ -151,7 +162,11 @@ where
     }
 
     fn shown(&self) -> String {
-        self.0.to_string()
+        self.value.to_string()
+    }
+
+    fn logical_shape(&self) -> (u64, u64) {
+        self.logical_shape
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -164,7 +179,24 @@ pub(crate) fn literal<T>(ty: Term, value: T) -> Literal
 where
     T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
 {
-    Literal::new(ty, Arc::new(Domain(value)))
+    // A scalar's logical encoding is one tagged 128-bit cell. Text is the one
+    // variable-width scalar and is charged by its UTF-8 bytes. Do not derive
+    // either from Display: syntax payloads can display a whole subtree, which
+    // made accounting itself quadratic before their owner supplied `shape`.
+    let erased: &dyn Any = &value;
+    let bytes = erased
+        .downcast_ref::<String>()
+        .map_or(16, |text| u64::try_from(text.len()).unwrap_or(u64::MAX));
+    literal_with_shape(ty, value, (1, bytes))
+}
+
+/// A literal whose owner can state the value's logical construction shape more
+/// precisely than its diagnostic spelling can.
+pub(crate) fn literal_with_shape<T>(ty: Term, value: T, logical_shape: (u64, u64)) -> Literal
+where
+    T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
+{
+    Literal::new(ty, Arc::new(Domain { value, logical_shape }))
 }
 
 /// The value inside a literal `Datum`, if it is of domain `T`.
@@ -198,7 +230,11 @@ pub(crate) fn held<T>(value: &Literal) -> Option<&T>
 where
     T: PartialEq + fmt::Debug + fmt::Display + Send + Sync + 'static,
 {
-    value.payload().as_any().downcast_ref::<Domain<T>>().map(|held| &held.0)
+    value
+        .payload()
+        .as_any()
+        .downcast_ref::<Domain<T>>()
+        .map(|held| &held.value)
 }
 
 /// The value of domain `T` a *closed normal form* holds.
@@ -617,7 +653,14 @@ fn registered(name: &'static str) -> Base {
 
 /// The term naming a plain base type.
 pub(crate) fn plain_type(name: &'static str) -> Term {
-    registered(name).term(HERE)
+    static TERMS: LazyLock<HashMap<Box<str>, Term>> = LazyLock::new(|| {
+        bases()
+            .into_iter()
+            .map(|base| (Box::from(&**base.name()), base.term(HERE)))
+            .collect()
+    });
+    debug_assert!(TERMS.contains_key(name), "`{name}` is a registered base type");
+    TERMS.get(name).cloned().unwrap_or_else(|| registered(name).term(HERE))
 }
 
 /// The term naming `Duration`, `Position`, or `EventTrack` at one coordinate.

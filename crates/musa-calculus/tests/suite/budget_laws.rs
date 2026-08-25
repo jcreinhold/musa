@@ -368,9 +368,9 @@ fn a_definition_recursing_far_past_the_nesting_limit_is_accepted() {
 /// that drifted from what the frames charged would be a silent acceptance
 /// change, and this is what notices.
 ///
-/// So the wall moved from a depth to a length: at the language budget's 200,000
-/// steps the last count that answers is 16,665, where the frame-based evaluator
-/// stopped at 105.
+/// So the wall moved from a depth to a length. The law narrows the step counter
+/// independently so later cost-table re-derivations do not turn its witness
+/// into an accepted term or make an unrelated size counter answer first.
 #[test]
 fn a_recursion_costs_the_same_steps_the_frames_charged() {
     let (cx, nat) = nat();
@@ -381,15 +381,16 @@ fn a_recursion_costs_the_same_steps_the_frames_charged() {
         assert_eq!(spend.steps, 9 + 12 * calls, "add {calls} 0 against the closed form");
     }
 
-    let past = musa_calculus::check(&cx, &nat, &adding(20_000)).expect("twenty thousand calls elaborate");
-    match musa_calculus::normalize(&cx, &nat, &past) {
+    let narrow = Cx::with_budget(Budget::LANGUAGE.reduction_steps(120_000)).declaring(&nat_context().1);
+    let past = musa_calculus::check(&narrow, &nat, &adding(20_000)).expect("twenty thousand calls elaborate");
+    match musa_calculus::normalize(&narrow, &nat, &past) {
         Err(CoreError::Exhausted(error)) => {
             assert_eq!(
                 error.metric,
                 Metric::Steps,
                 "a recursion runs out of work, not of depth"
             );
-            assert_eq!(error.limit, Budget::LANGUAGE.steps());
+            assert_eq!(error.limit, 120_000);
         }
         other => panic!("expected a step refusal, got {other:?}"),
     }

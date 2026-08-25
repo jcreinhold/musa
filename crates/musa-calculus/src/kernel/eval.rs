@@ -200,6 +200,23 @@ fn running(meter: &mut Meter, mut stack: Vec<Frame>, start: Step) -> Result<Valu
     }
 }
 
+/// Charge and publish one semantic value built by this run.
+///
+/// The shape is charged before the value can leave the construction site. Its
+/// fields point at values charged earlier, so `nodes` and `bytes` describe only
+/// this cell and its wiring; selecting or returning an existing value never
+/// comes through here.
+fn constructed(
+    meter: &mut Meter,
+    operation: &'static str,
+    nodes: u64,
+    bytes: u64,
+    value: impl FnOnce() -> Value,
+) -> Result<Value, CoreError> {
+    meter.construct(operation, nodes, bytes)?;
+    Ok(value())
+}
+
 /// One term, read (§1) — the seven shapes, and what each one does next.
 fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term) -> Result<Step, CoreError> {
     meter.step("evaluation")?;
@@ -221,18 +238,27 @@ fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term)
         // read from the environment by *level* names the same binders
         // wherever the term ends up, because every environment a term is
         // re-read in extends the one it was written in.
-        Shape::Meta(meta) => occurrence(stack, env, here, meta)?,
+        Shape::Meta(meta) => occurrence(meter, stack, env, here, meta)?,
         // Resolved on the way in, so a value carries the level its arms
         // have already been solved to rather than the one written first.
-        Shape::Universe(level) => Step::Value(Value::new(here, Form::Universe(level.clone()))),
+        Shape::Universe(level) => Step::Value(constructed(meter, "universe value", 1, 1, || {
+            Value::new(here, Form::Universe(level.clone()))
+        })?),
         // §1's one name node, resolved through the context (§6). What the
         // name reduces to is the table's answer and not the term's, which
         // is the whole of this arm.
         Shape::Named { name, role, levels } => Step::Value(named(meter, env, here, name, role, levels)?),
         // Nothing to do, and that is the point: a numeral of 384 is one node
         // here, so evaluating it charges one step rather than 384.
-        Shape::Lit(Constant::Payload(literal)) => Step::Value(Value::new(here, Form::Lit(literal.clone()))),
-        Shape::Lit(Constant::Numeral(numeral)) => Step::Value(Value::new(here, Form::Numeral(numeral.clone()))),
+        Shape::Lit(Constant::Payload(literal)) => {
+            let (nodes, bytes) = literal.logical_shape();
+            Step::Value(constructed(meter, "literal value", nodes, bytes, || {
+                Value::new(here, Form::Lit(literal.clone()))
+            })?)
+        }
+        Shape::Lit(Constant::Numeral(numeral)) => Step::Value(constructed(meter, "numeral value", 1, 8, || {
+            Value::new(here, Form::Numeral(numeral.clone()))
+        })?),
         // §1's one binder node, read three ways. The written form shares a
         // constructor; the value forms do not, because a Π and a λ are told
         // apart by what eliminates them and nothing eliminates a `let`.
@@ -248,13 +274,18 @@ fn evaluating(meter: &mut Meter, stack: &mut Vec<Frame>, env: &Env, term: &Term)
                 });
                 Step::Term(env.clone(), ty.clone())
             }
-            Binder::Lam => Step::Value(Value::new(
-                here,
-                Form::Lam(Closure {
-                    env: env.clone(),
-                    body: body.clone(),
-                }),
-            )),
+            Binder::Lam => {
+                let held = u64::from(env.depth().0).saturating_add(1);
+                Step::Value(constructed(meter, "closure value", held, held, || {
+                    Value::new(
+                        here,
+                        Form::Lam(Closure {
+                            env: env.clone(),
+                            body: body.clone(),
+                        }),
+                    )
+                })?)
+            }
             Binder::Let { ty: _, value } => {
                 meter.enter("evaluation")?;
                 stack.push(Frame::Body {
@@ -295,6 +326,7 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
             if let Form::Neutral(ref function) = value.form
                 && crate::kernel::family::delays_next(function)
             {
+                meter.construct("function application", 1, 1)?;
                 let built = Neutral::eliminated(
                     function,
                     Elim::App {
@@ -337,15 +369,18 @@ fn resumed(meter: &mut Meter, stack: &mut Vec<Frame>, frame: Frame, value: Value
             codomain,
         } => {
             meter.leave();
-            Step::Value(Value::new(
-                here,
-                Form::Pi {
-                    filling,
-                    name,
-                    domain: Arc::new(value),
-                    codomain: Closure { env, body: codomain },
-                },
-            ))
+            let held = u64::from(env.depth().0).saturating_add(2);
+            Step::Value(constructed(meter, "function type value", held, held, || {
+                Value::new(
+                    here,
+                    Form::Pi {
+                        filling,
+                        name,
+                        domain: Arc::new(value),
+                        codomain: Closure { env, body: codomain },
+                    },
+                )
+            })?)
         }
         Frame::Spine { pending, charged } => spined(meter, stack, pending, charged, value)?,
         Frame::Opening { forced, definitions } => opening(meter, stack, value, forced, definitions)?,
@@ -482,8 +517,18 @@ fn hypothesis(
 ///
 /// [`Malformed::MetaTelescope`] when the environment is shallower than the
 /// arity, which is a term moved somewhere its unknown's scope does not reach.
-fn occurrence(stack: &mut Vec<Frame>, env: &Env, here: Origin, meta: &Meta) -> Result<Step, CoreError> {
+fn occurrence(
+    meter: &mut Meter,
+    stack: &mut Vec<Frame>,
+    env: &Env,
+    here: Origin,
+    meta: &Meta,
+) -> Result<Step, CoreError> {
     let depth = env.depth().0;
+    if meta.solution().is_none() {
+        let held = u64::from(meta.arity()).saturating_add(1);
+        meter.construct("metavariable occurrence", held, held)?;
+    }
     let mut arguments = Vec::with_capacity(meta.arity() as usize);
     for level in 0..meta.arity() {
         let index = depth
@@ -912,6 +957,7 @@ fn applied(
         // recursor's target is its last argument, so this is the first moment the
         // elimination can know it has met a constructor.
         Form::Neutral(function) => {
+            meter.construct("function application", 1, 1)?;
             let built = Neutral::eliminated(&function, Elim::App { origin: here, argument });
             eliminating(meter, stack, built)
         }
@@ -1099,7 +1145,12 @@ fn delta(meter: &mut Meter, built: &Neutral) -> Result<Option<Value>, CoreError>
     match answer {
         // The overwhelmingly common answer, and it needs no type: a literal
         // carries its own. Only a constructed answer pays for the walk below.
-        Datum::Lit(literal) => Ok(Some(Value::new(here, Form::Lit(literal)))),
+        Datum::Lit(literal) => {
+            let (nodes, bytes) = literal.logical_shape();
+            Ok(Some(constructed(meter, "builtin result", nodes, bytes, || {
+                Value::new(here, Form::Lit(literal))
+            })?))
+        }
         Datum::Count { .. } | Datum::Case { .. } => {
             let ty = result_type(meter, builtin, globals, built)?;
             crate::kernel::family::realize(meter, here, globals, &answer, &ty).map(Some)

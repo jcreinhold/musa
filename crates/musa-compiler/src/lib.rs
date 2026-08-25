@@ -60,7 +60,6 @@ mod lint;
 mod lower;
 mod package;
 mod phase;
-mod phase_budget;
 /// The compiler's own `data` declarations, reachable only from [`registry`].
 mod prelude;
 mod project;

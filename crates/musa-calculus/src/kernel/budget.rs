@@ -27,10 +27,13 @@ use crate::kernel::error::CoreError;
 
 /// The metric a charge is spent against.
 ///
-/// Five, and each is here because §4 names it. The compiler's own meter has
-/// six; the other three — logical value bytes, instantiated prelude entries,
-/// and estimated occurrences — are about values with musical payloads, and this
-/// crate does not know what a payload is.
+/// Five, and each is here because §4 names it. Instantiated prelude entries and
+/// estimated occurrences remain compiler-boundary counters: this crate neither
+/// instantiates the prelude nor knows what an occurrence is. Logical value
+/// shape is core work, however, and is charged without inspecting a host
+/// payload: a literal contributes one node and the payload bytes its owner
+/// reports, while a closure or constructor contributes its own cell and one
+/// logical pointer per field.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Metric {
     /// Evaluation steps: β, δ, ι, and projection.
@@ -38,6 +41,10 @@ pub enum Metric {
     /// Nodes written by quotation, which §4 calls "quoted nodes charged during
     /// a `Switch`".
     QuotedNodes,
+    /// Semantic value cells constructed by checking or evaluation.
+    ConstructedNodes,
+    /// The deterministic logical size of newly constructed values.
+    LogicalBytes,
     /// How far inside itself an evaluation currently is. The one metric that
     /// goes back down.
     ///
@@ -73,6 +80,8 @@ impl Metric {
         match self {
             Self::Steps => "reduction steps",
             Self::QuotedNodes => "quoted nodes",
+            Self::ConstructedNodes => "constructed value nodes",
+            Self::LogicalBytes => "logical value bytes",
             Self::Nesting => "nested evaluation levels",
         }
     }
@@ -86,6 +95,8 @@ impl Metric {
 pub struct Budget {
     steps: u64,
     quoted_nodes: u64,
+    constructed_nodes: u64,
+    logical_bytes: u64,
     nesting: u64,
 }
 
@@ -116,83 +127,41 @@ impl Budget {
     /// the adapter's own source and does not move with what it reads. Against
     /// 62 the limit is five times what the corpus needs.
     ///
-    /// **So why not lower it.** Because the limit is not only a cost-table
-    /// entry: §4.1's room obligation derives the stack from it, and the
-    /// elaborator's `check` and `infer` still stand inside one another charged
-    /// nothing at all (prompt 165). While that is true this number is the only
-    /// thing keeping a deeply written term a refusal instead of an abort, and
-    /// lowering it lowers the room in step. Charging that recursion is what
-    /// makes a smaller limit arguable; until then, moving it would be a
-    /// cost-table version bump paid for nothing. Argued in §4.1 and derived in
-    /// `docs/notes/research/language-design-closure/54-the-nesting-limit.md`.
+    /// **So why not lower it.** Because prompt 165 charged `check` and `infer`
+    /// and thereby made this the acceptance boundary for deeply written terms.
+    /// Lowering it would now refuse programs for structure the finished corpus
+    /// does not require, while also shrinking §4.1's derived room. The direct
+    /// nesting laws and the size-bounded adapter law re-earn 320 on the smallest
+    /// host; `kernel::room` records the finished frame-ceiling bisection.
     pub const NESTING: u64 = 320;
 
     /// The language budget.
     ///
-    /// 200,000 reduction steps, matching the existing evaluator's, because a
-    /// program refused at one count and accepted at another is a program two
-    /// compilers disagree about, and the two evaluators become one at prompt
-    /// 142.
+    /// Prompt 165 re-derived all three aggregate core limits together. The
+    /// corpus high-water marks, measured with `Spend`, are:
     ///
-    /// **Measured against the migration's worst workload.** Prompt 141u's
-    /// probe — `cargo build -p musa` with `steps` and `nesting` here and in
-    /// `musa-compiler`'s `core_budget.rs` raised, then `musa check
-    /// examples/staff-page.musa` — reads, after glued evaluation: declaring
-    /// the piece and the standard library costs 226,873 steps, and the staff
-    /// adapter's expansion run exceeds 4×10⁹ steps (stopped at the probe
-    /// ceiling; at 141u's base the whole compile measured 1,605,182,361).
-    /// Glued evaluation won the declaration phase and lost the expansion run:
-    /// a folded application in a lazy position is re-unfolded by every
-    /// consumer, because a pure `Arc`-shared value has no thunk to update, and
-    /// the adapter reads shared partial applications nineteen million times.
+    /// | workload | steps | nodes | bytes |
+    /// | --- | ---: | ---: | ---: |
+    /// | `examples/in-c.musa` | 29,113 | 54,258 | 1,280,938 |
+    /// | `examples/staff-page.musa` | 180,873 | 99,672 | 167,222 |
+    /// | `tests/fixtures/large-score.musa` | 355,992 | 239,394 | 1,319,043 |
+    /// | a generic row's 48 forms at twelve | 1,081,475 | 574,098 | 596,344 |
     ///
-    /// **That last sentence used to end "the residual is the adapter's
-    /// algorithm and prompt 166's to remove", and the measurement says it was
-    /// wrong.** A staff region with *nothing in it* cost 455,942 steps, which
-    /// is no algorithm at all: the re-unfolding was not a constant factor on
-    /// the adapter's work, it was the work. `unfold` now records its answer on
-    /// the neutral it was asked about — Peyton Jones ch. 12 §12.4's update of a
-    /// shared redex's root, on a value shared by `Arc` — and the same file,
-    /// with the same adapter and the same budget, costs 381,055. What is left
-    /// is a factor of 1.9 and *is* the adapter's, which is prompt 166's to
-    /// close. The numbers are note 59's; the mechanism was note 44 §6's,
-    /// recorded before the workload existed. The budget does not move for any
-    /// of it.
-    ///
-    /// **Where the adapter's residual actually is, measured rather than
-    /// guessed.** 166 closed that factor of 1.9, and 162hb then spent most of
-    /// what it bought: the same run went from 154,990 to 185,568 steps, which
-    /// is 7% under this limit where there had been 29%. The standing guess was
-    /// that `sighted` — asked once per token, and building a two-constructor
-    /// `Sighted` to answer — was some 45 steps of that per token, so about a
-    /// quarter of the run. **It was about 0.7%.** Dropping the data type for
-    /// the `Bool` its only caller wanted saved 1,288 steps, and eta-reducing
-    /// the four `fn (earlier, kid) { run_syntax_step(earlier, kid) }` fold
-    /// arguments beside it saved 3,306, for 180,974 and 9.5% of headroom.
-    ///
-    /// The run decomposes, by the same probe with one arm of the adapter
-    /// stubbed at a time:
-    ///
-    /// | What runs on `examples/staff-page.musa` | Steps |
-    /// | --- | --- |
-    /// | the traversal alone — every node walked, `sighted` constantly false | 60,898 |
-    /// | + the reading state machine, fused literals not descended into | 130,753 |
-    /// | + the fused-literal path (`fused_read`/`part_read`/`lexeme_read`) | 180,974 |
-    ///
-    /// A third of the run is therefore reached before the adapter reads
-    /// anything, and the composite literals 162h introduced cost 50,221 — not
-    /// the ~11,500 first attributed to them. Those are the two places a later
-    /// prompt has to go for real headroom, and neither is a per-token constant
-    /// that tuning a predicate reaches. The budget still does not move.
-    ///
-    /// **Two of the five metrics are un-limited.** §4 says so in as many words: "Conversion and metavariable
-    /// metrics have no defaults yet: prompt 165 measures the new checker and
-    /// sets them, and until it does, the checker charges them and reports them
-    /// without a limit." The charge paths are live and tested through
-    /// [`Self::scaled`]; only the defaults are open.
+    /// Two million steps and one million nodes leave 85% and 74% headroom over
+    /// the respective maxima. Sixteen MiB leaves more than twelve times the
+    /// logical bytes of the worst event-track workload. The old
+    /// 200,000/100,000/1 MiB
+    /// table could not admit the desktop fixture or the full post-tonal laws;
+    /// worse, the replacement checker did not enforce its size entries at all.
+    /// A 1,500-level generated region now refuses at 1,001,185 of 1,000,000
+    /// constructed nodes, where raising steps alone previously let a deeper
+    /// region reach an operating-system kill. Section 4 records the acceptance
+    /// bump and its boundary laws.
     pub const LANGUAGE: Self = Self {
-        steps: 200_000,
+        steps: 2_000_000,
         quoted_nodes: u64::MAX,
+        constructed_nodes: 1_000_000,
+        logical_bytes: 16 * 1024 * 1024,
         nesting: Self::NESTING,
     };
 
@@ -252,6 +221,41 @@ impl Budget {
         }
     }
 
+    /// This budget with at most `steps` reductions.
+    ///
+    /// Test laws narrow this counter independently to identify work exhaustion
+    /// without also narrowing the size and nesting counters. The compiler
+    /// always uses [`Self::LANGUAGE`].
+    #[must_use]
+    pub const fn reduction_steps(self, steps: u64) -> Self {
+        Self { steps, ..self }
+    }
+
+    /// This budget with at most `nodes` newly constructed value nodes.
+    ///
+    /// Test laws narrow this counter independently to prove its exact boundary.
+    /// The compiler always uses [`Self::LANGUAGE`].
+    #[must_use]
+    pub const fn constructed_nodes(self, nodes: u64) -> Self {
+        Self {
+            constructed_nodes: nodes,
+            ..self
+        }
+    }
+
+    /// This budget with at most `bytes` of newly constructed logical values.
+    ///
+    /// Logical bytes are deterministic language costs, not host allocation
+    /// sizes. Test laws narrow this counter independently; the compiler always
+    /// uses [`Self::LANGUAGE`].
+    #[must_use]
+    pub const fn logical_bytes(self, bytes: u64) -> Self {
+        Self {
+            logical_bytes: bytes,
+            ..self
+        }
+    }
+
     /// How many reduction steps this budget allows (§4's cost table).
     ///
     /// Read by the laws that state a refusal names its limit: §4 requires a
@@ -261,6 +265,18 @@ impl Budget {
     #[must_use]
     pub const fn steps(self) -> u64 {
         self.steps
+    }
+
+    /// How many newly constructed value nodes this budget allows.
+    #[must_use]
+    pub const fn constructed_node_limit(self) -> u64 {
+        self.constructed_nodes
+    }
+
+    /// How many deterministic logical value bytes this budget allows.
+    #[must_use]
+    pub const fn logical_byte_limit(self) -> u64 {
+        self.logical_bytes
     }
 
     /// The language budget with every limit divided by `divisor`.
@@ -285,6 +301,8 @@ impl Budget {
         Self {
             steps: share(self.steps, divisor),
             quoted_nodes: share(self.quoted_nodes, divisor),
+            constructed_nodes: share(self.constructed_nodes, divisor),
+            logical_bytes: share(self.logical_bytes, divisor),
             nesting: share(self.nesting, divisor),
         }
     }
@@ -293,6 +311,8 @@ impl Budget {
         match metric {
             Metric::Steps => self.steps,
             Metric::QuotedNodes => self.quoted_nodes,
+            Metric::ConstructedNodes => self.constructed_nodes,
+            Metric::LogicalBytes => self.logical_bytes,
             Metric::Nesting => self.nesting,
         }
     }
@@ -335,6 +355,10 @@ pub struct Spend {
     pub steps: u64,
     /// [`Metric::QuotedNodes`].
     pub quoted_nodes: u64,
+    /// [`Metric::ConstructedNodes`].
+    pub constructed_nodes: u64,
+    /// [`Metric::LogicalBytes`].
+    pub logical_bytes: u64,
 }
 
 impl Spend {
@@ -344,6 +368,8 @@ impl Spend {
         Self {
             steps: self.steps.saturating_add(later.steps),
             quoted_nodes: self.quoted_nodes.saturating_add(later.quoted_nodes),
+            constructed_nodes: self.constructed_nodes.saturating_add(later.constructed_nodes),
+            logical_bytes: self.logical_bytes.saturating_add(later.logical_bytes),
         }
     }
 }
@@ -411,6 +437,8 @@ pub(crate) struct Meter {
     budget: Budget,
     steps: u64,
     quoted_nodes: u64,
+    constructed_nodes: u64,
+    logical_bytes: u64,
     nesting: u64,
     /// Which run this is, for [`Stamp`].
     run: u64,
@@ -428,6 +456,8 @@ impl Meter {
             budget,
             steps: 0,
             quoted_nodes: 0,
+            constructed_nodes: 0,
+            logical_bytes: 0,
             nesting: 0,
             run: RUNS.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             solved: 0,
@@ -472,6 +502,16 @@ impl Meter {
     /// [`CoreError::Exhausted`] when the charge would cross the limit.
     pub(crate) fn quoted_node(&mut self, operation: &'static str) -> Result<(), CoreError> {
         self.quoted_nodes = self.charge(Metric::QuotedNodes, operation, self.quoted_nodes)?;
+        Ok(())
+    }
+
+    /// Charge one newly constructed value shape.
+    ///
+    /// `nodes` and `bytes` describe only the cell being built and its wiring;
+    /// values already held by its fields were charged where they were built.
+    pub(crate) fn construct(&mut self, operation: &'static str, nodes: u64, bytes: u64) -> Result<(), CoreError> {
+        self.constructed_nodes = self.charge_by(Metric::ConstructedNodes, operation, self.constructed_nodes, nodes)?;
+        self.logical_bytes = self.charge_by(Metric::LogicalBytes, operation, self.logical_bytes, bytes)?;
         Ok(())
     }
 
@@ -545,11 +585,17 @@ impl Meter {
         Spend {
             steps: self.steps,
             quoted_nodes: self.quoted_nodes,
+            constructed_nodes: self.constructed_nodes,
+            logical_bytes: self.logical_bytes,
         }
     }
 
     fn charge(&self, metric: Metric, operation: &'static str, spent: u64) -> Result<u64, CoreError> {
-        let attempted = spent.saturating_add(1);
+        self.charge_by(metric, operation, spent, 1)
+    }
+
+    fn charge_by(&self, metric: Metric, operation: &'static str, spent: u64, amount: u64) -> Result<u64, CoreError> {
+        let attempted = spent.saturating_add(amount);
         if attempted > self.budget.limit(metric) {
             return Err(CoreError::Exhausted(ResourceError {
                 operation,
@@ -625,6 +671,34 @@ mod tests {
             refusal.is_some(),
             "the charge path must be live before 144 sets a limit"
         );
+    }
+
+    #[test]
+    fn constructed_nodes_accept_the_limit_and_refuse_the_next_node() {
+        let mut meter = Meter::new(Budget::LANGUAGE.constructed_nodes(3));
+        assert!(meter.construct("test value", 3, 0).is_ok());
+        match meter.construct("test value", 1, 0) {
+            Err(CoreError::Exhausted(error)) => {
+                assert_eq!(error.metric, Metric::ConstructedNodes);
+                assert_eq!(error.attempted, 4);
+                assert_eq!(error.limit, 3);
+            }
+            other => panic!("the fourth node must exhaust a three-node budget: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn logical_bytes_accept_the_limit_and_refuse_the_next_byte() {
+        let mut meter = Meter::new(Budget::LANGUAGE.logical_bytes(3));
+        assert!(meter.construct("test value", 0, 3).is_ok());
+        match meter.construct("test value", 0, 1) {
+            Err(CoreError::Exhausted(error)) => {
+                assert_eq!(error.metric, Metric::LogicalBytes);
+                assert_eq!(error.attempted, 4);
+                assert_eq!(error.limit, 3);
+            }
+            other => panic!("the fourth byte must exhaust a three-byte budget: {other:?}"),
+        }
     }
 }
 

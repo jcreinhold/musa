@@ -1,7 +1,7 @@
 ---
 id: 165
 slug: diagnostics-and-performance
-status: in-progress
+status: done
 depends_on: [164, 165d]
 phase: 3
 ---

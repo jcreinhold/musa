@@ -109,8 +109,9 @@ its declaration computed, and `convert.rs` tries the folded comparison first.
 - A disagreement unfolds in a fixed order — the definition that can mention the other first — and retries.
 - A same-head retry that also fails reports the folded failure, because it names what the author wrote.
 
-`quote.rs`'s two modes keep the name on the diagnostic path and open it where a solution or a canonical readback could
-let it escape its scope.
+`quote.rs`'s two modes keep names on the diagnostic and metavariable-solution paths and open them for canonical
+readback. `quote_solution` fuses scope and occurs checks into that same walk, forcing solved metavariable chains while
+leaving definitions folded.
 
 The accounting is exact. An unfold and its spine replay charge nothing — the eliminations were charged when the spine
 was built — and a definition's body is still opened to weak-head form once at its declaration. `glued_laws.rs` states
@@ -149,18 +150,17 @@ from the published limit rather than picked. The wasm shell, and a host that wil
 caller's own stack.
 
 The budget does not move with it, so every host accepts and refuses the same programs and they differ only in what they
-survive. `FRAME_CEILING` is 128 KiB since prompt 165a, against a measured 60–64 KiB a level in a debug build on arm64
-and 8–16 KiB in a release build. It went *up* when the evaluator's frames went away: a level used to be bought mostly by
-`eval` standing inside itself at about 2 KiB a frame, and is now bought by §5.9's traversal, by `quote`, and by the
-elaborator's uncharged descent, which cost far more each. The command that produced the number is beside the constant.
+survive. `FRAME_CEILING` is 128 KiB, re-measured after prompt 165's iterative evaluator and elaborator spine: 72 KiB per
+level fails and 80 KiB passes in a debug arm64 build, leaving 60% margin. The exact bisection command is beside the
+constant. The desktop session needs no second stack reservation because every calculus facade call crosses this seam;
+adding one would allocate duplicate room without widening acceptance.
 
-It bounds what the *charge* bounds: the traversal and `quote` charge as they descend and are refused at any depth, while
-the elaborator's own recursion is charged nothing and reaches the bottom of a raw term before anything is charged — so a
-term far past the limit, 1,256 levels of raw `let`, measured, still aborts. `eval` is no longer on either side of that
-sentence: prompt 165a made its pending work heap data, so it spends no host frames at depth at all.
+Elaborator descent and application spines are now charged or iterative, and demanded transformer arguments return to the
+evaluator control stack instead of re-entering it. The 1,500-level region law reaches a deterministic constructed- node
+refusal on the ordinary 2 MiB test thread rather than a host abort. Constructed nodes and logical bytes are charged at
+value construction, with exact-limit boundary laws and reuse laws for named definitions and projections.
 
-**Owes.** Prompt 165: the elaborator's nesting charge and the spine walk that lets 256 stay 256, plus approximate
-conversion (note 44 §7; §6's glued evaluation landed at 141u). Prompt 169: the metatheory matrix.
+**Owes.** Prompt 169: the metatheory matrix.
 
 ## Bidirectional elaboration
 

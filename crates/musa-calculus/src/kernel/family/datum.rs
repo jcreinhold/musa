@@ -246,7 +246,11 @@ pub(crate) fn realize(
     loop {
         meter.step("data realization")?;
         let mut answer = match *datum {
-            Datum::Lit(ref literal) => Value::new(here, Form::Lit(literal.clone())),
+            Datum::Lit(ref literal) => {
+                let (nodes, bytes) = literal.logical_shape();
+                meter.construct("data realization", nodes, bytes)?;
+                Value::new(here, Form::Lit(literal.clone()))
+            }
             Datum::Count { ref family, count } => realize_count(meter, here, family, count, &ty)?,
             Datum::Case {
                 ref constructor,
@@ -367,6 +371,7 @@ fn entered<'a>(
     for param in &element.params {
         reading = reading.push(param.clone());
     }
+    meter.construct("data realization", 1, 1)?;
     let mut value = Constant::constructor(&element.group, element.family, which).value(here, globals);
     for param in &element.params {
         value = apply(meter, here, value, param.clone())?;
@@ -397,6 +402,7 @@ fn realize_count(meter: &mut Meter, here: Origin, family: &Name, count: u64, ty:
     if constant.counting().is_none() || *constant.name() != **family {
         return Err(misfit());
     }
+    meter.construct("data realization", 1, 8)?;
     Ok(Value::new(
         here,
         Form::Numeral(Numeral {

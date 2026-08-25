@@ -373,16 +373,13 @@ fn event_frames_are_the_engine_s_clock() {
 /// this law protects is that the expansion leaves nothing behind — the piece
 /// compiles, and every notation target renders it.
 ///
-/// Ignored: the staff adapter's expansion crosses the compilation limit on
-/// the checker the course correction replaced and on the one that replaced
-/// it, byte-identically — the one known over-budget page, pinned beside the
-/// language budget in `musa_compiler::core_budget`. What still covers the
-/// contract in the fast suite: the other examples' session laws in this file,
-/// which compile and render through the same code paths. What is deferred:
-/// the adapter's expansion cost, which is the staff adapter migration's
-/// terrain.
+/// Ignored because compiling the adapter page and rendering every notation
+/// backend takes several seconds. The other examples' session laws in this
+/// file cover the same compile-and-render paths in the fast suite; what this
+/// slow law adds is the full staff-adapter trial block across all four
+/// backends.
 #[test]
-#[ignore = "the staff adapter's expansion crosses the compilation limit on both checkers; the adapter migration owns it"]
+#[ignore = "slow: compiles the full staff-adapter trial block and renders all four notation backends"]
 fn the_staff_page_example_compiles_and_renders() -> Result {
     let session = ProjectSession::from_text(include_str!("../../../../examples/staff-page.musa"), "staff-page.musa");
     assert!(

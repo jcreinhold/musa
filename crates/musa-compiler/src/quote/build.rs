@@ -76,7 +76,7 @@ pub(crate) fn group(at: NodePath, delimiter: Delimiter, children: Vec<Syntax>) -
     Syntax::Group {
         info: SourceInfo::Generated(at),
         delimiter,
-        children,
+        children: children.into(),
     }
 }
 

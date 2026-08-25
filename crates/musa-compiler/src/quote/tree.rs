@@ -7,6 +7,7 @@ use super::category::Delimiter;
 use super::path::{NodePath, PathStep, Scope};
 use super::print::print;
 use musa_score::origin::SourceSpan;
+use std::sync::Arc;
 
 /// A syntax value, shown as the text it prints to.
 ///
@@ -54,7 +55,7 @@ impl SourceInfo {
 /// handed out. It contains no arrow at any depth, so it is storable data and
 /// the kind system refuses a syntax value that hides a closure without being
 /// asked.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Syntax {
     /// A node the reader expected and did not find. Kept rather than dropped,
     /// so that a transformer over a half-written region still has a shape to
@@ -81,107 +82,8 @@ pub(crate) enum Syntax {
     Group {
         info: SourceInfo,
         delimiter: Delimiter,
-        children: Vec<Self>,
+        children: Arc<[Self]>,
     },
-}
-
-/// Copy a region, without spending a host frame per level of it.
-///
-/// # Why this is a loop
-///
-/// A derived `Clone` descends into a group's children by calling itself, so
-/// copying a region costs one host frame per level of nesting — measured at
-/// about 850 bytes a level, which aborts the process on a region some two
-/// thousand groups deep on an ordinary 2 MiB thread. The depth of a region is
-/// the size of an input rather than how deeply anyone wrote a term, so there is
-/// no limit that ought to refuse it and no metric that should be charged for
-/// it; what there must not be is a crash. Same remedy as
-/// `02-core-calculus.md` §4.1 records for the two data walks and as
-/// [`super::check_expression`]'s own descent: the pending work is an explicit
-/// stack in this function's frame.
-impl Clone for Syntax {
-    fn clone(&self) -> Self {
-        /// One group whose earlier children are copied and whose later ones are not.
-        struct Building<'a> {
-            info: SourceInfo,
-            delimiter: Delimiter,
-            /// The children still to copy, innermost last: [`Vec::pop`] takes
-            /// the next one, so they are pushed reversed.
-            rest: Vec<&'a Syntax>,
-            done: Vec<Syntax>,
-        }
-
-        let mut stack: Vec<Building<'_>> = Vec::new();
-        let mut here: &Self = self;
-        loop {
-            let mut answer = match *here {
-                Self::Missing(ref info) => Self::Missing(info.clone()),
-                Self::Token {
-                    ref info,
-                    kind,
-                    ref text,
-                } => Self::Token {
-                    info: info.clone(),
-                    kind,
-                    text: text.clone(),
-                },
-                Self::Identifier {
-                    ref info,
-                    ref name,
-                    ref scopes,
-                } => Self::Identifier {
-                    info: info.clone(),
-                    name: name.clone(),
-                    scopes: scopes.clone(),
-                },
-                Self::Group {
-                    ref info,
-                    delimiter,
-                    ref children,
-                } => {
-                    let mut rest: Vec<&Self> = children.iter().rev().collect();
-                    match rest.pop() {
-                        Some(first) => {
-                            stack.push(Building {
-                                info: info.clone(),
-                                delimiter,
-                                rest,
-                                done: Vec::with_capacity(children.len()),
-                            });
-                            here = first;
-                            continue;
-                        }
-                        None => Self::Group {
-                            info: info.clone(),
-                            delimiter,
-                            children: Vec::new(),
-                        },
-                    }
-                }
-            };
-            // Hand the child up, and keep handing finished groups up until one
-            // still has a child waiting.
-            loop {
-                // Popped rather than peeked, so that a group with nothing left
-                // to copy is finished by the same borrow that noticed it and
-                // the empty-stack case is the only way out.
-                let Some(mut building) = stack.pop() else {
-                    return answer;
-                };
-                building.done.push(answer);
-                if let Some(next) = building.rest.pop() {
-                    here = next;
-                    stack.push(building);
-                    break;
-                }
-                answer = Self::Group {
-                    info: building.info,
-                    delimiter: building.delimiter,
-                    children: building.done,
-                };
-            }
-        }
-    }
 }
 
 impl Syntax {
@@ -311,7 +213,7 @@ impl Syntax {
             SourceInfo::Generated(_) => fallback,
         });
         if let Self::Group { children, .. } = self {
-            for child in children {
+            for child in children.iter() {
                 child.push_spans(fallback, out);
             }
         }

@@ -47,15 +47,16 @@
 //! 141b registered behave as they always did.
 //!
 //! **A literal's payload is opaque, and the alternative was refused.** The core
-//! needs three things from a literal and no more: which type it inhabits,
-//! whether it is the same literal as another, and how to show it in a
-//! diagnostic. A closed payload universe — integer, rational, text, bytes —
-//! would answer all three without `dyn`, and was refused twice over: `Syntax` is
+//! needs four things from a literal and no more: which type it inhabits,
+//! whether it is the same literal as another, how to show it in a diagnostic,
+//! and the deterministic logical shape §4 charges when it is built. A closed
+//! payload universe — integer, rational, text, bytes — would answer all four
+//! without `dyn`, and was refused twice over: `Syntax` is
 //! a tree, so every phase operation would encode and every read would decode;
 //! and a list of the host's data shapes inside a leaf calculus is the
-//! enumeration the corollary forbids, wearing a different hat. [`Payload`] has
-//! three methods with one reason each, and the downcast is the host's own
-//! concern at the host's own δ-rule.
+//! enumeration the corollary forbids, wearing a different hat. [`Payload`]'s
+//! methods each have one reason, and the downcast is the host's own concern at
+//! the host's own δ-rule.
 //!
 //! **D3 is enforced by the type.** A δ-rule is a `fn` pointer and not a closure,
 //! so it cannot capture host state and "the result is a function of the argument
@@ -237,6 +238,17 @@ pub trait Payload: fmt::Debug + Send + Sync + 'static {
     /// How to show this value in a diagnostic.
     fn shown(&self) -> String;
 
+    /// The payload's deterministic logical shape: constructed nodes and bytes.
+    ///
+    /// This is a language cost, not `size_of_val`: host layout, pointer width,
+    /// and allocator overhead must not decide which source is accepted. The
+    /// default is the byte length of the exact diagnostic representation the
+    /// owner already supplies. Owners with a denser versioned encoding may
+    /// override it, but equal payloads must report equal sizes on every host.
+    fn logical_shape(&self) -> (u64, u64) {
+        (1, u64::try_from(self.shown().len()).unwrap_or(u64::MAX))
+    }
+
     /// This value, for the host's own δ-rule to downcast.
     fn as_any(&self) -> &dyn Any;
 }
@@ -294,6 +306,12 @@ impl Literal {
     #[must_use]
     pub fn payload(&self) -> &dyn Payload {
         self.payload.as_ref()
+    }
+
+    /// The deterministic logical shape its owner reports.
+    #[must_use]
+    pub(crate) fn logical_shape(&self) -> (u64, u64) {
+        self.payload.logical_shape()
     }
 
     /// This literal as a term.

@@ -327,7 +327,7 @@ fn collect_kinds(node: &Syntax, into: &mut Vec<musa_syntax::SyntaxKind>) {
         Syntax::Missing(_) | Syntax::Identifier { .. } => {}
         Syntax::Token { kind, .. } => into.push(kind),
         Syntax::Group { ref children, .. } => {
-            for child in children {
+            for child in children.iter() {
                 collect_kinds(child, into);
             }
         }

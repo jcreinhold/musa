@@ -23,34 +23,19 @@
 //! They differ only in what they survive, and this exists so that they do not
 //! differ in that either.
 //!
-//! **What it does not repair.** The room is derived from the nesting limit, so
-//! it bounds the stack only where the *charge* tracks the descent. Through the
-//! traversal and `quote` it does, at every depth, because those two charge as
-//! they descend. Through `eval` the question no longer arises: prompt 165a gave
-//! the evaluator an explicit control stack, so its pending work is heap data
-//! and its depth costs no host frames at all — what a `let` chain a thousand
-//! deep now meets is the *step* budget, and only a chain nested in the values
-//! rather than in the bodies is a descent at all.
-//! Through the elaborator it does not. `Elaborator::check` and
-//! `Elaborator::infer` stand inside one another and are charged nothing, and
-//! they reach the bottom of a raw term before the values on the way back up
-//! charge anything — so the counter reaches the limit `NESTING` levels from the
-//! *bottom* of the term rather than from the top, and what the room buys is a
-//! term some way past the limit rather than one arbitrarily past it. Measured
-//! on a raw `let` chain in a debug build, at the 256-level limit that preceded
-//! prompt 155a's bump: 756 levels are refused and 1,256 abort. Both scale with
-//! the limit, because the room does. A term deep in the elaborator without being deep in the evaluator —
-//! the left-nested application spine
-//! `docs/plan/prompts/165-diagnostics-and-performance.md` measures, where
-//! `infer` stood 516 frames deep while the nesting counter read 2 — is bounded
-//! by no limit this room can be derived from at all.
+//! Prompt 165 closes the two holes that note described. `check` and `infer`
+//! charge as they descend, and the evaluator carries pending applications and
+//! demanded terms on an explicit control stack. The remaining adapter workload
+//! is bounded by the constructed-node counter: its traversal may still spend
+//! host stack inside one registered operation, but a 1,500-level generated
+//! region reaches 1,001,185 of 1,000,000 nodes and refuses. The ceiling below
+//! is measured against that finished refusal as well as the direct nesting
+//! laws, so every path the language admits reaches a named outcome.
 //!
-//! Both are one missing charge, and no amount of room substitutes for it: an
-//! unbounded descent outruns any fixed stack. Charging that recursion is prompt
-//! 144's third step, and it is a cost-table question rather than a stack one —
-//! at the limit as it stands it would refuse a voice of a few hundred notes,
-//! which is a version bump argued in §4 rather than a threshold moved to make a
-//! suite pass.
+//! The desktop session thread deliberately keeps Rust's 2 MiB default. Every
+//! calculus facade enters this seam before it checks or evaluates, including
+//! calls made during adapter expansion, so sizing the session thread as well
+//! would allocate the same room twice and would still miss non-desktop hosts.
 
 use std::cell::Cell;
 
@@ -63,30 +48,22 @@ use crate::kernel::budget::Budget;
 /// *reached*. §4.1 says as much — shrinking it is free and changes nothing
 /// normative, while raising the *limit* is a cost-table version bump.
 ///
-/// **Re-measured at prompt 165a, and it went up.** The evaluator no longer
-/// descends on the host's stack, so a nesting level is no longer bought mostly
-/// by `eval` frames costing about 2 KiB each. It is bought by the descents that
-/// remain — §5.9's traversal, `quote`, and the elaborator's own uncharged
-/// `check`/`infer` — and those cost far more per level, so the *same* limit
-/// now needs three or four times the room. The counter got scarcer and each
-/// unit of it got more expensive; the product is what this constant tracks.
-///
-/// Measured by holding [`Budget::NESTING`] at 320 and bisecting this constant
-/// until the deepest law aborts rather than refuses. In a debug build on arm64
-/// the wall is between 60 and 64 KiB a level — 320 × 60 KiB overflows and
-/// 320 × 64 KiB does not — and in a release build between 8 and 16 KiB, the
-/// same four-to-one ratio the previous measurement found. The deepest law is
+/// **Re-measured after prompt 165's final traversal and size charges.** Holding
+/// [`Budget::NESTING`] at 320 and bisecting this constant on arm64 puts the
+/// debug wall between 72 and 80 KiB: 320 × 72 KiB aborts and 320 × 80 KiB
+/// reaches the constructed-node refusal. The deepest law is
 /// `musa-compiler`'s `a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal`,
-/// which drives the traversal, rather than either of the two in `budget_laws.rs`:
+/// which drives a 1,500-level traversal to 1,001,185 of 1,000,000 nodes;
+/// the two direct nesting laws also run in the same command:
 ///
 /// ```sh
 /// env -u RUST_MIN_STACK cargo nextest run -p musa-calculus -p musa-compiler -E 'test(nested_past_the_limit) or test(a_region_deeper_than_the_budget_allows)'
 /// env -u RUST_MIN_STACK cargo nextest run --cargo-profile release -p musa-calculus -p musa-compiler -E 'test(nested_past_the_limit) or test(a_region_deeper_than_the_budget_allows)'
 /// ```
 ///
-/// 128 KiB is a little over twice the debug wall, because it has to hold on
-/// targets and future arms nobody has measured. Those laws are what notice when
-/// it stops being true, and they notice by aborting.
+/// 128 KiB leaves 60% over the passing edge because it has to hold on targets
+/// and future arms nobody has measured. Those laws notice when it stops being
+/// true by aborting.
 const FRAME_CEILING: u64 = 128 * 1024;
 
 thread_local! {

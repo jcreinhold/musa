@@ -48,8 +48,8 @@ use crate::kernel::error::{CoreError, Malformed};
 use crate::kernel::eval::{apply, apply_closure, eval, force, opened};
 use crate::kernel::meta::Meta;
 use crate::kernel::origin::Origin;
-use crate::kernel::quote::{At, Mode, quote};
-use crate::kernel::term::{Binder, Level, Shape, Term};
+use crate::kernel::quote::{At, Mode, quote_solution};
+use crate::kernel::term::{Level, Term};
 use crate::kernel::value::{Arg, DefHead, Elim, Env, Form, Head, Neutral, Value};
 
 /// What asking an unknown to take a value answered.
@@ -235,24 +235,16 @@ pub(crate) fn assign(meter: &mut Meter, one: &Value, other: &Value) -> Result<Ou
     // escape-checked by `Reading::index` exactly as an ordinary variable is,
     // and a folded global is written as the definition itself rather than as a
     // name some later scope has to resolve.
-    let Ok(body) = quote(meter, depth, Mode::Keep, &goal, other) else {
+    let body = match quote_solution(meter, depth, Mode::Keep, &goal, other, pattern.meta.id()) {
+        Ok(body) => body,
         // The one failure this arm swallows is the scope check, and swallowing
         // it into `Blocked` rather than into a refusal is deliberate: the value
         // may still reduce, or the variable it names may belong to a spine
         // another constraint is about to solve away. The declaration's end is
         // where an unknown nothing determined becomes an error.
-        return Ok(Outcome::Blocked);
+        Err(CoreError::Malformed(Malformed::EscapedVariable)) => return Ok(Outcome::Blocked),
+        Err(error) => return Err(error),
     };
-    // The occurs check, on the *term* and not on the value it was read back
-    // from. A value carries the environments its closures were built in, and
-    // those environments hold every binder that happened to be in scope —
-    // including, routinely, other occurrences of the unknown being solved. An
-    // occurs check over them answers "yes" for values that do not mention the
-    // unknown at all. Quotation has already forced every closure the value
-    // actually reaches, so the term is exactly what the solution would be.
-    if occurs(&body, &pattern.meta) {
-        return Err(Malformed::Cyclic(pattern.meta.id()).into());
-    }
     let solution = abstracted(meter, &pattern.meta, body)?;
     pattern.meta.solve(meter, solution)?;
     Ok(Outcome::Solved)
@@ -388,36 +380,6 @@ pub(crate) fn opened_solution(meter: &mut Meter, meta: &Meta) -> Result<Option<(
     Ok(Some((body, goal)))
 }
 
-/// Whether `target` occurs in `term`, following solutions on the way.
-///
-/// §2.1's occurs check: an unknown may not occur in its own answer. Refusing
-/// rather than postponing is the right answer for it — a cycle is not a fact
-/// that a later solution could change.
-///
-/// Asked of the read-back rather than of the value it came from, and
-/// [`assign`] says why: a value carries whole environments, and an occurs check
-/// over an environment answers about binders the value never looks at.
-pub(crate) fn occurs(term: &Term, target: &Meta) -> bool {
-    match term.shape() {
-        Shape::Meta(meta) => {
-            meta == target
-                || meta
-                    .solution()
-                    .is_some_and(|solution| walk(solution, &mut |inner| inner == target))
-        }
-        Shape::Var(_) | Shape::Lit(_) | Shape::Universe(_) | Shape::Named { .. } => false,
-        Shape::Bind { binder, body, .. } => {
-            let in_binder = match binder {
-                Binder::Lam => false,
-                Binder::Pi { ty, .. } => occurs(ty, target),
-                Binder::Let { ty, value } => occurs(ty, target) || occurs(value, target),
-            };
-            in_binder || occurs(body, target)
-        }
-        Shape::App { function, argument } => occurs(function, target) || occurs(argument, target),
-    }
-}
-
 /// Whether `value` mentions any unsolved unknown.
 ///
 /// The instantiation walk's reading of §2.1's "inferable": a slot typed
@@ -432,10 +394,8 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
 
 /// Every unknown reachable from `value`, tested until one says yes.
 ///
-/// Two callers: [`mentions_unsolved`] asks it of a domain the elaborator is
-/// deciding what to do with, and [`occurs`] asks it of a *solution*, where the
-/// value form is the only form there is. Where it looks is the part that
-/// matters:
+/// [`mentions_unsolved`] asks it of a domain the elaborator is deciding what to
+/// do with. Where it looks is the part that matters:
 ///
 /// - **Through solutions.** `?α := ?β` stores a value that says "blocked on
 ///   `?β`", so a walk that stopped at the head would miss `?α` sitting inside
@@ -444,10 +404,9 @@ pub(crate) fn mentions_unsolved(value: &Value) -> bool {
 ///   values its free variables stand for; the unknowns a comparison can reach
 ///   are in those values, and a body that mentions one mentions it through
 ///   them. That over-approximates — an environment holds binders the body never
-///   looks at — which is why [`assign`] asks [`occurs`] of the read-back
-///   rather than asking this of the value, and why over-approximating is
-///   tolerable for [`mentions_unsolved`], whose wrong answer only defers an
-///   argument that need not have been.
+///   looks at — and is tolerable for [`mentions_unsolved`], whose wrong answer
+///   only defers an argument that need not have been. [`assign`] instead fuses
+///   its exact occurs check into the quotation that visits only reachable data.
 fn walk(value: &Value, seen: &mut impl FnMut(&Meta) -> bool) -> bool {
     match &value.form {
         Form::Universe(_) | Form::Lit(_) | Form::Numeral(_) => false,

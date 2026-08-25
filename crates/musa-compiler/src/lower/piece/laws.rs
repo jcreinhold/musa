@@ -1054,7 +1054,10 @@ fn placed_two_ways(source: &str) -> Vec<(Ratio<i64>, Ratio<i64>, usize)> {
             let (_, placed) = document.passage(claim).expect("a claim places against its own voice");
             let whole = match claim.before.first() {
                 Some(first) => {
-                    let folded = crate::lower::notation::followed(first.origin(), claim.before.clone());
+                    let folded = crate::lower::notation::followed(
+                        first.raw().origin(),
+                        claim.before.iter().map(|piece| piece.raw().clone()).collect(),
+                    );
                     document
                         .track(&folded)
                         .expect("a prefix folded back into one term reads back as a track")
@@ -1235,6 +1238,7 @@ fn the_bars_of_one_voice_share_the_music_before_them() {
 
     let mut distinct = std::collections::HashSet::new();
     let mut counted = 0usize;
+    let mut joined = 0usize;
     for claim in &claims {
         assert!(
             claim.before.len() <= 8,
@@ -1243,10 +1247,15 @@ fn the_bars_of_one_voice_share_the_music_before_them() {
         );
         for piece in &claim.before {
             counted = counted.saturating_add(1);
-            distinct.insert(std::ptr::from_ref(piece.shape()) as usize);
+            joined = joined.saturating_add(usize::from(piece.children().is_some()));
+            distinct.insert(std::ptr::from_ref(piece.raw().shape()) as usize);
         }
     }
     assert!(counted > 0, "thirty-nine of the forty bars stand after something");
+    assert!(
+        joined > 0,
+        "merged pieces retain the child relation used to derive their durations"
+    );
     assert!(
         distinct.len() < counted,
         "the claims share pieces: {} distinct of {counted} carried",

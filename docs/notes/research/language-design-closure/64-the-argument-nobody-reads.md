@@ -142,7 +142,7 @@ practice. Three walks were not.
 | Walk | Cost a level | Died on 256 KiB at | Status |
 | --- | ---: | ---: | --- |
 | `quote::gate`'s `walk`, under `check_expression` | ~500 B | ~500 | **loop now** |
-| `Syntax::clone`, derived | ~850 B | ~300 | **loop now** |
+| `Syntax::clone`, derived over a `Vec` | ~850 B | ~300 | **O(1) `Arc` clone now** |
 | the traversal's own descent, in evaluation | ~16 KiB | — | **control stack now** |
 
 `check_expression` carried a second defect and it is the one that froze a host rather than aborting it: `built` and
@@ -172,7 +172,7 @@ region between about 320 and 680 groups is read where it was refused — so it i
 §4.1 and carried by `a_refusal_is_told_apart_from_a_broken_adapter_and_from_a_stop`, whose depth moved from 120 to 400
 with the bisection that found the new boundary (320 reads, 350 does not).
 
-## 6. And the step limit *still* does not move, one metric further along
+## 6. The size metrics make the step-limit move safe
 
 With the stack fixed the raise was tried again: `Budget::LANGUAGE.steps` at 1,000,000 admits a region about 3,400 groups
 deep, and at 3,400 the process is **SIGKILLed** — killed for memory rather than refused. Depth 2,000 completes, in 17.6
@@ -184,9 +184,30 @@ published numbers at all. So `reduction steps` has been standing in as a *size* 
 not one: 200,000 happens to cap a region near 680 groups, which a host holds; 1,000,000 caps it near 3,400, which it
 does not.
 
-So the sequence is: enforce the metrics that bound size, then re-derive the step limit against large-score's measured
-229 steps an event. Not the other way round. The two large-score generator laws stay red until then, and they are still
-red for the right reason.
+That sequence is now complete. `musa-calculus` charges constructed value nodes and deterministic logical bytes where a
+value is built: immediate core cells and wiring, realized canonical data, and registered payloads whose owner supplies
+their logical shape. The boundary laws admit the exact limit and refuse the next node or byte; the sharing and
+projection laws show that naming or selecting an existing value does not pay for it again.
+
+With those counters open for calibration, the largest `Spend` returned by one calculus operation during each complete
+compilation was:
+
+| workload | reduction steps | constructed nodes | logical bytes |
+| --- | ---: | ---: | ---: |
+| `examples/in-c.musa` | 29,113 | 54,258 | 1,280,938 |
+| `examples/staff-page.musa` | 180,873 | 99,672 | 167,222 |
+| `tests/fixtures/large-score.musa` | 355,992 | 239,394 | 1,319,043 |
+| generic row, 48 forms at twelve | 1,081,475 | 574,098 | 596,344 |
+
+The re-derived table is therefore 2,000,000 steps, 1,000,000 nodes, and 16 MiB. The large-score and full post-tonal laws
+fit; the latter is the binding workload for steps and nodes, while the large desktop fixture binds logical bytes. Most
+importantly, `nested_region(1500)` now refuses at **1,001,185 of 1,000,000 constructed nodes**. The old step-only
+experiment reached an operating-system kill; the finished table reaches a deterministic diagnostic first.
+
+The duplicate `musa-compiler::phase_budget` room was deleted at the same close. Every transformer entry into checking or
+evaluation already crosses `musa-calculus`'s facade seam, which allocates the derived room for every host; retaining a
+second 32 MiB phase thread used a stale 256-level constant, duplicated the allocation, and still could not protect a
+caller that entered the calculus outside expansion.
 
 ## 7. One more repair: the depth fixture was malformed
 
@@ -194,3 +215,25 @@ red for the right reason.
 its answers to the same path and a deep region met `NotAnExpression(DuplicatePath)` rather than the limit the law exists
 to reach. It went unnoticed for as long as the step budget tripped first. The builder now derives each level's path the
 way reading a real region would, and lives in `quote::build` where deriving a child path belongs.
+
+## 8. The admitted large score, and the interface budget it binds
+
+Raising the cost table made the desktop workload measurable rather than fast-failing. Its first successful P1 compile
+was about **272 ms**. A phase split put 61 ms in evaluation of the complete score, 40 ms in the 400 bar passages, and
+162 ms in reconstructing the claims' onsets. The last number was not new semantics: prompt 165d retained `Placed`'s
+balanced prefix *terms*, but discarded the child relation that said every internal term was `follow(left, right)`, then
+elaborated those internal terms merely to read their durations.
+
+The event-track equation is exact: `duration(sequence(a, b)) = duration(a) + duration(b)`. `DurationPiece` now retains
+that child relation beside the existing `Raw`; `Document::began` recursively sums cached leaves and never evaluates an
+internal concatenation for its length. Transformations map both the term and its decomposition, and the existing four-
+transformation law proves the result agrees with evaluating the whole. The 935-test compiler suite is unchanged in
+meaning. P1 `large` fell to **110.9 ms** median (108.2–115.2 ms, 100 samples).
+
+That meets B1's 120 ms authority and consumes nearly all of it. It did not initially meet B2 when composed honestly: the
+UI budget run measured p95 350 ms as 180 ms debounce, 2 ms stubbed round trip, and 169 ms engraving; replacing the stub
+with 110.9 ms gave 460 ms. The single debounce is now 100 ms. The final run measured B1's post-debounce frontend round
+trip at 2 ms and B2 at **249 ms** p95, including 2 ms round trip and 149 ms engraving. Substituting the real compile for
+the stub composes to **360 ms**, below B2's 400 ms, with the previous engraving visible throughout. This is the
+resolution of the relative-gate miss: the final checker is materially more expensive than the fast refusal it replaced,
+the redundant duration work is gone, and the product budget is met without claiming the old medians survived.

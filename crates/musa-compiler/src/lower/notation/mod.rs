@@ -94,6 +94,7 @@ mod laws;
 mod marks;
 mod materials;
 mod raw;
+pub(crate) use raw::DurationPiece;
 pub(super) use raw::{
     Placed, clefed, continuing, count_of, endings_of, followed, is_not_an_ending, keyed, last_at_most, maybe, metered,
     named, optional, payload, plain, scope_of, spanned, stamped, tempo, tuplet_factor, tuplet_ratio, written_argument,
@@ -358,7 +359,7 @@ pub(crate) struct Claimed {
     /// duration is where the passage begins, which is what a measure claim is
     /// measured against; the pieces are the module doc's subject and an empty
     /// list is a passage that begins at zero.
-    pub(crate) before: Vec<Raw>,
+    pub(crate) before: Vec<DurationPiece>,
     /// The passage itself. Its duration is how long the passage lasts, and its
     /// occurrences are the notes a pitch or chord claim is proved against.
     pub(crate) passage: Raw,

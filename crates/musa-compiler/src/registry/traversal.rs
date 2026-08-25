@@ -357,11 +357,15 @@ fn fold_type(cx: &Cx) -> Result<Term, ElabError> {
 /// Read off the node rather than reconstructed, so a transformer cannot reach a
 /// node without also holding the path it would build output from.
 fn node_path(node: &Syntax) -> Term {
-    literal(plain_type("NodePath"), node.info().path().clone()).term(HERE)
+    let path = node.info().path().clone();
+    let bytes = path.logical_bytes();
+    super::literal_with_shape(plain_type("NodePath"), path, (1, bytes)).term(HERE)
 }
 
 fn text(spelling: &str) -> Term {
-    literal(plain_type("Text"), spelling.to_owned()).term(HERE)
+    let text = spelling.to_owned();
+    let bytes = u64::try_from(text.len()).unwrap_or(u64::MAX);
+    super::literal_with_shape(plain_type("Text"), text, (1, bytes)).term(HERE)
 }
 
 fn kind(which: musa_syntax::SyntaxKind) -> Term {
@@ -378,7 +382,10 @@ fn delimiter(which: Delimiter) -> Term {
 /// `Syntax ⟨token-tree⟩` is one too and rebuilding it would be a second place for
 /// the category to be decided.
 fn child(ty: &Term, node: &Syntax) -> Term {
-    literal(ty.clone(), node.clone()).term(HERE)
+    // Selection constructs one literal cell around a subtree whose nodes were
+    // charged when the parent syntax value was built. Walking `shape` here
+    // would both double-charge and turn a fold over siblings quadratic.
+    super::literal_with_shape(ty.clone(), node.clone(), (1, 16)).term(HERE)
 }
 
 /// `List ⟨member⟩`, from its elements in order.

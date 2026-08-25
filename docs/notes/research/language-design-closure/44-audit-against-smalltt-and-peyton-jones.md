@@ -544,3 +544,33 @@ binder types too.
 **So the answer to "the one thing that would change the verdict" is: it changed.** Finding A is a latent constant factor
 rather than a present cost, and it goes to prompt 165 with Finding C, which is where this note's last section said it
 should go if the measurement moved. Six items are waiting there, and 144's Design names each one.
+
+## Final closure at prompt 165
+
+The audit has no remaining performance mechanism waiting on a later prompt.
+
+- **Approximate conversion is built.** `Conversion::folded` compares rigid folded heads and their spines before opening
+  either definition; `glued_laws.rs` measures the same-definition comparison independently of the body's depth. A miss
+  opens in the fixed, meta-safe order and falls through to the full structural comparison once.
+- **Flexible quotation is built.** `Mode::Keep` preserves folded definitions on diagnostic and metavariable-solution
+  readback, while `Mode::Open` produces canonical stored terms. Opening during one real `staff-page.musa` assignment
+  spent more than 100,000,000 steps; keeping the same definitions folded kept the whole declaration within the
+  then-current 200,000-step limit.
+- **The second occurs walk is removed; a per-meta cache is declined.** `quote_solution` now rejects the target meta and
+  escaped variables during the quotation that writes the solution, including through already-solved meta chains. A meta
+  is write-once, so after fusion there are exactly **zero** successful repeated occurs checks for a cache to hit. Adding
+  storage and invalidation for zero possible hits would only make the trusted path larger.
+- **Match-arm hoisting is declined on the real corpus.** A probe at `case::compile` over the committed examples, staff
+  programs, and bundled post-tonal/transformational libraries observed **295 matches, 0 multi-subject matches, maximum
+  arity 1**. The residual duplication requires a variable arm to survive a split in another subject, so it is absent
+  from this corpus. The permanent counterexample in `coverage_laws.rs` still forbids the proposed simple hoist; a
+  speculative plan/emit pass is not justified for a measured zero occurrences.
+- **The unfold memo stays.** It is valid only when its stored process-wide meta stamp equals the current stamp; any meta
+  solution invalidates every cell conservatively. The two measured readings were 455,942 steps without the update and
+  2,818 with it for an empty staff region, and `eval`'s laws pin both cache reuse and invalidation. The memo charges no
+  new semantic work: construction and eliminations were already charged, while a cache miss merely performs that work
+  again.
+
+Prompt 165 also fused the occurs check that the earlier “Discharged” paragraph mistakenly credited to 136b. That
+paragraph was accurate about the intended route, not the implementation then present; this closing measurement is the
+final state.

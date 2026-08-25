@@ -162,13 +162,14 @@ allocations per fold iteration. Total allocated bytes are churn, not retained si
 reason the table reports both. Scheduler noise dominates the smallest rows; these local medians are design evidence, not
 CI timing thresholds. Boundary tests, rather than timing, fix acceptance exactly.
 
-Prompt 96 sets one internal deterministic meter with these language-version limits:
+Prompt 165 re-derived the core half of the internal deterministic meter after the replacement checker made its size
+charges real. The compiler-boundary limits retain prompt 96's values:
 
 | metric | limit | evidence and intent |
 | --- | ---: | --- |
-| reduction steps | 200,000 | admits the measured 50,000-step fold (about 150,000 charged reductions) below 8 ms while rejecting a stated 200,000-step fold before its loop |
-| constructed value nodes | 100,000 | admits useful finite collections but preflights `range(100001)` before allocation |
-| logical value bytes | 1,048,576 | separately bounds dense exact values; 65,536 repeated ratios crosses it while remaining below the node limit |
+| reduction steps | 2,000,000 | admits the required full post-tonal class; its high-water binding is a generic row's 48 forms at 1,081,475 |
+| constructed value nodes | 1,000,000 | admits the same binding at 574,098 and refuses a 1,500-level generated region at 1,001,185 before the former memory kill |
+| logical value bytes | 16,777,216 | admits the large desktop fixture's 1,319,043-byte high-water operation with more than twelve times its measured room |
 | instantiated prelude entries | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
 | estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 127 retunes from music-producing curves |
 
@@ -495,6 +496,53 @@ The three rows that are not noise say what each repair bought and where:
 
 `template-pressure` and `core-pressure` are the two workloads left with a five-figure allocation count and no repair
 aimed at them; they are where a further measurement should start.
+
+## Prompt 165 final checker and interface budgets
+
+Prompt 165 is the first run after the new checker admits the complete large and post-tonal workloads. That makes the
+older post-127 numbers a valid regression alarm and an invalid performance expectation: at 200,000 steps the large
+workload stopped early, while the finished 2,000,000-step table evaluates and proves all 1,572 occurrences and 400 bar
+claims. The gate moved by much more than 10%, so the full comparison and its resolution are recorded rather than hidden
+behind the formerly fast refusal.
+
+Machine and command are the same as the hot-path table above:
+
+```sh
+cargo bench -p musa-compiler -- p1_compile p2_elaborate
+```
+
+| stage | workload | prompt 127 | prompt 165 | Δ median | allocations before → after |
+| --- | --- | ---: | ---: | ---: | ---: |
+| P1 | open-shape | 586.3 µs | 3.376 ms | +476% | measured on the room thread; see below |
+| P1 | higher-order-shape | 366.5 µs | 1.612 ms | +340% | measured on the room thread; see below |
+| P1 | declaration-heavy | 1.482 ms | 16.49 ms | +1,013% | measured on the room thread; see below |
+| P1 | audio-bridge | 138.4 µs | 704.8 µs | +409% | measured on the room thread; see below |
+| P1 | large | 4.853 ms | **110.9 ms** | +2,185% | measured on the room thread; see below |
+| P2 | open-shape | 510.7 µs | 3.640 ms | +613% | 13,166 → 13,075 |
+| P2 | higher-order-shape | 345.6 µs | 1.555 ms | +350% | 4,932 → 4,993 |
+| P2 | declaration-heavy | 1.349 ms | 18.57 ms | +1,277% | 47,535 → 65,820 |
+| P2 | audio-bridge | 93.30 µs | 681.2 µs | +630% | 3,281 → 4,113 |
+| P2 | large | 4.168 ms | 128.5 ms | +2,983% | 127,466 → 232,443 |
+
+P1 now arranges the derived `NESTING × FRAME_CEILING` stack room once around the complete transaction. Divan's
+allocation profiler is thread-local, so it sees the four room-launch allocations and not the compiler work on that
+thread; reporting “4 allocations” as the P1 churn would be false. P2 remains on the benchmark thread and supplies the
+comparable allocation column. The declaration-heavy and large increases are real: the former checks the complete
+dependent declaration graph, and the latter now reaches the result that the previous budget refused.
+
+The profile split on `large` was 61 ms for its complete score evaluation, 40 ms for its bar passages, and 162 ms for
+reconstructing bar onsets from balanced prefix subtrees. `Placed` already knew each internal subtree was a `follow` of
+two children, and event-track sequence defines its duration as the sum of theirs. Retaining that decomposition for the
+duration-only cache removed the 162 ms without adding an evaluator or changing a charge; the P1 median fell from about
+272 ms to 110.9 ms, and every claim remains checked.
+
+That resolves the authoritative interface gates, not the relative timing gate by pretending it did not move. The real
+compile is 110.9 ms after the debounce, below B1's 120 ms. The UI budget run first measured B2 at p95 350 ms with the
+former 180 ms debounce, including a 2 ms stubbed round trip and 169 ms engraving; composing the real compile gave 461
+ms. With the debounce at 100 ms, the final run measured B1's post-debounce frontend round trip at 2 ms and B2 at **249
+ms** p95, including 2 ms round trip and 149 ms engraving. Replacing the stub by the real compile composes to **360 ms**,
+below B2's 400 ms while the previous engraving remains visible. The exact interface numbers and the debounce decision
+live in `docs/rules/desktop/06-frame-budgets.md`.
 
 ## Prompt 127 public surface and dependencies
 

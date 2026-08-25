@@ -901,7 +901,8 @@ impl std::fmt::Display for Kind {
 /// content of `as_expression` and the gate is that a tree the parser has read is
 /// a `Syntax ⟨Expr⟩` and the same tree unread is not.
 fn tree(cat: Cat, node: Syntax) -> Datum {
-    Datum::Lit(literal(syntax_type(cat), node))
+    let shape = node.shape();
+    Datum::Lit(super::literal_with_shape(syntax_type(cat), node, shape))
 }
 
 /// A `Syntax ⟨token-tree⟩` literal, which is what a builder answers with.

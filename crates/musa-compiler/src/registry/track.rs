@@ -328,7 +328,12 @@ pub(super) fn track_of(datum: &Datum) -> Option<VoiceTrack> {
 
 /// A track, as a literal at `EventTrack ⟨written⟩`.
 pub(super) fn built(track: VoiceTrack) -> Datum {
-    Datum::Lit(literal(track_type(), track))
+    let occurrences = u64::try_from(track.occurrences().len()).unwrap_or(u64::MAX);
+    let shape = (
+        occurrences.saturating_add(1),
+        occurrences.saturating_mul(32).saturating_add(16),
+    );
+    Datum::Lit(super::literal_with_shape(track_type(), track, shape))
 }
 
 /// The same track with each fact rewritten by `each` and `step` recorded as

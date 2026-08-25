@@ -18,7 +18,7 @@ import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 /** The debounce the budget is stated relative to (`06-frame-budgets.md` §1). */
-const SETTLE_MS = 180;
+const SETTLE_MS = 100;
 
 const TRIALS = 20;
 
@@ -297,7 +297,7 @@ test.describe("the large score", () => {
           performance.getEntriesByName("musa:score", "mark").some((mark) => mark.startTime > gesture.startTime)
         );
       });
-      // The 180 ms debounce is inside this number, as the budget states it:
+      // The 100 ms debounce is inside this number, as the budget states it:
       // what the composer waits is from the keystroke, not from the compile.
       // The ink read is the ink that came *after* the keystroke, for the
       // reason `after` gives: the first two trials of this loop used to land
@@ -411,7 +411,7 @@ test("B10: nothing is scheduled while the transport is stopped", async ({ page }
  * Reading an open work again, measured on its own.
  *
  * Deliberately not folded into B2. B2 is what an *edit* costs, and its
- * 400 ms includes the 180 ms the interface spends waiting for typing to
+ * 400 ms includes the 100 ms the interface spends waiting for typing to
  * settle. A new performance is a click: nothing is being typed, so there is
  * nothing to wait for, and rolling it into B2 would hide a redraw that had
  * become slow behind a debounce it never pays. What is measured is the

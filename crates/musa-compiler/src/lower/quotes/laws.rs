@@ -203,7 +203,7 @@ fn spliceable(source: &str, at: u64) -> Syntax {
         ref children,
         ..
     } = node
-        && let [only] = children.as_slice()
+        && let [only] = children.as_ref()
     {
         let inner = only.clone();
         node = inner;

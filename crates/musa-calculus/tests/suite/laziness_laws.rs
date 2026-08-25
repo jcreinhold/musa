@@ -312,4 +312,27 @@ fn a_projection_still_computes_to_the_field_it_reads() {
     );
     let (expected, _) = spent(&cx, "the field itself", &number(5));
     assert_eq!(read, expected, "a projection did not compute to its field");
+
+    // Selecting a large field must not construct that field a second time.
+    // The pair and projection add a fixed amount of wiring around either
+    // field, so making the selected field twenty times deeper must leave that
+    // overhead unchanged.
+    let overhead = |field| {
+        let literal = apply(var("Pair.Pair"), [nat_type(), number(2), number(field)]);
+        let (_, selected) = spent(
+            &cx,
+            "the second field of a sized literal",
+            &Raw::project(WRITTEN, literal, "snd"),
+        );
+        let (_, alone) = spent(&cx, "the sized field itself", &number(field));
+        (
+            selected.constructed_nodes - alone.constructed_nodes,
+            selected.logical_bytes - alone.logical_bytes,
+        )
+    };
+    assert_eq!(
+        overhead(5),
+        overhead(100),
+        "selecting a field adds wiring but does not charge the selected value again"
+    );
 }

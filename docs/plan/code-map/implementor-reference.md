@@ -80,12 +80,13 @@ default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
 A bar's own context fact is *where it begins*, and the fold has no cursor to keep it. `Claimed::before` in
 `crates/musa-compiler/src/lower/notation/mod.rs` carries the music standing before the passage, in the pieces `Placed` —
 the skew-binary counter in `raw.rs` — already holds it in, earliest first; `Document::began` in
-`crates/musa-compiler/src/document.rs` sums their durations over a memo keyed by the address of each piece's `Arc`, and
-`Document::passage` reads the sum as the claim's onset. The field carried the whole prefix as one built term until
-prompt 165d, which made a voice of `n` bars elaborate `1 + 2 + … + n` bars of music;
-`docs/notes/research/language-design-closure/63-the-barline-quadratic.md` has the measurement and the soundness
-argument. The memo is a cache and never an equality: an address only finds a cached answer, so a miss is a second
-elaboration and never a different rational.
+`crates/musa-compiler/src/document.rs` sums their durations over a memo keyed by the address of each piece's `Arc`.
+`DurationPiece` retains the two children of every balanced `follow`, so only leaves are elaborated and internal
+durations are derived by the event track's exact addition equation; `Document::passage` reads the sum as the claim's
+onset. The field carried the whole prefix as one built term until prompt 165d, which made a voice of `n` bars elaborate
+`1 + 2 + … + n` bars of music; `docs/notes/research/language-design-closure/63-the-barline-quadratic.md` has the
+measurement and the soundness argument. The memo is a cache and never an equality: an address only finds a cached
+answer, so a miss is a second elaboration and never a different rational.
 
 ## 3. A worked trace
 
@@ -178,7 +179,8 @@ Termination is not enough: a total language can still ask for a score nobody can
 checking and evaluation, charging a finite operation's known count *before* it enters its loop
 ([`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §4). It covers monomorphized definition count and
 closure environment size, fold work including products induced by nesting, generated occurrence and event-track binding
-counts, instantiation count and dependency depth, and quotation size after substitution.
+counts, instantiation count and dependency depth, quotation size after substitution, constructed value nodes, and
+logical value bytes. Reusing a named or selected value does not charge its contents again.
 
 Two properties matter to a caller:
 

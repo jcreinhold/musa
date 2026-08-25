@@ -61,9 +61,9 @@ use musa_calculus::{Builtin, Cx, Datum, ElabError, Family, Literal, Rule};
 use musa_events::{Occurrence, Position, Span};
 use num_rational::Ratio;
 
+use super::plain_type;
 use super::rules::{halves, items, nat, read, reduced, refused};
 use super::track::{Provenance, built, scope_of, track_of, track_type};
-use super::{literal, plain_type};
 use crate::elaborate::{FactKind, ScoreFact, VoiceTrack};
 use musa_score::harmony::ChordSymbol;
 use musa_score::marks::MarkArgument;
@@ -194,7 +194,7 @@ const NOTATED: Rule = |arguments| {
 /// type the value already states, written twice.
 pub(crate) fn nothing() -> Literal {
     let empty: VoiceTrack = musa_events::empty(musa_events::Duration::ZERO);
-    literal(track_type(), empty)
+    super::literal_with_shape(track_type(), empty, (1, 16))
 }
 
 /// `sounded(origin, scope, fact, held)` — one fact, over `[0, held]`, in a track

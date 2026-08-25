@@ -575,20 +575,15 @@ fn elaboration_baseline_fixtures_are_current() -> Result {
 /// the benchmark prints occurrence counts: a row of a timing table cannot be
 /// read without the size of the workload behind it.
 ///
-/// Ignored: all five workloads fail identically on the checker the course
-/// correction replaced and on the one that replaced it — `core-pressure` at
-/// 257 of 256 nested evaluation levels, `template-pressure` with its
-/// "`step` needs a scale it can count" readings, `analysis-pressure` at
-/// 200001 of 200000 reduction steps, and the two events workloads denoting
-/// 288-of-352 and 80-of-1280 events. What still covers the contract in the
-/// fast suite: `the_sharing_shapes_compile_and_denote_what_they_claim` and
-/// `shape_pair_has_the_same_denoted_note_count`, which exercise the same
-/// compile-then-count assertion on workloads inside the budget. What is
-/// deferred: the budget's size and the event track windows' denotation, both the
-/// adapter migration's terrain. The failures are pinned here so the work that
-/// owns them is greeted by exact numbers.
+/// Ignored because the five-workload sweep is a 0.65 s generated pressure test,
+/// not because any case remains red. On prompt 165's finished cost table it
+/// compiles all five and verifies 8, 400, 448, 288, and 80 score events. The
+/// fast suite still covers the same compile-then-count contract through
+/// `the_sharing_shapes_compile_and_denote_what_they_claim` and
+/// `shape_pair_has_the_same_denoted_note_count`; this test defers only the much
+/// broader evaluator, expansion, analysis, and events-document workload.
 #[test]
-#[ignore = "all five workloads fail byte-identically on both checkers (budget excess and events-window denotation); the adapter migration owns the terrain"]
+#[ignore = "0.65 s generated pressure sweep; fast laws cover compile-then-count, this test covers the full five-workload envelope"]
 fn the_pressure_workloads_compile_and_denote_what_they_claim() {
     let mut imported = CompileOptions::default();
     imported.imports.insert(

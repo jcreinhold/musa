@@ -286,6 +286,53 @@ fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     );
 }
 
+/// The `4n` row computations at twelve, deferred from prompt 164 until prompt
+/// 165 re-derived the replacement checker's cost table.
+#[test]
+fn a_row_has_four_n_labelled_operations_at_twelve() {
+    holds(
+        "
+    let labelled: Equal<Nat>(length(row_operations(12, chromatic)), 48) = Refl(48);
+",
+    );
+}
+
+#[test]
+fn a_generic_row_has_four_n_distinct_forms_at_twelve() {
+    holds(
+        "
+    fn orbit_size(built: Result<ToneRow(12), RowFault>) -> Nat {
+        match built { Ok(series) -> length(row_forms(12, chromatic, series)), Err(reason) -> 0 }
+    }
+    let forms: Equal<Nat>(orbit_size(generic), 48) = Refl(48);
+",
+    );
+}
+
+#[test]
+fn a_generic_rows_stabilizer_is_the_identity_at_twelve() {
+    holds(
+        "
+    fn symmetry_count(built: Result<ToneRow(12), RowFault>) -> Nat {
+        match built { Ok(series) -> length(row_symmetries(12, chromatic, series)), Err(reason) -> 0 }
+    }
+    let symmetries: Equal<Nat>(symmetry_count(generic), 1) = Refl(1);
+",
+    );
+}
+
+#[test]
+fn a_twelve_tone_rows_matrix_has_twelve_rows() {
+    holds(
+        "
+    fn matrix_size(built: Result<ToneRow(12), RowFault>) -> Nat {
+        match built { Ok(series) -> length(matrix(12, chromatic, series)), Err(reason) -> 0 }
+    }
+    let rows: Equal<Nat>(matrix_size(generic), 12) = Refl(12);
+",
+    );
+}
+
 #[test]
 fn the_bundled_example_compiles() {
     let errors = errors_of(SERIAL_FORMS);

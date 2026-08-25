@@ -34,9 +34,10 @@
 //! metavariable was created, and not to mention the metavariable itself. Both
 //! are decided at a leaf — a variable, and a meta — of the walk that writes the
 //! term, so both are decided *by that walk*: [`Reading`] carries what the
-//! solution may name, and [`Reading::index`] is where scope check, occurs check
-//! and index shift all land. A second pass over the finished term would build
-//! the whole of it before discovering its first node was already out of scope.
+//! solution may name, [`Reading::index`] performs the scope check and index
+//! shift, and `read_neutral` rejects the metavariable being solved. A second
+//! pass over the finished term would build the whole of it before discovering
+//! its first node was already out of scope or cyclic.
 //!
 //! **Every value quotation matches on is forced first.** A value built before a
 //! metavariable was solved still says "blocked"; matching it unforced would read
@@ -58,7 +59,7 @@ use std::sync::Arc;
 
 use crate::kernel::budget::Meter;
 use crate::kernel::error::{CoreError, Malformed};
-use crate::kernel::eval::{apply, apply_closure, head_type, opened};
+use crate::kernel::eval::{apply, apply_closure, force, head_type, opened};
 use crate::kernel::family::{product, projecting_from};
 use crate::kernel::origin::Origin;
 use crate::kernel::term::{Constant, Index, Level, Term};
@@ -126,13 +127,13 @@ impl At<'_> {
 /// The depth, and — when the term being written is a metavariable's solution —
 /// what that solution is allowed to mention.
 ///
-/// One value rather than two parameters because the two are asked together at
-/// exactly one place, [`Reading::index`], and separating them would put the
-/// depth in every signature twice.
+/// One value rather than separate parameters because every recursive branch
+/// must carry the same depth, mode, and optional occurs-check target.
 #[derive(Clone, Copy)]
 struct Reading {
     depth: Level,
     mode: Mode,
+    solving: Option<u32>,
 }
 
 /// Why reading a value back did not produce a term.
@@ -167,12 +168,29 @@ impl Escape {
 impl Reading {
     /// A plain quotation: no metavariable to fit the answer into.
     const fn open(depth: Level, mode: Mode) -> Self {
-        Self { depth, mode }
+        Self {
+            depth,
+            mode,
+            solving: None,
+        }
+    }
+
+    /// A quotation that writes `target`'s solution and rejects the target
+    /// wherever the same walk encounters it.
+    const fn solving(depth: Level, mode: Mode, target: u32) -> Self {
+        Self {
+            depth,
+            mode,
+            solving: Some(target),
+        }
     }
 
     /// The value with whatever the head hides seen through: solved
     /// metavariables always, folded definitions in [`Mode::Open`].
     fn seen(self, meter: &mut Meter, value: &Value) -> Result<Option<Value>, Escape> {
+        if self.solving.is_some() {
+            return Ok(force(meter, value)?);
+        }
         match self.mode {
             Mode::Keep => Ok(None),
             Mode::Open => Ok(opened(meter, value)?),
@@ -212,6 +230,22 @@ impl Reading {
 /// the value does not inhabit the shape the type demands.
 pub(crate) fn quote(meter: &mut Meter, depth: Level, mode: Mode, ty: &Value, value: &Value) -> Result<Term, CoreError> {
     read(meter, Reading::open(depth, mode), ty, value).map_err(Escape::core)
+}
+
+/// Read `value` as `target`'s solution, fusing the occurs check into quotation.
+///
+/// Solved unknowns are forced as the walk reaches them even in [`Mode::Keep`],
+/// because their stored answer may mention `target`; folded definitions remain
+/// folded. No second traversal of the completed term is necessary.
+pub(crate) fn quote_solution(
+    meter: &mut Meter,
+    depth: Level,
+    mode: Mode,
+    ty: &Value,
+    value: &Value,
+    target: u32,
+) -> Result<Term, CoreError> {
+    read(meter, Reading::solving(depth, mode, target), ty, value).map_err(Escape::core)
 }
 
 fn read(meter: &mut Meter, reading: Reading, ty: &Value, value: &Value) -> Result<Term, Escape> {
@@ -382,7 +416,12 @@ fn read_neutral(meter: &mut Meter, reading: Reading, neutral: &Neutral) -> Resul
             // before quotation, and a spine whose head is solved forces whole.
             // [`Mode::Keep`] reaches a solved one too, and writes it, which is
             // what "keep" means for an unknown as much as for a definition.
-            Head::Meta(meta) => Term::meta(here, meta.clone()),
+            Head::Meta(meta) => {
+                if reading.solving == Some(meta.id()) {
+                    return Err(Malformed::Cyclic(meta.id()).into());
+                }
+                Term::meta(here, meta.clone())
+            }
             Head::Const(constant, _) => constant.term(here),
             // Both rigid, both closed, and both already their own normal form:
             // a base type has no eliminator and a builtin whose arguments were

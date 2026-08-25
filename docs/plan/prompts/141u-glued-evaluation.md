@@ -221,10 +221,9 @@ regression fails rather than merely slows.
 
 **The corpus, recorded rather than gated.** `examples/staff-page.musa`'s spend is re-measured and written into
 `budget.rs`'s doc comment beside `Budget::LANGUAGE` with the command that produced it, in the shape
-[`core_budget.rs`](../../../crates/musa-compiler/src/phase_budget.rs)'s `FRAME_CEILING` already uses — against
-1,605,182,361 before. Whatever it becomes is the number the cost-table prompt and prompt 166 both argue from. No
-prediction is offered, because the tally above says the residual is the adapter's call count and this prompt does not
-change it.
+[`budget.rs`](../../../crates/musa-calculus/src/kernel/budget.rs)'s `Budget::LANGUAGE` now uses — against 1,605,182,361
+before. Whatever it becomes is the number the cost-table prompt and prompt 166 both argue from. No prediction is
+offered, because the tally above says the residual is the adapter's call count and this prompt does not change it.
 
 ## Target
 

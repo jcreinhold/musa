@@ -26,7 +26,7 @@ import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnap
  * (`06-frame-budgets.md` §3). Long enough that a word is one compile, short
  * enough that a pause reads as immediate.
  */
-export const SETTLE_MS = 180;
+export const SETTLE_MS = 100;
 
 /**
  * A frame count on its way to the shell.

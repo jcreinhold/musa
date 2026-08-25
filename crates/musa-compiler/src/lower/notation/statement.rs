@@ -203,7 +203,7 @@ impl Lowering<'_> {
                     // term of its own, and building one per statement would
                     // spend nodes on blocks that claim nothing.
                     if self.claims.len() > raised {
-                        let prefix: Vec<Raw> = placed.pieces().cloned().collect();
+                        let prefix: Vec<DurationPiece> = placed.pieces().cloned().collect();
                         for claim in self.claims.iter_mut().skip(raised) {
                             claim.before.splice(0..0, prefix.iter().cloned());
                         }
@@ -251,7 +251,7 @@ impl Lowering<'_> {
         let body = self.notated(node, reading)?;
         for claim in self.claims.iter_mut().skip(raised) {
             for piece in &mut claim.before {
-                *piece = under(piece.clone());
+                *piece = piece.transformed(&under);
             }
             claim.passage = under(claim.passage.clone());
         }

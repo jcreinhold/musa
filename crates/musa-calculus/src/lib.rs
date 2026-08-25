@@ -125,6 +125,16 @@ use crate::kernel::quote::{Mode, quote, quote_type};
 use crate::kernel::room::with_room;
 use crate::kernel::scope::Scope;
 
+/// Run a host's whole checking transaction with §4.1's derived stack room.
+///
+/// Individual facade calls arrange this room themselves. A host that makes
+/// many calls for one source should wrap the transaction once so those calls
+/// reuse one scoped thread instead of creating one per declaration. Nesting
+/// this function is free: the inner call observes the room already present.
+pub fn with_stack_room<T: Send>(work: impl Fn() -> T + Send + Sync) -> T {
+    with_room(work)
+}
+
 /// Elaborate a `data` declaration group, in context `cx`.
 ///
 /// One call declares *all* the families that may mention each other, because

@@ -215,9 +215,14 @@ pub(crate) fn said(held: &musa_calculus::Datum) -> Option<String> {
 
 /// One region, as the term the phase hands an operation.
 pub(crate) fn region(subject: crate::quote::Syntax) -> Raw {
+    let shape = subject.shape();
     Raw::lit(
         musa_calculus::Origin::UNKNOWN,
-        crate::registry::literal(crate::registry::syntax_type(crate::quote::Cat::TokenTree), subject),
+        crate::registry::literal_with_shape(
+            crate::registry::syntax_type(crate::quote::Cat::TokenTree),
+            subject,
+            shape,
+        ),
     )
 }
 

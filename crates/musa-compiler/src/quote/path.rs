@@ -119,6 +119,21 @@ impl NodePath {
             }
         }
     }
+
+    /// Bytes in the versioned encoding [`Self::write_into`] writes.
+    pub(crate) fn logical_bytes(&self) -> u64 {
+        let expansion = u64::try_from(self.expansion.0.len()).unwrap_or(u64::MAX);
+        let steps = self.steps.iter().fold(0_u64, |bytes, step| {
+            bytes.saturating_add(match step {
+                PathStep::Child(_) => 5,
+                PathStep::Built { .. } => 9,
+            })
+        });
+        8_u64
+            .saturating_add(expansion.saturating_mul(4))
+            .saturating_add(8)
+            .saturating_add(steps)
+    }
 }
 
 /// A path as a diagnostic shows it: the expansion's ordinals, then one step per

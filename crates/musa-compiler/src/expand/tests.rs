@@ -1030,7 +1030,7 @@ fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
     let (answered, _) = crate::phase::expand_syntax(
         &module(&recursing("\"\"", EACH_ONCE)),
         crate::phase::PhaseImports::bundled(),
-        &nested_region(1_000),
+        &nested_region(1_500),
     );
     let crossed: Option<String> = match answered {
         Err(crate::phase::ExpansionFailure::Stopped(ref limit)) => Some(limit.clone()),
@@ -1058,6 +1058,10 @@ fn a_region_deeper_than_the_budget_allows_is_refused_rather_than_fatal() {
         complaint.message.contains(&limit) && limit.contains(" of "),
         "a stop carries the limit's own sentence: {}",
         complaint.message
+    );
+    assert!(
+        limit.contains("constructed value nodes") || limit.contains("logical value bytes"),
+        "the size metric, rather than the work budget, bounds a region before host memory does: {limit}"
     );
 }
 

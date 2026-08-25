@@ -57,7 +57,7 @@ use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Declared, Definition, Item};
-use crate::lower::notation::{Argued, Claimed};
+use crate::lower::notation::{Argued, Claimed, DurationPiece};
 use crate::lower::{Lowering, Naming, Sites, refusals};
 use crate::resolve::Resolver;
 use musa_score::diagnose::{Code, Diagnostic};
@@ -330,27 +330,43 @@ impl Document {
     /// and are elaborated twice, which is slow and not wrong. The entry keeps
     /// its `Raw` alive beside the answer so that the address it is filed under
     /// cannot be freed and handed to a different term while the entry stands.
-    fn began(&self, pieces: &[Raw]) -> Result<musa_events::Duration<musa_events::WrittenTime>, ElabError> {
+    fn began(&self, pieces: &[DurationPiece]) -> Result<musa_events::Duration<musa_events::WrittenTime>, ElabError> {
         let mut began = musa_events::Duration::default();
         for piece in pieces {
-            let at = std::ptr::from_ref(piece.shape()) as usize;
-            let measured = match self.durations.lock() {
-                Ok(read) => read.get(&at).map(|&(_, duration)| duration),
-                Err(_) => None,
-            };
-            let duration = match measured {
-                Some(duration) => duration,
-                None => {
-                    let duration = self.track(piece)?.duration();
-                    if let Ok(mut write) = self.durations.lock() {
-                        write.insert(at, (piece.clone(), duration));
-                    }
-                    duration
-                }
-            };
-            began = began.plus(duration);
+            began = began.plus(self.piece_duration(piece)?);
         }
         Ok(began)
+    }
+
+    /// A piece's duration, evaluating only leaves and summing joined pieces.
+    ///
+    /// [`DurationPiece::children`] is the construction proof that makes the
+    /// second operation valid: a joined piece is exactly `follow(earlier,
+    /// later)`, whose written duration is the sum of those two durations. The
+    /// cache therefore stores both evaluated leaves and derived joins under the
+    /// same identity rule described by [`Self::began`].
+    fn piece_duration(
+        &self,
+        piece: &DurationPiece,
+    ) -> Result<musa_events::Duration<musa_events::WrittenTime>, ElabError> {
+        let key = raw_key(piece.raw());
+        if let Ok(read) = self.durations.lock()
+            && let Some((_, duration)) = read.get(&key)
+        {
+            return Ok(*duration);
+        }
+        let duration = match piece.children() {
+            Some([earlier, later]) => self.piece_duration(earlier)?.plus(self.piece_duration(later)?),
+            None => self.track(piece.raw())?.duration(),
+        };
+        self.remember_duration(piece.raw(), duration);
+        Ok(duration)
+    }
+
+    fn remember_duration(&self, raw: &Raw, duration: musa_events::Duration<musa_events::WrittenTime>) {
+        if let Ok(mut write) = self.durations.lock() {
+            write.insert(raw_key(raw), (raw.clone(), duration));
+        }
     }
 
     pub(crate) fn passage(
@@ -360,6 +376,7 @@ impl Document {
         let claim = self.claim(claimed)?;
         let began = self.began(&claimed.before)?.as_ratio();
         let sounding = self.track(&claimed.passage)?;
+        self.remember_duration(&claimed.passage, sounding.duration());
         let notes = if claim.reads_notes() {
             sounding
                 .occurrences()
@@ -479,6 +496,10 @@ impl Document {
     pub(crate) fn piece(&mut self, resolver: &mut Resolver, node: &SyntaxNode) -> Option<crate::lower::piece::Piece> {
         Lowering::new(resolver, &mut self.sites).piece(node)
     }
+}
+
+fn raw_key(raw: &Raw) -> usize {
+    std::ptr::from_ref(raw.shape()) as usize
 }
 
 /// Elaborate every declaration `sources` writes, in one context.
