@@ -85,7 +85,7 @@ are invisible is still a freeze nobody can audit.
 - `scripts/check-syntax-adapter-conformance.sh`, mapping each frozen rule to its executable evidence and running it.
 - Hostile review, repairs, and a final correct-under-contracts verdict with no unresolved fatal, high, or medium
   finding, each recorded as its own note.
-- Note 27 §9's five musical cases rewritten with no ellipses on the new language, showing elaborated types, expansion,
+- Note 26 §9's five musical cases rewritten with no ellipses on the new language, showing elaborated types, expansion,
   evaluation, stage transitions, losses, added choices, and both notation-led and performance-led routes.
 
 ## Check
