@@ -75,8 +75,8 @@ source fix, not evidence that Rust owns the public catalogue.
   `StudioDescription` value without claiming premature production parity.
 - Reorder 174c after the source cutover, then restate the crate-role check without calling `musa-dsp` the owner of
   editable source vocabulary.
-- Reopen 175: split source declarations/documentation from the private primitive registry.
-- Reopen 176: retain exact arithmetic and the one float boundary, but make exact quantity a source declaration.
+- Reopen 175: retain exact arithmetic and the one float boundary, but make exact quantity a source declaration.
+- Reopen 176: split source declarations/documentation from the private primitive registry.
 - Repair 177–181: gestures, indexed controls, profiles, signatures, mappings, instruments, and defaults are ordinary
   source; host code performs only the owned bridges above.
 - Add 180a: after 175–180 supply production parity, cut the legacy Rust `StudioSpec` path over to checked source and an
