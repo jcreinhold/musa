@@ -1,7 +1,7 @@
 ---
 id: 182
 slug: reproducible-assets
-status: pending
+status: complete
 depends_on: [85, 174, 175, 178]
 phase: 4
 ---
@@ -38,6 +38,19 @@ options.
 Declare the author-facing asset reference/metadata forms in Musa source. A host projection may add verified resolution
 status and opaque store identity because those require filesystem authority; it may not become a second editable asset
 manifest or independently invent source defaults.
+
+Do not add an `asset` keyword or a parser-owned metadata language. The source reference is the already-settled
+`from "…"` clause on an instrument (and, in later prompts, on clips/fixed media); its kind is fixed by the ordinary
+source declaration that consumes it. Project-wide physical metadata is keyed by that same logical path in
+`[assets."path"]` tables in `musa.toml`: `kind`, `adapter`, optional `max_bytes`, `license`, and `source`. `musa.lock`
+uses the same ordered keys and records `sha256:…`, exact byte length, kind, and adapter version. Thus source remains the
+editable intent, the manifest states policy/attribution once, and the generated lock records observations requiring
+filesystem authority. `musa assets lock|list|verify` is the only writer/reader CLI surface; ordinary check/build is
+offline and never repairs a missing lock implicitly.
+
+Use the audited RustCrypto `sha2` implementation for streaming SHA-256 rather than maintaining cryptographic code in
+Musa. This is a host filesystem/security boundary, not language semantics; add the dependency to roadmap §15.7 and
+review it through `cargo deny` in this prompt.
 
 Resolution is rooted: project assets stay within the project root; package assets stay within that locked package.
 Reject traversal, escaping symlinks, kind mismatches, digest mismatch, missing files, unsupported encodings, and

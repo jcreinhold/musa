@@ -5,6 +5,7 @@
 //! `target/debug/deps`. See `docs/notes/toolchain/slow-test-suite.md`.
 
 mod analysis_session_laws;
+mod assets_laws;
 mod editing_laws;
 mod elaboration_backend_compatibility;
 mod large_score_generators;

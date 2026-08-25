@@ -15,6 +15,7 @@
 //! in. `Project` forwards nothing; a caller reaches the document with
 //! [`Project::current_mut`] and issues the same commands it always did.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use musa_syntax::BarSpacing;
@@ -43,6 +44,11 @@ pub struct ProjectMeta {
     /// that says nothing has answered `Compact`, which is what every file
     /// written before the setting existed already is.
     pub bar_spacing: BarSpacing,
+    /// Project-owned asset policy keyed by canonical logical path.
+    pub(crate) assets: BTreeMap<String, crate::assets::AssetPolicy>,
+    /// A malformed asset table must invalidate assets without erasing the
+    /// project's unrelated title, ordering, or formatting metadata.
+    pub(crate) asset_error: Option<String>,
 }
 
 /// The `musa.toml` above `path`, if there is one.
@@ -60,16 +66,32 @@ pub(crate) fn find(path: &Path) -> Option<ProjectMeta> {
     None
 }
 
+/// The nearest directory declaring a project, even when its manifest is
+/// malformed and cannot supply [`ProjectMeta`]. Security-sensitive readers
+/// use this to report that failure instead of silently changing roots.
+pub(crate) fn manifest_root(path: &Path) -> Option<PathBuf> {
+    path.ancestors()
+        .skip(1)
+        .find(|directory| directory.join("musa.toml").is_file())
+        .map(Path::to_path_buf)
+}
+
 /// The `musa.toml` in `directory`, if there is a readable one.
 pub(crate) fn read(directory: &Path) -> Option<ProjectMeta> {
     let text = std::fs::read_to_string(directory.join("musa.toml")).ok()?;
     let file: ProjectFile = toml::from_str(&text).ok()?;
+    let (assets, asset_error) = match file.asset_policies() {
+        Ok(assets) => (assets, None),
+        Err(error) => (BTreeMap::new(), Some(error)),
+    };
     Some(ProjectMeta {
         root: directory.to_path_buf(),
         name: file.project.name,
         composer: file.project.composer,
         pieces: file.project.pieces,
         bar_spacing: bar_spacing(file.format.bars.as_deref()),
+        assets,
+        asset_error,
     })
 }
 
@@ -95,11 +117,38 @@ fn bar_spacing(written: Option<&str>) -> BarSpacing {
 }
 
 #[derive(Deserialize)]
-struct ProjectFile {
+pub(crate) struct ProjectFile {
     #[serde(default)]
     project: ProjectSection,
     #[serde(default)]
     format: FormatSection,
+    #[serde(default)]
+    assets: Option<toml::Value>,
+}
+
+impl ProjectFile {
+    pub(crate) fn asset_policies(&self) -> Result<BTreeMap<String, crate::assets::AssetPolicy>, String> {
+        let Some(toml::Value::Table(assets)) = self.assets.as_ref() else {
+            return if self.assets.is_none() {
+                Ok(BTreeMap::new())
+            } else {
+                Err("`assets` must be a table keyed by logical path".to_owned())
+            };
+        };
+        let policies: BTreeMap<String, crate::assets::AssetPolicy> = assets
+            .iter()
+            .map(|(path, value)| {
+                let policy: crate::assets::AssetPolicy = value
+                    .clone()
+                    .try_into()
+                    .map_err(|error| format!("asset `{path}` has invalid policy: {error}"))?;
+                crate::assets::validate_policy(path, &policy)?;
+                Ok::<_, String>((path.clone(), policy))
+            })
+            .collect::<Result<_, _>>()?;
+        crate::assets::validate_logical_paths(policies.keys().map(String::as_str))?;
+        Ok(policies)
+    }
 }
 
 #[derive(Default, Deserialize)]

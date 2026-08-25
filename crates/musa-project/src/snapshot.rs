@@ -33,6 +33,9 @@ pub struct ProjectSnapshot<'session> {
     /// took the snapshot. A session on its own knows nothing about the volume
     /// it is filed in, and says so.
     pub(crate) contents: Option<&'session crate::contents::ContentsFacts>,
+    /// Current asset verification facts; unlike score artifacts these describe
+    /// the present source/lock state even while the score is last-valid.
+    pub(crate) assets: &'session crate::assets::AssetInventory,
 }
 
 /// The artifacts of the most recent *successful* compilation. They survive
@@ -104,6 +107,11 @@ impl<'session> ProjectSnapshot<'session> {
     /// [`Project`](crate::Project).
     pub fn contents(&self) -> Option<&crate::ContentsFacts> {
         self.contents
+    }
+
+    /// Immutable asset references and their current verification state.
+    pub fn assets(&self) -> &[crate::AssetFact] {
+        self.assets.facts()
     }
 
     /// Which document this is a snapshot of.
@@ -256,6 +264,8 @@ struct SnapshotWire<'a> {
     playback: PlaybackState,
     /// Absent for a session opened on its own; a project always sends it.
     contents: Option<&'a crate::contents::ContentsFacts>,
+    /// Verified asset metadata only; raw bytes and store paths never cross.
+    assets: &'a [crate::AssetFact],
     /// Every declaration in scope, as `08-elaboration.md` §1 shows one.
     terms: Vec<TermWire<'a>>,
     /// Every resolved name, for definition and references.
@@ -367,6 +377,7 @@ impl ProjectSnapshot<'_> {
             score_revision: self.score_revision().map(|revision| revision.0),
             playback: self.playback,
             contents: self.contents,
+            assets: self.assets(),
             terms: self.items().iter().map(term).collect(),
             names: self.names().iter().map(name).collect(),
         })

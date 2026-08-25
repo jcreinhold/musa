@@ -11,7 +11,7 @@ use std::process::ExitCode;
 
 use musa_project::{
     AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, Logging, MidiMode, MusicalTime,
-    ProjectCommand, ProjectSession, Realization, TransportRequest,
+    ProjectCommand, ProjectSession, Realization, TransportRequest, asset_inventory, lock_assets,
 };
 
 fn main() -> ExitCode {
@@ -31,6 +31,7 @@ fn main() -> ExitCode {
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
         Some("events") => with_seed(args.get(1..).unwrap_or_default(), cmd_events),
         Some("analyze") => with_seed(args.get(1..).unwrap_or_default(), cmd_analyze),
+        Some("assets") => cmd_assets(args.get(1..).unwrap_or_default()),
         Some(other) if !other.starts_with('-') => {
             eprintln!("error: `{other}` is not a musa command");
             eprintln!();
@@ -98,12 +99,62 @@ fn print_usage() {
     println!("      --from <n> --to <n>                  read only [from, to), in whole notes");
     println!("      --segmentation attacks | beats | harmony-lane    what sounds together");
     println!("      --key \"<tonic> <mode>\"               read it in the key you hear");
+    println!("  musa assets list <project|piece>          list immutable asset facts");
+    println!("  musa assets verify <project|piece>        verify the offline locked closure");
+    println!("  musa assets lock <project|piece>          explicitly rewrite local asset locks");
     println!("  --seed <n>  on check, render and events: which performance to compile");
     println!();
     println!("Everywhere:");
     println!("  -v, -vv, -vvv   say more about what musa is doing, on stderr");
     println!("  -q              say only what failed");
     println!("  MUSA_LOG        a filter, in place of the dial: `MUSA_LOG=musa_compiler=debug`");
+}
+
+/// Inspect or explicitly regenerate a project's immutable local asset lock.
+fn cmd_assets(args: &[String]) -> ExitCode {
+    let Some(action) = args.first().map(String::as_str) else {
+        eprintln!("error: assets needs an action (list | verify | lock)");
+        return ExitCode::FAILURE;
+    };
+    let Some(path) = args.get(1).map(String::as_str) else {
+        eprintln!("error: assets {action} needs a project folder or piece");
+        return ExitCode::FAILURE;
+    };
+    let inventory = match action {
+        "list" | "verify" => asset_inventory(path),
+        "lock" => lock_assets(path),
+        other => {
+            eprintln!("error: `{other}` is not an asset action (list | verify | lock)");
+            return ExitCode::FAILURE;
+        }
+    };
+    let inventory = match inventory {
+        Ok(inventory) => inventory,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for fact in inventory.facts() {
+        println!(
+            "{}\t{}\t{}\t{}",
+            fact.status,
+            fact.kind.map_or_else(|| "unknown".to_owned(), |kind| kind.to_string()),
+            fact.digest.as_deref().unwrap_or("-"),
+            fact.path
+        );
+        if let Some(detail) = fact.detail.as_deref() {
+            eprintln!("{}: {detail}", fact.path);
+        }
+    }
+    if action == "lock" && inventory.is_verified() {
+        eprintln!("locked {} asset(s)", inventory.facts().len());
+    }
+    if inventory.is_verified() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    }
 }
 
 /// Turn musa's logs on, and leave the subcommand its own arguments.

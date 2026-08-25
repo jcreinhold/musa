@@ -464,7 +464,7 @@ pub enum ErrorKindDto {
 impl From<&ProjectError> for ErrorDto {
     fn from(error: &ProjectError) -> Self {
         let kind = match *error {
-            ProjectError::Io { .. } | ProjectError::NoPieces { .. } => ErrorKindDto::File,
+            ProjectError::Io { .. } | ProjectError::NoPieces { .. } | ProjectError::Assets(_) => ErrorKindDto::File,
             ProjectError::RejectedEdit { .. }
             | ProjectError::NoSuchEvent(_)
             | ProjectError::Uneditable(_)

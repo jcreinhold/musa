@@ -28,6 +28,31 @@ verified against `AssetId`.
 versions. It is committed source-adjacent build metadata, generated deterministically and never edited by the sound UI.
 A missing or mismatched locked object is an error, not an invitation to use whatever exists at the path.
 
+Source names an asset only where a musical declaration consumes it, such as an instrument's established `from` clause.
+There is no parallel `asset` declaration and no host-authored source default:
+
+```musa
+instrument solo_strings from "assets/solo-violin.sfz"
+    conforms note_instrument;
+```
+
+Physical policy and attribution are stated once in the project manifest under the same logical path:
+
+```toml
+[assets."assets/solo-violin.sfz"]
+kind = "sfz"
+adapter = "sfz@1"
+max_bytes = 67108864
+license = "CC-BY-4.0"
+source = "https://example.org/solo-violin"
+```
+
+`kind` and the versioned `adapter` identity are required; the byte limit, license expression, and attribution text are
+optional. The generated lock repeats the path, kind, adapter, and exact byte length and adds the `sha256:` raw-byte
+digest. `musa assets lock <project>` is the only operation that writes this observation. `musa assets list <project>`
+reports the ordered facts, and `musa assets verify <project>` checks them without writing. Ordinary checking, playback,
+and export never repair the lock implicitly.
+
 Local paths resolve relative to the declaring file's package root after lexical normalization. Escaping that root,
 following a symlink outside it, or relying on case-fold collisions is rejected. Absolute user-machine paths may be used
 only by an explicit non-reproducible scratch command and cannot produce a release artifact.

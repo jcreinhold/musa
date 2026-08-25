@@ -60,6 +60,15 @@ impl ImportSources {
     pub fn is_empty(&self) -> bool {
         self.files.is_empty()
     }
+
+    /// The filesystem-backed source files in this closed import world.
+    ///
+    /// Standard-library modules are embedded and intentionally absent: a
+    /// project asset resolver must inspect the files the project handed to
+    /// compilation, not rediscover or re-read them from their names.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.files.iter().map(|(path, source)| (path.as_str(), source.as_str()))
+    }
 }
 
 /// Join `written` onto the directory holding `importer`, lexically.

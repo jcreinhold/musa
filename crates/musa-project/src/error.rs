@@ -95,6 +95,10 @@ pub enum ProjectError {
     /// window with no music in it. The score is untouched: an analysis reads.
     #[error("cannot analyze: {0}")]
     Analysis(String),
+
+    /// The project asset manifest, lock, or verified closure is invalid.
+    #[error("cannot resolve assets: {0}")]
+    Assets(String),
 }
 
 impl ProjectError {

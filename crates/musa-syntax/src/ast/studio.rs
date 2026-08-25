@@ -113,6 +113,11 @@ impl InstrumentDecl {
         token_text(&self.0, SyntaxKind::String).map(|text| super::unquote(&text))
     }
 
+    /// The immutable asset path token, including its quotes.
+    pub fn asset_token(&self) -> Option<SyntaxToken> {
+        find_token(&self.0, SyntaxKind::String)
+    }
+
     /// The ordinary source `InstrumentSignature` named after `conforms`.
     pub fn signature(&self) -> Option<String> {
         let mut tokens = self

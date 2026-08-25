@@ -33,6 +33,7 @@
 //! are flagged as such (roadmap §14.7).
 
 mod analysis;
+mod assets;
 mod autosave;
 mod command;
 mod contents;
@@ -57,6 +58,7 @@ mod utf16;
 mod vocabulary;
 
 pub use crate::analysis::{AnalysisFacts, EvidenceFacts, FindingFacts, GroundFacts, NoteFacts};
+pub use crate::assets::{AssetFact, AssetKind, AssetStatus, asset_inventory, lock_assets};
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::contents::{ContentsFacts, EntryFacts};
 pub use crate::diagnostic::{Cause, CauseLabel, Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};

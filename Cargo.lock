@@ -2461,6 +2461,7 @@ dependencies = [
  "num-rational",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "text-size",
  "thiserror 2.0.20",

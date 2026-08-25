@@ -19,6 +19,9 @@ musa render <file.musa> --to <target>   mei | lilypond | musicxml | midi | wav
 musa play <file.musa> [--loop]          live playback through the audio engine
 musa events <file.musa> [--normalized]  print the piece as events interchange text
 musa events --check <file.musa.events>  parse, check, and evaluate events text
+musa assets list <project|piece>        list immutable asset facts
+musa assets verify <project|piece>      verify manifest, lock, and raw bytes
+musa assets lock <project|piece>        explicitly regenerate the local asset lock
 --seed <n>  on check, render and event track: which performance to compile
 ```
 
@@ -29,6 +32,10 @@ musa events --check <file.musa.events>  parse, check, and evaluate events text
   A file that does not parse is reported and left exactly as it was, because the formatter would otherwise write a guess
   over text its author is in the middle of.
 - Text render targets accept `-o -` for stdout; binary targets (`midi`, `wav`) require `-o <path>`.
+- `assets lock` is explicit and offline: it reads local files declared in `[assets."path"]`, validates that every path
+  stays inside the project, and atomically writes deterministic SHA-256 identities to `musa.lock`. `list` and `verify`
+  never modify it. A missing or stale lock is an error; no ordinary build chooses bytes by filename or modification
+  time.
 
 ## `.musaignore`
 

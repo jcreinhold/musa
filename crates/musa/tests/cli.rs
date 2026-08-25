@@ -652,3 +652,62 @@ fn logging_never_writes_to_the_stream_a_score_is_piped_on() -> std::io::Result<(
     assert!(stderr.contains("musa_compiler"), "nothing was logged at all: {stderr}");
     Ok(())
 }
+
+/// Asset locking is explicit, deterministic, and content-addressed.
+#[test]
+fn assets_lock_list_and_verify_the_offline_closure() -> std::io::Result<()> {
+    let root = temp_dir("asset-commands")?;
+    std::fs::create_dir_all(root.join("assets"))?;
+    std::fs::write(
+        root.join("musa.toml"),
+        r#"[project]
+name = "Asset CLI"
+
+[assets."assets/tone.sfz"]
+kind = "sfz"
+adapter = "sfz@1"
+max_bytes = 1024
+license = "CC0-1.0"
+source = "CLI fixture"
+"#,
+    )?;
+    std::fs::write(
+        root.join("piece.musa"),
+        r#"piece "Asset" {
+    meter 4/4;
+    instrument tone from "assets/tone.sfz" conforms note_instrument;
+    score { part lead { voice one { c4/1 } } }
+}
+"#,
+    )?;
+    std::fs::write(root.join("assets/tone.sfz"), b"one deterministic asset")?;
+
+    let path = root.to_string_lossy();
+    let unlocked = musa(&["assets", "verify", &path])?;
+    assert!(!unlocked.status.success());
+    assert!(String::from_utf8_lossy(&unlocked.stdout).contains("unlocked"));
+
+    let locked = musa(&["assets", "lock", &path])?;
+    assert!(
+        locked.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&locked.stderr)
+    );
+    let lock = std::fs::read_to_string(root.join("musa.lock"))?;
+    assert!(lock.contains("sha256:"));
+    assert!(!lock.contains(root.to_string_lossy().as_ref()));
+
+    let listed = musa(&["assets", "list", &path])?;
+    let stdout = String::from_utf8_lossy(&listed.stdout);
+    assert!(listed.status.success(), "stderr: {:?}", listed.stderr);
+    assert!(stdout.contains("verified\tsfz\tsha256:"), "stdout: {stdout}");
+    assert!(stdout.contains("assets/tone.sfz"), "stdout: {stdout}");
+
+    std::fs::write(root.join("assets/tone.sfz"), b"two deterministic asset")?;
+    let stale = musa(&["assets", "verify", &path])?;
+    assert!(!stale.status.success());
+    assert!(String::from_utf8_lossy(&stale.stdout).contains("digest-mismatch"));
+    assert!(String::from_utf8_lossy(&stale.stderr).contains("locked sha256:"));
+
+    std::fs::remove_dir_all(&root)
+}

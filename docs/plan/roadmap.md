@@ -2195,6 +2195,8 @@ musa-playback
 serde
 serde_json
 toml
+sha2
+tempfile
 tracing
 tracing-subscriber
 ```

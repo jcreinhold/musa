@@ -60,6 +60,8 @@ pub struct ProjectSession {
     imports: musa_compiler::ImportSources,
     /// The paths behind those imports, for callers that watch them.
     import_paths: Vec<PathBuf>,
+    /// Current verified-asset facts and the closure identity used by audio.
+    assets: crate::assets::AssetInventory,
     /// Which reading of the work this session compiles
     /// (`docs/rules/events/11-realization.md`). A piece that leaves nothing open
     /// never consults it, which is why it is a plain field with a default
@@ -120,6 +122,7 @@ pub struct ProjectSession {
 struct InstalledPlan {
     music: musa_compiler::SemanticHash,
     studio: musa_dsp::StudioExecution,
+    assets: [u8; 32],
 }
 
 /// One state of the document.
@@ -244,6 +247,7 @@ impl ProjectSession {
             // A session on its own knows nothing about the volume it is filed
             // in; `Project::snapshot` is what fills this in.
             contents: None,
+            assets: &self.assets,
         }
     }
 
@@ -651,6 +655,7 @@ impl ProjectSession {
             project: None,
             imports: musa_compiler::ImportSources::default(),
             import_paths: Vec::new(),
+            assets: crate::assets::AssetInventory::default(),
             realization: musa_score::Realization::deterministic(),
             name,
             history: vec![HistoryEntry {
@@ -961,21 +966,29 @@ impl ProjectSession {
         let (imports, import_paths) = crate::imports::closure(&self.name, &self.source);
         self.imports = imports;
         self.import_paths = import_paths;
+        self.assets = crate::assets::session_inventory(
+            self.path.as_deref(),
+            self.project.as_ref(),
+            &self.name,
+            &self.source,
+            &self.imports,
+        );
         let document = SourceDocument::new(self.source.clone(), self.name.clone());
         let compilation = musa_compiler::compile(&document, &self.options());
         let lines = crate::position::Lines::new(&self.source);
-        let diagnostics: Vec<Diagnostic> = compilation
+        let mut diagnostics: Vec<Diagnostic> = compilation
             .diagnostics()
             .iter()
             .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines, &self.imports))
             .collect();
+        diagnostics.extend(self.assets.diagnostics().iter().cloned());
         let diagnostics_changed = diagnostics != self.diagnostics;
         self.diagnostics = diagnostics;
 
         let revision = self.revision;
         let identity = compilation.identity();
         let kind = compilation.kind();
-        let had_errors = compilation.has_errors();
+        let had_errors = compilation.has_errors() || !self.assets.is_verified();
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
         // The reference record travels with the successful compile, like
@@ -1011,7 +1024,7 @@ impl ProjectSession {
                 .and_then(|source| musa_dsp::decode_studio_execution(source).ok())
         };
         let studio_spans = compilation.studio_spans().clone();
-        let score = if compilation.has_errors() || studio_execution.is_none() {
+        let score = if had_errors || studio_execution.is_none() {
             None
         } else {
             compilation.into_snapshot()
@@ -1114,6 +1127,7 @@ impl ProjectSession {
         self.valid.as_ref().map(|valid| InstalledPlan {
             music: valid.identity,
             studio: valid.studio_execution.clone(),
+            assets: self.assets.identity(),
         })
     }
 
@@ -1240,6 +1254,8 @@ fn render_notation(
 
 #[cfg(test)]
 mod playback_identity_laws {
+    use std::fs;
+
     use super::{ProjectCommand, ProjectSession};
 
     const PIECE: &str = concat!(
@@ -1373,5 +1389,47 @@ mod playback_identity_laws {
             before,
             "the notes are the same and the speed is not"
         );
+    }
+
+    /// A raw asset is not score semantics, but it is an input to every audio
+    /// artifact prepared from the project. The plan key therefore moves on a
+    /// digest change while the event/notation identity stays put.
+    #[test]
+    fn changing_only_an_asset_changes_only_the_asset_part_of_the_plan_identity()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let directory = tempfile::tempdir()?;
+        fs::create_dir(directory.path().join("assets"))?;
+        fs::write(
+            directory.path().join("musa.toml"),
+            concat!(
+                "[assets.\"assets/tone.sfz\"]\n",
+                "kind = \"sfz\"\n",
+                "adapter = \"sfz@1\"\n",
+            ),
+        )?;
+        fs::write(directory.path().join("piece.musa"), PIECE)?;
+        fs::write(directory.path().join("assets/tone.sfz"), b"first")?;
+        crate::lock_assets(directory.path())?;
+
+        let mut session = ProjectSession::open(directory.path().join("piece.musa"))?;
+        let before = session.plan_identity().ok_or("compiled plan identity")?;
+        let before_mei = session.snapshot().mei().ok_or("engraving")?.to_owned();
+
+        fs::write(directory.path().join("assets/tone.sfz"), b"other")?;
+        crate::lock_assets(directory.path())?;
+        session.apply(ProjectCommand::SetSource(format!("{PIECE}\n// recheck the closure\n")))?;
+        let after = session.plan_identity().ok_or("recompiled plan identity")?;
+
+        assert_eq!(after.music, before.music, "raw bytes are not event-track semantics");
+        assert_eq!(
+            after.studio, before.studio,
+            "raw bytes do not rewrite the source machine graph"
+        );
+        assert_ne!(
+            after.assets, before.assets,
+            "the prepared-audio closure must be invalidated"
+        );
+        assert_eq!(session.snapshot().mei(), Some(before_mei.as_str()));
+        Ok(())
     }
 }
