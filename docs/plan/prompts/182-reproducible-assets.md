@@ -2,7 +2,7 @@
 id: 182
 slug: reproducible-assets
 status: pending
-depends_on: [85, 174, 176, 178]
+depends_on: [85, 174, 175, 178]
 phase: 4
 ---
 

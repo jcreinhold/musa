@@ -1,8 +1,8 @@
 ---
-id: 175
+id: 176
 slug: studio-vocabulary
 status: pending
-depends_on: [122, 174b, 176]
+depends_on: [122, 174b, 175]
 phase: 3
 ---
 
@@ -23,7 +23,7 @@ Rust surface catalogue.
 ## Read
 
 - `docs/rules/language/{00-semantics,04-templates-and-modules,08-performance-and-sound}.md`, especially §0; note 79.
-- Repaired 174b/176, note 82, and `stdlib/src/sound/{mod,graph}.musa`; the source reference generator and declaration
+- Repaired 174b/175, note 82, and `stdlib/src/sound/{mod,graph}.musa`; the source reference generator and declaration
   index.
 - `musa-dsp`'s primitive registry and private graph descriptors: identity, port/state formats, DSP ranges, smoothing,
   combination policy, and resource contracts are the host half and must not be copied into source as private state.
@@ -33,7 +33,7 @@ Rust surface catalogue.
 ## Design
 
 `std::sound` owns source-facing names, data types, exact written domains/defaults, docs, examples, and processor
-constructor contracts. Those contracts use prompt 176's source quantity declarations. This prompt makes them
+constructor contracts. Those contracts use prompt 175's source quantity declarations. This prompt makes them
 discoverable and joins primitive-backed declarations to host-owned registrations; prompt 178 supplies the executable
 source wrappers that construct machine values and the private instrument bodies that use them. A later wrapper's private
 implementation may name a stable primitive registration, but the primitive's state, exact runtime formats, bounds, and
@@ -58,7 +58,7 @@ registration.
 ## Target
 
 - Edition-pinned `std::sound` declaration tree containing the public vocabulary, docs, examples, exact schemas, and
-  processor constructor contracts over prompt 176's quantities.
+  processor constructor contracts over prompt 175's quantities.
 - Primitive-registration/source-declaration agreement checks without exposing private state.
 - LSP hover/signature/completion and desktop/reference facts generated from source indexes.
 - Hard-error `q` diagnostic/fix and canonical `resonance` corpus.

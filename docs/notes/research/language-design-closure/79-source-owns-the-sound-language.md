@@ -8,8 +8,8 @@ sound prompts before their Rust projections become a second language.
 Prompt 167 proved that `stdlib/src/sound/graph.musa` can declare and validate a finite studio description as ordinary
 Musa data. Prompt 164 had already established the ownership test: a host operation is justified only by source-aware
 provenance, direct core construction, registered primitive state, or a private finite representation/work budget. Yet
-prompt 174b asked only which Rust crate should own the legacy `StudioSpec`; prompt 175 then made `musa-dsp`'s Rust table
-the authoritative surface catalogue; and prompt 176 made a public Rust `WrittenQuantity` part of that vocabulary.
+prompt 174b asked only which Rust crate should own the legacy `StudioSpec`; prompt 176 then made `musa-dsp`'s Rust table
+the authoritative surface catalogue; and prompt 175 made a public Rust `WrittenQuantity` part of that vocabulary.
 
 The same drift appeared while preparing prompt 177: fixed Rust enums for gestures, controls, connections, techniques,
 and phrase groups duplicated declarations the completed source language can express. That draft was not committed.

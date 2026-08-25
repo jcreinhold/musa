@@ -261,7 +261,7 @@ Existing studio source migrates by this table; format never rewrites a user's ex
 | `route` / `send` | explicit mix routing | remains canonical |
 | filter parameter `q:` | filter parameter `resonance:` | `q` is a hard error with an exact fix; there is one accepted spelling |
 
-Prompt 175 amends the last row. The earlier compatibility promise predated a catalogue capable of naming a canonical
+Prompt 176 amends the last row. The earlier compatibility promise predated a catalogue capable of naming a canonical
 parameter and its fix, and no released stored format or public runtime identity encoded `q`; keeping both spellings
 would make every catalogue consumer and structured editor carry an alias indefinitely. Existing repository sources are
 migrated atomically, while an older source receives a certain replacement rather than an ambiguous rejection. The

@@ -1,5 +1,5 @@
 ---
-id: 176
+id: 175
 slug: exact-studio-values
 status: pending
 depends_on: [93, 174b]
@@ -16,7 +16,7 @@ phase: 3
 
 Make a written decimal or ratio with a unit remain exact, source-spelled intent through checking and every exact
 projection, until audio preparation performs the one rational/unit→DSP conversion. Establish the source quantity types
-before prompt 175 uses them in processor declarations, while retaining one measured, tested conversion boundary for
+before prompt 176 uses them in processor declarations, while retaining one measured, tested conversion boundary for
 native instruments, samples, mix levels, and later automation.
 
 ## Read
@@ -25,7 +25,7 @@ native instruments, samples, mix levels, and later automation.
 - Repaired 174b, note 82, and the exact `ParameterValue` declarations in `stdlib/src/sound/graph.musa`.
 - Compiler rational literals and unit tokens, source spans used by structured edits, and every `as_linear`/`as f32`/`as
   f64` conversion in compiler, project, and audio.
-- The first prompt-176 commit's conversion laws as evidence to preserve, not as authority for the public Rust type.
+- The first prompt-175 commit's conversion laws as evidence to preserve, not as authority for the public Rust type.
 
 ## Design
 

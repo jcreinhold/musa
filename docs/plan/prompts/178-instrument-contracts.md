@@ -36,7 +36,7 @@ default/range, rate, docs, and mapping agree by ordinary dependent typing. Omitt
 Miller-pattern unifier, including postponement; no instrument-specific compatibility table substitutes for conversion.
 Custom controls are ordinary namespaced declarations.
 
-This prompt supplies the executable source wrappers deliberately deferred by prompt 175. Native implementation bodies
+This prompt supplies the executable source wrappers deliberately deferred by prompt 176. Native implementation bodies
 name those wrappers over registered primitives and may address their own private graph paths. Outside the body only
 signature keys are addressable. Finite checking rejects duplicate/missing controls, incompatible mappings, private-node
 access, unsupported techniques, and channel mismatch before preparation.

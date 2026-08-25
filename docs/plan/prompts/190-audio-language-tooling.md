@@ -2,7 +2,7 @@
 id: 190
 slug: audio-language-tooling
 status: pending
-depends_on: [125, 174, 175, 181, 183, 185, 186, 187, 189]
+depends_on: [125, 174, 176, 181, 183, 185, 186, 187, 189]
 phase: 4
 ---
 

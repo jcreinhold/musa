@@ -60,7 +60,7 @@ graph validity; projection decoding owns only schema agreement and malformed-art
 
 The existing Rust `StudioSpec` remains a temporary compatibility path in this prompt because it represents more than the
 source trial. Mark it and its construction APIs internal/deprecated where that does not break repository callers,
-inventory every remaining semantic difference, and add no new use. Prompt 175 adds the source vocabulary, 176 exact
+inventory every remaining semantic difference, and add no new use. Prompt 176 adds the source vocabulary, 176 exact
 quantities, 177–180 the performance/instrument/routing/control semantics, and 180a deletes the path and the
 `musa-compiler -> musa-dsp` dependency.
 
@@ -96,4 +96,4 @@ Commit as `Bridge checked source values to host consumers`.
 - No source evaluator, type checker, or resolver in `musa-dsp`; it receives checked canonical data.
 - No public calculus `Value`, evaluator environment, editable projection, display-text parser, or sound-specific
   calculus case.
-- No float conversion, scheduling, or machine instantiation; prompts 176 and 178 own those boundaries.
+- No float conversion, scheduling, or machine instantiation; prompts 175 and 178 own those boundaries.

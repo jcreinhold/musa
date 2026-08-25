@@ -428,8 +428,8 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 174a | score-without-syntax | 3 | Delete the musa-score to musa-syntax edge; the values crate becomes a leaf |
 | 174b | studio-spec-ownership | 3 | Generic checked-value bridge, proved on the finite source studio trial |
 | 174c | dependency-law | 3 | Crate layering enforced after cutover, separately from source-language ownership |
-| 175 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
-| 176 | exact-studio-values | 3 | Exact source quantities through the one audio-preparation conversion |
+| 175 | exact-studio-values | 3 | Exact source quantities through the one audio-preparation conversion |
+| 176 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
 | 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
 | 177 | performance-gestures | 3 | Source-declared gestures, indexed controls, profiles, and the provenance bridge |
 | 178 | instrument-contracts | 3 | Source instrument signatures/mappings over private registered primitives |
@@ -747,8 +747,8 @@ makes knowable. 164–170 survive with their tasks intact and their targets enla
 seventeen to collapse, and the staff rewrite is the gate for the correction and its correction alike.
 
 **174b–181 build musical sound on that core without a second Rust language.** Repaired 174b first establishes a generic
-checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 176 first
-declares exact source quantities and keeps them exact through the one DSP conversion. 175 then makes processor contracts
+checked-value bridge and proves complete readback of prompt 167's deliberately small source studio trial. 175 first
+declares exact source quantities and keeps them exact through the one DSP conversion. 176 then makes processor contracts
 and the rest of the source studio vocabulary discoverable and joins primitive-backed declarations to private host
 registrations. 176a's payload rule guards the second payload. 177 declares gestures, indexed controls, and profiles in
 `std::performance` and gives opaque track/provenance work to the host. 178 supplies the executable registered-primitive
@@ -793,7 +793,7 @@ on; phases describe scope, not strict order.
 
 ## Out of scope for this sequence
 
-The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 176's
+The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 175's
 native score/elaboration stability point. The following remain outside this sequence:
 
 - CLAP/VST hosting and the macOS Audio Unit bridge;

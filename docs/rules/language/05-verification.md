@@ -185,7 +185,7 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 | 118–119 | standalone events and quotation preserve the existing event-track grammar and closure guarantees |
 | 120–122 | formatter, LSP, workbench, and handbook expose exact syntax and teach domain distinctions |
 | 123 | incremental and cold compilation meet recorded budgets; cache keys include context and build closure |
-| 175–181 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
+| 175–181 | exact sound values, vocabulary, gestures, typed instruments, part isolation, expression, and ergonomic binding |
 | 182–188 | immutable assets, exact-pinned offline packages, sample adapters, media cues, and clip/fixed-media distinction |
 | 189–192 | workbench and tooling preserve source authority; performance and conformance laws pass |
 | 172 | full corpus, migration, docs, public API, performance, and governing-precedence audit |

@@ -21,7 +21,7 @@ changed.
    prove complete decoding of the small prompt-167 studio value. Records need no parallel artifact shape: since prompt
    157 they are saturated one-constructor applications and already read as `Datum::Case`. The legacy path remains an
    explicitly temporary oracle.
-2. **175–180 — parity.** Declare the discoverable vocabulary, exact quantities, gestures, instruments, routing, and
+2. **175–180 — parity.** Declare exact quantities, the discoverable vocabulary, gestures, instruments, routing, and
    control mappings in ordinary source, using the one elaborator and Miller-pattern unifier.
 3. **180a — cutover.** Only after source can represent every accepted production case, derive the private DSP projection
    from checked source, migrate compiler/project/LSP/desktop callers, remove public Rust construction, and delete the

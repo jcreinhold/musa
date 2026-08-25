@@ -1,6 +1,6 @@
 # 77. One studio vocabulary
 
-**Status: governs nothing.** This record preserves prompt 175's amendment to the candidate sound specification.
+**Status: governs nothing.** This record preserves prompt 176's amendment to the candidate sound specification.
 
 > **Ownership superseded by note 79.** The `q`→`resonance` spelling and migration remain. The claim below that
 > `musa-dsp` owns the editable/source catalogue is preserved as the argument that was later corrected: source
@@ -10,7 +10,7 @@
 
 The sound page promised that filter `q:` would remain accepted temporarily while newly inserted source used
 `resonance:`. That promise would require two surface keys in every compiler, hover, completion, structured-editor, and
-reference reader. Before prompt 175 there was no authoritative catalogue or deprecation path, so the compatibility row
+reference reader. Before prompt 176 there was no authoritative catalogue or deprecation path, so the compatibility row
 described machinery that did not exist. One stable catalogue is the engineering reason to end that split now.
 
 `resonance` is also the musician-facing concept. Its technical note can explain that this implementation represents it
@@ -34,6 +34,6 @@ beside that vocabulary. The compiler consumes it for checking and fixes; LSP, pr
 material read the same entries. The private graph descriptor may keep the implementation key `q`, joined to the public
 parameter by a checked stable processor/parameter mapping.
 
-Musa has no released stable project format at this boundary. Repository source migrates in the prompt 175 commit, and
+Musa has no released stable project format at this boundary. Repository source migrates in the prompt 176 commit, and
 older text gets an exact code action. Keeping `q` as a deprecated alias was rejected because it would make the alias a
 permanent input to every catalogue consumer while buying no preservation of compiled or serialized data.

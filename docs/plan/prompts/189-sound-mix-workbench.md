@@ -22,9 +22,9 @@ source and consumes immutable project/compiler facts.
 
 - Governing `docs/rules/desktop/`, especially source authority, selection, state/voice, Origin, accessibility, and
   budgets; roadmap §14.4; prompts 31 and 119.
-- Prompts 175, 179–186 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
+- Prompts 176, 179–186 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
   and Playwright fixtures.
-- Note 79 and the repaired prompt-175 source declaration index; UI vocabulary and defaults come from source, while
+- Note 79 and the repaired prompt-176 source declaration index; UI vocabulary and defaults come from source, while
   private primitive/runtime support facts come from the registry.
 
 ## Design
@@ -42,7 +42,7 @@ have loading/error/remediation states. Parameter/control gestures replace source
 use a separate prepared-plan update only if source has already become authoritative and prompt 191 measurement requires
 it. Private machine wiring is not editable from a generic property grid or free-form canvas.
 
-All terms use prompt 175's authoritative source declarations/indexes and the compiler/project facts from prompts
+All terms use prompt 176's authoritative source declarations/indexes and the compiler/project facts from prompts
 183–188; prompt 190 carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader
 grouping, focus preservation on recompile, narrow layouts, stale/last-valid plan indication, and reduced-motion
 behavior.
