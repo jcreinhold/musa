@@ -431,6 +431,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 176 | studio-vocabulary | 3 | Source-declared processor/parameter vocabulary joined to private primitive contracts |
 | 176a | payload-admission-rule | 3 | What an event-track payload owes, and the rendering law, before the first second payload |
 | 176b | performance-source-foundation | 3 | Importable source performance vocabulary and indexed-control checking before the track bridge |
+| 176c | unified-dependent-application | 3 | One dependent application syntax and complete indexed-constructor results before the performance bridge |
 | 177 | performance-gestures | 3 | Source-declared gestures, indexed controls, profiles, and the provenance bridge |
 | 178 | instrument-contracts | 3 | Source instrument signatures/mappings over private registered primitives |
 | 179 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
