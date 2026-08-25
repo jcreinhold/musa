@@ -27,7 +27,9 @@ primitive contracts and preparation, not an `InstrumentSpec` language beside sou
 
 ## Design
 
-Declare `InstrumentSignature`, technique support/fallbacks, channel shape, mappings, and `Instrument` in `std::sound`. A
+Declare `InstrumentSignature`, technique support/fallbacks, channel shape, mappings, and `Instrument` in `std::sound`
+using ordinary records, data, functions, and values. Do not add an `instrument` keyword or a parallel parser/evaluator
+path: the musician-facing declaration syntax belongs to prompt 181 and must elaborate to these library constructs. A
 signature is storable source data. A private implementation may contain functions while finite source evaluation
 constructs the rechecked storable machine; no function crosses into the running machine.
 
@@ -41,9 +43,11 @@ name those wrappers over registered primitives and may address their own private
 signature keys are addressable. Finite checking rejects duplicate/missing controls, incompatible mappings, private-node
 access, unsupported techniques, and channel mismatch before preparation.
 
-Delete the old `patch` declaration with a hard source fix. A library exports its instrument/signature and may keep its
-implementation declarations private through ordinary module privacy. Standard instruments and presets remain readable
-source.
+Do not delete or extend the old `patch` path here. Note 80 and prompt 180a retain it unchanged as the differential
+migration oracle until checked source reaches complete studio parity; prompt 181 removes the compatibility spelling
+with its hard source fix. This prompt adds no new semantic authority to that Rust path. A library exports its
+instrument/signature and may keep its implementation declarations private through ordinary module privacy. Standard
+instruments and presets remain readable source.
 
 `musa-dsp` exposes one deep preparation operation over exact checked projections of gestures, machine values, bindings,
 seed, and complete options, returning opaque `PreparedMachine`/`PreparedAudio`. The conceptual signature is
@@ -56,10 +60,11 @@ separate non-executing operation. Candidate cache hashes are followed by exact c
 
 ## Target
 
-- Source instrument/signature/control-mapping declarations and standard-library examples; no public Rust
-  `InstrumentSpec` mirror.
+- Source instrument/signature/control-mapping declarations and standard-library examples built from ordinary Musa
+  constructs; no parser keyword, special elaborator, or public Rust `InstrumentSpec` mirror.
 - Private source machine bodies over registered primitive wrappers, with complete static conformance diagnostics.
-- Hard-error `patch` migration fix and deletion of the prompt-177 physical-attack compatibility projection.
+- Deletion of the prompt-177 physical-attack compatibility projection. The unchanged `patch` oracle remains temporary
+  until prompt 180a, and its surface spelling is removed by prompt 181.
 - One opaque preparation facade and separate lineage attachment, with replacement, privacy, R1, feedback, option, and
   block-partition laws.
 - Module-design audit and removal of pass-through surfaces.
@@ -84,3 +89,4 @@ Commit as `Give source instruments typed sound contracts`.
 - No score/notation type in `musa-dsp`, source evaluator in runtime, or source closure in a machine value.
 - No signal/audio history as finite source data and no written-time coordinate past scheduling.
 - No Rust schema independently constructible as an instrument declaration.
+- No new surface `instrument` grammar and no deletion or semantic expansion of the temporary `patch` oracle.
