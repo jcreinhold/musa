@@ -74,8 +74,8 @@ about files:
 - **`template piece P(…) "T" { … }` plus `make P(a, b) as n`** becomes the piece written out, with each parameter a
   `let` at the file's lexical root bound to the argument the `make` passed. This costs nothing, because a file is
   already one piece: §6's own rule is that "a `make` of a piece template stands at the file root and *is* that file's
-  piece". A template `make`d once is a piece written with extra ceremony, and both corpus files `make` each piece
-  template exactly once.
+  piece". A template instantiated with `make` once is a piece written with extra ceremony, and both corpus files `make`
+  each piece template exactly once.
 - **A body wanted at two different arguments** is the case the template form existed for, and it becomes two files over
   one shared function. What is reusable about a parameterized piece is its *material* — a function of a `Key` and a
   `Scale` returning an `EventTrack<WrittenTime>` — and that function is ordinary source that any number of pieces may

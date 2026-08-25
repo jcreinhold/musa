@@ -2,7 +2,7 @@
 id: 172
 slug: track-scheduling
 status: pending
-depends_on: [127c, 171]
+depends_on: [171]
 phase: 3
 ---
 
@@ -16,6 +16,9 @@ frame at a time. Make every time, rounding, collision, ordering, and identity de
 ## Read
 
 - The prompt-127a scheduling specification; research `05-selected-calculus.md` §7 and `06-proof-outline.md` §5.
+- Prompt 149's trusted boundary, prompt 169's K1–K20 matrix, and note 67's adapter freeze. Scheduling consumes a
+  rechecked `EventTrack<C, A>` produced by the dependent, bidirectionally elaborated language; it does not reinterpret
+  source terms, contextual `Music`, phase syntax, or a rank-1 type.
 - Current tempo/groove/fermata/polytempo realization, `PerformancePlan`, frame scheduling, event windows, ids, and seek.
 - Existing exact rational and `Progress` support.
 
@@ -32,6 +35,9 @@ for storable `A`. `TimeMap<C>` maps the finite queried boundary set to exact phy
 times to bounded frames and fixes collapse and same-frame order. Success requires nonnegative, representable,
 nondecreasing assignments and end no earlier than start. Record exact source boundary, physical result, frame,
 rounding/collision choice, and policy version.
+
+The `Storable` premise is the generated language constraint already rechecked at the prompt-149 boundary. Scheduling may
+require its canonical finite encoding, but must not substitute a second Rust-only notion of payload admission.
 
 Create one opaque handle per occurrence. Instruments may compare handles only for equality. Merging two scheduled
 sources injects left and right handles into disjoint sets before sorting. An occurrence-local policy gives equal timing

@@ -1,274 +1,127 @@
 # Implementor's reference
 
-For someone changing the compiler. It says where each decision lives, what it may assume, and what it owes downstream.
-It does not restate the specification: each section names the document that decides, and adds the orientation a
-specification does not.
+**Status: descriptive.** This is orientation for someone changing the compiler. Governing decisions live in
+`docs/rules/`; the code map says where their implementation lives.
 
-## 1. The pipeline, and who owns what
-
-Dependency direction is one-way and never points back:
+## Boundaries
 
 ```text
-musa-syntax → musa-compiler → {musa-notation, musa-dsp} → musa-playback → musa-project → {musa, musa-lsp, musa-desktop}
-                     ↑
-                musa-events (leaf)
+musa-syntax ──┐
+              ├──► musa-compiler ──► {musa-notation, musa-dsp} ──► musa-playback ──► musa-project
+musa-calculus ┤          ▲
+musa-events ──┘     musa-score
 ```
 
-| Crate | Owns | Never exposes |
+`musa-calculus` and `musa-events` are leaves. `musa-lsp` also reads `musa-syntax`, because highlighting and completion
+must work on half-typed text. The public seams are deliberately narrow:
+
+| Crate | Owns | Keeps private |
 | --- | --- | --- |
-| `musa-syntax` | tokens, lexer, parser, lossless CST, formatter, text edits | Rowan types |
-| `musa-events` | exact time, coordinates, typed occurrences, `empty`/`event`/`follow`/`together`/`map_payloads`/`duration`, normalization | anything musical |
-| `musa-calculus` | the dependently typed core calculus: terms, NbE, elaboration, inductive families | `Value`, the evaluator, quotation |
-| `musa-score` | the musical values: pitch, chords, scales, exact time, marks, score and performance snapshots, provenance, diagnostics, analysis | any way to *build* one from text |
-| `musa-compiler` | resolution, typing, expansion, elaboration into the event track — the passes that compute those values | pass types, `Type`, the resolver |
-| `musa-notation` | `NotationPlan`, MEI, LilyPond, MusicXML, MIDI | intermediate plan internals |
-| `musa-project` | `ProjectSession`: documents, revisions, commands, exports, facts | compiler internals, byte offsets |
+| `musa-syntax` | lossless tokens/CST, parser, formatter, text edits | Rowan |
+| `musa-calculus` | dependent terms, NbE, conversion, bidirectional elaboration, recheck | values, environments, evaluator, quotation, unifier |
+| `musa-events` | coordinate-indexed exact finite tracks and laws | representation and normalization internals |
+| `musa-score` | musical values, snapshots, provenance, diagnostics, analysis | no parsing or pass machinery exists here |
+| `musa-compiler` | imports/names, host registrations, lowering, quotation/adapters, realization | pass types, resolution tables, calculus internals |
+| `musa-notation` | notation plan and exports | planning internals |
+| `musa-dsp` | studio validation, machine/scheduling target, offline rendering | primitive state, buffers, schedules |
+| `musa-playback` | device negotiation, transport, callback | CPAL and callback internals |
+| `musa-project` | documents, revisions, commands, derived-result coordination | compiler internals |
 
-`musa-lsp` is the one shell that also depends on `musa-syntax`, because highlighting and completion must answer on
-half-typed source, which a session's facts cannot describe.
+No public item exists without a caller. Source text is canonical; there is no second editable AST. Musical time remains
+exact rational until the performance/DSP edge.
 
-Three rules follow, and they are the ones most often reached for:
+## Source to checked core
 
-- **No public item without a caller.** A facade grows when something needs it, not in anticipation.
-- **The source is canonical.** No second editable AST, no mutable expanded cache. Every UI edit is a text edit.
-- **Exact time.** Musical time is `num-rational`. Floats appear at the performance and DSP edge and nowhere earlier.
+1. `musa-syntax` lexes and parses every byte into a lossless CST.
+2. `musa-compiler::imports` and `resolve` load the real module tree and assign names; `lower` reads the CST as
+   `musa_calculus::RawProgram` without inventing another typed IR.
+3. `musa-calculus` elaborates bidirectionally. Introduction forms check, eliminations synthesize, and NbE conversion
+   compares expected and inferred values.
+4. Omitted arguments create scoped contextual metavariables. The unifier solves only distinct-local-variable Miller
+   spines, preserving permutation and weakening by stable de Bruijn levels; it postpones blocked equations, retries
+   after progress, and refuses unresolved survivors. It never guesses a higher-order solution.
+5. The prompt-149 kernel rechecker checks the completed term independently. Elaboration is not trusted to certify its
+   own output; `crates/musa-calculus/TRUST.md` names the trusted half.
+6. `musa-compiler::elaborate` realizes the checked term through registered finite base values and δ-rules, producing
+   caller-ready facts and `EventTrack<WrittenTime, ScoreFact>` values with provenance.
 
-## 2. Surface to events
+The compiler's phase-local studio descriptor inference is not source-language typing. Do not add a source construct to
+`infer.rs`, reimplement conversion in the compiler, or expose a calculus `Value` to make a downstream pass convenient.
 
-The surface grammar is settled in [`01-surface.md`](../../rules/language/01-surface.md) §1; the total value calculus and
-its metatheoretic obligations are [`02-core-calculus.md`](../../rules/language/02-core-calculus.md); the elaboration
-rules per construct are `../../rules/events/06-surface-elaboration.md`.
+## Definitions, data, and names
 
-The shape to hold in mind:
+Functions are ordinary dependent Π values. Source recursion is structural: generated case trees check coverage and
+decreasing recursive calls. Indexed `data` declarations refine result indices; record telescopes may be dependent and
+have η. Private constructors are visible only inside their defining module.
 
-1. **Parse** into a lossless CST. Every node keeps its trivia, so a formatter round-trips and a doc comment is a fact
-   about the tree rather than a line-scan.
-2. **Resolve** names, imports, templates, signatures, and structures. This pass records what an editor is told —
-   `ItemDoc` per checked declaration, `NameReference` per use.
-3. **Check** the value calculus. Total, strongly normalizing, monomorphized. Types are `musa-compiler`'s own; they do
-   not cross the crate boundary.
-4. **Elaborate** into a core term: an `EventTrack[WrittenTime, ScoreFact]` built from `track`, `follow`, `together`,
-   `shift`, `scale`, and `restrict`, with `let` for sharing.
-5. **Normalize** the term (`../../rules/events/05-normalization.md`), which fixes occurrence order, payload
-   serialization, semantic equality, and the semantic hash.
-6. **Project** into a `ScoreSnapshot` and a performance snapshot, which is what `musa-notation` and `musa-dsp` consume.
+Modules are lexical and loaded explicitly. `import std::list;` loads a module; `use list::map;` brings a member into
+scope. Ordinary namespace definitions provide inherent methods—`T.equal(a, b)` or its operator spelling—not implicit
+trait dictionaries. The earlier signature/functor/template and source trait/instance designs were deleted; do not revive
+their terminology in code or documentation.
 
-The event track is a leaf and stays one. A surface convenience must never become a seventh basis operation: if a
-construct cannot be elaborated from the six that exist (`../../rules/events/00-purpose.md`), the specification is what
-changes, not `musa-events`.
+Reusable music is an ordinary value. A fragment has type `EventTrack<WrittenTime, ScoreFact>` and a motif can be a
+function returning one. Lexical context is explicit in a closure or parameter; saving a fragment does not arrange
+dynamic capture.
 
-### Typing, briefly
+## Storage and resource acceptance
 
-Judgments are in [`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §2 and the staging judgments in
-[`00-semantics.md`](../../rules/language/00-semantics.md) §2. Two things surprise newcomers:
+`Storable` is a generated structural constraint, not a trait authors implement. It rejects source functions at every
+depth and is checked again at payload boundaries. Canonical finite encoding is separate: it fixes exact versioned bytes
+for equality and storage. Do not replace either with the other.
 
-- **Reusable material is an ordinary value.** Prompt 127a deleted the contextual `Music` type: a fragment is a value of
-  type `EventTrack[WrittenTime, ScoreFact]`, a motif is a function returning one, and placement is applied by the
-  enclosing voice's left fold rather than read from an ambient context (`../../rules/language/00-semantics.md` §3). The
-  code still spells the old type; prompt 142 removes it.
-- **A nullary `fn` is a function.** `fn f() -> T` has type `() -> T` and is called `f()`, and the record an editor shows
-  says so rather than spelling it `let f: T`. There is one deliberate exception, and it is the motif affordance: a bare
-  reference to a nullary `() -> EventTrack[WrittenTime, ScoreFact]` function *where a track is expected* is applied, so
-  `use subject;` and `use subject();` mean the same thing. It is one case in the checker, not a general coercion.
+The language budget charges reduction steps, nesting, constructed nodes, and logical bytes before work occurs. Reusing a
+named or projected value does not charge its contents again. Exhaustion is deterministic and publishes no partial
+declaration graph. Any operation whose finite loop or allocation the evaluator cannot see needs an up-front registered
+charge; wall-clock timeouts are cancellation, not language semantics.
 
-### Equality for declared values
+## Typed quotation and adapters
 
-There is no derived equality and no instance lookup. A declared type supports `==` only when an ordinary definition
-named `equal` exists in its namespace. `PcSet(n)` and `ToneRow(n)` write that definition over their private canonical
-representations; their index is an inferred retained argument. The other 52 declarations acquire nothing implicitly.
-[Note 65](../../notes/research/language-design-closure/65-equality-is-a-namespace-definition.md) records the count and
-the decision.
+An adapter receives indexed `Syntax<TokenTree>` and must return one checked `Syntax<Expr>`. `quote at anchor { … }` and
+splices build syntax; typed token/delimiter operations classify what the parser already read. `recurse_syntax` is the
+sealed bottom-up boundary, and ordinary folds process the finite children it returns. Adapter state is ordinary Musa
+data. An adapter cannot inspect inferred types, compiler ASTs, or a hidden role allocation.
 
-### Context requirements
+The two reference clients are `stdlib/src/adapters/staff.musa` and `stdlib/src/adapters/graph.musa`. Changes to the
+adapter interface must preserve both suites and note 67's frozen theorem: one input type, one output type, no hidden
+compiler input, complete provenance, and the same reader/checker as ordinary source.
 
-A construct that needs a fact from context — `step` needs a collection, `assert fills_meter()` needs a meter, a degree
-needs a frame — states the requirement and fails with a diagnostic naming what was missing, rather than inventing a
-default. `examples/broken/no-scale-in-force.musa` is the shape of that failure.
+## Event track and provenance
 
-A bar's own context fact is *where it begins*, and the fold has no cursor to keep it. `Claimed::before` in
-`crates/musa-compiler/src/lower/notation/mod.rs` carries the music standing before the passage, in the pieces `Placed` —
-the skew-binary counter in `raw.rs` — already holds it in, earliest first; `Document::began` in
-`crates/musa-compiler/src/document.rs` sums their durations over a memo keyed by the address of each piece's `Arc`.
-`DurationPiece` retains the two children of every balanced `follow`, so only leaves are elaborated and internal
-durations are derived by the event track's exact addition equation; `Document::passage` reads the sum as the claim's
-onset. The field carried the whole prefix as one built term until prompt 165d, which made a voice of `n` bars elaborate
-`1 + 2 + … + n` bars of music; `docs/notes/research/language-design-closure/63-the-barline-quadratic.md` has the
-measurement and the soundness argument. The memo is a cache and never an equality: an address only finds a cached
-answer, so a miss is a second elaboration and never a different rational.
+`musa-events` owns `empty`, `event`, `follow`, `together`, `map_payloads`, `duration`, exact-time operations, queries,
+normalization, versioned encoding, and semantic hash. It knows neither syntax nor musical policy. A surface convenience
+must elaborate to the fixed basis; it cannot quietly become another event-track operation.
 
-## 3. A worked trace
+Every created occurrence records its declaration/source anchor and derivation steps. Origins remain plural, foreign
+spans retain their URI, and generated facts are navigable but not directly editable. `musa-project` attaches revisions
+and keeps last-valid results; expanding an origin chain does not recompile.
 
-`examples/canon-functions.musa` is two notes and a transformation, and it exercises the whole path.
+## Runtime boundary
 
-**This trace is the post-127c output.** The temporal spellings are current — `EventTrack`, `track`, `follow`,
-`together`, `% musa-events-3`. The type name `Music` is not: prompt 142 replaces it, and the pairs still owed are in
-[`../clean-break-ledger.md`](../clean-break-ledger.md). What the trace *shows* about provenance, sharing, and exact time
-is unchanged by either rename.
+The governing runtime pipeline is checked track → schedule → prepared machine → one-frame step. Prompts 171–173 still
+own that migration. Until then, current `StudioGraphSpec`, `compile_graph`, and `RenderPlan` are production APIs but are
+not evidence that the machine calculus or one-frame rule is implemented. Do not delete them before callers migrate, and
+do not describe their caller-block feedback or modulation as the governing semantics.
 
-The source:
+Runtime preparation consumes already rechecked finite language values. It may validate primitive descriptors, port
+types, formats, capacities, memory, and work bounds; it must not evaluate source or add a second payload-admission rule.
 
-```musa
-fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
-    together(subject, shift(gap, answer(subject)))
-}
-```
+## Extension recipes
 
-```musa
-use canon(subject, octave_answer, 1/2);
-```
+**Base type or builtin.** Add a host registration only for source-aware provenance, direct core construction, registered
+primitive state, or a private finite representation/work budget. Add the domain's meaning and falsifying example to
+`docs/rules/language/03-musical-domains.md`. Familiarity and speed alone are not admission grounds.
 
-`musa events examples/canon-functions.musa` prints the elaborated term:
+**Standard-library operation.** Prefer ordinary Musa in `stdlib/src/`, with its public documentation and module entry.
+The registry survey in note 61 is the precedent: if public data, recursion, privacy, and finite folds can express it, it
+does not belong in Rust.
 
-```text
-% musa-events-3
-events "Canon Functions" {
-  composition main : EventTrack[WrittenTime, ScoreFact] =
-    let shared0 = together {
-        track 1/2 {
-          occurrence "voice … note c4 1/4 [… def 300:304 #1]" from 0 to 1/4;
-          occurrence "voice … note d4 1/4 [… def 313:317 #1]" from 1/4 to 1/2;
-        };
-        shift by 1/2 track 1/2 {
-          occurrence "voice … note c5 1/4 [… def 300:304 #1 via transpose 7 12]" from 0 to 1/4;
-          occurrence "voice … note d5 1/4 [… def 313:317 #1 via transpose 7 12]" from 1/4 to 1/2;
-        }
-      }
-    in together {
-      shared0 @ "depth 0 origin 635:674 scope voice 0 0 via motif 635:674";
-      track 1 {
-        occurrence "piece meter 4/4 [0:0]" from 0 to 1;
-      }
-    };
-}
-```
+**Diagnostic.** Add a broken fixture and snapshot the complete rendered report. A diagnostic raised in an imported
+adapter becomes a structured `Cause` with that document's spans, not concatenated prose.
 
-Read what each part is doing.
+**Surface construct.** Decide its elaboration in `docs/rules/events/06-surface-elaboration.md` first, then add parser,
+formatter, tree-sitter, positive, negative, and corpus evidence. If it cannot elaborate to the fixed core, that is a
+specification decision rather than permission to add a private shortcut.
 
-- **`together` and `shift by 1/2`** are the `canon` function's body, elaborated. Nothing about the term remembers that a
-  function was involved; what it remembers is where the notes came from.
-- **`def 300:304`** is the byte span of the *declaration* the note came from — the `c4/4` inside `subject`. Both the
-  original and the transposed copy carry the same `def`, because there is one declaration and two occurrences.
-- **`via transpose 7 12`** is an expansion step: the interval as a written pair, staff displacement and chromatic
-  displacement, so provenance keeps the spelling the operation kept.
-- **`shared0` and `@ "…"`** are sharing. `subject` is elaborated once and referenced; the `@` annotation records the
-  locus each reference stands at, so two placements of one phrase are distinguishable without the material being
-  elaborated twice.
-- **`piece meter 4/4`** is a context fact, occupying its own span. Meter is a fact about the passage, not a property of
-  a note.
-- The durations are exact rationals throughout. `1/4` is a quarter, not 0.25.
-
-From the term, `musa-notation` builds a `NotationPlan` and then MEI, LilyPond, MusicXML, or MIDI. Every rendered element
-can name the occurrence it came from, and every occurrence can name the source span, which is what makes clicking a note
-on the page move the caret to the text that wrote it.
-
-## 4. Provenance
-
-Provenance is not a debugging aid bolted on. It is a component of the payload, and every pass that creates an occurrence
-owes it.
-
-An occurrence carries the **declaration** it came from, the **expansion path** of steps taken to get there (`motif`,
-`transpose`, `splice`, `assertion`, and the rest), and, for a piece that leaves something open, the **choice path** that
-says which alternative was taken. The interface contract is `../../rules/desktop/04-provenance.md`; the realization
-model, including seeds and decisions, is `../../rules/events/11-realization.md`.
-
-Three invariants to preserve when adding a pass:
-
-- **Plural origins stay plural.** A note that two sources contributed to has two origins. Choosing the convenient one is
-  a bug that shows up much later as an editor jumping to the wrong place.
-- **Spans index the document that produced them.** A span from a bundled module travels with its URI. In `musa-project`
-  this is enforced structurally: the UTF-16 translation walk rewrites two-field `{start, end}` objects using the open
-  document's index, and a foreign span is carried in a four-field shape so the walk passes it over.
-- **A generated fact is not editable.** Navigating to the editable source is the answer; synthesizing an edit into
-  generated, quoted, or included material is not.
-
-## 5. Resource acceptance
-
-Termination is not enough: a total language can still ask for a score nobody can hold. One deterministic meter runs over
-checking and evaluation, charging a finite operation's known count *before* it enters its loop
-([`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §4). It covers monomorphized definition count and
-closure environment size, fold work including products induced by nesting, generated occurrence and event-track binding
-counts, instantiation count and dependency depth, quotation size after substitution, constructed value nodes, and
-logical value bytes. Reusing a named or selected value does not charge its contents again.
-
-Two properties matter to a caller:
-
-- **Rejection is deterministic and explains itself.** The diagnostic names the operation, the metric, the amount
-  attempted, and the limit. These are language-version constants, not timeouts and not observations of the machine.
-- **Nothing partial escapes.** Values stay private until the whole declaration graph succeeds, so exhaustion publishes
-  neither a partial value nor a partial score.
-
-Interactive cancellation is a compiler operation, not a language effect.
-
-## 6. Caching and revisions
-
-`musa-project` holds a document, its revision, and the last revision that compiled. The interface consumes facts, never
-compiler internals.
-
-- Every fact a snapshot hands out is tagged with the revision it came from. The engraved score, the playback plan, and
-  the recorded declarations all come from the *last valid* revision, which may be older than the text on screen; the
-  snapshot says which.
-- Semantic identity is the event track's `SemanticHash` over the normalized term. Two documents that differ only in
-  whitespace, in declaration order where order does not matter, or in a name that was inlined, hash the same.
-- Expanding an Origin chain or an analysis finding must not trigger recompilation. Everything those views show was
-  already recorded by the compile they belong to.
-- An analysis report carries the revision it read, so an interface can say "this reading is of an older score" as a fact
-  rather than a guess, and can leave the report on screen rather than emptying it.
-
-## 7. Modules, ownership, and what is public
-
-[`04-templates-and-modules.md`](../../rules/language/04-templates-and-modules.md) decides; the operational consequences
-are:
-
-- **A signature seals.** A member a signature does not list is private to the structure that defines it, and naming it
-  from outside is an error rather than a coincidence that works. The generated reference publishes exactly the sealed
-  surface, which is how the rule stays visible.
-- **Instantiation is generative.** Identity comes from the site, not from the arguments. The same functor applied twice
-  to equal arguments is two declarations.
-- **Expansion is binding, not rewriting.** A functor body is checked once per instance with the parameter naming the
-  structure the site passed. No syntax is copied, so spans stay where they were written.
-- **A template body reads its own parameters and the file's lexical root, and nothing else.** No site-dependent
-  resolution, ever.
-
-## 8. Extension recipes
-
-**Adding a base type.** A new base type is admitted by a registry entry rather than a new induction
-([`02-core-calculus.md`](../../rules/language/02-core-calculus.md) §5.8). The price of that cheap admission is a row in
-[`03-musical-domains.md`](../../rules/language/03-musical-domains.md) §7 stating what the type means, where the meaning
-comes from, and a falsifying example. A row with no falsifier is a type that has not said what it is for, and could have
-been a `Nat`.
-
-**Adding a standard-library operation.** Write it in `stdlib/src/` as ordinary Musa, with a comment block above it: the
-comment is what the editor shows on hover and what the generated reference publishes, and `scripts/check-docs.sh` fails
-if a published name has none. Add the module to `stdlib/src/lib.musa` if it is new. Nothing else is registered anywhere
-— a bundled module is compiled from its own `mod` declarations, so a file that is not declared is a fault rather than a
-hidden module.
-
-**Adding an analysis kind.** The admission rule is [`07-analysis.md`](../../rules/language/07-analysis.md) §2 and §6,
-and it is demanding on purpose: state the abstract domain, the abstraction map α, and what the concretization γ admits.
-Without a stated α, "candidate" and "fact" mean nothing.
-
-**Adding an assertion kind.** Don't, without changing [`05-verification.md`](../../rules/language/05-verification.md).
-The family is fixed at five, and a style rule is not an assertion kind — it is an argument to `follows`.
-
-**Adding a diagnostic.** Add a fixture to `examples/broken/`. The rendered report is snapshotted whole, at a fixed width
-and without colour, so a help line cannot stop matching its message unnoticed. A diagnostic about a *different* document
-— one raised while reading an adapter module the composer imported — is a `Cause` on the diagnostic about the import,
-not a longer message: its labels are spans in that document, it carries no fix, and all three renderers already know how
-to show one.
-
-**Adding a surface construct.** Decide its elaboration in `../../rules/events/06-surface-elaboration.md` before writing
-the parser, and add a positive fixture to `examples/`. If it cannot be elaborated from the three event track
-combinators, that is the finding — report it, do not extend the event track.
-
-## 9. What to run
-
-```sh
-cargo nextest run --workspace
-cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
-./scripts/check-docs.sh
-```
-
-The workspace lints are strict deliberately: fix the code rather than allow-listing the lint. Slow tests carry
-`#[ignore]` and say so in their names, and marking one requires a doc comment arguing what it protects and what still
-covers that contract in the fast suite.
+**Runtime primitive.** Wait for prompt 171's registry unless working that prompt. A primitive fixes exact ids/versions,
+port and state formats, deterministic initialization/step, and memory/work bounds; arbitrary closures and hidden input
+are not primitives.

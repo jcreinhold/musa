@@ -908,10 +908,9 @@ A `signature` bought one thing a record does not: a constructor could be withhel
 not list was private to the structure that defined it. That is **sealing by listing**, and its replacement is **sealing
 by marking** — §1.3's `private`, which is one rule instead of a layer.
 
-The replacement is specified here and not yet enforced. `Visibility` and `ModuleId` exist in the core, but
-`musa-compiler` does not give a source file a module, so a `private` declaration is nameable by every file that imports
-it. Prompt 162a wires it and states the law; until then this section says what `private` means and the compiler does
-less than it says.
+The replacement is enforced. `Visibility` and `ModuleId` live in the core, and prompt 162a wired each source file to its
+own module. A private declaration is visible to sibling definitions in that module and refused, by name, to every file
+that imports it.
 
 ## 7. Events documents and quotation
 

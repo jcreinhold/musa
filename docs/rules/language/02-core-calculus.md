@@ -36,10 +36,9 @@ unification is here because implicit arguments and index refinement are unavaila
 has no such argument — tactics, proof search, hint databases, opt-outs from totality — stays refused and is listed as
 refused in §1.3.
 
-**What this document does not yet describe is the code.** The specification is written before the prompts that implement
-it, which is the rule prompt 142c followed and the reason it is cited rather than repeated. Prompts 146–163 are that
-implementation, and where a section below says a mechanism is specified but not yet built, it names the prompt that owes
-it.
+**The code now implements this document.** The specification was written before prompts 146–163 implemented it; prompt
+169's K1–K20 matrix and prompt 170's pattern-unification repair close the resulting conformance audit. Historical prompt
+pointers below identify ownership, not unfinished status.
 
 ## 1. Syntax
 

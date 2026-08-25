@@ -28,10 +28,11 @@ the CLI's check, and the app's score all come from one session over one compiler
 
 ## The boundaries are load-bearing
 
-Types from implementation libraries never cross crate boundaries. Parser internals stay in `musa-syntax`, DSP internals
-in `musa-dsp`, device types in `musa-playback`. Public facades are narrow: `parse`, `compile`, `render_notation`,
-`compile_graph`, `AudioEngine`, `ProjectSession`. A consumer that needs something the facade does not offer is evidence
-the facade is missing a feature, not a reason to reach around it.
+Types from implementation libraries never cross crate boundaries. Parser internals stay in `musa-syntax`; dependent
+terms, values, evaluation, quotation, and unification stay in `musa-calculus`; DSP internals stay in `musa-dsp`; and
+device types stay in `musa-playback`. Public facades are narrow: `parse`, `compile`, `render_notation`, `compile_graph`,
+`AudioEngine`, `ProjectSession`. A consumer that needs something the facade does not offer is evidence the facade is
+missing a feature, not a reason to reach around it.
 
 ## Real-time separation
 

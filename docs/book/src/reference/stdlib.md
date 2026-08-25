@@ -1,6 +1,6 @@
 # Standard library
 
-The bundled standard library is version-matched Musa source, imported explicitly with `use std::<module>;`. `std` is
+The bundled standard library is version-matched Musa source, imported explicitly with `import std::<module>;`. `std` is
 reserved: it is never searched in the working directory or the environment, and there is no implicit prelude. Standard
 definitions are ordinary Musa definitions — their source is available read-only at stable `musa-stdlib:/std/…` URIs for
 hover and go-to-definition, and customizing one means writing a local wrapper.
@@ -11,7 +11,7 @@ The modules:
 | --- | --- |
 | `std::algebra` | `Group`, `Action`, and `Torsor`: the three structures the musical domains share |
 | `std::collections` | Scale collections: the modes, harmonic and melodic minor, pentatonic, whole-tone, octatonic |
-| `std::context` | The `TonalContext` signature and its `CMajor` / `ANaturalMinor` modules |
+| `std::context` | The `TonalContext` record and the `c_major` / `a_natural_minor` values |
 | `std::core` | Identity and composition combinators |
 | `std::cyclic` | `Cycle(n)` and `Cyclic(n)`: a division of the octave or of a pulse cycle, and a position in one |
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |

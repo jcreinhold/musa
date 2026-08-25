@@ -2,7 +2,7 @@
 id: 174
 slug: core-calculus-conformance
 status: pending
-depends_on: [170, 173]
+depends_on: [173]
 phase: 3
 ---
 
@@ -22,6 +22,9 @@ This prompt adds no feature.
 - Earlier K1/K2/K3 and source-language counterexamples named by the final review.
 - Prompt 169's `72-core-obligation-matrix.md`, `73-core-privacy-and-second-path-audit.md`, and the adapter freeze in
   note 67. They are imported evidence, not rows to restate.
+- Prompt 149's trusted boundary and `crates/musa-calculus/TRUST.md`: elaboration is untrusted, accepted terms are
+  independently rechecked, and neither the compiler nor runtime may expose or duplicate kernel values, evaluation, or
+  conversion.
 
 ## Design
 
@@ -30,6 +33,11 @@ Prompt 169 owns the language: the dependent calculus, bidirectional elaboration,
 without re-proving them. This prompt owns the cutover after that boundary: event-track runtime semantics, machine values
 and steps, scheduling, one-frame audio, complete cross-stage traces, and deletion of legacy runtime paths. Its matrix
 begins where prompt 169 K14 hands it a valid event term. Cover:
+
+The audit names the language it is preserving: dependent bidirectional elaboration with scoped Miller-pattern
+metavariables, indexed families, structural recursion and case trees, private constructors, modules, typed quotation,
+generated `Storable`, and registered source δ-rules. Rank-1 inference, contextual `Music`, implicit dictionaries, and a
+second compiler evaluator are legacy paths, not implementation options.
 
 - event-track bounds, algebra, multiplicity, coordinate separation, half-open spans, normalization, and exact equality;
 - finite machine formation, registry uniqueness, one total next step, causality, initialized feedback, chain and

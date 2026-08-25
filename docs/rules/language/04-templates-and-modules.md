@@ -59,9 +59,9 @@ Building each module's scope without its private declarations would be simpler a
 checkable: a private name is still in its own module's scope, so a sibling reads it bare with no ceremony; and a private
 name never read inside its own module is dead code, which the unused-declaration diagnostic already says.
 
-The kernel implements that boundary (`crates/musa-calculus/src/kernel/visibility.rs`), but the compiler does not yet
-give a source file a module of its own, so a source-level `private` is not refused across an `import`. Prompt 162a wires
-it; until then the marker is checked where it is written and carried where it is read.
+The kernel implements that boundary (`crates/musa-calculus/src/kernel/visibility.rs`), and prompt 162a wired each source
+file to its own `ModuleId`. A source-level `private` is therefore refused across an import while remaining visible to
+sibling definitions in its declaring module.
 
 ## 2. Resolution and compilation order
 

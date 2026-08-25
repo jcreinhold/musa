@@ -1,8 +1,8 @@
 # Exact equality and stored data
 
-This page explains how the implementation stores values that may be compared, cached, or loaded after a restart. The
-Rust identifiers still carry their pre-127a spellings; the pairs are in
-[`../clean-break-ledger.md`](../clean-break-ledger.md).
+This page explains how the implementation stores values that may be compared, cached, or loaded after a restart.
+Event-track identity is current; prepared-machine identity is the prompt-173 target and must not be inferred from the
+current render-plan cache.
 
 ## 1. Do not use one equality for every job
 

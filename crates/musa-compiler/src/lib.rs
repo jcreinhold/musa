@@ -25,7 +25,8 @@
 //!
 //! Facade (roadmap §15.3): [`compile`] and `lower_performance`.
 //!
-//! Invariants: expansion always terminates (the language has no recursion);
+//! Invariants: expansion always terminates (source recursion is structural and
+//! resource-bounded);
 //! every expanded event carries the full provenance path explaining why it
 //! exists.
 /// Measurement seams for the benchmark suite. Not an interface: see the
@@ -36,12 +37,6 @@ mod compile;
 mod data;
 mod docs;
 /// A whole document, elaborated through `musa-calculus`.
-///
-/// Nothing reaches it yet, and prompt 141o's Design says why: the walk is built
-/// and proved one prompt before the cutover that wires it, so that a wrong walk
-/// is distinguishable from a wrong migration. The expectation rather than an
-/// `allow` is the point — prompt 142 calling it makes this unfulfilled, and the
-/// compiler says so.
 mod document;
 mod elaborate;
 mod events_text;
@@ -51,12 +46,6 @@ mod imports;
 mod infer;
 mod lint;
 /// The surface CST read as a [`musa_calculus::Raw`].
-///
-/// Nothing reaches it yet, and prompt 141g's Design says why: the reading is
-/// built and proved one prompt before the cutover that wires it, so that a wrong
-/// reading is distinguishable from a wrong migration. The expectation rather
-/// than an `allow` is the point — prompt 142 calling it makes this unfulfilled,
-/// and the compiler says so.
 mod lower;
 mod package;
 mod phase;
@@ -66,12 +55,6 @@ mod project;
 mod quote;
 mod reference;
 /// The compiler's own operations as `musa-calculus` registrations.
-///
-/// Nothing reaches it yet, and prompt 141e's Design says why: the registry is
-/// built and proved one prompt before the cutover that uses it, so that a wrong
-/// signature is distinguishable from a wrong migration. The expectation rather
-/// than an `allow` is the point — prompt 142 wiring the elaborator makes it
-/// unfulfilled, and the compiler says so.
 mod registry;
 mod resolve;
 mod studio;

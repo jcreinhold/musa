@@ -1,7 +1,7 @@
 ---
 id: 170
 slug: language-pass-closure
-status: pending
+status: done
 depends_on: [169]
 phase: 3
 ---

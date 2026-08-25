@@ -47,8 +47,8 @@ general form general. Nothing is taken from `enum`; §1.3 keeps every sentence i
 **Two conveniences, and what each is.** `enum` is `data` with several cases and no index telescope. `record` is `data`
 with one case, named after the type, whose fields are named, and no index telescope. Both are refusals rather than
 grammar gaps: `enum Vect<A>(n: Nat) { … }` parses the telescope and is refused with *an indexed family is written with
-`data`*, where today it says `expected \`{\`` and leaves the author to guess. That is the one place the grammar still
-lets a spelling lie once `data` is the union, so it is the one refusal each spelling owes.
+`data`*, where today it says “expected `{`” and leaves the author to guess. That is the one place the grammar still lets
+a spelling lie once the data declaration is the union, so it is the one refusal each spelling owes.
 
 **Desugaring, not a second path.** The three CST readers normalize into one description and one builder produces the
 `RawData`. There is exactly one declaration path afterwards, and that is the check: a bug in `enum` handling becomes

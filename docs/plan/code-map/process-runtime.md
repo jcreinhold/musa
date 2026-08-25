@@ -1,8 +1,9 @@
 # Preparing a machine for real-time use
 
-This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to `musa-dsp` and
-`musa-playback`. The Rust identifiers in the workspace still carry their pre-127a spellings; the pairs are in
-[`../clean-break-ledger.md`](../clean-break-ledger.md).
+This page maps the machine rules of `../../rules/across-stages/03-machine-calculus.md` to the prompt-171–173 target in
+`musa-dsp` and `musa-playback`. It describes the required implementation, not the current graph path: today
+`StudioGraphSpec`, `compile_graph`, `RenderPlan`, caller-block feedback, and block-rate modulation remain live. Prompt
+173 owns their migration and deletion, as recorded in the [`clean-break ledger`](../clean-break-ledger.md).
 
 ## 1. Crate boundary
 
@@ -27,7 +28,7 @@ CPAL.
 
 ## 2. Preparation happens before the callback
 
-`prepare_execution` performs these steps:
+The target `prepare_audio` operation performs these steps:
 
 1. Check every option and instrument or studio binding.
 2. Build closed registered primitives with typed ports.

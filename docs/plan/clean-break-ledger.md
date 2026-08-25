@@ -30,65 +30,65 @@ best-effort translation.
 
 ## 1. Source syntax
 
-| Deleted spelling | Replacement | Deleted by |
-| --- | --- | --- |
-| the type name `Music` | `EventTrack<WrittenTime>`, written out | 142 |
-| the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 142 |
-| `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 142 |
-| `overlay(a, b)` | `together(a, b)` | 127c |
-| `sequence(a, b)` / the `;` sequencing spelling in events documents | `follow(a, b)` | 127c |
-| `timeline d { … }` in events documents | `track d { … }` | 127c |
-| the `extent` keyword and the `extent` spelling in diagnostics | `duration` | 127c |
-| partial application, default parameters, and named hole filling | complete calls, and `fn (…) -> τ { e }` where a specialization has to be written down | 127ad |
-| a public `lift` from a source function into a machine | registered primitives only | 127d |
+| Deleted spelling | Replacement | Owner | Status |
+| --- | --- | --- | --- |
+| the type name `Music` | `EventTrack<WrittenTime>`, written out | 142 | discharged |
+| the type name `ContextualMusic` and the contextual-instantiation judgment | ordinary values; placement by the enclosing voice's left fold | 142 | discharged |
+| `music { … }` as a contextual-value constructor | an ordinary expression of event-track type | 142 | discharged |
+| `overlay(a, b)` | `together(a, b)` | 127c | discharged |
+| `sequence(a, b)` / the `;` sequencing spelling in events documents | `follow(a, b)` | 127c | discharged |
+| `timeline d { … }` in events documents | `track d { … }` | 127c | discharged |
+| the `extent` keyword and the `extent` spelling in diagnostics | `duration` | 127c | discharged |
+| partial application, default parameters, and named hole filling | complete calls, and `fn (…) -> τ { e }` where a specialization has to be written down | 127ad | discharged |
+| a public `lift` from a source function into a machine | registered primitives only | 127d | discharged |
 
 `instantiate`, `close`, and `EventsFragment` are private compiler concepts rather than source syntax; they are listed in
 §2 because that is where they are spelled.
 
 ## 2. Rust APIs
 
-| Deleted item | Replacement | Deleted by |
-| --- | --- | --- |
-| `musa_events::Timeline<A>` | the event-track type at `EventTrack<C, A>` | 127c |
-| `musa_events::sequence` | `follow` | 127c |
-| `musa_events::overlay` | `together` | 127c |
-| `Timeline::extent`, `Term::extent` | `duration` | 127c |
-| `Timeline::map_payload`, `Term::map_payloads` | `map_payloads` | 127c |
-| `Beat` as an untagged position type | `Position<C>`; a track's extent is the separate `Duration<C>` | 127c |
-| `Length<C>` — both the name and its use for an instant as well as an amount | `Position<C>` for *when*, `Duration<C>` for *how much* | 127c |
-| `Timeline::length`, `Term::length`, `Measure::length`, `check_bar_length`, `ly.rs::measure_length`, `musicxml.rs::measure_length` | `duration` / `check_bar_duration` / `measure_duration` | 127c |
-| `SecondTime` as a coordinate tag | `PhysicalTime` | 127c |
-| `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127b, discharged by 127ca |
-| `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 |
-| `musa_compiler::phase::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 |
-| the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 |
-| `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 152 |
-| `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 150, 152 |
-| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 152 |
-| the seventeen `Builtin` variants `Pc12Of`, `Pc12Number`, `Pc12Forget`, `Pc12Transposed`, `Pc12Inverted`, `Pc12Spelled`, `Row12Of`, `Row12Pcs`, `Row12Head`, `Row12Transposed`, `Row12Inverted`, `Row12Retrograde`, `Row12Matrix`, `Row12Forms`, `Row12Symmetries`, `Row12Repeats`, `Row12Missing`, and the surface spellings `pc12_*` / `row12_*` they register | operations over `Pc(n)` and `Row(n)`, written in `.musa` against the family indices of `../rules/language/02-core-calculus.md` §1.1 | 164 |
+| Deleted item | Replacement | Owner | Status |
+| --- | --- | --- | --- |
+| `musa_events::Timeline<A>` | the event-track type at `EventTrack<C, A>` | 127c | discharged |
+| `musa_events::sequence` | `follow` | 127c | discharged |
+| `musa_events::overlay` | `together` | 127c | discharged |
+| `Timeline::extent`, `Term::extent` | `duration` | 127c | discharged |
+| `Timeline::map_payload`, `Term::map_payloads` | `map_payloads` | 127c | discharged |
+| `Beat` as an untagged position type | `Position<C>`; a track's extent is the separate `Duration<C>` | 127c | discharged |
+| `Length<C>` — both the name and its use for an instant as well as an amount | `Position<C>` for *when*, `Duration<C>` for *how much* | 127c | discharged |
+| `Timeline::length`, `Term::length`, `Measure::length`, `check_bar_length`, `ly.rs::measure_length`, `musicxml.rs::measure_length` | `duration` / `check_bar_duration` / `measure_duration` | 127c | discharged |
+| `SecondTime` as a coordinate tag | `PhysicalTime` | 127c | discharged |
+| `PrimitiveOwnership<Builtin>` and `primitive` naming a compiler-owned operation | `BuiltinOwnership<Builtin>`; compiler-owned operations are *builtins*, registered units are *primitives* | 127ca | discharged |
+| `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 | discharged |
+| `musa_compiler::phase::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 | discharged |
+| the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 | discharged |
+| `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 173 | reassigned; live until 173 migrates callers |
+| `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 173 | reassigned; live until 173 migrates callers |
+| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 173 | reassigned; live until 173 migrates callers |
+| the seventeen `Builtin` variants `Pc12Of`, `Pc12Number`, `Pc12Forget`, `Pc12Transposed`, `Pc12Inverted`, `Pc12Spelled`, `Row12Of`, `Row12Pcs`, `Row12Head`, `Row12Transposed`, `Row12Inverted`, `Row12Retrograde`, `Row12Matrix`, `Row12Forms`, `Row12Symmetries`, `Row12Repeats`, `Row12Missing`, and the surface spellings `pc12_*` / `row12_*` they register | operations over `Pc(n)` and `Row(n)`, written in `.musa` against the family indices of `../rules/language/02-core-calculus.md` §1.1 | 164 | discharged; survey found and removed 22 modulus-specific entries |
 
 The event track stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-events`.
 
 ## 3. Serialized and interchange forms
 
-| Deleted form | Behaviour after the break | Deleted by |
-| --- | --- | --- |
-| the `% musa-events-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c |
-| event-track encoding versions 1 and 2 (`../rules/events/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c |
-| unframed `Display`-derived digests | already invalid; they remain invalid and are not read as track identity | (already broken) |
-| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 127c, 152 |
+| Deleted form | Behaviour after the break | Owner | Status |
+| --- | --- | --- | --- |
+| the `% musa-events-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c | discharged |
+| event-track encoding versions 1 and 2 (`../rules/events/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c | discharged |
+| unframed `Display`-derived digests | already invalid; they remain invalid and are not read as track identity | pre-ledger | discharged before 127a |
+| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 173 | reassigned with prepared-machine cutover |
 
 A version header exists precisely so this can be a refusal rather than a guess. A reader that cannot reproduce a
 document's version says so.
 
 ## 4. Fixtures
 
-| Deleted or rewritten fixture set | Deleted by |
-| --- | --- |
-| all 24 files in `examples/events/*.musa.events` — regenerated at `% musa-events-3` with `track`, `follow`, `together`, and durations | 127c |
-| every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 142 |
-| the insta snapshots under `crates/musa-events` and `crates/musa-compiler` that pin the old events text | 127c, 142 |
-| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 152 |
+| Deleted or rewritten fixture set | Owner | Status |
+| --- | --- | --- |
+| all 24 files in `examples/events/*.musa.events` — regenerated at `% musa-events-3` with `track`, `follow`, `together`, and durations | 127c | discharged |
+| every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 142 | discharged |
+| the insta snapshots under `crates/musa-events` and `crates/musa-compiler` that pin the old events text | 127c, 142 | discharged |
+| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 173 | reassigned with one-frame migration |
 
 Goldens are rewritten in the same prompt that breaks them, never left failing across a prompt boundary
 (`prompts/README.md`).
@@ -114,7 +114,7 @@ test named for a deleted operation is how a deleted operation comes back.
 | `overlay_not_idempotent` | `together_not_idempotent` |
 | `sequence_does_not_distribute_over_overlay` | `follow_does_not_distribute_over_together` |
 
-Renamed by prompt 127c, except where the law itself moves.
+Renamed by prompt 127c, except where the law itself moved. This table is discharged.
 
 ## 6. What is *not* on this ledger
 

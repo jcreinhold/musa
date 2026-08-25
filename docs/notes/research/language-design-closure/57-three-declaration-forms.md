@@ -74,8 +74,8 @@ is one rule, and each reader supplies a marker or does not.
 ## 5. Where a spelling can still lie
 
 Once `data` is the union, the two conveniences are restrictions, and a restriction the *grammar* enforces produces a
-parse error rather than a sentence. `enum Vect<A>(n: Nat) { … }` is refused today at the `(` with `expected \`{\``,
-which tells the author that the parser wanted a brace and not that indexed families are written with `data`.
+parse error rather than a sentence. `enum Vect<A>(n: Nat) { … }` is refused today at the `(` with “expected `{`”, which
+tells the author that the parser wanted a brace and not that indexed families use the data declaration.
 
 So the restriction belongs one level later: `record_decl` and `enum_decl` admit the telescope, and the lowerer refuses
 it by name. One refusal per spelling, and it is the only place either spelling can be written to mean something it

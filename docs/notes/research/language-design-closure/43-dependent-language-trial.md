@@ -709,8 +709,8 @@ ways:
 - the shape `Document(a, b, c, d, e, f, g)` is on the page as a call rather than as `call7(here, 19, "Document", …)`,
   where the arity is in the function name, the identity is in an integer, and the commas are seven `syntax_token`
   arguments in a helper defined 1,600 lines earlier;
-- the two nested `match`es on `refusal` and `hangs` become two arms each with a named field, so the three refusals are
-  three lines rather than three destructurings; and
+- the two nested `match` expressions on `refusal` and `hangs` become two arms each with a named field, so the three
+  refusals are three lines rather than three destructurings; and
 - role `19` is gone, and with it the question nobody could answer of whether `19` is used anywhere else.
 
 **This site is the second forcing case for R4.** There are seven arguments and no name to bind any of them: a function

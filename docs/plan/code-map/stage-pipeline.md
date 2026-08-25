@@ -1,131 +1,82 @@
 # Compiler stages and crate ownership
 
-This page answers two engineering questions: which crate owns each stage, and how much of that stage may cross a public
-API.
+**Status: descriptive.** This page maps the governing stages to current owners and public seams.
 
-The stage names below are the governing ones installed by prompt 127a. The Rust identifiers in the workspace still carry
-their pre-127a spellings until prompts 127b–127d, 142, and 171–174 land; the pairs are listed in
-[`../clean-break-ledger.md`](../clean-break-ledger.md), and this page is stale wherever it uses one as if it were the
-other.
-
-## 1. Main flow
+## Main flow
 
 ```text
 .musa source
-    |
-    | parse, resolve names, check types, evaluate total expressions
-    v
-closed Term<ScoreFact>
-    |
-    | evaluate exact musical time
-    v
+    │ musa-syntax: lossless parse
+    ▼
+CST
+    │ musa-compiler: imports, names, CST → Raw
+    ▼
+RawProgram
+    │ musa-calculus: bidirectional elaboration, NbE, independent recheck
+    ▼
+checked Term                         typed quotation stops here
+    │ musa-compiler: registered realization and provenance
+    ▼
 EventTrack<WrittenTime, ScoreFact>
-    |--------------------> NotationPlan ------> MEI / LilyPond / MusicXML
-    |--------------------> Analysis result + supporting evidence
-    |
-    | apply performance profile and realization choices
-    v
+    ├──────────────► musa-notation ──► MEI / LilyPond / MusicXML / MIDI
+    ├──────────────► analysis plus evidence
+    │ performance profile and realization
+    ▼
 EventTrack<PerformedTime, Gesture>
-    |
-    | schedule(format, policy, time map, track)
-    v
-Schedule<Gesture> = machine + decisions
-    |
-    | bind instruments and studio; fix sample rate, channels, seed, and options
-    v
+    │ prompt 172: checked scheduling
+    ▼
+Schedule<Gesture>
+    │ prompts 171 and 173: machine preparation and instrument binding
+    ▼
 PreparedMachine
-    |
-    | allocate state and step one sample frame at a time
-    v
+    │ one exact sample-frame step
+    ▼
 audio history
 ```
 
-These stages use different data because they answer different questions. The compiler does not force them into one large
-intermediate representation. A practice may add another explicit route—for example, phrase instructions directly to
-gestures—without pretending those instructions are Western score facts.
+The written half through `EventTrack<WrittenTime, ScoreFact>` is implemented. The machine/scheduling names are the
+governing target; current audio callers still use `StudioGraphSpec`, `compile_graph`, and `RenderPlan` until prompts
+171–173 migrate and delete that path. The clean-break ledger records this explicit reassignment.
 
-The first arrow above covers four front-end stages, which are worth drawing separately because each one is a place a
-later tool needs to stop at:
+No intermediate front-end representation crosses its owner's facade. Rowan nodes stay in `musa-syntax`; `Raw`, core
+terms, values, environments, evaluator frames, and unification stay in `musa-calculus`; compiler resolution and
+derivation records stay in `musa-compiler`. Callers receive checked results and caller-ready score facts.
 
-```text
-.musa source
-    |
-    | lex and parse, keeping every byte
-    v
-lossless CST                      <- the formatter, text edits, and syntax highlighting read this
-    |
-    | resolve names, apply units, build music-oriented declarations
-    v
-music-oriented HIR                <- diagnostics that talk about voices and motifs read this
-    |
-    | evaluate total expressions
-    v
-closed Term<ScoreFact>            <- events documents and typed quotation read this
-    |
-    | evaluate exact musical time
-    v
-EventTrack<WrittenTime, ScoreFact>
-```
+## Ownership
 
-None of these intermediate types crosses a crate boundary. The CST is Rowan-backed and stays inside `musa-syntax`; the
-HIR and the evaluator's values stay inside `musa-compiler`. What crosses is the closed term and the event track.
-
-The event-track core in particular is not spread through the compiler. Its public interface is roughly: construct and
-check a track, `follow`, `together`, restrict, normalize, compare, `map_payloads`, and scale time. Its internal
-representation choices stay hidden behind that. The machine is the second core value and lives on the sound side; a
-track and a machine meet only at `schedule`.
-
-## 2. Which crate owns what
-
-| Work | Owning crate | Public API should expose |
+| Work | Owner | Public seam |
 | --- | --- | --- |
-| Tokens, concrete syntax tree, formatting, and text edits | `musa-syntax` | parsing and edit operations |
-| Name resolution, type checking, total evaluation, score and gesture compilation | `musa-compiler` | `compile` and caller-ready snapshot facts |
-| Exact finite event tracks and their laws | `musa-events` | `Term`, the track type, construction, queries, equality, and hash |
-| Engraving plan and file export | `musa-notation` | `render_notation` and export results |
-| Studio checking, machine construction and scheduling, audio preparation, and offline rendering | `musa-dsp` | `prepare_execution` and an opaque prepared machine |
-| Audio-device negotiation, transport, and callback | `musa-playback` | `AudioEngine` and transport commands |
-| Source documents, revisions, commands, and derived-result coordination | `musa-project` | `ProjectSession` |
-| CLI, LSP, desktop, and web entry points | shell crates and apps | user-facing commands and results |
+| Tokens, CST, formatting, and text edits | `musa-syntax` | parse/format/edit results, never Rowan types |
+| Dependent terms, bidirectional elaboration, NbE, conversion, rechecking | `musa-calculus` | checked facade, never `Value` or evaluator internals |
+| Name/import resolution, host registrations, typed quotation, adapter expansion, musical realization | `musa-compiler` | `compile`, snapshots, diagnostics, adapter edit/print operations |
+| Exact finite event tracks and their laws | `musa-events` | coordinate-indexed tracks, terms, queries, exact encoding/hash |
+| Musical value types and projections | `musa-score` | pitch/time/fact/gesture/snapshot values, no parser or pass |
+| Engraving plan and export | `musa-notation` | `render_notation` and export results |
+| Machine semantics, scheduling, preparation, offline DSP | `musa-dsp` | current graph facade; opaque prepared machine after prompt 173 |
+| Device negotiation, transport, callback | `musa-playback` | `AudioEngine` and transport commands |
+| Documents, revisions, commands, derived-result coordination | `musa-project` | `ProjectSession` |
+| CLI, LSP, desktop, web | shell crates and apps | user-facing commands and results |
 
-`musa-dsp` keeps registered primitives, buffers, state layout, and step orders private. `musa-playback` receives a
-prepared machine it can step; it does not inspect the machine. Audio crates do not depend on compiler score types.
+`musa-calculus` and `musa-events` are leaves. The compiler hosts the calculus and constructs event-track values, but
+neither leaf depends on compiler or score policy. Audio crates do not depend on compiler score types.
 
-## 3. What each conversion must provide
+## Stage contracts
 
-The crate that converts one representation to another defines:
+Every conversion states its exact input and output, operation/data versions, options, deterministic diagnostics,
+resource guarantees, provenance edges, and any loss. There is no public generic `Pass` trait: these stages hide
+different work and deliberately have different useful interfaces.
 
-- the exact input and output types;
-- which part of the input it reads;
-- a version for the operation and its data formats;
-- every option that can change the result;
-- deterministic diagnostics;
-- origin links between input and output anchors;
-- a list of information lost or approximated; and
-- resource and determinism guarantees.
+The prompt-149 trusted boundary is load-bearing. Elaboration is not trusted to certify itself: accepted core terms are
+independently rechecked before the compiler realizes them. Runtime preparation consumes those checked finite values; it
+must not grow another source evaluator or checker.
 
-There is no public generic `Pass` trait today. The passes are concrete and have different useful interfaces. Origin-path
-storage should remain private until at least two crate-level callers need one stable public API.
+The event track remains the semantic meeting point for finite music. A surface convenience elaborates to its fixed
+operations; it does not add an operation to `musa-events`. A track meets a running machine only through the checked
+schedule operation.
 
-## 4. Project-level coordination
+## Project coordination
 
-`musa-project` already owns source revisions and the latest valid derived results, so it should also coordinate the
-versioned registry of those results. Compiler, render, and audio crates return useful artifacts and origin facts. The
-project layer attaches source and target versions and rejects conflicting registry records.
-
-The public boundary stays small:
-
-- the UI asks for selections, source locations, and diagnostics; it does not read origin-path storage structs;
-- render and audio receive only the input representation they need;
-- no derived result becomes a second editable syntax tree; and
-- cache invalidation uses exact input and operation identity, not widget state.
-
-## 5. Future music-theory packages
-
-If the proposed nominal type and module design passes review, its parser and checker belong in `musa-compiler` beside
-the existing total core. Nominal ids, constructor tables, package-version selection, and sealed implementations remain
-private.
-
-Static structures disappear before ordinary evaluation. Their exported theory values are finite runtime values.
-Translation between two theory packages is an explicit source function or compiler pass, not a registry of Rust trait
-objects.
+`musa-project` owns source revisions and last-valid derived results. Compiler, notation, and audio stages return useful
+artifacts and origin facts; the project attaches revisions and operation versions. The UI consumes facts rather than
+compiler internals, no derived artifact becomes a second editable syntax tree, and cache hits compare exact arguments
+after hashes select candidates.
