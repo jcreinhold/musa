@@ -12,15 +12,15 @@ phase: 3
 
 Two dependency edges ran backwards for a long time — the values crate on the parser, the audio crate on the compiler —
 and nothing caught either. `AGENTS.md` describes the ladder in a sentence of prose, and prose is not a check: it was
-itself slightly wrong about which crates sit where, and a reader comparing it to `Cargo.toml` had no tool to do so. 153a
-and 153b fixed the two edges. This prompt makes the third one impossible.
+itself slightly wrong about which crates sit where, and a reader comparing it to `Cargo.toml` had no tool to do so. 174a
+and 174b fixed the two edges. This prompt makes the third one impossible.
 
 Write the layering down as a rule with a table of assignments, and add a check that reads every workspace member's
 manifest and fails on a violation. A rule the build enforces is worth more than a paragraph in a file nobody diffs.
 
 ## Read
 
-- 153a and 153b, whose Design sections state the rule in prose. This prompt turns those two sentences into the
+- 174a and 174b, whose Design sections state the rule in prose. This prompt turns those two sentences into the
   machine-checked form.
 - The dependency edges as they will then stand:
 
@@ -41,20 +41,24 @@ manifest and fails on a violation. A rule the build enforces is worth more than 
 
 ## Design
 
-**Five layers, and each crate names exactly one.**
+**Six roles, and each crate names exactly one.** These are dependency roles, named for what a crate is rather than a
+vague vertical position. A role may compose another crate in the same role — `musa-dsp` names score values in its audio
+values — while Cargo itself still forbids dependency cycles.
 
 | Layer | Depends on | Members |
 | --- | --- | --- |
 | theory | nothing in the workspace | `musa-syntax`, `musa-calculus`, `musa-events` |
-| vocabulary | theories | `musa-score`, `musa-dsp` |
+| vocabulary | theories and vocabularies | `musa-score`, `musa-dsp` |
 | pipeline | theories, vocabularies | `musa-compiler` |
-| consumer | vocabularies (never the pipeline) | `musa-notation`, `musa-playback` |
+| consumer | theories and vocabularies (never the pipeline) | `musa-notation`, `musa-playback` |
 | session | anything below | `musa-project` |
-| shell | the session, and theories for half-typed text | `musa`, `musa-lsp`, `musa-wasm`, `musa-desktop` |
+| shell | anything below | `musa`, `musa-lsp`, `musa-wasm`, `musa-desktop` |
 
-The three sentences that generate it: **a theory crate depends on no other musa crate; a vocabulary crate names results
-and depends only on theories; the pipeline depends on every vocabulary it produces, and nothing below the pipeline names
-it.**
+The rules that generate it: **a theory crate depends on no other Musa crate; a vocabulary may compose only theories and
+other vocabularies; the pipeline and consumers are sibling roles, and a consumer never names the pipeline; sessions and
+shells may orchestrate anything below them, but nothing depends on a shell.** This admits the deliberate direct shell
+edges: the LSP reads syntax and the DSP catalogue while source is half-typed, and the wasm shell calls the compiler and
+notation facade without manufacturing a project session.
 
 **Dev-dependencies are exempt, and the check says so out loud.** `musa-notation` and `musa-playback` both take
 `musa-compiler` as a dev-dependency to build a fixture from real source. That is a test reaching upward, which is
@@ -72,7 +76,7 @@ check goes quiet exactly when a crate is added, which is when it is needed.
 
 ## Target
 
-- `scripts/check-layers.py`: the table, the three rules, per-violation messages, and the dev-dependency exemption stated
+- `scripts/check-layers.py`: the table, the role rules, per-violation messages, and the dev-dependency exemption stated
   in its module docstring.
 - `Makefile`: wired into a target that CI already runs, beside `docs-check`.
 - A negative control: a fixture manifest set the script rejects, so a green run proves the check can fail.
@@ -93,7 +97,7 @@ the pipeline. Revert it; the check passes.
 
 ## Stop
 
-- **No crate moves, no code moves, no renames.** 153a and 153b did the moving; this prompt only writes down and enforces
+- **No crate moves, no code moves, no renames.** 174a and 174b did the moving; this prompt only writes down and enforces
   what they achieved.
 - **Do not touch `docs/rules/`.** The crate graph is directive, not governing. If the law seems to need a governing
   statement, that is a finding to report, not an amendment to make here.
@@ -102,7 +106,7 @@ the pipeline. Revert it; the check passes.
   (`elaborate/mod.rs`, `lower/documented.rs`, `resolve/resolver.rs`), and only `reference` is reached from `lib.rs`
   alone. A split needs its own investigation and its own prompt; guessing at one here would be the third backwards edge.
 - No dependency version changes, no new external crates, no workspace-manifest restructuring.
-- No enforcement of *module* layering. `musa_calculus::{kernel, elaboration}` is checked by its own law suite from 142h,
+- No enforcement of *module* layering. `musa_calculus::{kernel, elaboration}` is checked by its own law suite from 148,
   and this script reads manifests only.
 
 Commit as `State the layering law and check it`.
