@@ -1,6 +1,6 @@
 # The module tree
 
-**Status: candidate.** Packages, the module tree, and what the declaration templates became.
+**Status: governing.** Packages, the module tree, and what the declaration templates became.
 
 A **package** is a directory containing `musa.toml` and a source root. Its root file `lib.musa` declares its children
 with `mod`, a directory module declares its own in `mod.musa`, and module paths nest to any depth. Resolution follows

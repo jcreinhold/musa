@@ -1,6 +1,6 @@
 # Performance and sound
 
-**Status: candidate.** Performance gestures and the sound side, as event tracks at a gesture payload.
+**Status: governing.** Performance gestures and the sound side, as event tracks at a gesture payload.
 
 > **`docs/rules/constitution.md` §8 governs where this document differs.** The gesture track named below is the one
 > event-track structure at a gesture payload — `EventTrack[PerformedTime, Gesture]` — not a structure with its own
@@ -262,7 +262,7 @@ effective choice: hover and the Sound inspector show both declarations, and “m
 
 Existing studio source migrates by this table; format never rewrites a user's expert graph implicitly:
 
-| Existing form | Candidate account | Compatibility |
+| Existing form | Governing account | Compatibility |
 | --- | --- | --- |
 | `patch P { chain }` | `instrument P conforms note_instrument { implementation graph { chain } }` | accepted with a deprecation and exact source fix through the next edition |
 | `assign part -> P;` | expert part-to-instrument binding | remains canonical |

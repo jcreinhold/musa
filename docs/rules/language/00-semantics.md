@@ -1,9 +1,9 @@
 # Semantic staging and ownership
 
-**Status: candidate.** The objects Musa computes and the boundaries between them.
+**Status: governing.** The objects Musa computes and the boundaries between them.
 
-This document fixes the objects Musa computes and the boundaries between them. "Must" is normative for prompts 93–192;
-candidate precedence is defined in `README.md`. Prompt 127a rewrote it against the event-track and machine core.
+This document fixes the objects Musa computes and the boundaries between them. "Must" is normative; governing precedence
+is defined in `README.md`. Prompt 127a rewrote it against the event-track and machine core.
 
 ## 1. Representations
 

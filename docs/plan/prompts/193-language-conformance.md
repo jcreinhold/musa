@@ -1,7 +1,7 @@
 ---
 id: 193
 slug: language-conformance
-status: in-progress
+status: done
 depends_on: [120, 121, 122, 124, 125, 174, 192]
 phase: 4
 ---
@@ -64,9 +64,9 @@ Five rows exist because these boundaries are cheap to hold and expensive to reco
 - **Nested patterns still compile to the one case tree.** Prompt 155 installed the case-tree compiler and prompt 162c
   consequently replaced the earlier depth-one restriction: a constructor, list, or record sub-position holds another
   pattern recursively. Audit the differential law against the equivalent explicit nested match, unchanged coverage and
-  impossible-branch refinement, and arbitrary-depth parser/tree-sitter agreement. There is
-  still no guard, fall-through equation, or pattern on the left of a definition, and no evaluator beside the compiled
-  case tree. Prompt 127dcfab's expression `if` remains an elaboration to the boolean case tree rather than a guarded arm.
+  impossible-branch refinement, and arbitrary-depth parser/tree-sitter agreement. There is still no guard, fall-through
+  equation, or pattern on the left of a definition, and no evaluator beside the compiled case tree. Prompt 127dcfab's
+  expression `if` remains an elaboration to the boolean case tree rather than a guarded arm.
 - **Structural descent is not general recursion.** Prompt 127dcfaf's sealed steps let an adapter enter a strict subtree;
   nothing in the language lets it enter itself. Audit that no `fix`, recursive binding, self-application, or unsealed
   child value exists in source or adapter code, that sealing still enforces association, and that the reducibility proof

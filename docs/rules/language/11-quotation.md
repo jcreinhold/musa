@@ -1,6 +1,6 @@
 # Typed quotation, splicing, and syntax patterns
 
-**Status: candidate.** How an adapter writes syntax, and how it takes syntax apart.
+**Status: governing.** How an adapter writes syntax, and how it takes syntax apart.
 
 This document fixes how an adapter *writes* syntax and how it *takes syntax apart*. It is the piece that decides whether
 Musa is homoiconic in practice or only in principle: the phase already hands an adapter a syntax value and already lets

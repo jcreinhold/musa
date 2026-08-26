@@ -18,18 +18,16 @@ Read top to bottom. A document is bound by everything above it and binds everyth
    the amendment procedure in [`rules/README.md`](rules/README.md).
 2. [`rules/across-stages/`](rules/across-stages/README.md) — the rules no single stage owns: what data exists, when it
    is valid, how one stage produces the next, what equality means.
-3. [`rules/events/`](rules/events/README.md), [`rules/desktop/`](rules/desktop/README.md), and
-   [`rules/style-guide.md`](rules/style-guide.md) — the per-stage specifications. Each owns its stage and defers to
-   `across-stages/` at the boundaries.
-4. [`rules/language/`](rules/language/README.md) — the source language. Still a **candidate**: where it and anything
-   above it differ, the thing above wins, and the difference is a defect in the candidate to repair. Prompt 193's
-   conformance audit is what graduates it.
-5. [`plan/roadmap.md`](plan/roadmap.md) — the broad crate and product plan. Everything above refines it; where it and a
+3. [`rules/events/`](rules/events/README.md), [`rules/desktop/`](rules/desktop/README.md),
+   [`rules/language/`](rules/language/README.md), and [`rules/style-guide.md`](rules/style-guide.md) — the per-stage
+   specifications. Each owns its stage and defers to `across-stages/` at the boundaries. The language specification has
+   governed since prompt 193's complete conformance audit.
+4. [`plan/roadmap.md`](plan/roadmap.md) — the broad crate and product plan. Everything above refines it; where it and a
    specification above disagree, the specification wins.
-6. [`plan/code-map/`](plan/code-map/README.md) and [`plan/prompts/`](plan/prompts/README.md) — what the code currently
+5. [`plan/code-map/`](plan/code-map/README.md) and [`plan/prompts/`](plan/prompts/README.md) — what the code currently
    does, and the work queued to change it. If either disagrees with anything above, either the code is wrong or the
    document needs a deliberate repair; neither may drift silently.
-7. [`book/`](book/src/introduction.md) and [`notes/`](notes/README.md) — teaching and research. Neither governs. Where
+6. [`book/`](book/src/introduction.md) and [`notes/`](notes/README.md) — teaching and research. Neither governs. Where
    the book and a specification disagree, the book has a bug.
 
 ## How to tell what is current

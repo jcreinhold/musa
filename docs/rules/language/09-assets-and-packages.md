@@ -1,6 +1,6 @@
 # Assets, packages, and recorded media
 
-**Status: candidate.** External sound, reproducible assets, and pinned packages, without weakening source authority.
+**Status: governing.** External sound, reproducible assets, and pinned packages, without weakening source authority.
 
 External sound does not weaken source authority. A reproducible Musa project is the source plus an immutable, locked
 build closure. Filesystem paths are authoring addresses; content identities are compilation facts.
@@ -59,8 +59,8 @@ only by an explicit non-reproducible scratch command and cannot produce a releas
 
 ## 2. Exact-pinned packages without a solver
 
-The roadmap's relative-import-only rule remains governing until prompt 183. This candidate extends it in prompts 182–183
-with a locked asset/package closure and a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
+The roadmap's relative-import-only rule governed until prompt 183. The language specification extends it with a locked
+asset/package closure and a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
 
 ```toml
 [packages.orchestra]

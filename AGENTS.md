@@ -26,10 +26,10 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
    and selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/rules/desktop/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since
    prompt 26.
-5. **`docs/rules/language/`** — the elaboration-language specification: the musical domains are a *proved* conservative
-   extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
-   `import` and `use` are two words because they were always two statements. Candidate until prompt 193 graduates it, so
-   everything above it in `docs/README.md`'s precedence ladder wins where they differ.
+5. **`docs/rules/language/`** — the governing elaboration-language specification: the musical domains are a *proved*
+   conservative extension rather than an accumulating fragment, the standard library is a package with a real module
+   tree, and `import` and `use` are two words because they were always two statements. Governing since prompt 193; it
+   defers to higher and adjacent rules at the boundaries named by `docs/README.md`'s precedence ladder.
 
 Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 301 prompts through rank 200, with its README
 defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
@@ -71,7 +71,7 @@ let them drift silently.
 | `docs/rules/across-stages/` | cross-stage presentations, derivations, process semantics, identity |
 | `docs/rules/events/` | the event-track specification |
 | `docs/rules/desktop/` | the desktop interface specification |
-| `docs/rules/language/` | the elaboration-language specification (candidate until prompt 193) |
+| `docs/rules/language/` | the governing elaboration-language specification |
 | `docs/rules/style-guide.md` | `.musa` naming and spelling; the lint pass cites it by section |
 | `docs/plan/` | **directive.** roadmap, numbered prompts, and the spec-to-code map |
 | `docs/book/` | **teaching.** tutorials, guide, how-to, explanation, reference |

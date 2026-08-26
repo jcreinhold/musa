@@ -1,11 +1,11 @@
-# Surface language candidate
+# Surface language
 
-**Status: candidate.** The punctuation and spellings of the source language.
+**Status: governing.** The punctuation and spellings of the source language.
 
-This file settles the punctuation and spellings introduced by the candidate. Existing syntax remains unless a rule below
-explicitly desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`; commas
-separate arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain
-self-delimiting and do not take `;`. No added production is newline-sensitive.
+This file settles the punctuation and spellings of the language. Existing syntax remains unless a rule below explicitly
+desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`; commas separate
+arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain self-delimiting
+and do not take `;`. No added production is newline-sensitive.
 
 ## 1. Added grammar
 

@@ -23,12 +23,12 @@ states, and performance budgets — `docs/rules/desktop/` is the authority. Road
 Prompts 20–26 implement `docs/rules/desktop/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for
 the event track.
 
-**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 wrote the first candidate.
-Prompts 127a–127e and 171–174 replace its contextual `Music` core with the reviewed event-track and machine calculus in
-one clean break. Prompts 175–192 then implement, measure, and audit performance, sound, assets, and packages on that
-base. Prompt 193 makes the resulting language governing only if the complete conformance matrix is green. Until then,
-everything above `docs/rules/language/` in [the precedence ladder](../../README.md#which-document-wins) remains
-authoritative where the candidate differs.
+**The elaboration-language specification has governed since prompt 193.** Prompt 92 wrote the first candidate. Prompts
+127a–127e and 171–174 replace its contextual `Music` core with the reviewed event-track and machine calculus in one
+clean break. Prompts 175–192 then implement, measure, and audit performance, sound, assets, and packages on that base.
+Prompt 193 made the resulting language governing after the complete conformance matrix passed. The constitution,
+across-stage rules, and adjacent stage specifications remain authoritative at their boundaries under the
+[precedence ladder](../../README.md#which-document-wins).
 
 ## Prompt anatomy
 

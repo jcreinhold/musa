@@ -55,9 +55,8 @@ It is not:
 
 > **Governing cross-stage refinement:** `docs/rules/` states the identity-level commitments, `docs/rules/across-stages/`
 > fixes the formal presentation/pass/process boundaries, and `docs/plan/code-map/` maps them to this workspace. Where
-> they are more precise than this older roadmap, they govern. `docs/rules/language/` remains candidate until its
-> graduation prompt. The old “compositional model” boxes name ownership layers, not one universal musical object or
-> mutable representation.
+> they are more precise than this older roadmap, they govern. `docs/rules/language/` has governed since prompt 193. The
+> old “compositional model” boxes name ownership layers, not one universal musical object or mutable representation.
 
 Those should remain external tools or later extensions.
 
@@ -506,11 +505,11 @@ transpose minor_third { use sigh; }
 
 still exists as a transformation rather than as five unrelated replacement notes.
 
-The prompt-92 candidate makes this a private compiler subsystem rather than a public representation: total value
+The language specification makes this a private compiler subsystem rather than a public representation: total value
 evaluation produces ordinary values, and building and closing a fragment produces a closed core term. `Type`, `Value`,
-closures, and modules stay private to `musa-compiler`; the candidate adds no public `musa-elaboration` crate. Prompt
+closures, and modules stay private to `musa-compiler`; the specification adds no public `musa-elaboration` crate. Prompt
 127a deleted the contextual `Music` type this paragraph used to name — reusable material is an ordinary value of type
-`EventTrack[WrittenTime, ScoreFact]` (`docs/rules/language/00-semantics.md` §3). This paragraph is candidate guidance
+`EventTrack[WrittenTime, ScoreFact]` (`docs/rules/language/00-semantics.md` §3). This paragraph is governing guidance
 until prompt 191.
 
 ## 6.3 Expanded score representation
@@ -600,7 +599,7 @@ performance profile.
 Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent to a particular MIDI velocity or decibel
 value.
 
-> **Candidate refinement:** the editable/interchange representation before physical scheduling is an exact
+> **Governing language refinement:** the editable/interchange representation before physical scheduling is an exact
 > `EventTrack[PerformedTime, Gesture]` carrying a checked conformance witness to an instrument signature, not the
 > frame/`f32` event enum sketched above. A named profile interprets marks into semantic controls such as expression,
 > emphasis, separation, brightness, sustain, and phrase grouping. Tempo, tuning, frame rounding, and instrument-private
@@ -632,11 +631,11 @@ PatchOutput ──────────► BusId
 
 The studio does not inspect notes, measures, or slurs directly. It receives performance events.
 
-> **Candidate refinement:** the narrow bridge is typed instrument behavior, not `DynamicLane → ParameterId`. A stable
-> semantic `ControlKey` resolves privately to graph/sample-engine targets, every lane retains `PartId`, and a profile
-> never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps; part
-> signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
-> mastering suite. This replaces the bridge sketch only if prompt 191 graduates the candidate.
+> **Governing language refinement:** the narrow bridge is typed instrument behavior, not `DynamicLane → ParameterId`. A
+> stable semantic `ControlKey` resolves privately to graph/sample-engine targets, every lane retains `PartId`, and a
+> profile never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps;
+> part signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
+> mastering suite. Prompt 191 measured this bridge and prompt 193 graduated the specification.
 
 ---
 
@@ -1244,11 +1243,11 @@ pub fn compile(
 > roadmap and `docs/rules/events/` disagree on semantic architecture, the event track wins; everything else in this
 > document stands.
 
-> **Language candidate (prompt 92):** prompts 93–124 refine the private elaboration/HIR stages to a total value
-> calculus, structural declaration templates, and typed core quotation (prompt 127a deleted the contextual `music` type
-> this line used to name). They still terminate in one closed `Term[ScoreFact]` before event track evaluation. Prompts
-> 175–190 refine the downstream path to exact gestures and typed instrument preparation. No intermediate type named by
-> that candidate is thereby a public crate API.
+> **Language specification (first drafted at prompt 92, governing since prompt 193):** prompts 93–124 refine the private
+> elaboration/HIR stages to a total value calculus, structural declaration templates, and typed core quotation (prompt
+> 127a deleted the contextual `music` type this line used to name). They still terminate in one closed `Term[ScoreFact]`
+> before event track evaluation. Prompts 175–190 refine the downstream path to exact gestures and typed instrument
+> preparation. No intermediate type named by that specification is thereby a public crate API.
 
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
 
@@ -2569,11 +2568,11 @@ Relative imports are sufficient:
 use "../library/patches.musa";
 ```
 
-> **Candidate extension (prompts 182–183):** retain relative imports for local work, and add exact-pinned Git packages
-> through `musa.toml`, `musa.lock`, an explicit `musa fetch`, ordinary package module paths, and `pkg:` asset addresses.
-> Ordinary builds remain offline. Full commit pins are graph collection, not version-range solving; registries, ranges,
-> tags, branches, and implicit fetching remain rejected. Until prompt 183 completes, the relative-import-only rule above
-> remains governing.
+> **Governing language extension (prompts 182–183):** retain relative imports for local work, and add exact-pinned Git
+> packages through `musa.toml`, `musa.lock`, an explicit `musa fetch`, ordinary package module paths, and `pkg:` asset
+> addresses. Ordinary builds remain offline. Full commit pins are graph collection, not version-range solving;
+> registries, ranges, tags, branches, and implicit fetching remain rejected. Until prompt 183 completes, the
+> relative-import-only rule above remains governing.
 
 Imports should be:
 

@@ -1,9 +1,9 @@
 # Verification contract
 
-**Status: candidate.** What a value *is*, what a composer *asserts*, and which of the two Musa checks.
+**Status: governing.** What a value *is*, what a composer *asserts*, and which of the two Musa checks.
 
 Musa distinguishes what a value *is*, what a composer explicitly *requires*, and what an analyst *interprets*.
-Verification preserves those distinctions and makes the candidate falsifiable.
+Verification preserves those distinctions and makes the specification falsifiable.
 
 ## 1. Constructor invariants
 
@@ -196,7 +196,7 @@ diagnostic codes and salient labels, not whole prose strings.
 
 ## 7. Graduation evidence
 
-Prompt 191 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
+Prompt 193 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
 compatibility; public API diff; event-track constructor diff (which must be empty); reproducible asset lock audit;
-live/offline audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change
-from candidate to governing.
+live/offline audio comparison; and a contradiction scan of all governing documents. The green audit is recorded in
+`../../notes/research/language-design-closure/87-whole-language-conformance.md`.

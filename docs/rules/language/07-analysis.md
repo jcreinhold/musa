@@ -1,6 +1,6 @@
 # 07 — Analysis
 
-Status: **candidate**, with `docs/rules/language/05-verification.md` §3 governing over it.
+Status: **governing**, with `docs/rules/language/05-verification.md` §3 governing over it.
 
 `05-verification.md` divides theory work into three strengths: constructor invariants, explicit assertions, and
 interpretive analyses. This document is the third one, elaborated. It fixes what an analysis may say, what a caller

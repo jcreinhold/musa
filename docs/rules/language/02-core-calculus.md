@@ -1,6 +1,6 @@
 # The one total source language
 
-**Status: candidate.** The one total source language every surface construct elaborates into. This directory's hub —
+**Status: governing.** The one total source language every surface construct elaborates into. This directory's hub —
 most other pages here refine it.
 
 The source language is a pure, strict, **total** calculus with **dependent types**: one function type whose result may
