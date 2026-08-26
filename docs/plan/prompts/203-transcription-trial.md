@@ -49,13 +49,20 @@ permit. No model download, Python environment, or noncommercial dataset becomes 
 
 Build a repository-owned corpus from short Musa fixtures and deterministic performed traces varying tempo drift, swing,
 rubato, articulation, chord spread, pedal, tuplets, syncopation, pickup, mistakes, repeated notes, crossing voices, and
-silence. Store a small exact event format and intended score and license it with the repository. Evaluate real human
-performance through an adapter for an exact-pinned user-provided ASAP v1.1 checkout
+silence. Store a small exact event format and intended score and license it with the repository. Unit, property, and
+benchmark tests inject this event format immediately below the device boundary; they never require MIDI hardware, an OS
+virtual port, callback timing, or a particular computer keyboard layout. A small private performance driver may feed the
+same seam from scripted events or QWERTY key actions for functional testing, but QWERTY input is an audition/test
+controller, not a second notation-entry mode and not a production surface in this prompt.
+
+Evaluate real human performance through both a consented local MIDI-keyboard trial and an adapter for an exact-pinned
+user-provided ASAP v1.1 checkout
 (`fad8d1e8078d0ae47ad2f280b5d022bd2de24784`). Record only aggregate results and fixture identities; do not copy its
 [CC BY-NC-SA data](https://github.com/fosfrancesco/asap-dataset/blob/v1.1/LICENSE.md) into Musa, retain performer
-identity, make the Check network-dependent, or call generated timing a human recording. Prompt 202's machine record
-states that no physical MIDI input was available here; a later repository-owned human take may supplement the corpus
-only when it can be recorded with consent and licensed under Musa's terms.
+identity, make the Check hardware/network-dependent, or call generated timing a human recording. The local trial keeps
+no identity or raw take in the repository unless the performer explicitly consents to that exact artifact under Musa's
+license; aggregate measurements and anonymous error classes are sufficient. Prompt 202's machine record remains an
+accurate record of that earlier run, when no physical input was connected, rather than a claim about later availability.
 
 Evaluate notation, not only note matches: onset and duration accuracy, bar/beat phase, voice assignment, chord grouping,
 tie/rest/tuplet structure, edit distance to intended Musa source, number and locality of review corrections, ranked
@@ -73,7 +80,8 @@ rejected alternatives. No later prompt may simply say “quantize the MIDI.”
 ## Target
 
 - Private trial implementations and benchmark harness isolated from production callers, with corpus schema/generator,
-  repository-owned fixtures, optional external-dataset adapter, raw results, and machine/toolchain record.
+  repository-owned fixtures, semantic-seam scripted/QWERTY driver, optional external-dataset adapter, raw results, and
+  machine/toolchain/device record.
 - A research report comparing models and error classes, including example score/source diffs and review-operation
   counts.
 - Fixed production decisions: candidate representation, cost terms/order, top-K/search bounds, known/free-clock split,
