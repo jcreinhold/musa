@@ -97,4 +97,4 @@ Commit as `Add CDN distribution and examples to @musa/web`.
   real user asks.
 - No source-maps/debug builds beyond vite defaults; no minification forks.
 - No service-worker caching, no prefetch machinery: static assets on a CDN are already the answer.
-- No playback button on the examples (prompt 211, deferred).
+- No playback button on the examples (prompt 220, deferred).

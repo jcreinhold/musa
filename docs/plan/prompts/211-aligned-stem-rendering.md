@@ -1,8 +1,8 @@
 ---
-id: 202
+id: 211
 slug: aligned-stem-rendering
 status: pending
-depends_on: [201]
+depends_on: [210]
 phase: 4
 ---
 
@@ -16,7 +16,7 @@ construct.
 
 ## Read
 
-- Prompt 201's governing DAW contract; prompts 173, 179–180, 188, and 191;
+- Prompt 210's governing DAW contract; prompts 173, 179–180, 188, and 191;
   `docs/rules/language/08-performance-and-sound.md` §§5–8; `docs/rules/desktop/09-sound-and-mix.md`; the current
   source-to-runtime studio projection.
 - Current `musa-dsp` graph preparation/offline renderer, `musa-project` WAV export, part/bus identity, tail handling,
@@ -34,7 +34,7 @@ layout, using the same seed, preparation arguments, processor order, rounding, a
 
 Name files from display names only for readability. Resolve normalization, forbidden characters, case folding, Unicode
 normalization, and collisions with a deterministic suffix derived from the stable semantic identity; the manifest in
-prompt 203 remains the authoritative mapping.
+prompt 212 remains the authoritative mapping.
 
 Do not promise that summing stems recreates the master. Sends duplicate signal, returns can share nonlinear processing,
 and a nonlinear master chain cannot be reconstructed from pre-master taps. Instead record every tap point and routing

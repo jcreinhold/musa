@@ -1,8 +1,8 @@
 ---
-id: 210
+id: 219
 slug: daw-integration-closure
 status: pending
-depends_on: [203, 205, 208, 209]
+depends_on: [212, 214, 217, 218]
 phase: 4
 ---
 
@@ -16,8 +16,8 @@ open files, live MIDI, synchronized transport, and Audio Units without claiming 
 
 ## Read
 
-- Prompts 201–209 and every completion report/repair they produced; prompts 43, 67, 173–174, 191–193.
-- Current Apple primary documentation cited by prompt 201 plus the SDK/Xcode/host versions recorded by prompt 206.
+- Prompts 210–218 and every completion report/repair they produced; prompts 43, 67, 173–174, 191–193.
+- Current Apple primary documentation cited by prompt 210 plus the SDK/Xcode/host versions recorded by prompt 215.
 - All bundle manifests/losses, CoreMIDI schedules/sync state, AU state/parameter/bus mappings, project cache identities,
   RT instrumentation, and the book's export/playback/sound paths.
 
@@ -50,9 +50,9 @@ how to recover the exact Musa source/lock identity, where DAW automation lives, 
 
 ## Target
 
-- Complete conformance/performance/compatibility reports and generated fixture corpus, with every prompt-201 law traced
+- Complete conformance/performance/compatibility reports and generated fixture corpus, with every prompt-210 law traced
   to an automated or explicitly manual check.
-- Focused correctness/performance repairs within prompts 202–209's existing boundaries; repair a governing conflict or
+- Focused correctness/performance repairs within prompts 211–218's existing boundaries; repair a governing conflict or
   public-boundary change before implementing it.
 - Diátaxis-aligned book tutorial, Logic/GarageBand how-tos, conceptual DAW-boundary explanation, reference pages for
   CLI/bundle schema/losses/MIDI sync/AU state and parameters, and troubleshooting.

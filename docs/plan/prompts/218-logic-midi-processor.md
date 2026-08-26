@@ -1,8 +1,8 @@
 ---
-id: 209
+id: 218
 slug: logic-midi-processor
 status: pending
-depends_on: [204, 206, 208]
+depends_on: [213, 215, 217]
 phase: 4
 ---
 
@@ -10,14 +10,14 @@ phase: 4
 
 ## Task
 
-Implement the Audio Unit MIDI Processor admitted by prompt 206 so Logic Pro can schedule a checked Musa piece on its own
-sample timeline and route the result to prompt 207's Music Device or another instrument. Keep GarageBand explicitly out
+Implement the Audio Unit MIDI Processor admitted by prompt 215 so Logic Pro can schedule a checked Musa piece on its own
+sample timeline and route the result to prompt 216's Music Device or another instrument. Keep GarageBand explicitly out
 of this path unless the trial proved a supported host surface.
 
 ## Read
 
-- Prompt 206's measured MIDI Processor contract and repaired version of this prompt; prompts 67, 72–75, 177–180,
-  203–205, 207–208; the shared MIDI packet schedule introduced by prompt 204.
+- Prompt 215's measured MIDI Processor contract and repaired version of this prompt; prompts 67, 72–75, 177–180,
+  212–214, 216–217; the shared MIDI packet schedule introduced by prompt 213.
 - Apple's current AU MIDI-output/render-event, musical-context, transport-state, offline-rendering, state-restoration,
   and Logic MIDI FX documentation. Treat absence from GarageBand's documented extension surface as unsupported, not as
   an invitation to use a private API.
@@ -25,7 +25,7 @@ of this path unless the trial proved a supported host surface.
 ## Design
 
 Compile source, resolve packages/assets needed for performance semantics, realize the selected seed/profile, and build
-prompt 204's finite immutable MIDI event schedule on a control worker. The AU render path receives host sample time,
+prompt 213's finite immutable MIDI event schedule on a control worker. The AU render path receives host sample time,
 musical context, transport state, cycle bounds, and maximum frame count, then performs a bounded random-access range
 query and emits only events in that render interval at exact sample offsets. It never advances a mutable composition
 cursor that must be replayed from zero after seek.
@@ -39,7 +39,7 @@ The host timeline is the performance edge. Importing the same piece as performan
 once would duplicate events, so state and documentation make the modes mutually exclusive. Host tempo can either drive
 an explicitly selected host-relative projection or be ignored in favor of the piece's exact physical schedule; the
 choice is part of saved state and never implicit. Polytempo that cannot fit the chosen host-relative mode is refused or
-reported exactly as prompt 201 requires.
+reported exactly as prompt 210 requires.
 
 The processor uses the same portable source/lock identity, stable part/channel mapping, loss records, and document-state
 rules as the Music Device. It produces MIDI only; it does not instantiate an instrument, render audio, mutate source, or
@@ -47,13 +47,13 @@ reach into Logic's project document.
 
 ## Target
 
-- Production `aumi` component inside `apps/musa-audio-unit/`, sharing the audited control-side closure and prompt 204
+- Production `aumi` component inside `apps/musa-audio-unit/`, sharing the audited control-side closure and prompt 213
   schedule without sharing mutable RT state with the Music Device.
 - Indexed random-access event selection and active-state recovery with differential parity against parsed performance
   MIDI for linear, seeked, looped, and offline host timelines.
 - Automated host harness/`auval` checks for component `aumi:msmp:MUSA`, RT instrumentation, corrupt/missing state,
   extension restart, and absent/malformed host context.
-- Logic setup/use documentation and a clear GarageBand unsupported statement unless prompt 206 recorded contrary
+- Logic setup/use documentation and a clear GarageBand unsupported statement unless prompt 215 recorded contrary
   primary/documented evidence.
 
 ## Check

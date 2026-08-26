@@ -1,8 +1,8 @@
 ---
-id: 206
+id: 215
 slug: audio-unit-architecture-trial
 status: pending
-depends_on: [201, 205]
+depends_on: [210, 214]
 phase: 4
 ---
 
@@ -10,19 +10,19 @@ phase: 4
 
 ## Task
 
-Build the smallest macOS AUv3 trial that can falsify the proposed boundary, then fix prompts 207–209 to the measured
+Build the smallest macOS AUv3 trial that can falsify the proposed boundary, then fix prompts 216–218 to the measured
 answer. Prove component discovery, out-of-process rendering, MIDI/event timing, state restoration, source/asset access,
 parameter identity, output buses, and real-time behavior before coupling the production runtime to Xcode.
 
 ## Read
 
-- Prompt 201's contract; prompts 173, 178–180, 182–184, 188, and 191; current prepared instrument/runtime and project
+- Prompt 210's contract; prompts 173, 178–180, 182–184, 188, and 191; current prepared instrument/runtime and project
   source/asset closure APIs.
 - Apple's current [`AUAudioUnit`](https://developer.apple.com/documentation/audiotoolbox/auaudiounit),
   [`renderBlock`](https://developer.apple.com/documentation/audiotoolbox/auaudiounit/renderblock),
   [`fullStateForDocument`](https://developer.apple.com/documentation/audiotoolbox/auaudiounit/fullstatefordocument),
   parameter-tree, render-event, bus, sandbox/App Group, extension packaging, and validation documentation. Read the
-  current Logic and GarageBand Audio Unit guides cited by prompt 201.
+  current Logic and GarageBand Audio Unit guides cited by prompt 210.
 - The installed Xcode templates/SDK headers and `auval`; do not infer constants, property-list keys, component
   categories, signing behavior, or callback guarantees from an old article.
 
@@ -53,7 +53,7 @@ portable state. Test the smallest viable security-scoped/App Group arrangement.
 
 Measure every callback for allocation, lock, file/network access, logging, Objective-C/Swift runtime work that may
 block, and destruction. Use Thread Sanitizer and Audio Workgroup/real-time diagnostics where available. Record
-unsupported or host-dependent behavior plainly. Then amend prompts 207–209 before completing this prompt so their
+unsupported or host-dependent behavior plainly. Then amend prompts 216–218 before completing this prompt so their
 Targets and Checks match the evidence; changing only pending prompts is ordinary stack repair.
 
 ## Target
@@ -62,7 +62,7 @@ Targets and Checks match the evidence; changing only pending prompts is ordinary
   host harness, with no production Musa runtime linkage.
 - A checked-in research report with SDK/macOS/Xcode versions, component descriptions, commands, results, timing traces,
   state/sandbox findings, and the accepted/rejected production architecture.
-- Updated prompts 207–209 and code-map planned entries whose claims are each backed by the trial or Apple primary docs.
+- Updated prompts 216–218 and code-map planned entries whose claims are each backed by the trial or Apple primary docs.
 - A reproducible validation script using `xcodebuild`, the host harness, and `auval`; manual Logic/GarageBand
   observations are recorded when those apps are installed but are not silently substituted for automated contract tests.
 

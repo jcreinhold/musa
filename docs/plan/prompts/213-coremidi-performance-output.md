@@ -1,8 +1,8 @@
 ---
-id: 204
+id: 213
 slug: coremidi-performance-output
 status: pending
-depends_on: [201, 203]
+depends_on: [210, 212]
 phase: 4
 ---
 
@@ -16,7 +16,7 @@ second performance interpretation in `musa-playback`.
 
 ## Read
 
-- Prompts 28, 33, 67, 72–75, 177–180, 201, and 203; roadmap §12.5; the current `GesturePlan`, MIDI writer, MIDI-input
+- Prompts 28, 33, 67, 72–75, 177–180, 210, and 212; roadmap §12.5; the current `GesturePlan`, MIDI writer, MIDI-input
   callback, transport, and project/CLI facades.
 - Apple's CoreMIDI documentation and Logic's current virtual MIDI device/input documentation. Use Apple terminology:
   Musa publishes virtual **sources** from which a DAW receives; a physical/DAW endpoint selected for sending is a
@@ -42,7 +42,7 @@ sequence required by active state.
 
 Expose project/CLI controls for listing endpoints, starting score/performance output, selecting virtual-source versus
 destination mode, and stopping. Keep MIDI input and output types private behind the playback facade. This prompt uses
-Musa's own transport only; external clock authority belongs to prompt 205.
+Musa's own transport only; external clock authority belongs to prompt 214.
 
 ## Target
 
@@ -67,5 +67,5 @@ Commit as `Stream Musa performance through CoreMIDI`.
 
 - No MIDI clock, MTC, Ableton Link, network MIDI configuration, Audio Unit, MPE, or MIDI 2.0.
 - No MIDI output in the event-track ontology and no public CoreMIDI or `midir` type.
-- No promise of sample-accurate audio/MIDI alignment across processes; prompt 205 measures the edge and Audio Units own
+- No promise of sample-accurate audio/MIDI alignment across processes; prompt 214 measures the edge and Audio Units own
   the in-host sample-time path.

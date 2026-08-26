@@ -1,8 +1,8 @@
 ---
-id: 205
+id: 214
 slug: external-transport-sync
 status: pending
-depends_on: [204]
+depends_on: [213]
 phase: 4
 ---
 
@@ -16,16 +16,16 @@ limit.
 
 ## Read
 
-- Prompt 204; prompts 15, 18, 43, 67, 72–75, 172–173; the exact tempo/time maps, frame policy, transport command queue,
+- Prompt 213; prompts 15, 18, 43, 67, 72–75, 172–173; the exact tempo/time maps, frame policy, transport command queue,
   seek/loop state, and live MIDI callback.
-- Apple's current Logic synchronization guide cited by prompt 201 and CoreMIDI packet/timestamp documentation. Verify
+- Apple's current Logic synchronization guide cited by prompt 210 and CoreMIDI packet/timestamp documentation. Verify
   which of MIDI clock, Song Position Pointer, Machine Control, and MTC Logic sends/receives before implementing a mode.
 
 ## Design
 
 Each session chooses exactly one authority:
 
-- `musa-leads`: Musa owns play/stop/continue/seek and sends the documented clock/position messages with prompt 204's
+- `musa-leads`: Musa owns play/stop/continue/seek and sends the documented clock/position messages with prompt 213's
   performance packets; or
 - `external-leads`: Musa follows one selected external source and translates its start/stop/continue/position/clock
   state into ordinary transport commands.
@@ -43,7 +43,7 @@ distinct.
 
 Loop/seek discontinuities flush scheduled MIDI and active notes before restarting from the selected boundary. Never
 infer source edits, rewrite tempo declarations, or let jitter enter semantic identity. For sample-accurate in-host
-rendering, direct users to prompts 207–209's Audio Unit path.
+rendering, direct users to prompts 216–218's Audio Unit path.
 
 ## Target
 

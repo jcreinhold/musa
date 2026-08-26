@@ -1,8 +1,8 @@
 ---
-id: 201
+id: 210
 slug: daw-interoperability-contract
 status: pending
-depends_on: [193, 200]
+depends_on: [209]
 phase: 4
 ---
 
@@ -70,7 +70,7 @@ music-theory amendment is needed: this prompt changes presentation and host boun
 - A governing DAW interoperability section in the appropriate across-stage and language specifications, with adjacent
   desktop wording updated only where export/status UI is owned.
 - A research note satisfying every item in `docs/rules/README.md`'s amendment procedure.
-- Roadmap, code-map, rules indexes, and book navigation reconciled with the new boundary and the 202–210 execution cone.
+- Roadmap, code-map, rules indexes, and book navigation reconciled with the new boundary and the 211–219 execution cone.
 - A normative compatibility/loss table for Logic Pro and GarageBand, distinguishing documented support from measured
   host behavior and from deliberate Musa exclusions.
 

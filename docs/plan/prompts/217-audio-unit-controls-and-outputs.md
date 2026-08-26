@@ -1,8 +1,8 @@
 ---
-id: 208
+id: 217
 slug: audio-unit-controls-and-outputs
 status: pending
-depends_on: [207]
+depends_on: [216]
 phase: 4
 ---
 
@@ -16,11 +16,11 @@ an instrument instance, and a mixer track.
 
 ## Read
 
-- Prompt 206's trial findings and prompt 207's production boundary; prompts 176b–180 and 189; governing performance
+- Prompt 215's trial findings and prompt 216's production boundary; prompts 176b–180 and 189; governing performance
   controls in `docs/rules/language/08-performance-and-sound.md` and Mix ownership in
   `docs/rules/desktop/09-sound-and-mix.md`.
 - Apple's current `AUParameterTree`, parameter address/ramp/event, bus array, channel layout, full-state, and host
-  notification documentation. Re-run the host behavior probes that prompt 206 found necessary.
+  notification documentation. Re-run the host behavior probes that prompt 215 found necessary.
 
 ## Design
 
@@ -41,7 +41,7 @@ or become canonical. Parameter ramps and point changes must agree with native co
 partition. The UI reads the same generated descriptors and may reveal the declaration in Musa desktop; it owns no
 defaults or mappings.
 
-Project only source-declared output channels and named instrument outputs that prompt 206 proved hosts can negotiate.
+Project only source-declared output channels and named instrument outputs that prompt 215 proved hosts can negotiate.
 Logic may receive multiple output buses; GarageBand gets a documented stereo fallback when it does not expose the same
 routing surface. Bus order and identity are stable, format negotiation is explicit, and no source bus is renamed to a
 DAW "track" in the semantic layer.

@@ -1,8 +1,8 @@
 ---
-id: 203
+id: 212
 slug: daw-export-bundles
 status: pending
-depends_on: [202]
+depends_on: [211]
 phase: 4
 ---
 
@@ -10,14 +10,14 @@ phase: 4
 
 ## Task
 
-Package Musa's existing open exports and prompt 202's aligned audio into one deterministic, inspectable directory for
+Package Musa's existing open exports and prompt 211's aligned audio into one deterministic, inspectable directory for
 Logic Pro or GarageBand. Give CLI and desktop users a single export action while keeping every constituent artifact and
 loss explicit.
 
 ## Read
 
-- Prompts 19, 28, 32, 43, 67, 182–183, 189, 201–202; the project export/cache facade and desktop Export submenu.
-- Apple's current Logic MIDI/MusicXML import and GarageBand audio/MIDI import guides cited by prompt 201. Confirm file
+- Prompts 19, 28, 32, 43, 67, 182–183, 189, 210–211; the project export/cache facade and desktop Export submenu.
+- Apple's current Logic MIDI/MusicXML import and GarageBand audio/MIDI import guides cited by prompt 210. Confirm file
   and track behavior against current primary documentation when executing this prompt.
 - The current Standard MIDI, MusicXML, WAV, provenance, semantic identity, asset lock, and atomic-file-writing code.
 

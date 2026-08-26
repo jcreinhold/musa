@@ -31,7 +31,7 @@ Read [`docs/README.md`](docs/README.md) first: it maps the four directories and 
    tree, and `import` and `use` are two words because they were always two statements. Governing since prompt 193; it
    defers to higher and adjacent rules at the boundaries named by `docs/README.md`'s precedence ladder.
 
-Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 315 prompts through rank 211, with its README
+Under `docs/plan/`: **`prompts/`** is the numbered work plan, currently 324 prompts through rank 220, with its README
 defining prompt anatomy and execution rules — implementation happens in dependency order (see the `prompt-stack` skill).
 Prompts 127a–127e and 171–174, including the inserted 127aa–127ad, 127ca, and 127da–127dd repairs, are the clean-break
 core-calculus cutover; 127e was superseded by prompt 142, and 127a amends the governing boundary before code implements
