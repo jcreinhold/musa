@@ -99,10 +99,13 @@ fn musicxml_writes_a_barline_it_does_not_draw() {
 /// as a test.
 #[test]
 fn no_barline_moves_a_notehead() {
-    let unwrapped = CADENZA.replace("senza {", "// senza {").replace(
-        "                }\n\n                // Measure 6",
-        "                // Measure 6",
-    );
+    let unwrapped = CADENZA
+        .replace("                senza {", "                |")
+        .replace("                    e6/16", "                | e6/16")
+        .replace(
+            "                }\n\n                // Measure 6",
+            "                // Measure 6",
+        );
     let with = render(CADENZA, "cadenza.musa", NotationTarget::Mei);
     let without = render(&unwrapped, "cadenza.musa", NotationTarget::Mei);
     let notes = |mei: &str| {
