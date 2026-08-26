@@ -127,6 +127,50 @@ a separate adapter to the same internal contract. Neither format's global defaul
 binary layout leaks into an instrument signature. Prompts 182 and 184–186 specify supported subsets, licensing metadata,
 streaming/preload budgets, decoding, and conformance fixtures.
 
+### 3.1 `sfz@1` support matrix
+
+`sfz@1` is a deliberately small, version-labelled adapter. “Supported” means exact translation into the ordinary
+`std::sound::sample` declarations and deterministic native execution; it never means that the union of SFZ v1, SFZ v2,
+ARIA, LinuxSampler, and player extensions is one language. A sound-changing name outside this table is an error.
+Harmless labels are warnings only when this table says so.
+
+| Input | Published family | `sfz@1` policy |
+| --- | --- | --- |
+| `<region>`, `<group>` | SFZ v1 | supported, with region over group inheritance |
+| `<global>` | SFZ v2 | supported as the one file-wide inheritance level used by common v1-compatible libraries |
+| every other header | SFZ v2 / extension | error by header name |
+| `sample` | SFZ v1 | supported for a relative, root-contained WAV path; generators and other codecs are errors |
+| `key`, `lokey`, `hikey`, `pitch_keycenter` | SFZ v1 | supported for integer keys 0–127; named-note octave conventions and `pitch_keycenter=sample` are errors |
+| `lovel`, `hivel` | SFZ v1 | supported; inclusive 0–127 values map exactly to normalized gesture expression |
+| `tune`, `transpose` | SFZ v1 | supported as exact cents and semitones; explicit `pitch_keytrack` is accepted only at its default 100 |
+| `volume`, `pan` | SFZ v1 | supported as exact decimal dB and the exact `[-100,100]` pan coordinate; dB becomes linear only at the DSP edge |
+| `offset`, `end`, `loop_start`, `loop_end`, `loop_mode` | SFZ v1 | supported; `no_loop`, `one_shot`, `loop_continuous`, and `loop_sustain` remain distinct |
+| `loop_type` | SFZ v2 | `forward` and `alternate` are supported and labelled v2; other values are errors |
+| `ampeg_attack`, `ampeg_decay`, `ampeg_sustain`, `ampeg_release` | SFZ v1 | supported with exact written times/level and the documented SFZ-v1 linear-attack, convex-decay/release family |
+| `trigger` | SFZ v1 | `attack`, `release`, `release_key`, `first`, and `legato` are supported and remain distinct |
+| `group`, `off_by`, `off_mode` | SFZ v1 | supported for nonnegative 32-bit groups and `fast`/`normal`; zero means no choke, following the common v1 player convention |
+| `seq_length`, `seq_position` | SFZ v1 | supported for positive values with position at most length; counters are per prepared instrument and selection group |
+| `global_label`, `group_label`, `region_label` | extension metadata | warning and retained in the imported support summary; no sound effect |
+| `#include`, `#define`, `$` substitution, script/generator opcodes | extension | error in `sfz@1`; no file is opened or text executed implicitly |
+
+Within one header, the last occurrence of a supported opcode wins. A new `<group>` starts from `<global>` and a new
+`<region>` starts from the current group. Missing values use the published defaults fixed by the adapter version, not a
+host player's changing defaults. In particular: full key/expression range, root key 60, zero tune/transpose/volume/pan
+and offset, whole-sample end, no explicit loop, zero attack/decay, full sustain, 1 ms release, attack trigger, no choke,
+and a one-position sequence. `key=n` writes `lokey=n`, `hikey=n`, and `pitch_keycenter=n` at that point, so later
+individual assignments override the shorthand and an earlier one does not.
+
+All applicable regions layer. Sequence filtering happens before layering; it does not collapse unrelated microphone or
+velocity layers into one winner. Release regions require the note's prepared attack token. `release` follows sustain
+deferral, while `release_key` follows physical note-off and ignores sustain. `first` and `legato` read the typed Musa
+phrase relation rather than ambient MIDI-note state. A newly started region with group `g` stops existing regions whose
+`off_by` is `g`, using each stopped region's `off_mode`.
+
+SFZ-v1 decay and release curves are not identically implemented by maintained players. `sfz@1` fixes the public
+SFZ-format reference equation (`exp(-8t/T)`, clamped at the target/terminal level) as adapter semantics so live and
+offline rendering cannot depend on an installed player. This choice, the accepted opcode table, path interpretation, and
+every default are part of adapter identity; changing one requires `sfz@2`.
+
 ## 4. Three distinct recorded-media semantics
 
 The same WAV bytes may participate in three different typed declarations. Musa never infers which one from file type.

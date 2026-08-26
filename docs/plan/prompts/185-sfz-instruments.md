@@ -1,7 +1,7 @@
 ---
 id: 185
 slug: sfz-instruments
-status: pending
+status: in-progress
 depends_on: [174, 182, 184]
 phase: 4
 ---
@@ -29,9 +29,9 @@ is diagnosed by name, and the runtime remains the deterministic sampler built by
 
 ## Design
 
-Implement the exact support matrix approved in `docs/rules/language/09-assets-and-packages.md`. The minimum useful core
-covers global/group/region inheritance; sample path; key/range/root pitch; velocity ranges; tune/transpose; gain/pan;
-sample offset/end; loop points/modes; amplitude envelope; trigger/release behavior; exclusive groups; sequence
+Implement the exact `sfz@1` support matrix in `docs/rules/language/09-assets-and-packages.md` §3.1. The minimum useful
+core covers global/group/region inheritance; sample path; key/range/root pitch; velocity ranges; tune/transpose;
+gain/pan; sample offset/end; loop points/modes; amplitude envelope; trigger/release behavior; exclusive groups; sequence
 position/duration; and the standard sustain-pedal conditions needed by the native map. Map MIDI-shaped SFZ selectors
 into Musa gesture and control semantics only at this adapter; MIDI controller numbers do not become the instrument
 contract.
@@ -48,6 +48,12 @@ imported signature exposes. Generate a readable imported signature/technique/sup
 The adapter may parse in Rust because it validates foreign bytes under private resource bounds, but its semantic result
 is exactly the same source-declared sample-map/instrument value a Musa package can write. A private normalized
 projection follows only after that equality point; there is no SFZ-only Rust instrument ontology.
+
+Prompt 184's first private projection selected one applicable region, represented gain only as a linear ratio, collapsed
+directional `group`/`off_by`, and did not distinguish continuous/sustain/one-shot loops or `release_key`. Repair those
+projection details here before adapting SFZ: all applicable layers and their selection groups enter one opaque prepared
+token; exact source dB crosses the checked artifact and converts only at the DSP edge; and the lifecycle distinctions in
+§3.1 remain explicit. This is a source/runtime schema version change, not an SFZ-only side model.
 
 ## Target
 
