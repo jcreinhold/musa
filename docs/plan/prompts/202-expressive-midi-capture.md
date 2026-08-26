@@ -22,6 +22,9 @@ preserve enough evidence for transcription without touching canonical source.
   the callback clock rather than assuming its epoch or monotonicity.
 - The pedal distinction in Zhang et al., [ATEPP](https://archives.ismir.net/ismir2022/paper/000053.pdf): key release and
   pedal-extended sound are distinct observations. Preserve both; do not turn CC64 into a longer written note.
+- The standard-library distinction among `expression`, `emphasis`, `brightness`, and `sustain`; Open Music Theory 007
+  on attack, articulation, and instrument-dependent realization; and chapter 114 on the several unlike ways an
+  instrument may realize one dynamic trajectory. A hardware measurement is not one of those musical intentions.
 
 ## Design
 
@@ -31,15 +34,27 @@ pitch bend, channel pressure, and polyphonic key pressure. Preserve unsupported 
 facts or counted losses; SysEx and unbounded payloads are refused on this path. Pair repeated note-ons and missing
 note-offs deterministically on the control side, never in the callback.
 
+MIDI wire dimensions are evidence, not musical meanings. Extend the ordinary checked standard-library instrument
+artifact with a source-declared audition binding from a fixed MIDI input kind (attack/release velocity, pedal,
+pressure, bend, or an explicitly named controller) to one control already accepted by that instrument's signature.
+The binding owns its exact input range, direction, dead zone/threshold, and channel-versus-key scope. Preparation proves
+that every binding reaches an accepted control and one of that control's private mappings; the host has no table that
+guesses `velocity -> emphasis`, `pressure -> expression`, or a pedal's synthesis meaning. The zero-setup instrument
+declares its useful bindings in Musa source. Note number and note lifecycle remain device-edge mechanics routed to the
+instrument's event input; pitch spelling remains absent. Unbound dimensions are still captured and are reported as
+unsupported for audition.
+
 Maintain two clocks. Raw callback timestamps are immutable evidence. A measured affine/offset calibration maps them to
 the project's monotonic performance clock for audition and transcription, detects jumps/wraps, and records calibration
 quality. Filtering may remove transport-clock error; it may not smooth away expressive timing. A take begins at an exact
 project revision, selected part/voice, transport state, tempo/meter context, device identity, and calibration record.
 
-Audition routes MIDI through the selected part's already prepared instrument instance using bounded RT queues. Note,
-velocity, pressure, bend, and pedal reach only controls the source-declared signature maps; unsupported controls are
-reported, never guessed. Audition does not compile, edit, allocate, lock, perform I/O, or wait for engraving. Device
-latency and input-to-sound p50/p95/max are measured separately from transcription.
+Audition routes MIDI through the selected part's already prepared instrument instance using bounded RT queues. The
+prepared audition binding is a compact callback-safe projection of the exact source value; source evaluation and
+binding resolution finish before it crosses the queue. Note, velocity, pressure, bend, and pedal reach only those
+source-declared bindings and signature maps; unsupported controls are reported, never guessed. Audition does not
+compile, edit, allocate, lock, perform I/O, or wait for engraving. Device latency and input-to-sound p50/p95/max are
+measured separately from transcription.
 
 The recent phrase memory is a preallocated ring bounded by both time and event count, defaulting to a measured useful
 window rather than an arbitrary large history. It is memory-only, visible, clearable, and disabled by preference.
@@ -53,8 +68,10 @@ pauses capture with a visible reason while preserving the take and source.
 
 ## Target
 
+- Source-owned MIDI audition bindings in the standard-library instrument artifact, with exact differential readback
+  into a private prepared DSP projection and laws rejecting missing, mismatched, duplicate, or host-invented mappings.
 - Deep `musa-playback` input/audition facade and project-owned immutable MIDI-take facts; no public `midir` or CoreMIDI
-  type and no serializable alternative project model.
+  type, public DSP wiring model, or serializable alternative project model.
 - Desktop device picker/status, always-listen indication, Capture/stop, recent-memory indication, Keep that, clear, and
   disconnect/reconnect states. Source remains byte-identical throughout.
 - Fake-device/fake-clock laws for message decoding, timestamp calibration, ordering, repeated notes, dropped note-offs,
@@ -65,9 +82,10 @@ pauses capture with a visible reason while preserving the take and source.
 ## Check
 
 ```sh
-cargo nextest run -p musa-playback -p musa-project -p musa-desktop
-cargo clippy --all-targets -p musa-playback -p musa-project -p musa-desktop -- -D warnings
+cargo nextest run -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -p musa-desktop
+cargo clippy --all-targets -p musa-compiler -p musa-dsp -p musa-playback -p musa-project -p musa-desktop -- -D warnings
 PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
+make docs-check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 ```
