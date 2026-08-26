@@ -186,7 +186,14 @@ pub(crate) fn elaborate_parsed(
         .each()
         .flat_map(|(_, library)| library.instruments())
         .collect();
-    let studio = resolve::lower_studio(resolver, &piece, &snapshot, &imported_studios, &imported_instruments);
+    let studio = resolve::lower_studio(
+        resolver,
+        &piece,
+        &snapshot,
+        &media.names(),
+        &imported_studios,
+        &imported_instruments,
+    );
     if resolver
         .diagnostics
         .iter()

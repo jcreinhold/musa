@@ -13,6 +13,7 @@ mod dsp_laws;
 mod effects_laws;
 mod expressive_control_laws;
 mod machine;
+mod media_laws;
 mod routing_laws;
 mod rt;
 mod sampler_laws;

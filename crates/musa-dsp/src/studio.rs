@@ -61,6 +61,12 @@ pub(crate) struct PartInput {
     pub(crate) node: NodeId,
 }
 
+/// One named recorded-media input bound to a private graph source slot.
+pub(crate) struct MediaInput {
+    pub(crate) name: String,
+    pub(crate) node: NodeId,
+}
+
 /// The number of voices each patch's synthesizer gets.
 const POLYPHONY: u8 = 16;
 
@@ -83,14 +89,31 @@ pub(crate) fn lower_studio(studio: &StudioSpec, options: &GraphOptions) -> (Stud
 pub(crate) fn lower_studio_for_parts(
     studio: &StudioSpec,
     parts: &[&str],
-    _options: &GraphOptions,
+    options: &GraphOptions,
 ) -> (StudioGraphSpec, StudioLowering, Vec<PartInput>) {
+    let (graph, lowering, parts, _) = lower_studio_for_sources(studio, parts, &[], options);
+    (graph, lowering, parts)
+}
+
+/// Lower part-local instruments and named recorded-media machines through the
+/// same source-authored bus/send/master graph.
+pub(crate) fn lower_studio_for_sources(
+    studio: &StudioSpec,
+    parts: &[&str],
+    media: &[&str],
+    _options: &GraphOptions,
+) -> (StudioGraphSpec, StudioLowering, Vec<PartInput>, Vec<MediaInput>) {
     let mut lowering = StudioLowering::default();
     validate_exact_intent(studio, &mut lowering);
     if !lowering.errors.is_empty() {
-        return (crate::instrument::poly_sine_spec(POLYPHONY), lowering, Vec::new());
+        return (
+            crate::instrument::poly_sine_spec(POLYPHONY),
+            lowering,
+            Vec::new(),
+            Vec::new(),
+        );
     }
-    if studio.is_empty() && parts.len() <= 1 {
+    if studio.is_empty() && parts.len() <= 1 && media.is_empty() {
         let graph = crate::instrument::poly_sine_spec(POLYPHONY);
         let inputs = parts
             .first()
@@ -101,7 +124,7 @@ pub(crate) fn lower_studio_for_parts(
             })
             .into_iter()
             .collect();
-        return (graph, lowering, inputs);
+        return (graph, lowering, inputs, Vec::new());
     }
 
     let mut graph = StudioGraphSpec::new();
@@ -135,6 +158,15 @@ pub(crate) fn lower_studio_for_parts(
             part: (*part).to_owned(),
             declaration: declaration.unwrap_or("std.sound.basic_sine@1").to_owned(),
             node: synth,
+        });
+    }
+    let mut media_inputs = Vec::with_capacity(media.len());
+    for name in media {
+        let node = graph.add_node(ProcessorSpec::Passthrough { channels: 2 });
+        part_outputs.push((name, node));
+        media_inputs.push(MediaInput {
+            name: (*name).to_owned(),
+            node,
         });
     }
 
@@ -223,7 +255,10 @@ pub(crate) fn lower_studio_for_parts(
     // its implicit route to master. This is independent of whether another
     // part made its own studio choices explicit.
     for (part, output) in &part_outputs {
-        if studio.patch_for_part(part).is_none() && !master_inputs.contains(output) {
+        let is_media = media.iter().any(|name| name == part);
+        if ((is_media && studio.is_empty()) || (!is_media && studio.patch_for_part(part).is_none()))
+            && !master_inputs.contains(output)
+        {
             master_inputs.push(*output);
         }
     }
@@ -244,7 +279,7 @@ pub(crate) fn lower_studio_for_parts(
     graph.set_output(master);
 
     lower_modulations(&mut graph, studio, &addresses, &mut lowering);
-    (graph, lowering, inputs)
+    (graph, lowering, inputs, media_inputs)
 }
 
 /// Defensively recheck the source-derived exact contract at the lossy DSP edge.

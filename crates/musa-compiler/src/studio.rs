@@ -79,6 +79,7 @@ pub(crate) fn resolve(
     instruments: &[InstrumentDecl],
     sounds: &[(String, SoundStmt)],
     parts: &[String],
+    media: &[String],
     references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> SurfaceStudio {
@@ -251,11 +252,11 @@ pub(crate) fn resolve(
                     continue;
                 };
                 let span = Some(span_of(route.syntax()));
-                if !spec.is_routable(&source) {
+                if !spec.is_routable(&source) && !media.contains(&source) {
                     diagnostics.push(
                         Diagnostic::error(
                             Code::UnknownName,
-                            format!("`{source}` is not an assigned part or a bus"),
+                            format!("`{source}` is not an assigned part, recorded-media source, or bus"),
                         )
                         .maybe_at(span, "nothing sends from here"),
                     );
@@ -277,7 +278,7 @@ pub(crate) fn resolve(
                     });
                 }
             }
-            StudioItem::Send(send) => resolve_send(send, &mut spec, parts, references, diagnostics),
+            StudioItem::Send(send) => resolve_send(send, &mut spec, parts, media, references, diagnostics),
             StudioItem::Modulate(modulate) => {
                 let Some(source) = modulate.source() else { continue };
                 let span = Some(span_of(modulate.syntax()));
@@ -563,6 +564,7 @@ fn resolve_send(
     send: &SendStmt,
     spec: &mut SurfaceStudio,
     parts: &[String],
+    media: &[String],
     references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
@@ -570,11 +572,11 @@ fn resolve_send(
         return;
     };
     let span = Some(span_of(send.syntax()));
-    if !spec.is_routable(&source) {
+    if !spec.is_routable(&source) && !media.contains(&source) {
         diagnostics.push(
             Diagnostic::error(
                 Code::UnknownName,
-                format!("`{source}` is not an assigned part or a bus"),
+                format!("`{source}` is not an assigned part, recorded-media source, or bus"),
             )
             .maybe_at(span, "nothing sends from here"),
         );

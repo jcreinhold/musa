@@ -31,6 +31,8 @@ pub(crate) struct RenderPlan {
     /// Buffer index of the master output (stereo planar or mono).
     master: usize,
     master_channels: usize,
+    /// Private slot to dedicated unconnected stereo input buffer.
+    external_inputs: Vec<(usize, usize)>,
 }
 
 struct Step {
@@ -405,10 +407,23 @@ pub(crate) fn prepare_plan(spec: &StudioGraphSpec, options: &GraphOptions) -> Re
 /// Compile a spec while binding selected event-consuming nodes to prepared
 /// lane indices. An empty binding list preserves the single-input graph test
 /// harness; production always supplies every part-local synth explicitly.
+#[cfg(any(test, feature = "testing"))]
 pub(crate) fn prepare_routed_plan(
     spec: &StudioGraphSpec,
     options: &GraphOptions,
     event_inputs: &[(NodeId, usize)],
+) -> Result<RenderPlan, GraphError> {
+    prepare_routed_plan_with_external(spec, options, event_inputs, &[])
+}
+
+/// Compile event lanes and dedicated control-side stereo source slots into
+/// one graph. Each external node must be a stereo passthrough; its otherwise
+/// unconnected input receives one preallocated frame buffer.
+pub(crate) fn prepare_routed_plan_with_external(
+    spec: &StudioGraphSpec,
+    options: &GraphOptions,
+    event_inputs: &[(NodeId, usize)],
+    external_bindings: &[(NodeId, usize)],
 ) -> Result<RenderPlan, GraphError> {
     let span = tracing::info_span!(
         "prepare_audio_primitives",
@@ -463,6 +478,7 @@ pub(crate) fn prepare_routed_plan(
         }
     }
 
+    let mut external_inputs = Vec::with_capacity(external_bindings.len());
     let mut schedule = Vec::new();
     for id in &order {
         if !reachable.contains(id) {
@@ -476,6 +492,12 @@ pub(crate) fn prepare_routed_plan(
             .iter()
             .enumerate()
             .map(|(port, _)| {
+                if let Some((_, slot)) = external_bindings.iter().find(|(node, _)| *node == *id && port == 0) {
+                    buffers.push(vec![0.0; 2].into_boxed_slice());
+                    let buffer = buffers.len().saturating_sub(1);
+                    external_inputs.push((*slot, buffer));
+                    return buffer;
+                }
                 spec.connections()
                     .iter()
                     .find(|c| c.to == *id && c.to_port == port)
@@ -539,6 +561,7 @@ pub(crate) fn prepare_routed_plan(
         scheduled = schedule.len(),
         buffers = buffers.len(),
         master_channels,
+        external_inputs = external_inputs.len(),
         "compiled a render plan"
     );
     Ok(RenderPlan {
@@ -547,6 +570,7 @@ pub(crate) fn prepare_routed_plan(
         buffers,
         master,
         master_channels,
+        external_inputs,
     })
 }
 
@@ -730,6 +754,22 @@ fn channels_of(kind: PortKind) -> usize {
 }
 
 impl RenderPlan {
+    /// Supply one frame to a prepared external stereo source slot.
+    pub(crate) fn apply_external_frame(&mut self, slot: usize, frame: [f32; 2]) {
+        let Some((_, buffer)) = self.external_inputs.iter().find(|(candidate, _)| *candidate == slot) else {
+            return;
+        };
+        let Some(samples) = self.buffers.get_mut(*buffer) else {
+            return;
+        };
+        if let Some(left) = samples.get_mut(0) {
+            *left = finite(frame[0]);
+        }
+        if let Some(right) = samples.get_mut(1) {
+            *right = finite(frame[1]);
+        }
+    }
+
     /// Resolve one checked private source target to a compact plan-local id.
     pub(crate) fn resolve_parameter(
         &mut self,

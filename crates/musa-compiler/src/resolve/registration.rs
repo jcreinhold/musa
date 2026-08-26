@@ -18,6 +18,7 @@ pub(crate) fn lower_studio(
     resolver: &mut Resolver,
     piece: &PieceDecl,
     snapshot: &ScoreSnapshot,
+    media: &[String],
     imported: &[musa_syntax::ast::StudioDecl],
     imported_instruments: &[musa_syntax::ast::InstrumentDecl],
 ) -> crate::studio_model::SurfaceStudio {
@@ -53,6 +54,7 @@ pub(crate) fn lower_studio(
         &instruments,
         &sounds,
         &parts,
+        media,
         &mut resolver.references,
         &mut resolver.diagnostics,
     )

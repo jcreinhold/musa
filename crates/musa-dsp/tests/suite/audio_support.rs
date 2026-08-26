@@ -79,7 +79,7 @@ pub(crate) fn prepare_gestures(
     };
     let instruments = checked_standard_instruments().map_err(diagnostic)?;
     let instrument_machine = checked_standard_instrument_machine().map_err(diagnostic)?;
-    crate::audio::prepare_projected_execution(gestures, &instruments, &instrument_machine, studio, options)
+    crate::audio::prepare_projected_execution(gestures, &instruments, &instrument_machine, studio, None, options)
 }
 
 pub(crate) fn render_source(source: &str, frames: usize) -> Vec<f32> {

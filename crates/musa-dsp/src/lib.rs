@@ -17,6 +17,7 @@ mod instrument;
 mod instrument_source;
 mod intent;
 mod machine;
+mod media;
 mod offline;
 mod plan;
 mod primitive;
@@ -30,12 +31,15 @@ mod studio;
 mod studio_source;
 mod voice;
 
-pub use crate::audio::{AudioOptions, AudioPrepareError, PreparedAudio, prepare_execution};
+pub use crate::audio::{
+    AudioOptions, AudioPrepareError, PreparedAudio, prepare_execution, prepare_execution_with_media,
+};
 pub use crate::instrument_source::{
     InstrumentContract, InstrumentContracts, InstrumentContractsError, InstrumentControlContract,
     InstrumentTechniqueContract, decode_instrument_contracts, instrument_contracts_schema,
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
+pub use crate::media::{MediaLimits, MediaPrepareError, PreparedMedia, prepare_media};
 pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::primitive::{AudioLimits, VocabularyAgreementError, check_studio_vocabulary};
 pub use crate::sample_source::{SampleMap, SampleMapError, decode_sample_map, sample_map_schema};

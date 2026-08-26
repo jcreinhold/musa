@@ -12,14 +12,14 @@ use musa_score::{Gesture, GesturePlan, PartId, Tuning};
 use num_rational::Ratio;
 
 use crate::intent::StudioSpec;
-use crate::plan::{PreparedParameterEvent, PreparedParameterId, RenderPlan, prepare_routed_plan};
+use crate::plan::{PreparedParameterEvent, PreparedParameterId, RenderPlan, prepare_routed_plan_with_external};
 use crate::primitive::{AudioLimits, resources};
 use crate::schedule::{
     AudioFormat, ChannelLayout, Schedule, ScheduleError, SchedulePolicy, ScheduledSource, TimeDecision, TimeMap,
     merge_schedules, schedule,
 };
 use crate::spec::GraphOptions;
-use crate::studio::{lower_studio, lower_studio_for_parts};
+use crate::studio::{lower_studio, lower_studio_for_sources};
 
 /// Every product-level choice that can change audio preparation or its finite
 /// playback extent. There is deliberately no default.
@@ -92,6 +92,8 @@ pub struct PreparedAudio {
     plan: RenderPlan,
     schedule: Schedule<PerformedTime, Gesture>,
     lanes: Vec<PreparedLane>,
+    media: Option<crate::PreparedMedia>,
+    media_inputs: Vec<String>,
     tuning: Tuning,
     sample_rate: u32,
     total_frames: u64,
@@ -167,6 +169,12 @@ impl PreparedAudio {
             let (_, messages) = lane.source.step();
             self.plan.apply_events(lane.instance.0, messages, self.tuning);
         }
+        if let Some(media) = &self.media {
+            for slot in 0..self.media_inputs.len() {
+                self.plan
+                    .apply_external_frame(slot, media.slot_frame(slot, self.position));
+            }
+        }
         let frame = self.plan.finish_step();
         self.position = self.position.saturating_add(1);
         frame
@@ -195,6 +203,7 @@ pub(crate) fn prepare_projected_execution(
     instruments: &CheckedSource,
     instrument_machine: &musa_score::MachineSpec,
     studio: &StudioSpec,
+    media: Option<crate::PreparedMedia>,
     options: AudioOptions,
 ) -> Result<PreparedAudio, AudioPrepareError> {
     let contracts = crate::decode_instrument_contracts(instruments)
@@ -218,7 +227,7 @@ pub(crate) fn prepare_projected_execution(
     }
     let instrument_machine = crate::prepare_machine(instrument_machine)
         .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?;
-    prepare_audio(gestures, contracts, instrument_machine, studio, options)
+    prepare_audio(gestures, contracts, instrument_machine, studio, media, options)
 }
 
 /// Prepare audio from the one checked production studio value.
@@ -237,7 +246,35 @@ pub fn prepare_execution(
     let projection = studio.preparation_projection().ok_or_else(|| {
         AudioPrepareError::StudioValue("checked studio processor has no native preparation witness".to_owned())
     })?;
-    prepare_projected_execution(gestures, instruments, instrument_machine, &projection, options)
+    prepare_projected_execution(gestures, instruments, instrument_machine, &projection, None, options)
+}
+
+/// Prepare the production graph with already decoded recorded media.
+///
+/// The media value can only be obtained from [`crate::prepare_media`],
+/// keeping verified-byte loading and decoding on the control side.
+///
+/// # Errors
+/// Reports the same checked preparation failures as [`prepare_execution`].
+pub fn prepare_execution_with_media(
+    gestures: &GesturePlan,
+    instruments: &CheckedSource,
+    instrument_machine: &musa_score::MachineSpec,
+    studio: &crate::StudioExecution,
+    media: crate::PreparedMedia,
+    options: AudioOptions,
+) -> Result<PreparedAudio, AudioPrepareError> {
+    let projection = studio.preparation_projection().ok_or_else(|| {
+        AudioPrepareError::StudioValue("checked studio processor has no native preparation witness".to_owned())
+    })?;
+    prepare_projected_execution(
+        gestures,
+        instruments,
+        instrument_machine,
+        &projection,
+        Some(media),
+        options,
+    )
 }
 
 fn prepare_audio(
@@ -245,6 +282,7 @@ fn prepare_audio(
     instrument_contracts: crate::InstrumentContracts,
     instrument_machine: crate::PreparedMachine,
     studio: &StudioSpec,
+    media: Option<crate::PreparedMedia>,
     options: AudioOptions,
 ) -> Result<PreparedAudio, AudioPrepareError> {
     let basic = instrument_contracts
@@ -268,11 +306,13 @@ fn prepare_audio(
         .iter()
         .map(musa_score::GestureLane::name)
         .collect::<Vec<_>>();
-    let (graph, lowering, part_inputs) = if part_names.is_empty() {
+    let media_names = media.as_ref().map_or(&[][..], crate::PreparedMedia::names);
+    let media_name_refs = media_names.iter().map(String::as_str).collect::<Vec<_>>();
+    let (graph, lowering, part_inputs, prepared_media_inputs) = if part_names.is_empty() && media_name_refs.is_empty() {
         let (graph, lowering) = lower_studio(studio, &graph_options);
-        (graph, lowering, Vec::new())
+        (graph, lowering, Vec::new(), Vec::new())
     } else {
-        lower_studio_for_parts(studio, &part_names, &graph_options)
+        lower_studio_for_sources(studio, &part_names, &media_name_refs, &graph_options)
     };
     if !lowering.errors.is_empty() {
         return Err(AudioPrepareError::StudioValue(lowering.errors.join("; ")));
@@ -282,9 +322,13 @@ fn prepare_audio(
             "native graph output must be one stereo frame".to_owned(),
         ));
     }
-    let required = resources(&graph, sample_rate, options.schedule.limits().max_messages).ok_or_else(|| {
+    let mut required = resources(&graph, sample_rate, options.schedule.limits().max_messages).ok_or_else(|| {
         AudioPrepareError::Primitive("native primitive is absent from the closed registry".to_owned())
     })?;
+    required.state_bytes = required
+        .state_bytes
+        .saturating_add(media_names.len().saturating_mul(std::mem::size_of::<[f32; 2]>()));
+    required.step_work = required.step_work.saturating_add(media_names.len() as u64 * 2);
     check_resources(required, options.limits)?;
     let mut instrument_instances = Vec::with_capacity(gestures.lanes().len());
     let mut event_inputs = Vec::with_capacity(gestures.lanes().len());
@@ -302,7 +346,12 @@ fn prepare_audio(
             _instance: PreparedInstrumentId(instance),
         });
     }
-    let mut plan = prepare_routed_plan(&graph, &graph_options, &event_inputs)
+    let external_inputs = prepared_media_inputs
+        .iter()
+        .enumerate()
+        .map(|(slot, input)| (input.node, slot))
+        .collect::<Vec<_>>();
+    let mut plan = prepare_routed_plan_with_external(&graph, &graph_options, &event_inputs, &external_inputs)
         .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let (schedule, lane_schedules) = schedule_gestures(gestures, options)?;
     let mut lane_controls = Vec::with_capacity(lane_schedules.len());
@@ -320,12 +369,15 @@ fn prepare_audio(
     }
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
-    let total_frames = schedule
-        .finish_frame()
+    let sounding_finish = media.as_ref().map_or_else(
+        || schedule.finish_frame(),
+        |media| media.finish_frame().max(schedule.finish_frame()),
+    );
+    let total_frames = sounding_finish
         .checked_add(tail_frames)
         .filter(|frames| *frames <= options.max_total_frames)
         .ok_or_else(|| AudioPrepareError::FrameLimit {
-            actual: schedule.finish_frame().saturating_add(tail_frames),
+            actual: sounding_finish.saturating_add(tail_frames),
             limit: options.max_total_frames,
         })?;
     let lanes = lane_schedules
@@ -346,6 +398,8 @@ fn prepare_audio(
         plan,
         schedule,
         lanes,
+        media,
+        media_inputs: prepared_media_inputs.into_iter().map(|input| input.name).collect(),
         tuning: options.tuning,
         sample_rate,
         total_frames,

@@ -292,6 +292,65 @@ piece "Media" {
     assert_eq!(snapshot.score().expect("score facts").media.len(), 2);
 }
 
+#[test]
+fn a_locked_local_recording_reaches_offline_export_deterministically() {
+    let directory = tempfile::tempdir().expect("temporary project");
+    write(
+        &directory.path().join("musa.toml"),
+        r#"[project]
+name = "Rendered media"
+
+[assets."assets/recording.wav"]
+kind = "audio"
+adapter = "wav@1"
+max_bytes = 65536
+"#,
+    );
+    write(
+        &directory.path().join("piece.musa"),
+        r#"piece "Rendered media" {
+    meter 4/4;
+    fixed_media recording from "assets/recording.wav";
+    score { cue recording at 1:1; part guide { voice one { rest/4 } } }
+    studio { route recording -> master; }
+}
+"#,
+    );
+    let mut recording = std::io::Cursor::new(Vec::new());
+    {
+        let mut writer = hound::WavWriter::new(
+            &mut recording,
+            hound::WavSpec {
+                channels: 1,
+                sample_rate: 48_000,
+                bits_per_sample: 32,
+                sample_format: hound::SampleFormat::Float,
+            },
+        )
+        .expect("recording writer");
+        for _ in 0..1024 {
+            writer.write_sample(0.25_f32).expect("recording sample");
+        }
+        writer.finalize().expect("recording finish");
+    }
+    write(&directory.path().join("assets/recording.wav"), recording.into_inner());
+    lock_assets(directory.path()).expect("media lock succeeds");
+
+    let session = ProjectSession::open(directory.path().join("piece.musa")).expect("piece opens");
+    let first = session.export(musa_project::ExportRequest::Wav).expect("first WAV");
+    let second = session.export(musa_project::ExportRequest::Wav).expect("second WAV");
+    assert_eq!(
+        first, second,
+        "offline media uses the same prepared operation each time"
+    );
+    let reader = hound::WavReader::new(std::io::Cursor::new(first.as_bytes())).expect("exported WAV");
+    let audible = reader
+        .into_samples::<f32>()
+        .filter_map(Result::ok)
+        .any(|sample| sample.abs() > 0.1);
+    assert!(audible, "the locked recording reaches the exported master");
+}
+
 #[cfg(unix)]
 #[test]
 fn a_symlink_cannot_escape_the_project_root() {

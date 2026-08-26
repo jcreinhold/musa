@@ -173,6 +173,12 @@ pub(super) fn placed(
 pub(super) struct MediaDeclarations(std::collections::BTreeMap<String, MediaDeclaration>);
 
 impl MediaDeclarations {
+    /// Every visible source machine name, including one not cued in this
+    /// score. Studio name resolution is over declarations, not occurrences.
+    pub(super) fn names(&self) -> Vec<String> {
+        self.0.keys().cloned().collect()
+    }
+
     /// Add the declarations exported by one source scope.
     pub(super) fn extend(
         &mut self,

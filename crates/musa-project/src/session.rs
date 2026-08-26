@@ -667,7 +667,11 @@ impl ProjectSession {
             ExportRequest::Mei => Ok(ExportArtifact::text(valid.mei.clone()).warn(valid.mei_warnings.clone())),
             ExportRequest::LilyPond => Ok(render_notation(score, musa_notation::NotationTarget::LilyPond)?),
             ExportRequest::MusicXml => Ok(render_notation(score, musa_notation::NotationTarget::MusicXml)?),
-            ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio_execution)?)),
+            ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(
+                score,
+                &valid.studio_execution,
+                &self.assets,
+            )?)),
             ExportRequest::Midi(mode) => {
                 let (bytes, warnings) = playback::to_midi(score, mode)?;
                 Ok(ExportArtifact::bytes(bytes).warn(warnings))
@@ -1370,7 +1374,7 @@ impl ProjectSession {
             return Ok(());
         }
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
-        let plan = playback::prepare(&valid.score, &valid.studio_execution)?;
+        let plan = playback::prepare(&valid.score, &valid.studio_execution, &self.assets)?;
         self.total_frames = plan.total_frames();
         let audio = self
             .audio

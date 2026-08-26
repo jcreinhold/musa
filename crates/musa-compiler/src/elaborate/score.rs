@@ -355,6 +355,7 @@ pub(super) fn elaborate_material(
         &[],
         &[],
         &[],
+        &[],
         &mut references,
         &mut resolver.diagnostics,
     );

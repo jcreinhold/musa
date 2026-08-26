@@ -17,7 +17,11 @@ pub(crate) fn sample_rate() -> u32 {
 }
 
 /// Exact gesture lowering → checked scheduling → prepared audio machine.
-fn build(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<musa_dsp::PreparedAudio, ProjectError> {
+fn build(
+    score: &ScoreSnapshot,
+    studio: &musa_dsp::StudioExecution,
+    assets: &crate::assets::AssetInventory,
+) -> Result<musa_dsp::PreparedAudio, ProjectError> {
     let gestures = lower_gestures(score).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let instruments = musa_compiler::checked_standard_instruments()
         .map_err(|diagnostics| ProjectError::Performance(format!("{diagnostics:#?}")))?;
@@ -27,6 +31,18 @@ fn build(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<mu
     let rate = std::num::NonZeroU32::new(sample_rate)
         .ok_or_else(|| ProjectError::Performance("the audio sample rate must be nonzero".to_owned()))?;
     let format = musa_dsp::AudioFormat::new(rate, musa_dsp::ChannelLayout::Stereo);
+    let media = musa_dsp::prepare_media(
+        score,
+        gestures.tempo(),
+        format,
+        |logical| assets.read_verified(logical).map_err(|error| error.to_string()),
+        musa_dsp::MediaLimits {
+            max_assets: 256,
+            max_decoded_frames: u64::from(sample_rate).saturating_mul(60 * 60),
+            max_decoded_bytes: 2_u64.pow(31),
+        },
+    )
+    .map_err(|error| ProjectError::Performance(error.to_string()))?;
     let maximum = u64::from(sample_rate).saturating_mul(60 * 60 * 24);
     let policy = musa_dsp::SchedulePolicy::new(
         1,
@@ -46,11 +62,12 @@ fn build(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<mu
         },
     )
     .map_err(|error| ProjectError::Performance(error.to_string()))?;
-    musa_dsp::prepare_execution(
+    musa_dsp::prepare_execution_with_media(
         &gestures,
         &instruments,
         &instrument_machine,
         studio,
+        media,
         musa_dsp::AudioOptions {
             format,
             schedule: policy,
@@ -80,8 +97,9 @@ fn build(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<mu
 pub(crate) fn prepare(
     score: &ScoreSnapshot,
     studio: &musa_dsp::StudioExecution,
+    assets: &crate::assets::AssetInventory,
 ) -> Result<PreparedPlaybackPlan, ProjectError> {
-    Ok(PreparedPlaybackPlan::new(build(score, studio)?))
+    Ok(PreparedPlaybackPlan::new(build(score, studio, assets)?))
 }
 
 /// The same chain rendered offline to 32-bit float stereo WAV bytes.
@@ -89,8 +107,12 @@ pub(crate) fn prepare(
 /// # Errors
 /// [`ProjectError::Performance`] if lowering, audio preparation, or WAV
 /// encoding fails.
-pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &musa_dsp::StudioExecution) -> Result<Vec<u8>, ProjectError> {
-    let mut prepared = build(score, studio)?;
+pub(crate) fn to_wav(
+    score: &ScoreSnapshot,
+    studio: &musa_dsp::StudioExecution,
+    assets: &crate::assets::AssetInventory,
+) -> Result<Vec<u8>, ProjectError> {
+    let mut prepared = build(score, studio, assets)?;
     let audio = musa_dsp::render_offline(&mut prepared);
     wav_bytes(&audio)
 }

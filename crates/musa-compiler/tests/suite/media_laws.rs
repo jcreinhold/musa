@@ -172,6 +172,21 @@ fn unknown_media_and_policy_are_diagnostics_not_inference() {
 }
 
 #[test]
+fn a_declared_media_machine_is_routable_even_before_it_is_cued() {
+    let source = r#"piece "Routable declaration" {
+    meter 4/4;
+    fixed_media harbor from "assets/harbor.wav";
+    score { part guide { voice one { rest/1 } } }
+    studio { route harbor -> master; }
+}"#;
+    let compilation = compile(
+        &SourceDocument::new(source, "media-route.musa"),
+        &CompileOptions::default(),
+    );
+    assert_eq!(compilation.diagnostics(), &[], "{:#?}", compilation.diagnostics());
+}
+
+#[test]
 fn file_and_imported_declarations_share_the_source_namespace() {
     let root = r#"clip pulse from "assets/pulse.wav" fit 1/1 by crop;
 piece "Root media" {

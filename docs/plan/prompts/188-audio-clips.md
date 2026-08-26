@@ -1,7 +1,7 @@
 ---
 id: 188
 slug: audio-clips
-status: pending
+status: done
 depends_on: [173, 179, 182, 184, 187]
 phase: 4
 ---
@@ -14,7 +14,7 @@ phase: 4
 ## Task
 
 Render musical clips and fixed-media cues through the prepared audio plan. Decode and prepare recordings off-thread,
-schedule their starts from the appropriate beat/physical-time semantics, apply explicit crop/loop/rate/fade/gain/pan
+schedule their starts from the appropriate beat/physical-time semantics, apply the source-owned crop/loop/rate and gain
 settings, route named media outputs through buses/sends, and preserve deterministic seek, offline/live, and export-tail
 behavior.
 
@@ -31,11 +31,16 @@ behavior.
 Media is a separate prepared source machine, not a score part, voice, mixer track, or instrument instance. Preparation
 resolves each semantic cue/clip identity to immutable decoded audio and compact routing indices. A fixed cue schedules
 start at `tempo(b)` and retains natural physical duration. A musical clip uses its transformed beat span and explicit
-fit policy. Specify channel conversion, sample-rate conversion, bounds, fades, gain/pan, overlap, retrigger, same-frame
-ordering, and end-of-project tail.
+fit policy. Specify channel conversion, sample-rate conversion, bounds, gain, overlap, retrigger, same-frame ordering,
+and end-of-project tail.
 
 No public Rust cue/clip schema may supply policy absent from the checked source value. The preparation projection is
 opaque/read-only and covered by source-to-projection differential laws.
+
+`MediaPlayback` currently declares only exact `gain_db`; this prompt therefore implements no independently authored fade
+or pan policy. Those controls require a later governing source amendment that states their units, ranges, interaction
+with restriction, and concise authoring path before native preparation may project them. Neutral native fade/pan
+constants are implementation facts, not falsely advertised source settings.
 
 `crop` stops at the beat span, `loop` repeats deterministically and truncates at it, and `rate` chooses the documented
 constant playback rate required by the source span/policy and changes pitch honestly. No implicit tempo-following or
@@ -45,6 +50,10 @@ duration.
 Prepare/decode/preload and retire off-thread. Use bounded preloading initially; if a checked realistic recording misses
 memory budget, profile and design a control-side streaming/ring-buffer plan with deterministic underrun behavior before
 shipping it. Do not perform best-effort file I/O in the callback.
+
+Edition one prepares canonical PCM/float WAV through the deterministic native decoder. The declaration and asset layers
+may identify other audio adapters, but audio preparation must refuse those formats explicitly until their deterministic
+decoder is specified and installed; verification alone must never imply render support.
 
 ## Target
 

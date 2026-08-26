@@ -351,7 +351,7 @@ fn every_unresolved_name_is_reported() {
         ),
         (
             "patch p { oscillator(sine) |> output; } route violin -> master;",
-            "`violin` is not an assigned part or a bus",
+            "`violin` is not an assigned part, recorded-media source, or bus",
         ),
         (
             "patch p { oscillator(sine) |> output; } modulate lfo -> p.oscillator.frequency;",
