@@ -1,7 +1,7 @@
 ---
 id: 190
 slug: audio-language-tooling
-status: pending
+status: in-progress
 depends_on: [125, 174, 176, 181, 183, 185, 186, 187, 189]
 phase: 4
 ---
@@ -68,7 +68,7 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cd editors/tree-sitter-musa && tree-sitter test
 git -C ../vscode-musa diff --check
 git -C ../zed-musa diff --check
-find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check
+find examples -name '*.musa' ! -path 'examples/broken/*' -print0 | xargs -0 -n1 cargo run -q -p musa -- check
 ```
 
 Commit each affected repository intentionally and record cross-repository commit ids. Commit Musa as
