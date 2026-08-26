@@ -55,14 +55,15 @@ virtual port, callback timing, or a particular computer keyboard layout. A small
 same seam from scripted events or QWERTY key actions for functional testing, but QWERTY input is an audition/test
 controller, not a second notation-entry mode and not a production surface in this prompt.
 
-Evaluate real human performance through both a consented local MIDI-keyboard trial and an adapter for an exact-pinned
-user-provided ASAP v1.1 checkout
+Evaluate real human performance through an adapter for an exact-pinned user-provided ASAP v1.1 checkout
 (`fad8d1e8078d0ae47ad2f280b5d022bd2de24784`). Record only aggregate results and fixture identities; do not copy its
 [CC BY-NC-SA data](https://github.com/fosfrancesco/asap-dataset/blob/v1.1/LICENSE.md) into Musa, retain performer
 identity, make the Check hardware/network-dependent, or call generated timing a human recording. The local trial keeps
 no identity or raw take in the repository unless the performer explicitly consents to that exact artifact under Musa's
-license; aggregate measurements and anonymous error classes are sufficient. Prompt 202's machine record remains an
-accurate record of that earlier run, when no physical input was connected, rather than a claim about later availability.
+license; aggregate measurements and anonymous error classes are sufficient. Provide the local functional harness here,
+but do not block this model trial when no port is currently connected: prompt 209 requires representative physical-
+keyboard workflow evidence before deleting step entry. Prompt 202's machine record remains an accurate record of that
+earlier run, when no physical input was connected, rather than a claim about later availability.
 
 Evaluate notation, not only note matches: onset and duration accuracy, bar/beat phase, voice assignment, chord grouping,
 tie/rest/tuplet structure, edit distance to intended Musa source, number and locality of review corrections, ranked
