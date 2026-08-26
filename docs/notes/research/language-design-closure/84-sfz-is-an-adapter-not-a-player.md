@@ -33,3 +33,9 @@ stay inside the already verified closure, all applicable regions layer, dB remai
 release-key remain distinct, choke direction is represented rather than collapsed into a symmetric group, and the
 SFZ-format envelope equation is fixed in `sfz@1`. None of those choices adds an SFZ concept to the event track or
 instrument signature; the adapter's answer is the same checked `SampleMapArtifact` an ordinary Musa package can write.
+
+The adapter admits SFZ's controller-shaped sustain predicates only where they translate exactly to Musa's typed state:
+the full `locc64`/`hicc64` range, the conventional `0..63` pedal-up range, and the `64..127` pedal-down range. A
+narrower CC band would be a different predicate and is rejected rather than approximated. SFZ `end` and `loop_end` name
+inclusive sample positions; the checked `SampleMap` uses half-open intervals, so the boundary translation is an
+overflow-checked `+1` and is part of `sfz@1` identity.

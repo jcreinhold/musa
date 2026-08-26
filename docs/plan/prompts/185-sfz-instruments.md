@@ -34,7 +34,9 @@ core covers global/group/region inheritance; sample path; key/range/root pitch; 
 gain/pan; sample offset/end; loop points/modes; amplitude envelope; trigger/release behavior; exclusive groups; sequence
 position/duration; and the standard sustain-pedal conditions needed by the native map. Map MIDI-shaped SFZ selectors
 into Musa gesture and control semantics only at this adapter; MIDI controller numbers do not become the instrument
-contract.
+contract. Only the `locc64`/`hicc64` ranges enumerated by §3.1 cross to typed sustain state, and inclusive SFZ sample
+ends cross to native half-open intervals by checked `+1`; neither boundary may be guessed from a reference player's
+behavior.
 
 Resolve samples and any supported includes within the SFZ asset/package root with prompt 182's traversal/digest rules.
 If includes/macros cannot be implemented without weakening the resolver, reject them in this version and say so. Parse

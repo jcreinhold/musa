@@ -144,10 +144,11 @@ Harmless labels are warnings only when this table says so.
 | `lovel`, `hivel` | SFZ v1 | supported; inclusive 0–127 values map exactly to normalized gesture expression |
 | `tune`, `transpose` | SFZ v1 | supported as exact cents and semitones; explicit `pitch_keytrack` is accepted only at its default 100 |
 | `volume`, `pan` | SFZ v1 | supported as exact decimal dB and the exact `[-100,100]` pan coordinate; dB becomes linear only at the DSP edge |
-| `offset`, `end`, `loop_start`, `loop_end`, `loop_mode` | SFZ v1 | supported; `no_loop`, `one_shot`, `loop_continuous`, and `loop_sustain` remain distinct |
+| `offset`, `end`, `loop_start`, `loop_end`, `loop_mode` | SFZ v1 | supported; inclusive SFZ `end`/`loop_end` positions become checked half-open native ends by exact `+1`; `no_loop`, `one_shot`, `loop_continuous`, and `loop_sustain` remain distinct |
 | `loop_type` | SFZ v2 | `forward` and `alternate` are supported and labelled v2; other values are errors |
 | `ampeg_attack`, `ampeg_decay`, `ampeg_sustain`, `ampeg_release` | SFZ v1 | supported with exact written times/level and the documented SFZ-v1 linear-attack, convex-decay/release family |
 | `trigger` | SFZ v1 | `attack`, `release`, `release_key`, `first`, and `legato` are supported and remain distinct |
+| `locc64`, `hicc64` | SFZ v1 | supported only for the full range, `0..63` pedal-up range, or `64..127` pedal-down range; narrower MIDI-controller bands are errors because the native predicate is typed sustain state, not a leaked CC number |
 | `group`, `off_by`, `off_mode` | SFZ v1 | supported for nonnegative 32-bit groups and `fast`/`normal`; zero means no choke, following the common v1 player convention |
 | `seq_length`, `seq_position` | SFZ v1 | supported for positive values with position at most length; counters are per prepared instrument and selection group |
 | `global_label`, `group_label`, `region_label` | extension metadata | warning and retained in the imported support summary; no sound effect |
