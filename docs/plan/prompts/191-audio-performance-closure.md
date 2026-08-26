@@ -1,7 +1,7 @@
 ---
 id: 191
 slug: audio-performance-closure
-status: pending
+status: in-progress
 depends_on: [93, 174, 179, 180, 184, 185, 186, 188, 189, 190]
 phase: 4
 ---
@@ -62,7 +62,9 @@ same frame count, especially registered feedback, envelopes, modulation, and med
 `ExecArgs` record covering the operation version, exact gesture-track bytes/schema, machine and instrument bindings,
 locked asset/package identities, seed, sample rate/channels, batching policy, bounds, and render options. A digest
 selects candidates; exact complete argument bytes confirm a hit. Inject deliberate digest collisions. Eviction changes
-cost only. Streaming is admitted only if measured preloading misses a stated workload; its control-side producer,
+cost only. If no preparation cache exists and the measured workloads do not justify one, record and test that absence;
+do not add state merely to manufacture a collision test. The collision law becomes mandatory with the first real cache.
+Streaming is admitted only if measured preloading misses a stated workload; its control-side producer,
 bounded queue, underrun semantics, and offline determinism must then be specified and tested.
 
 ## Target
@@ -71,8 +73,8 @@ bounded queue, underrun semantics, and offline determinism must then be specifie
 - Measured budgets and scale variables added to language/interface performance documentation.
 - Focused fixes tied to observed profiles, with cached/uncached and block-partition differential laws.
 - RT instrumentation proving callback and destruction constraints across native/sample/media plans.
-- The R1 preparation, conditional-frame, lineage-separation, digest-collision, and host-partition differential results,
-  with pairs/premises/outcomes stated plainly.
+- The R1 preparation, conditional-frame, lineage-separation, host-partition differential, and either digest-collision or
+  verified cache-absence results, with pairs/premises/outcomes stated plainly.
 - Public-surface/dependency audit after optimization.
 - Differential evidence that every optimized Rust projection still equals its checked source value and remains
   non-authoritative.
