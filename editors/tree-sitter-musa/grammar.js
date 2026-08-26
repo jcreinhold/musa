@@ -156,6 +156,8 @@ module.exports = grammar({
               $.impl_declaration,
               $.performance_declaration,
               $.instrument_declaration,
+              $.clip_declaration,
+              $.fixed_media_declaration,
               $.studio_declaration,
             ),
           ),
@@ -316,6 +318,8 @@ module.exports = grammar({
             $.score_declaration,
             $.performance_declaration,
             $.instrument_declaration,
+            $.clip_declaration,
+            $.fixed_media_declaration,
             $.studio_declaration,
           ),
         ),
@@ -1023,7 +1027,7 @@ module.exports = grammar({
       seq(
         'score',
         '{',
-        repeat(choice($.part_declaration, $.section_statement, $.harmony_declaration)),
+        repeat(choice($.part_declaration, $.section_statement, $.harmony_declaration, $.cue_statement)),
         '}',
       ),
 
@@ -1157,6 +1161,30 @@ module.exports = grammar({
             '}',
           ),
         ),
+      ),
+
+    // Contextual declaration heads and policy words, mirroring Parser's
+    // at_word dispatch without globally reserving ordinary source names.
+    clip_declaration: ($) =>
+      seq(
+        alias('clip', $.identifier),
+        field('name', $.identifier),
+        alias('from', $.identifier),
+        field('asset', $.string),
+        alias('fit', $.identifier),
+        field('duration', $.rational),
+        alias('by', $.identifier),
+        field('policy', $.identifier),
+        ';',
+      ),
+
+    fixed_media_declaration: ($) =>
+      seq(
+        alias('fixed_media', $.identifier),
+        field('name', $.identifier),
+        alias('from', $.identifier),
+        field('asset', $.string),
+        ';',
       ),
 
     instrument_implementation: ($) =>
@@ -1408,6 +1436,9 @@ module.exports = grammar({
 
     // Parser::section_stmt — `section "Exposition" at 1:1;`
     section_statement: ($) => seq('section', field('name', $.string), 'at', $.position, ';'),
+
+    cue_statement: ($) =>
+      seq(alias('cue', $.identifier), field('media', $.identifier), 'at', field('position', $.position), ';'),
 
     harmony_declaration: ($) => seq('harmony', '{', repeat($.harmony_statement), '}'),
 

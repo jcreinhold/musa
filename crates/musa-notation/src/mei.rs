@@ -865,6 +865,10 @@ fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: us
             .map_err(|error| RenderError::xml(&error))?;
         end(writer, "dir")?;
     }
+    for media in plan.media().iter().filter(|mark| mark.measure == measure) {
+        let stamp = timestamp(media.beat(unit));
+        write_dir(writer, &stamp, None, &media.what)?;
+    }
     // MEI has no free-duration bracket and no open-region element, so both
     // are `<dir>`: the reach of a held note above its notehead, and the
     // instruction over the region it governs, spanning with `tstamp2` where

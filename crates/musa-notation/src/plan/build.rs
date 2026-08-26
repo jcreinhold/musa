@@ -100,6 +100,27 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .iter()
         .filter_map(|chord| Some(positioned(&bars, fold.at(chord.at)?, chord.symbol.clone())))
         .collect();
+    let media = score
+        .annotations()
+        .media()
+        .iter()
+        .filter_map(|occurrence| {
+            let at = fold.at(occurrence.start)?;
+            let label = match occurrence.kind {
+                musa_score::score::MediaKind::MusicalClip(fit) => format!(
+                    "clip {} ({})",
+                    occurrence.name,
+                    match fit {
+                        musa_score::score::MediaFit::Crop => "crop",
+                        musa_score::score::MediaFit::Loop => "loop",
+                        musa_score::score::MediaFit::Rate => "rate",
+                    }
+                ),
+                musa_score::score::MediaKind::FixedMediaCue => format!("fixed media {}", occurrence.name),
+            };
+            Some(positioned(&bars, at, label))
+        })
+        .collect();
     let repeats = fold.marks(score, &bars);
     let open = score
         .annotations()
@@ -169,6 +190,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         staves,
         tempos,
         sections,
+        media,
         harmony,
         repeats,
         open,

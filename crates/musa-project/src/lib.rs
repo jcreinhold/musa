@@ -70,9 +70,9 @@ pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode,
 pub use crate::error::ProjectError;
 pub use crate::export::{EventsReport, ExportArtifact, ExportRequest, check_events};
 pub use crate::facts::{
-    DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, NameFact, NameKind, OccurrenceFacts,
-    OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, StepFact, StepKind,
-    TypeFact, VoiceFacts,
+    DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, MediaFacts, NameFact, NameKind,
+    OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation,
+    StepFact, StepKind, TypeFact, VoiceFacts,
 };
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};

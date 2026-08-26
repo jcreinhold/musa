@@ -1,0 +1,61 @@
+==================
+Recorded media declarations and cues
+==================
+
+piece "Media" {
+  meter 4/4;
+  clip pulse from "assets/pulse.wav" fit 1/1 by loop;
+  fixed_media harbor from "assets/harbor.wav";
+  score {
+    cue pulse at 1:1;
+    cue harbor at 2:1;
+    part guide { voice one { c4/1 c4/1 } }
+  }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (meter_statement
+      (rational))
+    (clip_declaration
+      (identifier)
+      (identifier)
+      (identifier)
+      (string)
+      (identifier)
+      (rational)
+      (identifier)
+      (identifier))
+    (fixed_media_declaration
+      (identifier)
+      (identifier)
+      (identifier)
+      (string))
+    (score_declaration
+      (cue_statement
+        (identifier)
+        (identifier)
+        (position
+          (integer)
+          (integer)))
+      (cue_statement
+        (identifier)
+        (identifier)
+        (position
+          (integer)
+          (integer)))
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

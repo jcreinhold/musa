@@ -23,6 +23,7 @@ pub struct NotationPlan {
     pub(super) staves: Vec<StaffPlan>,
     pub(super) tempos: Vec<PositionedMark<TempoText>>,
     pub(super) sections: Vec<PositionedMark<String>>,
+    pub(super) media: Vec<PositionedMark<String>>,
     pub(super) harmony: Vec<PositionedMark<ChordSymbol>>,
     pub(super) repeats: Vec<RepeatMark>,
     pub(super) open: Vec<OpenMark>,
@@ -51,6 +52,11 @@ impl NotationPlan {
     /// Form markers, in the order they are reached.
     pub fn sections(&self) -> &[PositionedMark<String>] {
         &self.sections
+    }
+
+    /// Labelled recorded-media cues, in the order they are reached.
+    pub fn media(&self) -> &[PositionedMark<String>] {
+        &self.media
     }
 
     /// Chord symbols, in the order they are reached.

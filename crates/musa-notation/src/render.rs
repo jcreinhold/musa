@@ -58,6 +58,11 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
         NotationTarget::MusicXml => "MusicXML",
     };
     let mut losses = Vec::new();
+    if !plan.media().is_empty() {
+        losses.push(format!(
+            "{format} cannot encode executable recorded media: cue labels are exported as text directions"
+        ));
+    }
     if plan
         .open()
         .iter()

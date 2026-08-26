@@ -83,12 +83,17 @@ strengthening core equality.
 | `String` | `musa-events` adapter for Rust `String` | the exact UTF-8 string | nothing | two strings receive equal bytes |
 | `Progress` | `musa-events` | every exact ordered `(u,v)` breakpoint | nothing | distinct curves receive one breakpoint list |
 | `ScoreFact` | `musa-compiler` | scope; full fact kind; source span; expansion path | elaboration-only `tied`; `Origin.definition_span`; `Origin.declaration` | a cache, projection, or lineage consumer requires one omitted field to distinguish execution results |
+| `MediaAction` | `std::sound::media`, projected through `ScoreFact` | constructor; canonical asset reference; fit policy; exact playback settings | occurrence support; decoded duration; bytes and runtime state | two fit policies, assets, or playback settings receive one key, or a fixed cue's decoded duration enters the payload |
 | `Gesture` | `std::performance`, projected at the compiler/runtime boundary | constructor; stable gesture identity; written pitch; exact controls and normalized-local curves; techniques; group/member identity | presentation `Origin`; separately keyed written-support lineage | a scheduler or instrument distinguishes two payloads whose keys compare equal, or moving an occurrence changes its payload bytes |
 
 The `ScoreFact` row records the implementation as it exists. Its omitted origin fields remain available in the stored
 fact and its interchange form. Core semantic equality does not observe them. A future identity-sensitive preparation
 must use a complete presentation or a named semantic projection whose fields match its actual decisions; it may not
 pretend the coarser `ScoreFact` equality contains those fields.
+
+`MediaAction` is ordinary standard-library data, not a core primitive. Its Rust representation is a read-only checked
+projection used by current consumers. A musical clip's duration is its occurrence span; a fixed cue's decoded physical
+duration is prepared machine configuration. Neither is duplicated in the payload.
 
 ## A7 — Exact temporal framing
 

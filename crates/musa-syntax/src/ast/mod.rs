@@ -338,8 +338,8 @@ pub use expressions::{
 };
 
 pub use score::{
-    FragmentDecl, ImproviseStmt, MobileStmt, MotifDecl, PartDecl, ProfileStmt, ScoreDecl, SectionStmt, SoundStmt,
-    VoiceDecl, VoiceItem,
+    CueStmt, FragmentDecl, ImproviseStmt, MobileStmt, MotifDecl, PartDecl, ProfileStmt, ScoreDecl, SectionStmt,
+    SoundStmt, VoiceDecl, VoiceItem,
 };
 
 pub use voice::{
@@ -353,7 +353,7 @@ pub use harmony::{ChordSymbol, HarmonyDecl, HarmonyStmt, Position};
 pub use quotation::{EventsHole, EventsQuote, QuoteExpr, QuotePattern, SequenceSplice, Splice};
 
 pub use studio::{
-    Arg, ArgList, AssignStmt, BusDecl, CallExpr, ChainStmt, InstrumentDecl, InstrumentImplementation, ModulateStmt,
-    NameRef, ParamPath, PatchDecl, RoomDecl, RouteStmt, SendStmt, SignalBinding, SignalChain, SignalStage, StudioDecl,
-    StudioItem, ValueLiteral,
+    Arg, ArgList, AssignStmt, BusDecl, CallExpr, ChainStmt, ClipDecl, FixedMediaDecl, InstrumentDecl,
+    InstrumentImplementation, ModulateStmt, NameRef, ParamPath, PatchDecl, RoomDecl, RouteStmt, SendStmt,
+    SignalBinding, SignalChain, SignalStage, StudioDecl, StudioItem, ValueLiteral,
 };

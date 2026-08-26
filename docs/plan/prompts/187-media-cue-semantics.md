@@ -1,7 +1,7 @@
 ---
 id: 187
 slug: media-cue-semantics
-status: pending
+status: done
 depends_on: [174, 177, 182]
 phase: 4
 ---

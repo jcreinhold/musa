@@ -236,7 +236,7 @@ fn pair_data() -> RawData {
     )
 }
 
-/// `data Fact { Note(…); Rest(…); … }` — the nineteen things a score says.
+/// `data Fact { Note(…); Rest(…); … }` — the twenty-one things a score says.
 ///
 /// One case per [`crate::elaborate::FactKind`] case, with the same name and the
 /// same fields in the same order. That correspondence is the declaration's whole
@@ -251,7 +251,7 @@ fn pair_data() -> RawData {
 /// notation itself, and `07-analysis.md`'s analyses are `match`es over exactly
 /// this. `Scope` settled the same question for `play`'s other argument — "finite
 /// data with three cases and nothing hidden behind them" — and this is that
-/// answer nineteen cases wider.
+/// answer twenty-one cases wider.
 ///
 /// Its *payloads* go the other way and are registered base types, because each
 /// is a value this compiler owns a representation and a reading of: a
@@ -345,6 +345,23 @@ fn fact_data() -> RawData {
                 constructor(
                     "Ending",
                     vec![binder("bracket", var("Nat")), binder("pass", var("Nat"))],
+                ),
+                constructor(
+                    "MusicalClip",
+                    vec![
+                        binder("name", var("Text")),
+                        binder("asset", var("Text")),
+                        binder("fit", var("Text")),
+                        binder("gain_db", var("Ratio")),
+                    ],
+                ),
+                constructor(
+                    "FixedMediaCue",
+                    vec![
+                        binder("name", var("Text")),
+                        binder("asset", var("Text")),
+                        binder("gain_db", var("Ratio")),
+                    ],
                 ),
             ],
         )],

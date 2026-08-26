@@ -271,6 +271,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::SoundStmt
         | SyntaxKind::StudioDecl
         | SyntaxKind::InstrumentDecl
+        | SyntaxKind::ClipDecl
+        | SyntaxKind::FixedMediaDecl
+        | SyntaxKind::CueStmt
         | SyntaxKind::InstrumentImplementation
         | SyntaxKind::PatchDecl
         | SyntaxKind::BusDecl

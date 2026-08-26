@@ -1042,6 +1042,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::IndexExpr => return None,
         SyntaxKind::SoundStmt
         | SyntaxKind::InstrumentDecl
+        | SyntaxKind::ClipDecl
+        | SyntaxKind::FixedMediaDecl
+        | SyntaxKind::CueStmt
         | SyntaxKind::InstrumentImplementation
         | SyntaxKind::RoomDecl => return None,
     };

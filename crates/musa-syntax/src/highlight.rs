@@ -478,6 +478,9 @@ impl TokenClass {
             | SyntaxKind::FieldPath => return None,
             SyntaxKind::SoundStmt
             | SyntaxKind::InstrumentDecl
+            | SyntaxKind::ClipDecl
+            | SyntaxKind::FixedMediaDecl
+            | SyntaxKind::CueStmt
             | SyntaxKind::InstrumentImplementation
             | SyntaxKind::RoomDecl => return None,
 

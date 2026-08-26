@@ -202,11 +202,25 @@ impl Parser<'_> {
                 self.section_stmt();
             } else if self.at(SyntaxKind::HarmonyKw) {
                 self.harmony_decl();
+            } else if self.at_word("cue") {
+                self.cue_stmt();
             } else {
-                self.expected("a `part`, `section`, or `harmony` declaration");
+                self.expected("a `part`, `section`, `harmony`, or `cue` declaration");
                 self.recover(SCORE_RECOVERY);
             }
         }
+        self.finish();
+    }
+
+    /// `cue <media> at <measure>:<beat>;` — absolute placement of a declared
+    /// musical clip or fixed-media source.
+    pub(super) fn cue_stmt(&mut self) {
+        self.start(SyntaxKind::CueStmt);
+        self.bump(); // cue
+        self.expect(SyntaxKind::Identifier, "a declared media name");
+        self.expect(SyntaxKind::AtKw, "`at`");
+        self.position();
+        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 

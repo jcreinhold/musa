@@ -1,6 +1,5 @@
 ---
 source: crates/musa-compiler/tests/suite/compiler.rs
-assertion_line: 60
 expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
@@ -643,6 +642,7 @@ ScoreSnapshot {
         open: [],
         points: [],
         marks: [],
+        media: [],
     },
     motifs: [],
     profiles: ProfileSet {

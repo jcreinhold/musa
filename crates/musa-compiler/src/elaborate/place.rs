@@ -24,6 +24,7 @@ use num_rational::Ratio;
 /// it, and that is the end of the core's involvement.
 pub(super) fn placed(
     resolver: &mut Resolver,
+    media: &MediaDeclarations,
     score: &musa_syntax::ast::ScoreDecl,
     bars: &musa_score::BarLines,
     extent: Duration<WrittenTime>,
@@ -93,7 +94,173 @@ pub(super) fn placed(
             ScoreFact::new(Scope::Piece, FactKind::Harmony { symbol }, at_span(span)),
         ));
     }
-    track_or_empty(extent, occurrences)
+    let mut media_extent = extent.as_ratio();
+    for cue in score.cues() {
+        let span = resolve::trimmed_span(cue.syntax());
+        let Some(name) = cue.name() else { continue };
+        let Some(media_declaration) = media.0.get(&name) else {
+            resolver.error(
+                Code::UnknownName,
+                format!("cannot find recorded media `{name}`"),
+                span,
+                "declare it with `clip` or `fixed_media`",
+            );
+            continue;
+        };
+        let Some(at) = resolve_position(resolver, cue.position().as_ref(), span, bars, extent_time) else {
+            continue;
+        };
+        let start = Position::new(at.as_ratio());
+        let (end, kind, definition_span) = match media_declaration {
+            MediaDeclaration::Clip {
+                asset,
+                duration,
+                fit,
+                span: definition_span,
+            } => {
+                let Ok(duration) = Duration::new(*duration) else {
+                    continue;
+                };
+                let end = start.plus(duration);
+                media_extent = media_extent.max(end.as_ratio());
+                (
+                    end,
+                    FactKind::MusicalClip {
+                        name: name.clone(),
+                        asset: asset.clone(),
+                        fit: *fit,
+                        gain_db: Ratio::ZERO,
+                    },
+                    *definition_span,
+                )
+            }
+            MediaDeclaration::Fixed {
+                asset,
+                span: definition_span,
+            } => (
+                start,
+                FactKind::FixedMediaCue {
+                    name: name.clone(),
+                    asset: asset.clone(),
+                    gain_db: Ratio::ZERO,
+                },
+                *definition_span,
+            ),
+        };
+        let origin = Origin {
+            source_span: span,
+            definition_span,
+            declaration,
+            expansion_path: Vec::new(),
+        };
+        let occurrence_span = Span::new(start, end).unwrap_or(Span::ZERO);
+        occurrences.push(Occurrence::new(
+            occurrence_span,
+            ScoreFact::new(Scope::Piece, kind, origin),
+        ));
+    }
+    let complete_extent = Duration::new(media_extent).unwrap_or(extent);
+    track_or_empty(complete_extent, occurrences)
+}
+
+/// The checked recorded-media declarations visible to one piece.
+///
+/// Imported modules, the file root, and the piece extend the same environment
+/// in that order. This is deliberately a projection of source declarations,
+/// not a Rust vocabulary: [`MediaDeclaration`] only retains the fields needed
+/// to place a checked `cue` on the event track.
+#[derive(Default)]
+pub(super) struct MediaDeclarations(std::collections::BTreeMap<String, MediaDeclaration>);
+
+impl MediaDeclarations {
+    /// Add the declarations exported by one source scope.
+    pub(super) fn extend(
+        &mut self,
+        resolver: &mut Resolver,
+        clips: impl IntoIterator<Item = musa_syntax::ast::ClipDecl>,
+        fixed: impl IntoIterator<Item = musa_syntax::ast::FixedMediaDecl>,
+    ) {
+        for declaration in clips {
+            let span = resolve::trimmed_span(declaration.syntax());
+            let Some(name) = declaration.name() else { continue };
+            let Some(asset) = declaration.asset() else { continue };
+            let Some(duration) = declaration
+                .duration()
+                .and_then(|written| resolve::parse_ratio(&written))
+            else {
+                continue;
+            };
+            if duration <= Ratio::ZERO {
+                resolver.error(
+                    Code::OutOfRange,
+                    "a musical clip needs positive written duration",
+                    span,
+                    "not positive",
+                );
+                continue;
+            }
+            let fit = match declaration.policy().as_deref() {
+                Some("crop") => musa_score::score::MediaFit::Crop,
+                Some("loop") => musa_score::score::MediaFit::Loop,
+                Some("rate") => musa_score::score::MediaFit::Rate,
+                Some(policy) => {
+                    resolver.error(
+                        Code::NotAValue,
+                        format!("`{policy}` is not a media fit policy"),
+                        span,
+                        "write `crop`, `loop`, or `rate`",
+                    );
+                    continue;
+                }
+                None => continue,
+            };
+            self.insert(
+                resolver,
+                name,
+                MediaDeclaration::Clip {
+                    asset,
+                    duration,
+                    fit,
+                    span,
+                },
+                span,
+            );
+        }
+        for declaration in fixed {
+            let span = resolve::trimmed_span(declaration.syntax());
+            let (Some(name), Some(asset)) = (declaration.name(), declaration.asset()) else {
+                continue;
+            };
+            self.insert(resolver, name, MediaDeclaration::Fixed { asset, span }, span);
+        }
+    }
+
+    fn insert(&mut self, resolver: &mut Resolver, name: String, declaration: MediaDeclaration, span: SourceSpan) {
+        match self.0.entry(name) {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(declaration);
+            }
+            std::collections::btree_map::Entry::Occupied(entry) => resolver.error(
+                Code::DuplicateName,
+                format!("recorded media `{}` is declared twice", entry.key()),
+                span,
+                "names share one media namespace",
+            ),
+        }
+    }
+}
+
+enum MediaDeclaration {
+    Clip {
+        asset: String,
+        duration: Ratio<i64>,
+        fit: musa_score::score::MediaFit,
+        span: SourceSpan,
+    },
+    Fixed {
+        asset: String,
+        span: SourceSpan,
+    },
 }
 
 /// A point occurrence at an absolute time, for the facts that are placed by

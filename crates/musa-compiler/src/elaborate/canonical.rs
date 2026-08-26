@@ -112,6 +112,13 @@ impl musa_events::Canonical for ScoreFact {
                 format!("mobile:{}:{}|", fragments.join(","), order.join(","))
             }
             FactKind::Improvise { over } => format!("improvise:{}|", over.as_deref().unwrap_or_default()),
+            FactKind::MusicalClip {
+                name,
+                asset,
+                fit,
+                gain_db,
+            } => format!("media:clip:{name}:{asset}:{}:{gain_db}|", media_fit_name(*fit)),
+            FactKind::FixedMediaCue { name, asset, gain_db } => format!("media:fixed:{name}:{asset}:{gain_db}|"),
         };
         // Written rather than `format!`ed so the scope costs no second
         // allocation: P4 walks every occurrence on every edit.
@@ -135,5 +142,13 @@ impl musa_events::Canonical for ScoreFact {
             kind, self.origin.source_span.start, self.origin.source_span.end, self.origin.expansion_path,
         );
         key
+    }
+}
+
+fn media_fit_name(fit: musa_score::score::MediaFit) -> &'static str {
+    match fit {
+        musa_score::score::MediaFit::Crop => "crop",
+        musa_score::score::MediaFit::Loop => "loop",
+        musa_score::score::MediaFit::Rate => "rate",
     }
 }

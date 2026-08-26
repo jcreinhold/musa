@@ -4,7 +4,7 @@
 
 use super::bars::{check_keys, part_bars, resolve_meters};
 use super::fact::{FactKind, VoiceTrack};
-use super::place::placed;
+use super::place::{MediaDeclarations, placed};
 use crate::compile::Compilation;
 use crate::resolve::{self, Resolver};
 use musa_score::diagnose::{Code, Diagnostic};
@@ -35,6 +35,7 @@ pub(super) fn elaborate_score(
     resolver: &mut Resolver,
     elaborated: &mut crate::document::Document,
     piece: &PieceDecl,
+    media: &MediaDeclarations,
     snapshot: &mut ScoreSnapshot,
 ) -> musa_events::SemanticHash {
     let Some(score) = piece.score() else {
@@ -93,7 +94,10 @@ pub(super) fn elaborate_score(
             sink.extend(lanes);
         }
     }
-    let whole = musa_events::together(vec![placed(resolver, &score, &bars, sounding.duration()), sounding]);
+    let whole = musa_events::together(vec![
+        placed(resolver, media, &score, &bars, sounding.duration()),
+        sounding,
+    ]);
     // The piece's identity, taken where the piece exists as one temporal object
     // and nowhere else: after this line the timeline is a projection, and a hash
     // of the projection would be a hash of a view.
@@ -304,6 +308,10 @@ pub(super) fn elaborate_material(
 ) -> Compilation {
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &library.imports(), &options.imports);
+    // A library exports these declarations even though it places no cues of
+    // its own, so malformed or duplicate media must fail when the library is
+    // checked directly as well as when a piece imports it.
+    let _media = super::media_declarations(resolver, &libraries, library, None);
     // The one checker, here as everywhere: the library and its imports as a
     // document, declared by musa-calculus. A document that came back is not yet a
     // library that checks — `elaborate` answers `Some` beside refusals it

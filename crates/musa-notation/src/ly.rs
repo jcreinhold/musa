@@ -455,6 +455,13 @@ fn score_marks(plan: &NotationPlan) -> Vec<PositionedMark<ScoreMark>> {
             what: ScoreMark::Section(section.what.clone()),
         });
     }
+    for media in plan.media() {
+        marks.push(PositionedMark {
+            measure: media.measure,
+            onset_in_measure: media.onset_in_measure,
+            what: ScoreMark::Instruction(media.what.clone()),
+        });
+    }
     for hold in plan.holds() {
         marks.push(PositionedMark {
             measure: hold.measure,

@@ -34,6 +34,12 @@
 (instrument_declaration
   name: (identifier) @name) @definition.type
 
+(clip_declaration
+  name: (identifier) @name) @definition.type
+
+(fixed_media_declaration
+  name: (identifier) @name) @definition.type
+
 (room_declaration
   name: (identifier) @name) @definition.type
 

@@ -1,0 +1,29 @@
+// Recorded-media intent is finite source data. Decoded bytes, physical
+// duration, and playback state belong to preparation and never inhabit these
+// values.
+
+/// How immutable recorded media fills one occurrence's written support.
+data MediaFit {
+    Crop,
+    Loop,
+    Rate,
+}
+
+/// Exact playback settings shared by clips and fixed-media cues.
+record MediaPlayback {
+    gain_db: Ratio;
+}
+
+/// The neutral playback policy used when a cue writes no settings.
+let neutral_media_playback: MediaPlayback = MediaPlayback {
+    gain_db = 0/1
+};
+
+/// Finite intent carried by a recorded-media occurrence.
+///
+/// Written support belongs to the containing event-track span. A fixed cue is
+/// a point; its decoded physical duration is deliberately absent.
+data MediaAction {
+    MusicalClip(name: Text, asset: Text, fit: MediaFit, playback: MediaPlayback),
+    FixedMediaCue(name: Text, asset: Text, playback: MediaPlayback),
+}

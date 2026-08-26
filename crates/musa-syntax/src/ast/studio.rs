@@ -11,6 +11,81 @@ use super::wrapper;
 use crate::SyntaxKind;
 use crate::language::{SyntaxElement, SyntaxNode, SyntaxToken};
 
+/// `clip pulse from "assets/pulse.wav" fit 4/1 by rate;`.
+pub struct ClipDecl(SyntaxNode);
+wrapper!(ClipDecl, SyntaxKind::ClipDecl);
+
+impl ClipDecl {
+    /// The source name bound by this declaration.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+            .map(|token| token.text().to_string())
+    }
+
+    /// The canonical project/package-relative asset spelling.
+    pub fn asset(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| super::unquote(&text))
+    }
+
+    /// The quoted asset token, for diagnostics and source edits.
+    pub fn asset_token(&self) -> Option<SyntaxToken> {
+        find_token(&self.0, SyntaxKind::String)
+    }
+
+    /// The exact written-time support of each cue.
+    pub fn duration(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Rational)
+    }
+
+    /// The fit-policy spelling following contextual `by`.
+    pub fn policy(&self) -> Option<String> {
+        let mut after_by = false;
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find_map(|token| {
+                if token.kind() != SyntaxKind::Identifier {
+                    return None;
+                }
+                if after_by {
+                    return Some(token.text().to_string());
+                }
+                after_by = token.text() == "by";
+                None
+            })
+    }
+}
+
+/// `fixed_media harbor from "assets/harbor.wav";`.
+pub struct FixedMediaDecl(SyntaxNode);
+wrapper!(FixedMediaDecl, SyntaxKind::FixedMediaDecl);
+
+impl FixedMediaDecl {
+    /// The source name bound by this declaration.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+            .map(|token| token.text().to_string())
+    }
+
+    /// The canonical project/package-relative asset spelling.
+    pub fn asset(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| super::unquote(&text))
+    }
+
+    /// The quoted asset token, for diagnostics and source edits.
+    pub fn asset_token(&self) -> Option<SyntaxToken> {
+        find_token(&self.0, SyntaxKind::String)
+    }
+}
+
 /// One item of a `studio` block. The variants are the block's whole
 /// vocabulary, so a `match` over this type is a match over the studio
 /// language.

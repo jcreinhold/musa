@@ -6,7 +6,7 @@
 //! composition "is therefore the core's own operations, with no separate
 //! equation set to maintain". The core's own operations were eight, and exactly
 //! one of them — [`super::track`]'s `play` — makes a fact at all. It makes
-//! `FactKind::Note` and nothing else, out of the nineteen kinds a score says.
+//! `FactKind::Note` and nothing else, out of the twenty-one kinds a score says.
 //!
 //! Five words are missing and this module supplies them — four as
 //! registrations, one as a literal:
@@ -502,6 +502,22 @@ fn fact_of(datum: &Datum) -> Option<FactKind> {
         "Fact.Ending" => FactKind::Ending {
             bracket: count(0)?,
             pass: count(1)?,
+        },
+        "Fact.MusicalClip" => FactKind::MusicalClip {
+            name: read(at(0)?)?,
+            asset: read(at(1)?)?,
+            fit: match read::<String>(at(2)?)?.as_str() {
+                "crop" => musa_score::score::MediaFit::Crop,
+                "loop" => musa_score::score::MediaFit::Loop,
+                "rate" => musa_score::score::MediaFit::Rate,
+                _ => return None,
+            },
+            gain_db: read(at(3)?)?,
+        },
+        "Fact.FixedMediaCue" => FactKind::FixedMediaCue {
+            name: read(at(0)?)?,
+            asset: read(at(1)?)?,
+            gain_db: read(at(2)?)?,
         },
         _ => return None,
     })

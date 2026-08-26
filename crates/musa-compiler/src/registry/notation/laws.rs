@@ -7,7 +7,7 @@
 //!
 //! # The mirroring is stated twice, from opposite ends
 //!
-//! [`samples`] is a list of nineteen `(constructor, datum, kind)` rows written
+//! [`samples`] is a list of twenty-one `(constructor, datum, kind)` rows written
 //! by hand, and it is the only place in this crate where a `Fact` case and a
 //! [`FactKind`] case are named together. Two laws read it from opposite ends and
 //! neither trusts the list itself:
@@ -166,7 +166,7 @@ fn ramp() -> Ramp {
     }
 }
 
-// ---- the nineteen ----
+// ---- every fact ----
 
 /// Every `Fact` case: its constructor, a datum spelling it, and the
 /// [`FactKind`] that datum must read back as.
@@ -376,6 +376,36 @@ fn samples() -> Vec<(&'static str, Datum, FactKind)> {
             case("Fact.Ending", vec![whole(2), whole(4)]),
             FactKind::Ending { bracket: 2, pass: 4 },
         ),
+        (
+            "Fact.MusicalClip",
+            case(
+                "Fact.MusicalClip",
+                vec![
+                    text("pulse"),
+                    text("assets/pulse.wav"),
+                    text("loop"),
+                    plain("Ratio", ratio(-3, 1)),
+                ],
+            ),
+            FactKind::MusicalClip {
+                name: "pulse".to_owned(),
+                asset: "assets/pulse.wav".to_owned(),
+                fit: musa_score::score::MediaFit::Loop,
+                gain_db: ratio(-3, 1),
+            },
+        ),
+        (
+            "Fact.FixedMediaCue",
+            case(
+                "Fact.FixedMediaCue",
+                vec![text("harbor"), text("assets/harbor.wav"), plain("Ratio", ratio(0, 1))],
+            ),
+            FactKind::FixedMediaCue {
+                name: "harbor".to_owned(),
+                asset: "assets/harbor.wav".to_owned(),
+                gain_db: ratio(0, 1),
+            },
+        ),
     ]
 }
 
@@ -405,6 +435,8 @@ fn case_of(kind: &FactKind) -> &'static str {
         FactKind::Mobile { .. } => "Fact.Mobile",
         FactKind::Improvise { .. } => "Fact.Improvise",
         FactKind::Ending { .. } => "Fact.Ending",
+        FactKind::MusicalClip { .. } => "Fact.MusicalClip",
+        FactKind::FixedMediaCue { .. } => "Fact.FixedMediaCue",
     }
 }
 
@@ -466,7 +498,7 @@ fn sound(fact: Datum, held: Ratio<i64>) -> Option<Answer> {
     ])
 }
 
-/// `sounded` puts each of the nineteen facts into a track, unchanged.
+/// `sounded` puts each of the twenty-one facts into a track, unchanged.
 ///
 /// The agreement half, and the one that reads the field data: the expected side
 /// of every row is a [`FactKind`] built by hand out of the same values the datum
@@ -525,7 +557,7 @@ fn sounded_gives_the_fact_the_scope_and_origin_it_was_given() {
 ///
 /// The line this module draws differently from `play`'s, and the reason it does:
 /// a mark, a grace note, and a dynamic are point occurrences, so refusing zero
-/// would refuse three of the nineteen outright.
+/// would refuse three of the twenty-one outright.
 #[test]
 fn sounded_admits_a_point_and_refuses_a_negative_length() {
     let point = plainly(
@@ -552,7 +584,7 @@ fn sounded_admits_a_point_and_refuses_a_negative_length() {
 /// A `Fact` this compiler never declared is not a fact.
 ///
 /// D2's other half: a rule answers `None` where the host's table is wrong, and a
-/// constructor that is not one of the nineteen can only arrive from a defect in
+/// constructor that is not one of the twenty-one can only arrive from a defect in
 /// this compiler.
 #[test]
 fn sounded_answers_nothing_for_a_case_that_is_not_a_fact() {

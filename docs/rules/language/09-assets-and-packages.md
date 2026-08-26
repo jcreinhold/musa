@@ -242,14 +242,15 @@ clip pulse from "assets/pulse.wav" fit 4/1 by rate;
 cue pulse at 9:1;
 ```
 
-The declaration records source duration `L` and target musical duration `D`. For `by rate`, at performed beat `b` within
-cue onset `b₀`, normalized source phase is `(b-b₀)/D`; tempo changes alter its physical derivative, so the whole asset
-remains fitted to the beat interval and pitch follows resampling rate. `by loop` instead plays at natural rate, restarts
-as needed, and truncates at the beat end. `by crop` plays once at natural rate, truncating whichever of asset or beat
-support outlasts the other and leaving any remaining support silent. There is no pitch-preserving warp promise. Loop
-count is explicit: `cue pulse at 9:1 repeat 4;`. The cue elaborates to an interval `ScoreFact::MusicalClip` with exact
-beat support and an opaque `AssetRef`; it is not a note. The event track applies only its ordinary temporal laws and
-remains opaque to the media reference and fit policy.
+Preparation records source duration `L`; the declaration and occurrence record target musical duration `D`. For
+`by rate`, at performed beat `b` within cue onset `b₀`, normalized source phase is `(b-b₀)/D`; tempo changes alter its
+physical derivative, so the whole asset remains fitted to the beat interval and pitch follows resampling rate. `by loop`
+instead plays at natural rate, restarts as needed, and truncates at the beat end. `by crop` plays once at natural rate,
+truncating whichever of asset or beat support outlasts the other and leaving any remaining support silent. There is no
+pitch-preserving warp promise. `by loop` repeats exactly as many times as the fitted support requires; a score-level
+repeat duplicates the occurrence, not an internal loop counter. The cue elaborates to an interval
+`ScoreFact::MusicalClip` with exact beat support and an opaque `AssetRef`; it is not a note. The event track applies
+only its ordinary temporal laws and remains opaque to the media reference and fit policy.
 
 ### Fixed-media cue
 
@@ -274,6 +275,10 @@ decoded samples, and fixed-media duration never enter `Term[ScoreFact]` or `Even
 asset table beside the score snapshot supplies `L` to performance preparation. This is the honest exception to
 “everything has a beat duration,” useful for field recording and fixed-media/timeline practice (OMT
 `098-twentieth-century-rhythmic-techniques.md`).
+
+The source-owned declarations are `std::sound::media::MediaFit`, `MediaPlayback`, and `MediaAction`. The concise
+`clip`/`fixed_media` declarations and `cue` placement elaborate to those ordinary constructors. Rust may retain an exact
+checked projection for consumers; it does not own a second constructible policy vocabulary.
 
 ### Temporal action table
 

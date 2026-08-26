@@ -1,6 +1,5 @@
 ---
 source: crates/musa-compiler/tests/suite/notation_details_laws.rs
-assertion_line: 202
 expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
@@ -1478,6 +1477,7 @@ ScoreSnapshot {
         open: [],
         points: [],
         marks: [],
+        media: [],
     },
     motifs: [
         MotifDeclaration {

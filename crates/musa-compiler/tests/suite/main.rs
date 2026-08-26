@@ -42,6 +42,7 @@ mod literal_syntax_laws;
 mod machine_laws;
 mod macro_closure_laws;
 mod marks;
+mod media_laws;
 mod meter_changes;
 mod music_compatibility;
 mod music_laws;

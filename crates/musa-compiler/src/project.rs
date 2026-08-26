@@ -234,6 +234,31 @@ fn project_piece(
                 at,
                 origin: fact.origin.clone(),
             }),
+            FactKind::MusicalClip {
+                name,
+                asset,
+                fit,
+                gain_db,
+            } => resolver.annotations.push_media(musa_score::score::MediaOccurrence {
+                name: name.clone(),
+                asset: asset.clone(),
+                kind: musa_score::score::MediaKind::MusicalClip(*fit),
+                start: MusicalTime::new(occurrence.span().start().as_ratio()),
+                end: MusicalTime::new(occurrence.span().end().as_ratio()),
+                gain_db: *gain_db,
+                origin: fact.origin.clone(),
+            }),
+            FactKind::FixedMediaCue { name, asset, gain_db } => {
+                resolver.annotations.push_media(musa_score::score::MediaOccurrence {
+                    name: name.clone(),
+                    asset: asset.clone(),
+                    kind: musa_score::score::MediaKind::FixedMediaCue,
+                    start: MusicalTime::new(occurrence.span().start().as_ratio()),
+                    end: MusicalTime::new(occurrence.span().end().as_ratio()),
+                    gain_db: *gain_db,
+                    origin: fact.origin.clone(),
+                });
+            }
             FactKind::Note { .. }
             | FactKind::Rest { .. }
             | FactKind::Grace { .. }
@@ -368,6 +393,9 @@ fn project_voice(
                     kind: musa_score::score::OpenKind::Improvise { over: over.clone() },
                     origin: fact.origin.clone(),
                 });
+                index = index.saturating_add(1);
+            }
+            FactKind::MusicalClip { .. } | FactKind::FixedMediaCue { .. } => {
                 index = index.saturating_add(1);
             }
             // Piece-scoped facts were bucketed away before this ran; they are
@@ -669,7 +697,9 @@ fn project_regions(
             | FactKind::Repeat { .. }
             | FactKind::Ending { .. }
             | FactKind::Mobile { .. }
-            | FactKind::Improvise { .. } => {}
+            | FactKind::Improvise { .. }
+            | FactKind::MusicalClip { .. }
+            | FactKind::FixedMediaCue { .. } => {}
         }
     }
 }

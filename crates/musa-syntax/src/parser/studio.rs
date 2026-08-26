@@ -24,6 +24,52 @@ const STUDIO_RECOVERY: &[SyntaxKind] = &[
 ];
 
 impl Parser<'_> {
+    /// `clip <name> from <asset> fit <duration> by <policy>;`.
+    ///
+    /// Every structural word is contextual, as it is for `instrument`: media
+    /// policy is ordinary source vocabulary and adding a policy does not
+    /// reserve a name throughout the language.
+    pub(super) fn clip_decl(&mut self) {
+        self.start(SyntaxKind::ClipDecl);
+        self.bump(); // clip
+        self.expect(SyntaxKind::Identifier, "a clip name");
+        if self.at_word("from") {
+            self.bump();
+        } else {
+            self.expected("`from`");
+        }
+        self.expect(SyntaxKind::String, "an asset path in quotes");
+        if self.at_word("fit") {
+            self.bump();
+        } else {
+            self.expected("`fit`");
+        }
+        self.expect(SyntaxKind::Rational, "an exact written duration such as `4/1`");
+        if self.at_word("by") {
+            self.bump();
+        } else {
+            self.expected("`by`");
+        }
+        self.expect(SyntaxKind::Identifier, "a fit policy: `crop`, `loop`, or `rate`");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `fixed_media <name> from <asset>;`.
+    pub(super) fn fixed_media_decl(&mut self) {
+        self.start(SyntaxKind::FixedMediaDecl);
+        self.bump(); // fixed_media
+        self.expect(SyntaxKind::Identifier, "a fixed-media name");
+        if self.at_word("from") {
+            self.bump();
+        } else {
+            self.expected("`from`");
+        }
+        self.expect(SyntaxKind::String, "an asset path in quotes");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
     /// `studio { patch ... bus ... assign ... }` (roadmap §7.1).
     ///
     /// The studio never mentions notes: everything inside it names signals,

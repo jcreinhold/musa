@@ -70,6 +70,24 @@ The machine is emphatically **not** outside the core language: the same total so
 (`../constitution.md` §9). What is outside is the *history*, because a history is coinductive and a source value is
 finite.
 
+### Recorded media at the coordinate boundary
+
+Let `theta : WrittenTime -> PhysicalTime` be the realized tempo map and let a prepared immutable recording have decoded
+duration `L`. The two recorded-media cases cross this boundary differently:
+
+```text
+MusicalClip(asset, policy) over [s,e)
+  -> a media action supported on [theta(s), theta(e)), fitted by policy
+
+FixedMediaCue(asset) at point b
+  -> start = theta(b), end = theta(b) + L
+```
+
+`L` is prepared machine configuration, not event extent. Consequently a tempo edit may change both physical endpoints of
+a musical clip, but for fixed media it moves only the onset and leaves `end - start = L`. Restricting a musical clip
+preserves its original affine source-phase anchor; restricting a fixed cue merely retains or drops its point and never
+crops decoded audio. These are consumer obligations, not extra event-track operations.
+
 ### R1 — exact preparation and conditional frame equality
 
 The realization boundary has the conceptual operation:

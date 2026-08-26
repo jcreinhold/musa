@@ -673,6 +673,9 @@ fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions:
         write_offset(xml, section.onset_in_measure.as_ratio(), divisions)?;
         xml.close("direction")?;
     }
+    for media in plan.media().iter().filter(|mark| mark.measure == measure) {
+        write_words(xml, &media.what, media.onset_in_measure.as_ratio(), divisions)?;
+    }
     for chord in plan.harmony().iter().filter(|mark| mark.measure == measure) {
         write_harmony(xml, &chord.what, chord.onset_in_measure.as_ratio(), divisions)?;
     }

@@ -26,6 +26,7 @@ The modules:
 | `std::sound::catalogue` | Source-owned studio processor contracts, terms, exact domains, documentation, examples, and primitive requirements |
 | `std::sound::graph` | Finite studio descriptions and validation of descriptors, ports, parameters, bindings, and cycles |
 | `std::sound::instrument` | Typed instrument signatures, indexed control requirements, standard instruments, and private registered-machine implementations |
+| `std::sound::media` | Recorded-media fit and playback policies, and the finite clip/fixed-cue actions that carry them |
 | `std::sound::production` | Checked production studio artifacts and source-owned processor defaults |
 | `std::sound::quantity` | Exact indexed sound dimensions, units, quantities, and their checked boundary artifact |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
@@ -100,6 +101,11 @@ when DSP preparation needs a physical representation.
 examples, and exact parameter defaults and ranges are ordinary checked Musa data over those quantities. A primitive
 requirement names stable native support by id and version; private state layouts, concrete buffers, and step work remain
 in the host registry and are checked for agreement rather than copied into source.
+
+`std::sound::media` owns the ordinary data behind recorded-media declarations. `MediaFit` distinguishes crop, loop, and
+rate fitting; `MediaPlayback` carries exact playback settings; and `MediaAction` distinguishes a musical clip with
+written interval support from a fixed-media cue with point support. Decoded duration and audio bytes are deliberately
+absent: those enter only when a verified asset is prepared for a machine.
 
 Writing back is not the same claim as reading. A printed page says what the value said — realize the page a printer
 wrote and you get the spans the value held — but it is new text, so it preserves no comment, no blank line, and no

@@ -114,6 +114,32 @@ impl ScoreDecl {
     pub fn harmonies(&self) -> Vec<HarmonyDecl> {
         children(&self.0)
     }
+
+    /// Recorded-media cues, in source order.
+    pub fn cues(&self) -> Vec<CueStmt> {
+        children(&self.0)
+    }
+}
+
+/// `cue pulse at 9:1;` — one absolute placement of declared media.
+pub struct CueStmt(SyntaxNode);
+wrapper!(CueStmt, SyntaxKind::CueStmt);
+
+impl CueStmt {
+    /// The media declaration named by this cue.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+            .map(|token| token.text().to_string())
+    }
+
+    /// Its exact written position.
+    pub fn position(&self) -> Option<super::Position> {
+        child(&self.0)
+    }
 }
 
 /// `part violin { ... }`

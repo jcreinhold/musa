@@ -14,6 +14,7 @@ use super::element_text;
 use super::token_text;
 use super::unquote;
 use super::wrapper;
+use super::{ClipDecl, FixedMediaDecl};
 use crate::SyntaxKind;
 use crate::language::{SyntaxElement, SyntaxNode};
 
@@ -102,6 +103,16 @@ impl PieceDecl {
 
     /// Instrument declarations owned by this piece.
     pub fn instruments(&self) -> Vec<InstrumentDecl> {
+        children(&self.0)
+    }
+
+    /// Reusable musical-clip declarations owned by this piece.
+    pub fn clips(&self) -> Vec<ClipDecl> {
+        children(&self.0)
+    }
+
+    /// Reusable fixed-media declarations owned by this piece.
+    pub fn fixed_media(&self) -> Vec<FixedMediaDecl> {
         children(&self.0)
     }
 }
@@ -247,6 +258,16 @@ impl Document {
 
     /// Reusable instrument declarations exported by this file.
     pub fn instruments(&self) -> Vec<InstrumentDecl> {
+        children(&self.0)
+    }
+
+    /// Reusable musical-clip declarations exported by this file.
+    pub fn clips(&self) -> Vec<ClipDecl> {
+        children(&self.0)
+    }
+
+    /// Reusable fixed-media declarations exported by this file.
+    pub fn fixed_media(&self) -> Vec<FixedMediaDecl> {
         children(&self.0)
     }
 

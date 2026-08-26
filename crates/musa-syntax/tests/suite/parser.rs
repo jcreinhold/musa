@@ -157,6 +157,39 @@ piece "Sound" {
 }
 
 #[test]
+fn recorded_media_is_structural_without_reserving_its_vocabulary() {
+    let source = r#"piece "Media" {
+    meter 4/4;
+    clip pulse from "assets/pulse.wav" fit 1/1 by loop;
+    fixed_media harbor from "assets/harbor.wav";
+    score {
+        cue pulse at 1:1;
+        cue harbor at 2:1;
+        part guide { voice one { c4/1 c4/1 } }
+    }
+}
+"#;
+    let doc = parse(source);
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    for kind in [SyntaxKind::ClipDecl, SyntaxKind::FixedMediaDecl, SyntaxKind::CueStmt] {
+        assert!(
+            doc.syntax().descendants().any(|node| node.kind() == kind),
+            "missing {kind:?}"
+        );
+    }
+    for word in ["clip", "fixed_media", "from", "fit", "by", "loop", "cue"] {
+        assert!(
+            doc.syntax()
+                .descendants_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .any(|token| token.kind() == SyntaxKind::Identifier && token.text() == word),
+            "{word} was globally reserved instead of remaining contextual"
+        );
+    }
+    assert_round_trip(source);
+}
+
+#[test]
 fn invention_parses_cleanly() {
     let doc = parse(INVENTION);
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));

@@ -581,7 +581,8 @@
       }
     ],
     "performance": null,
-    "decisions": []
+    "decisions": [],
+    "media": []
   },
   "studio": {
     "declared": false,

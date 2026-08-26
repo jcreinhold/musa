@@ -328,6 +328,7 @@ struct AssetUse {
     document: String,
     span: Option<Span>,
     instrument: bool,
+    media: bool,
 }
 
 /// Inspect and verify the assets belonging to `path` without changing files.
@@ -699,6 +700,7 @@ fn verify_one(
     };
     if !policy.kind.accepts(&relative)
         || (origins.iter().any(|origin| origin.instrument) && !policy.kind.supports_instrument())
+        || (origins.iter().any(|origin| origin.media) && policy.kind != AssetKind::Audio)
     {
         return (
             AssetStatus::KindMismatch,
@@ -839,7 +841,7 @@ fn source_uses(document: &str, source: &str, open: bool) -> Vec<AssetUse> {
     let piece_instruments = PieceDecl::from_root(&root)
         .into_iter()
         .flat_map(|piece| piece.instruments());
-    document_instruments
+    let mut uses: Vec<AssetUse> = document_instruments
         .chain(piece_instruments)
         .filter_map(|instrument| {
             let address = instrument.asset()?;
@@ -860,9 +862,56 @@ fn source_uses(document: &str, source: &str, open: bool) -> Vec<AssetUse> {
                 document: document.to_owned(),
                 span,
                 instrument: true,
+                media: false,
             })
         })
-        .collect()
+        .collect();
+    let document_media = Document::of_root(&root).into_iter().flat_map(|document| {
+        document
+            .clips()
+            .into_iter()
+            .map(|clip| (clip.asset(), clip.asset_token()))
+            .chain(
+                document
+                    .fixed_media()
+                    .into_iter()
+                    .map(|fixed| (fixed.asset(), fixed.asset_token())),
+            )
+    });
+    let piece_media = PieceDecl::from_root(&root).into_iter().flat_map(|piece| {
+        piece
+            .clips()
+            .into_iter()
+            .map(|clip| (clip.asset(), clip.asset_token()))
+            .chain(
+                piece
+                    .fixed_media()
+                    .into_iter()
+                    .map(|fixed| (fixed.asset(), fixed.asset_token())),
+            )
+    });
+    uses.extend(document_media.chain(piece_media).filter_map(|(path, token)| {
+        let path = path?;
+        let span = open
+            .then(|| {
+                token.map(|token| {
+                    let range = token.text_range();
+                    Span {
+                        start: u32::from(range.start()),
+                        end: u32::from(range.end()),
+                    }
+                })
+            })
+            .flatten();
+        Some(AssetUse {
+            path,
+            document: document.to_owned(),
+            span,
+            instrument: false,
+            media: true,
+        })
+    }));
+    uses
 }
 
 pub(crate) fn soundfont_asset_base(address: &str) -> Option<String> {

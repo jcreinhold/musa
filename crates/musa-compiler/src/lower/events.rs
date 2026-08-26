@@ -413,6 +413,8 @@ pub(crate) fn context_authority(kind: &crate::elaborate::FactKind) -> Option<&'s
         | crate::elaborate::FactKind::Repeat { .. }
         | crate::elaborate::FactKind::Mobile { .. }
         | crate::elaborate::FactKind::Improvise { .. }
-        | crate::elaborate::FactKind::Ending { .. } => None,
+        | crate::elaborate::FactKind::Ending { .. }
+        | crate::elaborate::FactKind::MusicalClip { .. }
+        | crate::elaborate::FactKind::FixedMediaCue { .. } => None,
     }
 }

@@ -284,3 +284,8 @@ projections, not a second Rust `InstrumentSpec` language.
 
 `std::sound::sample` follows that boundary for native sample maps: regions, selection policies, loops, and envelopes are
 ordinary Musa data, while the Rust runtime only prepares and renders the checked source artifact.
+
+Recorded media follows it too. `std::sound::media` declares the crop, loop, and rate fit policies, exact playback
+settings, and the two finite actions: a musical clip with written interval support and a fixed-media cue with only a
+written onset. Verified bytes and decoded physical duration enter later preparation; neither is a second source language
+construct hidden in Rust.

@@ -381,6 +381,11 @@ searches the filesystem.
 - `record InstrumentExecutionArtifact: Type` — This root is the only route from a private body to host preparation. It is produced and checked as one source value; no Rust instrument schema can independently construct or amend it.
 - `let standard_instruments: InstrumentExecutionArtifact` — Versioned checked standard instrument declarations and private machines.
 
+## `std::sound::media`
+
+- `record MediaPlayback: Type` — Exact playback settings shared by clips and fixed-media cues.
+- `let neutral_media_playback: MediaPlayback` — The neutral playback policy used when a cue writes no settings.
+
 ## `std::sound::production`
 
 - `record StudioNode: Type` — One resolved processor node in a patch, bus, or control signal.

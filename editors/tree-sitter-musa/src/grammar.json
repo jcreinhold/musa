@@ -68,6 +68,14 @@
                   },
                   {
                     "type": "SYMBOL",
+                    "name": "clip_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "fixed_media_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
                     "name": "studio_declaration"
                   }
                 ]
@@ -933,6 +941,14 @@
               {
                 "type": "SYMBOL",
                 "name": "instrument_declaration"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "clip_declaration"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "fixed_media_declaration"
               },
               {
                 "type": "SYMBOL",
@@ -5120,6 +5136,10 @@
               {
                 "type": "SYMBOL",
                 "name": "harmony_declaration"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "cue_statement"
               }
             ]
           }
@@ -5985,6 +6005,126 @@
               ]
             }
           ]
+        }
+      ]
+    },
+    "clip_declaration": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "clip"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "from"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "asset",
+          "content": {
+            "type": "SYMBOL",
+            "name": "string"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "fit"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "duration",
+          "content": {
+            "type": "SYMBOL",
+            "name": "rational"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "by"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "policy",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ";"
+        }
+      ]
+    },
+    "fixed_media_declaration": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "fixed_media"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "from"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "asset",
+          "content": {
+            "type": "SYMBOL",
+            "name": "string"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ";"
         }
       ]
     },
@@ -7760,6 +7900,44 @@
         {
           "type": "SYMBOL",
           "name": "position"
+        },
+        {
+          "type": "STRING",
+          "value": ";"
+        }
+      ]
+    },
+    "cue_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "STRING",
+            "value": "cue"
+          },
+          "named": true,
+          "value": "identifier"
+        },
+        {
+          "type": "FIELD",
+          "name": "media",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "at"
+        },
+        {
+          "type": "FIELD",
+          "name": "position",
+          "content": {
+            "type": "SYMBOL",
+            "name": "position"
+          }
         },
         {
           "type": "STRING",

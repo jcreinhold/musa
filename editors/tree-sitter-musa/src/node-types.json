@@ -661,6 +661,62 @@
     }
   },
   {
+    "type": "clip_declaration",
+    "named": true,
+    "fields": {
+      "asset": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "duration": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "rational",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "policy": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "comment",
     "named": true,
     "extra": true,
@@ -680,6 +736,42 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "cue_statement",
+    "named": true,
+    "fields": {
+      "media": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "position": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "position",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1366,6 +1458,42 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "fixed_media_declaration",
+    "named": true,
+    "fields": {
+      "asset": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -3145,11 +3273,19 @@
       "required": false,
       "types": [
         {
+          "type": "clip_declaration",
+          "named": true
+        },
+        {
           "type": "data_declaration",
           "named": true
         },
         {
           "type": "enum_declaration",
+          "named": true
+        },
+        {
+          "type": "fixed_media_declaration",
           "named": true
         },
         {
@@ -3960,6 +4096,10 @@
       "required": false,
       "types": [
         {
+          "type": "cue_statement",
+          "named": true
+        },
+        {
           "type": "harmony_declaration",
           "named": true
         },
@@ -4257,6 +4397,10 @@
       "required": false,
       "types": [
         {
+          "type": "clip_declaration",
+          "named": true
+        },
+        {
           "type": "data_declaration",
           "named": true
         },
@@ -4266,6 +4410,10 @@
         },
         {
           "type": "events_document",
+          "named": true
+        },
+        {
+          "type": "fixed_media_declaration",
           "named": true
         },
         {

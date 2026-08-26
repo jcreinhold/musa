@@ -96,6 +96,10 @@ impl Parser<'_> {
                 self.studio_decl();
             } else if self.at_word("instrument") {
                 self.instrument_decl();
+            } else if self.at_word("clip") {
+                self.clip_decl();
+            } else if self.at_word("fixed_media") {
+                self.fixed_media_decl();
             } else if self.at(SyntaxKind::PrivateKw) {
                 self.misplaced_private();
             } else if self.at(SyntaxKind::TempoKw) {
@@ -195,6 +199,10 @@ impl Parser<'_> {
                 self.studio_decl();
             } else if self.at_word("instrument") {
                 self.instrument_decl();
+            } else if self.at_word("clip") {
+                self.clip_decl();
+            } else if self.at_word("fixed_media") {
+                self.fixed_media_decl();
             } else {
                 self.expected_with_help(
                     "a declaration",

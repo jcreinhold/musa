@@ -989,6 +989,48 @@ pub struct EndingRegion {
     pub end: MusicalTime,
 }
 
+/// The checked standard-library fit policy projected for score consumers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MediaFit {
+    /// Play once at natural rate and leave uncovered support silent.
+    Crop,
+    /// Play at natural rate, restarting until the support ends.
+    Loop,
+    /// Resample the whole asset across the support, changing pitch honestly.
+    Rate,
+}
+
+/// Which source `MediaAction` constructor one occurrence projects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum MediaKind {
+    /// An interval in written time whose payload supplies a fit policy.
+    MusicalClip(MediaFit),
+    /// A point in written time whose physical duration is prepared elsewhere.
+    FixedMediaCue,
+}
+
+/// One checked recorded-media occurrence. It contains finite source intent
+/// only: never decoded duration, samples, or frame indices.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaOccurrence {
+    /// Logical source name used by routing and notation labels.
+    pub name: String,
+    /// Canonical project/package-relative asset reference.
+    pub asset: String,
+    /// The source constructor and, for a clip, its fit policy.
+    pub kind: MediaKind,
+    /// Exact written onset.
+    pub start: MusicalTime,
+    /// Exact written end. Equal to `start` for fixed media.
+    pub end: MusicalTime,
+    /// Exact neutral-or-written gain setting in decibels.
+    pub gain_db: Ratio<i64>,
+    /// Where this cue was written and how it was expanded.
+    pub origin: Origin,
+}
+
 /// Score-level annotations (roadmap §6.3): symbols that are *about* events
 /// rather than events themselves, each carrying its own provenance.
 ///
@@ -1010,6 +1052,7 @@ pub struct AnnotationStore {
     open: Vec<OpenRegion>,
     points: Vec<PointMark>,
     marks: Vec<MarkSpan>,
+    media: Vec<MediaOccurrence>,
 }
 
 impl AnnotationStore {
@@ -1054,6 +1097,9 @@ impl AnnotationStore {
             it.origin.remap_spans(map);
         }
         for it in &mut self.points {
+            it.origin.remap_spans(map);
+        }
+        for it in &mut self.media {
             it.origin.remap_spans(map);
         }
     }
@@ -1123,6 +1169,11 @@ impl AnnotationStore {
         &self.marks
     }
 
+    /// Recorded-media occurrences, in written-time order.
+    pub fn media(&self) -> &[MediaOccurrence] {
+        &self.media
+    }
+
     /// Record a point mark, keeping the lane sorted by position: like a form
     /// marker, it is read where it is reached rather than where it was typed.
     pub fn push_point(&mut self, point: PointMark) {
@@ -1132,6 +1183,12 @@ impl AnnotationStore {
 
     pub fn push_mark(&mut self, mark: MarkSpan) {
         self.marks.push(mark);
+    }
+
+    /// Record a checked source media action, preserving multiset multiplicity.
+    pub fn push_media(&mut self, media: MediaOccurrence) {
+        let at = self.media.partition_point(|existing| existing.start <= media.start);
+        self.media.insert(at, media);
     }
 
     pub fn push_phrase(&mut self, phrase: PhraseSpan) {

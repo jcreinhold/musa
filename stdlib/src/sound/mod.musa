@@ -9,4 +9,5 @@ mod catalogue;
 mod graph;
 mod instrument;
 mod sample;
+mod media;
 mod production;

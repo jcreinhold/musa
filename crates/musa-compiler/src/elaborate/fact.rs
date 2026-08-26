@@ -147,6 +147,21 @@ pub(crate) enum FactKind {
     /// whenever there are fewer endings than passes, which is what a bracket
     /// labelled `2.–4.` means.
     Ending { bracket: u32, pass: u32 },
+    /// A checked `MediaAction.MusicalClip` projection. Its written duration is
+    /// the occurrence span and is deliberately absent here.
+    MusicalClip {
+        name: String,
+        asset: String,
+        fit: musa_score::score::MediaFit,
+        gain_db: Ratio<i64>,
+    },
+    /// A checked `MediaAction.FixedMediaCue` projection. Its occurrence is a
+    /// point; decoded physical duration belongs to preparation.
+    FixedMediaCue {
+        name: String,
+        asset: String,
+        gain_db: Ratio<i64>,
+    },
 }
 
 impl FactKind {
@@ -176,7 +191,9 @@ impl FactKind {
             | Self::Repeat { .. }
             | Self::Mobile { .. }
             | Self::Improvise { .. }
-            | Self::Ending { .. } => &[],
+            | Self::Ending { .. }
+            | Self::MusicalClip { .. }
+            | Self::FixedMediaCue { .. } => &[],
         }
     }
 
@@ -200,7 +217,9 @@ impl FactKind {
             | Self::Repeat { .. }
             | Self::Mobile { .. }
             | Self::Improvise { .. }
-            | Self::Ending { .. } => None,
+            | Self::Ending { .. }
+            | Self::MusicalClip { .. }
+            | Self::FixedMediaCue { .. } => None,
         }
     }
 
@@ -224,7 +243,9 @@ impl FactKind {
             | Self::Repeat { .. }
             | Self::Mobile { .. }
             | Self::Improvise { .. }
-            | Self::Ending { .. } => None,
+            | Self::Ending { .. }
+            | Self::MusicalClip { .. }
+            | Self::FixedMediaCue { .. } => None,
         }
     }
 }
@@ -278,7 +299,9 @@ impl ScoreFact {
             | FactKind::Repeat { .. }
             | FactKind::Mobile { .. }
             | FactKind::Improvise { .. }
-            | FactKind::Ending { .. } => {}
+            | FactKind::Ending { .. }
+            | FactKind::MusicalClip { .. }
+            | FactKind::FixedMediaCue { .. } => {}
         }
         stretched
     }
@@ -339,7 +362,9 @@ impl ScoreFact {
             | FactKind::Repeat { .. }
             | FactKind::Ending { .. }
             | FactKind::Mobile { .. }
-            | FactKind::Improvise { .. } => None,
+            | FactKind::Improvise { .. }
+            | FactKind::MusicalClip { .. }
+            | FactKind::FixedMediaCue { .. } => None,
         }
     }
 
@@ -377,7 +402,9 @@ impl ScoreFact {
             | FactKind::Repeat { .. }
             | FactKind::Ending { .. }
             | FactKind::Mobile { .. }
-            | FactKind::Improvise { .. } => None,
+            | FactKind::Improvise { .. }
+            | FactKind::MusicalClip { .. }
+            | FactKind::FixedMediaCue { .. } => None,
         }
     }
 
@@ -401,7 +428,9 @@ impl ScoreFact {
             | FactKind::Repeat { .. }
             | FactKind::Ending { .. }
             | FactKind::Mobile { .. }
-            | FactKind::Improvise { .. } => None,
+            | FactKind::Improvise { .. }
+            | FactKind::MusicalClip { .. }
+            | FactKind::FixedMediaCue { .. } => None,
         }
     }
 }
@@ -435,7 +464,9 @@ pub(crate) fn map_note_pitch_fact(
         | FactKind::Repeat { .. }
         | FactKind::Mobile { .. }
         | FactKind::Improvise { .. }
-        | FactKind::Ending { .. } => {}
+        | FactKind::Ending { .. }
+        | FactKind::MusicalClip { .. }
+        | FactKind::FixedMediaCue { .. } => {}
     }
     Some(mapped)
 }

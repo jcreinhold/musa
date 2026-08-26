@@ -55,6 +55,7 @@ pub(crate) use fact::map_note_pitch_fact;
 pub(crate) use fact::{FactKind, ScoreFact, VoiceTrack};
 pub use normal::events_normal_form;
 pub(crate) use normal::piece_term;
+use place::MediaDeclarations;
 pub(crate) use place::{SHARED_ORIGIN, SHARED_SCOPE, instantiate};
 
 use bars::{check_tuplets, reported_an_error};
@@ -161,7 +162,8 @@ pub(crate) fn elaborate_parsed(
     let machines = elaborated.machines();
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
-    let identity = elaborate_score(resolver, &mut elaborated, &piece, &mut snapshot);
+    let media = media_declarations(resolver, &libraries, &file, Some(&piece));
+    let identity = elaborate_score(resolver, &mut elaborated, &piece, &media, &mut snapshot);
     // The identity hash is the one fact that says *which* piece was produced,
     // and it is what two runs that should agree are compared on.
     tracing::debug!(phase = "elaborate", %identity, "elaborated");
@@ -329,4 +331,27 @@ fn declaring(
         .map(|(from, library)| crate::document::Source::imported(library.syntax(), from))
         .chain([crate::document::Source::own(root), crate::document::Source::own(piece)])
         .collect()
+}
+
+/// Project the source-owned recorded-media declarations visible at a piece.
+///
+/// This follows the same closure and shadow-free order as [`declaring`]:
+/// imported modules, file root, then piece. Keeping the environment beside
+/// that source closure prevents full compilation and normal-form export from
+/// inventing different name-resolution rules for media.
+fn media_declarations(
+    resolver: &mut Resolver,
+    libraries: &crate::imports::Libraries,
+    file: &musa_syntax::ast::Document,
+    piece: Option<&musa_syntax::ast::PieceDecl>,
+) -> MediaDeclarations {
+    let mut media = MediaDeclarations::default();
+    for (_, library) in libraries.each() {
+        media.extend(resolver, library.clips(), library.fixed_media());
+    }
+    media.extend(resolver, file.clips(), file.fixed_media());
+    if let Some(piece) = piece {
+        media.extend(resolver, piece.clips(), piece.fixed_media());
+    }
+    media
 }

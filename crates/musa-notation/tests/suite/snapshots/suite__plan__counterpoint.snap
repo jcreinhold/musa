@@ -1,5 +1,5 @@
 ---
-source: crates/musa-notation/tests/plan.rs
+source: crates/musa-notation/tests/suite/plan.rs
 expression: "format!(\"{rendered:#?}\")"
 ---
 NotationPlan {
@@ -623,6 +623,7 @@ NotationPlan {
         },
     ],
     sections: [],
+    media: [],
     harmony: [],
     repeats: [],
     open: [],

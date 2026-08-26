@@ -9,6 +9,7 @@ mod chords;
 mod curves;
 mod graces;
 mod lilypond;
+mod media;
 mod mei;
 mod midi;
 mod musicxml;

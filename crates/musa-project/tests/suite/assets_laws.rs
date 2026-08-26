@@ -243,6 +243,55 @@ fn an_asset_declared_by_an_imported_instrument_keeps_the_library_origin() {
     );
 }
 
+#[test]
+fn recorded_media_references_require_audio_assets() {
+    let directory = tempfile::tempdir().expect("temporary project");
+    write(
+        &directory.path().join("musa.toml"),
+        r#"[project]
+name = "Media assets"
+
+[assets."assets/pulse.wav"]
+kind = "audio"
+adapter = "wav@1"
+max_bytes = 1024
+
+[assets."assets/harbor.flac"]
+kind = "audio"
+adapter = "flac@1"
+max_bytes = 1024
+"#,
+    );
+    write(
+        &directory.path().join("piece.musa"),
+        r#"clip pulse from "assets/pulse.wav" fit 1/1 by loop;
+piece "Media" {
+    fixed_media harbor from "assets/harbor.flac";
+    meter 4/4;
+    score {
+        cue pulse at 1:1;
+        cue harbor at 1:1;
+        part guide { voice one { c4/1 } }
+    }
+}
+"#,
+    );
+    write(&directory.path().join("assets/pulse.wav"), b"wave fixture");
+    write(&directory.path().join("assets/harbor.flac"), b"flac fixture");
+    lock_assets(directory.path()).expect("media lock succeeds");
+
+    let session = ProjectSession::open(directory.path().join("piece.musa")).expect("piece opens");
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.assets().len(), 2);
+    assert!(
+        snapshot
+            .assets()
+            .iter()
+            .all(|asset| asset.status == AssetStatus::Verified)
+    );
+    assert_eq!(snapshot.score().expect("score facts").media.len(), 2);
+}
+
 #[cfg(unix)]
 #[test]
 fn a_symlink_cannot_escape_the_project_root() {

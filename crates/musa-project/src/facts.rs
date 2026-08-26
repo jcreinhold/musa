@@ -305,6 +305,31 @@ pub struct ScoreFacts {
     /// Every question the piece asked and the answer this performance gave,
     /// in the order the sites were reached. Empty for a determinate piece.
     pub decisions: Vec<DecisionFact>,
+    /// Checked recorded-media occurrences. Physical decoded duration and
+    /// frame coordinates are absent by construction.
+    pub media: Vec<MediaFacts>,
+}
+
+/// One source-owned `MediaAction` projected for the interface.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaFacts {
+    /// Logical source name used for routing and the optional notation label.
+    pub name: String,
+    /// Canonical project/package-relative asset reference.
+    pub asset: String,
+    /// `musical-clip` or `fixed-media-cue`.
+    pub kind: String,
+    /// `crop`, `loop`, or `rate` for a clip; absent for fixed media.
+    pub fit: Option<String>,
+    /// Exact written onset.
+    pub start: Fraction,
+    /// Exact written end; equal to `start` for fixed media.
+    pub end: Fraction,
+    /// Exact gain setting in decibels.
+    pub gain_db: Fraction,
+    /// Full source provenance.
+    pub origin: OriginFacts,
 }
 
 /// One decision, as the Origin view and the Settings panel read it.
@@ -448,6 +473,37 @@ impl ScoreFacts {
         // piece's, for the piece-wide markers below; an event's bar number is
         // its own part's, which under polymeter is a different number.
         let bars = score.bars(Scope::Piece);
+        let media = score
+            .annotations()
+            .media()
+            .iter()
+            .map(|occurrence| {
+                let (kind, fit) = match occurrence.kind {
+                    musa_score::score::MediaKind::MusicalClip(fit) => (
+                        "musical-clip".to_owned(),
+                        Some(
+                            match fit {
+                                musa_score::score::MediaFit::Crop => "crop",
+                                musa_score::score::MediaFit::Loop => "loop",
+                                musa_score::score::MediaFit::Rate => "rate",
+                            }
+                            .to_owned(),
+                        ),
+                    ),
+                    musa_score::score::MediaKind::FixedMediaCue => ("fixed-media-cue".to_owned(), None),
+                };
+                MediaFacts {
+                    name: occurrence.name.clone(),
+                    asset: occurrence.asset.clone(),
+                    kind,
+                    fit,
+                    start: Fraction::from_ratio(occurrence.start.as_ratio()),
+                    end: Fraction::from_ratio(occurrence.end.as_ratio()),
+                    gain_db: Fraction::from_ratio(occurrence.gain_db),
+                    origin: origin_facts(&occurrence.origin, &lines, source),
+                }
+            })
+            .collect();
 
         let mut parts = Vec::new();
         let mut events = Vec::new();
@@ -568,6 +624,7 @@ impl ScoreFacts {
             outline,
             performance: score.performance(),
             decisions,
+            media,
             // Read back off the source rather than off the compiled score:
             // what a field shows has to be what a field writes, and the
             // compiled score has already normalized `quarter = 72` into a

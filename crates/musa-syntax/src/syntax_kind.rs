@@ -474,6 +474,12 @@ pub enum SyntaxKind {
     StudioDecl,
     /// `instrument <name> conforms <signature> { ... }`
     InstrumentDecl,
+    /// `clip <name> from <asset> fit <duration> by <policy>;`
+    ClipDecl,
+    /// `fixed_media <name> from <asset>;`
+    FixedMediaDecl,
+    /// `cue <name> at <measure>:<beat>;`
+    CueStmt,
     /// `implementation graph { ... }` inside an instrument.
     InstrumentImplementation,
     /// `patch <name> { ... }`

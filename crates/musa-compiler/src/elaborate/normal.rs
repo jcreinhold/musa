@@ -59,6 +59,7 @@ pub(crate) fn piece_term(
     let mut resolver = Resolver::new();
     resolver.realization = realization.clone();
     let piece = PieceDecl::from_root(&root)?;
+    let file = musa_syntax::ast::Document::of_root(&root)?;
     let mut snapshot = ScoreSnapshot::default();
     // The same closure full compilation reads: a `use` of imported material
     // is the piece's own music, and an export that could not name it would be
@@ -66,6 +67,7 @@ pub(crate) fn piece_term(
     let mut wanted = musa_syntax::ast::ImportStmt::all_at_root(&root);
     wanted.extend(piece.imports());
     let libraries = crate::imports::load(&mut resolver, source.name(), &wanted, imports);
+    let media = super::media_declarations(&mut resolver, &libraries, &file, Some(&piece));
     let sources = declaring(&root, &libraries, piece.syntax());
     let mut elaborated = crate::document::elaborate(&mut resolver, &sources)?;
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
@@ -95,7 +97,7 @@ pub(crate) fn piece_term(
             parts.push(musa_events::Term::literal(track_or_empty(lane.duration(), own)));
         }
     }
-    let marked = placed(&mut resolver, &score, &bars, sounding.duration());
+    let marked = placed(&mut resolver, &media, &score, &bars, sounding.duration());
     parts.push(musa_events::Term::literal(spoken_of(&sounding, &marked)));
     let term = musa_events::Term::together(parts).ok()?;
     term.check().ok()?;

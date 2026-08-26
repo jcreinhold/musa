@@ -829,6 +829,24 @@ fn write_kind(words: &mut Words, kind: &FactKind) {
                 words.text(over);
             }
         }
+        FactKind::MusicalClip {
+            name,
+            asset,
+            fit,
+            gain_db,
+        } => {
+            words.word("musical-clip");
+            words.text(name);
+            words.text(asset);
+            words.word(media_fit_name(*fit));
+            words.word(ratio_text(*gain_db));
+        }
+        FactKind::FixedMediaCue { name, asset, gain_db } => {
+            words.word("fixed-media-cue");
+            words.text(name);
+            words.text(asset);
+            words.word(ratio_text(*gain_db));
+        }
     }
 }
 
@@ -953,6 +971,34 @@ fn take_kind(words: &mut Words) -> Option<FactKind> {
                 None
             },
         }),
+        "musical-clip" => Some(FactKind::MusicalClip {
+            name: words.quoted()?,
+            asset: words.quoted()?,
+            fit: take_media_fit(&words.bare()?)?,
+            gain_db: words.ratio()?,
+        }),
+        "fixed-media-cue" => Some(FactKind::FixedMediaCue {
+            name: words.quoted()?,
+            asset: words.quoted()?,
+            gain_db: words.ratio()?,
+        }),
+        _ => None,
+    }
+}
+
+fn media_fit_name(fit: musa_score::score::MediaFit) -> &'static str {
+    match fit {
+        musa_score::score::MediaFit::Crop => "crop",
+        musa_score::score::MediaFit::Loop => "loop",
+        musa_score::score::MediaFit::Rate => "rate",
+    }
+}
+
+fn take_media_fit(written: &str) -> Option<musa_score::score::MediaFit> {
+    match written {
+        "crop" => Some(musa_score::score::MediaFit::Crop),
+        "loop" => Some(musa_score::score::MediaFit::Loop),
+        "rate" => Some(musa_score::score::MediaFit::Rate),
         _ => None,
     }
 }
