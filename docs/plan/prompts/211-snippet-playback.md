@@ -1,5 +1,5 @@
 ---
-id: 201
+id: 211
 slug: snippet-playback
 status: pending
 depends_on: [173, 188, 199]
@@ -41,5 +41,5 @@ re-derived.
 ## Stop
 
 - Everything, until scheduled. In particular: do not let prompts 196–199 bake in assumptions that make this hard (a
-  `typeset` result that discards the `PerformancePlan`, an engraver option that loses event ids) — that is the only
-  obligation this prompt places on them today.
+  `typeset` result that discards the performance preparation, an engraver option that loses event ids) — that is the
+  only obligation this prompt places on them today.

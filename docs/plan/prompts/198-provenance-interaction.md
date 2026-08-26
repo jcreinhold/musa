@@ -87,5 +87,5 @@ Commit as `Add provenance interaction to @musa/web`.
 
 - No `EventId → source span` API, no wasm-shell change (named above as later work, with a caller).
 - No selection model, caret, keyboard navigation, or editing: this is a callback surface, not an editor.
-- No playback-cursor or playhead highlighting (arrives with prompt 201, if it arrives).
+- No playback-cursor or playhead highlighting (arrives with prompt 211, if it arrives).
 - No tooltip/popover built-ins: embedders compose their own from the callbacks.

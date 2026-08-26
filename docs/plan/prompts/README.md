@@ -458,7 +458,17 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 198 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
 | 199 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
 | 200 | inferred-barlines | 3 | Proved bar-line insertion as an explicit semantic source action |
-| 201 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
+| 201 | daw-interoperability-contract | 4 | Governing identity, authority, timing, loss, and RT boundary for DAW integration |
+| 202 | aligned-stem-rendering | 4 | Frame-aligned part, bus/return, and master WAV taps from the checked mix |
+| 203 | daw-export-bundles | 4 | Deterministic Logic/GarageBand bundle with open files, manifest, origins, and losses |
+| 204 | coremidi-performance-output | 4 | Shared MIDI packet schedule and timestamped macOS virtual-source output |
+| 205 | external-transport-sync | 4 | Exactly-one-authority MIDI clock/MTC synchronization with measured limits |
+| 206 | audio-unit-architecture-trial | 4 | AUv3 Music Device/MIDI Processor host trial before production FFI |
+| 207 | musa-audio-unit-instrument | 4 | Source-declared Musa instrument hosted as an RT-safe AUv3 Music Device |
+| 208 | audio-unit-controls-and-outputs | 4 | Stable source-control parameters and declared output-bus projection |
+| 209 | logic-midi-processor | 4 | Random-access Musa performance scheduling through Logic MIDI FX |
+| 210 | daw-integration-closure | 4 | Logic/GarageBand conformance, performance, compatibility, and documentation closure |
+| 211 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the event-track insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as the
 regression oracle** when prompt 11 landed: the new event-track elaboration had to reproduce its snapshots exactly
@@ -789,8 +799,20 @@ DOM, because text is canonical on the web too. **198** wires the `event-<hex>` c
 that makes it musa and not another notation renderer. **199** ships the CDN single-tag build (Blob-inlined worker),
 example pages, and the build-time recipe for static sites. **200** then adds proved bar-line insertion to the formatter
 workflow as an explicit semantic source action: the compiler supplies exact source-item extents and scoped bar lines,
-while the CLI, LSP, and desktop only apply the one project-owned edit plan. **201** is the deferred web extension:
-in-page playback, scheduled only when a real need is demonstrated.
+while the CLI, LSP, and desktop only apply the one project-owned edit plan.
+
+**Prompts 201–210 cross the DAW boundary without turning Musa into a DAW.** **201** first fixes the authority, identity,
+time, loss, and real-time contract: `.musa` remains canonical; DAW files, MIDI, Audio Unit parameters, and host
+automation are downstream presentations. **202–203** render aligned routing taps and package the existing open exports
+into deterministic Logic/GarageBand bundles. **204–205** share one MIDI decision schedule between files and CoreMIDI,
+then add synchronization under exactly one clock authority. **206** is deliberately an executable AUv3 trial before a
+production FFI exists. The evidence fixes the split used by **207–209**: a Music Device renders one source-declared
+instrument from host MIDI; its public controls and outputs project into stable host parameters and buses; and a separate
+Logic MIDI Processor performs random-access scheduling of a Musa piece. GarageBand receives the documented Music Device
+path, not an invented MIDI FX surface. **210** closes the block against automated host fixtures, measured RT budgets,
+current Logic/GarageBand observations when available, and an explicit unsupported/loss matrix. **211** is the deferred
+web extension: in-page playback, scheduled only when a real need is demonstrated. The pending deferred prompt moved
+after this executable block so numeric rank once again matches execution order.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
@@ -799,10 +821,13 @@ on; phases describe scope, not strict order.
 
 ## Out of scope for this sequence
 
-The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 175's
-native score/elaboration stability point. The following remain outside this sequence:
+The user has now asked for the Phase 4 sample/media/library and DAW-interoperability work, and both are deliberately
+ordered after prompt 175's native score/elaboration stability point. The following remain outside this sequence:
 
-- CLAP/VST hosting and the macOS Audio Unit bridge;
+- hosting third-party Audio Unit, CLAP, or VST plug-ins inside Musa (prompts 206–210 instead make Musa the hosted Audio
+  Unit on macOS);
+- proprietary `.logicx`/`.band` generation or import, bidirectional DAW round-trip, and treating DAW automation as
+  canonical source;
 - a package registry, semantic-version range solver, implicit network during compilation, or packages containing native
   executable code;
 - MusicXML import;
