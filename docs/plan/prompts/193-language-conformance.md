@@ -64,7 +64,7 @@ Five rows exist because these boundaries are cheap to hold and expensive to reco
 - **Nested patterns still compile to the one case tree.** Prompt 155 installed the case-tree compiler and prompt 162c
   consequently replaced the earlier depth-one restriction: a constructor, list, or record sub-position holds another
   pattern recursively. Audit the differential law against the equivalent explicit nested match, unchanged coverage and
-  impossible-branch refinement, repeated-variable refusal, and arbitrary-depth parser/tree-sitter agreement. There is
+  impossible-branch refinement, and arbitrary-depth parser/tree-sitter agreement. There is
   still no guard, fall-through equation, or pattern on the left of a definition, and no evaluator beside the compiled
   case tree. Prompt 127dcfab's expression `if` remains an elaboration to the boolean case tree rather than a guarded arm.
 - **Structural descent is not general recursion.** Prompt 127dcfaf's sealed steps let an adapter enter a strict subtree;
