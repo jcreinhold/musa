@@ -167,6 +167,11 @@ deferral, while `release_key` follows physical note-off and ignores sustain. `fi
 phrase relation rather than ambient MIDI-note state. A newly started region with group `g` stops existing regions whose
 `off_by` is `g`, using each stopped region's `off_mode`.
 
+Because SFZ declares neither a whole-instrument voice pool nor a separate native selection policy, `sfz@1` emits a
+64-voice `SampleMap` and the map's per-selection-group round-robin policy. Regions outside a nonzero sequence group
+still layer; the policy does not turn unrelated regions into alternatives. A product may refuse that fixed pool under
+its explicit sampler limits, but it may not silently shrink the checked map.
+
 SFZ-v1 decay and release curves are not identically implemented by maintained players. `sfz@1` fixes the public
 SFZ-format reference equation (`exp(-8t/T)`, clamped at the target/terminal level) as adapter semantics so live and
 offline rendering cannot depend on an installed player. This choice, the accepted opcode table, path interpretation, and
