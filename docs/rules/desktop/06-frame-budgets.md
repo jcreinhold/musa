@@ -95,3 +95,18 @@ Two consequences are worth stating because they are what a future miss should be
 Per roadmap §17, no speculative optimization. Compilation stays synchronous inside `ProjectSession` (prompt 19's
 decision); a worker-thread or incremental (Salsa) compiler is considered only when B1 or B2 is measured to fail on a
 real piece, and it becomes its own prompt with the measurement as its justification.
+
+## 6. Prompt 191 sound and mix closure
+
+The prompt 191 run on the same machine measured B1 at **2 ms** after the debounce and B2 at **253 ms** p95, split into 2
+ms of stubbed round trip and 151 ms of engraving. The current real large-score P1 median is **115 ms**, so substituting
+it gives 368 ms from keystroke through visible engraving, still inside B2. Sound and Mix source edits use that same
+one-debounce/one-snapshot path; their screen laws additionally prove that an instrument choice, exposed control, or send
+rewrites source rather than a UI-owned graph.
+
+Audio has a physical deadline rather than another perceptual number: a 128-frame callback at 48 kHz has 2.667 ms. The
+eight-instance, 512-gesture workload measured p95 **42.875 µs**, maximum **67.334 µs**, and zero misses in 1,000
+consecutive blocks. The complete method, scale variables, allocation measurements, and comparison are recorded in
+[`../language/10-audio-performance.md`](../language/10-audio-performance.md). This is local evidence, not a portable
+absolute threshold; the invariant remains that every callback completes before its device deadline without allocation,
+locking, I/O, logging, or large destruction.

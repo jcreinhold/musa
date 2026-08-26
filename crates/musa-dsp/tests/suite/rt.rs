@@ -101,6 +101,23 @@ fn sampler_note_and_frame_steps_allocate_nothing() {
     );
 }
 
+#[test]
+fn recorded_media_frame_steps_allocate_nothing() {
+    let samples = (0..1_024).map(|frame| frame as f32 / 1_024.0 - 0.5).collect::<Vec<_>>();
+    let mut audio = super::media_laws::fixed_audio(&samples);
+    let mut output = [0.0; 512];
+    audio.render(&mut output); // warm the thread-local allocator path
+    let before = allocs();
+    audio.render(&mut output);
+    let after = allocs();
+    assert_eq!(
+        before,
+        after,
+        "recorded-media callback path allocated {} times",
+        after.saturating_sub(before)
+    );
+}
+
 /// The measurement is the current thread's, not the process's.
 ///
 /// Without this the contract above is only as strong as the test binary is

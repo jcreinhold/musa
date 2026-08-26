@@ -2,12 +2,14 @@
 #![allow(clippy::arithmetic_side_effects)]
 #![allow(clippy::expect_used)]
 
+use std::fmt::Write as _;
 use std::sync::Arc;
 
 use musa_compiler::{CompileOptions, SourceDocument, checked_source_value, compile, lower_gestures};
 use musa_dsp::{
-    AudioFormat, ChannelLayout, CollapsePolicy, EventMessage, FrameRounding, MessageKind, SampleRuntime, SamplerLimits,
-    ScheduleLimits, SchedulePolicy, TimeMap, decode_sample_map, prepare_sample_map, sample_map_schema, schedule,
+    AudioFormat, ChannelLayout, CollapsePolicy, EventMessage, FrameRounding, MessageKind, SampleMap, SampleRuntime,
+    SamplerLimits, ScheduleLimits, SchedulePolicy, TimeMap, decode_sample_map, prepare_sample_map, sample_map_schema,
+    schedule,
 };
 
 #[global_allocator]
@@ -63,16 +65,47 @@ fn wav() -> Arc<[u8]> {
     bytes.into_inner().into()
 }
 
-fn input() -> (SampleRuntime, Box<[f32]>) {
+fn checked_map(source: &str, binding: &str) -> SampleMap {
+    let document = SourceDocument::new(source, "sampler-benchmark.musa");
+    let checked = checked_source_value(&document, &CompileOptions::default(), binding, &sample_map_schema())
+        .expect("checked sampler map");
+    decode_sample_map(&checked).expect("sample map projection")
+}
+
+fn large_map_source(region_count: usize) -> String {
+    let mut source = String::from(
+        "import std::sound::sample; let benchmark_map: SampleMapArtifact = SampleMapArtifact { \
+         schema_version = 3, sample_map = SampleMap { declaration_id = \"bench.large-sampler@1\", \
+         selection = RoundRobin, voices = 64, regions = [",
+    );
+    for region in 0..region_count {
+        let key = region % 128;
+        let sequence_position = region % 4 + 1;
+        let _ = write!(
+            source,
+            "SampleRegion {{ asset = \"tone.wav\", key_low = {key}, key_high = {key}, root_key = {key}, \
+             expression_low = 0/1, expression_high = 1/1, technique = \"\", connection = AnyConnection, \
+             trigger = AttackTrigger, pedal = AnyPedal, sequence_group = 1, \
+             sequence_position = {sequence_position}, sequence_length = 4, weight = 1, priority = 1, \
+             tune_cents = 0/1, gain = LinearGain(1/1), expression_gain = LinearExpressionGain, pan = 0/1, \
+             start_frame = 0, end_frame = 2048, loop_start = 128, loop_end = 1920, \
+             loop_mode = ForwardSustainLoop, envelope = SampleEnvelope {{ delay = ExactSeconds(0/1), \
+             attack = ExactSeconds(1/1000), hold = ExactSeconds(0/1), decay = ExactSeconds(1/100), \
+             sustain = LinearLevel(4/5), release = ExactSeconds(1/20), hold_key_timecents = 0/1, \
+             decay_key_timecents = 0/1, curve = LinearEnvelope }}, filter = SampleFilter {{ \
+             cutoff_cents = 13500/1, resonance_centibels = 0/1 }}, modulations = [], group = 0, \
+             off_by = 0, off_mode = FastOff }},"
+        );
+    }
+    source.push_str(
+        "] } }; piece \"Sampler benchmark\" { meter 4/4; key c major; score { part p { voice v { c4/1 } } } }",
+    );
+    source
+}
+
+fn runtime_input() -> (SampleRuntime, Box<[f32]>) {
     let document = SourceDocument::new(SOURCE, "sampler-benchmark.musa");
-    let checked = checked_source_value(
-        &document,
-        &CompileOptions::default(),
-        "benchmark_map",
-        &sample_map_schema(),
-    )
-    .expect("checked sampler map");
-    let map = decode_sample_map(&checked).expect("sample map projection");
+    let map = checked_map(SOURCE, "benchmark_map");
     let prepared = prepare_sample_map(
         map,
         |_| Ok(wav()),
@@ -132,10 +165,33 @@ fn input() -> (SampleRuntime, Box<[f32]>) {
 
 #[divan::bench(sample_count = 30)]
 fn render_preloaded_sampler(bencher: divan::Bencher<'_, '_>) {
-    bencher.with_inputs(input).bench_values(|(mut sampler, mut output)| {
-        sampler.render(&mut output);
-        divan::black_box(output);
-    });
+    bencher
+        .with_inputs(runtime_input)
+        .bench_values(|(mut sampler, mut output)| {
+            sampler.render(&mut output);
+            divan::black_box(output);
+        });
+}
+
+#[divan::bench(sample_count = 20)]
+fn prepare_128_region_sample_map(bencher: divan::Bencher<'_, '_>) {
+    bencher
+        .with_inputs(|| (checked_map(&large_map_source(128), "benchmark_map"), wav()))
+        .bench_values(|(map, bytes)| {
+            prepare_sample_map(
+                map,
+                |_| Ok(Arc::clone(&bytes)),
+                SamplerLimits {
+                    sample_rate: RATE,
+                    max_voices: 64,
+                    max_regions: 128,
+                    max_decoded_bytes: 1 << 20,
+                    max_selection_work: 128,
+                    max_step_work: 100_000,
+                },
+            )
+            .expect("large sample preparation")
+        });
 }
 
 fn main() {

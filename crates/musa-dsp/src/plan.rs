@@ -861,6 +861,9 @@ impl RenderPlan {
     /// Deliver one prepared lane's events to only the instrument instances
     /// bound to that lane. This mutates no graph buffers and allocates nothing.
     pub(crate) fn apply_events(&mut self, input: usize, events: &[EventMessage<Gesture>], tuning: Tuning) {
+        if events.is_empty() {
+            return;
+        }
         for step in &mut self.schedule {
             if step.event_input == Some(input) {
                 for event in events {

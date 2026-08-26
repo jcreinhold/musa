@@ -1,7 +1,7 @@
 ---
 id: 191
 slug: audio-performance-closure
-status: in-progress
+status: done
 depends_on: [93, 174, 179, 180, 184, 185, 186, 188, 189, 190]
 phase: 4
 ---
@@ -64,8 +64,8 @@ locked asset/package identities, seed, sample rate/channels, batching policy, bo
 selects candidates; exact complete argument bytes confirm a hit. Inject deliberate digest collisions. Eviction changes
 cost only. If no preparation cache exists and the measured workloads do not justify one, record and test that absence;
 do not add state merely to manufacture a collision test. The collision law becomes mandatory with the first real cache.
-Streaming is admitted only if measured preloading misses a stated workload; its control-side producer,
-bounded queue, underrun semantics, and offline determinism must then be specified and tested.
+Streaming is admitted only if measured preloading misses a stated workload; its control-side producer, bounded queue,
+underrun semantics, and offline determinism must then be specified and tested.
 
 ## Target
 

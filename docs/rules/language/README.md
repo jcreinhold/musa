@@ -54,6 +54,7 @@ form, and `01-surface.md`'s type grammar has a multi-parameter function type.
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-audio semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
+| `10-audio-performance.md` | prompt 191 audio preparation/render measurements and closure findings |
 | `11-quotation.md` | `Syntax : Cat -> Type`, quoting and splicing, derived identity, and quotation as a pattern |
 | `citations.md` | every theoretical claim in these documents, and the chapter or proof it comes from |
 

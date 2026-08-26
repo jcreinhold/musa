@@ -7,6 +7,7 @@
 mod audio_bridge_laws;
 mod audio_conformance_programs;
 mod audio_elaboration_compatibility;
+mod audio_performance_laws;
 mod audio_support;
 mod checked_source_laws;
 mod dsp_laws;

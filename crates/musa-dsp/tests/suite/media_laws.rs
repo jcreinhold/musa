@@ -75,7 +75,7 @@ fn prepared_with_limits(
     (compilation, media)
 }
 
-fn fixed_audio(samples: &[f32]) -> musa_dsp::PreparedAudio {
+pub(crate) fn fixed_audio(samples: &[f32]) -> musa_dsp::PreparedAudio {
     let (compilation, media) = prepared_with_limits(
         r#"fixed_media recording from "recording.wav";"#,
         samples,
