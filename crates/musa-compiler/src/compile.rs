@@ -104,6 +104,109 @@ pub struct Compilation {
     decisions: Vec<musa_score::DecisionRecord>,
     references: crate::resolve::ReferenceIndex,
     derivation: Option<musa_score::derivation::Derivation>,
+    barline_items: Vec<BarlineSourceItem>,
+}
+
+/// How one direct checked voice item participates in pipe-bar syntax.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BarlineSourceRole {
+    /// An item a leading `|` may enclose, such as a note, rest, chord, `use`,
+    /// tuplet, mark, or point context statement.
+    Loose,
+    /// A `bar` or `|` assertion already written by the author.
+    ExistingBar,
+    /// A direct statement that ends pipe-bar syntax and is not itself a
+    /// candidate for insertion.
+    Boundary,
+}
+
+/// How adapter restoration classified the item's boundary and contents.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum BarlineLineage {
+    Authored,
+    GeneratedInsertion,
+    GeneratedContent,
+}
+
+/// One compiler-proved direct source-item extent for semantic source edits.
+///
+/// This is intentionally not a public pass or a second score model. It is the
+/// immutable join key between the lossless source and the exact duration and
+/// scoped-barline answers the successful compilation already computed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BarlineSourceItem {
+    pub(crate) span: musa_score::origin::SourceSpan,
+    pub(crate) scope: musa_score::Scope,
+    pub(crate) start: musa_score::MusicalTime,
+    pub(crate) end: musa_score::MusicalTime,
+    pub(crate) measured: bool,
+    pub(crate) start_on_barline: bool,
+    pub(crate) end_on_barline: bool,
+    pub(crate) internal_boundary: Option<musa_score::MusicalTime>,
+    pub(crate) role: BarlineSourceRole,
+    pub(crate) lineage: BarlineLineage,
+    /// Definition spans of the occurrences the item produced, retained until
+    /// adapter restoration can distinguish authored definitions from text the
+    /// compiler generated.
+    pub(crate) definitions: Vec<musa_score::origin::SourceSpan>,
+}
+
+impl BarlineSourceItem {
+    /// The exact source range of the direct statement.
+    pub fn span(&self) -> musa_score::origin::SourceSpan {
+        self.span
+    }
+
+    /// The part/voice whose barlines govern the item.
+    pub fn scope(&self) -> musa_score::Scope {
+        self.scope
+    }
+
+    /// Its exact written-time onset.
+    pub fn start(&self) -> musa_score::MusicalTime {
+        self.start
+    }
+
+    /// Its exact exclusive written-time end.
+    pub fn end(&self) -> musa_score::MusicalTime {
+        self.end
+    }
+
+    /// Whether a measured meter is in force at the item.
+    pub fn is_measured(&self) -> bool {
+        self.measured
+    }
+
+    /// Whether the onset is a barline in the item's scope.
+    pub fn starts_on_barline(&self) -> bool {
+        self.start_on_barline
+    }
+
+    /// Whether the exclusive end is a barline in the item's scope.
+    pub fn ends_on_barline(&self) -> bool {
+        self.end_on_barline
+    }
+
+    /// The first barline strictly inside the item, if one exists.
+    pub fn internal_boundary(&self) -> Option<musa_score::MusicalTime> {
+        self.internal_boundary
+    }
+
+    /// Its pipe-bar syntax role.
+    pub fn role(&self) -> BarlineSourceRole {
+        self.role
+    }
+
+    /// Whether this insertion boundary belongs to authored source rather than
+    /// text produced by an adapter expansion.
+    pub fn is_authored(&self) -> bool {
+        self.lineage != BarlineLineage::GeneratedInsertion
+    }
+
+    /// Whether evaluating the item reached material produced by an adapter.
+    pub fn contains_generated_content(&self) -> bool {
+        self.lineage == BarlineLineage::GeneratedContent
+    }
 }
 
 impl Compilation {
@@ -126,6 +229,7 @@ impl Compilation {
             decisions: Vec::new(),
             references: crate::resolve::ReferenceIndex::new(),
             derivation,
+            barline_items: Vec::new(),
         }
     }
 
@@ -144,6 +248,31 @@ impl Compilation {
         }
         for diagnostic in &mut self.diagnostics {
             diagnostic.remap_spans(&expansion.map);
+        }
+        for item in &mut self.barline_items {
+            let generated_insertion = expansion
+                .map
+                .replacements
+                .iter()
+                .any(|replacement| item.span.start >= replacement.from && item.span.end <= replacement.to);
+            item.span = expansion.map.span(item.span);
+            let generated_content = item.definitions.iter().any(|span| {
+                expansion
+                    .map
+                    .replacements
+                    .iter()
+                    .any(|replacement| span.start >= replacement.from && span.end <= replacement.to)
+            });
+            item.lineage = if generated_insertion {
+                BarlineLineage::GeneratedInsertion
+            } else if generated_content {
+                BarlineLineage::GeneratedContent
+            } else {
+                BarlineLineage::Authored
+            };
+            for span in &mut item.definitions {
+                *span = expansion.map.span(*span);
+            }
         }
         if let Some(snapshot) = self.snapshot.as_mut() {
             snapshot.remap_spans(&expansion.map);
@@ -218,6 +347,18 @@ impl Compilation {
     pub(crate) fn with_references(mut self, references: crate::resolve::ReferenceIndex) -> Self {
         self.references = references;
         self
+    }
+
+    pub(crate) fn with_barline_items(mut self, items: Vec<BarlineSourceItem>) -> Self {
+        self.barline_items = items;
+        self
+    }
+
+    /// Direct checked source items against their governing scoped barlines.
+    ///
+    /// Empty for non-piece documents and failed compilations.
+    pub fn barline_items(&self) -> &[BarlineSourceItem] {
+        &self.barline_items
     }
 
     /// Every name the resolver resolved, and everywhere it is spoken.
@@ -438,5 +579,51 @@ pub fn format_document(text: &str, spacing: musa_syntax::BarSpacing) -> Option<S
             let document = musa_syntax::parse(text);
             Some(musa_syntax::format(&document, spacing).text().to_owned())
         }
+    }
+}
+
+#[cfg(test)]
+mod barline_projection_laws {
+    #![allow(clippy::expect_used)]
+
+    use super::*;
+    use musa_score::origin::{Replacement, SourceMap, SourceSpan};
+
+    #[test]
+    fn restoration_marks_generated_content_without_disowning_the_use_site() {
+        let mut compilation = Compilation::new(None, Vec::new()).with_barline_items(vec![BarlineSourceItem {
+            span: SourceSpan::new(80, 94),
+            scope: musa_score::Scope::Voice { part: 0, voice: 0 },
+            start: musa_score::MusicalTime::ZERO,
+            end: musa_score::MusicalTime::new(num_rational::Ratio::from_integer(2)),
+            measured: true,
+            start_on_barline: true,
+            end_on_barline: true,
+            internal_boundary: Some(musa_score::MusicalTime::new(num_rational::Ratio::ONE)),
+            role: BarlineSourceRole::Loose,
+            lineage: BarlineLineage::Authored,
+            definitions: vec![SourceSpan::new(20, 24)],
+        }]);
+        let expansion = crate::expand::Expansion {
+            document: SourceDocument::new("", "law.musa"),
+            map: SourceMap {
+                replacements: vec![Replacement {
+                    from: 10,
+                    to: 40,
+                    original: SourceSpan::new(5, 15),
+                }],
+            },
+            records: Vec::new(),
+            charges: crate::expand::Charges::default(),
+            diagnostics: Vec::new(),
+        };
+
+        compilation.restore(&expansion);
+        let item = compilation.barline_items().first().expect("one item");
+        assert!(item.is_authored(), "the use statement remains authored");
+        assert!(
+            item.contains_generated_content(),
+            "its evaluated definition came from the adapter"
+        );
     }
 }

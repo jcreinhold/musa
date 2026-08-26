@@ -6,6 +6,7 @@
 
 mod analysis_session_laws;
 mod assets_laws;
+mod barline_laws;
 mod editing_laws;
 mod elaboration_backend_compatibility;
 mod large_score_generators;

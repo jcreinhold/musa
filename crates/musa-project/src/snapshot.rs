@@ -81,6 +81,8 @@ pub(crate) struct ValidArtifacts {
     /// What this score *means* (docs/rules/events/05 N6), so a consumer can ask
     /// whether an edit changed the music rather than only the text.
     pub(crate) identity: musa_compiler::SemanticHash,
+    /// Compiler-proved direct source extents for the opt-in barline rewrite.
+    pub(crate) barline_items: Vec<musa_compiler::BarlineSourceItem>,
 }
 
 impl<'session> ProjectSnapshot<'session> {

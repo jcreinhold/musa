@@ -35,6 +35,7 @@
 mod analysis;
 mod assets;
 mod autosave;
+mod barlines;
 mod command;
 mod contents;
 mod diagnostic;
@@ -64,6 +65,7 @@ mod vocabulary;
 
 pub use crate::analysis::{AnalysisFacts, EvidenceFacts, FindingFacts, GroundFacts, NoteFacts};
 pub use crate::assets::{AssetFact, AssetKind, AssetStatus, asset_inventory, lock_assets};
+pub use crate::barlines::{BarlineBlocker, BarlineBlockerReason, BarlineRewrite};
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::contents::{ContentsFacts, EntryFacts};
 pub use crate::diagnostic::{Cause, CauseLabel, Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};

@@ -14,6 +14,9 @@
 
 import { mark } from "../perf";
 import { bridge, inShell, isFailure } from "./bridge";
+import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
+
+type BarlineRewritePreview = Extract<BarlinePreviewDto, { status: "rewrite" }>;
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
@@ -63,6 +66,7 @@ export type Link = Pick<
   | "saveAll"
   | "apply"
   | "editImpact"
+  | "barlineRewrite"
   | "transport"
   | "exportTo"
   | "snapshot"
@@ -82,7 +86,7 @@ export type Link = Pick<
  * arriving, and dropping the draft on its way back would undo whatever was
  * typed while it was in flight.
  */
-const REWRITES = new Set(["format", "undo", "redo", "editScore", "editStudio", "restoreRecovery"]);
+const REWRITES = new Set(["format", "insertBarlines", "undo", "redo", "editScore", "editStudio", "restoreRecovery"]);
 
 /**
  * The file extension an export writes, for the targets whose name is not it.
@@ -135,6 +139,9 @@ export class Session {
    * for. Asked for, never volunteered, and kept until it is asked again.
    */
   report = $state<AnalysisFacts | null>(null);
+
+  /** The current command-palette wording, computed by the project facade. */
+  barlinePreview = $state<BarlineRewritePreview | null>(null);
 
   /** Which analysis is in flight, so the panel can say it is reading. */
   reading = $state<string | null>(null);
@@ -210,6 +217,7 @@ export class Session {
     }
     if (current?.document === snapshot.document && snapshot.revision < current.revision) return;
     this.snapshot = snapshot;
+    this.barlinePreview = null;
     if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
@@ -433,6 +441,39 @@ export class Session {
 
   async format(): Promise<void> {
     await this.run({ kind: "format" }, () => "Formatted the source.");
+  }
+
+  /** Ask for the palette's musical count without changing the document. */
+  async previewBarlines(): Promise<void> {
+    const link = this.#link;
+    if (!link || !this.snapshot?.compiles) {
+      this.barlinePreview = null;
+      return;
+    }
+    try {
+      const preview = await link.barlineRewrite();
+      this.barlinePreview = preview.status === "rewrite" ? preview : null;
+    } catch {
+      // A refusal is represented by the ordinary static command wording; it
+      // is reported in full if the composer runs the command.
+      this.barlinePreview = null;
+    }
+  }
+
+  /** Apply exactly the revision previewed by the project facade. */
+  async insertBarlines(): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      const preview = await link.barlineRewrite();
+      if (preview.status === "alreadyBarred") {
+        this.say({ tone: "result", message: "The measured source is already barred." });
+        return;
+      }
+      await this.run({ kind: "insertBarlines", revision: preview.revision }, () => `${preview.summary}.`);
+    } catch (thrown) {
+      this.fail(thrown);
+    }
   }
 
   /**

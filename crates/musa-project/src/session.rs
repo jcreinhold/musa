@@ -483,6 +483,15 @@ impl ProjectSession {
                 let text = self.formatted_source();
                 Ok(self.set_source(text))
             }
+            ProjectCommand::InsertBarlines { revision } => {
+                let Some(rewrite) = self.barline_rewrite()? else {
+                    return Ok(ProjectUpdate::unchanged(self.revision, self.validity()));
+                };
+                if revision != self.revision || rewrite.revision() != self.revision {
+                    return Err(crate::BarlineBlocker::new(crate::BarlineBlockerReason::StaleRevision, None).into());
+                }
+                Ok(self.set_source(rewrite.source().to_owned()))
+            }
             ProjectCommand::Save => {
                 self.save()?;
                 Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
@@ -544,6 +553,22 @@ impl ProjectSession {
     #[must_use]
     pub fn formatted_source(&self) -> String {
         musa_compiler::format_document(&self.source, self.bar_spacing()).unwrap_or_else(|| self.source.clone())
+    }
+
+    /// Preview the exact semantic barline transaction without changing the
+    /// source or history.
+    ///
+    /// # Errors
+    /// A structured [`crate::BarlineBlocker`] when the current document is
+    /// invalid, already barred, incomplete, crosses a hidden boundary, or
+    /// would require editing generated source.
+    pub fn barline_rewrite(&self) -> Result<Option<crate::BarlineRewrite>, crate::BarlineBlocker> {
+        let valid = self
+            .valid
+            .as_ref()
+            .filter(|valid| valid.revision == self.revision)
+            .ok_or_else(|| crate::BarlineBlocker::new(crate::BarlineBlockerReason::InvalidDocument, None))?;
+        crate::barlines::plan(&self.source, self.revision, &valid.barline_items, self.bar_spacing())
     }
 
     /// How this piece's project wants its bars laid out.
@@ -1247,6 +1272,11 @@ impl ProjectSession {
         } else {
             compilation.derivation().cloned()
         };
+        let barline_items = if compilation.has_errors() {
+            Vec::new()
+        } else {
+            compilation.barline_items().to_vec()
+        };
         let studio_execution = if compilation.has_errors() {
             None
         } else {
@@ -1306,6 +1336,7 @@ impl ProjectSession {
                         items,
                         revision,
                         identity,
+                        barline_items,
                     });
                     // `score_changed` is about the *engraving*: it decides
                     // whether the interface redraws. Whether playback is

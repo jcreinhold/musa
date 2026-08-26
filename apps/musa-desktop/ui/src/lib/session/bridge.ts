@@ -9,6 +9,7 @@
  */
 
 import type { CommandDto } from "./generated/CommandDto";
+import type { BarlinePreviewDto } from "./generated/BarlinePreviewDto";
 import type { EditDto } from "./generated/EditDto";
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
@@ -54,6 +55,8 @@ export const bridge = {
   apply: (command: CommandDto) => call<ProjectSnapshot>("apply", { command }),
   /** What an edit would change, asked before it is made. */
   editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
+  /** The exact proved barline transaction, asked before it is applied. */
+  barlineRewrite: () => call<BarlinePreviewDto>("barline_rewrite", {}),
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),

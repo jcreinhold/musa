@@ -154,6 +154,7 @@ export const COMMANDS: readonly Command[] = [
   command("edit.undo", "Edit", ({ session }) => void session.undo()),
   command("edit.redo", "Edit", ({ session }) => void session.redo()),
   command("edit.format", "Edit", ({ session }) => void session.format()),
+  command("edit.insertBarlines", "Edit", ({ session }) => void session.insertBarlines()),
   command("edit.definition", "Edit", ({ definition }) => definition()),
   command("edit.uses", "Edit", ({ uses }) => uses()),
 

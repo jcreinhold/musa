@@ -187,7 +187,7 @@ impl PackageManifest {
         };
         let policies: BTreeMap<String, crate::assets::AssetPolicy> = assets
             .iter()
-            .map(|(path, value)| {
+            .map(|(path, value)| -> Result<_, ProjectError> {
                 let policy = value.clone().try_into().map_err(|error| {
                     ProjectError::Packages(format!("package asset `{path}` has invalid policy: {error}"))
                 })?;

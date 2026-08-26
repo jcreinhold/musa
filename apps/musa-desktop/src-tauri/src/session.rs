@@ -26,7 +26,7 @@ use musa_project::{
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
-use crate::dto::{ErrorDto, ErrorKindDto, ExportedDto};
+use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto};
 
 /// How often the position is reported while playing (`06-frame-budgets.md` §3).
 /// At rest the thread blocks: there is no timer anywhere in the application.
@@ -60,6 +60,8 @@ enum Job {
     Export(ExportRequest, PathBuf),
     /// Ask what an edit would change, without making it.
     Impact(EditCommand),
+    /// Preview the compiler-proved barline transaction without applying it.
+    BarlineRewrite,
     /// Re-read the current snapshot without changing anything.
     Snapshot,
     /// Start or stop reading the MIDI keyboard, and say where the caret is.
@@ -150,6 +152,10 @@ impl SessionHandle {
         self.ask(Job::Impact(command))
     }
 
+    pub(crate) fn barline_rewrite(&self) -> Reply {
+        self.ask(Job::BarlineRewrite)
+    }
+
     pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
         self.ask(Job::Midi(listening, caret))
     }
@@ -193,7 +199,10 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                 listening = wanted;
                 caret.clone_from(at);
             }
-            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(..) | Job::Analyze(_));
+            let mutating = !matches!(
+                job,
+                Job::Snapshot | Job::Impact(_) | Job::BarlineRewrite | Job::Midi(..) | Job::Analyze(_)
+            );
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
             // A dropped receiver means the webview went away mid-command;
@@ -312,6 +321,15 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
                 .edit_impact(&command)
                 .map_err(|error| ErrorDto::from(&error))?;
             serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::BarlineRewrite => {
+            let open = session.as_ref().ok_or_else(no_project)?;
+            let rewrite = open.current().barline_rewrite().map_err(|blocker| {
+                let error = musa_project::ProjectError::from(blocker);
+                ErrorDto::from(&error)
+            })?;
+            serde_json::to_value(BarlinePreviewDto::from(rewrite.as_ref()))
+                .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),
         Job::Analyze(kind) => {

@@ -1,7 +1,7 @@
 ---
 id: 200
 slug: inferred-barlines
-status: pending
+status: done
 depends_on: [90, 193]
 phase: 3
 ---

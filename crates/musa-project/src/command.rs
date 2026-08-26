@@ -103,6 +103,12 @@ pub enum ProjectCommand {
     /// Reformat the source canonically. A source-changing command like any
     /// other, so it lands in the history and can be undone.
     Format,
+    /// Apply the compiler-proved barline plan for `revision` as one undoable
+    /// source transaction. A stale plan is refused rather than replayed.
+    InsertBarlines {
+        /// The revision previewed by the caller.
+        revision: Revision,
+    },
     /// Save the current source to the project path.
     Save,
     /// Take back the work a previous session left in its recovery copy,
@@ -149,6 +155,7 @@ impl ProjectCommand {
             Self::SetSource(_) => "set-source",
             Self::ApplyEdits(_) => "apply-edits",
             Self::Format => "format",
+            Self::InsertBarlines { .. } => "insert-barlines",
             Self::Save => "save",
             Self::RestoreRecovery => "restore-recovery",
             Self::DiscardRecovery => "discard-recovery",

@@ -12,6 +12,7 @@ musa explain <code>                     the rule behind a diagnostic code
 musa format [<file|folder>…] [--check]  format in place; no path means here
     --check                              fail instead of writing
     --diff                               print the diff instead of writing
+    --insert-bars                        insert only compiler-proved `|` assertions
 musa render <file.musa> --to <target>   mei | lilypond | musicxml | midi | wav
     --to plan | performance              the debug dumps, to stdout
     --mode score | performance           for --to midi (default: score)
@@ -33,6 +34,9 @@ musa fetch <project|piece>              fetch exact-pinned package source and as
   `black` and `cargo fmt` work. A folder is walked whole; hidden folders, `target`, and symbolic links are passed over.
   A file that does not parse is reported and left exactly as it was, because the formatter would otherwise write a guess
   over text its author is in the middle of.
+- `format --insert-bars` is an opt-in semantic rewrite, not ordinary layout. It inserts `|` only where the current
+  checked score proves a complete measure at a direct authored source boundary; `--check` and `--diff` retain their
+  non-writing meanings.
 - Text render targets accept `-o -` for stdout; binary targets (`midi`, `wav`) require `-o <path>`.
 - `assets lock` is explicit and offline: it reads local files declared in `[assets."path"]`, validates that every path
   stays inside the project, and atomically writes deterministic SHA-256 identities to `musa.lock`. `list` and `verify`

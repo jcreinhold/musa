@@ -163,7 +163,15 @@ pub(crate) fn elaborate_parsed(
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
     let media = media_declarations(resolver, &libraries, &file, Some(&piece));
-    let identity = elaborate_score(resolver, &mut elaborated, &piece, &media, &mut snapshot);
+    let mut barline_items = Vec::new();
+    let identity = elaborate_score(
+        resolver,
+        &mut elaborated,
+        &piece,
+        &media,
+        &mut snapshot,
+        &mut barline_items,
+    );
     // The identity hash is the one fact that says *which* piece was produced,
     // and it is what two runs that should agree are compared on.
     tracing::debug!(phase = "elaborate", %identity, "elaborated");
@@ -235,6 +243,7 @@ pub(crate) fn elaborate_parsed(
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
         .with_references(references)
+        .with_barline_items(barline_items)
 }
 
 /// The five statements a piece owns, reported wherever one stands at a file

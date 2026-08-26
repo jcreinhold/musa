@@ -37,6 +37,7 @@ pub(super) fn elaborate_score(
     piece: &PieceDecl,
     media: &MediaDeclarations,
     snapshot: &mut ScoreSnapshot,
+    barline_items: &mut Vec<crate::compile::BarlineSourceItem>,
 ) -> musa_events::SemanticHash {
     let Some(score) = piece.score() else {
         return musa_events::SemanticHash::default();
@@ -80,6 +81,7 @@ pub(super) fn elaborate_score(
     // where the barlines fall is what the meters decide.
     let bars = resolve_meters(resolver, stated(&sounding, meter_of));
     check_keys(resolver, &bars, stated(&sounding, key_of));
+    project_barline_items(resolver, elaborated, &read, &bars, barline_items);
     prove(resolver, elaborated, &read, &bars);
     if resolver.track_sink.is_some() {
         // Measurement only, and the one place a voice is wanted on its own; the
@@ -124,6 +126,77 @@ pub(super) fn elaborate_score(
             .insert(id, Part::new(id, part.name.clone(), voices, names));
     }
     identity
+}
+
+/// Retain the exact source facts the explicit barline rewrite needs.
+fn project_barline_items(
+    resolver: &mut Resolver,
+    elaborated: &crate::document::Document,
+    piece: &crate::lower::piece::Piece,
+    piece_bars: &musa_score::BarLines,
+    projected: &mut Vec<crate::compile::BarlineSourceItem>,
+) {
+    use crate::compile::{BarlineSourceItem, BarlineSourceRole};
+    use musa_score::MusicalDuration;
+    use musa_syntax::SyntaxKind;
+
+    for part in &piece.parts {
+        for voice in &part.voices {
+            let scope = Scope::Voice {
+                part: part.id,
+                voice: voice.id,
+            };
+            let scoped = part_bars(resolver, scope);
+            let bars = scoped.as_ref().unwrap_or(piece_bars);
+            for item in &voice.direct_items {
+                let (start, end, definitions) = match elaborated.direct_item(item) {
+                    Ok(extent) => extent,
+                    Err(error) => {
+                        resolver.report(crate::lower::refusals::restate(elaborated.sites(), &error));
+                        continue;
+                    }
+                };
+                let measured = bars.meter_at(start).is_measured();
+                let first_boundary = measured
+                    .then(|| bars.measure_at(start).end)
+                    .filter(|at| *at > start && *at < end);
+                let role = if item.kind == SyntaxKind::BarStmt {
+                    BarlineSourceRole::ExistingBar
+                } else if matches!(
+                    item.kind,
+                    SyntaxKind::NoteStmt
+                        | SyntaxKind::RestStmt
+                        | SyntaxKind::ChordStmt
+                        | SyntaxKind::UseStmt
+                        | SyntaxKind::DynamicStmt
+                        | SyntaxKind::ClefStmt
+                        | SyntaxKind::TempoStmt
+                        | SyntaxKind::MarkStmt
+                        | SyntaxKind::HairpinStmt
+                        | SyntaxKind::TupletStmt
+                        | SyntaxKind::SlurStmt
+                        | SyntaxKind::GraceStmt
+                ) {
+                    BarlineSourceRole::Loose
+                } else {
+                    BarlineSourceRole::Boundary
+                };
+                projected.push(BarlineSourceItem {
+                    span: item.span,
+                    scope,
+                    start,
+                    end,
+                    measured,
+                    start_on_barline: bars.at(start).into == MusicalDuration::ZERO,
+                    end_on_barline: bars.at(end).into == MusicalDuration::ZERO,
+                    internal_boundary: first_boundary,
+                    role,
+                    lineage: crate::compile::BarlineLineage::Authored,
+                    definitions,
+                });
+            }
+        }
+    }
 }
 
 /// Record which profile realizes `part`, or say the piece declares no such

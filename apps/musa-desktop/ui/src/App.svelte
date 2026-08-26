@@ -523,7 +523,10 @@
     definition: goToDefinition,
     uses: selectUses,
     show: (which) => (screen = which),
-    palette: (open) => (paletteOpen = open),
+    palette: (open) => {
+      paletteOpen = open;
+      if (open) void session.previewBarlines();
+    },
     keys: (open) => (keysOpen = open),
     settings: (open) => (settingsOpen = open),
     escape,
@@ -866,6 +869,8 @@
 
 {#if paletteOpen}
   <Palette
+    title={(command) =>
+      command.id === "edit.insertBarlines" ? (session.barlinePreview?.summary ?? command.title) : command.title}
     onrun={(command) => {
       paletteOpen = false;
       command.run(surface);

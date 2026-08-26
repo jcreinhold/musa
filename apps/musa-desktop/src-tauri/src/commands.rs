@@ -84,6 +84,16 @@ pub fn edit_impact(edit: EditDto, session: State<'_, SessionHandle>) -> Result<V
     session.edit_impact(edit.into())
 }
 
+/// Preview the exact barline source action without changing history.
+///
+/// # Errors
+/// If no piece is open or the checked source cannot be rewritten with
+/// certainty at direct authored boundaries.
+#[tauri::command]
+pub fn barline_rewrite(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.barline_rewrite()
+}
+
 /// Play, stop, seek, or set the loop.
 ///
 /// # Errors

@@ -1,0 +1,5 @@
+---
+source: crates/musa/tests/cli.rs
+expression: stderr
+---
+error: <piece>: cannot insert bar lines: a direct source item crosses a required barline and cannot be split automatically

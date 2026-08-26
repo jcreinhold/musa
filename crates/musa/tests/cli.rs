@@ -475,6 +475,52 @@ fn format_diff_shows_the_change_and_writes_nothing() -> std::io::Result<()> {
     std::fs::remove_file(&path)
 }
 
+#[test]
+fn insert_bars_check_diff_and_write_share_the_project_plan() -> std::io::Result<()> {
+    let source = concat!(
+        "piece \"Bars\" { meter 4/4; score { part p { voice v { ",
+        "c4/4 d4/4 e4/4 f4/4 g4/4 a4/4 b4/4 c5/4 } } } }\n"
+    );
+    let path = temp_file("insert-bars.musa", source)?;
+    let expected = musa_project::ProjectSession::from_text(source, "insert-bars.musa")
+        .barline_rewrite()
+        .map_err(std::io::Error::other)?
+        .ok_or_else(|| std::io::Error::other("fixture has no barline rewrite"))?
+        .source()
+        .to_owned();
+
+    let checked = musa(&["format", "--insert-bars", "--check", &path.to_string_lossy()])?;
+    assert!(!checked.status.success());
+    assert_eq!(std::fs::read_to_string(&path)?, source);
+
+    let diffed = musa(&["format", "--insert-bars", "--diff", &path.to_string_lossy()])?;
+    assert!(!diffed.status.success());
+    let diff = String::from_utf8_lossy(&diffed.stdout);
+    assert!(diff.contains("| c4/4 d4/4 e4/4 f4/4"), "{diff}");
+    assert!(diff.contains("| g4/4 a4/4 b4/4 c5/4"), "{diff}");
+    assert_eq!(std::fs::read_to_string(&path)?, source);
+
+    let written = musa(&["format", "--insert-bars", &path.to_string_lossy()])?;
+    assert!(written.status.success(), "{}", String::from_utf8_lossy(&written.stderr));
+    assert_eq!(std::fs::read_to_string(&path)?, expected);
+    std::fs::remove_file(path)
+}
+
+#[test]
+fn insert_bars_reports_the_boundary_crossing_item() -> std::io::Result<()> {
+    let source = concat!(
+        "piece \"Crossing\" { meter 4/4; motif long() { c4/1 d4/1 } ",
+        "score { part p { voice v { use long(); } } } }\n"
+    );
+    let path = temp_file("insert-bars-crossing.musa", source)?;
+    let output = musa(&["format", "--insert-bars", &path.to_string_lossy()])?;
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr).replace(&path.to_string_lossy().to_string(), "<piece>");
+    insta::assert_snapshot!("insert-bars-boundary", stderr);
+    assert_eq!(std::fs::read_to_string(&path)?, source);
+    std::fs::remove_file(path)
+}
+
 /// `musa analyze` prints the report the compiler built, in the order the
 /// compiler built it, and says nothing about whether the piece is good.
 ///

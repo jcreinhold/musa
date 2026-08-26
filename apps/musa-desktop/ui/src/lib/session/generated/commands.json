@@ -108,6 +108,15 @@
     "available": true
   },
   {
+    "id": "edit.insertBarlines",
+    "title": "Insert proved bar lines",
+    "section": "edit",
+    "submenu": null,
+    "apart": false,
+    "accelerator": null,
+    "available": true
+  },
+  {
     "id": "edit.definition",
     "title": "Go to the declaration",
     "section": "edit",

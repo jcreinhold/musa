@@ -365,6 +365,26 @@ pub(crate) struct Claimed {
     pub(crate) passage: Raw,
 }
 
+/// One statement written directly in a voice, retained only long enough for
+/// the checked source-edit projection to place it in exact written time.
+///
+/// This deliberately carries the same balanced prefix pieces a [`Claimed`]
+/// does. A source action that accumulated durations from the CST would be a
+/// second semantics; one that rebuilt every prefix term would make a long
+/// voice quadratic. The fold has already computed the right proof, so the
+/// projection keeps it.
+pub(crate) struct DirectItem {
+    /// The statement's authored range in the text the compiler read.
+    pub(crate) span: SourceSpan,
+    /// Its syntax role, used only to distinguish loose material from an
+    /// existing bar or a statement that ends pipe-bar syntax.
+    pub(crate) kind: SyntaxKind,
+    /// The direct music before this item, in balanced duration pieces.
+    pub(crate) before: Vec<DurationPiece>,
+    /// The item itself, before it is joined into the voice.
+    pub(crate) passage: Raw,
+}
+
 /// One argument of a written claim, in the state the reading leaves it in.
 ///
 /// Two cases because [`musa_score::assert::ParamType`] has two kinds in it. Four of

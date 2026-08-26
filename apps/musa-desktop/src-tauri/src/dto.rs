@@ -21,6 +21,32 @@ use ts_rs::TS;
 
 use crate::session::Request;
 
+/// The command palette's preview of the exact project-owned barline plan.
+#[derive(Clone, Debug, Serialize, TS)]
+#[serde(tag = "status", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum BarlinePreviewDto {
+    Rewrite {
+        revision: u64,
+        inserted: usize,
+        summary: String,
+    },
+    AlreadyBarred,
+}
+
+impl From<Option<&musa_project::BarlineRewrite>> for BarlinePreviewDto {
+    fn from(rewrite: Option<&musa_project::BarlineRewrite>) -> Self {
+        match rewrite {
+            Some(rewrite) => Self::Rewrite {
+                revision: rewrite.revision().0,
+                inserted: rewrite.inserted(),
+                summary: rewrite.summary(),
+            },
+            None => Self::AlreadyBarred,
+        }
+    }
+}
+
 /// A range of the source, in UTF-16 code units.
 ///
 /// The webview's measure, not Rust's — the same one the spans in the snapshot
@@ -85,6 +111,10 @@ pub enum CommandDto {
         edit: StudioEditDto,
     },
     Format,
+    #[serde(rename_all = "camelCase")]
+    InsertBarlines {
+        revision: u64,
+    },
     Save,
     /// Take the work a crash left behind and make it the source.
     RestoreRecovery,
@@ -350,6 +380,9 @@ impl CommandDto {
             Self::EditScore { edit } => Request::Command(ProjectCommand::EditScore(edit.into())),
             Self::EditStudio { edit } => Request::Command(ProjectCommand::EditStudio(edit.into())),
             Self::Format => Request::Command(ProjectCommand::Format),
+            Self::InsertBarlines { revision } => Request::Command(ProjectCommand::InsertBarlines {
+                revision: musa_project::Revision(revision),
+            }),
             Self::Save => Request::Command(ProjectCommand::Save),
             Self::RestoreRecovery => Request::Command(ProjectCommand::RestoreRecovery),
             Self::DiscardRecovery => Request::Command(ProjectCommand::DiscardRecovery),
@@ -483,6 +516,7 @@ impl From<&ProjectError> for ErrorDto {
             | ProjectError::Assets(_)
             | ProjectError::Packages(_) => ErrorKindDto::File,
             ProjectError::RejectedEdit { .. }
+            | ProjectError::BarlineRewrite(_)
             | ProjectError::NoSuchEvent(_)
             | ProjectError::Uneditable(_)
             | ProjectError::NotYetImplemented { .. }
@@ -556,6 +590,7 @@ mod dto_laws {
                 }],
             },
             CommandDto::Format,
+            CommandDto::InsertBarlines { revision: 7 },
             CommandDto::Save,
             CommandDto::Undo,
             CommandDto::Redo,

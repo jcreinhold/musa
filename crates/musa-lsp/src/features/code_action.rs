@@ -26,19 +26,60 @@ pub(crate) fn code_actions(
     uri: &Uri,
     params: &CodeActionParams,
 ) -> Option<CodeActionOrCommandList> {
-    let actions = document
-        .snapshot()
-        .diagnostics()
-        .iter()
-        .filter(|diagnostic| {
-            diagnostic
-                .span
-                .is_some_and(|span| overlaps(span, params.range, document.lines()))
-        })
-        .flat_map(|diagnostic| fixes(document, uri, diagnostic))
-        .map(CodeActionOrCommand::CodeAction)
-        .collect::<Vec<_>>();
+    let mut actions = Vec::new();
+    if requested(params, &CodeActionKind::QUICKFIX) {
+        actions.extend(
+            document
+                .snapshot()
+                .diagnostics()
+                .iter()
+                .filter(|diagnostic| {
+                    diagnostic
+                        .span
+                        .is_some_and(|span| overlaps(span, params.range, document.lines()))
+                })
+                .flat_map(|diagnostic| fixes(document, uri, diagnostic))
+                .map(CodeActionOrCommand::CodeAction),
+        );
+    }
+    let insert_kind = CodeActionKind::new("refactor.rewrite.insertBarlines");
+    if requested(params, &insert_kind)
+        && document.snapshot().compiles()
+        && let Ok(Some(rewrite)) = document.session().barline_rewrite()
+    {
+        let edits = rewrite
+            .edits()
+            .iter()
+            .map(|edit| TextEdit {
+                range: document.lines().range(edit.span),
+                new_text: edit.replacement.clone(),
+            })
+            .collect();
+        actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+            title: rewrite.summary(),
+            kind: Some(insert_kind),
+            edit: Some(WorkspaceEdit {
+                changes: Some(HashMap::from([(uri.clone(), edits)])),
+                document_changes: None,
+                change_annotations: None,
+            }),
+            ..CodeAction::default()
+        }));
+    }
     if actions.is_empty() { None } else { Some(actions) }
+}
+
+/// Whether the client's hierarchical `only` filter admits `kind`.
+fn requested(params: &CodeActionParams, kind: &CodeActionKind) -> bool {
+    params.context.only.as_ref().is_none_or(|only| {
+        only.iter().any(|asked| {
+            kind.as_str() == asked.as_str()
+                || kind
+                    .as_str()
+                    .strip_prefix(asked.as_str())
+                    .is_some_and(|rest| rest.starts_with('.'))
+        })
+    })
 }
 
 /// The response type, named once.

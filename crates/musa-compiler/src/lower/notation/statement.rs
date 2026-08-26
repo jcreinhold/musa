@@ -157,7 +157,18 @@ impl Lowering<'_> {
     /// at each nesting is what makes [`Claimed::before`] absolute by the time a
     /// voice is finished, without any block having to know where it stands.
     pub(crate) fn notated(&mut self, node: &SyntaxNode, reading: Reading) -> Option<Raw> {
-        self.folded(node, statements(node), reading)
+        self.folded_with(node, statements(node), reading, None)
+    }
+
+    /// A voice's direct statements and the track they denote.
+    ///
+    /// Only a voice calls this entry: a nested block is one direct item in its
+    /// enclosing voice, and opening it for a source rewrite would edit inside
+    /// a transformation, assertion, or generated occurrence.
+    pub(crate) fn notated_direct(&mut self, node: &SyntaxNode, reading: Reading) -> Option<(Raw, Vec<DirectItem>)> {
+        let mut items = Vec::new();
+        let track = self.folded_with(node, statements(node), reading, Some(&mut items))?;
+        Some((track, items))
     }
 
     /// The same fold over a chosen subsequence of `node`'s statements.
@@ -172,6 +183,17 @@ impl Lowering<'_> {
         node: &SyntaxNode,
         statements: impl Iterator<Item = SyntaxNode>,
         reading: Reading,
+    ) -> Option<Raw> {
+        self.folded_with(node, statements, reading, None)
+    }
+
+    /// The shared notation fold, optionally retaining its direct items.
+    fn folded_with(
+        &mut self,
+        node: &SyntaxNode,
+        statements: impl Iterator<Item = SyntaxNode>,
+        reading: Reading,
+        mut direct: Option<&mut Vec<DirectItem>>,
     ) -> Option<Raw> {
         let origin = self.origin(node);
         let mut placed = Placed::default();
@@ -207,6 +229,14 @@ impl Lowering<'_> {
                         for claim in self.claims.iter_mut().skip(raised) {
                             claim.before.splice(0..0, prefix.iter().cloned());
                         }
+                    }
+                    if let Some(items) = direct.as_deref_mut() {
+                        items.push(DirectItem {
+                            span: crate::resolve::trimmed_span(&statement),
+                            kind: statement.kind(),
+                            before: placed.pieces().cloned().collect(),
+                            passage: next.clone(),
+                        });
                     }
                     placed.place(origin, next);
                 }

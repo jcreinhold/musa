@@ -734,6 +734,57 @@ fn the_certain_fix_arrives_as_a_quick_fix() {
 }
 
 #[test]
+fn proved_barlines_arrive_as_one_utf16_safe_rewrite() {
+    let source = HOVER_PIECE.replacen("piece \"Hover\" {", "piece \"Hover 🎵\" {", 1);
+    let expected = musa_project::ProjectSession::from_text(&source, "expected.musa")
+        .barline_rewrite()
+        .expect("valid plan")
+        .expect("one complete loose measure")
+        .source()
+        .to_owned();
+    let mut server = Server::start();
+    let (uri, _) = server.open("barline-utf16", &source);
+    let actions = server.client.request::<CodeActionRequest>(CodeActionParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        range: lsp_types::Range::new(Position::new(0, 0), Position::new(0, 0)),
+        context: lsp_types::CodeActionContext {
+            diagnostics: Vec::new(),
+            only: Some(vec![CodeActionKind::REFACTOR_REWRITE]),
+            trigger_kind: None,
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let actions: CodeActionResponse = serde_json::from_value(actions).expect("code actions");
+    let [CodeActionOrCommand::CodeAction(action)] = actions.as_slice() else {
+        panic!("expected exactly one rewrite: {actions:?}");
+    };
+    assert_eq!(
+        action.kind.as_ref().map(CodeActionKind::as_str),
+        Some("refactor.rewrite.insertBarlines")
+    );
+    let edits = action
+        .edit
+        .as_ref()
+        .and_then(|edit| edit.changes.as_ref())
+        .and_then(|changes| changes.get(&uri))
+        .expect("document edits");
+    let [edit] = edits.as_slice() else {
+        panic!("one transactional edit: {edits:?}");
+    };
+    assert_eq!(edit.new_text, expected);
+    assert_eq!(edit.range.start, Position::new(0, 0));
+    assert_eq!(edit.range.end, utf16_end(&source));
+    server.stop();
+}
+
+fn utf16_end(source: &str) -> Position {
+    let line = u32::try_from(source.split('\n').count().saturating_sub(1)).unwrap_or(u32::MAX);
+    let tail = source.rsplit_once('\n').map_or(source, |(_, tail)| tail);
+    Position::new(line, u32::try_from(tail.encode_utf16().count()).unwrap_or(u32::MAX))
+}
+
+#[test]
 fn fixing_the_source_clears_the_diagnostics() {
     let mut server = Server::start();
     let (uri, published) = server.open("missing-semicolon", MISSING_SEMICOLON);

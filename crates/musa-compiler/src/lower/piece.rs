@@ -129,6 +129,9 @@ pub(crate) struct Voice {
     /// one set of them. Each one carries its own two terms, so a claim is placed
     /// by reading, not by a position this walk would have had to keep.
     pub(crate) claims: Vec<super::notation::Claimed>,
+    /// Statements written directly in this voice, with the fold's exact
+    /// duration evidence for the semantic barline source action.
+    pub(crate) direct_items: Vec<super::notation::DirectItem>,
 }
 
 impl Lowering<'_> {
@@ -407,7 +410,7 @@ impl Lowering<'_> {
         reading: Reading,
     ) -> Option<Voice> {
         self.restart_sites();
-        let track = self.notated(held.syntax(), reading)?;
+        let (track, direct_items) = self.notated_direct(held.syntax(), reading)?;
         Some(Voice {
             id: voice,
             name,
@@ -417,6 +420,7 @@ impl Lowering<'_> {
             // thing being read: the walk is shared across the score, so leaving
             // them would give the next voice this one's bars.
             claims: self.claimed(),
+            direct_items,
         })
     }
 }

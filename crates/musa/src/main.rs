@@ -82,6 +82,7 @@ fn print_usage() {
     println!("  musa explain <code>                    the rule behind a diagnostic code");
     println!("  musa format [<file|folder>…] [--check] format in place; no path means here");
     println!("      --diff                               print the diff instead of writing");
+    println!("      --insert-bars                        insert only compiler-proved `|` assertions");
     println!("      -f                                   format even what `.musaignore` excludes");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
     println!("      --to plan | performance              the debug dumps, to stdout");
@@ -783,6 +784,7 @@ fn cmd_format(args: &[String]) -> ExitCode {
         Formatting::Write
     };
     let forced = args.iter().any(|arg| arg == "-f" || arg == "--force");
+    let insert_bars = args.iter().any(|arg| arg == "--insert-bars");
     let mut arguments: Vec<&str> = args
         .iter()
         .filter(|arg| !arg.starts_with("--") && *arg != "-f")
@@ -808,7 +810,7 @@ fn cmd_format(args: &[String]) -> ExitCode {
     }
     let (mut changed, mut unchanged, mut failed) = (0u32, 0u32, 0u32);
     for path in &walked.paths {
-        match format_one(path, formatting) {
+        match format_one(path, formatting, insert_bars) {
             Formatted::Changed => changed = changed.saturating_add(1),
             Formatted::Unchanged => unchanged = unchanged.saturating_add(1),
             Formatted::Failed => failed = failed.saturating_add(1),
@@ -830,7 +832,7 @@ fn cmd_format(args: &[String]) -> ExitCode {
 }
 
 /// One file, formatted or asked about.
-fn format_one(path: &str, formatting: Formatting) -> Formatted {
+fn format_one(path: &str, formatting: Formatting, insert_bars: bool) -> Formatted {
     let Ok(mut session) = open(path, &Realization::deterministic()) else {
         return Formatted::Failed;
     };
@@ -849,7 +851,18 @@ fn format_one(path: &str, formatting: Formatting) -> Formatted {
     // check. The diff is the check with its evidence attached — a formatter
     // you cannot preview is a formatter you cannot trust.
     if formatting != Formatting::Write {
-        let formatted = session.formatted_source();
+        let formatted = if insert_bars {
+            match session.barline_rewrite() {
+                Ok(Some(rewrite)) => rewrite.source().to_owned(),
+                Ok(None) => return Formatted::Unchanged,
+                Err(blocker) => {
+                    eprintln!("error: {path}: cannot insert bar lines: {blocker}");
+                    return Formatted::Failed;
+                }
+            }
+        } else {
+            session.formatted_source()
+        };
         let snapshot = session.snapshot();
         let source = snapshot.source();
         if formatted == source {
@@ -869,7 +882,14 @@ fn format_one(path: &str, formatting: Formatting) -> Formatted {
         }
         return Formatted::Changed;
     }
-    let update = match session.apply(ProjectCommand::Format) {
+    let command = if insert_bars {
+        ProjectCommand::InsertBarlines {
+            revision: session.snapshot().revision(),
+        }
+    } else {
+        ProjectCommand::Format
+    };
+    let update = match session.apply(command) {
         Ok(update) => update,
         Err(error) => {
             eprintln!("error: {path}: {error}");
@@ -881,7 +901,10 @@ fn format_one(path: &str, formatting: Formatting) -> Formatted {
     }
     match session.apply(ProjectCommand::Save) {
         Ok(_) => {
-            println!("{path}: formatted");
+            println!(
+                "{path}: {}",
+                if insert_bars { "inserted bar lines" } else { "formatted" }
+            );
             Formatted::Changed
         }
         Err(error) => {

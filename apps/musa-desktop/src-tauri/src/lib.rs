@@ -43,6 +43,7 @@ pub fn run() -> tauri::Result<()> {
             commands::save_all,
             commands::apply,
             commands::edit_impact,
+            commands::barline_rewrite,
             commands::transport,
             commands::export,
             commands::snapshot,

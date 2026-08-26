@@ -71,6 +71,12 @@ function recorder(): Recorder {
       specializable: false,
       writes: [],
     })),
+    barlineRewrite: vi.fn(async () => ({
+      status: "rewrite" as const,
+      revision: revision as unknown as bigint,
+      inserted: 2,
+      summary: "Insert 2 bar lines in 2 measures",
+    })),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
     snapshot: vi.fn(async () => VALID),
@@ -134,6 +140,22 @@ describe("editing", () => {
     session.edit(VALID.source);
     await vi.advanceTimersByTimeAsync(SETTLE_MS);
     expect(link.applied).toEqual([]);
+  });
+
+  it("previews the project-owned bar count and applies that revision", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.previewBarlines();
+    expect(session.barlinePreview?.summary).toBe("Insert 2 bar lines in 2 measures");
+    await session.insertBarlines();
+
+    expect(link.apply).toHaveBeenCalledWith({
+      kind: "insertBarlines",
+      revision: VALID.revision as unknown as bigint,
+    });
+    expect(session.notice?.message).toBe("Insert 2 bar lines in 2 measures.");
   });
 });
 

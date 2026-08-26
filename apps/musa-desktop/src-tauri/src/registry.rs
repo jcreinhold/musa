@@ -156,6 +156,13 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         Some("CmdOrCtrl+Shift+F"),
         true,
     )),
+    command(
+        "edit.insertBarlines",
+        "Insert proved bar lines",
+        Section::Edit,
+        None,
+        true,
+    ),
     // Following a name and gathering its uses are two readings of the one
     // fact the resolver computed (`08-elaboration.md` §2). They are here, in
     // Edit, because they act on the caret in the text — and they are commands

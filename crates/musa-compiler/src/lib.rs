@@ -67,7 +67,8 @@ mod studio;
 mod studio_model;
 
 pub use crate::compile::{
-    Compilation, CompileOptions, DocumentKind, SourceDocument, StudioSpans, compile, format_document,
+    BarlineSourceItem, BarlineSourceRole, Compilation, CompileOptions, DocumentKind, SourceDocument, StudioSpans,
+    compile, format_document,
 };
 pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]

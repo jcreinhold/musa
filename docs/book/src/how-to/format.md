@@ -22,3 +22,39 @@ part of its type, so it never takes one.
 Everything layout cannot say — naming, repetition, redundant markings — belongs to the
 [style guide](../concepts/style-guide.md), and the machine-checkable part of it is enforced by
 [lints](../reference/lints.md), not the formatter.
+
+## Insert bar assertions explicitly
+
+`--insert-bars` is a separate semantic source action. It asks the checked score where the scoped meter proves each
+measure begins, adds `|` only at direct source-item boundaries, and then formats the result. Without this flag,
+`musa format` never adds a bar assertion.
+
+```musa
+voice melody {
+    c4/4 d4/4 e4/4 f4/4
+    g4/4 a4/4 b4/4 c5/4
+}
+```
+
+```bash
+musa format piece.musa --insert-bars
+```
+
+```musa
+voice melody {
+    | c4/4 d4/4 e4/4 f4/4
+    | g4/4 a4/4 b4/4 c5/4
+}
+```
+
+Preview it with `--insert-bars --diff`, or gate it without writing with `--insert-bars --check`. Musa refuses the whole
+action when certainty would require changing musical material. For example, a direct two-measure use has a boundary
+inside one source item:
+
+```musa
+motif long() { c4/1 d4/1 }
+voice melody { use long(); }
+```
+
+It reports `a direct source item crosses a required barline and cannot be split automatically`. Musa does not open the
+motif occurrence, split a note, invent a tie, or call an incomplete opening a pickup.

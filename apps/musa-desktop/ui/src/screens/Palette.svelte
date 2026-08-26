@@ -15,9 +15,11 @@
   let {
     onrun,
     onclose,
+    title,
   }: {
     onrun: (command: Command) => void;
     onclose: () => void;
+    title: (command: Command) => string;
   } = $props();
 
   let query = $state("");
@@ -31,10 +33,10 @@
    */
   function hit(command: Command, typed: string): boolean {
     if (typed === "") return true;
-    const title = command.title.toLowerCase();
+    const words = title(command).toLowerCase();
     let index = 0;
     for (const letter of typed.toLowerCase()) {
-      index = title.indexOf(letter, index) + 1;
+      index = words.indexOf(letter, index) + 1;
       if (index === 0) return false;
     }
     return true;
@@ -109,7 +111,7 @@
               onclick={() => onrun(command)}
               onmouseenter={() => (at = shown.indexOf(command))}
             >
-              <span class="what">{command.title}</span>
+              <span class="what">{title(command)}</span>
               <span class="group">{command.group}</span>
               <span class="binding">{spell(command.accelerator)}</span>
             </li>

@@ -15,6 +15,9 @@
 /// would trade it for a source compatibility this workspace has no use for.
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
+    /// The explicit barline source action has no certain transaction.
+    #[error("cannot insert bar lines: {0}")]
+    BarlineRewrite(#[from] crate::BarlineBlocker),
     /// The project file could not be read or written.
     #[error("cannot access {path}: {source}")]
     Io {

@@ -57,7 +57,7 @@ use musa_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::elaborate::VoiceTrack;
 use crate::lower::items::{Declared, Definition, Item};
-use crate::lower::notation::{Argued, Claimed, DurationPiece};
+use crate::lower::notation::{Argued, Claimed, DirectItem, DurationPiece};
 use crate::lower::{Lowering, Naming, Sites, refusals};
 use crate::resolve::Resolver;
 use musa_score::diagnose::{Code, Diagnostic};
@@ -421,6 +421,36 @@ impl Document {
                 noun: claimed.noun,
             },
         ))
+    }
+
+    /// Place one direct source item in exact written time using the same
+    /// duration evidence that places a checked passage claim.
+    pub(crate) fn direct_item(
+        &self,
+        item: &DirectItem,
+    ) -> Result<
+        (
+            musa_score::MusicalTime,
+            musa_score::MusicalTime,
+            Vec<musa_score::origin::SourceSpan>,
+        ),
+        ElabError,
+    > {
+        let start = musa_score::MusicalTime::new(self.began(&item.before)?.as_ratio());
+        let sounding = self.track(&item.passage)?;
+        let duration = sounding.duration();
+        let definitions = sounding
+            .occurrences()
+            .iter()
+            .map(|occurrence| occurrence.payload().origin.definition_span)
+            .collect();
+        self.remember_duration(&item.passage, duration);
+        #[expect(
+            clippy::arithmetic_side_effects,
+            reason = "exact rational musical time has mathematical addition, not raw integer arithmetic"
+        )]
+        let end = musa_score::MusicalTime::new(start.as_ratio() + duration.as_ratio());
+        Ok((start, end, definitions))
     }
 
     /// The claim `claimed` writes, with its arguments evaluated.
