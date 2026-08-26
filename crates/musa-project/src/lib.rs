@@ -53,6 +53,7 @@ mod position;
 mod project;
 mod realization;
 mod session;
+mod sf2;
 mod sfz;
 mod snapshot;
 mod studio;
@@ -80,6 +81,7 @@ pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
 pub use crate::session::ProjectSession;
+pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};
 pub use crate::sfz::{SfzInstrumentFacts, SfzLimits};
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::studio::{

@@ -66,7 +66,7 @@ max_bytes = 1048576
         &root.join("piece.musa"),
         r#"import std::sound::sample;
 let fixture_map: SampleMapArtifact = SampleMapArtifact {
-    schema_version = 2,
+    schema_version = 3,
     sample_map = SampleMap {
         declaration_id = "tests.project_sampler@1",
         selection = FirstRegion,
@@ -78,13 +78,16 @@ let fixture_map: SampleMapArtifact = SampleMapArtifact {
             technique = "", connection = AnyConnection, trigger = AttackTrigger, pedal = AnyPedal,
             sequence_group = 0, sequence_position = 0, sequence_length = 0,
             weight = 1, priority = 1, tune_cents = 0/1,
-            gain = LinearGain(1/1), pan = 0/1,
+            gain = LinearGain(1/1), expression_gain = LinearExpressionGain, pan = 0/1,
             start_frame = 0, end_frame = 64,
             loop_start = 8, loop_end = 48, loop_mode = ForwardSustainLoop,
             envelope = SampleEnvelope {
-                attack_seconds = 0/1, decay_seconds = 0/1,
-                sustain_level = 1/1, release_seconds = 1/100, curve = LinearEnvelope
+                delay = ExactSeconds(0/1), attack = ExactSeconds(0/1), hold = ExactSeconds(0/1),
+                decay = ExactSeconds(0/1), sustain = LinearLevel(1/1), release = ExactSeconds(1/100),
+                hold_key_timecents = 0/1, decay_key_timecents = 0/1, curve = LinearEnvelope
             },
+            filter = SampleFilter { cutoff_cents = 13500/1, resonance_centibels = 0/1 },
+            modulations = [],
             group = 0, off_by = 0, off_mode = FastOff
         }]
     }
@@ -130,7 +133,7 @@ fn sfz_limits() -> musa_project::SfzLimits {
 fn sfz_sampler_limits() -> musa_dsp::SamplerLimits {
     musa_dsp::SamplerLimits {
         max_voices: 64,
-        max_step_work: 64 * 24,
+        max_step_work: 64 * 48,
         ..limits()
     }
 }

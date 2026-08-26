@@ -12,7 +12,7 @@ use thiserror::Error;
 
 const SCHEMA_NAME: &str = "std.sound.sample.SampleMapArtifact";
 const ROOT_TYPE: &str = "SampleMapArtifact";
-const VERSION: u64 = 2;
+const VERSION: u64 = 3;
 
 /// Exact consumer schema for a source-declared sample map.
 #[must_use]
@@ -74,9 +74,86 @@ pub(crate) enum Gain {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ExpressionGain {
+    Constant,
+    Linear,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum EnvelopeCurve {
     Linear,
     Sfz1,
+    SoundFont2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum EnvelopeTime {
+    Seconds(Ratio<i64>),
+    SoundFontTimecents(Ratio<i64>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum EnvelopeLevel {
+    Linear(Ratio<i64>),
+    SoundFontAttenuationCentibels(Ratio<i64>),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationSource {
+    Key,
+    Expression,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationDirection {
+    Positive,
+    Negative,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationPolarity {
+    Unipolar,
+    Bipolar,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationCurve {
+    Linear,
+    Concave,
+    Convex,
+    Switch,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationTransform {
+    Linear,
+    Absolute,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ModulationTarget {
+    TuneCents,
+    GainDecibels,
+    Pan,
+    FilterCutoffCents,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Modulation {
+    pub(crate) source: ModulationSource,
+    pub(crate) source_maximum: Ratio<i64>,
+    pub(crate) direction: ModulationDirection,
+    pub(crate) polarity: ModulationPolarity,
+    pub(crate) curve: ModulationCurve,
+    pub(crate) transform: ModulationTransform,
+    pub(crate) target: ModulationTarget,
+    pub(crate) amount: Ratio<i64>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Filter {
+    pub(crate) cutoff_cents: Ratio<i64>,
+    pub(crate) resonance_centibels: Ratio<i64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,10 +171,14 @@ pub(crate) enum SelectionPolicy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Envelope {
-    pub(crate) attack: Ratio<i64>,
-    pub(crate) decay: Ratio<i64>,
-    pub(crate) sustain: Ratio<i64>,
-    pub(crate) release: Ratio<i64>,
+    pub(crate) delay: EnvelopeTime,
+    pub(crate) attack: EnvelopeTime,
+    pub(crate) hold: EnvelopeTime,
+    pub(crate) decay: EnvelopeTime,
+    pub(crate) sustain: EnvelopeLevel,
+    pub(crate) release: EnvelopeTime,
+    pub(crate) hold_key_timecents: Ratio<i64>,
+    pub(crate) decay_key_timecents: Ratio<i64>,
     pub(crate) curve: EnvelopeCurve,
 }
 
@@ -120,6 +201,7 @@ pub(crate) struct Region {
     pub(crate) priority: u64,
     pub(crate) tune_cents: Ratio<i64>,
     pub(crate) gain: Gain,
+    pub(crate) expression_gain: ExpressionGain,
     pub(crate) pan: Ratio<i64>,
     pub(crate) start_frame: u64,
     pub(crate) end_frame: u64,
@@ -127,6 +209,8 @@ pub(crate) struct Region {
     pub(crate) loop_end: u64,
     pub(crate) loop_mode: LoopMode,
     pub(crate) envelope: Envelope,
+    pub(crate) filter: Filter,
+    pub(crate) modulations: Vec<Modulation>,
     pub(crate) group: u32,
     pub(crate) off_by: u32,
     pub(crate) off_mode: OffMode,
@@ -240,6 +324,7 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         priority,
         tune_cents,
         gain,
+        expression_gain,
         pan,
         start_frame,
         end_frame,
@@ -247,15 +332,17 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         loop_end,
         loop_mode,
         envelope,
+        filter,
+        modulations,
         group,
         off_by,
         off_mode,
-    ] = fields::<27>(datum, "SampleRegion", path)?;
+    ] = fields::<30>(datum, "SampleRegion", path)?;
     let key_low = key(key_low, &format!("{path}.key_low"))?;
     let key_high = key(key_high, &format!("{path}.key_high"))?;
     let root_key = key(root_key, &format!("{path}.root_key"))?;
-    if key_low > key_high || !(key_low..=key_high).contains(&root_key) {
-        return Err(malformed(path, "an ordered key range containing its root"));
+    if key_low > key_high {
+        return Err(malformed(path, "an ordered key range"));
     }
     let expression_low = ratio(expression_low, &format!("{path}.expression_low"))?;
     let expression_high = ratio(expression_high, &format!("{path}.expression_high"))?;
@@ -311,26 +398,41 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
     } else if loop_start >= loop_end {
         return Err(malformed(path, "a nonempty loop interval"));
     }
-    let [attack, decay, sustain, release, curve] = fields::<5>(envelope, "SampleEnvelope", path)?;
+    let [delay, attack, hold, decay, sustain, release, hold_key, decay_key, curve] =
+        fields::<9>(envelope, "SampleEnvelope", path)?;
     let envelope = Envelope {
-        attack: ratio(attack, &format!("{path}.envelope.attack_seconds"))?,
-        decay: ratio(decay, &format!("{path}.envelope.decay_seconds"))?,
-        sustain: ratio(sustain, &format!("{path}.envelope.sustain_level"))?,
-        release: ratio(release, &format!("{path}.envelope.release_seconds"))?,
+        delay: envelope_time(delay, &format!("{path}.envelope.delay"))?,
+        attack: envelope_time(attack, &format!("{path}.envelope.attack"))?,
+        hold: envelope_time(hold, &format!("{path}.envelope.hold"))?,
+        decay: envelope_time(decay, &format!("{path}.envelope.decay"))?,
+        sustain: envelope_level(sustain, &format!("{path}.envelope.sustain"))?,
+        release: envelope_time(release, &format!("{path}.envelope.release"))?,
+        hold_key_timecents: ratio(hold_key, &format!("{path}.envelope.hold_key_timecents"))?,
+        decay_key_timecents: ratio(decay_key, &format!("{path}.envelope.decay_key_timecents"))?,
         curve: match constructor(curve) {
             Some("LinearEnvelope") => EnvelopeCurve::Linear,
             Some("Sfz1Envelope") => EnvelopeCurve::Sfz1,
+            Some("SoundFont2Envelope") => EnvelopeCurve::SoundFont2,
             _ => return Err(malformed(&format!("{path}.envelope.curve"), "a SampleEnvelopeCurve")),
         },
     };
-    if envelope.attack < Ratio::ZERO
-        || envelope.decay < Ratio::ZERO
-        || envelope.release < Ratio::ZERO
-        || envelope.sustain < Ratio::ZERO
-        || envelope.sustain > Ratio::ONE
+    if envelope_time_is_negative(&envelope.delay)
+        || envelope_time_is_negative(&envelope.attack)
+        || envelope_time_is_negative(&envelope.hold)
+        || envelope_time_is_negative(&envelope.decay)
+        || envelope_time_is_negative(&envelope.release)
     {
-        return Err(malformed(path, "nonnegative envelope times and sustain in [0,1]"));
+        return Err(malformed(path, "nonnegative exact-seconds envelope times"));
     }
+    let [cutoff_cents, resonance_centibels] = fields::<2>(filter, "SampleFilter", &format!("{path}.filter"))?;
+    let filter = Filter {
+        cutoff_cents: ratio(cutoff_cents, &format!("{path}.filter.cutoff_cents"))?,
+        resonance_centibels: ratio(resonance_centibels, &format!("{path}.filter.resonance_centibels"))?,
+    };
+    if filter.resonance_centibels < Ratio::ZERO {
+        return Err(malformed(&format!("{path}.filter"), "nonnegative filter resonance"));
+    }
+    let modulations = list(modulations, &format!("{path}.modulations"), modulation)?;
     Ok(Region {
         asset: text(asset, &format!("{path}.asset"))?,
         key_low,
@@ -366,6 +468,11 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         priority: nat(priority, &format!("{path}.priority"))?,
         tune_cents: ratio(tune_cents, &format!("{path}.tune_cents"))?,
         gain,
+        expression_gain: match constructor(expression_gain) {
+            Some("ConstantExpressionGain") => ExpressionGain::Constant,
+            Some("LinearExpressionGain") => ExpressionGain::Linear,
+            _ => return Err(malformed(&format!("{path}.expression_gain"), "a SampleExpressionGain")),
+        },
         pan,
         start_frame,
         end_frame,
@@ -373,6 +480,8 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         loop_end,
         loop_mode,
         envelope,
+        filter,
+        modulations,
         group: u32::try_from(nat(group, &format!("{path}.group"))?)
             .map_err(|_| malformed(&format!("{path}.group"), "a u32 group"))?,
         off_by: u32::try_from(nat(off_by, &format!("{path}.off_by"))?)
@@ -382,6 +491,104 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
             Some("NormalOff") => OffMode::Normal,
             _ => return Err(malformed(&format!("{path}.off_mode"), "a SampleOffMode")),
         },
+    })
+}
+
+fn envelope_time(datum: SourceDatum<'_>, path: &str) -> Result<EnvelopeTime, SampleMapError> {
+    match constructor(datum) {
+        Some("ExactSeconds") => {
+            let [value] = fields::<1>(datum, "ExactSeconds", path)?;
+            Ok(EnvelopeTime::Seconds(ratio(value, &format!("{path}.value"))?))
+        }
+        Some("SoundFontTimecents") => {
+            let [value] = fields::<1>(datum, "SoundFontTimecents", path)?;
+            Ok(EnvelopeTime::SoundFontTimecents(ratio(
+                value,
+                &format!("{path}.value"),
+            )?))
+        }
+        _ => Err(malformed(path, "a SampleEnvelopeTime")),
+    }
+}
+
+fn envelope_time_is_negative(time: &EnvelopeTime) -> bool {
+    matches!(time, EnvelopeTime::Seconds(value) if *value < Ratio::ZERO)
+}
+
+fn envelope_level(datum: SourceDatum<'_>, path: &str) -> Result<EnvelopeLevel, SampleMapError> {
+    match constructor(datum) {
+        Some("LinearLevel") => {
+            let [value] = fields::<1>(datum, "LinearLevel", path)?;
+            let value = ratio(value, &format!("{path}.value"))?;
+            if value < Ratio::ZERO || value > Ratio::ONE {
+                return Err(malformed(path, "a linear level in [0,1]"));
+            }
+            Ok(EnvelopeLevel::Linear(value))
+        }
+        Some("SoundFontAttenuationCentibels") => {
+            let [value] = fields::<1>(datum, "SoundFontAttenuationCentibels", path)?;
+            let value = ratio(value, &format!("{path}.value"))?;
+            if value < Ratio::ZERO {
+                return Err(malformed(path, "nonnegative SoundFont attenuation"));
+            }
+            Ok(EnvelopeLevel::SoundFontAttenuationCentibels(value))
+        }
+        _ => Err(malformed(path, "a SampleEnvelopeLevel")),
+    }
+}
+
+fn modulation(datum: SourceDatum<'_>, path: &str) -> Result<Modulation, SampleMapError> {
+    let [
+        source,
+        source_maximum,
+        direction,
+        polarity,
+        curve,
+        transform,
+        target,
+        amount,
+    ] = fields::<8>(datum, "SampleModulation", path)?;
+    let source_maximum = ratio(source_maximum, &format!("{path}.source_maximum"))?;
+    if source_maximum <= Ratio::ZERO || source_maximum > Ratio::ONE {
+        return Err(malformed(&format!("{path}.source_maximum"), "a ratio in (0,1]"));
+    }
+    Ok(Modulation {
+        source: match constructor(source) {
+            Some("KeyModulationSource") => ModulationSource::Key,
+            Some("ExpressionModulationSource") => ModulationSource::Expression,
+            _ => return Err(malformed(&format!("{path}.source"), "a SampleModulationSource")),
+        },
+        source_maximum,
+        direction: match constructor(direction) {
+            Some("PositiveModulationDirection") => ModulationDirection::Positive,
+            Some("NegativeModulationDirection") => ModulationDirection::Negative,
+            _ => return Err(malformed(&format!("{path}.direction"), "a SampleModulationDirection")),
+        },
+        polarity: match constructor(polarity) {
+            Some("UnipolarModulation") => ModulationPolarity::Unipolar,
+            Some("BipolarModulation") => ModulationPolarity::Bipolar,
+            _ => return Err(malformed(&format!("{path}.polarity"), "a SampleModulationPolarity")),
+        },
+        curve: match constructor(curve) {
+            Some("LinearModulationCurve") => ModulationCurve::Linear,
+            Some("ConcaveModulationCurve") => ModulationCurve::Concave,
+            Some("ConvexModulationCurve") => ModulationCurve::Convex,
+            Some("SwitchModulationCurve") => ModulationCurve::Switch,
+            _ => return Err(malformed(&format!("{path}.curve"), "a SampleModulationCurve")),
+        },
+        transform: match constructor(transform) {
+            Some("LinearModulationTransform") => ModulationTransform::Linear,
+            Some("AbsoluteModulationTransform") => ModulationTransform::Absolute,
+            _ => return Err(malformed(&format!("{path}.transform"), "a SampleModulationTransform")),
+        },
+        target: match constructor(target) {
+            Some("TuneCentsTarget") => ModulationTarget::TuneCents,
+            Some("GainDecibelsTarget") => ModulationTarget::GainDecibels,
+            Some("PanTarget") => ModulationTarget::Pan,
+            Some("FilterCutoffCentsTarget") => ModulationTarget::FilterCutoffCents,
+            _ => return Err(malformed(&format!("{path}.target"), "a SampleModulationTarget")),
+        },
+        amount: ratio(amount, &format!("{path}.amount"))?,
     })
 }
 

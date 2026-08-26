@@ -13,10 +13,19 @@ use musa_score::{Gesture, Letter};
 use num_rational::Ratio;
 use thiserror::Error;
 
+use crate::filter::{Biquad, Coefficients};
 use crate::sample_source::{
-    ConnectionCondition, EnvelopeCurve, Gain, LoopMode, OffMode, PedalCondition, Region, SelectionPolicy, Trigger,
+    ConnectionCondition, EnvelopeCurve, EnvelopeLevel, EnvelopeTime, ExpressionGain, Gain, LoopMode, Modulation,
+    ModulationCurve, ModulationDirection, ModulationPolarity, ModulationSource, ModulationTarget, ModulationTransform,
+    OffMode, PedalCondition, Region, SelectionPolicy, Trigger,
 };
+use crate::spec::FilterKind;
 use crate::{EventHandle, SampleMap};
+
+// One active voice performs two interpolations, two five-product biquads,
+// envelope progression, stereo gain/accumulation, and bounded loop advance.
+// Note-on modulation is control-side and is therefore not charged per frame.
+const VOICE_STEP_WORK: u64 = 48;
 
 /// Explicit native preparation bounds. There is deliberately no default.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,12 +112,18 @@ struct PreparedRegion {
     end: usize,
     loop_start: usize,
     loop_end: usize,
+    delay_frames: u32,
     attack_frames: u32,
+    hold_frames: u32,
     decay_frames: u32,
     release_frames: u32,
+    hold_key_timecents: f64,
+    decay_key_timecents: f64,
     sustain: f32,
-    gain_left: f32,
-    gain_right: f32,
+    gain: f32,
+    pan: f32,
+    filter_cutoff_cents: f32,
+    filter_resonance_centibels: f32,
 }
 
 struct PreparedData {
@@ -184,7 +199,7 @@ pub fn prepare_sample_map(
     check_limit("voice count", usize::from(map.voices), usize::from(limits.max_voices))?;
     check_limit("region count", map.regions.len(), limits.max_regions)?;
     check_limit("selection work", map.regions.len(), limits.max_selection_work)?;
-    let step_work = u64::from(map.voices).saturating_mul(24);
+    let step_work = u64::from(map.voices).saturating_mul(VOICE_STEP_WORK);
     if step_work > limits.max_step_work {
         return Err(SamplerPrepareError::Resource {
             resource: "one-frame work",
@@ -267,8 +282,6 @@ pub fn prepare_sample_map(
         if !gain.is_finite() {
             return Err(SamplerPrepareError::Map("gain is not a finite native value".to_owned()));
         }
-        let left = (-pan).midpoint(1.0).sqrt() * gain;
-        let right = 1.0f32.midpoint(pan).sqrt() * gain;
         regions.push(PreparedRegion {
             source: source.clone(),
             asset,
@@ -276,12 +289,18 @@ pub fn prepare_sample_map(
             end,
             loop_start,
             loop_end,
-            attack_frames: seconds_frames(source.envelope.attack, limits.sample_rate)?,
-            decay_frames: seconds_frames(source.envelope.decay, limits.sample_rate)?,
-            release_frames: seconds_frames(source.envelope.release, limits.sample_rate)?,
-            sustain: ratio_f32(source.envelope.sustain, "envelope sustain")?,
-            gain_left: left,
-            gain_right: right,
+            delay_frames: envelope_frames(&source.envelope.delay, limits.sample_rate)?,
+            attack_frames: envelope_frames(&source.envelope.attack, limits.sample_rate)?,
+            hold_frames: envelope_frames(&source.envelope.hold, limits.sample_rate)?,
+            decay_frames: envelope_frames(&source.envelope.decay, limits.sample_rate)?,
+            release_frames: envelope_frames(&source.envelope.release, limits.sample_rate)?,
+            hold_key_timecents: ratio_f64(source.envelope.hold_key_timecents),
+            decay_key_timecents: ratio_f64(source.envelope.decay_key_timecents),
+            sustain: envelope_level(&source.envelope.sustain)?,
+            gain,
+            pan,
+            filter_cutoff_cents: ratio_f32(source.filter.cutoff_cents, "filter cutoff")?,
+            filter_resonance_centibels: ratio_f32(source.filter.resonance_centibels, "filter resonance")?,
         });
     }
     let resources = SamplerResources {
@@ -523,7 +542,9 @@ fn applies(
 
 #[derive(Clone, Copy)]
 enum EnvelopeStage {
+    Delay,
     Attack,
+    Hold,
     Decay,
     Sustain,
     Release,
@@ -541,11 +562,21 @@ struct Voice {
     stage: EnvelopeStage,
     stage_frame: u32,
     release_start: f32,
+    delay_frames: u32,
+    attack_frames: u32,
+    hold_frames: u32,
+    decay_frames: u32,
+    release_frames: u32,
     held: bool,
     deferred_release: bool,
     one_shot: bool,
     age: u64,
     expression: f32,
+    gain_left: f32,
+    gain_right: f32,
+    filter_coefficients: Coefficients,
+    filter_left: Biquad,
+    filter_right: Biquad,
 }
 
 impl Voice {
@@ -560,11 +591,21 @@ impl Voice {
             stage: EnvelopeStage::Idle,
             stage_frame: 0,
             release_start: 0.0,
+            delay_frames: 0,
+            attack_frames: 0,
+            hold_frames: 0,
+            decay_frames: 0,
+            release_frames: 0,
             held: false,
             deferred_release: false,
             one_shot: false,
             age: 0,
             expression: 1.0,
+            gain_left: 1.0,
+            gain_right: 1.0,
+            filter_coefficients: Coefficients::default(),
+            filter_left: Biquad::default(),
+            filter_right: Biquad::default(),
         }
     }
 
@@ -753,11 +794,16 @@ impl SampleRuntime {
                 let base = pcm.at(base, channel);
                 (pcm.at(next, channel) - base).mul_add(along, base)
             };
-            let left = interpolate(0);
-            let right = if pcm.channels == 1 { left } else { interpolate(1) };
+            let left = voice.filter_left.process(interpolate(0), &voice.filter_coefficients);
+            let right_input = if pcm.channels == 1 {
+                interpolate(0)
+            } else {
+                interpolate(1)
+            };
+            let right = voice.filter_right.process(right_input, &voice.filter_coefficients);
             tick_envelope(voice, region);
-            output[0] = (left * region.gain_left * voice.level * voice.expression).mul_add(1.0, output[0]);
-            output[1] = (right * region.gain_right * voice.level * voice.expression).mul_add(1.0, output[1]);
+            output[0] = (left * voice.gain_left * voice.level * voice.expression).mul_add(1.0, output[0]);
+            output[1] = (right * voice.gain_right * voice.level * voice.expression).mul_add(1.0, output[1]);
             advance(voice, region);
         }
         for sample in &mut output {
@@ -809,7 +855,19 @@ impl SampleRuntime {
         let Some(voice) = slot.and_then(|index| self.voices.get_mut(index)) else {
             return;
         };
-        let cents = ratio_f64(region.source.tune_cents);
+        let mut cents = ratio_f64(region.source.tune_cents);
+        let mut gain_decibels = 0.0f64;
+        let mut pan = f64::from(region.pan);
+        let mut filter_cutoff_cents = f64::from(region.filter_cutoff_cents);
+        for modulation in &region.source.modulations {
+            let value = modulation_value(modulation, key, expression);
+            match modulation.target {
+                ModulationTarget::TuneCents => cents += value,
+                ModulationTarget::GainDecibels => gain_decibels += value,
+                ModulationTarget::Pan => pan += value,
+                ModulationTarget::FilterCutoffCents => filter_cutoff_cents += value,
+            }
+        }
         let semitones = f64::from(i16::from(key) - i16::from(region.source.root_key)) + cents / 100.0;
         let Some(asset) = self.prepared.assets.get(region.asset) else {
             return;
@@ -820,46 +878,84 @@ impl SampleRuntime {
         voice.position = region.start as f64;
         voice.increment = (semitones / 12.0).exp2() * source_rate / f64::from(self.prepared.sample_rate);
         voice.direction = 1.0;
-        voice.level = 0.0;
-        voice.stage = if region.attack_frames == 0 {
-            EnvelopeStage::Decay
-        } else {
-            EnvelopeStage::Attack
-        };
-        if region.attack_frames == 0 {
-            voice.level = 1.0;
+        let key_scale = |timecents: f64| ((60.0 - f64::from(key)) * timecents / 1200.0).exp2();
+        voice.delay_frames = region.delay_frames;
+        voice.attack_frames = region.attack_frames;
+        voice.hold_frames = scaled_frames(region.hold_frames, key_scale(region.hold_key_timecents));
+        voice.decay_frames = scaled_frames(region.decay_frames, key_scale(region.decay_key_timecents));
+        if region.source.envelope.curve == EnvelopeCurve::SoundFont2 && region.sustain > 0.0 {
+            let decay_fraction = (-20.0 * region.sustain.log10() / 100.0).clamp(0.0, 1.0);
+            voice.decay_frames = scaled_frames(voice.decay_frames, f64::from(decay_fraction));
         }
+        voice.release_frames = region.release_frames;
+        voice.level = 0.0;
+        begin_attack(voice);
         voice.stage_frame = 0;
         voice.release_start = 0.0;
         voice.held = handle.is_some();
         voice.deferred_release = false;
         voice.one_shot = region.source.loop_mode == LoopMode::OneShot || region.source.trigger != Trigger::Attack;
         voice.age = 0;
-        voice.expression = expression.clamp(0.0, 1.0);
+        voice.expression = match region.source.expression_gain {
+            ExpressionGain::Constant => 1.0,
+            ExpressionGain::Linear => expression.clamp(0.0, 1.0),
+        };
+        let gain = 10.0f32.powf((gain_decibels / 20.0) as f32);
+        let pan = (pan as f32).clamp(-1.0, 1.0);
+        voice.gain_left = region.gain * gain * (-pan).midpoint(1.0).sqrt();
+        voice.gain_right = region.gain * gain * 1.0f32.midpoint(pan).sqrt();
+        voice.filter_coefficients = soundfont_filter(
+            filter_cutoff_cents as f32,
+            region.filter_resonance_centibels,
+            self.prepared.sample_rate,
+        );
+        voice.filter_left = Biquad::default();
+        voice.filter_right = Biquad::default();
     }
 }
 
 fn tick_envelope(voice: &mut Voice, region: &PreparedRegion) {
     match voice.stage {
+        EnvelopeStage::Delay => {
+            voice.stage_frame = voice.stage_frame.saturating_add(1);
+            if voice.stage_frame >= voice.delay_frames {
+                voice.stage_frame = 0;
+                if voice.attack_frames == 0 {
+                    voice.level = 1.0;
+                    begin_hold_or_decay(voice);
+                } else {
+                    voice.stage = EnvelopeStage::Attack;
+                }
+            }
+        }
         EnvelopeStage::Attack => {
             voice.stage_frame = voice.stage_frame.saturating_add(1);
-            voice.level = (voice.stage_frame as f32 / region.attack_frames.max(1) as f32).min(1.0);
-            if voice.stage_frame >= region.attack_frames {
+            voice.level = (voice.stage_frame as f32 / voice.attack_frames.max(1) as f32).min(1.0);
+            if voice.stage_frame >= voice.attack_frames {
+                voice.stage_frame = 0;
+                begin_hold_or_decay(voice);
+            }
+        }
+        EnvelopeStage::Hold => {
+            voice.level = 1.0;
+            voice.stage_frame = voice.stage_frame.saturating_add(1);
+            if voice.stage_frame >= voice.hold_frames {
                 voice.stage = EnvelopeStage::Decay;
                 voice.stage_frame = 0;
             }
         }
         EnvelopeStage::Decay => {
             voice.stage_frame = voice.stage_frame.saturating_add(1);
-            let along = voice.stage_frame as f32 / region.decay_frames.max(1) as f32;
+            let along = voice.stage_frame as f32 / voice.decay_frames.max(1) as f32;
             voice.level = match region.source.envelope.curve {
                 EnvelopeCurve::Linear => (region.sustain - 1.0).mul_add(along.min(1.0), 1.0),
                 EnvelopeCurve::Sfz1 => {
                     let exponential = (-8.0 * along).exp();
                     (1.0 - region.sustain).mul_add(exponential, region.sustain)
                 }
+                EnvelopeCurve::SoundFont2 => 10.0f32.powf(-5.0 * along).max(region.sustain),
             };
-            if region.decay_frames == 0 || voice.stage_frame >= region.decay_frames {
+            if voice.decay_frames == 0 || voice.stage_frame >= voice.decay_frames {
                 voice.stage = EnvelopeStage::Sustain;
                 voice.level = region.sustain;
             }
@@ -867,18 +963,118 @@ fn tick_envelope(voice: &mut Voice, region: &PreparedRegion) {
         EnvelopeStage::Sustain => voice.level = region.sustain,
         EnvelopeStage::Release => {
             voice.stage_frame = voice.stage_frame.saturating_add(1);
-            let along = voice.stage_frame as f32 / region.release_frames.max(1) as f32;
+            let along = voice.stage_frame as f32 / voice.release_frames.max(1) as f32;
             voice.level = match region.source.envelope.curve {
                 EnvelopeCurve::Linear => voice.release_start * (1.0 - along.min(1.0)),
                 EnvelopeCurve::Sfz1 => voice.release_start * (-8.0 * along).exp(),
+                EnvelopeCurve::SoundFont2 => voice.release_start * 10.0f32.powf(-5.0 * along),
             };
-            if region.release_frames == 0 || voice.stage_frame >= region.release_frames {
+            if voice.release_frames == 0 || voice.stage_frame >= voice.release_frames {
                 voice.stage = EnvelopeStage::Idle;
                 voice.handle = None;
             }
         }
         EnvelopeStage::Idle => {}
     }
+}
+
+fn begin_attack(voice: &mut Voice) {
+    voice.stage_frame = 0;
+    if voice.delay_frames > 0 {
+        voice.stage = EnvelopeStage::Delay;
+    } else if voice.attack_frames > 0 {
+        voice.stage = EnvelopeStage::Attack;
+    } else {
+        voice.level = 1.0;
+        begin_hold_or_decay(voice);
+    }
+}
+
+fn begin_hold_or_decay(voice: &mut Voice) {
+    voice.stage_frame = 0;
+    voice.stage = if voice.hold_frames > 0 {
+        EnvelopeStage::Hold
+    } else {
+        EnvelopeStage::Decay
+    };
+}
+
+fn scaled_frames(frames: u32, scale: f64) -> u32 {
+    (f64::from(frames) * scale).round().clamp(0.0, f64::from(u32::MAX)) as u32
+}
+
+fn modulation_value(modulation: &Modulation, key: u8, expression: f32) -> f64 {
+    let maximum = ratio_f64(modulation.source_maximum);
+    let normalized = match modulation.source {
+        ModulationSource::Key => f64::from(key) / 127.0,
+        ModulationSource::Expression => f64::from(expression.clamp(0.0, 1.0)),
+    } * maximum;
+    let directed = match modulation.direction {
+        ModulationDirection::Positive => normalized,
+        ModulationDirection::Negative => maximum - normalized,
+    };
+    let polarized = match modulation.polarity {
+        ModulationPolarity::Unipolar => directed,
+        ModulationPolarity::Bipolar => 2.0f64.mul_add(directed, -1.0),
+    };
+    let curved = curve_value(polarized, modulation.curve, modulation.polarity);
+    let value = curved * ratio_f64(modulation.amount);
+    match modulation.transform {
+        ModulationTransform::Linear => value,
+        ModulationTransform::Absolute => value.abs(),
+    }
+}
+
+fn curve_value(value: f64, curve: ModulationCurve, polarity: ModulationPolarity) -> f64 {
+    let concave = |unit: f64| {
+        if unit <= 0.0 {
+            0.0
+        } else if unit >= 1.0 {
+            1.0
+        } else {
+            (-(40.0 / 96.0) * (1.0 - unit).log10()).clamp(0.0, 1.0)
+        }
+    };
+    let convex = |unit: f64| {
+        if unit <= 0.0 {
+            0.0
+        } else if unit >= 1.0 {
+            1.0
+        } else {
+            (40.0f64 / 96.0).mul_add(unit.log10(), 1.0).clamp(0.0, 1.0)
+        }
+    };
+    let sign = if value < 0.0 { -1.0 } else { 1.0 };
+    let unit = match polarity {
+        ModulationPolarity::Unipolar => value.clamp(0.0, 1.0),
+        ModulationPolarity::Bipolar => value.abs().clamp(0.0, 1.0),
+    };
+    let shaped = match curve {
+        ModulationCurve::Linear => unit,
+        ModulationCurve::Concave => concave(unit),
+        ModulationCurve::Convex => convex(unit),
+        ModulationCurve::Switch if polarity == ModulationPolarity::Bipolar => 1.0,
+        ModulationCurve::Switch => f64::from(unit >= 0.5),
+    };
+    if polarity == ModulationPolarity::Bipolar {
+        sign * shaped
+    } else {
+        shaped
+    }
+}
+
+fn soundfont_filter(cents: f32, resonance_centibels: f32, sample_rate: u32) -> Coefficients {
+    // 13,500 is the specification's named open-filter boundary. Testing the
+    // reconstructed Hertz value instead would turn its rounded 8.176-Hz
+    // reference into 19.9 kHz and audibly filter the declared default.
+    if cents >= 13_500.0 && resonance_centibels <= 0.0 {
+        return Coefficients::default();
+    }
+    let cutoff = 8.176f32 * (cents / 1200.0).exp2();
+    let q = std::f32::consts::FRAC_1_SQRT_2 * 10.0f32.powf(resonance_centibels / 200.0);
+    // SoundFont normalizes DC gain by half the resonance height. With Q in
+    // the maintained 2.04 bridge's linear domain that is `1/sqrt(Q)`.
+    Coefficients::new(FilterKind::LowPass, cutoff, q, sample_rate as f32).with_gain(q.sqrt().recip())
 }
 
 fn begin_release(voice: &mut Voice) {
@@ -1005,6 +1201,41 @@ fn seconds_frames(value: Ratio<i64>, sample_rate: u32) -> Result<u32, SamplerPre
     Ok(frames.round() as u32)
 }
 
+fn envelope_frames(value: &EnvelopeTime, sample_rate: u32) -> Result<u32, SamplerPrepareError> {
+    match value {
+        EnvelopeTime::Seconds(seconds) => seconds_frames(*seconds, sample_rate),
+        EnvelopeTime::SoundFontTimecents(timecents) => {
+            // SoundFont's exact -32768 sentinel denotes zero seconds. Every
+            // other value stays exact in checked source and crosses into the
+            // native floating-point synthesis model only here.
+            let frames = if *timecents == Ratio::from_integer(-32_768) {
+                0.0
+            } else {
+                (ratio_f64(*timecents) / 1200.0).exp2() * f64::from(sample_rate)
+            };
+            if !frames.is_finite() || frames < 0.0 || frames > f64::from(u32::MAX) {
+                return Err(SamplerPrepareError::Map(
+                    "a SoundFont envelope time exceeds native frame bounds".to_owned(),
+                ));
+            }
+            Ok(frames.round() as u32)
+        }
+    }
+}
+
+fn envelope_level(value: &EnvelopeLevel) -> Result<f32, SamplerPrepareError> {
+    let level = match value {
+        EnvelopeLevel::Linear(level) => ratio_f64(*level),
+        EnvelopeLevel::SoundFontAttenuationCentibels(centibels) => 10.0f64.powf(-ratio_f64(*centibels) / 200.0),
+    };
+    if !level.is_finite() || !(0.0..=1.0).contains(&level) {
+        return Err(SamplerPrepareError::Map(
+            "an envelope sustain level is outside native bounds".to_owned(),
+        ));
+    }
+    Ok(level as f32)
+}
+
 fn ratio_f32(value: Ratio<i64>, name: &str) -> Result<f32, SamplerPrepareError> {
     let value = ratio_f64(value);
     if !value.is_finite() || value < f64::from(f32::MIN) || value > f64::from(f32::MAX) {
@@ -1035,4 +1266,86 @@ fn stable_hash(seed: u64, instance: u64, bytes: &[u8]) -> u64 {
         hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
     hash
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use num_rational::Ratio;
+
+    use super::{
+        Biquad, Coefficients, EnvelopeLevel, EnvelopeTime, ModulationCurve, ModulationPolarity, curve_value,
+        envelope_frames, envelope_level, soundfont_filter,
+    };
+
+    #[test]
+    fn soundfont_curve_families_have_the_specification_endpoints_and_shapes() {
+        for polarity in [ModulationPolarity::Unipolar, ModulationPolarity::Bipolar] {
+            assert_eq!(
+                curve_value(0.0, ModulationCurve::Concave, polarity).to_bits(),
+                0.0f64.to_bits()
+            );
+            assert_eq!(
+                curve_value(1.0, ModulationCurve::Concave, polarity).to_bits(),
+                1.0f64.to_bits()
+            );
+            assert_eq!(
+                curve_value(0.0, ModulationCurve::Convex, polarity).to_bits(),
+                0.0f64.to_bits()
+            );
+            assert_eq!(
+                curve_value(1.0, ModulationCurve::Convex, polarity).to_bits(),
+                1.0f64.to_bits()
+            );
+        }
+        let concave = curve_value(0.5, ModulationCurve::Concave, ModulationPolarity::Unipolar);
+        let convex = curve_value(0.5, ModulationCurve::Convex, ModulationPolarity::Unipolar);
+        assert!(concave < 0.2, "the SoundFont concave midpoint is shallow: {concave}");
+        assert!(convex > 0.8, "the SoundFont convex midpoint is steep: {convex}");
+        assert_eq!(
+            curve_value(-0.01, ModulationCurve::Switch, ModulationPolarity::Bipolar).to_bits(),
+            (-1.0f64).to_bits()
+        );
+        assert_eq!(
+            curve_value(0.01, ModulationCurve::Switch, ModulationPolarity::Bipolar).to_bits(),
+            1.0f64.to_bits()
+        );
+    }
+
+    #[test]
+    fn exact_soundfont_coordinates_cross_only_at_native_preparation() {
+        let Ok(octave_below) = envelope_frames(&EnvelopeTime::SoundFontTimecents(Ratio::from_integer(-1_200)), 48_000)
+        else {
+            panic!("one octave below one second must prepare");
+        };
+        assert_eq!(octave_below, 24_000);
+        let Ok(instantaneous) =
+            envelope_frames(&EnvelopeTime::SoundFontTimecents(Ratio::from_integer(-32_768)), 48_000)
+        else {
+            panic!("the instantaneous sentinel must prepare");
+        };
+        assert_eq!(instantaneous, 0);
+        let Ok(level) = envelope_level(&EnvelopeLevel::SoundFontAttenuationCentibels(Ratio::from_integer(200))) else {
+            panic!("twenty decibel sustain must prepare");
+        };
+        assert!((level - 0.1).abs() < 1.0e-6, "{level}");
+    }
+
+    #[test]
+    fn soundfont_filter_retains_the_open_boundary_and_half_peak_gain_normalization() {
+        assert_eq!(soundfont_filter(13_500.0, 0.0, 48_000), Coefficients::default());
+        let coefficients = soundfont_filter(6_900.0, 100.0, 48_000);
+        let mut filter = Biquad::default();
+        let mut output = 0.0;
+        for _ in 0..20_000 {
+            output = filter.process(1.0, &coefficients);
+        }
+        let q = std::f32::consts::FRAC_1_SQRT_2 * 10.0f32.sqrt();
+        let expected = q.sqrt().recip();
+        assert!(
+            (output - expected).abs() < 1.0e-4,
+            "output={output}, expected={expected}"
+        );
+    }
 }

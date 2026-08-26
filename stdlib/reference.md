@@ -425,7 +425,9 @@ searches the filesystem.
 
 ## `std::sound::sample`
 
-- `record SampleEnvelope: Type` — Exact source envelope values, in physical seconds and linear amplitude.
+- `record SampleModulation: Type` — One exact typed note-on modulation; target units determine `amount` units.
+- `record SampleFilter: Type` — The SoundFont-compatible resonant low-pass at its unmodulated setting.
+- `record SampleEnvelope: Type` — Exact source envelope values and linear amplitude.
 - `record SampleRegion: Type` — One immutable audio region and every predicate or playback rule it owns.
 - `record SampleMap: Type` — A complete source-declared sample instrument implementation.
 - `record SampleInstrument: Type` — One ordinary source instrument contract paired with its sample-map body. The body is private implementation policy to consumers of the instrument; adapters construct this same value before native normalization.

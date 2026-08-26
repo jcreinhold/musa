@@ -45,10 +45,87 @@ data SampleGain {
     DecibelGain(Ratio),
 }
 
+/// Whether typed gesture expression directly scales amplitude before explicit modulations.
+data SampleExpressionGain {
+    ConstantExpressionGain,
+    LinearExpressionGain,
+}
+
 /// The curve family used between an envelope's exact endpoints.
 data SampleEnvelopeCurve {
     LinearEnvelope,
     Sfz1Envelope,
+    SoundFont2Envelope,
+}
+
+/// An exact envelope duration coordinate, converted to frames only during preparation.
+data SampleEnvelopeTime {
+    ExactSeconds(Ratio),
+    SoundFontTimecents(Ratio),
+}
+
+/// An exact envelope sustain coordinate, normalized only during preparation.
+data SampleEnvelopeLevel {
+    LinearLevel(Ratio),
+    SoundFontAttenuationCentibels(Ratio),
+}
+
+/// A typed note property that may modulate prepared sample behavior.
+data SampleModulationSource {
+    KeyModulationSource,
+    ExpressionModulationSource,
+}
+
+/// Which way a normalized modulation source runs.
+data SampleModulationDirection {
+    PositiveModulationDirection,
+    NegativeModulationDirection,
+}
+
+/// Whether a normalized modulation source spans zero-to-one or minus-one-to-one.
+data SampleModulationPolarity {
+    UnipolarModulation,
+    BipolarModulation,
+}
+
+/// The source response before its exact amount is applied.
+data SampleModulationCurve {
+    LinearModulationCurve,
+    ConcaveModulationCurve,
+    ConvexModulationCurve,
+    SwitchModulationCurve,
+}
+
+/// The final transform after source and amount are multiplied.
+data SampleModulationTransform {
+    LinearModulationTransform,
+    AbsoluteModulationTransform,
+}
+
+/// A prepared sample parameter changed at note onset.
+data SampleModulationTarget {
+    TuneCentsTarget,
+    GainDecibelsTarget,
+    PanTarget,
+    FilterCutoffCentsTarget,
+}
+
+/// One exact typed note-on modulation; target units determine `amount` units.
+record SampleModulation {
+    source: SampleModulationSource;
+    source_maximum: Ratio;
+    direction: SampleModulationDirection;
+    polarity: SampleModulationPolarity;
+    curve: SampleModulationCurve;
+    transform: SampleModulationTransform;
+    target: SampleModulationTarget;
+    amount: Ratio;
+}
+
+/// The SoundFont-compatible resonant low-pass at its unmodulated setting.
+record SampleFilter {
+    cutoff_cents: Ratio;
+    resonance_centibels: Ratio;
 }
 
 /// What a newly triggered choke does to an existing voice.
@@ -64,12 +141,16 @@ data SampleSelectionPolicy {
     StableWeighted,
 }
 
-/// Exact source envelope values, in physical seconds and linear amplitude.
+/// Exact source envelope values and linear amplitude.
 record SampleEnvelope {
-    attack_seconds: Ratio;
-    decay_seconds: Ratio;
-    sustain_level: Ratio;
-    release_seconds: Ratio;
+    delay: SampleEnvelopeTime;
+    attack: SampleEnvelopeTime;
+    hold: SampleEnvelopeTime;
+    decay: SampleEnvelopeTime;
+    sustain: SampleEnvelopeLevel;
+    release: SampleEnvelopeTime;
+    hold_key_timecents: Ratio;
+    decay_key_timecents: Ratio;
     curve: SampleEnvelopeCurve;
 }
 
@@ -92,6 +173,7 @@ record SampleRegion {
     priority: Nat;
     tune_cents: Ratio;
     gain: SampleGain;
+    expression_gain: SampleExpressionGain;
     pan: Ratio;
     start_frame: Nat;
     end_frame: Nat;
@@ -99,6 +181,8 @@ record SampleRegion {
     loop_end: Nat;
     loop_mode: SampleLoopMode;
     envelope: SampleEnvelope;
+    filter: SampleFilter;
+    modulations: List(SampleModulation);
     group: Nat;
     off_by: Nat;
     off_mode: SampleOffMode;

@@ -51,3 +51,16 @@ event facts, or desktop IPC.
 Preset selection remains an adapter option on the existing asset address, not a new language construct:
 `bank.sf2#preset=0:40` selects bank 0/program 40, while `#preset-name=Violin` requires one exact unambiguous bank name.
 The fragment participates in adapter identity but is removed before resolving the locked bank path.
+
+## Native curve bridge checked against the maintained implementation
+
+FluidSynth head `db85a59cf8c3feff390957d6d354d01b735a5dac` was inspected at the native conversion boundary, not used as
+format authority. Its generated concave/convex tables implement the shapes in the 2.04 figures where the prose equations
+are disputed: for normalized `x`, concave is `-(40/96) log10(1-x)` and convex is `1 + (40/96) log10(x)`, with exact
+zero/one endpoints. Bipolar switch selects by sign, while unipolar switch selects at one half. Musa uses those equations
+directly rather than retaining a 128-entry host table.
+
+The same implementation converts filter resonance from centibels to the RBJ quality factor `(1/sqrt(2)) * 10^(cB/200)`
+and scales the numerator by `1/sqrt(Q)` for the specification's half-peak gain normalization. Musa follows that bridge,
+but retains the exact cutoff/resonance coordinates in checked source and computes coefficients once per voice at note
+onset. The governing 13,500-cent/zero-resonance open-filter boundary bypasses the biquad exactly.

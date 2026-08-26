@@ -57,9 +57,25 @@ fn at_asset_instrument(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
     let token = parsed.syntax().token_at_offset(byte.into()).next()?;
     let declaration = token.parent_ancestors().find_map(InstrumentDecl::cast)?;
     let asset = declaration.asset()?;
-    if !asset.to_ascii_lowercase().ends_with(".sfz") {
+    let (base, fragment) = asset
+        .rsplit_once('#')
+        .map_or((asset.as_str(), None), |(base, fragment)| (base, Some(fragment)));
+    let extension = std::path::Path::new(base).extension()?;
+    let (adapter, translation) = if extension.eq_ignore_ascii_case("sfz") && fragment.is_none() {
+        (
+            "sfz@1",
+            "global/group/region inheritance; WAV regions; key, expression, pitch, dB gain and pan; loops; SFZ-v1 amplitude envelope; attack/release/release-key; typed sustain state; directional choke; per-group sequence selection",
+        )
+    } else if extension.eq_ignore_ascii_case("sf2")
+        && fragment.is_some_and(|fragment| fragment.starts_with("preset=") || fragment.starts_with("preset-name="))
+    {
+        (
+            "sf2@1",
+            "bounded RIFF/Hydra validation; explicit preset selection; global/local zone combination; embedded 16/24-bit samples; key/expression layers; exact tuning, attenuation, pan and SoundFont envelope coordinates; loops; initial low-pass; stereo links; exclusive classes; admitted typed note-on modulators",
+        )
+    } else {
         return None;
-    }
+    };
     let name = declaration.name()?;
     let range = token.text_range();
     Some(answer(
@@ -69,7 +85,7 @@ fn at_asset_instrument(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
             end: u32::from(range.end()),
         },
         format!(
-            "**{name}** — *imported note instrument*\n\n```musa\ninstrument {name} from \"{asset}\" conforms note_instrument;\n```\n\nAdapter: `sfz@1` · signature: `note_instrument` · techniques: ordinary\n\nSupported translation: global/group/region inheritance; WAV regions; key, expression, pitch, dB gain and pan; loops; SFZ-v1 amplitude envelope; attack/release/release-key; typed sustain state; directional choke; per-group sequence selection. Unsupported sound-changing opcodes are errors.\n\nOrigin: verified immutable asset",
+            "**{name}** — *imported note instrument*\n\n```musa\ninstrument {name} from \"{asset}\" conforms note_instrument;\n```\n\nAdapter: `{adapter}` · signature: `note_instrument` · techniques: ordinary\n\nSupported translation: {translation}. Unsupported sound-changing input is an error.\n\nOrigin: verified immutable asset",
         ),
     ))
 }

@@ -842,7 +842,8 @@ fn source_uses(document: &str, source: &str, open: bool) -> Vec<AssetUse> {
     document_instruments
         .chain(piece_instruments)
         .filter_map(|instrument| {
-            let path = instrument.asset()?;
+            let address = instrument.asset()?;
+            let path = soundfont_asset_base(&address).unwrap_or(address);
             let span = open
                 .then(|| {
                     instrument.asset_token().map(|token| {
@@ -862,6 +863,13 @@ fn source_uses(document: &str, source: &str, open: bool) -> Vec<AssetUse> {
             })
         })
         .collect()
+}
+
+pub(crate) fn soundfont_asset_base(address: &str) -> Option<String> {
+    let (base, fragment) = address.rsplit_once('#')?;
+    (base.to_ascii_lowercase().ends_with(".sf2")
+        && (fragment.starts_with("preset=") || fragment.starts_with("preset-name=")))
+    .then(|| base.to_owned())
 }
 
 fn diagnostic(fact: &AssetFact, source: Option<&str>) -> Diagnostic {

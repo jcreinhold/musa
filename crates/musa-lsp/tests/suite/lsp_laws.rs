@@ -1187,9 +1187,23 @@ piece "SFZ hover" { score { part p { voice v { c4/1 } } } }
     assert!(content.contains("`sfz@1`"), "{content}");
     assert!(content.contains("techniques: ordinary"), "{content}");
     assert!(
-        content.contains("Unsupported sound-changing opcodes are errors"),
+        content.contains("Unsupported sound-changing input is an error"),
         "{content}"
     );
+    server.stop();
+}
+
+#[test]
+fn hover_on_a_soundfont_preset_reports_the_strict_adapter_boundary() {
+    let source = r#"instrument piano from "assets/piano.sf2#preset=0:1" conforms note_instrument;
+piece "SoundFont hover" { score { part p { voice v { c4/1 } } } }
+"#;
+    let mut server = Server::start();
+    let (uri, _) = server.open("sf2-hover", source);
+    let content = hover_markdown(&mut server, &uri, at(source, "piano from"));
+    assert!(content.contains("`sf2@1`"), "{content}");
+    assert!(content.contains("explicit preset selection"), "{content}");
+    assert!(content.contains("exact tuning, attenuation, pan"), "{content}");
     server.stop();
 }
 

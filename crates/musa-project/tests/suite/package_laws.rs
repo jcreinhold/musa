@@ -250,7 +250,7 @@ piece "Package asset" {
                 max_regions: 8,
                 max_decoded_bytes: 1 << 20,
                 max_selection_work: 8,
-                max_step_work: 64 * 24,
+                max_step_work: 64 * 48,
             },
         )
         .expect("package SFZ and its package sample prepare offline");

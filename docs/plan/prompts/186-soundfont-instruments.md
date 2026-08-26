@@ -1,7 +1,7 @@
 ---
 id: 186
 slug: soundfont-instruments
-status: in-progress
+status: done
 depends_on: [174, 182, 184]
 phase: 4
 ---

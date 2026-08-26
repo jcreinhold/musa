@@ -165,7 +165,7 @@ pub(crate) fn adapt(
         ));
     }
     let mut source = String::from(
-        "import std::sound::sample;\nlet imported_sfz_map: SampleMapArtifact = SampleMapArtifact {\n    schema_version = 2,\n    sample_map = SampleMap {\n",
+        "import std::sound::sample;\nlet imported_sfz_map: SampleMapArtifact = SampleMapArtifact {\n    schema_version = 3,\n    sample_map = SampleMap {\n",
     );
     writeln!(source, "        declaration_id = \"{}@sfz@1\",", escape(instrument))
         .map_err(|_| ProjectError::Assets("cannot construct checked SFZ adapter source".to_owned()))?;
@@ -605,7 +605,7 @@ fn write_region(out: &mut String, text: &str, logical: &str, region: &Region) ->
     };
     write!(
         out,
-        "            SampleRegion {{ asset = \"{}\", key_low = {key_low}, key_high = {key_high}, root_key = {root_key}, expression_low = {lovel}/127, expression_high = {hivel}/127, technique = \"\", connection = {connection}, trigger = {trigger}, pedal = {pedal}, sequence_group = {sequence_group}, sequence_position = {sequence_position}, sequence_length = {sequence_length}, weight = 1, priority = 0, tune_cents = {}, gain = DecibelGain({}), pan = ({}) * 1/100, start_frame = {start}, end_frame = {end}, loop_start = {loop_start}, loop_end = {loop_end}, loop_mode = {loop_mode}, envelope = SampleEnvelope {{ attack_seconds = {attack}, decay_seconds = {decay}, sustain_level = ({sustain}) * 1/100, release_seconds = {release}, curve = Sfz1Envelope }}, group = {choke_group}, off_by = {off_by}, off_mode = {off_mode} }},",
+        "            SampleRegion {{ asset = \"{}\", key_low = {key_low}, key_high = {key_high}, root_key = {root_key}, expression_low = {lovel}/127, expression_high = {hivel}/127, technique = \"\", connection = {connection}, trigger = {trigger}, pedal = {pedal}, sequence_group = {sequence_group}, sequence_position = {sequence_position}, sequence_length = {sequence_length}, weight = 1, priority = 0, tune_cents = {}, gain = DecibelGain({}), expression_gain = LinearExpressionGain, pan = ({}) * 1/100, start_frame = {start}, end_frame = {end}, loop_start = {loop_start}, loop_end = {loop_end}, loop_mode = {loop_mode}, envelope = SampleEnvelope {{ delay = ExactSeconds(0/1), attack = ExactSeconds({attack}), hold = ExactSeconds(0/1), decay = ExactSeconds({decay}), sustain = LinearLevel(({sustain}) * 1/100), release = ExactSeconds({release}), hold_key_timecents = 0/1, decay_key_timecents = 0/1, curve = Sfz1Envelope }}, filter = SampleFilter {{ cutoff_cents = 13500/1, resonance_centibels = 0/1 }}, modulations = [], group = {choke_group}, off_by = {off_by}, off_mode = {off_mode} }},",
         escape(&asset),
         source_integer_ratio(tune_cents),
         source_ratio(&volume),

@@ -253,6 +253,89 @@ impl ProjectSession {
         Ok((prepared, adapted.facts))
     }
 
+    /// Adapt one source-declared `sf2@1` preset through an ordinary checked
+    /// `SampleMapArtifact`, then prepare its verified embedded samples.
+    ///
+    /// # Errors
+    /// Refuses an absent/non-SoundFont declaration, an unverified bank, an
+    /// invalid preset fragment, any bounded RIFF/Hydra or support-matrix
+    /// violation, a checked-map disagreement, or native preparation failure.
+    pub fn prepare_sf2_instrument(
+        &self,
+        instrument: &str,
+        sf2_limits: crate::sf2::Sf2Limits,
+        sampler_limits: musa_dsp::SamplerLimits,
+    ) -> Result<(musa_dsp::PreparedSampleMap, crate::sf2::Sf2InstrumentFacts), ProjectError> {
+        if !self.assets.is_verified() {
+            return Err(ProjectError::Assets(
+                "the project asset closure is not verified".to_owned(),
+            ));
+        }
+        let parsed = musa_syntax::parse(&self.source);
+        let root = parsed.syntax();
+        let declarations = Document::of_root(&root)
+            .into_iter()
+            .flat_map(|document| document.instruments())
+            .chain(
+                PieceDecl::from_root(&root)
+                    .into_iter()
+                    .flat_map(|piece| piece.instruments()),
+            );
+        let address = declarations
+            .filter(|declaration| declaration.name().as_deref() == Some(instrument))
+            .find_map(|declaration| declaration.asset())
+            .ok_or_else(|| ProjectError::Assets(format!("no asset instrument named `{instrument}`")))?;
+        let asset = crate::assets::soundfont_asset_base(&address).ok_or_else(|| {
+            ProjectError::Assets(format!(
+                "instrument `{instrument}` requires a canonical SoundFont preset fragment"
+            ))
+        })?;
+        let fact = self
+            .assets
+            .facts()
+            .iter()
+            .find(|fact| fact.path == asset)
+            .ok_or_else(|| {
+                ProjectError::Assets(format!("instrument `{instrument}` bank is absent from the closure"))
+            })?;
+        if fact.kind != Some(crate::assets::AssetKind::SoundFont) || fact.adapter.as_deref() != Some("sf2@1") {
+            return Err(ProjectError::Assets(format!(
+                "instrument `{instrument}` requires a verified `kind = \"sound-font\"`, `adapter = \"sf2@1\"` asset"
+            )));
+        }
+        if !asset.to_ascii_lowercase().ends_with(".sf2") {
+            return Err(ProjectError::Assets("sf2@1 does not accept SF3 banks".to_owned()));
+        }
+        let bytes = self.assets.read_verified(&asset)?;
+        let adapted = crate::sf2::adapt(instrument, &address, &bytes, sf2_limits)?;
+        let document = SourceDocument::new(adapted.source, format!("sf2:{address}"));
+        let checked = musa_compiler::checked_source_value(
+            &document,
+            &CompileOptions::default(),
+            "imported_sf2_map",
+            &musa_dsp::sample_map_schema(),
+        )
+        .map_err(|diagnostics| {
+            ProjectError::Performance(format!("SoundFont adapter result did not check: {diagnostics:#?}"))
+        })?;
+        let map = musa_dsp::decode_sample_map(&checked).map_err(|error| {
+            ProjectError::Performance(format!("SoundFont adapter result disagrees with SampleMap: {error}"))
+        })?;
+        let prepared = musa_dsp::prepare_sample_map(
+            map,
+            |logical| {
+                adapted
+                    .samples
+                    .get(logical)
+                    .cloned()
+                    .ok_or_else(|| format!("embedded SoundFont sample `{logical}` is absent"))
+            },
+            sampler_limits,
+        )
+        .map_err(|error| ProjectError::Performance(error.to_string()))?;
+        Ok((prepared, adapted.facts))
+    }
+
     /// Open an existing `.musa` file.
     ///
     /// A file that does not compile still opens: the session reports its

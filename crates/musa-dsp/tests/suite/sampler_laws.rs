@@ -32,13 +32,17 @@ fn region(
             trigger = {trigger}, pedal = {pedal},
             sequence_group = {sequence_group}, sequence_position = {sequence_position},
             sequence_length = {sequence_length}, weight = {weight}, priority = {priority},
-            tune_cents = 0/1, gain = LinearGain(1/1), pan = 0/1,
+            tune_cents = 0/1, gain = LinearGain(1/1),
+            expression_gain = LinearExpressionGain, pan = 0/1,
             start_frame = 0, end_frame = 64, loop_start = {loop_start}, loop_end = {loop_end},
             loop_mode = {loop_mode},
             envelope = SampleEnvelope {{
-                attack_seconds = 0/1, decay_seconds = 0/1,
-                sustain_level = 1/1, release_seconds = 1/1000, curve = LinearEnvelope
+                delay = ExactSeconds(0/1), attack = ExactSeconds(0/1), hold = ExactSeconds(0/1),
+                decay = ExactSeconds(0/1), sustain = LinearLevel(1/1), release = ExactSeconds(1/1000),
+                hold_key_timecents = 0/1, decay_key_timecents = 0/1, curve = LinearEnvelope
             }},
+            filter = SampleFilter {{ cutoff_cents = 13500/1, resonance_centibels = 0/1 }},
+            modulations = [],
             group = 0, off_by = 0, off_mode = FastOff
         }}"#
     )
@@ -49,7 +53,7 @@ fn artifact_with_regions(selection: &str, regions: &[String]) -> musa_compiler::
     let source = format!(
         r#"import std::sound::sample;
 let test_map: SampleMapArtifact = SampleMapArtifact {{
-    schema_version = 2,
+    schema_version = 3,
     sample_map = SampleMap {{
         declaration_id = "tests.native_sampler@1",
         selection = {selection},

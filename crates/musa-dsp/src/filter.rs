@@ -132,6 +132,14 @@ impl Coefficients {
         self.a1 += step.a1;
         self.a2 += step.a2;
     }
+
+    /// Scale only the numerator, retaining pole position and stability.
+    pub(crate) fn with_gain(mut self, gain: f32) -> Self {
+        self.b0 *= gain;
+        self.b1 *= gain;
+        self.b2 *= gain;
+        self
+    }
 }
 
 /// One channel of biquad state (direct form I).
