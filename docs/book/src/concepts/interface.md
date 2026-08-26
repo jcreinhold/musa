@@ -36,8 +36,9 @@ on the page and in the source. Origin view gets the application's boldness budge
 ## What the design rejects
 
 Icon toolbars; drag-to-edit as a primary interaction; modal dialogs for musical operations; a second visual authority in
-the frontend; skeuomorphic studio hardware; animation as ambience. Entry is keyboard-first, and every action is
-reachable from the keyboard.
+the frontend; skeuomorphic studio hardware; animation as ambience. A MIDI keyboard always auditions; a finite captured
+phrase becomes notation only after Review and Accept; exact notation is written in source. Every action is reachable
+from the keyboard.
 
 The full specification — visual language, engraving quality bar, interaction model, states, performance budgets — lives
 in `docs/rules/desktop/` in the repository, and it is governing: code that drifts from it is wrong until the document is

@@ -217,7 +217,7 @@ A user should be able to:
 1. Open the application.
 2. Create a piece.
 3. Add violin, voice, bass, and synthesizer parts.
-4. Enter notes from a MIDI keyboard or computer keyboard.
+4. Play a MIDI keyboard to audition, capture and review a phrase into notation, or write exact notation in Musa source.
 5. See a legible multi-staff score immediately.
 6. Define or extract a motif.
 7. repeat, transpose, stretch, invert, or vary it;
@@ -246,6 +246,10 @@ This would require:
 
 It would bury the central composition-language idea beneath ordinary DAW engineering. Export stems to a DAW when
 recorded vocals or advanced audio editing are needed.
+
+Finite MIDI Capture is not this feature. It retains symbolic key/controller transitions and timestamps in bounded memory
+for notation review, records no samples, and is released on Accept or Discard. A take browser, comping, waveform, or
+persisted performance archive remains audio/DAW work even when the originating device was MIDI.
 
 ### Complete engraving
 
@@ -1471,6 +1475,12 @@ Use `midly` for Standard MIDI File reading and writing. Live MIDI input belongs 
 
 MIDI must remain an edge format, never the canonical representation.
 
+Live input has two independent uses. It always auditions the selected checked instrument without editing source. An
+explicit finite take may be transcribed into a reviewed notation proposal, but MIDI supplies discrete note numbers and
+key/controller transitions rather than written pitch, voice, meter, ties, rests, or notated duration. Only accepting a
+proposal writes source. The bounded recent-phrase buffer behind **Keep that** is memory-only, disclosed, clearable, and
+never an audio recorder or project history.
+
 ---
 
 # 13. Sound synthesis and DSP
@@ -1794,7 +1804,7 @@ The frontend must never become a second authority for score semantics.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ Play  Stop  Record/Step  Loop       bar 4:2       72 BPM    │
+│ Play  Stop  Capture  Keep that      bar 4:2       72 BPM    │
 ├──────────────┬──────────────────────────────────────────────┤
 │ Parts        │                                              │
 │              │              SCORE                           │
@@ -1837,19 +1847,25 @@ Text source, diagnostics, and score preview.
 
 The default user never needs to open Source or the raw sound graph.
 
-## 14.5 Note entry
+## 14.5 Keyboard composition and score revision
 
-Initial score editing should be keyboard-first and deterministic:
+A MIDI keyboard is an instrument before it is an input device. Playing always auditions the selected source-declared
+instrument and never edits source. **Capture** records one finite expressive MIDI take; **Keep that** freezes a bounded,
+visible, memory-only recent phrase; **Review** presents project-produced notation alternatives and an exact source
+preview; **Accept** alone writes one transactional source edit. Exact deliberate notation is written in the Source
+workspace. There is no persistent note-entry mode or hidden active duration, octave, accidental, or chord window.
 
-- select active part and voice;
-- select duration with numeric shortcuts;
-- enter pitch from MIDI keyboard;
-- use arrow keys to transpose;
-- use space to insert a rest;
-- type chord notes while a chord-entry modifier is held;
-- use a tie shortcut;
-- use tab or arrow navigation between events;
-- start playback from the selection.
+The fast revision path acts on an explicit selection rather than splitting one note across instrument and computer.
+Number keys set every selected note to the named duration; arrow commands move or respell selected pitches; named
+commands scale durations or transpose by a spelled interval. With no selection these keys do nothing. Each operation
+previews exact changed/unchanged counts, generated-source effects, and the source edit before one transaction. An
+explicit candidate or geometry selection may span voices, but the frontend supplies identities only; the project owns
+applicability and musical consequences.
+
+Capture against known tempo/meter or a count-in is primary. Free capture may propose pulse, downbeat, meter, voice,
+chord grouping, rest/tie/tuplet spelling, and pitch spelling, and Review exposes uncertainty locally. Tapping pulse or a
+downbeat constrains the same take. Key release, pedal-extended sound, and notated duration remain different facts. The
+candidate is immutable and non-authoritative; every constraint asks the project for another candidate.
 
 Do not make dragging notes around the staff the primary interaction. Dragging is visually intuitive but ambiguous
 around:
@@ -1875,8 +1891,8 @@ the primary interaction, and never the fast one.
 Clicking an SVG element yields an `EventId`. The frontend sends a semantic command:
 
 ```rust
-ProjectCommand::ChangeDuration {
-    event: event_id,
+ProjectCommand::SetEachDuration {
+    events: event_ids,
     duration: DurationValue::Quarter,
 }
 ```
@@ -2717,7 +2733,7 @@ This phase proves the architecture.
 Add:
 
 - direct score commands;
-- MIDI step entry;
+- expressive MIDI capture, transcription review, and transactional acceptance;
 - ties, slurs, dynamics, articulations, and tuplets;
 - multi-staff score navigation;
 - low-pass filter;

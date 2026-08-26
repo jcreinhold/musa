@@ -35,6 +35,24 @@ the code that implements it. `implemented` means the public compiler path reache
 | One-frame DSP meaning and opaque prepared machine | implemented | exact gestures → checked `Schedule` → `PreparedAudio`; live/offline repeated-step partition and RT laws |
 | Native checked sample-map preparation and deterministic runtime | implemented | `std::sound::sample` → `musa-dsp::{sample_source,sampler}` with verified project reads, bounded PCM preload, tokenized selection, fixed voices, interpolation/loops/envelopes/release/pedal, partition and RT-allocation laws |
 
+## Keyboard-composition migration
+
+The governing workflow is `docs/rules/desktop/10-keyboard-composition.md`; implementation deliberately lags it until
+prompt 209 can remove the old path at a tested boundary.
+
+| Capability | State | Current or planned owner |
+| --- | --- | --- |
+| MIDI device connection and note-on/off queue | implemented, insufficient | `musa-playback::MidiInput`; today it drops expressive evidence after deciding press/release and chooses one port at open |
+| Step-entry spelling/grouping and UI mode | implemented, scheduled for deletion | `musa-project::{MidiEntry, EntryBuffer}` and desktop `NoteEntry`; fixed chord window plus active duration/octave/accidental state from prompt 33 |
+| Always-available prepared-instrument audition | pending 202 | `musa-playback` real-time edge behind a project facade; independent of transport, transcription, and source edits |
+| Complete bounded expressive MIDI take and recent phrase | pending 202 | playback callback facts plus project-owned finite capture; memory-only recent suffix |
+| Measured transcription model and corpus | pending 203 | isolated trial/bench harness; no production API until rhythm/voice candidates are measured |
+| Ranked metrical and polyphonic notation candidates | pending 204–205 | project/compiler boundary consuming checked source policy and context; opaque bounded search, no frontend inference |
+| Cross-voice selection and group duration/pitch transformations | pending 206 | one project preview/apply facade over syntax-owned edits |
+| Engraved Review and raw/written audition | pending 207 | desktop projection of immutable project candidates and local alternatives |
+| Revision-safe Accept, Discard, and Keep that | pending 208 | one project transaction; accepted notes become ordinary canonical source |
+| Removal of step entry | pending 209 | delete old project/UI types, `N` mode, active next-note state, fixed chord window, and migration bindings after closure |
+
 ## Trusted boundary
 
 `musa-calculus` owns the only implementation of core evaluation, conversion, and checking. Elaboration may create

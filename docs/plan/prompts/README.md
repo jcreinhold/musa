@@ -842,8 +842,9 @@ after this executable block so numeric rank once again matches execution order.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
-slice. Prompt 33 is roadmap Phase 2 scope ("MIDI step entry", "autosave") ordered after the desktop prompts it depends
-on; phases describe scope, not strict order.
+slice. Prompt 33 is the historical Phase 2 MIDI-step-entry implementation and the still-current autosave work, ordered
+after the desktop prompts it depends on; prompt 201 replaces its intended entry workflow and prompt 209 retires the old
+path. Phases describe scope, not strict order.
 
 ## Out of scope for this sequence
 

@@ -1,7 +1,7 @@
 ---
 id: 201
 slug: keyboard-composition-contract
-status: pending
+status: done
 depends_on: [193, 200]
 phase: 2
 ---

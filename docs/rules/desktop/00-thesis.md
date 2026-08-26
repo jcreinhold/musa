@@ -5,8 +5,10 @@ Status: **governing** (graduated at prompt 26, alongside the source workspace).
 ## 1. What this document is
 
 `docs/plan/roadmap.md` §14 fixes the desktop app's *information architecture*: what Rust owns, what the frontend owns,
-which workspaces exist, that the score is the main interface, that entry is keyboard-first, that invalid source keeps
-the last valid score. That is law and this document does not contradict it.
+which workspaces exist, that the score is the main interface, that performance and commands are keyboard-first, that
+invalid source keeps the last valid score. A keyboard is first an instrument: exact notation is written in source, while
+a played phrase reaches source only after finite capture and review (`10-keyboard-composition.md`). That is law and this
+document does not contradict it.
 
 What §14 does **not** fix is the design: the visual language, the engraving quality bar, the interaction feel, the
 performance budgets, or the vocabulary the interface speaks. §14.3's ASCII box is a wireframe of *presence*, not a

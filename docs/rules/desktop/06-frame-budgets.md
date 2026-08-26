@@ -110,3 +110,17 @@ consecutive blocks. The complete method, scale variables, allocation measurement
 [`../language/10-audio-performance.md`](../language/10-audio-performance.md). This is local evidence, not a portable
 absolute threshold; the invariant remains that every callback completes before its device deadline without allocation,
 locking, I/O, logging, or large destruction.
+
+## 7. Keyboard capture and transcription measurement
+
+Prompt 201 fixes the keyboard workflow before implementation but does not invent latency thresholds without a measured
+path. Prompts 202–203 must measure and then amend this table with three separate quantities: MIDI callback arrival to
+the scheduled audition frame; Capture/Keep-that completion to the first reviewable candidate; and one review constraint
+or group transformation to its replacement candidate and source preview. Each is measured on named take lengths and
+polyphony, with p95, peak memory, dropped-event count, and search bounds. Device input/output latency is reported beside
+host processing rather than charged to code that does not control it.
+
+The structural constraints already govern: audition does not wait for compilation or transcription; MIDI callbacks
+allocate no event-sized storage and never touch the UI; capture is bounded; transcription runs off the real-time path;
+and Review retains the previous candidate while a replacement is produced. “Instant” and an uncalibrated confidence
+percentage are not performance evidence.

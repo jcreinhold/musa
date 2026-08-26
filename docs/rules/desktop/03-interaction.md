@@ -13,7 +13,7 @@ One model, used by the score, the parts list, the inspector, and (from prompt 26
 type Selection =
   | { kind: 'none' }
   | { kind: 'caret';  part: PartId; voice: VoiceId; before: EventId | 'end' }
-  | { kind: 'event';  events: EventId[] }        // one, or a contiguous range
+  | { kind: 'event';  events: EventId[]; anchor: EventId } // one, or an explicit nonempty set
   | { kind: 'range';  part: PartId; voice: VoiceId; from: EventId; to: EventId }
 ```
 
@@ -22,7 +22,9 @@ type Selection =
   `--plate` at the insertion point.
 - **Selection is by `EventId`**, never by index or by DOM node. It survives re-engraving (`02-engraving.md` §6).
 - **Active part and voice** are part of selection, not a separate mode. Selecting a note sets them.
-- Multi-select is contiguous within one voice for now. Cross-voice selection is deferred until an operation needs it.
+- A keyboard-extended `range` remains contiguous within one voice. An explicit `event` set may span voices when a
+  rectangle, reviewed candidate phrase, or project command supplies the identities. The frontend may collect engraved
+  ids by geometry; only the project decides membership validity, applicability, and musical consequences.
 
 ## 2. Pointer
 
@@ -39,7 +41,6 @@ type Selection =
 | Drag a notehead vertically | Respell it: the nearest diatonic step, the accidental carried through unchanged |
 | `⌥`-drag a notehead | Cycle its accidental — `♭ ♮ ♯` — leaving the step alone |
 | Drag a note's right edge | Renotate it, snapped to the same ladder the number keys spell |
-| Click an empty staff step, entry armed | Write a note there, at the caret, with the active duration |
 | Drag the seam beside the source column | Widen or narrow it; double-click returns it to the measure (prompt 60) |
 
 **A pointer edit replaces one token with one value.** It never moves a statement, never reorders a voice, and never
@@ -75,8 +76,8 @@ documentation cannot drift from bindings.
 | `↑` `↓` | Previous / next voice in the active part (staff order) |
 | `⇧←` `⇧→` | Extend the selection back / forward from its anchor |
 | `⌥←` `⌥→` | Previous / next bar |
-| `⌥↑` `⌥↓` | Respell the selected note up / down a diatonic step (prompt 53) |
-| `⌥⇧↑` `⌥⇧↓` | Raise / lower its accidental, leaving the step alone |
+| `⌥↑` `⌥↓` | Move every selected note up / down one diatonic step (prompt 206) |
+| `⌥⇧↑` `⌥⇧↓` | Raise / lower every selected accidental, leaving each step alone (prompt 206) |
 | `Home` `End` | First / last event in the voice |
 | `Tab` | Next part |
 | `Esc` | Clear selection; if none, hide the source column — except in vim mode, below |
@@ -90,6 +91,18 @@ documentation cannot drift from bindings.
 | `Return` | Stop and return to the start |
 | `L` | Toggle loop over the selected range |
 | `F` | Toggle follow (playhead scrolls the page) |
+
+**Playing and capture** (`10-keyboard-composition.md`)
+
+| Key | Action |
+| --- | --- |
+| MIDI key/controller | Audition the selected source-declared instrument; never edit source merely by playing |
+| `R` | Start Capture; while capturing, finish the take and enter Review |
+| `⇧R` | Keep that: freeze the bounded recent phrase and enter Review |
+| `T` | In Review, tap the pulse; elsewhere it has no score action |
+| `⇧T` | In Review, mark a downbeat; elsewhere it has no score action |
+| `Return` | In Review, accept the current source preview after preflight |
+| `Esc` | In Capture, cancel; in Review, discard; otherwise use the Navigation meaning above |
 
 **View**
 
@@ -123,31 +136,14 @@ arrows, `Space`, `F`, `L`, `⇧O` — fires only when the score pane has focus, 
 not a follow toggle. Scope is read off the binding rather than declared per command, which is what keeps the rule from
 being remembered one command at a time.
 
-**Entry** (prompt 25 — only while entry is on)
+**Selection transformations**
 
-Entry is a mode, and it has to be: the navigation map above already owns the unmodified letters, so a bare `f` cannot be
-both follow and the note F. `N` says "the letters are notes now", which is the key every notation editor a musician has
-used binds it to. The mode is never invisible — the duration the next note would take is drawn as its glyph in the top
-margin for as long as entry is on, so the state is legible without colour (§5).
-
-| Key | Action |
-| --- | --- |
-| `N` | Turn note entry on or off |
-| `1` `2` `4` `8` `6` `3` | Duration: whole, half, quarter, eighth, sixteenth, thirty-second |
-| `.` | Dotted or not |
-| `c` `d` `e` `f` `g` `a` `b` | Write that pitch — or, with an event selected, respell it in its own octave |
-| `r` | Write a rest |
-| `⌘↑` `⌘↓` | Octave up / down for the notes that follow |
-| `⇧↑` `⇧↓` | Sharp / natural / flat for the notes that follow |
-| `Esc` | Leave entry (before it clears the selection) |
-
-A duration key with an event selected renotates that event rather than only setting what comes next: §1's rule is that
-the same gesture changes a selection where there is one and writes at the caret where there is not.
-
-`r` and not `Space`, because `Space` plays, and a transport key that stopped playing inside a mode would be worse than a
-second letter to learn. `16` and `32` take the nearest free digits — `6` and `3` — because they do not fit on one key.
-Ties have no dedicated binding. They join written events and require an unambiguous following target; source editing or
-a context-aware command can state that relationship more honestly than a global keystroke.
+There is no note-entry mode and no active value for the next note. Exact new notation is written in the Source
+workspace; performed material enters through Capture and Review. With an explicit nonempty event selection, the duration
+keys act as commands: `1`, `2`, `4`, `8`, `6`, and `3` set every applicable selected note to a whole, half, quarter,
+eighth, sixteenth, or thirty-second note. With no selection they do nothing. **Transpose selection**, **Scale
+durations**, and **Respell accidentals** remain discoverable commands rather than persistent modes. Each previews the
+exact changed, unchanged, and generated-source counts before one project transaction (prompt 206).
 
 **Vim mode** (prompt 55 — only while it is on, and only in the source column)
 

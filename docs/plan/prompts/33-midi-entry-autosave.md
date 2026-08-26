@@ -8,6 +8,10 @@ phase: 2
 
 # MIDI Input, Step Entry, and Autosave
 
+> **Historical implementation evidence.** Prompt 201 replaces step entry as the intended workflow with always-audible
+> keyboard performance, finite Capture/Keep-that evidence, Review, and source acceptance. This implementation remains
+> only as a migration bridge until prompt 209 proves the replacement and deletes it; autosave remains current.
+
 ## Task
 
 Connect a MIDI keyboard: live input through `midir` in the engine, step-entry note input in the desktop app (play a key,

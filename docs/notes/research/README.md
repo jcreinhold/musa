@@ -56,6 +56,12 @@ the decision it records has been absorbed or reversed, and the page goes.
 outline and final review that `../../rules/across-stages/05-metatheory.md` §1 cites, and the two vocabulary amendments
 `../../rules/README.md` and `../../rules/events/00-purpose.md` cite.
 
+## The interface
+
+| Page | What it decided |
+| --- | --- |
+| [88](88-keyboard-capture-not-step-entry.md) | Why audition, finite capture, notation review, and source acceptance replace MIDI step entry |
+
 ## Earlier evidence
 
 [`kernel-hypothesis/06-evidence-log.md`](kernel-hypothesis/06-evidence-log.md) — the repertoire evidence behind the

@@ -97,6 +97,14 @@ those operations belongs in ordinary `.musa` source, including the bundled stand
 implementation merely because a source function is familiar or potentially faster is not semantics-preserving evidence;
 an optimization requires measurement and an equivalence law.
 
+That boundary also governs MIDI transcription. Named transcription policies and repertoire-specific structural profiles
+are ordinary standard-library source values: public values express admissible metric subdivisions, notation-complexity
+costs, chord/voice preferences, spelling context, and review thresholds. Device timestamps, clock calibration, bounded
+event buffers, finite search state, and revision-safe edit planning are host mechanics because source evaluation cannot
+own a live device or mutable clock. A host may prepare an opaque bounded projection of a checked policy only with a
+differential law back to that source value; it may not replace the policy with a Rust catalogue of meters, tuplets,
+voices, or styles.
+
 The two staging judgments are therefore:
 
 ```text

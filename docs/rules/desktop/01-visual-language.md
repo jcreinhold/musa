@@ -229,10 +229,10 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
   sizing itself. The source scrolls inside it. Problems list beneath it, in the same column.
 
 **The top margin is a band of rows, not a bar.** 48px is its minimum, not its height. What it carries has grown past
-what one row holds at the window's own minimum width — the transport, note entry, the Origin pin, the position and the
-score's facts, the view mode, the zoom, and whatever the interface currently has to say — and a fixed-height row does
-not clip what will not fit, it prints it on top of what is already there. A piece title struck through a key signature
-is a worse header than a header two lines tall. So the band wraps, by these rules:
+what one row holds at the window's own minimum width — the transport, keyboard capture, the Origin pin, the position and
+the score's facts, the view mode, the zoom, and whatever the interface currently has to say — and a fixed-height row
+does not clip what will not fit, it prints it on top of what is already there. A piece title struck through a key
+signature is a worse header than a header two lines tall. So the band wraps, by these rules:
 
 - **Groups break whole.** The workspace switcher, the transport, the view toggle, the zoom, and the position readout
   each move to the next row entire. "Zoom out · 100 % · Zoom in" split across two rows is not a zoom control any more.

@@ -26,7 +26,7 @@ program that feel unfinished, and they are disproportionately what a new user me
 | State | What is shown |
 | --- | --- |
 | **No piece open** | A title page for the piece that is not written yet. The leaf is present, sized as a sheet on a desk rather than stretched to the window; the app name is set in Academico in the sheet's title position; and the page's text block is **ruled with empty five-line staves** in `--rule` at the resting rastral unit (`--sp`), so the sheet reads as manuscript paper rather than as an unexplained rectangle. Beneath it on the surround, on the page's own measure and inside the page's own side margins, the ways in as a ruled list — one line each, the name at the left and the menu accelerator in mono at the right: *Open a piece* `⌘O`, *New piece* `⌘N`, *Open an example* when there is one to open. Recent pieces extend the same list when the core can supply them. Nothing but the name is placed on the sheet: on every other screen the sheet is the score and every control is margin, and the first frame is the wrong place to teach otherwise. No splash art, no hero image. |
-| **New empty piece** | The leaf shows a real engraved empty system — clef, key, meter, one empty bar — because roadmap §14.8 says a new piece must be immediately playable. Caret is placed in the first voice. A single line of `--ink-muted` text under the transport: *Press a number for a duration, then a letter for a pitch.* It disappears after the first note and does not come back. |
+| **New empty piece** | The leaf shows a real engraved empty system — clef, key, meter, one empty bar — because roadmap §14.8 says a new piece must be immediately playable. Caret is placed in the first voice. With a keyboard connected, the line under the transport reads *Play to hear this instrument. Capture when you want to keep a phrase.* Without one it reads *Open Source to write the first phrase.* It disappears after the first accepted or written note and does not come back. |
 | **Part with no voices** | The staff is drawn with a whole-bar rest and the part name greyed. Inspector offers *Add a voice*. |
 | **No diagnostics** | The diagnostics pane shows nothing at all — not "0 problems". Absence is the message. |
 
@@ -142,11 +142,14 @@ the diagnostic they caused rather than being summarized into it.
 
 ## 8. Preferences are state of the application
 
-The theme, the frame's text size, and vim mode in the source column are states of the *app*, not of the document. They
-live in `localStorage`, they are restored on start, and they never appear in the file, in a revision, or in the undo
-history — a composer who changes the text size and then presses `⌘Z` undoes the last thing they wrote, which is the only
-answer that makes sense. Two consequences follow: a preference is never a reason to mark the document unsaved, and
-opening the same piece on another machine gives that machine's reading and this machine's music.
+The theme, the frame's text size, vim mode in the source column, preferred MIDI input, and whether bounded recent MIDI
+memory is enabled are states of the *app*, not of the document. The preferences live in `localStorage`, are restored on
+start, and never appear in the file, in a revision, or in the undo history. The recent MIDI **events** do not live in
+`localStorage`: `10-keyboard-composition.md` keeps them only in bounded memory and clears them on disable, project
+close, device change, or suspension. A composer who changes the text size and then presses `⌘Z` undoes the last thing
+they wrote, which is the only answer that makes sense. Two consequences follow: a preference is never a reason to mark
+the document unsaved, and opening the same piece on another machine gives that machine's reading and this machine's
+music.
 
 ## 9. The performance is state of the project
 
@@ -166,3 +169,15 @@ Four consequences.
 - **A new performance is a new score.** The selection is let go of rather than carried across it: event identity is a
   position in the score, so a piece read again renumbers, and a selection kept would silently describe another note
   (`02-engraving.md` §6).
+
+## 10. Keyboard composition is temporary evidence
+
+Listen, Capture, and Review are the ephemeral states specified in `10-keyboard-composition.md`; none is project source
+or a saved performance. Capture and Review take priority over ordinary score bindings only for the small set of keys
+their state diagram names, remain visible without color, and always have a one-keystroke cancellation path. A take is
+retained across a stale or invalid source only so the musician can recover their playing; it is never autosaved and is
+released on Accept, Discard, project close, or application suspension.
+
+Acceptance is not a fourth store. It is the ordinary project edit boundary: source, revision, undo, recovery, and dirty
+state behave exactly as they do for a typed or structured score edit. The temporary proposal ceases to exist once that
+transaction succeeds.
