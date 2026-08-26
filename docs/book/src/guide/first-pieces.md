@@ -35,8 +35,9 @@ instrument each — and inside a part are `voice`s, which are lines of music, no
 
 A note is a pitch and a duration: `c4/4` is middle C for a quarter note, `g4/2` for a half, `d5/8` for an eighth. The
 number after the letter is the octave in scientific pitch notation, so `c4` is middle C and `c5` is the octave above.
-`rest/1` is a whole-note rest. The `|` is a barline you write for your own eyes; the compiler already knows where the
-bars fall from the meter, and it will tell you when a bar does not add up.
+`rest/1` is a whole-note rest. `|` begins a bar assertion: the compiler derives the boundary from the meter and checks
+that the written bar ends at the next one. Use `musa format --insert-bars` to add every boundary the checked score can
+prove without splitting a source construct.
 
 Check it and render it:
 

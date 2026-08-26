@@ -62,7 +62,7 @@ quotient does not exist.
 
 **The carrier is the first parameter.** This began as a resolution key — instance lookup chose on the first parameter,
 and one mover moving several carriers would have put `Action(Interval, Pitch)` and `Action(Interval, SpelledPC)` at one
-head. Prompt 146 deletes that mechanism and the ordering survives it as a reading convention, stated at
+head. Prompt 146 deleted that mechanism; the ordering survives as a reading convention, stated at
 [`../style-guide.md`](../style-guide.md) §6. It also puts the head where method syntax looks: `p up M3` is `p.act(M3)`,
 resolved on `p`.
 

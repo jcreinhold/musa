@@ -128,9 +128,8 @@ fn sounded(chosen: Option(Voicing)) -> EventTrack(WrittenTime) {
 }
 ```
 
-`fold_from_end` is `Iterable`'s, not a function belonging to `Option`: it takes what to do when there is nothing and
-what to do with what is there, and every container that can be walked answers to the same word. A total language has no
-way to "just unwrap" — you name the silence.
+`fold_from_end` is `Option`'s ordinary eliminator: it names what to do when there is nothing and what to do with what is
+there. A total language has no way to "just unwrap" — you name the silence.
 
 For the common case there is sugar. In a voice, `stack c4 major7/1` is close position with the written root fixing the
 register, which is the same thing `close` names above:
@@ -202,9 +201,9 @@ else can be written where one is asked for, and a `Measure` is a bar that alread
 a `Row` needs no case for the empty one, because an empty row cannot stand where a non-empty one was asked for. Most
 pieces never name it; the modules that do stop writing the check by hand.
 
-One of them is worth naming for what it is rather than for what it holds. `std::algebra` declares three traits —
-`Group`, `Action`, and `Torsor` — and every domain above is written over them. Written intervals are the group; a pitch
-and a spelled pitch class are two carriers it acts on, which is what `up` and `down` mean; and pitch alone is a torsor,
-because exactly one interval carries any pitch to any other. A spelled pitch class is not, and that is not an omission:
-`P8` moves every class to itself, so two classes are joined by infinitely many intervals. `examples/pitch-algebra.musa`
-writes all three out and sounds the difference.
+One of them is worth naming for what it is rather than for what it holds. `std::algebra` declares three records —
+`Group`, `Action`, and `Torsor` — and passes their values to the operations above. Written intervals form the group; a
+pitch and a spelled pitch class are two carriers it acts on, which is what `up` and `down` mean; and pitch alone is a
+torsor, because exactly one interval carries any pitch to any other. A spelled pitch class is not, and that is not an
+omission: `P8` moves every class to itself, so two classes are joined by infinitely many intervals.
+`examples/pitch-algebra.musa` writes all three out and sounds the difference.

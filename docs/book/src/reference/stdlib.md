@@ -17,9 +17,8 @@ The modules:
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
 | `std::indexed` | Families whose constructors choose their index: `Equal`, the length-carrying `Row`, and `Measure` |
 | `std::list` | Finite lists: `range`, `repeated`, `map`, `filter`, and the two folds |
-| `std::nat` | `nat_fold`: counting upward, told which repetition it is in |
 | `std::notation::staff` | Staff documents as data: written values, the items on a staff, and realizing them into exact time |
-| `std::option` | Reading an `Option` by naming both cases |
+| `std::performance` | Indexed musical controls, gestures, profiles, and performance intent |
 | `std::post_tonal::pcset` | Pitch-class sets at any division: normal order, prime form, set classes |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
@@ -29,15 +28,19 @@ The modules:
 | `std::sound::media` | Recorded-media fit and playback policies, and the finite clip/fixed-cue actions that carry them |
 | `std::sound::production` | Checked production studio artifacts and source-owned processor defaults |
 | `std::sound::quantity` | Exact indexed sound dimensions, units, quantities, and their checked boundary artifact |
+| `std::sound::sample` | Native checked sample maps, regions, selection, loops, and envelopes |
 | `std::post_tonal::serial` | Tone rows at any division, and their forms |
+| `std::tonal::harmony` | Diatonic and altered tonal chord construction |
+| `std::tonal::schemas` | Harmonization schemas, including the rule of the octave |
+| `std::tonal::sequences` | Diatonic sequence construction |
 | `std::transformational` | Neo-Riemannian transformations on triads |
 | `std::voicing` | Voicing policies: close and drop positions |
 
-## Phase modules
+## Expansion-phase modules
 
-One directory in the package is not written in the language the rest of it is written in. `std::adapters::doubled` is an
-*adapter*: a module the compiler checks and evaluates during expansion, where the syntax types are in scope, and reaches
-only through a syntax import.
+One directory is evaluated in a different phase, not written in a different language. `std::adapters::doubled` is an
+*adapter*: an ordinary Musa module that the compiler checks and evaluates during expansion, where syntax types are in
+scope. A piece reaches it only through a syntax import.
 
 ```musa
 import syntax std::adapters::doubled as doubled;

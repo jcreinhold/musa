@@ -20,7 +20,7 @@ A waiver is written in the source, directly above the construct it waives:
 ```musa
 // musa:allow(unused-material) — kept for the B section, which is not written yet
 motif answer() {
-    g4/4; a4/4;
+    g4/4 a4/4
 }
 ```
 

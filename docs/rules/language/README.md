@@ -6,7 +6,7 @@ specifications govern their own higher or adjacent boundaries under the
 [precedence ladder](../../README.md#which-document-wins). A contradiction is a specification defect to repair, not
 permission to implement whichever text is convenient.
 
-Two consequences of the governing core boundary are worth restating here, because both are easy to misread locally.
+Three consequences of the governing core boundary are worth restating here because each is easy to misread locally.
 
 First, an **event track** is a container of occurrences of *any* storable payload over exact rational time, in a stated
 coordinate. So the gesture track of `00-semantics.md` §1 and `08-performance-and-sound.md` is
@@ -27,8 +27,8 @@ what prompts 129–142 built around it was the standard proof-assistant checklis
 program found none of that machinery in use. Prompt 143 then corrected the correction: there is **one** type theory and
 the core is it — Π, inductive families with indices, case trees, pattern unification, and a predicative hierarchy — with
 traits removed rather than narrowed and subtyping refused in every form. `02-core-calculus.md` and `11-quotation.md`
-describe what survived; there is no trait document, and prompt 146 deletes the mechanism one would have described. Both
-records stand:
+describe what survived. [`10-traits.md`](10-traits.md) is only a link-preserving tombstone for historical plans; it is
+not part of this specification, and the mechanism it once described is gone. Both records stand:
 [`../../notes/research/language-design-closure/42-dependent-core-decision.md`](../../notes/research/language-design-closure/42-dependent-core-decision.md)
 and the correction's
 [`../../notes/research/language-design-closure/50-the-course-correction-audit.md`](../../notes/research/language-design-closure/50-the-course-correction-audit.md).

@@ -136,9 +136,9 @@ the diagnostic they caused rather than being summarized into it.
   device*. Everything else in the app keeps working; a missing sound card must not block writing music.
 - **The render worker died**: the last engraving stays on screen, the leaf edge goes `--chalk`, and the message offers
   *Reload the score view*. The document is never at risk — the source is on disk and in the core.
-- **Unsaved work is never lost silently.** Until autosave arrives (prompt 33), a close request with unsaved edits states
-  the count of edits and offers *Save*, *Discard*, *Cancel* — the only place in the application where a modal is
-  correct, because the window is going away.
+- **Unsaved work is never lost silently.** Each edit to a file-backed piece writes a recovery copy. The interface states
+  whether that copy exists, restores it explicitly on reopen, and clears it only after the source is saved or restored
+  to the saved text. A new piece with no path cannot be recovered to disk and must say so.
 
 ## 8. Preferences are state of the application
 

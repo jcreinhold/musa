@@ -254,28 +254,9 @@ The same boundary serves a structurally different language. `std::adapters::grap
 retains anchors; the ordinary package validates descriptor names, parameters, directed ports, bindings, and cycles.
 Neither operation allocates a processor or runs a signal.
 
-The parameter values it produces use `std::sound::quantity`, where the unit and quantity share a source type index.
-Milliseconds normalize exactly to seconds there; the original token remains in the lossless source for an editor, and
-only later DSP preparation converts the checked rational to a floating physical value.
-
-The processor and studio vocabulary itself lives in `std::sound::catalogue`. Completion, hover, signatures, and the
-generated reference read that checked source value, so names, documentation, and exact parameter contracts can change
-with a standard-library edition without acquiring a second authoritative Rust table. Native primitives still own only
-the runtime facts source cannot declare, joined by stable id and version.
-
-The compatibility studio spelling reaches `std::sound::production` next. That module applies source-owned defaults and
-builds the versioned checked production artifact; the DSP only decodes an exact read-only preparation projection from
-that artifact. The compiler therefore neither publishes a studio object model nor depends on the DSP crate.
-
-Instrument behavior follows the same ownership rule. `std::sound::instrument` declares typed signatures, indexed control
-requirements, technique fallbacks, and the standard instruments as ordinary Musa values. Its registered-machine
-components and graph-local parameter targets stay private to the declaring module; preparation receives their checked
-projections, not a second Rust `InstrumentSpec` language.
-
-`std::sound::sample` follows that boundary for native sample maps: regions, selection policies, loops, and envelopes are
-ordinary Musa data, while the Rust runtime only prepares and renders the checked source artifact.
-
-Recorded media follows it too. `std::sound::media` declares the crop, loop, and rate fit policies, exact playback
-settings, and the two finite actions: a musical clip with written interval support and a fixed-media cue with only a
-written onset. Verified bytes and decoded physical duration enter later preparation; neither is a second source language
-construct hidden in Rust.
+The values produced here remain ordinary Musa source. `std::sound::quantity`, `std::sound::catalogue`,
+`std::sound::production`, `std::sound::instrument`, `std::sound::sample`, and `std::sound::media` own the units,
+vocabulary, defaults, signatures, sample maps, and playback policies. The host verifies assets and prepares those
+checked values for DSP; it does not define a second studio language in Rust. See
+[Sound as a Musa language](../concepts/sound-language.md) for that boundary and the
+[studio vocabulary](../reference/studio-vocabulary.md) for the published names.

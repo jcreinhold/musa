@@ -275,8 +275,8 @@ rather than in the type: both have the identical signature, so a reader comparin
 differs. `list_fold_from_start` accumulates left to right; `list_fold_from_end` is the catamorphism, and it is what
 reads a region into right-nested data without a closure chain. This does not claim that no other finite structure admits
 an order-sensitive traversal. `Nat` and generated data folds keep one canonical eliminator because no second primitive
-for them has earned admission. The two list folds become the `Iterable` methods `fold_from_start` and `fold_from_end` in
-§1.6, which changes the notation and not the count: two directions, two names, one signature.
+for them has earned admission. The two list folds become the exact-receiver operations `fold_from_start` and
+`fold_from_end` in §1.6, which changes the notation and not the count: two directions, two names, one signature.
 
 The value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Scale`, `Key`,
 `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Analysis(A)`, and `EventTrack[C, A]`. The chromatic quotient and
@@ -407,8 +407,8 @@ Five rules fix it.
 - **A record is a declaration, and two of them are two types.** This is a **repair**, and the rule it replaces was the
   opposite one: a record used to be *its fields*, so two declarations with the same field names at the same types
   denoted the same type. That followed from a core in which a record type was a structural product, and it existed to
-  make trait dictionaries work — two projections of the same dictionary had to be convertible. Prompt 146 deletes the
-  trait system and prompt 157 makes a record a **one-constructor inductive family** (`02-core-calculus.md` §1.1), which
+  make trait dictionaries work — two projections of the same dictionary had to be convertible. Prompt 146 deleted the
+  trait system and prompt 157 made a record a **one-constructor inductive family** (`02-core-calculus.md` §1.1), which
   is nominal like every other family, so both the mechanism and its client are gone. What replaces the structural rule
   is nothing, because nothing else used it: no two records in `stdlib/` or `examples/` declare the same field set, so
   the change is a rule about programs nobody has written. An author who wants two quantities kept apart now gets that by
@@ -657,10 +657,10 @@ and the type that failed to separate them listed. Two rules keep this from becom
 
 - **An operator resolves only when the expected type or the head argument's type is known.** There is no search and no
   defaulting; an unresolved operator names the type it could not separate the candidates by, and lists them.
-- **An operation that can fail keeps its failing shape.** `ratio_div` answers `Result` today and `x / y` answers
-  `Result` tomorrow; `xs[i]` answers `Option(A)` for a list, because a list index can be out of range. A partial
-  operator is how a total language quietly grows a hole, and the shape is the thing that stops it. A container whose
-  index type cannot be out of range may have a total instance; the language does not promise one here.
+- **An operation that can fail keeps its failing shape.** `ratio_div` and its `x / y` spelling both answer `Result`;
+  `xs[i]` answers `Option(A)` for a list, because a list index can be out of range. A partial operator is how a total
+  language quietly grows a hole, and the shape is the thing that stops it. A container whose index type cannot be out of
+  range may have a total instance; the language does not promise one here.
 
 Heterogeneous operations stay named functions on purpose. `position_shift(p, d)` adds a duration to a position and
 `duration_scale(d, r)` scales a duration by a rational; neither is `+` or `*`, because the operators are homogeneous and
@@ -676,7 +676,7 @@ refused, and the diagnostic names the annotation to write.
 
 The rest is ordinary definitions, and that is a change from what this section used to say. It described two traits,
 `Iterable` and `Buildable`, with `fold_from_start` and `fold_from_end` required and `map`, `filter`, and `collect`
-derived. Prompt 146 deletes the trait system, and prompt 156 generates an eliminator for every declared family, so the
+derived. Prompt 146 deleted the trait system, and prompt 156 generates an eliminator for every declared family, so the
 fold over a container **is** that container's recursor and nobody writes it: `iterable_list()`'s hand-written
 catamorphism was a stand-in for the one `List` already implies. `map`, `filter`, and `collect` become ordinary library
 functions — one set per container, reached by exact receiver like any other method: `xs.map(f)`, `xs.filter(keep)`,

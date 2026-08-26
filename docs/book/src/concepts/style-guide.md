@@ -3,7 +3,7 @@
 Layout is the formatter's. The style guide owns everything layout cannot say: the choices that are *spelled* correctly
 and still mislead the player who reads them. Its rules, in short:
 
-1. **A name is a promise.** A `motif`, `fragment`, `part`, or `patch` that nothing uses is not an abstraction; it is a
+1. **A name is a promise.** A `motif`, `fragment`, part, or instrument that nothing uses is not an abstraction; it is a
    rumour of one. Delete it, or use it. (A named `bar` is the exception: it plays where it stands, so its name is an
    address, not a promise.)
 2. **A marking changes something.** A tempo, meter, or key marking that states the value already in force reads as an
@@ -19,7 +19,7 @@ and still mislead the player who reads them. Its rules, in short:
 ```musa
 // musa:allow(unused-material) — kept for the B section, which is not written yet
 motif answer() {
-    g4/4; a4/4;
+    g4/4 a4/4
 }
 ```
 
@@ -27,4 +27,4 @@ The machine-checkable subset is enforced by lints; each rule names the diagnosti
 [Lint codes](../reference/lints.md). When a rule and its lint disagree, the guide is the authority and the lint is too
 coarse: repair the lint, do not silence it.
 
-The full guide is `docs/rules/style-guide.md` in the repository. It is prose first and machinery second.
+The full [source style guide](../../../rules/style-guide.md) is prose first and machinery second.

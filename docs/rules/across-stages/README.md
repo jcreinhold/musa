@@ -14,9 +14,9 @@ It does not replace the detailed specifications for each stage:
 - [03-machine-calculus.md](03-machine-calculus.md) defines machines, their step, their preparation, and the checked
   scheduler that connects a track to a running source.
 
-Some rules describe work that is not implemented yet.
-[The implementation map](../../plan/code-map/spec-to-implementation-map.md) marks each part as implemented, partial, or
-absent, and [05-metatheory.md](05-metatheory.md) §3 says how large the current gap is.
+The rules and their implementation status are separate claims. [The implementation
+map](../../plan/code-map/spec-to-implementation-map.md) marks each boundary implemented, partial, or absent, while
+[05-metatheory.md](05-metatheory.md) distinguishes reviewed results, executable evidence, and remaining limits.
 
 ## Reading order
 

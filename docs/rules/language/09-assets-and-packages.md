@@ -79,8 +79,8 @@ There is no quoted `pkg:` module-import form. `pkg:orchestra/solo-violin.sfz` is
 data where an existing source declaration expects an asset path, such as `instrument … from "…"`.
 
 A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod` tree
-— fetched by exact pin rather than bundled. Prompt 183 adds the fetch layer and the lockfile and no second notion of
-what a package is.
+— fetched by exact pin rather than bundled. Prompt 183 added the fetch layer and lockfile without adding a second notion
+of what a package is.
 
 Lock format 2 retains the root `[assets."path"]` records from §1 and adds `package_roots`, an ordered `packages` array,
 and an ordered file array under each package. A root alias maps to a content-addressed node locator. Each node records

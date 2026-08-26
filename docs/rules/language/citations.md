@@ -166,8 +166,8 @@ duration and performed duration are different types
 ([What musa refuses to blur §10](../../book/src/concepts/distinctions.md#10-notated-time-is-not-performed-time)).
 
 Instruments, the studio, and orchestration are specified in [`08-performance-and-sound.md`](08-performance-and-sound.md)
-against OMT `114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md`, and are built by prompts
-177–189. Their citations belong to that specification until then; prompt 190 adds their half of this handbook.
+against OMT `114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md`. The generated studio
+handbook projects the source-owned catalogue and its registered native support facts.
 
 ## 11. What Musa proves for itself
 
@@ -248,7 +248,7 @@ verified by `scripts/check-docs.sh`: the corpus is outside the repository and is
 | the predicative universe hierarchy and its consistency consequence | Martin-Löf (1984), *Intuitionistic Type Theory* |
 | K, uniqueness of identity proofs, and what admitting it as an axiom would foreclose. `02-core-calculus.md` §1.4 makes `Equal` an ordinary declarable family and adds **no** axiom for it: the core has no identity former and no K, so the question is one a library may state and the checker never answers on its own | Streicher (1993), "Investigations into intensional type theory"; Hofmann and Streicher (1998), "The groupoid interpretation of type theory"; Hedberg (1998), "A coherence theorem for Martin-Löf's type theory" |
 | well-founded recursion as the general form of a terminating definition, with structural decrease as its special case | Nordström (1988), "Terminating general recursion" |
-| dictionary-passing elaboration of a class-like construct — cited to record what was built and then **reversed**. Prompt 143 removes traits rather than narrowing them, and prompt 146 deletes the dictionary elaboration; a structure is an ordinary record and an instance an ordinary value, so there is no dictionary to pass | Wadler and Blott (1989), "How to make ad-hoc polymorphism less ad hoc" |
+| dictionary-passing elaboration of a class-like construct — cited to record what was built and then **reversed**. Prompt 143 removed traits rather than narrowing them, and prompt 146 deleted the dictionary elaboration; a structure is an ordinary record and an instance an ordinary value, so there is no dictionary to pass | Wadler and Blott (1989), "How to make ad-hoc polymorphism less ad hoc" |
 | coherence, and the design space that overlap, specialization, and defaulting sit in — Musa refused all three, and after prompt 146 there are no instances for two of them to disagree about, so the question does not arise | Peyton Jones, Jones, and Meijer (1997), "Type classes: an exploration of the design space" |
 | the orphan rule as the module-level condition that makes coherence checkable rather than aspirational | the same paper's treatment of instance scoping, and the Haskell 98 Report's rule that instances are program-global regardless of import |
 | termination of instance resolution — cited to say why Musa needs none of it: instance lookup was a single table read with nothing to recurse into, and after prompt 146 there is no table | the Paterson conditions, as recorded in Sulzmann, Duck, Peyton Jones, and Stuckey (2007), "Understanding functional dependencies via constraint handling rules" |

@@ -22,14 +22,14 @@ audio engine, and the implementation column is deliberately blunt about the gap.
 | Storable data excludes a source function at every depth, including inside containers | proved by the admission check, `docs/rules/language/02-core-calculus.md` | implemented as a generated structural constraint, checked again at every payload boundary |
 | `follow`, `together`, `map_payloads` preserve bounds and obey their laws, with unequal durations and multiplicity kept | proved in `03-denotational-semantics.md`–`05-normalization.md` and `10-term-calculus.md` of `docs/rules/events/` | implemented and tested at coordinate-indexed `EventTrack<C, A>` |
 | Versioned exact bytes represent event-track semantic equality exactly (I1) | reviewed under the K₃.3 integration closure, in this directory's history | implemented by prompt 176a with delimiter and structured-payload tests |
-| Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | absent; the current audio graph does not implement these semantics |
-| Feedback has a first output and reads only stored data (M3) | proved | absent; the current delay path defers cycle inputs to the previous host block |
-| Chain and side-by-side laws (M4, M5) | proved | absent |
-| Scheduling emits every boundary exactly once and records every decision (M6) | proved | absent; prompt 172 |
-| Scheduling preserves simultaneous placement under an occurrence-local policy (M7, M8) | proved, conditionally | absent |
-| One audio frame is the reference step; a valid whole-machine batch changes nothing (R1-batch) | contract stated; the composition rule for feedback-free machines is proved | absent; current modulation runs once per host block |
-| Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed under the K₃.3 integration closure; the graft rule is stated by prompt 127a | source and adapter provenance are implemented; runtime-stage composition remains prompt 174 work |
-| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed under the K₃.3 integration closure, in this directory's history | full preparation API and cache are not yet implemented |
+| Every machine has one total deterministic next step, and machines are causal (M1, M2) | proved in `03-machine-calculus.md` §7 | implemented by checked `MachineSpec`, `PreparedMachine`, and repeated one-frame execution |
+| Feedback has a first output and reads only stored data (M3) | proved | implemented and tested independently of host block partitioning |
+| Chain and side-by-side laws (M4, M5) | proved | implemented by structural preparation and interpreter laws |
+| Scheduling emits every boundary exactly once and records every decision (M6) | proved | implemented by the checked `Schedule` boundary |
+| Scheduling preserves simultaneous placement under an occurrence-local policy (M7, M8) | proved, conditionally | implemented with exact-placement and policy laws |
+| One audio frame is the reference step; a valid whole-machine batch changes nothing (R1-batch) | contract stated; the composition rule for feedback-free machines is proved | implemented by live/offline partition-equivalence laws |
+| Complete origin paths compose without losing intermediate anchors; stage composition grafts and is associative | theorem reviewed under the K₃.3 integration closure; the graft rule is stated by prompt 127a | implemented through source expansion, scheduling, and opaque audio handles |
+| Equal complete preparation arguments give equal results, and collision-checked cache hits are sound (R1, C1) | reviewed under the K₃.3 integration closure, in this directory's history | complete preparation is implemented and deterministic; there is deliberately no prepared-execution cache today |
 
 The record for the current core calculus is
 [`docs/notes/research/core-calculus/`](../../notes/research/core-calculus/README.md). The earlier event-track and
@@ -71,23 +71,17 @@ Nothing here proves:
 - that any particular optimized batch method satisfies its contract — that is per-primitive evidence;
 - that totality implies a real-time deadline;
 - that equal prepared machines produce bit-identical output on arbitrary devices; or
-- that today’s caller-buffer-based feedback obeys the one-frame rule.
+- that an unproved optimized primitive batch obeys the one-frame rule.
 
-## 3. The implementation is behind the specification, and by how much
+## 3. Current implementation boundary
 
-The core-calculus review audited the repository at the time it was written and found three things worth repeating,
-because they set the size of prompts 127b–127e and 171–174:
+The core cutover is implemented: coordinate-indexed event tracks schedule exact performed gestures into checked machine
+inputs; control-side preparation validates registered primitives and allocates bounded state; live and offline paths
+repeat the same one-frame step. Host buffer size is not part of musical meaning.
 
-- `crates/musa-events` implements the coordinate-indexed event track — exact rational duration, finite occurrences,
-  succession by shifting, simultaneity by maximum and multiset union, and payload mapping.
-- `crates/musa-dsp`'s per-sample DSP units are close to registered primitives already; the gap is the registry and the
-  reference step, not the arithmetic.
-- `crates/musa-dsp`'s plan does **not** implement the machine semantics. It defers cycle inputs at delay nodes to the
-  previous host block, and its modulation path runs once per block, so host block size can affect meaning. That is the
-  precise defect `constitution.md` §4 now forbids.
-
-A green test suite for today's code says nothing about a representation that does not yet exist. The code map records
-that distinction row by row.
+This does not collapse specification into implementation. The code map records each boundary row by row, and the table
+above continues to distinguish reviewed mathematics, executable evidence, and deliberate omissions such as a prepared
+execution cache.
 
 ## 4. Evidence required from implementations
 

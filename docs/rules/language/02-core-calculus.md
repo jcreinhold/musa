@@ -444,8 +444,8 @@ first-order matching of written arguments against declared parameter types, solv
 nothing that waits — Idris2's `checkRtoL` without the fallback that makes it a unifier. It covered the corpus and
 nothing more: every construct wanting a solution the call site does not exhibit — an implicit argument, an index unified
 by a `match`, a metavariable outliving its call — was unavailable, and unavailable by omission rather than by decision.
-`53-one-theory.md` measures that. This section specifies the mechanism; prompt 153 implements it, and prompt 154 the
-implicit arguments that ride on it.
+`53-one-theory.md` measures that. This section specifies the mechanism implemented by prompt 153 and the implicit
+arguments added by prompt 154.
 
 ### 2.2 Refinement constructors and assertions
 
@@ -772,8 +772,8 @@ from the other end, the corpus now needs almost none of the limit: the standard 
 levels, and at the *same* 62 for a region of nothing, a region of one item, a region of four, and `staff-page.musa`'s 77
 lines, because the peak is the depth of the adapter's own source and no longer moves with what it reads.
 
-**The limit stays at 320 all the same, and prompt 165 makes that a tested decision rather than an omission.** `check`
-and `infer` now charge as they descend, so a deeply written term reaches the nesting refusal from the top rather than
+**The limit stays at 320 all the same; prompt 165 made that a tested decision rather than an omission.** `check` and
+`infer` now charge as they descend, so a deeply written term reaches the nesting refusal from the top rather than
 outrunning a counter that only saw the values on the way back. The evaluator's demanded terms and application spine use
 its explicit control stack; a voice's length is work rather than host depth. The remaining adapter path is bounded by
 constructed nodes: a 1,500-level generated region refuses at 1,001,185 of 1,000,000. With `NESTING` held at 320, the

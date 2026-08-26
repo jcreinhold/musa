@@ -1,9 +1,11 @@
 # Architecture
 
-Musa is a Rust workspace. The semantic core is Rust; the interface is a replaceable projection of it.
+Musa is implemented as a Rust workspace around a version-matched standard library written in Musa. Rust owns the general
+calculus, temporal structures, foreign boundaries, and runtime; ordinary Musa source owns declarable musical and sound
+vocabulary. The interface is a replaceable projection of checked source.
 
 ```text
-language → compiler → { render, audio } → engine → project → { cli, lsp, desktop }
+source + standard library → compiler → { notation, audio } → project → { CLI, LSP, desktop }
 ```
 
 Dependencies point one way only. No dependency points upward.
@@ -20,6 +22,7 @@ Dependencies point one way only. No dependency points upward.
 | `musa-playback` | The audio device, transport, real-time queues, MIDI input |
 | `musa-project` | The session facade: documents, revisions, commands, exports |
 | `musa`, `musa-lsp`, `apps/musa-desktop` | Thin shells over `musa-project` |
+| `stdlib` | Declarable musical, performance, notation, and sound vocabulary |
 | `editors/tree-sitter-musa` | A tree-sitter grammar held honest by the real lexer |
 
 ## Why the shells are thin
@@ -39,7 +42,7 @@ missing a feature, not a reason to reach around it.
 ## Real-time separation
 
 The audio callback never allocates, locks, does I/O, logs, or destroys large objects. Prepared audio state is allocated
-on the control side and cross the boundary on lock-free queues. This is why the studio can prepare a new machine while
+on the control side and crosses the boundary on lock-free queues. This is why the studio can prepare a new machine while
 the old one keeps playing.
 
 ## What the core cutover now guarantees

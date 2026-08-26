@@ -118,11 +118,10 @@ same way for the same reason. This was once a resolution key — the trait syste
 Not enforced: field order is a reading convention, and a lint that could not tell a carrier from an ordinary first field
 would be guessing.
 
-## 7. Candidate vocabulary says which layer it means
+## 7. Vocabulary says which layer it means
 
-**Candidate rule for prompts 93–189; it becomes governing only with prompt 190.** The additions in
-`docs/rules/language/` keep the musician-facing word when it names a musical intention and the technical word when the
-author has deliberately entered an implementation block.
+Keep the musician-facing word when it names a musical intention and the technical word when the author has deliberately
+entered an implementation block.
 
 Write `expression`, `emphasis`, `separation`, `brightness`, `sustain`, and `phrase` in profiles. Do not spell those as
 gain, velocity, gate, cutoff, release time, or envelope: the latter are possible instrument realizations, not meanings
@@ -132,12 +131,12 @@ would make the advanced surface less comprehensible, not more.
 
 Likewise, `Scale`, `Key`, `ChordClass`, `Voicing`, `NoteName`, and `Pc(12)` are separate names because they preserve
 separate choices — and a spelled thing is a *name*, which is why the last two are not one type. Prefer the readable
-block form `in scale ... { ... }` to an unexplained context operator. Use `template`/`make ... as ...` only for
-identity-bearing declarations; use `fn` for values and `motif` only for a music-producing function that a musician would
-recognize as reusable material.
+block form `in scale ... { ... }` to an unexplained context operator. Use `fn` for values and `motif` only for a
+music-producing function that a musician would recognize as reusable material. The removed `template`, `structure`, and
+`make` spellings are not alternatives; ordinary records, functions, and bindings express those ideas.
 
 A sound binding should read aloud: `sound solo_strings using lyrical;` inside the violin part, then
-`send violin -> concert_hall at -12 dB;` when a shared room is wanted. Hover and the handbook must define `sound`,
-`assign`, `send`, `room`, `bus`, `route`, every built-in processor, unit, control, and unsupported-feature policy where
-the user encounters it. Abbreviation that saves characters but hides the concept is rejected: the filter parameter is
+`send violin -> concert_hall at -12 dB;` when a shared room is wanted. Hover and the handbook define `sound`, `assign`,
+`send`, `room`, `bus`, `route`, every built-in processor, unit, control, and unsupported-feature policy where the user
+encounters it. Abbreviation that saves characters but hides the concept is rejected: the filter parameter is
 `resonance`, not `q`.

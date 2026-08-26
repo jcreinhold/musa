@@ -20,12 +20,20 @@ musa render <file.musa> --to <target>   mei | lilypond | musicxml | midi | wav
 musa play <file.musa> [--loop]          live playback through the audio engine
 musa events <file.musa> [--normalized]  print the piece as events interchange text
 musa events --check <file.musa.events>  parse, check, and evaluate events text
+musa analyze <file.musa> --kind <kind>  inspect facts, harmony, cadences, voice leading, or counterpoint
+    --format text | json                report format (default: text)
+    --profile <name>                    choose an analysis profile
+    --part <name> [--voice <name>]      restrict the reading to one part or voice
+    --from <n> --to <n>                 restrict it to exact written positions
+    --cantus <part/voice>               choose the cantus for counterpoint analysis
+    --segmentation attacks | beats | harmony-lane
+    --key <key>                         supply an explicit analytical key
 musa assets list <project|piece>        list immutable asset facts
 musa assets verify <project|piece>      verify manifest, lock, and raw bytes
 musa assets lock <project|piece>        explicitly regenerate the local asset lock
 musa fetch <project|piece>              fetch exact-pinned package source and assets
     --locked                            verify the existing lock/cache offline; write nothing
---seed <n>  on check, render and event track: which performance to compile
+--seed <n>  on check, render, and events: which performance to compile
 ```
 
 ## Notes

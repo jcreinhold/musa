@@ -28,5 +28,5 @@ Each row names a conflation that real notation software makes and that musa refu
 - **Source ≠ widget state.** The `.musa` text is the only document. The interface renders it and edits it; it never
   keeps a musical model of its own.
 
-The table is a diagnostic tool. When a feature seems to need one of these pairs merged — a part that *is* its patch, a
-dynamic that *is* a gain — the design says the feature is being specified at the wrong layer.
+The table is a diagnostic tool. When a feature seems to need one of these pairs merged — a part that *is* its
+instrument, a dynamic that *is* a gain — the design says the feature is being specified at the wrong layer.

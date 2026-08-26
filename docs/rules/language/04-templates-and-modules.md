@@ -84,5 +84,5 @@ embedded in a track value; two declarations with the same public address; naming
 module; an `enum` that marks some of its cases and not the others; and a `match` outside the module on a type whose
 cases are private.
 
-Prompt 110 implements the package and module tree. Prompt 162 deleted the declaration-template layer this file used to
-specify. Prompt 191 verifies that identity and Origin remain stable through the migration.
+Prompt 110 implemented the package and module tree. Prompt 162 deleted the declaration-template layer this file used to
+specify. Prompt 191 verified that identity and Origin remained stable through the migration.

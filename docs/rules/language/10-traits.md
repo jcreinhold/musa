@@ -8,7 +8,7 @@ kept so that the references to it in `docs/plan/prompts/` and `docs/notes/` stil
 than narrowing them, on a measurement: six traits, 82 call sites, and **zero** trait-constrained signatures — not one
 function in `stdlib/` or `examples/` is polymorphic over a trait — with `Eq`'s five instance bodies being five builtins
 with no λ around them. A dispatch mechanism with nothing to dispatch on is a name-resolution mechanism wearing a
-costume. [Prompt 146](../../plan/prompts/146-delete-the-trait-system.md) deletes the mechanism and puts type-directed
+costume. [Prompt 146](../../plan/prompts/146-delete-the-trait-system.md) deleted the mechanism and put type-directed
 name disambiguation in its place.
 
 **Where each part went.**

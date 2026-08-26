@@ -1,8 +1,8 @@
 # The event-track
 
 Musa maintains two pictures at once. The surface language is expressive and musician-oriented: notes, motifs, repeats,
-transpositions, voices, keys. The event-track is a small, exact semantics the surface language elaborates into. The
-events exists to give every downstream consumer one precise answer:
+transpositions, voices, keys. The event track is the small, exact semantics the surface language elaborates into. It
+gives every downstream consumer one precise answer:
 
 > What musical facts exist, and where do they exist in musical time?
 
@@ -15,14 +15,17 @@ Musical time is ambient: it exists independently of what occurs within it. An ev
 exact musical time `[0, d]` plus zero or more typed occurrences `(s, e, a)` supported within it — each with a start, an
 end, and a payload.
 
-A region with no note occurrence is silent with respect to notes. Nothing represents silence: a rest glyph is a notation
-decision a backend makes about an uncovered region, not event track ontology.
+A region with no note occurrence is silent with respect to notes. A rest the composer wrote is still an occurrence,
+because its written presence matters to notation and provenance; an uncovered gap is not silently turned into one.
 
-## Three structural forms
+## The structural basis
 
-- `track` — an ambient region with facts supported in it;
+- `empty` and `event` — an ambient region and one typed occurrence within it;
 - `follow` — temporal succession, associative concatenation;
 - `together` — simultaneous presence in a common region (commutative, associative, not idempotent).
+
+`map_payloads` changes payloads without changing support, and `duration` observes the ambient extent. The interchange
+term `track` is the literal spelling of a finite region; it is not an additional semantic operation.
 
 There is no primitive `note`, `rest`, `motif`, `voice`, `repeat`, `key`, or `tempo` at this level. Payloads are typed
 but musically opaque: the event track knows where, when, for how long, and what typed value — never what a note means.
@@ -44,5 +47,5 @@ each transformation must traverse, and equality must account for. The event trac
 basis: a construct earns event track status only when removing it makes an important class of musical meanings
 impossible to represent faithfully across independent consumers.
 
-The full specification — grammar, denotational semantics, algebraic laws, normalization, elaboration — lives in
-`docs/rules/events/` in the repository.
+The [event-track specification](../../../rules/events/README.md) gives the grammar, denotational semantics, algebraic
+laws, normalization, and elaboration rules.

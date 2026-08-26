@@ -115,8 +115,8 @@ than scattered down the View menu among the things that change what is on the pa
 looking at*; Settings answers *how does this application behave*. Each preference is still a command with an id, so the
 palette reaches all of them and the sheet is a second way in rather than the only one.
 
-All four workspaces exist as of prompt 31; before that `⌘2` and `⌘3` were bound to nothing and the switcher showed only
-the two that were real, because a tab that opens an empty room is a promise the application cannot keep.
+All four workspaces exist. A binding must never open an empty placeholder: a tab that opens an empty room is a promise
+the application cannot keep.
 
 **Modified keys belong to the application; unmodified ones belong to the score.** Everything without `⌘` or `⌥` — the
 arrows, `Space`, `F`, `L`, `⇧O` — fires only when the score pane has focus, so typing `f` in the source is an `f` and
@@ -146,8 +146,8 @@ the same gesture changes a selection where there is one and writes at the caret 
 
 `r` and not `Space`, because `Space` plays, and a transport key that stopped playing inside a mode would be worse than a
 second letter to learn. `16` and `32` take the nearest free digits — `6` and `3` — because they do not fit on one key.
-Ties have no binding: the language has no tie construct until prompt 27, and a key that spells nothing is worse than a
-key that is not there yet.
+Ties have no dedicated binding. They join written events and require an unambiguous following target; source editing or
+a context-aware command can state that relationship more honestly than a global keystroke.
 
 **Vim mode** (prompt 55 — only while it is on, and only in the source column)
 

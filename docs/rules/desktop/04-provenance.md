@@ -125,8 +125,8 @@ When an edit is issued against a generated event (prompt 25), the interface:
 4. on confirm, applies the command and reports what happened in the interface's own vocabulary: *"Edited sigh() — 2
    occurrences updated."*
 
-Until prompt 34 lands, the second option is present, disabled, and explains itself. It is never hidden — the user should
-learn that the choice exists, and see the day it becomes available.
+The second option is enabled only when the selected call can be specialized without changing another occurrence. When it
+cannot, the option remains visible and explains why; it is never hidden.
 
 ## 5. Restraint
 

@@ -103,5 +103,5 @@ termination checker that reads every other definition reads this one — an `exp
 itself on something this checker cannot see decrease", in the same words any recursive function gets. That is why the
 phase can afford the ordinary evaluator instead of a sandboxed one.
 
-The eight properties that sentence rests on are gathered, with the controls that would falsify each, in
-`crates/musa-compiler/tests/suite/macro_closure_laws.rs`.
+The governing account, including the properties that keep quotation typed and hygienic, is
+[Typed quotation](../../../rules/language/11-quotation.md).

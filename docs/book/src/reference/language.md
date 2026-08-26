@@ -17,7 +17,7 @@ piece "Glass Mountain" {
 
     score { /* parts and voices */ }
     performance { /* interpretation profiles */ }
-    studio { /* patches, routing */ }
+    studio { /* instruments, routing */ }
 }
 ```
 
@@ -64,9 +64,9 @@ duration would otherwise move every later barline, silently.
 
 ## Context changes
 
-`meter`, `key`, and `clef` are voice items that take effect where they are written:
+`meter`, `key`, and `clef` take effect where they are written:
 
-- A `meter` or `key` change is the piece's, and must land on a barline.
+- A `meter` or `key` change belongs to its enclosing piece or part, and must land on a barline in that scope.
 - A `clef` change is the part's own, and need not land on a barline.
 - None may be written inside a motif: a motif stands at several places, and a context change is an absolute position.
 
@@ -102,7 +102,8 @@ voice lead {
 
 `motif` takes parameters and is reused by `use`; `fragment` is named material without parameters. The transforms include
 `transpose`, `stretch`, `retrograde`, `invert`, and `in scale c dorian { ... }` for scale-local stepwise motion.
-Recursion is rejected: every piece compiles to a finite score.
+Unrestricted recursion is rejected. Structurally decreasing recursion is accepted, so every accepted definition
+terminates and every piece still compiles to a finite score.
 
 ## Annotation
 
@@ -185,8 +186,10 @@ different answer, and the error half is the operation's own sentence saying whic
 never a silently wrong value. `nat_sub` is the one that uses `Option`, because going below zero is the only way it can
 fail and there is nothing to distinguish it from.
 
-There are no arithmetic operators. `a + b` is not written in this language; the operations above are named because the
-grammar has no binary-expression form, and `-` and `/` already spell durations and pitches.
+The homogeneous operators `==`, `<`, `+`, `-`, `*`, and `/` are surface spellings for type-directed named functions.
+They keep the function's result shape: an operation that can fail still returns `Result`, and list indexing still
+returns `Option`. Heterogeneous time operations remain explicit — use `position_shift(p, d)` and `duration_scale(d, r)`
+rather than hiding the distinction between a position, a duration, and a ratio.
 
 ## Declaring types
 
@@ -275,7 +278,7 @@ Two parts can play the same marks and read them differently: a staccato is not a
 
 ## Studio
 
-Patches, modulation, assignment, and routing are covered in [Write for the studio](../how-to/studio.md).
+Instruments, modulation, assignment, and routing are covered in [Write for the studio](../how-to/studio.md).
 
 ## Native sample maps
 

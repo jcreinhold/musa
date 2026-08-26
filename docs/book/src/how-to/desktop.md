@@ -1,7 +1,7 @@
 # Run the desktop app
 
-The desktop app is a Tauri shell over a Svelte UI, and both are thin: Rust owns the semantics, the frontend owns
-ephemeral state only.
+The desktop app is a Tauri shell over a Svelte UI, and both are thin: checked Musa source owns declarable semantics,
+Rust checks and executes it, and the frontend owns ephemeral state only.
 
 ```bash
 make desktop    # the score editor, with hot-reloading UI

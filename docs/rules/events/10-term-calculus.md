@@ -1,9 +1,8 @@
 # 10 — The Event-Track Term Calculus
 
-**Status: governing** (graduated at prompt 48). Prompt 47 built the `Term` type and its evaluator, prompt 48 gave it a
-text form (`01-grammar.md`) and a second producer/consumer; prompt 49 makes elaboration emit terms. Nothing in this
-document was revised on the way through implementation — the two repairs prompt 48 made were to `01-grammar.md`'s
-payload syntax and to `05-normalization.md`'s claim about N5, neither of which is a claim this document makes.
+**Status: governing** (graduated at prompt 48). `Term`, its evaluator, and its independent text parser implement this
+calculus. [`01-grammar.md`](01-grammar.md) owns the concrete interchange spelling;
+[`05-normalization.md`](05-normalization.md) owns canonical value identity.
 
 The event track has been an algebra of *values*: you build an `EventTrack` and the building is gone. This document adds
 a syntax whose meanings are those same values — no new semantic domain, no new operation, no new equality. What it buys
@@ -312,7 +311,7 @@ Recorded with reasons, so that each stays absent for a reason rather than by omi
 
 `let` is here for one reason — a motif used many times should be stated once — and that is the oldest problem in the
 implementation of functional languages. Recording where it comes from matters because the *shape* of the solution is
-borrowed, and a future prompt that changes it should know what it is changing.
+borrowed, and any change to it must account for what it replaces.
 
 - **Graph, not tree.** A `let` and its references denote one value reached by several pointers, so evaluation produces a
   graph. This is exactly the representation choice in Peyton Jones (1987) Chapters 10 and 12: sharing is achieved by
@@ -340,9 +339,9 @@ borrowed, and a future prompt that changes it should know what it is changing.
 | Document | Relationship |
 | --- | --- |
 | `00-purpose.md` | The calculus lives under its "not a general-purpose programming language" line; the scope rule above is that line applied to terms. |
-| `01-grammar.md` | The concrete syntax *of these terms*. This document is the semantics; that one is the notation, and prompt 48 implements it. |
+| `01-grammar.md` | The concrete syntax *of these terms*. This document is the semantics; that one is the notation. |
 | `02-static-semantics.md` | K7 states well-formedness for terms. |
 | `03-denotational-semantics.md` | Every term's meaning. The calculus adds no operation to D1–D12. |
 | `04-algebraic-laws.md` | L1–L19 transport to terms through T1; L24 needs no transport, being a fact about payloads. L9–L12 are what T6 rests on. |
 | `05-normalization.md` | N1–N6 apply to the *values* terms evaluate to. T3 is what ties the two together. |
-| `08-open-questions.md` | Q6's trigger; Q1, Q2, Q5, Q9 stay open. Q4 is **resolved** — see below. |
+| `08-open-questions.md` | Q1, Q7, and Q9 remain open; resolved questions live with the specification that owns their answer. |

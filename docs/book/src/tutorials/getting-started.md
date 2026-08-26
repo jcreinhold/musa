@@ -26,17 +26,18 @@ piece "first" {
     score {
         part piano {
             voice melody {
-                c4/4 c4/4 g4/4 g4/4 a4/4 a4/4 g4/2
-                rest/1
+                | c4/4 c4/4 g4/4 g4/4
+                | a4/4 a4/4 g4/2
+                | rest/1
             }
         }
     }
 }
 ```
 
-Read the notes aloud: `c4/4` is middle C for a quarter note, `g4/2` the G above it for a half, `rest/1` a whole measure
-of rest. Durations are exact fractions of a whole note. [First pieces](../guide/first-pieces.md) takes this apart
-properly; this lesson only gets it playing.
+Read the notes aloud: `c4/4` is middle C for a quarter note, `g4/2` the G above it for a half, and `rest/1` a whole
+measure of rest. `|` begins a checked measure. Durations are exact fractions of a whole note. [First
+pieces](../guide/first-pieces.md) takes this apart properly; this lesson only gets it playing.
 
 ## Check it
 
@@ -44,8 +45,8 @@ properly; this lesson only gets it playing.
 make check-file FILE=first.musa
 ```
 
-A clean compile prints nothing. A mistake prints a diagnostic with its place in the source; try deleting a `/4` and
-running the check again.
+A clean compile reports the file as `ok`. A mistake prints a diagnostic at its source location; try deleting a `/4` and
+run the check again.
 
 ## Render it
 

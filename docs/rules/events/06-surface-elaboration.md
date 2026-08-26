@@ -2,37 +2,38 @@
 
 **Status: governing.** How `.musa` source elaborates into event tracks.
 
-How the `.musa` surface language elaborates into event tracks. This document describes elaboration of the grammar **as
-it exists today** (prompts 02–06); it is not a surface redesign. The implementation is prompt 11
-(`docs/plan/prompts/11-kernel-elaboration.md`), and prompt 127a renames what it produces.
+This document specifies how checked `.musa` source becomes an event track. The
+[language specification](../language/README.md) owns parsing, typing, and evaluation; this page owns the musical
+quotient they produce.
 
 ## The elaboration boundary
 
 ```text
-source / musical HIR  (motifs, repeats, transforms, chords, provenance — preserved)
-        ↓  elaborate / observe
-finite event tracks  (flat EventTrack<WrittenTime, ScoreFact>; the semantic quotient)
-        ↓  adapt
-ScoreSnapshot  (the score-specific projection backends already consume)
+source
+  ↓ elaborate and check
+core program (definitions, calls, typed values)
+  ↓ evaluate and project
+finite EventTrack<WrittenTime, ScoreFact> (the semantic quotient)
+  ↓ adapt
+ScoreSnapshot (the score-specific projection consumed by backends)
 ```
 
-Normalization is a **semantic boundary, not the internal representation of every compiler pass**. The HIR keeps
-`repeat`, `loop`, motif references, and transformations for efficiency, editing, provenance, diagnostics, and structural
-display; elaboration evaluates finite observations of them into event tracks. Nothing requires duplicating thousands of
-nodes merely to obey the normalized model.
+Normalization is a **semantic boundary, not the internal representation of every compiler pass**. Checked definitions
+and calls retain source structure while the evaluator computes the finite event-track value. Editing, diagnostics, and
+provenance therefore do not require a second mutable score model or eager duplication of every reuse.
 
 Everything on this page is in `WrittenTime`. Performed time is reached by a named conversion downstream
 (`07-backend-contract.md`), and nothing here may produce a value in another coordinate.
 
 ## Payload design (the central decision)
 
-Score elaboration uses one payload type per fact domain. For the current grammar there is one essential payload:
+Score elaboration uses one payload type whose axes remain independent:
 
 ```text
-NotePayload {
-    pitch: WrittenPitch        % written spelling, verbatim — never a MIDI number (roadmap §2)
-    voice: VoiceIdentity       % (part, voice) source identity
-    origin: Origin             % provenance: source span, declaration, expansion path
+ScoreFact {
+    scope: Scope               % piece, part, or voice identity
+    kind: Note { pitch, written duration, articulations } | Rest | Slur | ...
+    origin: Origin             % source span, declaration, expansion path
 }
 ```
 
@@ -323,11 +324,10 @@ with it.
 - Produce a value in a coordinate other than `WrittenTime`, or a machine. Elaboration builds one of the two core values
   and never the other.
 
-## The candidate language, restated after prompt 127a
+## The governing source language after prompt 127a
 
-The rules above remain the governing account of the implemented grammar. `../language/` is the candidate contract for
-prompts 93–187 and becomes governing only after prompt 193. Its staging, after this amendment, has one fewer stage than
-it used to:
+The rules above govern event-track elaboration, while [`../language/`](../language/README.md) governs the source grammar
+and type discipline. The staging has no intermediate contextual `Music` value:
 
 ```text
 typed total inferred expression → EventTrack<WrittenTime, ScoreFact>
@@ -343,9 +343,8 @@ type `EventTrack[WrittenTime, ScoreFact]` and is substituted capture-avoidantly 
 completed term must be closed and every payload must decode as `ScoreFact`. Standalone `.musa.events` documents remain
 exactly the closed calculus of `10-term-calculus.md`.
 
-Parameterized pieces and voices use a static declaration template stage before context tracks are built. Templates do
-not make pieces, voices, modules, syntax, or core terms first-class value types. The candidate also leaves performance
-gestures, instrument signatures, raw or decoded assets, physical seconds, machines, and mix routing outside this
-elaboration. A musical clip may elaborate to an interval `ScoreFact` and a fixed-media cue to a point `ScoreFact`; each
-contains only an opaque `AssetRef` and score-level settings. The core never receives sample data or a fixed media
-duration and remains musically and media opaque to both payloads.
+Functions may construct track values before context tracks are built; there is no separate declaration-template stage.
+This elaboration also leaves performance gestures, instrument signatures, raw or decoded assets, physical seconds,
+machines, and mix routing outside the score track. A musical clip may elaborate to an interval `ScoreFact` and a
+fixed-media cue to a point `ScoreFact`; each contains only an opaque `AssetRef` and score-level settings. The core never
+receives sample data or a fixed-media duration and remains opaque to both payloads.
