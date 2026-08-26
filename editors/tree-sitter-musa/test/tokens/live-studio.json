@@ -186,6 +186,7 @@
     { "kind": "voice", "text": "voice" },
     { "kind": "identifier", "text": "graph_is_valid" },
     { "kind": "{", "text": "{" },
+    { "kind": "|", "text": "|" },
     { "kind": "use", "text": "use" },
     { "kind": "match", "text": "match" },
     { "kind": "identifier", "text": "checked" },

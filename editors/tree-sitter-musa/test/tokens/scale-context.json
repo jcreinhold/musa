@@ -247,6 +247,7 @@
     { "kind": "}", "text": "}" },
     { "kind": "comment", "text": "// With no scale of its own, `step` walks the collection the" },
     { "kind": "comment", "text": "// written key suggests: C natural minor." },
+    { "kind": "|", "text": "|" },
     { "kind": "pitch_literal", "text": "c4" },
     { "kind": "/", "text": "/" },
     { "kind": "integer", "text": "4" },

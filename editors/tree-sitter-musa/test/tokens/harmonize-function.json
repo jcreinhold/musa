@@ -80,6 +80,7 @@
     { "kind": "voice", "text": "voice" },
     { "kind": "identifier", "text": "duet" },
     { "kind": "{", "text": "{" },
+    { "kind": "|", "text": "|" },
     { "kind": "use", "text": "use" },
     { "kind": "identifier", "text": "harmonize" },
     { "kind": "(", "text": "(" },

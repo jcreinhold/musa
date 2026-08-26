@@ -20,6 +20,18 @@ use musa_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, parse};
 const GLASS_MOUNTAIN: &str = include_str!("../../../../examples/glass-mountain.musa");
 const INVENTION: &str = include_str!("../../../../examples/invention.musa");
 
+/// Musical statements directly in a voice, looking through the anonymous
+/// measure wrapper introduced by canonical `|` formatting.
+fn statements_in(items: Vec<VoiceItem>) -> Vec<VoiceItem> {
+    items
+        .into_iter()
+        .flat_map(|item| match item {
+            VoiceItem::Bar(bar) => bar.items(),
+            other => vec![other],
+        })
+        .collect()
+}
+
 #[test]
 fn a_reserved_word_may_name_a_qualified_module_segment() {
     let source =
@@ -583,7 +595,7 @@ fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
         .parts()
         .into_iter()
         .flat_map(|part| part.voices())
-        .flat_map(|voice| voice.items())
+        .flat_map(|voice| statements_in(voice.items()))
         .filter_map(|item| match item {
             VoiceItem::Tempo(tempo) => Some(tempo.text()),
             _ => None,
@@ -674,7 +686,7 @@ fn an_import_is_a_path_and_a_motif_use_is_a_call() {
         .score()
         .and_then(|score| score.parts().into_iter().next())
         .and_then(|part| part.voices().into_iter().next())
-        .map(|voice| voice.items())
+        .map(|voice| statements_in(voice.items()))
         .unwrap_or_default();
     assert!(items.iter().any(|item| matches!(item, VoiceItem::Use(_))));
 }

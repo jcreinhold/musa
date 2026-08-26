@@ -62,6 +62,7 @@
     { "kind": "voice", "text": "voice" },
     { "kind": "identifier", "text": "one" },
     { "kind": "{", "text": "{" },
+    { "kind": "|", "text": "|" },
     { "kind": "pitch_literal", "text": "c4" },
     { "kind": "/", "text": "/" },
     { "kind": "integer", "text": "1" },
