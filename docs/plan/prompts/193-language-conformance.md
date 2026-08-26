@@ -1,7 +1,7 @@
 ---
 id: 193
 slug: language-conformance
-status: pending
+status: in-progress
 depends_on: [120, 121, 122, 124, 125, 174, 192]
 phase: 4
 ---
@@ -61,16 +61,12 @@ matrix where possible; review every manual bridge. At minimum it must cover:
 
 Five rows exist because these boundaries are cheap to hold and expensive to recover:
 
-- **Patterns are still depth one.** `docs/rules/language/02-core-calculus.md` §6.2 fixes the invariant that every
-  sub-position of a pattern is a binder and never another pattern, with no repeated variables, guards, or patterns on
-  the left of a definition. This is mechanically checkable and should be checked that way: `Pattern` in
-  `crates/musa-compiler/src/phase/mod.rs` must remain non-recursive, and the surface grammar must not admit a pattern
-  inside a pattern. Nesting would require a pattern-match compiler and a failure mechanism between equations, a
-  subsystem whose only purpose is compiling a convenience into eliminators the language already writes directly. If a
-  prompt between 92 and 144 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites
-  it. Prompt 127dcfab's expression `if` is not that subsystem and does not fail this row: it decides values and
-  elaborates to the boolean `match`, leaving arms unguarded and patterns depth one. A guard on a match arm would fail
-  it.
+- **Nested patterns still compile to the one case tree.** Prompt 155 installed the case-tree compiler and prompt 162c
+  consequently replaced the earlier depth-one restriction: a constructor, list, or record sub-position holds another
+  pattern recursively. Audit the differential law against the equivalent explicit nested match, unchanged coverage and
+  impossible-branch refinement, repeated-variable refusal, and arbitrary-depth parser/tree-sitter agreement. There is
+  still no guard, fall-through equation, or pattern on the left of a definition, and no evaluator beside the compiled
+  case tree. Prompt 127dcfab's expression `if` remains an elaboration to the boolean case tree rather than a guarded arm.
 - **Structural descent is not general recursion.** Prompt 127dcfaf's sealed steps let an adapter enter a strict subtree;
   nothing in the language lets it enter itself. Audit that no `fix`, recursive binding, self-application, or unsealed
   child value exists in source or adapter code, that sealing still enforces association, and that the reducibility proof
