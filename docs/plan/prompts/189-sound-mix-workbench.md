@@ -1,7 +1,7 @@
 ---
 id: 189
 slug: sound-mix-workbench
-status: pending
+status: done
 depends_on: [124, 174, 181, 183, 185, 186, 188]
 phase: 4
 ---

@@ -302,6 +302,19 @@ export interface ScoreFacts {
   performance: number | null;
   /** Every question the piece left open, in the order it asked them. */
   decisions: DecisionFact[];
+  /** Checked source-owned recorded-media occurrences. */
+  media: MediaFacts[];
+}
+
+export interface MediaFacts {
+  name: string;
+  asset: string;
+  kind: "musical-clip" | "fixed-media-cue";
+  fit: "crop" | "loop" | "rate" | null;
+  start: Fraction;
+  end: Fraction;
+  gainDb: Fraction;
+  origin: OriginFacts;
 }
 
 /**
@@ -377,6 +390,12 @@ export interface AssignmentFacts {
   part: string;
   /** Null for a part the studio never mentions: it keeps the built-in voice. */
   patch: string | null;
+  /** Effective source instrument, including the edition default. */
+  instrument: string;
+  /** Effective source performance profile, including the edition default. */
+  profile: string;
+  /** Whether the source wrote the sound choice rather than inheriting it. */
+  explicit: boolean;
 }
 
 export interface SendFacts {
@@ -391,6 +410,14 @@ export interface RouteFacts {
   destination: string;
 }
 
+export interface MediaSourceFacts {
+  name: string;
+  asset: string;
+  kind: "musical-clip" | "fixed-media-cue";
+  fit: "crop" | "loop" | "rate" | null;
+  occurrences: number;
+}
+
 /** The studio, as the Sound and Mix workspaces read it (roadmap §14.4). */
 export interface StudioFacts {
   declared: boolean;
@@ -400,6 +427,31 @@ export interface StudioFacts {
   assignments: AssignmentFacts[];
   sends: SendFacts[];
   routes: RouteFacts[];
+  media: MediaSourceFacts[];
+}
+
+export interface AssetFacts {
+  path: string;
+  kind: "sfz" | "sound-font" | "audio" | null;
+  digest: string | null;
+  bytes: number | null;
+  adapter: string | null;
+  license: string | null;
+  source: string | null;
+  status:
+    | "verified"
+    | "undeclared"
+    | "unlocked"
+    | "path-escape"
+    | "symlink-escape"
+    | "missing"
+    | "kind-mismatch"
+    | "size-exceeded"
+    | "metadata-mismatch"
+    | "digest-mismatch";
+  origin: string | null;
+  span: Span | null;
+  detail: string | null;
 }
 
 export interface PlaybackState {
@@ -453,7 +505,7 @@ export interface ProjectSnapshot {
    * (`docs/rules/language/01-surface.md` §7) and engraves like a piece, having
    * arrived at the same timeline by a shorter road.
    */
-  kind: "piece" | "material" | "events";
+  kind: "piece" | "material" | "events" | "modules";
   source: string;
   revision: number;
   compiles: boolean;
@@ -472,6 +524,8 @@ export interface ProjectSnapshot {
   playback: PlaybackState;
   /** The project this piece is one of, or null when nothing is open. */
   contents: ContentsFacts | null;
+  /** Current verified asset closure; unlike score facts this is never stale. */
+  assets: AssetFacts[];
   /** Every declaration in scope (`08-elaboration.md` §1). */
   terms: TermFacts[];
   /** Every resolved name, for definition and references. */

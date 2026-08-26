@@ -69,6 +69,10 @@
     return studio?.routes.find((route) => route.source === source)?.destination ?? null;
   }
 
+  function assetStatus(path: string): string {
+    return snapshot?.assets.find((asset) => asset.path === path)?.status ?? "undeclared";
+  }
+
   const sendMax = 6;
   const sendMin = -60;
 </script>
@@ -85,6 +89,11 @@
           {session.notice.message}
         </p>
       {/if}
+      {#if session.stale}
+        <p class="notice" role="status">
+          Mix is showing the last valid prepared plan while the current source is repaired.
+        </p>
+      {/if}
     </Margin>
 
     <main class="stage">
@@ -97,15 +106,15 @@
         <section class="group" aria-label="Parts">
           <h2 class="group-name">Parts</h2>
           {#each studio.assignments as row (row.part)}
-            <article class="strip">
+            <article class="strip" aria-label={`${row.part} part output`}>
               <header class="strip-head">
-                <h3 class="strip-name">{row.part}</h3>
+                <h3 class="strip-name">{row.part} <span class="kind">part output</span></h3>
                 <p class="strip-route">
-                  {row.patch ?? "built-in voice"}{#if destination(row.part)}
+                  {row.instrument}{#if destination(row.part)}
                     <span class="arrow" aria-hidden="true">→</span>{destination(row.part)}{/if}
                 </p>
               </header>
-              {#each levels(row.patch) as level (level.stage)}
+              {#each levels(row.instrument) as level (level.stage)}
                 {@const param = paramOf(level.container, level.stage, "gain")}
                 {#if param}
                   <ParamControl
@@ -145,6 +154,54 @@
           {/each}
         </section>
 
+        {#if studio.media.length > 0}
+          <section class="group" aria-label="Recorded media">
+            <h2 class="group-name">Recorded media</h2>
+            {#each studio.media as media (media.name)}
+              <article class="strip" aria-label={`${media.name} recorded-media source`}>
+                <header class="strip-head">
+                  <div>
+                    <h3 class="strip-name">{media.name} <span class="kind">media source</span></h3>
+                    <p class="media-fact">
+                      {media.kind === "musical-clip" ? `clip · ${media.fit}` : "fixed cue"} · {media.occurrences}
+                      {media.occurrences === 1 ? " occurrence" : " occurrences"} · {assetStatus(media.asset)}
+                    </p>
+                  </div>
+                  <p class="strip-route">
+                    {media.asset}{#if destination(media.name)}
+                      <span class="arrow" aria-hidden="true">→</span>{destination(media.name)}{/if}
+                  </p>
+                </header>
+                {#each studio.sends.filter((send) => send.source === media.name) as send (send.bus)}
+                  <div class="send">
+                    <label class="send-name" for={`send-${send.source}-${send.bus}`}>send to {send.bus}</label>
+                    <input
+                      id={`send-${send.source}-${send.bus}`}
+                      class="track"
+                      type="range"
+                      min={sendMin}
+                      max={sendMax}
+                      step="0.1"
+                      value={exact(send.decibels)}
+                      disabled={!session.live}
+                      onchange={(event) =>
+                        edit({
+                          kind: "setSendLevel",
+                          source: send.source,
+                          bus: send.bus,
+                          decibels: event.currentTarget.valueAsNumber,
+                        })}
+                    />
+                    <output class="send-value" for={`send-${send.source}-${send.bus}`}
+                      >{exact(send.decibels).toFixed(1)}<span class="unit">dB</span></output
+                    >
+                  </div>
+                {/each}
+              </article>
+            {/each}
+          </section>
+        {/if}
+
         {#if studio.buses.length > 0}
           <section class="group" aria-label="Buses">
             <h2 class="group-name">Buses</h2>
@@ -175,6 +232,13 @@
             {/each}
           </section>
         {/if}
+        <section class="group" aria-label="Main output">
+          <h2 class="group-name">Main output</h2>
+          <article class="strip main-output">
+            <h3 class="strip-name">main</h3>
+            <p class="media-fact">The terminal output of the source-authored route graph.</p>
+          </article>
+        </section>
       {/if}
     </main>
   </div>
@@ -262,6 +326,24 @@
     line-height: var(--t-name-line);
     font-weight: 400;
     color: var(--ink);
+  }
+
+  .kind {
+    padding-left: var(--s-2);
+    font-family: var(--f-ui);
+    font-size: var(--t-micro-size);
+    color: var(--ink-muted);
+  }
+
+  .media-fact {
+    margin: var(--s-1) 0 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-micro-size);
+    color: var(--ink-muted);
+  }
+
+  .main-output {
+    border-bottom: 1px solid var(--rule);
   }
 
   .strip-route {

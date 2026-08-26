@@ -280,15 +280,20 @@ impl From<ContainerKindDto> for ContainerKind {
     }
 }
 
-/// A structured studio edit from the webview — a knob, a fader, or a part
-/// pointed at another patch (roadmap §11, §14.4).
+/// A structured studio edit from the webview — a source-owned sound choice,
+/// knob, or fader (roadmap §11, §14.4).
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export, export_to = "../../ui/src/lib/session/generated/")]
 pub enum StudioEditDto {
     #[serde(rename_all = "camelCase")]
-    AssignPatch { part: String, patch: String },
+    ChooseSound {
+        part: String,
+        instrument: String,
+        profile: String,
+    },
     #[serde(rename_all = "camelCase")]
+    MakeSoundExplicit { part: String },
     SetParam {
         container: ContainerKindDto,
         name: String,
@@ -303,7 +308,16 @@ pub enum StudioEditDto {
 impl From<StudioEditDto> for StudioEdit {
     fn from(edit: StudioEditDto) -> Self {
         match edit {
-            StudioEditDto::AssignPatch { part, patch } => Self::AssignPatch { part, patch },
+            StudioEditDto::ChooseSound {
+                part,
+                instrument,
+                profile,
+            } => Self::ChooseSound {
+                part,
+                instrument,
+                profile,
+            },
+            StudioEditDto::MakeSoundExplicit { part } => Self::MakeSoundExplicit { part },
             StudioEditDto::SetParam {
                 container,
                 name,

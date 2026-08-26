@@ -9249,7 +9249,8 @@
       }
     ],
     "sends": [],
-    "routes": []
+    "routes": [],
+    "media": []
   },
   "scoreRevision": 1,
   "playback": {

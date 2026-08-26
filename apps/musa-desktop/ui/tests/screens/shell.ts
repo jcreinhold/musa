@@ -27,6 +27,8 @@ export type Piece =
   | "stdlib-basics"
   /** An expansion path that runs through an event track quote. */
   | "events-splice"
+  /** Instruments, assets, buses, clips, and fixed cues for Sound/Mix. */
+  | "sound-workbench"
   /** A claim the compiler refused: a piece that does not compile. */
   | "refused-claim";
 

@@ -37,10 +37,18 @@
   let chosen = $state<string | null>(null);
   const part = $derived(parts.find((row) => row.part === chosen) ?? parts[0] ?? null);
 
-  const patch = $derived(part?.patch ? (studio?.patches.find((it) => it.name === part.patch) ?? null) : null);
+  const patch = $derived(part ? (studio?.patches.find((it) => it.name === part.instrument) ?? null) : null);
 
-  /** Every patch a part could be pointed at. */
-  const choices = $derived(studio?.patches.map((it) => it.name) ?? []);
+  /** Every checked source instrument this projection can select. */
+  const choices = $derived.by(() => {
+    const names = [
+      ...(studio?.assignments.map((assignment) => assignment.instrument) ?? []),
+      ...(studio?.patches.map((it) => it.name) ?? []),
+    ];
+    return [...new Set(names)];
+  });
+
+  const assets = $derived(snapshot?.assets ?? []);
 
   function edit(edit: StudioEditDto, said?: string): void {
     void session.editStudio(edit, said);
@@ -84,7 +92,7 @@
                 onclick={() => (chosen = row.part)}
               >
                 <span class="part-name">{row.part}</span>
-                <span class="part-patch">{row.patch ?? "built-in voice"}</span>
+                <span class="part-patch">{row.instrument}</span>
               </button>
             </li>
           {/each}
@@ -101,31 +109,29 @@
             Source workspace to shape it.
           </p>
         {:else if part}
-          <section class="patch" aria-label="Patch">
+          <section class="patch" aria-label={`${part.part} sound`}>
             <header class="assignment">
               <h2 class="heading">{part.part}</h2>
               <label class="picker">
                 <span class="picker-label">plays through</span>
                 <select
                   disabled={!session.live || choices.length === 0}
-                  value={part.patch ?? ""}
+                  value={part.instrument}
                   onchange={(event) => {
-                    const patchName = event.currentTarget.value;
-                    if (patchName) {
+                    const instrument = event.currentTarget.value;
+                    if (instrument) {
                       edit(
                         {
-                          kind: "assignPatch",
+                          kind: "chooseSound",
                           part: part.part,
-                          patch: patchName,
+                          instrument,
+                          profile: part.profile,
                         },
-                        `${part.part} plays through ${patchName}.`,
+                        `${part.part} uses ${instrument}.`,
                       );
                     }
                   }}
                 >
-                  {#if !part.patch}
-                    <option value="">the built-in voice</option>
-                  {/if}
                   {#each choices as name (name)}
                     <option value={name}>{name}</option>
                   {/each}
@@ -133,35 +139,69 @@
               </label>
             </header>
 
+            <div class="contract" aria-label="Source sound contract">
+              <p><span>profile</span> <code>{part.profile}</code></p>
+              <p><span>choice</span> {part.explicit ? "written in source" : "inherited from this edition"}</p>
+              {#if !part.explicit}
+                <button
+                  type="button"
+                  class="text-action"
+                  disabled={!session.live}
+                  onclick={() =>
+                    edit(
+                      { kind: "makeSoundExplicit", part: part.part },
+                      `${part.part}'s inherited sound is now written explicitly.`,
+                    )}>write this choice</button
+                >
+              {/if}
+              <button type="button" class="text-action" onclick={() => onshow("source")}>open machine source</button>
+            </div>
+
             {#if patch}
-              <ol class="chain">
-                {#each patch.stages as stage (stage.index)}
-                  <li class="stage-row">
-                    <h3 class="stage-name" title={`${stage.summary} ${stage.signature} Origin: ${stage.origin}.`}>
-                      <span class="processor">{stage.processor}</span>{#if stage.label}<span class="label"
-                          >{stage.label}</span
-                        >{/if}
-                    </h3>
-                    <p class="stage-description">{stage.summary}</p>
-                    {#if stage.params.length === 0}
-                      <p class="no-params">nothing to set</p>
-                    {:else}
-                      {#each stage.params as param (param.name)}
-                        <ParamControl
-                          {param}
-                          id={`${patch.name}-${stage.index}-${param.name}`}
-                          editable={session.live}
-                          onchange={(value) => setParam(patch, stage.index, param.name, value)}
-                        />
-                      {/each}
-                    {/if}
-                  </li>
-                {/each}
-              </ol>
+              <details class="machine">
+                <summary>machine details</summary>
+                <ol class="chain">
+                  {#each patch.stages as stage (stage.index)}
+                    <li class="stage-row">
+                      <h3 class="stage-name" title={`${stage.summary} ${stage.signature} Origin: ${stage.origin}.`}>
+                        <span class="processor">{stage.processor}</span>{#if stage.label}<span class="label"
+                            >{stage.label}</span
+                          >{/if}
+                      </h3>
+                      <p class="stage-description">{stage.summary}</p>
+                      {#if stage.params.length === 0}
+                        <p class="no-params">nothing exposed</p>
+                      {:else}
+                        {#each stage.params as param (param.name)}
+                          <ParamControl
+                            {param}
+                            id={`${patch.name}-${stage.index}-${param.name}`}
+                            editable={session.live}
+                            onchange={(value) => setParam(patch, stage.index, param.name, value)}
+                          />
+                        {/each}
+                      {/if}
+                    </li>
+                  {/each}
+                </ol>
+              </details>
             {:else}
               <p class="empty">
-                {part.part} has no patch of its own, so it sounds through the built-in voice.
+                {part.instrument} exposes no editable machine graph in this document. Its declaration remains the sound authority.
               </p>
+            {/if}
+
+            {#if assets.length > 0}
+              <section class="assets" aria-label="Asset health">
+                <h3 class="aside-heading">Assets</h3>
+                {#each assets as asset (asset.path)}
+                  <p class:asset-failure={asset.status !== "verified"}>
+                    <code>{asset.path}</code> — {asset.status}{#if asset.adapter}
+                      · {asset.adapter}{/if}{#if asset.detail}
+                      · {asset.detail}{/if}
+                  </p>
+                {/each}
+              </section>
             {/if}
           </section>
         {:else}
@@ -295,6 +335,58 @@
     gap: var(--s-4);
     padding-bottom: var(--s-3);
     border-bottom: 1px solid var(--rule);
+  }
+
+  .contract {
+    padding: var(--s-3) 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink-muted);
+  }
+
+  .contract p {
+    margin: 0 0 var(--s-1);
+  }
+
+  .contract p span {
+    display: inline-block;
+    min-width: 5em;
+    color: var(--ink-faint);
+  }
+
+  .text-action {
+    margin: var(--s-2) var(--s-3) 0 0;
+    padding: 0 0 2px;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .machine > summary {
+    padding: var(--s-3) 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  .assets {
+    margin-top: var(--s-5);
+  }
+
+  .assets p {
+    margin: var(--s-1) 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-micro-size);
+    color: var(--ink-muted);
+  }
+
+  .assets .asset-failure {
+    color: var(--chalk);
   }
 
   .heading {

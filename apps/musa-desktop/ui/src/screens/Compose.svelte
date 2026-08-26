@@ -24,7 +24,14 @@
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
   import type { Candidate } from "../lib/state/gesture.svelte";
-  import { volumeOf, type Diagnostic, type EditImpact, type OutlineFacts, type Span } from "../lib/state/snapshot";
+  import {
+    volumeOf,
+    type AssignmentFacts,
+    type Diagnostic,
+    type EditImpact,
+    type OutlineFacts,
+    type Span,
+  } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
@@ -160,6 +167,10 @@
    */
   const contents = $derived(volumeOf(snapshot));
   const focused = $derived(workspace.focused);
+  const sound = $derived.by((): AssignmentFacts | null => {
+    if (!chosen) return null;
+    return snapshot?.studio?.assignments.find((assignment) => assignment.part === chosen.part) ?? null;
+  });
   // What the inspector describes is what the composer picked, not where work
   // is happening: with nothing picked it shows the piece instead.
   const chosen = $derived(workspace.chosen);
@@ -472,6 +483,11 @@
             onpitch={session.live && chosen ? (pitch) => onpitch(chosen.id, pitch) : undefined}
             onduration={session.live && chosen ? (duration) => onduration(chosen.id, duration) : undefined}
             {onreveal}
+            {sound}
+            onsound={session.live
+              ? (part) =>
+                  void session.editStudio({ kind: "makeSoundExplicit", part }, `${part}'s sound is now written.`)
+              : undefined}
             header={score.header}
             onheader={session.live ? onheader : undefined}
           />

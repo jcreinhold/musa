@@ -85,8 +85,8 @@ pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};
 pub use crate::sfz::{SfzInstrumentFacts, SfzLimits};
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::studio::{
-    AssignmentFacts, ContainerFacts, ContainerKind, ParamFacts, RouteFacts, SendFacts, StageFacts, StudioEdit,
-    StudioFacts,
+    AssignmentFacts, ContainerFacts, ContainerKind, MediaSourceFacts, ParamFacts, RouteFacts, SendFacts, StageFacts,
+    StudioEdit, StudioFacts,
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;

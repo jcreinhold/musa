@@ -1,0 +1,549 @@
+{
+  "document": 0,
+  "name": "sound-workbench.musa",
+  "kind": "piece",
+  "source": "piece \"Sound workbench\" {\n    meter 4/4;\n    instrument glass conforms note_instrument {\n        implementation graph { oscillator(sine) |> lowpass(cutoff: 1400 Hz, resonance: 1/2) |> output; }\n    }\n    clip pulse from \"assets/recording.wav\" fit 1/4 by loop;\n    fixed_media recording from \"assets/recording.wav\";\n    score {\n        cue pulse at 1:1;\n        cue recording at 1:2;\n        part lead { sound glass using neutral; voice one { c4/1 } }\n    }\n    studio {\n        bus room { reverb(room: 1/2) |> output; }\n        route lead -> master;\n        route pulse -> master;\n        send recording -> room at -12 dB;\n        route room -> master;\n    }\n}\n",
+  "revision": 0,
+  "compiles": true,
+  "unsaved": false,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Sound workbench</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Sound workbench</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\">\n                <label>lead</label>\n                <labelAbbr>lea.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"1\" oct=\"4\" pname=\"c\"/>\n                </layer>\n              </staff>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\">clip pulse (loop)</dir>\n              <dir staff=\"1\" tstamp=\"2\" place=\"above\">fixed media recording</dir>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Sound workbench",
+    "tempoBpm": 120,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": null,
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "lead",
+        "voices": [
+          {
+            "name": "one",
+            "generated": false
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "lead",
+        "voice": "one",
+        "kind": "note",
+        "pitch": "C4",
+        "pitches": [
+          "C4"
+        ],
+        "pitchSpellings": [
+          "c4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 96000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 11,
+          "span": {
+            "start": 442,
+            "end": 446
+          },
+          "definitionSpan": {
+            "start": 442,
+            "end": 446
+          },
+          "supportedBy": [
+            {
+              "start": 442,
+              "end": 446
+            }
+          ],
+          "decision": null
+        }
+      }
+    ],
+    "occurrences": [],
+    "outline": [],
+    "header": [
+      {
+        "field": "title",
+        "value": "Sound workbench"
+      },
+      {
+        "field": "subtitle",
+        "value": null
+      },
+      {
+        "field": "composer",
+        "value": null
+      },
+      {
+        "field": "arranger",
+        "value": null
+      },
+      {
+        "field": "copyright",
+        "value": null
+      },
+      {
+        "field": "tempo",
+        "value": null
+      },
+      {
+        "field": "meter",
+        "value": "4/4"
+      },
+      {
+        "field": "key",
+        "value": null
+      }
+    ],
+    "performance": null,
+    "decisions": [],
+    "media": [
+      {
+        "name": "pulse",
+        "asset": "assets/recording.wav",
+        "kind": "musical-clip",
+        "fit": "loop",
+        "start": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "end": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "gainDb": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 9,
+          "span": {
+            "start": 335,
+            "end": 352
+          },
+          "definitionSpan": {
+            "start": 204,
+            "end": 259
+          },
+          "supportedBy": [],
+          "decision": null
+        }
+      },
+      {
+        "name": "recording",
+        "asset": "assets/recording.wav",
+        "kind": "fixed-media-cue",
+        "fit": null,
+        "start": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "end": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "gainDb": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 10,
+          "span": {
+            "start": 361,
+            "end": 382
+          },
+          "definitionSpan": {
+            "start": 264,
+            "end": 314
+          },
+          "supportedBy": [],
+          "decision": null
+        }
+      }
+    ]
+  },
+  "studio": {
+    "declared": true,
+    "patches": [
+      {
+        "kind": "patch",
+        "name": "glass",
+        "stages": [
+          {
+            "index": 0,
+            "processor": "oscillator",
+            "summary": "Produces a sine wave as an instrument partial or control signal.",
+            "signature": "oscillator(sine, frequency: Hz = 1 Hz, ratio: Ratio = 1)",
+            "origin": "bundled Musa source + registered primitive",
+            "label": null,
+            "params": [
+              {
+                "name": "frequency",
+                "summary": "Sets a control oscillator's frequency; a patch oscillator follows score pitch.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "unit": "Hz",
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 200,
+                  "denominator": 1
+                },
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              },
+              {
+                "name": "ratio",
+                "summary": "Scales the pitch supplied by the score.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "unit": "",
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 4
+                },
+                "maximum": {
+                  "numerator": 16,
+                  "denominator": 1
+                },
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "processor": "lowpass",
+            "summary": "Keeps frequencies below a cutoff.",
+            "signature": "lowpass(cutoff: Hz = 20000 Hz, resonance: Ratio = 0.707)",
+            "origin": "bundled Musa source + registered primitive",
+            "label": null,
+            "params": [
+              {
+                "name": "cutoff",
+                "summary": "Sets the boundary frequency.",
+                "value": {
+                  "numerator": 1400,
+                  "denominator": 1
+                },
+                "unit": "Hz",
+                "minimum": {
+                  "numerator": 20,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 20000,
+                  "denominator": 1
+                },
+                "written": true,
+                "span": {
+                  "start": 156,
+                  "end": 163
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "resonance",
+                "summary": "Emphasizes the cutoff, conventionally represented by quality factor Q.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 2
+                },
+                "unit": "",
+                "minimum": {
+                  "numerator": 1,
+                  "denominator": 10
+                },
+                "maximum": {
+                  "numerator": 20,
+                  "denominator": 1
+                },
+                "written": true,
+                "span": {
+                  "start": 176,
+                  "end": 179
+                },
+                "modulatedBy": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "buses": [
+      {
+        "kind": "bus",
+        "name": "room",
+        "stages": [
+          {
+            "index": 0,
+            "processor": "reverb",
+            "summary": "Places audio in a simulated room.",
+            "signature": "reverb(room: Ratio = 0.5, damping: Ratio = 0.5, mix: Ratio = 1)",
+            "origin": "bundled Musa source + registered primitive",
+            "label": null,
+            "params": [
+              {
+                "name": "room",
+                "summary": "Sets the apparent room size.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 2
+                },
+                "unit": "",
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "written": true,
+                "span": {
+                  "start": 502,
+                  "end": 505
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "damping",
+                "summary": "Controls high-frequency absorption.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 2
+                },
+                "unit": "",
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              },
+              {
+                "name": "mix",
+                "summary": "Balances dry and processed audio.",
+                "value": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "unit": "",
+                "minimum": {
+                  "numerator": 0,
+                  "denominator": 1
+                },
+                "maximum": {
+                  "numerator": 1,
+                  "denominator": 1
+                },
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "signals": [],
+    "assignments": [
+      {
+        "part": "lead",
+        "patch": "glass",
+        "instrument": "glass",
+        "profile": "std.performance.neutral",
+        "explicit": true
+      }
+    ],
+    "sends": [
+      {
+        "source": "recording",
+        "bus": "room",
+        "decibels": {
+          "numerator": -12,
+          "denominator": 1
+        },
+        "span": {
+          "start": 615,
+          "end": 621
+        }
+      }
+    ],
+    "routes": [
+      {
+        "source": "lead",
+        "destination": "master"
+      },
+      {
+        "source": "lead",
+        "destination": "master"
+      },
+      {
+        "source": "pulse",
+        "destination": "master"
+      },
+      {
+        "source": "room",
+        "destination": "master"
+      }
+    ],
+    "media": [
+      {
+        "name": "pulse",
+        "asset": "assets/recording.wav",
+        "kind": "musical-clip",
+        "fit": "loop",
+        "occurrences": 1
+      },
+      {
+        "name": "recording",
+        "asset": "assets/recording.wav",
+        "kind": "fixed-media-cue",
+        "fit": null,
+        "occurrences": 1
+      }
+    ]
+  },
+  "scoreRevision": 0,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  },
+  "contents": null,
+  "assets": [
+    {
+      "path": "assets/bank.sf2",
+      "kind": "sound-font",
+      "digest": "sha256:3a4091311e02e96968a9fec63f166185717b79b3808c0a4ffd4e5e5c0fca89ba",
+      "bytes": 21,
+      "adapter": "sf2@1",
+      "license": null,
+      "source": null,
+      "status": "verified",
+      "origin": null,
+      "span": null,
+      "detail": null
+    },
+    {
+      "path": "assets/map.sfz",
+      "kind": "sfz",
+      "digest": "sha256:e82fb220a99bab924ce77885fbe0cc9f6ca5c1f9ecbb2d4813a67857235a08e5",
+      "bytes": 30,
+      "adapter": "sfz@1",
+      "license": null,
+      "source": null,
+      "status": "verified",
+      "origin": null,
+      "span": null,
+      "detail": null
+    },
+    {
+      "path": "assets/recording.wav",
+      "kind": "audio",
+      "digest": "sha256:6a236c6dfb21eeb46e102dc78241750f74e24bb708b5368931af90c0042afbb5",
+      "bytes": 324,
+      "adapter": "wav@1",
+      "license": null,
+      "source": null,
+      "status": "verified",
+      "origin": "sound-workbench.musa",
+      "span": {
+        "start": 220,
+        "end": 242
+      },
+      "detail": null
+    }
+  ],
+  "terms": [],
+  "names": [
+    {
+      "name": "lead",
+      "kind": "part",
+      "declaration": {
+        "start": 396,
+        "end": 400
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 534,
+          "end": 538
+        }
+      ]
+    },
+    {
+      "name": "one",
+      "kind": "voice",
+      "declaration": {
+        "start": 436,
+        "end": 439
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "glass",
+      "kind": "patch",
+      "declaration": {
+        "start": 56,
+        "end": 61
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 409,
+          "end": 414
+        }
+      ]
+    }
+  ]
+}

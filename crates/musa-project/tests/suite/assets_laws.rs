@@ -337,6 +337,13 @@ max_bytes = 65536
     lock_assets(directory.path()).expect("media lock succeeds");
 
     let session = ProjectSession::open(directory.path().join("piece.musa")).expect("piece opens");
+    let snapshot = session.snapshot();
+    let studio = snapshot.studio().expect("studio facts");
+    assert_eq!(studio.media.len(), 1);
+    let media = studio.media.first().expect("recorded-media source");
+    assert_eq!(media.name, "recording");
+    assert_eq!(media.kind, "fixed-media-cue");
+    assert_eq!(media.occurrences, 1);
     let first = session.export(musa_project::ExportRequest::Wav).expect("first WAV");
     let second = session.export(musa_project::ExportRequest::Wav).expect("second WAV");
     assert_eq!(

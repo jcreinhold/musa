@@ -38,6 +38,8 @@ function edits(page: Page): Promise<Record<string, unknown>[]> {
 test("⌘2 shows the chosen part's patch as the chain the source spells", async ({ page }) => {
   await inSound(page);
 
+  await page.locator(".sound-workspace .machine summary").click();
+
   // Glass Mountain's `glass_pad`, in the order `|>` runs it. Not a canvas:
   // a list, top to bottom, matching the text.
   const stages = page.locator(".sound-workspace .chain .processor");
@@ -58,14 +60,31 @@ test("a part says which patch plays it, and can be pointed at another", async ({
   await expect(page.locator(".sound-workspace .parts")).toContainText("violin");
   await expect(page.locator(".sound-workspace .parts")).toContainText("glass_pad");
 
-  // One patch is declared, so the picker offers it and nothing invented.
+  // The edition default and the source declaration are the checked choices.
   const picker = page.locator(".sound-workspace .picker select");
   await expect(picker).toHaveValue("glass_pad");
   await expect(picker.locator("option")).toHaveText(["glass_pad"]);
+  await expect(page.locator(".sound-workspace .contract")).toContainText("written in source");
+});
+
+test("choosing an instrument writes the source-owned sound sentence", async ({ page }) => {
+  await inSound(page);
+
+  const picker = page.locator(".sound-workspace .picker select");
+  await picker.selectOption("glass_pad");
+
+  await expect
+    .poll(async () => (await edits(page)).at(-1))
+    .toMatchObject({
+      kind: "chooseSound",
+      part: "violin",
+      instrument: "glass_pad",
+    });
 });
 
 test("moving a parameter issues an edit against the source, not against a copy", async ({ page }) => {
   await inSound(page);
+  await page.locator(".sound-workspace .machine summary").click();
 
   const cutoff = page.locator("#glass_pad-5-cutoff");
   await cutoff.fill("900");
@@ -85,7 +104,7 @@ test("⌘3 shows every part with what it sends where", async ({ page }) => {
   await inMix(page);
 
   const strips = page.locator(".mix-workspace .strip-name");
-  await expect(strips).toHaveText(["violin", "strings", "hall"]);
+  await expect(strips).toHaveText(["violin part output", "strings part output", "hall", "main"]);
 
   // The levels the piece wrote, on one scale — decibels — whichever unit
   // each was written in.
@@ -110,4 +129,32 @@ test("a send fader writes the level it was moved to", async ({ page }) => {
       bus: "hall",
       decibels: -6,
     });
+});
+
+test("recorded media and verified assets stay distinct from part outputs", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await context.newPage();
+  await stubShell(page, "sound-workbench");
+  await page.goto("/");
+  await engraved(page);
+
+  await inSound(page);
+  await expect(page.locator(".sound-workspace .picker select")).toHaveValue("glass");
+  await expect(page.locator(".sound-workspace .contract")).toContainText("neutral");
+  await expect(page.locator(".sound-workspace .assets p")).toHaveCount(3);
+  await expect(page.locator(".sound-workspace .assets")).toContainText("wav@1");
+  await expect(page.locator(".sound-workspace .assets")).toContainText("sfz@1");
+  await expect(page.locator(".sound-workspace .assets")).toContainText("sf2@1");
+
+  await inMix(page);
+  await expect(page.getByRole("heading", { name: "lead part output" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "pulse media source" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "recording media source" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "main", exact: true })).toBeVisible();
+  await expect(page.locator(".mix-workspace")).toContainText("clip · loop");
+  await expect(page.locator(".mix-workspace")).toContainText("fixed cue");
+  await expect(page.locator(".mix-workspace")).toContainText("send to room");
+
+  await expect(page).toHaveScreenshot("sound-mix-workbench.png", { animations: "disabled" });
+  await context.close();
 });

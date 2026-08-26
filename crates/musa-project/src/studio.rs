@@ -150,6 +150,22 @@ pub struct RouteFacts {
     pub destination: String,
 }
 
+/// One named recorded-media source, collapsed from its checked occurrences.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaSourceFacts {
+    /// Source declaration name used by routes and sends.
+    pub name: String,
+    /// Verified logical asset address supplied by the source declaration.
+    pub asset: String,
+    /// `musical-clip` or `fixed-media-cue`.
+    pub kind: String,
+    /// `crop`, `loop`, or `rate` for a musical clip.
+    pub fit: Option<String>,
+    /// Number of checked occurrences in this score.
+    pub occurrences: usize,
+}
+
 /// Everything the Sound and Mix workspaces display.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -170,6 +186,8 @@ pub struct StudioFacts {
     pub sends: Vec<SendFacts>,
     /// The routes, in source order.
     pub routes: Vec<RouteFacts>,
+    /// Named recorded-media sources in first-occurrence order.
+    pub media: Vec<MediaSourceFacts>,
 }
 
 impl StudioFacts {
@@ -183,6 +201,34 @@ impl StudioFacts {
         score: &musa_score::ScoreSnapshot,
         parts: &[String],
     ) -> Self {
+        let mut media: Vec<MediaSourceFacts> = Vec::new();
+        for occurrence in score.annotations().media() {
+            if let Some(existing) = media.iter_mut().find(|source| source.name == occurrence.name) {
+                existing.occurrences = existing.occurrences.saturating_add(1);
+                continue;
+            }
+            let (kind, fit) = match occurrence.kind {
+                musa_score::score::MediaKind::MusicalClip(fit) => (
+                    "musical-clip".to_owned(),
+                    Some(
+                        match fit {
+                            musa_score::score::MediaFit::Crop => "crop",
+                            musa_score::score::MediaFit::Loop => "loop",
+                            musa_score::score::MediaFit::Rate => "rate",
+                        }
+                        .to_owned(),
+                    ),
+                ),
+                musa_score::score::MediaKind::FixedMediaCue => ("fixed-media-cue".to_owned(), None),
+            };
+            media.push(MediaSourceFacts {
+                name: occurrence.name.clone(),
+                asset: occurrence.asset.clone(),
+                kind,
+                fit,
+                occurrences: 1,
+            });
+        }
         Self {
             declared: studio.declared(),
             patches: containers(studio, spans, ContainerKind::Patch),
@@ -224,6 +270,7 @@ impl StudioFacts {
                     destination: route.destination().to_owned(),
                 })
                 .collect(),
+            media,
         }
     }
 }

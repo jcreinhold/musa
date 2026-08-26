@@ -11,6 +11,7 @@
   import EditableValue from "../lib/ui/EditableValue.svelte";
   import type {
     DecisionFact,
+    AssignmentFacts,
     EditImpact,
     EventFacts,
     HeaderFact,
@@ -55,6 +56,8 @@
     onpitch,
     onduration,
     onreveal,
+    sound = null,
+    onsound,
     header = [],
     onheader,
   }: {
@@ -115,6 +118,10 @@
     onduration?: (duration: string) => void;
     /** Open the source at a span: the line number's whole job. */
     onreveal?: (span: Span) => void;
+    /** Effective source sound for the selected event's part. */
+    sound?: AssignmentFacts | null;
+    /** Write an inherited edition sound explicitly. */
+    onsound?: (part: string) => void;
     /**
      * What the piece says about itself, as the source spells it — every field
      * it can state, including the ones it has not. This is what the inspector
@@ -256,6 +263,20 @@
         <EditableValue value={event.pitchSpellings[0] ?? ""} label="Pitch" onchange={(next) => onpitch(next)} />
       {:else if sounds}{event.pitches.join(" ")}{:else}<span class="rest">rest</span>{/if}
     </TypographicRow>
+
+    {#if sound}
+      <div class="sound" role="group" aria-label={`${sound.part} sound`}>
+        <span class="sound-label">Sound</span>
+        <span><code>{sound.instrument}</code> · <code>{sound.profile}</code></span>
+        {#if sound.explicit}
+          <span class="sound-state">written</span>
+        {:else}
+          <button type="button" class="sound-action" disabled={!onsound} onclick={() => onsound?.(sound.part)}
+            >inherited · write it</button
+          >
+        {/if}
+      </div>
+    {/if}
 
     {#snippet written()}written {asWritten}{/snippet}
     <TypographicRow label="Duration" editable trailing={asWritten ? written : undefined}>
@@ -419,6 +440,36 @@
   .rest,
   .authored {
     color: var(--ink-muted);
+  }
+
+  .sound {
+    display: grid;
+    grid-template-columns: 4.5em minmax(0, 1fr);
+    gap: var(--s-1) var(--s-2);
+    font-family: var(--f-ui);
+    font-size: var(--t-micro-size);
+    line-height: var(--t-micro-line);
+    color: var(--ink-muted);
+  }
+
+  .sound-label {
+    color: var(--ink-muted);
+  }
+
+  .sound-state,
+  .sound-action {
+    grid-column: 2;
+  }
+
+  .sound-action {
+    justify-self: start;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: 0 0 1px;
+    background: none;
+    color: var(--ink-muted);
+    font: inherit;
+    cursor: pointer;
   }
 
   /*

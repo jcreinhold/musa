@@ -10,7 +10,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_project::{DocumentId, ExportRequest, ProjectSession};
+use musa_project::{DocumentId, ExportRequest, ProjectSession, lock_assets};
 use serde_json::Value;
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -62,7 +62,11 @@ fn write_or_compare(path: &Path, contents: &str) -> Result {
 fn annotated_fixture_is_current() -> Result {
     let source = std::fs::read_to_string(example("annotated.musa"))?;
     let session = ProjectSession::from_text(source, "annotated.musa");
-    assert!(session.snapshot().compiles(), "the fixture piece must compile");
+    assert!(
+        session.snapshot().compiles(),
+        "the fixture piece must compile: {:#?}",
+        session.snapshot().diagnostics()
+    );
 
     let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
     json.push('\n');
@@ -81,6 +85,101 @@ fn snapshot_fixture_is_current() -> Result {
     let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("glass-mountain.snapshot.json"), &json)
+}
+
+/// Source-declared instruments and recorded media, plus the current verified
+/// closure the Sound and Mix workspaces present without interpreting it.
+#[test]
+fn sound_workbench_fixture_is_current() -> Result {
+    let directory = tempfile::tempdir()?;
+    let root = directory.path();
+    std::fs::create_dir_all(root.join("assets"))?;
+    std::fs::write(
+        root.join("musa.toml"),
+        r#"[project]
+name = "Sound workbench"
+
+[assets."assets/recording.wav"]
+kind = "audio"
+adapter = "wav@1"
+max_bytes = 65536
+
+[assets."assets/map.sfz"]
+kind = "sfz"
+adapter = "sfz@1"
+max_bytes = 65536
+
+[assets."assets/bank.sf2"]
+kind = "sound-font"
+adapter = "sf2@1"
+max_bytes = 65536
+"#,
+    )?;
+    std::fs::write(root.join("assets/map.sfz"), b"<region> sample=recording.wav\n")?;
+    std::fs::write(root.join("assets/bank.sf2"), b"fixture bank identity")?;
+    let mut recording = std::io::Cursor::new(Vec::new());
+    {
+        let mut writer = hound::WavWriter::new(
+            &mut recording,
+            hound::WavSpec {
+                channels: 1,
+                sample_rate: 48_000,
+                bits_per_sample: 32,
+                sample_format: hound::SampleFormat::Float,
+            },
+        )?;
+        for _ in 0..64 {
+            writer.write_sample(0.25_f32)?;
+        }
+        writer.finalize()?;
+    }
+    std::fs::write(root.join("assets/recording.wav"), recording.into_inner())?;
+    std::fs::write(
+        root.join("piece.musa"),
+        r#"piece "Sound workbench" {
+    meter 4/4;
+    instrument glass conforms note_instrument {
+        implementation graph { oscillator(sine) |> lowpass(cutoff: 1400 Hz, resonance: 1/2) |> output; }
+    }
+    clip pulse from "assets/recording.wav" fit 1/4 by loop;
+    fixed_media recording from "assets/recording.wav";
+    score {
+        cue pulse at 1:1;
+        cue recording at 1:2;
+        part lead { sound glass using neutral; voice one { c4/1 } }
+    }
+    studio {
+        bus room { reverb(room: 1/2) |> output; }
+        route lead -> master;
+        route pulse -> master;
+        send recording -> room at -12 dB;
+        route room -> master;
+    }
+}
+"#,
+    )?;
+    lock_assets(root)?;
+    let session = ProjectSession::open(root.join("piece.musa"))?;
+    assert!(
+        session.snapshot().compiles(),
+        "the fixture piece must compile: {:#?}",
+        session.snapshot().diagnostics()
+    );
+
+    let mut wire = anonymous(session.snapshot().to_wire());
+    wire.as_object_mut()
+        .ok_or("the snapshot wire must be an object")?
+        .insert("name".to_owned(), Value::from("sound-workbench.musa"));
+    if let Some(assets) = wire.get_mut("assets").and_then(Value::as_array_mut) {
+        for asset in assets {
+            if asset.get("origin").is_some_and(Value::is_string) {
+                asset["origin"] = Value::from("sound-workbench.musa");
+            }
+        }
+    }
+    let mut json = serde_json::to_string_pretty(&wire)?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("sound-workbench.snapshot.json"), &json)
 }
 
 /// The piece whose text is not ASCII.

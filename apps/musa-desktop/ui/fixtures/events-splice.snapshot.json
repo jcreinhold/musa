@@ -984,7 +984,8 @@
       }
     ],
     "sends": [],
-    "routes": []
+    "routes": [],
+    "media": []
   },
   "scoreRevision": 0,
   "playback": {

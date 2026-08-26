@@ -1763,7 +1763,8 @@
         "source": "hall",
         "destination": "master"
       }
-    ]
+    ],
+    "media": []
   },
   "scoreRevision": 0,
   "playback": {
