@@ -730,17 +730,9 @@ fn declare_instrument(decl: &InstrumentDecl, spec: &mut SurfaceStudio, diagnosti
     }
     let Some(implementation) = decl.implementation() else {
         if decl.asset().is_some() {
-            diagnostics.push(
-                Diagnostic::error(
-                    Code::UnsupportedLanguageStage,
-                    format!("instrument `{name}` names an asset adapter that is not installed yet"),
-                )
-                .at(
-                    trimmed_span(decl.syntax()),
-                    "the declaration is valid, but its adapter is pending",
-                )
-                .help("use an `implementation graph` instrument until the sample-adapter prompt lands"),
-            );
+            // The project asset boundary validates and adapts the immutable
+            // foreign bytes. It deliberately does not become a graph patch;
+            // this declaration is retained by source and asset facts.
         } else {
             diagnostics.push(
                 Diagnostic::error(Code::Studio, format!("instrument `{name}` has no implementation"))

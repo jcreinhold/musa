@@ -10,6 +10,7 @@
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 use musa_project::{EventFacts, EventKind, EventsTokenClass, ScoreFacts, Span, events_classify, events_keyword_doc};
 use musa_syntax::DocumentAlternative;
+use musa_syntax::ast::{AstNode as _, InstrumentDecl};
 
 use crate::convert::{LineIndex, covers};
 use crate::workspace::Document;
@@ -30,6 +31,9 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
             return Some(found);
         }
     }
+    if let Some(found) = at_asset_instrument(&snapshot, byte, lines) {
+        return Some(found);
+    }
     if let Some(found) = at_item(&snapshot, byte, lines) {
         return Some(found);
     }
@@ -46,6 +50,28 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
         return Some(found);
     }
     at_studio(document, byte, lines)
+}
+
+fn at_asset_instrument(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_syntax::parse(snapshot.source());
+    let token = parsed.syntax().token_at_offset(byte.into()).next()?;
+    let declaration = token.parent_ancestors().find_map(InstrumentDecl::cast)?;
+    let asset = declaration.asset()?;
+    if !asset.to_ascii_lowercase().ends_with(".sfz") {
+        return None;
+    }
+    let name = declaration.name()?;
+    let range = token.text_range();
+    Some(answer(
+        lines,
+        Span {
+            start: u32::from(range.start()),
+            end: u32::from(range.end()),
+        },
+        format!(
+            "**{name}** — *imported note instrument*\n\n```musa\ninstrument {name} from \"{asset}\" conforms note_instrument;\n```\n\nAdapter: `sfz@1` · signature: `note_instrument` · techniques: ordinary\n\nSupported translation: global/group/region inheritance; WAV regions; key, expression, pitch, dB gain and pan; loops; SFZ-v1 amplitude envelope; attack/release/release-key; typed sustain state; directional choke; per-group sequence selection. Unsupported sound-changing opcodes are errors.\n\nOrigin: verified immutable asset",
+        ),
+    ))
 }
 
 /// A studio processor, parameter, or concept, read from invalid syntax but

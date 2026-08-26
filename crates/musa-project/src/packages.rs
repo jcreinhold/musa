@@ -360,6 +360,7 @@ pub(crate) fn offline(
         }
         let mut package_assets = BTreeMap::new();
         for (path, policy) in manifest.asset_policies()? {
+            let physical_path = cache.join(logical_path(&path)?);
             let locked = package.files.iter().find(|file| file.path == path).ok_or_else(|| {
                 ProjectError::Packages(format!(
                     "package asset `{path}` in `{}` is absent from the locked file table",
@@ -372,6 +373,8 @@ pub(crate) fn offline(
                     policy,
                     digest: locked.digest.clone(),
                     bytes: locked.bytes,
+                    path: physical_path,
+                    boundary: cache.clone(),
                 },
             );
         }

@@ -13,7 +13,9 @@ use musa_score::{Gesture, Letter};
 use num_rational::Ratio;
 use thiserror::Error;
 
-use crate::sample_source::{ConnectionCondition, LoopMode, PedalCondition, Region, SelectionPolicy, Trigger};
+use crate::sample_source::{
+    ConnectionCondition, EnvelopeCurve, Gain, LoopMode, OffMode, PedalCondition, Region, SelectionPolicy, Trigger,
+};
 use crate::{EventHandle, SampleMap};
 
 /// Explicit native preparation bounds. There is deliberately no default.
@@ -151,9 +153,13 @@ impl PreparedSampleMap {
 
     /// Allocate the fixed real-time voice pool off-thread.
     pub fn runtime(&self) -> SampleRuntime {
+        let region_capacity = self.0.regions.len();
         SampleRuntime {
             prepared: Arc::clone(&self.0),
             voices: vec![Voice::idle(); usize::from(self.0.map.voices)],
+            notes: (0..self.0.map.voices)
+                .map(|_| ActiveNote::idle(region_capacity))
+                .collect(),
             pedal_down: false,
         }
     }
@@ -237,9 +243,7 @@ pub fn prepare_sample_map(
                 source.asset
             )));
         }
-        let (loop_start, loop_end) = if source.loop_mode == LoopMode::None {
-            (0, 0)
-        } else {
+        let (loop_start, loop_end) = if source.loop_mode.loops() {
             let loop_start = usize::try_from(source.loop_start).unwrap_or(usize::MAX);
             let loop_end = usize::try_from(source.loop_end).unwrap_or(usize::MAX);
             if loop_start < start || loop_start >= loop_end || loop_end > end {
@@ -249,9 +253,20 @@ pub fn prepare_sample_map(
                 )));
             }
             (loop_start, loop_end)
+        } else {
+            (0, 0)
         };
         let pan = ratio_f32(source.pan, "pan")?;
-        let gain = ratio_f32(source.gain, "gain")?;
+        let gain = match &source.gain {
+            Gain::Linear(value) => ratio_f32(*value, "linear gain")?,
+            Gain::Decibels(value) => {
+                let decibels = ratio_f32(*value, "decibel gain")?;
+                10.0f32.powf(decibels / 20.0)
+            }
+        };
+        if !gain.is_finite() {
+            return Err(SamplerPrepareError::Map("gain is not a finite native value".to_owned()));
+        }
         let left = (-pan).midpoint(1.0).sqrt() * gain;
         let right = 1.0f32.midpoint(pan).sqrt() * gain;
         regions.push(PreparedRegion {
@@ -273,7 +288,14 @@ pub fn prepare_sample_map(
         voices: map.voices,
         regions: map.regions.len(),
         decoded_pcm_bytes: decoded_bytes,
-        voice_state_bytes: usize::from(map.voices).saturating_mul(std::mem::size_of::<Voice>()),
+        voice_state_bytes: usize::from(map.voices)
+            .saturating_mul(std::mem::size_of::<Voice>())
+            .saturating_add(
+                usize::from(map.voices)
+                    .saturating_mul(map.regions.len())
+                    .saturating_mul(3)
+                    .saturating_mul(std::mem::size_of::<usize>()),
+            ),
         max_step_work: step_work,
     };
     Ok(PreparedSampleMap(Arc::new(PreparedData {
@@ -294,12 +316,13 @@ pub struct SampleSelector {
     sequence: Vec<(u64, u64)>,
 }
 
-/// Opaque, allocation-free instruction consumed when one note begins.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Opaque instruction selected off-thread and borrowed by the audio callback.
+#[derive(Clone, Debug, PartialEq)]
 pub struct SampleSelectionToken {
-    attack: Option<usize>,
-    release_up: Option<usize>,
-    release_down: Option<usize>,
+    attack: Box<[usize]>,
+    release_up: Box<[usize]>,
+    release_down: Box<[usize]>,
+    release_key: Box<[usize]>,
     key: u8,
     expression: f32,
 }
@@ -348,10 +371,20 @@ impl SampleSelector {
             true,
             exact.as_bytes(),
         );
+        let release_key = self.choose(
+            key,
+            gesture.amplitude(),
+            technique,
+            connection,
+            Trigger::ReleaseKey,
+            false,
+            exact.as_bytes(),
+        );
         Ok(SampleSelectionToken {
-            attack,
-            release_up,
-            release_down,
+            attack: attack.into_boxed_slice(),
+            release_up: release_up.into_boxed_slice(),
+            release_down: release_down.into_boxed_slice(),
+            release_key: release_key.into_boxed_slice(),
             key,
             expression,
         })
@@ -366,58 +399,97 @@ impl SampleSelector {
         trigger: Trigger,
         pedal_down: bool,
         identity: &[u8],
-    ) -> Option<usize> {
-        let highest = self
+    ) -> Vec<usize> {
+        let Some(highest) = self
             .prepared
             .regions
             .iter()
             .filter(|region| applies(region, key, expression, technique, connection, trigger, pedal_down))
             .map(|region| region.source.priority)
-            .max()?;
-        let candidates = self.prepared.regions.iter().enumerate().filter(|(_, region)| {
-            region.source.priority == highest
-                && applies(region, key, expression, technique, connection, trigger, pedal_down)
-        });
+            .max()
+        else {
+            return Vec::new();
+        };
+        let candidates = self
+            .prepared
+            .regions
+            .iter()
+            .enumerate()
+            .filter(|(_, region)| {
+                region.source.priority == highest
+                    && applies(region, key, expression, technique, connection, trigger, pedal_down)
+            })
+            .collect::<Vec<_>>();
+        let mut selected = candidates
+            .iter()
+            .filter(|(_, region)| region.source.sequence_group == 0)
+            .map(|(index, _)| *index)
+            .collect::<Vec<_>>();
+        let mut groups = candidates
+            .iter()
+            .map(|(_, region)| region.source.sequence_group)
+            .filter(|group| *group != 0)
+            .collect::<Vec<_>>();
+        groups.sort_unstable();
+        groups.dedup();
         match self.prepared.map.selection {
-            SelectionPolicy::First => candidates.map(|(index, _)| index).next(),
+            SelectionPolicy::First => {
+                for group in groups {
+                    if let Some((index, _)) = candidates
+                        .iter()
+                        .find(|(_, region)| region.source.sequence_group == group)
+                    {
+                        selected.push(*index);
+                    }
+                }
+            }
             SelectionPolicy::RoundRobin => {
-                let group = candidates
-                    .clone()
-                    .map(|(_, region)| region.source.sequence_group)
-                    .find(|group| *group != 0)?;
-                let next = match self.sequence.iter_mut().find(|(candidate, _)| *candidate == group) {
-                    Some((_, next)) => {
-                        let current = *next;
-                        *next = next.saturating_add(1);
-                        current
-                    }
-                    None => {
-                        self.sequence.push((group, 1));
-                        0
-                    }
-                };
-                candidates
-                    .filter(|(_, region)| region.source.sequence_group == group)
-                    .find(|(_, region)| {
-                        (next % region.source.sequence_length).saturating_add(1) == region.source.sequence_position
-                    })
-                    .map(|(index, _)| index)
+                for group in groups {
+                    let next = match self.sequence.iter_mut().find(|(candidate, _)| *candidate == group) {
+                        Some((_, next)) => {
+                            let current = *next;
+                            *next = next.saturating_add(1);
+                            current
+                        }
+                        None => {
+                            self.sequence.push((group, 1));
+                            0
+                        }
+                    };
+                    selected.extend(candidates.iter().filter_map(|(index, region)| {
+                        (region.source.sequence_group == group
+                            && (next % region.source.sequence_length).saturating_add(1)
+                                == region.source.sequence_position)
+                            .then_some(*index)
+                    }));
+                }
             }
             SelectionPolicy::StableWeighted => {
-                let total = candidates
-                    .clone()
-                    .fold(0u64, |sum, (_, region)| sum.saturating_add(region.source.weight));
-                let mut selected = stable_hash(self.realization_seed, self.instrument_instance, identity) % total;
-                for (index, region) in candidates {
-                    let weight = region.source.weight;
-                    if selected < weight {
-                        return Some(index);
+                for group in groups {
+                    let total = candidates
+                        .iter()
+                        .filter(|(_, region)| region.source.sequence_group == group)
+                        .fold(0u64, |sum, (_, region)| sum.saturating_add(region.source.weight));
+                    let mut choice = stable_hash(
+                        self.realization_seed ^ group.rotate_left(13),
+                        self.instrument_instance,
+                        identity,
+                    ) % total;
+                    for (index, region) in &candidates {
+                        if region.source.sequence_group != group {
+                            continue;
+                        }
+                        if choice < region.source.weight {
+                            selected.push(*index);
+                            break;
+                        }
+                        choice -= region.source.weight;
                     }
-                    selected -= weight;
                 }
-                None
             }
         }
+        selected.sort_unstable();
+        selected
     }
 }
 
@@ -437,6 +509,7 @@ fn applies(
         && (region.source.technique.is_empty() || region.source.technique == technique)
         && match region.source.connection {
             ConnectionCondition::Any => true,
+            ConnectionCondition::First => connection == "Ordinary",
             ConnectionCondition::Detached => connection == "Detached",
             ConnectionCondition::Ordinary => connection == "Ordinary",
             ConnectionCondition::Legato => connection == "Legato",
@@ -471,9 +544,6 @@ struct Voice {
     held: bool,
     deferred_release: bool,
     one_shot: bool,
-    release_up: Option<usize>,
-    release_down: Option<usize>,
-    key: u8,
     age: u64,
     expression: f32,
 }
@@ -493,9 +563,6 @@ impl Voice {
             held: false,
             deferred_release: false,
             one_shot: false,
-            release_up: None,
-            release_down: None,
-            key: 0,
             age: 0,
             expression: 1.0,
         }
@@ -506,73 +573,150 @@ impl Voice {
     }
 }
 
+struct ActiveNote {
+    handle: Option<EventHandle>,
+    release_up: Vec<usize>,
+    release_down: Vec<usize>,
+    release_key: Vec<usize>,
+    key: u8,
+    expression: f32,
+    deferred: bool,
+    age: u64,
+}
+
+impl ActiveNote {
+    fn idle(region_capacity: usize) -> Self {
+        Self {
+            handle: None,
+            release_up: Vec::with_capacity(region_capacity),
+            release_down: Vec::with_capacity(region_capacity),
+            release_key: Vec::with_capacity(region_capacity),
+            key: 0,
+            expression: 1.0,
+            deferred: false,
+            age: 0,
+        }
+    }
+
+    fn clear(&mut self) {
+        self.handle = None;
+        self.release_up.clear();
+        self.release_down.clear();
+        self.release_key.clear();
+        self.deferred = false;
+    }
+}
+
 /// Fixed-memory native sampler state owned by one prepared instrument instance.
 pub struct SampleRuntime {
     prepared: Arc<PreparedData>,
     voices: Vec<Voice>,
+    notes: Vec<ActiveNote>,
     pedal_down: bool,
 }
 
 impl SampleRuntime {
     /// Begin one scheduled note using a token computed off-thread.
-    pub fn note_on(&mut self, handle: &EventHandle, token: SampleSelectionToken) {
-        let Some(region) = token.attack else { return };
-        self.start_voice(
-            Some(handle),
-            region,
-            token.key,
-            token.expression,
-            false,
-            token.release_up,
-            token.release_down,
-        );
+    pub fn note_on(&mut self, handle: &EventHandle, token: &SampleSelectionToken) {
+        let note_slot = self.notes.iter().position(|note| note.handle.is_none()).or_else(|| {
+            self.notes
+                .iter()
+                .enumerate()
+                .max_by_key(|(_, note)| note.age)
+                .map(|(index, _)| index)
+        });
+        if let Some(note) = note_slot.and_then(|index| self.notes.get_mut(index)) {
+            note.handle = Some(handle.clone());
+            note.release_up.clear();
+            note.release_up.extend_from_slice(&token.release_up);
+            note.release_down.clear();
+            note.release_down.extend_from_slice(&token.release_down);
+            note.release_key.clear();
+            note.release_key.extend_from_slice(&token.release_key);
+            note.key = token.key;
+            note.expression = token.expression;
+            note.deferred = false;
+            note.age = 0;
+        }
+        for &region in &token.attack {
+            self.start_voice(Some(handle), region, token.key, token.expression);
+        }
     }
 
     /// Release the scheduled occurrence. Pedal deferral and release samples
     /// use choices already carried by the note's token.
     pub fn note_off(&mut self, handle: &EventHandle) {
-        let mut release = None;
-        let mut key = 0;
-        let mut expression = 1.0;
         for voice in &mut self.voices {
             if voice.handle.as_ref() == Some(handle) && voice.held {
                 voice.held = false;
                 if self.pedal_down {
                     voice.deferred_release = true;
-                } else {
+                } else if !voice.one_shot {
                     begin_release(voice);
-                    release = if self.pedal_down {
-                        voice.release_down
-                    } else {
-                        voice.release_up
-                    };
-                    key = voice.key;
-                    expression = voice.expression;
                 }
-                break;
             }
         }
-        if let Some(region) = release {
-            self.start_voice(None, region, key, expression, true, None, None);
+        let Some(note_index) = self.notes.iter().position(|note| note.handle.as_ref() == Some(handle)) else {
+            return;
+        };
+        let (key, expression, release_key) = {
+            let Some(note) = self.notes.get_mut(note_index) else {
+                return;
+            };
+            (note.key, note.expression, std::mem::take(&mut note.release_key))
+        };
+        for &region in &release_key {
+            self.start_voice(None, region, key, expression);
+        }
+        let Some(note) = self.notes.get_mut(note_index) else {
+            return;
+        };
+        note.release_key = release_key;
+        if self.pedal_down {
+            note.deferred = true;
+        } else {
+            let release_up = std::mem::take(&mut note.release_up);
+            for &region in &release_up {
+                self.start_voice(None, region, key, expression);
+            }
+            let Some(note) = self.notes.get_mut(note_index) else {
+                return;
+            };
+            note.release_up = release_up;
+            note.clear();
         }
     }
 
     /// Apply the source sustain-control interpretation without allocation.
     pub fn set_pedal(&mut self, down: bool) {
         if self.pedal_down && !down {
-            let voice_count = self.voices.len();
-            for index in 0..voice_count {
-                let release = self.voices.get_mut(index).and_then(|voice| {
-                    if !voice.deferred_release {
-                        return None;
-                    }
+            for voice in &mut self.voices {
+                if voice.deferred_release {
                     voice.deferred_release = false;
-                    begin_release(voice);
-                    voice.release_down.map(|region| (region, voice.key, voice.expression))
-                });
-                if let Some((region, key, expression)) = release {
-                    self.start_voice(None, region, key, expression, true, None, None);
+                    if !voice.one_shot {
+                        begin_release(voice);
+                    }
                 }
+            }
+            let note_count = self.notes.len();
+            for index in 0..note_count {
+                let Some(note) = self.notes.get_mut(index) else {
+                    continue;
+                };
+                if !note.deferred {
+                    continue;
+                }
+                let key = note.key;
+                let expression = note.expression;
+                let release_down = std::mem::take(&mut note.release_down);
+                for &region in &release_down {
+                    self.start_voice(None, region, key, expression);
+                }
+                let Some(note) = self.notes.get_mut(index) else {
+                    continue;
+                };
+                note.release_down = release_down;
+                note.clear();
             }
         }
         self.pedal_down = down;
@@ -581,6 +725,11 @@ impl SampleRuntime {
     /// Produce one stereo frame. Work is bounded by the prepared voice count.
     pub fn step(&mut self) -> [f32; 2] {
         let mut output = [0.0f32; 2];
+        for note in &mut self.notes {
+            if note.handle.is_some() {
+                note.age = note.age.saturating_add(1);
+            }
+        }
         for voice in &mut self.voices {
             if voice.is_idle() {
                 continue;
@@ -628,30 +777,25 @@ impl SampleRuntime {
         remainder.fill(0.0);
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn start_voice(
-        &mut self,
-        handle: Option<&EventHandle>,
-        region_index: usize,
-        key: u8,
-        expression: f32,
-        one_shot: bool,
-        release_up: Option<usize>,
-        release_down: Option<usize>,
-    ) {
+    fn start_voice(&mut self, handle: Option<&EventHandle>, region_index: usize, key: u8, expression: f32) {
         let Some(region) = self.prepared.regions.get(region_index) else {
             return;
         };
-        if region.source.exclusive_group != 0 {
+        if region.source.group != 0 {
             for voice in &mut self.voices {
-                let same_group = self
-                    .prepared
-                    .regions
-                    .get(voice.region)
-                    .is_some_and(|playing| playing.source.exclusive_group == region.source.exclusive_group);
-                if !voice.is_idle() && same_group {
-                    voice.stage = EnvelopeStage::Idle;
-                    voice.handle = None;
+                let off_mode = self.prepared.regions.get(voice.region).and_then(|playing| {
+                    (playing.source.off_by == region.source.group).then_some(playing.source.off_mode)
+                });
+                if !voice.is_idle()
+                    && let Some(off_mode) = off_mode
+                {
+                    match off_mode {
+                        OffMode::Fast => {
+                            voice.stage = EnvelopeStage::Idle;
+                            voice.handle = None;
+                        }
+                        OffMode::Normal => begin_release(voice),
+                    }
                 }
             }
         }
@@ -687,12 +831,9 @@ impl SampleRuntime {
         }
         voice.stage_frame = 0;
         voice.release_start = 0.0;
-        voice.held = !one_shot;
+        voice.held = handle.is_some();
         voice.deferred_release = false;
-        voice.one_shot = one_shot;
-        voice.release_up = release_up;
-        voice.release_down = release_down;
-        voice.key = key;
+        voice.one_shot = region.source.loop_mode == LoopMode::OneShot || region.source.trigger != Trigger::Attack;
         voice.age = 0;
         voice.expression = expression.clamp(0.0, 1.0);
     }
@@ -711,7 +852,13 @@ fn tick_envelope(voice: &mut Voice, region: &PreparedRegion) {
         EnvelopeStage::Decay => {
             voice.stage_frame = voice.stage_frame.saturating_add(1);
             let along = voice.stage_frame as f32 / region.decay_frames.max(1) as f32;
-            voice.level = (region.sustain - 1.0).mul_add(along.min(1.0), 1.0);
+            voice.level = match region.source.envelope.curve {
+                EnvelopeCurve::Linear => (region.sustain - 1.0).mul_add(along.min(1.0), 1.0),
+                EnvelopeCurve::Sfz1 => {
+                    let exponential = (-8.0 * along).exp();
+                    (1.0 - region.sustain).mul_add(exponential, region.sustain)
+                }
+            };
             if region.decay_frames == 0 || voice.stage_frame >= region.decay_frames {
                 voice.stage = EnvelopeStage::Sustain;
                 voice.level = region.sustain;
@@ -721,7 +868,10 @@ fn tick_envelope(voice: &mut Voice, region: &PreparedRegion) {
         EnvelopeStage::Release => {
             voice.stage_frame = voice.stage_frame.saturating_add(1);
             let along = voice.stage_frame as f32 / region.release_frames.max(1) as f32;
-            voice.level = voice.release_start * (1.0 - along.min(1.0));
+            voice.level = match region.source.envelope.curve {
+                EnvelopeCurve::Linear => voice.release_start * (1.0 - along.min(1.0)),
+                EnvelopeCurve::Sfz1 => voice.release_start * (-8.0 * along).exp(),
+            };
             if region.release_frames == 0 || voice.stage_frame >= region.release_frames {
                 voice.stage = EnvelopeStage::Idle;
                 voice.handle = None;
@@ -742,19 +892,15 @@ fn advance(voice: &mut Voice, region: &PreparedRegion) {
         return;
     }
     voice.position = voice.increment.mul_add(voice.direction, voice.position);
-    let looping =
-        !voice.one_shot && (voice.held || voice.deferred_release) && region.source.loop_mode != LoopMode::None;
+    let looping = region.source.loop_mode.loops()
+        && (region.source.loop_mode.continuous() || voice.held || voice.deferred_release);
     if looping && voice.direction > 0.0 && voice.position >= region.loop_end as f64 {
-        match region.source.loop_mode {
-            LoopMode::Forward => {
-                let width = (region.loop_end - region.loop_start) as f64;
-                voice.position = region.loop_start as f64 + (voice.position - region.loop_end as f64) % width;
-            }
-            LoopMode::Alternating => {
-                voice.position = region.loop_end as f64 - (voice.position - region.loop_end as f64);
-                voice.direction = -1.0;
-            }
-            LoopMode::None => {}
+        if region.source.loop_mode.alternating() {
+            voice.position = region.loop_end as f64 - (voice.position - region.loop_end as f64);
+            voice.direction = -1.0;
+        } else {
+            let width = (region.loop_end - region.loop_start) as f64;
+            voice.position = region.loop_start as f64 + (voice.position - region.loop_end as f64) % width;
         }
     } else if looping && voice.direction < 0.0 && voice.position < region.loop_start as f64 {
         voice.position = region.loop_start as f64 + (region.loop_start as f64 - voice.position);

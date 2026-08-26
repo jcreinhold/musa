@@ -152,6 +152,13 @@ pub struct AssetInventory {
     diagnostics: Vec<Diagnostic>,
     identity: [u8; 32],
     root: Option<PathBuf>,
+    locations: BTreeMap<String, AssetLocation>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct AssetLocation {
+    path: PathBuf,
+    boundary: PathBuf,
 }
 
 impl AssetInventory {
@@ -181,6 +188,7 @@ impl AssetInventory {
             diagnostics: vec![diagnostic],
             identity: closure_identity(&[]),
             root: None,
+            locations: BTreeMap::new(),
         }
     }
 
@@ -209,17 +217,17 @@ impl AssetInventory {
             .iter()
             .find(|fact| fact.path == logical && fact.status == AssetStatus::Verified)
             .ok_or_else(|| ProjectError::Assets(format!("sample asset `{logical}` is not in the verified closure")))?;
-        let root = self
-            .root
-            .as_deref()
-            .ok_or_else(|| ProjectError::Assets("the verified asset closure has no project root".to_owned()))?;
-        let relative = safe_relative(logical).map_err(ProjectError::Assets)?;
-        let canonical_root = std::fs::canonicalize(root).map_err(|error| ProjectError::io(root.display(), error))?;
-        let path = root.join(relative);
-        let canonical = std::fs::canonicalize(&path).map_err(|error| ProjectError::io(path.display(), error))?;
-        if !canonical.starts_with(&canonical_root) {
+        let location = self
+            .locations
+            .get(logical)
+            .ok_or_else(|| ProjectError::Assets(format!("sample asset `{logical}` has no verified read location")))?;
+        let canonical_boundary = std::fs::canonicalize(&location.boundary)
+            .map_err(|error| ProjectError::io(location.boundary.display(), error))?;
+        let canonical =
+            std::fs::canonicalize(&location.path).map_err(|error| ProjectError::io(location.path.display(), error))?;
+        if !canonical.starts_with(&canonical_boundary) {
             return Err(ProjectError::Assets(format!(
-                "sample asset `{logical}` follows a symlink outside the project"
+                "sample asset `{logical}` follows a symlink outside its owning root"
             )));
         }
         let expected = fact
@@ -255,6 +263,7 @@ impl Default for AssetInventory {
             diagnostics: Vec::new(),
             identity: closure_identity(&[]),
             root: None,
+            locations: BTreeMap::new(),
         }
     }
 }
@@ -270,12 +279,14 @@ pub(crate) struct AssetPolicy {
     pub(crate) source: Option<String>,
 }
 
-/// Verified package-owned asset metadata, never raw bytes or a cache path.
+/// Verified package-owned asset metadata and its private cache read boundary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct PackageAsset {
     pub(crate) policy: AssetPolicy,
     pub(crate) digest: String,
     pub(crate) bytes: u64,
+    pub(crate) path: PathBuf,
+    pub(crate) boundary: PathBuf,
 }
 
 pub(crate) fn validate_policy(path: &str, policy: &AssetPolicy) -> Result<(), String> {
@@ -560,6 +571,7 @@ fn resolve(
     let canonical_root = std::fs::canonicalize(root).ok();
     let mut facts = Vec::with_capacity(by_path.len());
     let mut diagnostics = Vec::new();
+    let mut locations = BTreeMap::new();
     for (logical, origins) in by_path {
         let policy = policies.get(&logical);
         let locked = lock.and_then(|file| file.assets.get(&logical));
@@ -581,6 +593,14 @@ fn resolve(
         };
         if !status.is_verified() {
             diagnostics.push(diagnostic(&fact, open_source));
+        } else if let Ok(relative) = safe_relative(&logical) {
+            locations.insert(
+                logical.clone(),
+                AssetLocation {
+                    path: root.join(relative),
+                    boundary: root.to_path_buf(),
+                },
+            );
         }
         facts.push(fact);
     }
@@ -635,6 +655,14 @@ fn resolve(
         };
         if !status.is_verified() {
             diagnostics.push(diagnostic(&fact, open_source));
+        } else if let Some(package) = package {
+            locations.insert(
+                fact.path.clone(),
+                AssetLocation {
+                    path: package.path.clone(),
+                    boundary: package.boundary.clone(),
+                },
+            );
         }
         facts.push(fact);
     }
@@ -645,6 +673,7 @@ fn resolve(
         diagnostics,
         identity,
         root: Some(root.to_path_buf()),
+        locations,
     }
 }
 

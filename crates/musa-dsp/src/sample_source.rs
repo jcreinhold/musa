@@ -12,7 +12,7 @@ use thiserror::Error;
 
 const SCHEMA_NAME: &str = "std.sound.sample.SampleMapArtifact";
 const ROOT_TYPE: &str = "SampleMapArtifact";
-const VERSION: u64 = 1;
+const VERSION: u64 = 2;
 
 /// Exact consumer schema for a source-declared sample map.
 #[must_use]
@@ -24,6 +24,7 @@ pub fn sample_map_schema() -> SourceSchema {
 pub(crate) enum Trigger {
     Attack,
     Release,
+    ReleaseKey,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +37,7 @@ pub(crate) enum PedalCondition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ConnectionCondition {
     Any,
+    First,
     Detached,
     Ordinary,
     Legato,
@@ -44,8 +46,43 @@ pub(crate) enum ConnectionCondition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum LoopMode {
     None,
-    Forward,
-    Alternating,
+    OneShot,
+    ForwardSustain,
+    ForwardContinuous,
+    AlternatingSustain,
+    AlternatingContinuous,
+}
+
+impl LoopMode {
+    pub(crate) const fn loops(self) -> bool {
+        !matches!(self, Self::None | Self::OneShot)
+    }
+
+    pub(crate) const fn continuous(self) -> bool {
+        matches!(self, Self::ForwardContinuous | Self::AlternatingContinuous)
+    }
+
+    pub(crate) const fn alternating(self) -> bool {
+        matches!(self, Self::AlternatingSustain | Self::AlternatingContinuous)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Gain {
+    Linear(Ratio<i64>),
+    Decibels(Ratio<i64>),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum EnvelopeCurve {
+    Linear,
+    Sfz1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OffMode {
+    Fast,
+    Normal,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,6 +98,7 @@ pub(crate) struct Envelope {
     pub(crate) decay: Ratio<i64>,
     pub(crate) sustain: Ratio<i64>,
     pub(crate) release: Ratio<i64>,
+    pub(crate) curve: EnvelopeCurve,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -81,7 +119,7 @@ pub(crate) struct Region {
     pub(crate) weight: u64,
     pub(crate) priority: u64,
     pub(crate) tune_cents: Ratio<i64>,
-    pub(crate) gain: Ratio<i64>,
+    pub(crate) gain: Gain,
     pub(crate) pan: Ratio<i64>,
     pub(crate) start_frame: u64,
     pub(crate) end_frame: u64,
@@ -89,7 +127,9 @@ pub(crate) struct Region {
     pub(crate) loop_end: u64,
     pub(crate) loop_mode: LoopMode,
     pub(crate) envelope: Envelope,
-    pub(crate) exclusive_group: u64,
+    pub(crate) group: u32,
+    pub(crate) off_by: u32,
+    pub(crate) off_mode: OffMode,
 }
 
 /// An exact, read-only projection of one checked source map.
@@ -207,8 +247,10 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         loop_end,
         loop_mode,
         envelope,
-        exclusive_group,
-    ] = fields::<25>(datum, "SampleRegion", path)?;
+        group,
+        off_by,
+        off_mode,
+    ] = fields::<27>(datum, "SampleRegion", path)?;
     let key_low = key(key_low, &format!("{path}.key_low"))?;
     let key_high = key(key_high, &format!("{path}.key_high"))?;
     let root_key = key(root_key, &format!("{path}.root_key"))?;
@@ -230,10 +272,24 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
     } else if sequence_length == 0 || sequence_position == 0 || sequence_position > sequence_length {
         return Err(malformed(path, "a one-based position inside its sequence length"));
     }
-    let gain = ratio(gain, &format!("{path}.gain"))?;
+    let gain = match constructor(gain) {
+        Some("LinearGain") => {
+            let [value] = fields::<1>(gain, "LinearGain", &format!("{path}.gain"))?;
+            let value = ratio(value, &format!("{path}.gain.value"))?;
+            if value < Ratio::ZERO {
+                return Err(malformed(path, "nonnegative linear gain"));
+            }
+            Gain::Linear(value)
+        }
+        Some("DecibelGain") => {
+            let [value] = fields::<1>(gain, "DecibelGain", &format!("{path}.gain"))?;
+            Gain::Decibels(ratio(value, &format!("{path}.gain.value"))?)
+        }
+        _ => return Err(malformed(&format!("{path}.gain"), "a SampleGain")),
+    };
     let pan = ratio(pan, &format!("{path}.pan"))?;
-    if gain < Ratio::ZERO || pan < -Ratio::ONE || pan > Ratio::ONE {
-        return Err(malformed(path, "nonnegative gain and pan in [-1,1]"));
+    if pan < -Ratio::ONE || pan > Ratio::ONE {
+        return Err(malformed(path, "pan in [-1,1]"));
     }
     let start_frame = nat(start_frame, &format!("{path}.start_frame"))?;
     let end_frame = nat(end_frame, &format!("{path}.end_frame"))?;
@@ -241,23 +297,31 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
     let loop_end = nat(loop_end, &format!("{path}.loop_end"))?;
     let loop_mode = match constructor(loop_mode) {
         Some("NoLoop") => LoopMode::None,
-        Some("ForwardLoop") => LoopMode::Forward,
-        Some("AlternatingLoop") => LoopMode::Alternating,
+        Some("OneShot") => LoopMode::OneShot,
+        Some("ForwardSustainLoop") => LoopMode::ForwardSustain,
+        Some("ForwardContinuousLoop") => LoopMode::ForwardContinuous,
+        Some("AlternatingSustainLoop") => LoopMode::AlternatingSustain,
+        Some("AlternatingContinuousLoop") => LoopMode::AlternatingContinuous,
         _ => return Err(malformed(&format!("{path}.loop_mode"), "a SampleLoopMode")),
     };
-    if loop_mode == LoopMode::None {
+    if !loop_mode.loops() {
         if loop_start != 0 || loop_end != 0 {
             return Err(malformed(path, "zero loop bounds when looping is disabled"));
         }
     } else if loop_start >= loop_end {
         return Err(malformed(path, "a nonempty loop interval"));
     }
-    let [attack, decay, sustain, release] = fields::<4>(envelope, "SampleEnvelope", path)?;
+    let [attack, decay, sustain, release, curve] = fields::<5>(envelope, "SampleEnvelope", path)?;
     let envelope = Envelope {
         attack: ratio(attack, &format!("{path}.envelope.attack_seconds"))?,
         decay: ratio(decay, &format!("{path}.envelope.decay_seconds"))?,
         sustain: ratio(sustain, &format!("{path}.envelope.sustain_level"))?,
         release: ratio(release, &format!("{path}.envelope.release_seconds"))?,
+        curve: match constructor(curve) {
+            Some("LinearEnvelope") => EnvelopeCurve::Linear,
+            Some("Sfz1Envelope") => EnvelopeCurve::Sfz1,
+            _ => return Err(malformed(&format!("{path}.envelope.curve"), "a SampleEnvelopeCurve")),
+        },
     };
     if envelope.attack < Ratio::ZERO
         || envelope.decay < Ratio::ZERO
@@ -277,6 +341,7 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         technique: text(technique, &format!("{path}.technique"))?,
         connection: match constructor(connection) {
             Some("AnyConnection") => ConnectionCondition::Any,
+            Some("FirstConnection") => ConnectionCondition::First,
             Some("DetachedConnection") => ConnectionCondition::Detached,
             Some("OrdinaryConnection") => ConnectionCondition::Ordinary,
             Some("LegatoConnection") => ConnectionCondition::Legato,
@@ -285,6 +350,7 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         trigger: match constructor(trigger) {
             Some("AttackTrigger") => Trigger::Attack,
             Some("ReleaseTrigger") => Trigger::Release,
+            Some("ReleaseKeyTrigger") => Trigger::ReleaseKey,
             _ => return Err(malformed(&format!("{path}.trigger"), "a SampleTrigger")),
         },
         pedal: match constructor(pedal) {
@@ -307,7 +373,15 @@ fn region(datum: SourceDatum<'_>, path: &str) -> Result<Region, SampleMapError> 
         loop_end,
         loop_mode,
         envelope,
-        exclusive_group: nat(exclusive_group, &format!("{path}.exclusive_group"))?,
+        group: u32::try_from(nat(group, &format!("{path}.group"))?)
+            .map_err(|_| malformed(&format!("{path}.group"), "a u32 group"))?,
+        off_by: u32::try_from(nat(off_by, &format!("{path}.off_by"))?)
+            .map_err(|_| malformed(&format!("{path}.off_by"), "a u32 off-by group"))?,
+        off_mode: match constructor(off_mode) {
+            Some("FastOff") => OffMode::Fast,
+            Some("NormalOff") => OffMode::Normal,
+            _ => return Err(malformed(&format!("{path}.off_mode"), "a SampleOffMode")),
+        },
     })
 }
 

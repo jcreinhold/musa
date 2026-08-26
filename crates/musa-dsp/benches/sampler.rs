@@ -16,7 +16,7 @@ static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
 const RATE: u32 = 48_000;
 const SOURCE: &str = r#"import std::sound::sample;
 let benchmark_map: SampleMapArtifact = SampleMapArtifact {
-    schema_version = 1,
+    schema_version = 2,
     sample_map = SampleMap {
         declaration_id = "bench.sampler@1", selection = FirstRegion, voices = 16,
         regions = [SampleRegion {
@@ -24,13 +24,13 @@ let benchmark_map: SampleMapArtifact = SampleMapArtifact {
             expression_low = 0/1, expression_high = 1/1, technique = "", connection = AnyConnection,
             trigger = AttackTrigger, pedal = AnyPedal,
             sequence_group = 0, sequence_position = 0, sequence_length = 0,
-            weight = 1, priority = 1, tune_cents = 0/1, gain = 1/1, pan = 0/1,
+            weight = 1, priority = 1, tune_cents = 0/1, gain = LinearGain(1/1), pan = 0/1,
             start_frame = 0, end_frame = 2048, loop_start = 128, loop_end = 1920,
-            loop_mode = ForwardLoop,
+            loop_mode = ForwardSustainLoop,
             envelope = SampleEnvelope {
                 attack_seconds = 1/1000, decay_seconds = 1/100,
-                sustain_level = 4/5, release_seconds = 1/20
-            }, exclusive_group = 0
+                sustain_level = 4/5, release_seconds = 1/20, curve = LinearEnvelope
+            }, group = 0, off_by = 0, off_mode = FastOff
         }]
     }
 };
@@ -122,7 +122,7 @@ fn input() -> (SampleRuntime, Box<[f32]>) {
         })
         .expect("begin handle");
     let mut runtime = prepared.runtime();
-    runtime.note_on(&handle, token);
+    runtime.note_on(&handle, &token);
     (runtime, vec![0.0; 8192].into_boxed_slice())
 }
 

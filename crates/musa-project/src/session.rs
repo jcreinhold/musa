@@ -7,6 +7,7 @@ use musa_compiler::{CompileOptions, SourceDocument};
 use musa_playback::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 use musa_score::{MusicalTime, Scope};
 use musa_syntax::BarSpacing;
+use musa_syntax::ast::{Document, PieceDecl};
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
@@ -181,6 +182,75 @@ impl ProjectSession {
             limits,
         )
         .map_err(|error| ProjectError::Performance(error.to_string()))
+    }
+
+    /// Adapt one source-declared `sfz@1` instrument through an ordinary
+    /// checked `SampleMapArtifact`, then prepare its verified samples.
+    ///
+    /// # Errors
+    /// Refuses an absent/non-SFZ declaration, an unverified asset, any parser
+    /// bound or support-matrix violation, a checked-map disagreement, or a
+    /// native sampler preparation failure.
+    pub fn prepare_sfz_instrument(
+        &self,
+        instrument: &str,
+        sfz_limits: crate::sfz::SfzLimits,
+        sampler_limits: musa_dsp::SamplerLimits,
+    ) -> Result<(musa_dsp::PreparedSampleMap, crate::sfz::SfzInstrumentFacts), ProjectError> {
+        if !self.assets.is_verified() {
+            return Err(ProjectError::Assets(
+                "the project asset closure is not verified".to_owned(),
+            ));
+        }
+        let parsed = musa_syntax::parse(&self.source);
+        let root = parsed.syntax();
+        let declarations = Document::of_root(&root)
+            .into_iter()
+            .flat_map(|document| document.instruments())
+            .chain(
+                PieceDecl::from_root(&root)
+                    .into_iter()
+                    .flat_map(|piece| piece.instruments()),
+            );
+        let asset = declarations
+            .filter(|declaration| declaration.name().as_deref() == Some(instrument))
+            .find_map(|declaration| declaration.asset())
+            .ok_or_else(|| ProjectError::Assets(format!("no asset instrument named `{instrument}`")))?;
+        let fact = self
+            .assets
+            .facts()
+            .iter()
+            .find(|fact| fact.path == asset)
+            .ok_or_else(|| {
+                ProjectError::Assets(format!("instrument `{instrument}` asset is absent from the closure"))
+            })?;
+        if fact.kind != Some(crate::assets::AssetKind::Sfz) || fact.adapter.as_deref() != Some("sfz@1") {
+            return Err(ProjectError::Assets(format!(
+                "instrument `{instrument}` requires a verified `kind = \"sfz\"`, `adapter = \"sfz@1\"` asset"
+            )));
+        }
+        let bytes = self.assets.read_verified(&asset)?;
+        let adapted = crate::sfz::adapt(instrument, &asset, &bytes, sfz_limits)?;
+        let document = SourceDocument::new(adapted.source, format!("sfz:{asset}"));
+        let checked = musa_compiler::checked_source_value(
+            &document,
+            &CompileOptions::default(),
+            "imported_sfz_map",
+            &musa_dsp::sample_map_schema(),
+        )
+        .map_err(|diagnostics| {
+            ProjectError::Performance(format!("SFZ adapter result did not check: {diagnostics:#?}"))
+        })?;
+        let map = musa_dsp::decode_sample_map(&checked).map_err(|error| {
+            ProjectError::Performance(format!("SFZ adapter result disagrees with SampleMap: {error}"))
+        })?;
+        let prepared = musa_dsp::prepare_sample_map(
+            map,
+            |logical| self.assets.read_verified(logical).map_err(|error| error.to_string()),
+            sampler_limits,
+        )
+        .map_err(|error| ProjectError::Performance(error.to_string()))?;
+        Ok((prepared, adapted.facts))
     }
 
     /// Open an existing `.musa` file.

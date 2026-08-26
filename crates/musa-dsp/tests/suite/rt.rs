@@ -83,11 +83,11 @@ fn sampler_note_and_frame_steps_allocate_nothing() {
     let handle = crate::schedule::EventHandle::root(0);
     let mut runtime = prepared.runtime();
     let mut output = [0.0; 512];
-    runtime.note_on(&handle, token);
+    runtime.note_on(&handle, &token);
     runtime.render(&mut output); // warm the thread-local allocator path
     let before = allocs();
     runtime.note_off(&handle);
-    runtime.note_on(&handle, token);
+    runtime.note_on(&handle, &token);
     runtime.render(&mut output);
     runtime.set_pedal(true);
     runtime.note_off(&handle);

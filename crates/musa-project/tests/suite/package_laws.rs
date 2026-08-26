@@ -5,13 +5,41 @@
 use std::path::Path;
 use std::process::Command;
 
-use musa_project::{ProjectError, ProjectSession, fetch_packages, lock_assets, verify_packages};
+use musa_project::{ProjectError, ProjectSession, SfzLimits, fetch_packages, lock_assets, verify_packages};
 
 fn write(path: &Path, contents: &str) {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("fixture directory");
     }
     std::fs::write(path, contents).expect("fixture file");
+}
+
+fn write_bytes(path: &Path, contents: &[u8]) {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("fixture directory");
+    }
+    std::fs::write(path, contents).expect("fixture file");
+}
+
+fn wav() -> Vec<u8> {
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    {
+        let mut writer = hound::WavWriter::new(
+            &mut bytes,
+            hound::WavSpec {
+                channels: 1,
+                sample_rate: 48_000,
+                bits_per_sample: 32,
+                sample_format: hound::SampleFormat::Float,
+            },
+        )
+        .expect("WAV writer");
+        for _ in 0..64 {
+            writer.write_sample(0.25f32).expect("WAV sample");
+        }
+        writer.finalize().expect("WAV finish");
+    }
+    bytes.into_inner()
 }
 
 fn git(directory: &Path, arguments: &[&str]) -> String {
@@ -43,6 +71,10 @@ source = "src"
 [assets."assets/tone.sfz"]
 kind = "sfz"
 adapter = "sfz@1"
+
+[assets."assets/tone.wav"]
+kind = "audio"
+adapter = "wav@1"
 "#,
     );
     write(&remote.path().join("src/lib.musa"), "mod strings;\n");
@@ -51,6 +83,7 @@ adapter = "sfz@1"
         "fn doubled(n: Nat) -> Nat { n + n }\n",
     );
     write(&remote.path().join("assets/tone.sfz"), "<region> sample=tone.wav\n");
+    write_bytes(&remote.path().join("assets/tone.wav"), &wav());
     git(remote.path(), &["init", "--quiet"]);
     git(remote.path(), &["config", "user.name", "Musa Test"]);
     git(remote.path(), &["config", "user.email", "musa@example.invalid"]);
@@ -188,8 +221,12 @@ piece "Package asset" {
     let session = ProjectSession::open(&piece).expect("open");
     let snapshot = session.snapshot();
     assert!(snapshot.diagnostics().is_empty(), "{:?}", snapshot.diagnostics());
-    assert_eq!(snapshot.assets().len(), 1, "{:?}", snapshot.assets());
-    let asset = snapshot.assets().first().expect("one package asset");
+    assert_eq!(snapshot.assets().len(), 2, "{:?}", snapshot.assets());
+    let asset = snapshot
+        .assets()
+        .iter()
+        .find(|asset| asset.path.ends_with("tone.sfz"))
+        .expect("package SFZ asset");
     assert_eq!(asset.path, "pkg:orchestra/assets/tone.sfz");
     assert_eq!(asset.status.to_string(), "verified");
     assert!(
@@ -198,6 +235,27 @@ piece "Package asset" {
             .as_deref()
             .is_some_and(|digest| digest.starts_with("sha256:"))
     );
+    let (prepared, facts) = session
+        .prepare_sfz_instrument(
+            "tone",
+            SfzLimits {
+                max_file_bytes: 4096,
+                max_regions: 8,
+                max_opcodes: 32,
+                max_value_bytes: 256,
+            },
+            musa_dsp::SamplerLimits {
+                sample_rate: 48_000,
+                max_voices: 64,
+                max_regions: 8,
+                max_decoded_bytes: 1 << 20,
+                max_selection_work: 8,
+                max_step_work: 64 * 24,
+            },
+        )
+        .expect("package SFZ and its package sample prepare offline");
+    assert_eq!(facts.regions, 1);
+    assert_eq!(prepared.resources().decoded_pcm_bytes, 64 * size_of::<f32>());
 }
 
 #[test]

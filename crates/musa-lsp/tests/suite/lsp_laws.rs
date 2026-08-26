@@ -1176,6 +1176,24 @@ fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
 }
 
 #[test]
+fn hover_on_an_sfz_instrument_reports_the_imported_contract_and_support() {
+    let source = r#"instrument piano from "assets/piano.sfz" conforms note_instrument;
+piece "SFZ hover" { score { part p { voice v { c4/1 } } } }
+"#;
+    let mut server = Server::start();
+    let (uri, _) = server.open("sfz-hover", source);
+    let content = hover_markdown(&mut server, &uri, at(source, "piano from"));
+    assert!(content.contains("imported note instrument"), "{content}");
+    assert!(content.contains("`sfz@1`"), "{content}");
+    assert!(content.contains("techniques: ordinary"), "{content}");
+    assert!(
+        content.contains("Unsupported sound-changing opcodes are errors"),
+        "{content}"
+    );
+    server.stop();
+}
+
+#[test]
 fn hover_draws_the_distinction_between_a_domain_and_the_one_it_is_confused_with() {
     // `NoteName` and `Pc(12)` are both "a pitch class" in ordinary speech and
     // are different objects here. A hover that named only the type would let

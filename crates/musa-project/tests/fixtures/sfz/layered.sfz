@@ -1,0 +1,21 @@
+// Self-authored CC0 fixture. It exercises only the documented sfz@1 matrix.
+<global> ampeg_attack=0 ampeg_decay=0 ampeg_sustain=100 ampeg_release=0.001 volume=-6
+
+<group> lokey=0 hikey=127 pitch_keycenter=60 seq_length=2
+<region> sample=samples/round-a.wav seq_position=1 region_label=round_a
+<region> sample=samples/round-b.wav seq_position=2 region_label=round_b
+
+<group> key=60
+<region> sample=samples/layer.wav pan=25 group=2 off_by=1 off_mode=normal
+
+<group> key=60 locc64=0 hicc64=63
+<region> sample=samples/release.wav trigger=release
+
+<group> key=60 locc64=64 hicc64=127
+<region> sample=samples/pedal-release.wav trigger=release
+
+<group> key=60
+<region> sample=samples/key-release.wav trigger=release_key
+
+<group> key=61
+<region> sample=samples/loop.wav loop_start=8 loop_end=47 loop_mode=loop_sustain loop_type=alternate

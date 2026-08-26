@@ -32,14 +32,14 @@ fn region(
             trigger = {trigger}, pedal = {pedal},
             sequence_group = {sequence_group}, sequence_position = {sequence_position},
             sequence_length = {sequence_length}, weight = {weight}, priority = {priority},
-            tune_cents = 0/1, gain = 1/1, pan = 0/1,
+            tune_cents = 0/1, gain = LinearGain(1/1), pan = 0/1,
             start_frame = 0, end_frame = 64, loop_start = {loop_start}, loop_end = {loop_end},
             loop_mode = {loop_mode},
             envelope = SampleEnvelope {{
                 attack_seconds = 0/1, decay_seconds = 0/1,
-                sustain_level = 1/1, release_seconds = 1/1000
+                sustain_level = 1/1, release_seconds = 1/1000, curve = LinearEnvelope
             }},
-            exclusive_group = 0
+            group = 0, off_by = 0, off_mode = FastOff
         }}"#
     )
 }
@@ -49,7 +49,7 @@ fn artifact_with_regions(selection: &str, regions: &[String]) -> musa_compiler::
     let source = format!(
         r#"import std::sound::sample;
 let test_map: SampleMapArtifact = SampleMapArtifact {{
-    schema_version = 1,
+    schema_version = 2,
     sample_map = SampleMap {{
         declaration_id = "tests.native_sampler@1",
         selection = {selection},
@@ -85,7 +85,7 @@ fn artifact(selection: &str) -> musa_compiler::CheckedSource {
                 2,
                 1,
                 10,
-                "ForwardLoop",
+                "ForwardSustainLoop",
                 8,
                 48,
             ),
@@ -98,7 +98,7 @@ fn artifact(selection: &str) -> musa_compiler::CheckedSource {
                 2,
                 3,
                 10,
-                "ForwardLoop",
+                "ForwardSustainLoop",
                 8,
                 48,
             ),
@@ -234,12 +234,12 @@ fn round_robin_is_per_instance_and_block_partition_cannot_change_sound() {
 
     let handle = EventHandle::root(0);
     let mut whole = prepared.runtime();
-    whole.note_on(&handle, first);
+    whole.note_on(&handle, &first);
     let mut one = vec![0.0; 512];
     whole.render(&mut one);
 
     let mut split = prepared.runtime();
-    split.note_on(&handle, first);
+    split.note_on(&handle, &first);
     let mut many = vec![0.0; 512];
     for chunk in many.chunks_mut(14) {
         split.render(chunk);
@@ -259,7 +259,7 @@ fn looping_release_pedal_and_voice_stealing_are_bounded_and_deterministic() {
     let first_handle = EventHandle::root(0);
     let second_handle = EventHandle::root(1);
     let mut runtime = prepared.runtime();
-    runtime.note_on(&first_handle, first);
+    runtime.note_on(&first_handle, &first);
     let mut beyond_asset = vec![0.0; 512];
     runtime.render(&mut beyond_asset);
     assert!(
@@ -272,8 +272,8 @@ fn looping_release_pedal_and_voice_stealing_are_bounded_and_deterministic() {
     let sustained = runtime.step();
     assert!(sustained.iter().any(|sample| sample.abs() > f32::EPSILON));
     runtime.set_pedal(false);
-    runtime.note_on(&second_handle, second);
-    runtime.note_on(&EventHandle::root(2), first);
+    runtime.note_on(&second_handle, &second);
+    runtime.note_on(&EventHandle::root(2), &first);
     let mut tail = vec![0.0; 512];
     runtime.render(&mut tail);
     assert!(tail.iter().all(|sample| sample.is_finite()));
@@ -331,7 +331,7 @@ fn pitch_rate_and_instrument_swapping_change_private_audio_not_source_gestures()
     let octave_token = first.selector(1, 1).select(octave_gesture, "").expect("octave");
     let render = |prepared: &PreparedSampleMap, token| {
         let mut runtime = prepared.runtime();
-        runtime.note_on(&EventHandle::root(0), token);
+        runtime.note_on(&EventHandle::root(0), &token);
         let mut output = vec![0.0; 32];
         runtime.render(&mut output);
         output
@@ -392,7 +392,7 @@ fn key_expression_and_custom_technique_predicates_select_only_applicable_regions
         .expect("pizzicato token");
     let render = |token| {
         let mut runtime = prepared.runtime();
-        runtime.note_on(&EventHandle::root(0), token);
+        runtime.note_on(&EventHandle::root(0), &token);
         runtime.step()
     };
     assert!(render(no_technique).iter().all(|sample| sample.abs() <= f32::EPSILON));
@@ -405,6 +405,111 @@ fn key_expression_and_custom_technique_predicates_select_only_applicable_regions
         .expect("high layer");
     let high_frame = render(high_token);
     assert!(high_frame.iter().all(|sample| *sample > 0.4));
+}
+
+#[test]
+fn all_applicable_unsequenced_regions_layer_and_decibels_cross_only_at_the_dsp_edge() {
+    let first = region("a.wav", "AttackTrigger", "AnyPedal", 0, 0, 0, 1, 1, "NoLoop", 0, 0)
+        .replace("LinearGain(1/1)", "DecibelGain(0/1)");
+    let second = region("b.wav", "AttackTrigger", "AnyPedal", 0, 0, 0, 1, 1, "NoLoop", 0, 0)
+        .replace("LinearGain(1/1)", "DecibelGain(0/1)");
+    let map = decode_sample_map(&artifact_with_regions("FirstRegion", &[first, second])).expect("layered map");
+    let prepared = prepare_sample_map(map, |path| Ok(wav(if path == "a.wav" { 0.25 } else { 0.5 })), limits())
+        .expect("layered preparation");
+    let gestures = gesture_plan();
+    let token = prepared
+        .selector(1, 1)
+        .select(first_gesture(&gestures), "")
+        .expect("layered token");
+    let mut runtime = prepared.runtime();
+    runtime.note_on(&EventHandle::root(0), &token);
+    let frame = runtime.step();
+    let expected = 0.75 * std::f32::consts::FRAC_1_SQRT_2;
+    assert!((frame[0] - expected).abs() < 1.0e-6, "{frame:?}");
+    assert!((frame[1] - expected).abs() < 1.0e-6, "{frame:?}");
+}
+
+#[test]
+fn a_new_group_chokes_only_regions_whose_off_by_points_to_it() {
+    let waiting = region("a.wav", "AttackTrigger", "AnyPedal", 0, 0, 0, 1, 1, "NoLoop", 0, 0)
+        .replace("group = 0, off_by = 0", "group = 1, off_by = 2");
+    let choker = region("b.wav", "AttackTrigger", "AnyPedal", 0, 0, 0, 1, 1, "NoLoop", 0, 0)
+        .replace(
+            "key_low = 0, key_high = 127, root_key = 60",
+            "key_low = 61, key_high = 127, root_key = 72",
+        )
+        .replace("group = 0, off_by = 0", "group = 2, off_by = 0");
+    let map = decode_sample_map(&artifact_with_regions("FirstRegion", &[waiting, choker])).expect("choke map");
+    let prepared = prepare_sample_map(map, |path| Ok(wav(if path == "a.wav" { 0.25 } else { 0.75 })), limits())
+        .expect("choke preparation");
+    let low = gesture_plan_for("c4");
+    let high = gesture_plan_for("c5");
+    let low_token = prepared
+        .selector(1, 1)
+        .select(first_gesture(&low), "")
+        .expect("low token");
+    let high_token = prepared
+        .selector(1, 1)
+        .select(first_gesture(&high), "")
+        .expect("high token");
+    let mut runtime = prepared.runtime();
+    runtime.note_on(&EventHandle::root(0), &low_token);
+    assert!(runtime.step()[0] > 0.1);
+    runtime.note_on(&EventHandle::root(1), &high_token);
+    let frame = runtime.step();
+    let expected = 0.75 * std::f32::consts::FRAC_1_SQRT_2;
+    assert!((frame[0] - expected).abs() < 1.0e-6, "{frame:?}");
+}
+
+#[test]
+fn release_key_is_physical_while_ordinary_release_is_sustain_deferred() {
+    let attack = region("a.wav", "AttackTrigger", "AnyPedal", 0, 0, 0, 1, 1, "NoLoop", 0, 0);
+    let release = region("up.wav", "ReleaseTrigger", "PedalDown", 0, 0, 0, 1, 1, "NoLoop", 0, 0);
+    let release_key = region(
+        "down.wav",
+        "ReleaseKeyTrigger",
+        "AnyPedal",
+        0,
+        0,
+        0,
+        1,
+        1,
+        "NoLoop",
+        0,
+        0,
+    );
+    let map =
+        decode_sample_map(&artifact_with_regions("FirstRegion", &[attack, release, release_key])).expect("release map");
+    let prepared = prepare_sample_map(
+        map,
+        |path| {
+            Ok(wav(match path {
+                "a.wav" => 0.25,
+                "up.wav" => -0.5,
+                _ => 0.75,
+            }))
+        },
+        limits(),
+    )
+    .expect("release preparation");
+    let gestures = gesture_plan();
+    let token = prepared
+        .selector(1, 1)
+        .select(first_gesture(&gestures), "")
+        .expect("release token");
+    let handle = EventHandle::root(0);
+    let mut runtime = prepared.runtime();
+    runtime.note_on(&handle, &token);
+    runtime.set_pedal(true);
+    runtime.note_off(&handle);
+    let physical_release = runtime.step();
+    assert!(physical_release[0] > 0.5, "release_key must sound before pedal-up");
+    runtime.set_pedal(false);
+    let sustain_release = runtime.step();
+    assert!(
+        sustain_release[0] < 0.0,
+        "ordinary release joins only after pedal-up: physical={physical_release:?}, sustain={sustain_release:?}"
+    );
 }
 
 #[test]

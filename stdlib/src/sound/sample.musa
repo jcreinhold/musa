@@ -10,6 +10,7 @@ import std::sound::instrument;
 data SampleTrigger {
     AttackTrigger,
     ReleaseTrigger,
+    ReleaseKeyTrigger,
 }
 
 /// Which sustain state admits a region.
@@ -22,6 +23,7 @@ data SamplePedalCondition {
 /// Which source phrase connection admits a region.
 data SampleConnectionCondition {
     AnyConnection,
+    FirstConnection,
     DetachedConnection,
     OrdinaryConnection,
     LegatoConnection,
@@ -30,8 +32,29 @@ data SampleConnectionCondition {
 /// How a finite sample region continues at its loop boundary.
 data SampleLoopMode {
     NoLoop,
-    ForwardLoop,
-    AlternatingLoop,
+    OneShot,
+    ForwardSustainLoop,
+    ForwardContinuousLoop,
+    AlternatingSustainLoop,
+    AlternatingContinuousLoop,
+}
+
+/// Which exact amplitude coordinate a region declaration uses.
+data SampleGain {
+    LinearGain(Ratio),
+    DecibelGain(Ratio),
+}
+
+/// The curve family used between an envelope's exact endpoints.
+data SampleEnvelopeCurve {
+    LinearEnvelope,
+    Sfz1Envelope,
+}
+
+/// What a newly triggered choke does to an existing voice.
+data SampleOffMode {
+    FastOff,
+    NormalOff,
 }
 
 /// How equally applicable regions choose one variation.
@@ -47,6 +70,7 @@ record SampleEnvelope {
     decay_seconds: Ratio;
     sustain_level: Ratio;
     release_seconds: Ratio;
+    curve: SampleEnvelopeCurve;
 }
 
 /// One immutable audio region and every predicate or playback rule it owns.
@@ -67,7 +91,7 @@ record SampleRegion {
     weight: Nat;
     priority: Nat;
     tune_cents: Ratio;
-    gain: Ratio;
+    gain: SampleGain;
     pan: Ratio;
     start_frame: Nat;
     end_frame: Nat;
@@ -75,7 +99,9 @@ record SampleRegion {
     loop_end: Nat;
     loop_mode: SampleLoopMode;
     envelope: SampleEnvelope;
-    exclusive_group: Nat;
+    group: Nat;
+    off_by: Nat;
+    off_mode: SampleOffMode;
 }
 
 /// A complete source-declared sample instrument implementation.
