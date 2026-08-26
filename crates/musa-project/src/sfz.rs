@@ -8,6 +8,39 @@ use std::fmt::Write as _;
 
 use crate::error::ProjectError;
 
+pub(crate) const SUPPORTED_OPCODES: &[&str] = &[
+    "sample",
+    "key",
+    "lokey",
+    "hikey",
+    "pitch_keycenter",
+    "pitch_keytrack",
+    "lovel",
+    "hivel",
+    "tune",
+    "transpose",
+    "volume",
+    "pan",
+    "offset",
+    "end",
+    "loop_start",
+    "loop_end",
+    "loop_mode",
+    "loop_type",
+    "ampeg_attack",
+    "ampeg_decay",
+    "ampeg_sustain",
+    "ampeg_release",
+    "trigger",
+    "group",
+    "off_by",
+    "off_mode",
+    "seq_length",
+    "seq_position",
+    "locc64",
+    "hicc64",
+];
+
 /// Explicit bounds for one off-thread `sfz@1` adaptation. There is no default.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SfzLimits {
@@ -187,39 +220,7 @@ pub(crate) fn adapt(
 }
 
 fn supported(name: &str) -> bool {
-    matches!(
-        name,
-        "sample"
-            | "key"
-            | "lokey"
-            | "hikey"
-            | "pitch_keycenter"
-            | "pitch_keytrack"
-            | "lovel"
-            | "hivel"
-            | "tune"
-            | "transpose"
-            | "volume"
-            | "pan"
-            | "offset"
-            | "end"
-            | "loop_start"
-            | "loop_end"
-            | "loop_mode"
-            | "loop_type"
-            | "ampeg_attack"
-            | "ampeg_decay"
-            | "ampeg_sustain"
-            | "ampeg_release"
-            | "trigger"
-            | "group"
-            | "off_by"
-            | "off_mode"
-            | "seq_length"
-            | "seq_position"
-            | "locc64"
-            | "hicc64"
-    )
+    SUPPORTED_OPCODES.contains(&name)
 }
 
 fn scan(text: &str, limits: SfzLimits) -> Result<Vec<Item>, ProjectError> {

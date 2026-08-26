@@ -22,6 +22,8 @@ Four questions:
    filename, so a reader can open it and a checker can find it.
 4. Is every bundled module named in the teaching pages? Per-operation detail
    belongs to the generated reference; what a guide owes is a way in.
+5. Do the generated sound reference and governing support matrices retain the
+   external SFZ and SoundFont specification links they claim to follow?
 
 Run through `scripts/check-docs.sh`, which also proves the generated reference
 is current. Exits non-zero on the first category with a failure, and prints
@@ -45,6 +47,10 @@ TEACHING = [DOCS / "book" / "src" / "guide", DOCS / "book" / "src" / "concepts" 
 EXTRA = [ROOT / "README.md", ROOT / "AGENTS.md"]
 CORPUS = [ROOT / "examples", ROOT / "stdlib" / "src"]
 OMT = pathlib.Path(os.environ.get("OMT_ROOT", pathlib.Path.home() / "Code/papers/music-theory/open-music-theory"))
+SOUND_SPECIFICATIONS = (
+    "https://sfzformat.com/opcodes/",
+    "https://musescore.org/sites/musescore.org/files/2023-01/sfspec24.pdf",
+)
 
 FENCE = re.compile(r"^(\s*)```([A-Za-z0-9_-]*)\s*$")
 LINK = re.compile(r"(?<!!)\[[^\]^]*\]\(([^)\s]+)\)")
@@ -314,6 +320,21 @@ def check_modules() -> list[str]:
     return problems
 
 
+def check_sound_specifications() -> list[str]:
+    """The two foreign support matrices keep their primary-source anchors."""
+    targets = (
+        DOCS / "rules" / "language" / "09-assets-and-packages.md",
+        DOCS / "book" / "src" / "reference" / "studio-vocabulary.md",
+    )
+    problems = []
+    for path in targets:
+        text = path.read_text()
+        for url in SOUND_SPECIFICATIONS:
+            if url not in text:
+                problems.append(f"{path.relative_to(ROOT)}: missing sound specification link `{url}`")
+    return problems
+
+
 def main() -> int:
     failed = False
     for name, check in (
@@ -323,6 +344,7 @@ def main() -> int:
         ("bare citations", check_bare_citations),
         ("theory citations", check_citations),
         ("module coverage", check_modules),
+        ("sound specifications", check_sound_specifications),
     ):
         problems = check()
         if problems:

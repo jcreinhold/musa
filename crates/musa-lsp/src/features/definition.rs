@@ -21,12 +21,45 @@ pub(crate) fn definition(document: &Document, uri: &Uri, position: Position) -> 
     if let Some(answer) = at_named_definition(&snapshot, byte, uri, document.lines()) {
         return Some(answer);
     }
+    if let Some(answer) = at_instrument_control(&snapshot, byte) {
+        return Some(answer);
+    }
     if let Some(answer) = at_studio_vocabulary(&snapshot, byte) {
         return Some(answer);
     }
     let score = snapshot.score()?;
     let lines = document.lines();
     at_use_site(score, byte, lines, uri).or_else(|| at_generated_event(score, byte, lines, uri))
+}
+
+fn at_instrument_control(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32) -> Option<GotoDefinitionResponse> {
+    let parsed = musa_syntax::parse(snapshot.source());
+    let token = parsed
+        .syntax()
+        .token_at_offset(byte.into())
+        .find(|token| token.kind() == musa_syntax::SyntaxKind::Identifier)?;
+    let control = musa_project::standard_instrument_contracts()
+        .ok()?
+        .declarations()
+        .iter()
+        .flat_map(musa_dsp::InstrumentContract::controls)
+        .find(|control| control.name() == token.text())?;
+    let uri = if control.namespace() == "std.performance" {
+        "musa-stdlib:/std/performance.musa"
+    } else {
+        "musa-stdlib:/std/sound/instrument.musa"
+    };
+    let source = musa_project::standard_library_source(uri)?;
+    let declaration = format!("let {}:", control.name());
+    let start = (source.find(&declaration)?.saturating_add("let ".len())) as u32;
+    let uri = Uri::from_str(uri).ok()?;
+    Some(GotoDefinitionResponse::Scalar(Location {
+        uri,
+        range: LineIndex::new(source).range(musa_project::Span {
+            start,
+            end: start.saturating_add(control.name().len() as u32),
+        }),
+    }))
 }
 
 /// A processor, parameter, or studio term is a row of the ordinary checked

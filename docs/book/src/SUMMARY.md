@@ -13,6 +13,7 @@
 - [When you need a name](guide/names.md)
 - [Claims and readings](guide/claims-and-readings.md)
 - [Cookbook](guide/cookbook.md)
+- [Shape a performance and its sound](guide/sound-making.md)
 
 # How-to guides
 
@@ -36,6 +37,7 @@
 - [The desktop interface](concepts/interface.md)
 - [The style guide](concepts/style-guide.md)
 - [What musa refuses to blur](concepts/distinctions.md)
+- [How the sound language crosses the host boundary](concepts/sound-language.md)
 
 # Reference
 

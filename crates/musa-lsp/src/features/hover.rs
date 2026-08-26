@@ -37,6 +37,9 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     if let Some(found) = at_item(&snapshot, byte, lines) {
         return Some(found);
     }
+    if let Some(found) = at_instrument_control(&snapshot, byte, lines) {
+        return Some(found);
+    }
     if let Some(found) = at_studio_catalogue(&snapshot, byte, lines) {
         return Some(found);
     }
@@ -52,30 +55,68 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     at_studio(document, byte, lines)
 }
 
+/// An exposed control from a checked standard instrument signature.
+///
+/// This is deliberately after declared items: an imported source declaration
+/// carries richer documentation and wins. The projection remains useful while
+/// a surrounding implementation is half-written and has no valid item facts.
+fn at_instrument_control(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_syntax::parse(snapshot.source());
+    let token = parsed
+        .syntax()
+        .token_at_offset(byte.into())
+        .find(|token| token.kind() == musa_syntax::SyntaxKind::Identifier)?;
+    let contracts = musa_project::standard_instrument_contracts().ok()?;
+    let control = contracts
+        .declarations()
+        .iter()
+        .flat_map(musa_dsp::InstrumentContract::controls)
+        .find(|control| control.name() == token.text())?;
+    let range = token.text_range();
+    Some(answer(
+        lines,
+        Span {
+            start: u32::from(range.start()),
+            end: u32::from(range.end()),
+        },
+        control_markdown(control),
+    ))
+}
+
+pub(crate) fn control_markdown(control: &musa_dsp::InstrumentControlContract) -> String {
+    let default = control.default_ratio().map_or_else(
+        || control.default_symbol().unwrap_or("source value").to_owned(),
+        musa_project::format_studio_ratio,
+    );
+    format!(
+        "**{}::{}** — *exposed instrument control*\n\nKind: `{}` · rate: `{}` · source default: `{default}`\n\nThe shared control-kind index fixes the value type; omitted indices use the ordinary pattern unifier.\n\nOrigin: checked `std::sound::instrument` declaration",
+        control.namespace(),
+        control.name(),
+        control.kind(),
+        control.update_rate(),
+    )
+}
+
 fn at_asset_instrument(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
     let parsed = musa_syntax::parse(snapshot.source());
     let token = parsed.syntax().token_at_offset(byte.into()).next()?;
     let declaration = token.parent_ancestors().find_map(InstrumentDecl::cast)?;
     let asset = declaration.asset()?;
-    let (base, fragment) = asset
-        .rsplit_once('#')
-        .map_or((asset.as_str(), None), |(base, fragment)| (base, Some(fragment)));
-    let extension = std::path::Path::new(base).extension()?;
-    let (adapter, translation) = if extension.eq_ignore_ascii_case("sfz") && fragment.is_none() {
-        (
-            "sfz@1",
-            "global/group/region inheritance; WAV regions; key, expression, pitch, dB gain and pan; loops; SFZ-v1 amplitude envelope; attack/release/release-key; typed sustain state; directional choke; per-group sequence selection",
-        )
-    } else if extension.eq_ignore_ascii_case("sf2")
-        && fragment.is_some_and(|fragment| fragment.starts_with("preset=") || fragment.starts_with("preset-name="))
-    {
-        (
-            "sf2@1",
-            "bounded RIFF/Hydra validation; explicit preset selection; global/local zone combination; embedded 16/24-bit samples; key/expression layers; exact tuning, attenuation, pan and SoundFont envelope coordinates; loops; initial low-pass; stereo links; exclusive classes; admitted typed note-on modulators",
-        )
-    } else {
-        return None;
-    };
+    let support = musa_project::format_support(&asset)?;
+    let logical = asset.split_once('#').map_or(asset.as_str(), |(base, _)| base);
+    let asset_fact = snapshot.assets().iter().find(|fact| fact.path == logical);
+    let asset_state = asset_fact.map_or_else(
+        || "not present in the current verified asset closure".to_owned(),
+        |fact| {
+            let mut state = fact.status.to_string();
+            if let Some(detail) = &fact.detail {
+                state.push_str(" — ");
+                state.push_str(detail);
+            }
+            state
+        },
+    );
+    let refused = support.refused.join("; ");
     let name = declaration.name()?;
     let range = token.text_range();
     Some(answer(
@@ -85,7 +126,8 @@ fn at_asset_instrument(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, 
             end: u32::from(range.end()),
         },
         format!(
-            "**{name}** — *imported note instrument*\n\n```musa\ninstrument {name} from \"{asset}\" conforms note_instrument;\n```\n\nAdapter: `{adapter}` · signature: `note_instrument` · techniques: ordinary\n\nSupported translation: {translation}. Unsupported sound-changing input is an error.\n\nOrigin: verified immutable asset",
+            "**{name}** — *imported note instrument*\n\n```musa\ninstrument {name} from \"{asset}\" conforms note_instrument;\n```\n\nAdapter: `{}` · result: `{}` · signature: `note_instrument` · techniques: ordinary\n\nSupported translation: {}.\n\nNamed refusal classes: {refused}. Every unsupported sound-changing input is an error naming the input.\n\nAsset: `{logical}` · {asset_state}\n\nOrigin: source declaration plus registered {} support facts",
+            support.adapter, support.result, support.summary, support.format,
         ),
     ))
 }

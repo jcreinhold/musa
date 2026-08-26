@@ -7,6 +7,7 @@
 use std::sync::OnceLock;
 
 static VOCABULARY: OnceLock<Result<musa_dsp::StudioVocabulary, String>> = OnceLock::new();
+static INSTRUMENTS: OnceLock<Result<musa_dsp::InstrumentContracts, String>> = OnceLock::new();
 
 /// Read the standard studio vocabulary compiled from `std::sound::catalogue`.
 ///
@@ -27,6 +28,32 @@ pub fn standard_studio_vocabulary() -> Result<&'static musa_dsp::StudioVocabular
                     .join("; ")
             })?;
             musa_dsp::decode_studio_vocabulary(&checked).map_err(|error| error.to_string())
+        })
+        .as_ref()
+        .map_err(String::as_str)
+}
+
+/// Read the standard instrument contracts projected from checked Musa source.
+///
+/// The projection is cached for tooling and preparation readers. It exposes
+/// no constructor, default, or inference rule; source remains the declaration
+/// and exact identity.
+///
+/// # Errors
+///
+/// Returns a stable description when the bundled declarations fail to check
+/// or the exact artifact disagrees with the read-only consumer schema.
+pub fn standard_instrument_contracts() -> Result<&'static musa_dsp::InstrumentContracts, &'static str> {
+    INSTRUMENTS
+        .get_or_init(|| {
+            let checked = musa_compiler::checked_standard_instruments().map_err(|diagnostics| {
+                diagnostics
+                    .iter()
+                    .map(|diagnostic| diagnostic.message.as_str())
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })?;
+            musa_dsp::decode_instrument_contracts(&checked).map_err(|error| error.to_string())
         })
         .as_ref()
         .map_err(String::as_str)
@@ -162,6 +189,71 @@ mod tests {
                 term.note(),
                 term.signature(),
                 term.example(),
+            );
+        }
+        out.push_str("## Standard instruments\n\nThese public contracts are projected from the checked `std::sound::instrument::standard_instruments` value. Private machine bodies remain implementation facts.\n\n");
+        let instruments = standard_instrument_contracts().map_err(str::to_owned)?;
+        for instrument in instruments.declarations() {
+            let channels = match instrument.channels() {
+                1 => "mono".to_owned(),
+                2 => "stereo".to_owned(),
+                channels => format!("{channels} channels"),
+            };
+            let _ = writeln!(
+                out,
+                "### `{}`\n\n{}\n\n- Signature: `{}`\n- Output: {channels}\n- Origin: `std::sound::instrument`\n",
+                instrument.declaration_id(),
+                instrument.summary(),
+                instrument.name(),
+            );
+            if !instrument.controls().is_empty() {
+                out.push_str("| Exposed control | Kind | Rate | Source default |\n| --- | --- | --- | --- |\n");
+                for control in instrument.controls() {
+                    let default = control.default_ratio().map_or_else(
+                        || control.default_symbol().unwrap_or("source value").to_owned(),
+                        format_studio_ratio,
+                    );
+                    let _ = writeln!(
+                        out,
+                        "| `{}::{}` | `{}` | `{}` | `{default}` |",
+                        control.namespace(),
+                        control.name(),
+                        control.kind(),
+                        control.update_rate(),
+                    );
+                }
+                out.push('\n');
+            }
+            if !instrument.techniques().is_empty() {
+                out.push_str("Techniques:\n\n");
+                for technique in instrument.techniques() {
+                    let fallback = if technique.notation_only_warning() {
+                        "notation-only warning"
+                    } else {
+                        "required"
+                    };
+                    let _ = writeln!(out, "- `{}::{}` — {fallback}", technique.namespace(), technique.name());
+                }
+                out.push('\n');
+            }
+        }
+        out.push_str("## Foreign-format support\n\nForeign formats are registered host adapters into the source-declared sample-map contract. This table is generated from the same adapter facts editor hover reads; it is not a Musa surface catalogue.\n\n");
+        for support in crate::format_supports() {
+            let _ = writeln!(
+                out,
+                "### `{}` — {}\n\n{}\n\n- Checked result: `{}`\n- Specification: <{}>\n- Accepted names/categories: {}\n- Named refusal classes: {}\n",
+                support.adapter,
+                support.format,
+                support.summary,
+                support.result,
+                support.specification,
+                support
+                    .accepted_names
+                    .iter()
+                    .map(|name| format!("`{name}`"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                support.refused.join("; "),
             );
         }
         Ok(out)

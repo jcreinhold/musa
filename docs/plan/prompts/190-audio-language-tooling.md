@@ -1,7 +1,7 @@
 ---
 id: 190
 slug: audio-language-tooling
-status: in-progress
+status: done
 depends_on: [125, 174, 176, 181, 183, 185, 186, 187, 189]
 phase: 4
 ---
@@ -73,6 +73,11 @@ find examples -name '*.musa' ! -path 'examples/broken/*' -print0 | xargs -0 -n1 
 
 Commit each affected repository intentionally and record cross-repository commit ids. Commit Musa as
 `Teach the sound language to explain itself`.
+
+## Cross-repository record
+
+- VS Code extension: `7f0ff0a` (`Cover sound language tooling in the editor smoke`).
+- Zed extension: `fa63357` (`Cover sound language tooling in the editor smoke`).
 
 ## Stop
 

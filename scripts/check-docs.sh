@@ -16,6 +16,7 @@ cd "$(dirname "$0")/.."
 
 echo "== generated reference is current =="
 cargo test --quiet -p musa-compiler --lib reference::
+cargo test --quiet -p musa-project --lib checked_in_studio_reference_is_derived_from_executable_source
 
 echo "== docs =="
 python3 scripts/check-docs.py

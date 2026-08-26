@@ -42,6 +42,7 @@ mod edit;
 mod error;
 mod export;
 mod facts;
+mod format_support;
 mod imports;
 mod library;
 mod lock;
@@ -74,6 +75,7 @@ pub use crate::facts::{
     OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation,
     StepFact, StepKind, TypeFact, VoiceFacts,
 };
+pub use crate::format_support::{FormatSupportFacts, format_support, format_supports};
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::MidiEntry;
@@ -90,7 +92,7 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
-pub use crate::vocabulary::{format_studio_ratio, standard_studio_vocabulary};
+pub use crate::vocabulary::{format_studio_ratio, standard_instrument_contracts, standard_studio_vocabulary};
 pub use musa_compiler::DocumentKind;
 pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{EventsTokenClass, events_bindings, events_classify, events_keyword_doc};

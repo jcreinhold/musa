@@ -442,3 +442,51 @@ Output marks the signal leaving an instrument implementation. It is a terminal m
 - Origin: `std::sound::catalogue`
 - Example: `oscillator(sine) |> output;`
 
+## Standard instruments
+
+These public contracts are projected from the checked `std::sound::instrument::standard_instruments` value. Private machine bodies remain implementation facts.
+
+### `std.sound.basic_sine@1`
+
+Accepts note, release, and phrase gestures and produces stereo audio.
+
+- Signature: `note_instrument`
+- Output: stereo
+- Origin: `std::sound::instrument`
+
+| Exposed control | Kind | Rate | Source default |
+| --- | --- | --- | --- |
+| `std.performance::expression` | `Normalized` | `Continuous` | `1` |
+| `std.performance::emphasis` | `Normalized` | `PerNote` | `0` |
+| `std.performance::separation` | `Normalized` | `PerTransition` | `0` |
+| `std.performance::brightness` | `Normalized` | `Continuous` | `0` |
+| `std.performance::sustain` | `Normalized` | `Continuous` | `0` |
+| `std.performance::phrase` | `PhraseConnection` | `PerGroup` | `Ordinary` |
+| `std.sound.basic_sine::partial_ratio` | `ExactRatio` | `Continuous` | `2` |
+
+Techniques:
+
+- `std.performance::fermata` — notation-only warning
+
+## Foreign-format support
+
+Foreign formats are registered host adapters into the source-declared sample-map contract. This table is generated from the same adapter facts editor hover reads; it is not a Musa surface catalogue.
+
+### `sfz@1` — SFZ
+
+global/group/region inheritance; root-contained WAV regions; key and expression ranges; exact pitch, gain, pan, loops, envelopes, release behavior, sustain state, choke, and sequence selection
+
+- Checked result: `std::sound::sample::SampleMapArtifact`
+- Specification: <https://sfzformat.com/opcodes/>
+- Accepted names/categories: `sample`, `key`, `lokey`, `hikey`, `pitch_keycenter`, `pitch_keytrack`, `lovel`, `hivel`, `tune`, `transpose`, `volume`, `pan`, `offset`, `end`, `loop_start`, `loop_end`, `loop_mode`, `loop_type`, `ampeg_attack`, `ampeg_decay`, `ampeg_sustain`, `ampeg_release`, `trigger`, `group`, `off_by`, `off_mode`, `seq_length`, `seq_position`, `locc64`, `hicc64`
+- Named refusal classes: unknown headers and sound-changing opcodes; include/define directives and substitutions; scripts, generators, and non-WAV sample codecs; controller bands that do not translate exactly to typed sustain state
+
+### `sf2@1` — SoundFont 2.04
+
+bounded RIFF/Hydra validation; explicit preset selection; exact global/local zone combination; embedded 16/24-bit samples; key and expression layers; tuning, attenuation, pan, envelopes, loops, low-pass, stereo links, exclusive classes, and admitted note-on modulators
+
+- Checked result: `std::sound::sample::SampleMapArtifact`
+- Specification: <https://musescore.org/sites/musescore.org/files/2023-01/sfspec24.pdf>
+- Accepted names/categories: `address offsets`, `pan`, `initialAttenuation`, `volume envelope`, `keyRange`, `velRange`, `coarseTune`, `fineTune`, `sampleID`, `sampleModes`, `exclusiveClass`, `initialFilterFc`, `initialFilterQ`, `scaleTuning=100`
+- Named refusal classes: active LFO and modulation-envelope generators; effects sends and forced key/velocity; ambient MIDI controllers, pressure, pitch wheel, linked modulators, and unsupported destinations; ROM or non-reciprocal linked samples
+

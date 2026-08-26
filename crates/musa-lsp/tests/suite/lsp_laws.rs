@@ -1187,9 +1187,11 @@ piece "SFZ hover" { score { part p { voice v { c4/1 } } } }
     assert!(content.contains("`sfz@1`"), "{content}");
     assert!(content.contains("techniques: ordinary"), "{content}");
     assert!(
-        content.contains("Unsupported sound-changing input is an error"),
+        content.contains("Every unsupported sound-changing input is an error naming the input"),
         "{content}"
     );
+    assert!(content.contains("`assets/piano.sfz` · undeclared"), "{content}");
+    assert!(content.contains("registered SFZ support facts"), "{content}");
     server.stop();
 }
 
@@ -1203,7 +1205,9 @@ piece "SoundFont hover" { score { part p { voice v { c4/1 } } } }
     let content = hover_markdown(&mut server, &uri, at(source, "piano from"));
     assert!(content.contains("`sf2@1`"), "{content}");
     assert!(content.contains("explicit preset selection"), "{content}");
-    assert!(content.contains("exact tuning, attenuation, pan"), "{content}");
+    assert!(content.contains("exact global/local zone combination"), "{content}");
+    assert!(content.contains("ambient MIDI controllers"), "{content}");
+    assert!(content.contains("`assets/piano.sf2` · undeclared"), "{content}");
     server.stop();
 }
 
@@ -1327,6 +1331,73 @@ fn studio_help_comes_from_the_catalogue_even_when_the_call_is_incomplete() {
         .expect("canonical parameter completion");
     assert!(resonance.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')));
     assert!(!items.iter().any(|item| item.label == "q:"));
+    server.stop();
+}
+
+#[test]
+fn sound_completion_comes_from_checked_instrument_and_project_facts() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("sound-completion", GLASS_MOUNTAIN);
+    assert!(
+        published
+            .diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.severity != Some(lsp_types::DiagnosticSeverity::ERROR))
+    );
+    let items = completions(&mut server, &uri, at(GLASS_MOUNTAIN, "sound side"));
+
+    let expression = items
+        .iter()
+        .find(|item| item.label == "expression")
+        .expect("source-declared standard control");
+    assert_eq!(expression.kind, Some(lsp_types::CompletionItemKind::PROPERTY));
+    assert_eq!(expression.detail.as_deref(), Some("Normalized control · Continuous"));
+    let documentation = expression.documentation.as_ref().expect("control origin");
+    assert!(format!("{documentation:?}").contains("checked `std::sound::instrument` declaration"));
+
+    assert!(items.iter().any(|item| item.label == "glass_pad"));
+    let neutral = items
+        .iter()
+        .find(|item| item.label == "std.performance.neutral")
+        .expect("effective source profile");
+    assert_eq!(neutral.detail.as_deref(), Some("performance profile"));
+    assert!(!items.iter().any(|item| item.label == "voice.gain"));
+    server.stop();
+}
+
+#[test]
+fn exposed_control_help_retains_the_source_index_and_navigates_to_its_declaration() {
+    let source = "piece \"control help\" {
+        score { part p { voice v { c4/1 } } }
+        instrument tone conforms note_instrument {
+            implementation graph { expression }
+        }
+    }";
+    let mut server = Server::start();
+    let (uri, _) = server.open("control-help", source);
+    let position = at(source, "expression");
+    let content = hover_markdown(&mut server, &uri, position);
+    assert!(content.contains("**std.performance::expression**"), "{content}");
+    assert!(content.contains("Kind: `Normalized` · rate: `Continuous`"), "{content}");
+    assert!(content.contains("ordinary pattern unifier"), "{content}");
+
+    let definition = server
+        .client
+        .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
+            text_document_position_params: position_params(&uri, position),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        });
+    let definition: GotoDefinitionResponse = serde_json::from_value(definition).expect("a control definition");
+    let GotoDefinitionResponse::Scalar(location) = definition else {
+        panic!("expected one location: {definition:?}");
+    };
+    assert_eq!(location.uri.as_str(), "musa-stdlib:/std/performance.musa");
+    let declaration = musa_project::standard_library_source(location.uri.as_str()).expect("performance source");
+    assert_eq!(
+        location.range.start.line,
+        at(declaration, "expression: ControlKey").line,
+    );
     server.stop();
 }
 

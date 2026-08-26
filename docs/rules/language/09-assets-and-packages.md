@@ -132,7 +132,9 @@ streaming/preload budgets, decoding, and conformance fixtures.
 `sfz@1` is a deliberately small, version-labelled adapter. “Supported” means exact translation into the ordinary
 `std::sound::sample` declarations and deterministic native execution; it never means that the union of SFZ v1, SFZ v2,
 ARIA, LinuxSampler, and player extensions is one language. A sound-changing name outside this table is an error.
-Harmless labels are warnings only when this table says so.
+Harmless labels are warnings only when this table says so. Published family labels and opcode names are checked against
+the [SFZ format opcode catalogue](https://sfzformat.com/opcodes/); that catalogue is a mixed-version foreign source, not
+Musa's acceptance policy.
 
 | Input | Published family | `sfz@1` policy |
 | --- | --- | --- |
@@ -180,9 +182,12 @@ every default are part of adapter identity; changing one requires `sfz@2`.
 ### 3.2 `sf2@1` support matrix
 
 `sf2@1` is a strict SoundFont 2.04 note-instrument adapter, not a claim that Musa is a general MIDI SoundFont player.
-The selected preset is part of the source asset address: `#preset=<bank>:<program>` uses the specification's unsigned
-bank/program numbers, and `#preset-name=<name>` succeeds only for one exact decoded name. No General MIDI meaning is
-attached to either number. The fragment is canonical adapter identity and is removed before the locked bank is read.
+The binary structure and generator/modulator meanings come from the
+[SoundFont 2.04 Technical Specification](https://musescore.org/sites/musescore.org/files/2023-01/sfspec24.pdf); the
+table below states Musa's narrower adapter policy. The selected preset is part of the source asset address:
+`#preset=<bank>:<program>` uses the specification's unsigned bank/program numbers, and `#preset-name=<name>` succeeds
+only for one exact decoded name. No General MIDI meaning is attached to either number. The fragment is canonical adapter
+identity and is removed before the locked bank is read.
 
 The RIFF form must be `sfbk` and contain ordered `INFO`, `sdta`, and `pdta` lists. `ifil` must name 2.00 through 2.04;
 all required Hydra chunks, record widths, terminal records, monotonically increasing indices, chunk extents, padding,

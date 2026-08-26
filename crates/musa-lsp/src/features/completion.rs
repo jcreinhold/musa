@@ -50,6 +50,24 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
             ..CompletionItem::default()
         });
     }
+    for instrument in musa_project::standard_instrument_contracts()
+        .into_iter()
+        .flat_map(musa_dsp::InstrumentContracts::declarations)
+    {
+        for control in instrument.controls() {
+            let name = control.name().to_owned();
+            items.entry(name.clone()).or_insert_with(|| CompletionItem {
+                label: name,
+                kind: Some(CompletionItemKind::PROPERTY),
+                detail: Some(format!("{} control · {}", control.kind(), control.update_rate())),
+                documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                    kind: lsp_types::MarkupKind::Markdown,
+                    value: super::hover::control_markdown(control),
+                })),
+                ..CompletionItem::default()
+            });
+        }
+    }
     for (spelling, kind) in SPELLINGS {
         let (item_kind, class) = match TokenClass::of(*kind) {
             Some(TokenClass::Keyword | TokenClass::Use) => (CompletionItemKind::KEYWORD, "keyword"),
@@ -130,7 +148,8 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
             ..CompletionItem::default()
         });
     }
-    if let Some(score) = document.snapshot().score() {
+    let snapshot = document.snapshot();
+    if let Some(score) = snapshot.score() {
         for part in &score.parts {
             offer(&mut items, &part.name, CompletionItemKind::MODULE, "part");
             for voice in &part.voices {
@@ -143,7 +162,7 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
             }
         }
     }
-    if let Some(studio) = document.snapshot().studio() {
+    if let Some(studio) = snapshot.studio() {
         for patch in &studio.patches {
             offer(&mut items, &patch.name, CompletionItemKind::CLASS, "patch");
         }
@@ -152,6 +171,31 @@ pub(crate) fn completions(document: &Document, position: Position) -> Completion
         }
         for signal in &studio.signals {
             offer(&mut items, &signal.name, CompletionItemKind::VARIABLE, "signal");
+        }
+        for assignment in &studio.assignments {
+            offer(
+                &mut items,
+                &assignment.instrument,
+                CompletionItemKind::CLASS,
+                if assignment.explicit {
+                    "source instrument"
+                } else {
+                    "inherited edition instrument"
+                },
+            );
+            offer(
+                &mut items,
+                &assignment.profile,
+                CompletionItemKind::VALUE,
+                if assignment.explicit {
+                    "performance profile"
+                } else {
+                    "inherited edition profile"
+                },
+            );
+        }
+        for media in &studio.media {
+            offer(&mut items, &media.name, CompletionItemKind::FILE, &media.kind);
         }
     }
     CompletionResponse::Array(items.into_values().collect())
@@ -305,7 +349,7 @@ fn keyword_item(
 /// Offer a name, keeping the first kind a label was offered with — a motif
 /// and a part that share a name collide in the menu, and either description
 /// alone is more honest than two rows that look identical.
-fn offer(items: &mut BTreeMap<String, CompletionItem>, name: &str, kind: CompletionItemKind, detail: &'static str) {
+fn offer(items: &mut BTreeMap<String, CompletionItem>, name: &str, kind: CompletionItemKind, detail: &str) {
     items.entry(name.to_owned()).or_insert_with(|| CompletionItem {
         label: name.to_owned(),
         kind: Some(kind),
