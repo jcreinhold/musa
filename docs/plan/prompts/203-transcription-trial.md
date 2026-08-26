@@ -1,7 +1,7 @@
 ---
 id: 203
 slug: transcription-trial
-status: pending
+status: in-progress
 depends_on: [202]
 phase: 2
 ---
@@ -10,9 +10,10 @@ phase: 2
 
 ## Task
 
-Build a production-neutral trial over real and generated expressive MIDI takes, compare candidate rhythm/voice models,
-and repair prompts 204–205 to the evidence. Decide what Musa can transcribe reliably, where it must ask the musician,
-and which complexity and latency budgets make Review feel immediate before a production API exists.
+Build a production-neutral trial over repository-owned generated expressive MIDI takes and an exact-pinned external
+real-performance corpus, compare candidate rhythm/voice models, and repair prompts 204–205 to the evidence. Decide what
+Musa can transcribe reliably, where it must ask the musician, and which complexity and latency budgets make Review feel
+immediate before a production API exists.
 
 ## Read
 
@@ -46,11 +47,15 @@ timing/complexity costs; a Bayesian/HMM-shaped baseline derived from the cited p
 reference only, published modern learned-model results or an exact-pinned local model when licensing and hardware
 permit. No model download, Python environment, or noncommercial dataset becomes a production/build dependency.
 
-Build a repository-owned corpus from short Musa fixtures and paired human performances recorded for this prompt, plus
-deterministic perturbations varying tempo drift, swing, rubato, articulation, chord spread, pedal, tuplets, syncopation,
-pickup, mistakes, repeated notes, crossing voices, and silence. Store a small exact event format and intended score,
-license it with the repository, and keep performer identity out. An optional exact-pinned ASAP adapter may run against a
-user-provided checkout; do not copy its CC BY-NC-SA data into Musa or make the Check network-dependent.
+Build a repository-owned corpus from short Musa fixtures and deterministic performed traces varying tempo drift, swing,
+rubato, articulation, chord spread, pedal, tuplets, syncopation, pickup, mistakes, repeated notes, crossing voices, and
+silence. Store a small exact event format and intended score and license it with the repository. Evaluate real human
+performance through an adapter for an exact-pinned user-provided ASAP v1.1 checkout
+(`fad8d1e8078d0ae47ad2f280b5d022bd2de24784`). Record only aggregate results and fixture identities; do not copy its
+[CC BY-NC-SA data](https://github.com/fosfrancesco/asap-dataset/blob/v1.1/LICENSE.md) into Musa, retain performer
+identity, make the Check network-dependent, or call generated timing a human recording. Prompt 202's machine record
+states that no physical MIDI input was available here; a later repository-owned human take may supplement the corpus
+only when it can be recorded with consent and licensed under Musa's terms.
 
 Evaluate notation, not only note matches: onset and duration accuracy, bar/beat phase, voice assignment, chord grouping,
 tie/rest/tuplet structure, edit distance to intended Musa source, number and locality of review corrections, ranked
