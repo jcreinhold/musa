@@ -264,49 +264,12 @@ fn existing_language_behavior_matches_the_migration_oracle() -> Result {
     )
 }
 
-/// Every baselined defect names the prompt that repairs it, **by slug**.
-///
-/// A prompt's number is an execution rank and moves whenever one is inserted;
-/// its slug is its identity and does not. The ledger recorded ranks until this
-/// test caught them pointing at the wrong prompts — three insertions had moved
-/// the sound block underneath it, and nothing checked. Ranks are not written
-/// here at all now, so there is no second copy to drift.
-///
-/// The pairing is asserted, not merely the presence of both strings, and the
-/// named prompt must exist on disk.
+/// Audio conformance closes the expected-change ledger rather than preserving
+/// repaired defects as permanent compatibility policy.
 #[test]
-fn every_expected_change_names_one_repairing_prompt() -> Result {
+fn the_expected_change_ledger_is_empty_after_audio_conformance() -> Result {
     const LEDGER: &str = include_str!("../../../../tests/fixtures/elaboration-expected-changes.json");
-    let prompts = repository().join("docs/plan/prompts");
-    {
-        let (defect, slug) = ("processor-hover-gap", "studio-vocabulary");
-        let entry = LEDGER
-            .split('{')
-            .find(|entry| entry.contains(&format!("\"defect\": \"{defect}\"")))
-            .ok_or_else(|| format!("no ledger entry for {defect}"))?;
-        assert!(
-            entry.contains(&format!("\"repaired_by\": \"{slug}\"")),
-            "{defect} must be repaired by {slug}"
-        );
-        assert!(
-            std::fs::read_dir(&prompts)?
-                .filter_map(std::result::Result::ok)
-                .any(|prompt| {
-                    prompt
-                        .file_name()
-                        .to_str()
-                        .is_some_and(|name| name.ends_with(&format!("-{slug}.md")))
-                }),
-            "no prompt file for {slug}"
-        );
-    }
-    assert!(!LEDGER.contains("graph-topology-modulation-address"));
-    assert!(!LEDGER.contains("ignored-parameter-event"));
-    assert_eq!(LEDGER.matches("\"defect\"").count(), 1);
-    assert!(
-        !LEDGER.contains("shared-note-stream-warning"),
-        "part-instrument-routing repaired the shared stream rather than preserving it"
-    );
-    assert!(!LEDGER.contains("repair_prompt"), "the ledger names prompts by slug");
+    assert_eq!(LEDGER.matches("\"defect\"").count(), 0, "{LEDGER}");
+    assert!(LEDGER.contains("\"entries\": []"), "{LEDGER}");
     Ok(())
 }

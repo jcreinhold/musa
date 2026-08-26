@@ -62,9 +62,9 @@ best-effort translation.
 | `Scheduled<A>` | `Schedule<A>`, matching the existing `ScheduleError` | 151 | discharged |
 | `musa_compiler::phase::Music`, `MusicOperation`, `MusicRole` | ordinary values of ordinary types | 142 | discharged |
 | the private `close` and `instantiate_music` elaboration path, and the fragment type they close | building and closing over ordinary values | 142 | discharged |
-| `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | machine construction and `prepare_audio(format, machine)` | 173 | reassigned; live until 173 migrates callers |
-| `RenderPlan` / `PreparedExecution` as the public prepared artifact | `PreparedMachine` | 173 | reassigned; live until 173 migrates callers |
-| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; batching is a checked `batch(n)` contract | 173 | reassigned; live until 173 migrates callers |
+| `musa_dsp::compile_graph` and public `StudioGraphSpec` as a semantic alternative | checked source projection followed by private machine construction and `prepare_audio` | 173 | discharged |
+| `RenderPlan` / `PreparedExecution` as the public prepared artifact | opaque `PreparedMachine` / `PreparedAudio` operations | 173 | discharged |
+| a caller- or preparation-chosen "semantic step" option | one audio step is one sample frame; host batching is repeated reference steps | 173 | discharged |
 | the seventeen `Builtin` variants `Pc12Of`, `Pc12Number`, `Pc12Forget`, `Pc12Transposed`, `Pc12Inverted`, `Pc12Spelled`, `Row12Of`, `Row12Pcs`, `Row12Head`, `Row12Transposed`, `Row12Inverted`, `Row12Retrograde`, `Row12Matrix`, `Row12Forms`, `Row12Symmetries`, `Row12Repeats`, `Row12Missing`, and the surface spellings `pc12_*` / `row12_*` they register | operations over `Pc(n)` and `Row(n)`, written in `.musa` against the family indices of `../rules/language/02-core-calculus.md` §1.1 | 164 | discharged; survey found and removed 22 modulus-specific entries |
 
 The event track stays a leaf through all of this: no machine type, audio type, or frame index enters `musa-events`.
@@ -76,7 +76,7 @@ The event track stays a leaf through all of this: no machine type, audio type, o
 | the `% musa-events-1` document header | refused with an error naming the version and this ledger; **not** upgraded | 127c | discharged |
 | event-track encoding versions 1 and 2 (`../rules/events/05-normalization.md` N6, `12-payload-admission.md` A7) | refused; version 3 adds the coordinate tag and is the only accepted one | 127c | discharged |
 | unframed `Display`-derived digests | already invalid; they remain invalid and are not read as track identity | pre-ledger | discharged before 127a |
-| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 173 | reassigned with prepared-machine cutover |
+| any prepared-plan cache record keyed without the coordinate tag or the operation version | refused as a version error rather than treated as a miss | 173 | discharged; no prepared-plan cache exists |
 
 A version header exists precisely so this can be a refusal rather than a guess. A reader that cannot reproduce a
 document's version says so.
@@ -88,7 +88,7 @@ document's version says so.
 | all 24 files in `examples/events/*.musa.events` — regenerated at `% musa-events-3` with `track`, `follow`, `together`, and durations | 127c | discharged |
 | every `.musa` example and stdlib source that spells the type `Music` or calls `overlay`/`sequence` | 142 | discharged |
 | the insta snapshots under `crates/musa-events` and `crates/musa-compiler` that pin the old events text | 127c, 142 | discharged |
-| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 173 | reassigned with one-frame migration |
+| studio fixtures whose expected output depends on host-block-defined feedback or modulation | 173 | discharged |
 
 Goldens are rewritten in the same prompt that breaks them, never left failing across a prompt boundary
 (`prompts/README.md`).

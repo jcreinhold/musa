@@ -1,10 +1,4 @@
 {
   "schema": "musa-elaboration-expected-changes-v2",
-  "entries": [
-    {
-      "defect": "processor-hover-gap",
-      "observation": "built-in studio processors are plain identifiers and receive no processor hover",
-      "repaired_by": "studio-vocabulary"
-    }
-  ]
+  "entries": []
 }
