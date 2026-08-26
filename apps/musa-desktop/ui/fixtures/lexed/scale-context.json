@@ -1230,88 +1230,93 @@
     "end": 3008
   },
   {
-    "class": "pitch",
-    "start": 3025,
-    "end": 3027
-  },
-  {
     "class": "punctuation",
-    "start": 3027,
-    "end": 3028
+    "start": 3025,
+    "end": 3026
   },
   {
-    "class": "number",
-    "start": 3028,
+    "class": "pitch",
+    "start": 3027,
     "end": 3029
   },
   {
     "class": "punctuation",
-    "start": 3046,
-    "end": 3047
+    "start": 3029,
+    "end": 3030
+  },
+  {
+    "class": "number",
+    "start": 3030,
+    "end": 3031
+  },
+  {
+    "class": "punctuation",
+    "start": 3032,
+    "end": 3033
   },
   {
     "class": "pitch",
-    "start": 3047,
-    "end": 3049
+    "start": 3033,
+    "end": 3035
   },
   {
     "class": "keyword",
+    "start": 3036,
+    "end": 3040
+  },
+  {
+    "class": "number",
+    "start": 3041,
+    "end": 3042
+  },
+  {
+    "class": "punctuation",
+    "start": 3042,
+    "end": 3043
+  },
+  {
+    "class": "punctuation",
+    "start": 3043,
+    "end": 3044
+  },
+  {
+    "class": "number",
+    "start": 3044,
+    "end": 3045
+  },
+  {
+    "class": "keyword",
+    "start": 3046,
+    "end": 3050
+  },
+  {
+    "class": "punctuation",
     "start": 3050,
-    "end": 3054
+    "end": 3051
   },
   {
     "class": "number",
-    "start": 3055,
-    "end": 3056
+    "start": 3051,
+    "end": 3052
   },
   {
     "class": "punctuation",
-    "start": 3056,
-    "end": 3057
+    "start": 3065,
+    "end": 3066
   },
   {
     "class": "punctuation",
-    "start": 3057,
-    "end": 3058
-  },
-  {
-    "class": "number",
-    "start": 3058,
-    "end": 3059
-  },
-  {
-    "class": "keyword",
-    "start": 3076,
-    "end": 3080
+    "start": 3075,
+    "end": 3076
   },
   {
     "class": "punctuation",
-    "start": 3080,
-    "end": 3081
-  },
-  {
-    "class": "number",
     "start": 3081,
     "end": 3082
   },
   {
     "class": "punctuation",
-    "start": 3095,
-    "end": 3096
-  },
-  {
-    "class": "punctuation",
-    "start": 3105,
-    "end": 3106
-  },
-  {
-    "class": "punctuation",
-    "start": 3111,
-    "end": 3112
-  },
-  {
-    "class": "punctuation",
-    "start": 3113,
-    "end": 3114
+    "start": 3083,
+    "end": 3084
   }
 ]

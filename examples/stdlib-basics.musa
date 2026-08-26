@@ -22,9 +22,8 @@ piece "Standard Library Basics" {
     score {
         part strings {
             voice duet {
-                use together(subject, shift(duration_of(1/2), answer));
-                c5/2
-                rest/2
+                | use together(subject, shift(duration_of(1/2), answer));
+                | c5/2 rest/2
             }
         }
     }

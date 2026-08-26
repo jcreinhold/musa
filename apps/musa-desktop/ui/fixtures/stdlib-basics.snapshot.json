@@ -2,7 +2,7 @@
   "document": 0,
   "name": "stdlib-basics.musa",
   "kind": "piece",
-  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n\n    let subject: EventTrack(WrittenTime) = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: EventTrack(WrittenTime) = compose_music(\n        fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });\n    let counting: List(Nat) = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use together(subject, shift(duration_of(1/2), answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n\n    let subject: EventTrack(WrittenTime) = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: EventTrack(WrittenTime) = compose_music(\n        fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) },\n        retrograde,\n        subject,\n    );\n    let chosen: Pitch = Some(e4).fold_from_end(c4, fn (found, otherwise) { same_pitch(found) });\n    let counting: List(Nat) = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                | use together(subject, shift(duration_of(1/2), answer));\n                | c5/2 rest/2\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,8 +66,8 @@
               "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 774,
-                "end": 829
+                "start": 776,
+                "end": 831
               }
             }
           ],
@@ -75,8 +75,8 @@
           "occurrence": "occurrence-0",
           "line": 25,
           "span": {
-            "start": 774,
-            "end": 829
+            "start": 776,
+            "end": 831
           },
           "definitionSpan": {
             "start": 291,
@@ -88,8 +88,8 @@
               "end": 295
             },
             {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           ],
           "decision": null
@@ -128,8 +128,8 @@
               "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 774,
-                "end": 829
+                "start": 776,
+                "end": 831
               }
             }
           ],
@@ -137,8 +137,8 @@
           "occurrence": "occurrence-0",
           "line": 25,
           "span": {
-            "start": 774,
-            "end": 829
+            "start": 776,
+            "end": 831
           },
           "definitionSpan": {
             "start": 304,
@@ -150,8 +150,8 @@
               "end": 308
             },
             {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           ],
           "decision": null
@@ -190,8 +190,8 @@
               "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 774,
-                "end": 829
+                "start": 776,
+                "end": 831
               }
             },
             {
@@ -209,8 +209,8 @@
           "occurrence": "occurrence-1",
           "line": 25,
           "span": {
-            "start": 774,
-            "end": 829
+            "start": 776,
+            "end": 831
           },
           "definitionSpan": {
             "start": 304,
@@ -222,8 +222,8 @@
               "end": 308
             },
             {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           ],
           "decision": null
@@ -262,8 +262,8 @@
               "label": "together(subject, shift(duration_of(1/2), answer))",
               "kind": "occurrence",
               "span": {
-                "start": 774,
-                "end": 829
+                "start": 776,
+                "end": 831
               }
             },
             {
@@ -281,8 +281,8 @@
           "occurrence": "occurrence-1",
           "line": 25,
           "span": {
-            "start": 774,
-            "end": 829
+            "start": 776,
+            "end": 831
           },
           "definitionSpan": {
             "start": 291,
@@ -294,8 +294,8 @@
               "end": 295
             },
             {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           ],
           "decision": null
@@ -334,17 +334,17 @@
           "occurrence": null,
           "line": 26,
           "span": {
-            "start": 846,
-            "end": 850
+            "start": 850,
+            "end": 854
           },
           "definitionSpan": {
-            "start": 846,
-            "end": 850
+            "start": 850,
+            "end": 854
           },
           "supportedBy": [
             {
-              "start": 846,
-              "end": 850
+              "start": 850,
+              "end": 854
             }
           ],
           "decision": null
@@ -377,19 +377,19 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 27,
+          "line": 26,
           "span": {
-            "start": 867,
-            "end": 873
+            "start": 855,
+            "end": 861
           },
           "definitionSpan": {
-            "start": 867,
-            "end": 873
+            "start": 855,
+            "end": 861
           },
           "supportedBy": [
             {
-              "start": 867,
-              "end": 873
+              "start": 855,
+              "end": 861
             }
           ],
           "decision": null
@@ -404,8 +404,8 @@
             "label": "together(subject, shift(duration_of(1/2), answer))",
             "kind": "occurrence",
             "span": {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           }
         ],
@@ -413,8 +413,8 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 774,
-          "end": 829
+          "start": 776,
+          "end": 831
         },
         "line": 25,
         "events": [
@@ -429,8 +429,8 @@
             "label": "together(subject, shift(duration_of(1/2), answer))",
             "kind": "occurrence",
             "span": {
-              "start": 774,
-              "end": 829
+              "start": 776,
+              "end": 831
             }
           },
           {
@@ -448,8 +448,8 @@
         "motif": "together",
         "declaration": null,
         "useSite": {
-          "start": 774,
-          "end": 829
+          "start": 776,
+          "end": 831
         },
         "line": 25,
         "events": [
@@ -1773,8 +1773,8 @@
           "end": 548
         },
         {
-          "start": 787,
-          "end": 794
+          "start": 789,
+          "end": 796
         }
       ]
     },
@@ -1803,8 +1803,8 @@
       "external": null,
       "uses": [
         {
-          "start": 820,
-          "end": 826
+          "start": 822,
+          "end": 828
         }
       ]
     },

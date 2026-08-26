@@ -40,7 +40,7 @@ piece "Ornaments" {
             profile harpsichord;
 
             voice tune {
-                dynamic mf;
+                | dynamic mf;
 
                 // A rehearsal letter is a point: it stands at a place, not on
                 // a note, which is exactly why it needs the `mark` statement.
@@ -54,26 +54,14 @@ piece "Ornaments" {
 
                 // Under the pedal, which is a span: it covers the music in
                 // its block and the block is what says how far.
-                mark pedal {
-                    a5/8
-                    b5/8
-                    c6/8
-                    d6/8
-                    e6/4 turn
-                    d6/4
-                }
+                | mark pedal { a5/8 b5/8 c6/8 d6/8 e6/4 turn d6/4 }
 
-                mark text "poco rit.";
-
-                c6/4
-                b5/4
-                a5/4
-                g5/4 fermata
+                | mark text "poco rit."; c6/4  b5/4  a5/4  g5/4 fermata
 
                 // A breath falls between two notes and belongs to neither,
                 // which is the whole reason it is a point rather than
                 // something written on a note.
-                mark breath;
+                | mark breath;
 
                 mark rehearsal "B";
 
@@ -88,8 +76,7 @@ piece "Ornaments" {
                     b6/4
                 }
 
-                g5/2 fermata
-                rest/2
+                | g5/2 fermata rest/2
             }
         }
 
@@ -98,40 +85,19 @@ piece "Ornaments" {
             profile harpsichord;
 
             voice bass {
-                dynamic mf;
+                | dynamic mf; g3/4  d3/4  g3/4  b3/4
 
-                g3/4
-                d3/4
-                g3/4
-                b3/4
+                | c4/4 g3/4 c4/4 e4/4
 
-                c4/4
-                g3/4
-                c4/4
-                e4/4
+                | d4/4 a3/4 d4/4 f#4/4
 
-                d4/4
-                a3/4
-                d4/4
-                f#4/4
+                | g3/4 d3/4 g3/4 d3/4
 
-                g3/4
-                d3/4
-                g3/4
-                d3/4
+                | g3/4 b3/4 d4/4 g4/4
 
-                g3/4
-                b3/4
-                d4/4
-                g4/4
+                | c4/4 e4/4 d4/4 d3/4
 
-                c4/4
-                e4/4
-                d4/4
-                d3/4
-
-                g3/2 fermata
-                rest/2
+                | g3/2 fermata rest/2
             }
         }
     }

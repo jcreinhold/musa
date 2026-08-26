@@ -92,10 +92,10 @@ piece "Gesture Study" {
     score {
         part strings {
             voice duet {
-                use realized;
+                | use realized;
             }
             voice flat {
-                use flattened;
+                | use flattened;
             }
         }
     }

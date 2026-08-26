@@ -23,7 +23,7 @@ piece "Variation" {
 
             voice lead {
                 // The theme as written: four quarters, one bar.
-                use theme();
+                | use theme();
 
                 // Augmentation. Each quarter is written out as a half, so
                 // the bar the theme filled once now takes two.
@@ -45,9 +45,7 @@ piece "Variation" {
 
                 // One occurrence, one note different. The motif is untouched,
                 // and so is every other bar that uses it.
-                use theme() with {
-                    note 3 = a5;
-                }
+                | use theme() with { note 3 = a5; }
             }
         }
     }

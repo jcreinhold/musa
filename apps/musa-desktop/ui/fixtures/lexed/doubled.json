@@ -305,38 +305,43 @@
     "end": 1167
   },
   {
-    "class": "pitch",
-    "start": 1184,
-    "end": 1186
-  },
-  {
     "class": "punctuation",
-    "start": 1186,
-    "end": 1187
+    "start": 1184,
+    "end": 1185
   },
   {
-    "class": "number",
-    "start": 1187,
+    "class": "pitch",
+    "start": 1186,
     "end": 1188
   },
   {
     "class": "punctuation",
-    "start": 1201,
-    "end": 1202
+    "start": 1188,
+    "end": 1189
+  },
+  {
+    "class": "number",
+    "start": 1189,
+    "end": 1190
   },
   {
     "class": "punctuation",
-    "start": 1211,
-    "end": 1212
+    "start": 1203,
+    "end": 1204
   },
   {
     "class": "punctuation",
-    "start": 1217,
-    "end": 1218
+    "start": 1213,
+    "end": 1214
   },
   {
     "class": "punctuation",
     "start": 1219,
     "end": 1220
+  },
+  {
+    "class": "punctuation",
+    "start": 1221,
+    "end": 1222
   }
 ]

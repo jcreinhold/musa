@@ -56,7 +56,7 @@ piece "Graces" {
             profile baroque;
 
             voice tune {
-                dynamic mf;
+                | dynamic mf;
 
                 // One grace, the ordinary case.
                 grace { c#6 }
@@ -73,7 +73,7 @@ piece "Graces" {
                 // beat to take from, so even the Romantic profile takes it
                 // from the principal. The page does not know that; the
                 // performer does, and so does the profile.
-                b5/4
+                | b5/4
                 grace { a#5 }
                 b5/4
 
@@ -82,7 +82,7 @@ piece "Graces" {
                 grace { g5 staccato }
                 f#5/2
 
-                d5/1
+                | d5/1
             }
         }
 
@@ -91,21 +91,15 @@ piece "Graces" {
             profile romantic;
 
             voice bass {
-                dynamic mf;
-
-                d4/2
-                a3/2
+                | dynamic mf; d4/2  a3/2
 
                 // The same figure, read the other way: these graces sound
                 // before the beat and the principal is untouched.
-                grace { g3 a3 }
-                b3/2
-                f#3/2
+                | grace { g3 a3 } b3/2 f#3/2
 
-                g3/2
-                a3/2
+                | g3/2 a3/2
 
-                d3/1
+                | d3/1
             }
         }
     }

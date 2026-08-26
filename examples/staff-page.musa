@@ -68,15 +68,8 @@ piece "Staff page" {
     score {
         part clarinet {
             voice line {
-                c5/4
-                d5/4.
-                e5/8
-                f5/4
-                f5/8
-                rest/8
-                [g4 b4 d5]/4
-                c5/4.
-                rest/8
+                | c5/4  d5/4. e5/8  f5/4
+                | f5/8 rest/8  [g4 b4 d5]/4  c5/4. rest/8
             }
         }
     }

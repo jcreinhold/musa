@@ -222,22 +222,22 @@ piece "Neo-Riemannian" {
     score {
         part close {
             voice upper {
-                use close_one;
-                use close_two;
-                use close_three;
-                use close_four;
-                use close_five;
-                use close_six;
+                | use close_one;
+                | use close_two;
+                | use close_three;
+                | use close_four;
+                | use close_five;
+                | use close_six;
             }
         }
         part dropped {
             voice upper {
-                use drop_one;
-                use drop_two;
-                use drop_three;
-                use drop_four;
-                use drop_five;
-                use drop_six;
+                | use drop_one;
+                | use drop_two;
+                | use drop_three;
+                | use drop_four;
+                | use drop_five;
+                | use drop_six;
             }
         }
     }

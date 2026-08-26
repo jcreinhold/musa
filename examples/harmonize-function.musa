@@ -16,8 +16,7 @@ piece "Harmonize Function" {
     score {
         part strings {
             voice duet {
-                use harmonize(subject, pedal);
-                rest/2
+                | use harmonize(subject, pedal); rest/2
             }
         }
     }

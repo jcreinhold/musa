@@ -39,7 +39,7 @@ wherever a declaration may omit them.
 and the site reads:
 
 ```musa
-use canon(subject, octave_answer, duration_of(1/2));
+| use canon(subject, octave_answer, duration_of(1/2));
 ```
 
 `together` sounds two pieces of music at once; `shift` starts one later; `transpose` moves one by a written interval.
@@ -85,20 +85,10 @@ A voice folds one in with `use`, and calling the same function twice makes two v
 
 ```musa
             voice upper {
-                use answer(
-                    subject,
-                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
-                        transpose(P8, line)
-                    },
-                );
+                | use answer(subject, fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P8, line) });
             }
             voice higher {
-                use answer(
-                    subject,
-                    fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) {
-                        transpose(P15, line)
-                    },
-                );
+                | use answer(subject, fn (line: EventTrack(WrittenTime)) -> EventTrack(WrittenTime) { transpose(P15, line) });
             }
 ```
 

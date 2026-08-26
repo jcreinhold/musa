@@ -51,19 +51,19 @@ piece "Ruchenitsa" {
             clef bass;
 
             voice drum {
-                dynamic mp;
+                | dynamic mp;
 
                 // Seven bars of 4/4 — the same seven whole notes, counted
                 // the other way. The bar is written once and played seven
                 // times: `repeat` would print repeat barlines, which is a
                 // different piece of notation from an ostinato spelled out.
                 use backbeat();
-                use backbeat();
-                use backbeat();
-                use backbeat();
-                use backbeat();
-                use backbeat();
-                use backbeat();
+                | use backbeat();
+                | use backbeat();
+                | use backbeat();
+                | use backbeat();
+                | use backbeat();
+                | use backbeat();
             }
         }
     }

@@ -21,7 +21,7 @@ piece "Hemiola" {
             meter 6/8;
 
             voice upper {
-                dynamic mf;
+                | dynamic mf;
 
                 // Four bars of 6/8: two groups of three eighths each.
                 g4/8
@@ -31,26 +31,11 @@ piece "Hemiola" {
                 b4/8
                 a4/8
 
-                b4/8
-                c5/8
-                d5/8
-                e5/8
-                d5/8
-                c5/8
+                | b4/8 c5/8 d5/8  e5/8 d5/8 c5/8
 
-                d5/8
-                c5/8
-                b4/8
-                a4/8
-                b4/8
-                c5/8
+                | d5/8 c5/8 b4/8  a4/8 b4/8 c5/8
 
-                b4/8
-                a4/8
-                g4/8
-                a4/8
-                g4/8
-                f4/8
+                | b4/8 a4/8 g4/8  a4/8 g4/8 f4/8
             }
         }
 
@@ -58,24 +43,18 @@ piece "Hemiola" {
             clef bass;
 
             voice lower {
-                dynamic mp;
+                | dynamic mp;
 
                 // Four bars of 3/4 across exactly the same three quarters.
                 c3/4
                 e3/4
                 g3/4
 
-                g3/4
-                b3/4
-                d4/4
+                | g3/4 b3/4 d4/4
 
-                f3/4
-                a3/4
-                c4/4
+                | f3/4 a3/4 c4/4
 
-                c3/4
-                g3/4
-                c3/4
+                | c3/4 g3/4 c3/4
             }
         }
     }

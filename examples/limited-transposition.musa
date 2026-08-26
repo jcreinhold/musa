@@ -113,24 +113,12 @@ piece "Limited Transposition" {
     score {
         part piano {
             voice upper {
-                c4/4
-                f#4/4
-                rest/4
-                f#4/4
-                c5/4
-                rest/4
-                c4/4
-                e4/4
-                g#4/4
-                e4/4
-                g#4/4
-                c5/4
-                c4/4
-                eb4/4
-                f#4/4
-                a4/4
-                c5/4
-                rest/4
+                | c4/4 f#4/4 rest/4
+                | f#4/4 c5/4 rest/4
+                | c4/4 e4/4 g#4/4
+                | e4/4 g#4/4 c5/4
+                | c4/4 eb4/4 f#4/4
+                | a4/4 c5/4 rest/4
             }
         }
     }

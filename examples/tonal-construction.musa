@@ -184,33 +184,33 @@ piece "Tonal construction" {
     score {
         part diatonic {
             voice upper {
-                use phrase_one;
-                use phrase_two;
-                use phrase_three;
-                use phrase_four;
-                use phrase_five;
+                | use phrase_one;
+                | use phrase_two;
+                | use phrase_three;
+                | use phrase_four;
+                | use phrase_five;
             }
         }
         part borrowed_mode {
             voice upper {
-                use minor_one;
-                use minor_two;
-                use minor_three;
-                use minor_four;
+                | use minor_one;
+                | use minor_two;
+                | use minor_three;
+                | use minor_four;
             }
         }
         part chromatic {
             voice upper {
-                use chromatic_one;
-                use chromatic_two;
-                use chromatic_three;
-                use chromatic_four;
-                use chromatic_five;
-                use chromatic_six;
-                use chromatic_seven;
-                use chromatic_eight;
-                use chromatic_nine;
-                use chromatic_ten;
+                | use chromatic_one;
+                | use chromatic_two;
+                | use chromatic_three;
+                | use chromatic_four;
+                | use chromatic_five;
+                | use chromatic_six;
+                | use chromatic_seven;
+                | use chromatic_eight;
+                | use chromatic_nine;
+                | use chromatic_ten;
             }
         }
     }

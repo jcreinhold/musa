@@ -38,11 +38,11 @@ piece "Named Answer" {
             clef treble;
 
             voice dux {
-                use subject;
+                | use subject;
             }
 
             voice comes {
-                use answer;
+                | use answer;
             }
         }
     }

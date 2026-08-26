@@ -250,6 +250,19 @@ fn two_identical_bars_is_an_accident_and_a_repeat_is_honest() {
 }
 
 #[test]
+fn bars_that_use_named_material_are_already_factored() {
+    let source = piece(
+        "motif answer() { bar { g4/4 a4/4 g4/4 f4/4 } }",
+        "                bar { use answer(); }\n                bar { use answer(); }\n                bar { use answer(); }",
+    );
+    assert!(
+        coded(&source, Code::CopiedBars).is_empty(),
+        "{:?}",
+        warnings_of(&source)
+    );
+}
+
+#[test]
 fn a_waiver_lives_next_to_the_sin() {
     let waived = piece(
         "// musa:allow(unused-material) — kept for the B section\nmotif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}",

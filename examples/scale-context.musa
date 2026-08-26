@@ -74,9 +74,7 @@ piece "Scale Context" {
 
                 // With no scale of its own, `step` walks the collection the
                 // written key suggests: C natural minor.
-                c4/4
-                (c4 step 2)/4
-                rest/2
+                | c4/4 (c4 step 2)/4 rest/2
             }
         }
     }

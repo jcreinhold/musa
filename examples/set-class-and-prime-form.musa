@@ -170,22 +170,10 @@ piece "Set Class and Prime Form" {
     score {
         part piano {
             voice upper {
-                bb4/4
-                c5/4
-                d5/4
-                eb5/4
-                f5/4
-                rest/4
-                c5/4
-                e5/4
-                g5/4
-                d5/4
-                f#5/4
-                a5/4
-                c5/4
-                f5/4
-                ab5/4
-                rest/4
+                | bb4/4 c5/4 d5/4 eb5/4
+                | f5/4 rest/4 c5/4 e5/4
+                | g5/4 d5/4 f#5/4 a5/4
+                | c5/4 f5/4 ab5/4 rest/4
             }
         }
     }

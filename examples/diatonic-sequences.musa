@@ -80,14 +80,8 @@ piece "Diatonic Sequences" {
         // collection. The diminished triad in it is the collection's doing.
         part fifths_triads {
             voice v {
-                use fifths_close(0);
-                use fifths_close(1);
-                use fifths_close(2);
-                use fifths_close(3);
-                use fifths_close(4);
-                use fifths_close(5);
-                use fifths_close(6);
-                use fifths_close(7);
+                | use fifths_close(0); use fifths_close(1); use fifths_close(2); use fifths_close(3);
+                | use fifths_close(4); use fifths_close(5); use fifths_close(6); use fifths_close(7);
             }
         }
 
@@ -95,14 +89,10 @@ piece "Diatonic Sequences" {
         // does not sound like the same music.
         part fifths_voiced_wider {
             voice v {
-                use fifths_drop(0);
-                use fifths_drop(1);
-                use fifths_drop(2);
-                use fifths_drop(3);
-                use fifths_drop(4);
-                use fifths_drop(5);
-                use fifths_drop(6);
-                use fifths_drop(7);
+                | use fifths_drop(0); use fifths_drop(1);
+                | use fifths_drop(2); use fifths_drop(3);
+                | use fifths_drop(4); use fifths_drop(5);
+                | use fifths_drop(6); use fifths_drop(7);
             }
         }
 
@@ -110,23 +100,14 @@ piece "Diatonic Sequences" {
         // stopping early is an ordinary thing to do.
         part fifths_sevenths {
             voice v {
-                use sevenths_close(0);
-                use sevenths_close(1);
-                use sevenths_close(2);
-                use sevenths_close(3);
+                | use sevenths_close(0); use sevenths_close(1); use sevenths_close(2); use sevenths_close(3);
             }
         }
 
         part descending_thirds_walk {
             voice v {
-                use thirds_close(0);
-                use thirds_close(1);
-                use thirds_close(2);
-                use thirds_close(3);
-                use thirds_close(4);
-                use thirds_close(5);
-                use thirds_close(6);
-                use thirds_close(7);
+                | use thirds_close(0); use thirds_close(1); use thirds_close(2); use thirds_close(3);
+                | use thirds_close(4); use thirds_close(5); use thirds_close(6); use thirds_close(7);
             }
         }
 
@@ -134,14 +115,8 @@ piece "Diatonic Sequences" {
         // is the same function; `minor` is the only thing that changed.
         part ascending_seconds_in_minor {
             voice v {
-                use seconds_minor(0);
-                use seconds_minor(1);
-                use seconds_minor(2);
-                use seconds_minor(3);
-                use seconds_minor(4);
-                use seconds_minor(5);
-                use seconds_minor(6);
-                use seconds_minor(7);
+                | use seconds_minor(0); use seconds_minor(1); use seconds_minor(2); use seconds_minor(3);
+                | use seconds_minor(4); use seconds_minor(5); use seconds_minor(6); use seconds_minor(7);
             }
         }
     }

@@ -72,28 +72,18 @@ piece "The Rule of the Octave" {
         // what makes the bass scale legible as a bass scale.
         part ascent_close {
             voice v {
-                use low(1);
-                use low(2);
-                use low(3);
-                use low(4);
-                use low(5);
-                use low(6);
-                use low(7);
-                use low(8);
+                | use low(1); use low(2); use low(3); use low(4);
+                | use low(5); use low(6); use low(7); use low(8);
             }
         }
 
         // The same ascent, drop-2 and half notes.
         part ascent_drop {
             voice v {
-                use high(1);
-                use high(2);
-                use high(3);
-                use high(4);
-                use high(5);
-                use high(6);
-                use high(7);
-                use high(8);
+                | use high(1); use high(2);
+                | use high(3); use high(4);
+                | use high(5); use high(6);
+                | use high(7); use high(8);
             }
         }
 
@@ -102,27 +92,17 @@ piece "The Rule of the Octave" {
         // sixth degree and not the fourth.
         part descent_close {
             voice v {
-                use low_down(8);
-                use low_down(7);
-                use low_down(6);
-                use low_down(5);
-                use low_down(4);
-                use low_down(3);
-                use low_down(2);
-                use low_down(1);
+                | use low_down(8); use low_down(7); use low_down(6); use low_down(5);
+                | use low_down(4); use low_down(3); use low_down(2); use low_down(1);
             }
         }
 
         part descent_drop {
             voice v {
-                use high_down(8);
-                use high_down(7);
-                use high_down(6);
-                use high_down(5);
-                use high_down(4);
-                use high_down(3);
-                use high_down(2);
-                use high_down(1);
+                | use high_down(8); use high_down(7);
+                | use high_down(6); use high_down(5);
+                | use high_down(4); use high_down(3);
+                | use high_down(2); use high_down(1);
             }
         }
     }

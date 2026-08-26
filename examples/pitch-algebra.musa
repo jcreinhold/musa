@@ -92,9 +92,8 @@ piece "Pitch Algebra" {
     score {
         part keyboard {
             voice right_hand {
-                use line(c4);
-                use law();
-                use spelling();
+                | use line(c4);
+                | use law(); use spelling();
             }
         }
     }

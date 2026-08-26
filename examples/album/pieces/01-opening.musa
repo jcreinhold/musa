@@ -15,20 +15,15 @@ piece "Opening" {
             clef treble;
 
             voice lead {
-                dynamic p;
-                use rise(c5);
+                | dynamic p; use rise(c5);
 
                 // The tempo is written where it changes, like the meter and
                 // the key: a place in the piece, not a coordinate quoted from
                 // somewhere else.
-                tempo 1/4 = 108 "poco più mosso";
+                | tempo 1/4 = 108 "poco più mosso"; crescendo to f { use fall(g5); }
 
-                crescendo to f {
-                    use fall(g5);
-                }
-
-                use rise(c5);
-                use fall(g5);
+                | use rise(c5);
+                | use fall(g5);
 
                 // Two written bars to close, beside the motifs the rest of
                 // the piece is made of. They are here to be looked at: this

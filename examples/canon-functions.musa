@@ -20,7 +20,7 @@ piece "Canon Functions" {
     score {
         part strings {
             voice duet {
-                use canon(subject, octave_answer, duration_of(1/2));
+                | use canon(subject, octave_answer, duration_of(1/2));
             }
         }
     }

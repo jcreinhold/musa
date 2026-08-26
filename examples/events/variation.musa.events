@@ -4,26 +4,26 @@ events "Variation" {
   composition main : EventTrack[WrittenTime, ScoreFact] =
     together {
       track 6 {
-        occurrence "voice 0 0 note c5 1/4 [706:718 def 490:494 #1 via motif 706:718]" from 0 to 1/4;
-        occurrence "voice 0 0 note e5 1/4 [706:718 def 503:507 #1 via motif 706:718]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note g5 1/4 [706:718 def 516:520 #1 via motif 706:718]" from 1/2 to 3/4;
-        occurrence "voice 0 0 note e5 1/4 [706:718 def 529:533 #1 via motif 706:718]" from 3/4 to 1;
-        occurrence "voice 0 0 note c5 1/2 [907:919 def 490:494 #1 via stretch 2 motif 907:919]" from 1 to 3/2;
-        occurrence "voice 0 0 note e5 1/2 [907:919 def 503:507 #1 via stretch 2 motif 907:919]" from 3/2 to 2;
-        occurrence "voice 0 0 note g5 1/2 [907:919 def 516:520 #1 via stretch 2 motif 907:919]" from 2 to 5/2;
-        occurrence "voice 0 0 note e5 1/2 [907:919 def 529:533 #1 via stretch 2 motif 907:919]" from 5/2 to 3;
-        occurrence "voice 0 0 note c5 1/4 [1044:1056 def 490:494 #1 via retrograde motif 1044:1056]" from 15/4 to 4;
-        occurrence "voice 0 0 note e5 1/4 [1044:1056 def 503:507 #1 via retrograde motif 1044:1056]" from 7/2 to 15/4;
-        occurrence "voice 0 0 note g5 1/4 [1044:1056 def 516:520 #1 via retrograde motif 1044:1056]" from 13/4 to 7/2;
-        occurrence "voice 0 0 note e5 1/4 [1044:1056 def 529:533 #1 via retrograde motif 1044:1056]" from 3 to 13/4;
-        occurrence "voice 0 0 note c5 1/4 [1317:1329 def 490:494 #1 via invert 'c5' motif 1317:1329]" from 4 to 17/4;
-        occurrence "voice 0 0 note ab4 1/4 [1317:1329 def 503:507 #1 via invert 'c5' motif 1317:1329]" from 17/4 to 9/2;
-        occurrence "voice 0 0 note f4 1/4 [1317:1329 def 516:520 #1 via invert 'c5' motif 1317:1329]" from 9/2 to 19/4;
-        occurrence "voice 0 0 note ab4 1/4 [1317:1329 def 529:533 #1 via invert 'c5' motif 1317:1329]" from 19/4 to 5;
-        occurrence "voice 0 0 note c5 1/4 [1503:1572 def 490:494 #1 via motif 1503:1572]" from 5 to 21/4;
-        occurrence "voice 0 0 note e5 1/4 [1503:1572 def 503:507 #1 via motif 1503:1572]" from 21/4 to 11/2;
-        occurrence "voice 0 0 note a5 1/4 [1503:1572 def 516:520 #1 via motif 1503:1572 special 1542:1554]" from 11/2 to 23/4;
-        occurrence "voice 0 0 note e5 1/4 [1503:1572 def 529:533 #1 via motif 1503:1572]" from 23/4 to 6;
+        occurrence "voice 0 0 note c5 1/4 [708:720 def 490:494 #1 via motif 708:720]" from 0 to 1/4;
+        occurrence "voice 0 0 note e5 1/4 [708:720 def 503:507 #1 via motif 708:720]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note g5 1/4 [708:720 def 516:520 #1 via motif 708:720]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note e5 1/4 [708:720 def 529:533 #1 via motif 708:720]" from 3/4 to 1;
+        occurrence "voice 0 0 note c5 1/2 [909:921 def 490:494 #1 via stretch 2 motif 909:921]" from 1 to 3/2;
+        occurrence "voice 0 0 note e5 1/2 [909:921 def 503:507 #1 via stretch 2 motif 909:921]" from 3/2 to 2;
+        occurrence "voice 0 0 note g5 1/2 [909:921 def 516:520 #1 via stretch 2 motif 909:921]" from 2 to 5/2;
+        occurrence "voice 0 0 note e5 1/2 [909:921 def 529:533 #1 via stretch 2 motif 909:921]" from 5/2 to 3;
+        occurrence "voice 0 0 note c5 1/4 [1046:1058 def 490:494 #1 via retrograde motif 1046:1058]" from 15/4 to 4;
+        occurrence "voice 0 0 note e5 1/4 [1046:1058 def 503:507 #1 via retrograde motif 1046:1058]" from 7/2 to 15/4;
+        occurrence "voice 0 0 note g5 1/4 [1046:1058 def 516:520 #1 via retrograde motif 1046:1058]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note e5 1/4 [1046:1058 def 529:533 #1 via retrograde motif 1046:1058]" from 3 to 13/4;
+        occurrence "voice 0 0 note c5 1/4 [1319:1331 def 490:494 #1 via invert 'c5' motif 1319:1331]" from 4 to 17/4;
+        occurrence "voice 0 0 note ab4 1/4 [1319:1331 def 503:507 #1 via invert 'c5' motif 1319:1331]" from 17/4 to 9/2;
+        occurrence "voice 0 0 note f4 1/4 [1319:1331 def 516:520 #1 via invert 'c5' motif 1319:1331]" from 9/2 to 19/4;
+        occurrence "voice 0 0 note ab4 1/4 [1319:1331 def 529:533 #1 via invert 'c5' motif 1319:1331]" from 19/4 to 5;
+        occurrence "voice 0 0 note c5 1/4 [1507:1540 def 490:494 #1 via motif 1507:1540]" from 5 to 21/4;
+        occurrence "voice 0 0 note e5 1/4 [1507:1540 def 503:507 #1 via motif 1507:1540]" from 21/4 to 11/2;
+        occurrence "voice 0 0 note a5 1/4 [1507:1540 def 516:520 #1 via motif 1507:1540 special 1526:1538]" from 11/2 to 23/4;
+        occurrence "voice 0 0 note e5 1/4 [1507:1540 def 529:533 #1 via motif 1507:1540]" from 23/4 to 6;
       };
       track 6 {
         occurrence "piece meter 4/4 [433:443]" from 0 to 6;

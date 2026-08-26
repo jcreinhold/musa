@@ -312,8 +312,9 @@ fn check_marking(
 
 /// Guide §4: three identical bars in one voice is a motif that has not been
 /// named yet. Only the voice's own top-level bars compare — a bar inside a
-/// `repeat` is honest repetition, and a bar inside any other block is
-/// someone's argument — and named bars are already an abstraction.
+/// `repeat` is honest repetition, a bar inside any other block is someone's
+/// argument, and named bars or bars that only use named material are already
+/// abstractions.
 fn copied_bars(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
     const THREE_IS_A_MOTIF: usize = 3;
     for voice in voices_of(piece) {
@@ -323,6 +324,7 @@ fn copied_bars(piece: &PieceDecl, lints: &mut Vec<Diagnostic>) {
             .filter_map(|item| {
                 if let VoiceItem::Bar(bar) = &item
                     && bar.name().is_none()
+                    && !matches!(bar.items().as_slice(), [VoiceItem::Use(_)])
                 {
                     return Some(bar.clone());
                 }

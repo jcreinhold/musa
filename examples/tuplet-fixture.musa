@@ -16,30 +16,8 @@ piece "Tuplet Fixture" {
             clef treble;
 
             voice lead {
-                dynamic mf;
-                tuplet 3/2 {
-                    c5/8
-                    d5/8
-                    e5/8
-                }
-                slur {
-                    f5/8
-                    g5/8
-                }
-                a5/4>
-                g5/4 staccato ~
-                g5/4
-                dynamic p;
-                use turn(a4);
-                tuplet 3/2 {
-                    c5/8
-                    d5/8
-                    e5/8
-                }
-                slur {
-                    b4/8^
-                    c5/8
-                }
+                | dynamic mf; tuplet 3/2 { c5/8 d5/8 e5/8 } slur { f5/8 g5/8 } a5/4> g5/4 staccato ~
+                | g5/4 dynamic p; use turn(a4); tuplet 3/2 { c5/8 d5/8 e5/8 } slur { b4/8^ c5/8 }
             }
         }
 
@@ -47,15 +25,8 @@ piece "Tuplet Fixture" {
             clef bass;
 
             voice bass {
-                dynamic p;
-                [c3 g3]/2
-                e3/4
-                g3/4 ~
-                g3/2
-                slur {
-                    a3/4 tenuto
-                    g3/4
-                }
+                | dynamic p; [c3 g3]/2  e3/4  g3/4 ~
+                | g3/2 slur { a3/4 tenuto g3/4 }
             }
         }
     }

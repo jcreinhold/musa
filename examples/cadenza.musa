@@ -20,7 +20,7 @@ piece "Cadenza" {
             clef treble;
 
             voice solo {
-                dynamic mf;
+                | dynamic mf;
 
                 // Four measured bars: 1 through 4.
                 d5/4
@@ -28,15 +28,11 @@ piece "Cadenza" {
                 a5/4
                 d6/4
 
-                c#6/2
-                a5/2
+                | c#6/2 a5/2
 
-                bb5/4
-                g5/4
-                e5/4
-                c#5/4
+                | bb5/4 g5/4 e5/4 c#5/4
 
-                d5/1
+                | d5/1
 
                 // Measure 5, and it is one measure however long it runs.
                 senza {
@@ -57,12 +53,9 @@ piece "Cadenza" {
                 }
 
                 // Measure 6: the movement, where it left off.
-                d5/4
-                a5/4
-                f5/4
-                d5/4
+                | d5/4 a5/4 f5/4 d5/4
 
-                d5/1
+                | d5/1
             }
         }
     }

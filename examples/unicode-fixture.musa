@@ -36,8 +36,8 @@ piece "Étude en sol — 𝄞" {
                     b4/4
                     d5/4
                 }
-                use sigh(d5);
-                use sigh(g5);
+                | use sigh(d5);
+                | use sigh(g5);
                 phrase "cadence — ♭VII" {
                     f5/4
                     d5/4

@@ -600,63 +600,58 @@
     "end": 827
   },
   {
-    "class": "use",
+    "class": "punctuation",
     "start": 844,
-    "end": 847
+    "end": 845
+  },
+  {
+    "class": "use",
+    "start": 846,
+    "end": 849
   },
   {
     "class": "name",
-    "start": 848,
-    "end": 853
+    "start": 850,
+    "end": 855
   },
   {
     "class": "punctuation",
-    "start": 853,
-    "end": 854
+    "start": 855,
+    "end": 856
   },
   {
     "class": "name",
-    "start": 854,
-    "end": 861
+    "start": 856,
+    "end": 863
   },
   {
     "class": "punctuation",
-    "start": 861,
-    "end": 862
-  },
-  {
-    "class": "name",
     "start": 863,
-    "end": 876
-  },
-  {
-    "class": "punctuation",
-    "start": 876,
-    "end": 877
+    "end": 864
   },
   {
     "class": "name",
-    "start": 878,
-    "end": 889
+    "start": 865,
+    "end": 878
   },
   {
     "class": "punctuation",
-    "start": 889,
-    "end": 890
+    "start": 878,
+    "end": 879
+  },
+  {
+    "class": "name",
+    "start": 880,
+    "end": 891
+  },
+  {
+    "class": "punctuation",
+    "start": 891,
+    "end": 892
   },
   {
     "class": "duration",
-    "start": 890,
-    "end": 893
-  },
-  {
-    "class": "punctuation",
-    "start": 893,
-    "end": 894
-  },
-  {
-    "class": "punctuation",
-    "start": 894,
+    "start": 892,
     "end": 895
   },
   {
@@ -666,22 +661,32 @@
   },
   {
     "class": "punctuation",
-    "start": 909,
-    "end": 910
+    "start": 896,
+    "end": 897
   },
   {
     "class": "punctuation",
-    "start": 919,
-    "end": 920
+    "start": 897,
+    "end": 898
   },
   {
     "class": "punctuation",
-    "start": 925,
-    "end": 926
+    "start": 911,
+    "end": 912
+  },
+  {
+    "class": "punctuation",
+    "start": 921,
+    "end": 922
   },
   {
     "class": "punctuation",
     "start": 927,
     "end": 928
+  },
+  {
+    "class": "punctuation",
+    "start": 929,
+    "end": 930
   }
 ]

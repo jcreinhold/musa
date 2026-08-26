@@ -30,12 +30,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1335,
-                                        end: 1348,
+                                        start: 1321,
+                                        end: 1334,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1335,
-                                        end: 1348,
+                                        start: 1321,
+                                        end: 1334,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -82,12 +82,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1365,
-                                        end: 1378,
+                                        start: 1336,
+                                        end: 1349,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1365,
-                                        end: 1378,
+                                        start: 1336,
+                                        end: 1349,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -134,12 +134,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1395,
-                                        end: 1399,
+                                        start: 1351,
+                                        end: 1355,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1395,
-                                        end: 1399,
+                                        start: 1351,
+                                        end: 1355,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -186,12 +186,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1443,
-                                        end: 1456,
+                                        start: 1385,
+                                        end: 1398,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1443,
-                                        end: 1456,
+                                        start: 1385,
+                                        end: 1398,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -238,12 +238,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1473,
-                                        end: 1477,
+                                        start: 1400,
+                                        end: 1404,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1473,
-                                        end: 1477,
+                                        start: 1400,
+                                        end: 1404,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -290,12 +290,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1494,
-                                        end: 1498,
+                                        start: 1406,
+                                        end: 1410,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1494,
-                                        end: 1498,
+                                        start: 1406,
+                                        end: 1410,
                                     },
                                     declaration: DeclarationId(
                                         1,
@@ -363,12 +363,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1667,
-                                        end: 1680,
+                                        start: 1565,
+                                        end: 1578,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1667,
-                                        end: 1680,
+                                        start: 1565,
+                                        end: 1578,
                                     },
                                     declaration: DeclarationId(
                                         2,
@@ -415,12 +415,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1697,
-                                        end: 1708,
+                                        start: 1580,
+                                        end: 1591,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1697,
-                                        end: 1708,
+                                        start: 1580,
+                                        end: 1591,
                                     },
                                     declaration: DeclarationId(
                                         2,
@@ -467,12 +467,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1725,
-                                        end: 1730,
+                                        start: 1593,
+                                        end: 1598,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1725,
-                                        end: 1730,
+                                        start: 1593,
+                                        end: 1598,
                                     },
                                     declaration: DeclarationId(
                                         2,
@@ -519,12 +519,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1774,
-                                        end: 1778,
+                                        start: 1628,
+                                        end: 1632,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1774,
-                                        end: 1778,
+                                        start: 1628,
+                                        end: 1632,
                                     },
                                     declaration: DeclarationId(
                                         2,
@@ -571,12 +571,12 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
-                                        start: 1795,
-                                        end: 1799,
+                                        start: 1634,
+                                        end: 1638,
                                     },
                                     definition_span: SourceSpan {
-                                        start: 1795,
-                                        end: 1799,
+                                        start: 1634,
+                                        end: 1638,
                                     },
                                     declaration: DeclarationId(
                                         2,
@@ -738,12 +738,12 @@ ScoreSnapshot {
                 mark: P,
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1308,
-                        end: 1318,
+                        start: 1310,
+                        end: 1320,
                     },
                     definition_span: SourceSpan {
-                        start: 1308,
-                        end: 1318,
+                        start: 1310,
+                        end: 1320,
                     },
                     declaration: DeclarationId(
                         1,
@@ -758,12 +758,12 @@ ScoreSnapshot {
                 mark: F,
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1416,
-                        end: 1426,
+                        start: 1374,
+                        end: 1384,
                     },
                     definition_span: SourceSpan {
-                        start: 1416,
-                        end: 1426,
+                        start: 1374,
+                        end: 1384,
                     },
                     declaration: DeclarationId(
                         1,
@@ -778,12 +778,12 @@ ScoreSnapshot {
                 mark: Mf,
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1639,
-                        end: 1650,
+                        start: 1553,
+                        end: 1564,
                     },
                     definition_span: SourceSpan {
-                        start: 1639,
-                        end: 1650,
+                        start: 1553,
+                        end: 1564,
                     },
                     declaration: DeclarationId(
                         2,
@@ -798,12 +798,12 @@ ScoreSnapshot {
                 mark: P,
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1747,
-                        end: 1757,
+                        start: 1617,
+                        end: 1627,
                     },
                     definition_span: SourceSpan {
-                        start: 1747,
-                        end: 1757,
+                        start: 1617,
+                        end: 1627,
                     },
                     declaration: DeclarationId(
                         2,
@@ -820,12 +820,12 @@ ScoreSnapshot {
                 mark: Mark("staccato"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1335,
-                        end: 1348,
+                        start: 1321,
+                        end: 1334,
                     },
                     definition_span: SourceSpan {
-                        start: 1335,
-                        end: 1348,
+                        start: 1321,
+                        end: 1334,
                     },
                     declaration: DeclarationId(
                         1,
@@ -840,12 +840,12 @@ ScoreSnapshot {
                 mark: Mark("staccato"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1365,
-                        end: 1378,
+                        start: 1336,
+                        end: 1349,
                     },
                     definition_span: SourceSpan {
-                        start: 1365,
-                        end: 1378,
+                        start: 1336,
+                        end: 1349,
                     },
                     declaration: DeclarationId(
                         1,
@@ -860,12 +860,12 @@ ScoreSnapshot {
                 mark: Mark("staccato"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1443,
-                        end: 1456,
+                        start: 1385,
+                        end: 1398,
                     },
                     definition_span: SourceSpan {
-                        start: 1443,
-                        end: 1456,
+                        start: 1385,
+                        end: 1398,
                     },
                     declaration: DeclarationId(
                         1,
@@ -880,12 +880,12 @@ ScoreSnapshot {
                 mark: Mark("staccato"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1667,
-                        end: 1680,
+                        start: 1565,
+                        end: 1578,
                     },
                     definition_span: SourceSpan {
-                        start: 1667,
-                        end: 1680,
+                        start: 1565,
+                        end: 1578,
                     },
                     declaration: DeclarationId(
                         2,
@@ -900,12 +900,12 @@ ScoreSnapshot {
                 mark: Mark("tenuto"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1697,
-                        end: 1708,
+                        start: 1580,
+                        end: 1591,
                     },
                     definition_span: SourceSpan {
-                        start: 1697,
-                        end: 1708,
+                        start: 1580,
+                        end: 1591,
                     },
                     declaration: DeclarationId(
                         2,
@@ -920,12 +920,12 @@ ScoreSnapshot {
                 mark: Mark("accent"),
                 origin: Origin {
                     source_span: SourceSpan {
-                        start: 1725,
-                        end: 1730,
+                        start: 1593,
+                        end: 1598,
                     },
                     definition_span: SourceSpan {
-                        start: 1725,
-                        end: 1730,
+                        start: 1593,
+                        end: 1598,
                     },
                     declaration: DeclarationId(
                         2,

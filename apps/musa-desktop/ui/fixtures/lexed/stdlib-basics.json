@@ -675,78 +675,73 @@
     "end": 757
   },
   {
-    "class": "use",
+    "class": "punctuation",
     "start": 774,
-    "end": 777
+    "end": 775
+  },
+  {
+    "class": "use",
+    "start": 776,
+    "end": 779
   },
   {
     "class": "name",
-    "start": 778,
-    "end": 786
+    "start": 780,
+    "end": 788
   },
   {
     "class": "punctuation",
-    "start": 786,
-    "end": 787
+    "start": 788,
+    "end": 789
   },
   {
     "class": "name",
-    "start": 787,
-    "end": 794
+    "start": 789,
+    "end": 796
   },
   {
     "class": "punctuation",
-    "start": 794,
-    "end": 795
-  },
-  {
-    "class": "name",
     "start": 796,
-    "end": 801
-  },
-  {
-    "class": "punctuation",
-    "start": 801,
-    "end": 802
+    "end": 797
   },
   {
     "class": "name",
-    "start": 802,
-    "end": 813
+    "start": 798,
+    "end": 803
   },
   {
     "class": "punctuation",
-    "start": 813,
-    "end": 814
+    "start": 803,
+    "end": 804
+  },
+  {
+    "class": "name",
+    "start": 804,
+    "end": 815
+  },
+  {
+    "class": "punctuation",
+    "start": 815,
+    "end": 816
   },
   {
     "class": "duration",
-    "start": 814,
-    "end": 817
-  },
-  {
-    "class": "punctuation",
-    "start": 817,
-    "end": 818
-  },
-  {
-    "class": "punctuation",
-    "start": 818,
+    "start": 816,
     "end": 819
   },
   {
-    "class": "name",
+    "class": "punctuation",
+    "start": 819,
+    "end": 820
+  },
+  {
+    "class": "punctuation",
     "start": 820,
-    "end": 826
+    "end": 821
   },
   {
-    "class": "punctuation",
-    "start": 826,
-    "end": 827
-  },
-  {
-    "class": "punctuation",
-    "start": 827,
+    "class": "name",
+    "start": 822,
     "end": 828
   },
   {
@@ -755,9 +750,14 @@
     "end": 829
   },
   {
-    "class": "pitch",
-    "start": 846,
-    "end": 848
+    "class": "punctuation",
+    "start": 829,
+    "end": 830
+  },
+  {
+    "class": "punctuation",
+    "start": 830,
+    "end": 831
   },
   {
     "class": "punctuation",
@@ -765,43 +765,53 @@
     "end": 849
   },
   {
+    "class": "pitch",
+    "start": 850,
+    "end": 852
+  },
+  {
+    "class": "punctuation",
+    "start": 852,
+    "end": 853
+  },
+  {
     "class": "number",
-    "start": 849,
-    "end": 850
+    "start": 853,
+    "end": 854
   },
   {
     "class": "keyword",
-    "start": 867,
-    "end": 871
+    "start": 855,
+    "end": 859
   },
   {
     "class": "punctuation",
-    "start": 871,
-    "end": 872
+    "start": 859,
+    "end": 860
   },
   {
     "class": "number",
-    "start": 872,
-    "end": 873
+    "start": 860,
+    "end": 861
   },
   {
     "class": "punctuation",
-    "start": 886,
-    "end": 887
+    "start": 874,
+    "end": 875
   },
   {
     "class": "punctuation",
-    "start": 896,
-    "end": 897
+    "start": 884,
+    "end": 885
   },
   {
     "class": "punctuation",
-    "start": 902,
-    "end": 903
+    "start": 890,
+    "end": 891
   },
   {
     "class": "punctuation",
-    "start": 904,
-    "end": 905
+    "start": 892,
+    "end": 893
   }
 ]

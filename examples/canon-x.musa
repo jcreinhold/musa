@@ -34,27 +34,13 @@ piece "Canon X" {
             tempo 1/4 = 60 to 180 over 4/1 "accel.";
 
             voice upper {
-                dynamic p;
+                | dynamic p; c5/4  d5/4  e5/4  f5/4
 
-                c5/4
-                d5/4
-                e5/4
-                f5/4
+                | g5/4 a5/4 b5/4 c6/4
 
-                g5/4
-                a5/4
-                b5/4
-                c6/4
+                | b5/4 a5/4 g5/4 f5/4
 
-                b5/4
-                a5/4
-                g5/4
-                f5/4
-
-                e5/4
-                d5/4
-                c5/4
-                c5/4
+                | e5/4 d5/4 c5/4 c5/4
             }
         }
 
@@ -63,27 +49,13 @@ piece "Canon X" {
             tempo 1/4 = 180 to 60 over 4/1 "rit.";
 
             voice lower {
-                dynamic f;
+                | dynamic f; c4/4  b3/4  a3/4  g3/4
 
-                c4/4
-                b3/4
-                a3/4
-                g3/4
+                | f3/4 e3/4 d3/4 c3/4
 
-                f3/4
-                e3/4
-                d3/4
-                c3/4
+                | d3/4 e3/4 f3/4 g3/4
 
-                d3/4
-                e3/4
-                f3/4
-                g3/4
-
-                a3/4
-                b3/4
-                c4/4
-                c4/4
+                | a3/4 b3/4 c4/4 c4/4
             }
         }
     }

@@ -36,14 +36,7 @@ piece "Live studio" {
     score {
         part proof {
             voice graph_is_valid {
-                use match checked {
-                    Ok(reached) -> music {
-                        c5/1
-                    },
-                    Err(problem) -> music {
-                        rest/1
-                    },
-                };
+                | use match checked { Ok(reached) -> music { c5/1 }, Err(problem) -> music { rest/1 }, };
             }
         }
     }

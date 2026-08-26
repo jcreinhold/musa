@@ -19,10 +19,8 @@ piece "Contextual Music" {
     score {
         part ensemble {
             voice line {
-                use subject;
-                use figure(d4);
-                use answer(e4);
-                rest/2
+                | use subject; use figure(d4);
+                | use answer(e4); rest/2
             }
         }
     }

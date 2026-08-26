@@ -38,11 +38,11 @@ piece "Anonymous Functions" {
     score {
         part strings {
             voice lead {
-                use subject;
+                | use subject;
             }
 
             voice follower {
-                use answer;
+                | use answer;
             }
         }
     }

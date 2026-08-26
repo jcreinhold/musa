@@ -26,8 +26,8 @@ piece "Pitch Arithmetic" {
     score {
         part keyboard {
             voice right_hand {
-                use turn(c4);
-                use echo_above(g3);
+                | use turn(c4);
+                | use echo_above(g3);
             }
         }
     }
