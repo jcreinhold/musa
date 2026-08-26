@@ -35,3 +35,11 @@ tracing = "0.1"
 # install it are thin (roadmap §15.7). `env-filter` is the `MUSA_LOG` syntax;
 # `fmt` is the stderr writer. No other feature is wanted.
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
+
+[dev-dependencies]
+divan = "0.1.21"
+midly = { version = "0.5", default-features = false, features = ["std"] }
+
+[[bench]]
+harness = false
+name = "transcription_trial"

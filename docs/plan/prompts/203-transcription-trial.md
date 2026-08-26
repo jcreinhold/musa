@@ -1,7 +1,7 @@
 ---
 id: 203
 slug: transcription-trial
-status: in-progress
+status: done
 depends_on: [202]
 phase: 2
 ---

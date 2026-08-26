@@ -1,0 +1,81 @@
+{
+  "rhythm": [
+    {
+      "model": "nearest_grid",
+      "onset_correct": 45,
+      "onset_total": 58,
+      "top_k_recall": 7,
+      "top_k_total": 9,
+      "duration_correct": 44,
+      "bar_phase_correct": 9,
+      "rest_structure_correct": 6,
+      "tie_structure_correct": 8,
+      "tuplet_structure_correct": 8,
+      "source_edit_distance": 27,
+      "extra_notes": 1,
+      "review_corrections": 28,
+      "peak_states": 1,
+      "peak_search_bytes": 88
+    },
+    {
+      "model": "structured_dp",
+      "onset_correct": 54,
+      "onset_total": 58,
+      "top_k_recall": 8,
+      "top_k_total": 9,
+      "duration_correct": 47,
+      "bar_phase_correct": 9,
+      "rest_structure_correct": 7,
+      "tie_structure_correct": 7,
+      "tuplet_structure_correct": 7,
+      "source_edit_distance": 23,
+      "extra_notes": 1,
+      "review_corrections": 16,
+      "peak_states": 96,
+      "peak_search_bytes": 10752
+    },
+    {
+      "model": "bayesian_hmm",
+      "onset_correct": 54,
+      "onset_total": 58,
+      "top_k_recall": 8,
+      "top_k_total": 9,
+      "duration_correct": 47,
+      "bar_phase_correct": 9,
+      "rest_structure_correct": 7,
+      "tie_structure_correct": 7,
+      "tuplet_structure_correct": 7,
+      "source_edit_distance": 23,
+      "extra_notes": 1,
+      "review_corrections": 16,
+      "peak_states": 96,
+      "peak_search_bytes": 10752
+    }
+  ],
+  "voice": [
+    {
+      "model": "pitch_order",
+      "correct": 58,
+      "total": 63,
+      "grouping_pairs_correct": 175,
+      "grouping_pairs_total": 176,
+      "review_corrections": 6
+    },
+    {
+      "model": "greedy_proximity",
+      "correct": 59,
+      "total": 63,
+      "grouping_pairs_correct": 176,
+      "grouping_pairs_total": 176,
+      "review_corrections": 4
+    },
+    {
+      "model": "bounded_cost",
+      "correct": 59,
+      "total": 63,
+      "grouping_pairs_correct": 176,
+      "grouping_pairs_total": 176,
+      "review_corrections": 4
+    }
+  ]
+}

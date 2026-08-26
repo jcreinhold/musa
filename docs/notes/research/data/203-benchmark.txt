@@ -1,0 +1,21 @@
+Host: Apple M4 Pro, 24 GiB, macOS 26.6.1 (25G76)
+Toolchain: rustc 1.98.0 (88d9e12ae 2026-08-18)
+Command: cargo bench -p musa-project --bench transcription_trial -- --sample-count 10
+
+complete generated corpus
+  fastest 8.661 ms; median 8.749 ms; mean 8.775 ms; slowest 9.008 ms
+
+regular phrase scaling
+  notes  fastest    median     mean       slowest
+     32  7.094 ms   7.117 ms   7.160 ms   7.318 ms
+     64  16.72 ms   16.75 ms   16.79 ms   16.95 ms
+    128  43.47 ms   43.96 ms   43.88 ms   44.27 ms
+    256  125.7 ms   127.0 ms   127.1 ms   130.3 ms
+
+Command: /usr/bin/time -l <bench-binary> 128 --sample-count 10
+  maximum resident set size: 15,138,816 bytes
+  peak memory footprint: 9,879,936 bytes
+
+The 128-note structured search retained at most 96 states and 102,912
+abstract bytes. RSS includes Divan and the Rust process; abstract bytes count
+the candidate records and their owned tick buffers, not allocator metadata.

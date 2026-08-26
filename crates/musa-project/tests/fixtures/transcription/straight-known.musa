@@ -1,0 +1,5 @@
+piece "Straight known" {
+    tempo 1/4 = 120;
+    meter 4/4;
+    score { part keyboard { voice line { | c4/4 d4/4 e4/4 f4/4 } } }
+}

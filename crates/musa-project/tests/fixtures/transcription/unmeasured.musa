@@ -1,0 +1,4 @@
+piece "Unmeasured" {
+    meter none;
+    score { part keyboard { voice line { c4/8 d4/8 f4/4 e4/4 c4/4 } } }
+}

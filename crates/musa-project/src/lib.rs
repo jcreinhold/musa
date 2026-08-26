@@ -60,6 +60,8 @@ mod sfz;
 mod snapshot;
 mod studio;
 mod template;
+#[doc(hidden)]
+pub mod transcription_trial;
 mod utf16;
 mod vocabulary;
 

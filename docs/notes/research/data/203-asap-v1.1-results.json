@@ -1,0 +1,34 @@
+{
+  "dataset_commit": "fad8d1e8078d0ae47ad2f280b5d022bd2de24784",
+  "adapter": "pitch-preserving nearest unused note within two aligned beats",
+  "ticks_per_beat": 24,
+  "cases": [
+    {
+      "fixture": "Bach/Fugue/bwv_846/Shi05M.mid",
+      "performance_notes": 754,
+      "score_notes": 762,
+      "matched_notes": 739,
+      "exact_onsets": 585,
+      "absolute_tick_error": 335
+    },
+    {
+      "fixture": "Mozart/Piano_Sonatas/12-3/WuuE04M.mid",
+      "performance_notes": 2941,
+      "score_notes": 2942,
+      "matched_notes": 2921,
+      "exact_onsets": 2105,
+      "absolute_tick_error": 1960
+    },
+    {
+      "fixture": "Debussy/Images_Book_1/1_Reflets_dans_lEau/Kleisen11M.mid",
+      "performance_notes": 2019,
+      "score_notes": 2057,
+      "matched_notes": 1870,
+      "exact_onsets": 741,
+      "absolute_tick_error": 4033
+    }
+  ],
+  "matched_notes": 5530,
+  "exact_anchor_normalized_onsets": 3431,
+  "absolute_tick_error": 6328
+}

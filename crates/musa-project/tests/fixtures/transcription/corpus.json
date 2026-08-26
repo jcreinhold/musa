@@ -1,0 +1,1022 @@
+{
+  "schema": 1,
+  "ticks_per_quarter": 24,
+  "fixtures": [
+    {
+      "id": "straight-known",
+      "source": "tests/fixtures/transcription/straight-known.musa",
+      "tags": [
+        "known",
+        "straight"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 500000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 500000,
+          "sounding_end_micros": 500000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 62,
+          "onset_micros": 505000,
+          "release_micros": 1005000,
+          "sounding_end_micros": 1005000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 64,
+          "onset_micros": 993000,
+          "release_micros": 1493000,
+          "sounding_end_micros": 1493000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 1508000,
+          "release_micros": 2008000,
+          "sounding_end_micros": 2008000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 3
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "ready"
+    },
+    {
+      "id": "syncopated-known",
+      "source": "tests/fixtures/transcription/syncopated-known.musa",
+      "tags": [
+        "known",
+        "syncopation",
+        "ties",
+        "rests"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 600000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 300000,
+          "sounding_end_micros": 300000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 62,
+          "onset_micros": 308000,
+          "release_micros": 908000,
+          "sounding_end_micros": 908000,
+          "expected": {
+            "onset_ticks": 12,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 64,
+          "onset_micros": 891000,
+          "release_micros": 1041000,
+          "sounding_end_micros": 1041000,
+          "expected": {
+            "onset_ticks": 36,
+            "duration_ticks": 6,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 1062000,
+          "release_micros": 1512000,
+          "sounding_end_micros": 1512000,
+          "expected": {
+            "onset_ticks": 42,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 67,
+          "onset_micros": 1495000,
+          "release_micros": 2095000,
+          "sounding_end_micros": 2095000,
+          "expected": {
+            "onset_ticks": 60,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 69,
+          "onset_micros": 2107000,
+          "release_micros": 2707000,
+          "sounding_end_micros": 2707000,
+          "expected": {
+            "onset_ticks": 84,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 5
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "ready"
+    },
+    {
+      "id": "triplet-known",
+      "source": "tests/fixtures/transcription/triplet-known.musa",
+      "tags": [
+        "known",
+        "tuplet"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 480000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 160000,
+          "sounding_end_micros": 160000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 8,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 62,
+          "onset_micros": 154000,
+          "release_micros": 314000,
+          "sounding_end_micros": 314000,
+          "expected": {
+            "onset_ticks": 8,
+            "duration_ticks": 8,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 64,
+          "onset_micros": 327000,
+          "release_micros": 487000,
+          "sounding_end_micros": 487000,
+          "expected": {
+            "onset_ticks": 16,
+            "duration_ticks": 8,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 476000,
+          "release_micros": 636000,
+          "sounding_end_micros": 636000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 8,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 67,
+          "onset_micros": 646000,
+          "release_micros": 806000,
+          "sounding_end_micros": 806000,
+          "expected": {
+            "onset_ticks": 32,
+            "duration_ticks": 8,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 69,
+          "onset_micros": 795000,
+          "release_micros": 1275000,
+          "sounding_end_micros": 1275000,
+          "expected": {
+            "onset_ticks": 40,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 5
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "ready"
+    },
+    {
+      "id": "swing-known",
+      "source": "tests/fixtures/transcription/swing-known.musa",
+      "tags": [
+        "known",
+        "swing",
+        "systematic-displacement"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 500000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 250000,
+          "sounding_end_micros": 250000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 62,
+          "onset_micros": 320000,
+          "release_micros": 570000,
+          "sounding_end_micros": 570000,
+          "expected": {
+            "onset_ticks": 12,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 64,
+          "onset_micros": 500000,
+          "release_micros": 750000,
+          "sounding_end_micros": 750000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 815000,
+          "release_micros": 1065000,
+          "sounding_end_micros": 1065000,
+          "expected": {
+            "onset_ticks": 36,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 67,
+          "onset_micros": 1000000,
+          "release_micros": 1250000,
+          "sounding_end_micros": 1250000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 69,
+          "onset_micros": 1322000,
+          "release_micros": 1572000,
+          "sounding_end_micros": 1572000,
+          "expected": {
+            "onset_ticks": 60,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 5
+          }
+        },
+        {
+          "id": 6,
+          "pitch": 71,
+          "onset_micros": 1500000,
+          "release_micros": 1750000,
+          "sounding_end_micros": 1750000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 6
+          }
+        },
+        {
+          "id": 7,
+          "pitch": 72,
+          "onset_micros": 1818000,
+          "release_micros": 2318000,
+          "sounding_end_micros": 2318000,
+          "expected": {
+            "onset_ticks": 84,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 7
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "ready"
+    },
+    {
+      "id": "rubato-free",
+      "source": "tests/fixtures/transcription/rubato-free.musa",
+      "tags": [
+        "free",
+        "rubato",
+        "tempo-drift"
+      ],
+      "clock": {
+        "kind": "free"
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 500000,
+          "sounding_end_micros": 500000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 64,
+          "onset_micros": 518000,
+          "release_micros": 1018000,
+          "sounding_end_micros": 1018000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 67,
+          "onset_micros": 1052000,
+          "release_micros": 1552000,
+          "sounding_end_micros": 1552000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 1592000,
+          "release_micros": 2092000,
+          "sounding_end_micros": 2092000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 62,
+          "onset_micros": 2145000,
+          "release_micros": 2645000,
+          "sounding_end_micros": 2645000,
+          "expected": {
+            "onset_ticks": 96,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 60,
+          "onset_micros": 2705000,
+          "release_micros": 3205000,
+          "sounding_end_micros": 3205000,
+          "expected": {
+            "onset_ticks": 120,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 5
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "tap_pulse"
+    },
+    {
+      "id": "pickup-asymmetric",
+      "source": "tests/fixtures/transcription/pickup-asymmetric.musa",
+      "tags": [
+        "known",
+        "pickup",
+        "asymmetric-meter"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 520000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 67,
+          "onset_micros": 390000,
+          "release_micros": 520000,
+          "sounding_end_micros": 520000,
+          "expected": {
+            "onset_ticks": 18,
+            "duration_ticks": 6,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 60,
+          "onset_micros": 524000,
+          "release_micros": 914000,
+          "sounding_end_micros": 914000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 62,
+          "onset_micros": 903000,
+          "release_micros": 1293000,
+          "sounding_end_micros": 1293000,
+          "expected": {
+            "onset_ticks": 42,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 64,
+          "onset_micros": 1309000,
+          "release_micros": 1699000,
+          "sounding_end_micros": 1699000,
+          "expected": {
+            "onset_ticks": 60,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 65,
+          "onset_micros": 1686000,
+          "release_micros": 2076000,
+          "sounding_end_micros": 2076000,
+          "expected": {
+            "onset_ticks": 78,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 67,
+          "onset_micros": 2086000,
+          "release_micros": 2476000,
+          "sounding_end_micros": 2476000,
+          "expected": {
+            "onset_ticks": 96,
+            "duration_ticks": 18,
+            "voice": 0,
+            "group": 5
+          }
+        },
+        {
+          "id": 6,
+          "pitch": 69,
+          "onset_micros": 2462000,
+          "release_micros": 2982000,
+          "sounding_end_micros": 2982000,
+          "expected": {
+            "onset_ticks": 114,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 6
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "ready"
+    },
+    {
+      "id": "rolled-and-block-chords",
+      "source": "tests/fixtures/transcription/rolled-and-block-chords.musa",
+      "tags": [
+        "known",
+        "polyphony",
+        "block-chord",
+        "rolled-chord"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 500000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 48,
+          "onset_micros": 0,
+          "release_micros": 500000,
+          "sounding_end_micros": 500000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 60,
+          "onset_micros": 28000,
+          "release_micros": 528000,
+          "sounding_end_micros": 528000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 0
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 50,
+          "onset_micros": 500000,
+          "release_micros": 1000000,
+          "sounding_end_micros": 1000000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 62,
+          "onset_micros": 531000,
+          "release_micros": 1031000,
+          "sounding_end_micros": 1031000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 1
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 52,
+          "onset_micros": 1000000,
+          "release_micros": 1500000,
+          "sounding_end_micros": 1500000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 64,
+          "onset_micros": 1004000,
+          "release_micros": 1504000,
+          "sounding_end_micros": 1504000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 2
+          }
+        },
+        {
+          "id": 6,
+          "pitch": 53,
+          "onset_micros": 1500000,
+          "release_micros": 2000000,
+          "sounding_end_micros": 2000000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 7,
+          "pitch": 65,
+          "onset_micros": 1540000,
+          "release_micros": 2040000,
+          "sounding_end_micros": 2040000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 3
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "choose_reading"
+    },
+    {
+      "id": "crossing-voices",
+      "source": "tests/fixtures/transcription/crossing-voices.musa",
+      "tags": [
+        "known",
+        "polyphony",
+        "voice-crossing"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 500000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 48,
+          "onset_micros": 0,
+          "release_micros": 500000,
+          "sounding_end_micros": 500000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 72,
+          "onset_micros": 12000,
+          "release_micros": 512000,
+          "sounding_end_micros": 512000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 0
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 55,
+          "onset_micros": 504000,
+          "release_micros": 1004000,
+          "sounding_end_micros": 1004000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 67,
+          "onset_micros": 494000,
+          "release_micros": 994000,
+          "sounding_end_micros": 994000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 1
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 64,
+          "onset_micros": 995000,
+          "release_micros": 1495000,
+          "sounding_end_micros": 1495000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 5,
+          "pitch": 59,
+          "onset_micros": 1007000,
+          "release_micros": 1507000,
+          "sounding_end_micros": 1507000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 2
+          }
+        },
+        {
+          "id": 6,
+          "pitch": 72,
+          "onset_micros": 1508000,
+          "release_micros": 2008000,
+          "sounding_end_micros": 2008000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 7,
+          "pitch": 52,
+          "onset_micros": 1496000,
+          "release_micros": 1996000,
+          "sounding_end_micros": 1996000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 1,
+            "group": 3
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "choose_reading"
+    },
+    {
+      "id": "pedal-repetition-mistake",
+      "source": "tests/fixtures/transcription/pedal-repetition-mistake.musa",
+      "tags": [
+        "known",
+        "pedal",
+        "repeated-note",
+        "mistake",
+        "articulation"
+      ],
+      "clock": {
+        "kind": "known",
+        "quarter_micros": 500000,
+        "origin_micros": 0
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 180000,
+          "sounding_end_micros": 1700000,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 60,
+          "onset_micros": 507000,
+          "release_micros": 687000,
+          "sounding_end_micros": 1700000,
+          "expected": {
+            "onset_ticks": 24,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 64,
+          "onset_micros": 997000,
+          "release_micros": 1177000,
+          "sounding_end_micros": 1700000,
+          "expected": {
+            "onset_ticks": 48,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 65,
+          "onset_micros": 1262000,
+          "release_micros": 1442000,
+          "sounding_end_micros": 1700000,
+          "expected": {
+            "onset_ticks": 60,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 67,
+          "onset_micros": 1505000,
+          "release_micros": 1685000,
+          "sounding_end_micros": 1700000,
+          "expected": {
+            "onset_ticks": 72,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 4
+          }
+        },
+        {
+          "id": 99,
+          "pitch": 61,
+          "onset_micros": 910000,
+          "release_micros": 980000,
+          "sounding_end_micros": 1700000,
+          "expected": null
+        }
+      ],
+      "controls": [
+        {
+          "at_micros": 200000,
+          "controller": 64,
+          "value": 127
+        },
+        {
+          "at_micros": 1700000,
+          "controller": 64,
+          "value": 0
+        }
+      ],
+      "expected_review": "choose_reading"
+    },
+    {
+      "id": "unmeasured",
+      "source": "tests/fixtures/transcription/unmeasured.musa",
+      "tags": [
+        "unmeasured",
+        "silence",
+        "ametric"
+      ],
+      "clock": {
+        "kind": "unmeasured"
+      },
+      "notes": [
+        {
+          "id": 0,
+          "pitch": 60,
+          "onset_micros": 0,
+          "release_micros": 145833,
+          "sounding_end_micros": 145833,
+          "expected": {
+            "onset_ticks": 0,
+            "duration_ticks": 7,
+            "voice": 0,
+            "group": 0
+          }
+        },
+        {
+          "id": 1,
+          "pitch": 62,
+          "onset_micros": 153833,
+          "release_micros": 403833,
+          "sounding_end_micros": 403833,
+          "expected": {
+            "onset_ticks": 7,
+            "duration_ticks": 12,
+            "voice": 0,
+            "group": 1
+          }
+        },
+        {
+          "id": 2,
+          "pitch": 65,
+          "onset_micros": 391833,
+          "release_micros": 745999,
+          "sounding_end_micros": 745999,
+          "expected": {
+            "onset_ticks": 19,
+            "duration_ticks": 17,
+            "voice": 0,
+            "group": 2
+          }
+        },
+        {
+          "id": 3,
+          "pitch": 64,
+          "onset_micros": 762000,
+          "release_micros": 1220333,
+          "sounding_end_micros": 1220333,
+          "expected": {
+            "onset_ticks": 36,
+            "duration_ticks": 22,
+            "voice": 0,
+            "group": 3
+          }
+        },
+        {
+          "id": 4,
+          "pitch": 60,
+          "onset_micros": 1201333,
+          "release_micros": 1701333,
+          "sounding_end_micros": 1701333,
+          "expected": {
+            "onset_ticks": 58,
+            "duration_ticks": 24,
+            "voice": 0,
+            "group": 4
+          }
+        }
+      ],
+      "controls": [],
+      "expected_review": "write_source"
+    }
+  ]
+}

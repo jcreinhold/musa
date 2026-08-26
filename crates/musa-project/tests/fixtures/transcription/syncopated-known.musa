@@ -1,0 +1,5 @@
+piece "Syncopated known" {
+    tempo 1/4 = 100;
+    meter 4/4;
+    score { part keyboard { voice line { c4/8 d4/4 e4/16 f4/8. g4/4 a4/4 } } }
+}

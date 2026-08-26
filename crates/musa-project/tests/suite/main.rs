@@ -21,5 +21,6 @@ mod resource_session;
 mod sampler_laws;
 mod session_laws;
 mod studio_laws;
+mod transcription_trial_laws;
 mod ui_fixtures_generators;
 mod wire_laws;

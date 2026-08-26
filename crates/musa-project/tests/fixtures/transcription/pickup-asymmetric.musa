@@ -1,0 +1,5 @@
+piece "Pickup asymmetric" {
+    tempo 1/4 = 115;
+    meter 7/8;
+    score { part keyboard { voice line { rest/8. g4/16 c4/8. d4/8. e4/8. f4/8. g4/8. a4/4 } } }
+}

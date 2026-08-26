@@ -1,0 +1,5 @@
+piece "Pedal repetition and mistake" {
+    tempo 1/4 = 120;
+    meter 4/4;
+    score { part keyboard { voice line { | c4/4 c4/4 e4/8 f4/8 g4/4 } } }
+}

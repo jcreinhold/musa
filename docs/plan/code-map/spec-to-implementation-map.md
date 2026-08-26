@@ -44,10 +44,10 @@ prompt 209 can remove the old path at a tested boundary.
 | --- | --- | --- |
 | MIDI device connection and note-on/off queue | implemented, insufficient | `musa-playback::MidiInput`; today it drops expressive evidence after deciding press/release and chooses one port at open |
 | Step-entry spelling/grouping and UI mode | implemented, scheduled for deletion | `musa-project::{MidiEntry, EntryBuffer}` and desktop `NoteEntry`; fixed chord window plus active duration/octave/accidental state from prompt 33 |
-| Always-available prepared-instrument audition | pending 202 | `musa-playback` real-time edge behind a project facade; independent of transport, transcription, and source edits |
-| Complete bounded expressive MIDI take and recent phrase | pending 202 | playback callback facts plus project-owned finite capture; memory-only recent suffix |
-| Measured transcription model and corpus | pending 203 | isolated trial/bench harness; no production API until rhythm/voice candidates are measured |
-| Ranked metrical and polyphonic notation candidates | pending 204–205 | project/compiler boundary consuming checked source policy and context; opaque bounded search, no frontend inference |
+| Always-available prepared-instrument audition | implemented | `musa-playback::{AuditionEvent, AudioEngine}` behind `ProjectSession`; source-declared prepared instrument, bounded RT queues, callback-allocation laws |
+| Complete bounded expressive MIDI take and recent phrase | implemented | playback retains fixed callback facts; project owns calibrated immutable takes plus a 30-second/4,096-event memory-only recent suffix; prompt-202 loss/privacy laws and note 89 |
+| Measured transcription model and corpus | implemented, production-neutral | `musa-project::transcription_trial`, executable intended-score/JSON fixtures, scripted/QWERTY driver, Divan scaling harness, exact-pinned optional ASAP adapter, and note 90; no production candidate API |
+| Ranked metrical and polyphonic notation candidates | pending 204–205 | shared-back-pointer project search consuming checked source policy/context; top 5, 96 states/layer, 128 notes, four voices, 128 KiB abstract search, 50 ms reference target; no frontend inference |
 | Cross-voice selection and group duration/pitch transformations | pending 206 | one project preview/apply facade over syntax-owned edits |
 | Engraved Review and raw/written audition | pending 207 | desktop projection of immutable project candidates and local alternatives |
 | Revision-safe Accept, Discard, and Keep that | pending 208 | one project transaction; accepted notes become ordinary canonical source |

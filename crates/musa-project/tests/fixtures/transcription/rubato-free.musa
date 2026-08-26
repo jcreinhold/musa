@@ -1,0 +1,4 @@
+piece "Rubato free" {
+    meter 4/4;
+    score { part keyboard { voice line { c4/4 e4/4 g4/4 f4/4 d4/4 c4/4 } } }
+}
