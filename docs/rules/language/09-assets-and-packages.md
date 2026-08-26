@@ -177,6 +177,52 @@ SFZ-format reference equation (`exp(-8t/T)`, clamped at the target/terminal leve
 offline rendering cannot depend on an installed player. This choice, the accepted opcode table, path interpretation, and
 every default are part of adapter identity; changing one requires `sfz@2`.
 
+### 3.2 `sf2@1` support matrix
+
+`sf2@1` is a strict SoundFont 2.04 note-instrument adapter, not a claim that Musa is a general MIDI SoundFont player.
+The selected preset is part of the source asset address: `#preset=<bank>:<program>` uses the specification's unsigned
+bank/program numbers, and `#preset-name=<name>` succeeds only for one exact decoded name. No General MIDI meaning is
+attached to either number. The fragment is canonical adapter identity and is removed before the locked bank is read.
+
+The RIFF form must be `sfbk` and contain ordered `INFO`, `sdta`, and `pdta` lists. `ifil` must name 2.00 through 2.04;
+all required Hydra chunks, record widths, terminal records, monotonically increasing indices, chunk extents, padding,
+sample bounds, and cross-references are validated before allocation. Unknown `INFO` chunks are ignored as the
+specification requires; unknown chunks elsewhere are errors. ROM and linked-sample types are errors; reciprocal
+left/right pairs are supported as two synchronized native layers. `smpl` supplies signed little-endian 16-bit PCM and a
+valid 2.04 `sm24` supplies its low byte; malformed `sm24` is an error rather than an implicit precision change.
+
+Preset and instrument global/local zones combine exactly: local instrument generators replace global/default values,
+local preset generators replace global preset values and then add to instrument values, and key/velocity ranges
+intersect rather than add. Duplicate generators follow the specification's last-one-wins rule. A selected preset with no
+audible local zone is an error.
+
+| Input | `sf2@1` policy |
+| --- | --- |
+| address offsets 0–4, 12, 45, 50 | supported with checked signed addition against the selected sample header; native ends and loop ends remain half-open |
+| `pan` 17, `initialAttenuation` 48 | supported in exact tenths-percent and centibels; conversion to DSP coefficients occurs only at preparation |
+| volume envelope 33–40 | delay, attack, hold, decay, sustain, and release are supported; key-scaled hold/decay are evaluated from the typed gesture key; the checked map names the SoundFont curve family |
+| `keyRange` 43, `velRange` 44 | supported by exact intersection across preset and instrument zones; velocity becomes typed gesture expression only at this adapter |
+| `coarseTune` 51, `fineTune` 52, sample pitch correction, `overridingRootKey` 58 | supported as exact cents and the checked native root key |
+| `sampleID` 53, `sampleModes` 54 | supported; modes 0/2 are no loop, 1 is continuous, and 3 is sustain loop |
+| `exclusiveClass` 57 | supported as preset-scoped directional native choke identity; zero means none |
+| `initialFilterFc` 8, `initialFilterQ` 9 | supported as the source-declared SoundFont resonant low-pass model; the flat/open default bypasses work |
+| `scaleTuning` 56 | accepted only at the default 100 cents per key; every other value is an error |
+| `instrument` 41 and `sampleID` 53 placement; reserved generators 14, 18–20, 42, 49, 55, 59–60 | index rows are validated in their required level and terminal position; reserved rows are ignored exactly where the specification says to ignore them |
+| LFO, modulation-envelope, filter-envelope/LFO, effects-send, forced-key/velocity generators | a non-default effective value is an error naming the generator; `sf2@1` never silently drops active synthesis behavior |
+
+The implicit note-on velocity routes to attenuation and filter cutoff are supported after velocity becomes typed gesture
+expression. Explicit modulators are supported only when their primary source is note-on key or note-on velocity, their
+amount source is no-controller, their transform and source curve are defined by 2.04, and their destination is supported
+above. Their direction, polarity, linear/concave/convex/switch curve, amount, hierarchy, replacement, and addition
+remain explicit in the checked map. An ambient MIDI CC, pressure, pitch wheel, linked source/destination, secondary
+controller, unknown source/transform, or supported source aimed at an unsupported destination is an error naming the
+modulator. Raw controller and generator numbers never cross the adapter.
+
+The adapter emits a 64-voice `SampleMap` with all intersecting preset/instrument zones layered. Embedded samples have
+private logical identities framed from the verified bank digest plus sample-header index, and enter the same bounded
+off-thread decoder used by native maps. A different preset fragment, support decision, default, hierarchy rule, curve,
+or virtual-sample framing requires a new adapter identity.
+
 ## 4. Three distinct recorded-media semantics
 
 The same WAV bytes may participate in three different typed declarations. Musa never infers which one from file type.

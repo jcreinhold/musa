@@ -1,7 +1,7 @@
 ---
 id: 186
 slug: soundfont-instruments
-status: pending
+status: in-progress
 depends_on: [174, 182, 184]
 phase: 4
 ---
@@ -20,6 +20,8 @@ score part with one another.
 ## Read
 
 - `docs/rules/language/09-assets-and-packages.md`; prompts 182 and 180; prompt 185's adapter boundary.
+- `docs/notes/research/language-design-closure/85-soundfont-is-a-hierarchical-adapter.md` for the maintained-player
+  disagreements and the reason no parser library is the semantic boundary.
 - Creative/E-mu SoundFont 2.04 Technical Specification (preserved at
   `https://musescore.org/sites/musescore.org/files/2023-01/sfspec24.pdf`) in full: RIFF structure, presets,
   instruments/zones, generators, modulators, sample headers, stereo links, loops, and 24-bit extension.
@@ -28,10 +30,11 @@ score part with one another.
 
 ## Design
 
-Parse and validate RIFF bounds before allocation. Select a preset by explicit bank/program or unambiguous name; no
-implicit General MIDI meaning. Flatten preset/instrument global/local zones with the specification's generator
-combination rules into the native region model. Preserve root/tuning, key/velocity ranges, attenuation/pan, loops,
-envelopes, exclusive classes, stereo sample links, and supported modulators.
+Parse and validate RIFF bounds before allocation. Select a preset through §3.2's canonical asset fragment by explicit
+bank/program or unambiguous name; no implicit General MIDI meaning. Flatten preset/instrument global/local zones with
+the specification's generator combination rules into the native region model. Preserve root/tuning, key/velocity ranges,
+attenuation/pan, loops, six-stage envelopes, the initial resonant low-pass, exclusive classes, stereo sample links, and
+the typed note-on modulators admitted by §3.2.
 
 Publish a generator/modulator support matrix. Unsupported sound-changing behavior prevents that preset from claiming
 full support and yields a diagnostic; do not silently play a materially different instrument. A deliberate restricted
@@ -44,6 +47,11 @@ custom controls; raw MIDI controller numbers and generator ids remain adapter-pr
 Parsing foreign RIFF bytes and enforcing bounds is host work. The semantic adapter result is the same source-declared
 sample-map/instrument contract used by native and SFZ maps, with exact equality before private normalization. No
 SoundFont-specific Rust public instrument schema becomes authoritative.
+
+Extend `std::sound::sample` first for the general constructs the accepted subset needs: delay/hold envelope phases, the
+SoundFont envelope curve, a resonant low-pass description, and typed note-key/note-expression modulation. Rust owns only
+the checked read-only projection and real-time state. Do not introduce a generator-number table as a second public
+language or a SoundFont-only runtime object.
 
 ## Target
 
