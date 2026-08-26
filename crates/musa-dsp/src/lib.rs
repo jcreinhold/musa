@@ -32,11 +32,13 @@ mod studio_source;
 mod voice;
 
 pub use crate::audio::{
-    AudioOptions, AudioPrepareError, PreparedAudio, prepare_execution, prepare_execution_with_media,
+    AudioOptions, AudioPrepareError, AuditionEvent, AuditionOutcome, PreparedAudio, PreparedAuditionTarget,
+    prepare_execution, prepare_execution_with_media,
 };
 pub use crate::instrument_source::{
-    InstrumentContract, InstrumentContracts, InstrumentContractsError, InstrumentControlContract,
-    InstrumentTechniqueContract, decode_instrument_contracts, instrument_contracts_schema,
+    InstrumentAuditionBinding, InstrumentContract, InstrumentContracts, InstrumentContractsError,
+    InstrumentControlContract, InstrumentTechniqueContract, MidiAuditionInputKind, MidiAuditionScope,
+    decode_instrument_contracts, instrument_contracts_schema,
 };
 pub use crate::machine::{MachineValue, PrepareError, PreparedMachine, StartedMachine, StepError, prepare_machine};
 pub use crate::media::{MediaLimits, MediaPrepareError, PreparedMedia, prepare_media};

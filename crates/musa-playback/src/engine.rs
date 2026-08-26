@@ -6,7 +6,9 @@ use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait};
 
-use crate::core::{CallbackCore, Message, PreparedPlaybackPlan, TransportCommand};
+use crate::core::{
+    AuditionEvent, AuditionMessage, AuditionTarget, CallbackCore, Message, PreparedPlaybackPlan, TransportCommand,
+};
 use crate::error::EngineError;
 
 /// Engine configuration.
@@ -39,6 +41,7 @@ impl Default for EngineConfig {
 /// and exists only so that misuse degrades into back-pressure rather than
 /// into a prepared audio machine being destroyed on the audio thread.
 const COMMAND_CAPACITY: usize = 64;
+const AUDITION_CAPACITY: usize = 2_048;
 
 /// The audio engine. Owns the stream and queue ends; the rest of
 /// the application never sees CPAL types.
@@ -56,6 +59,7 @@ pub struct AudioEngine {
 /// The control thread's ends of the two real-time queues.
 struct Channels {
     commands: rtrb::Producer<Message>,
+    audition: rtrb::Producer<AuditionMessage>,
     retired: rtrb::Consumer<Box<PreparedPlaybackPlan>>,
 }
 
@@ -97,11 +101,13 @@ impl AudioEngine {
 
         let (command_producer, command_consumer) = rtrb::RingBuffer::<Message>::new(COMMAND_CAPACITY);
         let (retired_producer, retired_consumer) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(COMMAND_CAPACITY);
+        let (audition_producer, audition_consumer) = rtrb::RingBuffer::<AuditionMessage>::new(AUDITION_CAPACITY);
         let position = Arc::new(AtomicU64::new(0));
         let playing = Arc::new(AtomicBool::new(false));
-        let mut core = CallbackCore::new(
+        let mut core = CallbackCore::new_with_audition(
             command_consumer,
             retired_producer,
+            audition_consumer,
             Arc::clone(&position),
             Arc::clone(&playing),
         );
@@ -119,6 +125,7 @@ impl AudioEngine {
             _stream: stream,
             channels: Mutex::new(Channels {
                 commands: command_producer,
+                audition: audition_producer,
                 retired: retired_consumer,
             }),
             position,
@@ -159,6 +166,17 @@ impl AudioEngine {
         self.lock()?
             .commands
             .push(Message::Transport(command))
+            .map_err(|_| EngineError::QueueFull)
+    }
+
+    /// Queue one already-paired selected-instrument audition event.
+    ///
+    /// # Errors
+    /// [`EngineError::QueueFull`] when the bounded audition queue is full.
+    pub fn audition(&self, target: AuditionTarget, event: AuditionEvent) -> Result<(), EngineError> {
+        self.lock()?
+            .audition
+            .push(AuditionMessage { target, event })
             .map_err(|_| EngineError::QueueFull)
     }
 

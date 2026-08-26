@@ -362,6 +362,8 @@ searches the filesystem.
 - `fn accepts_control({kind: ControlKind}, control_key: ControlKey(kind), default_value: ControlValue(kind)) -> SomeControlRequirement` — Package one requirement after the general pattern unifier settles its kind.
 - `record InstrumentSignature: Type` — The complete public behavioral contract of one source instrument.
 - `record ParameterTarget` — A target is private graph structure, never a public control address.
+- `record MidiAuditionTransfer` — Exact normalization and switching policy for one hardware dimension.
+- `record MidiAuditionBinding` — Interpret one MIDI dimension as one semantic control accepted by this instrument. The host may project this declaration but may not invent it.
 - `record ConnectionTransfer` — Exact private parameter values selected by each phrase relation.
 - `fn maps_connection(control_key: ControlKey(PhraseConnection), node: Text, parameter: Text, transfer: ConnectionTransfer) -> SomeControlMapping` — Bind phrase connection to a private parameter through an exact source table.
 - `fn maps_exact_ratio(control_key: ControlKey(ExactRatio), node: Text, parameter: Text) -> SomeControlMapping` — Bind one concrete dimensionless ratio directly to a private parameter.

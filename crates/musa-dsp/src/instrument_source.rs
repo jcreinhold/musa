@@ -12,7 +12,7 @@ use thiserror::Error;
 
 const SCHEMA_NAME: &str = "std.sound.instrument.InstrumentExecutionArtifact";
 const ROOT_TYPE: &str = "InstrumentExecutionArtifact";
-const VERSION: u64 = 1;
+const VERSION: u64 = 2;
 
 /// Exact consumer schema of the source instrument package.
 #[must_use]
@@ -117,6 +117,95 @@ pub struct InstrumentTechniqueContract {
     notation_only_warning: bool,
 }
 
+/// One bounded MIDI wire dimension named by source audition policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum MidiAuditionInputKind {
+    /// Note-on attack velocity.
+    AttackVelocity,
+    /// Note-off release velocity.
+    ReleaseVelocity,
+    /// Damper pedal (CC64).
+    SustainPedal,
+    /// Sostenuto pedal (CC66).
+    SostenutoPedal,
+    /// Soft pedal (CC67).
+    SoftPedal,
+    /// Fourteen-bit channel pitch bend.
+    PitchBend,
+    /// Channel pressure.
+    ChannelPressure,
+    /// Polyphonic key pressure.
+    KeyPressure,
+    /// An explicitly named seven-bit controller.
+    Controller(u8),
+}
+
+/// Whether a source audition binding follows a channel or one key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum MidiAuditionScope {
+    /// One value shared by the channel.
+    PerChannel,
+    /// One value associated with a key/voice.
+    PerKey,
+}
+
+/// One exact, read-only MIDI audition binding projected from source.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InstrumentAuditionBinding {
+    input: MidiAuditionInputKind,
+    scope: MidiAuditionScope,
+    namespace: String,
+    name: String,
+    input_minimum: Ratio<i64>,
+    input_maximum: Ratio<i64>,
+    output_minimum: Ratio<i64>,
+    output_maximum: Ratio<i64>,
+    dead_zone: Ratio<i64>,
+    switch_threshold: Option<Ratio<i64>>,
+}
+
+impl InstrumentAuditionBinding {
+    /// Hardware dimension interpreted by this binding.
+    pub const fn input(&self) -> MidiAuditionInputKind {
+        self.input
+    }
+
+    /// Channel- or key-local scope stated by source.
+    pub const fn scope(&self) -> MidiAuditionScope {
+        self.scope
+    }
+
+    /// Namespace of the accepted semantic control.
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
+
+    /// Name of the accepted semantic control.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Inclusive exact input range.
+    pub const fn input_range(&self) -> (Ratio<i64>, Ratio<i64>) {
+        (self.input_minimum, self.input_maximum)
+    }
+
+    /// Exact output endpoints; their order owns direction.
+    pub const fn output_range(&self) -> (Ratio<i64>, Ratio<i64>) {
+        (self.output_minimum, self.output_maximum)
+    }
+
+    /// Exact symmetric dead zone in input units.
+    pub const fn dead_zone(&self) -> Ratio<i64> {
+        self.dead_zone
+    }
+
+    /// Optional exact switch threshold.
+    pub const fn switch_threshold(&self) -> Option<Ratio<i64>> {
+        self.switch_threshold
+    }
+}
+
 impl InstrumentTechniqueContract {
     pub fn namespace(&self) -> &str {
         &self.namespace
@@ -139,6 +228,7 @@ pub struct InstrumentContract {
     summary: String,
     controls: Vec<InstrumentControlContract>,
     mappings: Vec<InstrumentControlMapping>,
+    audition_bindings: Vec<InstrumentAuditionBinding>,
     techniques: Vec<InstrumentTechniqueContract>,
     channels: u8,
     implementation_id: String,
@@ -164,6 +254,11 @@ impl InstrumentContract {
 
     pub fn mappings(&self) -> &[InstrumentControlMapping] {
         &self.mappings
+    }
+
+    /// Source-owned interpretations of MIDI audition evidence.
+    pub fn audition_bindings(&self) -> &[InstrumentAuditionBinding] {
+        &self.audition_bindings
     }
 
     pub fn techniques(&self) -> &[InstrumentTechniqueContract] {
@@ -229,7 +324,7 @@ pub fn decode_instrument_contracts(source: &CheckedSource) -> Result<InstrumentC
     }
     let [version, instruments, implementations] = fields::<3>(source.root(), ROOT_TYPE, "root")?;
     if nat(version, "root.schema_version")? != VERSION {
-        return Err(malformed("root.schema_version", "schema version 1"));
+        return Err(malformed("root.schema_version", "schema version 2"));
     }
     let instruments = list(instruments, "root.instruments", instrument)?;
     let implementations = list(implementations, "root.implementation_contracts", implementation)?;
@@ -240,7 +335,7 @@ pub fn decode_instrument_contracts(source: &CheckedSource) -> Result<InstrumentC
         ));
     }
     let mut declarations = Vec::with_capacity(instruments.len());
-    for (mut declaration, (implementation_id, mappings, implementation_exact)) in
+    for (mut declaration, (implementation_id, mappings, audition_bindings, implementation_exact)) in
         instruments.into_iter().zip(implementations)
     {
         if declaration.declaration_id != implementation_id {
@@ -275,6 +370,35 @@ pub fn decode_instrument_contracts(source: &CheckedSource) -> Result<InstrumentC
             ));
         }
         declaration.mappings = mappings;
+        for binding in &audition_bindings {
+            let accepted = declaration.controls.iter().any(|control| {
+                control.kind == "Normalized" && control.namespace == binding.namespace && control.name == binding.name
+            });
+            let mapped = declaration.mappings.iter().any(|mapping| {
+                mapping.kind == "Normalized" && mapping.namespace == binding.namespace && mapping.name == binding.name
+            });
+            if !accepted || !mapped {
+                return Err(malformed(
+                    "root.implementation_contracts",
+                    "every audition binding to reach one accepted and privately mapped normalized control",
+                ));
+            }
+        }
+        let mut audition_targets = std::collections::HashSet::new();
+        if audition_bindings.iter().any(|binding| {
+            !audition_targets.insert((
+                binding.input,
+                binding.scope,
+                binding.namespace.as_str(),
+                binding.name.as_str(),
+            ))
+        }) {
+            return Err(malformed(
+                "root.implementation_contracts",
+                "distinct MIDI input/scope/control audition bindings",
+            ));
+        }
+        declaration.audition_bindings = audition_bindings;
         declaration.implementation_exact = implementation_exact;
         declarations.push(declaration);
     }
@@ -301,6 +425,7 @@ fn instrument(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentContract, 
         summary: text(summary, &format!("{path}.signature.summary"))?,
         controls: list(controls, &format!("{path}.signature.controls"), control)?,
         mappings: Vec::new(),
+        audition_bindings: Vec::new(),
         techniques: list(techniques, &format!("{path}.signature.techniques"), technique)?,
         channels: match constructor(channels) {
             Some("Mono") => 1,
@@ -315,13 +440,101 @@ fn instrument(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentContract, 
 fn implementation(
     datum: SourceDatum<'_>,
     path: &str,
-) -> Result<(String, Vec<InstrumentControlMapping>, Arc<[u8]>), InstrumentContractsError> {
-    let [declaration_id, mappings] = fields::<2>(datum, "InstrumentImplementationContract", path)?;
+) -> Result<
+    (
+        String,
+        Vec<InstrumentControlMapping>,
+        Vec<InstrumentAuditionBinding>,
+        Arc<[u8]>,
+    ),
+    InstrumentContractsError,
+> {
+    let [declaration_id, mappings, audition_bindings] = fields::<3>(datum, "InstrumentImplementationContract", path)?;
     Ok((
         text(declaration_id, &format!("{path}.declaration_id"))?,
         list(mappings, &format!("{path}.mappings"), mapping)?,
+        list(
+            audition_bindings,
+            &format!("{path}.audition_bindings"),
+            audition_binding,
+        )?,
         datum.exact_bytes().into(),
     ))
+}
+
+fn audition_binding(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentAuditionBinding, InstrumentContractsError> {
+    let [input, scope, key, transfer] = fields::<4>(datum, "MidiAuditionBinding", path)?;
+    let input = match constructor(input) {
+        Some("AttackVelocity") => MidiAuditionInputKind::AttackVelocity,
+        Some("ReleaseVelocity") => MidiAuditionInputKind::ReleaseVelocity,
+        Some("SustainPedal") => MidiAuditionInputKind::SustainPedal,
+        Some("SostenutoPedal") => MidiAuditionInputKind::SostenutoPedal,
+        Some("SoftPedal") => MidiAuditionInputKind::SoftPedal,
+        Some("PitchBend") => MidiAuditionInputKind::PitchBend,
+        Some("ChannelPressure") => MidiAuditionInputKind::ChannelPressure,
+        Some("KeyPressure") => MidiAuditionInputKind::KeyPressure,
+        Some("Controller") => {
+            let [number] = fields::<1>(input, "Controller", path)?;
+            let number = nat(number, &format!("{path}.input.number"))?;
+            MidiAuditionInputKind::Controller(
+                u8::try_from(number)
+                    .ok()
+                    .filter(|number| *number <= 127)
+                    .ok_or_else(|| malformed(&format!("{path}.input.number"), "a seven-bit controller number"))?,
+            )
+        }
+        _ => return Err(malformed(&format!("{path}.input"), "a MidiAuditionInput constructor")),
+    };
+    let scope = match constructor(scope) {
+        Some("PerChannel") => MidiAuditionScope::PerChannel,
+        Some("PerKey") => MidiAuditionScope::PerKey,
+        _ => return Err(malformed(&format!("{path}.scope"), "PerChannel or PerKey")),
+    };
+    let [kind, namespace, name, _, _] = fields::<5>(key, "Key", &format!("{path}.control_key"))?;
+    if constructor(kind) != Some("Normalized") {
+        return Err(malformed(&format!("{path}.control_key"), "a normalized control key"));
+    }
+    let [
+        input_minimum,
+        input_maximum,
+        output_minimum,
+        output_maximum,
+        dead_zone,
+        switch_threshold,
+    ] = fields::<6>(transfer, "MidiAuditionTransfer", &format!("{path}.transfer"))?;
+    let input_minimum = ratio(input_minimum, path)?;
+    let input_maximum = ratio(input_maximum, path)?;
+    let output_minimum = ratio(output_minimum, path)?;
+    let output_maximum = ratio(output_maximum, path)?;
+    let dead_zone = ratio(dead_zone, path)?;
+    let switch_threshold = option_ratio(switch_threshold, &format!("{path}.transfer.switch_threshold"))?;
+    if input_maximum <= input_minimum || dead_zone < Ratio::ZERO {
+        return Err(malformed(
+            &format!("{path}.transfer"),
+            "an increasing input range and nonnegative dead zone",
+        ));
+    }
+    if !(Ratio::ZERO..=Ratio::ONE).contains(&output_minimum) || !(Ratio::ZERO..=Ratio::ONE).contains(&output_maximum) {
+        return Err(malformed(&format!("{path}.transfer"), "normalized output endpoints"));
+    }
+    if switch_threshold.is_some_and(|threshold| threshold < input_minimum || threshold > input_maximum) {
+        return Err(malformed(
+            &format!("{path}.transfer.switch_threshold"),
+            "a threshold inside the input range",
+        ));
+    }
+    Ok(InstrumentAuditionBinding {
+        input,
+        scope,
+        namespace: text(namespace, &format!("{path}.namespace"))?,
+        name: text(name, &format!("{path}.name"))?,
+        input_minimum,
+        input_maximum,
+        output_minimum,
+        output_maximum,
+        dead_zone,
+        switch_threshold,
+    })
 }
 
 fn control(datum: SourceDatum<'_>, path: &str) -> Result<InstrumentControlContract, InstrumentContractsError> {
@@ -546,6 +759,17 @@ fn ratio(datum: SourceDatum<'_>, path: &str) -> Result<Ratio<i64>, InstrumentCon
             Ok(Ratio::new(numerator, denominator))
         }
         _ => Err(malformed(path, "Ratio")),
+    }
+}
+
+fn option_ratio(datum: SourceDatum<'_>, path: &str) -> Result<Option<Ratio<i64>>, InstrumentContractsError> {
+    match constructor(datum) {
+        Some("None") => Ok(None),
+        Some("Some") => {
+            let [value] = fields::<1>(datum, "Some", path)?;
+            ratio(value, path).map(Some)
+        }
+        _ => Err(malformed(path, "Option(Ratio)")),
     }
 }
 

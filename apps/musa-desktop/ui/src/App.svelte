@@ -38,7 +38,7 @@
   import { volumeOf, type Diagnostic, type OutlineFacts, type Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
-  import { anchorFor, played, stroke } from "./lib/state/compose";
+  import { anchorFor, stroke } from "./lib/state/compose";
   import { definitionAt, usesAt } from "./lib/state/terms";
   import type { Candidate } from "./lib/state/gesture.svelte";
   import { shiftAccidental, shiftStep } from "./lib/score/steps";
@@ -365,9 +365,6 @@
    */
   function toggleEntry(): void {
     entry.toggle();
-    // The keyboard is read while notes are being entered and at no other
-    // time, so a session that is not entering has no MIDI poll running.
-    void session.listenToMidi(entry.on, workspace.caretAt?.id ?? null);
     if (!entry.on) return;
     if (workspace.selection.kind === "none") {
       const active = workspace.active;
@@ -725,31 +722,34 @@
     });
   });
 
-  /**
-   * A note played in on the MIDI keyboard, written where the caret is.
-   *
-   * The same path a typed note takes — the core spelled the pitch, entry
-   * supplies the duration, and the caret moves past what was written — so a
-   * played note and a typed one are the same edit and the same undo.
-   */
-  // A played note is spelled in the key in force where it lands, so the core
-  // has to be told where the caret went. Only while entry is on — nothing
-  // polls a keyboard otherwise — and only when it actually moved.
+  // Selection chooses the prepared audition part. MIDI never enters the
+  // source-edit path; Capture and Review are the only route toward notation.
   let toldCaret: string | null = null;
   $effect(() => {
-    const caret = entry.on ? (workspace.caretAt?.id ?? null) : null;
+    const caret = workspace.caretAt?.id ?? null;
     untrack(() => {
-      if (!entry.on || caret === toldCaret) return;
+      if (caret === toldCaret) return;
       toldCaret = caret;
       void session.listenToMidi(true, caret);
     });
   });
 
-  session.played = ({ pitches }) => {
-    if (!entry.on) return;
-    const asked = played(pitches, entry, workspace);
-    if (asked.kind === "edit") void write(asked.edit, asked.at);
-  };
+  session.played = null;
+
+  // Apply this app preference once per open document and whenever it changes.
+  // The project owns the buffer; localStorage owns only the yes/no choice.
+  let recentApplied = "";
+  $effect(() => {
+    const document = session.snapshot?.document;
+    const enabled = preferences.recentMidi;
+    if (document === undefined) return;
+    const key = `${document}:${enabled}`;
+    untrack(() => {
+      if (key === recentApplied) return;
+      recentApplied = key;
+      void session.setRecentMidi(enabled);
+    });
+  });
 
   onMount(() => {
     // The shell frame is on screen now; the score arrives when the worker has

@@ -19,10 +19,11 @@ use std::alloc::{GlobalAlloc, System};
 use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::Instant;
 
 use super::support::{silent_plan, source_plan};
-use musa_playback::testing::{CallbackCore, Message};
-use musa_playback::{PreparedPlaybackPlan, TransportCommand};
+use musa_playback::testing::{AuditionMessage, CallbackCore, Message, MidiCallbackHarness};
+use musa_playback::{AuditionEvent, PreparedPlaybackPlan, TransportCommand};
 
 thread_local! {
     /// Allocations made by the current thread since it started.
@@ -68,15 +69,17 @@ const ROUTED: &str = concat!(
 fn the_callback_path_allocates_nothing() {
     let (mut commands, command_consumer) = rtrb::RingBuffer::<Message>::new(16);
     let (retired_producer, mut retired) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(4);
+    let (mut audition, audition_consumer) = rtrb::RingBuffer::new(32);
     let position = Arc::new(AtomicU64::new(0));
     let playing = Arc::new(AtomicBool::new(false));
-    let mut core = CallbackCore::new(command_consumer, retired_producer, position, playing);
+    let mut core =
+        CallbackCore::new_with_audition(command_consumer, retired_producer, audition_consumer, position, playing);
 
     // Preload: install + play + loop + a queued replacement plan. The
     // measured blocks then cover install, retire, and transport handling.
-    commands
-        .push(Message::Install(Box::new(source_plan(ROUTED, 0))))
-        .expect("queue");
+    let routed = source_plan(ROUTED, 0);
+    let audition_target = routed.audition_target("b").expect("routed part");
+    commands.push(Message::Install(Box::new(routed))).expect("queue");
     commands
         .push(Message::Transport(TransportCommand::Play))
         .expect("queue");
@@ -87,16 +90,27 @@ fn the_callback_path_allocates_nothing() {
     let mut output = vec![0.0f32; 512];
     core.process(&mut output); // warm-up: installs, applies transport
 
-    // Queue more work for the measured blocks: a replacement install (which
-    // retires the current plan) and seeks.
-    commands
-        .push(Message::Install(Box::new(silent_plan(2_000_000))))
-        .expect("queue");
+    audition
+        .push(AuditionMessage {
+            target: audition_target,
+            event: AuditionEvent::NoteOn {
+                voice: 1,
+                note: 60,
+                velocity: 96,
+            },
+        })
+        .expect("audition queue");
+    let replacement = Box::new(silent_plan(2_000_000));
+
+    let before = allocs();
+    // Consume live audition while its prepared target is still installed.
+    core.process(&mut output);
+    // Then cover replacement install, retirement, and transport handling in
+    // the same measured callback window.
+    commands.push(Message::Install(replacement)).expect("queue");
     commands
         .push(Message::Transport(TransportCommand::Seek { frame: 100 }))
         .expect("queue");
-
-    let before = allocs();
     for _ in 0..8 {
         core.process(&mut output);
     }
@@ -109,6 +123,100 @@ fn the_callback_path_allocates_nothing() {
         "callback path allocated {} times",
         after.saturating_sub(before)
     );
+}
+
+#[test]
+fn the_midi_input_callback_allocates_nothing() {
+    let mut callback = MidiCallbackHarness::new();
+    callback.receive(1, 2, &[0x90, 60, 96]);
+    assert!(callback.poll().is_some());
+
+    let before = allocs();
+    for stamp in 0..1_000 {
+        callback.receive(stamp, stamp.saturating_add(2), &[0xB0, 64, 127]);
+        assert!(callback.poll().is_some());
+    }
+    let after = allocs();
+    assert_eq!(
+        before,
+        after,
+        "MIDI callback allocated {} times",
+        after.saturating_sub(before)
+    );
+    assert_eq!(callback.losses().queue_overflow, 0);
+}
+
+#[test]
+fn latency_probe_reports_bounded_software_paths() {
+    const SAMPLES: usize = 2_000;
+    const MIDI_BATCH: usize = 64;
+    let mut midi = MidiCallbackHarness::new();
+    let mut midi_nanos = Vec::with_capacity(SAMPLES);
+    for sample in 0..SAMPLES {
+        let started = Instant::now();
+        for offset in 0..MIDI_BATCH {
+            let stamp = sample.saturating_mul(MIDI_BATCH).saturating_add(offset);
+            let stamp = u64::try_from(stamp).unwrap_or(u64::MAX);
+            midi.receive(stamp, stamp.saturating_add(2), &[0x90, 60, 96]);
+            assert!(midi.poll().is_some());
+        }
+        let batch = u64::try_from(MIDI_BATCH).unwrap_or(1);
+        midi_nanos.push(u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX) / batch);
+    }
+
+    let (mut commands, command_consumer) = rtrb::RingBuffer::<Message>::new(4);
+    let (retired_producer, _retired) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(2);
+    let (mut audition, audition_consumer) = rtrb::RingBuffer::new(8);
+    let position = Arc::new(AtomicU64::new(0));
+    let playing = Arc::new(AtomicBool::new(false));
+    let mut core =
+        CallbackCore::new_with_audition(command_consumer, retired_producer, audition_consumer, position, playing);
+    let plan = source_plan(ROUTED, 0);
+    let target = plan.audition_target("b").expect("routed part");
+    commands.push(Message::Install(Box::new(plan))).expect("queue");
+    let mut output = [0.0; 128];
+    core.process(&mut output);
+    let mut render_nanos = Vec::with_capacity(SAMPLES);
+    for voice in 0..SAMPLES {
+        let voice = u32::try_from(voice).unwrap_or(u32::MAX);
+        audition
+            .push(AuditionMessage {
+                target,
+                event: AuditionEvent::NoteOn {
+                    voice,
+                    note: 60,
+                    velocity: 96,
+                },
+            })
+            .expect("queue");
+        let started = Instant::now();
+        core.process(&mut output);
+        render_nanos.push(u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX));
+        audition
+            .push(AuditionMessage {
+                target,
+                event: AuditionEvent::NoteOff { voice, velocity: 0 },
+            })
+            .expect("queue");
+        core.process(&mut output);
+    }
+
+    let (midi_p50, midi_p95, midi_max) = latency_summary(&mut midi_nanos);
+    let (render_p50, render_p95, render_max) = latency_summary(&mut render_nanos);
+    eprintln!(
+        "MIDI callback decode+ring ns: p50={midi_p50} p95={midi_p95} max={midi_max}; \
+         audition event+128-frame block ns: p50={render_p50} p95={render_p95} max={render_max}"
+    );
+}
+
+fn latency_summary(samples: &mut [u64]) -> (u64, u64, u64) {
+    samples.sort_unstable();
+    let last = samples.len().saturating_sub(1);
+    (
+        samples.get(last / 2).copied().unwrap_or_default(),
+        samples.get(last.saturating_mul(95) / 100).copied().unwrap_or_default(),
+        samples.get(last).copied().unwrap_or_default(),
+    )
 }
 
 /// The measurement is the current thread's, not the process's.

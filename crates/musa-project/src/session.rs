@@ -1,10 +1,14 @@
 //! The session itself: one canonical source, one history, one orchestration.
 
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use musa_compiler::{CompileOptions, SourceDocument};
 
-use musa_playback::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
+use musa_playback::{
+    AudioEngine, AuditionEvent, AuditionInputKind, AuditionTarget, EngineConfig, MidiInput, MidiInputDevice,
+    TransportCommand,
+};
 use musa_score::{MusicalTime, Scope};
 use musa_syntax::BarSpacing;
 use musa_syntax::ast::{Document, PieceDecl};
@@ -13,7 +17,7 @@ use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEd
 use crate::diagnostic::Diagnostic;
 use crate::error::ProjectError;
 use crate::export::{ExportArtifact, ExportRequest};
-use crate::midi::{EntryBuffer, MidiEntry};
+use crate::midi::{EntryBuffer, MidiEntry, MidiPerformanceBuffer, MidiTake, MidiTakeContext};
 use crate::playback;
 use crate::project::ProjectMeta;
 use crate::snapshot::{PlaybackState, ProjectSnapshot, ValidArtifacts};
@@ -123,8 +127,24 @@ pub struct ProjectSession {
     /// The MIDI keyboard, opened on request so a session that never enters
     /// notes never touches the MIDI host.
     midi: Option<MidiInput>,
+    /// Stable input identity chosen by the musician, retained across unplug.
+    midi_preferred_id: Option<String>,
+    /// Last control-side hot-plug enumeration for the device picker.
+    midi_devices: Vec<MidiInputDevice>,
+    /// Connection-local clock origin, pairing, recent memory, and finite takes.
+    midi_performance: MidiPerformanceBuffer,
+    /// Session monotonic origin shared by capture and transport context.
+    started: Instant,
+    /// Prepared source-owned audition support for each score part.
+    audition_routes: Vec<AuditionRoute>,
     /// Presses waiting to be grouped into chords.
     entry: EntryBuffer,
+}
+
+struct AuditionRoute {
+    part: String,
+    target: AuditionTarget,
+    supported: Vec<AuditionInputKind>,
 }
 
 /// What the plan currently in the engine was built from.
@@ -440,6 +460,9 @@ impl ProjectSession {
             autosaved: self.autosaved(),
             recovery: self.recovery.as_deref(),
             midi_port: self.midi.as_ref().and_then(MidiInput::port),
+            midi_preferred_id: self.midi_preferred_id.as_deref(),
+            midi_devices: &self.midi_devices,
+            midi_performance: &self.midi_performance,
             playback: self.playback_state(),
             kind: self.kind,
             // A session on its own knows nothing about the volume it is filed
@@ -792,10 +815,163 @@ impl ProjectSession {
     /// `None` and keeps working, which is the normal case on CI and on a
     /// laptop with nothing plugged in (roadmap §14.8).
     pub fn listen_to_midi(&mut self) -> Option<&str> {
-        if self.midi.is_none() {
-            self.midi = Some(MidiInput::open(None));
+        self.midi_devices = MidiInput::devices();
+        if self.midi.as_ref().and_then(MidiInput::device).is_none() {
+            let input = MidiInput::open(self.midi_preferred_id.as_deref());
+            if let Some(device) = input.device() {
+                self.midi_preferred_id = Some(device.id.clone());
+            }
+            self.midi = input.device().is_some().then_some(input);
+        }
+        if self.midi.is_some() {
+            let elapsed = u64::try_from(self.started.elapsed().as_micros()).unwrap_or(u64::MAX);
+            self.midi_performance.begin_connection(elapsed);
+            if let Err(error) = self.ensure_playable() {
+                tracing::warn!(%error, "MIDI capture is available but selected-instrument audition could not open");
+            }
         }
         self.midi.as_ref().and_then(MidiInput::port)
+    }
+
+    /// Inputs currently available for explicit selection.
+    pub fn midi_devices(&mut self) -> &[MidiInputDevice] {
+        self.midi_devices = MidiInput::devices();
+        &self.midi_devices
+    }
+
+    /// Select one stable MIDI input identity and begin always-listen mode.
+    pub fn select_midi_device(&mut self, id: &str) -> Option<&str> {
+        self.midi_devices = MidiInput::devices();
+        let changed = self.midi_preferred_id.as_deref() != Some(id);
+        self.midi_preferred_id = Some(id.to_owned());
+        let input = MidiInput::open(Some(id));
+        self.midi = input.device().is_some().then_some(input);
+        let elapsed = u64::try_from(self.started.elapsed().as_micros()).unwrap_or(u64::MAX);
+        if changed {
+            self.midi_performance.clear_recent();
+        }
+        if self.midi.is_some() {
+            self.midi_performance.begin_connection(elapsed);
+            if let Err(error) = self.ensure_playable() {
+                tracing::warn!(%error, "MIDI capture is available but selected-instrument audition could not open");
+            }
+        }
+        self.midi.as_ref().and_then(MidiInput::port)
+    }
+
+    /// Refresh hot-plug state without switching to another device.
+    pub fn refresh_midi_devices(&mut self, caret: Option<&str>) {
+        self.midi_devices = MidiInput::devices();
+        let disconnected = self
+            .midi
+            .as_ref()
+            .is_some_and(|midi| midi.device().is_some() && !midi.is_present());
+        if disconnected {
+            let route = self.audition_route(caret).map(|route| route.target);
+            for release in self.midi_performance.release_all() {
+                if let (Some(audio), Some(target)) = (&self.audio, route) {
+                    audio.audition(target, release).ok();
+                }
+            }
+            self.midi_performance.mark_disconnected();
+            self.midi = None;
+        }
+        if self.midi.is_none()
+            && let Some(preferred) = self.midi_preferred_id.as_deref()
+            && self.midi_devices.iter().any(|device| device.id == preferred)
+        {
+            let input = MidiInput::open(Some(preferred));
+            if input.device().is_some() {
+                self.midi = Some(input);
+                let elapsed = u64::try_from(self.started.elapsed().as_micros()).unwrap_or(u64::MAX);
+                self.midi_performance.begin_connection(elapsed);
+                if let Err(error) = self.ensure_playable() {
+                    tracing::warn!(%error, "reconnected MIDI input but audition could not open");
+                }
+            }
+        }
+    }
+
+    /// Poll expressive MIDI, preserving raw evidence and auditioning through
+    /// the selected part's prepared source instrument. Never edits source.
+    pub fn midi_tick(&mut self, caret: Option<&str>) -> usize {
+        let before_revision = self.revision;
+        let before_len = self.source.len();
+        let mut read = 0usize;
+        loop {
+            let raw = self.midi.as_mut().and_then(MidiInput::poll);
+            let Some(raw) = raw else { break };
+            read = read.saturating_add(1);
+            let (_, audition) = self.midi_performance.ingest(raw);
+            let route = self.audition_route(caret).map(|route| {
+                (
+                    route.target,
+                    audition
+                        .and_then(audition_input)
+                        .is_none_or(|input| route.supported.contains(&input)),
+                )
+            });
+            if let (Some(event), Some((target, supported))) = (audition, route) {
+                if !supported {
+                    self.midi_performance.unsupported();
+                }
+                if let Some(audio) = &self.audio
+                    && audio.audition(target, event).is_err()
+                {
+                    self.midi_performance.unsupported();
+                }
+            }
+        }
+        if let Some(midi) = &self.midi {
+            self.midi_performance.update_losses(midi.losses());
+        }
+        debug_assert_eq!(
+            self.revision, before_revision,
+            "MIDI listen/capture must not edit canonical source"
+        );
+        debug_assert_eq!(
+            self.source.len(),
+            before_len,
+            "MIDI listen/capture must not edit canonical source"
+        );
+        read
+    }
+
+    /// Begin one explicit finite capture at the current revision/context.
+    pub fn start_midi_capture(&mut self, caret: Option<&str>) -> bool {
+        let Some(context) = self.midi_take_context(caret) else {
+            return false;
+        };
+        let losses = self.midi.as_ref().map_or_default(MidiInput::losses);
+        self.midi_performance.start_capture(context, losses)
+    }
+
+    /// Finish the active capture into immutable memory-only project facts.
+    pub fn stop_midi_capture(&mut self) -> Option<&MidiTake> {
+        let losses = self.midi.as_ref().map_or_default(MidiInput::losses);
+        self.midi_performance.stop_capture(losses)
+    }
+
+    /// Freeze the most recent complete suffix for Review.
+    pub fn keep_recent_midi(&mut self, caret: Option<&str>) -> Option<&MidiTake> {
+        let context = self.midi_take_context(caret)?;
+        let losses = self.midi.as_ref().map_or_default(MidiInput::losses);
+        self.midi_performance.keep_recent(context, losses)
+    }
+
+    /// Clear memory-only recent evidence.
+    pub fn clear_recent_midi(&mut self) {
+        self.midi_performance.clear_recent();
+    }
+
+    /// Enable or disable recent phrase memory; disabling clears it.
+    pub fn set_recent_midi_enabled(&mut self, enabled: bool) {
+        self.midi_performance.set_recent_enabled(enabled);
+    }
+
+    /// Most recently frozen take, if Review has one.
+    pub fn latest_midi_take(&self) -> Option<&MidiTake> {
+        self.midi_performance.latest_take()
     }
 
     /// The notes played since the last call, spelled in the piece's key and
@@ -815,8 +991,8 @@ impl ProjectSession {
         };
         let now = std::time::Instant::now();
         while let Some(event) = midi.poll() {
-            if event.pressed {
-                self.entry.press(event.note, now);
+            if event.kind == musa_playback::MidiMessageKind::NoteOn {
+                self.entry.press(event.data, now);
             }
         }
         // The key **at the caret**, which is the whole point of a positional
@@ -857,6 +1033,51 @@ impl ProjectSession {
                 (Scope::Part { part: part.0 }, event.onset)
             });
         valid.score.key_at(scope, at)
+    }
+
+    fn part_voice_at_caret(&self, caret: Option<&str>) -> Option<(&str, Option<&str>)> {
+        let facts = &self.valid.as_ref()?.facts;
+        if let Some(caret) = caret
+            && let Some(event) = facts.events.iter().find(|event| event.id == caret)
+        {
+            return Some((&event.part, Some(&event.voice)));
+        }
+        let part = facts.parts.first()?;
+        Some((&part.name, part.voices.first().map(|voice| voice.name.as_str())))
+    }
+
+    fn audition_route(&self, caret: Option<&str>) -> Option<&AuditionRoute> {
+        let (part, _) = self.part_voice_at_caret(caret)?;
+        self.audition_routes.iter().find(|route| route.part == part)
+    }
+
+    fn midi_take_context(&self, caret: Option<&str>) -> Option<MidiTakeContext> {
+        let valid = self.valid.as_ref()?;
+        let (part, voice) = self.part_voice_at_caret(caret)?;
+        let playback = self.playback_state();
+        let device = self.midi.as_ref()?.device()?;
+        let instrument = valid
+            .studio_facts
+            .assignments
+            .iter()
+            .find(|assignment| assignment.part == part)
+            .map_or("std.sound.basic_sine@1", |assignment| assignment.instrument.as_str());
+        Some(MidiTakeContext {
+            revision: self.revision.0,
+            part: part.to_owned(),
+            voice: voice.map(str::to_owned),
+            transport_playing: playback.playing,
+            transport_frame: playback.position_frames,
+            sample_rate: playback.sample_rate,
+            tempo: Some(crate::Fraction {
+                numerator: i64::from(valid.facts.tempo_bpm),
+                denominator: 1,
+            }),
+            meter: Some((valid.facts.meter_count, valid.facts.meter_unit)),
+            device_id: device.id.clone(),
+            device_name: device.name.clone(),
+            audition_instrument: instrument.to_owned(),
+        })
     }
 
     /// Block until playback finishes, for callers with nothing else to do
@@ -905,6 +1126,11 @@ impl ProjectSession {
             installed: None,
             recovery: None,
             midi: None,
+            midi_preferred_id: None,
+            midi_devices: Vec::new(),
+            midi_performance: MidiPerformanceBuffer::default(),
+            started: Instant::now(),
+            audition_routes: Vec::new(),
             entry: EntryBuffer::default(),
         }
     }
@@ -1406,6 +1632,7 @@ impl ProjectSession {
         }
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
         let plan = playback::prepare(&valid.score, &valid.studio_execution, &self.assets)?;
+        let audition_routes = prepare_audition_routes(&plan, &valid.facts.parts);
         self.total_frames = plan.total_frames();
         let audio = self
             .audio
@@ -1414,6 +1641,7 @@ impl ProjectSession {
         audio
             .install(plan)
             .map_err(|error| ProjectError::Engine(error.to_string()))?;
+        self.audition_routes = audition_routes;
         self.installed = Some(installed);
         Ok(())
     }
@@ -1512,6 +1740,49 @@ fn render_notation(
     musa_notation::render_notation(score, target, &musa_notation::NotationOptions::default())
         .map(|rendered| ExportArtifact::text(rendered.text()).warn(rendered.warnings().to_vec()))
         .map_err(|error| ProjectError::Notation(error.to_string()))
+}
+
+fn audition_input(event: AuditionEvent) -> Option<AuditionInputKind> {
+    match event {
+        AuditionEvent::NoteOn { .. } => Some(AuditionInputKind::AttackVelocity),
+        AuditionEvent::NoteOff { .. } => Some(AuditionInputKind::ReleaseVelocity),
+        AuditionEvent::Input { input, .. } => Some(input),
+    }
+}
+
+fn prepare_audition_routes(
+    plan: &musa_playback::PreparedPlaybackPlan,
+    parts: &[crate::PartFacts],
+) -> Vec<AuditionRoute> {
+    let fixed = [
+        AuditionInputKind::AttackVelocity,
+        AuditionInputKind::ReleaseVelocity,
+        AuditionInputKind::SustainPedal,
+        AuditionInputKind::SostenutoPedal,
+        AuditionInputKind::SoftPedal,
+        AuditionInputKind::PitchBend,
+        AuditionInputKind::ChannelPressure,
+        AuditionInputKind::KeyPressure,
+    ];
+    parts
+        .iter()
+        .filter_map(|part| {
+            let target = plan.audition_target(&part.name)?;
+            let mut supported = fixed
+                .into_iter()
+                .filter(|input| plan.supports_audition_input(target, *input))
+                .collect::<Vec<_>>();
+            supported.extend((0..=127).filter_map(|controller| {
+                let input = AuditionInputKind::Controller(controller);
+                plan.supports_audition_input(target, input).then_some(input)
+            }));
+            Some(AuditionRoute {
+                part: part.name.clone(),
+                target,
+                supported,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

@@ -9,6 +9,27 @@
   "autosaved": false,
   "recovery": null,
   "midiPort": null,
+  "midiDevices": [],
+  "midiCapture": {
+    "state": "listen",
+    "recentEnabled": true,
+    "recentEvents": 0,
+    "recentMicros": 0,
+    "recentTruncated": false,
+    "captureEvents": 0,
+    "captureMicros": 0,
+    "recentEventLimit": 4096,
+    "recentTimeLimitMicros": 30000000,
+    "captureEventLimit": 65536,
+    "captureTimeLimitMicros": 600000000,
+    "unsupportedAuditionEvents": 0,
+    "losses": {
+      "queueOverflow": 0,
+      "refusedSysex": 0,
+      "malformed": 0,
+      "unsupportedSystem": 0
+    }
+  },
   "diagnostics": [],
   "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Events Splice</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Events Splice</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\">\n                <label>ensemble</label>\n                <labelAbbr>ens.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"c\"/>\n                  <note xml:id=\"event-1\" dur=\"1\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"4\" pname=\"d\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-4\" dur=\"4\" oct=\"4\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"2\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <beam>\n                    <note xml:id=\"event-5\" dur=\"8\" oct=\"4\" pname=\"c\"/>\n                  </beam>\n                  <note xml:id=\"event-6\" dur=\"1\" oct=\"2\" pname=\"g\"/>\n                  <beam>\n                    <note xml:id=\"event-7\" dur=\"8\" oct=\"4\" pname=\"d\"/>\n                  </beam>\n                  <beam>\n                    <note xml:id=\"event-8\" dur=\"8\" oct=\"4\" pname=\"e\"/>\n                    <note xml:id=\"event-9\" dur=\"8\" oct=\"4\" pname=\"f\"/>\n                  </beam>\n                  <note xml:id=\"event-a\" dur=\"4\" oct=\"4\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
   "score": {

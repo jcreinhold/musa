@@ -64,6 +64,12 @@ export const bridge = {
   /** Read a MIDI keyboard, or stop reading it. */
   listenToMidi: (listening: boolean, caret: string | null) =>
     call<ProjectSnapshot>("listen_to_midi", { listening, caret }),
+  selectMidiInput: (id: string) => call<ProjectSnapshot>("select_midi_input", { id }),
+  startMidiCapture: (caret: string | null) => call<ProjectSnapshot>("start_midi_capture", { caret }),
+  stopMidiCapture: () => call<ProjectSnapshot>("stop_midi_capture", {}),
+  keepRecentMidi: (caret: string | null) => call<ProjectSnapshot>("keep_recent_midi", { caret }),
+  clearRecentMidi: () => call<ProjectSnapshot>("clear_recent_midi", {}),
+  setRecentMidi: (enabled: boolean) => call<ProjectSnapshot>("set_recent_midi", { enabled }),
   /**
    * Read the last valid score and report what one analysis saw. Asked for,
    * never volunteered (`08-elaboration.md` §5).

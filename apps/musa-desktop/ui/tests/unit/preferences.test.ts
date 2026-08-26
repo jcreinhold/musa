@@ -108,6 +108,19 @@ describe("vim mode", () => {
   });
 });
 
+describe("recent MIDI memory", () => {
+  it("is on by default and remembers when the musician turns it off", () => {
+    const chosen = new Preferences();
+    chosen.start();
+    expect(chosen.recentMidi).toBe(true);
+    chosen.setRecentMidi(false);
+
+    const later = new Preferences();
+    later.start();
+    expect(later.recentMidi).toBe(false);
+  });
+});
+
 /**
  * The source column's width.
  *

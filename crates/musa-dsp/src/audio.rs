@@ -21,6 +21,51 @@ use crate::schedule::{
 use crate::spec::GraphOptions;
 use crate::studio::{lower_studio, lower_studio_for_sources};
 
+/// Opaque prepared event input for one score part's audition instrument.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PreparedAuditionTarget(usize);
+
+/// One callback-safe event for ephemeral selected-instrument audition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuditionEvent {
+    /// Begin one already-paired live voice.
+    NoteOn {
+        /// Control-side identity pairing this attack with its release.
+        voice: u32,
+        /// MIDI note number, realized only at this device edge.
+        note: u8,
+        /// Raw attack velocity.
+        velocity: u8,
+    },
+    /// Release one already-paired live voice.
+    NoteOff {
+        /// Control-side identity of the attack being released.
+        voice: u32,
+        /// Raw release velocity.
+        velocity: u8,
+    },
+    /// Apply one retained MIDI dimension through source audition policy.
+    Input {
+        /// MIDI wire dimension, not a musical meaning.
+        input: crate::MidiAuditionInputKind,
+        /// Raw signed value (`-8192..=8191` for bend, otherwise seven-bit).
+        value: i16,
+        /// Key for a key-scoped dimension.
+        key: Option<u8>,
+    },
+}
+
+/// Whether source policy could interpret an audition event's expressive part.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuditionOutcome {
+    /// The note or control was applied through prepared source policy.
+    Applied,
+    /// The note sounded, but its hardware expression had no source binding.
+    NoteWithoutExpression,
+    /// The selected instrument declares no binding for this dimension.
+    UnsupportedInput,
+}
+
 /// Every product-level choice that can change audio preparation or its finite
 /// playback extent. There is deliberately no default.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -88,7 +133,8 @@ pub struct PreparedAudio {
     _instrument_machine: crate::PreparedMachine,
     // Exact source identities retained beside their compact prepared slots.
     // Equal declarations deliberately still have distinct instance ids.
-    _instrument_instances: Vec<InstrumentInstanceBinding>,
+    instrument_instances: Vec<InstrumentInstanceBinding>,
+    audition: Vec<PreparedInstrumentAudition>,
     plan: RenderPlan,
     schedule: Schedule<PerformedTime, Gesture>,
     lanes: Vec<PreparedLane>,
@@ -105,8 +151,31 @@ struct PreparedInstrumentId(usize);
 
 struct InstrumentInstanceBinding {
     _part: PartId,
+    name: String,
     _declaration: String,
     _instance: PreparedInstrumentId,
+}
+
+struct PreparedInstrumentAudition {
+    bindings: Vec<PreparedAuditionBinding>,
+}
+
+struct PreparedAuditionBinding {
+    input: crate::MidiAuditionInputKind,
+    scope: crate::MidiAuditionScope,
+    input_minimum: f32,
+    input_maximum: f32,
+    output_minimum: f32,
+    output_maximum: f32,
+    dead_zone: f32,
+    switch_threshold: Option<f32>,
+    mappings: Box<[PreparedAuditionMapping]>,
+}
+
+struct PreparedAuditionMapping {
+    target: PreparedParameterId,
+    transfer: Option<(f32, f32, bool)>,
+    per_note_attack: bool,
 }
 
 struct PreparedLane {
@@ -122,6 +191,118 @@ struct PreparedControlBatch {
 }
 
 impl PreparedAudio {
+    /// Resolve a score part name to its opaque prepared audition input.
+    pub fn audition_target(&self, part: &str) -> Option<PreparedAuditionTarget> {
+        self.instrument_instances
+            .iter()
+            .position(|binding| binding.name == part)
+            .map(PreparedAuditionTarget)
+    }
+
+    /// Whether the selected instrument has a source binding for one input.
+    pub fn supports_audition_input(&self, target: PreparedAuditionTarget, input: crate::MidiAuditionInputKind) -> bool {
+        self.audition
+            .get(target.0)
+            .is_some_and(|prepared| prepared.bindings.iter().any(|binding| binding.input == input))
+    }
+
+    /// Apply one ephemeral event without advancing musical transport time.
+    ///
+    /// This operation allocates nothing and touches only prepared state.
+    pub fn audition(&mut self, target: PreparedAuditionTarget, event: AuditionEvent) -> AuditionOutcome {
+        match event {
+            AuditionEvent::NoteOn { voice, note, velocity } => {
+                let (supported, attack) = self.apply_audition_input(
+                    target,
+                    crate::MidiAuditionInputKind::AttackVelocity,
+                    i16::from(velocity),
+                    Some(note),
+                );
+                self.plan
+                    .live_note_on(target.0, voice, note, 1.0, attack.unwrap_or(0.0), self.tuning);
+                if supported {
+                    AuditionOutcome::Applied
+                } else {
+                    AuditionOutcome::NoteWithoutExpression
+                }
+            }
+            AuditionEvent::NoteOff { voice, velocity } => {
+                let (supported, _) = self.apply_audition_input(
+                    target,
+                    crate::MidiAuditionInputKind::ReleaseVelocity,
+                    i16::from(velocity),
+                    None,
+                );
+                self.plan.live_note_off(target.0, voice);
+                if supported {
+                    AuditionOutcome::Applied
+                } else {
+                    AuditionOutcome::NoteWithoutExpression
+                }
+            }
+            AuditionEvent::Input { input, value, key } => {
+                if self.apply_audition_input(target, input, value, key).0 {
+                    AuditionOutcome::Applied
+                } else {
+                    AuditionOutcome::UnsupportedInput
+                }
+            }
+        }
+    }
+
+    /// Advance the prepared DSP state once without advancing the score.
+    ///
+    /// This is the audition counterpart of [`Self::step`]: release tails and
+    /// effects move while transport remains stopped.
+    pub fn audition_step(&mut self) -> [f32; 2] {
+        self.plan.finish_step()
+    }
+
+    fn apply_audition_input(
+        &mut self,
+        target: PreparedAuditionTarget,
+        input: crate::MidiAuditionInputKind,
+        raw: i16,
+        key: Option<u8>,
+    ) -> (bool, Option<f32>) {
+        let Some(prepared) = self.audition.get(target.0) else {
+            return (false, None);
+        };
+        let mut supported = false;
+        let mut attack = None;
+        for binding in prepared.bindings.iter().filter(|binding| binding.input == input) {
+            if binding.scope == crate::MidiAuditionScope::PerKey && key.is_none() {
+                continue;
+            }
+            let raw = f32::from(raw);
+            let normalized = if let Some(threshold) = binding.switch_threshold {
+                if raw >= threshold { 1.0 } else { 0.0 }
+            } else {
+                let centered = if raw.abs() <= binding.dead_zone { 0.0 } else { raw };
+                ((centered - binding.input_minimum) / (binding.input_maximum - binding.input_minimum)).clamp(0.0, 1.0)
+            };
+            let semantic =
+                (binding.output_maximum - binding.output_minimum).mul_add(normalized, binding.output_minimum);
+            for mapping in &binding.mappings {
+                let value = mapping.transfer.map_or(semantic, |(minimum, maximum, inverse)| {
+                    let along = if inverse { 1.0 - semantic } else { semantic };
+                    (maximum - minimum).mul_add(along, minimum)
+                });
+                if mapping.per_note_attack {
+                    attack = Some(value);
+                } else {
+                    self.plan.apply_parameter_events(&[PreparedParameterEvent {
+                        target: mapping.target,
+                        value,
+                        ramp_frames: 0,
+                    }]);
+                }
+            }
+            supported = true;
+        }
+        (supported, attack)
+    }
+
     /// Complete auditable time decisions for all gesture lanes.
     pub fn decisions(&self) -> &[TimeDecision<PerformedTime>] {
         self.schedule.decisions()
@@ -342,6 +523,7 @@ fn prepare_audio(
         event_inputs.push((input.node, instance));
         instrument_instances.push(InstrumentInstanceBinding {
             _part: lane.part(),
+            name: lane.name().to_owned(),
             _declaration: input.declaration.clone(),
             _instance: PreparedInstrumentId(instance),
         });
@@ -355,6 +537,7 @@ fn prepare_audio(
         .map_err(|error| AudioPrepareError::Primitive(error.to_string()))?;
     let (schedule, lane_schedules) = schedule_gestures(gestures, options)?;
     let mut lane_controls = Vec::with_capacity(lane_schedules.len());
+    let mut audition = Vec::with_capacity(lane_schedules.len());
     for (instance, lane_schedule) in lane_schedules.iter().enumerate() {
         let input = part_inputs.get(instance).ok_or_else(|| {
             AudioPrepareError::StudioValue("a scheduled lane has no prepared instrument input".to_owned())
@@ -366,6 +549,7 @@ fn prepare_audio(
             declaration,
             lane_schedule,
         )?);
+        audition.push(prepare_audition_bindings(&mut plan, input.node, declaration)?);
     }
     let studio_tail = (f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64;
     let tail_frames = options.tail_frames.saturating_add(studio_tail);
@@ -394,7 +578,8 @@ fn prepare_audio(
     Ok(PreparedAudio {
         _instrument_contracts: instrument_contracts,
         _instrument_machine: instrument_machine,
-        _instrument_instances: instrument_instances,
+        instrument_instances,
+        audition,
         plan,
         schedule,
         lanes,
@@ -415,6 +600,85 @@ struct ResolvedControlMapping {
     target: PreparedParameterId,
     transfer: Option<(Ratio<i64>, Ratio<i64>, bool)>,
     connection_values: Option<[Ratio<i64>; 3]>,
+}
+
+fn prepare_audition_bindings(
+    plan: &mut RenderPlan,
+    node: crate::spec::NodeId,
+    declaration: &crate::InstrumentContract,
+) -> Result<PreparedInstrumentAudition, AudioPrepareError> {
+    let mut bindings = Vec::with_capacity(declaration.audition_bindings().len());
+    for source in declaration.audition_bindings() {
+        let mut mappings = Vec::new();
+        for mapping in declaration.mappings().iter().filter(|mapping| {
+            mapping.kind() == "Normalized"
+                && mapping.namespace() == source.namespace()
+                && mapping.name() == source.name()
+        }) {
+            if mapping.node() != "voice" {
+                return Err(AudioPrepareError::InstrumentContract(format!(
+                    "audition control `{}::{}` reaches unsupported private target `{}`",
+                    source.namespace(),
+                    source.name(),
+                    mapping.node()
+                )));
+            }
+            let Some(target) = plan
+                .resolve_parameter(node, mapping.parameter())
+                .map_err(|error| AudioPrepareError::InstrumentContract(error.to_string()))?
+            else {
+                continue;
+            };
+            let per_note_attack = source.scope() == crate::MidiAuditionScope::PerKey
+                && source.input() == crate::MidiAuditionInputKind::AttackVelocity
+                && plan.parameter_name(target) == Some("attack");
+            if source.scope() == crate::MidiAuditionScope::PerKey && !per_note_attack {
+                return Err(AudioPrepareError::InstrumentContract(format!(
+                    "key-scoped audition control `{}::{}` does not reach a prepared per-note target",
+                    source.namespace(),
+                    source.name()
+                )));
+            }
+            let transfer = mapping
+                .transfer()
+                .map(|(minimum, maximum, inverse)| {
+                    Ok::<_, AudioPrepareError>((exact_f32(minimum)?, exact_f32(maximum)?, inverse))
+                })
+                .transpose()?;
+            mappings.push(PreparedAuditionMapping {
+                target,
+                transfer,
+                per_note_attack,
+            });
+        }
+        if mappings.is_empty() {
+            continue;
+        }
+        let (input_minimum, input_maximum) = source.input_range();
+        let (output_minimum, output_maximum) = source.output_range();
+        bindings.push(PreparedAuditionBinding {
+            input: source.input(),
+            scope: source.scope(),
+            input_minimum: exact_f32(input_minimum)?,
+            input_maximum: exact_f32(input_maximum)?,
+            output_minimum: exact_f32(output_minimum)?,
+            output_maximum: exact_f32(output_maximum)?,
+            dead_zone: exact_f32(source.dead_zone())?,
+            switch_threshold: source.switch_threshold().map(exact_f32).transpose()?,
+            mappings: mappings.into_boxed_slice(),
+        });
+    }
+    Ok(PreparedInstrumentAudition { bindings })
+}
+
+fn exact_f32(value: Ratio<i64>) -> Result<f32, AudioPrepareError> {
+    let value = *value.numer() as f64 / *value.denom() as f64;
+    if !value.is_finite() || value < f64::from(f32::MIN) || value > f64::from(f32::MAX) {
+        return Err(AudioPrepareError::InstrumentContract(
+            "audition transfer is outside finite DSP bounds".to_owned(),
+        ));
+    }
+    Ok(value as f32)
 }
 
 fn prepare_control_batches(

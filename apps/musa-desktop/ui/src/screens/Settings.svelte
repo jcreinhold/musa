@@ -73,6 +73,26 @@
         </div>
 
         <div class="row">
+          <span class="label" id="settings-recent-midi">Remember recent MIDI for Keep that</span>
+          <div class="choices" role="group" aria-labelledby="settings-recent-midi">
+            <button
+              type="button"
+              aria-pressed={!preferences.recentMidi}
+              onclick={() => {
+                preferences.setRecentMidi(false);
+              }}>Off</button
+            >
+            <button
+              type="button"
+              aria-pressed={preferences.recentMidi}
+              onclick={() => {
+                preferences.setRecentMidi(true);
+              }}>On</button
+            >
+          </div>
+        </div>
+
+        <div class="row">
           <span class="label" id="settings-text">Text size</span>
           <div class="choices" role="group" aria-labelledby="settings-text">
             {#each TEXT_SIZES as size (size)}

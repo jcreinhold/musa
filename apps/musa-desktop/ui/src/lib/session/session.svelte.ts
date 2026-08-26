@@ -75,6 +75,12 @@ export type Link = Pick<
   | "askToOpenProject"
   | "askToSave"
   | "listenToMidi"
+  | "selectMidiInput"
+  | "startMidiCapture"
+  | "stopMidiCapture"
+  | "keepRecentMidi"
+  | "clearRecentMidi"
+  | "setRecentMidi"
   | "analyze"
   | "libraryDocument"
 >;
@@ -403,17 +409,7 @@ export class Session {
     }
   }
 
-  /**
-   * Read a MIDI keyboard while note entry is on, and stop when it goes off.
-   *
-   * Turning it on names the keyboard that answered, because a composer who
-   * plugged one in wants to know it was found — and a composer who did not
-   * gets no message at all, since not having a keyboard is not a problem.
-   *
-   * `caret` is the event a played note would be written before, and is sent
-   * again whenever it moves: what a note is spelled as depends on the key in
-   * force there, and a piece modulates.
-   */
+  /** Keep the selected part current for harmless always-listen audition. */
   async listenToMidi(listening: boolean, caret: string | null = null): Promise<void> {
     const link = this.#link;
     if (!link) return;
@@ -423,9 +419,72 @@ export class Session {
       if (listening && snapshot.midiPort) {
         this.say({
           tone: "result",
-          message: `Playing in from ${snapshot.midiPort}.`,
+          message: `Listening to ${snapshot.midiPort}; source is unchanged.`,
         });
       }
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async selectMidiInput(id: string): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.selectMidiInput(id));
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async startMidiCapture(caret: string | null): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.startMidiCapture(caret));
+      this.say({ tone: "result", message: "Capturing MIDI performance — source is unchanged." });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async stopMidiCapture(): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.stopMidiCapture());
+      this.say({ tone: "result", message: "Capture ready to review." });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async keepRecentMidi(caret: string | null): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.keepRecentMidi(caret));
+      this.say({ tone: "result", message: "Recent phrase ready to review." });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async clearRecentMidi(): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.clearRecentMidi());
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async setRecentMidi(enabled: boolean): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.setRecentMidi(enabled));
     } catch (thrown) {
       this.fail(thrown);
     }

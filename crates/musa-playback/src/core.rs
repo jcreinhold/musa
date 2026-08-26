@@ -18,6 +18,81 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use musa_dsp::PreparedAudio;
 
+/// Opaque selected-instrument input resolved from one prepared plan.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct AuditionTarget(musa_dsp::PreparedAuditionTarget);
+
+/// MIDI dimension that source instrument policy may bind for audition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AuditionInputKind {
+    AttackVelocity,
+    ReleaseVelocity,
+    SustainPedal,
+    SostenutoPedal,
+    SoftPedal,
+    PitchBend,
+    ChannelPressure,
+    KeyPressure,
+    Controller(u8),
+}
+
+impl From<AuditionInputKind> for musa_dsp::MidiAuditionInputKind {
+    fn from(input: AuditionInputKind) -> Self {
+        match input {
+            AuditionInputKind::AttackVelocity => Self::AttackVelocity,
+            AuditionInputKind::ReleaseVelocity => Self::ReleaseVelocity,
+            AuditionInputKind::SustainPedal => Self::SustainPedal,
+            AuditionInputKind::SostenutoPedal => Self::SostenutoPedal,
+            AuditionInputKind::SoftPedal => Self::SoftPedal,
+            AuditionInputKind::PitchBend => Self::PitchBend,
+            AuditionInputKind::ChannelPressure => Self::ChannelPressure,
+            AuditionInputKind::KeyPressure => Self::KeyPressure,
+            AuditionInputKind::Controller(number) => Self::Controller(number),
+        }
+    }
+}
+
+/// One fixed callback-safe selected-instrument audition event.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AuditionEvent {
+    NoteOn {
+        voice: u32,
+        note: u8,
+        velocity: u8,
+    },
+    NoteOff {
+        voice: u32,
+        velocity: u8,
+    },
+    Input {
+        input: AuditionInputKind,
+        value: i16,
+        key: Option<u8>,
+    },
+}
+
+impl From<AuditionEvent> for musa_dsp::AuditionEvent {
+    fn from(event: AuditionEvent) -> Self {
+        match event {
+            AuditionEvent::NoteOn { voice, note, velocity } => Self::NoteOn { voice, note, velocity },
+            AuditionEvent::NoteOff { voice, velocity } => Self::NoteOff { voice, velocity },
+            AuditionEvent::Input { input, value, key } => Self::Input {
+                input: input.into(),
+                value,
+                key,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AuditionMessage {
+    /// Prepared part-local target.
+    pub target: AuditionTarget,
+    /// Event to apply before the next callback frame.
+    pub event: AuditionEvent,
+}
+
 /// A playback plan prepared entirely on the control side: compiled graph,
 /// scheduled events, total duration. The callback only executes it.
 pub struct PreparedPlaybackPlan {
@@ -33,6 +108,16 @@ impl PreparedPlaybackPlan {
     /// The total duration in frames (tail included).
     pub fn total_frames(&self) -> u64 {
         self.audio.total_frames()
+    }
+
+    /// Resolve a score part to its prepared audition input before install.
+    pub fn audition_target(&self, part: &str) -> Option<AuditionTarget> {
+        self.audio.audition_target(part).map(AuditionTarget)
+    }
+
+    /// Whether source policy binds one expressive input for this target.
+    pub fn supports_audition_input(&self, target: AuditionTarget, input: AuditionInputKind) -> bool {
+        self.audio.supports_audition_input(target.0, input.into())
     }
 }
 
@@ -70,6 +155,7 @@ pub enum Message {
 pub struct CallbackCore {
     commands: rtrb::Consumer<Message>,
     retired: rtrb::Producer<Box<PreparedPlaybackPlan>>,
+    audition: rtrb::Consumer<AuditionMessage>,
     /// A retired plan that did not fit the queue last block; retried each
     /// block (dropping it here would violate the real-time rules). While it is occupied
     /// the core stops consuming commands, so at most one plan is ever held
@@ -90,9 +176,22 @@ impl CallbackCore {
         position: Arc<AtomicU64>,
         playing_flag: Arc<AtomicBool>,
     ) -> Self {
+        let (_producer, audition) = rtrb::RingBuffer::new(1);
+        Self::new_with_audition(commands, retired, audition, position, playing_flag)
+    }
+
+    /// Construct with the engine's bounded audition queue.
+    pub fn new_with_audition(
+        commands: rtrb::Consumer<Message>,
+        retired: rtrb::Producer<Box<PreparedPlaybackPlan>>,
+        audition: rtrb::Consumer<AuditionMessage>,
+        position: Arc<AtomicU64>,
+        playing_flag: Arc<AtomicBool>,
+    ) -> Self {
         Self {
             commands,
             retired,
+            audition,
             pending_retire: None,
             installed: None,
             playing: false,
@@ -183,11 +282,19 @@ impl CallbackCore {
         self.consume_commands();
         let frames = output.len().saturating_div(2);
         let Some(installed) = self.installed.as_mut() else {
+            while self.audition.pop().is_ok() {}
             output.fill(0.0);
             return;
         };
+        while let Ok(message) = self.audition.pop() {
+            installed.audio.audition(message.target.0, message.event.into());
+        }
         if !self.playing {
-            output.fill(0.0);
+            let (stereo, remainder) = output.as_chunks_mut::<2>();
+            for frame in stereo {
+                *frame = installed.audio.audition_step();
+            }
+            remainder.fill(0.0);
             return;
         }
         let mut done = 0usize;

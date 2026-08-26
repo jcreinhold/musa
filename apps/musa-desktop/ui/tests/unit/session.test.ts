@@ -84,6 +84,12 @@ function recorder(): Recorder {
     askToOpen: vi.fn(async () => "/tmp/piece.musa"),
     askToSave: vi.fn(async () => "/tmp/out.mei"),
     listenToMidi: vi.fn(async () => VALID),
+    selectMidiInput: vi.fn(async () => VALID),
+    startMidiCapture: vi.fn(async () => VALID),
+    stopMidiCapture: vi.fn(async () => VALID),
+    keepRecentMidi: vi.fn(async () => VALID),
+    clearRecentMidi: vi.fn(async () => VALID),
+    setRecentMidi: vi.fn(async () => VALID),
     analyze: vi.fn(async (kind: string) => ({
       revision,
       kind,

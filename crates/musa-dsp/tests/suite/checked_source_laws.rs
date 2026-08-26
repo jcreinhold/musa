@@ -317,6 +317,17 @@ fn standard_instruments_are_checked_source_data_with_private_machines() {
         }),
         "the physical custom control crosses as an exact direct mapping"
     );
+    assert!(basic.audition_bindings().iter().any(|binding| {
+        binding.input() == musa_dsp::MidiAuditionInputKind::AttackVelocity
+            && binding.scope() == musa_dsp::MidiAuditionScope::PerKey
+            && binding.namespace() == "std.performance"
+            && binding.name() == "emphasis"
+    }));
+    assert!(basic.audition_bindings().iter().any(|binding| {
+        binding.input() == musa_dsp::MidiAuditionInputKind::SustainPedal
+            && binding.scope() == musa_dsp::MidiAuditionScope::PerChannel
+            && binding.switch_threshold() == Some(Ratio::from_integer(64))
+    }));
     let machine = checked_standard_instrument_machine()
         .unwrap_or_else(|diagnostics| panic!("private instrument machine should check: {diagnostics:#?}"));
     assert_eq!(
@@ -334,7 +345,7 @@ fn checked_instrument_module(source: &str) -> Result<musa_compiler::CheckedSourc
         &SourceSchema::new(
             "std.sound.instrument.InstrumentExecutionArtifact",
             "InstrumentExecutionArtifact",
-            1,
+            2,
         ),
     )
 }
@@ -384,6 +395,45 @@ fn instrument_mapping_indices_use_the_general_unifier() {
         checked_instrument_module(&mismatched).is_err(),
         "a phrase key cannot satisfy the normalized mapping index"
     );
+}
+
+#[test]
+fn audition_binding_indices_use_the_general_unifier() {
+    let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
+    let mismatched = source.replacen("control_key = emphasis", "control_key = phrase_relation", 1);
+    assert_ne!(mismatched, source, "the fixture must revise the indexed key");
+    assert!(
+        checked_instrument_module(&mismatched).is_err(),
+        "a phrase-relation key cannot satisfy a normalized audition binding"
+    );
+}
+
+#[test]
+fn audition_bindings_cannot_name_an_unimplemented_control() {
+    let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
+    let unmapped = source.replacen(
+        "        maps_normalized(emphasis, \"voice\", \"attack\", InverseTransfer(2/1000, 5/1000)),\n",
+        "",
+        1,
+    );
+    let artifact = checked_instrument_module(&unmapped).expect("ordinary source still checks");
+    assert!(
+        decode_instrument_contracts(&artifact).is_err(),
+        "checked projection refuses a host-unreachable binding"
+    );
+}
+
+#[test]
+fn duplicate_source_audition_bindings_are_refused() {
+    let source = standard_library_source("musa-stdlib:/std/sound/instrument.musa").expect("instrument source");
+    let duplicate = source.replacen(
+        "input = SustainPedal,\n            scope = PerChannel,\n            control_key = sustain",
+        "input = AttackVelocity,\n            scope = PerKey,\n            control_key = emphasis",
+        1,
+    );
+    assert_ne!(duplicate, source, "the fixture must duplicate one binding identity");
+    let artifact = checked_instrument_module(&duplicate).expect("ordinary source still checks");
+    assert!(decode_instrument_contracts(&artifact).is_err());
 }
 
 #[test]

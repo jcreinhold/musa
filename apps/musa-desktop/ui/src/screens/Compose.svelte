@@ -184,6 +184,14 @@
   );
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 
+  function midiSeconds(micros: number): string {
+    return `${(micros / 1_000_000).toFixed(micros < 10_000_000 ? 1 : 0)} s`;
+  }
+
+  function setRecentMidi(enabled: boolean): void {
+    preferences.setRecentMidi(enabled);
+  }
+
   /**
    * The narrowest a leaf is still a page. Below this the staves are a ribbon
    * and the composer has stopped looking at music, so it is where the source
@@ -316,15 +324,76 @@
             >{/if}</button
         >
 
-        <!--
-          Which keyboard the notes would come from. Only while entry is on,
-          because that is the only time one is being read, and silent when
-          there is none: not owning a MIDI keyboard is not a problem to report
-          (roadmap §14.8).
-        -->
-        {#if entry.on && snapshot.midiPort}
-          <span class="port" title="Notes played here are written at the caret">{snapshot.midiPort}</span>
-        {/if}
+        <div class="midi" role="group" aria-label="MIDI keyboard capture">
+          {#if snapshot.midiDevices.length > 1 || snapshot.midiPort === null}
+            <label>
+              <span class="visually-hidden">MIDI input</span>
+              <select
+                aria-label="MIDI input"
+                value={snapshot.midiDevices.find((device) => device.selected)?.id ?? ""}
+                onchange={(event) => {
+                  const id = event.currentTarget.value;
+                  if (id) void session.selectMidiInput(id);
+                }}
+              >
+                <option value="">Choose MIDI input</option>
+                {#each snapshot.midiDevices as device (device.id)}
+                  <option value={device.id}>{device.name}</option>
+                {/each}
+              </select>
+            </label>
+          {/if}
+          {#if snapshot.midiPort}
+            <span class="port" title="Auditions the selected source instrument; never writes notes">
+              {sound?.instrument ?? "Instrument"} — {snapshot.midiPort}
+            </span>
+            <button
+              type="button"
+              class="text"
+              aria-pressed={snapshot.midiCapture.state === "capturing"}
+              onclick={() =>
+                void (snapshot.midiCapture.state === "capturing"
+                  ? session.stopMidiCapture()
+                  : session.startMidiCapture(workspace.caretAt?.id ?? null))}
+              >{snapshot.midiCapture.state === "capturing" ? "Finish" : "Capture"}</button
+            >
+            {#if snapshot.midiCapture.recentEnabled}
+              <button
+                type="button"
+                class="text"
+                disabled={snapshot.midiCapture.recentEvents === 0}
+                onclick={() => void session.keepRecentMidi(workspace.caretAt?.id ?? null)}>Keep that</button
+              >
+              <button
+                type="button"
+                class="text recent"
+                aria-pressed="true"
+                title="Turn off and clear recent phrase memory"
+                onclick={() => setRecentMidi(false)}
+              >
+                {snapshot.midiCapture.state === "capturing"
+                  ? `Capturing ${midiSeconds(snapshot.midiCapture.captureMicros)}`
+                  : snapshot.midiCapture.recentTruncated
+                    ? `Recent suffix only · ${midiSeconds(snapshot.midiCapture.recentMicros)}`
+                    : `Recent phrase on · ${midiSeconds(snapshot.midiCapture.recentMicros)}`}
+              </button>
+              <button
+                type="button"
+                class="text"
+                disabled={snapshot.midiCapture.recentEvents === 0}
+                onclick={() => void session.clearRecentMidi()}>Clear</button
+              >
+            {:else}
+              <button type="button" class="text" onclick={() => setRecentMidi(true)}>Recent phrase off</button>
+            {/if}
+          {:else}
+            <span class="port" role="status">
+              {snapshot.midiCapture.state === "disconnected"
+                ? "Keyboard disconnected — capture preserved"
+                : "No MIDI keyboard — choose an input device"}
+            </span>
+          {/if}
+        </div>
 
         <!--
           The lens is held — `O` or `⌥` — and this pins it, for anyone who
@@ -623,12 +692,29 @@
      breaks whole: "Zoom out 100 % Zoom in" split across two rows is not a
      zoom control any more. */
   .transport,
+  .midi,
   .view,
   .zoom {
     display: flex;
     flex: none;
     align-items: center;
     gap: var(--s-1);
+  }
+
+  .recent {
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .midi select {
+    max-width: 14rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
   }
 
   /* The current view is the one set in ink; the other is an offer. */

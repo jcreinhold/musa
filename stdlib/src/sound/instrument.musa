@@ -71,6 +71,45 @@ private data NormalizedTransfer {
     InverseTransfer(minimum: Ratio, maximum: Ratio),
 }
 
+// MIDI is retained as edge evidence. These constructors name wire dimensions,
+// not musical meanings; the binding below is the source-owned statement of
+// what one instrument chooses to do with them while it is auditioned.
+private data MidiAuditionInput {
+    AttackVelocity,
+    ReleaseVelocity,
+    SustainPedal,
+    SostenutoPedal,
+    SoftPedal,
+    PitchBend,
+    ChannelPressure,
+    KeyPressure,
+    Controller(number: Nat),
+}
+
+private data MidiAuditionScope {
+    PerChannel,
+    PerKey,
+}
+
+/// Exact normalization and switching policy for one hardware dimension.
+private record MidiAuditionTransfer {
+    input_minimum: Ratio;
+    input_maximum: Ratio;
+    output_minimum: Ratio;
+    output_maximum: Ratio;
+    dead_zone: Ratio;
+    switch_threshold: Option(Ratio);
+}
+
+/// Interpret one MIDI dimension as one semantic control accepted by this
+/// instrument. The host may project this declaration but may not invent it.
+private record MidiAuditionBinding {
+    input: MidiAuditionInput;
+    scope: MidiAuditionScope;
+    control_key: ControlKey(Normalized);
+    transfer: MidiAuditionTransfer;
+}
+
 /// Exact private parameter values selected by each phrase relation.
 private record ConnectionTransfer {
     detached: Ratio;
@@ -173,6 +212,7 @@ private record NativeInstrumentBody {
     declaration_id: Text;
     machine: Machine(AudioFrameStep, Ratio, Ratio);
     mappings: List(SomeControlMapping);
+    audition_bindings: List(MidiAuditionBinding);
 }
 
 // Canonical private intent crosses the checked boundary; the machine itself
@@ -181,6 +221,7 @@ private record NativeInstrumentBody {
 private record InstrumentImplementationContract {
     declaration_id: Text;
     mappings: List(SomeControlMapping);
+    audition_bindings: List(MidiAuditionBinding);
 }
 
 /// Retain the exact private mapping policy beside its stable declaration.
@@ -189,7 +230,8 @@ private fn implementation_contract(
 ) -> InstrumentImplementationContract {
     InstrumentImplementationContract {
         declaration_id = body.declaration_id,
-        mappings = body.mappings
+        mappings = body.mappings,
+        audition_bindings = body.audition_bindings
     }
 }
 
@@ -242,6 +284,34 @@ private let basic_sine_body: NativeInstrumentBody = NativeInstrumentBody {
             },
         ),
         maps_exact_ratio(basic_sine_partial_ratio, "voice", "ratio"),
+    ],
+    audition_bindings = [
+        MidiAuditionBinding {
+            input = AttackVelocity,
+            scope = PerKey,
+            control_key = emphasis,
+            transfer = MidiAuditionTransfer {
+                input_minimum = 1/1,
+                input_maximum = 127/1,
+                output_minimum = 0/1,
+                output_maximum = 1/1,
+                dead_zone = 0/1,
+                switch_threshold = None
+            }
+        },
+        MidiAuditionBinding {
+            input = SustainPedal,
+            scope = PerChannel,
+            control_key = sustain,
+            transfer = MidiAuditionTransfer {
+                input_minimum = 0/1,
+                input_maximum = 127/1,
+                output_minimum = 0/1,
+                output_maximum = 1/1,
+                dead_zone = 0/1,
+                switch_threshold = Some(64/1)
+            }
+        },
     ]
 };
 
@@ -297,7 +367,7 @@ record InstrumentExecutionArtifact {
 
 /// Versioned checked standard instrument declarations and private machines.
 let standard_instruments: InstrumentExecutionArtifact = InstrumentExecutionArtifact {
-    schema_version = 1,
+    schema_version = 2,
     instruments = [basic_sine],
     implementation_contracts = [implementation_contract(basic_sine_body)]
 };

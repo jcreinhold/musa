@@ -514,8 +514,10 @@ export interface ProjectSnapshot {
   autosaved: boolean;
   /** Work a previous session left behind, waiting to be taken or declined. */
   recovery: string | null;
-  /** The MIDI keyboard being read, while note entry is on. */
+  /** The MIDI keyboard used for harmless always-listen audition. */
   midiPort: string | null;
+  midiDevices: MidiDeviceFacts[];
+  midiCapture: MidiCaptureFacts;
   diagnostics: Diagnostic[];
   mei: string | null;
   score: ScoreFacts | null;
@@ -530,6 +532,35 @@ export interface ProjectSnapshot {
   terms: TermFacts[];
   /** Every resolved name, for definition and references. */
   names: NameFacts[];
+}
+
+export interface MidiDeviceFacts {
+  id: string;
+  name: string;
+  selected: boolean;
+}
+
+export interface MidiLossFacts {
+  queueOverflow: number;
+  refusedSysex: number;
+  malformed: number;
+  unsupportedSystem: number;
+}
+
+export interface MidiCaptureFacts {
+  state: "listen" | "capturing" | "review" | "disconnected";
+  recentEnabled: boolean;
+  recentEvents: number;
+  recentMicros: number;
+  recentTruncated: boolean;
+  captureEvents: number;
+  captureMicros: number;
+  recentEventLimit: number;
+  recentTimeLimitMicros: number;
+  captureEventLimit: number;
+  captureTimeLimitMicros: number;
+  unsupportedAuditionEvents: number;
+  losses: MidiLossFacts;
 }
 
 /** What a name names. The compiler's own list. */

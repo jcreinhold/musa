@@ -27,6 +27,9 @@ pub struct ProjectSnapshot<'session> {
     pub(crate) autosaved: bool,
     pub(crate) recovery: Option<&'session str>,
     pub(crate) midi_port: Option<&'session str>,
+    pub(crate) midi_preferred_id: Option<&'session str>,
+    pub(crate) midi_devices: &'session [musa_playback::MidiInputDevice],
+    pub(crate) midi_performance: &'session crate::midi::MidiPerformanceBuffer,
     pub(crate) playback: PlaybackState,
     pub(crate) kind: musa_compiler::DocumentKind,
     /// The project this piece is one of, when a [`Project`](crate::Project)
@@ -230,6 +233,24 @@ impl<'session> ProjectSnapshot<'session> {
         self.midi_port
     }
 
+    /// MIDI inputs currently visible to the host.
+    pub fn midi_devices(&self) -> Vec<crate::MidiDeviceFacts> {
+        let selected = self.midi_preferred_id;
+        self.midi_devices
+            .iter()
+            .map(|device| crate::MidiDeviceFacts {
+                id: device.id.clone(),
+                name: device.name.clone(),
+                selected: selected == Some(device.id.as_str()),
+            })
+            .collect()
+    }
+
+    /// Bounded recent-memory and capture state.
+    pub fn midi_capture(&self) -> crate::MidiCaptureFacts {
+        self.midi_performance.facts()
+    }
+
     /// What the transport is doing.
     pub fn playback(&self) -> PlaybackState {
         self.playback
@@ -258,6 +279,8 @@ struct SnapshotWire<'a> {
     autosaved: bool,
     recovery: Option<&'a str>,
     midi_port: Option<&'a str>,
+    midi_devices: Vec<crate::MidiDeviceFacts>,
+    midi_capture: crate::MidiCaptureFacts,
     diagnostics: &'a [Diagnostic],
     mei: Option<&'a str>,
     score: Option<&'a ScoreFacts>,
@@ -372,6 +395,8 @@ impl ProjectSnapshot<'_> {
             autosaved: self.autosaved,
             recovery: self.recovery,
             midi_port: self.midi_port,
+            midi_devices: self.midi_devices(),
+            midi_capture: self.midi_capture(),
             diagnostics: self.diagnostics,
             mei: self.mei(),
             score: self.score(),

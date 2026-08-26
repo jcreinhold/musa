@@ -28,6 +28,7 @@ export const TEXT_SIZES: readonly TextSize[] = ["small", "normal", "large", "lar
 const SIZE_KEY = "musa.text-size";
 const VIM_KEY = "musa.vim";
 const WIDTH_KEY = "musa.source-width";
+const RECENT_MIDI_KEY = "musa.recent-midi";
 
 /**
  * The narrowest the source column may be asked to go, in pixels.
@@ -53,6 +54,8 @@ export class Preferences {
   textSize = $state<TextSize>("normal");
   /** Whether the source column is modal. */
   vim = $state(false);
+  /** Whether the bounded memory-only Keep-that buffer is enabled. */
+  recentMidi = $state(true);
   /**
    * How wide the source column was left, in pixels. `null` is the measure.
    *
@@ -78,6 +81,7 @@ export class Preferences {
   start(): void {
     this.textSize = storedSize() ?? "normal";
     this.vim = globalThis.localStorage?.getItem(VIM_KEY) === "on";
+    this.recentMidi = globalThis.localStorage?.getItem(RECENT_MIDI_KEY) !== "off";
     this.sourceWidth = storedWidth();
     this.apply();
   }
@@ -110,6 +114,11 @@ export class Preferences {
   setVim(on: boolean): void {
     this.vim = on;
     globalThis.localStorage?.setItem(VIM_KEY, on ? "on" : "off");
+  }
+
+  setRecentMidi(on: boolean): void {
+    this.recentMidi = on;
+    globalThis.localStorage?.setItem(RECENT_MIDI_KEY, on ? "on" : "off");
   }
 
   /**

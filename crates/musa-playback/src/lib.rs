@@ -17,17 +17,21 @@ mod engine;
 mod error;
 mod midi;
 
-pub use crate::core::{PreparedPlaybackPlan, TransportCommand};
+pub use crate::core::{AuditionEvent, AuditionInputKind, AuditionTarget, PreparedPlaybackPlan, TransportCommand};
 pub use crate::engine::{AudioEngine, EngineConfig};
 pub use crate::error::EngineError;
-pub use crate::midi::{MidiInput, MidiInputEvent};
+pub use crate::midi::{
+    CalibratedMidiEvent, MidiClockCalibration, MidiClockCalibrator, MidiClockQuality, MidiInput, MidiInputDevice,
+    MidiInputEvent, MidiInputLosses, MidiMessageKind,
+};
 
 #[doc(hidden)]
 pub mod testing {
     //! RT-contract test hooks: drive the callback core
     //! against a fake output without an audio device. Not part of the
     //! facade; hidden so no real caller depends on it.
-    pub use crate::core::{CallbackCore, Message};
+    pub use crate::core::{AuditionMessage, CallbackCore, Message};
+    pub use crate::midi::MidiCallbackHarness;
 
     use musa_dsp::{MachineValue, PreparedMachine, StartedMachine, StepError};
 

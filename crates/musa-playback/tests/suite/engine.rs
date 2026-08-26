@@ -13,13 +13,16 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use super::support::{silent_plan, source_plan};
-use musa_playback::testing::{CallbackCore, Message};
-use musa_playback::{AudioEngine, EngineConfig, EngineError, PreparedPlaybackPlan, TransportCommand};
+use musa_playback::testing::{AuditionMessage, CallbackCore, Message};
+use musa_playback::{
+    AudioEngine, AuditionEvent, AuditionInputKind, EngineConfig, EngineError, PreparedPlaybackPlan, TransportCommand,
+};
 
 struct Rig {
     core: CallbackCore,
     commands: rtrb::Producer<Message>,
     retired: rtrb::Consumer<Box<PreparedPlaybackPlan>>,
+    audition: rtrb::Producer<AuditionMessage>,
     position: Arc<AtomicU64>,
     playing: Arc<AtomicBool>,
 }
@@ -27,20 +30,115 @@ struct Rig {
 fn rig() -> Rig {
     let (commands, command_consumer) = rtrb::RingBuffer::<Message>::new(16);
     let (retired_producer, retired) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(4);
+    let (audition, audition_consumer) = rtrb::RingBuffer::new(32);
     let position = Arc::new(AtomicU64::new(0));
     let playing = Arc::new(AtomicBool::new(false));
     Rig {
-        core: CallbackCore::new(
+        core: CallbackCore::new_with_audition(
             command_consumer,
             retired_producer,
+            audition_consumer,
             Arc::clone(&position),
             Arc::clone(&playing),
         ),
         commands,
         retired,
+        audition,
         position,
         playing,
     }
+}
+
+#[test]
+fn stopped_audition_is_source_bound_and_block_partition_invariant() {
+    const SOURCE: &str = concat!(
+        "piece \"audition\" { tempo 1/4 = 60; meter 4/4; score { ",
+        "part piano { voice upper { rest/1 c4/1 } } } }",
+    );
+    let mut whole = rig();
+    let plan = source_plan(SOURCE, 48_000);
+    let target = plan.audition_target("piano").expect("prepared piano");
+    assert!(plan.supports_audition_input(target, AuditionInputKind::AttackVelocity));
+    assert!(plan.supports_audition_input(target, AuditionInputKind::SustainPedal));
+    assert!(!plan.supports_audition_input(target, AuditionInputKind::PitchBend));
+    push(&mut whole, Message::Install(Box::new(plan)));
+    whole
+        .audition
+        .push(AuditionMessage {
+            target,
+            event: AuditionEvent::NoteOn {
+                voice: 7,
+                note: 60,
+                velocity: 96,
+            },
+        })
+        .expect("audition queue");
+    let mut one_block = vec![0.0; 512];
+    whole.core.process(&mut one_block);
+    assert!(one_block.iter().any(|sample| sample.abs() > f32::EPSILON));
+    assert_eq!(
+        whole.position.load(Ordering::Relaxed),
+        0,
+        "audition does not move transport"
+    );
+
+    let mut partitioned = rig();
+    let plan = source_plan(SOURCE, 48_000);
+    let target = plan.audition_target("piano").expect("prepared piano");
+    push(&mut partitioned, Message::Install(Box::new(plan)));
+    partitioned
+        .audition
+        .push(AuditionMessage {
+            target,
+            event: AuditionEvent::NoteOn {
+                voice: 7,
+                note: 60,
+                velocity: 96,
+            },
+        })
+        .expect("audition queue");
+    let mut many_blocks = Vec::new();
+    for _ in 0..8 {
+        let mut block = vec![0.0; 64];
+        partitioned.core.process(&mut block);
+        many_blocks.extend(block);
+    }
+    assert_eq!(one_block, many_blocks);
+}
+
+#[test]
+fn live_audition_matches_the_native_scheduled_event_history() {
+    const SOURCE: &str = concat!(
+        "piece \"audition differential\" { tempo 1/4 = 60; meter 4/4; score { ",
+        "part piano { voice upper { c4/1 } } } }",
+    );
+    let mut scheduled = rig();
+    let plan = source_plan(SOURCE, 48_000);
+    push(&mut scheduled, Message::Install(Box::new(plan)));
+    push(&mut scheduled, Message::Transport(TransportCommand::Play));
+    let mut from_score = vec![0.0; 512];
+    scheduled.core.process(&mut from_score);
+
+    let mut live = rig();
+    let plan = source_plan(SOURCE, 48_000);
+    let target = plan.audition_target("piano").expect("prepared piano");
+    push(&mut live, Message::Install(Box::new(plan)));
+    live.audition
+        .push(AuditionMessage {
+            target,
+            event: AuditionEvent::NoteOn {
+                voice: 1,
+                note: 60,
+                // The source binding maps its minimum to neutral emphasis,
+                // matching this score event's unmarked attack.
+                velocity: 1,
+            },
+        })
+        .expect("audition queue");
+    let mut from_keyboard = vec![0.0; 512];
+    live.core.process(&mut from_keyboard);
+
+    assert_eq!(from_keyboard, from_score);
 }
 
 fn push(rig: &mut Rig, message: Message) {

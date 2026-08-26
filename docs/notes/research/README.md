@@ -61,6 +61,7 @@ outline and final review that `../../rules/across-stages/05-metatheory.md` §1 c
 | Page | What it decided |
 | --- | --- |
 | [88](88-keyboard-capture-not-step-entry.md) | Why audition, finite capture, notation review, and source acceptance replace MIDI step entry |
+| [89](89-expressive-midi-capture-measurement.md) | Expressive MIDI callback, audition, clock, and physical-device latency measurements for prompt 202 |
 
 ## Earlier evidence
 

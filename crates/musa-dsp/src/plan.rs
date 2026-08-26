@@ -206,6 +206,22 @@ impl ProcessorInstance {
         }
     }
 
+    fn live_note_on(&mut self, voice: u32, midi_note: u8, amplitude: f32, attack: f32, tuning: Tuning) {
+        let Self::PolySine { allocator } = self else {
+            return;
+        };
+        let semitones = (f64::from(midi_note) - 69.0) / 12.0;
+        let frequency = tuning.concert_a * semitones.exp2();
+        allocator.live_note_on(voice, frequency as f32, amplitude, attack);
+    }
+
+    fn live_note_off(&mut self, voice: u32) {
+        let Self::PolySine { allocator } = self else {
+            return;
+        };
+        allocator.live_note_off(voice);
+    }
+
     fn instantiate(
         spec: &StudioGraphSpec,
         node: NodeId,
@@ -838,6 +854,14 @@ impl RenderPlan {
             })
     }
 
+    /// Private primitive parameter name behind one prepared target.
+    pub(crate) fn parameter_name(&self, target: PreparedParameterId) -> Option<&'static str> {
+        self.schedule
+            .get(target.step)
+            .and_then(|step| step.automations.get(target.parameter))
+            .map(|parameter| parameter.descriptor.name)
+    }
+
     /// Apply already-resolved events in their source-stable same-frame order.
     pub(crate) fn apply_parameter_events(&mut self, events: &[PreparedParameterEvent]) {
         for event in events {
@@ -869,6 +893,32 @@ impl RenderPlan {
                 for event in events {
                     step.instance.apply_event(event, tuning);
                 }
+            }
+        }
+    }
+
+    /// Deliver one allocation-free audition note to a prepared instrument.
+    pub(crate) fn live_note_on(
+        &mut self,
+        input: usize,
+        voice: u32,
+        midi_note: u8,
+        amplitude: f32,
+        attack: f32,
+        tuning: Tuning,
+    ) {
+        for step in &mut self.schedule {
+            if step.event_input == Some(input) {
+                step.instance.live_note_on(voice, midi_note, amplitude, attack, tuning);
+            }
+        }
+    }
+
+    /// Release one allocation-free audition note from a prepared instrument.
+    pub(crate) fn live_note_off(&mut self, input: usize, voice: u32) {
+        for step in &mut self.schedule {
+            if step.event_input == Some(input) {
+                step.instance.live_note_off(voice);
             }
         }
     }

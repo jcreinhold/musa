@@ -180,7 +180,7 @@ piece "Standard instruments" {
         &musa_calculus::SourceSchema::new(
             "std.sound.instrument.InstrumentExecutionArtifact",
             "InstrumentExecutionArtifact",
-            1,
+            2,
         ),
     )
 }

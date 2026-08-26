@@ -80,7 +80,10 @@ pub use crate::facts::{
 pub use crate::format_support::{FormatSupportFacts, format_support, format_supports};
 pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
-pub use crate::midi::MidiEntry;
+pub use crate::midi::{
+    CapturedMidiEvent, MidiCaptureFacts, MidiCaptureState, MidiDeviceFacts, MidiEntry, MidiLossFacts, MidiPairingFact,
+    MidiTake, MidiTakeContext,
+};
 pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};

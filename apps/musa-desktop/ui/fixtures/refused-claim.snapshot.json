@@ -9,6 +9,27 @@
   "autosaved": false,
   "recovery": null,
   "midiPort": null,
+  "midiDevices": [],
+  "midiCapture": {
+    "state": "listen",
+    "recentEnabled": true,
+    "recentEvents": 0,
+    "recentMicros": 0,
+    "recentTruncated": false,
+    "captureEvents": 0,
+    "captureMicros": 0,
+    "recentEventLimit": 4096,
+    "recentTimeLimitMicros": 30000000,
+    "captureEventLimit": 65536,
+    "captureTimeLimitMicros": 600000000,
+    "unsupportedAuditionEvents": 0,
+    "losses": {
+      "queueOverflow": 0,
+      "refusedSysex": 0,
+      "malformed": 0,
+      "unsupportedSystem": 0
+    }
+  },
   "diagnostics": [
     {
       "severity": "error",

@@ -116,12 +116,10 @@ pub fn export(request: ExportDto, session: State<'_, SessionHandle>) -> Result<V
     session.export(request.target.into(), PathBuf::from(path))
 }
 
-/// Start or stop reading a MIDI keyboard.
+/// Start always-listen MIDI and update the selected score position.
 ///
-/// Turned on with note entry and off with it: a keyboard is read while the
-/// composer is entering notes, and at every other moment the session is
-/// asleep. Answering with the snapshot is how the interface learns which
-/// keyboard it got, if any.
+/// A false legacy request no longer disconnects the keyboard; prompt 209
+/// removes this compatibility shape with the superseded note-entry mode.
 ///
 /// # Errors
 /// If no piece is open.
@@ -132,6 +130,60 @@ pub fn listen_to_midi(
     session: State<'_, SessionHandle>,
 ) -> Result<Value, ErrorDto> {
     session.listen_to_midi(listening, caret)
+}
+
+/// Select one stable MIDI input identity.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn select_midi_input(id: String, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.select_midi(id)
+}
+
+/// Begin explicit MIDI capture without editing source.
+///
+/// # Errors
+/// If no piece is open or capture cannot begin in the current state.
+#[tauri::command]
+pub fn start_midi_capture(caret: Option<String>, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.start_midi_capture(caret)
+}
+
+/// Freeze the active capture for Review.
+///
+/// # Errors
+/// If no piece is open or no capture is active.
+#[tauri::command]
+pub fn stop_midi_capture(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.stop_midi_capture()
+}
+
+/// Freeze the bounded recent phrase for Review.
+///
+/// # Errors
+/// If no piece is open or no complete recent phrase is available.
+#[tauri::command]
+pub fn keep_recent_midi(caret: Option<String>, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.keep_recent_midi(caret)
+}
+
+/// Clear memory-only recent MIDI evidence.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn clear_recent_midi(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.clear_recent_midi()
+}
+
+/// Enable or disable recent phrase memory.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn set_recent_midi(enabled: bool, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.set_recent_midi(enabled)
 }
 
 /// The current snapshot, for a window that has just opened.

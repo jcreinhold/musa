@@ -16,11 +16,17 @@
 use crate::envelope::{Adsr, AdsrSettings, AdsrSteps};
 use crate::schedule::EventHandle;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum VoiceIdentity {
+    Scheduled(EventHandle),
+    Live(u32),
+}
+
 /// One synthesizer voice: oscillator phase, frequency, envelope, and
 /// allocation bookkeeping.
 #[derive(Clone, Debug)]
 struct Voice {
-    instance: Option<EventHandle>,
+    instance: Option<VoiceIdentity>,
     frequency: f32,
     phase: f64,
     envelope: Adsr,
@@ -157,6 +163,15 @@ impl VoiceAllocator {
     /// patch's attack for this note and leaves the rest of the shape alone.
     /// Zero means the note asked for nothing.
     pub(crate) fn note_on(&mut self, instance: &EventHandle, frequency: f32, amplitude: f32, attack: f32) {
+        self.note_on_identity(VoiceIdentity::Scheduled(instance.clone()), frequency, amplitude, attack);
+    }
+
+    /// Gate one ephemeral audition voice without allocating an event handle.
+    pub(crate) fn live_note_on(&mut self, voice: u32, frequency: f32, amplitude: f32, attack: f32) {
+        self.note_on_identity(VoiceIdentity::Live(voice), frequency, amplitude, attack);
+    }
+
+    fn note_on_identity(&mut self, instance: VoiceIdentity, frequency: f32, amplitude: f32, attack: f32) {
         let slot = self.voices.iter().position(Voice::is_free).or_else(|| {
             self.voices
                 .iter()
@@ -165,7 +180,7 @@ impl VoiceAllocator {
                 .map(|(index, _)| index)
         });
         if let Some(voice) = slot.and_then(|i| self.voices.get_mut(i)) {
-            voice.instance = Some(instance.clone());
+            voice.instance = Some(instance);
             voice.frequency = frequency;
             voice.amplitude = amplitude;
             voice.phase = 0.0;
@@ -180,7 +195,22 @@ impl VoiceAllocator {
     /// Release the voice sounding `instance`, if any.
     pub(crate) fn note_off(&mut self, instance: &EventHandle) {
         for voice in &mut self.voices {
-            if voice.held && voice.instance.as_ref() == Some(instance) {
+            if voice.held
+                && matches!(
+                    voice.instance.as_ref(),
+                    Some(VoiceIdentity::Scheduled(handle)) if handle == instance
+                )
+            {
+                voice.held = false;
+                voice.envelope.release(&voice.steps);
+            }
+        }
+    }
+
+    /// Release one ephemeral audition voice.
+    pub(crate) fn live_note_off(&mut self, instance: u32) {
+        for voice in &mut self.voices {
+            if voice.held && voice.instance == Some(VoiceIdentity::Live(instance)) {
                 voice.held = false;
                 voice.envelope.release(&voice.steps);
             }

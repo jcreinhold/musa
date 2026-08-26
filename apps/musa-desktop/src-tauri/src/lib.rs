@@ -48,6 +48,12 @@ pub fn run() -> tauri::Result<()> {
             commands::export,
             commands::snapshot,
             commands::listen_to_midi,
+            commands::select_midi_input,
+            commands::start_midi_capture,
+            commands::stop_midi_capture,
+            commands::keep_recent_midi,
+            commands::clear_recent_midi,
+            commands::set_recent_midi,
             commands::analyze,
             commands::library_document,
         ])

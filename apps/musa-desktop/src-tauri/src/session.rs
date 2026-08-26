@@ -18,7 +18,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use musa_project::{
     EditCommand, ExportRequest, PlaybackState, Project, ProjectCommand, Template, TransportRequest, Utf16Offsets,
@@ -32,13 +32,10 @@ use crate::dto::{BarlinePreviewDto, ErrorDto, ErrorKindDto, ExportedDto};
 /// At rest the thread blocks: there is no timer anywhere in the application.
 const POSITION_INTERVAL: Duration = Duration::from_millis(100);
 
-/// How often the MIDI queue is drained while note entry is on.
-///
-/// Only while entry is on: a keyboard nobody is entering with costs nothing,
-/// and the thread goes back to blocking the moment entry is switched off.
-/// Fifteen milliseconds is below the chord window the session groups with, so
-/// grouping — not polling — is what decides when a chord is ready.
-const MIDI_INTERVAL: Duration = Duration::from_millis(15);
+/// Control-side poll bound between the device callback and the audio queue.
+const MIDI_INTERVAL: Duration = Duration::from_millis(2);
+/// Hot-plug enumeration cadence; `midir` exposes snapshots, not notifications.
+const MIDI_DEVICE_INTERVAL: Duration = Duration::from_secs(1);
 
 /// The event names the webview subscribes to.
 pub const SNAPSHOT_EVENT: &str = "musa://snapshot";
@@ -70,6 +67,12 @@ enum Job {
     /// depends on the key in force where it lands, and a piece modulates. It
     /// is an engraved event id, the identity the page already selects by.
     Midi(bool, Option<String>),
+    MidiSelect(String),
+    MidiCaptureStart(Option<String>),
+    MidiCaptureStop,
+    MidiKeep(Option<String>),
+    MidiClear,
+    MidiRecent(bool),
     /// Read the last valid score, and report what one analysis saw.
     ///
     /// A job like the others because it reads the session's score, and
@@ -160,6 +163,30 @@ impl SessionHandle {
         self.ask(Job::Midi(listening, caret))
     }
 
+    pub(crate) fn select_midi(&self, id: String) -> Reply {
+        self.ask(Job::MidiSelect(id))
+    }
+
+    pub(crate) fn start_midi_capture(&self, caret: Option<String>) -> Reply {
+        self.ask(Job::MidiCaptureStart(caret))
+    }
+
+    pub(crate) fn stop_midi_capture(&self) -> Reply {
+        self.ask(Job::MidiCaptureStop)
+    }
+
+    pub(crate) fn keep_recent_midi(&self, caret: Option<String>) -> Reply {
+        self.ask(Job::MidiKeep(caret))
+    }
+
+    pub(crate) fn clear_recent_midi(&self) -> Reply {
+        self.ask(Job::MidiClear)
+    }
+
+    pub(crate) fn set_recent_midi(&self, enabled: bool) -> Reply {
+        self.ask(Job::MidiRecent(enabled))
+    }
+
     pub(crate) fn analyze(&self, kind: String) -> Reply {
         self.ask(Job::Analyze(kind))
     }
@@ -169,17 +196,22 @@ impl SessionHandle {
 fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
     let mut session: Option<Project> = None;
     let mut playing = false;
-    let mut listening = false;
     let mut caret: Option<String> = None;
+    let mut last_device_refresh = Instant::now();
+    let mut last_midi_snapshot = Instant::now();
     loop {
         // Only a playing transport and an open MIDI keyboard need a clock. At
         // rest this blocks, so the application has no timer running and no
         // wakeups to account for.
-        let interval = match (playing, listening) {
-            (true, true) => POSITION_INTERVAL.min(MIDI_INTERVAL),
-            (true, false) => POSITION_INTERVAL,
-            (false, true) => MIDI_INTERVAL,
-            (false, false) => Duration::ZERO,
+        let connected = session
+            .as_ref()
+            .is_some_and(|open| open.current().snapshot().midi_port().is_some());
+        let interval = match (playing, connected, session.is_some()) {
+            (true, true, _) => POSITION_INTERVAL.min(MIDI_INTERVAL),
+            (true, false, _) => POSITION_INTERVAL,
+            (false, true, _) => MIDI_INTERVAL,
+            (false, false, true) => MIDI_DEVICE_INTERVAL,
+            (false, false, false) => Duration::ZERO,
         };
         let received = if interval.is_zero() {
             match inbox.recv() {
@@ -195,13 +227,24 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
         };
 
         if let Some((job, reply)) = received {
-            if let Job::Midi(wanted, ref at) = job {
-                listening = wanted;
+            if let Job::Midi(wanted, ref at) = job
+                && wanted
+            {
                 caret.clone_from(at);
             }
             let mutating = !matches!(
                 job,
-                Job::Snapshot | Job::Impact(_) | Job::BarlineRewrite | Job::Midi(..) | Job::Analyze(_)
+                Job::Snapshot
+                    | Job::Impact(_)
+                    | Job::BarlineRewrite
+                    | Job::Midi(..)
+                    | Job::MidiSelect(_)
+                    | Job::MidiCaptureStart(_)
+                    | Job::MidiCaptureStop
+                    | Job::MidiKeep(_)
+                    | Job::MidiClear
+                    | Job::MidiRecent(_)
+                    | Job::Analyze(_)
             );
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
@@ -213,10 +256,19 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
             }
         }
 
-        if listening && let Some(open) = session.as_mut() {
-            for entry in open.current_mut().midi_entry(caret.as_deref()) {
-                emit(app, MIDI_EVENT, &entry);
+        if connected && let Some(open) = session.as_mut() {
+            open.current_mut().midi_tick(caret.as_deref());
+            if last_midi_snapshot.elapsed() >= POSITION_INTERVAL {
+                emit(app, SNAPSHOT_EVENT, &snapshot_json(open));
+                last_midi_snapshot = Instant::now();
             }
+        }
+        if last_device_refresh.elapsed() >= MIDI_DEVICE_INTERVAL {
+            if let Some(open) = session.as_mut() {
+                open.current_mut().refresh_midi_devices(caret.as_deref());
+                emit(app, SNAPSHOT_EVENT, &snapshot_json(open));
+            }
+            last_device_refresh = Instant::now();
         }
 
         if let Some(open) = session.as_mut() {
@@ -264,6 +316,7 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
         Job::Show(file) => {
             let open = session.as_mut().ok_or_else(no_project)?;
             open.show(&file).map_err(|error| ErrorDto::from(&error))?;
+            open.current_mut().listen_to_midi();
             Ok(snapshot_json(open))
         }
         Job::SaveAll => {
@@ -347,6 +400,51 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
             }
             Ok(snapshot_json(open))
         }
+        Job::MidiSelect(id) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            open.current_mut().select_midi_device(&id);
+            Ok(snapshot_json(open))
+        }
+        Job::MidiCaptureStart(caret) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            if !open.current_mut().start_midi_capture(caret.as_deref()) {
+                return Err(ErrorDto::shell(
+                    ErrorKindDto::Nothing,
+                    "Connect a MIDI keyboard before starting Capture",
+                ));
+            }
+            Ok(snapshot_json(open))
+        }
+        Job::MidiCaptureStop => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            if open.current_mut().stop_midi_capture().is_none() {
+                return Err(ErrorDto::shell(ErrorKindDto::Nothing, "No MIDI capture is active"));
+            }
+            Ok(snapshot_json(open))
+        }
+        Job::MidiKeep(caret) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            if open.current_mut().keep_recent_midi(caret.as_deref()).is_none() {
+                let retained = open.current().snapshot().midi_capture().recent_micros;
+                let seconds = retained / 1_000_000;
+                let tenths = retained % 1_000_000 / 100_000;
+                return Err(ErrorDto::shell(
+                    ErrorKindDto::Nothing,
+                    format!("No complete recent phrase boundary in {seconds}.{tenths} s — replay it or use Capture"),
+                ));
+            }
+            Ok(snapshot_json(open))
+        }
+        Job::MidiClear => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            open.current_mut().clear_recent_midi();
+            Ok(snapshot_json(open))
+        }
+        Job::MidiRecent(enabled) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            open.current_mut().set_recent_midi_enabled(enabled);
+            Ok(snapshot_json(open))
+        }
     }
 }
 
@@ -362,7 +460,8 @@ fn to_bytes(edit: musa_project::TextEdit, offsets: &Utf16Offsets) -> musa_projec
 }
 
 /// Install a newly opened project and answer with its snapshot.
-fn replace(session: &mut Option<Project>, opened: Project) -> Value {
+fn replace(session: &mut Option<Project>, mut opened: Project) -> Value {
+    opened.current_mut().listen_to_midi();
     let installed = session.insert(opened);
     snapshot_json(installed)
 }
