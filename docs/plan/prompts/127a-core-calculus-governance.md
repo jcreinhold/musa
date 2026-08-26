@@ -54,7 +54,7 @@ than support through aliases.
 - Deliberate constitutional amendment and fully reconciled governing specifications.
 - Updated pipeline, crate ownership, terminology, equality rules, and proof obligations.
 - A clean-break ledger for prompts 127b–127e and 171–174, including the inserted adapter prompts, and repaired
-  references in prompts 175–200.
+  references in prompts 175–201.
 - No implementation change.
 
 ## Check

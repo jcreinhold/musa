@@ -457,7 +457,8 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 197 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
 | 198 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
 | 199 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
-| 200 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
+| 200 | inferred-barlines | 3 | Proved bar-line insertion as an explicit semantic source action |
+| 201 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the event-track insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as the
 regression oracle** when prompt 11 landed: the new event-track elaboration had to reproduce its snapshots exactly
@@ -777,7 +778,7 @@ and the two-path handbook. 191 measures preparation, rendering, decoded memory, 
 audits every performance/sound/asset/package law and format support claim. Only 193 combines that green matrix with the
 score/theory/events/tooling matrix and conditionally graduates `docs/rules/language/`.
 
-**Prompts 194–200 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
+**Prompts 194–199 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
 proved — Rust compiles source to MEI, a worker engraver turns MEI into SVG, `xml:id`s carry provenance — is packaged,
 not reinvented. **194** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
 (`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **195** extracts the desktop's worker
@@ -786,8 +787,10 @@ engraver into `packages/musa-engrave` so two platforms share one provenance-crit
 layer: `typeset()`, the `<musa-score>` element, visible error boxes, an opt-in observer — with the source kept in the
 DOM, because text is canonical on the web too. **198** wires the `event-<hex>` contract to page callbacks, the feature
 that makes it musa and not another notation renderer. **199** ships the CDN single-tag build (Blob-inlined worker),
-example pages, and the build-time recipe for static sites. **200** is deferred: in-page playback, scheduled only when a
-real need is demonstrated.
+example pages, and the build-time recipe for static sites. **200** then adds proved bar-line insertion to the formatter
+workflow as an explicit semantic source action: the compiler supplies exact source-item extents and scoped bar lines,
+while the CLI, LSP, and desktop only apply the one project-owned edit plan. **201** is the deferred web extension:
+in-page playback, scheduled only when a real need is demonstrated.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
