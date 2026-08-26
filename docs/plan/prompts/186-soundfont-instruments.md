@@ -48,10 +48,12 @@ Parsing foreign RIFF bytes and enforcing bounds is host work. The semantic adapt
 sample-map/instrument contract used by native and SFZ maps, with exact equality before private normalization. No
 SoundFont-specific Rust public instrument schema becomes authoritative.
 
-Extend `std::sound::sample` first for the general constructs the accepted subset needs: delay/hold envelope phases, the
-SoundFont envelope curve, a resonant low-pass description, and typed note-key/note-expression modulation. Rust owns only
-the checked read-only projection and real-time state. Do not introduce a generator-number table as a second public
-language or a SoundFont-only runtime object.
+Extend `std::sound::sample` first for the general constructs the accepted subset needs: delay/hold envelope phases,
+exact seconds-or-timecents envelope durations, the SoundFont envelope curve, a resonant low-pass description, and typed
+note-key/note-expression modulation. Irrational timecent conversion happens only at the DSP preparation edge; the
+adapter must not decimalize it into a purportedly exact rational. Rust owns only the checked read-only projection and
+real-time state. Do not introduce a generator-number table as a second public language or a SoundFont-only runtime
+object.
 
 ## Target
 

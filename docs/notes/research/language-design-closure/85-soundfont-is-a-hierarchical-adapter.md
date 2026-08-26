@@ -34,9 +34,11 @@ and normalize that checked value. This is the same ownership rule that repaired 
 `sf2@1` is strict rather than approximate. It supports the common note-on subset fixed in the governing table: exact
 RIFF/Hydra validation, 16/24-bit samples, preset/instrument zone combination, address/range/tuning/pan/attenuation,
 volume envelope, initial filter, loops, stereo links, exclusive classes, and note-key/note-expression modulators over
-the supported destinations. The implicit note-expression routes are installed. A modulator that depends on an ambient
-MIDI channel controller, pressure, pitch wheel, a secondary controller, or a link is an error for that preset. The same
-is true of LFOs, the modulation envelope, effects sends, forced key/velocity, and nonstandard scale tuning.
+the admitted perceptually additive destinations: tuning, attenuation, pan, and filter cutoff. Absolute and key-relative
+timecents remain exact source values; their generally irrational conversion to seconds occurs only at native
+preparation. The implicit note-expression routes are installed. A modulator that depends on an ambient MIDI channel
+controller, pressure, pitch wheel, a secondary controller, or a link is an error for that preset. The same is true of
+LFOs, the modulation envelope, effects sends, forced key/velocity, and nonstandard scale tuning.
 
 That refusal is narrower than FluidSynth and many hardware players, but it is honest: accepting those rows before the
 standard library and runtime can denote them would be materially different playback. A later `sf2@2` may widen the
@@ -49,4 +51,3 @@ event facts, or desktop IPC.
 Preset selection remains an adapter option on the existing asset address, not a new language construct:
 `bank.sf2#preset=0:40` selects bank 0/program 40, while `#preset-name=Violin` requires one exact unambiguous bank name.
 The fragment participates in adapter identity but is removed before resolving the locked bank path.
-

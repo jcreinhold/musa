@@ -200,7 +200,7 @@ audible local zone is an error.
 | --- | --- |
 | address offsets 0–4, 12, 45, 50 | supported with checked signed addition against the selected sample header; native ends and loop ends remain half-open |
 | `pan` 17, `initialAttenuation` 48 | supported in exact tenths-percent and centibels; conversion to DSP coefficients occurs only at preparation |
-| volume envelope 33–40 | delay, attack, hold, decay, sustain, and release are supported; key-scaled hold/decay are evaluated from the typed gesture key; the checked map names the SoundFont curve family |
+| volume envelope 33–40 | delay, attack, hold, decay, sustain, and release are supported; absolute and key-relative timecents remain exact source values and become frames only at preparation; key-scaled hold/decay are evaluated from the typed gesture key; the checked map names the SoundFont curve family |
 | `keyRange` 43, `velRange` 44 | supported by exact intersection across preset and instrument zones; velocity becomes typed gesture expression only at this adapter |
 | `coarseTune` 51, `fineTune` 52, sample pitch correction, `overridingRootKey` 58 | supported as exact cents and the checked native root key |
 | `sampleID` 53, `sampleModes` 54 | supported; modes 0/2 are no loop, 1 is continuous, and 3 is sustain loop |
@@ -212,11 +212,12 @@ audible local zone is an error.
 
 The implicit note-on velocity routes to attenuation and filter cutoff are supported after velocity becomes typed gesture
 expression. Explicit modulators are supported only when their primary source is note-on key or note-on velocity, their
-amount source is no-controller, their transform and source curve are defined by 2.04, and their destination is supported
-above. Their direction, polarity, linear/concave/convex/switch curve, amount, hierarchy, replacement, and addition
-remain explicit in the checked map. An ambient MIDI CC, pressure, pitch wheel, linked source/destination, secondary
-controller, unknown source/transform, or supported source aimed at an unsupported destination is an error naming the
-modulator. Raw controller and generator numbers never cross the adapter.
+amount source is no-controller, their transform and source curve are defined by 2.04, and their destination is
+`initialFilterFc`, `pan`, `initialAttenuation`, `coarseTune`, or `fineTune`. Coarse-tune amounts become exact cents at
+the adapter boundary; attenuation amounts become exact decibels. Direction, polarity, linear/concave/convex/switch
+curve, amount, hierarchy, replacement, and addition remain explicit in the checked map. An ambient MIDI CC, pressure,
+pitch wheel, linked source/destination, secondary controller, unknown source/transform, or supported source aimed at any
+other destination is an error naming the modulator. Raw controller and generator numbers never cross the adapter.
 
 The adapter emits a 64-voice `SampleMap` with all intersecting preset/instrument zones layered. Embedded samples have
 private logical identities framed from the verified bank digest plus sample-header index, and enter the same bounded
