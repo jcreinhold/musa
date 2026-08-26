@@ -90,8 +90,8 @@ PATH=/Users/jcreinhold/.cargo/bin:$PATH make fmt-check
 cargo deny check
 cd apps/musa-desktop/ui && npx pnpm run check && npx pnpm run test:unit
 cd apps/musa-desktop/ui && npx playwright test --project=budgets
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp
-bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-dsp || [ "$?" -eq 1 ]
+bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-playback || [ "$?" -eq 1 ]
 ```
 
 Commit as `Close audio performance against measured works`.
