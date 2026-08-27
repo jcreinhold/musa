@@ -561,10 +561,10 @@ mod laws {
 
         let weights = policy.weights();
         assert_eq!(*weights.onset_residual(), ratio(2, 1));
-        assert_eq!(*weights.duration_residual(), ratio(2, 1));
-        assert_eq!(*weights.tempo_smoothness(), ratio(1, 1));
+        assert_eq!(*weights.duration_residual(), ratio(0, 1));
+        assert_eq!(*weights.tempo_smoothness(), ratio(0, 1));
         assert_eq!(*weights.notation_complexity(), ratio(2, 1));
-        assert_eq!(*weights.transition(), ratio(2, 1));
+        assert_eq!(*weights.transition(), ratio(1, 1));
         assert_eq!(*weights.group_split(), ratio(10, 1));
 
         let window = policy.group_window();

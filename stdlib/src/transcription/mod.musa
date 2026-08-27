@@ -29,10 +29,14 @@ record TupletAllowance {
 
 // The tunable exact weights of the complete cost record.
 //
-// Each is an exact ratio scaling one ordered cost field. The structural terms
-// the measured trial did not weight (rests, ties, tuplets, syncopation
-// preservation) enter the record at unit weight, so the six values below are
-// the only free knobs.
+// These six are the ranking knobs. `notation_complexity`, `transition`, and
+// `group_split` together scale one reported field, "notation-complexity": the
+// position ladder, the interval length, and the penalty for breaking a group
+// that was performed together. `duration_residual` and `tempo_smoothness` are
+// measured and reported but admitted at zero: prompt 203's trial found no
+// reliable written-duration or tempo-smoothness ranking signal to weight.
+// Rests, ties, tuplets, and syncopation preservation enter the reported
+// vector at unit weight and are not ranking terms.
 record CostWeights {
     onset_residual: Ratio;
     duration_residual: Ratio;
@@ -83,13 +87,15 @@ record TranscriptionPolicyArtifact {
 }
 
 // The common-practice weights ported exactly from prompt 203's structural
-// dynamic-programming trial.
+// dynamic-programming trial: onset residual squared at 2, position complexity
+// at 2, the unscaled interval term at 1, and the group split at 10. Duration
+// and tempo smoothness stay at zero as measured-not-ranked terms.
 private let standard_weights: CostWeights = CostWeights {
     onset_residual = 2/1,
-    duration_residual = 2/1,
-    tempo_smoothness = 1/1,
+    duration_residual = 0/1,
+    tempo_smoothness = 0/1,
     notation_complexity = 2/1,
-    transition = 2/1,
+    transition = 1/1,
     group_split = 10/1
 };
 
