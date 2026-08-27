@@ -18,6 +18,7 @@ mod voicing;
 mod context;
 mod notation;
 mod performance;
+mod transcription;
 mod sound;
 mod transformational;
 mod tonal;

@@ -62,6 +62,12 @@ mod studio;
 mod template;
 #[doc(hidden)]
 pub mod transcription_trial;
+// Gated to the builds that audit until prompt 204a gives it a production
+// caller: the only current consumers are the differential laws below. An
+// `allow(dead_code)` would claim the projection is already used and hide the
+// next real gap; the gate is the honest spelling, and 204a removes it.
+#[cfg(test)]
+mod transcription_policy;
 mod utf16;
 mod vocabulary;
 

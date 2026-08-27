@@ -1,7 +1,7 @@
 ---
 id: 204
 slug: transcription-policy
-status: pending
+status: done
 depends_on: [203]
 phase: 2
 ---
@@ -13,8 +13,8 @@ phase: 2
 Move every rhythm-transcription policy decision prompt 203 admitted out of host code before any optimizer exists.
 Declare `TranscriptionPolicy` data, the named structural policies, exact cost weights, subdivision/tuplet allowances,
 and the published bounded-search constants as ordinary standard-library Musa source; freeze them as one versioned
-artifact through the checked-source boundary; and project them exactly into a private `musa-project` representation
-held to the source by differential laws.
+artifact through the checked-source boundary; and project them exactly into a private `musa-project` representation held
+to the source by differential laws.
 
 ## Read
 
@@ -25,8 +25,7 @@ held to the source by differential laws.
   `crates/musa-calculus/src/kernel/artifact.rs`; the source-owned-vocabulary decoder conventions in
   `crates/musa-dsp/src/source.rs` and its consumer cache in `crates/musa-project/src/vocabulary.rs`.
 - The artifact and module-tree conventions in `stdlib/src/performance/mod.musa` and `stdlib/src/lib.musa`, and the
-  source-declaration ownership test under "Source declarations versus host boundaries" in
-  `docs/plan/prompts/README.md`.
+  source-declaration ownership test under "Source declarations versus host boundaries" in `docs/plan/prompts/README.md`.
 - Open Music Theory chapters `009`–`012` for the subdivision and tuplet vocabulary the policy names; only the
   distinctions a presentation must make, not a hard-wired common-practice default.
 
@@ -35,12 +34,13 @@ held to the source by differential laws.
 - New module `std::transcription` declared from `stdlib/src/lib.musa` (`mod transcription;`), declared in one
   `stdlib/src/transcription/mod.musa`. It names, in ordinary source, the quantities prompt 203 fixed:
 
-  - `Subdivision` — one admitted division of a beat with its exact beat fraction and a declared notation-complexity
-    rank (binary eighth/sixteenth/thirty-second; ternary triplet-eighth).
+  - `Subdivision` — one admitted division of a beat with its exact beat fraction and a declared notation-complexity rank
+    (binary eighth/sixteenth/thirty-second; ternary triplet-eighth).
   - `TupletAllowance` — one admitted irregular division (the standard policy admits simple triplets).
   - `CostWeights` — exact `Ratio` weights: onset residual, duration residual, tempo smoothness, notation complexity,
     transition, and group split. These are the trial's structural-DP terms as declared numbers, not host literals.
-  - `SearchBounds` — `top_k = 5`, `layer_states = 96`, `max_notes = 128`, `max_storage_bytes = 131072`, `max_voices = 4`.
+  - `SearchBounds` — `top_k = 5`, `layer_states = 96`, `max_notes = 128`, `max_storage_bytes = 131072`,
+    `max_voices = 4`.
   - `GroupWindow` — the adaptive onset-group proposal: one twelfth of the local beat, clamped to `18/1000`–`70/1000`
     seconds.
   - `TranscriptionPolicy` — a named bundle of the above.
@@ -52,8 +52,8 @@ held to the source by differential laws.
   unmeasured policy gives that refusal a declared identity instead of a host special case.
 
 - Compiler bridge `checked_standard_transcription_policies()` beside the existing bridges in
-  `crates/musa-compiler/src/source_value.rs`, requesting schema `std.transcription.TranscriptionPolicyArtifact`,
-  version 1.
+  `crates/musa-compiler/src/source_value.rs`, requesting schema `std.transcription.TranscriptionPolicyArtifact`, version
+  1.
 
 - `musa-project` decoder in a private `transcription_policy` module: a `pub(crate)` projection struct decoded from one
   `CheckedSource`. It has no constructor and no default; a caller must name a policy. The module records the checked

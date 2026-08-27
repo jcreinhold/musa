@@ -33,9 +33,9 @@ latency/memory laws through that facade.
   from raw event ids, and local review needs. Onset-group alternatives and voice slots ride through untouched for 205.
 
 - No optimizer state and no standard-library projection is public. Refusals are typed report outcomes rather than
-  errors: `write source` for unmeasured scope, unsplittable oversized take (with exact retained length), exhausted bound,
-  or a proposal beyond four voices. Free capture remains a review result until the retained structural candidates agree
-  under the supplied constraints; there is no inferred-probability threshold.
+  errors: `write source` for unmeasured scope, unsplittable oversized take (with exact retained length), exhausted
+  bound, or a proposal beyond four voices. Free capture remains a review result until the retained structural candidates
+  agree under the supplied constraints; there is no inferred-probability threshold.
 
 - "Needs review" is local and structural: it names a region whenever retained candidates disagree on phase, grouping,
   written end, rest, tie, or tuplet structure there. It is never a percentage.

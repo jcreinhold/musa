@@ -10,10 +10,10 @@ phase: 2
 
 ## Task
 
-Implement prompt 203's admitted bounded transcription model as a private `musa-project` module: turn one calibrated
-take plus a named 204 policy into a small ranked set of exact metrical candidates, with the trial's proven structural
-costs ported under policy ownership and every published bound enforced by law. This is the optimizer prompt 204
-deferred; it exposes no public API.
+Implement prompt 203's admitted bounded transcription model as a private `musa-project` module: turn one calibrated take
+plus a named 204 policy into a small ranked set of exact metrical candidates, with the trial's proven structural costs
+ported under policy ownership and every published bound enforced by law. This is the optimizer prompt 204 deferred; it
+exposes no public API.
 
 ## Read
 
@@ -23,8 +23,8 @@ deferred; it exposes no public API.
 - Prompt 204's repaired policy module, decoder, and derivability law; the take/clock facts from prompt 202 in
   `crates/musa-project/src/midi.rs` and prompt 200's exact-time conventions in `crates/musa-project/src/barlines.rs`.
 - Prompt 61, 64, 72–75 for notation-plan/meter/tempo APIs assumed by the meter scope input.
-- Open Music Theory chapters `009`–`012` (meter, subdivision, ties, rests), `098` (twentieth-century rhythm), and
-  `118` (metrical dissonance) for what a metrical scope must be able to say.
+- Open Music Theory chapters `009`–`012` (meter, subdivision, ties, rests), `098` (twentieth-century rhythm), and `118`
+  (metrical dissonance) for what a metrical scope must be able to say.
 
 ## Design
 
@@ -47,8 +47,8 @@ deferred; it exposes no public API.
   joint phrase path, never per event independently.
 
 - Bounds are enforced by construction and by law: at most five materialized candidates, at most 96 states retained per
-  search layer, at most 128 completed notes, and candidate/back-pointer storage below 128 KiB at the 128-note bound.
-  An oversized take splits only at a retained complete phrase boundary; otherwise it refuses with its exact retained
+  search layer, at most 128 completed notes, and candidate/back-pointer storage below 128 KiB at the 128-note bound. An
+  oversized take splits only at a retained complete phrase boundary; otherwise it refuses with its exact retained
   length. An exhausted search bound refuses rather than returning a partial rank.
 
 - The candidate carries exact onset/duration groups, rests/ties/tuplets required for notation, a complete cost

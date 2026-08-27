@@ -1,0 +1,193 @@
+// Transcription policy: the checked source of rhythm-candidate search bounds.
+//
+// Prompt 203 measured a bounded structural search over exact candidate onset
+// grids; this module declares the policy those searches run under as ordinary
+// data, so no search bound, subdivision, weight, or window lives as an
+// unreachable host literal. The host reads one checked value and derives its
+// search grid from the declared subdivisions; it does not independently admit
+// any of prompt 203's trial ticks.
+
+import std::list;
+
+// One admitted division of a beat with its notation-complexity rank.
+//
+// `beat_fraction` is an exact fraction of one beat (which in simple meter is a
+// quarter note). `complexity` is the declared preference cost of placing an
+// onset exactly on this division; it is a preference, never a proof of intent.
+record Subdivision {
+    beat_fraction: Ratio;
+    complexity: Nat;
+}
+
+// One admitted irregular division, expressed as the exact fraction of a beat
+// occupied by a single member. A triplet eighth is `1/3`; a sixteenth triplet
+// is `1/6`. Ranked like a subdivision, never admitted on its own.
+record TupletAllowance {
+    member_fraction: Ratio;
+    complexity: Nat;
+}
+
+// The tunable exact weights of the complete cost record.
+//
+// Each is an exact ratio scaling one ordered cost field. The structural terms
+// the measured trial did not weight (rests, ties, tuplets, syncopation
+// preservation) enter the record at unit weight, so the six values below are
+// the only free knobs.
+record CostWeights {
+    onset_residual: Ratio;
+    duration_residual: Ratio;
+    tempo_smoothness: Ratio;
+    notation_complexity: Ratio;
+    transition: Ratio;
+    group_split: Ratio;
+}
+
+// The adaptive onset-group proposal: one twelfth of the local beat, clamped to
+// an exact physical-time band. This is a candidate cost, never a hard rule.
+record GroupWindow {
+    beat_fraction: Ratio;
+    min_seconds: Ratio;
+    max_seconds: Ratio;
+}
+
+// The published bounded-search constants prompt 203 fixed.
+record SearchBounds {
+    top_k: Nat;
+    layer_states: Nat;
+    max_notes: Nat;
+    max_storage_bytes: Nat;
+    max_voices: Nat;
+}
+
+// One named structural policy over subdivisions, irregular divisions, weights,
+// and the bounds of its search.
+record TranscriptionPolicy {
+    name: Text;
+    subdivisions: List(Subdivision);
+    tuplets: List(TupletAllowance);
+    unsubdivided_complexity: Nat;
+    weights: CostWeights;
+    group_window: GroupWindow;
+    bounds: SearchBounds;
+}
+
+// The versioned artifact every host reader freezes through the checked-source
+// boundary. `cost_fields` is the published ordering of the complete cost
+// record; `cost_version` changes whenever any field, normalization, weighting,
+// or ordering changes.
+record TranscriptionPolicyArtifact {
+    schema_version: Nat;
+    cost_fields: List(Text);
+    cost_version: Nat;
+    policies: List(TranscriptionPolicy);
+}
+
+// The common-practice weights ported exactly from prompt 203's structural
+// dynamic-programming trial.
+private let standard_weights: CostWeights = CostWeights {
+    onset_residual = 2/1,
+    duration_residual = 2/1,
+    tempo_smoothness = 1/1,
+    notation_complexity = 2/1,
+    transition = 2/1,
+    group_split = 10/1
+};
+
+// The bounds prompt 203 fixed and prompt 204 preserves.
+private let standard_bounds: SearchBounds = SearchBounds {
+    top_k = 5,
+    layer_states = 96,
+    max_notes = 128,
+    max_storage_bytes = 131072,
+    max_voices = 4
+};
+
+// The adaptive onset-group proposal: one twelfth of the local beat, clamped to
+// 18–70 milliseconds in exact seconds.
+private let adaptive_group_window: GroupWindow = GroupWindow {
+    beat_fraction = 1/12,
+    min_seconds = 18/1000,
+    max_seconds = 70/1000
+};
+
+// Binary through a thirty-second, ternary through a sixteenth triplet. The
+// declared denominators have least common multiple 24, which is exactly prompt
+// 203's measured quarter-note grid — derived, never admitted independently.
+private let standard_subdivisions: List(Subdivision) = [
+    Subdivision {
+        beat_fraction = 1/1,
+        complexity = 0
+    },
+    Subdivision {
+        beat_fraction = 1/2,
+        complexity = 1
+    },
+    Subdivision {
+        beat_fraction = 1/4,
+        complexity = 2
+    },
+    Subdivision {
+        beat_fraction = 1/8,
+        complexity = 4
+    },
+];
+
+// The one irregular division the standard policy admits is the triplet, at
+// both the eighth and sixteenth level, with the complexity ranks of prompt
+// 203's measured ladder.
+private let standard_tuplets: List(TupletAllowance) = [
+    TupletAllowance {
+        member_fraction = 1/3,
+        complexity = 3
+    },
+    TupletAllowance {
+        member_fraction = 1/6,
+        complexity = 5
+    },
+];
+
+// One grid position no declared subdivision names still has a preference cost,
+// held in source rather than in the host ladder.
+private let standard_policy: TranscriptionPolicy = TranscriptionPolicy {
+    name = "standard",
+    subdivisions = standard_subdivisions,
+    tuplets = standard_tuplets,
+    unsubdivided_complexity = 8,
+    weights = standard_weights,
+    group_window = adaptive_group_window,
+    bounds = standard_bounds
+};
+
+// No admitted subdivision and no admitted irregular division. The only honest
+// outcome for a take declared unmeasured is `write source`; the host refuses
+// rather than inventing a grid under this policy.
+private let unmeasured_policy: TranscriptionPolicy = TranscriptionPolicy {
+    name = "unmeasured",
+    subdivisions = [],
+    tuplets = [],
+    unsubdivided_complexity = 0,
+    weights = standard_weights,
+    group_window = adaptive_group_window,
+    bounds = standard_bounds
+};
+
+// The published cost-field order, matching prompt 203's fixed decision.
+private let cost_field_order: List(Text) = [
+    "onset-displacement",
+    "duration-displacement",
+    "tempo-smoothness",
+    "notation-complexity",
+    "rests",
+    "ties",
+    "tuplets",
+    "syncopation-preservation",
+    "user-constraints",
+];
+
+// Versioned finite root frozen by the generic checked-source boundary.
+let transcription_policies: TranscriptionPolicyArtifact = TranscriptionPolicyArtifact {
+    schema_version = 1,
+    cost_fields = cost_field_order,
+    cost_version = 1,
+    policies = [standard_policy, unmeasured_policy]
+};

@@ -538,6 +538,25 @@ searches the filesystem.
 - `fn first_inversion(content: Option(ChordClass)) -> Option(ChordClass)` — Designate the third as bass, keeping absence absent. Written out because an `option` of an `option` is not a chord and this language composes the two by hand.
 - `fn stage_music(policy: ChordClass -> EventTrack(WrittenTime), content: Option(ChordClass)) -> EventTrack(WrittenTime)` — Sound one stage of a skeleton under a caller's voicing policy. The policy is a function because the library has no opinion: a stage that cannot be voiced from the bass the caller named is silence here, and the caller can see that it was.
 
+## `std::transcription`
+
+- `record Subdivision: Type` — One admitted division of a beat with its notation-complexity rank.  `beat_fraction` is an exact fraction of one beat (which in simple meter is a quarter note). `complexity` is the declared preference cost of placing an onset exactly on this division; it is a preference, never a proof of intent.
+- `record TupletAllowance: Type` — One admitted irregular division, expressed as the exact fraction of a beat occupied by a single member. A triplet eighth is `1/3`; a sixteenth triplet is `1/6`. Ranked like a subdivision, never admitted on its own.
+- `record CostWeights: Type` — The tunable exact weights of the complete cost record.  Each is an exact ratio scaling one ordered cost field. The structural terms the measured trial did not weight (rests, ties, tuplets, syncopation preservation) enter the record at unit weight, so the six values below are the only free knobs.
+- `record GroupWindow: Type` — The adaptive onset-group proposal: one twelfth of the local beat, clamped to an exact physical-time band. This is a candidate cost, never a hard rule.
+- `record SearchBounds: Type` — The published bounded-search constants prompt 203 fixed.
+- `record TranscriptionPolicy: Type` — One named structural policy over subdivisions, irregular divisions, weights, and the bounds of its search.
+- `record TranscriptionPolicyArtifact: Type` — The versioned artifact every host reader freezes through the checked-source boundary. `cost_fields` is the published ordering of the complete cost record; `cost_version` changes whenever any field, normalization, weighting, or ordering changes.
+- `let standard_weights: CostWeights` — The common-practice weights ported exactly from prompt 203's structural dynamic-programming trial.
+- `let standard_bounds: SearchBounds` — The bounds prompt 203 fixed and prompt 204 preserves.
+- `let adaptive_group_window: GroupWindow` — The adaptive onset-group proposal: one twelfth of the local beat, clamped to 18–70 milliseconds in exact seconds.
+- `let standard_subdivisions: List(Subdivision)` — Binary through a thirty-second, ternary through a sixteenth triplet. The declared denominators have least common multiple 24, which is exactly prompt 203's measured quarter-note grid — derived, never admitted independently.
+- `let standard_tuplets: List(TupletAllowance)` — The one irregular division the standard policy admits is the triplet, at both the eighth and sixteenth level, with the complexity ranks of prompt 203's measured ladder.
+- `let standard_policy: TranscriptionPolicy` — One grid position no declared subdivision names still has a preference cost, held in source rather than in the host ladder.
+- `let unmeasured_policy: TranscriptionPolicy` — No admitted subdivision and no admitted irregular division. The only honest outcome for a take declared unmeasured is `write source`; the host refuses rather than inventing a grid under this policy.
+- `let cost_field_order: List(Text)` — The published cost-field order, matching prompt 203's fixed decision.
+- `let transcription_policies: TranscriptionPolicyArtifact` — Versioned finite root frozen by the generic checked-source boundary.
+
 ## `std::transformational`
 
 - `fn triad_root(refined: Triad) -> NoteName` — The root of a triad, spelled.

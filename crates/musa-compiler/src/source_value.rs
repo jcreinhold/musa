@@ -216,3 +216,35 @@ pub fn checked_standard_instrument_machine() -> Result<musa_score::MachineSpec, 
         )]
     })
 }
+
+/// Check the edition-pinned transcription policies as ordinary source.
+///
+/// Subdivision, tuplet, weight, window, and search-bound policy live in
+/// `std::transcription`. The compiler returns only the generic checked
+/// artifact; the host optimizer projects one named policy from this exact
+/// value and never constructs one.
+///
+/// # Errors
+///
+/// Returns standard-library import, checking, normalization, or artifact
+/// diagnostics. A bundled transcription policy that fails here is a build
+/// defect.
+pub fn checked_standard_transcription_policies() -> Result<musa_calculus::CheckedSource, Vec<Diagnostic>> {
+    const PROBE: &str = r#"import std::transcription;
+piece "Transcription policy" {
+    meter 4/4;
+    key c major;
+    score { part proof { voice observed { rest/1 } } }
+}
+"#;
+    checked_source_value(
+        &SourceDocument::new(PROBE, "musa-stdlib:/transcription-policy.musa"),
+        &CompileOptions::default(),
+        "transcription_policies",
+        &musa_calculus::SourceSchema::new(
+            "std.transcription.TranscriptionPolicyArtifact",
+            "TranscriptionPolicyArtifact",
+            1,
+        ),
+    )
+}

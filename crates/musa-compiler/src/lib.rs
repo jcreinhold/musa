@@ -98,6 +98,7 @@ pub use crate::resolve::{NameKind, NameReference, SourceLocation};
 pub use crate::source_value::{
     checked_source_value, checked_standard_instrument_machine, checked_standard_instruments,
     checked_standard_performance_vocabulary, checked_standard_studio_vocabulary,
+    checked_standard_transcription_policies,
 };
 pub use musa_calculus::{CheckedSource, SourceSchema};
 /// The event track's semantic digest, re-exported so a consumer can hold a
