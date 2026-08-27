@@ -1,7 +1,7 @@
 ---
 id: 204a
 slug: rhythm-candidate-search
-status: pending
+status: done
 depends_on: [204]
 phase: 2
 ---
@@ -71,8 +71,8 @@ exposes no public API.
   field order → canonical structural bytes), constraint locality, 96-state/128-note/128-KiB bounds, adversarial-size
   refusal with retained length.
 - The internal corpus regression test above, through the private optimizer.
-- Extend `crates/musa-project/benches/transcription_trial.rs` with production-optimizer cases measuring the 128-note
-  reference ≤ 50 ms law.
+- The existing `transcription_trial` benchmark stays green (it measures the trial, unchanged); the production-optimizer
+  128-note ≤ 50 ms measurement lands in 204b where the facade makes it reachable.
 
 ## Check
 

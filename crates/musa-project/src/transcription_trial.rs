@@ -196,7 +196,7 @@ pub enum TrialClock {
 
 /// One immutable performed note and its intended notation fact, when any.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct TrialNote {
+pub(crate) struct TrialNote {
     id: u32,
     pitch: u8,
     onset_micros: u64,
@@ -230,6 +230,36 @@ enum TrialReview {
     ChooseReading,
     TapPulse,
     WriteSource,
+}
+
+/// The rhythm-only regression seam for prompt 204a's private search: the same
+/// fixture the trial checked in, read for its take facts and intended notation.
+/// Gated to test builds because the corpus regression is the only reader until
+/// prompt 204b's admission laws reach the search through its own facade rather
+/// than through this measurement module.
+#[cfg(test)]
+impl TrialFixture {
+    pub(crate) const fn clock(&self) -> TrialClock {
+        self.clock
+    }
+
+    pub(crate) fn notes(&self) -> &[TrialNote] {
+        &self.notes
+    }
+}
+
+#[cfg(test)]
+impl TrialNote {
+    pub(crate) fn rhythm_parts(&self) -> (u32, u64, u64, u64, Option<(u32, u32)>) {
+        (
+            self.id,
+            self.onset_micros,
+            self.release_micros,
+            self.sounding_end_micros,
+            self.expected
+                .map(|expected| (expected.onset_ticks, expected.duration_ticks)),
+        )
+    }
 }
 
 /// Candidate model families compared by prompt 203.

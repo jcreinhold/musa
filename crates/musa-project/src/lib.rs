@@ -68,6 +68,8 @@ pub mod transcription_trial;
 // next real gap; the gate is the honest spelling, and 204a removes it.
 #[cfg(test)]
 mod transcription_policy;
+#[cfg(test)]
+mod transcription_search;
 mod utf16;
 mod vocabulary;
 
