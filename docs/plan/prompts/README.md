@@ -464,7 +464,10 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 204 | transcription-policy | 2 | Checked standard-library transcription policy and exact host projection |
 | 204a | rhythm-candidate-search | 2 | Private bounded search for exact ranked rhythm candidates under checked policy |
 | 204b | rhythm-transcription-report | 2 | Versioned rhythm-candidate report facade and corpus admission laws |
-| 205 | polyphonic-transcription | 2 | Chord, voice, spelling, duration, and checked-source notation proposals |
+| 205 | note-pairing-onset-groups | 2 | Completed-note pairing (physical vs sounding intervals) and adaptive onset groups |
+| 205a | voice-assignment | 2 | Voice assignment jointly with rhythm over the shared candidate DAG |
+| 205b | pitch-spelling-written-ends | 2 | Exact pitch spelling and inferred written ends with ambiguity as loss |
+| 205c | notation-proposal | 2 | Immutable NotationProposal with checked Musa source preview |
 | 206 | group-score-transformations | 2 | Provenance-safe duration and pitch operations over explicit selections |
 | 207 | transcription-review | 2 | Engraved ambiguity review, constraints, group revision, and A/B audition |
 | 208 | accept-captured-phrase | 2 | Capture/Keep-that proposals accepted as one canonical source transaction |

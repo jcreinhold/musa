@@ -2,7 +2,7 @@
 id: 206
 slug: group-score-transformations
 status: pending
-depends_on: [201, 205]
+depends_on: [201, 205c]
 phase: 2
 ---
 
