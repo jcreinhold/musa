@@ -607,6 +607,45 @@ impl ProjectSession {
         crate::rhythm::RhythmTranscriptionReport::transcribe(self.revision, take, policy_name)
     }
 
+    /// Compose one captured MIDI take into a checked notation proposal.
+    ///
+    /// The proposal is versioned and immutable: it names the take, revision,
+    /// policy, meter, and key, carries the exact score facts per voice and the
+    /// chord/rest shape alternatives, derives every note to its captured event
+    /// ids, declares its losses, and — when every written end is a binary
+    /// subdivision — holds a canonical source preview that has been parsed and
+    /// compiled under this piece's context. An uncheckable preview is an error,
+    /// never something a reviewer is asked to repair.
+    ///
+    /// # Errors
+    /// Returns [`crate::ProposalError`] when the take is refused by the rhythm
+    /// search, an onset group exceeds the four-voice ceiling, a policy fails to
+    /// load, or the generated source preview does not parse and compile.
+    pub fn propose_notation(
+        &self,
+        take_name: &str,
+        events: &[crate::CapturedMidiEvent],
+        clock: crate::TakeClock,
+        bar_ticks: u32,
+        meter: &str,
+        key: Option<musa_score::Key>,
+        policy_name: &str,
+        voice_pins: &[crate::VoiceConstraint],
+    ) -> Result<crate::NotationProposal, crate::ProposalError> {
+        crate::transcription_proposal::propose(
+            self.revision,
+            take_name,
+            events,
+            clock,
+            bar_ticks,
+            meter,
+            key,
+            policy_name,
+            voice_pins,
+            self.bar_spacing(),
+        )
+    }
+
     /// How this piece's project wants its bars laid out.
     ///
     /// Private, and asked here rather than at each call site, so that

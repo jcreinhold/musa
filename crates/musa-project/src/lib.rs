@@ -61,15 +61,13 @@ mod sfz;
 mod snapshot;
 mod studio;
 mod template;
-#[cfg(test)]
 mod transcription_pairing;
 mod transcription_policy;
+mod transcription_proposal;
 mod transcription_search;
-#[cfg(test)]
 mod transcription_spell;
 #[doc(hidden)]
 pub mod transcription_trial;
-#[cfg(test)]
 mod transcription_voice;
 mod utf16;
 mod vocabulary;
@@ -108,9 +106,14 @@ pub use crate::studio::{
     StudioEdit, StudioFacts,
 };
 pub use crate::template::Template;
+pub use crate::transcription_pairing::GroupShape;
+pub use crate::transcription_proposal::{
+    NotationProposal, PROPOSAL_VERSION, ProposalError, ProposalGroup, ProposalLoss, ProposalNote, ProposalSource,
+};
 pub use crate::transcription_search::{
     Candidate, CostRecord, REPORT_VERSION, Refusal, ReviewRegion, RhythmEvent, SearchOutcome, Take, TakeClock,
 };
+pub use crate::transcription_voice::{VoiceConstraint, VoiceRefusal};
 pub use crate::utf16::Utf16Offsets;
 pub use crate::vocabulary::{format_studio_ratio, standard_instrument_contracts, standard_studio_vocabulary};
 pub use musa_compiler::DocumentKind;

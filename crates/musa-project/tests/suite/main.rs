@@ -12,6 +12,7 @@ mod elaboration_backend_compatibility;
 mod large_score_generators;
 mod library_laws;
 mod logging_laws;
+mod notation_proposal_laws;
 mod package_laws;
 mod project_files_laws;
 mod project_laws;

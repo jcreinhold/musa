@@ -280,7 +280,7 @@ pub(crate) struct OnsetGroup {
 /// scale lands in separate single-note groups, so its notes offer no chord
 /// reading at all.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum GroupShape {
+pub enum GroupShape {
     Block,
     Rolled,
     Arpeggio,

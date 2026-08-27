@@ -24,10 +24,10 @@ subdivisions.
 
 ## Design
 
-- A written end becomes: the largest binary division it equals (24 ticks = `/4`), a dotted division when the duration
-  is 3/2 of a binary one (`/8.`, `/4.`, `/2.`), a `tuplet n/d { … }` group for ternary divisions (8 ticks inside a
-  3/2 group at 24 ticks per quarter), a tied chain when no single form spells it, and a `rest/…` for silence between
-  written ends in a voice.
+- A written end becomes: the largest binary division it equals (24 ticks = `/4`), a dotted division when the duration is
+  3/2 of a binary one (`/8.`, `/4.`, `/2.`), a `tuplet n/d { … }` group for ternary divisions (8 ticks inside a 3/2
+  group at 24 ticks per quarter), a tied chain when no single form spells it, and a `rest/…` for silence between written
+  ends in a voice.
 
 - Every spelling this prompt emits is verified the way 205c verifies the whole preview: parsed and compiled under the
   destination context, so an unspellable duration is a declared loss or alternative, never an uncheckable source.

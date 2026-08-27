@@ -40,7 +40,7 @@ pub(crate) struct VoiceAssignment {
 /// A musician-supplied exact constraint over the assignment. Overrides
 /// inference for exactly the event it names, like a rhythm tap-anchor pin.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VoiceConstraint {
+pub enum VoiceConstraint {
     /// Pin one note to an exact voice. Changing one pin leaves every other
     /// note's assigned voice, and the whole grouping, byte-identical.
     Pin { note_index: usize, voice: u8 },
@@ -48,7 +48,7 @@ pub(crate) enum VoiceConstraint {
 
 /// Why a take cannot be voiced within the four-voice ceiling.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VoiceRefusal {
+pub enum VoiceRefusal {
     /// One onset group holds more simultaneous notes than [`MAX_VOICES`] can
     /// voice; a voice holds one pitch at a time, so this is refused rather
     /// than silently merged.

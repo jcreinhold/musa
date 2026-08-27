@@ -40,6 +40,9 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["e
 [dev-dependencies]
 divan = "0.1.21"
 midly = { version = "0.5", default-features = false, features = ["std"] }
+# Tests build realistic raw-MIDI fixtures through the facade (prompt 205c) and
+# so name the capture event types without reaching through the library.
+musa-playback = { workspace = true }
 
 [[bench]]
 harness = false

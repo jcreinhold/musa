@@ -764,9 +764,8 @@ pub(crate) fn spell(note: u8, key: Option<Key>) -> String {
 /// [`spell`] choice: the neighbour the signature did *not* lean towards. Empty
 /// for a note the key already spells unambiguously.
 ///
-/// Gated to tests until prompt 205c composes it in the production proposal;
-/// the spelling stage (205b) is still a test-gated module.
-#[cfg(test)]
+/// The enharmonic readings of a chromatic note, composed by the proposal
+/// (205c) so spelling alternatives are a production fact.
 pub(crate) fn spell_alternatives(note: u8, key: Option<Key>) -> Vec<String> {
     let fifths = key.map_or(0, Key::fifths);
     let pitch_class = i32::from(note % 12);

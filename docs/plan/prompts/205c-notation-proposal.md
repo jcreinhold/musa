@@ -1,7 +1,7 @@
 ---
 id: 205c
 slug: notation-proposal
-status: pending
+status: done
 depends_on: [205b]
 phase: 2
 ---
@@ -42,9 +42,11 @@ prompt emits is a binary subdivision (a whole, half, quarter, eighth, sixteenth,
 - Preserve prompt 203's bounds: at most five proposals, 96 retained states per layer, 128 completed notes, four voices,
   128 KiB candidate/back-pointer storage, and the 50 ms reference-host target for a 128-note phrase.
 
-- Corpus admission: 59/63 top-one voice-label matches after label permutation and 176/176 grouping-pair matches, with
-  key-release duration accuracy at least 47/58 and pedal-extended sound never scored as a written end. The four crossing
-  corrections stay recoverable in top five or by one local constraint.
+- Corpus admission through the composed facade: 54/58 top-one voice-label matches after label permutation and 166/166
+  grouping-pair matches, with key-release duration accuracy at least 47/58 and pedal-extended sound reported as a fact,
+  never scored as a written end. The `unmeasured` fixture is a typed `WriteSource` refusal through the facade, so its
+  five notes leave the 63-voice/176-pair denominators (the stage-local 205a numbers). The four crossing corrections stay
+  recoverable in top five or by one local constraint.
 
 ## Target
 
