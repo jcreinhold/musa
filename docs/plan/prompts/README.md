@@ -468,6 +468,7 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 205a | voice-assignment | 2 | Voice assignment jointly with rhythm over the shared candidate DAG |
 | 205b | pitch-spelling-written-ends | 2 | Exact pitch spelling and inferred written ends with ambiguity as loss |
 | 205c | notation-proposal | 2 | Immutable NotationProposal with checked Musa source preview |
+| 205ca | rhythmic-source-spelling | 2 | Ties, tuplets, dots, grace, and rests in the source preview |
 | 206 | group-score-transformations | 2 | Provenance-safe duration and pitch operations over explicit selections |
 | 207 | transcription-review | 2 | Engraved ambiguity review, constraints, group revision, and A/B audition |
 | 208 | accept-captured-phrase | 2 | Capture/Keep-that proposals accepted as one canonical source transaction |

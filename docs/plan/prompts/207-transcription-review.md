@@ -2,7 +2,7 @@
 id: 207
 slug: transcription-review
 status: pending
-depends_on: [205c, 206]
+depends_on: [205ca, 206]
 phase: 2
 ---
 

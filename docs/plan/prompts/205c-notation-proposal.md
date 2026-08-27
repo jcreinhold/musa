@@ -15,13 +15,17 @@ Musa source preview that parses and compiles under the destination project conte
 explanation, not an answer: it names its derivation to captured events, declares its losses, and never asks Review to
 repair an internally uncheckable source.
 
+This prompt ships the facade and the pitch/voice half of source previewing. The rhythmic half — how a measured duration
+becomes a tie, tuplet, dot, grace, or rest in the written source — is prompt 205ca's step, and every duration this
+prompt emits is a binary subdivision (a whole, half, quarter, eighth, sixteenth, or thirty-second).
+
 ## Read
 
 - Prompt 204b's report facade and prompt 205–205b's completed-note, voice, spelling, and written-end stages.
 - Prompt 200's report/survivor conventions in `crates/musa-project/src/barlines.rs` (immutable revision-scoped reports,
-  source previews) and the source formatter in `musa-syntax`.
+  source previews) and the compiler facade `compile`/`format_document` in `musa-compiler`.
 - Prompt 203's bounds and thresholds in `docs/notes/research/90-midi-transcription-trial.md`.
-- Open Music Theory `022`–`031` (what a scored voice must be able to say) and `118`.
+- Open Music Theory `022`–`031` (what a scored voice must be able to say).
 
 ## Design
 
@@ -32,6 +36,9 @@ repair an internally uncheckable source.
 - The source preview is built with the existing formatter and **parsed and compiled under the destination project
   context**. An uncheckable proposal is an internal error, never something the musician is handed to repair.
 
+- Destage the `#[cfg(test)]` gates on `transcription_pairing`, `transcription_voice`, `transcription_spell`, and the
+  `spell_alternatives` helper: the proposal composes them, so they now have a production caller.
+
 - Preserve prompt 203's bounds: at most five proposals, 96 retained states per layer, 128 completed notes, four voices,
   128 KiB candidate/back-pointer storage, and the 50 ms reference-host target for a 128-note phrase.
 
@@ -41,9 +48,10 @@ repair an internally uncheckable source.
 
 ## Target
 
-- One narrow project proposal/report operation returning the immutable `NotationProposal`.
-- Exact source previews and derivations for monophonic melody, block/rolled chords, two-hand texture, crossing voices,
-  repeated notes, pedal, tuplets, syncopation, chromatic/atonal spelling, grace-like gestures, and mixed rests.
+- One narrow project proposal/report operation returning the immutable `NotationProposal` (fallible: a `ProposalError`
+  when the generated source is uncheckable).
+- Exact source previews and derivations for monophonic melody, block/rolled chords (written as voices), two-hand
+  texture, crossing voices, repeated notes, and chromatic/atonal spelling — all with binary note durations.
 - Corpus thresholds plus deterministic and bounded adversarial tests through the facade.
 
 ## Check
@@ -60,5 +68,6 @@ Commit as `Compose checked notation proposals with source previews`.
 
 ## Stop
 
+- No rhythmic written-end spelling (tuplets, ties, dots, grace, rests) — those are prompt 205ca's step.
 - No Review UI, acceptance/source mutation, batch editing, or step-entry deletion (207–208).
 - No mutable proposal AST; no unbounded voice count; no learned model or frontend musical inference.
