@@ -185,5 +185,6 @@ packages/musa-web/examples/build-time/out/
 # Agent runtime artifacts: pi sessions and subagent state are local-only,
 # and Claude's settings.local.json holds per-machine permission overrides.
 .pi/sessions/
+.pi/tasks/
 .pi-subagents/
 .claude/settings.local.json
