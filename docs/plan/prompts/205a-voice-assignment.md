@@ -1,7 +1,7 @@
 ---
 id: 205a
 slug: voice-assignment
-status: pending
+status: done
 depends_on: [204b, 205]
 phase: 2
 ---

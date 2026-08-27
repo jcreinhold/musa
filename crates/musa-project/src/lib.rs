@@ -67,6 +67,8 @@ mod transcription_policy;
 mod transcription_search;
 #[doc(hidden)]
 pub mod transcription_trial;
+#[cfg(test)]
+mod transcription_voice;
 mod utf16;
 mod vocabulary;
 
