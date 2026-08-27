@@ -1,7 +1,7 @@
 ---
 id: 205
 slug: note-pairing-onset-groups
-status: pending
+status: done
 depends_on: [202, 204b]
 phase: 2
 ---

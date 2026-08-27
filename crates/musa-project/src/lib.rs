@@ -61,6 +61,8 @@ mod sfz;
 mod snapshot;
 mod studio;
 mod template;
+#[cfg(test)]
+mod transcription_pairing;
 mod transcription_policy;
 mod transcription_search;
 #[doc(hidden)]
