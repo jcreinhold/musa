@@ -4,15 +4,16 @@
 //! composed into one immutable [`NotationProposal`]: the exact score facts per
 //! voice, the chord/rest structure and its shape alternatives, the top ranked
 //! rhythm candidate, a complete derivation to captured event ids, the facts the
-//! pipeline declared as losses, and — when every written end is a binary
-//! subdivision — a canonical Musa source preview that has been parsed and
+//! pipeline declared as losses, and — when every written end has an exact
+//! written spelling — a canonical Musa source preview that has been parsed and
 //! compiled under the destination context.
 //!
 //! The proposal is an explanation, not an answer. It names what it read and
 //! what it dropped, and it never hands a musician a source preview that cannot
 //! be compiled: an uncheckable preview is a [`ProposalError`], and a duration
-//! this prompt cannot yet spell (a tuplet, tie, dot, grace, or rest) is a
-//! declared deferral to prompt 205ca, not a silently wrong source.
+//! the written speller cannot place exactly (prompt 205ca's binary, dotted,
+//! tuplet, tied-chain, and rest vocabulary) is a declared loss, never a
+//! silently rounded source.
 
 // Note, end, and onset slices are all built from `0..completed.notes.len()` and
 // remain position-aligned by construction; reading them by index cannot leave
@@ -32,6 +33,7 @@ use crate::transcription_pairing::{self, GroupShape};
 use crate::transcription_search::{Candidate, Refusal, RhythmEvent, Take, TakeClock};
 use crate::transcription_spell;
 use crate::transcription_voice::{self, VoiceConstraint, VoiceRefusal};
+use crate::transcription_written::{self, WrittenEntry};
 
 /// Why a proposal could not be composed.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -91,7 +93,9 @@ pub enum ProposalLoss {
     UnpairedNoteOff { event_id: u64 },
     /// Notes whose sound was still pedal-held when the capture ended.
     HeldAtEnd { count: usize },
-    /// A written end not on this prompt's binary grid, deferred to 205ca.
+    /// A written end the written speller could not place as exact written
+    /// form (an odd off-grid length, a tie out of a ternary position),
+    /// declared rather than silently rounded.
     DeferredDuration { note_index: usize },
 }
 
@@ -145,17 +149,6 @@ pub struct NotationProposal {
 
 /// The proposal facade version; bump when this public shape changes.
 pub const PROPOSAL_VERSION: u64 = 1;
-
-/// Binary grid durations in ticks and the source denominator that spells each
-/// (`96/denominator` ticks). Everything else is a deferral to 205ca.
-const BINARY_DENOMINATORS: [(u32, u32); 6] = [
-    (96, 1), // whole
-    (48, 2), // half
-    (24, 4), // quarter
-    (12, 8), // eighth
-    (6, 16), // sixteenth
-    (3, 32), // thirty-second
-];
 
 impl NotationProposal {
     /// The proposal facade version.
@@ -228,7 +221,8 @@ impl NotationProposal {
         &self.losses
     }
 
-    /// The compiled source preview, when every written end was spellable here.
+    /// The compiled source preview, when every written end had an exact
+    /// written spelling.
     pub fn source(&self) -> Option<&ProposalSource> {
         self.source.as_ref()
     }
@@ -348,6 +342,7 @@ pub(crate) fn propose(
         take_name,
         meter,
         quarter,
+        bar_ticks,
         candidate,
         &completed.notes,
         &notes,
@@ -377,13 +372,14 @@ pub(crate) fn propose(
 }
 
 /// Build, format, and compile the source preview. Returns `Ok(None)` with a
-/// deferral loss when a written end or an inter-note gap is not a binary
-/// subdivision (prompt 205ca spells those). Never returns a source that does
-/// not compile: an uncheckable preview is an error.
+/// deferral loss when a written end or gap has no exact written spelling
+/// (prompt 205ca's vocabulary). Never returns a source that does not compile:
+/// an uncheckable preview is an error.
 fn build_source(
     take_name: &str,
     meter: &str,
     quarter_micros: u64,
+    bar_ticks: u32,
     candidate: &Candidate,
     completed: &[crate::transcription_pairing::CompletedNote],
     notes: &[ProposalNote],
@@ -394,8 +390,8 @@ fn build_source(
         return Ok(None);
     }
 
-    // A voice holds one pitch at a time; lay each one out in onset order with
-    // explicit rests for the gaps. Defer if any duration or gap is non-binary.
+    // A voice holds one pitch at a time; spell each one in onset order with
+    // explicit rests for the gaps (prompt 205ca's written spelling).
     let mut by_voice: BTreeMap<u8, Vec<usize>> = BTreeMap::new();
     for (index, note) in notes.iter().enumerate() {
         by_voice.entry(note.voice).or_default().push(index);
@@ -403,36 +399,30 @@ fn build_source(
 
     let mut voice_lines = Vec::new();
     for (voice_id, indices) in by_voice {
-        let mut line = String::new();
-        let mut cursor = 0_u32;
-        for &index in &indices {
-            let onset = candidate.onsets[index];
-            let written_end = notes[index].written_end_ticks;
-            let Some(denominator) = binary_denominator(written_end) else {
-                losses.push(ProposalLoss::DeferredDuration { note_index: index });
-                return Ok(None);
-            };
-            if onset > cursor {
-                let Some(rest_denominators) = decompose_gap(onset.saturating_sub(cursor)) else {
-                    losses.push(ProposalLoss::DeferredDuration { note_index: index });
-                    return Ok(None);
-                };
-                for rest_denominator in rest_denominators {
-                    let _ = write!(line, "rest/{rest_denominator} ");
-                }
-            } else if onset < cursor {
-                // Overlap within a voice is a tie, not an ordinary note; 205ca
-                // spells it.
-                losses.push(ProposalLoss::DeferredDuration { note_index: index });
+        let entries = indices
+            .iter()
+            .map(|&index| WrittenEntry {
+                index,
+                onset_ticks: candidate.onsets[index],
+                duration_ticks: notes[index].written_end_ticks,
+                pitch: notes[index].pitch.clone(),
+                grace: notes[index].grace,
+            })
+            .collect::<Vec<_>>();
+        let bars = match transcription_written::spell_voice(&entries, bar_ticks) {
+            Ok(bars) => bars,
+            Err(note_index) => {
+                losses.push(ProposalLoss::DeferredDuration { note_index });
                 return Ok(None);
             }
-            let _ = write!(line, "{}/{denominator} ", notes[index].pitch);
-            cursor = onset.saturating_add(written_end);
+        };
+        if bars.is_empty() {
+            continue;
         }
-        let line = line.trim_end();
-        if !line.is_empty() {
-            voice_lines.push(format!("            voice voice{voice_id} {{ | {line} }}"));
-        }
+        voice_lines.push(format!(
+            "            voice voice{voice_id} {{ {} }}",
+            bars.iter().map(|bar| format!("| {bar}")).collect::<Vec<_>>().join(" ")
+        ));
     }
 
     if voice_lines.is_empty() {
@@ -476,32 +466,4 @@ fn build_source(
         kind: compilation.kind(),
         identity: compilation.identity(),
     }))
-}
-
-/// The denominator whose `note/denominator` equals the tick length, for the
-/// binary grid only.
-fn binary_denominator(ticks: u32) -> Option<u32> {
-    BINARY_DENOMINATORS
-        .iter()
-        .find_map(|(tick, denominator)| (*tick == ticks).then_some(*denominator))
-}
-
-/// Decompose a gap into binary rests, largest first; `None` when the gap is not
-/// a sum of binary subdivisions (a ternary/tuplet gap, 205ca's territory).
-fn decompose_gap(ticks: u32) -> Option<Vec<u32>> {
-    if ticks == 0 {
-        return Some(Vec::new());
-    }
-    if !ticks.is_multiple_of(3) {
-        return None;
-    }
-    let mut remaining = ticks;
-    let mut parts = Vec::new();
-    for (tick, denominator) in BINARY_DENOMINATORS {
-        while remaining >= tick {
-            remaining = remaining.saturating_sub(tick);
-            parts.push(denominator);
-        }
-    }
-    (remaining == 0).then_some(parts)
 }

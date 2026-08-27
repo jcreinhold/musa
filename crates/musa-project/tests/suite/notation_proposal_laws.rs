@@ -385,19 +385,18 @@ fn chromatic_spelling_is_explicit_and_round_trips() {
 }
 
 #[test]
-fn a_non_binary_duration_is_a_deferral_not_a_wrong_source() {
+fn an_unspellable_duration_is_a_deferral_not_a_wrong_source() {
     let session = session();
+    // One 5-tick written end at a 480 ms quarter: not a binary or dotted
+    // value, not a single tuplet member, so the written speller declines and
+    // the proposal declares the loss rather than rounding it.
     let events = [
         captured(0, MidiMessageKind::NoteOn, 60, 90, 0),
-        captured(1, MidiMessageKind::NoteOff, 60, 0, 160_000),
-        captured(2, MidiMessageKind::NoteOn, 62, 90, 154_000),
-        captured(3, MidiMessageKind::NoteOff, 62, 0, 314_000),
-        captured(4, MidiMessageKind::NoteOn, 64, 90, 327_000),
-        captured(5, MidiMessageKind::NoteOff, 64, 0, 487_000),
+        captured(1, MidiMessageKind::NoteOff, 60, 0, 100_000),
     ];
     let proposal = session
         .propose_notation(
-            "triplet",
+            "odd-length",
             &events,
             TakeClock::Known {
                 quarter_micros: 480_000,
@@ -409,14 +408,275 @@ fn a_non_binary_duration_is_a_deferral_not_a_wrong_source() {
             "standard",
             &[],
         )
-        .expect("a triplet phrase still proposes");
-    assert!(proposal.source().is_none(), "205c defers non-binary durations to 205ca");
-    assert!(
+        .expect("an odd-length take still proposes facts");
+    assert!(proposal.source().is_none(), "an unspellable duration defers the source");
+    assert_eq!(
+        proposal.losses(),
+        &[ProposalLoss::DeferredDuration { note_index: 0 }],
+        "the deferral loss must name the note"
+    );
+}
+
+#[test]
+fn the_corpus_triplet_fixture_previews_as_bracketed_tuplets() {
+    let session = session();
+    let body: Corpus = serde_json::from_str(CORPUS).expect("decode the checked-in corpus");
+    let fixture = body
+        .fixtures
+        .iter()
+        .find(|fixture| fixture.id == "triplet-known")
+        .expect("the corpus carries the triplet fixture");
+    let proposal = session
+        .propose_notation(
+            &fixture.id,
+            &synthesize(fixture),
+            clock_of(&fixture.clock),
+            96,
+            "4/4",
+            None,
+            "standard",
+            &[],
+        )
+        .expect("the triplet fixture must propose");
+    // Every measured written end equals the corpus's expected notated
+    // duration: five triplet eighths and a closing quarter.
+    let expected = fixture
+        .notes
+        .iter()
+        .filter_map(|note| note.expected.map(|e| e.duration_ticks))
+        .collect::<Vec<_>>();
+    assert_eq!(expected, vec![8, 8, 8, 8, 8, 24]);
+    assert_eq!(
         proposal
-            .losses()
+            .notes()
             .iter()
-            .any(|loss| matches!(loss, ProposalLoss::DeferredDuration { .. })),
-        "a deferral loss must be declared"
+            .map(|note| note.written_end_ticks)
+            .collect::<Vec<_>>(),
+        expected,
+        "the triplet fixture's written ends must match its expected durations"
+    );
+    let source = proposal
+        .source()
+        .expect("ternary divisions are spellable as tuplets")
+        .source()
+        .to_owned();
+    assert!(
+        source.contains("tuplet 3/2 { c4/8 d4/8 e4/8 }"),
+        "the first quarter's run is one bracket: {source}"
+    );
+    assert!(
+        source.contains("tuplet 3/2 { f4/8 g4/8 }"),
+        "the second quarter's run is its own bracket: {source}"
+    );
+    assert!(source.contains("a4/4"), "the closing quarter is a quarter: {source}");
+}
+
+#[test]
+fn the_corpus_syncopation_fixture_previews_with_dots_and_a_barline_tie() {
+    let session = session();
+    let body: Corpus = serde_json::from_str(CORPUS).expect("decode the checked-in corpus");
+    let fixture = body
+        .fixtures
+        .iter()
+        .find(|fixture| fixture.id == "syncopated-known")
+        .expect("the corpus carries the syncopation fixture");
+    let proposal = session
+        .propose_notation(
+            &fixture.id,
+            &synthesize(fixture),
+            clock_of(&fixture.clock),
+            96,
+            "4/4",
+            None,
+            "standard",
+            &[],
+        )
+        .expect("the syncopation fixture must propose");
+    let expected = fixture
+        .notes
+        .iter()
+        .filter_map(|note| note.expected.map(|e| e.duration_ticks))
+        .collect::<Vec<_>>();
+    assert_eq!(expected, vec![12, 24, 6, 18, 24, 24]);
+    assert_eq!(
+        proposal
+            .notes()
+            .iter()
+            .map(|note| note.written_end_ticks)
+            .collect::<Vec<_>>(),
+        expected,
+        "the syncopation fixture's written ends must match its expected durations"
+    );
+    let source = proposal
+        .source()
+        .expect("displaced binary notes and a dotted eighth are spellable")
+        .source()
+        .to_owned();
+    assert!(
+        source.contains("c4/8 d4/4 e4/16 f4/8. g4/4"),
+        "off-beat notes stay displaced and 18 ticks is a dotted eighth: {source}"
+    );
+    assert!(
+        source.contains("a4/8 ~"),
+        "the quarter from tick 84 is split into tied halves at the bar line: {source}"
+    );
+}
+
+/// The source with every run of whitespace collapsed to one space, so
+/// assertions see content and not the formatter's line wrapping.
+fn normalized(source: &str) -> String {
+    source.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn the_corpus_pedal_fixture_previews_key_releases_never_sounding_ends() {
+    let session = session();
+    let body: Corpus = serde_json::from_str(CORPUS).expect("decode the checked-in corpus");
+    let fixture = body
+        .fixtures
+        .iter()
+        .find(|fixture| fixture.id == "pedal-repetition-mistake")
+        .expect("the corpus carries the pedal fixture");
+    let proposal = session
+        .propose_notation(
+            &fixture.id,
+            &synthesize(fixture),
+            clock_of(&fixture.clock),
+            96,
+            "4/4",
+            None,
+            "standard",
+            &[],
+        )
+        .expect("the pedal fixture must propose");
+    // Every written end is the quantized key release (9 ticks, a dotted
+    // sixteenth), never the pedal-extended sounding end (~81 ticks).
+    for note in proposal.notes() {
+        assert_eq!(note.written_end_ticks, 9, "the written end is the key release");
+        assert!(note.pedal_extended, "the pedal fact is reported beside it");
+    }
+    let source = normalized(
+        proposal
+            .source()
+            .expect("dotted sixteenths and binary rests are spellable")
+            .source(),
+    );
+    // The exact deterministic line: five dotted-sixteenth key releases with
+    // spelled gaps, closing the bar — no whole, half, or dotted-half anywhere.
+    assert!(
+        source.contains(
+            "c4/16. rest/8 rest/32 c4/16. rest/8 rest/32 e4/16. rest/32 f4/16. rest/32 g4/16. rest/8 rest/32"
+        ),
+        "the staccato key releases are dotted sixteenths with spelled gaps: {source}"
+    );
+}
+
+#[test]
+fn a_grace_tier_note_previews_as_a_grace_on_its_principal() {
+    let session = session();
+    // A quarter, a 3-tick gesture, another quarter: the gesture is below the
+    // ordinary tier, so the page carries it as a grace standing on the
+    // following quarter, donating its time to that principal.
+    let events = [
+        captured(0, MidiMessageKind::NoteOn, 60, 90, 0),
+        captured(1, MidiMessageKind::NoteOff, 60, 0, 500_000),
+        captured(2, MidiMessageKind::NoteOn, 62, 90, 505_000),
+        captured(3, MidiMessageKind::NoteOff, 62, 0, 565_000),
+        captured(4, MidiMessageKind::NoteOn, 64, 90, 570_000),
+        captured(5, MidiMessageKind::NoteOff, 64, 0, 1_070_000),
+    ];
+    let proposal = session
+        .propose_notation(
+            "grace-gesture",
+            &events,
+            TakeClock::Known {
+                quarter_micros: 500_000,
+                origin_micros: 0,
+            },
+            96,
+            "4/4",
+            None,
+            "standard",
+            &[],
+        )
+        .expect("a grace-like gesture must propose");
+    assert!(proposal.notes()[1].grace, "the 3-tick gesture is grace tier");
+    let source = proposal
+        .source()
+        .expect("a grace on its principal is spellable")
+        .source()
+        .to_owned();
+    assert!(
+        source.contains("c4/4 grace { d4 } e4/4"),
+        "the gesture leans on the following quarter: {source}"
+    );
+}
+
+#[test]
+fn mixed_rests_fill_gaps_and_the_final_bar_exactly() {
+    let session = session();
+    // A quarter, a 15-tick gap, a dotted eighth, a 3-tick gap, an eighth: the
+    // gaps spell as greedy binary rests and the bar closes itself.
+    let events = [
+        captured(0, MidiMessageKind::NoteOn, 60, 90, 0),
+        captured(1, MidiMessageKind::NoteOff, 60, 0, 500_000),
+        captured(2, MidiMessageKind::NoteOn, 62, 90, 810_000),
+        captured(3, MidiMessageKind::NoteOff, 62, 0, 1_185_000),
+        captured(4, MidiMessageKind::NoteOn, 64, 90, 1_250_000),
+        captured(5, MidiMessageKind::NoteOff, 64, 0, 1_500_000),
+    ];
+    let proposal = session
+        .propose_notation(
+            "mixed-rests",
+            &events,
+            TakeClock::Known {
+                quarter_micros: 500_000,
+                origin_micros: 0,
+            },
+            96,
+            "4/4",
+            None,
+            "standard",
+            &[],
+        )
+        .expect("a gapped melody must propose");
+    let source = normalized(
+        proposal
+            .source()
+            .expect("binary and dotted rests are spellable")
+            .source(),
+    );
+    assert!(
+        source.contains("c4/4 rest/8 rest/32 d4/8. rest/32 e4/8 rest/4"),
+        "a 15-tick gap is rest/8 rest/32, a 3-tick gap rest/32, and the bar\ncloses with the greedy fill: {source}"
+    );
+}
+
+#[test]
+fn rhythmic_spelling_is_deterministic_through_the_facade() {
+    let session = session();
+    let body: Corpus = serde_json::from_str(CORPUS).expect("decode the checked-in corpus");
+    let mut non_binary = 0_usize;
+    for fixture in &body.fixtures {
+        if matches!(fixture.clock, Clock::Unmeasured) {
+            continue;
+        }
+        let events = synthesize(fixture);
+        let clock = clock_of(&fixture.clock);
+        let first = session
+            .propose_notation(&fixture.id, &events, clock, 96, "4/4", None, "standard", &[])
+            .unwrap_or_else(|error| panic!("{}: {:?}", fixture.id, error));
+        let second = session
+            .propose_notation(&fixture.id, &events, clock, 96, "4/4", None, "standard", &[])
+            .unwrap_or_else(|error| panic!("{}: {:?}", fixture.id, error));
+        assert_eq!(first, second, "{} must compose identically twice", fixture.id);
+        if first.source().is_some() {
+            non_binary += 1;
+        }
+    }
+    assert!(
+        non_binary >= 3,
+        "at least the triplet, syncopation, and pedal fixtures must preview, saw {non_binary}"
     );
 }
 

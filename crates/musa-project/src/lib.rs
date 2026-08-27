@@ -69,6 +69,7 @@ mod transcription_spell;
 #[doc(hidden)]
 pub mod transcription_trial;
 mod transcription_voice;
+mod transcription_written;
 mod utf16;
 mod vocabulary;
 

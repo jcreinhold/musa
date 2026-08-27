@@ -1,7 +1,7 @@
 ---
 id: 205ca
 slug: rhythmic-source-spelling
-status: pending
+status: done
 depends_on: [205c]
 phase: 2
 ---
