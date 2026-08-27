@@ -2,7 +2,7 @@
 id: 205
 slug: polyphonic-transcription
 status: pending
-depends_on: [204]
+depends_on: [204b]
 phase: 2
 ---
 
@@ -17,8 +17,8 @@ notation convention.
 ## Read
 
 - Prompt 203's measured chord/voice/pedal decisions in `docs/notes/research/90-midi-transcription-trial.md`, prompt
-  204's candidate/constraint facade, prompt 202's complete event evidence, and prompts 27, 39–40, 63–65, 70–75, 100–103,
-  and 176b–180.
+  204b's candidate/constraint facade, prompt 202's complete event evidence, and prompts 27, 39–40, 63–65, 70–75,
+  100–103, and 176b–180.
 - Open Music Theory chapters `001`–`007` (written spelling), `009`–`012` (rhythm), `022`–`031` (voice leading as one
   named practice), `083-rhythm-and-meter-in-pop-music.md`, `098-twentieth-century-rhythmic-techniques.md`, and
   `118-metrical-dissonance.md`.
@@ -39,7 +39,7 @@ may be an arpeggio/rolled chord; a fast scale is neither. Keep competing groupin
 let the musician constrain any group. A fixed global millisecond window is forbidden. “Small” means the top-five
 retained structural candidates disagree locally, not an uncalibrated confidence percentage.
 
-Assign events to at most four candidate voices jointly with rhythm by extending prompt 204's shared candidate DAG,
+Assign events to at most four candidate voices jointly with rhythm by extending prompt 204a's shared candidate DAG,
 without reparsing or rebuilding its phrase lattice. Costs may use pitch proximity, temporal continuity, hand/register
 hints, overlap, repeated patterns, and crossings; crossings and large leaps are penalties, never invalidity. The
 selected destination voice count and an explicit one-/two-/N-voice constraint outrank inferred preference. Do not invent
@@ -72,7 +72,7 @@ Keep the adapter exact-pinned and optional; no CC BY-NC-SA event or learned para
 
 ## Target
 
-- Private bounded polyphonic completion over prompt 204 candidates and one narrow project proposal/report operation.
+- Private bounded polyphonic completion over prompt 204a candidates and one narrow project proposal/report operation.
 - Exact source previews and derivations for monophonic melody, block/rolled chords, two-hand piano texture, crossing
   voices, repeated notes, pedal, tuplets, syncopation, chromatic/atonal spelling, grace-like gestures, and mixed rests.
 - Grouping/voice/spelling/duration alternative constraints with locality laws: constraining one marked ambiguity leaves

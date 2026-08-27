@@ -461,7 +461,9 @@ prompts cite it by number, so it is history rather than clutter — most of this
 | 201 | keyboard-composition-contract | 2 | Replace step entry in the governing workflow before implementation |
 | 202 | expressive-midi-capture | 2 | Always-audible, bounded expressive MIDI capture and recent-phrase memory |
 | 203 | transcription-trial | 2 | Measured rhythm/voice model trial and repository-owned performance corpus |
-| 204 | metrical-transcription | 2 | Ranked exact rhythm candidates from known, free, and tapped clocks |
+| 204 | transcription-policy | 2 | Checked standard-library transcription policy and exact host projection |
+| 204a | rhythm-candidate-search | 2 | Private bounded search for exact ranked rhythm candidates under checked policy |
+| 204b | rhythm-transcription-report | 2 | Versioned rhythm-candidate report facade and corpus admission laws |
 | 205 | polyphonic-transcription | 2 | Chord, voice, spelling, duration, and checked-source notation proposals |
 | 206 | group-score-transformations | 2 | Provenance-safe duration and pitch operations over explicit selections |
 | 207 | transcription-review | 2 | Engraved ambiguity review, constraints, group revision, and A/B audition |
