@@ -29,8 +29,12 @@ use crate::transcription_policy::TranscriptionPolicy;
 /// The number of published cost-record fields, in their fixed order.
 pub(crate) const COST_FIELDS: usize = 9;
 
+/// The version of the report facade a shell reads. Bump it whenever the public
+/// report shape changes; it is independent of the checked policy's own version.
+pub const REPORT_VERSION: u64 = 1;
+
 /// Sentinel back-pointer naming "no previous note", held by the arena root.
-const ROOT: u16 = u16::MAX;
+const ROOT: u32 = u32::MAX;
 
 /// One exact performed note transition a take carries into the search.
 ///
@@ -38,16 +42,16 @@ const ROOT: u16 = u16::MAX;
 /// pass, and prompt 205 owns everything that reads pitch. The derivation from
 /// raw event ids is `id`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct RhythmEvent {
-    pub(crate) id: u32,
-    pub(crate) onset_micros: u64,
-    pub(crate) release_micros: u64,
-    pub(crate) sounding_end_micros: u64,
+pub struct RhythmEvent {
+    pub id: u32,
+    pub onset_micros: u64,
+    pub release_micros: u64,
+    pub sounding_end_micros: u64,
 }
 
 /// The clock evidence a take carries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum TakeClock {
+pub enum TakeClock {
     /// Calibrated transport/count-in clock, never rebased to the first onset.
     Known {
         /// Physical duration of one quarter note.
@@ -64,24 +68,27 @@ pub(crate) enum TakeClock {
 /// One take: the exact events in their captured order, the clock, and the bar
 /// length (in ticks) the destination meter implies.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Take {
-    pub(crate) clock: TakeClock,
+pub struct Take {
+    /// Stable identity this report names; the facade carries it into the
+    /// report so a shell can tell one take from the next.
+    pub name: String,
+    pub clock: TakeClock,
     /// One bar in the destination meter, as exact grid ticks.
-    pub(crate) bar_ticks: u32,
-    pub(crate) events: Vec<RhythmEvent>,
+    pub bar_ticks: u32,
+    pub events: Vec<RhythmEvent>,
     /// Musician-supplied exact constraints: `(event index, pinned tick)`. A pin
     /// overrides inference for that event and nothing else; reproducing the
     /// same take and pins reproduces the identical result.
-    pub(crate) pins: Vec<(usize, u32)>,
+    pub pins: Vec<(usize, u32)>,
 }
 
 /// Why a take produced no grid under the policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Refusal {
+pub enum Refusal {
     /// Ametric input, or the `unmeasured` policy.
     WriteSource,
     /// More completed notes than the policy admits and no caller-supplied split
-    /// (the split path is prompt 204b's facade concern).
+    /// (the split path is the facade's concern).
     Unsplittable {
         /// Exact retained length.
         note_count: usize,
@@ -89,6 +96,9 @@ pub(crate) enum Refusal {
     /// A retained candidate proposes more simultaneous voices than the policy
     /// admits.
     TooManyVoices,
+    /// The policy's published hard work bound (candidate/back-pointer storage)
+    /// was exceeded; the search refuses rather than returning a partial rank.
+    Exhausted,
 }
 
 /// The complete, exact, ordered cost record of one candidate.
@@ -101,7 +111,7 @@ pub(crate) enum Refusal {
 /// syncopation preservation, and user constraints — for the reported vector
 /// only, never for ranking.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct CostRecord {
+pub struct CostRecord {
     values: [u64; COST_FIELDS],
 }
 
@@ -110,35 +120,38 @@ impl CostRecord {
         Self { values }
     }
 
-    /// The weighted ranking total: exactly the trial's two nonzero ranking
-    /// fields summed.
-    pub(crate) const fn rank_total(&self) -> u64 {
-        self.values[0].saturating_add(self.values[3])
+    /// The weighted ranking total: every field that carries a policy weight
+    /// summed (fields 0 through 3). Fields 4 through 8 are report-only.
+    pub const fn rank_total(&self) -> u64 {
+        self.values[0]
+            .saturating_add(self.values[1])
+            .saturating_add(self.values[2])
+            .saturating_add(self.values[3])
     }
 
     /// The complete ordered vector, for the published field-order tie-break.
-    pub(crate) const fn fields(&self) -> &[u64; COST_FIELDS] {
+    pub const fn fields(&self) -> &[u64; COST_FIELDS] {
         &self.values
     }
 }
 
 /// One materialized exact rhythm candidate.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Candidate {
+pub struct Candidate {
     /// Exact onset ticks, one per take event in order.
-    pub(crate) onsets: Vec<u32>,
+    pub onsets: Vec<u32>,
     /// Quantized key-release durations, one per take event.
-    pub(crate) durations: Vec<u32>,
+    pub durations: Vec<u32>,
     /// Raw event ids in the same order, deriving the candidate from the take.
-    pub(crate) event_ids: Vec<u32>,
+    pub event_ids: Vec<u32>,
     /// The complete cost breakdown.
-    pub(crate) cost: CostRecord,
+    pub cost: CostRecord,
     /// Rests between written ends and next onsets, as `(end_tick, length)`.
-    pub(crate) rests: Vec<(u32, u32)>,
+    pub rests: Vec<(u32, u32)>,
     /// Onsets whose written note crosses the bar.
-    pub(crate) ties: Vec<u32>,
+    pub ties: Vec<u32>,
     /// Onsets or durations not on the sixteenth grid (candidate tuplets).
-    pub(crate) tuplets: Vec<u32>,
+    pub tuplets: Vec<u32>,
 }
 
 impl Candidate {
@@ -158,16 +171,16 @@ impl Candidate {
 
 /// A local region where retained candidates disagree structurally.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ReviewRegion {
+pub struct ReviewRegion {
     /// First event index of the disagreement.
-    pub(crate) event_index: usize,
+    pub event_index: usize,
     /// One of phase, grouping, end, rest, tie, tuplet.
-    pub(crate) dimension: &'static str,
+    pub dimension: &'static str,
 }
 
 /// The outcome of one search over one take.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum SearchOutcome {
+pub enum SearchOutcome {
     /// At most five materialized candidates, ordered.
     Ranked {
         candidates: Vec<Candidate>,
@@ -187,6 +200,9 @@ pub(crate) struct Measurements {
 }
 
 /// Search one take under one policy, discarding the bounding measurements.
+/// Test-only: the facade reaches the search through the measured entry so the
+/// report can publish the storage law's evidence.
+#[cfg(test)]
 pub(crate) fn search_take(take: &Take, policy: &TranscriptionPolicy) -> SearchOutcome {
     search_take_measured(take, policy).0
 }
@@ -233,6 +249,7 @@ pub(crate) fn search_take_measured(take: &Take, policy: &TranscriptionPolicy) ->
         TakeClock::Free => notes.iter().map(|note| note.onset_micros).min().unwrap_or(0),
         TakeClock::Unmeasured => 0,
     };
+    let max_storage_bytes = policy.bounds().max_storage_bytes();
     let tempos = tempo_hypotheses(take);
     let mut ranked = Vec::new();
     let mut peak_states = 0;
@@ -242,6 +259,15 @@ pub(crate) fn search_take_measured(take: &Take, policy: &TranscriptionPolicy) ->
         ranked.extend(candidates);
         peak_states = peak_states.max(states);
         peak_storage = peak_storage.max(storage);
+    }
+    if peak_storage > usize::try_from(max_storage_bytes).unwrap_or(usize::MAX) {
+        return (
+            SearchOutcome::Refused(Refusal::Exhausted),
+            Measurements {
+                peak_states,
+                peak_storage_bytes: peak_storage,
+            },
+        );
     }
     ranked.sort_by(candidate_order);
     ranked.dedup_by(|left, right| left.onsets == right.onsets);
@@ -470,12 +496,15 @@ fn free_duration_quarter_micros() -> u64 {
 }
 
 /// One compact node in the candidate DAG: an exact onset decision, a back
-/// pointer into the shared arena, and the cumulative ranking cost. All three
-/// fit in `u16` under the policy bounds.
+/// pointer into the shared arena, and the cumulative ranking cost. The onset
+/// tick and ranking cost both fit in `u16` under the policy bounds (at most 128
+/// notes on a grid of at most a few thousand ticks); the pointer is `u32` so an
+/// append-only arena of over 65,535 nodes cannot collide with the root
+/// sentinel.
 #[derive(Clone, Copy, Debug)]
 struct Node {
     tick: u16,
-    prev: u16,
+    prev: u32,
     cost: u16,
 }
 
@@ -501,9 +530,8 @@ fn search_at_tempo(
         prev: ROOT,
         cost: 0,
     }];
-    let mut beam: Vec<u16> = vec![0];
+    let mut beam: Vec<u32> = vec![0];
     let mut peak_states = 1;
-    let mut peak_storage = storage(&arena, &beam);
 
     for (index, note) in notes.iter().enumerate() {
         let next_beam = expand_layer(
@@ -518,39 +546,27 @@ fn search_at_tempo(
             policy,
             &take.pins,
         );
-        let next_beam = sort_and_truncate(
+        beam = sort_and_truncate(
             &arena,
             next_beam,
             usize::try_from(policy.bounds().layer_states()).unwrap_or(96),
         );
-        peak_states = peak_states.max(next_beam.len());
-        let compacted = compact(&arena, &next_beam);
-        arena = compacted.0;
-        beam = compacted.1;
-        peak_storage = peak_storage.max(
-            arena
-                .len()
-                .saturating_mul(Node::bytes())
-                .saturating_add(beam.len().saturating_mul(2)),
-        );
+        peak_states = peak_states.max(beam.len());
     }
 
-    let mut beam = sort_and_truncate(&arena, beam, usize::try_from(policy.bounds().top_k()).unwrap_or(5));
-    let compacted = compact(&arena, &beam);
-    arena = compacted.0;
-    beam = compacted.1;
-    peak_storage = peak_storage.max(
-        arena
-            .len()
-            .saturating_mul(Node::bytes())
-            .saturating_add(beam.len().saturating_mul(2)),
-    );
+    beam = sort_and_truncate(&arena, beam, usize::try_from(policy.bounds().top_k()).unwrap_or(5));
+
+    // The live candidate DAG at the answer: every arena node on a surviving
+    // path. The append-only arena (dropped here) is scratch; only this closure
+    // is retained candidate/back-pointer storage, and it is bounded by the
+    // 96-state beam over at most 128 notes.
+    let retained = reachable_storage(&arena, &beam);
 
     let candidates = beam
         .iter()
         .map(|&leaf| materialize(take, policy, grid, quarter_micros, &arena, leaf))
         .collect();
-    (candidates, peak_states, peak_storage)
+    (candidates, peak_states, retained)
 }
 
 /// Expand one take event over every surviving state, appending candidate nodes
@@ -558,7 +574,7 @@ fn search_at_tempo(
 #[allow(clippy::too_many_arguments)]
 fn expand_layer(
     arena: &mut Vec<Node>,
-    beam: &[u16],
+    beam: &[u32],
     notes: &[RhythmEvent],
     index: usize,
     note: &RhythmEvent,
@@ -567,7 +583,7 @@ fn expand_layer(
     grid: u32,
     policy: &TranscriptionPolicy,
     pins: &[(usize, u32)],
-) -> Vec<u16> {
+) -> Vec<u32> {
     let onset_weight = policy.weights().onset_residual();
     let notation_weight = policy.weights().notation_complexity();
     let transition_weight = policy.weights().transition();
@@ -581,7 +597,7 @@ fn expand_layer(
     };
     let mut next_beam = Vec::with_capacity(beam.len().saturating_mul(9));
     for &state in beam {
-        let parent = arena[usize::from(state)];
+        let parent = arena[state as usize];
         for tick_u32 in low..=high {
             if parent.prev != ROOT && tick_u32 < u32::from(parent.tick) {
                 continue;
@@ -615,7 +631,7 @@ fn expand_layer(
                 prev: state,
                 cost,
             };
-            let next_index = u16::try_from(arena.len()).unwrap_or(u16::MAX);
+            let next_index = u32::try_from(arena.len()).unwrap_or(u32::MAX);
             arena.push(node);
             next_beam.push(next_index);
         }
@@ -623,90 +639,49 @@ fn expand_layer(
     next_beam
 }
 
-/// The exact abstract storage of an arena and its beam: node records plus two
-/// bytes per surviving index, with no allocator metadata.
-fn storage(arena: &[Node], beam: &[u16]) -> usize {
-    arena
-        .len()
-        .saturating_mul(Node::bytes())
+/// The retained candidate/back-pointer storage of the answer: every arena node
+/// reachable from a surviving beam index, plus two bytes per index. The
+/// append-only scratch arena the search built is not counted — only the live
+/// DAG a caller would have to keep to materialize the candidates.
+fn reachable_storage(arena: &[Node], beam: &[u32]) -> usize {
+    let mut reachable = vec![false; arena.len()];
+    let mut stack = beam.to_vec();
+    let mut live = 0_usize;
+    while let Some(node) = stack.pop() {
+        let index = node as usize;
+        if index >= reachable.len() || reachable[index] {
+            continue;
+        }
+        reachable[index] = true;
+        live = live.saturating_add(1);
+        if arena[index].prev != ROOT {
+            stack.push(arena[index].prev);
+        }
+    }
+    live.saturating_mul(Node::bytes())
         .saturating_add(beam.len().saturating_mul(2))
 }
 
 /// Sort surviving node indices by cost then exact tick sequence, and truncate.
-fn sort_and_truncate(arena: &[Node], mut beam: Vec<u16>, limit: usize) -> Vec<u16> {
+fn sort_and_truncate(arena: &[Node], mut beam: Vec<u32>, limit: usize) -> Vec<u32> {
     beam.sort_by(|&left, &right| beam_order(arena, left, right));
     beam.truncate(limit);
     beam
 }
 
-/// Drop every arena node not reachable from the surviving beam, remapping
-/// back-pointers densely so shared prefixes keep sharing.
-fn compact(arena: &[Node], beam: &[u16]) -> (Vec<Node>, Vec<u16>) {
-    let mut reachable = vec![false; arena.len()];
-    let mut stack = beam.to_vec();
-    while let Some(node) = stack.pop() {
-        let index = usize::from(node);
-        if index >= reachable.len() || reachable[index] {
-            continue;
-        }
-        reachable[index] = true;
-        if arena[index].prev != ROOT {
-            stack.push(arena[index].prev);
-        }
-    }
-    let mut new_arena = Vec::with_capacity(reachable.iter().filter(|yes| **yes).count());
-    let mut map = vec![ROOT; arena.len()];
-    for (old, node) in arena.iter().enumerate() {
-        if !reachable[old] {
-            continue;
-        }
-        let new = u16::try_from(new_arena.len()).unwrap_or(u16::MAX);
-        map[old] = new;
-        new_arena.push(Node {
-            tick: node.tick,
-            prev: if node.prev == ROOT {
-                ROOT
-            } else {
-                map[usize::from(node.prev)]
-            },
-            cost: node.cost,
-        });
-    }
-    let new_beam = beam.iter().map(|&leaf| map[usize::from(leaf)]).collect();
-    (new_arena, new_beam)
-}
-
-/// Order two surviving beam nodes by cumulative cost, then by their exact tick
-/// sequences, the way the trial ordered its cloned candidates.
-fn beam_order(arena: &[Node], left: u16, right: u16) -> Ordering {
-    arena[usize::from(left)]
+/// Order two surviving beam nodes by cumulative cost, then by arena index.
+///
+/// The index tie-break is a total, deterministic order at O(1): each node has a
+/// unique ascending index. It replaces the trial's full-path `ticks.cmp()`,
+/// which cost O(path) per comparison and, on the regular stress corpus, ran
+/// millions of times on equal-cost states that share all but their last tick.
+/// The final report order still breaks ties on the published cost vector and
+/// canonical structural bytes, so the beam tie-break only has to be stable.
+fn beam_order(arena: &[Node], left: u32, right: u32) -> Ordering {
+    arena[left as usize]
         .cost
-        .cmp(&arena[usize::from(right)].cost)
-        .then_with(|| compare_paths(arena, left, right))
-}
-
-fn compare_paths(arena: &[Node], mut left: u16, mut right: u16) -> Ordering {
-    let mut left_ticks = Vec::new();
-    let mut right_ticks = Vec::new();
-    loop {
-        let node = arena[usize::from(left)];
-        if node.prev == ROOT {
-            break;
-        }
-        left_ticks.push(node.tick);
-        left = node.prev;
-    }
-    loop {
-        let node = arena[usize::from(right)];
-        if node.prev == ROOT {
-            break;
-        }
-        right_ticks.push(node.tick);
-        right = node.prev;
-    }
-    left_ticks.reverse();
-    right_ticks.reverse();
-    left_ticks.cmp(&right_ticks)
+        .cmp(&arena[right as usize].cost)
+        .then_with(|| left.cmp(&right))
 }
 
 /// Reconstruct one leaf into an exact candidate with its full cost breakdown.
@@ -716,12 +691,12 @@ fn materialize(
     grid: u32,
     quarter_micros: u64,
     arena: &[Node],
-    leaf: u16,
+    leaf: u32,
 ) -> Candidate {
     let mut onsets: Vec<u32> = Vec::new();
     let mut cursor = leaf;
     loop {
-        let node = arena[usize::from(cursor)];
+        let node = arena[cursor as usize];
         if node.prev == ROOT {
             break;
         }
@@ -820,6 +795,8 @@ fn cost_record(
         TakeClock::Unmeasured => 0,
     };
     let onset_weight = policy.weights().onset_residual();
+    let duration_weight = policy.weights().duration_residual();
+    let tempo_weight = policy.weights().tempo_smoothness();
     let notation_weight = policy.weights().notation_complexity();
     let transition_weight = policy.weights().transition();
     let group_split = ratio_scalar(policy.weights().group_split());
@@ -827,7 +804,9 @@ fn cost_record(
 
     let mut onset_displacement = 0_u64;
     let mut duration_displacement = 0_u64;
+    let mut tempo_smoothness = 0_u64;
     let mut notation_complexity = 0_u64;
+    let mut previous_interval: Option<u32> = None;
     for (index, note) in take.events.iter().enumerate() {
         let physical = physical_ticks(note.onset_micros.saturating_sub(origin), quarter_micros, grid);
         let onset = onsets[index];
@@ -841,6 +820,17 @@ fn cost_record(
             .get(index.saturating_add(1))
             .map_or(durations[index], |next| next.saturating_sub(onset));
         duration_displacement = duration_displacement.saturating_add(u64::from(written.abs_diff(durations[index])));
+
+        // The written-interval irregularity: how much each consecutive written
+        // interval jumps versus the one before. Weighted at zero by the standard
+        // policy, so it never ranks, but reported as the tempo-smoothness term.
+        if let Some(interval) = previous_interval {
+            let current = onset.saturating_sub(onsets[index.saturating_sub(1)]);
+            tempo_smoothness = tempo_smoothness.saturating_add(u64::from(interval.abs_diff(current)));
+        }
+        if let Some(previous_onset) = onsets.get(index.saturating_sub(1)) {
+            previous_interval = Some(onset.saturating_sub(*previous_onset));
+        }
 
         notation_complexity = notation_complexity.saturating_add(rational_times(
             position_complexity(onset % grid, grid, policy),
@@ -863,8 +853,8 @@ fn cost_record(
 
     let mut values = [0_u64; COST_FIELDS];
     values[0] = onset_displacement;
-    values[1] = duration_displacement;
-    values[2] = 0;
+    values[1] = rational_times(duration_displacement, duration_weight);
+    values[2] = rational_times(tempo_smoothness, tempo_weight);
     values[3] = notation_complexity;
     values[4] = u64::try_from(rest_count).unwrap_or(u64::MAX);
     values[5] = u64::try_from(tie_count).unwrap_or(u64::MAX);
@@ -980,6 +970,7 @@ mod laws {
             })
             .collect();
         Take {
+            name: "synthetic-take".to_owned(),
             clock,
             bar_ticks: 96,
             events,
@@ -1209,6 +1200,7 @@ mod laws {
                 })
                 .collect::<Vec<_>>();
             let input = Take {
+                name: fixture.id().to_owned(),
                 clock,
                 bar_ticks: 96,
                 events,

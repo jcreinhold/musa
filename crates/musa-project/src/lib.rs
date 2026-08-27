@@ -54,22 +54,17 @@ mod playback;
 mod position;
 mod project;
 mod realization;
+mod rhythm;
 mod session;
 mod sf2;
 mod sfz;
 mod snapshot;
 mod studio;
 mod template;
+mod transcription_policy;
+mod transcription_search;
 #[doc(hidden)]
 pub mod transcription_trial;
-// Gated to the builds that audit until prompt 204a gives it a production
-// caller: the only current consumers are the differential laws below. An
-// `allow(dead_code)` would claim the projection is already used and hide the
-// next real gap; the gate is the honest spelling, and 204a removes it.
-#[cfg(test)]
-mod transcription_policy;
-#[cfg(test)]
-mod transcription_search;
 mod utf16;
 mod vocabulary;
 
@@ -97,6 +92,7 @@ pub use crate::midi::{
 pub use crate::packages::{fetch_packages, verify_packages};
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};
+pub use crate::rhythm::RhythmTranscriptionReport;
 pub use crate::session::ProjectSession;
 pub use crate::sf2::{Sf2InstrumentFacts, Sf2Limits};
 pub use crate::sfz::{SfzInstrumentFacts, SfzLimits};
@@ -106,6 +102,9 @@ pub use crate::studio::{
     StudioEdit, StudioFacts,
 };
 pub use crate::template::Template;
+pub use crate::transcription_search::{
+    Candidate, CostRecord, REPORT_VERSION, Refusal, ReviewRegion, RhythmEvent, SearchOutcome, Take, TakeClock,
+};
 pub use crate::utf16::Utf16Offsets;
 pub use crate::vocabulary::{format_studio_ratio, standard_instrument_contracts, standard_studio_vocabulary};
 pub use musa_compiler::DocumentKind;

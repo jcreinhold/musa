@@ -594,6 +594,19 @@ impl ProjectSession {
         crate::barlines::plan(&self.source, self.revision, &valid.barline_items, self.bar_spacing())
     }
 
+    /// Turn one completed-note take into ranked rhythm candidates, under the
+    /// named checked transcription policy.
+    ///
+    /// The report is versioned and immutable; it is a derived proposal, never a
+    /// canonical edit. Pairing raw note-ons/offs into completed notes is prompt
+    /// 205's step, so the request takes [`crate::Take`] data rather than raw
+    /// MIDI events. The report names the take, this revision, and the policy it
+    /// read, and carries the search's bounding measurements as read-only facts.
+    #[must_use]
+    pub fn transcribe_rhythm(&self, take: &crate::Take, policy_name: &str) -> crate::RhythmTranscriptionReport {
+        crate::rhythm::RhythmTranscriptionReport::transcribe(self.revision, take, policy_name)
+    }
+
     /// How this piece's project wants its bars laid out.
     ///
     /// Private, and asked here rather than at each call site, so that

@@ -18,6 +18,7 @@ mod project_laws;
 mod provenance_laws;
 mod realization_laws;
 mod resource_session;
+mod rhythm_transcription_laws;
 mod sampler_laws;
 mod session_laws;
 mod studio_laws;

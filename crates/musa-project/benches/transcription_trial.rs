@@ -9,7 +9,10 @@ use std::time::{Duration, Instant};
 use divan::black_box;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use musa_playback::{MidiInput, MidiMessageKind};
-use musa_project::transcription_trial::{TrialCorpus, generated_corpus, generated_stress_corpus, run};
+use musa_project::{
+    ProjectSession, RhythmEvent, Take, TakeClock,
+    transcription_trial::{TrialCorpus, generated_corpus, generated_stress_corpus, run},
+};
 use serde::Serialize;
 
 const ASAP_COMMIT: &str = "fad8d1e8078d0ae47ad2f280b5d022bd2de24784";
@@ -153,6 +156,65 @@ fn complete_generated_trial() {
 fn regular_phrase_scaling(note_count: usize) {
     let corpus = generated_stress_corpus(note_count);
     black_box(run(black_box(&corpus)));
+}
+
+/// A session and a 128-note take shared across divan samples; the bench times
+/// only the facade request, not document compilation. Held in a process-wide
+/// lock because a `ProjectSession` owns the audio engine and is therefore not
+/// `Sync` (a CPAL stream is `Send`, which is all a `Mutex` needs).
+static FACADE: std::sync::OnceLock<std::sync::Mutex<(ProjectSession, Take)>> = std::sync::OnceLock::new();
+
+fn facade_pair() -> std::sync::MutexGuard<'static, (ProjectSession, Take)> {
+    FACADE
+        .get_or_init(|| {
+            std::sync::Mutex::new((
+                ProjectSession::from_text(
+                    "piece \"Facade bench\" { meter 4/4; key c major; score { part p { voice v { rest/1 } } } }",
+                    "facade-bench.musa",
+                ),
+                facade_take(),
+            ))
+        })
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn facade_take() -> Take {
+    Take {
+        name: "facade-stress".to_owned(),
+        clock: TakeClock::Known {
+            quarter_micros: 500_000,
+            origin_micros: 0,
+        },
+        bar_ticks: 96,
+        events: (0..128)
+            .map(|index| {
+                let tick = u32::try_from(index).unwrap_or(u32::MAX).saturating_mul(12);
+                let onset = u64::from(tick).saturating_mul(500_000) / 24;
+                RhythmEvent {
+                    id: u32::try_from(index).unwrap_or(u32::MAX),
+                    onset_micros: onset,
+                    release_micros: onset.saturating_add(250_000),
+                    sounding_end_micros: onset.saturating_add(250_000),
+                }
+            })
+            .collect(),
+        pins: Vec::new(),
+    }
+}
+
+/// The production optimizer's 128-note facade path: prompt 204b's measured
+/// reference law (the report keeps the hard 50 ms budget's evidence).
+// The guard must live across the measured call: it holds the session the call
+// borrows. The nursery lint wants it dropped early, which would be a
+// use-after-early-unlock; in a single-threaded measurement holding the lock is
+// exactly right.
+#[divan::bench]
+#[allow(clippy::significant_drop_tightening)]
+fn facade_128_note_rhythm() {
+    let guard = facade_pair();
+    let (session, take) = &*guard;
+    black_box(session.transcribe_rhythm(black_box(take), "standard"));
 }
 
 #[derive(Serialize)]

@@ -1,7 +1,7 @@
 ---
 id: 204b
 slug: rhythm-transcription-report
-status: pending
+status: done
 depends_on: [204a]
 phase: 2
 ---
@@ -10,9 +10,10 @@ phase: 2
 
 ## Task
 
-Expose the 204a search through one narrow, versioned, immutable report behind a single `ProjectSession` request over a
-captured MIDI take, and prove the corpus admission thresholds, determinism, exact-boundaries, and reference-host
-latency/memory laws through that facade.
+Expose the 204a search through one narrow, versioned, immutable report behind a single `ProjectSession` request over one
+completed-note take, and prove the corpus admission thresholds, determinism, exact-boundaries, and reference-host
+latency/memory laws through that facade. The take is a narrow request type of exact completed-note intervals; pairing
+raw note-ons/offs into completed notes is prompt 205's step (layer separation), so the facade does not consume raw MIDI.
 
 ## Read
 
@@ -25,8 +26,10 @@ latency/memory laws through that facade.
 
 ## Design
 
-- One facade: `ProjectSession::transcribe_take_rhythm(take, policy, constraints) -> RhythmTranscriptionReport`, or a
-  narrow request type of that shape. The report is immutable and carries a `report_version`.
+- One facade: `ProjectSession::transcribe_rhythm(take, policy) -> RhythmTranscriptionReport`, a narrow request type
+  (`Take` of exact completed-note intervals plus clock, bar length, and optional pins). The report is immutable and
+  carries a `report_version`, the take/revision/policy identities, the checked policy's published cost-field order, and
+  the search's bounding measurements as read-only facts.
 
 - Each candidate in the report carries its exact onset/duration groups, rests/ties/tuplets required for notation, the
   complete versioned cost breakdown, alternative boundaries, the source take/revision/policy identities, a derivation
