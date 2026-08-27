@@ -729,38 +729,72 @@ const SHARP_ORDER: [Letter; 7] = [
 /// composer meant an augmented fourth or a diminished fifth, and respelling
 /// one note is a keystroke away. What it must never do is surprise — hence
 /// the table test beside it.
+/// The key's seven diatonic spellings, by the pitch class each lands on.
+fn diatonic_spelling(alterations: &[i32; 7], wanted: i32) -> Option<(Letter, i32)> {
+    NATURALS.iter().enumerate().find_map(|(index, &(letter, natural))| {
+        let alter = alterations.get(index).copied().unwrap_or(0);
+        ((natural + alter).rem_euclid(12) == wanted).then_some((letter, alter))
+    })
+}
+
 pub(crate) fn spell(note: u8, key: Option<Key>) -> String {
     let fifths = key.map_or(0, Key::fifths);
     let pitch_class = i32::from(note % 12);
     let alterations = key_alterations(fifths);
 
-    // The key's own seven spellings, by the pitch class each lands on.
-    let diatonic = |wanted: i32| -> Option<(Letter, i32)> {
-        NATURALS.iter().enumerate().find_map(|(index, &(letter, natural))| {
-            let alter = alterations.get(index).copied().unwrap_or(0);
-            ((natural + alter).rem_euclid(12) == wanted).then_some((letter, alter))
-        })
-    };
-
-    let (letter, alter) = diatonic(pitch_class)
+    let (letter, alter) = diatonic_spelling(&alterations, pitch_class)
         .or_else(|| {
             // Outside the key: alter the neighbour the signature leans towards.
             if fifths >= 0 {
-                diatonic((pitch_class - 1).rem_euclid(12)).map(|(letter, alter)| (letter, alter + 1))
+                diatonic_spelling(&alterations, (pitch_class - 1).rem_euclid(12))
+                    .map(|(letter, alter)| (letter, alter + 1))
             } else {
-                diatonic((pitch_class + 1).rem_euclid(12)).map(|(letter, alter)| (letter, alter - 1))
+                diatonic_spelling(&alterations, (pitch_class + 1).rem_euclid(12))
+                    .map(|(letter, alter)| (letter, alter - 1))
             }
         })
         // Unreachable for any real signature: seven letters a fifth apart
         // cover every pitch class either directly or one step away.
         .unwrap_or((Letter::C, 0));
 
+    rendered(letter, alter, note)
+}
+
+/// The enharmonic readings of a chromatic note, excluding the primary
+/// [`spell`] choice: the neighbour the signature did *not* lean towards. Empty
+/// for a note the key already spells unambiguously.
+///
+/// Gated to tests until prompt 205c composes it in the production proposal;
+/// the spelling stage (205b) is still a test-gated module.
+#[cfg(test)]
+pub(crate) fn spell_alternatives(note: u8, key: Option<Key>) -> Vec<String> {
+    let fifths = key.map_or(0, Key::fifths);
+    let pitch_class = i32::from(note % 12);
+    let alterations = key_alterations(fifths);
+    if diatonic_spelling(&alterations, pitch_class).is_some() {
+        return Vec::new();
+    }
+    let primary = spell(note, key);
+    let below =
+        diatonic_spelling(&alterations, (pitch_class - 1).rem_euclid(12)).map(|(letter, alter)| (letter, alter + 1));
+    let above =
+        diatonic_spelling(&alterations, (pitch_class + 1).rem_euclid(12)).map(|(letter, alter)| (letter, alter - 1));
+    [below, above]
+        .into_iter()
+        .flatten()
+        .map(|(letter, alter)| rendered(letter, alter, note))
+        .filter(|spelling| *spelling != primary)
+        .collect()
+}
+
+/// Render a letter, alteration, and sounding note as a written pitch: the
+/// written octave is the one that makes the spelling sound at `note`, which is
+/// not always the note number's own (`b#3` sounds where `c4` does).
+fn rendered(letter: Letter, alter: i32, note: u8) -> String {
     let natural = NATURALS
         .iter()
         .find_map(|&(candidate, natural)| (candidate == letter).then_some(natural))
         .unwrap_or(0);
-    // The written octave is the one that makes the spelling sound at `note`,
-    // which is not always the note number's own: `b#3` sounds where `c4` does.
     let octave = (i32::from(note) - natural - alter).div_euclid(12) - 1;
     format!("{}{}{}", letter_name(letter), accidental(alter), octave.max(0))
 }

@@ -65,6 +65,8 @@ mod template;
 mod transcription_pairing;
 mod transcription_policy;
 mod transcription_search;
+#[cfg(test)]
+mod transcription_spell;
 #[doc(hidden)]
 pub mod transcription_trial;
 #[cfg(test)]

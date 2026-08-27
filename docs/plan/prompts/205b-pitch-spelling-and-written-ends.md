@@ -1,7 +1,7 @@
 ---
 id: 205b
 slug: pitch-spelling-written-ends
-status: pending
+status: done
 depends_on: [202, 205a]
 phase: 2
 ---
